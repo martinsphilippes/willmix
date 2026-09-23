@@ -23,7 +23,7 @@ Fonte única: `.env.example`. As mesmas chaves devem existir em três lugares:
 ### Para a aplicação (Vercel e local)
 
 1. Console Appwrite > Settings > Overview: copie **API Endpoint** e **Project ID** para `NEXT_PUBLIC_APPWRITE_ENDPOINT` e `NEXT_PUBLIC_APPWRITE_PROJECT_ID`.
-2. Console > Settings > API keys > Create API key: escopos `sessions.write`, `users.read`, `users.write`, `databases.read`, `databases.write`, `files.read`, `files.write`. Cadastre em `APPWRITE_API_KEY`.
+2. Console > Settings > API keys > Create API key: escopos `sessions.write`, `users.read`, `users.write`, `teams.read`, `teams.write`, `databases.read`, `databases.write`, `files.read`, `files.write`. Cadastre em `APPWRITE_API_KEY`.
 3. Console > Settings > Platforms > Add platform > Web: hostname `localhost` e o domínio da Vercel (`willmix.vercel.app`). Sem isso o SDK do browser é bloqueado por CORS.
 
 ### Para o Claude operar o projeto (CLI e API)
