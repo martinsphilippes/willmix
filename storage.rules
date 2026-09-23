@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Política padrão: negar tudo. Uploads passam por rotas do servidor ou por
+// regras específicas por pasta, adicionadas conforme os módulos forem criados.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
