@@ -1,25 +1,37 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { clearSession, createSession } from "@/lib/auth/session";
+import { signInWithPassword, signOut } from "@/lib/auth/session";
 
-const bodySchema = z.object({ idToken: z.string().min(1) });
+const bodySchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
 
-/** Troca um idToken do Firebase Auth por um cookie de sessão HttpOnly. */
+/** Login por e-mail e senha. Cria sessão Appwrite e grava cookie HttpOnly. */
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "idToken obrigatório" }, { status: 400 });
+    return NextResponse.json(
+      { error: "E-mail e senha (mínimo 8 caracteres) são obrigatórios" },
+      { status: 400 },
+    );
   }
   try {
-    await createSession(parsed.data.idToken);
-    return NextResponse.json({ ok: true });
+    const session = await signInWithPassword(
+      parsed.data.email,
+      parsed.data.password,
+    );
+    return NextResponse.json({ ok: true, userId: session.userId });
   } catch {
-    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Credenciais inválidas" },
+      { status: 401 },
+    );
   }
 }
 
-/** Logout: remove o cookie de sessão. */
+/** Logout: encerra a sessão no Appwrite e remove o cookie. */
 export async function DELETE() {
-  await clearSession();
+  await signOut();
   return NextResponse.json({ ok: true });
 }

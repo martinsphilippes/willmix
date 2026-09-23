@@ -1,5 +1,7 @@
-import { isFirebaseClientConfigured } from "@/lib/env";
-import { isFirebaseAdminConfigured } from "@/lib/firebase/admin";
+import {
+  isAppwriteClientConfigured,
+  isAppwriteServerConfigured,
+} from "@/lib/env";
 
 function Status({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -22,7 +24,7 @@ export default function Home() {
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">Willmix</h1>
         <p className="text-zinc-600">
-          Ambiente base pronto. Next.js na Vercel com Firebase.
+          Ambiente base pronto. Next.js na Vercel com Appwrite.
         </p>
       </header>
 
@@ -31,8 +33,11 @@ export default function Home() {
           Integrações
         </h2>
         <ul className="space-y-3">
-          <Status ok={isFirebaseClientConfigured} label="Firebase Web SDK" />
-          <Status ok={isFirebaseAdminConfigured} label="Firebase Admin SDK" />
+          <Status ok={isAppwriteClientConfigured} label="Appwrite (browser)" />
+          <Status
+            ok={isAppwriteServerConfigured()}
+            label="Appwrite (servidor)"
+          />
         </ul>
       </section>
 

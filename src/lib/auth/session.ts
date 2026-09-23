@@ -1,43 +1,49 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { adminAuth } from "@/lib/firebase/admin";
+import {
+  createAdminClient,
+  createSessionClient,
+  sessionCookieName,
+} from "@/lib/appwrite/server";
 
 /**
- * Sessão via cookie HttpOnly assinado pelo Firebase (session cookie).
- * Fluxo: login no browser (Firebase Auth) -> POST /api/auth/session com o idToken
- * -> servidor grava cookie -> Server Components/Route Handlers verificam com verifySessionCookie.
+ * Sessão SSR do Appwrite: o servidor cria a sessão com a API key e guarda o
+ * segredo em cookie HttpOnly. Cada requisição recria um cliente com esse
+ * segredo, então permissões de linha valem para o usuário logado.
  */
-export const SESSION_COOKIE = "__session";
-const SESSION_DAYS = 5;
-const SESSION_MS = SESSION_DAYS * 24 * 60 * 60 * 1000;
+export async function signInWithPassword(email: string, password: string) {
+  const { account } = createAdminClient();
+  const session = await account.createEmailPasswordSession({ email, password });
 
-export async function createSession(idToken: string) {
-  const sessionCookie = await adminAuth().createSessionCookie(idToken, {
-    expiresIn: SESSION_MS,
-  });
   const store = await cookies();
-  store.set(SESSION_COOKIE, sessionCookie, {
+  store.set(sessionCookieName(), session.secret, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
-    maxAge: SESSION_MS / 1000,
+    expires: new Date(session.expire),
   });
+  return session;
 }
 
-export async function clearSession() {
+export async function signOut() {
+  const session = await createSessionClient();
+  if (session) {
+    await session.account
+      .deleteSession({ sessionId: "current" })
+      .catch(() => undefined);
+  }
   const store = await cookies();
-  store.delete(SESSION_COOKIE);
+  store.delete(sessionCookieName());
 }
 
 /** Retorna o usuário autenticado ou null. Nunca lança. */
 export async function getCurrentUser() {
-  const store = await cookies();
-  const cookie = store.get(SESSION_COOKIE)?.value;
-  if (!cookie) return null;
   try {
-    return await adminAuth().verifySessionCookie(cookie, true);
+    const session = await createSessionClient();
+    if (!session) return null;
+    return await session.account.get();
   } catch {
     return null;
   }

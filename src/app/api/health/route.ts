@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { isFirebaseClientConfigured } from "@/lib/env";
-import { isFirebaseAdminConfigured } from "@/lib/firebase/admin";
+import {
+  isAppwriteClientConfigured,
+  isAppwriteServerConfigured,
+} from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +13,9 @@ export async function GET() {
     service: "willmix",
     env: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
-    firebase: {
-      client: isFirebaseClientConfigured,
-      admin: isFirebaseAdminConfigured,
+    appwrite: {
+      client: isAppwriteClientConfigured,
+      server: isAppwriteServerConfigured(),
     },
     timestamp: new Date().toISOString(),
   });

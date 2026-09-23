@@ -2,14 +2,14 @@
 
 Plataforma de gestão comercial para a Wellmix (importadora e distribuidora B2B de utilidades domésticas e brinquedos).
 
-Stack: **Next.js 16** (App Router, TypeScript, Tailwind 4) hospedado na **Vercel**, com **Firebase** (Auth, Firestore, Storage, Analytics) como backend gerenciado.
+Stack: **Next.js 16** (App Router, TypeScript, Tailwind 4) hospedado na **Vercel**, com **Appwrite** (Auth, TablesDB, Storage, Functions, Realtime) como backend gerenciado.
 
 ## Começando
 
 ```bash
 nvm use            # Node 22
 npm ci
-cp .env.example .env.local   # preencha as chaves do Firebase
+cp .env.example .env.local   # preencha endpoint, project id e API key do Appwrite
 npm run dev        # http://localhost:3000
 ```
 
@@ -17,38 +17,37 @@ Diagnóstico das integrações: `GET /api/health`.
 
 ## Scripts
 
-| Script                          | O que faz                                          |
-| ------------------------------- | -------------------------------------------------- |
-| `npm run dev`                   | Servidor de desenvolvimento                        |
-| `npm run build`                 | Build de produção (mesmo comando usado na Vercel)  |
-| `npm run lint`                  | ESLint                                             |
-| `npm run typecheck`             | Verificação de tipos                               |
-| `npm run format`                | Prettier                                           |
-| `npm run emulators`             | Emuladores Firebase (Auth, Firestore, Storage, UI) |
-| `npm run firebase:deploy:rules` | Publica regras e índices do Firestore/Storage      |
+| Script                  | O que faz                                                     |
+| ----------------------- | ------------------------------------------------------------- |
+| `npm run dev`           | Servidor de desenvolvimento                                   |
+| `npm run build`         | Build de produção (mesmo comando usado na Vercel)             |
+| `npm run lint`          | ESLint                                                        |
+| `npm run typecheck`     | Gera tipos de rota e verifica TypeScript                      |
+| `npm run format`        | Prettier                                                      |
+| `npm run appwrite -- …` | Appwrite CLI (`login`, `init`, `pull`, `push`)                |
+| `npm run appwrite:push` | Publica tabelas e buckets definidos em `appwrite.config.json` |
 
 ## Estrutura
 
 ```
 src/
-  app/                 rotas (App Router)
-    api/health         diagnóstico do ambiente
-    api/auth/session   troca idToken -> cookie de sessão / logout
-    login              tela de login (placeholder)
-    app                área autenticada
+  app/                   rotas (App Router)
+    api/health           diagnóstico do ambiente
+    api/auth/session     login (POST) e logout (DELETE)
+    login                tela de login
+    app                  área autenticada
+  components/            componentes de interface
   lib/
-    env.ts             validação das variáveis de ambiente (zod)
-    firebase/client.ts SDK Web (browser)
-    firebase/admin.ts  Admin SDK (servidor)
-    auth/session.ts    cookie de sessão HttpOnly
-  proxy.ts             checagem otimista de sessão em /app/*
-firebase.json          emuladores e caminhos de regras
-firestore.rules        regras Firestore (negar tudo por padrão)
-storage.rules          regras Storage (negar tudo por padrão)
-docs/                  arquitetura, ambiente e decisões
+    env.ts               validação das variáveis de ambiente (zod)
+    appwrite/server.ts   clientes admin (API key) e de sessão (cookie)
+    appwrite/client.ts   SDK Web (realtime, uploads)
+    auth/session.ts      login, logout e usuário atual
+  proxy.ts               checagem otimista de sessão em /app/*
+docs/                    arquitetura, ambiente, Appwrite e decisões
 ```
 
 ## Documentação
 
 - [docs/AMBIENTE.md](docs/AMBIENTE.md): conexões, variáveis e passos de configuração.
+- [docs/APPWRITE.md](docs/APPWRITE.md): projeto Appwrite, permissões, tabelas e buckets.
 - [docs/ARQUITETURA.md](docs/ARQUITETURA.md): entendimento do negócio, decisões técnicas e módulos propostos.

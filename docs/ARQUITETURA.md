@@ -14,25 +14,27 @@ Reduzir trabalho manual entre representante, escritório e cliente, dar visibili
 
 ## 3. Decisões técnicas
 
-| Decisão             | Escolha                          | Motivo                                                                                          |
-| ------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Front e API         | Next.js 16 App Router na Vercel  | Um só deploy, Server Components, Route Handlers como backend. Região `gru1` (São Paulo).        |
-| Auth                | Firebase Auth + cookie de sessão | Login no browser, cookie HttpOnly no servidor. Evita token no localStorage.                     |
-| Banco               | Firestore                        | Sem servidor para gerenciar, tempo real nativo, escala com o uso.                               |
-| Arquivos            | Firebase Storage                 | Fotos de produto, PDFs de pedido, comprovantes.                                                 |
-| Escritas de negócio | Só pelo servidor (Admin SDK)     | Regras de negócio e auditoria em um único lugar. Rules do cliente ficam mínimas.                |
-| Validação           | zod                              | Mesmo schema para env, formulários e Route Handlers.                                            |
-| Supabase            | Não usado neste projeto          | Já existe conector, mas dois backends dobram auth, custo e manutenção.                          |
-| Cloud Functions     | Adiar                            | Route Handlers e Server Actions cobrem o backend. Functions só para triggers de Firestore/cron. |
+| Decisão             | Escolha                          | Motivo                                                                                                |
+| ------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Front e API         | Next.js 16 App Router na Vercel  | Um só deploy, Server Components, Route Handlers como backend. Região `gru1` (São Paulo).              |
+| Backend gerenciado  | Appwrite Cloud                   | Auth, banco, arquivos, funções e realtime em um só serviço, com console simples e opção de self-host. |
+| Auth                | Appwrite Auth, padrão SSR        | Sessão criada no servidor com API key, segredo em cookie HttpOnly. Nada de token no localStorage.     |
+| Banco               | Appwrite TablesDB                | Tabelas com colunas tipadas, índices, relacionamentos e permissões por linha.                         |
+| Arquivos            | Appwrite Storage                 | Fotos de produto, PDFs de pedido, comprovantes. Bucket com permissões por papel.                      |
+| Escritas de negócio | Só pelo servidor (cliente admin) | Regras de negócio e auditoria em um único lugar. Permissões de linha ficam como segunda barreira.     |
+| Papéis              | Appwrite Teams + labels          | Teams para grupos (admin, comercial, representantes); labels para atalhos de permissão.               |
+| Validação           | zod                              | Mesmo schema para env, formulários e Route Handlers.                                                  |
+| Supabase e Firebase | Não usados                       | Firebase foi descartado antes de qualquer módulo. Dois backends dobram auth, custo e manutenção.      |
+| Appwrite Functions  | Adiar                            | Route Handlers cobrem o backend. Functions só para eventos de banco, cron e integrações externas.     |
 
-### Ponto de atenção: Firestore versus Postgres
+### Ponto de atenção: relatórios
 
-O Firestore atende bem catálogo, pedidos e tempo real. Ele é fraco em relatórios com muitos cruzamentos (comissão por representante por região por período, curva ABC, ruptura de estoque). Dois caminhos quando isso pesar:
+O TablesDB atende bem catálogo, pedidos e tempo real, e aceita consultas com filtros e ordenação por índice. Ele não faz agregações complexas (comissão por representante por região por período, curva ABC) em uma única consulta. Dois caminhos quando isso pesar:
 
-1. Manter Firestore como fonte e exportar para BigQuery (extensão oficial) para relatórios.
-2. Migrar o núcleo transacional para Postgres (Supabase já está disponível).
+1. Tabelas de resumo mantidas por Appwrite Functions disparadas em eventos de escrita (agregação incremental).
+2. Exportação periódica para um Postgres analítico (Supabase já está disponível) só para relatórios.
 
-Recomendação: começar no Firestore, com coleções desenhadas para consultas conhecidas, e ativar a exportação para BigQuery quando os relatórios chegarem.
+Recomendação: começar com tabelas de resumo, que são simples e baratas, e migrar para o Postgres analítico apenas se a demanda de relatórios crescer.
 
 ## 4. Módulos propostos (a validar)
 
@@ -49,6 +51,7 @@ Recomendação: começar no Firestore, com coleções desenhadas para consultas 
 
 - Rotas públicas na raiz; área autenticada em `/app/*`.
 - Toda escrita passa por Route Handler ou Server Action com validação zod e registro de auditoria.
-- Firestore Rules negam por padrão; liberar leitura coleção a coleção.
+- Permissões de linha no Appwrite negam por padrão; liberar leitura tabela a tabela.
 - Variáveis de ambiente validadas em `src/lib/env.ts`.
+- Esquema de tabelas e buckets versionado em `appwrite.config.json` e publicado via CLI.
 - Português nos textos de interface e documentação; inglês em identificadores de código.
