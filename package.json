@@ -11,8 +11,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "appwrite": "appwrite",
-    "appwrite:push": "appwrite push table && appwrite push bucket",
-    "appwrite:generate": "appwrite generate"
+    "appwrite:push": "appwrite push team --all --force && appwrite push table --all --force && appwrite push bucket --all --force",
+    "appwrite:generate": "appwrite generate",
+    "appwrite:connect": "node scripts/appwrite-connect.mjs",
+    "appwrite:pull": "appwrite pull team && appwrite pull table && appwrite pull bucket"
   },
   "dependencies": {
     "appwrite": "^27.0.0",

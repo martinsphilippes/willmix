@@ -2,13 +2,13 @@
 
 ## Conexões
 
-| Serviço  | Estado                   | Observações                                                                 |
-| -------- | ------------------------ | --------------------------------------------------------------------------- |
-| GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
-| Vercel   | conectado                | Projeto `willmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
-| Appwrite | aguardando rede e chave  | Ver "Appwrite" abaixo.                                                      |
-| Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite). Ver ARQUITETURA.md.                   |
-| Firebase | descartado               | Substituído pelo Appwrite antes de qualquer módulo de negócio.              |
+| Serviço  | Estado                        | Observações                                                                 |
+| -------- | ----------------------------- | --------------------------------------------------------------------------- |
+| GitHub   | conectado                     | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
+| Vercel   | conectado                     | Projeto `willmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
+| Appwrite | rede liberada, chave pendente | Esquema pronto em `appwrite.config.json`. Ver "Appwrite" abaixo.            |
+| Supabase | conectado, não utilizado      | Decisão: um único backend (Appwrite). Ver ARQUITETURA.md.                   |
+| Firebase | descartado                    | Substituído pelo Appwrite antes de qualquer módulo de negócio.              |
 
 ## Variáveis de ambiente
 
@@ -30,7 +30,7 @@ Fonte única: `.env.example`. As mesmas chaves devem existir em três lugares:
 
 No ambiente cloud do Claude Code (menu do ambiente na barra de título, depois Editar):
 
-- **Rede**: liberar o host do endpoint do projeto (ex.: `fra.cloud.appwrite.io`, `nyc.cloud.appwrite.io` ou `sfo.cloud.appwrite.io`). A política atual bloqueia todos.
+- **Rede**: liberar o host do endpoint do projeto (ex.: `fra.cloud.appwrite.io`, `nyc.cloud.appwrite.io` ou `sfo.cloud.appwrite.io`). Já liberado.
 - **Variáveis**: `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`.
 
 Nunca colar chaves no chat. Depois de alterar, abra uma nova sessão: rede e variáveis são lidas na inicialização.
@@ -38,12 +38,17 @@ Nunca colar chaves no chat. Depois de alterar, abra uma nova sessão: rede e var
 ### Publicar o esquema
 
 ```bash
-npm run appwrite -- login          # ou: appwrite client --endpoint ... --projectId ... --key ...
-npm run appwrite:push              # cria/atualiza tabelas e buckets de appwrite.config.json
+npm run appwrite:connect   # valida as variáveis, configura o CLI e grava projectId/endpoint no config
+npm run appwrite:push      # teams, tabelas e buckets de appwrite.config.json (não interativo, --all --force)
+npm run appwrite:generate  # wrapper TypeScript tipado (src/generated)
 ```
+
+`appwrite:connect` recusa valores vazios ou de exemplo ("cole o…") nas três variáveis e testa a chave lendo os teams. O push exige que `endpoint` do config seja igual ao do CLI; o connect cuida disso.
+
+Atenção ao `--force`: o CLI não tem terminal na sessão cloud nem na CI, então o push não pede confirmação. Colunas e índices removidos do config são apagados no servidor (com os dados da coluna). Revise o `git diff` de `appwrite.config.json` antes de publicar.
 
 ## Limitações conhecidas da sessão cloud
 
 - `api.vercel.com` é bloqueado pela política de rede: o Vercel CLI não funciona na sessão. Use o conector Vercel ou push no GitHub.
-- `*.cloud.appwrite.io` é bloqueado até a rede ser liberada.
+- `*.cloud.appwrite.io` está liberado (verificado em 2026-09-23). As variáveis `NEXT_PUBLIC_APPWRITE_*` e `APPWRITE_API_KEY` ainda contêm os textos de exemplo no ambiente cloud: preencha-as e abra nova sessão.
 - `www.wellmix.com.br` é bloqueado: o entendimento do negócio veio de fontes públicas indexadas.

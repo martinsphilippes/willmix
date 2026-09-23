@@ -13,15 +13,12 @@
 ## Primeiro uso (nova sessão, com rede e chave liberadas)
 
 ```bash
-npm run appwrite -- client --endpoint "$NEXT_PUBLIC_APPWRITE_ENDPOINT" \
-  --project-id "$NEXT_PUBLIC_APPWRITE_PROJECT_ID" --key "$APPWRITE_API_KEY"
-npm run appwrite -- pull settings        # gera appwrite.config.json válido
-# editar appwrite.config.json com o esquema abaixo
-npm run appwrite:push                    # push table && push bucket
-npm run appwrite:generate                # wrapper TypeScript tipado em src/generated
+npm run appwrite:connect   # appwrite client + grava projectId/endpoint em appwrite.config.json
+npm run appwrite:push      # push team, table e bucket (--all --force)
+npm run appwrite:generate  # wrapper TypeScript tipado em src/generated
 ```
 
-`appwrite.config.json` é versionado (sem segredos). Nunca criar tabelas à mão no console: o próximo `push` não saberia delas.
+`appwrite.config.json` é versionado (sem segredos) e já contém o esquema abaixo. Nunca criar tabelas à mão no console: o próximo `push` não saberia delas. Para trazer mudanças feitas no console, `npm run appwrite:pull` e revise o diff.
 
 ## Modelo de autenticação
 
@@ -42,31 +39,44 @@ Teams do Appwrite, com IDs estáveis:
 
 Lojistas (clientes) autenticam como usuários sem team; o vínculo com o representante vem da tabela `clientes`.
 
-## Esquema proposto (a confirmar com o negócio)
+## Esquema (versão 1, em `appwrite.config.json`)
 
-Banco `willmix`. Permissões de tabela mínimas; linhas recebem permissões explícitas no momento da escrita (servidor).
+Banco `willmix`. Permissões de tabela dão leitura por papel; escrita só pelo servidor (cliente admin). Tabelas com `rowSecurity` recebem permissões por linha no momento da escrita (ex.: `read(user:<representante>)` em `clientes`, `pedidos` e `comissoes`).
 
-| Tabela          | Colunas principais                                                                   | Leitura                              |
-| --------------- | ------------------------------------------------------------------------------------ | ------------------------------------ |
-| `marcas`        | nome, slug, ativa                                                                    | qualquer usuário autenticado         |
-| `produtos`      | sku, nome, marcaId, linha, ean, embalagem, precoTabela, fotoFileId, ativo            | qualquer usuário autenticado         |
-| `tabelas_preco` | nome, vigenciaInicio, vigenciaFim, itens (produtoId, preco)                          | comercial, representantes            |
-| `clientes`      | razaoSocial, cnpj, enderecos, condicaoPagamento, representanteUserId, ativo          | comercial; representante só os seus  |
-| `pedidos`       | numero, clienteId, representanteUserId, status, itens, total, observacoes, pdfFileId | comercial; representante só os seus  |
-| `estoque`       | produtoId, disponivel, reservado, previsaoChegada                                    | comercial, representantes, logistica |
-| `comissoes`     | pedidoId, representanteUserId, competencia, percentual, valor, status                | comercial; representante só as suas  |
-| `auditoria`     | entidade, entidadeId, acao, usuarioId, antes, depois, criadoEm                       | admin                                |
+| Tabela                | Colunas                                                                                                                | Leitura (tabela)                            | Linha |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----- |
+| `marcas`              | nome, slug, ativa                                                                                                      | `users`                                     | não   |
+| `produtos`            | sku, nome, marcaId, linha, ean, embalagem, precoTabela, fotoFileId, ativo                                              | `users`                                     | não   |
+| `tabelas_preco`       | nome, vigenciaInicio, vigenciaFim, ativa                                                                               | admin, comercial, representantes            | não   |
+| `tabelas_preco_itens` | tabelaPrecoId, produtoId, preco                                                                                        | admin, comercial, representantes            | não   |
+| `clientes`            | razaoSocial, nomeFantasia, cnpj, email, telefone, enderecos (JSON), condicaoPagamento, representanteUserId, ativo      | admin, comercial                            | sim   |
+| `pedidos`             | numero, clienteId, representanteUserId, tabelaPrecoId, status, condicaoPagamento, total, observacoes, pdfFileId, datas | admin, comercial, logistica                 | sim   |
+| `pedidos_itens`       | pedidoId, produtoId, sku, descricao, quantidade, precoUnitario, subtotal                                               | admin, comercial, logistica                 | sim   |
+| `estoque`             | produtoId, disponivel, reservado, previsaoChegada                                                                      | admin, comercial, representantes, logistica | não   |
+| `comissoes`           | pedidoId, representanteUserId, competencia (AAAA-MM), percentual, valor, status                                        | admin, comercial                            | sim   |
+| `auditoria`           | entidade, entidadeId, acao, usuarioId, antes (JSON), depois (JSON)                                                     | admin                                       | não   |
 
-Índices iniciais: `produtos.sku` (único), `clientes.cnpj` (único), `pedidos.numero` (único), `pedidos.status`, `pedidos.representanteUserId`, `comissoes.competencia`.
+Status: `pedidos.status` em `rascunho, enviado, aprovado, faturado, entregue, cancelado`; `comissoes.status` em `prevista, aprovada, paga, cancelada`.
+
+Índices: únicos em `marcas.slug`, `produtos.sku`, `clientes.cnpj`, `pedidos.numero`, `estoque.produtoId`, `tabelas_preco_itens(tabelaPrecoId, produtoId)` e `pedidos_itens(pedidoId, produtoId)`; chaves em `produtos.marcaId`, `pedidos.status`, `pedidos.representanteUserId`, `pedidos.clienteId`, `clientes.representanteUserId`, `comissoes.competencia`, `comissoes(representanteUserId, competencia)`, `auditoria(entidade, entidadeId)`.
+
+Decisões de modelagem:
+
+- **Itens em tabelas próprias** (`pedidos_itens`, `tabelas_preco_itens`) em vez de JSON dentro do pedido: permite consultar "quanto vendeu do SKU X", "preço do produto Y na tabela Z" e agregar por produto sem carregar o pedido inteiro. O pedido guarda `total` desnormalizado, calculado no servidor.
+- **`pedidos_itens` copia `sku`, `descricao` e `precoUnitario`**: o pedido registra o que foi vendido no momento; mudanças posteriores no catálogo não alteram pedidos antigos.
+- **Referências por ID em `varchar(36)`**, não relationships do Appwrite: consultas mais simples e previsíveis, sem carregamento aninhado nem permissões cruzadas. Integridade referencial é garantida no servidor (zod + validação antes da escrita).
+- **`enderecos` como JSON em coluna `text`**: raramente filtrado; validado por zod no servidor. Vira tabela própria se surgir necessidade de consulta por cidade/UF.
+- **`criadoEm` e `atualizadoEm` não existem como colunas**: usar `$createdAt` e `$updatedAt` do Appwrite.
+- **`estoque` tem uma linha por produto** (`produtoId` único); reservas são atualizadas pelo servidor na aprovação do pedido.
 
 ## Buckets
 
-| Bucket ID  | Conteúdo                             | Limite | Permissão                         |
-| ---------- | ------------------------------------ | ------ | --------------------------------- |
-| `arquivos` | PDFs de pedido, comprovantes, anexos | 30 MB  | por arquivo, definida no servidor |
-| `produtos` | Fotos de produto                     | 10 MB  | leitura para autenticados         |
+| Bucket ID  | Conteúdo                             | Limite | Permissão                                                |
+| ---------- | ------------------------------------ | ------ | -------------------------------------------------------- |
+| `arquivos` | PDFs de pedido, comprovantes, anexos | 30 MB  | `fileSecurity` ligado, por arquivo, definida no servidor |
+| `produtos` | Fotos de produto                     | 10 MB  | leitura para `users`                                     |
 
-Antivírus e criptografia ligados nos dois. Extensões: `pdf, png, jpg, jpeg, webp, xlsx, csv`.
+Antivírus e criptografia ligados nos dois. `arquivos` aceita `pdf, png, jpg, jpeg, webp, xlsx, csv` com compressão gzip; `produtos` aceita só imagens (`png, jpg, jpeg, webp`), sem compressão.
 
 ## Realtime
 

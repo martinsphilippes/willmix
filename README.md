@@ -17,15 +17,17 @@ Diagnóstico das integrações: `GET /api/health`.
 
 ## Scripts
 
-| Script                  | O que faz                                                     |
-| ----------------------- | ------------------------------------------------------------- |
-| `npm run dev`           | Servidor de desenvolvimento                                   |
-| `npm run build`         | Build de produção (mesmo comando usado na Vercel)             |
-| `npm run lint`          | ESLint                                                        |
-| `npm run typecheck`     | Gera tipos de rota e verifica TypeScript                      |
-| `npm run format`        | Prettier                                                      |
-| `npm run appwrite -- …` | Appwrite CLI (`login`, `init`, `pull`, `push`)                |
-| `npm run appwrite:push` | Publica tabelas e buckets definidos em `appwrite.config.json` |
+| Script                     | O que faz                                                   |
+| -------------------------- | ----------------------------------------------------------- |
+| `npm run dev`              | Servidor de desenvolvimento                                 |
+| `npm run build`            | Build de produção (mesmo comando usado na Vercel)           |
+| `npm run lint`             | ESLint                                                      |
+| `npm run typecheck`        | Gera tipos de rota e verifica TypeScript                    |
+| `npm run format`           | Prettier                                                    |
+| `npm run appwrite -- …`    | Appwrite CLI (`login`, `init`, `pull`, `push`)              |
+| `npm run appwrite:connect` | Conecta o CLI ao projeto a partir das variáveis de ambiente |
+| `npm run appwrite:push`    | Publica teams, tabelas e buckets de `appwrite.config.json`  |
+| `npm run appwrite:pull`    | Traz teams, tabelas e buckets do servidor para o config     |
 
 ## Estrutura
 
@@ -43,7 +45,9 @@ src/
     appwrite/client.ts   SDK Web (realtime, uploads)
     auth/session.ts      login, logout e usuário atual
   proxy.ts               checagem otimista de sessão em /app/*
+scripts/                 automações de desenvolvimento (conexão com o Appwrite)
 docs/                    arquitetura, ambiente, Appwrite e decisões
+appwrite.config.json     esquema do Appwrite (teams, tabelas, buckets), publicado via CLI
 ```
 
 ## Documentação
