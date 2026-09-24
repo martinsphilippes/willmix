@@ -5,7 +5,7 @@ const port = process.env.E2E_PORT ?? "3100";
 /** E2E do caminho principal contra o servidor em modo memória com dados isolados. */
 export default defineConfig({
   testDir: "tests/e2e",
-  timeout: 90_000,
+  timeout: Number(process.env.E2E_TIMEOUT ?? 90_000),
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
@@ -22,7 +22,8 @@ export default defineConfig({
   webServer: {
     command: `DATA_MODE=memory DATA_DIR=.data-e2e npx next dev -p ${port}`,
     url: `http://localhost:${port}/api/health`,
-    reuseExistingServer: false,
+    // E2E_REUSE=1: usa um servidor já em execução (ex.: em modo Appwrite) em vez de subir o próprio.
+    reuseExistingServer: !!process.env.E2E_REUSE,
     timeout: 120_000,
   },
 });

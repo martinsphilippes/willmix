@@ -2,12 +2,12 @@
 
 ## Conexões
 
-| Serviço  | Estado                        | Observações                                                                   |
-| -------- | ----------------------------- | ----------------------------------------------------------------------------- |
-| GitHub   | conectado                     | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.                 |
-| Vercel   | conectado                     | Projeto `willmix`, time `martinsphilippes`, região `gru1`. Deploy por push.   |
-| Appwrite | rede liberada, chave pendente | Esquema pronto; `appwrite:connect` valida as variáveis antes de qualquer push |
-| Supabase | conectado, não utilizado      | Decisão: um único backend (Appwrite).                                         |
+| Serviço  | Estado                   | Observações                                                                 |
+| -------- | ------------------------ | --------------------------------------------------------------------------- |
+| GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
+| Vercel   | conectado                | Projeto `willmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
+| Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados          |
+| Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                       |
 
 ## Modos de dados
 

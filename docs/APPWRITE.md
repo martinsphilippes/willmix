@@ -14,12 +14,15 @@
 
 ```bash
 npm run appwrite:connect   # valida variáveis, configura o CLI, grava projectId/endpoint no config
-npm run appwrite:push      # regenera o config do schema.ts e publica tabelas e bucket
+npm run appwrite:push      # regenera appwrite.config.json e publica banco, tabelas, colunas, índices e bucket
+npm run appwrite:reset     # apaga dados transacionais (demonstração/testes); mantém cadastros
 ```
+
+O push é feito por `scripts/appwrite-push.ts` com o SDK (TablesDB), idempotente: cria só o que falta e nunca apaga colunas. Motivo: o CLI 27 cria colunas pelas rotas antigas (`collections.*`), que a chave de API do console novo não cobre; as rotas de tabelas funcionam. `appwrite.config.json` continua gerado do `schema.ts` para referência e para `appwrite generate`.
 
 Depois, crie os dados iniciais: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/admin/seed` (em desenvolvimento não exige o header). O seed cria os usuários no Appwrite Auth e as linhas correspondentes em `users`.
 
-`appwrite.config.json` é **gerado** por `scripts/appwrite-config.ts` a partir de `src/lib/db/schema.ts`. Não edite à mão nem crie tabelas no console: altere o schema, regenere e faça push. O push com `--force` apaga colunas removidas do schema (com dados): revise o diff antes.
+Estado: esquema publicado no projeto `6ab41ae700396f0409b8` (região `fra`) em 24/09/2026, com seed e fluxo E2E validados contra o banco real.
 
 ## Modelo de dados
 
