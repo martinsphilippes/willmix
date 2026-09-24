@@ -22,6 +22,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
+  answerQuoteAction,
   confirmDownPaymentAction,
   openRfqAction,
   selectQuoteAction,
@@ -174,13 +175,68 @@ export default async function RequestDetailPage({
                       <Td className="font-medium">
                         {supplierName(q.supplierId)}
                       </Td>
-                      <Td>
-                        {q.price !== null
-                          ? `${formatMoney(q.price, q.currency)} / ${request.unit}`
-                          : t("requests.quotes.waiting")}
-                      </Td>
-                      <Td>{q.leadTimeDays ?? "—"}</Td>
-                      <Td>{q.conditions ?? "—"}</Td>
+                      {q.status === "invited" &&
+                      ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                        request.status,
+                      ) ? (
+                        <Td colSpan={3}>
+                          <form
+                            action={answerQuoteAction}
+                            className="flex flex-wrap items-end gap-2"
+                          >
+                            <input type="hidden" name="quoteId" value={q.id} />
+                            <input
+                              type="hidden"
+                              name="back"
+                              value={`/app/requests/${request.id}`}
+                            />
+                            <Input
+                              name="price"
+                              type="number"
+                              step="0.0001"
+                              min="0"
+                              required
+                              placeholder={t("common.price")}
+                              className="max-w-28"
+                            />
+                            <Input
+                              name="currency"
+                              maxLength={3}
+                              defaultValue="USD"
+                              className="max-w-20"
+                            />
+                            <Input
+                              name="leadTimeDays"
+                              type="number"
+                              min="1"
+                              required
+                              placeholder={t("common.leadTime")}
+                              className="max-w-28"
+                            />
+                            <Input
+                              name="conditions"
+                              placeholder={t("common.conditions")}
+                              className="max-w-44"
+                            />
+                            <SubmitButton variant="secondary">
+                              {t("requests.quotes.register")}
+                            </SubmitButton>
+                          </form>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {t("requests.quotes.registerHint")}
+                          </p>
+                        </Td>
+                      ) : (
+                        <>
+                          <Td>
+                            {q.price !== null
+                              ? `${formatMoney(q.price, q.currency)} / ${request.unit}`
+                              : t("requests.quotes.waiting")}
+                          </Td>
+                          <Td>{q.leadTimeDays ?? "—"}</Td>
+                          <Td>{q.conditions ?? "—"}</Td>
+                        </>
+                      )}
                       <Td>
                         <Badge
                           tone={

@@ -85,6 +85,9 @@ const ptBase = {
   "requests.quotes.compare": "Comparação de cotações",
   "requests.quotes.select": "Selecionar",
   "requests.quotes.waiting": "Aguardando resposta",
+  "requests.quotes.register": "Registrar cotação",
+  "requests.quotes.registerHint":
+    "Cotação recebida por e-mail ou WhatsApp? Registre aqui pelo fornecedor. Ele também pode responder pelo link.",
   "requests.sellPrice": "Valor ao cliente",
   "requests.downPayment": "Sinal",
   "requests.payment.confirm": "Confirmar sinal recebido",
@@ -331,6 +334,9 @@ const enBase = {
   "requests.quotes.compare": "Quotation comparison",
   "requests.quotes.select": "Select",
   "requests.quotes.waiting": "Waiting for answer",
+  "requests.quotes.register": "Register quotation",
+  "requests.quotes.registerHint":
+    "Received the quotation by email or WhatsApp? Register it here on the supplier's behalf. They can also answer through their link.",
   "requests.sellPrice": "Customer price",
   "requests.downPayment": "Down payment",
   "requests.payment.confirm": "Confirm down payment received",
@@ -572,6 +578,9 @@ const zhBase = {
   "requests.quotes.compare": "报价对比",
   "requests.quotes.select": "选定",
   "requests.quotes.waiting": "等待回复",
+  "requests.quotes.register": "登记报价",
+  "requests.quotes.registerHint":
+    "通过邮件或 WhatsApp 收到报价？可在此代供应商登记。供应商也可通过链接回复。",
   "requests.sellPrice": "客户价格",
   "requests.downPayment": "定金",
   "requests.payment.confirm": "确认已收到定金",

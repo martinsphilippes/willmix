@@ -160,7 +160,8 @@ export async function openRfqAction(form: FormData) {
 export async function answerQuoteAction(form: FormData) {
   const user = await requireUser();
   const quoteId = str(form, "quoteId");
-  await run(`/app/quotes/${quoteId}`, async () => {
+  const back = str(form, "back") || `/app/quotes/${quoteId}`;
+  await run(back, async () => {
     const parsed = z
       .object({
         price: z.number().positive(),
