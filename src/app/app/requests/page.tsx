@@ -32,6 +32,8 @@ export default async function RequestsPage() {
   return (
     <>
       <PageHeader
+        help={{ body: "help.requests.body", steps: "help.requests.steps" }}
+        t={t}
         title={t("requests.title")}
         actions={
           <LinkButton href="/app/requests/new" variant="primary">

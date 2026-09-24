@@ -20,7 +20,11 @@ export default async function ImportPage({
 
   return (
     <>
-      <PageHeader title={t("import.title")} />
+      <PageHeader
+        help={{ body: "help.import.body" }}
+        t={t}
+        title={t("import.title")}
+      />
       {created !== undefined ? (
         <Alert tone="success">
           {t("import.result", {

@@ -62,6 +62,8 @@ export default async function RequestDetailPage({
   return (
     <>
       <PageHeader
+        help={{ body: "help.request.body", steps: "help.request.steps" }}
+        t={t}
         title={request.productName}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">

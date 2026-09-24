@@ -36,7 +36,14 @@ export default async function NewRequestPage({
 
   return (
     <>
-      <PageHeader title={t("requests.new")} />
+      <PageHeader
+        help={{
+          body: "help.requests.new.body",
+          steps: "help.requests.new.steps",
+        }}
+        t={t}
+        title={t("requests.new")}
+      />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <Card className="mt-4 max-w-2xl">
         <form action={createRequestAction} className="space-y-4">

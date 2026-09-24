@@ -40,6 +40,8 @@ export default async function QuotePage({
   return (
     <>
       <PageHeader
+        help={{ body: "help.quote.body", steps: "help.quote.steps" }}
+        t={t}
         title={`${t("quotes.title")}: ${request.productName}`}
         subtitle={
           <Badge

@@ -10,6 +10,8 @@ export async function TaskList({ user }: { user: User }) {
   return (
     <>
       <PageHeader
+        help={{ body: "help.tasks.body", steps: "help.tasks.steps" }}
+        t={t}
         title={t("tasks.title")}
         subtitle={t("home.welcome", { name: user.name })}
       />

@@ -1,10 +1,11 @@
 import type { Locale } from "@/lib/db/schema";
+import { helpEn, helpPt, helpZh } from "./help";
 
 /**
  * Dicionários simples. Chaves planas com pontos. Interpolação com {nome}.
  * pt é a referência; en e zh precisam ter as mesmas chaves (teste garante).
  */
-export const pt = {
+const ptBase = {
   "app.name": "Portal Willmix",
   "nav.home": "Início",
   "nav.tasks": "Pendências",
@@ -245,10 +246,12 @@ export const pt = {
   "home.welcome": "Olá, {name}",
 };
 
+export const pt = { ...ptBase, ...helpPt };
+
 export type DictionaryKey = keyof typeof pt;
 export type Dictionary = Record<DictionaryKey, string>;
 
-export const en: Dictionary = {
+const enBase = {
   "app.name": "Willmix Portal",
   "nav.home": "Home",
   "nav.tasks": "My tasks",
@@ -489,7 +492,7 @@ export const en: Dictionary = {
   "home.welcome": "Hello, {name}",
 };
 
-export const zh: Dictionary = {
+const zhBase = {
   "app.name": "Willmix 门户",
   "nav.home": "首页",
   "nav.tasks": "我的待办",
@@ -728,5 +731,8 @@ export const zh: Dictionary = {
   "import.result": "已创建 {created} 条，跳过 {skipped} 条。",
   "home.welcome": "您好，{name}",
 };
+
+export const en: Dictionary = { ...enBase, ...helpEn };
+export const zh: Dictionary = { ...zhBase, ...helpZh };
 
 export const dictionaries: Record<Locale, Dictionary> = { pt, en, zh };

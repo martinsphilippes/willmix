@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import type { Translate } from "@/i18n";
+import { PageHelp, type HelpSpec } from "./page-help";
 
 /* Kit mínimo de componentes. Tailwind 4, sem dependências. */
 
@@ -9,7 +11,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 const buttonStyles: Record<ButtonVariant, string> = {
-  primary: "bg-zinc-900 text-white hover:bg-zinc-700 disabled:bg-zinc-400",
+  primary: "bg-sky-700 text-white hover:bg-sky-600 disabled:bg-zinc-400",
   secondary: "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50",
   danger: "bg-red-600 text-white hover:bg-red-500",
   ghost: "text-zinc-700 hover:bg-zinc-100",
@@ -86,23 +88,31 @@ export function PageHeader({
   title,
   subtitle,
   actions,
+  help,
+  t,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
+  /** Painel "Como funciona / O que fazer aqui" exibido logo abaixo do título. */
+  help?: HelpSpec;
+  t?: Translate;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-          {title}
-        </h1>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-zinc-600">{subtitle}</p>
-        ) : null}
+    <>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            {title}
+          </h1>
+          {subtitle ? (
+            <p className="mt-1 text-sm text-zinc-600">{subtitle}</p>
+          ) : null}
+        </div>
+        {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
-    </div>
+      {help && t ? <PageHelp t={t} help={help} /> : null}
+    </>
   );
 }
 

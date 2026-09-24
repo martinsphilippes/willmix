@@ -49,6 +49,8 @@ export async function ControlTower({
   return (
     <>
       <PageHeader
+        help={{ body: "help.ct.body", steps: "help.ct.cards" }}
+        t={t}
         title={t("ct.title")}
         subtitle={t("home.welcome", { name: user.name })}
       />
