@@ -43,6 +43,6 @@ next-env.d.ts
 *-debug.log
 
 # dados locais (modo memoria)
-/.data
+/.data*
 /test-results
 /playwright-report
