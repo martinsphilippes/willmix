@@ -3,17 +3,30 @@ import type { ComponentProps, ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import { PageHelp, type HelpSpec } from "./page-help";
 
-/* Kit mínimo de componentes. Tailwind 4, sem dependências. */
+/*
+ * Kit de componentes com a identidade Wellmix. Tailwind 4, sem dependências.
+ *
+ * Regras da marca (ver docs/ARQUITETURA.md, "Identidade visual"):
+ * - vermelho da marca (brand-600) = ação principal, item ativo, seleção, progresso;
+ * - cinzas (zinc) = estrutura e texto;
+ * - verde/âmbar/vermelho-rosado = estados (sucesso, atenção, erro), sempre com texto;
+ * - ação destrutiva usa contorno vermelho, nunca o mesmo botão cheio da ação principal.
+ */
 
-function cx(...classes: Array<string | false | null | undefined>) {
+export function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+const buttonBase =
+  "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60";
 const buttonStyles: Record<ButtonVariant, string> = {
-  primary: "bg-sky-700 text-white hover:bg-sky-600 disabled:bg-zinc-400",
-  secondary: "border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-50",
-  danger: "bg-red-600 text-white hover:bg-red-500",
+  primary:
+    "bg-brand-600 text-white shadow-sm shadow-brand-900/10 hover:bg-brand-700 active:bg-brand-800",
+  secondary:
+    "border border-zinc-300 bg-white text-zinc-800 shadow-sm hover:border-zinc-400 hover:bg-zinc-50",
+  danger:
+    "border border-red-300 bg-white text-red-700 hover:border-red-400 hover:bg-red-50",
   ghost: "text-zinc-700 hover:bg-zinc-100",
 };
 
@@ -25,11 +38,7 @@ export function Button({
   return (
     <button
       {...props}
-      className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60",
-        buttonStyles[variant],
-        className,
-      )}
+      className={cx(buttonBase, buttonStyles[variant], className)}
     />
   );
 }
@@ -42,13 +51,17 @@ export function LinkButton({
   return (
     <Link
       {...props}
-      className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition",
-        buttonStyles[variant],
-        className,
-      )}
+      className={cx(buttonBase, buttonStyles[variant], className)}
     />
   );
+}
+
+/** Link de texto na cor da marca (navegação dentro de tabelas, cards e listas). */
+export const linkClass =
+  "font-medium text-brand-700 underline decoration-brand-200 underline-offset-2 transition hover:text-brand-800 hover:decoration-brand-600";
+
+export function TextLink({ className, ...props }: ComponentProps<typeof Link>) {
+  return <Link {...props} className={cx(linkClass, className)} />;
 }
 
 export function Card({
@@ -65,14 +78,16 @@ export function Card({
   return (
     <section
       className={cx(
-        "rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5",
+        "rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5",
         className,
       )}
     >
       {title || actions ? (
-        <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
           {title ? (
-            <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
+            <h2 className="text-base font-semibold tracking-tight text-zinc-900">
+              {title}
+            </h2>
           ) : (
             <span />
           )}
@@ -100,13 +115,13 @@ export function PageHeader({
 }) {
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div className="border-l-4 border-brand-600 pl-3">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-1 text-sm text-zinc-600">{subtitle}</p>
+            <div className="mt-1 text-sm text-zinc-600">{subtitle}</div>
           ) : null}
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -116,13 +131,20 @@ export function PageHeader({
   );
 }
 
-type Tone = "neutral" | "info" | "success" | "warning" | "danger";
+export type Tone =
+  | "neutral"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "brand";
 const badgeStyles: Record<Tone, string> = {
-  neutral: "bg-zinc-100 text-zinc-700",
-  info: "bg-blue-100 text-blue-800",
-  success: "bg-emerald-100 text-emerald-800",
-  warning: "bg-amber-100 text-amber-800",
-  danger: "bg-red-100 text-red-800",
+  neutral: "bg-zinc-100 text-zinc-700 ring-zinc-200",
+  info: "bg-sky-50 text-sky-800 ring-sky-200",
+  success: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  warning: "bg-amber-50 text-amber-800 ring-amber-200",
+  danger: "bg-red-50 text-red-800 ring-red-200",
+  brand: "bg-brand-50 text-brand-700 ring-brand-200",
 };
 
 export function Badge({
@@ -135,7 +157,7 @@ export function Badge({
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset",
         badgeStyles[tone],
       )}
     >
@@ -164,8 +186,8 @@ export function Field({
   );
 }
 
-const inputClass =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200";
+export const inputClass =
+  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input {...props} className={cx(inputClass, className)} />;
@@ -189,7 +211,12 @@ export function Table({
   className?: string;
 }) {
   return (
-    <div className={cx("-mx-4 overflow-x-auto sm:mx-0", className)}>
+    <div
+      className={cx(
+        "-mx-4 overflow-x-auto sm:mx-0 sm:rounded-xl sm:border sm:border-zinc-200/80 sm:bg-white",
+        className,
+      )}
+    >
       <table className="w-full min-w-[32rem] text-left text-sm">
         {children}
       </table>
@@ -207,7 +234,7 @@ export function Th({
   return (
     <th
       className={cx(
-        "border-b border-zinc-200 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500",
+        "border-b border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500",
         className,
       )}
     >
@@ -229,7 +256,7 @@ export function Td({
     <td
       colSpan={colSpan}
       className={cx(
-        "border-b border-zinc-100 px-3 py-2 align-top text-zinc-800",
+        "border-b border-zinc-100 px-3 py-2.5 align-top text-zinc-800",
         className,
       )}
     >
@@ -238,11 +265,24 @@ export function Td({
   );
 }
 
+/** Linha de tabela com realce ao passar o mouse. */
+export const rowClass = "transition hover:bg-brand-50/40";
+
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-md border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white/60 px-4 py-8 text-center text-sm text-zinc-500">
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        className="h-8 w-8 text-zinc-300"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      >
+        <path d="M3 13h5l1.5 3h5L16 13h5M5 6h14l2 7v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5l2-7Z" />
+      </svg>
       {children}
-    </p>
+    </div>
   );
 }
 
@@ -254,14 +294,21 @@ export function Alert({
   children: ReactNode;
 }) {
   const styles: Record<Tone, string> = {
-    neutral: "border-zinc-200 bg-zinc-50 text-zinc-800",
-    info: "border-blue-200 bg-blue-50 text-blue-900",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-900",
-    warning: "border-amber-200 bg-amber-50 text-amber-900",
-    danger: "border-red-200 bg-red-50 text-red-900",
+    neutral: "border-zinc-300 bg-zinc-50 text-zinc-800",
+    info: "border-sky-400 bg-sky-50 text-sky-900",
+    success: "border-emerald-500 bg-emerald-50 text-emerald-900",
+    warning: "border-amber-500 bg-amber-50 text-amber-900",
+    danger: "border-red-500 bg-red-50 text-red-900",
+    brand: "border-brand-600 bg-brand-50 text-brand-900",
   };
   return (
-    <div className={cx("rounded-md border px-4 py-3 text-sm", styles[tone])}>
+    <div
+      role={tone === "danger" ? "alert" : undefined}
+      className={cx(
+        "rounded-lg border-l-4 px-4 py-3 text-sm shadow-sm",
+        styles[tone],
+      )}
+    >
       {children}
     </div>
   );
@@ -272,44 +319,115 @@ export function Stat({
   value,
   href,
   tone = "neutral",
+  active = false,
 }: {
   label: ReactNode;
   value: ReactNode;
   href?: string;
   tone?: Tone;
+  /** Card selecionado (ex.: filtro atual da Control Tower). */
+  active?: boolean;
 }) {
   const content = (
     <div
       className={cx(
-        "rounded-xl border p-4 transition",
-        href && "hover:shadow-md",
-        tone === "danger"
-          ? "border-red-200 bg-red-50"
-          : tone === "warning"
-            ? "border-amber-200 bg-amber-50"
-            : "border-zinc-200 bg-white",
+        "relative h-full overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition",
+        href && "hover:-translate-y-0.5 hover:shadow-md",
+        active
+          ? "border-brand-600 ring-2 ring-brand-600"
+          : tone === "danger"
+            ? "border-red-200 bg-red-50/60"
+            : tone === "warning"
+              ? "border-amber-200 bg-amber-50/60"
+              : "border-zinc-200/80",
       )}
     >
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <span
+        aria-hidden
+        className={cx(
+          "absolute inset-x-0 top-0 h-1",
+          active
+            ? "bg-brand-600"
+            : tone === "danger"
+              ? "bg-red-500"
+              : tone === "warning"
+                ? "bg-amber-400"
+                : "bg-transparent",
+        )}
+      />
+      <div
+        className={cx(
+          "text-xs font-semibold uppercase tracking-wide",
+          active ? "text-brand-700" : "text-zinc-500",
+        )}
+      >
         {label}
       </div>
-      <div className="mt-1 text-2xl font-semibold text-zinc-900">{value}</div>
+      <div className="mt-1.5 text-2xl font-bold tracking-tight text-zinc-900">
+        {value}
+      </div>
     </div>
   );
-  return href ? <Link href={href}>{content}</Link> : content;
+  return href ? (
+    <Link
+      href={href}
+      aria-current={active ? "true" : undefined}
+      className="block h-full rounded-2xl"
+    >
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 }
 
 export function Progress({ percent }: { percent: number }) {
+  const value = Math.min(100, Math.max(0, percent));
   return (
     <div
-      className="h-2 w-full overflow-hidden rounded-full bg-zinc-200"
-      aria-label={`${percent}%`}
+      className="h-2 w-full overflow-hidden rounded-full bg-zinc-200/80"
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`${value}%`}
     >
       <div
-        className="h-full rounded-full bg-emerald-500 transition-all"
-        style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
+        className={cx(
+          "h-full rounded-full transition-all",
+          value >= 100 ? "bg-emerald-500" : "bg-brand-600",
+        )}
+        style={{ width: `${value}%` }}
       />
     </div>
+  );
+}
+
+export type StepState = "done" | "active" | "blocked" | "pending";
+
+/** Marcador de etapa da linha do tempo (pedido, solicitação). */
+export function StepDot({
+  state,
+  children,
+}: {
+  state: StepState;
+  children?: ReactNode;
+}) {
+  const styles: Record<StepState, string> = {
+    done: "bg-emerald-600 text-white",
+    active: "bg-brand-600 text-white ring-4 ring-brand-100",
+    blocked: "bg-amber-500 text-white ring-4 ring-amber-100",
+    pending: "bg-zinc-200 text-zinc-500",
+  };
+  return (
+    <span
+      className={cx(
+        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+        styles[state],
+      )}
+    >
+      {state === "done" ? "✓" : state === "blocked" ? "!" : children}
+    </span>
   );
 }
 
@@ -319,13 +437,13 @@ export function DescriptionList({
   items: Array<[ReactNode, ReactNode]>;
 }) {
   return (
-    <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
       {items.map(([label, value], i) => (
         <div key={i} className="flex flex-col">
-          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             {label}
           </dt>
-          <dd className="text-zinc-900">{value ?? "—"}</dd>
+          <dd className="mt-0.5 text-zinc-900">{value ?? "—"}</dd>
         </div>
       ))}
     </dl>

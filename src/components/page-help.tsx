@@ -19,43 +19,51 @@ export function PageHelp({ t, help }: { t: Translate; help: HelpSpec }) {
   return (
     <details
       open
-      className="group mb-6 rounded-xl border border-sky-200 bg-sky-50 text-sm text-sky-950"
+      className="group mb-6 overflow-hidden rounded-2xl border border-zinc-200/80 border-l-4 border-l-brand-600 bg-white text-sm text-zinc-700 shadow-sm"
     >
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 font-semibold">
+      <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 font-semibold text-zinc-900 [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden
-          className="flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-xs text-white"
+          className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white"
         >
           i
         </span>
         {t("help.how")}
-        <span className="ml-auto text-xs font-normal text-sky-700 group-open:hidden">
+        <span
+          aria-hidden
+          className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-base font-normal text-zinc-500 transition group-open:rotate-45 group-hover:bg-zinc-100"
+        >
           +
         </span>
-        <span className="ml-auto hidden text-xs font-normal text-sky-700 group-open:inline">
-          −
-        </span>
       </summary>
-      <div className="grid gap-4 border-t border-sky-200 px-4 py-3 lg:grid-cols-2">
+      <div className="grid gap-5 border-t border-zinc-100 bg-zinc-50/60 px-4 py-4 lg:grid-cols-2">
         <p className="leading-relaxed">{t(help.body)}</p>
         {steps.length > 0 ? (
           <div>
-            <p className="mb-1 font-semibold">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-700">
               {t(help.stepsTitle ?? "help.todo")}
             </p>
-            <ol className="list-decimal space-y-1 pl-5 leading-relaxed">
+            <ol className="space-y-1.5 leading-relaxed">
               {steps.map((line, i) => {
                 const [label, ...rest] = line.split(":");
                 return (
-                  <li key={i}>
-                    {rest.length ? (
-                      <>
-                        <strong>{label}:</strong>
-                        {rest.join(":")}
-                      </>
-                    ) : (
-                      line
-                    )}
+                  <li key={i} className="flex gap-2.5">
+                    <span
+                      aria-hidden
+                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700 ring-1 ring-inset ring-brand-200"
+                    >
+                      {i + 1}
+                    </span>
+                    <span>
+                      {rest.length ? (
+                        <>
+                          <strong className="text-zinc-900">{label}:</strong>
+                          {rest.join(":")}
+                        </>
+                      ) : (
+                        line
+                      )}
+                    </span>
                   </li>
                 );
               })}

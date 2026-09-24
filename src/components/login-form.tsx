@@ -54,13 +54,13 @@ export function LoginForm({
   }
 
   const inputClass =
-    "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200";
+    "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-zinc-900 shadow-sm transition hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100";
 
   return (
     <div className="space-y-4">
       <form
         onSubmit={onSubmit}
-        className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm"
+        className="space-y-4"
       >
         <label className="block space-y-1">
           <span className="text-sm font-medium text-zinc-800">
@@ -92,23 +92,31 @@ export function LoginForm({
           />
         </label>
         {error ? (
-          <p role="alert" className="text-sm text-red-600">
+          <p
+            role="alert"
+            className="rounded-lg border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
             {error}
           </p>
         ) : null}
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-md bg-sky-700 px-3 py-2 font-medium text-white hover:bg-sky-600 disabled:opacity-60"
+          className="w-full rounded-lg bg-brand-600 px-3 py-2.5 font-semibold text-white shadow-sm shadow-brand-900/20 transition hover:bg-brand-700 active:bg-brand-800 disabled:opacity-60"
         >
           {pending ? labels.pending : labels.submit}
         </button>
       </form>
 
       {demo.length > 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm">
-          <p className="font-semibold text-amber-900">{labels.demoTitle}</p>
-          <p className="mt-1 text-xs text-amber-800">{labels.demoHint}</p>
+        <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 text-sm">
+          <p className="flex items-center gap-2 font-semibold text-zinc-900">
+            <span className="rounded bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              Demo
+            </span>
+            {labels.demoTitle}
+          </p>
+          <p className="mt-1 text-xs text-zinc-600">{labels.demoHint}</p>
           <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
             {demo.map((account) => (
               <li key={account.email}>
@@ -119,7 +127,8 @@ export function LoginForm({
                     setPassword(account.password);
                     setError(null);
                   }}
-                  className={`w-full rounded-md border px-2 py-1.5 text-left transition hover:border-amber-400 hover:bg-white ${email === account.email ? "border-amber-500 bg-white" : "border-amber-200 bg-amber-100/50"}`}
+                  aria-pressed={email === account.email}
+                  className={`w-full rounded-lg border px-2.5 py-1.5 text-left transition hover:border-brand-300 hover:bg-white ${email === account.email ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600" : "border-zinc-200 bg-white"}`}
                 >
                   <span className="block font-medium text-zinc-900">
                     {account.role}

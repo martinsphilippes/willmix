@@ -7,6 +7,7 @@ import { helpEn, helpPt, helpZh } from "./help";
  */
 const ptBase = {
   "app.name": "Portal Wellmix",
+  "app.tagline": "Importação do pedido à entrega",
   "nav.home": "Início",
   "nav.tasks": "Pendências",
   "nav.requests": "Solicitações",
@@ -29,6 +30,9 @@ const ptBase = {
   "common.due": "Prazo",
   "common.overdue": "Atrasado",
   "common.none": "Nada por aqui.",
+  "notFound.title": "Página não encontrada",
+  "notFound.body": "Este endereço não existe ou não está disponível para a sua conta. Cada participante vê só o que lhe cabe; se precisar de acesso, fale com a Wellmix.",
+  "notFound.back": "Ir para o início",
   "common.yes": "Sim",
   "common.no": "Não",
   "common.confirm": "Confirmar",
@@ -271,6 +275,7 @@ export type Dictionary = Record<DictionaryKey, string>;
 
 const enBase = {
   "app.name": "Wellmix Portal",
+  "app.tagline": "Imports from order to delivery",
   "nav.home": "Home",
   "nav.tasks": "My tasks",
   "nav.requests": "Requests",
@@ -293,6 +298,9 @@ const enBase = {
   "common.due": "Due",
   "common.overdue": "Overdue",
   "common.none": "Nothing here.",
+  "notFound.title": "Page not found",
+  "notFound.body": "This address does not exist or is not available to your account. Each participant only sees what concerns them; if you need access, contact Wellmix.",
+  "notFound.back": "Go to home",
   "common.yes": "Yes",
   "common.no": "No",
   "common.confirm": "Confirm",
@@ -530,6 +538,7 @@ const enBase = {
 
 const zhBase = {
   "app.name": "Wellmix 门户",
+  "app.tagline": "从下单到交付的进口管理",
   "nav.home": "首页",
   "nav.tasks": "我的待办",
   "nav.requests": "需求单",
@@ -552,6 +561,9 @@ const zhBase = {
   "common.due": "截止",
   "common.overdue": "已逾期",
   "common.none": "暂无内容。",
+  "notFound.title": "页面未找到",
+  "notFound.body": "该地址不存在，或您的账号无权访问。每位参与者只能看到与自己相关的内容；如需访问，请联系 Wellmix。",
+  "notFound.back": "返回首页",
   "common.yes": "是",
   "common.no": "否",
   "common.confirm": "确认",
