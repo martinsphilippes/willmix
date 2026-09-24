@@ -2,76 +2,44 @@
 
 ## Projeto
 
-| Item        | Valor                                                                 |
-| ----------- | --------------------------------------------------------------------- |
-| Console     | https://cloud.appwrite.io                                             |
-| Endpoint    | regional, ex.: `https://fra.cloud.appwrite.io/v1` (ver console)       |
-| Project ID  | `NEXT_PUBLIC_APPWRITE_PROJECT_ID`                                     |
-| Plataformas | Web: `localhost`, `willmix.vercel.app` e o domínio final              |
-| Auth        | E-mail e senha habilitado; OAuth (Google/Microsoft) quando necessário |
+| Item        | Valor                                                           |
+| ----------- | --------------------------------------------------------------- |
+| Console     | https://cloud.appwrite.io                                       |
+| Endpoint    | regional, ex.: `https://fra.cloud.appwrite.io/v1` (ver console) |
+| Project ID  | `NEXT_PUBLIC_APPWRITE_PROJECT_ID`                               |
+| Plataformas | Web: `localhost`, `willmix.vercel.app` e o domínio final        |
+| Auth        | E-mail e senha habilitado                                       |
 
-## Primeiro uso (nova sessão, com rede e chave liberadas)
+## Publicar o esquema
 
 ```bash
-npm run appwrite -- client --endpoint "$NEXT_PUBLIC_APPWRITE_ENDPOINT" \
-  --project-id "$NEXT_PUBLIC_APPWRITE_PROJECT_ID" --key "$APPWRITE_API_KEY"
-npm run appwrite -- pull settings        # gera appwrite.config.json válido
-# editar appwrite.config.json com o esquema abaixo
-npm run appwrite:push                    # push table && push bucket
-npm run appwrite:generate                # wrapper TypeScript tipado em src/generated
+npm run appwrite:connect   # valida variáveis, configura o CLI, grava projectId/endpoint no config
+npm run appwrite:push      # regenera appwrite.config.json e publica banco, tabelas, colunas, índices e bucket
+npm run appwrite:reset     # apaga dados transacionais (demonstração/testes); mantém cadastros
 ```
 
-`appwrite.config.json` é versionado (sem segredos). Nunca criar tabelas à mão no console: o próximo `push` não saberia delas.
+O push é feito por `scripts/appwrite-push.ts` com o SDK (TablesDB), idempotente: cria só o que falta e nunca apaga colunas. Motivo: o CLI 27 cria colunas pelas rotas antigas (`collections.*`), que a chave de API do console novo não cobre; as rotas de tabelas funcionam. `appwrite.config.json` continua gerado do `schema.ts` para referência e para `appwrite generate`.
 
-## Modelo de autenticação
+Depois, crie os dados iniciais: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<host>/api/admin/seed` (em desenvolvimento não exige o header). O seed cria os usuários no Appwrite Auth e as linhas correspondentes em `users`.
 
-- Login no servidor (`/api/auth/session`): cliente admin cria a sessão, segredo vai para cookie `a_session_<projectId>` HttpOnly, `SameSite=Strict`.
-- Cada requisição autenticada recria um cliente com `setSession(secret)`. Permissões de linha valem para o usuário.
-- Escritas de negócio usam o cliente admin **depois** de validar papel e regras. O cliente admin nunca é exposto a rotas sem checagem.
+Estado: esquema publicado no projeto `6ab41ae700396f0409b8` (região `fra`) em 24/09/2026, com seed e fluxo E2E validados contra o banco real.
 
-## Papéis
+## Modelo de dados
 
-Teams do Appwrite, com IDs estáveis:
+Banco `willmix`, 17 tabelas: `users`, `parties`, `product_lines`, `products`, `requests`, `quotes`, `orders`, `order_items`, `stages`, `requirements`, `documents`, `payments`, `notifications`, `audit_log`, `penalties`, `settings`, `counters`. Colunas e índices em `schema.ts`; campos JSON (`requirements` da linha, `before`/`after` da auditoria, `value` de settings) são texto serializado.
 
-| Team ID          | Quem                     | Uso                                      |
-| ---------------- | ------------------------ | ---------------------------------------- |
-| `admin`          | Diretoria e TI           | Tudo                                     |
-| `comercial`      | Equipe interna de vendas | Aprova pedidos, edita catálogo, clientes |
-| `representantes` | Representantes externos  | Cria pedidos dos próprios clientes       |
-| `logistica`      | Estoque e expedição      | Estoque, status de entrega               |
+Bucket `arquivos` (30 MB, antivírus e criptografia, gzip). Metadados em `documents`; acesso sempre por `/api/files/[id]`.
 
-Lojistas (clientes) autenticam como usuários sem team; o vínculo com o representante vem da tabela `clientes`.
+## Permissões
 
-## Esquema proposto (a confirmar com o negócio)
+Tabelas e bucket **sem permissões de usuário**: só a API key do servidor lê e escreve. A autorização é feita na aplicação (`src/lib/auth/permissions.ts`, `canSubmitRequirement`, `canAccessDocument`). Permissão de linha no Appwrite fica como segunda barreira no hardening.
 
-Banco `willmix`. Permissões de tabela mínimas; linhas recebem permissões explícitas no momento da escrita (servidor).
+## Autenticação
 
-| Tabela          | Colunas principais                                                                   | Leitura                              |
-| --------------- | ------------------------------------------------------------------------------------ | ------------------------------------ |
-| `marcas`        | nome, slug, ativa                                                                    | qualquer usuário autenticado         |
-| `produtos`      | sku, nome, marcaId, linha, ean, embalagem, precoTabela, fotoFileId, ativo            | qualquer usuário autenticado         |
-| `tabelas_preco` | nome, vigenciaInicio, vigenciaFim, itens (produtoId, preco)                          | comercial, representantes            |
-| `clientes`      | razaoSocial, cnpj, enderecos, condicaoPagamento, representanteUserId, ativo          | comercial; representante só os seus  |
-| `pedidos`       | numero, clienteId, representanteUserId, status, itens, total, observacoes, pdfFileId | comercial; representante só os seus  |
-| `estoque`       | produtoId, disponivel, reservado, previsaoChegada                                    | comercial, representantes, logistica |
-| `comissoes`     | pedidoId, representanteUserId, competencia, percentual, valor, status                | comercial; representante só as suas  |
-| `auditoria`     | entidade, entidadeId, acao, usuarioId, antes, depois, criadoEm                       | admin                                |
+Modo `appwrite`: login cria sessão com a API key (`account.createEmailPasswordSession`), segredo no cookie `a_session_<projectId>` HttpOnly; `getCurrentUser` valida a sessão e busca papel e parceiro na tabela `users` pelo e-mail. Usuários novos são criados por Willmix em `/app/parties/[id]` (Appwrite Auth + tabela).
 
-Índices iniciais: `produtos.sku` (único), `clientes.cnpj` (único), `pedidos.numero` (único), `pedidos.status`, `pedidos.representanteUserId`, `comissoes.competencia`.
+Modo `memory` (dev/testes): senha com scrypt na tabela `users`, cookie `wm_session` assinado com `SESSION_SECRET`.
 
-## Buckets
+## Realtime e Functions
 
-| Bucket ID  | Conteúdo                             | Limite | Permissão                         |
-| ---------- | ------------------------------------ | ------ | --------------------------------- |
-| `arquivos` | PDFs de pedido, comprovantes, anexos | 30 MB  | por arquivo, definida no servidor |
-| `produtos` | Fotos de produto                     | 10 MB  | leitura para autenticados         |
-
-Antivírus e criptografia ligados nos dois. Extensões: `pdf, png, jpg, jpeg, webp, xlsx, csv`.
-
-## Realtime
-
-Usar no browser apenas para listas vivas (pedidos em aprovação, estoque). Canal: `tablesdb.willmix.tables.<tabela>.rows`. O browser precisa de sessão própria para assinar canais; quando isso for necessário, expor `POST /api/auth/jwt` que devolve um JWT curto criado pelo cliente de sessão.
-
-## Functions (adiar)
-
-Candidatas: fechamento mensal de comissões (cron), notificação de pedido aprovado (evento em `pedidos`), geração de PDF do pedido.
+Não usados nesta fase. Candidatas futuras: realtime na Control Tower; Function cron para lembretes se sair da Vercel.

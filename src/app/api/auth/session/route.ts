@@ -1,27 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { signInWithPassword, signOut } from "@/lib/auth/session";
+import { signIn, signOut } from "@/lib/auth/session";
 
 const bodySchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(6),
 });
 
-/** Login por e-mail e senha. Cria sessão Appwrite e grava cookie HttpOnly. */
+/** Login por e-mail e senha. Grava cookie HttpOnly. */
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "E-mail e senha (mínimo 8 caracteres) são obrigatórios" },
+      { error: "E-mail e senha são obrigatórios" },
       { status: 400 },
     );
   }
   try {
-    const session = await signInWithPassword(
-      parsed.data.email,
-      parsed.data.password,
-    );
-    return NextResponse.json({ ok: true, userId: session.userId });
+    const user = await signIn(parsed.data.email, parsed.data.password);
+    return NextResponse.json({ ok: true, userId: user.id, role: user.role });
   } catch {
     return NextResponse.json(
       { error: "Credenciais inválidas" },
@@ -30,7 +27,7 @@ export async function POST(request: Request) {
   }
 }
 
-/** Logout: encerra a sessão no Appwrite e remove o cookie. */
+/** Logout. */
 export async function DELETE() {
   await signOut();
   return NextResponse.json({ ok: true });

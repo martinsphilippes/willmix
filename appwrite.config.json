@@ -1,0 +1,1826 @@
+{
+  "projectId": "6ab41ae700396f0409b8",
+  "endpoint": "https://fra.cloud.appwrite.io/v1",
+  "tablesDB": [
+    {
+      "$id": "willmix",
+      "name": "Willmix",
+      "enabled": true
+    }
+  ],
+  "tables": [
+    {
+      "$id": "users",
+      "databaseId": "willmix",
+      "name": "Usuários",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "email",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 254
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "role",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "admin",
+            "operator",
+            "customer",
+            "supplier",
+            "agency",
+            "broker",
+            "shipping_line",
+            "carrier",
+            "legal"
+          ]
+        },
+        {
+          "key": "partyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "locale",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pt",
+            "en",
+            "zh"
+          ]
+        },
+        {
+          "key": "passwordHash",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "email_unique",
+          "type": "unique",
+          "columns": [
+            "email"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "parties",
+      "databaseId": "willmix",
+      "name": "Parceiros",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "type",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "customer",
+            "supplier",
+            "agency",
+            "broker",
+            "shipping_line",
+            "carrier",
+            "legal"
+          ]
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "country",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "email",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 254
+        },
+        {
+          "key": "phone",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "taxId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_type",
+          "type": "key",
+          "columns": [
+            "type"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "product_lines",
+      "databaseId": "willmix",
+      "name": "Linhas de produto",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "manualDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "requirements",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "$id": "products",
+      "databaseId": "willmix",
+      "name": "Produtos",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "lineId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "sku",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "specification",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_line",
+          "type": "key",
+          "columns": [
+            "lineId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "requests",
+      "databaseId": "willmix",
+      "name": "Solicitações",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productName",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "description",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "specification",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "quantity",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "unit",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "deadline",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "REQUESTED",
+            "RFQ_OPEN",
+            "QUOTATION_RECEIVED",
+            "SUPPLIER_SELECTED",
+            "WAITING_DOWN_PAYMENT",
+            "ORDERED",
+            "CANCELLED"
+          ]
+        },
+        {
+          "key": "selectedQuoteId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sellPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "sellCurrency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "downPaymentAmount",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_customer",
+          "type": "key",
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "quotes",
+      "databaseId": "willmix",
+      "name": "Cotações",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "requestId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "supplierId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "invited",
+            "answered",
+            "selected",
+            "rejected"
+          ]
+        },
+        {
+          "key": "price",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "currency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "leadTimeDays",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "conditions",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "validUntil",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "answeredAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_request",
+          "type": "key",
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_supplier",
+          "type": "key",
+          "columns": [
+            "supplierId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "orders",
+      "databaseId": "willmix",
+      "name": "Pedidos",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "number",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "requestId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "supplierId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "lineId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "ORDER_CREATED",
+            "PREPARATION",
+            "SUPPLIER_PAYMENT",
+            "PACKAGING",
+            "INSPECTION",
+            "SHIPPING",
+            "CUSTOMS",
+            "TRANSPORT",
+            "DELIVERED",
+            "CLOSED"
+          ]
+        },
+        {
+          "key": "currentStageId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "fobTotal",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "fobCurrency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "sellPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "sellCurrency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "erpSyncStatus",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "synced",
+            "failed",
+            "manual"
+          ]
+        },
+        {
+          "key": "erpNumber",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "agencyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "brokerId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "shippingLineId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "carrierId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "closedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "number_unique",
+          "type": "unique",
+          "columns": [
+            "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_customer",
+          "type": "key",
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_supplier",
+          "type": "key",
+          "columns": [
+            "supplierId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "order_items",
+      "databaseId": "willmix",
+      "name": "Itens de pedido",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "quantity",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "unit",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "unitPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "stages",
+      "databaseId": "willmix",
+      "name": "Etapas",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "ORDER_CREATED",
+            "PREPARATION",
+            "SUPPLIER_PAYMENT",
+            "PACKAGING",
+            "INSPECTION",
+            "SHIPPING",
+            "CUSTOMS",
+            "TRANSPORT",
+            "DELIVERED",
+            "CLOSED"
+          ]
+        },
+        {
+          "key": "sequence",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "active",
+            "blocked",
+            "done"
+          ]
+        },
+        {
+          "key": "responsibleRole",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "admin",
+            "operator",
+            "customer",
+            "supplier",
+            "agency",
+            "broker",
+            "shipping_line",
+            "carrier",
+            "legal"
+          ]
+        },
+        {
+          "key": "responsiblePartyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "dueAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "startedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "completedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "percent",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "reminderSentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "blockReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "requirements",
+      "databaseId": "willmix",
+      "name": "Requisitos",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "stageId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "label",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "type",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "file",
+            "photo",
+            "text",
+            "number",
+            "date",
+            "confirm",
+            "approval"
+          ]
+        },
+        {
+          "key": "required",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "role",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "admin",
+            "operator",
+            "customer",
+            "supplier",
+            "agency",
+            "broker",
+            "shipping_line",
+            "carrier",
+            "legal"
+          ]
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "done",
+            "rejected"
+          ]
+        },
+        {
+          "key": "value",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "documentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "submittedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "submittedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "note",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_stage",
+          "type": "key",
+          "columns": [
+            "stageId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "documents",
+      "databaseId": "willmix",
+      "name": "Documentos",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "requestId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "requirementId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "type",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "manual",
+            "dieline",
+            "label",
+            "photo",
+            "proof",
+            "inspection",
+            "bl",
+            "customs",
+            "art",
+            "attachment",
+            "other"
+          ]
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "mime",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "size",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "storageKey",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "version",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "previousDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "uploadedByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "visibility",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "internal",
+            "customer",
+            "supplier",
+            "all"
+          ]
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_request",
+          "type": "key",
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "payments",
+      "databaseId": "willmix",
+      "name": "Pagamentos",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "requestId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "direction",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "customer_in",
+            "supplier_out"
+          ]
+        },
+        {
+          "key": "amount",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "currency",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "fxRate",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "method",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "confirmed",
+            "received"
+          ]
+        },
+        {
+          "key": "proofDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "registeredByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "confirmedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "confirmedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "note",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_request",
+          "type": "key",
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "notifications",
+      "databaseId": "willmix",
+      "name": "Notificações",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "userId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "partyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "role",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "admin",
+            "operator",
+            "customer",
+            "supplier",
+            "agency",
+            "broker",
+            "shipping_line",
+            "carrier",
+            "legal"
+          ]
+        },
+        {
+          "key": "channel",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "inapp",
+            "email",
+            "whatsapp"
+          ]
+        },
+        {
+          "key": "subject",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 200
+        },
+        {
+          "key": "body",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "link",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "sent",
+            "mock",
+            "failed"
+          ]
+        },
+        {
+          "key": "readAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user",
+          "type": "key",
+          "columns": [
+            "userId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "audit_log",
+      "databaseId": "willmix",
+      "name": "Auditoria",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "userId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "action",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "entity",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "entityId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "summary",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "before",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "after",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_entity",
+          "type": "key",
+          "columns": [
+            "entity",
+            "entityId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "penalties",
+      "databaseId": "willmix",
+      "name": "Multas",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "responsiblePartyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "reason",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "amount",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "currency",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "evidenceDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "open",
+            "disputed",
+            "paid",
+            "cancelled"
+          ]
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "settings",
+      "databaseId": "willmix",
+      "name": "Configurações",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "value",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "key_unique",
+          "type": "unique",
+          "columns": [
+            "key"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "counters",
+      "databaseId": "willmix",
+      "name": "Contadores",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "value",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "key_unique",
+          "type": "unique",
+          "columns": [
+            "key"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    }
+  ],
+  "buckets": [
+    {
+      "$id": "arquivos",
+      "name": "Arquivos",
+      "enabled": true,
+      "fileSecurity": false,
+      "$permissions": [],
+      "maximumFileSize": 31457280,
+      "allowedFileExtensions": [
+        "pdf",
+        "png",
+        "jpg",
+        "jpeg",
+        "webp",
+        "xlsx",
+        "xls",
+        "csv",
+        "zip",
+        "ai",
+        "svg"
+      ],
+      "compression": "gzip",
+      "encryption": true,
+      "antivirus": true
+    }
+  ]
+}

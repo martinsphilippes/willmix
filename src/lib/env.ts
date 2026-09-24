@@ -20,16 +20,34 @@ export const isAppwriteClientConfigured = publicResult.success;
 /** Somente servidor. Lido de forma preguiçosa para não vazar em bundles do browser. */
 export function serverEnv() {
   const schema = z.object({
-    APPWRITE_API_KEY: z.string().min(1),
-    APPWRITE_DATABASE_ID: z.string().min(1).default("willmix"),
-    APPWRITE_BUCKET_ID: z.string().min(1).default("arquivos"),
+    APPWRITE_API_KEY: z.string().min(20),
   });
-  return schema.safeParse({
-    APPWRITE_API_KEY: process.env.APPWRITE_API_KEY,
-    APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
-    APPWRITE_BUCKET_ID: process.env.APPWRITE_BUCKET_ID,
-  });
+  return schema.safeParse({ APPWRITE_API_KEY: process.env.APPWRITE_API_KEY });
 }
 
 export const isAppwriteServerConfigured = () =>
   isAppwriteClientConfigured && serverEnv().success;
+
+export type DataMode = "memory" | "appwrite";
+
+/**
+ * Modo de dados. `DATA_MODE=memory|appwrite` força; sem a variável, usa
+ * Appwrite quando configurado e memória caso contrário (desenvolvimento).
+ */
+export function dataMode(): DataMode {
+  const forced = process.env.DATA_MODE;
+  if (forced === "memory" || forced === "appwrite") return forced;
+  return isAppwriteServerConfigured() ? "appwrite" : "memory";
+}
+
+/**
+ * Diretório do modo memória. Testes usam diretórios isolados.
+ * Na Vercel o sistema de arquivos é somente leitura fora de /tmp: o modo memória
+ * ali serve apenas para demonstração (dados efêmeros).
+ */
+export const dataDir = () =>
+  process.env.DATA_DIR ?? (process.env.VERCEL ? "/tmp/willmix-data" : ".data");
+
+/** Segredo para assinar o cookie de sessão no modo memória. */
+export const sessionSecret = () =>
+  process.env.SESSION_SECRET ?? "willmix-dev-secret-troque-em-producao";

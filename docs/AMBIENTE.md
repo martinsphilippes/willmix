@@ -6,44 +6,28 @@
 | -------- | ------------------------ | --------------------------------------------------------------------------- |
 | GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
 | Vercel   | conectado                | Projeto `willmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
-| Appwrite | aguardando rede e chave  | Ver "Appwrite" abaixo.                                                      |
-| Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite). Ver ARQUITETURA.md.                   |
-| Firebase | descartado               | Substituído pelo Appwrite antes de qualquer módulo de negócio.              |
+| Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados          |
+| Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                       |
+
+## Modos de dados
+
+- `DATA_MODE=memory` (padrão sem Appwrite): JSON em `.data/` (ou `/tmp/willmix-data` na Vercel, efêmero). Seed automático no primeiro `/login`.
+- `DATA_MODE=appwrite`: exige `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`.
 
 ## Variáveis de ambiente
 
-Fonte única: `.env.example`. As mesmas chaves devem existir em três lugares:
+Fonte única: `.env.example`. As mesmas chaves em `.env.local`, na Vercel (Production e Preview) e no ambiente cloud do Claude Code. No ambiente cloud, use o formato `CHAVE=valor`, uma por linha, com os valores reais (não os textos de exemplo). Variáveis são lidas na inicialização: depois de alterar, abra nova sessão.
 
-1. `.env.local` (desenvolvimento local, não commitado);
-2. Vercel > Project > Settings > Environment Variables (Production e Preview);
-3. Ambiente cloud do Claude Code (para automações e testes na sessão).
-
-## Appwrite
-
-### Para a aplicação (Vercel e local)
-
-1. Console Appwrite > Settings > Overview: copie **API Endpoint** e **Project ID** para `NEXT_PUBLIC_APPWRITE_ENDPOINT` e `NEXT_PUBLIC_APPWRITE_PROJECT_ID`.
-2. Console > Settings > API keys > Create API key: escopos `sessions.write`, `users.read`, `users.write`, `databases.read`, `databases.write`, `files.read`, `files.write`. Cadastre em `APPWRITE_API_KEY`.
-3. Console > Settings > Platforms > Add platform > Web: hostname `localhost` e o domínio da Vercel (`willmix.vercel.app`). Sem isso o SDK do browser é bloqueado por CORS.
-
-### Para o Claude operar o projeto (CLI e API)
-
-No ambiente cloud do Claude Code (menu do ambiente na barra de título, depois Editar):
-
-- **Rede**: liberar o host do endpoint do projeto (ex.: `fra.cloud.appwrite.io`, `nyc.cloud.appwrite.io` ou `sfo.cloud.appwrite.io`). A política atual bloqueia todos.
-- **Variáveis**: `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`.
-
-Nunca colar chaves no chat. Depois de alterar, abra uma nova sessão: rede e variáveis são lidas na inicialização.
-
-### Publicar o esquema
+## Testes
 
 ```bash
-npm run appwrite -- login          # ou: appwrite client --endpoint ... --projectId ... --key ...
-npm run appwrite:push              # cria/atualiza tabelas e buckets de appwrite.config.json
+npm test                                   # vitest
+PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:e2e   # Playwright (na sessão cloud; local não precisa da variável)
 ```
+
+O E2E sobe o próprio servidor em `localhost:3100` com `DATA_DIR=.data-e2e`. Não deixe outro `next dev` rodando na mesma pasta.
 
 ## Limitações conhecidas da sessão cloud
 
-- `api.vercel.com` é bloqueado pela política de rede: o Vercel CLI não funciona na sessão. Use o conector Vercel ou push no GitHub.
-- `*.cloud.appwrite.io` é bloqueado até a rede ser liberada.
-- `www.wellmix.com.br` é bloqueado: o entendimento do negócio veio de fontes públicas indexadas.
+- `api.vercel.com` bloqueado: o Vercel CLI não funciona; use o conector ou push no GitHub.
+- Playwright instalado pelo npm procura outra versão do Chromium; use `PW_CHROMIUM=/opt/pw-browsers/chromium`.
