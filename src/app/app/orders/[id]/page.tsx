@@ -17,6 +17,7 @@ import {
   type User,
 } from "@/lib/db";
 import { canSubmitRequirement, loadOrderProgress } from "@/lib/workflow/engine";
+import { loadOrderFinance } from "@/lib/services/finance";
 import { getT } from "@/i18n/server";
 import { requirementLabel, type Translate } from "@/i18n";
 import {
@@ -40,6 +41,7 @@ import {
   assignPartnerAction,
   confirmSupplierPaymentAction,
   createPenaltyAction,
+  registerCustomerPaymentAction,
   registerSupplierPaymentAction,
   unblockStageAction,
 } from "../../actions";
@@ -92,6 +94,8 @@ export default async function OrderPage({
   const currentStage =
     stages.find((s) => s.id === order.currentStageId) ?? null;
   const overdue = isOverdue(currentStage?.dueAt);
+  const finance =
+    wellmix || user.role === "customer" ? await loadOrderFinance(order) : null;
   const visiblePayments = payments.filter((p) =>
     wellmix
       ? true
@@ -389,6 +393,124 @@ export default async function OrderPage({
                   </form>
                 ))}
               </div>
+            </Card>
+          ) : null}
+
+          {finance ? (
+            <Card title={t("finance.title")}>
+              <DescriptionList
+                items={[
+                  [
+                    t("finance.sale"),
+                    formatMoney(finance.sell, finance.sellCurrency),
+                  ],
+                  [
+                    t("finance.received"),
+                    formatMoney(finance.received, finance.sellCurrency),
+                  ],
+                  [
+                    t("finance.receivable"),
+                    <span
+                      key="r"
+                      className={
+                        finance.receivable > 0
+                          ? "font-medium text-amber-700"
+                          : "text-emerald-700"
+                      }
+                    >
+                      {formatMoney(finance.receivable, finance.sellCurrency)}
+                    </span>,
+                  ],
+                  ...(wellmix
+                    ? ([
+                        [
+                          t("orders.fob"),
+                          formatMoney(finance.fob, finance.fobCurrency),
+                        ],
+                        [
+                          t("finance.paid"),
+                          formatMoney(finance.paid, finance.fobCurrency),
+                        ],
+                        [
+                          t("finance.payable"),
+                          <span
+                            key="p"
+                            className={
+                              finance.payable > 0
+                                ? "font-medium text-amber-700"
+                                : "text-emerald-700"
+                            }
+                          >
+                            {formatMoney(finance.payable, finance.fobCurrency)}
+                          </span>,
+                        ],
+                        [
+                          t("finance.cost"),
+                          finance.cost !== null
+                            ? `${formatMoney(finance.cost, finance.sellCurrency)}${finance.estimated ? " ~" : ""}`
+                            : t("finance.fxMissing"),
+                        ],
+                        [
+                          t("finance.margin"),
+                          finance.margin !== null ? (
+                            <span
+                              key="m"
+                              className={
+                                finance.margin < 0
+                                  ? "font-medium text-red-700"
+                                  : "font-medium text-emerald-700"
+                              }
+                            >
+                              {formatMoney(
+                                finance.margin,
+                                finance.sellCurrency,
+                              )}
+                              {finance.marginPct !== null
+                                ? ` (${finance.marginPct.toFixed(1)}%)`
+                                : ""}
+                            </span>
+                          ) : (
+                            "—"
+                          ),
+                        ],
+                      ] as [string, ReactNode][])
+                    : []),
+                ]}
+              />
+              {wellmix && finance.receivable > 0 ? (
+                <form
+                  action={registerCustomerPaymentAction}
+                  className="mt-4 grid gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2"
+                >
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <Field label={t("orders.value")}>
+                    <Input
+                      name="amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      defaultValue={finance.receivable.toFixed(2)}
+                    />
+                  </Field>
+                  <Field label={t("common.currency")}>
+                    <Input
+                      name="currency"
+                      maxLength={3}
+                      defaultValue={finance.sellCurrency}
+                    />
+                  </Field>
+                  <Field label={t("finance.method")}>
+                    <Input name="method" placeholder="PIX, boleto, TED" />
+                  </Field>
+                  <Field label={t("requests.payment.proof")}>
+                    <Input name="proof" type="file" />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <SubmitButton>{t("finance.registerReceipt")}</SubmitButton>
+                  </div>
+                </form>
+              ) : null}
             </Card>
           ) : null}
 
