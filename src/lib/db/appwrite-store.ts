@@ -15,12 +15,18 @@ export class AppwriteStore implements Store {
   private readonly storage: Storage;
 
   constructor(endpoint: string, projectId: string, apiKey: string) {
-    const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
+    const client = new Client()
+      .setEndpoint(endpoint)
+      .setProject(projectId)
+      .setKey(apiKey);
     this.tables = new TablesDB(client);
     this.storage = new Storage(client);
   }
 
-  async list<K extends TableName>(table: K, options: ListOptions<Tables[K]> = {}) {
+  async list<K extends TableName>(
+    table: K,
+    options: ListOptions<Tables[K]> = {},
+  ) {
     const queries: string[] = [];
     for (const [key, value] of Object.entries(options.filter ?? {})) {
       if (value === null) queries.push(Query.isNull(key));
@@ -28,15 +34,27 @@ export class AppwriteStore implements Store {
       else queries.push(Query.equal(key, value as string | number | boolean));
     }
     const orderBy = toAppwriteKey(options.orderBy ?? "createdAt");
-    queries.push(options.direction === "desc" ? Query.orderDesc(orderBy) : Query.orderAsc(orderBy));
+    queries.push(
+      options.direction === "desc"
+        ? Query.orderDesc(orderBy)
+        : Query.orderAsc(orderBy),
+    );
     queries.push(Query.limit(options.limit ?? 500));
-    const result = await this.tables.listRows({ databaseId: DATABASE_ID, tableId: table, queries });
+    const result = await this.tables.listRows({
+      databaseId: DATABASE_ID,
+      tableId: table,
+      queries,
+    });
     return result.rows.map((row) => fromAppwrite<Tables[K]>(table, row));
   }
 
   async get<K extends TableName>(table: K, id: string) {
     try {
-      const row = await this.tables.getRow({ databaseId: DATABASE_ID, tableId: table, rowId: id });
+      const row = await this.tables.getRow({
+        databaseId: DATABASE_ID,
+        tableId: table,
+        rowId: id,
+      });
       return fromAppwrite<Tables[K]>(table, row);
     } catch (error) {
       if (isNotFound(error)) return null;
@@ -55,7 +73,11 @@ export class AppwriteStore implements Store {
     return fromAppwrite<Tables[K]>(table, row);
   }
 
-  async update<K extends TableName>(table: K, id: string, patch: Patch<Tables[K]>) {
+  async update<K extends TableName>(
+    table: K,
+    id: string,
+    patch: Patch<Tables[K]>,
+  ) {
     const row = await this.tables.updateRow({
       databaseId: DATABASE_ID,
       tableId: table,
@@ -66,10 +88,18 @@ export class AppwriteStore implements Store {
   }
 
   async remove<K extends TableName>(table: K, id: string) {
-    await this.tables.deleteRow({ databaseId: DATABASE_ID, tableId: table, rowId: id });
+    await this.tables.deleteRow({
+      databaseId: DATABASE_ID,
+      tableId: table,
+      rowId: id,
+    });
   }
 
-  async putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile> {
+  async putFile(
+    bytes: Uint8Array,
+    name: string,
+    mime: string,
+  ): Promise<StoredFile> {
     const file = await this.storage.createFile({
       bucketId: BUCKET_ID,
       fileId: ID.unique(),
@@ -80,9 +110,19 @@ export class AppwriteStore implements Store {
 
   async getFile(key: string) {
     try {
-      const meta = await this.storage.getFile({ bucketId: BUCKET_ID, fileId: key });
-      const bytes = await this.storage.getFileDownload({ bucketId: BUCKET_ID, fileId: key });
-      return { bytes: new Uint8Array(bytes), name: meta.name, mime: meta.mimeType };
+      const meta = await this.storage.getFile({
+        bucketId: BUCKET_ID,
+        fileId: key,
+      });
+      const bytes = await this.storage.getFileDownload({
+        bucketId: BUCKET_ID,
+        fileId: key,
+      });
+      return {
+        bytes: new Uint8Array(bytes),
+        name: meta.name,
+        mime: meta.mimeType,
+      };
     } catch (error) {
       if (isNotFound(error)) return null;
       throw error;
@@ -116,7 +156,12 @@ function toAppwrite(table: TableName, data: Record<string, unknown>) {
     if (value === undefined) continue;
     const def = columns[key];
     if (!def) continue;
-    out[key] = def.type === "json" ? (value === null ? null : JSON.stringify(value)) : value;
+    out[key] =
+      def.type === "json"
+        ? value === null
+          ? null
+          : JSON.stringify(value)
+        : value;
   }
   return out;
 }
@@ -131,7 +176,10 @@ function fromAppwrite<T>(table: TableName, row: Record<string, unknown>): T {
   for (const [key, def] of Object.entries(columns)) {
     const value = row[key];
     if (def.type === "json") {
-      out[key] = typeof value === "string" && value !== "" ? JSON.parse(value) : (value ?? null);
+      out[key] =
+        typeof value === "string" && value !== ""
+          ? JSON.parse(value)
+          : (value ?? null);
     } else if (def.type === "bool") {
       out[key] = value ?? false;
     } else {
@@ -142,5 +190,9 @@ function fromAppwrite<T>(table: TableName, row: Record<string, unknown>): T {
 }
 
 function isNotFound(error: unknown) {
-  return typeof error === "object" && error !== null && (error as { code?: number }).code === 404;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: number }).code === 404
+  );
 }

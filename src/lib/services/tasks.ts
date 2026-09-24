@@ -5,7 +5,13 @@ import { isWillmix } from "@/lib/auth/permissions";
 import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
 
 export interface Task {
-  kind: "requirement" | "quote" | "select_supplier" | "confirm_payment" | "pay" | "rfq";
+  kind:
+    | "requirement"
+    | "quote"
+    | "select_supplier"
+    | "confirm_payment"
+    | "pay"
+    | "rfq";
   title: string;
   detail: string;
   link: string;
@@ -21,13 +27,19 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   const now = Date.now();
 
   // Requisitos pendentes em etapas ativas/bloqueadas.
-  const stages = await store.list("stages", { filter: { status: ["active", "blocked"] } });
+  const stages = await store.list("stages", {
+    filter: { status: ["active", "blocked"] },
+  });
   for (const stage of stages) {
     const order = await store.get("orders", stage.orderId);
     if (!order) continue;
     if (!isInvolved(user, order)) continue;
-    const requirements = await store.list("requirements", { filter: { stageId: stage.id, status: ["pending", "rejected"] } });
-    const mine = requirements.filter((r) => isWillmix(user) || r.role === user.role);
+    const requirements = await store.list("requirements", {
+      filter: { stageId: stage.id, status: ["pending", "rejected"] },
+    });
+    const mine = requirements.filter(
+      (r) => isWillmix(user) || r.role === user.role,
+    );
     if (mine.length === 0) continue;
     tasks.push({
       kind: "requirement",
@@ -42,7 +54,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   // Fase de solicitação.
   if (user.role === "supplier" && user.partyId) {
-    const quotes = await store.list("quotes", { filter: { supplierId: user.partyId, status: "invited" } });
+    const quotes = await store.list("quotes", {
+      filter: { supplierId: user.partyId, status: "invited" },
+    });
     for (const quote of quotes) {
       const request = await store.get("requests", quote.requestId);
       if (!request) continue;
@@ -58,7 +72,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
   if (isWillmix(user)) {
     const requests = await store.list("requests", {
-      filter: { status: ["REQUESTED", "QUOTATION_RECEIVED", "WAITING_DOWN_PAYMENT"] },
+      filter: {
+        status: ["REQUESTED", "QUOTATION_RECEIVED", "WAITING_DOWN_PAYMENT"],
+      },
     });
     for (const request of requests) tasks.push(requestTask(request));
   }
@@ -81,14 +97,33 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 }
 
 function requestTask(request: Request): Task {
-  const base = { link: `/app/requests/${request.id}`, dueAt: request.deadline, overdue: false };
+  const base = {
+    link: `/app/requests/${request.id}`,
+    dueAt: request.deadline,
+    overdue: false,
+  };
   switch (request.status) {
     case "REQUESTED":
-      return { kind: "rfq", title: `Abrir RFQ: ${request.productName}`, detail: "Selecione fornecedores", ...base };
+      return {
+        kind: "rfq",
+        title: `Abrir RFQ: ${request.productName}`,
+        detail: "Selecione fornecedores",
+        ...base,
+      };
     case "QUOTATION_RECEIVED":
-      return { kind: "select_supplier", title: `Escolher fornecedor: ${request.productName}`, detail: "Cotações recebidas", ...base };
+      return {
+        kind: "select_supplier",
+        title: `Escolher fornecedor: ${request.productName}`,
+        detail: "Cotações recebidas",
+        ...base,
+      };
     default:
-      return { kind: "confirm_payment", title: `Confirmar sinal: ${request.productName}`, detail: "Aguardando pagamento do cliente", ...base };
+      return {
+        kind: "confirm_payment",
+        title: `Confirmar sinal: ${request.productName}`,
+        detail: "Aguardando pagamento do cliente",
+        ...base,
+      };
   }
 }
 

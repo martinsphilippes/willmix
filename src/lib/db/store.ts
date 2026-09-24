@@ -9,7 +9,8 @@ import type { BaseRow, TableName, Tables } from "./schema";
  * (atrasos, agregações) são feitas em memória sobre listas pequenas.
  */
 
-export type FilterValue = string | number | boolean | null | Array<string | number>;
+export type FilterValue =
+  string | number | boolean | null | Array<string | number>;
 export type Filter<T> = Partial<Record<keyof T & string, FilterValue>>;
 
 export interface ListOptions<T> {
@@ -19,7 +20,9 @@ export interface ListOptions<T> {
   limit?: number;
 }
 
-export type NewRow<T extends BaseRow> = Omit<T, keyof BaseRow> & { id?: string };
+export type NewRow<T extends BaseRow> = Omit<T, keyof BaseRow> & {
+  id?: string;
+};
 export type Patch<T extends BaseRow> = Partial<Omit<T, keyof BaseRow>>;
 
 export interface StoredFile {
@@ -31,18 +34,33 @@ export interface StoredFile {
 
 export interface Store {
   readonly mode: "memory" | "appwrite";
-  list<K extends TableName>(table: K, options?: ListOptions<Tables[K]>): Promise<Tables[K][]>;
+  list<K extends TableName>(
+    table: K,
+    options?: ListOptions<Tables[K]>,
+  ): Promise<Tables[K][]>;
   get<K extends TableName>(table: K, id: string): Promise<Tables[K] | null>;
-  create<K extends TableName>(table: K, data: NewRow<Tables[K]>): Promise<Tables[K]>;
-  update<K extends TableName>(table: K, id: string, patch: Patch<Tables[K]>): Promise<Tables[K]>;
+  create<K extends TableName>(
+    table: K,
+    data: NewRow<Tables[K]>,
+  ): Promise<Tables[K]>;
+  update<K extends TableName>(
+    table: K,
+    id: string,
+    patch: Patch<Tables[K]>,
+  ): Promise<Tables[K]>;
   remove<K extends TableName>(table: K, id: string): Promise<void>;
   putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile>;
-  getFile(key: string): Promise<{ bytes: Uint8Array; name: string; mime: string } | null>;
+  getFile(
+    key: string,
+  ): Promise<{ bytes: Uint8Array; name: string; mime: string } | null>;
   /** Próximo valor de um contador sequencial (ex.: número do pedido). */
   nextNumber(key: string): Promise<number>;
 }
 
-export function matchesFilter<T extends object>(row: T, filter?: Filter<T>): boolean {
+export function matchesFilter<T extends object>(
+  row: T,
+  filter?: Filter<T>,
+): boolean {
   if (!filter) return true;
   for (const [key, expected] of Object.entries(filter)) {
     const actual = (row as Record<string, unknown>)[key];

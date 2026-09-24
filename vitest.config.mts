@@ -10,7 +10,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
-      "server-only": fileURLToPath(new URL("./tests/unit/server-only-stub.ts", import.meta.url)),
+      "server-only": fileURLToPath(
+        new URL("./tests/unit/server-only-stub.ts", import.meta.url),
+      ),
     },
   },
 });

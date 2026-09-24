@@ -23,7 +23,8 @@ function baseClient(): Client {
 /** Cliente administrativo (API key) para autenticação e gestão de usuários. */
 export function createAdminClient() {
   const env = serverEnv();
-  if (!env.success) throw new Error("Appwrite não configurado: defina APPWRITE_API_KEY.");
+  if (!env.success)
+    throw new Error("Appwrite não configurado: defina APPWRITE_API_KEY.");
   const client = baseClient().setKey(env.data.APPWRITE_API_KEY);
   return { client, account: new Account(client), users: new Users(client) };
 }

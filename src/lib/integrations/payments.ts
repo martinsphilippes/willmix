@@ -6,7 +6,11 @@
 export interface PaymentProvider {
   readonly mode: "MANUAL";
   /** Cria a cobrança. Em modo manual, apenas devolve instruções. */
-  createCharge(input: { amount: number; currency: string; reference: string }): Promise<{
+  createCharge(input: {
+    amount: number;
+    currency: string;
+    reference: string;
+  }): Promise<{
     instructions: string;
     externalId: string | null;
   }>;
@@ -14,7 +18,11 @@ export interface PaymentProvider {
 
 export class ManualPaymentProvider implements PaymentProvider {
   readonly mode = "MANUAL" as const;
-  async createCharge(input: { amount: number; currency: string; reference: string }) {
+  async createCharge(input: {
+    amount: number;
+    currency: string;
+    reference: string;
+  }) {
     return {
       instructions: `Pagamento manual de ${input.currency} ${input.amount.toFixed(2)} (ref. ${input.reference}). O operador Willmix confirma o recebimento no portal.`,
       externalId: null,

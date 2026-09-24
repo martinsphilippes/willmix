@@ -25,7 +25,9 @@ export class WorkflowError extends Error {}
 export async function createStagesForOrder(order: Order) {
   const store = getStore();
   const settings = await getSettings();
-  const line = order.lineId ? await store.get("product_lines", order.lineId) : null;
+  const line = order.lineId
+    ? await store.get("product_lines", order.lineId)
+    : null;
   const ctx = {
     order,
     line,
@@ -71,7 +73,10 @@ export async function createStagesForOrder(order: Order) {
       });
     }
   }
-  await store.update("orders", order.id, { currentStageId: firstStageId, status: "ORDER_CREATED" });
+  await store.update("orders", order.id, {
+    currentStageId: firstStageId,
+    status: "ORDER_CREATED",
+  });
   return firstStageId;
 }
 
@@ -98,14 +103,19 @@ export function canSubmitRequirement(
   return order[partyField] === user.partyId;
 }
 
-export async function submitRequirement(user: User, requirementId: string, input: SubmitInput) {
+export async function submitRequirement(
+  user: User,
+  requirementId: string,
+  input: SubmitInput,
+) {
   const store = getStore();
   const requirement = await store.get("requirements", requirementId);
   if (!requirement) throw new WorkflowError("requirement_not_found");
   const stage = await store.get("stages", requirement.stageId);
   const order = await store.get("orders", requirement.orderId);
   if (!stage || !order) throw new WorkflowError("order_not_found");
-  if (!canSubmitRequirement(user, order, requirement)) throw new ForbiddenError();
+  if (!canSubmitRequirement(user, order, requirement))
+    throw new ForbiddenError();
   if (stage.status !== "active" && stage.status !== "blocked") {
     throw new WorkflowError("stage_not_active");
   }
@@ -113,7 +123,11 @@ export async function submitRequirement(user: User, requirementId: string, input
   if (requirement.type === "file" || requirement.type === "photo") {
     if (!input.documentId) throw new WorkflowError("document_required");
   } else if (requirement.type === "number") {
-    if (input.value === undefined || input.value === null || Number.isNaN(Number(input.value))) {
+    if (
+      input.value === undefined ||
+      input.value === null ||
+      Number.isNaN(Number(input.value))
+    ) {
       throw new WorkflowError("number_required");
     }
   } else if (requirement.type === "text" || requirement.type === "date") {
@@ -129,14 +143,29 @@ export async function submitRequirement(user: User, requirementId: string, input
     submittedByUserId: user.id,
     submittedAt: new Date().toISOString(),
   });
-  await audit(user, "requirement.submit", "requirement", requirement.id, `${stage.key}: ${requirement.label}`, before, {
-    status: "done",
-    value: updated.value,
-  });
+  await audit(
+    user,
+    "requirement.submit",
+    "requirement",
+    requirement.id,
+    `${stage.key}: ${requirement.label}`,
+    before,
+    {
+      status: "done",
+      value: updated.value,
+    },
+  );
 
   // Regra específica: número do ERP informado manualmente.
-  if (stage.key === "ORDER_CREATED" && requirement.key === "erp_number" && input.value) {
-    await store.update("orders", order.id, { erpNumber: input.value, erpSyncStatus: "manual" });
+  if (
+    stage.key === "ORDER_CREATED" &&
+    requirement.key === "erp_number" &&
+    input.value
+  ) {
+    await store.update("orders", order.id, {
+      erpNumber: input.value,
+      erpSyncStatus: "manual",
+    });
   }
 
   // Regra específica: inspeção compara peso medido com peso declarado na preparação.
@@ -151,7 +180,11 @@ export async function submitRequirement(user: User, requirementId: string, input
     });
     for (const approval of approvals) {
       if (approval.status !== "pending") {
-        await store.update("requirements", approval.id, { status: "pending", value: null, note: null });
+        await store.update("requirements", approval.id, {
+          status: "pending",
+          value: null,
+          note: null,
+        });
       }
     }
   }
@@ -174,7 +207,8 @@ export async function decideRequirement(
   const stage = await store.get("stages", requirement.stageId);
   const order = await store.get("orders", requirement.orderId);
   if (!stage || !order) throw new WorkflowError("order_not_found");
-  if (!canSubmitRequirement(user, order, requirement)) throw new ForbiddenError();
+  if (!canSubmitRequirement(user, order, requirement))
+    throw new ForbiddenError();
 
   const now = new Date().toISOString();
   if (decision === "approve") {
@@ -186,9 +220,18 @@ export async function decideRequirement(
       submittedAt: now,
     });
     if (stage.status === "blocked") {
-      await store.update("stages", stage.id, { status: "active", blockReason: null });
+      await store.update("stages", stage.id, {
+        status: "active",
+        blockReason: null,
+      });
     }
-    await audit(user, "requirement.approve", "requirement", requirement.id, `${stage.key}: ${requirement.label}`);
+    await audit(
+      user,
+      "requirement.approve",
+      "requirement",
+      requirement.id,
+      `${stage.key}: ${requirement.label}`,
+    );
   } else {
     await store.update("requirements", requirement.id, {
       status: "rejected",
@@ -200,10 +243,22 @@ export async function decideRequirement(
     // O requisito que originou a aprovação volta a pendente para reenvio.
     const sourceKey = requirement.key === "art_approval" ? "art" : null;
     if (sourceKey) {
-      const [source] = await store.list("requirements", { filter: { stageId: stage.id, key: sourceKey } });
-      if (source) await store.update("requirements", source.id, { status: "rejected", note: note ?? null });
+      const [source] = await store.list("requirements", {
+        filter: { stageId: stage.id, key: sourceKey },
+      });
+      if (source)
+        await store.update("requirements", source.id, {
+          status: "rejected",
+          note: note ?? null,
+        });
     }
-    await audit(user, "requirement.reject", "requirement", requirement.id, `${stage.key}: ${requirement.label}`);
+    await audit(
+      user,
+      "requirement.reject",
+      "requirement",
+      requirement.id,
+      `${stage.key}: ${requirement.label}`,
+    );
     await notify(
       { role: "supplier", partyId: order.supplierId },
       {
@@ -216,10 +271,17 @@ export async function decideRequirement(
   await evaluateStage(user, stage.id);
 }
 
-async function checkWeightDivergence(user: User, order: Order, stage: Stage, measured: number) {
+async function checkWeightDivergence(
+  user: User,
+  order: Order,
+  stage: Stage,
+  measured: number,
+) {
   const store = getStore();
   const settings = await getSettings();
-  const stages = await store.list("stages", { filter: { orderId: order.id, key: "PREPARATION" } });
+  const stages = await store.list("stages", {
+    filter: { orderId: order.id, key: "PREPARATION" },
+  });
   if (!stages[0]) return;
   const [declared] = await store.list("requirements", {
     filter: { stageId: stages[0].id, key: "weight" },
@@ -228,11 +290,16 @@ async function checkWeightDivergence(user: User, order: Order, stage: Stage, mea
   if (!declaredWeight || declaredWeight <= 0) return;
   const divergence = Math.abs(measured - declaredWeight) / declaredWeight;
   const tolerance = settings.weightTolerancePercent / 100;
-  const [review] = await store.list("requirements", { filter: { stageId: stage.id, key: "inspection_review" } });
+  const [review] = await store.list("requirements", {
+    filter: { stageId: stage.id, key: "inspection_review" },
+  });
 
   if (divergence > tolerance) {
     const reason = `Peso divergente: declarado ${declaredWeight} kg, medido ${measured} kg (${(divergence * 100).toFixed(1)}% > ${settings.weightTolerancePercent}%). REVISÃO NECESSÁRIA.`;
-    await store.update("stages", stage.id, { status: "blocked", blockReason: reason });
+    await store.update("stages", stage.id, {
+      status: "blocked",
+      blockReason: reason,
+    });
     if (!review) {
       await store.create("requirements", {
         orderId: order.id,
@@ -250,7 +317,11 @@ async function checkWeightDivergence(user: User, order: Order, stage: Stage, mea
         note: reason,
       });
     } else if (review.status !== "pending") {
-      await store.update("requirements", review.id, { status: "pending", value: null, note: reason });
+      await store.update("requirements", review.id, {
+        status: "pending",
+        value: null,
+        note: reason,
+      });
     }
     await audit(user, "inspection.divergence", "order", order.id, reason);
     await notifyWillmix({
@@ -258,10 +329,21 @@ async function checkWeightDivergence(user: User, order: Order, stage: Stage, mea
       body: reason,
       link: `/app/orders/${order.id}`,
     });
-  } else if (review && review.status === "pending" && stage.status === "blocked") {
+  } else if (
+    review &&
+    review.status === "pending" &&
+    stage.status === "blocked"
+  ) {
     // Novo peso dentro da tolerância: libera sem exigir revisão.
-    await store.update("requirements", review.id, { status: "done", value: "auto", note: "Dentro da tolerância após nova medição." });
-    await store.update("stages", stage.id, { status: "active", blockReason: null });
+    await store.update("requirements", review.id, {
+      status: "done",
+      value: "auto",
+      note: "Dentro da tolerância após nova medição.",
+    });
+    await store.update("stages", stage.id, {
+      status: "active",
+      blockReason: null,
+    });
   }
 }
 
@@ -274,10 +356,13 @@ export async function evaluateStage(user: User | null, stageId: string) {
   const store = getStore();
   const stage = await store.get("stages", stageId);
   if (!stage || stage.status === "done" || stage.status === "pending") return;
-  const requirements = await store.list("requirements", { filter: { stageId } });
+  const requirements = await store.list("requirements", {
+    filter: { stageId },
+  });
   const required = requirements.filter((r) => r.required);
   const done = required.filter((r) => r.status === "done").length;
-  const percent = required.length === 0 ? 100 : Math.round((done / required.length) * 100);
+  const percent =
+    required.length === 0 ? 100 : Math.round((done / required.length) * 100);
   const nextPending = required.find((r) => r.status !== "done");
   const responsibleRole: Role = nextPending?.role ?? stage.responsibleRole;
 
@@ -295,14 +380,29 @@ export async function evaluateStage(user: User | null, stageId: string) {
 async function completeStage(user: User | null, stage: Stage) {
   const store = getStore();
   const now = new Date().toISOString();
-  await store.update("stages", stage.id, { status: "done", percent: 100, completedAt: now, blockReason: null });
-  await audit(user, "stage.complete", "stage", stage.id, `${stage.key} concluída`);
+  await store.update("stages", stage.id, {
+    status: "done",
+    percent: 100,
+    completedAt: now,
+    blockReason: null,
+  });
+  await audit(
+    user,
+    "stage.complete",
+    "stage",
+    stage.id,
+    `${stage.key} concluída`,
+  );
 
   const order = await store.get("orders", stage.orderId);
   if (!order) return;
   const next = nextStageKey(stage.key);
   if (!next) {
-    await store.update("orders", order.id, { status: "CLOSED", closedAt: now, currentStageId: null });
+    await store.update("orders", order.id, {
+      status: "CLOSED",
+      closedAt: now,
+      currentStageId: null,
+    });
     return;
   }
   await activateStage(user, order, next);
@@ -311,10 +411,14 @@ async function completeStage(user: User | null, stage: Stage) {
 async function activateStage(user: User | null, order: Order, key: StageKey) {
   const store = getStore();
   const settings = await getSettings();
-  const [stage] = await store.list("stages", { filter: { orderId: order.id, key } });
+  const [stage] = await store.list("stages", {
+    filter: { orderId: order.id, key },
+  });
   if (!stage) return;
   const now = new Date().toISOString();
-  const requirements = await store.list("requirements", { filter: { stageId: stage.id } });
+  const requirements = await store.list("requirements", {
+    filter: { stageId: stage.id },
+  });
   const required = requirements.filter((r) => r.required);
 
   await store.update("stages", stage.id, {
@@ -323,7 +427,10 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
     dueAt: dueDate(settings.stageDueDays[key]),
     responsibleRole: required[0]?.role ?? stage.responsibleRole,
   });
-  await store.update("orders", order.id, { status: key, currentStageId: stage.id });
+  await store.update("orders", order.id, {
+    status: key,
+    currentStageId: stage.id,
+  });
   await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
 
   if (required.length === 0) {
@@ -336,7 +443,10 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   const role = required[0].role;
   const partyField = ROLE_PARTY_FIELD[role];
   await notify(
-    { role: role === "operator" ? ["admin", "operator"] : role, partyId: partyField ? order[partyField] : null },
+    {
+      role: role === "operator" ? ["admin", "operator"] : role,
+      partyId: partyField ? order[partyField] : null,
+    },
     {
       subject: `Pedido #${order.number}: etapa ${key} aguarda sua ação`,
       body: `Pendências: ${required.map((r) => r.label).join(", ")}.`,
@@ -349,7 +459,10 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
 export async function unblockStage(user: User, stageId: string) {
   if (!isWillmix(user)) throw new ForbiddenError();
   const store = getStore();
-  await store.update("stages", stageId, { status: "active", blockReason: null });
+  await store.update("stages", stageId, {
+    status: "active",
+    blockReason: null,
+  });
   await audit(user, "stage.unblock", "stage", stageId, "Etapa desbloqueada");
   await evaluateStage(user, stageId);
 }
@@ -370,12 +483,19 @@ export interface OrderProgress {
   requirements: Requirement[];
 }
 
-export async function loadOrderProgress(orderId: string): Promise<OrderProgress | null> {
+export async function loadOrderProgress(
+  orderId: string,
+): Promise<OrderProgress | null> {
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order) return null;
-  const stages = await store.list("stages", { filter: { orderId }, orderBy: "sequence" });
-  const requirements = await store.list("requirements", { filter: { orderId } });
+  const stages = await store.list("stages", {
+    filter: { orderId },
+    orderBy: "sequence",
+  });
+  const requirements = await store.list("requirements", {
+    filter: { orderId },
+  });
   return { order, stages, requirements };
 }
 

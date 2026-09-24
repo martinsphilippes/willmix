@@ -50,9 +50,15 @@ export async function getSettings(): Promise<Settings> {
   return merged as Settings;
 }
 
-export async function setSetting<K extends SettingKey>(key: K, value: Settings[K]) {
+export async function setSetting<K extends SettingKey>(
+  key: K,
+  value: Settings[K],
+) {
   const store = getStore();
-  const [existing] = await store.list("settings", { filter: { key }, limit: 1 });
+  const [existing] = await store.list("settings", {
+    filter: { key },
+    limit: 1,
+  });
   if (existing) await store.update("settings", existing.id, { value });
   else await store.create("settings", { key, value });
 }

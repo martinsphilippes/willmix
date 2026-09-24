@@ -34,7 +34,10 @@ export class MemoryStore implements Store {
   private readonly dbPath: string;
   private readonly filesDir: string;
 
-  constructor(private readonly dir: string, private readonly persist = true) {
+  constructor(
+    private readonly dir: string,
+    private readonly persist = true,
+  ) {
     this.dbPath = join(dir, "db.json");
     this.filesDir = join(dir, "files");
     if (persist) {
@@ -46,7 +49,9 @@ export class MemoryStore implements Store {
   private load(): Db {
     if (this.persist && existsSync(this.dbPath)) {
       try {
-        const parsed = JSON.parse(readFileSync(this.dbPath, "utf8")) as Partial<Db>;
+        const parsed = JSON.parse(
+          readFileSync(this.dbPath, "utf8"),
+        ) as Partial<Db>;
         return { ...emptyDb(), ...parsed };
       } catch {
         return emptyDb();
@@ -65,9 +70,18 @@ export class MemoryStore implements Store {
     this.save();
   }
 
-  async list<K extends TableName>(table: K, options: ListOptions<Tables[K]> = {}) {
-    const rows = this.db[table].filter((row) => matchesFilter(row, options.filter));
-    const sorted = sortRows(rows, options.orderBy ?? "createdAt", options.direction ?? "asc");
+  async list<K extends TableName>(
+    table: K,
+    options: ListOptions<Tables[K]> = {},
+  ) {
+    const rows = this.db[table].filter((row) =>
+      matchesFilter(row, options.filter),
+    );
+    const sorted = sortRows(
+      rows,
+      options.orderBy ?? "createdAt",
+      options.direction ?? "asc",
+    );
     return (options.limit ? sorted.slice(0, options.limit) : sorted).map(clone);
   }
 
@@ -78,21 +92,31 @@ export class MemoryStore implements Store {
 
   async create<K extends TableName>(table: K, data: NewRow<Tables[K]>) {
     const now = new Date().toISOString();
-    const row = { ...data, id: data.id ?? randomUUID(), createdAt: now, updatedAt: now } as Tables[K];
+    const row = {
+      ...data,
+      id: data.id ?? randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+    } as Tables[K];
     for (const idx of TABLES[table].indexes ?? []) {
       if (idx.type !== "unique") continue;
       const candidate = row as unknown as Record<string, unknown>;
-      const clash = (this.db[table] as unknown as Record<string, unknown>[]).find((r) =>
-        idx.columns.every((c) => r[c] === candidate[c]),
-      );
-      if (clash) throw new Error(`Valor duplicado em ${table}.${idx.columns.join("+")}`);
+      const clash = (
+        this.db[table] as unknown as Record<string, unknown>[]
+      ).find((r) => idx.columns.every((c) => r[c] === candidate[c]));
+      if (clash)
+        throw new Error(`Valor duplicado em ${table}.${idx.columns.join("+")}`);
     }
     this.db[table].push(row);
     this.save();
     return clone(row);
   }
 
-  async update<K extends TableName>(table: K, id: string, patch: Patch<Tables[K]>) {
+  async update<K extends TableName>(
+    table: K,
+    id: string,
+    patch: Patch<Tables[K]>,
+  ) {
     const index = this.db[table].findIndex((r) => r.id === id);
     if (index < 0) throw new Error(`${table}/${id} não encontrado`);
     const updated = {
@@ -106,29 +130,44 @@ export class MemoryStore implements Store {
   }
 
   async remove<K extends TableName>(table: K, id: string) {
-    (this.db[table] as BaseRow[]) = (this.db[table] as BaseRow[]).filter((r) => r.id !== id) as Tables[K][];
+    (this.db[table] as BaseRow[]) = (this.db[table] as BaseRow[]).filter(
+      (r) => r.id !== id,
+    ) as Tables[K][];
     this.save();
   }
 
-  async putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile> {
+  async putFile(
+    bytes: Uint8Array,
+    name: string,
+    mime: string,
+  ): Promise<StoredFile> {
     const key = randomUUID();
     if (this.persist) {
       writeFileSync(join(this.filesDir, key), bytes);
-      writeFileSync(join(this.filesDir, `${key}.json`), JSON.stringify({ name, mime }));
+      writeFileSync(
+        join(this.filesDir, `${key}.json`),
+        JSON.stringify({ name, mime }),
+      );
     } else {
       this.memFiles.set(key, { bytes, name, mime });
     }
     return { key, name, mime, size: bytes.byteLength };
   }
 
-  private memFiles = new Map<string, { bytes: Uint8Array; name: string; mime: string }>();
+  private memFiles = new Map<
+    string,
+    { bytes: Uint8Array; name: string; mime: string }
+  >();
 
   async getFile(key: string) {
     if (!/^[a-f0-9-]{36}$/.test(key)) return null;
     if (!this.persist) return this.memFiles.get(key) ?? null;
     const path = join(this.filesDir, key);
     if (!existsSync(path)) return null;
-    const meta = JSON.parse(readFileSync(`${path}.json`, "utf8")) as { name: string; mime: string };
+    const meta = JSON.parse(readFileSync(`${path}.json`, "utf8")) as {
+      name: string;
+      mime: string;
+    };
     return { bytes: new Uint8Array(readFileSync(path)), ...meta };
   }
 

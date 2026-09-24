@@ -79,7 +79,12 @@ export type RequirementType = (typeof REQUIREMENT_TYPES)[number];
 export const REQUIREMENT_STATUSES = ["pending", "done", "rejected"] as const;
 export type RequirementStatus = (typeof REQUIREMENT_STATUSES)[number];
 
-export const QUOTE_STATUSES = ["invited", "answered", "selected", "rejected"] as const;
+export const QUOTE_STATUSES = [
+  "invited",
+  "answered",
+  "selected",
+  "rejected",
+] as const;
 export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
 
 export const PAYMENT_DIRECTIONS = ["customer_in", "supplier_out"] as const;
@@ -102,16 +107,31 @@ export const DOCUMENT_TYPES = [
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
-export const VISIBILITIES = ["internal", "customer", "supplier", "all"] as const;
+export const VISIBILITIES = [
+  "internal",
+  "customer",
+  "supplier",
+  "all",
+] as const;
 export type Visibility = (typeof VISIBILITIES)[number];
 
 export const NOTIFICATION_CHANNELS = ["inapp", "email", "whatsapp"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
-export const PENALTY_STATUSES = ["open", "disputed", "paid", "cancelled"] as const;
+export const PENALTY_STATUSES = [
+  "open",
+  "disputed",
+  "paid",
+  "cancelled",
+] as const;
 export type PenaltyStatus = (typeof PENALTY_STATUSES)[number];
 
-export const ERP_SYNC_STATUSES = ["pending", "synced", "failed", "manual"] as const;
+export const ERP_SYNC_STATUSES = [
+  "pending",
+  "synced",
+  "failed",
+  "manual",
+] as const;
 export type ErpSyncStatus = (typeof ERP_SYNC_STATUSES)[number];
 
 /* ------------------------------------------------------------------------ */
@@ -363,7 +383,8 @@ export type TableName = keyof Tables;
 /* Definição de colunas (para Appwrite e validação básica)                   */
 /* ------------------------------------------------------------------------ */
 
-export type ColumnType = "string" | "text" | "int" | "float" | "bool" | "datetime" | "json";
+export type ColumnType =
+  "string" | "text" | "int" | "float" | "bool" | "datetime" | "json";
 
 export interface ColumnDef {
   type: ColumnType;
@@ -384,14 +405,25 @@ export interface TableDef {
   indexes?: IndexDef[];
 }
 
-const id = (required = true): ColumnDef => ({ type: "string", size: 36, required });
-const str = (size: number, required = false): ColumnDef => ({ type: "string", size, required });
+const id = (required = true): ColumnDef => ({
+  type: "string",
+  size: 36,
+  required,
+});
+const str = (size: number, required = false): ColumnDef => ({
+  type: "string",
+  size,
+  required,
+});
 const text = (required = false): ColumnDef => ({ type: "text", required });
 const json = (): ColumnDef => ({ type: "json" });
 const int = (required = false): ColumnDef => ({ type: "int", required });
 const float = (required = false): ColumnDef => ({ type: "float", required });
 const bool = (): ColumnDef => ({ type: "bool" });
-const datetime = (required = false): ColumnDef => ({ type: "datetime", required });
+const datetime = (required = false): ColumnDef => ({
+  type: "datetime",
+  required,
+});
 const enumOf = (values: readonly string[], required = true): ColumnDef => ({
   type: "string",
   size: 40,
@@ -644,7 +676,9 @@ export const TABLES: Record<TableName, TableDef> = {
       before: json(),
       after: json(),
     },
-    indexes: [{ key: "by_entity", type: "key", columns: ["entity", "entityId"] }],
+    indexes: [
+      { key: "by_entity", type: "key", columns: ["entity", "entityId"] },
+    ],
   },
   penalties: {
     label: "Multas",

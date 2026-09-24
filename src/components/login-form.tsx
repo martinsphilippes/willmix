@@ -3,7 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-export function LoginForm({ next }: { next: string }) {
+interface Labels {
+  email: string;
+  password: string;
+  submit: string;
+  pending: string;
+  invalid: string;
+}
+
+export function LoginForm({ next, labels }: { next: string; labels: Labels }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -12,7 +20,6 @@ export function LoginForm({ next }: { next: string }) {
     event.preventDefault();
     setPending(true);
     setError(null);
-
     const form = new FormData(event.currentTarget);
     const response = await fetch("/api/auth/session", {
       method: "POST",
@@ -22,21 +29,22 @@ export function LoginForm({ next }: { next: string }) {
         password: form.get("password"),
       }),
     });
-
     if (response.ok) {
       router.push(next);
       router.refresh();
       return;
     }
-    const body = await response.json().catch(() => ({}));
-    setError(body.error ?? "Não foi possível entrar.");
+    setError(labels.invalid);
     setPending(false);
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm"
+    >
       <label className="block space-y-1">
-        <span className="text-sm font-medium">E-mail</span>
+        <span className="text-sm font-medium">{labels.email}</span>
         <input
           name="email"
           type="email"
@@ -46,12 +54,12 @@ export function LoginForm({ next }: { next: string }) {
         />
       </label>
       <label className="block space-y-1">
-        <span className="text-sm font-medium">Senha</span>
+        <span className="text-sm font-medium">{labels.password}</span>
         <input
           name="password"
           type="password"
           autoComplete="current-password"
-          minLength={8}
+          minLength={6}
           required
           className="w-full rounded-md border border-zinc-300 px-3 py-2"
         />
@@ -66,7 +74,7 @@ export function LoginForm({ next }: { next: string }) {
         disabled={pending}
         className="w-full rounded-md bg-zinc-900 px-3 py-2 font-medium text-white disabled:opacity-60"
       >
-        {pending ? "Entrando..." : "Entrar"}
+        {pending ? labels.pending : labels.submit}
       </button>
     </form>
   );

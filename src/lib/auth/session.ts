@@ -20,28 +20,40 @@ export class AuthError extends Error {}
 export async function signIn(email: string, password: string): Promise<User> {
   const store = getStore();
   const normalized = email.trim().toLowerCase();
-  const [user] = await store.list("users", { filter: { email: normalized }, limit: 1 });
+  const [user] = await store.list("users", {
+    filter: { email: normalized },
+    limit: 1,
+  });
   if (!user || !user.active) throw new AuthError("invalid");
 
   const jar = await cookies();
   const secure = process.env.NODE_ENV === "production";
 
   if (dataMode() === "memory") {
-    if (!verifyPassword(password, user.passwordHash)) throw new AuthError("invalid");
+    if (!verifyPassword(password, user.passwordHash))
+      throw new AuthError("invalid");
     const exp = Date.now() + SESSION_DAYS * 86_400_000;
-    jar.set(MEMORY_COOKIE, signToken({ userId: user.id, exp }, sessionSecret()), {
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      expires: new Date(exp),
-    });
+    jar.set(
+      MEMORY_COOKIE,
+      signToken({ userId: user.id, exp }, sessionSecret()),
+      {
+        httpOnly: true,
+        secure,
+        sameSite: "lax",
+        path: "/",
+        expires: new Date(exp),
+      },
+    );
     return user;
   }
 
-  const { createAdminClient, sessionCookieName } = await import("@/lib/appwrite/server");
+  const { createAdminClient, sessionCookieName } =
+    await import("@/lib/appwrite/server");
   const { account } = createAdminClient();
-  const session = await account.createEmailPasswordSession({ email: normalized, password });
+  const session = await account.createEmailPasswordSession({
+    email: normalized,
+    password,
+  });
   jar.set(sessionCookieName(), session.secret, {
     httpOnly: true,
     secure,
@@ -58,10 +70,13 @@ export async function signOut() {
     jar.delete(MEMORY_COOKIE);
     return;
   }
-  const { createSessionClient, sessionCookieName } = await import("@/lib/appwrite/server");
+  const { createSessionClient, sessionCookieName } =
+    await import("@/lib/appwrite/server");
   const session = await createSessionClient();
   if (session) {
-    await session.account.deleteSession({ sessionId: "current" }).catch(() => undefined);
+    await session.account
+      .deleteSession({ sessionId: "current" })
+      .catch(() => undefined);
   }
   jar.delete(sessionCookieName());
 }
@@ -72,7 +87,10 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     const store = getStore();
     const jar = await cookies();
     if (dataMode() === "memory") {
-      const payload = verifyToken(jar.get(MEMORY_COOKIE)?.value, sessionSecret());
+      const payload = verifyToken(
+        jar.get(MEMORY_COOKIE)?.value,
+        sessionSecret(),
+      );
       if (!payload) return null;
       const user = await store.get("users", payload.userId);
       return user && user.active ? user : null;

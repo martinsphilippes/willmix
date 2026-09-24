@@ -2,7 +2,8 @@ import type { Order, Request, Role, User } from "@/lib/db/schema";
 
 export const WILLMIX_ROLES: Role[] = ["admin", "operator"];
 
-export const isWillmix = (user: Pick<User, "role">) => WILLMIX_ROLES.includes(user.role);
+export const isWillmix = (user: Pick<User, "role">) =>
+  WILLMIX_ROLES.includes(user.role);
 export const isAdmin = (user: Pick<User, "role">) => user.role === "admin";
 
 export class ForbiddenError extends Error {
@@ -27,7 +28,10 @@ export function canViewRequest(user: User, request: Request): boolean {
 }
 
 /** Fornecedor vê uma solicitação apenas por meio da própria cotação. */
-export function canViewQuote(user: User, quote: { supplierId: string }): boolean {
+export function canViewQuote(
+  user: User,
+  quote: { supplierId: string },
+): boolean {
   if (isWillmix(user)) return true;
   return user.role === "supplier" && quote.supplierId === user.partyId;
 }
@@ -67,4 +71,5 @@ export const canSeeInternalCosts = (user: User) => isWillmix(user);
 /** Identidade do fornecedor: cliente nunca vê. */
 export const canSeeSupplier = (user: User) => user.role !== "customer";
 /** Valor de venda ao cliente: fornecedor nunca vê. */
-export const canSeeSellPrice = (user: User) => isWillmix(user) || user.role === "customer";
+export const canSeeSellPrice = (user: User) =>
+  isWillmix(user) || user.role === "customer";

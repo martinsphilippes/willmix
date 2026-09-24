@@ -14,7 +14,9 @@ export function getStore(): Store {
   if (mode === "appwrite") {
     const env = serverEnv();
     if (!publicEnv || !env.success) {
-      throw new Error("DATA_MODE=appwrite exige NEXT_PUBLIC_APPWRITE_* e APPWRITE_API_KEY.");
+      throw new Error(
+        "DATA_MODE=appwrite exige NEXT_PUBLIC_APPWRITE_* e APPWRITE_API_KEY.",
+      );
     }
     globalRef.__willmixStore = new AppwriteStore(
       publicEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT,

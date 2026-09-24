@@ -11,13 +11,19 @@ const bodySchema = z.object({
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "E-mail e senha são obrigatórios" }, { status: 400 });
+    return NextResponse.json(
+      { error: "E-mail e senha são obrigatórios" },
+      { status: 400 },
+    );
   }
   try {
     const user = await signIn(parsed.data.email, parsed.data.password);
     return NextResponse.json({ ok: true, userId: user.id, role: user.role });
   } catch {
-    return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Credenciais inválidas" },
+      { status: 401 },
+    );
   }
 }
 

@@ -25,7 +25,8 @@ export function serverEnv() {
   return schema.safeParse({ APPWRITE_API_KEY: process.env.APPWRITE_API_KEY });
 }
 
-export const isAppwriteServerConfigured = () => isAppwriteClientConfigured && serverEnv().success;
+export const isAppwriteServerConfigured = () =>
+  isAppwriteClientConfigured && serverEnv().success;
 
 export type DataMode = "memory" | "appwrite";
 
@@ -39,8 +40,13 @@ export function dataMode(): DataMode {
   return isAppwriteServerConfigured() ? "appwrite" : "memory";
 }
 
-/** Diretório do modo memória. Testes usam diretórios isolados. */
-export const dataDir = () => process.env.DATA_DIR ?? ".data";
+/**
+ * Diretório do modo memória. Testes usam diretórios isolados.
+ * Na Vercel o sistema de arquivos é somente leitura fora de /tmp: o modo memória
+ * ali serve apenas para demonstração (dados efêmeros).
+ */
+export const dataDir = () =>
+  process.env.DATA_DIR ?? (process.env.VERCEL ? "/tmp/willmix-data" : ".data");
 
 /** Segredo para assinar o cookie de sessão no modo memória. */
 export const sessionSecret = () =>

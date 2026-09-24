@@ -7,11 +7,16 @@ export function hashPassword(password: string): string {
   return `scrypt$${salt}$${hash}`;
 }
 
-export function verifyPassword(password: string, stored: string | null): boolean {
+export function verifyPassword(
+  password: string,
+  stored: string | null,
+): boolean {
   if (!stored) return false;
   const [algo, salt, hash] = stored.split("$");
   if (algo !== "scrypt" || !salt || !hash) return false;
   const candidate = scryptSync(password, salt, 64);
   const expected = Buffer.from(hash, "hex");
-  return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+  return (
+    candidate.length === expected.length && timingSafeEqual(candidate, expected)
+  );
 }

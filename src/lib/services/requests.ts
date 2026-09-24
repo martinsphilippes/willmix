@@ -1,7 +1,12 @@
 import "server-only";
 
 import { getStore, type Order, type Request, type User } from "@/lib/db";
-import { ForbiddenError, assertWillmix, canViewRequest, isWillmix } from "@/lib/auth/permissions";
+import {
+  ForbiddenError,
+  assertWillmix,
+  canViewRequest,
+  isWillmix,
+} from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
@@ -23,7 +28,10 @@ export interface CreateRequestInput {
 }
 
 /** Cliente cria para si; Willmix cria em nome de qualquer cliente. Mesmo formulário e fluxo. */
-export async function createRequest(user: User, input: CreateRequestInput): Promise<Request> {
+export async function createRequest(
+  user: User,
+  input: CreateRequestInput,
+): Promise<Request> {
   const store = getStore();
   const settings = await getSettings();
   if (user.role === "customer") {
@@ -50,7 +58,13 @@ export async function createRequest(user: User, input: CreateRequestInput): Prom
     downPaymentAmount: null,
     notes: input.notes ?? null,
   });
-  await audit(user, "request.create", "request", request.id, `Solicitação: ${request.productName}`);
+  await audit(
+    user,
+    "request.create",
+    "request",
+    request.id,
+    `Solicitação: ${request.productName}`,
+  );
   await notifyWillmix({
     subject: `Nova solicitação: ${request.productName}`,
     body: `${request.quantity} ${request.unit}. Abra a RFQ para os fornecedores.`,
@@ -60,12 +74,18 @@ export async function createRequest(user: User, input: CreateRequestInput): Prom
 }
 
 /** Willmix seleciona fornecedores e abre a RFQ. Fornecedores recebem o link. */
-export async function openRfq(user: User, requestId: string, supplierIds: string[]) {
+export async function openRfq(
+  user: User,
+  requestId: string,
+  supplierIds: string[],
+) {
   assertWillmix(user);
   const store = getStore();
   const request = await store.get("requests", requestId);
   if (!request) throw new RequestError("not_found");
-  if (!["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status)) {
+  if (
+    !["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status)
+  ) {
     throw new RequestError("invalid_status");
   }
   if (supplierIds.length === 0) throw new RequestError("no_suppliers");
@@ -99,7 +119,13 @@ export async function openRfq(user: User, requestId: string, supplierIds: string
   if (request.status === "REQUESTED") {
     await store.update("requests", requestId, { status: "RFQ_OPEN" });
   }
-  await audit(user, "rfq.open", "request", requestId, `RFQ para ${supplierIds.length} fornecedor(es)`);
+  await audit(
+    user,
+    "rfq.open",
+    "request",
+    requestId,
+    `RFQ para ${supplierIds.length} fornecedor(es)`,
+  );
 }
 
 export interface AnswerQuoteInput {
@@ -109,14 +135,22 @@ export interface AnswerQuoteInput {
   conditions?: string | null;
 }
 
-export async function answerQuote(user: User, quoteId: string, input: AnswerQuoteInput) {
+export async function answerQuote(
+  user: User,
+  quoteId: string,
+  input: AnswerQuoteInput,
+) {
   const store = getStore();
   const quote = await store.get("quotes", quoteId);
   if (!quote) throw new RequestError("not_found");
-  if (!(isWillmix(user) || (user.role === "supplier" && quote.supplierId === user.partyId))) {
+  if (!(
+    isWillmix(user) ||
+    (user.role === "supplier" && quote.supplierId === user.partyId)
+  )) {
     throw new ForbiddenError();
   }
-  if (quote.status === "selected" || quote.status === "rejected") throw new RequestError("closed");
+  if (quote.status === "selected" || quote.status === "rejected")
+    throw new RequestError("closed");
   await store.update("quotes", quoteId, {
     ...input,
     conditions: input.conditions ?? null,
@@ -125,9 +159,17 @@ export async function answerQuote(user: User, quoteId: string, input: AnswerQuot
   });
   const request = await store.get("requests", quote.requestId);
   if (request && request.status === "RFQ_OPEN") {
-    await store.update("requests", request.id, { status: "QUOTATION_RECEIVED" });
+    await store.update("requests", request.id, {
+      status: "QUOTATION_RECEIVED",
+    });
   }
-  await audit(user, "quote.answer", "quote", quoteId, `${input.currency} ${input.price}, ${input.leadTimeDays} dias`);
+  await audit(
+    user,
+    "quote.answer",
+    "quote",
+    quoteId,
+    `${input.currency} ${input.price}, ${input.leadTimeDays} dias`,
+  );
   if (request) {
     await notifyWillmix({
       subject: `Cotação recebida: ${request.productName}`,
@@ -144,20 +186,31 @@ export interface SelectQuoteInput {
 }
 
 /** Willmix escolhe o fornecedor, define o valor ao cliente e o sinal. */
-export async function selectQuote(user: User, quoteId: string, input: SelectQuoteInput) {
+export async function selectQuote(
+  user: User,
+  quoteId: string,
+  input: SelectQuoteInput,
+) {
   assertWillmix(user);
   const store = getStore();
   const quote = await store.get("quotes", quoteId);
-  if (!quote || quote.status !== "answered") throw new RequestError("invalid_quote");
+  if (!quote || quote.status !== "answered")
+    throw new RequestError("invalid_quote");
   const request = await store.get("requests", quote.requestId);
   if (!request) throw new RequestError("not_found");
   const settings = await getSettings();
   const downPayment =
-    input.downPaymentAmount ?? Math.round(input.sellPrice * (settings.downPaymentPercent / 100) * 100) / 100;
+    input.downPaymentAmount ??
+    Math.round(input.sellPrice * (settings.downPaymentPercent / 100) * 100) /
+      100;
 
-  const others = await store.list("quotes", { filter: { requestId: request.id } });
+  const others = await store.list("quotes", {
+    filter: { requestId: request.id },
+  });
   for (const other of others) {
-    await store.update("quotes", other.id, { status: other.id === quote.id ? "selected" : "rejected" });
+    await store.update("quotes", other.id, {
+      status: other.id === quote.id ? "selected" : "rejected",
+    });
   }
   await store.update("requests", request.id, {
     status: "WAITING_DOWN_PAYMENT",
@@ -181,7 +234,13 @@ export async function selectQuote(user: User, quoteId: string, input: SelectQuot
     confirmedAt: null,
     note: "Sinal",
   });
-  await audit(user, "quote.select", "request", request.id, `Fornecedor selecionado; sinal ${input.sellCurrency} ${downPayment}`);
+  await audit(
+    user,
+    "quote.select",
+    "request",
+    request.id,
+    `Fornecedor selecionado; sinal ${input.sellCurrency} ${downPayment}`,
+  );
   await notify(
     { role: "customer", partyId: request.customerId },
     {
@@ -201,11 +260,19 @@ export async function selectQuote(user: User, quoteId: string, input: SelectQuot
 }
 
 /** MANUAL MODE: operador confirma o sinal (com comprovante opcional). Cria o pedido. */
-export async function confirmDownPayment(user: User, requestId: string, proofDocumentId?: string | null) {
+export async function confirmDownPayment(
+  user: User,
+  requestId: string,
+  proofDocumentId?: string | null,
+) {
   assertWillmix(user);
   const store = getStore();
   const request = await store.get("requests", requestId);
-  if (!request || request.status !== "WAITING_DOWN_PAYMENT" || !request.selectedQuoteId) {
+  if (
+    !request ||
+    request.status !== "WAITING_DOWN_PAYMENT" ||
+    !request.selectedQuoteId
+  ) {
     throw new RequestError("invalid_status");
   }
   const [payment] = await store.list("payments", {
@@ -220,15 +287,26 @@ export async function confirmDownPayment(user: User, requestId: string, proofDoc
       proofDocumentId: proofDocumentId ?? payment.proofDocumentId,
     });
   }
-  await audit(user, "payment.confirm", "request", requestId, "Sinal confirmado (manual)");
+  await audit(
+    user,
+    "payment.confirm",
+    "request",
+    requestId,
+    "Sinal confirmado (manual)",
+  );
   return createOrderFromRequest(user, request);
 }
 
-async function createOrderFromRequest(user: User, request: Request): Promise<Order> {
+async function createOrderFromRequest(
+  user: User,
+  request: Request,
+): Promise<Order> {
   const store = getStore();
   const quote = await store.get("quotes", request.selectedQuoteId!);
   if (!quote) throw new RequestError("invalid_quote");
-  const product = request.productId ? await store.get("products", request.productId) : null;
+  const product = request.productId
+    ? await store.get("products", request.productId)
+    : null;
   const number = await store.nextNumber("order_number");
   const fobTotal = quote.price !== null ? quote.price * request.quantity : null;
 
@@ -262,25 +340,47 @@ async function createOrderFromRequest(user: User, request: Request): Promise<Ord
     unitPrice: quote.price,
   });
   await assignDefaultPartners(order);
-  await createStagesForOrder(await store.get("orders", order.id).then((o) => o ?? order));
+  await createStagesForOrder(
+    await store.get("orders", order.id).then((o) => o ?? order),
+  );
 
-  const [payment] = await store.list("payments", { filter: { requestId: request.id, direction: "customer_in" } });
-  if (payment) await store.update("payments", payment.id, { orderId: order.id });
+  const [payment] = await store.list("payments", {
+    filter: { requestId: request.id, direction: "customer_in" },
+  });
+  if (payment)
+    await store.update("payments", payment.id, { orderId: order.id });
 
   const sync = await getSankhyaAdapter().createOrder(order, [item]);
   await store.update("orders", order.id, {
     erpSyncStatus: sync.status === "synced" ? "synced" : "pending",
     erpNumber: sync.status === "synced" ? sync.erpNumber : null,
   });
-  await store.update("requests", request.id, { status: "ORDERED", orderId: order.id });
-  await audit(user, "order.create", "order", order.id, `Pedido #${number} criado a partir da solicitação`);
+  await store.update("requests", request.id, {
+    status: "ORDERED",
+    orderId: order.id,
+  });
+  await audit(
+    user,
+    "order.create",
+    "order",
+    order.id,
+    `Pedido #${number} criado a partir da solicitação`,
+  );
   await notify(
     { role: "customer", partyId: request.customerId },
-    { subject: `Pedido #${number} criado`, body: "Acompanhe a timeline do seu pedido.", link: `/app/orders/${order.id}` },
+    {
+      subject: `Pedido #${number} criado`,
+      body: "Acompanhe a timeline do seu pedido.",
+      link: `/app/orders/${order.id}`,
+    },
   );
   await notify(
     { role: "supplier", partyId: quote.supplierId },
-    { subject: `Order #${number} created`, body: "Complete the preparation checklist.", link: `/app/orders/${order.id}` },
+    {
+      subject: `Order #${number} created`,
+      body: "Complete the preparation checklist.",
+      link: `/app/orders/${order.id}`,
+    },
   );
   return (await store.get("orders", order.id)) ?? order;
 }
@@ -298,7 +398,9 @@ async function assignDefaultPartners(order: Order) {
     ["shipping_line", "shippingLineId"],
     ["carrier", "carrierId"],
   ] as const) {
-    const parties = await store.list("parties", { filter: { type, active: true } });
+    const parties = await store.list("parties", {
+      filter: { type, active: true },
+    });
     if (parties.length === 1) patch[field] = parties[0].id;
   }
   if (Object.keys(patch).length) await store.update("orders", order.id, patch);

@@ -1,4 +1,10 @@
-import type { Order, ProductLine, RequirementTemplate, Role, StageKey } from "@/lib/db/schema";
+import type {
+  Order,
+  ProductLine,
+  RequirementTemplate,
+  Role,
+  StageKey,
+} from "@/lib/db/schema";
 import { STAGE_KEYS } from "@/lib/db/schema";
 
 export interface StageTemplate {
@@ -19,11 +25,41 @@ export interface StageContext {
 
 /** Checklist padrão de preparação quando a linha de produto não define o seu. */
 export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
-  { key: "dieline", label: "Dieline", type: "file", required: true, role: "supplier" },
-  { key: "photo_pro", label: "Foto profissional", type: "photo", required: true, role: "supplier" },
-  { key: "weight", label: "Peso (kg)", type: "number", required: true, role: "supplier" },
-  { key: "photo_scale", label: "Foto na balança", type: "photo", required: true, role: "supplier" },
-  { key: "label", label: "Etiqueta", type: "file", required: true, role: "supplier" },
+  {
+    key: "dieline",
+    label: "Dieline",
+    type: "file",
+    required: true,
+    role: "supplier",
+  },
+  {
+    key: "photo_pro",
+    label: "Foto profissional",
+    type: "photo",
+    required: true,
+    role: "supplier",
+  },
+  {
+    key: "weight",
+    label: "Peso (kg)",
+    type: "number",
+    required: true,
+    role: "supplier",
+  },
+  {
+    key: "photo_scale",
+    label: "Foto na balança",
+    type: "photo",
+    required: true,
+    role: "supplier",
+  },
+  {
+    key: "label",
+    label: "Etiqueta",
+    type: "file",
+    required: true,
+    role: "supplier",
+  },
 ];
 
 export const STAGE_TEMPLATES: StageTemplate[] = [
@@ -39,7 +75,13 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         required: true,
         role: "operator",
       },
-      { key: "erp_number", label: "Número no Sankhya", type: "text", required: false, role: "operator" },
+      {
+        key: "erp_number",
+        label: "Número no Sankhya",
+        type: "text",
+        required: false,
+        role: "operator",
+      },
     ],
   },
   {
@@ -47,7 +89,9 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     responsibleRole: "supplier",
     partyField: "supplierId",
     requirements: ({ line }) =>
-      line?.requirements?.length ? line.requirements : DEFAULT_PREPARATION_REQUIREMENTS,
+      line?.requirements?.length
+        ? line.requirements
+        : DEFAULT_PREPARATION_REQUIREMENTS,
   },
   {
     key: "SUPPLIER_PAYMENT",
@@ -75,7 +119,13 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     responsibleRole: "supplier",
     partyField: "supplierId",
     requirements: ({ order, agencyValidationEnabled }) => [
-      { key: "art", label: "Arte da embalagem", type: "file", required: true, role: "supplier" },
+      {
+        key: "art",
+        label: "Arte da embalagem",
+        type: "file",
+        required: true,
+        role: "supplier",
+      },
       ...(agencyValidationEnabled && order.agencyId
         ? [
             {
@@ -94,10 +144,34 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     responsibleRole: "supplier",
     partyField: "supplierId",
     requirements: () => [
-      { key: "photo_unpacked", label: "Foto sem embalagem", type: "photo", required: true, role: "supplier" },
-      { key: "photo_packed", label: "Foto com embalagem", type: "photo", required: true, role: "supplier" },
-      { key: "photo_scale", label: "Foto na balança", type: "photo", required: true, role: "supplier" },
-      { key: "weight_measured", label: "Peso medido (kg)", type: "number", required: true, role: "supplier" },
+      {
+        key: "photo_unpacked",
+        label: "Foto sem embalagem",
+        type: "photo",
+        required: true,
+        role: "supplier",
+      },
+      {
+        key: "photo_packed",
+        label: "Foto com embalagem",
+        type: "photo",
+        required: true,
+        role: "supplier",
+      },
+      {
+        key: "photo_scale",
+        label: "Foto na balança",
+        type: "photo",
+        required: true,
+        role: "supplier",
+      },
+      {
+        key: "weight_measured",
+        label: "Peso medido (kg)",
+        type: "number",
+        required: true,
+        role: "supplier",
+      },
     ],
   },
   {
@@ -107,10 +181,34 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     requirements: ({ order }) => {
       const role: Role = order.shippingLineId ? "shipping_line" : "operator";
       return [
-        { key: "ship_date", label: "Data de embarque", type: "date", required: true, role },
-        { key: "eta", label: "Previsão de chegada", type: "date", required: true, role },
-        { key: "vessel", label: "Navio / viagem", type: "text", required: false, role },
-        { key: "bl", label: "Bill of Lading (BL)", type: "file", required: true, role },
+        {
+          key: "ship_date",
+          label: "Data de embarque",
+          type: "date",
+          required: true,
+          role,
+        },
+        {
+          key: "eta",
+          label: "Previsão de chegada",
+          type: "date",
+          required: true,
+          role,
+        },
+        {
+          key: "vessel",
+          label: "Navio / viagem",
+          type: "text",
+          required: false,
+          role,
+        },
+        {
+          key: "bl",
+          label: "Bill of Lading (BL)",
+          type: "file",
+          required: true,
+          role,
+        },
       ];
     },
   },
@@ -121,11 +219,41 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     requirements: ({ order }) => {
       const role: Role = order.brokerId ? "broker" : "operator";
       return [
-        { key: "process_number", label: "Número do processo", type: "text", required: true, role },
-        { key: "customs_docs", label: "Documentos aduaneiros", type: "file", required: true, role },
-        { key: "estimated_costs", label: "Custos previstos", type: "number", required: false, role },
-        { key: "actual_costs", label: "Custos realizados", type: "number", required: true, role },
-        { key: "release", label: "Liberação aduaneira", type: "confirm", required: true, role },
+        {
+          key: "process_number",
+          label: "Número do processo",
+          type: "text",
+          required: true,
+          role,
+        },
+        {
+          key: "customs_docs",
+          label: "Documentos aduaneiros",
+          type: "file",
+          required: true,
+          role,
+        },
+        {
+          key: "estimated_costs",
+          label: "Custos previstos",
+          type: "number",
+          required: false,
+          role,
+        },
+        {
+          key: "actual_costs",
+          label: "Custos realizados",
+          type: "number",
+          required: true,
+          role,
+        },
+        {
+          key: "release",
+          label: "Liberação aduaneira",
+          type: "confirm",
+          required: true,
+          role,
+        },
       ];
     },
   },
@@ -136,10 +264,34 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     requirements: ({ order }) => {
       const role: Role = order.carrierId ? "carrier" : "operator";
       return [
-        { key: "plate", label: "Placa do veículo", type: "text", required: true, role },
-        { key: "eta", label: "Previsão de entrega", type: "date", required: true, role },
-        { key: "status_update", label: "Situação do transporte", type: "text", required: false, role },
-        { key: "delivered", label: "Entrega realizada", type: "confirm", required: true, role },
+        {
+          key: "plate",
+          label: "Placa do veículo",
+          type: "text",
+          required: true,
+          role,
+        },
+        {
+          key: "eta",
+          label: "Previsão de entrega",
+          type: "date",
+          required: true,
+          role,
+        },
+        {
+          key: "status_update",
+          label: "Situação do transporte",
+          type: "text",
+          required: false,
+          role,
+        },
+        {
+          key: "delivered",
+          label: "Entrega realizada",
+          type: "confirm",
+          required: true,
+          role,
+        },
       ];
     },
   },
@@ -186,7 +338,8 @@ export const ROLE_PARTY_FIELD: Record<Role, PartyField | null> = {
   carrier: "carrierId",
 };
 
-export const stageTemplate = (key: StageKey) => STAGE_TEMPLATES.find((s) => s.key === key)!;
+export const stageTemplate = (key: StageKey) =>
+  STAGE_TEMPLATES.find((s) => s.key === key)!;
 export const stageIndex = (key: StageKey) => STAGE_KEYS.indexOf(key);
 export const nextStageKey = (key: StageKey): StageKey | null =>
   STAGE_KEYS[stageIndex(key) + 1] ?? null;

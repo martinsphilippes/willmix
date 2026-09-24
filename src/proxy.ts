@@ -8,7 +8,8 @@ const MEMORY_COOKIE = "wm_session";
  * A validação real acontece no servidor (getCurrentUser) em cada página e ação.
  */
 export function proxy(request: NextRequest) {
-  const has = request.cookies.has(APPWRITE_COOKIE) || request.cookies.has(MEMORY_COOKIE);
+  const has =
+    request.cookies.has(APPWRITE_COOKIE) || request.cookies.has(MEMORY_COOKIE);
   if (!has) {
     const url = new URL("/login", request.url);
     url.searchParams.set("next", request.nextUrl.pathname);

@@ -64,7 +64,8 @@ export async function notify(target: NotifyTarget, message: NotifyMessage) {
 }
 
 /** Atalho: avisa a equipe Willmix (admin e operadores). */
-export const notifyWillmix = (message: NotifyMessage) => notify({ role: WILLMIX_ROLES }, message);
+export const notifyWillmix = (message: NotifyMessage) =>
+  notify({ role: WILLMIX_ROLES }, message);
 
 async function resolveUsers(target: NotifyTarget): Promise<User[]> {
   const store = getStore();
@@ -85,7 +86,10 @@ async function resolveUsers(target: NotifyTarget): Promise<User[]> {
   return [...found.values()];
 }
 
-async function sendEmail(user: User, message: NotifyMessage): Promise<"sent" | "mock" | "failed"> {
+async function sendEmail(
+  user: User,
+  message: NotifyMessage,
+): Promise<"sent" | "mock" | "failed"> {
   // EXTERNAL DEPENDENCY PENDING: provedor de e-mail (ex.: Resend). Sem chave, modo mock.
   if (process.env.NODE_ENV !== "test") {
     console.info(`[email:mock] para ${user.email}: ${message.subject}`);
@@ -93,7 +97,10 @@ async function sendEmail(user: User, message: NotifyMessage): Promise<"sent" | "
   return "mock";
 }
 
-async function sendWhatsapp(user: User, message: NotifyMessage): Promise<"sent" | "mock" | "failed"> {
+async function sendWhatsapp(
+  user: User,
+  message: NotifyMessage,
+): Promise<"sent" | "mock" | "failed"> {
   // EXTERNAL DEPENDENCY PENDING: WhatsApp Business API. Modo mock.
   void user;
   void message;

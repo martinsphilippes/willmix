@@ -1,7 +1,17 @@
 import "server-only";
 
-import { getStore, type Document, type DocumentType, type User, type Visibility } from "@/lib/db";
-import { canViewOrder, canViewRequest, isWillmix } from "@/lib/auth/permissions";
+import {
+  getStore,
+  type Document,
+  type DocumentType,
+  type User,
+  type Visibility,
+} from "@/lib/db";
+import {
+  canViewOrder,
+  canViewRequest,
+  isWillmix,
+} from "@/lib/auth/permissions";
 import { audit } from "./audit";
 
 const MAX_BYTES = 30 * 1024 * 1024;
@@ -30,7 +40,11 @@ export interface UploadInput {
 }
 
 /** Upload com versionamento: um novo arquivo para o mesmo requisito mantém o anterior. */
-export async function uploadDocument(user: User, file: File, input: UploadInput): Promise<Document> {
+export async function uploadDocument(
+  user: User,
+  file: File,
+  input: UploadInput,
+): Promise<Document> {
   if (file.size === 0) throw new DocumentError("empty");
   if (file.size > MAX_BYTES) throw new DocumentError("too_large");
   const mime = file.type || "application/octet-stream";
@@ -68,7 +82,13 @@ export async function uploadDocument(user: User, file: File, input: UploadInput)
     uploadedByUserId: user.id,
     visibility: input.visibility ?? defaultVisibility(input.type),
   });
-  await audit(user, "document.upload", "document", doc.id, `${doc.type}: ${doc.name} v${version}`);
+  await audit(
+    user,
+    "document.upload",
+    "document",
+    doc.id,
+    `${doc.type}: ${doc.name} v${version}`,
+  );
   return doc;
 }
 
@@ -92,7 +112,10 @@ function defaultVisibility(type: DocumentType): Visibility {
 }
 
 /** Controle de acesso a arquivos: por pedido/solicitação e por visibilidade. */
-export async function canAccessDocument(user: User, doc: Document): Promise<boolean> {
+export async function canAccessDocument(
+  user: User,
+  doc: Document,
+): Promise<boolean> {
   if (isWillmix(user) || doc.uploadedByUserId === user.id) return true;
   const store = getStore();
   if (doc.orderId) {
