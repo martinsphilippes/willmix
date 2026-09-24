@@ -39,6 +39,7 @@ export async function ControlTower({
     { key: "transport", label: t("ct.transport") },
     { key: "overdue", label: t("ct.overdue"), tone: "danger" },
     { key: "problems", label: t("ct.problems"), tone: "warning" },
+    { key: "closed", label: t("ct.closed") },
   ];
   const selected =
     filter && filter in data.buckets

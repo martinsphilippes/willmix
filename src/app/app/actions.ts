@@ -379,6 +379,76 @@ export async function assignPartnerAction(form: FormData) {
   });
 }
 
+export async function registerCustomerPaymentAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const back = str(form, "back") || `/app/orders/${orderId}`;
+  await run(back, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const order = await store.get("orders", orderId);
+    if (!order) throw new Error("not_found");
+    const parsed = z
+      .object({
+        amount: z.number().positive(),
+        currency: z.string().length(3),
+        method: z.string().nullable(),
+        note: z.string().nullable(),
+      })
+      .parse({
+        amount: num(form, "amount"),
+        currency: (
+          str(form, "currency") ||
+          order.sellCurrency ||
+          "BRL"
+        ).toUpperCase(),
+        method: str(form, "method") || null,
+        note: str(form, "note") || null,
+      });
+    let proofDocumentId: string | null = null;
+    const proof = form.get("proof");
+    if (proof instanceof File && proof.size > 0) {
+      const doc = await uploadDocument(user, proof, {
+        orderId,
+        type: "proof",
+        visibility: "customer",
+      });
+      proofDocumentId = doc.id;
+    }
+    const now = new Date().toISOString();
+    const payment = await store.create("payments", {
+      orderId,
+      requestId: order.requestId,
+      direction: "customer_in",
+      amount: parsed.amount,
+      currency: parsed.currency,
+      fxRate: null,
+      method: parsed.method ?? "manual",
+      status: "confirmed",
+      proofDocumentId,
+      registeredByUserId: user.id,
+      confirmedByUserId: user.id,
+      confirmedAt: now,
+      note: parsed.note,
+    });
+    await audit(
+      user,
+      "payment.customer",
+      "payment",
+      payment.id,
+      `${parsed.currency} ${parsed.amount}`,
+    );
+    await notify(
+      { role: "customer", partyId: order.customerId },
+      {
+        subject: `Pedido #${order.number}: pagamento registrado`,
+        body: `${parsed.currency} ${parsed.amount.toFixed(2)} recebido pela Wellmix.`,
+        link: `/app/orders/${orderId}`,
+      },
+    );
+  });
+}
+
 export async function registerSupplierPaymentAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");

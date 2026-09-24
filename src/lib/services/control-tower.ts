@@ -42,6 +42,7 @@ export interface TowerData {
     transport: TowerRow[];
     overdue: TowerRow[];
     problems: TowerRow[];
+    closed: TowerRow[];
   };
   exceptions: TowerException[];
 }
@@ -93,6 +94,22 @@ export async function loadControlTower(): Promise<TowerData> {
         link: `/app/orders/${o.id}`,
       };
     });
+
+  const closedRows: TowerRow[] = orders
+    .filter((o) => o.status === "CLOSED")
+    .map((o) => ({
+      id: o.id,
+      number: `#${o.number}`,
+      customer: partyName(o.customerId),
+      product: productOf(o),
+      stageKey: o.status,
+      requestStatus: null,
+      responsible: null,
+      dueAt: o.closedAt,
+      overdue: false,
+      blocked: false,
+      link: `/app/orders/${o.id}`,
+    }));
 
   const requestRows: TowerRow[] = requests.map((r) => ({
     id: r.id,
@@ -179,6 +196,7 @@ export async function loadControlTower(): Promise<TowerData> {
   return {
     buckets: {
       active: rows,
+      closed: closedRows,
       requestsOpen: requestRows,
       waitingSupplier: rows
         .filter((r) => r.responsible === "supplier")

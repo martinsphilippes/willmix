@@ -27,6 +27,7 @@ function navFor(role: Role, admin: boolean): NavItem[] {
       { href: "/app/parties", key: "nav.parties" },
       { href: "/app/products", key: "nav.products" },
       { href: "/app/lines", key: "nav.lines" },
+      { href: "/app/finance", key: "nav.finance" },
       { href: "/app/penalties", key: "nav.penalties" },
       { href: "/app/notifications", key: "nav.notifications" },
       ...(admin
