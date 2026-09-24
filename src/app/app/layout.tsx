@@ -6,6 +6,8 @@ import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES } from "@/i18n";
 import { LOCALES, type Role } from "@/lib/db/schema";
 import { LogoutButton } from "@/components/logout-button";
+import { DemoSwitcher } from "@/components/demo-switcher";
+import { DEMO_PASSWORD, DEMO_USERS } from "@/lib/seed";
 import { setLocaleAction } from "./actions";
 import { dataMode } from "@/lib/env";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -52,6 +54,9 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const t = await getT();
   const locale = await getLocale();
   const nav = navFor(user.role, isAdmin(user));
+  const showDemo =
+    dataMode() === "memory" ||
+    process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "1";
 
   return (
     <div className="flex min-h-full flex-col">
@@ -93,6 +98,17 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
               {user.name}
               {isWillmix(user) ? "" : ` · ${t(`role.${user.role}`)}`}
             </span>
+            {showDemo ? (
+              <DemoSwitcher
+                accounts={DEMO_USERS.map((u) => ({
+                  email: u.email,
+                  label: `${t(`role.${u.role}`)} · ${u.name}`,
+                }))}
+                current={user.email}
+                password={DEMO_PASSWORD}
+                label={t("help.login.demo")}
+              />
+            ) : null}
             <LogoutButton label={t("nav.logout")} />
           </div>
         </div>
