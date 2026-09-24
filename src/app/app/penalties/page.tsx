@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWillmix } from "@/lib/auth/permissions";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -20,7 +20,7 @@ import { updatePenaltyStatusAction } from "../actions";
 export default async function PenaltiesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWillmix(user) || user.role === "legal")) redirect("/app");
+  if (!(isWellmix(user) || user.role === "legal")) redirect("/app");
   const t = await getT();
   const store = getStore();
   const [penalties, orders, parties] = await Promise.all([

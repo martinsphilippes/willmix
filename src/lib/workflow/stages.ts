@@ -20,7 +20,7 @@ export interface StageContext {
   order: Order;
   line: ProductLine | null;
   agencyValidationEnabled: boolean;
-  deliveryConfirmationMode: "CUSTOMER" | "WILLMIX" | "BOTH";
+  deliveryConfirmationMode: "CUSTOMER" | "WELLMIX" | "BOTH";
 }
 
 /** Checklist padrão de preparação quando a linha de produto não define o seu. */
@@ -305,7 +305,7 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         label: "Recebimento confirmado",
         type: "confirm",
         required: true,
-        role: deliveryConfirmationMode === "WILLMIX" ? "operator" : "customer",
+        role: deliveryConfirmationMode === "WELLMIX" ? "operator" : "customer",
       },
     ],
   },

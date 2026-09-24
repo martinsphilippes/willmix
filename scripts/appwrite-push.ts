@@ -50,8 +50,8 @@ async function ensureDatabase() {
     await tables.get({ databaseId });
   } catch (e) {
     if (!isNotFound(e)) throw e;
-    await tables.create({ databaseId, name: "Willmix" });
-    console.log("+ banco willmix");
+    await tables.create({ databaseId, name: "Wellmix" });
+    console.log("+ banco Wellmix (id willmix)");
   }
 }
 

@@ -9,10 +9,10 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { ForbiddenError, isWillmix } from "@/lib/auth/permissions";
+import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/services/audit";
-import { notify, notifyWillmix } from "@/lib/services/notifications";
+import { notify, notifyWellmix } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { ROLE_PARTY_FIELD, STAGE_TEMPLATES, nextStageKey } from "./stages";
 
@@ -90,13 +90,13 @@ export interface SubmitInput {
   note?: string | null;
 }
 
-/** Quem pode preencher: Willmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
+/** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
 export function canSubmitRequirement(
   user: User,
   order: Order,
   requirement: Pick<Requirement, "role">,
 ): boolean {
-  if (isWillmix(user)) return true;
+  if (isWellmix(user)) return true;
   if (user.role !== requirement.role) return false;
   const partyField = ROLE_PARTY_FIELD[user.role];
   if (!partyField) return false;
@@ -193,7 +193,7 @@ export async function submitRequirement(
   return updated;
 }
 
-/** Aprova ou reprova um requisito do tipo approval (agência, revisão Willmix). */
+/** Aprova ou reprova um requisito do tipo approval (agência, revisão Wellmix). */
 export async function decideRequirement(
   user: User,
   requirementId: string,
@@ -305,7 +305,7 @@ async function checkWeightDivergence(
         orderId: order.id,
         stageId: stage.id,
         key: "inspection_review",
-        label: "Revisão da divergência de peso (Willmix)",
+        label: "Revisão da divergência de peso (Wellmix)",
         type: "approval",
         required: true,
         role: "operator",
@@ -324,7 +324,7 @@ async function checkWeightDivergence(
       });
     }
     await audit(user, "inspection.divergence", "order", order.id, reason);
-    await notifyWillmix({
+    await notifyWellmix({
       subject: `Pedido #${order.number}: revisão necessária na inspeção`,
       body: reason,
       link: `/app/orders/${order.id}`,
@@ -455,9 +455,9 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   );
 }
 
-/** Willmix pode reabrir a etapa ativa após uma revisão (ex.: inspeção). */
+/** Wellmix pode reabrir a etapa ativa após uma revisão (ex.: inspeção). */
 export async function unblockStage(user: User, stageId: string) {
-  if (!isWillmix(user)) throw new ForbiddenError();
+  if (!isWellmix(user)) throw new ForbiddenError();
   const store = getStore();
   await store.update("stages", stageId, {
     status: "active",

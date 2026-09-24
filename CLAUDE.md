@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Willmix
+# Wellmix
 
 Portal Operacional de Importações. Next.js 16 na Vercel; Appwrite em produção e modo memória para desenvolver e testar. Leia antes de codificar:
 

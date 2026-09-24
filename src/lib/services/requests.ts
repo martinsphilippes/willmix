@@ -3,14 +3,14 @@ import "server-only";
 import { getStore, type Order, type Request, type User } from "@/lib/db";
 import {
   ForbiddenError,
-  assertWillmix,
+  assertWellmix,
   canViewRequest,
-  isWillmix,
+  isWellmix,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
-import { notify, notifyWillmix } from "./notifications";
+import { notify, notifyWellmix } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 
 export class RequestError extends Error {}
@@ -27,7 +27,7 @@ export interface CreateRequestInput {
   notes?: string | null;
 }
 
-/** Cliente cria para si; Willmix cria em nome de qualquer cliente. Mesmo formulário e fluxo. */
+/** Cliente cria para si; Wellmix cria em nome de qualquer cliente. Mesmo formulário e fluxo. */
 export async function createRequest(
   user: User,
   input: CreateRequestInput,
@@ -37,7 +37,7 @@ export async function createRequest(
   if (user.role === "customer") {
     if (!settings.customerCanCreateRequest) throw new ForbiddenError();
     if (input.customerId !== user.partyId) throw new ForbiddenError();
-  } else if (!isWillmix(user)) {
+  } else if (!isWellmix(user)) {
     throw new ForbiddenError();
   }
   const request = await store.create("requests", {
@@ -65,7 +65,7 @@ export async function createRequest(
     request.id,
     `Solicitação: ${request.productName}`,
   );
-  await notifyWillmix({
+  await notifyWellmix({
     subject: `Nova solicitação: ${request.productName}`,
     body: `${request.quantity} ${request.unit}. Abra a RFQ para os fornecedores.`,
     link: `/app/requests/${request.id}`,
@@ -73,13 +73,13 @@ export async function createRequest(
   return request;
 }
 
-/** Willmix seleciona fornecedores e abre a RFQ. Fornecedores recebem o link. */
+/** Wellmix seleciona fornecedores e abre a RFQ. Fornecedores recebem o link. */
 export async function openRfq(
   user: User,
   requestId: string,
   supplierIds: string[],
 ) {
-  assertWillmix(user);
+  assertWellmix(user);
   const store = getStore();
   const request = await store.get("requests", requestId);
   if (!request) throw new RequestError("not_found");
@@ -144,7 +144,7 @@ export async function answerQuote(
   const quote = await store.get("quotes", quoteId);
   if (!quote) throw new RequestError("not_found");
   if (!(
-    isWillmix(user) ||
+    isWellmix(user) ||
     (user.role === "supplier" && quote.supplierId === user.partyId)
   )) {
     throw new ForbiddenError();
@@ -171,7 +171,7 @@ export async function answerQuote(
     `${input.currency} ${input.price}, ${input.leadTimeDays} dias`,
   );
   if (request) {
-    await notifyWillmix({
+    await notifyWellmix({
       subject: `Cotação recebida: ${request.productName}`,
       body: `${input.currency} ${input.price.toFixed(2)}, prazo ${input.leadTimeDays} dias.`,
       link: `/app/requests/${request.id}`,
@@ -185,13 +185,13 @@ export interface SelectQuoteInput {
   downPaymentAmount?: number | null;
 }
 
-/** Willmix escolhe o fornecedor, define o valor ao cliente e o sinal. */
+/** Wellmix escolhe o fornecedor, define o valor ao cliente e o sinal. */
 export async function selectQuote(
   user: User,
   quoteId: string,
   input: SelectQuoteInput,
 ) {
-  assertWillmix(user);
+  assertWellmix(user);
   const store = getStore();
   const quote = await store.get("quotes", quoteId);
   if (!quote || quote.status !== "answered")
@@ -265,7 +265,7 @@ export async function confirmDownPayment(
   requestId: string,
   proofDocumentId?: string | null,
 ) {
-  assertWillmix(user);
+  assertWellmix(user);
   const store = getStore();
   const request = await store.get("requests", requestId);
   if (

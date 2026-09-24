@@ -1,5 +1,5 @@
 /**
- * Fonte única do esquema de dados do Portal Willmix.
+ * Fonte única do esquema de dados do Portal Wellmix.
  *
  * Usado por:
  * - MemoryStore (desenvolvimento e testes sem Appwrite);
@@ -170,7 +170,7 @@ export interface RequirementTemplate {
   label: string;
   type: RequirementType;
   required: boolean;
-  /** Papel que preenche o requisito. Willmix pode preencher qualquer um. */
+  /** Papel que preenche o requisito. Wellmix pode preencher qualquer um. */
   role: Role;
 }
 
@@ -203,7 +203,7 @@ export interface Request extends BaseRow {
   status: RequestStatus;
   selectedQuoteId: string | null;
   orderId: string | null;
-  /** Preço de venda ao cliente definido pela Willmix ao selecionar fornecedor. */
+  /** Preço de venda ao cliente definido pela Wellmix ao selecionar fornecedor. */
   sellPrice: number | null;
   sellCurrency: string | null;
   downPaymentAmount: number | null;
@@ -712,5 +712,9 @@ export const TABLES: Record<TableName, TableDef> = {
   },
 };
 
+/**
+ * ID do banco no Appwrite. Permanece "willmix" porque já está provisionado com
+ * dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar o banco.
+ */
 export const DATABASE_ID = "willmix";
 export const BUCKET_ID = "arquivos";

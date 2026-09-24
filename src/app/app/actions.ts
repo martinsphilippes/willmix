@@ -7,10 +7,10 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   assertRole,
-  assertWillmix,
+  assertWellmix,
   canViewOrder,
   isAdmin,
-  isWillmix,
+  isWellmix,
 } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -295,7 +295,7 @@ export async function assignPartnerAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const field = str(form, "field");
     const allowed = [
       "agencyId",
@@ -383,7 +383,7 @@ export async function registerSupplierPaymentAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const store = getStore();
     const order = await store.get("orders", orderId);
     if (!order) throw new Error("not_found");
@@ -473,7 +473,7 @@ export async function confirmSupplierPaymentAction(form: FormData) {
     const order = await store.get("orders", payment.orderId);
     if (!order) throw new Error("not_found");
     if (!(
-      isWillmix(user) ||
+      isWellmix(user) ||
       (user.role === "supplier" && order.supplierId === user.partyId)
     ))
       throw new Error("forbidden");
@@ -509,7 +509,7 @@ export async function createPenaltyAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const parsed = z
       .object({
         reason: z.string().min(2),
@@ -592,7 +592,7 @@ export async function savePartyAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "id");
   await run(id ? `/app/parties/${id}` : "/app/parties/new", async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const parsed = z
       .object({
         type: z.enum(PARTY_TYPES),
@@ -631,7 +631,7 @@ export async function createUserAction(form: FormData) {
   const partyId = str(form, "partyId") || null;
   const back = partyId ? `/app/parties/${partyId}` : "/app/parties";
   await run(back, async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const parsed = z
       .object({
         email: z.string().email(),
@@ -686,7 +686,7 @@ export async function createUserAction(form: FormData) {
 export async function saveProductAction(form: FormData) {
   const user = await requireUser();
   await run("/app/products", async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const parsed = z
       .object({
         lineId: z.string().min(1),
@@ -710,7 +710,7 @@ export async function saveProductAction(form: FormData) {
 export async function saveLineAction(form: FormData) {
   const user = await requireUser();
   await run("/app/lines", async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const name = str(form, "name");
     if (name.length < 2) throw new Error("invalid_name");
     const requirements = str(form, "requirements")
@@ -773,7 +773,7 @@ export async function importCsvAction(form: FormData) {
   const user = await requireUser();
   const entity = str(form, "entity");
   await run(`/app/import?entity=${entity}`, async () => {
-    assertWillmix(user);
+    assertWellmix(user);
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0)
       throw new Error("file_required");

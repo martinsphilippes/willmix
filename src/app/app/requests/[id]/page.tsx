@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { canSeeSupplier, isWillmix } from "@/lib/auth/permissions";
+import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getRequestForUser } from "@/lib/services/requests";
 import { getT } from "@/i18n/server";
@@ -40,12 +40,12 @@ export default async function RequestDetailPage({
   if (!request) notFound();
   const t = await getT();
   const store = getStore();
-  const willmix = isWillmix(user);
+  const wellmix = isWellmix(user);
 
   const [customer, quotes, suppliers, documents, payments] = await Promise.all([
     store.get("parties", request.customerId),
     store.list("quotes", { filter: { requestId: request.id } }),
-    willmix
+    wellmix
       ? store.list("parties", {
           filter: { type: "supplier", active: true },
           orderBy: "name",
@@ -71,7 +71,7 @@ export default async function RequestDetailPage({
             <Badge tone={request.status === "ORDERED" ? "success" : "info"}>
               {t(`reqStatusLabel.${request.status}`)}
             </Badge>
-            {willmix ? <span>{customer?.name}</span> : null}
+            {wellmix ? <span>{customer?.name}</span> : null}
           </span>
         }
         actions={
@@ -120,8 +120,8 @@ export default async function RequestDetailPage({
             ) : null}
           </Card>
 
-          {/* RFQ: Willmix escolhe fornecedores */}
-          {willmix &&
+          {/* RFQ: Wellmix escolhe fornecedores */}
+          {wellmix &&
           ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
             request.status,
           ) ? (
@@ -156,8 +156,8 @@ export default async function RequestDetailPage({
             </Card>
           ) : null}
 
-          {/* Comparação de cotações (só Willmix vê fornecedores e preços FOB) */}
-          {willmix && quotes.length > 0 ? (
+          {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
+          {wellmix && quotes.length > 0 ? (
             <Card title={t("requests.quotes.compare")}>
               <Table>
                 <thead>
@@ -363,7 +363,7 @@ export default async function RequestDetailPage({
                       ),
                     })}
                   </Alert>
-                  {willmix ? (
+                  {wellmix ? (
                     <form
                       action={confirmDownPaymentAction}
                       className="flex flex-wrap items-end gap-3"

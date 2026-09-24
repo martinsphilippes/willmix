@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const PASSWORD = "willmix123";
+const PASSWORD = "wellmix123";
 const png = {
   name: "foto.png",
   mimeType: "image/png",
@@ -87,8 +87,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   const requestUrl = page.url();
   await expect(page.getByText(/Solicitado/).first()).toBeVisible();
 
-  // 2. Willmix abre RFQ para dois fornecedores
-  await login(page, "operador@willmix.com");
+  // 2. Wellmix abre RFQ para dois fornecedores
+  await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
   await page.getByLabel(/Shenzhen Supplier A/).check();
   await page.getByLabel(/Guangzhou Supplier B/).check();
@@ -126,8 +126,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.getByRole("button", { name: /Send|Enviar/ }).click();
   await page.waitForLoadState("networkidle");
 
-  // 4. Willmix compara e seleciona A com preço ao cliente
-  await login(page, "operador@willmix.com");
+  // 4. Wellmix compara e seleciona A com preço ao cliente
+  await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
   await expect(page.getByText("Shenzhen Supplier A").first()).toBeVisible();
   await expect(page.getByText("Guangzhou Supplier B").first()).toBeVisible();
@@ -147,15 +147,15 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.getByText("Shenzhen Supplier A")).toHaveCount(0);
   await expect(page.getByText(/FOB/)).toHaveCount(0);
 
-  // 6. Willmix confirma o sinal (manual) → pedido criado
-  await login(page, "operador@willmix.com");
+  // 6. Wellmix confirma o sinal (manual) → pedido criado
+  await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
   await page.getByRole("button", { name: /Confirmar sinal recebido/ }).click();
   await page.waitForURL(/\/app\/orders\/[^/]+$/);
   const orderUrl = page.url();
   await expect(page.getByText(/Pedido #\d+/).first()).toBeVisible();
 
-  // 7. ORDER_CREATED: operador confirma (Willmix pode preencher tudo; limitamos a 1 envio)
+  // 7. ORDER_CREATED: operador confirma (Wellmix pode preencher tudo; limitamos a 1 envio)
   await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
@@ -177,8 +177,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
       .first(),
   ).toContainText(/进行中|In progress|Em andamento/);
 
-  // 9. SUPPLIER_PAYMENT: Willmix registra pagamento, fornecedor confirma
-  await login(page, "operador@willmix.com");
+  // 9. SUPPLIER_PAYMENT: Wellmix registra pagamento, fornecedor confirma
+  await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
   await page
     .getByRole("button", { name: /Registrar pagamento ao fornecedor/ })
@@ -202,14 +202,14 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.getByRole("button", { name: /Aprovar/ }).click();
   await page.waitForLoadState("networkidle");
 
-  // 11. INSPECTION: peso divergente bloqueia; Willmix revisa
+  // 11. INSPECTION: peso divergente bloqueia; Wellmix revisa
   await login(page, "supplier.a@china.com");
   await fillMyRequirements(page, orderUrl, {
     重量: "15",
     weight: "15",
     peso: "15",
   });
-  await login(page, "operador@willmix.com");
+  await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
   await expect(page.getByText(/Revisão necessária/).first()).toBeVisible();
   await page.getByRole("button", { name: /Aprovar/ }).click();
@@ -236,8 +236,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   const res = await page.goto(orderUrl);
   expect(res?.status()).toBe(404);
 
-  // 15. Control Tower da Willmix carrega
-  await login(page, "admin@willmix.com");
+  // 15. Control Tower da Wellmix carrega
+  await login(page, "admin@wellmix.com");
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
 });

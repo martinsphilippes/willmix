@@ -135,7 +135,7 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect(canViewOrder(supplierA, order)).toBe(true);
     expect(canViewOrder(supplierB, order)).toBe(false);
 
-    // fornecedor não pode confirmar pedido (etapa da Willmix)
+    // fornecedor não pode confirmar pedido (etapa da Wellmix)
     const [created] = await store.list("stages", {
       filter: { orderId: order.id, key: "ORDER_CREATED" },
     });

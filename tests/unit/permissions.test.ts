@@ -112,7 +112,7 @@ describe("isolamento entre papéis", () => {
       sellPrice: 9000,
       sellCurrency: "BRL",
     });
-    // cliente não confirma o próprio sinal (modo manual é da Willmix)
+    // cliente não confirma o próprio sinal (modo manual é da Wellmix)
     await expect(confirmDownPayment(customer, request.id)).rejects.toThrow();
     const order = await confirmDownPayment(operator, request.id);
 

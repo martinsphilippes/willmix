@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getStore, type Role, type User } from "@/lib/db";
-import { WILLMIX_ROLES } from "@/lib/auth/permissions";
+import { WELLMIX_ROLES } from "@/lib/auth/permissions";
 
 export interface NotifyTarget {
   /** Usuários específicos. */
@@ -63,9 +63,9 @@ export async function notify(target: NotifyTarget, message: NotifyMessage) {
   return users.length;
 }
 
-/** Atalho: avisa a equipe Willmix (admin e operadores). */
-export const notifyWillmix = (message: NotifyMessage) =>
-  notify({ role: WILLMIX_ROLES }, message);
+/** Atalho: avisa a equipe Wellmix (admin e operadores). */
+export const notifyWellmix = (message: NotifyMessage) =>
+  notify({ role: WELLMIX_ROLES }, message);
 
 async function resolveUsers(target: NotifyTarget): Promise<User[]> {
   const store = getStore();

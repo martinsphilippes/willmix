@@ -5,7 +5,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
 
 /** Senha única de demonstração. Só existe no modo memória. */
-export const DEMO_PASSWORD = "willmix123";
+export const DEMO_PASSWORD = "wellmix123";
 
 export const DEMO_USERS: Array<{
   email: string;
@@ -15,14 +15,14 @@ export const DEMO_USERS: Array<{
   locale: "pt" | "en" | "zh";
 }> = [
   {
-    email: "admin@willmix.com",
+    email: "admin@wellmix.com",
     name: "Ana Admin",
     role: "admin",
     party: null,
     locale: "pt",
   },
   {
-    email: "operador@willmix.com",
+    email: "operador@wellmix.com",
     name: "Otávio Operador",
     role: "operator",
     party: null,
@@ -85,7 +85,7 @@ export const DEMO_USERS: Array<{
     locale: "pt",
   },
   {
-    email: "juridico@willmix.com",
+    email: "juridico@wellmix.com",
     name: "Júlia Jurídico",
     role: "legal",
     party: null,

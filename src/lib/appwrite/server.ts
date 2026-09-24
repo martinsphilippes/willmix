@@ -6,7 +6,7 @@ import { publicEnv, serverEnv } from "@/lib/env";
 
 /** Nome do cookie de sessão. Segue a convenção do Appwrite (a_session_<projectId>). */
 export function sessionCookieName() {
-  return `a_session_${publicEnv?.NEXT_PUBLIC_APPWRITE_PROJECT_ID ?? "willmix"}`;
+  return `a_session_${publicEnv?.NEXT_PUBLIC_APPWRITE_PROJECT_ID ?? "wellmix"}`;
 }
 
 function baseClient(): Client {

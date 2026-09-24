@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import {
   canSeeSupplier,
   canViewOrder,
-  isWillmix,
+  isWellmix,
 } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -50,7 +50,7 @@ export default async function OrdersPage() {
             <tr>
               <Th>#</Th>
               <Th>{t("common.product")}</Th>
-              {user.role !== "customer" && isWillmix(user) ? (
+              {user.role !== "customer" && isWellmix(user) ? (
                 <Th>{t("common.customer")}</Th>
               ) : null}
               {canSeeSupplier(user) && user.role !== "supplier" ? (
@@ -76,7 +76,7 @@ export default async function OrdersPage() {
                     </Link>
                   </Td>
                   <Td>{items.find((i) => i.orderId === o.id)?.name ?? "—"}</Td>
-                  {user.role !== "customer" && isWillmix(user) ? (
+                  {user.role !== "customer" && isWellmix(user) ? (
                     <Td>{name(o.customerId)}</Td>
                   ) : null}
                   {canSeeSupplier(user) && user.role !== "supplier" ? (

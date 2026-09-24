@@ -7,7 +7,7 @@ import {
   canSeeSellPrice,
   canSeeSupplier,
   canViewOrder,
-  isWillmix,
+  isWellmix,
 } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -67,7 +67,7 @@ export default async function OrderPage({
   const { order, stages, requirements } = progress;
   const t = await getT();
   const store = getStore();
-  const willmix = isWillmix(user);
+  const wellmix = isWellmix(user);
 
   const [parties, items, documents, payments, penalties, users] =
     await Promise.all([
@@ -93,7 +93,7 @@ export default async function OrderPage({
     stages.find((s) => s.id === order.currentStageId) ?? null;
   const overdue = isOverdue(currentStage?.dueAt);
   const visiblePayments = payments.filter((p) =>
-    willmix
+    wellmix
       ? true
       : user.role === "customer"
         ? p.direction === "customer_in"
@@ -183,7 +183,7 @@ export default async function OrderPage({
 
           {stages
             .filter(
-              (s) => s.key !== "CLOSED" && (willmix || s.status !== "pending"),
+              (s) => s.key !== "CLOSED" && (wellmix || s.status !== "pending"),
             )
             .map((stage) => {
               const reqs = requirements.filter((r) => r.stageId === stage.id);
@@ -246,7 +246,7 @@ export default async function OrderPage({
                       ))}
                     </ul>
                   )}
-                  {stage.status === "blocked" && willmix ? (
+                  {stage.status === "blocked" && wellmix ? (
                     <form action={unblockStageAction} className="mt-3">
                       <input type="hidden" name="orderId" value={order.id} />
                       <input type="hidden" name="stageId" value={stage.id} />
@@ -255,7 +255,7 @@ export default async function OrderPage({
                       </SubmitButton>
                     </form>
                   ) : null}
-                  {stage.key === "SUPPLIER_PAYMENT" && open && willmix ? (
+                  {stage.key === "SUPPLIER_PAYMENT" && open && wellmix ? (
                     <form
                       action={registerSupplierPaymentAction}
                       className="mt-4 grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-4"
@@ -301,7 +301,7 @@ export default async function OrderPage({
             <DescriptionList
               items={[
                 ...(user.role !== "customer" &&
-                (willmix || user.role === "legal")
+                (wellmix || user.role === "legal")
                   ? [
                       [t("common.customer"), partyName(order.customerId)] as [
                         string,
@@ -333,7 +333,7 @@ export default async function OrderPage({
                       ] as [string, string],
                     ]
                   : []),
-                ...(willmix
+                ...(wellmix
                   ? [
                       [
                         t("orders.erp"),
@@ -346,14 +346,14 @@ export default async function OrderPage({
                 [t("common.date"), formatDate(order.createdAt)],
               ]}
             />
-            {willmix && order.erpSyncStatus === "pending" ? (
+            {wellmix && order.erpSyncStatus === "pending" ? (
               <p className="mt-3 text-xs text-amber-700">
                 {t("orders.erp.pending")}
               </p>
             ) : null}
           </Card>
 
-          {willmix ? (
+          {wellmix ? (
             <Card title={t("orders.partners")}>
               <div className="space-y-3">
                 {(
@@ -430,7 +430,7 @@ export default async function OrderPage({
                     ) : null}
                     {p.direction === "supplier_out" &&
                     p.status === "confirmed" &&
-                    (user.role === "supplier" || willmix) ? (
+                    (user.role === "supplier" || wellmix) ? (
                       <form
                         action={confirmSupplierPaymentAction}
                         className="mt-2"
@@ -478,7 +478,7 @@ export default async function OrderPage({
             )}
           </Card>
 
-          {willmix || user.role === "legal" || penalties.length > 0 ? (
+          {wellmix || user.role === "legal" || penalties.length > 0 ? (
             <Card title={t("orders.penalties")}>
               {penalties.length === 0 ? (
                 <p className="text-sm text-zinc-500">{t("penalties.empty")}</p>
@@ -505,7 +505,7 @@ export default async function OrderPage({
                   </li>
                 ))}
               </ul>
-              {willmix ? (
+              {wellmix ? (
                 <details className="mt-3">
                   <summary className="cursor-pointer text-sm font-medium">
                     {t("orders.penalty.new")}
@@ -569,7 +569,7 @@ export default async function OrderPage({
 }
 
 function canSeeDoc(user: User, d: Document) {
-  if (isWillmix(user)) return true;
+  if (isWellmix(user)) return true;
   if (d.visibility === "all") return true;
   if (d.visibility === "internal") return false;
   if (d.visibility === "customer") return user.role === "customer";

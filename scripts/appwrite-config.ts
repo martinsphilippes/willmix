@@ -75,7 +75,7 @@ const tables = (Object.keys(TABLES) as TableName[]).map((name) => {
 const config = {
   projectId: existing.projectId ?? "<PROJECT_ID>",
   endpoint: existing.endpoint ?? "https://<REGION>.cloud.appwrite.io/v1",
-  tablesDB: [{ $id: DATABASE_ID, name: "Willmix", enabled: true }],
+  tablesDB: [{ $id: DATABASE_ID, name: "Wellmix", enabled: true }],
   tables,
   buckets: [
     {

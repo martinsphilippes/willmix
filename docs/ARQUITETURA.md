@@ -2,11 +2,11 @@
 
 ## 1. Problema
 
-A Wellmix importa utilidades domésticas, brinquedos, infláveis e decoração de fornecedores na China e vende B2B. Hoje o processo roda em Excel e e-mail: o fornecedor recebe planilha, preenche, devolve; um funcionário confere, relança e cobra o próximo responsável. A Willmix vira a cobradora do processo.
+A Wellmix importa utilidades domésticas, brinquedos, infláveis e decoração de fornecedores na China e vende B2B. Hoje o processo roda em Excel e e-mail: o fornecedor recebe planilha, preenche, devolve; um funcionário confere, relança e cobra o próximo responsável. A Wellmix vira a cobradora do processo.
 
 ## 2. Objetivo
 
-Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, salva. A etapa completa, o portal avança e o próximo responsável é avisado. A Willmix acompanha tudo pela Control Tower. O Sankhya continua sendo o ERP: o portal cuida do fluxo, não do faturamento.
+Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, salva. A etapa completa, o portal avança e o próximo responsável é avisado. A Wellmix acompanha tudo pela Control Tower. O Sankhya continua sendo o ERP: o portal cuida do fluxo, não do faturamento.
 
 ## 3. Decisões técnicas
 
@@ -15,16 +15,16 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 | Front e API            | Next.js 16 App Router, Server Components e Actions | Um só deploy na Vercel (`gru1`); toda escrita passa pelo servidor com zod e checagem de papel     |
 | Backend gerenciado     | Appwrite Cloud (Auth, TablesDB, Storage)           | Auth, banco e arquivos em um serviço, com console simples                                         |
 | Camada de dados        | `Store` com MemoryStore e AppwriteStore            | Desenvolver e testar sem credenciais; produção no Appwrite. Esquema único em `schema.ts`          |
-| Autorização            | Server-side, por papel e parceiro                  | Cliente não vê outro cliente, fornecedor não vê outro fornecedor nem margem; Willmix vê tudo      |
+| Autorização            | Server-side, por papel e parceiro                  | Cliente não vê outro cliente, fornecedor não vê outro fornecedor nem margem; Wellmix vê tudo      |
 | Permissões no Appwrite | Tabelas sem permissão de usuário (só API key)      | Simplifica: leitura e escrita sempre pelo servidor. Permissão de linha fica como hardening futuro |
-| Workflow               | Etapas e requisitos em tabelas, engine simples     | Flexível o bastante para a Willmix sem motor BPMN                                                 |
+| Workflow               | Etapas e requisitos em tabelas, engine simples     | Flexível o bastante para a Wellmix sem motor BPMN                                                 |
 | Integrações            | Adaptadores com modo manual/mock                   | Sankhya, boleto, e-mail e WhatsApp não bloqueiam o fluxo                                          |
 | i18n                   | Dicionários pt, en, zh em código                   | Fornecedores em chinês e inglês; sem plataforma de tradução                                       |
 | Testes                 | vitest (fluxo e permissões) e Playwright (E2E)     | Happy path garantido antes de aumentar cobertura                                                  |
 
 ## 4. Módulos
 
-1. Solicitações e RFQ (`services/requests.ts`): cliente ou Willmix cria; Willmix escolhe fornecedores; fornecedores cotam; Willmix seleciona e define valor e sinal; sinal confirmado manualmente cria o pedido.
+1. Solicitações e RFQ (`services/requests.ts`): cliente ou Wellmix cria; Wellmix escolhe fornecedores; fornecedores cotam; Wellmix seleciona e define valor e sinal; sinal confirmado manualmente cria o pedido.
 2. Pedidos e workflow (`workflow/`): etapas fixas, requisitos por etapa (checklist da linha na preparação), avanço automático, bloqueio por divergência de peso, aprovação de arte.
 3. Documentos (`services/documents.ts`): storage com metadados, versionamento, visibilidade e download controlado.
 4. Pendências e notificações (`services/tasks.ts`, `services/notifications.ts`, `services/reminders.ts`): o que cada um precisa fazer, avisos in-app, e-mail e WhatsApp (mock), lembretes por prazo.
