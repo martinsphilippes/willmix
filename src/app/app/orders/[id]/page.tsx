@@ -105,6 +105,8 @@ export default async function OrderPage({
   return (
     <>
       <PageHeader
+        help={{ body: "help.order.body", steps: "help.order.steps" }}
+        t={t}
         title={t("orders.number", { number: order.number })}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
@@ -221,6 +223,9 @@ export default async function OrderPage({
                     ) : null
                   }
                 >
+                  <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+                    {t(`help.stage.${stage.key}`)}
+                  </p>
                   {stage.status === "pending" ? (
                     <p className="text-sm text-zinc-500">
                       {reqs.map((r) => requirementLabel(t, r)).join(" · ")}

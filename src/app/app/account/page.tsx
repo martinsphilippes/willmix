@@ -55,7 +55,12 @@ export default async function AccountPage({
 
   return (
     <>
-      <PageHeader title={t("account.title")} subtitle={party?.name} />
+      <PageHeader
+        help={{ body: "help.account.body" }}
+        t={t}
+        title={t("account.title")}
+        subtitle={party?.name}
+      />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat
           label={t("common.total")}

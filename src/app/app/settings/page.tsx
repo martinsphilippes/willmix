@@ -28,7 +28,11 @@ export default async function SettingsPage({
 
   return (
     <>
-      <PageHeader title={t("settings.title")} />
+      <PageHeader
+        help={{ body: "help.settings.body" }}
+        t={t}
+        title={t("settings.title")}
+      />
       {ok ? <Alert tone="success">{t("settings.saved")}</Alert> : null}
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <Card className="mt-4 max-w-2xl">

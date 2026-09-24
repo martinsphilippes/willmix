@@ -22,6 +22,8 @@ export default async function NotificationsPage() {
   return (
     <>
       <PageHeader
+        help={{ body: "help.notifications.body" }}
+        t={t}
         title={t("notifications.title")}
         actions={
           unread > 0 ? (

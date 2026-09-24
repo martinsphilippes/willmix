@@ -31,7 +31,11 @@ export default async function PenaltiesPage() {
 
   return (
     <>
-      <PageHeader title={t("penalties.title")} />
+      <PageHeader
+        help={{ body: "help.penalties.body" }}
+        t={t}
+        title={t("penalties.title")}
+      />
       {penalties.length === 0 ? (
         <Empty>{t("penalties.empty")}</Empty>
       ) : (

@@ -38,7 +38,11 @@ export default async function LinesPage({
 
   return (
     <>
-      <PageHeader title={t("lines.title")} />
+      <PageHeader
+        help={{ body: "help.lines.body" }}
+        t={t}
+        title={t("lines.title")}
+      />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">

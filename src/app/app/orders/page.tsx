@@ -37,7 +37,11 @@ export default async function OrdersPage() {
 
   return (
     <>
-      <PageHeader title={t("orders.title")} />
+      <PageHeader
+        help={{ body: "help.orders.body" }}
+        t={t}
+        title={t("orders.title")}
+      />
       {visible.length === 0 ? (
         <Empty>{t("common.none")}</Empty>
       ) : (

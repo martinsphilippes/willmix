@@ -32,6 +32,8 @@ export default async function PartiesPage({
   return (
     <>
       <PageHeader
+        help={{ body: "help.parties.body", steps: "help.parties.steps" }}
+        t={t}
         title={t("parties.title")}
         actions={
           <>

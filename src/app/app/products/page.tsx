@@ -37,6 +37,8 @@ export default async function ProductsPage({
   return (
     <>
       <PageHeader
+        help={{ body: "help.products.body" }}
+        t={t}
         title={t("products.title")}
         actions={
           <LinkButton href="/app/import?entity=products">

@@ -49,6 +49,8 @@ export default async function PartyPage({
   return (
     <>
       <PageHeader
+        help={{ body: "help.party.body" }}
+        t={t}
         title={party.name}
         subtitle={<Badge>{t(`party.${party.type}`)}</Badge>}
         actions={

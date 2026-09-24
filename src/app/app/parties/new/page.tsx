@@ -15,7 +15,11 @@ export default async function NewPartyPage({
   const t = await getT();
   return (
     <>
-      <PageHeader title={t("parties.new")} />
+      <PageHeader
+        help={{ body: "help.parties.body" }}
+        t={t}
+        title={t("parties.new")}
+      />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <Card className="mt-4 max-w-2xl">
         <PartyForm t={t} />
