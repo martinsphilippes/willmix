@@ -16,6 +16,7 @@ import {
   Td,
   Textarea,
   Th,
+  rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveProductAction } from "../actions";
@@ -47,8 +48,8 @@ export default async function ProductsPage({
         }
       />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="mt-4 grid gap-6 lg:grid-cols-3">
+        <div className="min-w-0 lg:col-span-2">
           {products.length === 0 ? (
             <Empty>{t("common.none")}</Empty>
           ) : (
@@ -62,9 +63,15 @@ export default async function ProductsPage({
               </thead>
               <tbody>
                 {products.map((p) => (
-                  <tr key={p.id}>
-                    <Td className="font-medium">{p.name}</Td>
-                    <Td>{p.sku ?? "—"}</Td>
+                  <tr key={p.id} className={rowClass}>
+                    <Td className="font-medium">
+                      <span className="text-zinc-900">{p.name}</span>
+                    </Td>
+                    <Td>
+                      <span className="font-mono text-xs text-zinc-700">
+                        {p.sku ?? "—"}
+                      </span>
+                    </Td>
                     <Td>{lines.find((l) => l.id === p.lineId)?.name ?? "—"}</Td>
                   </tr>
                 ))}

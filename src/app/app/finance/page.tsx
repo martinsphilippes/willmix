@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -6,13 +5,16 @@ import { loadFinance } from "@/lib/services/finance";
 import { getT } from "@/i18n/server";
 import {
   Badge,
+  cx,
   Empty,
   PageHeader,
   Stat,
   Table,
   Td,
+  TextLink,
   Th,
   formatMoney,
+  rowClass,
 } from "@/components/ui";
 
 /** Financeiro: venda, recebimentos, custo, pagamentos e margem por pedido. Só Wellmix. */
@@ -35,7 +37,7 @@ export default async function FinancePage() {
         help={{ body: "help.finance.body", steps: "help.finance.steps" }}
         t={t}
       />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Stat
           label={t("finance.sold")}
           value={formatMoney(summary.sell, summary.currency)}
@@ -103,39 +105,46 @@ export default async function FinancePage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.order.id} className="hover:bg-zinc-50">
+                <tr key={r.order.id} className={rowClass}>
                   <Td>
-                    <Link
-                      href={`/app/orders/${r.order.id}`}
-                      className="font-medium underline"
-                    >
+                    <TextLink href={`/app/orders/${r.order.id}`}>
                       #{r.order.number}
-                    </Link>
-                    <div className="text-xs text-zinc-500">
+                    </TextLink>
+                    <div className="mt-0.5 text-xs text-zinc-500">
                       {t(`stage.${r.order.status}`)}
                     </div>
                   </Td>
                   <Td>{r.customerName}</Td>
                   <Td>{r.productName}</Td>
-                  <Td className="font-medium">
+                  <Td className="whitespace-nowrap font-semibold text-zinc-900">
                     {formatMoney(r.sell, r.sellCurrency)}
                   </Td>
-                  <Td>{formatMoney(r.received, r.sellCurrency)}</Td>
-                  <Td
-                    className={
-                      r.receivable > 0 ? "text-amber-700" : "text-emerald-700"
-                    }
-                  >
-                    {formatMoney(r.receivable, r.sellCurrency)}
+                  <Td className="whitespace-nowrap">
+                    {formatMoney(r.received, r.sellCurrency)}
                   </Td>
-                  <Td>{formatMoney(r.fob, r.fobCurrency)}</Td>
-                  <Td>{formatMoney(r.paid, r.fobCurrency)}</Td>
-                  <Td
-                    className={
-                      r.payable > 0 ? "text-amber-700" : "text-emerald-700"
-                    }
-                  >
-                    {formatMoney(r.payable, r.fobCurrency)}
+                  <Td className="whitespace-nowrap font-medium">
+                    <span
+                      className={
+                        r.receivable > 0 ? "text-amber-700" : "text-emerald-700"
+                      }
+                    >
+                      {formatMoney(r.receivable, r.sellCurrency)}
+                    </span>
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {formatMoney(r.fob, r.fobCurrency)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {formatMoney(r.paid, r.fobCurrency)}
+                  </Td>
+                  <Td className="whitespace-nowrap font-medium">
+                    <span
+                      className={
+                        r.payable > 0 ? "text-amber-700" : "text-emerald-700"
+                      }
+                    >
+                      {formatMoney(r.payable, r.fobCurrency)}
+                    </span>
                   </Td>
                   <Td>
                     {r.avgFx !== null
@@ -144,7 +153,7 @@ export default async function FinancePage() {
                         ? "1"
                         : "—"}
                   </Td>
-                  <Td>
+                  <Td className="whitespace-nowrap">
                     {r.cost !== null ? (
                       formatMoney(r.cost, r.sellCurrency)
                     ) : (
@@ -154,17 +163,13 @@ export default async function FinancePage() {
                       <span className="ml-1 text-xs text-zinc-500">~</span>
                     ) : null}
                   </Td>
-                  <Td
-                    className={
-                      r.margin !== null && r.margin < 0
-                        ? "text-red-700"
-                        : "text-zinc-900"
-                    }
-                  >
+                  <Td className="whitespace-nowrap font-semibold text-zinc-900">
                     {r.margin !== null ? (
                       <>
-                        {formatMoney(r.margin, r.sellCurrency)}
-                        <div className="text-xs text-zinc-500">
+                        <span className={cx(r.margin < 0 && "text-red-700")}>
+                          {formatMoney(r.margin, r.sellCurrency)}
+                        </span>
+                        <div className="text-xs font-normal text-zinc-500">
                           {r.marginPct?.toFixed(1)}%
                         </div>
                       </>

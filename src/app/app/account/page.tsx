@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -11,9 +10,11 @@ import {
   Stat,
   Table,
   Td,
+  TextLink,
   Th,
   formatDate,
   formatMoney,
+  linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { confirmSupplierPaymentAction } from "../actions";
@@ -85,32 +86,33 @@ export default async function AccountPage({
           <Table>
             <thead>
               <tr>
-                <Th>{t("account.order")}</Th>
+                <Th className="whitespace-nowrap">{t("account.order")}</Th>
                 <Th>{t("common.date")}</Th>
                 <Th>{t("orders.value")}</Th>
-                <Th>Câmbio</Th>
+                <Th>{t("finance.fx")}</Th>
                 <Th>{t("common.status")}</Th>
                 <Th />
               </tr>
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.id} className="bg-zinc-50">
+                <tr key={o.id} className="bg-zinc-50/80">
                   <Td>
-                    <Link
-                      href={`/app/orders/${o.id}`}
-                      className="font-medium underline"
-                    >
+                    <TextLink href={`/app/orders/${o.id}`}>
                       #{o.number}
-                    </Link>
+                    </TextLink>
                   </Td>
-                  <Td>{formatDate(o.createdAt)}</Td>
-                  <Td className="font-medium">
+                  <Td className="whitespace-nowrap">
+                    {formatDate(o.createdAt)}
+                  </Td>
+                  <Td className="whitespace-nowrap font-semibold text-zinc-900">
                     {formatMoney(o.fobTotal, o.fobCurrency)}
                   </Td>
                   <Td>—</Td>
-                  <Td>
-                    <Badge tone="info">{t(`stage.${o.status}`)}</Badge>
+                  <Td className="whitespace-nowrap">
+                    <Badge tone={o.status === "CLOSED" ? "success" : "neutral"}>
+                      {t(`stage.${o.status}`)}
+                    </Badge>
                   </Td>
                   <Td />
                 </tr>
@@ -119,17 +121,23 @@ export default async function AccountPage({
                 const order = orders.find((o) => o.id === p.orderId);
                 return (
                   <tr key={p.id}>
-                    <Td className="pl-6 text-zinc-500">#{order?.number}</Td>
-                    <Td>{formatDate(p.createdAt)}</Td>
-                    <Td className="text-emerald-700">
-                      − {formatMoney(p.amount, p.currency)}
+                    <Td className="pl-6">
+                      <span className="text-zinc-500">#{order?.number}</span>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {formatDate(p.createdAt)}
+                    </Td>
+                    <Td className="whitespace-nowrap font-medium">
+                      <span className="text-emerald-700">
+                        − {formatMoney(p.amount, p.currency)}
+                      </span>
                     </Td>
                     <Td>{p.fxRate ?? "—"}</Td>
-                    <Td>
+                    <Td className="whitespace-nowrap">
                       <Badge
                         tone={p.status === "received" ? "success" : "warning"}
                       >
-                        {p.status}
+                        {t(`paymentStatus.${p.status}`)}
                       </Badge>
                     </Td>
                     <Td>
@@ -137,7 +145,7 @@ export default async function AccountPage({
                         {p.proofDocumentId ? (
                           <a
                             href={`/api/files/${p.proofDocumentId}`}
-                            className="text-xs underline"
+                            className={`${linkClass} text-xs`}
                             target="_blank"
                           >
                             {t("requests.payment.proof")}

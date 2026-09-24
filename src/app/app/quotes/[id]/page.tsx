@@ -12,7 +12,9 @@ import {
   Input,
   PageHeader,
   Textarea,
+  cx,
   formatDate,
+  linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { answerQuoteAction } from "../../actions";
@@ -50,7 +52,9 @@ export default async function QuotePage({
                 ? "success"
                 : quote.status === "rejected"
                   ? "neutral"
-                  : "info"
+                  : quote.status === "invited"
+                    ? "neutral"
+                    : "info"
             }
           >
             {t(`quoteStatus.${quote.status}`)}
@@ -70,7 +74,7 @@ export default async function QuotePage({
             ]}
           />
           {documents.length > 0 ? (
-            <ul className="mt-3 flex flex-wrap gap-2 text-sm">
+            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">
               {documents
                 .filter(
                   (d) =>
@@ -80,7 +84,7 @@ export default async function QuotePage({
                   <li key={d.id}>
                     <a
                       href={`/api/files/${d.id}`}
-                      className="underline"
+                      className={linkClass}
                       target="_blank"
                     >
                       {d.name}
@@ -90,71 +94,79 @@ export default async function QuotePage({
             </ul>
           ) : null}
         </Card>
-        <Card title={t("quotes.answer")}>
-          {quote.status === "selected" ? (
-            <Alert tone="success">{t("quotes.selected")}</Alert>
-          ) : null}
-          {quote.status === "rejected" ? (
-            <Alert tone="neutral">{t("quotes.rejected")}</Alert>
-          ) : null}
-          {quote.status === "answered" ? (
-            <Alert tone="info">{t("quotes.answered")}</Alert>
-          ) : null}
-          {canAnswer ? (
-            <form action={answerQuoteAction} className="mt-3 space-y-3">
-              <input type="hidden" name="quoteId" value={quote.id} />
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={`${t("common.price")} / ${request.unit}`}>
-                  <Input
-                    name="price"
-                    type="number"
-                    step="0.0001"
-                    min="0"
-                    required
-                    defaultValue={quote.price ?? ""}
-                  />
-                </Field>
-                <Field label={t("common.currency")}>
-                  <Input
-                    name="currency"
-                    maxLength={3}
-                    defaultValue={quote.currency ?? "USD"}
-                    required
-                  />
-                </Field>
-              </div>
-              <Field label={t("common.leadTime")}>
-                <Input
-                  name="leadTimeDays"
-                  type="number"
-                  min="1"
-                  required
-                  defaultValue={quote.leadTimeDays ?? ""}
-                />
-              </Field>
-              <Field label={t("common.conditions")}>
-                <Textarea
-                  name="conditions"
-                  defaultValue={quote.conditions ?? ""}
-                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
-                />
-              </Field>
-              <SubmitButton>{t("common.send")}</SubmitButton>
-            </form>
-          ) : (
-            <DescriptionList
-              items={[
-                [
-                  t("common.price"),
-                  quote.price !== null
-                    ? `${quote.currency} ${quote.price}`
-                    : "—",
-                ],
-                [t("common.leadTime"), quote.leadTimeDays],
-                [t("common.conditions"), quote.conditions],
-              ]}
-            />
+        <Card
+          title={t("quotes.answer")}
+          className={cx(
+            quote.status === "invited" &&
+              "border-brand-300! ring-4 ring-brand-50",
           )}
+        >
+          <div className="space-y-4">
+            {quote.status === "selected" ? (
+              <Alert tone="success">{t("quotes.selected")}</Alert>
+            ) : null}
+            {quote.status === "rejected" ? (
+              <Alert tone="neutral">{t("quotes.rejected")}</Alert>
+            ) : null}
+            {quote.status === "answered" ? (
+              <Alert tone="info">{t("quotes.answered")}</Alert>
+            ) : null}
+            {canAnswer ? (
+              <form action={answerQuoteAction} className="space-y-3">
+                <input type="hidden" name="quoteId" value={quote.id} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label={`${t("common.price")} / ${request.unit}`}>
+                    <Input
+                      name="price"
+                      type="number"
+                      step="0.0001"
+                      min="0"
+                      required
+                      defaultValue={quote.price ?? ""}
+                    />
+                  </Field>
+                  <Field label={t("common.currency")}>
+                    <Input
+                      name="currency"
+                      maxLength={3}
+                      defaultValue={quote.currency ?? "USD"}
+                      required
+                    />
+                  </Field>
+                </div>
+                <Field label={t("common.leadTime")}>
+                  <Input
+                    name="leadTimeDays"
+                    type="number"
+                    min="1"
+                    required
+                    defaultValue={quote.leadTimeDays ?? ""}
+                  />
+                </Field>
+                <Field label={t("common.conditions")}>
+                  <Textarea
+                    name="conditions"
+                    defaultValue={quote.conditions ?? ""}
+                    placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                  />
+                </Field>
+                <SubmitButton>{t("common.send")}</SubmitButton>
+              </form>
+            ) : (
+              <DescriptionList
+                items={[
+                  [
+                    t("common.price"),
+                    quote.price !== null
+                      ? `${quote.currency} ${quote.price}`
+                      : "—",
+                  ],
+                  [t("common.leadTime"), quote.leadTimeDays],
+                  [t("common.conditions"), quote.conditions],
+                ]}
+              />
+            )}
+          </div>
         </Card>
       </div>
     </>

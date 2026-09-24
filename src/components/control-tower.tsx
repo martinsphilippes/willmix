@@ -1,17 +1,20 @@
-import Link from "next/link";
 import type { User } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { loadControlTower } from "@/lib/services/control-tower";
 import {
   Badge,
   Card,
+  cx,
   Empty,
   PageHeader,
   Stat,
   Table,
   Td,
+  TextLink,
   Th,
   formatDate,
+  rowClass,
+  stageTone,
 } from "./ui";
 
 export async function ControlTower({
@@ -63,13 +66,14 @@ export async function ControlTower({
             value={data.buckets[c.key].length}
             href={`/app?filter=${c.key}`}
             tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
+            active={c.key === selected}
           />
         ))}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card
-          className="lg:col-span-2"
+          className="min-w-0 lg:col-span-2"
           title={cards.find((c) => c.key === selected)?.label}
         >
           {rows.length === 0 ? (
@@ -88,26 +92,39 @@ export async function ControlTower({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-zinc-50">
+                  <tr key={row.id} className={rowClass}>
                     <Td>
-                      <Link href={row.link} className="font-medium underline">
-                        {row.number}
-                      </Link>
+                      <TextLink href={row.link}>{row.number}</TextLink>
                     </Td>
                     <Td>{row.customer}</Td>
                     <Td>{row.product}</Td>
-                    <Td>
-                      <Badge tone={row.blocked ? "danger" : "info"}>
+                    <Td className="whitespace-nowrap">
+                      <Badge
+                        tone={stageTone(
+                          row.stageKey === "CLOSED"
+                            ? "done"
+                            : row.blocked
+                              ? "blocked"
+                              : "active",
+                        )}
+                      >
                         {row.stageKey
                           ? t(`stage.${row.stageKey}`)
                           : t(`reqStatusLabel.${row.requestStatus!}`)}
+                        {row.blocked ? ` · ${t("stageStatus.blocked")}` : ""}
                       </Badge>
                     </Td>
                     <Td>
                       {row.responsible ? t(`role.${row.responsible}`) : "—"}
                     </Td>
-                    <Td className={row.overdue ? "text-red-600" : ""}>
-                      {formatDate(row.dueAt)}
+                    <Td className="whitespace-nowrap">
+                      <span
+                        className={cx(
+                          row.overdue && "font-semibold text-red-700",
+                        )}
+                      >
+                        {formatDate(row.dueAt)}
+                      </span>
                     </Td>
                   </tr>
                 ))}
@@ -115,7 +132,7 @@ export async function ControlTower({
             </Table>
           )}
         </Card>
-        <Card title={t("ct.exceptions")}>
+        <Card className="min-w-0" title={t("ct.exceptions")}>
           {data.exceptions.length === 0 ? (
             <Empty>{t("common.none")}</Empty>
           ) : (
@@ -123,20 +140,17 @@ export async function ControlTower({
               {data.exceptions.map((e, i) => (
                 <li
                   key={i}
-                  className="flex items-start justify-between gap-2 rounded-md border border-zinc-100 p-2"
+                  className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 p-3"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <Badge tone={e.severity === "high" ? "danger" : "warning"}>
                       {t(`ct.exception.${e.kind}`)}
                     </Badge>
-                    <p className="mt-1 text-zinc-700">{e.detail}</p>
+                    <p className="mt-1.5 text-zinc-700">{e.detail}</p>
                   </div>
-                  <Link
-                    href={e.link}
-                    className="whitespace-nowrap text-xs font-medium underline"
-                  >
+                  <TextLink href={e.link} className="whitespace-nowrap text-xs">
                     {t("tasks.open")}
-                  </Link>
+                  </TextLink>
                 </li>
               ))}
             </ul>

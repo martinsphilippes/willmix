@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { twMerge } from "tailwind-merge";
 import type { Translate } from "@/i18n";
 import { PageHelp, type HelpSpec } from "./page-help";
 
@@ -13,8 +14,12 @@ import { PageHelp, type HelpSpec } from "./page-help";
  * - ação destrutiva usa contorno vermelho, nunca o mesmo botão cheio da ação principal.
  */
 
+/**
+ * Junta classes e resolve conflitos do Tailwind: a classe de quem usa o componente
+ * vence a do kit (ex.: <Td className="text-red-700"> troca a cor padrão da célula).
+ */
 export function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
+  return twMerge(...classes);
 }
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
@@ -78,7 +83,7 @@ export function Card({
   return (
     <section
       className={cx(
-        "rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5",
+        "min-w-0 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5",
         className,
       )}
     >
@@ -213,7 +218,7 @@ export function Table({
   return (
     <div
       className={cx(
-        "-mx-4 overflow-x-auto sm:mx-0 sm:rounded-xl sm:border sm:border-zinc-200/80 sm:bg-white",
+        "-mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
         className,
       )}
     >
@@ -331,7 +336,7 @@ export function Stat({
   const content = (
     <div
       className={cx(
-        "relative h-full overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition",
+        "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition",
         href && "hover:-translate-y-0.5 hover:shadow-md",
         active
           ? "border-brand-600 ring-2 ring-brand-600"
@@ -363,7 +368,7 @@ export function Stat({
       >
         {label}
       </div>
-      <div className="mt-1.5 text-2xl font-bold tracking-tight text-zinc-900">
+      <div className="mt-auto break-words pt-1.5 text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl">
         {value}
       </div>
     </div>
@@ -404,6 +409,21 @@ export function Progress({ percent }: { percent: number }) {
 }
 
 export type StepState = "done" | "active" | "blocked" | "pending";
+
+/**
+ * Tom do selo de etapa, igual em todas as telas: concluída verde, em andamento
+ * vermelho da marca, bloqueada âmbar (com o texto "Bloqueada"), não iniciada cinza.
+ * Vermelho de erro fica para o que está errado (atraso, reprovação), não para bloqueio.
+ */
+export function stageTone(state: StepState): Tone {
+  return state === "done"
+    ? "success"
+    : state === "blocked"
+      ? "warning"
+      : state === "active"
+        ? "brand"
+        : "neutral";
+}
 
 /** Marcador de etapa da linha do tempo (pedido, solicitação). */
 export function StepDot({
