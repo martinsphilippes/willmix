@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -13,7 +12,6 @@ import {
   getStore,
   type Document,
   type Requirement,
-  type Stage,
   type User,
 } from "@/lib/db";
 import { canSubmitRequirement, loadOrderProgress } from "@/lib/workflow/engine";
@@ -25,15 +23,22 @@ import {
   Badge,
   Card,
   DescriptionList,
+  Empty,
   Field,
   Input,
   PageHeader,
   Progress,
   Select,
+  StepDot,
   Textarea,
+  TextLink,
+  cx,
   formatDate,
   formatMoney,
   isOverdue,
+  linkClass,
+  rowClass,
+  stageTone,
 } from "@/components/ui";
 import { RequirementForm } from "@/components/requirement-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -45,16 +50,6 @@ import {
   registerSupplierPaymentAction,
   unblockStageAction,
 } from "../../actions";
-
-type Tone = "success" | "danger" | "info" | "neutral";
-const stageTone = (s: Stage): Tone =>
-  s.status === "done"
-    ? "success"
-    : s.status === "blocked"
-      ? "danger"
-      : s.status === "active"
-        ? "info"
-        : "neutral";
 
 export default async function OrderPage({
   params,
@@ -120,15 +115,18 @@ export default async function OrderPage({
                 .join("; ")}
             </span>
             <Badge
-              tone={
+              tone={stageTone(
                 order.status === "CLOSED"
-                  ? "success"
+                  ? "done"
                   : currentStage?.status === "blocked"
-                    ? "danger"
-                    : "info"
-              }
+                    ? "blocked"
+                    : "active",
+              )}
             >
               {t(`stage.${order.status}`)}
+              {currentStage?.status === "blocked"
+                ? ` · ${t("stageStatus.blocked")}`
+                : ""}
             </Badge>
             {overdue ? (
               <Badge tone="danger">{t("common.overdue")}</Badge>
@@ -143,7 +141,7 @@ export default async function OrderPage({
       ) : null}
       {currentStage?.status === "blocked" ? (
         <div className="mb-4">
-          <Alert tone="danger">
+          <Alert tone="warning">
             <strong>{t("orders.blocked")}:</strong> {currentStage.blockReason}
           </Alert>
         </div>
@@ -155,28 +153,34 @@ export default async function OrderPage({
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card title={t("orders.timeline")}>
-            <ol className="grid gap-2 sm:grid-cols-2">
+            <ol className="-mx-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
               {stages.map((s) => (
-                <li key={s.id} className="flex items-center gap-3 text-sm">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${s.status === "done" ? "bg-emerald-500 text-white" : s.status === "active" ? "bg-blue-500 text-white" : s.status === "blocked" ? "bg-red-500 text-white" : "bg-zinc-200 text-zinc-500"}`}
-                  >
-                    {s.status === "done"
-                      ? "✓"
-                      : s.status === "blocked"
-                        ? "!"
-                        : s.sequence + 1}
-                  </span>
+                <li
+                  key={s.id}
+                  className={cx(
+                    "flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm",
+                    s.status === "active" && "bg-brand-50",
+                    s.status === "blocked" && "bg-amber-50",
+                  )}
+                >
+                  <StepDot state={s.status}>{s.sequence + 1}</StepDot>
                   <a
                     href={`#stage-${s.id}`}
-                    className={
-                      s.status === "pending" ? "text-zinc-400" : "text-zinc-900"
-                    }
+                    className={cx(
+                      "transition hover:text-brand-700",
+                      s.status === "pending"
+                        ? "text-zinc-500"
+                        : s.status === "active"
+                          ? "font-semibold text-brand-800"
+                          : s.status === "blocked"
+                            ? "font-semibold text-amber-900"
+                            : "text-zinc-900",
+                    )}
                   >
                     {t(`stage.${s.key}`)}
                   </a>
                   {s.status === "active" || s.status === "blocked" ? (
-                    <span className="ml-auto text-xs text-zinc-500">
+                    <span className="ml-auto text-xs font-semibold tabular-nums text-zinc-600">
                       {s.percent}%
                     </span>
                   ) : null}
@@ -196,19 +200,29 @@ export default async function OrderPage({
               return (
                 <Card
                   key={stage.id}
-                  className={open ? "border-blue-200" : ""}
+                  className={cx(
+                    stage.status === "active" &&
+                      "border-brand-300! ring-4 ring-brand-50",
+                    stage.status === "blocked" &&
+                      "border-amber-400! ring-4 ring-amber-50",
+                  )}
                   title={
                     <span
                       id={`stage-${stage.id}`}
                       className="flex flex-wrap items-center gap-2"
                     >
                       {t(`stage.${stage.key}`)}
-                      <Badge tone={stageTone(stage)}>
+                      <Badge tone={stageTone(stage.status)}>
                         {t(`stageStatus.${stage.status}`)}
                       </Badge>
                       {open && stage.dueAt ? (
                         <span
-                          className={`text-xs font-normal ${isOverdue(stage.dueAt) ? "text-red-600" : "text-zinc-500"}`}
+                          className={cx(
+                            "text-xs",
+                            isOverdue(stage.dueAt)
+                              ? "font-semibold text-red-700"
+                              : "font-normal text-zinc-500",
+                          )}
                         >
                           {t("common.due")}: {formatDate(stage.dueAt)}
                         </span>
@@ -218,8 +232,12 @@ export default async function OrderPage({
                   actions={
                     open ? (
                       <span className="flex items-center gap-2 text-xs text-zinc-500">
-                        {t("common.responsible")}:{" "}
-                        {t(`role.${stage.responsibleRole}`)}
+                        <span>
+                          {t("common.responsible")}:{" "}
+                          <span className="font-semibold text-zinc-700">
+                            {t(`role.${stage.responsibleRole}`)}
+                          </span>
+                        </span>
                         <span className="w-24">
                           <Progress percent={stage.percent} />
                         </span>
@@ -227,7 +245,7 @@ export default async function OrderPage({
                     ) : null
                   }
                 >
-                  <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+                  <p className="mb-3 text-xs leading-relaxed text-zinc-500">
                     {t(`help.stage.${stage.key}`)}
                   </p>
                   {stage.status === "pending" ? (
@@ -255,14 +273,14 @@ export default async function OrderPage({
                       <input type="hidden" name="orderId" value={order.id} />
                       <input type="hidden" name="stageId" value={stage.id} />
                       <SubmitButton variant="secondary">
-                        {t("stageStatus.active")}
+                        {t("orders.unblock")}
                       </SubmitButton>
                     </form>
                   ) : null}
                   {stage.key === "SUPPLIER_PAYMENT" && open && wellmix ? (
                     <form
                       action={registerSupplierPaymentAction}
-                      className="mt-4 grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-4"
+                      className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
                     >
                       <input type="hidden" name="orderId" value={order.id} />
                       <Field label={t("orders.value")}>
@@ -282,13 +300,15 @@ export default async function OrderPage({
                           defaultValue={order.fobCurrency ?? "USD"}
                         />
                       </Field>
-                      <Field label="Câmbio">
+                      <Field label={t("finance.fx")}>
                         <Input name="fxRate" type="number" step="0.0001" />
                       </Field>
-                      <Field label={t("requests.payment.proof")}>
-                        <Input name="proof" type="file" />
-                      </Field>
-                      <div className="sm:col-span-4">
+                      <div className="sm:col-span-3">
+                        <Field label={t("requests.payment.proof")}>
+                          <Input name="proof" type="file" />
+                        </Field>
+                      </div>
+                      <div className="sm:col-span-3">
                         <SubmitButton>
                           {t("orders.registerPayment")}
                         </SubmitButton>
@@ -342,7 +362,9 @@ export default async function OrderPage({
                       [
                         t("orders.erp"),
                         order.erpNumber ?? (
-                          <Badge tone="warning">{order.erpSyncStatus}</Badge>
+                          <Badge tone="warning">
+                            {t(`erpStatus.${order.erpSyncStatus}`)}
+                          </Badge>
                         ),
                       ] as [string, ReactNode],
                     ]
@@ -375,18 +397,23 @@ export default async function OrderPage({
                   >
                     <input type="hidden" name="orderId" value={order.id} />
                     <input type="hidden" name="field" value={field} />
-                    <Field label={t(`party.${type}`)}>
-                      <Select name="partyId" defaultValue={order[field] ?? ""}>
-                        <option value="">—</option>
-                        {parties
-                          .filter((p) => p.type === type && p.active)
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                      </Select>
-                    </Field>
+                    <div className="min-w-0 flex-1">
+                      <Field label={t(`party.${type}`)}>
+                        <Select
+                          name="partyId"
+                          defaultValue={order[field] ?? ""}
+                        >
+                          <option value="">—</option>
+                          {parties
+                            .filter((p) => p.type === type && p.active)
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                        </Select>
+                      </Field>
+                    </div>
                     <SubmitButton variant="secondary">
                       {t("orders.assign")}
                     </SubmitButton>
@@ -480,7 +507,7 @@ export default async function OrderPage({
               {wellmix && finance.receivable > 0 ? (
                 <form
                   action={registerCustomerPaymentAction}
-                  className="mt-4 grid gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2"
+                  className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-2"
                 >
                   <input type="hidden" name="orderId" value={order.id} />
                   <Field label={t("orders.value")}>
@@ -500,12 +527,16 @@ export default async function OrderPage({
                       defaultValue={finance.sellCurrency}
                     />
                   </Field>
-                  <Field label={t("finance.method")}>
-                    <Input name="method" placeholder="PIX, boleto, TED" />
-                  </Field>
-                  <Field label={t("requests.payment.proof")}>
-                    <Input name="proof" type="file" />
-                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label={t("finance.method")}>
+                      <Input name="method" placeholder="PIX, boleto, TED" />
+                    </Field>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Field label={t("requests.payment.proof")}>
+                      <Input name="proof" type="file" />
+                    </Field>
+                  </div>
                   <div className="sm:col-span-2">
                     <SubmitButton>{t("finance.registerReceipt")}</SubmitButton>
                   </div>
@@ -520,19 +551,19 @@ export default async function OrderPage({
                 {visiblePayments.map((p) => (
                   <li
                     key={p.id}
-                    className="rounded-md border border-zinc-100 p-2"
+                    className="rounded-xl border border-zinc-200/80 p-3"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">
+                      <span className="font-semibold text-zinc-900">
                         {formatMoney(p.amount, p.currency)}
                       </span>
                       <Badge
                         tone={p.status === "pending" ? "warning" : "success"}
                       >
-                        {p.status}
+                        {t(`paymentStatus.${p.status}`)}
                       </Badge>
                     </div>
-                    <p className="text-xs text-zinc-500">
+                    <p className="mt-0.5 text-xs text-zinc-500">
                       {p.direction === "customer_in"
                         ? t("common.customer")
                         : t("common.supplier")}{" "}
@@ -544,7 +575,7 @@ export default async function OrderPage({
                     canSeeDoc(user, docById(p.proofDocumentId)!) ? (
                       <a
                         href={`/api/files/${p.proofDocumentId}`}
-                        className="text-xs underline"
+                        className={cx(linkClass, "mt-1 inline-block text-xs")}
                         target="_blank"
                       >
                         {t("requests.payment.proof")}
@@ -576,22 +607,25 @@ export default async function OrderPage({
 
           <Card title={t("orders.documents")}>
             {visibleDocs.length === 0 ? (
-              <p className="text-sm text-zinc-500">{t("common.none")}</p>
+              <Empty>{t("common.none")}</Empty>
             ) : (
-              <ul className="space-y-1 text-sm">
+              <ul className="-mx-2 space-y-0.5 text-sm">
                 {visibleDocs.map((d) => (
                   <li
                     key={d.id}
-                    className="flex items-center justify-between gap-2"
+                    className={cx(
+                      rowClass,
+                      "flex items-center justify-between gap-2 rounded-lg px-2 py-1",
+                    )}
                   >
                     <a
                       href={`/api/files/${d.id}`}
-                      className="truncate underline"
+                      className={cx(linkClass, "min-w-0 truncate")}
                       target="_blank"
                     >
                       {d.name}
                     </a>
-                    <span className="shrink-0 text-xs text-zinc-400">
+                    <span className="shrink-0 text-xs text-zinc-500">
                       {d.type} · v{d.version}
                     </span>
                   </li>
@@ -603,24 +637,24 @@ export default async function OrderPage({
           {wellmix || user.role === "legal" || penalties.length > 0 ? (
             <Card title={t("orders.penalties")}>
               {penalties.length === 0 ? (
-                <p className="text-sm text-zinc-500">{t("penalties.empty")}</p>
+                <Empty>{t("penalties.empty")}</Empty>
               ) : null}
               <ul className="space-y-2 text-sm">
                 {penalties.map((p) => (
                   <li
                     key={p.id}
-                    className="rounded-md border border-zinc-100 p-2"
+                    className="rounded-xl border border-zinc-200/80 p-3"
                   >
-                    <div className="flex justify-between">
-                      <span className="font-medium">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-zinc-900">
                         {formatMoney(p.amount, p.currency)}
                       </span>
                       <Badge tone={p.status === "open" ? "danger" : "neutral"}>
-                        {p.status}
+                        {t(`penaltyStatus.${p.status}`)}
                       </Badge>
                     </div>
-                    <p className="text-zinc-700">{p.reason}</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="mt-1 text-zinc-700">{p.reason}</p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
                       {t("orders.penalty.responsible")}:{" "}
                       {partyName(p.responsiblePartyId)}
                     </p>
@@ -629,7 +663,7 @@ export default async function OrderPage({
               </ul>
               {wellmix ? (
                 <details className="mt-3">
-                  <summary className="cursor-pointer text-sm font-medium">
+                  <summary className="cursor-pointer text-sm font-semibold text-brand-700 transition hover:text-brand-800">
                     {t("orders.penalty.new")}
                   </summary>
                   <form action={createPenaltyAction} className="mt-2 space-y-2">
@@ -735,36 +769,37 @@ function RequirementRow({
         ? "danger"
         : "neutral";
   return (
-    <li className="flex flex-col gap-2 py-2 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="min-w-0 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-zinc-900">
             {requirementLabel(t, r)}
           </span>
           {!r.required ? (
-            <span className="text-xs text-zinc-400">
+            <span className="text-xs text-zinc-500">
               ({t("reqStatus.optional")})
             </span>
           ) : null}
           <Badge tone={tone}>{t(`reqStatus.${r.status}`)}</Badge>
-          <span className="text-xs text-zinc-400">{t(`role.${r.role}`)}</span>
+          <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
         </div>
         {r.status !== "pending" ? (
           <p className="mt-1 text-xs text-zinc-500">
             {r.type !== "file" &&
             r.type !== "photo" &&
             r.type !== "confirm" &&
+            r.type !== "approval" &&
             r.value ? (
               <span className="mr-2 text-zinc-800">{r.value}</span>
             ) : null}
             {doc ? (
-              <Link
+              <TextLink
                 href={`/api/files/${doc.id}`}
                 target="_blank"
-                className="mr-2 underline"
+                className="mr-2"
               >
                 {doc.name} (v{doc.version})
-              </Link>
+              </TextLink>
             ) : null}
             {t("orders.submitted")}: {submittedBy} · {formatDate(r.submittedAt)}
             {r.note ? ` · ${r.note}` : ""}

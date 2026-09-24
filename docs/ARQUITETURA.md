@@ -39,3 +39,11 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 - Nunca ler dados no browser: Server Components recebem dados já filtrados por papel.
 - Esquema em `src/lib/db/schema.ts`; `appwrite.config.json` é gerado (`npm run appwrite:config`), nunca editado à mão.
 - Português na interface e docs; inglês em identificadores.
+
+## 6. Identidade visual
+
+- Cor da marca: vermelho Wellmix `#BF2026`. Escala `brand-50…950` em `src/app/globals.css` (`brand-600` = cor do logo; `brand-700` para links e texto de destaque, contraste AA sobre branco).
+- Logomarca: `public/brand/wellmix-logo.svg` (selo vermelho, fundo claro) e `wellmix-logo-white.svg` (fundo vermelho/escuro), usadas pelo componente `WellmixLogo` (`src/components/brand.tsx`). Ícones do navegador, atalho no celular e imagem de compartilhamento ficam nos arquivos de metadados do Next (`src/app/icon.svg`, `apple-icon.png`, `favicon.ico`, `opengraph-image.png`, `manifest.ts`).
+- Onde a marca aparece: cabeçalho vermelho com logo branco e item de menu ativo sublinhado; login com painel vermelho (apresentação e fluxo) e formulário branco; rodapé com logo colorido; barra do navegador no celular (`themeColor`).
+- Regras de uso: vermelho = ação principal, item ativo, seleção e progresso. Estados usam verde (concluído), âmbar (atenção) e vermelho de erro, sempre com texto. Ação destrutiva é botão de contorno, nunca igual ao principal. Azul só em avisos informativos (`tone="info"`).
+- Componentes: use o kit de `src/components/ui.tsx` (`Button`, `LinkButton`, `TextLink`/`linkClass`, `rowClass`, `Badge`, `Alert`, `Stat`, `Progress`, `StepDot`, `Empty`) em vez de classes de cor soltas; assim a marca muda em um lugar só.

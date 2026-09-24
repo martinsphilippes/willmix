@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -14,10 +14,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Wellmix",
+    default: "Portal Wellmix",
     template: "%s · Wellmix",
   },
-  description: "Plataforma de gestão comercial Wellmix",
+  description:
+    "Portal Wellmix: importação do pedido à entrega, com cliente, fornecedor e parceiros no mesmo fluxo.",
+  applicationName: "Portal Wellmix",
+  appleWebApp: { title: "Wellmix", capable: true, statusBarStyle: "default" },
+};
+
+/** Barra do navegador (Safari/Chrome mobile) na cor da marca. */
+export const viewport: Viewport = {
+  themeColor: "#bf2026",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -26,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-zinc-50 text-zinc-900">
+      <body className="flex min-h-full flex-col bg-[#f5f5f6] text-zinc-900">
         {children}
       </body>
     </html>

@@ -49,13 +49,14 @@ export function PartyForm({
         <Textarea name="notes" defaultValue={party?.notes ?? ""} />
       </Field>
       {party ? (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-zinc-800">
           <input type="hidden" name="active" value={"off"} />
           <input
             type="checkbox"
             name="active"
             value="on"
             defaultChecked={party.active}
+            className="h-4 w-4 cursor-pointer accent-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
           />{" "}
           {t("common.status")}: {t("common.yes")}
         </label>

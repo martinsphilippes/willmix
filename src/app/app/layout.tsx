@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES } from "@/i18n";
 import { LOCALES, type Role } from "@/lib/db/schema";
+import { AppNav } from "@/components/app-nav";
+import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
 import { DemoSwitcher } from "@/components/demo-switcher";
 import { DEMO_PASSWORD, DEMO_USERS } from "@/lib/seed";
@@ -60,25 +62,28 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
     process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "1";
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="bg-zinc-900 text-white">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/app" className="text-lg font-semibold tracking-tight">
-            {t("app.name")}
+    <div className="flex min-h-full flex-1 flex-col">
+      <header className="bg-gradient-to-r from-brand-700 via-brand-600 to-brand-600 text-white shadow-md shadow-brand-900/20">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
+          <Link
+            href="/app"
+            className="flex items-center gap-3 rounded-md focus-visible:outline-white"
+            aria-label={t("app.name")}
+          >
+            <WellmixLogo variant="white" className="h-7 sm:h-8" />
+            <span className="hidden border-l border-white/30 pl-3 text-sm font-medium leading-tight text-white/90 sm:block">
+              Portal
+              <span className="block text-xs font-normal text-white/70">
+                {t("app.tagline")}
+              </span>
+            </span>
           </Link>
-          <nav className="order-last flex w-full gap-1 overflow-x-auto pb-1 text-sm sm:order-none sm:w-auto sm:flex-1 sm:pb-0">
-            {nav.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="whitespace-nowrap rounded-md px-2 py-1 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-              >
-                {t(item.key)}
-              </Link>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-3 text-sm">
-            <form action={setLocaleAction} className="flex gap-1">
+          {/* Celular: logo e Sair na 1ª linha; idioma e conta demo na 2ª. */}
+          <div className="order-last flex w-full items-center justify-between gap-2 text-sm sm:order-none sm:ml-auto sm:w-auto sm:justify-end sm:gap-3">
+            <form
+              action={setLocaleAction}
+              className="flex rounded-lg bg-black/15 p-0.5"
+            >
               {LOCALES.map((l) => (
                 <button
                   key={l}
@@ -86,18 +91,29 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                   value={l}
                   type="submit"
                   aria-label={LOCALE_NAMES[l]}
-                  className={`rounded px-1.5 py-0.5 text-xs ${l === locale ? "bg-white text-zinc-900" : "text-zinc-400 hover:text-white"}`}
+                  aria-pressed={l === locale}
+                  className={`rounded-md px-2 py-0.5 text-xs font-semibold transition focus-visible:outline-white ${l === locale ? "bg-white text-brand-700 shadow-sm" : "text-white/80 hover:text-white"}`}
                 >
                   {l.toUpperCase()}
                 </button>
               ))}
             </form>
             <span
-              className="hidden text-zinc-300 sm:inline"
+              className="hidden items-center gap-2 md:flex"
               title={t(`role.${user.role}`)}
             >
-              {user.name}
-              {isWellmix(user) ? "" : ` · ${t(`role.${user.role}`)}`}
+              <span
+                aria-hidden
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-brand-700"
+              >
+                {user.name.trim().charAt(0).toUpperCase()}
+              </span>
+              <span className="leading-tight">
+                <span className="block font-medium">{user.name}</span>
+                <span className="block text-xs text-white/70">
+                  {t(`role.${user.role}`)}
+                </span>
+              </span>
             </span>
             {showDemo ? (
               <DemoSwitcher
@@ -110,8 +126,15 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                 label={t("help.login.demo")}
               />
             ) : null}
+          </div>
+          <div className="ml-auto sm:ml-0">
             <LogoutButton label={t("nav.logout")} />
           </div>
+        </div>
+        <div className="mx-auto mt-2 w-full max-w-7xl px-2 sm:px-3">
+          <AppNav
+            items={nav.map((item) => ({ href: item.href, label: t(item.key) }))}
+          />
         </div>
       </header>
       {dataMode() === "memory" && process.env.NODE_ENV === "production" ? (
@@ -120,9 +143,20 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           Appwrite para produção.
         </div>
       ) : null}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
         {children}
       </main>
+      <footer className="border-t border-zinc-200 bg-white">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
+          <div className="flex items-center gap-3">
+            <WellmixLogo className="h-5" />
+            <span>
+              {t("app.name")} · {t("app.tagline")}
+            </span>
+          </div>
+          <span>© Wellmix</span>
+        </div>
+      </footer>
     </div>
   );
 }

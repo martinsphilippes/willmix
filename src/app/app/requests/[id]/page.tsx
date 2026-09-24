@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
@@ -14,11 +13,17 @@ import {
   Input,
   LinkButton,
   PageHeader,
+  Select,
+  StepDot,
   Table,
   Td,
+  TextLink,
   Th,
+  cx,
   formatDate,
   formatMoney,
+  rowClass,
+  type StepState,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -68,10 +73,24 @@ export default async function RequestDetailPage({
         title={request.productName}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={request.status === "ORDERED" ? "success" : "info"}>
+            <Badge
+              tone={
+                request.status === "ORDERED"
+                  ? "success"
+                  : request.status === "CANCELLED"
+                    ? "neutral"
+                    : request.status === "WAITING_DOWN_PAYMENT"
+                      ? "warning"
+                      : "neutral"
+              }
+            >
               {t(`reqStatusLabel.${request.status}`)}
             </Badge>
-            {wellmix ? <span>{customer?.name}</span> : null}
+            {wellmix ? (
+              <span className="font-medium text-zinc-700">
+                {customer?.name}
+              </span>
+            ) : null}
           </span>
         }
         actions={
@@ -91,8 +110,8 @@ export default async function RequestDetailPage({
         </Alert>
       ) : null}
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <Card title={t("requests.title")}>
             <DescriptionList
               items={[
@@ -104,16 +123,12 @@ export default async function RequestDetailPage({
               ]}
             />
             {documents.length > 0 ? (
-              <ul className="mt-3 flex flex-wrap gap-2 text-sm">
+              <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">
                 {documents.map((d) => (
                   <li key={d.id}>
-                    <Link
-                      href={`/api/files/${d.id}`}
-                      className="underline"
-                      target="_blank"
-                    >
+                    <TextLink href={`/api/files/${d.id}`} target="_blank">
                       {d.name}
-                    </Link>
+                    </TextLink>
                   </li>
                 ))}
               </ul>
@@ -135,7 +150,12 @@ export default async function RequestDetailPage({
                   {suppliers.map((s) => (
                     <label
                       key={s.id}
-                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${invited.has(s.id) ? "border-zinc-200 bg-zinc-50 text-zinc-500" : "border-zinc-300"}`}
+                      className={cx(
+                        "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition",
+                        invited.has(s.id)
+                          ? "cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-500"
+                          : "cursor-pointer border-zinc-300 bg-white text-zinc-900 hover:border-brand-300 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:text-brand-900",
+                      )}
                     >
                       <input
                         type="checkbox"
@@ -143,10 +163,11 @@ export default async function RequestDetailPage({
                         value={s.id}
                         disabled={invited.has(s.id)}
                         defaultChecked={invited.has(s.id)}
+                        className="h-4 w-4 shrink-0 accent-brand-600"
                       />
                       <span>
-                        {s.name}{" "}
-                        <span className="text-zinc-400">· {s.country}</span>
+                        <span className="font-medium">{s.name}</span>{" "}
+                        <span className="text-zinc-500">· {s.country}</span>
                       </span>
                     </label>
                   ))}
@@ -164,15 +185,23 @@ export default async function RequestDetailPage({
                   <tr>
                     <Th>{t("common.supplier")}</Th>
                     <Th>{t("common.price")}</Th>
-                    <Th>{t("common.leadTime")}</Th>
+                    <Th className="whitespace-nowrap">
+                      {t("common.leadTime")}
+                    </Th>
                     <Th>{t("common.conditions")}</Th>
                     <Th>{t("common.status")}</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {quotes.map((q) => (
-                    <tr key={q.id}>
-                      <Td className="font-medium">
+                    <tr
+                      key={q.id}
+                      className={cx(
+                        rowClass,
+                        q.status === "selected" && "bg-emerald-50/50",
+                      )}
+                    >
+                      <Td className="font-medium text-zinc-900">
                         {supplierName(q.supplierId)}
                       </Td>
                       {q.status === "invited" &&
@@ -211,7 +240,7 @@ export default async function RequestDetailPage({
                               min="1"
                               required
                               placeholder={t("common.leadTime")}
-                              className="max-w-28"
+                              className="max-w-32"
                             />
                             <Input
                               name="conditions"
@@ -228,16 +257,23 @@ export default async function RequestDetailPage({
                         </Td>
                       ) : (
                         <>
-                          <Td>
+                          <Td
+                            className={cx(
+                              "whitespace-nowrap tabular-nums",
+                              q.price === null && "text-zinc-500",
+                            )}
+                          >
                             {q.price !== null
                               ? `${formatMoney(q.price, q.currency)} / ${request.unit}`
                               : t("requests.quotes.waiting")}
                           </Td>
-                          <Td>{q.leadTimeDays ?? "—"}</Td>
+                          <Td className="tabular-nums">
+                            {q.leadTimeDays ?? "—"}
+                          </Td>
                           <Td>{q.conditions ?? "—"}</Td>
                         </>
                       )}
-                      <Td>
+                      <Td className="whitespace-nowrap">
                         <Badge
                           tone={
                             q.status === "selected"
@@ -258,25 +294,23 @@ export default async function RequestDetailPage({
               quotes.some((q) => q.status === "answered") ? (
                 <form
                   action={selectQuoteAction}
-                  className="mt-4 grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-4"
+                  className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
                 >
                   <input type="hidden" name="requestId" value={request.id} />
-                  <Field label={t("common.supplier")}>
-                    <select
-                      name="quoteId"
-                      required
-                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
-                    >
-                      {quotes
-                        .filter((q) => q.status === "answered")
-                        .map((q) => (
-                          <option key={q.id} value={q.id}>
-                            {supplierName(q.supplierId)} ·{" "}
-                            {formatMoney(q.price, q.currency)}
-                          </option>
-                        ))}
-                    </select>
-                  </Field>
+                  <div className="sm:col-span-3">
+                    <Field label={t("common.supplier")}>
+                      <Select name="quoteId" required>
+                        {quotes
+                          .filter((q) => q.status === "answered")
+                          .map((q) => (
+                            <option key={q.id} value={q.id}>
+                              {supplierName(q.supplierId)} ·{" "}
+                              {formatMoney(q.price, q.currency)}
+                            </option>
+                          ))}
+                      </Select>
+                    </Field>
+                  </div>
                   <Field label={t("requests.sellPrice")}>
                     <Input
                       name="sellPrice"
@@ -302,7 +336,7 @@ export default async function RequestDetailPage({
                       placeholder="30%"
                     />
                   </Field>
-                  <div className="sm:col-span-4">
+                  <div className="sm:col-span-3">
                     <SubmitButton>{t("requests.quotes.select")}</SubmitButton>
                   </div>
                 </form>
@@ -313,19 +347,35 @@ export default async function RequestDetailPage({
           {/* Proposta e sinal */}
           {request.status === "WAITING_DOWN_PAYMENT" ||
           request.status === "ORDERED" ? (
-            <Card title={t("requests.proposal")}>
+            <Card
+              title={t("requests.proposal")}
+              className={cx(
+                request.status === "WAITING_DOWN_PAYMENT" &&
+                  "border-brand-300! ring-4 ring-brand-50",
+              )}
+            >
               <DescriptionList
                 items={[
                   [
                     t("requests.sellPrice"),
-                    formatMoney(request.sellPrice, request.sellCurrency),
+                    <span
+                      key="sellPrice"
+                      className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
+                    >
+                      {formatMoney(request.sellPrice, request.sellCurrency)}
+                    </span>,
                   ],
                   [
                     t("requests.downPayment"),
-                    formatMoney(
-                      request.downPaymentAmount,
-                      request.sellCurrency,
-                    ),
+                    <span
+                      key="downPayment"
+                      className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
+                    >
+                      {formatMoney(
+                        request.downPaymentAmount,
+                        request.sellCurrency,
+                      )}
+                    </span>,
                   ],
                   [
                     t("common.status"),
@@ -337,7 +387,7 @@ export default async function RequestDetailPage({
                             : "success"
                         }
                       >
-                        {downPayment.status}
+                        {t(`paymentStatus.${downPayment.status}`)}
                       </Badge>
                     ) : (
                       "—"
@@ -354,7 +404,7 @@ export default async function RequestDetailPage({
                 ]}
               />
               {request.status === "WAITING_DOWN_PAYMENT" ? (
-                <div className="mt-4 space-y-3">
+                <div className="mt-5 space-y-3 border-t border-zinc-100 pt-4">
                   <Alert tone="warning">
                     {t("requests.payment.instructions", {
                       amount: formatMoney(
@@ -387,9 +437,9 @@ export default async function RequestDetailPage({
           ) : null}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Card title={t("orders.timeline")}>
-            <ol className="space-y-2 text-sm">
+            <ol className="-mx-2 space-y-1 text-sm">
               {(
                 [
                   "REQUESTED",
@@ -402,12 +452,30 @@ export default async function RequestDetailPage({
                 const idx = arr.indexOf(request.status as (typeof arr)[number]);
                 const done = idx >= i;
                 const current = idx === i;
+                const state: StepState = done
+                  ? current && s !== "ORDERED"
+                    ? "active"
+                    : "done"
+                  : "pending";
                 return (
-                  <li key={s} className="flex items-center gap-2">
+                  <li
+                    key={s}
+                    aria-current={state === "active" ? "step" : undefined}
+                    className={cx(
+                      "flex items-center gap-3 rounded-lg px-2 py-1.5",
+                      state === "active" && "bg-brand-50",
+                    )}
+                  >
+                    <StepDot state={state}>{i + 1}</StepDot>
                     <span
-                      className={`h-2.5 w-2.5 rounded-full ${done ? (current && s !== "ORDERED" ? "bg-blue-500" : "bg-emerald-500") : "bg-zinc-300"}`}
-                    />
-                    <span className={done ? "text-zinc-900" : "text-zinc-400"}>
+                      className={cx(
+                        state === "active"
+                          ? "font-semibold text-brand-800"
+                          : state === "done"
+                            ? "text-zinc-900"
+                            : "text-zinc-500",
+                      )}
+                    >
                       {t(`reqStatusLabel.${s}`)}
                     </span>
                   </li>

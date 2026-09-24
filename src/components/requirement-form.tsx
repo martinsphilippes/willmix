@@ -21,14 +21,14 @@ export function RequirementForm({
     return (
       <form
         action={decideRequirementAction}
-        className="flex flex-wrap items-end gap-2"
+        className="flex flex-wrap items-center gap-2"
       >
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="requirementId" value={requirement.id} />
         <Input
           name="note"
           placeholder={t("common.note")}
-          className="max-w-xs"
+          className="max-w-xs sm:w-56"
         />
         <SubmitButton name="decision" value="approve" variant="primary">
           {t("common.approve")}
@@ -43,7 +43,7 @@ export function RequirementForm({
   return (
     <form
       action={submitRequirementAction}
-      className="flex flex-wrap items-end gap-2"
+      className="flex flex-wrap items-center gap-2"
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="requirementId" value={requirement.id} />
@@ -53,7 +53,7 @@ export function RequirementForm({
           type="file"
           required
           accept={requirement.type === "photo" ? "image/*" : undefined}
-          className="max-w-xs"
+          className="max-w-xs sm:w-72"
         />
       ) : null}
       {requirement.type === "number" ? (
@@ -62,17 +62,17 @@ export function RequirementForm({
           type="number"
           step="any"
           required
-          className="max-w-40"
+          className="max-w-40 sm:w-40"
         />
       ) : null}
       {requirement.type === "date" ? (
-        <Input name="value" type="date" required className="max-w-48" />
+        <Input name="value" type="date" required className="max-w-48 sm:w-48" />
       ) : null}
       {requirement.type === "text" ? (
         <Textarea
           name="value"
           required
-          className="min-h-10 max-w-md"
+          className="min-h-10! max-w-md sm:w-72"
           rows={1}
         />
       ) : null}

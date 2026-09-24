@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
@@ -15,9 +14,13 @@ import {
   Progress,
   Table,
   Td,
+  TextLink,
   Th,
+  cx,
   formatDate,
   isOverdue,
+  rowClass,
+  stageTone,
 } from "@/components/ui";
 
 export default async function OrdersPage() {
@@ -65,44 +68,54 @@ export default async function OrdersPage() {
             {visible.map((o) => {
               const stage = stages.find((s) => s.orderId === o.id);
               const overdue = isOverdue(stage?.dueAt);
+              const percent =
+                o.status === "CLOSED" ? 100 : (stage?.percent ?? 0);
               return (
-                <tr key={o.id} className="hover:bg-zinc-50">
-                  <Td>
-                    <Link
-                      href={`/app/orders/${o.id}`}
-                      className="font-medium underline"
-                    >
+                <tr key={o.id} className={rowClass}>
+                  <Td className="whitespace-nowrap">
+                    <TextLink href={`/app/orders/${o.id}`}>
                       #{o.number}
-                    </Link>
+                    </TextLink>
                   </Td>
-                  <Td>{items.find((i) => i.orderId === o.id)?.name ?? "—"}</Td>
+                  <Td className="min-w-40 font-medium text-zinc-900">
+                    {items.find((i) => i.orderId === o.id)?.name ?? "—"}
+                  </Td>
                   {user.role !== "customer" && isWellmix(user) ? (
-                    <Td>{name(o.customerId)}</Td>
+                    <Td className="min-w-32">{name(o.customerId)}</Td>
                   ) : null}
                   {canSeeSupplier(user) && user.role !== "supplier" ? (
-                    <Td>{name(o.supplierId)}</Td>
+                    <Td className="min-w-32">{name(o.supplierId)}</Td>
                   ) : null}
-                  <Td>
+                  <Td className="whitespace-nowrap">
                     <Badge
-                      tone={
+                      tone={stageTone(
                         o.status === "CLOSED"
-                          ? "success"
+                          ? "done"
                           : stage?.status === "blocked"
-                            ? "danger"
-                            : "info"
-                      }
+                            ? "blocked"
+                            : "active",
+                      )}
                     >
                       {t(`stage.${o.status}`)}
+                      {stage?.status === "blocked"
+                        ? ` · ${t("stageStatus.blocked")}`
+                        : ""}
                     </Badge>
                   </Td>
-                  <Td className="w-32">
-                    <Progress
-                      percent={
-                        o.status === "CLOSED" ? 100 : (stage?.percent ?? 0)
-                      }
-                    />
+                  <Td className="w-40">
+                    <div className="flex h-5 items-center gap-2">
+                      <Progress percent={percent} />
+                      <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
+                        {percent}%
+                      </span>
+                    </div>
                   </Td>
-                  <Td className={overdue ? "text-red-600" : ""}>
+                  <Td
+                    className={cx(
+                      "whitespace-nowrap tabular-nums",
+                      overdue && "font-semibold text-red-700",
+                    )}
+                  >
                     {formatDate(stage?.dueAt)}
                   </Td>
                 </tr>

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -11,8 +10,10 @@ import {
   PageHeader,
   Table,
   Td,
+  TextLink,
   Th,
   formatDate,
+  rowClass,
 } from "@/components/ui";
 
 export default async function RequestsPage() {
@@ -57,37 +58,40 @@ export default async function RequestsPage() {
           </thead>
           <tbody>
             {requests.map((r) => (
-              <tr key={r.id} className="hover:bg-zinc-50">
-                <Td className="font-medium">{r.productName}</Td>
+              <tr key={r.id} className={rowClass}>
+                <Td className="min-w-40 font-medium text-zinc-900">
+                  {r.productName}
+                </Td>
                 {isWellmix(user) ? (
-                  <Td>
+                  <Td className="min-w-32">
                     {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
                   </Td>
                 ) : null}
-                <Td>
+                <Td className="whitespace-nowrap tabular-nums">
                   {r.quantity} {r.unit}
                 </Td>
-                <Td>
+                <Td className="whitespace-nowrap">
                   <Badge
                     tone={
                       r.status === "ORDERED"
                         ? "success"
                         : r.status === "CANCELLED"
                           ? "neutral"
-                          : "info"
+                          : r.status === "WAITING_DOWN_PAYMENT"
+                            ? "warning"
+                            : "neutral"
                     }
                   >
                     {t(`reqStatusLabel.${r.status}`)}
                   </Badge>
                 </Td>
-                <Td>{formatDate(r.deadline)}</Td>
-                <Td>
-                  <Link
-                    href={`/app/requests/${r.id}`}
-                    className="font-medium underline"
-                  >
+                <Td className="whitespace-nowrap tabular-nums">
+                  {formatDate(r.deadline)}
+                </Td>
+                <Td className="text-right">
+                  <TextLink href={`/app/requests/${r.id}`}>
                     {t("tasks.open")}
-                  </Link>
+                  </TextLink>
                 </Td>
               </tr>
             ))}

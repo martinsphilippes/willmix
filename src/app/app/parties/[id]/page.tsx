@@ -71,22 +71,28 @@ export default async function PartyPage({
           <PartyForm party={party} t={t} />
         </Card>
         <Card title={t("parties.users")}>
-          <ul className="mb-4 space-y-1 text-sm">
+          <ul className="mb-4 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
             {users.map((u) => (
-              <li key={u.id} className="flex justify-between">
-                <span>
-                  {u.name} <span className="text-zinc-500">· {u.email}</span>
+              <li
+                key={u.id}
+                className="flex items-center justify-between gap-3 px-3 py-2.5"
+              >
+                <span className="min-w-0 break-words">
+                  <span className="font-medium text-zinc-900">{u.name}</span>{" "}
+                  <span className="text-zinc-500">· {u.email}</span>
                 </span>
-                <span className="text-zinc-500">{t(`role.${u.role}`)}</span>
+                <span className="shrink-0">
+                  <Badge>{t(`role.${u.role}`)}</Badge>
+                </span>
               </li>
             ))}
             {users.length === 0 ? (
-              <li className="text-zinc-500">{t("common.none")}</li>
+              <li className="px-3 py-2.5 text-zinc-500">{t("common.none")}</li>
             ) : null}
           </ul>
           <form
             action={createUserAction}
-            className="space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-3"
+            className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
           >
             <input type="hidden" name="partyId" value={party.id} />
             <div className="grid gap-3 sm:grid-cols-2">

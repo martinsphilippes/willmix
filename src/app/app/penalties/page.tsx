@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -10,9 +9,12 @@ import {
   PageHeader,
   Table,
   Td,
+  TextLink,
   Th,
   formatDate,
   formatMoney,
+  linkClass,
+  rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { updatePenaltyStatusAction } from "../actions";
@@ -55,14 +57,11 @@ export default async function PenaltiesPage() {
             {penalties.map((p) => {
               const order = orders.find((o) => o.id === p.orderId);
               return (
-                <tr key={p.id}>
+                <tr key={p.id} className={rowClass}>
                   <Td>
-                    <Link
-                      href={`/app/orders/${p.orderId}`}
-                      className="underline"
-                    >
+                    <TextLink href={`/app/orders/${p.orderId}`}>
                       #{order?.number}
-                    </Link>
+                    </TextLink>
                   </Td>
                   <Td>
                     {parties.find((x) => x.id === p.responsiblePartyId)?.name ??
@@ -75,7 +74,7 @@ export default async function PenaltiesPage() {
                         {" "}
                         <a
                           href={`/api/files/${p.evidenceDocumentId}`}
-                          className="text-xs underline"
+                          className={`${linkClass} text-xs`}
                           target="_blank"
                         >
                           {t("orders.penalty.evidence")}
@@ -83,8 +82,12 @@ export default async function PenaltiesPage() {
                       </>
                     ) : null}
                   </Td>
-                  <Td>{formatMoney(p.amount, p.currency)}</Td>
-                  <Td>{formatDate(p.createdAt)}</Td>
+                  <Td className="whitespace-nowrap font-semibold text-zinc-900">
+                    {formatMoney(p.amount, p.currency)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {formatDate(p.createdAt)}
+                  </Td>
                   <Td>
                     <Badge
                       tone={
@@ -95,13 +98,13 @@ export default async function PenaltiesPage() {
                             : "neutral"
                       }
                     >
-                      {p.status}
+                      {t(`penaltyStatus.${p.status}`)}
                     </Badge>
                   </Td>
                   <Td>
                     <form
                       action={updatePenaltyStatusAction}
-                      className="flex gap-1"
+                      className="flex gap-1.5"
                     >
                       <input type="hidden" name="penaltyId" value={p.id} />
                       {(["disputed", "paid", "cancelled"] as const)
@@ -111,10 +114,10 @@ export default async function PenaltiesPage() {
                             key={s}
                             name="status"
                             value={s}
-                            variant="ghost"
+                            variant="secondary"
                             className="px-2 py-1 text-xs"
                           >
-                            {s}
+                            {t(`penaltyStatus.${s}`)}
                           </SubmitButton>
                         ))}
                     </form>

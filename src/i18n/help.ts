@@ -46,7 +46,7 @@ export const helpPt = {
   "help.order.body":
     "O pedido avança por etapas fixas. Cada etapa lista seus requisitos e quem preenche. Preencha o que é seu; quando todos os obrigatórios estão concluídos, a próxima etapa abre automaticamente e o responsável é avisado.",
   "help.order.steps":
-    "Linha do tempo: verde concluída, azul em andamento, vermelha bloqueada, cinza ainda não iniciada.\nRequisitos: envie arquivo, número, data ou confirmação. Reenviar um arquivo cria nova versão e mantém a anterior.\nBloqueio: peso divergente ou arte reprovada exige correção ou revisão antes de seguir.\nDocumentos e pagamentos ficam na coluna da direita, filtrados pelo seu papel.",
+    "Linha do tempo: verde concluída, vermelha em andamento, âmbar (!) bloqueada, cinza ainda não iniciada.\nRequisitos: envie arquivo, número, data ou confirmação. Reenviar um arquivo cria nova versão e mantém a anterior.\nBloqueio: peso divergente ou arte reprovada exige correção ou revisão antes de seguir.\nDocumentos e pagamentos ficam na coluna da direita, filtrados pelo seu papel.",
   "help.stage.ORDER_CREATED":
     "Wellmix confere o pedido e libera ao fornecedor. O número do Sankhya pode ser informado agora ou depois (integração em modo manual).",
   "help.stage.PREPARATION":
@@ -138,7 +138,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.order.body":
     "The order moves through fixed stages. Each stage lists its requirements and who fills them. Fill what is yours; when all mandatory items are done, the next stage opens automatically and its owner is notified.",
   "help.order.steps":
-    "Timeline: green done, blue in progress, red blocked, grey not started.\nRequirements: send a file, number, date or confirmation. Re-sending a file creates a new version and keeps the previous one.\nBlock: weight divergence or rejected artwork requires a fix or a review before moving on.\nDocuments and payments are on the right column, filtered by your role.",
+    "Timeline: green done, red in progress, amber (!) blocked, grey not started.\nRequirements: send a file, number, date or confirmation. Re-sending a file creates a new version and keeps the previous one.\nBlock: weight divergence or rejected artwork requires a fix or a review before moving on.\nDocuments and payments are on the right column, filtered by your role.",
   "help.stage.ORDER_CREATED":
     "Wellmix checks the order and releases it to the supplier. The Sankhya number can be entered now or later (integration in manual mode).",
   "help.stage.PREPARATION":
@@ -227,7 +227,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.order.body":
     "订单按固定阶段推进。每个阶段列出其要求和填写人。填写属于您的项目；所有必填项完成后，下一阶段自动开启并通知负责人。",
   "help.order.steps":
-    "时间线：绿色已完成，蓝色进行中，红色已阻塞，灰色未开始。\n要求：提交文件、数字、日期或确认。重新上传文件会生成新版本并保留旧版本。\n阻塞：重量差异或设计稿被驳回需先修正或复核。\n文件和付款位于右侧栏，按您的角色过滤。",
+    "时间线：绿色已完成，红色进行中，琥珀色（!）已阻塞，灰色未开始。\n要求：提交文件、数字、日期或确认。重新上传文件会生成新版本并保留旧版本。\n阻塞：重量差异或设计稿被驳回需先修正或复核。\n文件和付款位于右侧栏，按您的角色过滤。",
   "help.stage.ORDER_CREATED":
     "Wellmix 核对订单并下达供应商。Sankhya 编号可现在或稍后填写（集成为手动模式）。",
   "help.stage.PREPARATION":

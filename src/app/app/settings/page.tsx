@@ -116,7 +116,7 @@ export default async function SettingsPage({
               defaultValue={JSON.stringify(s.stageDueDays, null, 2)}
             />
           </Field>
-          <p className="text-xs text-zinc-500">
+          <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
             paymentMode={DEFAULT_SETTINGS.paymentMode} · whatsappMode=
             {DEFAULT_SETTINGS.whatsappMode} · emailMode=
             {DEFAULT_SETTINGS.emailMode} (fixos até haver integração)

@@ -94,9 +94,11 @@ export default async function NewRequestPage({
             <Field label={t("requests.unit")}>
               <Input name="unit" defaultValue="un" required />
             </Field>
-            <Field label={t("requests.deadline")}>
-              <Input name="deadline" type="date" />
-            </Field>
+            <div className="col-span-2 sm:col-span-1">
+              <Field label={t("requests.deadline")}>
+                <Input name="deadline" type="date" />
+              </Field>
+            </div>
           </div>
           <Field label={t("requests.attachments")}>
             <Input name="attachments" type="file" multiple />
@@ -104,7 +106,9 @@ export default async function NewRequestPage({
           <Field label={t("common.note")}>
             <Textarea name="notes" />
           </Field>
-          <SubmitButton pendingText="...">{t("common.send")}</SubmitButton>
+          <div className="border-t border-zinc-100 pt-4">
+            <SubmitButton pendingText="...">{t("common.send")}</SubmitButton>
+          </div>
         </form>
       </Card>
     </>

@@ -12,6 +12,8 @@ import {
   Input,
   PageHeader,
   Textarea,
+  cx,
+  linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveLineAction } from "../actions";
@@ -44,30 +46,32 @@ export default async function LinesPage({
         title={t("lines.title")}
       />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="mt-4 grid gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
           {lines.length === 0 ? <Empty>{t("common.none")}</Empty> : null}
           {lines.map((l) => (
             <Card
               key={l.id}
               title={l.name}
+              className={editing?.id === l.id ? "ring-2 ring-brand-600" : ""}
               actions={
                 <a
                   href={`/app/lines?edit=${l.id}`}
-                  className="text-sm underline"
+                  aria-current={editing?.id === l.id ? "true" : undefined}
+                  className={cx(linkClass, "text-sm")}
                 >
                   {t("common.edit")}
                 </a>
               }
             >
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("lines.requirements")}
               </p>
-              <ul className="flex flex-wrap gap-1 text-sm">
+              <ul className="flex flex-wrap gap-1.5 text-xs">
                 {l.requirements.map((r) => (
                   <li
                     key={r.key}
-                    className="rounded-full bg-zinc-100 px-2 py-0.5"
+                    className="rounded-full bg-zinc-50 px-2.5 py-1 font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200"
                   >
                     {requirementLabel(t, r)}
                     {!r.required ? "*" : ""}
@@ -77,16 +81,18 @@ export default async function LinesPage({
               {l.manualDocumentId ? (
                 <a
                   href={`/api/files/${l.manualDocumentId}`}
-                  className="mt-2 inline-block text-sm underline"
+                  className={cx(linkClass, "mt-3 inline-block text-sm")}
                   target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  Manual
+                  {t("lines.manual")}
                 </a>
               ) : null}
             </Card>
           ))}
         </div>
         <Card
+          className={editing ? "order-first lg:order-none" : undefined}
           title={
             editing
               ? `${t("common.edit")}: ${editing.name}`
@@ -100,7 +106,7 @@ export default async function LinesPage({
             <Field label={t("common.name")}>
               <Input name="name" required defaultValue={editing?.name ?? ""} />
             </Field>
-            <Field label="Manual (PDF)">
+            <Field label={`${t("lines.manual")} (PDF)`}>
               <Input name="manual" type="file" accept="application/pdf" />
             </Field>
             <Field

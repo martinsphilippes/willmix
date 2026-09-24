@@ -1,8 +1,15 @@
-import Link from "next/link";
 import type { User } from "@/lib/db";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import { getT } from "@/i18n/server";
-import { Badge, Card, Empty, PageHeader, formatDate } from "./ui";
+import {
+  Badge,
+  Card,
+  Empty,
+  LinkButton,
+  PageHeader,
+  cx,
+  formatDate,
+} from "./ui";
 
 export async function TaskList({ user }: { user: User }) {
   const t = await getT();
@@ -25,7 +32,7 @@ export async function TaskList({ user }: { user: User }) {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-zinc-900">
+                      <span className="font-semibold text-zinc-900">
                         {task.title}
                       </span>
                       {task.overdue ? (
@@ -34,17 +41,25 @@ export async function TaskList({ user }: { user: User }) {
                     </div>
                     <p className="mt-1 text-sm text-zinc-600">{task.detail}</p>
                     {task.dueAt ? (
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p
+                        className={cx(
+                          "mt-1.5 text-xs",
+                          task.overdue
+                            ? "font-semibold text-red-700"
+                            : "text-zinc-500",
+                        )}
+                      >
                         {t("common.due")}: {formatDate(task.dueAt)}
                       </p>
                     ) : null}
                   </div>
-                  <Link
+                  <LinkButton
                     href={task.link}
-                    className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700"
+                    variant="primary"
+                    className="shrink-0"
                   >
                     {t("tasks.open")}
-                  </Link>
+                  </LinkButton>
                 </div>
               </Card>
             </li>

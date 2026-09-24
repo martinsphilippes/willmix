@@ -11,8 +11,20 @@ import {
   PageHeader,
   Table,
   Td,
+  TextLink,
   Th,
+  cx,
+  rowClass,
 } from "@/components/ui";
+
+/** Filtro por tipo: selecionado na cor da marca, demais neutros. */
+const chipClass = (selected: boolean) =>
+  cx(
+    "rounded-full px-3 py-1 font-medium ring-1 ring-inset transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
+    selected
+      ? "bg-brand-600 text-white ring-brand-600"
+      : "bg-white text-zinc-700 ring-zinc-200 hover:bg-brand-50 hover:text-brand-800 hover:ring-brand-200",
+  );
 
 export default async function PartiesPage({
   searchParams,
@@ -49,15 +61,17 @@ export default async function PartiesPage({
       <div className="mb-4 flex flex-wrap gap-2 text-sm">
         <Link
           href="/app/parties"
-          className={`rounded-full px-3 py-1 ${!type ? "bg-zinc-900 text-white" : "bg-zinc-100"}`}
+          aria-current={!type ? "page" : undefined}
+          className={chipClass(!type)}
         >
-          {t("common.actions") === "" ? "" : "Todos"}
+          {t("common.all")}
         </Link>
         {PARTY_TYPES.map((pt) => (
           <Link
             key={pt}
             href={`/app/parties?type=${pt}`}
-            className={`rounded-full px-3 py-1 ${type === pt ? "bg-zinc-900 text-white" : "bg-zinc-100"}`}
+            aria-current={type === pt ? "page" : undefined}
+            className={chipClass(type === pt)}
           >
             {t(`party.${pt}`)}
           </Link>
@@ -78,18 +92,15 @@ export default async function PartiesPage({
           </thead>
           <tbody>
             {filtered.map((p) => (
-              <tr key={p.id} className="hover:bg-zinc-50">
+              <tr key={p.id} className={rowClass}>
                 <Td>
-                  <Link
-                    href={`/app/parties/${p.id}`}
-                    className="font-medium underline"
-                  >
-                    {p.name}
-                  </Link>
+                  <TextLink href={`/app/parties/${p.id}`}>{p.name}</TextLink>
                 </Td>
                 <Td>{t(`party.${p.type}`)}</Td>
                 <Td>{p.country ?? "—"}</Td>
-                <Td>{p.email ?? "—"}</Td>
+                <Td>
+                  <span className="text-zinc-600">{p.email ?? "—"}</span>
+                </Td>
                 <Td>
                   <Badge tone={p.active ? "success" : "neutral"}>
                     {p.active ? t("common.yes") : t("common.no")}
