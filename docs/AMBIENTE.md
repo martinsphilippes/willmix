@@ -5,7 +5,7 @@
 | Serviço  | Estado                   | Observações                                                                 |
 | -------- | ------------------------ | --------------------------------------------------------------------------- |
 | GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
-| Vercel   | conectado                | Projeto `willmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
+| Vercel   | conectado                | Projeto `wellmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
 | Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados          |
 | Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                       |
 
@@ -36,10 +36,10 @@ O E2E sobe o próprio servidor em `localhost:3100` com `DATA_DIR=.data-e2e`. Nã
 
 O nome oficial é **Wellmix** (empresa, portal e equipe). Ocorrências de `willmix` que permanecem por compatibilidade com recursos já provisionados:
 
-| Onde                                   | Motivo                                                                                       |
-| -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `DATABASE_ID = "willmix"` (Appwrite)   | ID do banco já criado com dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar. |
-| Repositório `martinsphilippes/willmix` | Nome no GitHub. Renomear é decisão do dono do repositório (GitHub redireciona o antigo).     |
-| Projeto e domínio `willmix.vercel.app` | Nome do projeto na Vercel. Renomear muda a URL pública; fazer junto com o domínio final.     |
+| Onde                                   | Motivo                                                                                                                                                                                 |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_ID = "willmix"` (Appwrite)   | ID do banco já criado com dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar.                                                                                           |
+| Repositório `martinsphilippes/willmix` | Nome no GitHub. Renomear é decisão do dono do repositório (GitHub redireciona o antigo).                                                                                               |
+| Domínio `willmix.vercel.app`           | Endereço antigo, mantido até o domínio definitivo. Projeto na Vercel já se chama `wellmix`; endereço atual: `portal-wellmix.vercel.app` (`wellmix.vercel.app` pertence a outra conta). |
 
 Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do banco e as contas `@willmix.com` → `@wellmix.com` (senha `wellmix123`) sem recriar nada.
