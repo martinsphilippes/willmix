@@ -1,6 +1,6 @@
 {
-  "projectId": "<PROJECT_ID>",
-  "endpoint": "https://<REGION>.cloud.appwrite.io/v1",
+  "projectId": "6ab41ae700396f0409b8",
+  "endpoint": "https://fra.cloud.appwrite.io/v1",
   "tablesDB": [
     {
       "$id": "willmix",
@@ -67,7 +67,11 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["pt", "en", "zh"]
+          "elements": [
+            "pt",
+            "en",
+            "zh"
+          ]
         },
         {
           "key": "passwordHash",
@@ -89,8 +93,12 @@
         {
           "key": "email_unique",
           "type": "unique",
-          "columns": ["email"],
-          "orders": ["ASC"]
+          "columns": [
+            "email"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -178,8 +186,12 @@
         {
           "key": "by_type",
           "type": "key",
-          "columns": ["type"],
-          "orders": ["ASC"]
+          "columns": [
+            "type"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -275,8 +287,12 @@
         {
           "key": "by_line",
           "type": "key",
-          "columns": ["lineId"],
-          "orders": ["ASC"]
+          "columns": [
+            "lineId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -423,14 +439,22 @@
         {
           "key": "by_customer",
           "type": "key",
-          "columns": ["customerId"],
-          "orders": ["ASC"]
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_status",
           "type": "key",
-          "columns": ["status"],
-          "orders": ["ASC"]
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -465,7 +489,12 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["invited", "answered", "selected", "rejected"]
+          "elements": [
+            "invited",
+            "answered",
+            "selected",
+            "rejected"
+          ]
         },
         {
           "key": "price",
@@ -515,14 +544,22 @@
         {
           "key": "by_request",
           "type": "key",
-          "columns": ["requestId"],
-          "orders": ["ASC"]
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_supplier",
           "type": "key",
-          "columns": ["supplierId"],
-          "orders": ["ASC"]
+          "columns": [
+            "supplierId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -638,7 +675,12 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["pending", "synced", "failed", "manual"]
+          "elements": [
+            "pending",
+            "synced",
+            "failed",
+            "manual"
+          ]
         },
         {
           "key": "erpNumber",
@@ -699,26 +741,42 @@
         {
           "key": "number_unique",
           "type": "unique",
-          "columns": ["number"],
-          "orders": ["ASC"]
+          "columns": [
+            "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_customer",
           "type": "key",
-          "columns": ["customerId"],
-          "orders": ["ASC"]
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_supplier",
           "type": "key",
-          "columns": ["supplierId"],
-          "orders": ["ASC"]
+          "columns": [
+            "supplierId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_status",
           "type": "key",
-          "columns": ["status"],
-          "orders": ["ASC"]
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -781,8 +839,12 @@
         {
           "key": "by_order",
           "type": "key",
-          "columns": ["orderId"],
-          "orders": ["ASC"]
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -836,7 +898,12 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["pending", "active", "blocked", "done"]
+          "elements": [
+            "pending",
+            "active",
+            "blocked",
+            "done"
+          ]
         },
         {
           "key": "responsibleRole",
@@ -912,14 +979,22 @@
         {
           "key": "by_order",
           "type": "key",
-          "columns": ["orderId"],
-          "orders": ["ASC"]
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_status",
           "type": "key",
-          "columns": ["status"],
-          "orders": ["ASC"]
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1013,7 +1088,11 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["pending", "done", "rejected"]
+          "elements": [
+            "pending",
+            "done",
+            "rejected"
+          ]
         },
         {
           "key": "value",
@@ -1057,14 +1136,22 @@
         {
           "key": "by_stage",
           "type": "key",
-          "columns": ["stageId"],
-          "orders": ["ASC"]
+          "columns": [
+            "stageId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_order",
           "type": "key",
-          "columns": ["orderId"],
-          "orders": ["ASC"]
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1182,21 +1269,34 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["internal", "customer", "supplier", "all"]
+          "elements": [
+            "internal",
+            "customer",
+            "supplier",
+            "all"
+          ]
         }
       ],
       "indexes": [
         {
           "key": "by_order",
           "type": "key",
-          "columns": ["orderId"],
-          "orders": ["ASC"]
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_request",
           "type": "key",
-          "columns": ["requestId"],
-          "orders": ["ASC"]
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1231,7 +1331,10 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["customer_in", "supplier_out"]
+          "elements": [
+            "customer_in",
+            "supplier_out"
+          ]
         },
         {
           "key": "amount",
@@ -1270,7 +1373,11 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["pending", "confirmed", "received"]
+          "elements": [
+            "pending",
+            "confirmed",
+            "received"
+          ]
         },
         {
           "key": "proofDocumentId",
@@ -1315,14 +1422,22 @@
         {
           "key": "by_order",
           "type": "key",
-          "columns": ["orderId"],
-          "orders": ["ASC"]
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         },
         {
           "key": "by_request",
           "type": "key",
-          "columns": ["requestId"],
-          "orders": ["ASC"]
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1376,7 +1491,11 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["inapp", "email", "whatsapp"]
+          "elements": [
+            "inapp",
+            "email",
+            "whatsapp"
+          ]
         },
         {
           "key": "subject",
@@ -1408,7 +1527,11 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["sent", "mock", "failed"]
+          "elements": [
+            "sent",
+            "mock",
+            "failed"
+          ]
         },
         {
           "key": "readAt",
@@ -1422,8 +1545,12 @@
         {
           "key": "by_user",
           "type": "key",
-          "columns": ["userId"],
-          "orders": ["ASC"]
+          "columns": [
+            "userId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1494,8 +1621,14 @@
         {
           "key": "by_entity",
           "type": "key",
-          "columns": ["entity", "entityId"],
-          "orders": ["ASC", "ASC"]
+          "columns": [
+            "entity",
+            "entityId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
         }
       ]
     },
@@ -1560,7 +1693,12 @@
           "default": null,
           "type": "varchar",
           "format": "enum",
-          "elements": ["open", "disputed", "paid", "cancelled"]
+          "elements": [
+            "open",
+            "disputed",
+            "paid",
+            "cancelled"
+          ]
         },
         {
           "key": "createdByUserId",
@@ -1575,8 +1713,12 @@
         {
           "key": "by_order",
           "type": "key",
-          "columns": ["orderId"],
-          "orders": ["ASC"]
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1608,8 +1750,12 @@
         {
           "key": "key_unique",
           "type": "unique",
-          "columns": ["key"],
-          "orders": ["ASC"]
+          "columns": [
+            "key"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     },
@@ -1641,8 +1787,12 @@
         {
           "key": "key_unique",
           "type": "unique",
-          "columns": ["key"],
-          "orders": ["ASC"]
+          "columns": [
+            "key"
+          ],
+          "orders": [
+            "ASC"
+          ]
         }
       ]
     }
