@@ -7,7 +7,7 @@
 | Console     | https://cloud.appwrite.io                                       |
 | Endpoint    | regional, ex.: `https://fra.cloud.appwrite.io/v1` (ver console) |
 | Project ID  | `NEXT_PUBLIC_APPWRITE_PROJECT_ID`                               |
-| Plataformas | Web: `localhost`, `willmix.vercel.app` e o domínio final        |
+| Plataformas | Web: `localhost`, `portal-wellmix.vercel.app` e o domínio final |
 | Auth        | E-mail e senha habilitado                                       |
 
 ## Publicar o esquema
