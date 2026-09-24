@@ -1,57 +1,83 @@
 # Willmix
 
-Plataforma de gestão comercial para a Wellmix (importadora e distribuidora B2B de utilidades domésticas e brinquedos).
+Portal Operacional de Importações da Wellmix: solicitação do cliente, RFQ com fornecedores na China, seleção, sinal, pedido, checklists, inspeção, embarque, desembaraço, transporte e entrega, com Control Tower para a equipe. O Sankhya continua sendo o ERP.
 
-Stack: **Next.js 16** (App Router, TypeScript, Tailwind 4) hospedado na **Vercel**, com **Appwrite** (Auth, TablesDB, Storage, Functions, Realtime) como backend gerenciado.
+Stack: **Next.js 16** (App Router, Server Actions, TypeScript, Tailwind 4) na **Vercel**, com **Appwrite** (Auth, TablesDB, Storage) em produção e um modo de dados em memória para desenvolvimento e testes.
 
 ## Começando
 
 ```bash
 nvm use            # Node 22
 npm ci
-cp .env.example .env.local   # preencha endpoint, project id e API key do Appwrite
-npm run dev        # http://localhost:3000
+npm run dev        # http://localhost:3000 (modo memória, dados em .data/)
 ```
 
-Diagnóstico das integrações: `GET /api/health`.
+Na primeira abertura de `/login` o sistema cria os dados de demonstração. Senha de todas as contas: `willmix123`.
+
+| Conta                   | Papel              |
+| ----------------------- | ------------------ |
+| admin@willmix.com       | Admin Willmix      |
+| operador@willmix.com    | Operador Willmix   |
+| joao@lojista.com        | Cliente            |
+| supplier.a@china.com    | Fornecedor (中文)  |
+| supplier.b@china.com    | Fornecedor (EN)    |
+| supplier.c@china.com    | Fornecedor (中文)  |
+| agencia@design.com      | Agência            |
+| despachante@comex.com   | Despachante        |
+| armador@maritima.com    | Companhia marítima |
+| transportadora@rodo.com | Transportador      |
+| juridico@willmix.com    | Jurídico           |
+
+Para produção, preencha `.env.example` (Appwrite, `SESSION_SECRET`, `CRON_SECRET`) e publique o esquema: `npm run appwrite:connect && npm run appwrite:push`.
 
 ## Scripts
 
-| Script                     | O que faz                                                   |
-| -------------------------- | ----------------------------------------------------------- |
-| `npm run dev`              | Servidor de desenvolvimento                                 |
-| `npm run build`            | Build de produção (mesmo comando usado na Vercel)           |
-| `npm run lint`             | ESLint                                                      |
-| `npm run typecheck`        | Gera tipos de rota e verifica TypeScript                    |
-| `npm run format`           | Prettier                                                    |
-| `npm run appwrite -- …`    | Appwrite CLI (`login`, `init`, `pull`, `push`)              |
-| `npm run appwrite:connect` | Conecta o CLI ao projeto a partir das variáveis de ambiente |
-| `npm run appwrite:push`    | Publica teams, tabelas e buckets de `appwrite.config.json`  |
-| `npm run appwrite:pull`    | Traz teams, tabelas e buckets do servidor para o config     |
+| Script                     | O que faz                                                                |
+| -------------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`              | Servidor de desenvolvimento                                              |
+| `npm run build`            | Build de produção (mesmo comando da Vercel)                              |
+| `npm run lint`             | ESLint                                                                   |
+| `npm run typecheck`        | Tipos de rota + TypeScript                                               |
+| `npm test`                 | Testes unitários (workflow completo, permissões, dicionários)            |
+| `npm run test:e2e`         | Playwright: solicitação → entrega no navegador (`PW_CHROMIUM=` opcional) |
+| `npm run appwrite:connect` | Conecta o CLI ao projeto a partir das variáveis de ambiente              |
+| `npm run appwrite:config`  | Regenera `appwrite.config.json` a partir de `src/lib/db/schema.ts`       |
+| `npm run appwrite:push`    | Publica tabelas e bucket no Appwrite                                     |
 
 ## Estrutura
 
 ```
 src/
-  app/                   rotas (App Router)
-    api/health           diagnóstico do ambiente
-    api/auth/session     login (POST) e logout (DELETE)
-    login                tela de login
-    app                  área autenticada
-  components/            componentes de interface
+  app/
+    login                      login (contas de demonstração no modo memória)
+    app/                       área autenticada (layout com navegação por papel)
+      actions.ts               Server Actions (toda escrita, com zod e checagem de papel)
+      requests, quotes, orders, tasks, notifications, account, penalties,
+      parties, products, lines, import, settings
+    api/auth/session           login e logout
+    api/files/[id]             download de documentos com controle de acesso
+    api/jobs/reminders         cron de lembretes
+    api/admin/seed             dados de demonstração (produção exige CRON_SECRET)
+  components/                  kit de UI, formulários, Control Tower
+  i18n/                        dicionários pt, en, zh
   lib/
-    env.ts               validação das variáveis de ambiente (zod)
-    appwrite/server.ts   clientes admin (API key) e de sessão (cookie)
-    appwrite/client.ts   SDK Web (realtime, uploads)
-    auth/session.ts      login, logout e usuário atual
-  proxy.ts               checagem otimista de sessão em /app/*
-scripts/                 automações de desenvolvimento (conexão com o Appwrite)
-docs/                    arquitetura, ambiente, Appwrite e decisões
-appwrite.config.json     esquema do Appwrite (teams, tabelas, buckets), publicado via CLI
+    db/                        schema.ts (fonte única), MemoryStore, AppwriteStore
+    auth/                      sessão, senha, token, permissões por papel
+    workflow/                  etapas, requisitos, engine de avanço
+    services/                  solicitações, documentos, pendências, notificações,
+                               auditoria, lembretes, importação, Control Tower
+    integrations/              Sankhya (mock) e pagamento (manual)
+scripts/                       conexão com o Appwrite e geração do config
+tests/unit, tests/e2e          vitest e Playwright
+docs/                          SCOPE, WORKFLOW, OPEN_DECISIONS, INTEGRATIONS, BACKLOG_FUTURO,
+                               ARQUITETURA, APPWRITE, AMBIENTE
 ```
 
 ## Documentação
 
-- [docs/AMBIENTE.md](docs/AMBIENTE.md): conexões, variáveis e passos de configuração.
-- [docs/APPWRITE.md](docs/APPWRITE.md): projeto Appwrite, permissões, tabelas e buckets.
-- [docs/ARQUITETURA.md](docs/ARQUITETURA.md): entendimento do negócio, decisões técnicas e módulos propostos.
+- [docs/SCOPE.md](docs/SCOPE.md): escopo, papéis, o que está entregue.
+- [docs/WORKFLOW.md](docs/WORKFLOW.md): estados, etapas, requisitos e regras de avanço.
+- [docs/OPEN_DECISIONS.md](docs/OPEN_DECISIONS.md): defaults provisórios e o que confirmar com o negócio.
+- [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md): adaptadores, modos manual/mock e dependências externas pendentes.
+- [docs/BACKLOG_FUTURO.md](docs/BACKLOG_FUTURO.md): próximos vertical slices.
+- [docs/ARQUITETURA.md](docs/ARQUITETURA.md), [docs/APPWRITE.md](docs/APPWRITE.md), [docs/AMBIENTE.md](docs/AMBIENTE.md): decisões técnicas, esquema e ambiente.
