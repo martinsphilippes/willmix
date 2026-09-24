@@ -1,6 +1,6 @@
 /**
  * PaymentProvider: abstração mínima para cobrança do cliente.
- * MANUAL: o operador Willmix confirma o pagamento e anexa comprovante.
+ * MANUAL: o operador Wellmix confirma o pagamento e anexa comprovante.
  * EXTERNAL DEPENDENCY PENDING: boleto/PIX via API (banco ou gateway).
  */
 export interface PaymentProvider {
@@ -24,7 +24,7 @@ export class ManualPaymentProvider implements PaymentProvider {
     reference: string;
   }) {
     return {
-      instructions: `Pagamento manual de ${input.currency} ${input.amount.toFixed(2)} (ref. ${input.reference}). O operador Willmix confirma o recebimento no portal.`,
+      instructions: `Pagamento manual de ${input.currency} ${input.amount.toFixed(2)} (ref. ${input.reference}). O operador Wellmix confirma o recebimento no portal.`,
       externalId: null,
     };
   }

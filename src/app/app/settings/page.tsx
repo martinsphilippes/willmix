@@ -63,7 +63,7 @@ export default async function SettingsPage({
               >
                 <option value="BOTH">BOTH</option>
                 <option value="CUSTOMER">CUSTOMER</option>
-                <option value="WILLMIX">WILLMIX</option>
+                <option value="WELLMIX">WELLMIX</option>
               </Select>
             </Field>
             <Field label="weightTolerancePercent (%)">

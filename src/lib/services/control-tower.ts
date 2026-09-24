@@ -46,7 +46,7 @@ export interface TowerData {
   exceptions: TowerException[];
 }
 
-/** Visão da Willmix: onde cada pedido está, quem precisa agir, o que está atrasado ou com problema. */
+/** Visão da Wellmix: onde cada pedido está, quem precisa agir, o que está atrasado ou com problema. */
 export async function loadControlTower(): Promise<TowerData> {
   const store = getStore();
   const now = Date.now();

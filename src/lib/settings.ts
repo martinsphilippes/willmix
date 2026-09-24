@@ -8,9 +8,9 @@ import { getStore } from "@/lib/db";
  */
 export const DEFAULT_SETTINGS = {
   customerCanCreateRequest: true,
-  willmixCanCreateRequest: true,
-  /** CUSTOMER | WILLMIX | BOTH: quem confirma o recebimento da entrega. */
-  deliveryConfirmationMode: "BOTH" as "CUSTOMER" | "WILLMIX" | "BOTH",
+  wellmixCanCreateRequest: true,
+  /** CUSTOMER | WELLMIX | BOTH: quem confirma o recebimento da entrega. */
+  deliveryConfirmationMode: "BOTH" as "CUSTOMER" | "WELLMIX" | "BOTH",
   agencyValidationEnabled: true,
   /** Tolerância de divergência de peso entre preparação e inspeção (%). */
   weightTolerancePercent: 3,

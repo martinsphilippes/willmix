@@ -6,10 +6,10 @@ Modelo: **solicitação → pedido → item → etapa → requisito → submiss�
 
 | Status                 | Quem age          | Ação                                                                 |
 | ---------------------- | ----------------- | -------------------------------------------------------------------- |
-| `REQUESTED`            | Willmix           | Seleciona fornecedores e abre a RFQ (`openRfq`)                      |
+| `REQUESTED`            | Wellmix           | Seleciona fornecedores e abre a RFQ (`openRfq`)                      |
 | `RFQ_OPEN`             | Fornecedores      | Respondem preço, moeda, prazo, condições (`answerQuote`)             |
-| `QUOTATION_RECEIVED`   | Willmix           | Compara e seleciona; define valor ao cliente e sinal (`selectQuote`) |
-| `WAITING_DOWN_PAYMENT` | Cliente / Willmix | Cliente paga; Willmix confirma manualmente (`confirmDownPayment`)    |
+| `QUOTATION_RECEIVED`   | Wellmix           | Compara e seleciona; define valor ao cliente e sinal (`selectQuote`) |
+| `WAITING_DOWN_PAYMENT` | Cliente / Wellmix | Cliente paga; Wellmix confirma manualmente (`confirmDownPayment`)    |
 | `ORDERED`              |                   | Pedido criado; fluxo continua nas etapas                             |
 
 ## Etapas do pedido (tabela `stages`, chave `key`)
@@ -26,7 +26,7 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 | `SHIPPING`         | Data de embarque, previsão de chegada, BL (companhia marítima; operador se não houver designada). Opcional: navio                  |
 | `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos |
 | `TRANSPORT`        | Placa, previsão de entrega, entrega realizada (transportador; operador se não houver). Opcional: situação                          |
-| `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WILLMIX`)                                                 |
+| `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                 |
 | `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                         |
 
 ## Regra de avanço
@@ -35,11 +35,11 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 
 ## Quem preenche
 
-Willmix (admin e operador) pode preencher qualquer requisito. Os demais só preenchem requisitos do próprio papel e em pedidos em que o seu parceiro está designado (`ROLE_PARTY_FIELD`).
+Wellmix (admin e operador) pode preencher qualquer requisito. Os demais só preenchem requisitos do próprio papel e em pedidos em que o seu parceiro está designado (`ROLE_PARTY_FIELD`).
 
 ## Bloqueio e revisão
 
-- **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): etapa `blocked`, motivo em `blockReason`, requisito extra `inspection_review` (aprovação da Willmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente.
+- **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): etapa `blocked`, motivo em `blockReason`, requisito extra `inspection_review` (aprovação da Wellmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente.
 - **Arte reprovada** pela agência: o requisito `art` volta para `rejected`; o fornecedor reenvia (nova versão do documento) e a aprovação volta a pendente.
 
 ## Documentos

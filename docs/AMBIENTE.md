@@ -11,7 +11,7 @@
 
 ## Modos de dados
 
-- `DATA_MODE=memory` (padrão sem Appwrite): JSON em `.data/` (ou `/tmp/willmix-data` na Vercel, efêmero). Seed automático no primeiro `/login`.
+- `DATA_MODE=memory` (padrão sem Appwrite): JSON em `.data/` (ou `/tmp/wellmix-data` na Vercel, efêmero). Seed automático no primeiro `/login`.
 - `DATA_MODE=appwrite`: exige `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`.
 
 ## Variáveis de ambiente
@@ -31,3 +31,15 @@ O E2E sobe o próprio servidor em `localhost:3100` com `DATA_DIR=.data-e2e`. Nã
 
 - `api.vercel.com` bloqueado: o Vercel CLI não funciona; use o conector ou push no GitHub.
 - Playwright instalado pelo npm procura outra versão do Chromium; use `PW_CHROMIUM=/opt/pw-browsers/chromium`.
+
+## Nomenclatura
+
+O nome oficial é **Wellmix** (empresa, portal e equipe). Ocorrências de `willmix` que permanecem por compatibilidade com recursos já provisionados:
+
+| Onde                                   | Motivo                                                                                       |
+| -------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `DATABASE_ID = "willmix"` (Appwrite)   | ID do banco já criado com dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar. |
+| Repositório `martinsphilippes/willmix` | Nome no GitHub. Renomear é decisão do dono do repositório (GitHub redireciona o antigo).     |
+| Projeto e domínio `willmix.vercel.app` | Nome do projeto na Vercel. Renomear muda a URL pública; fazer junto com o domínio final.     |
+
+Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do banco e as contas `@willmix.com` → `@wellmix.com` (senha `wellmix123`) sem recriar nada.

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWillmix } from "@/lib/auth/permissions";
+import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore, PARTY_TYPES } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -19,7 +19,7 @@ export default async function PartiesPage({
 }: PageProps<"/app/parties">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWillmix(user);
+  assertWellmix(user);
   const { type } = await searchParams;
   const t = await getT();
   const store = getStore();

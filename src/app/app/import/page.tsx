@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWillmix } from "@/lib/auth/permissions";
+import { assertWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import { IMPORT_COLUMNS } from "@/lib/services/import";
 import { Alert, Card, Field, Input, PageHeader, Select } from "@/components/ui";
@@ -12,7 +12,7 @@ export default async function ImportPage({
 }: PageProps<"/app/import">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWillmix(user);
+  assertWellmix(user);
   const { entity, created, skipped, error } = await searchParams;
   const t = await getT();
   const current =

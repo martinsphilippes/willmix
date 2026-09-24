@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWillmix, isAdmin } from "@/lib/auth/permissions";
+import { assertWellmix, isAdmin } from "@/lib/auth/permissions";
 import { getStore, LOCALES, ROLES } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { LOCALE_NAMES } from "@/i18n";
@@ -34,7 +34,7 @@ export default async function PartyPage({
 }: PageProps<"/app/parties/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWillmix(user);
+  assertWellmix(user);
   const { id } = await params;
   const { error } = await searchParams;
   const store = getStore();

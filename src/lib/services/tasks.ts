@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getStore, type Order, type Request, type User } from "@/lib/db";
-import { isWillmix } from "@/lib/auth/permissions";
+import { isWellmix } from "@/lib/auth/permissions";
 import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
 
 export interface Task {
@@ -38,7 +38,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       filter: { stageId: stage.id, status: ["pending", "rejected"] },
     });
     const mine = requirements.filter(
-      (r) => isWillmix(user) || r.role === user.role,
+      (r) => isWellmix(user) || r.role === user.role,
     );
     if (mine.length === 0) continue;
     tasks.push({
@@ -70,7 +70,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       });
     }
   }
-  if (isWillmix(user)) {
+  if (isWellmix(user)) {
     const requests = await store.list("requests", {
       filter: {
         status: ["REQUESTED", "QUOTATION_RECEIVED", "WAITING_DOWN_PAYMENT"],
@@ -128,7 +128,7 @@ function requestTask(request: Request): Task {
 }
 
 export function isInvolved(user: User, order: Order): boolean {
-  if (isWillmix(user)) return true;
+  if (isWellmix(user)) return true;
   const field = ROLE_PARTY_FIELD[user.role];
   if (!field) return false;
   return order[field] === user.partyId;

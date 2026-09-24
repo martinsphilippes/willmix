@@ -1,4 +1,4 @@
-# Willmix
+# Wellmix
 
 Portal Operacional de Importações da Wellmix: solicitação do cliente, RFQ com fornecedores na China, seleção, sinal, pedido, checklists, inspeção, embarque, desembaraço, transporte e entrega, com Control Tower para a equipe. O Sankhya continua sendo o ERP.
 
@@ -12,12 +12,12 @@ npm ci
 npm run dev        # http://localhost:3000 (modo memória, dados em .data/)
 ```
 
-Na primeira abertura de `/login` o sistema cria os dados de demonstração. Senha de todas as contas: `willmix123`.
+Na primeira abertura de `/login` o sistema cria os dados de demonstração. Senha de todas as contas: `wellmix123`.
 
 | Conta                   | Papel              |
 | ----------------------- | ------------------ |
-| admin@willmix.com       | Admin Willmix      |
-| operador@willmix.com    | Operador Willmix   |
+| admin@wellmix.com       | Admin Wellmix      |
+| operador@wellmix.com    | Operador Wellmix   |
 | joao@lojista.com        | Cliente            |
 | supplier.a@china.com    | Fornecedor (中文)  |
 | supplier.b@china.com    | Fornecedor (EN)    |
@@ -26,7 +26,7 @@ Na primeira abertura de `/login` o sistema cria os dados de demonstração. Senh
 | despachante@comex.com   | Despachante        |
 | armador@maritima.com    | Companhia marítima |
 | transportadora@rodo.com | Transportador      |
-| juridico@willmix.com    | Jurídico           |
+| juridico@wellmix.com    | Jurídico           |
 
 Para produção, preencha `.env.example` (Appwrite, `SESSION_SECRET`, `CRON_SECRET`) e publique o esquema: `npm run appwrite:connect && npm run appwrite:push`.
 

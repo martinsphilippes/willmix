@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWillmix } from "@/lib/auth/permissions";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -18,7 +18,7 @@ import {
 export default async function RequestsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWillmix(user) || user.role === "customer")) redirect("/app");
+  if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
   const t = await getT();
   const store = getStore();
   const requests = await store.list("requests", {
@@ -48,7 +48,7 @@ export default async function RequestsPage() {
           <thead>
             <tr>
               <Th>{t("common.product")}</Th>
-              {isWillmix(user) ? <Th>{t("common.customer")}</Th> : null}
+              {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
               <Th>{t("common.quantity")}</Th>
               <Th>{t("common.status")}</Th>
               <Th>{t("requests.deadline")}</Th>
@@ -59,7 +59,7 @@ export default async function RequestsPage() {
             {requests.map((r) => (
               <tr key={r.id} className="hover:bg-zinc-50">
                 <Td className="font-medium">{r.productName}</Td>
-                {isWillmix(user) ? (
+                {isWellmix(user) ? (
                   <Td>
                     {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
                   </Td>

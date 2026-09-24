@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Willmix",
-    template: "%s · Willmix",
+    default: "Wellmix",
+    template: "%s · Wellmix",
   },
   description: "Plataforma de gestão comercial Wellmix",
 };

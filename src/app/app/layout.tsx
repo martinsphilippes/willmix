@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isAdmin, isWillmix } from "@/lib/auth/permissions";
+import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES } from "@/i18n";
 import { LOCALES, type Role } from "@/lib/db/schema";
@@ -96,7 +96,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
               title={t(`role.${user.role}`)}
             >
               {user.name}
-              {isWillmix(user) ? "" : ` · ${t(`role.${user.role}`)}`}
+              {isWellmix(user) ? "" : ` · ${t(`role.${user.role}`)}`}
             </span>
             {showDemo ? (
               <DemoSwitcher

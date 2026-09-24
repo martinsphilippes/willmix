@@ -46,8 +46,8 @@ export function dataMode(): DataMode {
  * ali serve apenas para demonstração (dados efêmeros).
  */
 export const dataDir = () =>
-  process.env.DATA_DIR ?? (process.env.VERCEL ? "/tmp/willmix-data" : ".data");
+  process.env.DATA_DIR ?? (process.env.VERCEL ? "/tmp/wellmix-data" : ".data");
 
 /** Segredo para assinar o cookie de sessão no modo memória. */
 export const sessionSecret = () =>
-  process.env.SESSION_SECRET ?? "willmix-dev-secret-troque-em-producao";
+  process.env.SESSION_SECRET ?? "wellmix-dev-secret-troque-em-producao";

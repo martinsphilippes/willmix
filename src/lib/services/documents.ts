@@ -10,7 +10,7 @@ import {
 import {
   canViewOrder,
   canViewRequest,
-  isWillmix,
+  isWellmix,
 } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 
@@ -116,7 +116,7 @@ export async function canAccessDocument(
   user: User,
   doc: Document,
 ): Promise<boolean> {
-  if (isWillmix(user) || doc.uploadedByUserId === user.id) return true;
+  if (isWellmix(user) || doc.uploadedByUserId === user.id) return true;
   const store = getStore();
   if (doc.orderId) {
     const order = await store.get("orders", doc.orderId);

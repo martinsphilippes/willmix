@@ -11,7 +11,7 @@ Ordem sugerida depois do MVP funcional.
 ## Vertical slice 3: notificações
 
 - Provedor de e-mail real; templates por idioma.
-- Preferências por usuário (canal, horário); resumo diário para a Willmix.
+- Preferências por usuário (canal, horário); resumo diário para a Wellmix.
 
 ## Vertical slice 4: conta corrente
 

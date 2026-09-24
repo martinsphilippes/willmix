@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWillmix } from "@/lib/auth/permissions";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -20,13 +20,13 @@ export default async function NewRequestPage({
 }: PageProps<"/app/requests/new">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWillmix(user) || user.role === "customer")) redirect("/app");
+  if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
   const { error } = await searchParams;
   const t = await getT();
   const store = getStore();
   const [products, customers] = await Promise.all([
     store.list("products", { filter: { active: true }, orderBy: "name" }),
-    isWillmix(user)
+    isWellmix(user)
       ? store.list("parties", {
           filter: { type: "customer", active: true },
           orderBy: "name",
@@ -47,7 +47,7 @@ export default async function NewRequestPage({
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <Card className="mt-4 max-w-2xl">
         <form action={createRequestAction} className="space-y-4">
-          {isWillmix(user) ? (
+          {isWellmix(user) ? (
             <Field label={t("common.customer")}>
               <Select name="customerId" required defaultValue="">
                 <option value="" disabled>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWillmix } from "@/lib/auth/permissions";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -28,7 +28,7 @@ export default async function AccountPage({
   const supplierId =
     user.role === "supplier"
       ? user.partyId
-      : isWillmix(user) && typeof supplier === "string"
+      : isWellmix(user) && typeof supplier === "string"
         ? supplier
         : null;
   if (!supplierId) redirect("/app");

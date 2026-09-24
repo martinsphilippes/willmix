@@ -5,8 +5,8 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | Chave                      | Default    | Observação                                                                  |
 | -------------------------- | ---------- | --------------------------------------------------------------------------- |
 | `customerCanCreateRequest` | `true`     | Cliente cria solicitação diretamente                                        |
-| `willmixCanCreateRequest`  | `true`     | Willmix cria em nome do cliente (mesmo formulário)                          |
-| `deliveryConfirmationMode` | `BOTH`     | Cliente confirma; Willmix pode confirmar por ele. `WILLMIX` tira do cliente |
+| `wellmixCanCreateRequest`  | `true`     | Wellmix cria em nome do cliente (mesmo formulário)                          |
+| `deliveryConfirmationMode` | `BOTH`     | Cliente confirma; Wellmix pode confirmar por ele. `WELLMIX` tira do cliente |
 | `agencyValidationEnabled`  | `true`     | Exige aprovação da arte pela agência quando há agência designada            |
 | `weightTolerancePercent`   | `3`        | Divergência acima disso bloqueia a inspeção                                 |
 | `paymentMode`              | `MANUAL`   | Operador confirma o sinal e anexa comprovante                               |
@@ -21,7 +21,7 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 ## Decisões de modelagem tomadas
 
 - Parceiros (agência, despachante, armador, transportador) são designados por pedido. Quando existe exatamente um parceiro ativo de cada tipo, é designado automaticamente na criação do pedido.
-- Sem parceiro designado, o próprio operador Willmix assume os requisitos de embarque, desembaraço e transporte (entrada manual).
+- Sem parceiro designado, o próprio operador Wellmix assume os requisitos de embarque, desembaraço e transporte (entrada manual).
 - Moeda do FOB vem da cotação; moeda ao cliente definida na seleção (padrão BRL). Câmbio é informado por pagamento.
 - A conta corrente do fornecedor considera FOB total do pedido menos pagamentos registrados e recebidos.
 - Auditoria registra usuário, ação, entidade, resumo e, quando relevante, antes/depois.

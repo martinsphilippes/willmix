@@ -1,9 +1,9 @@
 import type { Order, Request, Role, User } from "@/lib/db/schema";
 
-export const WILLMIX_ROLES: Role[] = ["admin", "operator"];
+export const WELLMIX_ROLES: Role[] = ["admin", "operator"];
 
-export const isWillmix = (user: Pick<User, "role">) =>
-  WILLMIX_ROLES.includes(user.role);
+export const isWellmix = (user: Pick<User, "role">) =>
+  WELLMIX_ROLES.includes(user.role);
 export const isAdmin = (user: Pick<User, "role">) => user.role === "admin";
 
 export class ForbiddenError extends Error {
@@ -12,17 +12,17 @@ export class ForbiddenError extends Error {
   }
 }
 
-export function assertWillmix(user: User) {
-  if (!isWillmix(user)) throw new ForbiddenError();
+export function assertWellmix(user: User) {
+  if (!isWellmix(user)) throw new ForbiddenError();
 }
 
 export function assertRole(user: User, roles: Role[]) {
   if (!roles.includes(user.role)) throw new ForbiddenError();
 }
 
-/** Cliente vê apenas as próprias solicitações; Willmix vê todas. */
+/** Cliente vê apenas as próprias solicitações; Wellmix vê todas. */
 export function canViewRequest(user: User, request: Request): boolean {
-  if (isWillmix(user)) return true;
+  if (isWellmix(user)) return true;
   if (user.role === "customer") return request.customerId === user.partyId;
   return false;
 }
@@ -32,20 +32,20 @@ export function canViewQuote(
   user: User,
   quote: { supplierId: string },
 ): boolean {
-  if (isWillmix(user)) return true;
+  if (isWellmix(user)) return true;
   return user.role === "supplier" && quote.supplierId === user.partyId;
 }
 
 /**
  * Quem pode abrir um pedido:
- * - Willmix: todos;
+ * - Wellmix: todos;
  * - cliente: os seus;
  * - fornecedor: os seus;
  * - agência, despachante, armador, transportador: os pedidos em que foram designados;
  * - jurídico: todos (somente leitura, multas).
  */
 export function canViewOrder(user: User, order: Order): boolean {
-  if (isWillmix(user) || user.role === "legal") return true;
+  if (isWellmix(user) || user.role === "legal") return true;
   const party = user.partyId;
   if (!party) return false;
   switch (user.role) {
@@ -66,10 +66,10 @@ export function canViewOrder(user: User, order: Order): boolean {
   }
 }
 
-/** Campos financeiros internos: só Willmix. */
-export const canSeeInternalCosts = (user: User) => isWillmix(user);
+/** Campos financeiros internos: só Wellmix. */
+export const canSeeInternalCosts = (user: User) => isWellmix(user);
 /** Identidade do fornecedor: cliente nunca vê. */
 export const canSeeSupplier = (user: User) => user.role !== "customer";
 /** Valor de venda ao cliente: fornecedor nunca vê. */
 export const canSeeSellPrice = (user: User) =>
-  isWillmix(user) || user.role === "customer";
+  isWellmix(user) || user.role === "customer";

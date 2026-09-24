@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const APPWRITE_COOKIE = `a_session_${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID ?? "willmix"}`;
+const APPWRITE_COOKIE = `a_session_${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID ?? "wellmix"}`;
 const MEMORY_COOKIE = "wm_session";
 
 /**
