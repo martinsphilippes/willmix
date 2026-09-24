@@ -40,6 +40,6 @@ O nome oficial é **Wellmix** (empresa, portal e equipe). Ocorrências de `willm
 | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_ID = "willmix"` (Appwrite)   | ID do banco já criado com dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar.                                                                                           |
 | Repositório `martinsphilippes/willmix` | Nome no GitHub. Renomear é decisão do dono do repositório (GitHub redireciona o antigo).                                                                                               |
-| Domínio `willmix.vercel.app`           | Endereço antigo, mantido até o domínio definitivo. Projeto na Vercel já se chama `wellmix`; endereço atual: `portal-wellmix.vercel.app` (`wellmix.vercel.app` pertence a outra conta). |
+| Domínio `willmix.vercel.app`           | Endereço antigo: redireciona (308) para `portal-wellmix.vercel.app`, o endereço principal (`next.config.ts`). `wellmix.vercel.app` pertence a outra conta. Branch de produção na Vercel deve ser `wellmix`. |
 
 Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do banco e as contas `@willmix.com` → `@wellmix.com` (senha `wellmix123`) sem recriar nada.

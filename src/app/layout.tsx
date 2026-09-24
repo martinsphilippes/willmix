@@ -13,6 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Base dos links absolutos (imagem de compartilhamento): sempre o endereço principal.
+  metadataBase: new URL("https://portal-wellmix.vercel.app"),
   title: {
     default: "Portal Wellmix",
     template: "%s · Wellmix",
