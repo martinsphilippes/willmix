@@ -5,10 +5,13 @@ Portal Operacional de Importações da Wellmix. O portal organiza o fluxo entre 
 ## Macrofluxo
 
 ```
-CLIENTE → SOLICITAÇÃO → RFQ → COTAÇÕES → SELEÇÃO → SINAL → PEDIDO → (SANKHYA)
-→ PREPARAÇÃO → PAGAMENTO AO FORNECEDOR → ARTE/EMBALAGEM → INSPEÇÃO → EMBARQUE
-→ DESEMBARAÇO → TRANSPORTE → ENTREGA → ENCERRAMENTO
+SOURCING (visita → produto encontrado → negociação) → FICHA DO PRODUTO
+→ CLIENTE → SOLICITAÇÃO → RFQ → COTAÇÕES → SELEÇÃO → SINAL → PEDIDO (+ snapshot da compra) → (SANKHYA)
+→ PREPARAÇÃO → PAGAMENTO AO FORNECEDOR → ARTE/EMBALAGEM → INSPEÇÃO CEGA (comprado × inspecionado)
+→ CONTAINER → EMBARQUE → DESEMBARAÇO → TRANSPORTE → ENTREGA → ENCERRAMENTO
 ```
+
+A evolução incremental (sourcing, ficha completa, importação de planilhas, snapshot, programação de compra, container, fila de revisão, confirmação de visualização) está classificada em `EVOLUTION_PLAN.md`. O fluxo do pedido não mudou; tudo foi acrescentado em volta dele.
 
 ## Papéis
 

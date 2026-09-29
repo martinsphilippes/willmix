@@ -102,6 +102,16 @@ export async function createRequestAction(form: FormData) {
       notes: str(form, "notes") || null,
     });
     const request = await createRequest(user, parsed);
+    // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
+    const scheduleId = str(form, "scheduleId");
+    if (scheduleId && isWellmix(user)) {
+      const schedule = await getStore().get("purchase_schedules", scheduleId);
+      if (schedule && !schedule.requestId)
+        await getStore().update("purchase_schedules", scheduleId, {
+          requestId: request.id,
+          status: "confirmed",
+        });
+    }
     const files = form
       .getAll("attachments")
       .filter((f): f is File => f instanceof File && f.size > 0);
@@ -859,8 +869,8 @@ export async function saveSettingsAction(form: FormData) {
   });
 }
 
-/** Garante acesso ao pedido em ações genéricas. */
-export async function assertOrderAccess(user: User, orderId: string) {
+/** Garante acesso ao pedido em ações genéricas. (Privado: exportar de um arquivo "use server" viraria endpoint público.) */
+async function assertOrderAccess(user: User, orderId: string) {
   const order = await getStore().get("orders", orderId);
   if (!order || !canViewOrder(user, order)) throw new Error("forbidden");
   return order;

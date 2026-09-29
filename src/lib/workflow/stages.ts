@@ -73,6 +73,13 @@ export const EXTENDED_INSPECTION_REQUIREMENTS: RequirementTemplate[] = [
     role: "supplier",
   },
   {
+    key: "inner_box_measured",
+    label: "Unidades por inner box encontradas",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
     key: "material_found",
     label: "Material encontrado",
     type: "text",

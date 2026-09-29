@@ -11,7 +11,11 @@ import {
   type SupplierVisit,
   type User,
 } from "@/lib/db";
-import { assertWellmix } from "@/lib/auth/permissions";
+import {
+  assertWellmix,
+  canViewOrder,
+  ForbiddenError,
+} from "@/lib/auth/permissions";
 import { boxCbm } from "@/lib/logistics/cbm";
 import { audit } from "./audit";
 import { uploadDocument } from "./documents";
@@ -111,6 +115,7 @@ export async function addPhotos(
   } = {},
 ): Promise<ProductPhoto[]> {
   const store = getStore();
+  await assertPhotoAccess(user, target);
   const out: ProductPhoto[] = [];
   for (const file of files) {
     if (!file.type.startsWith("image/")) continue;
@@ -155,6 +160,19 @@ export async function addPhotos(
   return out;
 }
 
+/** Fotos de produto/sourcing: só Wellmix; fotos de pedido: quem pode ver o pedido. */
+async function assertPhotoAccess(
+  user: User,
+  target: { orderId?: string | null },
+) {
+  if (target.orderId) {
+    const order = await getStore().get("orders", target.orderId);
+    if (!order || !canViewOrder(user, order)) throw new ForbiddenError();
+    return;
+  }
+  assertWellmix(user);
+}
+
 export async function setPrimaryPhoto(user: User, photoId: string) {
   assertWellmix(user);
   const store = getStore();
@@ -196,6 +214,9 @@ export async function addMeasurement(
   },
 ) {
   const store = getStore();
+  await assertPhotoAccess(user, {
+    orderId: entity === "order" ? entityId : null,
+  });
   let photoDocumentId: string | null = null;
   if (input.photo && input.photo.size > 0) {
     const doc = await uploadDocument(user, input.photo, {

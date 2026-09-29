@@ -11,7 +11,8 @@ export interface Task {
     | "select_supplier"
     | "confirm_payment"
     | "pay"
-    | "rfq";
+    | "rfq"
+    | "review";
   title: string;
   detail: string;
   link: string;
@@ -93,6 +94,31 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       });
     }
   }
+  // Fila "itens para revisão" (gates): uma pendência por item aberto, só para a Wellmix.
+  if (isWellmix(user)) {
+    const reviews = await store.list("review_items", {
+      filter: { status: "open" },
+      orderBy: "createdAt",
+      direction: "desc",
+    });
+    for (const r of reviews) {
+      tasks.push({
+        kind: "review",
+        title: r.problem,
+        detail: [
+          r.expected !== null ? `esperado ${r.expected}` : null,
+          r.found !== null ? `encontrado ${r.found}` : null,
+          r.action,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        link: r.link ?? "/app/reviews",
+        dueAt: null,
+        overdue: false,
+      });
+    }
+  }
+
   return tasks.sort((a, b) => Number(b.overdue) - Number(a.overdue));
 }
 

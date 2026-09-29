@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getStore, type ReviewItem, type Role, type User } from "@/lib/db";
+import { assertWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 
 /**
@@ -107,6 +108,7 @@ export async function resolveReviewById(
   status: "resolved" | "dismissed",
   note?: string | null,
 ) {
+  assertWellmix(user);
   const store = getStore();
   const item = await store.get("review_items", id);
   if (!item) throw new Error("review_not_found");

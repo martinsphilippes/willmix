@@ -17,6 +17,14 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | `downPaymentPercent`       | `30`       | Sinal sugerido sobre o valor ao cliente (editável na seleção)               |
 | `stageDueDays`             | ver código | Prazo por etapa, em dias                                                    |
 | `reminderDaysBeforeDue`    | `1`        | Lembrete antes do vencimento                                                |
+| `dimensionTolerancePercent` | `5`      | Divergência de comprimento/largura/altura entre snapshot e inspeção        |
+| `cbmTolerancePercent`      | `5`        | Divergência de CBM da caixa e de peso bruto                                 |
+| `quantityTolerancePercent` | `0`        | Divergência de unidades por caixa (0 = exato)                               |
+| `inspectionExtendedChecks` | `true`     | Inspeção pede medidas, caixa, material e cor (opcionais, cegos)             |
+| `reviewOnZeroPrice`        | `true`     | Pedido sem FOB entra na fila de revisão                                     |
+| `containerTypes`           | 20GP/40GP/40HC | Capacidade útil (m³) e peso máximo por tipo; nada fixo em código        |
+| `containerAllowMultiCustomer` | `false` | Clientes diferentes no mesmo container só manualmente e se ligado           |
+| `containerMaxOccupancyPercent` | `95`   | Acima disso, item na fila de revisão                                        |
 
 ## Decisões de modelagem tomadas
 
@@ -25,6 +33,10 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Moeda do FOB vem da cotação; moeda ao cliente definida na seleção (padrão BRL). Câmbio é informado por pagamento.
 - A conta corrente do fornecedor considera FOB total do pedido menos pagamentos registrados e recebidos.
 - Auditoria registra usuário, ação, entidade, resumo e, quando relevante, antes/depois.
+
+- Consolidação: vários produtos do mesmo cliente podem dividir o container; não existe motor automático que junte pedidos de clientes diferentes.
+- Snapshot da compra é criado ao nascer o pedido; para pedidos anteriores, gerado retroativamente sob demanda e marcado como tal.
+- Visão comercial: "disponível" é o volume de itens de container sem pedido; sem estoque cadastrado, não se inventa valor.
 
 ## A confirmar com o negócio
 

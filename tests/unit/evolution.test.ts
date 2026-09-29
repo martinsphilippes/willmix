@@ -17,8 +17,15 @@ const { compareWithSnapshot, summarizeResult, latestInspectionResult } =
 const { listOpenReviews } = await import("@/lib/services/reviews");
 const { createContainer, addContainerItem, loadContainer } =
   await import("@/lib/services/containers");
-const { suggestMapping, normalizeRow, parseNumber } =
-  await import("@/lib/services/import-batches");
+const {
+  suggestMapping,
+  normalizeRow,
+  parseNumber,
+  createImportBatch,
+  setBatchMapping,
+  previewBatch,
+  applyImportBatch,
+} = await import("@/lib/services/import-batches");
 type User = import("@/lib/db").User;
 
 withTempStore();
@@ -316,5 +323,61 @@ describe("importação: mapeamento e normalização", () => {
     expect(normalizeRow({ 单价: "x" }, mapping, "products").problems).toContain(
       "missing:name",
     );
+  });
+});
+
+describe("importação: lote XLSX de ponta a ponta", () => {
+  it("lê a planilha chinesa, casa o fornecedor por nome e cria/atualiza sem duplicar", async () => {
+    const { readFileSync } = await import("node:fs");
+    const bytes = readFileSync("tests/fixtures/produtos-china.xlsx");
+    const file = new File([bytes], "produtos-china.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const store = getStore();
+    // "深圳供应商A" não existe; renomeamos o fornecedor A para casar por nome.
+    await store.update("parties", "fornecedor-a", { name: "深圳供应商A" });
+    const batch = await createImportBatch(admin, "products", file);
+    expect(batch.rowCount).toBe(2);
+    expect(batch.mapping["产品名称"]).toBe("name");
+    const mapped = await setBatchMapping(admin, batch.id, {
+      ...batch.mapping,
+      __defaultLineId: "linha-utilidades",
+    });
+    const preview = await previewBatch(mapped);
+    expect(preview[0].supplierId).toBe("fornecedor-a");
+    expect(preview[0].problems).toEqual([]);
+    expect(preview[0].suggested).toBe("create");
+    expect(preview[1].problems).toContain("supplier_not_found");
+    const summary = await applyImportBatch(admin, batch.id, {});
+    expect(summary).toMatchObject({
+      created: 2,
+      updated: 0,
+      skipped: 0,
+      errors: 0,
+    });
+    const [mug] = await store.list("products", {
+      filter: { supplierSku: "MK-350" },
+    });
+    expect(mug.name).toBe("陶瓷马克杯 350ml");
+    expect(mug.price).toBe(2.35);
+    expect(mug.moq).toBe(3000);
+    expect(mug.source).toBe("import");
+    expect(mug.cbm).toBeNull();
+    // Reimportar: agora casa por código do fornecedor e atualiza em vez de duplicar.
+    const again = await createImportBatch(admin, "products", file);
+    const preview2 = await previewBatch(
+      await setBatchMapping(admin, again.id, {
+        ...again.mapping,
+        __defaultLineId: "linha-utilidades",
+      }),
+    );
+    expect(preview2[0].match?.reason).toBe("supplierSku");
+    expect(preview2[0].suggested).toBe("update");
+    const summary2 = await applyImportBatch(admin, again.id, { "1": "skip" });
+    expect(summary2).toMatchObject({ created: 0, updated: 1, skipped: 1 });
+    expect(
+      (await store.list("products", { filter: { supplierSku: "MK-350" } }))
+        .length,
+    ).toBe(1);
   });
 });

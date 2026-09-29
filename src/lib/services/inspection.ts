@@ -241,7 +241,7 @@ export async function compareInspection(
         orderId: order.id,
         stageId: stage.id,
         key: "inspection_review",
-        label: "Revisão da divergência de peso (Wellmix)",
+        label: "Revisão da divergência na inspeção (Wellmix)",
         type: "approval",
         required: true,
         role: "operator",

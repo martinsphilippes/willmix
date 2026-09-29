@@ -21,9 +21,22 @@ export default async function NewRequestPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
-  const { error } = await searchParams;
+  const { error, productId, quantity, scheduleId, customerId } =
+    await searchParams;
   const t = await getT();
   const store = getStore();
+  // Pré-preenchimento vindo da ficha do produto ou de uma programação de compra.
+  const schedule =
+    typeof scheduleId === "string"
+      ? await store.get("purchase_schedules", scheduleId)
+      : null;
+  const presetProductId =
+    schedule?.productId ?? (typeof productId === "string" ? productId : "");
+  const presetQuantity =
+    schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
+  const presetCustomerId =
+    schedule?.customerId ??
+    (typeof customerId === "string" ? customerId : "");
   const [products, customers] = await Promise.all([
     store.list("products", { filter: { active: true }, orderBy: "name" }),
     isWellmix(user)
@@ -47,9 +60,16 @@ export default async function NewRequestPage({
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <Card className="mt-4 max-w-2xl">
         <form action={createRequestAction} className="space-y-4">
+          {schedule ? (
+            <input type="hidden" name="scheduleId" value={schedule.id} />
+          ) : null}
           {isWellmix(user) ? (
             <Field label={t("common.customer")}>
-              <Select name="customerId" required defaultValue="">
+              <Select
+                name="customerId"
+                required
+                defaultValue={presetCustomerId}
+              >
                 <option value="" disabled>
                   {t("common.select")}
                 </option>
@@ -62,7 +82,7 @@ export default async function NewRequestPage({
             </Field>
           ) : null}
           <Field label={t("common.product")} hint={t("requests.specification")}>
-            <Select name="productId" defaultValue="">
+            <Select name="productId" defaultValue={presetProductId}>
               <option value="">{t("common.select")}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -89,6 +109,7 @@ export default async function NewRequestPage({
                 min="0.01"
                 step="any"
                 required
+                defaultValue={presetQuantity}
               />
             </Field>
             <Field label={t("requests.unit")}>

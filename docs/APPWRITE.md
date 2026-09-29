@@ -26,7 +26,7 @@ Estado: esquema publicado no projeto `6ab41ae700396f0409b8` (região `fra`) em 2
 
 ## Modelo de dados
 
-Banco `wellmix`, 17 tabelas: `users`, `parties`, `product_lines`, `products`, `requests`, `quotes`, `orders`, `order_items`, `stages`, `requirements`, `documents`, `payments`, `notifications`, `audit_log`, `penalties`, `settings`, `counters`. Colunas e índices em `schema.ts`; campos JSON (`requirements` da linha, `before`/`after` da auditoria, `value` de settings) são texto serializado.
+Banco `wellmix`, 29 tabelas: as 17 originais (`users`, `parties`, `product_lines`, `products`, `requests`, `quotes`, `orders`, `order_items`, `stages`, `requirements`, `documents`, `payments`, `notifications`, `audit_log`, `penalties`, `settings`, `counters`) e as 12 da evolução incremental (`supplier_visits`, `sourcing_items`, `product_photos`, `measurements`, `purchase_snapshots`, `purchase_schedules`, `containers`, `container_items`, `acknowledgements`, `review_items`, `inspection_results`, `import_batches`). `parties`, `products` e `documents` ganharam colunas opcionais (registros antigos ficam nulos). O push acrescenta colunas e valores de enum que faltam e extensões ao bucket, sem remover nada; `import_batches.rows` é `longtext` (`json_large`). Colunas e índices em `schema.ts`; campos JSON (`requirements` da linha, `before`/`after` da auditoria, `value` de settings) são texto serializado.
 
 Bucket `arquivos` (30 MB, antivírus e criptografia, gzip). Metadados em `documents`; acesso sempre por `/api/files/[id]`.
 

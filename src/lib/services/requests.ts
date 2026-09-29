@@ -379,6 +379,15 @@ async function createOrderFromRequest(
     status: "ORDERED",
     orderId: order.id,
   });
+  // Programação de compra ligada à solicitação passa a "ordered".
+  for (const schedule of await store.list("purchase_schedules", {
+    filter: { requestId: request.id },
+  })) {
+    await store.update("purchase_schedules", schedule.id, {
+      orderId: order.id,
+      status: "ordered",
+    });
+  }
   await audit(
     user,
     "order.create",
