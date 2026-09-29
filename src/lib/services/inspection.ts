@@ -78,6 +78,12 @@ export const INSPECTION_MEASURES: Array<{
     tolerance: "quantity",
   },
   {
+    key: "master_box_cbm_measured",
+    attribute: "cbm",
+    kind: "number",
+    tolerance: "cbm",
+  },
+  {
     key: "material_found",
     attribute: "material",
     kind: "text",

@@ -146,6 +146,7 @@ describe("comparação comprado × inspecionado", () => {
       [
         { key: "weight_measured", status: "done", value: "2.0" },
         { key: "master_box_measured", status: "done", value: "5" },
+        { key: "master_box_cbm_measured", status: "done", value: "0.1" },
         { key: "material_found", status: "done", value: "Ferro" },
       ],
       tol,
@@ -153,6 +154,7 @@ describe("comparação comprado × inspecionado", () => {
     expect(comparisons.filter((c) => !c.ok).map((c) => c.attribute)).toEqual([
       "netWeightKg",
       "masterBoxQty",
+      "cbm",
       "material",
     ]);
     expect(summarizeResult(comparisons)).toBe("DIVERGENT");
