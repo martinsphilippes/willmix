@@ -95,7 +95,6 @@ export function ItemForm({
               maxLength={160}
               defaultValue={item?.name ?? ""}
               className={bigField}
-              autoFocus={isNew}
             />
           </Field>
         </div>
@@ -120,6 +119,7 @@ export function ItemForm({
         <Field label={t("sourcing.item.otherSupplier")}>
           <Input
             name="supplierName"
+            maxLength={160}
             defaultValue={otherName}
             className={bigField}
           />
@@ -127,6 +127,7 @@ export function ItemForm({
         <Field label={t("sourcing.item.supplierSku")}>
           <Input
             name="supplierSku"
+            maxLength={60}
             defaultValue={item?.supplierSku ?? ""}
             className={bigField}
           />
@@ -134,6 +135,7 @@ export function ItemForm({
         <Field label={t("sourcing.item.category")}>
           <Input
             name="category"
+            maxLength={80}
             defaultValue={item?.category ?? ""}
             className={bigField}
           />
@@ -306,6 +308,7 @@ export function ItemForm({
         <Field label={t("sourcing.item.material")}>
           <Input
             name="material"
+            maxLength={120}
             defaultValue={item?.material ?? ""}
             className={bigField}
           />
@@ -314,6 +317,7 @@ export function ItemForm({
           <Field label={t("sourcing.item.color")}>
             <Input
               name="color"
+              maxLength={60}
               defaultValue={item?.color ?? ""}
               className={bigField}
             />
@@ -321,6 +325,7 @@ export function ItemForm({
           <Field label={t("sourcing.item.pantone")}>
             <Input
               name="pantone"
+              maxLength={40}
               defaultValue={item?.pantone ?? ""}
               className={bigField}
             />
@@ -397,6 +402,7 @@ export function ItemForm({
         <Field label={t("sourcing.visit.city")}>
           <Input
             name="city"
+            maxLength={80}
             defaultValue={item?.city ?? preset?.city ?? ""}
             className={bigField}
           />
@@ -404,6 +410,7 @@ export function ItemForm({
         <Field label={t("sourcing.visit.location")}>
           <Input
             name="location"
+            maxLength={160}
             defaultValue={item?.location ?? preset?.location ?? ""}
             className={bigField}
           />
@@ -460,7 +467,7 @@ export function ItemForm({
       <SaveBar hint={isNew ? t("sourcing.item.saveHint") : undefined}>
         <SubmitButton
           pendingText="…"
-          className="w-full py-3 text-base sm:w-auto sm:py-2 sm:text-sm"
+          className="flex-1 py-3 text-base sm:flex-none sm:py-2 sm:text-sm"
         >
           {t("common.save")}
         </SubmitButton>
@@ -471,7 +478,7 @@ export function ItemForm({
               : "/app/sourcing"
           }
           variant="ghost"
-          className="w-full sm:w-auto"
+          className="shrink-0 py-3 sm:py-2"
         >
           {t("common.back")}
         </LinkButton>

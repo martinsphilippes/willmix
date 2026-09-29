@@ -62,8 +62,7 @@ export function PhotoInput({
 
   return (
     <div className={className}>
-      <span className="text-sm font-medium text-zinc-800">{label}</span>
-      <label className="mt-1 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/60 px-4 py-5 text-center text-sm text-brand-800 transition hover:bg-brand-50 active:bg-brand-100">
+      <label className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/60 px-4 py-5 text-center text-sm text-brand-800 transition hover:bg-brand-50 active:bg-brand-100">
         <span aria-hidden className="text-2xl">
           📷
         </span>

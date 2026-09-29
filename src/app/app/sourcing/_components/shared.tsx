@@ -115,7 +115,11 @@ export function Section({
   );
 }
 
-/** Barra com o botão principal: fixa no fim da tela no celular, normal no desktop. */
+/**
+ * Barra com o botão principal: fixa no fim da tela no celular (uma linha, baixa,
+ * para cobrir pouco do formulário: Voltar à esquerda e Salvar ocupando o resto,
+ * ao alcance do polegar), normal no desktop (Salvar, depois Voltar).
+ */
 export function SaveBar({
   hint,
   children,
@@ -124,9 +128,9 @@ export function SaveBar({
   children: ReactNode;
 }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 mt-2 border-t border-zinc-200/80 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:pt-2">
-      {hint ? <p className="mb-2 text-xs text-zinc-500">{hint}</p> : null}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className="sticky bottom-0 z-10 -mx-4 mt-2 border-t border-zinc-200/80 bg-white/95 px-4 py-2.5 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:pt-2">
+      {hint ? <p className="mb-1.5 text-xs text-zinc-500">{hint}</p> : null}
+      <div className="flex flex-row-reverse items-center gap-2 sm:flex-row">
         {children}
       </div>
     </div>

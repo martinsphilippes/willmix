@@ -66,7 +66,9 @@ export default async function VisitPage({
               {t(`sourcing.visitStatus.${visit.status}`)}
             </Badge>
             <span>{formatDate(visit.visitedAt)}</span>
-            {visit.factoryName ? <span>· {visit.factoryName}</span> : null}
+            {visit.factoryName ? (
+              <span className="text-zinc-500">{visit.factoryName}</span>
+            ) : null}
             {supplier ? (
               <TextLink href={`/app/parties/${supplier.id}`}>
                 {t("common.supplier")}

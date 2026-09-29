@@ -204,6 +204,12 @@ export async function removeContainerItem(user: User, itemId: string) {
   await checkContainerGates(user, item.containerId);
 }
 
+/** Número em pt-BR para os textos da fila de revisão (até 4 casas, sem zeros à direita). */
+const fmt = (n: number | null | undefined) =>
+  n === null || n === undefined
+    ? "—"
+    : n.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+
 /** Gates: CBM acima da capacidade ou peso acima do máximo entram na fila de revisão. */
 async function checkContainerGates(user: User, containerId: string) {
   const data = await loadContainer(containerId);
@@ -219,8 +225,8 @@ async function checkContainerGates(user: User, containerId: string) {
       entityId: containerId,
       rule: "container.overCapacity",
       problem: `Container ${data.container.code} acima da ocupação permitida`,
-      expected: `≤ ${settings.containerMaxOccupancyPercent}% de ${data.container.capacityCbm} m³`,
-      found: `${data.usage.occupancyPercent}% (${data.usage.totalCbm} m³)`,
+      expected: `≤ ${settings.containerMaxOccupancyPercent}% de ${fmt(data.container.capacityCbm)} m³`,
+      found: `${fmt(data.usage.occupancyPercent)}% (${fmt(data.usage.totalCbm)} m³)`,
       responsibleRole: "operator",
       action: "Remover itens ou trocar o tipo de container.",
       link,
@@ -236,8 +242,8 @@ async function checkContainerGates(user: User, containerId: string) {
       entityId: containerId,
       rule: "container.overWeight",
       problem: `Container ${data.container.code} acima do peso máximo`,
-      expected: `≤ ${data.container.maxWeightKg} kg`,
-      found: `${data.usage.totalWeightKg} kg`,
+      expected: `≤ ${fmt(data.container.maxWeightKg)} kg`,
+      found: `${fmt(data.usage.totalWeightKg)} kg`,
       responsibleRole: "operator",
       action: "Reduzir carga ou revisar pesos por caixa.",
       link,
@@ -325,4 +331,104 @@ export async function containersForOrder(orderId: string) {
   const items = await store.list("container_items", { filter: { orderId } });
   const ids = [...new Set(items.map((i) => i.containerId))];
   return ids.length ? store.list("containers", { filter: { id: ids } }) : [];
+}
+
+/** Item de pedido ativo que pode entrar num container (select "por pedido"). */
+export interface OrderItemChoice {
+  orderItemId: string;
+  orderId: string;
+  orderNumber: number;
+  customerId: string;
+  customerName: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+/** Pedidos não encerrados com item, para o formulário "Adicionar item por pedido". */
+export async function listOrderItemChoices(): Promise<OrderItemChoice[]> {
+  const store = getStore();
+  const [orders, items, parties] = await Promise.all([
+    store.list("orders", { orderBy: "number", direction: "desc" }),
+    store.list("order_items"),
+    store.list("parties"),
+  ]);
+  const choices: OrderItemChoice[] = [];
+  for (const order of orders) {
+    if (order.status === "CLOSED") continue;
+    for (const item of items.filter((i) => i.orderId === order.id)) {
+      choices.push({
+        orderItemId: item.id,
+        orderId: order.id,
+        orderNumber: order.number,
+        customerId: order.customerId,
+        customerName:
+          parties.find((p) => p.id === order.customerId)?.name ?? "—",
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+      });
+    }
+  }
+  return choices;
+}
+
+export type ContainerType = { code: string; capacityCbm: number; maxWeightKg: number };
+
+/**
+ * Tipos de container a partir do texto das Configurações: uma linha por tipo,
+ * "código;capacidadeCbm;pesoMaxKg" (ex.: "40HC;68;26500"). JSON também é aceito
+ * (formato antigo). Lança "invalid_container_types" quando alguma linha não fecha.
+ */
+export function parseContainerTypes(text: string): ContainerType[] {
+  const raw = text.trim();
+  if (!raw) throw new ContainerError("invalid_container_types");
+  const valid = (t: unknown): t is ContainerType =>
+    !!t &&
+    typeof t === "object" &&
+    typeof (t as ContainerType).code === "string" &&
+    (t as ContainerType).code.trim().length > 0 &&
+    Number.isFinite((t as ContainerType).capacityCbm) &&
+    (t as ContainerType).capacityCbm > 0 &&
+    Number.isFinite((t as ContainerType).maxWeightKg) &&
+    (t as ContainerType).maxWeightKg >= 0;
+  let types: unknown[];
+  if (raw.startsWith("[")) {
+    try {
+      types = JSON.parse(raw) as unknown[];
+    } catch {
+      throw new ContainerError("invalid_container_types");
+    }
+  } else {
+    types = raw
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [code, cbm, kg] = line.split(/[;\t]/).map((s) => s.trim());
+        return {
+          code: code?.toUpperCase() ?? "",
+          capacityCbm: Number(String(cbm ?? "").replace(",", ".")),
+          maxWeightKg: kg === undefined || kg === "" ? 0 : Number(kg.replace(",", ".")),
+        };
+      });
+  }
+  if (!Array.isArray(types) || types.length === 0 || !types.every(valid))
+    throw new ContainerError("invalid_container_types");
+  // Código repetido deixaria o select ambíguo e o createContainer pegaria o primeiro.
+  const codes = types.map((t) => t.code.trim().toUpperCase());
+  if (new Set(codes).size !== codes.length)
+    throw new ContainerError("invalid_container_types");
+  return types.map((t) => ({
+    code: t.code.trim(),
+    capacityCbm: t.capacityCbm,
+    maxWeightKg: t.maxWeightKg,
+  }));
+}
+
+/** Texto para o textarea das Configurações (inverso de parseContainerTypes). */
+export function formatContainerTypes(types: ContainerType[]): string {
+  return types
+    .map((t) => `${t.code};${t.capacityCbm};${t.maxWeightKg}`)
+    .join("\n");
 }

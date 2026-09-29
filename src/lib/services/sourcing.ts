@@ -127,10 +127,12 @@ export async function addPhotos(
       sourcingItemId: target.sourcingItemId ?? null,
       orderId: target.orderId ?? null,
     });
+    // Vira principal quando ainda não há principal (primeira original/comercial),
+    // mesmo que já existam fotos de outros tipos (balança, embalagem...).
     const existing = await store.list("product_photos", {
       filter: target.productId
-        ? { productId: target.productId }
-        : { sourcingItemId: target.sourcingItemId ?? "" },
+        ? { productId: target.productId, isPrimary: true }
+        : { sourcingItemId: target.sourcingItemId ?? "", isPrimary: true },
       limit: 1,
     });
     const photo = await store.create("product_photos", {
@@ -364,9 +366,23 @@ export async function loadProductSheet(productId: string) {
   const [photos, measurements, schedules, supplier, line, documents, sourcing] =
     await Promise.all([
       store.list("product_photos", { filter: { productId } }),
-      store.list("measurements", {
-        filter: { entity: "product", entityId: productId },
-      }),
+      // Medições feitas ainda no sourcing continuam valendo na ficha do produto.
+      store
+        .list("measurements", {
+          filter: { entity: "product", entityId: productId },
+        })
+        .then(async (own) =>
+          product.sourcingItemId
+            ? own.concat(
+                await store.list("measurements", {
+                  filter: {
+                    entity: "sourcing_item",
+                    entityId: product.sourcingItemId,
+                  },
+                }),
+              )
+            : own,
+        ),
       store.list("purchase_schedules", {
         filter: { productId },
         orderBy: "sequence",
@@ -436,10 +452,12 @@ export async function loadVisit(visitId: string) {
 }
 
 /** Listas do sourcing (Wellmix): itens e visitas, mais recentes primeiro, com filtro opcional por situação. */
-export async function loadSourcingLists(filter: {
-  itemStatus?: SourcingStatus | null;
-  visitStatus?: SupplierVisit["status"] | null;
-} = {}) {
+export async function loadSourcingLists(
+  filter: {
+    itemStatus?: SourcingStatus | null;
+    visitStatus?: SupplierVisit["status"] | null;
+  } = {},
+) {
   const store = getStore();
   const [items, visits, suppliers] = await Promise.all([
     store.list("sourcing_items", {

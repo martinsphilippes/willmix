@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ZodError } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { User } from "@/lib/db";
 
@@ -39,7 +40,11 @@ export async function run(back: string, fn: () => Promise<string | void>) {
     if (result) target = result;
   } catch (error) {
     const code =
-      error instanceof Error && error.message ? error.message : "error";
+      error instanceof ZodError
+        ? "invalid_input"
+        : error instanceof Error && error.message
+          ? error.message
+          : "error";
     const url = new URL(back, "http://x");
     url.searchParams.set("error", code.slice(0, 60));
     target = url.pathname + url.search;

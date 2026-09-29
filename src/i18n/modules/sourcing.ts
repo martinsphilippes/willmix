@@ -13,7 +13,8 @@ export const pt = {
   "sourcing.newItem": "Novo produto encontrado",
   "sourcing.addItem": "Adicionar produto encontrado",
   "sourcing.open": "Abrir",
-  "sourcing.items.none": "Nenhum produto encontrado ainda. Fotografe e cadastre o que viu na fábrica ou na feira.",
+  "sourcing.items.none":
+    "Nenhum produto encontrado ainda. Fotografe e cadastre o que viu na fábrica ou na feira.",
   "sourcing.visits.none": "Nenhuma visita registrada ainda.",
   "sourcing.moq": "MOQ",
   "sourcing.foundAt": "Encontrado em",
@@ -135,6 +136,7 @@ export const pt = {
   "sourcing.measure.add": "Registrar medição",
   "sourcing.measure.kind": "Tipo de medida",
   "sourcing.measure.declared": "Valor declarado (opcional)",
+  "sourcing.measure.declaredShort": "declarado",
   "sourcing.measure.measured": "Valor medido",
   "sourcing.measure.unit": "Unidade",
   "sourcing.measure.photo": "Foto da balança ou régua",
@@ -163,7 +165,15 @@ export const pt = {
     "Escolha a linha de produto para cadastrar no catálogo.",
   "sourcing.error.supplier_required":
     "Informe o fornecedor, a fábrica ou o nome livre.",
-  "sourcing.error.already_promoted": "Este item já foi cadastrado como produto.",
+  "sourcing.error.already_promoted":
+    "Este item já foi cadastrado como produto.",
+  "sourcing.error.invalid":
+    "Dados inválidos. Verifique os campos numéricos e obrigatórios.",
+  "sourcing.error.photo_not_found": "Foto não localizada.",
+  "sourcing.error.too_large":
+    "Arquivo grande demais. Tire a foto pelo campo de fotos para reduzi-la no aparelho.",
+  "sourcing.error.mime":
+    "Formato não aceito. Envie uma imagem (JPEG, PNG, WebP ou HEIC).",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -254,7 +264,8 @@ export const en: Record<keyof typeof pt, string> = {
   "sourcing.item.promote": "Register as product",
   "sourcing.item.promoteHint":
     "Creates the product sheet with these data and photos; the item is linked to the sheet and marked as Registered.",
-  "sourcing.item.promoted": "This item has already been registered as a product.",
+  "sourcing.item.promoted":
+    "This item has already been registered as a product.",
   "sourcing.item.sku": "SKU (optional)",
   "sourcing.item.discard": "Discard",
   "sourcing.item.discardHint":
@@ -299,6 +310,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sourcing.measure.add": "Record measurement",
   "sourcing.measure.kind": "Measurement type",
   "sourcing.measure.declared": "Declared value (optional)",
+  "sourcing.measure.declaredShort": "declared",
   "sourcing.measure.measured": "Measured value",
   "sourcing.measure.unit": "Unit",
   "sourcing.measure.photo": "Photo of the scale or ruler",
@@ -327,6 +339,13 @@ export const en: Record<keyof typeof pt, string> = {
     "Enter the supplier, the factory or a free-text name.",
   "sourcing.error.already_promoted":
     "This item has already been registered as a product.",
+  "sourcing.error.invalid":
+    "Invalid data. Check the numeric and required fields.",
+  "sourcing.error.photo_not_found": "Photo not found.",
+  "sourcing.error.too_large":
+    "File too large. Take the photo through the photo field so it is shrunk on the device.",
+  "sourcing.error.mime":
+    "Format not accepted. Send an image (JPEG, PNG, WebP or HEIC).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -342,7 +361,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.newItem": "新建发现的产品",
   "sourcing.addItem": "添加发现的产品",
   "sourcing.open": "打开",
-  "sourcing.items.none": "尚未记录任何产品。请拍照并登记您在工厂或展会看到的产品。",
+  "sourcing.items.none":
+    "尚未记录任何产品。请拍照并登记您在工厂或展会看到的产品。",
   "sourcing.visits.none": "尚未记录任何拜访。",
   "sourcing.moq": "最小起订量",
   "sourcing.foundAt": "发现日期",
@@ -413,7 +433,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.item.promoted": "该条目已登记为产品。",
   "sourcing.item.sku": "SKU（可选）",
   "sourcing.item.discard": "放弃",
-  "sourcing.item.discardHint": "将条目标记为已放弃。不会删除任何内容：照片和历史记录保留。",
+  "sourcing.item.discardHint":
+    "将条目标记为已放弃。不会删除任何内容：照片和历史记录保留。",
   "sourcing.item.discarded": "条目已放弃。",
   "sourcing.item.actions": "操作",
   "sourcing.item.saveHint": "可先保存为草稿，稍后补全。保存时自动计算 CBM。",
@@ -452,6 +473,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.measure.add": "记录测量",
   "sourcing.measure.kind": "测量类型",
   "sourcing.measure.declared": "申报值（可选）",
+  "sourcing.measure.declaredShort": "申报",
   "sourcing.measure.measured": "实测值",
   "sourcing.measure.unit": "单位",
   "sourcing.measure.photo": "秤或尺子的照片",
@@ -470,10 +492,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.negotiation.title": "洽谈",
   "sourcing.negotiation.hint":
     "仅供参考：当该产品成为订单时，价格、MOQ 和包装将冻结在采购快照中。",
-  "sourcing.error.commercial_needs_original": "商业图必须注明源自哪张原始照片。",
+  "sourcing.error.commercial_needs_original":
+    "商业图必须注明源自哪张原始照片。",
   "sourcing.error.no_photos": "请至少选择一张照片。",
   "sourcing.error.item_not_found": "未找到该发现的产品。",
   "sourcing.error.line_required": "请选择产品线以登记到目录。",
   "sourcing.error.supplier_required": "请填写供应商、工厂或自由名称。",
   "sourcing.error.already_promoted": "该条目已登记为产品。",
+  "sourcing.error.invalid": "数据无效。请检查数字字段和必填项。",
+  "sourcing.error.photo_not_found": "未找到该照片。",
+  "sourcing.error.too_large":
+    "文件过大。请通过照片字段拍照，以便在手机上自动压缩。",
+  "sourcing.error.mime":
+    "不支持的格式。请上传图片（JPEG、PNG、WebP 或 HEIC）。",
 };

@@ -248,7 +248,9 @@ export default async function SourcingPage({
                           </span>
                         ) : null}
                       </Td>
-                      <Td>{supplierName(item.supplierId, item.supplierName)}</Td>
+                      <Td>
+                        {supplierName(item.supplierId, item.supplierName)}
+                      </Td>
                       <Td>{formatMoney(item.price, item.currency)}</Td>
                       <Td>{formatNumber(item.moq)}</Td>
                       <Td>

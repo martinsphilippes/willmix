@@ -84,10 +84,12 @@ export async function applyImportBatchAction(form: FormData) {
   await run(`/app/import/${batchId}`, async () => {
     assertWellmix(user);
     const decisions: Record<string, string> = {};
+    const decisionSchema = z.enum(["create", "update", "skip"]);
     for (const [key, value] of form.entries()) {
       if (!key.startsWith("d_") || typeof value !== "string") continue;
-      const decision = z.enum(["create", "update", "skip"]).parse(value);
-      decisions[key.slice(2)] = decision;
+      const decision = decisionSchema.safeParse(value);
+      if (!decision.success) throw new Error("invalid_decision");
+      decisions[key.slice(2)] = decision.data;
     }
     await applyImportBatch(user, batchId, decisions);
     return `/app/import/${batchId}`;

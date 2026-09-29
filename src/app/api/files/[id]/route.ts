@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { canAccessDocument } from "@/lib/services/documents";
+import { recordAck } from "@/lib/services/acknowledgements";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,16 @@ export async function GET(
   }
   const file = await store.getFile(doc.storageKey);
   if (!file) return NextResponse.json({ error: "missing" }, { status: 404 });
+  // Trilha: quem abriu o documento e quando ("visualizou" nunca vale como "confirmou").
+  // Só documentos do fluxo (pedido/solicitação) e nunca para quem os enviou:
+  // miniaturas de sourcing e catálogo não geram ruído.
+  if ((doc.orderId || doc.requestId) && doc.uploadedByUserId !== user.id) {
+    try {
+      await recordAck(user, "document", id, "viewed");
+    } catch (error) {
+      console.error("recordAck(document.viewed) failed", error);
+    }
+  }
   const inline =
     doc.mime.startsWith("image/") || doc.mime === "application/pdf";
   return new NextResponse(Buffer.from(file.bytes), {

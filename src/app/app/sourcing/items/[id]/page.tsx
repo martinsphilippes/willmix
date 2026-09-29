@@ -120,7 +120,7 @@ export default async function SourcingItemPage({
 
       {/* Ordem no celular = ordem do DOM: fotos → ficha → medições → negociação → ações.
           No desktop, a ficha ocupa duas colunas e o resto fica à direita. */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_1fr] lg:items-start">
         <Card
           title={t("sourcing.photo.gallery")}
           className="lg:col-start-3 lg:row-start-1"
@@ -172,11 +172,15 @@ export default async function SourcingItemPage({
                         {!p.isPrimary &&
                         (p.kind === "original" || p.kind === "commercial") ? (
                           <form action={setPrimaryPhotoAction}>
-                            <input type="hidden" name="itemId" value={item.id} />
+                            <input
+                              type="hidden"
+                              name="itemId"
+                              value={item.id}
+                            />
                             <input type="hidden" name="photoId" value={p.id} />
                             <button
                               type="submit"
-                              className={`${linkClass} text-xs`}
+                              className={`${linkClass} block w-full py-1.5 text-xs`}
                             >
                               {t("sourcing.photo.setPrimary")}
                             </button>
@@ -197,7 +201,11 @@ export default async function SourcingItemPage({
             <PhotoInput name="photos" label={t("sourcing.photo.add")} />
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("sourcing.photo.kind")}>
-                <Select name="kind" defaultValue="original" className={bigField}>
+                <Select
+                  name="kind"
+                  defaultValue="original"
+                  className={bigField}
+                >
                   {PHOTO_KINDS.map((k) => (
                     <option key={k} value={k}>
                       {t(`sourcing.photo.${k}`)}
@@ -213,7 +221,11 @@ export default async function SourcingItemPage({
               label={t("sourcing.photo.derivedFrom")}
               hint={t("sourcing.photo.derivedHint")}
             >
-              <Select name="derivedFromPhotoId" defaultValue="" className={bigField}>
+              <Select
+                name="derivedFromPhotoId"
+                defaultValue=""
+                className={bigField}
+              >
                 <option value="">—</option>
                 {originals.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -263,7 +275,7 @@ export default async function SourcingItemPage({
                         {m.declaredValue !== null ? (
                           <span className="text-zinc-500">
                             {" "}
-                            ({t("sourcing.measure.declared")}:{" "}
+                            ({t("sourcing.measure.declaredShort")}:{" "}
                             {formatNumber(m.declaredValue)} {m.unit})
                           </span>
                         ) : null}
@@ -280,8 +292,9 @@ export default async function SourcingItemPage({
                         </p>
                       ) : null}
                       <p className="text-xs text-zinc-500">
-                        {t("sourcing.measure.by")} {userName(m.measuredByUserId)}{" "}
-                        · {formatDate(m.measuredAt)}
+                        {t("sourcing.measure.by")}{" "}
+                        {userName(m.measuredByUserId)} ·{" "}
+                        {formatDate(m.measuredAt)}
                         {m.note ? ` · ${m.note}` : ""}
                       </p>
                     </div>
@@ -312,7 +325,11 @@ export default async function SourcingItemPage({
           >
             <input type="hidden" name="itemId" value={item.id} />
             <Field label={t("sourcing.measure.kind")}>
-              <Select name="kind" defaultValue="weight_net" className={bigField}>
+              <Select
+                name="kind"
+                defaultValue="weight_net"
+                className={bigField}
+              >
                 {MEASUREMENT_KINDS.map((k) => (
                   <option key={k} value={k}>
                     {t(`sourcing.measure.${k}`)}
@@ -320,7 +337,8 @@ export default async function SourcingItemPage({
                 ))}
               </Select>
             </Field>
-            <div className="grid grid-cols-3 gap-2">
+            {/* items-end: os rótulos têm alturas diferentes; os campos ficam alinhados. */}
+            <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-3">
               <Field label={t("sourcing.measure.declared")}>
                 <Input
                   name="declaredValue"
@@ -342,15 +360,17 @@ export default async function SourcingItemPage({
                   className={bigField}
                 />
               </Field>
-              <Field label={t("sourcing.measure.unit")}>
-                <Input
-                  name="unit"
-                  defaultValue="kg"
-                  required
-                  maxLength={10}
-                  className={bigField}
-                />
-              </Field>
+              <div className="col-span-2 sm:col-span-1">
+                <Field label={t("sourcing.measure.unit")}>
+                  <Input
+                    name="unit"
+                    defaultValue="kg"
+                    required
+                    maxLength={10}
+                    className={bigField}
+                  />
+                </Field>
+              </div>
             </div>
             <PhotoInput
               name="photo"
@@ -379,7 +399,10 @@ export default async function SourcingItemPage({
               [t("common.price"), formatMoney(item.price, item.currency)],
               [t("sourcing.moq"), formatNumber(item.moq)],
               [t("common.conditions"), item.conditions ?? "—"],
-              [t("sourcing.item.masterBoxQty"), formatNumber(item.masterBoxQty)],
+              [
+                t("sourcing.item.masterBoxQty"),
+                formatNumber(item.masterBoxQty),
+              ],
               [
                 t("sourcing.item.cbm"),
                 item.cbm ? `${formatNumber(item.cbm)} m³` : "—",

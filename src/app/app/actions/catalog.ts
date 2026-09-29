@@ -83,7 +83,8 @@ export async function updateProductSheetAction(form: FormData) {
       sku: str(form, "sku") || null,
       category: str(form, "category") || null,
       specification: str(form, "specification") || null,
-      active: form.get("active") !== "off",
+      // O formulário envia o hidden "off" antes do checkbox "on"; form.get() devolveria sempre "off".
+      active: form.getAll("active").includes("on"),
       supplierId: str(form, "supplierId") || null,
       supplierSku: str(form, "supplierSku") || null,
       price: num(form, "price"),
@@ -167,6 +168,9 @@ export async function setPrimaryPhotoAction(form: FormData) {
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
     const photoId = z.string().min(1).parse(str(form, "photoId"));
+    const photo = await getStore().get("product_photos", photoId);
+    if (!photo || photo.productId !== productId)
+      throw new Error("photo_not_found");
     await setPrimaryPhoto(user, photoId);
     await audit(user, "product.photo.primary", "product", productId, photoId);
     return `/app/products/${productId}#photos`;
@@ -239,6 +243,16 @@ export async function savePurchaseScheduleAction(form: FormData) {
         status: str(form, "status") || "planned",
         notes: str(form, "notes") || null,
       });
+    // Fornecedor e cliente, quando informados, precisam existir com o tipo certo.
+    for (const [key, type] of [
+      ["supplierId", "supplier"],
+      ["customerId", "customer"],
+    ] as const) {
+      const partyId = parsed[key];
+      if (!partyId) continue;
+      const party = await store.get("parties", partyId);
+      if (!party || party.type !== type) throw new Error(`${type}_not_found`);
+    }
     const existing = await store.list("purchase_schedules", {
       filter: { productId },
     });

@@ -51,6 +51,7 @@ export function VisitForm({
         <Field label={t("sourcing.visit.otherSupplier")}>
           <Input
             name="supplierName"
+            maxLength={160}
             defaultValue={otherName}
             className={bigField}
             autoComplete="organization"
@@ -59,6 +60,7 @@ export function VisitForm({
         <Field label={t("sourcing.visit.factory")}>
           <Input
             name="factoryName"
+            maxLength={160}
             defaultValue={visit?.factoryName ?? ""}
             className={bigField}
           />
@@ -66,6 +68,7 @@ export function VisitForm({
         <Field label={t("sourcing.visit.location")}>
           <Input
             name="location"
+            maxLength={160}
             defaultValue={visit?.location ?? ""}
             className={bigField}
             placeholder="Ex.: Feira de Cantão, pavilhão 3"
@@ -74,6 +77,7 @@ export function VisitForm({
         <Field label={t("sourcing.visit.city")}>
           <Input
             name="city"
+            maxLength={80}
             defaultValue={visit?.city ?? ""}
             className={bigField}
           />
@@ -81,6 +85,7 @@ export function VisitForm({
         <Field label={t("sourcing.visit.address")}>
           <Input
             name="address"
+            maxLength={255}
             defaultValue={visit?.address ?? ""}
             className={bigField}
           />
@@ -156,14 +161,14 @@ export function VisitForm({
       <SaveBar>
         <SubmitButton
           pendingText="…"
-          className="w-full py-3 text-base sm:w-auto sm:py-2 sm:text-sm"
+          className="flex-1 py-3 text-base sm:flex-none sm:py-2 sm:text-sm"
         >
           {t("common.save")}
         </SubmitButton>
         <LinkButton
           href={visit ? "/app/sourcing?tab=visits" : "/app/sourcing"}
           variant="ghost"
-          className="w-full sm:w-auto"
+          className="shrink-0 py-3 sm:py-2"
         >
           {t("common.back")}
         </LinkButton>

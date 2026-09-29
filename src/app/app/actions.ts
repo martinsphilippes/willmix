@@ -7,7 +7,6 @@ import { getCurrentUser } from "@/lib/auth/session";
 import {
   assertRole,
   assertWellmix,
-  canViewOrder,
   isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
@@ -19,7 +18,6 @@ import {
   ROLES,
   LOCALES,
   type DocumentType,
-  type User,
 } from "@/lib/db";
 import { isLocale } from "@/i18n";
 import { LOCALE_COOKIE } from "@/i18n/server";
@@ -41,6 +39,7 @@ import { notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
 import { hashPassword } from "@/lib/auth/password";
 import { importCsv } from "@/lib/services/import";
+import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
 import { num, requireUser, run, str } from "./actions/helpers";
@@ -514,42 +513,8 @@ export async function confirmSupplierPaymentAction(form: FormData) {
   const paymentId = str(form, "paymentId");
   const back = str(form, "back") || "/app/account";
   await run(back, async () => {
-    const store = getStore();
-    const payment = await store.get("payments", paymentId);
-    if (!payment || payment.direction !== "supplier_out" || !payment.orderId)
-      throw new Error("not_found");
-    const order = await store.get("orders", payment.orderId);
-    if (!order) throw new Error("not_found");
-    if (!(
-      isWellmix(user) ||
-      (user.role === "supplier" && order.supplierId === user.partyId)
-    ))
-      throw new Error("forbidden");
-    await store.update("payments", paymentId, {
-      status: "received",
-      confirmedByUserId: user.id,
-      confirmedAt: new Date().toISOString(),
-    });
-    await audit(
-      user,
-      "payment.received",
-      "payment",
-      paymentId,
-      "Recebimento confirmado pelo fornecedor",
-    );
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
-    if (stage && stage.status === "active") {
-      const [req] = await store.list("requirements", {
-        filter: {
-          stageId: stage.id,
-          key: "payment_received",
-          status: "pending",
-        },
-      });
-      if (req) await submitRequirement(user, req.id, { value: paymentId });
-    }
+    // Mesma regra de sempre, agora num serviço único que também registra a confirmação ("confirmed").
+    await confirmSupplierPaymentReceipt(user, paymentId);
   });
 }
 
@@ -660,7 +625,8 @@ export async function savePartyAction(form: FormData) {
         phone: str(form, "phone") || null,
         taxId: str(form, "taxId") || null,
         notes: str(form, "notes") || null,
-        active: form.get("active") !== "off",
+        // O hidden "off" vem antes do checkbox: só a lista diz se "on" foi enviado.
+        active: form.getAll("active").includes("on"),
       });
     const store = getStore();
     if (id) {
@@ -842,6 +808,8 @@ export async function saveSettingsAction(form: FormData) {
   const user = await requireUser();
   await run("/app/settings", async () => {
     assertRole(user, ["admin"]);
+    // Valida tudo antes de gravar: um valor inválido não deixa metade salva.
+    const pairs: Array<[SettingKey, unknown]> = [];
     for (const key of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) {
       const raw = form.get(key);
       if (raw === null) continue;
@@ -849,15 +817,21 @@ export async function saveSettingsAction(form: FormData) {
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
       else if (typeof current === "number") value = Number(raw);
-      else if (typeof current === "object") {
+      else if (key === "containerTypes") {
+        // Uma linha por tipo ("código;capacidadeCbm;pesoMaxKg"); JSON também é aceito.
+        const { parseContainerTypes } =
+          await import("@/lib/services/containers");
+        value = parseContainerTypes(String(raw));
+      } else if (typeof current === "object") {
         try {
           value = JSON.parse(String(raw));
         } catch {
           throw new Error("invalid_json");
         }
       }
-      await setSetting(key, value as never);
+      pairs.push([key, value]);
     }
+    for (const [key, value] of pairs) await setSetting(key, value as never);
     await audit(
       user,
       "settings.update",
@@ -867,11 +841,4 @@ export async function saveSettingsAction(form: FormData) {
     );
     return "/app/settings?ok=1";
   });
-}
-
-/** Garante acesso ao pedido em ações genéricas. (Privado: exportar de um arquivo "use server" viraria endpoint público.) */
-async function assertOrderAccess(user: User, orderId: string) {
-  const order = await getStore().get("orders", orderId);
-  if (!order || !canViewOrder(user, order)) throw new Error("forbidden");
-  return order;
 }

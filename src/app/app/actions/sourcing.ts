@@ -27,9 +27,17 @@ import { files, num, requireUser, run, str } from "./helpers";
  * zod e checagem de papel; o serviço audita (e, onde não audita, auditamos aqui).
  */
 
-const optional = () => z.string().nullable();
+/** Texto opcional com o limite da coluna no esquema (Appwrite rejeita acima disso). */
+const optional = (max = 10000) => z.string().max(max).nullable();
 const optionalNumber = () => z.number().nonnegative().nullable();
 const CURRENCIES = ["USD", "CNY", "BRL", "EUR"] as const;
+
+/** Valida e devolve o objeto; falha vira o código curto "invalid" (traduzido na tela). */
+function parse<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T> {
+  const result = schema.safeParse(data);
+  if (!result.success) throw new Error("invalid");
+  return result.data;
+}
 
 /** Campo type="date" (AAAA-MM-DD) → ISO ao meio-dia UTC, para o dia não mudar em nenhum fuso. */
 function dateField(form: FormData, key: string): string | null {
@@ -58,11 +66,11 @@ async function resolveSupplier(form: FormData) {
 
 const visitSchema = z.object({
   supplierId: optional(),
-  supplierName: optional(),
-  factoryName: optional(),
-  city: optional(),
-  address: optional(),
-  location: optional(),
+  supplierName: optional(160),
+  factoryName: optional(160),
+  city: optional(80),
+  address: optional(255),
+  location: optional(160),
   visitedAt: z.string().min(1),
   participants: optional(),
   notes: optional(),
@@ -79,7 +87,7 @@ export async function saveVisitAction(form: FormData) {
     async () => {
       assertWellmix(user);
       const supplier = await resolveSupplier(form);
-      const parsed = visitSchema.parse({
+      const parsed = parse(visitSchema, {
         ...supplier,
         factoryName: str(form, "factoryName") || null,
         city: str(form, "city") || null,
@@ -107,15 +115,15 @@ export async function saveVisitAction(form: FormData) {
 const itemSchema = z.object({
   visitId: optional(),
   supplierId: optional(),
-  supplierName: optional(),
+  supplierName: optional(160),
   lineId: optional(),
-  category: optional(),
+  category: optional(80),
   name: z.string().min(1).max(160),
   description: optional(),
-  supplierSku: optional(),
-  material: optional(),
-  color: optional(),
-  pantone: optional(),
+  supplierSku: optional(60),
+  material: optional(120),
+  color: optional(60),
+  pantone: optional(40),
   price: optionalNumber(),
   currency: z.enum(CURRENCIES).nullable(),
   moq: z.number().int().nonnegative().nullable(),
@@ -132,8 +140,8 @@ const itemSchema = z.object({
   conditions: optional(),
   notes: optional(),
   foundAt: optional(),
-  city: optional(),
-  location: optional(),
+  city: optional(80),
+  location: optional(160),
   status: z.enum(SOURCING_STATUSES),
 });
 
@@ -150,12 +158,16 @@ export async function saveSourcingItemAction(form: FormData) {
     const current = id ? await store.get("sourcing_items", id) : null;
     if (id && !current) throw new Error("item_not_found");
     const supplier = await resolveSupplier(form);
-    const requestedStatus = str(form, "status") || "draft";
-    const parsed = itemSchema.parse({
+    // "Cadastrado" só nasce de Cadastrar como produto: pelo formulário não se promove.
+    const requested = str(form, "status") || current?.status || "draft";
+    const requestedStatus =
+      requested === "promoted" ? (current?.status ?? "draft") : requested;
+    const parsed = parse(itemSchema, {
       ...supplier,
-      visitId: visitId && (await store.get("supplier_visits", visitId))
-        ? visitId
-        : (current?.visitId ?? null),
+      visitId:
+        visitId && (await store.get("supplier_visits", visitId))
+          ? visitId
+          : (current?.visitId ?? null),
       lineId: str(form, "lineId") || null,
       category: str(form, "category") || null,
       name: str(form, "name"),
@@ -214,7 +226,7 @@ export async function addSourcingPhotosAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
-    const parsed = photoSchema.parse({
+    const parsed = parse(photoSchema, {
       itemId,
       kind: str(form, "kind") || "original",
       caption: str(form, "caption") || null,
@@ -262,9 +274,9 @@ export async function setPrimaryPhotoAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
-    const { photoId } = z
-      .object({ photoId: z.string().min(1) })
-      .parse({ photoId: str(form, "photoId") });
+    const { photoId } = parse(z.object({ photoId: z.string().min(1) }), {
+      photoId: str(form, "photoId"),
+    });
     const photo = await getStore().get("product_photos", photoId);
     if (!photo || photo.sourcingItemId !== itemId)
       throw new Error("photo_not_found");
@@ -294,7 +306,7 @@ export async function addSourcingMeasurementAction(form: FormData) {
     assertWellmix(user);
     const item = await getStore().get("sourcing_items", itemId);
     if (!item) throw new Error("item_not_found");
-    const parsed = measurementSchema.parse({
+    const parsed = parse(measurementSchema, {
       kind: str(form, "kind"),
       declaredValue: num(form, "declaredValue"),
       measuredValue: num(form, "measuredValue"),
@@ -319,9 +331,13 @@ export async function promoteSourcingItemAction(form: FormData) {
     const store = getStore();
     if (!(await store.get("product_lines", lineId)))
       throw new Error("line_required");
-    const parsed = z
-      .object({ lineId: z.string().min(1), sku: z.string().max(60).nullable() })
-      .parse({ lineId, sku: str(form, "sku") || null });
+    const parsed = parse(
+      z.object({
+        lineId: z.string().min(1),
+        sku: z.string().max(60).nullable(),
+      }),
+      { lineId, sku: str(form, "sku") || null },
+    );
     await promoteSourcingItem(user, itemId, parsed);
   });
 }
