@@ -54,6 +54,18 @@ Wellmix (admin e operador) pode preencher qualquer requisito. Os demais só pree
 
 Substituir um arquivo do mesmo requisito cria nova versão (`version`, `previousDocumentId`); o anterior é mantido. Download em `/api/files/[id]` com checagem de sessão, pedido e visibilidade.
 
+## Conformidade (certificações)
+
+A linha de produto pode exigir certificações (`requiredCertifications`, ex.: Inmetro). Ao nascer o pedido, se o produto não tem certificação válida (não vencida) de cada tipo exigido, abre-se o item `compliance.missingCertification` na fila de revisão e a etapa ORDER_CREATED ganha o requisito obrigatório `compliance_check` (Wellmix). Registrar ou validar a certificação resolve o item e conclui o requisito sozinho. Sem exigência na linha, nada muda.
+
+## Pós-venda
+
+Ao concluir DELIVERED, abre-se um registro em `after_sales` (entidade própria; as etapas não mudam) e o cliente recebe a pendência "Avalie a compra". Ele responde nota, experiência, problemas, custos percebidos, sugestões e interesse em recompra; a Wellmix é avisada e encerra. Do pedido encerrado saem "Comprar de novo" (origem `replenishment`) e "Quero nova proposta" (origem `proposal`), que criam uma solicitação normal pré-preenchida e ligada ao pedido de origem.
+
+## Sourcing sob demanda
+
+Solicitação com "produto ainda não está no catálogo" (origem `sourcing_demand`) cria um item de sourcing em rascunho com a demanda do cliente; o time na China localiza fornecedores e, ao promover o item a produto, a solicitação passa a apontar para ele e a RFQ segue o fluxo normal.
+
 ## Confirmação de visualização
 
 `acknowledgements` registra `viewed` (automático ao baixar um documento ou ao ver um pagamento na conta corrente) e `confirmed` (ato explícito). São eventos diferentes: visualizar nunca vale como confirmar.

@@ -1,6 +1,8 @@
 # Integrações
 
 > Sistema chinês (planilhas do time na China): modo **manual por XLSX/CSV** em `/app/import` com mapeamento, conferência e correspondência (`src/lib/services/import-batches.ts`). Integração automática só quando houver API ou exportação oficial; nada de scraping.
+>
+> Antes de automatizar, verificar com o fornecedor do sistema: (1) existe API (REST/GraphQL) e documentação? (2) existe exportação agendada estruturada (CSV/XLSX/JSON) para pasta, e-mail ou SFTP? (3) existe webhook de alteração? (4) quem autoriza e com que credencial (chave, OAuth)? (5) quais entidades e campos saem (fornecedor, produto, código, preço, fotos, embalagem, pedidos)? Com resposta positiva em 1 ou 2, o mesmo pipeline de lotes (`createImportBatch` → `previewBatch` → `applyImportBatch`) recebe a fonte automática; sem isso, o XLSX/CSV continua o método funcional.
 
 Regra: toda integração externa crítica tem modo manual ou mock para o fluxo funcionar antes da integração real.
 

@@ -28,6 +28,20 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 | 27 | Dashboard financeiro/operacional | Control Tower tinha buckets por etapa; financeiro em `/app/finance` | **Ampliado**: `loadTowerTotals` reutiliza o financeiro (nenhuma segunda Control Tower) |
 | 28 | Visão comercial | Não existia | **Novo, só com dados reais**: vendido × disponível por container = itens com pedido × sem pedido (volume) |
 
+## Classificação dos requisitos (Segunda Onda)
+
+| # | Requisito | Situação encontrada | Decisão |
+| --- | --- | --- | --- |
+| 30 | NCM / tributação | Nenhum campo ou tabela | **Novo**: `tax_classifications` (candidatas por heurística de palavras-chave, despachante, manual ou IA quando houver) com validação humana obrigatória; só a validada vai para `products.ncm` e para o snapshot. Rota `/app/products/[id]/tax` para o despachante |
+| 31 | Integração mais profunda com o sistema chinês | Sem API, exportação estruturada ou webhook conhecidos | **Desconsiderado por ora**: XLSX/CSV continua o método oficial (`docs/INTEGRATIONS.md` traz a lista do que verificar antes de automatizar). Nada de scraping |
+| 32 | Certificações e compliance | Nada além do checklist da linha | **Novo**: `certifications` (produto ou fornecedor, documento, validade), `product_lines.requiredCertifications`; gate na criação do pedido (item de revisão + requisito `compliance_check`); certificação a vencer vira exceção na Control Tower |
+| 33 | Pós-venda | `CLOSED` era o fim | **Novo, sem mudar `STAGE_KEYS`**: `after_sales` aberto ao concluir DELIVERED; pendência do cliente; Wellmix encerra |
+| 34 | Análise de oportunidade | Nenhuma | **Novo, determinístico**: faixas de preço (`products.priceTiers`) → custo marginal até a próxima faixa com fórmula exibida; espaço livre em container do cliente → caixas que cabem. Nada estimado por IA |
+| 35 | Reposição | Fluxo de solicitação já existia | **Reutilizado**: `createFollowUpRequest` cria a solicitação (origem `replenishment`) a partir do pedido; nenhum segundo motor de compras |
+| 36 | Nova proposta | Idem | **Reutilizado**: mesma função com origem `proposal`; pré-preenchida com produto, quantidade e especificação |
+| 37 | Histórico comercial | Financeiro e Control Tower existiam; nada por cliente × produto | **Novo**: `loadCommercialHistory` (compras, quantidade, custo, datas, frequência média, reposições, interesse em recompra); FOB só para a Wellmix |
+| 38 | Sourcing sob demanda | Solicitação sem produto já era possível | **Ampliado**: origem `sourcing_demand` cria item de sourcing para o time na China; promovido, o produto volta à solicitação e a RFQ segue normal |
+
 ### Desconsiderado (já atendido ou fora desta onda)
 
 - **Cadastro de fornecedor, produto, cliente, pedido, pagamento, documento, notificação**: já existem; foram ampliados, não recriados.
@@ -38,7 +52,15 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - **Estoque/“disponível” fora de container**: não há dados; a visão comercial só calcula sobre itens de container sem pedido.
 - **Segunda parcela do fornecedor, extrato por período, câmbio de referência**: continuam no `BACKLOG_FUTURO.md`.
 
-## Implementado nesta onda
+## Implementado na Segunda Onda
+
+- Esquema aditivo publicado (32 tabelas): `tax_classifications`, `certifications`, `after_sales`; `products.ncm`/`priceTiers`; `product_lines.requiredCertifications`; `requests.origin`/`sourceOrderId`; `sourcing_items.requestId`/`priceTiers`; `purchase_snapshots.ncm`.
+- Serviços: `taxes.ts`, `compliance.ts`, `after-sales.ts`, `history.ts`, `opportunities.ts`; `requests.ts` (`createFollowUpRequest`, sourcing sob demanda, gate de conformidade); `sourcing.ts` (promoção devolve o produto à solicitação); `tasks.ts` (pendências de pós-venda e de demanda); `control-tower.ts` (certificação a vencer); `engine.ts` (pós-venda ao concluir a entrega).
+- Configurações: `afterSalesEnabled`, `complianceGateEnabled`, `certificationExpiryWarningDays`.
+- Telas: ficha do produto com NCM, certificações e oportunidade; `/app/products/[id]/tax` (despachante); linhas com certificações obrigatórias; fornecedor com certificações; pedido com pós-venda e "comprar de novo / nova proposta"; `/app/after-sales`; `/app/history`; nova solicitação com "produto fora do catálogo".
+- 6 testes novos (21 no total).
+
+## Implementado na Prioridade Agora
 
 - Esquema aditivo (`src/lib/db/schema.ts`): colunas novas em `parties`, `products`, `documents`; 12 tabelas novas; `PARTY_EXTRA_DEFAULTS`, `PRODUCT_EXTRA_DEFAULTS`, `DOCUMENT_EXTRA_DEFAULTS` para criar registros sem conhecer cada coluna nova.
 - Camada de dados: coluna `json_large` (longtext) para planilhas; `appwrite-push` acrescenta valores a enums existentes e extensões ao bucket; `AppwriteStore.list` pagina (não trunca mais em 500) e traduz `id` nos filtros.
