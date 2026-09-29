@@ -42,6 +42,8 @@ function column(key: string, def: ColumnDef) {
     case "text":
     case "json":
       return { ...base, type: "text" };
+    case "json_large":
+      return { ...base, type: "longtext" };
     case "int":
       return { ...base, type: "integer" };
     case "float":

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
@@ -14,7 +13,9 @@ import {
 } from "@/lib/auth/permissions";
 import {
   getStore,
+  PARTY_EXTRA_DEFAULTS,
   PARTY_TYPES,
+  PRODUCT_EXTRA_DEFAULTS,
   ROLES,
   LOCALES,
   type DocumentType,
@@ -41,41 +42,8 @@ import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
 import { hashPassword } from "@/lib/auth/password";
 import { importCsv } from "@/lib/services/import";
 
-/* ------------------------------------------------------------------------ */
-/* Helpers                                                                   */
-/* ------------------------------------------------------------------------ */
-
-async function requireUser(): Promise<User> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  return user;
-}
-
-function str(form: FormData, key: string) {
-  const v = form.get(key);
-  return typeof v === "string" ? v.trim() : "";
-}
-function num(form: FormData, key: string) {
-  const v = str(form, key).replace(",", ".");
-  return v === "" ? null : Number(v);
-}
-
-/** Executa a ação e volta para `back` com ?error=<código> em caso de falha. */
-async function run(back: string, fn: () => Promise<string | void>) {
-  let target = back;
-  try {
-    const result = await fn();
-    if (result) target = result;
-  } catch (error) {
-    const code =
-      error instanceof Error && error.message ? error.message : "error";
-    const url = new URL(back, "http://x");
-    url.searchParams.set("error", code.slice(0, 60));
-    target = url.pathname + url.search;
-  }
-  revalidatePath("/app", "layout");
-  redirect(target);
-}
+/* Helpers compartilhados com src/app/app/actions/*.ts */
+import { num, requireUser, run, str } from "./actions/helpers";
 
 /* ------------------------------------------------------------------------ */
 /* Idioma                                                                    */
@@ -690,7 +658,10 @@ export async function savePartyAction(form: FormData) {
       await audit(user, "party.update", "party", id, parsed.name);
       return `/app/parties/${id}`;
     }
-    const party = await store.create("parties", parsed);
+    const party = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      ...parsed,
+    });
     await audit(user, "party.create", "party", party.id, parsed.name);
     return `/app/parties/${party.id}`;
   });
@@ -773,7 +744,12 @@ export async function saveProductAction(form: FormData) {
     const id = str(form, "id");
     const store = getStore();
     if (id) await store.update("products", id, parsed);
-    else await store.create("products", { ...parsed, active: true });
+    else
+      await store.create("products", {
+        ...PRODUCT_EXTRA_DEFAULTS,
+        ...parsed,
+        active: true,
+      });
   });
 }
 

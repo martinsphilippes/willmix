@@ -12,6 +12,8 @@ import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
+import { createPurchaseSnapshot } from "./snapshots";
+import { openReview } from "./reviews";
 
 export class RequestError extends Error {}
 
@@ -343,6 +345,24 @@ async function createOrderFromRequest(
   await createStagesForOrder(
     await store.get("orders", order.id).then((o) => o ?? order),
   );
+  // Snapshot da negociação: o que foi comprado fica congelado neste pedido.
+  await createPurchaseSnapshot(user, order, item, quote, product);
+  // Gate: FOB zerado ou ausente vai para a fila de revisão (não bloqueia o pedido).
+  const gates = await getSettings();
+  if (gates.reviewOnZeroPrice && !(fobTotal && fobTotal > 0)) {
+    await openReview(user, {
+      orderId: order.id,
+      entity: "order",
+      entityId: order.id,
+      rule: "order.zeroPrice",
+      problem: "Pedido criado sem valor FOB (preço zerado ou cotação sem preço)",
+      expected: "> 0",
+      found: fobTotal ?? "—",
+      responsibleRole: "operator",
+      action: "Informar o preço negociado antes do pagamento ao fornecedor.",
+      link: `/app/orders/${order.id}`,
+    });
+  }
 
   const [payment] = await store.list("payments", {
     filter: { requestId: request.id, direction: "customer_in" },

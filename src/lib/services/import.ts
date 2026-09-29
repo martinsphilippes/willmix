@@ -1,6 +1,12 @@
 import "server-only";
 
-import { getStore, PARTY_TYPES, type User } from "@/lib/db";
+import {
+  getStore,
+  PARTY_EXTRA_DEFAULTS,
+  PARTY_TYPES,
+  PRODUCT_EXTRA_DEFAULTS,
+  type User,
+} from "@/lib/db";
 import { audit } from "./audit";
 import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
 
@@ -61,6 +67,7 @@ export async function importCsv(user: User, entity: string, text: string) {
         continue;
       }
       await store.create("parties", {
+        ...PARTY_EXTRA_DEFAULTS,
         type: type as never,
         name: row.name,
         country: row.country || null,
@@ -99,11 +106,13 @@ export async function importCsv(user: User, entity: string, text: string) {
         continue;
       }
       await store.create("products", {
+        ...PRODUCT_EXTRA_DEFAULTS,
         lineId: line.id,
         name: row.name,
         sku: row.sku || null,
         specification: row.specification || null,
         active: true,
+        source: "import",
       });
       created++;
     }

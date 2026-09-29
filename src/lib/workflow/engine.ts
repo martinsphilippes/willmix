@@ -15,6 +15,8 @@ import { audit } from "@/lib/services/audit";
 import { notify, notifyWellmix } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { ROLE_PARTY_FIELD, STAGE_TEMPLATES, nextStageKey } from "./stages";
+import { compareInspection, isInspectionMeasureKey } from "@/lib/services/inspection";
+import { openReview, resolveReviews } from "@/lib/services/reviews";
 
 export class WorkflowError extends Error {}
 
@@ -33,6 +35,7 @@ export async function createStagesForOrder(order: Order) {
     line,
     agencyValidationEnabled: settings.agencyValidationEnabled,
     deliveryConfirmationMode: settings.deliveryConfirmationMode,
+    inspectionExtendedChecks: settings.inspectionExtendedChecks,
   };
 
   let firstStageId: string | null = null;
@@ -172,6 +175,11 @@ export async function submitRequirement(
   if (stage.key === "INSPECTION" && requirement.key === "weight_measured") {
     await checkWeightDivergence(user, order, stage, Number(input.value));
   }
+  // Inspeção cega: compara o que foi encontrado com o snapshot da compra (quando existe).
+  if (stage.key === "INSPECTION" && isInspectionMeasureKey(requirement.key)) {
+    const fresh = await store.get("stages", stage.id);
+    await compareInspection(user, order, fresh ?? stage);
+  }
 
   // Aprovação de requisito pai (ex.: arte): quando o arquivo é reenviado, a aprovação volta a pendente.
   if (requirement.key === "art") {
@@ -223,6 +231,12 @@ export async function decideRequirement(
       await store.update("stages", stage.id, {
         status: "active",
         blockReason: null,
+      });
+    }
+    if (requirement.key === "inspection_review") {
+      await resolveReviews(user, "order", order.id, {
+        rulePrefix: "inspection.",
+        note: note ?? "Divergência aprovada pela Wellmix.",
       });
     }
     await audit(
@@ -324,6 +338,18 @@ async function checkWeightDivergence(
       });
     }
     await audit(user, "inspection.divergence", "order", order.id, reason);
+    await openReview(user, {
+      orderId: order.id,
+      entity: "order",
+      entityId: order.id,
+      rule: "inspection.weightDeclared",
+      problem: `Peso medido divergente do declarado na preparação (tolerância ${settings.weightTolerancePercent}%)`,
+      expected: declaredWeight,
+      found: measured,
+      responsibleRole: "operator",
+      action: "Revisar com o fornecedor; aprovar a divergência ou pedir nova medição.",
+      link: `/app/orders/${order.id}`,
+    });
     await notifyWellmix({
       subject: `Pedido #${order.number}: revisão necessária na inspeção`,
       body: reason,
@@ -343,6 +369,10 @@ async function checkWeightDivergence(
     await store.update("stages", stage.id, {
       status: "active",
       blockReason: null,
+    });
+    await resolveReviews(user, "order", order.id, {
+      rulePrefix: "inspection.weightDeclared",
+      note: "Dentro da tolerância após nova medição.",
     });
   }
 }
@@ -459,10 +489,17 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
 export async function unblockStage(user: User, stageId: string) {
   if (!isWellmix(user)) throw new ForbiddenError();
   const store = getStore();
+  const stage = await store.get("stages", stageId);
   await store.update("stages", stageId, {
     status: "active",
     blockReason: null,
   });
+  if (stage)
+    await resolveReviews(user, "order", stage.orderId, {
+      rulePrefix: "inspection.",
+      status: "dismissed",
+      note: "Etapa liberada manualmente pela Wellmix.",
+    });
   await audit(user, "stage.unblock", "stage", stageId, "Etapa desbloqueada");
   await evaluateStage(user, stageId);
 }

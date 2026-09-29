@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/db/schema";
 import { helpEn, helpPt, helpZh } from "./help";
+import { modulesEn, modulesPt, modulesZh } from "./modules";
 
 /**
  * Dicionários simples. Chaves planas com pontos. Interpolação com {nome}.
@@ -223,6 +224,9 @@ const ptBase = {
   "ct.exceptions": "Exceções",
   "ct.closed": "Concluídos",
   "nav.finance": "Financeiro",
+  "nav.reviews": "Revisão",
+  "nav.sourcing": "Sourcing",
+  "nav.containers": "Containers",
   "finance.title": "Financeiro",
   "finance.sold": "Vendido",
   "finance.sale": "Venda",
@@ -242,6 +246,7 @@ const ptBase = {
   "ct.exception.weight": "Peso divergente",
   "ct.exception.erp": "Integração ERP pendente",
   "ct.exception.penalty": "Multa em aberto",
+  "ct.exception.review": "Item para revisão",
   "account.title": "Conta corrente",
   "account.balance": "Saldo",
   "account.order": "Pedido",
@@ -282,7 +287,7 @@ const ptBase = {
   "home.welcome": "Olá, {name}",
 };
 
-export const pt = { ...ptBase, ...helpPt };
+export const pt = { ...ptBase, ...helpPt, ...modulesPt };
 
 export type DictionaryKey = keyof typeof pt;
 export type Dictionary = Record<DictionaryKey, string>;
@@ -505,6 +510,9 @@ const enBase = {
   "ct.exceptions": "Exceptions",
   "ct.closed": "Completed",
   "nav.finance": "Finance",
+  "nav.reviews": "Review queue",
+  "nav.sourcing": "Sourcing",
+  "nav.containers": "Containers",
   "finance.title": "Finance",
   "finance.sold": "Sold",
   "finance.sale": "Sale",
@@ -524,6 +532,7 @@ const enBase = {
   "ct.exception.weight": "Weight divergence",
   "ct.exception.erp": "ERP sync pending",
   "ct.exception.penalty": "Open penalty",
+  "ct.exception.review": "Review item",
   "account.title": "Account statement",
   "account.balance": "Balance",
   "account.order": "Order",
@@ -781,6 +790,9 @@ const zhBase = {
   "ct.exceptions": "异常",
   "ct.closed": "已完成",
   "nav.finance": "财务",
+  "nav.reviews": "待复核",
+  "nav.sourcing": "采购寻源",
+  "nav.containers": "集装箱",
   "finance.title": "财务",
   "finance.sold": "销售额",
   "finance.sale": "销售",
@@ -800,6 +812,7 @@ const zhBase = {
   "ct.exception.weight": "重量差异",
   "ct.exception.erp": "ERP 同步待处理",
   "ct.exception.penalty": "未结罚款",
+  "ct.exception.review": "待复核项",
   "account.title": "往来账",
   "account.balance": "余额",
   "account.order": "订单",
@@ -840,7 +853,7 @@ const zhBase = {
   "home.welcome": "您好，{name}",
 };
 
-export const en: Dictionary = { ...enBase, ...helpEn };
-export const zh: Dictionary = { ...zhBase, ...helpZh };
+export const en: Dictionary = { ...enBase, ...helpEn, ...modulesEn };
+export const zh: Dictionary = { ...zhBase, ...helpZh, ...modulesZh };
 
 export const dictionaries: Record<Locale, Dictionary> = { pt, en, zh };

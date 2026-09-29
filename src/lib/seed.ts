@@ -1,8 +1,16 @@
 import "server-only";
 
-import { getStore, type Role, type User } from "@/lib/db";
+import {
+  getStore,
+  PARTY_EXTRA_DEFAULTS,
+  PRODUCT_EXTRA_DEFAULTS,
+  type Product,
+  type Role,
+  type User,
+} from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
+import { boxCbm } from "@/lib/logistics/cbm";
 
 /** Senha única de demonstração. Só existe no modo memória. */
 export const DEMO_PASSWORD = "wellmix123";
@@ -107,6 +115,9 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     name: string;
     country: string;
     email: string;
+    city?: string;
+    contactName?: string;
+    wechat?: string | null;
   }> = [
     {
       id: "cliente-joao",
@@ -121,6 +132,9 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: "Shenzhen Supplier A",
       country: "CN",
       email: "supplier.a@china.com",
+      city: "Shenzhen",
+      contactName: "Li Wei",
+      wechat: "liwei_sz",
     },
     {
       id: "fornecedor-b",
@@ -128,6 +142,9 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: "Guangzhou Supplier B",
       country: "CN",
       email: "supplier.b@china.com",
+      city: "Guangzhou",
+      contactName: "Chen Yu",
+      wechat: null,
     },
     {
       id: "fornecedor-c",
@@ -135,6 +152,9 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: "Ningbo Supplier C",
       country: "CN",
       email: "supplier.c@china.com",
+      city: "Ningbo",
+      contactName: "Wang Fang",
+      wechat: "wangfang_nb",
     },
     {
       id: "agencia",
@@ -167,6 +187,7 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
   ];
   for (const party of parties) {
     await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
       id: party.id,
       type: party.type as never,
       name: party.name,
@@ -176,6 +197,9 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       taxId: null,
       notes: null,
       active: true,
+      city: party.city ?? null,
+      contactName: party.contactName ?? null,
+      wechat: party.wechat ?? null,
     });
   }
 
@@ -235,7 +259,11 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       active: true,
     });
   }
-  const products = [
+  // A jarra fica sem ficha completa de propósito: o E2E usa esse produto e a
+  // inspeção só compara atributos presentes no snapshot da compra.
+  const products: Array<
+    { id: string; lineId: string; name: string; sku: string } & Partial<Product>
+  > = [
     {
       id: "prod-jarra",
       lineId: "linha-utilidades",
@@ -247,29 +275,142 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       lineId: "linha-utilidades",
       name: "Jogo de panelas antiaderentes 5 pçs",
       sku: "UTL-002",
+      supplierId: "fornecedor-a",
+      supplierSku: "SZA-PAN5",
+      category: "Cozinha",
+      material: "Alumínio com revestimento antiaderente",
+      color: "Preto",
+      pantone: "Black 6 C",
+      moq: 500,
+      price: 9.5,
+      currency: "USD",
+      masterBoxQty: 4,
+      innerBoxQty: 1,
+      netWeightKg: 2.4,
+      grossWeightKg: 2.9,
+      lengthCm: 30,
+      widthCm: 30,
+      heightCm: 20,
+      boxLengthCm: 62,
+      boxWidthCm: 32,
+      boxHeightCm: 42,
+      source: "sourcing",
     },
     {
       id: "prod-boneca",
       lineId: "linha-brinquedos",
       name: "Boneca articulada 30 cm",
       sku: "BRQ-001",
+      supplierId: "fornecedor-b",
+      supplierSku: "GZB-DOLL30",
+      category: "Bonecas",
+      material: "PVC atóxico",
+      color: "Sortido",
+      moq: 2000,
+      price: 3.2,
+      currency: "USD",
+      masterBoxQty: 48,
+      innerBoxQty: 6,
+      netWeightKg: 0.28,
+      grossWeightKg: 0.35,
+      lengthCm: 12,
+      widthCm: 8,
+      heightCm: 32,
+      boxLengthCm: 52,
+      boxWidthCm: 34,
+      boxHeightCm: 68,
+      source: "import",
     },
     {
       id: "prod-piscina",
       lineId: "linha-inflaveis",
       name: "Piscina inflável 2.000 L",
       sku: "INF-001",
+      supplierId: "fornecedor-c",
+      category: "Lazer",
+      material: "PVC 0,4 mm",
+      color: "Azul",
+      moq: 300,
+      price: 14.8,
+      currency: "USD",
+      masterBoxQty: 6,
+      netWeightKg: 3.1,
+      grossWeightKg: 3.6,
+      boxLengthCm: 60,
+      boxWidthCm: 40,
+      boxHeightCm: 50,
+      source: "manual",
     },
   ];
   for (const product of products) {
+    const { id, lineId, name, sku, ...sheet } = product;
     await store.create("products", {
-      id: product.id,
-      lineId: product.lineId,
-      name: product.name,
-      sku: product.sku,
+      ...PRODUCT_EXTRA_DEFAULTS,
+      id,
+      lineId,
+      name,
+      sku,
       specification: null,
       active: true,
+      source: "manual",
+      ...sheet,
+      cbm: boxCbm(sheet),
     });
   }
+
+  // Sourcing de demonstração: uma visita e um produto encontrado ainda não promovido.
+  const visit = await store.create("supplier_visits", {
+    id: "visita-canton",
+    supplierId: "fornecedor-c",
+    supplierName: "Ningbo Supplier C",
+    factoryName: "Fábrica de plásticos de Ningbo",
+    city: "Guangzhou",
+    address: null,
+    location: "Feira de Cantão, pavilhão 3",
+    visitedAt: new Date(Date.now() - 20 * 86400000).toISOString(),
+    participants: "Ana Admin, Otávio Operador",
+    notes: "Bom padrão de acabamento; negociar MOQ menor na próxima rodada.",
+    nextVisitAt: new Date(Date.now() + 40 * 86400000).toISOString(),
+    followUp: "Pedir amostra da boia infantil e proposta com MOQ 200.",
+    status: "done",
+    createdByUserId: users[0].id,
+  });
+  await store.create("sourcing_items", {
+    id: "sourcing-boia",
+    visitId: visit.id,
+    supplierId: "fornecedor-c",
+    supplierName: "Ningbo Supplier C",
+    productId: null,
+    lineId: "linha-inflaveis",
+    category: "Lazer",
+    name: "Boia infantil com cobertura solar",
+    description: "Boia com assento e cobertura removível, 0-2 anos.",
+    supplierSku: "NBC-FLT02",
+    material: "PVC 0,3 mm",
+    color: "Amarelo",
+    pantone: "Yellow C",
+    price: 4.1,
+    currency: "USD",
+    moq: 500,
+    masterBoxQty: 24,
+    innerBoxQty: 6,
+    netWeightKg: 0.45,
+    grossWeightKg: 0.55,
+    widthCm: 70,
+    heightCm: 25,
+    lengthCm: 70,
+    boxLengthCm: 55,
+    boxWidthCm: 45,
+    boxHeightCm: 40,
+    cbm: boxCbm({ boxLengthCm: 55, boxWidthCm: 45, boxHeightCm: 40 }),
+    conditions: "FOB Ningbo, 30% sinal, saldo contra BL",
+    notes: "Amostra prometida em 15 dias.",
+    foundAt: visit.visitedAt,
+    city: "Guangzhou",
+    location: "Feira de Cantão, pavilhão 3",
+    status: "negotiating",
+    primaryPhotoDocumentId: null,
+    createdByUserId: users[0].id,
+  });
   return { created: true, users };
 }

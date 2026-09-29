@@ -42,6 +42,19 @@ const TRANSACTIONAL: TableName[] = [
   "audit_log",
   "penalties",
   "counters",
+  // Evolução incremental: dados operacionais das tabelas novas.
+  "supplier_visits",
+  "sourcing_items",
+  "product_photos",
+  "measurements",
+  "purchase_snapshots",
+  "purchase_schedules",
+  "containers",
+  "container_items",
+  "acknowledgements",
+  "review_items",
+  "inspection_results",
+  "import_batches",
 ];
 
 for (const tableId of TRANSACTIONAL) {

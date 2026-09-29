@@ -82,6 +82,8 @@ async function createColumn(tableId: string, key: string, def: ColumnDef) {
     case "text":
     case "json":
       return tables.createTextColumn(base);
+    case "json_large":
+      return tables.createLongtextColumn(base);
     case "int":
       return tables.createIntegerColumn(base);
     case "float":
@@ -98,14 +100,14 @@ async function createColumn(tableId: string, key: string, def: ColumnDef) {
 
 async function ensureColumns(tableId: TableName) {
   const def = TABLES[tableId];
-  const existing = new Set(
-    (await tables.listColumns({ databaseId, tableId })).columns.map(
-      (c) => c.key,
-    ),
-  );
+  const columns = (await tables.listColumns({ databaseId, tableId })).columns;
+  const existing = new Set(columns.map((c) => c.key));
   let created = 0;
   for (const [key, col] of Object.entries(def.columns)) {
-    if (existing.has(key)) continue;
+    if (existing.has(key)) {
+      await ensureEnumElements(tableId, key, col, columns);
+      continue;
+    }
     try {
       await createColumn(tableId, key, col);
       created++;
@@ -114,6 +116,31 @@ async function ensureColumns(tableId: TableName) {
     }
   }
   if (created) console.log(`  ${tableId}: ${created} coluna(s)`);
+}
+
+/**
+ * Enum que ganhou valores novos no esquema: acrescenta os elementos que faltam.
+ * Nunca remove elementos (poderia invalidar linhas existentes).
+ */
+async function ensureEnumElements(
+  tableId: TableName,
+  key: string,
+  col: ColumnDef,
+  columns: Array<{ key: string; elements?: string[]; required?: boolean }>,
+) {
+  if (col.type !== "string" || !col.enum) return;
+  const current = columns.find((c) => c.key === key);
+  const have = new Set(current?.elements ?? []);
+  const missing = col.enum.filter((v) => !have.has(v));
+  if (missing.length === 0) return;
+  await tables.updateEnumColumn({
+    databaseId,
+    tableId,
+    key,
+    elements: [...(current?.elements ?? []), ...missing],
+    required: current?.required ?? col.required ?? false,
+  });
+  console.log(`  ${tableId}.${key}: +${missing.join(", ")}`);
 }
 
 /** Índices só podem ser criados quando as colunas estão "available". */
@@ -164,9 +191,44 @@ async function ensureIndexes(tableId: TableName) {
   if (created) console.log(`  ${tableId}: ${created} índice(s)`);
 }
 
+const BUCKET_EXTENSIONS = [
+  "pdf",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "heic",
+  "heif",
+  "xlsx",
+  "xlsm",
+  "xls",
+  "csv",
+  "zip",
+  "ai",
+  "svg",
+];
+
 async function ensureBucket() {
   try {
-    await storage.getBucket({ bucketId: BUCKET_ID });
+    const bucket = await storage.getBucket({ bucketId: BUCKET_ID });
+    // Extensões novas (ex.: fotos HEIC do iPhone, XLSM): acrescenta sem remover as existentes.
+    const have = new Set(bucket.allowedFileExtensions);
+    const missing = BUCKET_EXTENSIONS.filter((x) => !have.has(x));
+    if (missing.length) {
+      await storage.updateBucket({
+        bucketId: BUCKET_ID,
+        name: bucket.name,
+        permissions: bucket.$permissions,
+        fileSecurity: bucket.fileSecurity,
+        enabled: bucket.enabled,
+        maximumFileSize: bucket.maximumFileSize,
+        allowedFileExtensions: [...bucket.allowedFileExtensions, ...missing],
+        compression: bucket.compression as Compression,
+        encryption: bucket.encryption,
+        antivirus: bucket.antivirus,
+      });
+      console.log(`  bucket: +${missing.join(", ")}`);
+    }
   } catch (e) {
     if (!isNotFound(e)) throw e;
     await storage.createBucket({
@@ -176,19 +238,7 @@ async function ensureBucket() {
       fileSecurity: false,
       enabled: true,
       maximumFileSize: 31457280,
-      allowedFileExtensions: [
-        "pdf",
-        "png",
-        "jpg",
-        "jpeg",
-        "webp",
-        "xlsx",
-        "xls",
-        "csv",
-        "zip",
-        "ai",
-        "svg",
-      ],
+      allowedFileExtensions: BUCKET_EXTENSIONS,
       compression: Compression.Gzip,
       encryption: true,
       antivirus: true,

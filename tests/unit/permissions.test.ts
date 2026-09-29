@@ -3,7 +3,8 @@ import { withTempStore } from "./setup";
 
 withTempStore();
 
-const { getStore } = await import("@/lib/db");
+const { getStore, DOCUMENT_EXTRA_DEFAULTS, PARTY_EXTRA_DEFAULTS } =
+  await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const {
   createRequest,
@@ -40,6 +41,7 @@ describe("isolamento entre papéis", () => {
     const customer = by("customer", "cliente-joao");
     const operator = by("operator");
     const otherCustomerParty = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
       type: "customer",
       name: "Outra Loja",
       country: "BR",
@@ -134,6 +136,7 @@ describe("isolamento entre papéis", () => {
 
     // documentos: comprovante interno não é visível ao cliente nem ao fornecedor
     const proof = await store.create("documents", {
+      ...DOCUMENT_EXTRA_DEFAULTS,
       orderId: order.id,
       requestId: null,
       requirementId: null,
@@ -153,6 +156,7 @@ describe("isolamento entre papéis", () => {
     );
     expect(await canAccessDocument(operator, proof)).toBe(true);
     const bl = await store.create("documents", {
+      ...DOCUMENT_EXTRA_DEFAULTS,
       ...proof,
       id: undefined as never,
       type: "bl",
