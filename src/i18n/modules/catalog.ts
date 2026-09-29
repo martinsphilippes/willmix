@@ -47,7 +47,7 @@ export const pt = {
   "help.catalog.product.body":
     "A ficha reúne tudo o que a Wellmix sabe sobre o produto: identificação, fornecedor e preço negociado, medidas e pesos, embalagem e CBM por caixa, fotos como evidência e a programação das próximas compras. Só nome e linha são obrigatórios; o resto pode ser completado aos poucos. Quando um pedido nasce, ele congela uma cópia desta ficha (snapshot) e a inspeção compara o que chegou com o que foi comprado.",
   "help.catalog.product.steps":
-    "Preencher: complete as seções e salve; o CBM por caixa é calculado das dimensões da caixa master.\nFotos: a original é evidência e nunca é substituída; marque a principal para a listagem.\nMedições: registre peso ou medida com a foto da balança/régua para comprovar o declarado.\nProgramação: planeje quantidade e período das próximas compras e crie a solicitação a partir dela.",
+    "Preencher: complete as seções e salve; o CBM por caixa é calculado das dimensões da caixa master.\nFotos: a original é evidência e nunca é substituída; marque a principal para a listagem.\nMedições: registre peso ou medida com a foto da balança/régua para comprovar o declarado.\nProgramação: planeje quantidade e período das próximas compras e crie a solicitação a partir dela.\nNCM: use Sugerir NCM ou adicione candidatas; só a classificação validada (Wellmix ou despachante) vai para a ficha.\nCertificações: registre o certificado exigido pela linha com documento e validade; sem certificação válida o pedido entra em revisão.\nOportunidade: informe as faixas negociadas e a quantidade; o cálculo até a próxima faixa é determinístico e mostra a fórmula.",
 
   /* Fotos */
   "catalog.photos": "Fotos",
@@ -126,7 +126,165 @@ export const pt = {
   "catalog.visitStatus.planned": "Planejada",
   "catalog.visitStatus.done": "Realizada",
   "help.catalog.party.steps":
-    "Editar: dados cadastrais e usuários de acesso.\nContato e endereço: cidade, endereço, pessoa de contato e WeChat usados nas visitas e no sourcing.\nFornecedor: veja as visitas feitas e os produtos vinculados; abra a ficha de cada produto.",
+    "Editar: dados cadastrais e usuários de acesso.\nContato e endereço: cidade, endereço, pessoa de contato e WeChat usados nas visitas e no sourcing.\nFornecedor: veja as visitas feitas e os produtos vinculados; abra a ficha de cada produto.\nCertificações do fornecedor: registre ISO, BSCI e auditorias da fábrica com documento e validade; a Wellmix valida.",
+  /* ---- Segunda Onda: classificação fiscal (NCM) ---- */
+  "catalog.tax.title": "Classificação fiscal (NCM)",
+  "catalog.tax.subtitle": "Classificação fiscal do produto",
+  "catalog.tax.validated": "NCM validado",
+  "catalog.tax.none": "Não classificado",
+  "catalog.tax.suggest": "Sugerir NCM",
+  "catalog.tax.suggestHint":
+    "Sugestões automáticas por palavra-chave; nunca definitivas: valide com o despachante.",
+  "catalog.tax.candidates": "Candidatas",
+  "catalog.tax.candidates.empty":
+    "Nenhuma candidata ainda. Use Sugerir NCM ou adicione uma candidata manualmente.",
+  "catalog.tax.ncm": "NCM",
+  "catalog.tax.ncmHint": "4, 6 ou 8 dígitos (ex.: 7615.10 ou 76151000)",
+  "catalog.tax.description": "Descrição da posição",
+  "catalog.tax.source": "Fonte",
+  "catalog.tax.source.manual": "Manual",
+  "catalog.tax.source.heuristic": "Heurística (palavras-chave)",
+  "catalog.tax.source.ai": "IA (sugestão)",
+  "catalog.tax.source.broker": "Despachante",
+  "catalog.tax.sourceRef": "Referência da fonte",
+  "catalog.tax.sourceRefHint": "Site, tabela TEC, parecer do despachante…",
+  "catalog.tax.status.suggested": "Sugerida",
+  "catalog.tax.status.validated": "Validada",
+  "catalog.tax.status.rejected": "Rejeitada",
+  "catalog.tax.suggestedBy": "Sugerida por",
+  "catalog.tax.validatedBy": "Validada por",
+  "catalog.tax.rejectedBy": "Rejeitada por",
+  "catalog.tax.validate": "Validar",
+  "catalog.tax.reject": "Rejeitar",
+  "catalog.tax.rejectNote": "Motivo (opcional)",
+  "catalog.tax.add": "Adicionar candidata",
+  "catalog.tax.rates": "Alíquotas (%), se conhecidas",
+  "catalog.tax.taxes": "Alíquotas",
+  "catalog.tax.adminTreatment": "Tratamento administrativo",
+  "catalog.tax.adminTreatmentHint":
+    "Ex.: LI automática, anuência Inmetro, sem tratamento",
+  "catalog.tax.openPage": "Página do despachante",
+  "catalog.tax.openPageHint":
+    "Só a seção de NCM, acessível também ao despachante.",
+  "catalog.tax.backToProduct": "Ver ficha do produto",
+  "catalog.tax.onlyOne":
+    "Só uma classificação validada por produto; validar outra substitui a atual.",
+  "help.catalog.tax.body":
+    "A classificação fiscal (NCM) define impostos e tratamento administrativo da importação. O sistema só sugere candidatas por palavra-chave (nome, material, categoria, especificação); a sugestão nunca é definitiva. Só uma classificação validada por pessoa autorizada (Wellmix ou despachante) vale e é copiada para a ficha do produto.",
+  "help.catalog.tax.steps":
+    "Sugerir NCM: gera candidatas heurísticas a partir das palavras da ficha; confira cada uma.\nAdicionar candidata: informe NCM, descrição, alíquotas e tratamento quando tiver a fonte (TEC, parecer, site).\nValidar: escolha a candidata correta; a anterior volta a candidata e o NCM vai para a ficha.\nRejeitar: registre o motivo para a equipe não repetir a mesma classificação.",
+
+  /* ---- Certificações e compliance ---- */
+  "catalog.cert.title": "Certificações e compliance",
+  "catalog.cert.required": "Obrigatórias pela linha",
+  "catalog.cert.valid": "Válidas",
+  "catalog.cert.missing": "Faltantes",
+  "catalog.cert.expiring": "A vencer",
+  "catalog.cert.missingAlert":
+    "Faltam certificações obrigatórias: {list}. Pedidos deste produto entram na fila de revisão até haver certificação válida.",
+  "catalog.cert.okAlert":
+    "Todas as certificações exigidas pela linha estão válidas.",
+  "catalog.cert.noneRequired": "A linha deste produto não exige certificação.",
+  "catalog.cert.expiringAlert": "A vencer em até {days} dias: {list}.",
+  "catalog.cert.empty": "Nenhuma certificação registrada.",
+  "catalog.cert.kind": "Tipo",
+  "catalog.cert.kindHint": "Mesmo nome exigido pela linha (ex.: Inmetro)",
+  "catalog.cert.name": "Nome / título",
+  "catalog.cert.issuer": "Órgão emissor",
+  "catalog.cert.number": "Número",
+  "catalog.cert.validUntil": "Validade",
+  "catalog.cert.document": "Documento",
+  "catalog.cert.documentHint": "PDF ou imagem do certificado",
+  "catalog.cert.open": "Abrir documento",
+  "catalog.cert.noDocument": "Sem documento",
+  "catalog.cert.validatedBy": "Validada por",
+  "catalog.cert.registeredBy": "Registrada por",
+  "catalog.cert.status.pending": "Pendente",
+  "catalog.cert.status.valid": "Válida",
+  "catalog.cert.status.expired": "Vencida",
+  "catalog.cert.status.rejected": "Rejeitada",
+  "catalog.cert.validate": "Validar",
+  "catalog.cert.markExpired": "Marcar vencida",
+  "catalog.cert.reject": "Rejeitar",
+  "catalog.cert.add": "Registrar certificação",
+  "catalog.cert.initialStatus": "Situação inicial",
+  "catalog.cert.supplierPending":
+    "Certificação registrada pelo fornecedor fica pendente até a Wellmix validar.",
+  "catalog.cert.party.title": "Certificações do fornecedor",
+  "catalog.cert.party.hint":
+    "Certificações da fábrica (ISO, BSCI, auditorias). Ficam separadas das certificações de cada produto.",
+  "catalog.cert.expiresOn": "vence em {date}",
+
+  /* ---- Oportunidade de compra ---- */
+  "catalog.opp.title": "Oportunidade de compra",
+  "catalog.opp.tiers": "Faixas de preço negociadas",
+  "catalog.opp.tiersHint":
+    "Uma faixa por linha: quantidade mínima;preço unitário (ex.: 1000;8.90)",
+  "catalog.opp.tiers.empty":
+    "Nenhuma faixa registrada. Informe as faixas negociadas com o fornecedor para analisar.",
+  "catalog.opp.saveTiers": "Salvar faixas",
+  "catalog.opp.from": "A partir de",
+  "catalog.opp.unitPrice": "Preço unitário",
+  "catalog.opp.quantity": "Quantidade analisada",
+  "catalog.opp.quantitySource.param": "quantidade informada",
+  "catalog.opp.quantitySource.schedule": "última programação de compra",
+  "catalog.opp.quantitySource.moq": "MOQ do produto",
+  "catalog.opp.analyze": "Analisar",
+  "catalog.opp.deterministic":
+    "Cálculo determinístico sobre as faixas negociadas; nenhum valor é estimado.",
+  "catalog.opp.none":
+    "Sem oportunidade de faixa para esta quantidade: já está na melhor faixa ou não há faixa acima com preço menor.",
+  "catalog.opp.noQuantity": "Informe uma quantidade para analisar.",
+  "catalog.opp.today": "Hoje",
+  "catalog.opp.nextTier": "Próxima faixa",
+  "catalog.opp.extraUnits": "Unidades a mais",
+  "catalog.opp.unitSaving": "Economia por unidade",
+  "catalog.opp.totalDifference": "Diferença no total",
+  "catalog.opp.marginal": "Custo marginal por unidade extra",
+  "catalog.opp.formula": "Fórmula",
+  "catalog.opp.boxes": "caixas",
+  "catalog.opp.internal":
+    "Preço FOB é interno: esta análise aparece só para a Wellmix.",
+  "catalog.opp.container.title": "Espaço livre em container",
+  "catalog.opp.container.line":
+    "cabem {boxes} caixas ({units} un) nos {cbm} m³ livres",
+  "catalog.opp.container.open": "Ver container",
+  "catalog.opp.container.formula": "caixas = ⌊CBM livre ÷ CBM por caixa⌋",
+
+  /* ---- Linhas: certificações obrigatórias ---- */
+  "catalog.lines.certifications": "Certificações obrigatórias",
+  "catalog.lines.certificationsHint":
+    "Separadas por vírgula (ex.: Inmetro, Anvisa). Sem certificação válida no produto, o pedido entra na fila de revisão.",
+  "catalog.lines.certifications.none": "Nenhuma exigida",
+  "help.catalog.lines.steps":
+    "Novo / editar: nome, manual em PDF e checklist de preparação que o fornecedor cumpre.\nCertificações obrigatórias: liste o que todo produto da linha precisa ter válido (ex.: Inmetro); o gate de conformidade usa esta lista ao criar pedidos.",
+
+  /* ---- Sourcing: demanda de cliente e faixas ---- */
+  "catalog.sourcing.demand": "Demanda de cliente",
+  "catalog.sourcing.demand.open": "Ver solicitação",
+  "catalog.sourcing.demand.hint":
+    "Este item atende a uma solicitação de cliente (sourcing sob demanda).",
+  "catalog.sourcing.demand.link": "Vincular a uma solicitação",
+  "catalog.sourcing.demand.linkHint":
+    "Solicitações em aberto sem produto do catálogo. Vazio desvincula.",
+  "catalog.sourcing.tiersHint":
+    "Faixas negociadas na visita; são copiadas para a ficha ao cadastrar como produto.",
+
+  /* ---- Erros deste módulo (?error=) ---- */
+  "catalog.error.invalid_ncm":
+    "NCM inválido: use 4, 6 ou 8 dígitos (ex.: 7615.10 ou 76151000).",
+  "catalog.error.invalid_tiers":
+    "Faixas inválidas: uma por linha no formato quantidade;preço, com números maiores que zero e quantidades diferentes.",
+  "catalog.error.no_suggestions":
+    "Nenhuma palavra-chave reconhecida em nome, material, categoria ou especificação. Adicione a candidata manualmente.",
+  "catalog.error.kind_required": "Informe o tipo da certificação.",
+  "catalog.error.mime": "Formato de arquivo não aceito: envie PDF ou imagem.",
+  "catalog.error.too_large": "Arquivo muito grande.",
+  "catalog.error.forbidden": "Seu papel não pode executar esta ação.",
+  "catalog.error.invalid_input": "Dados inválidos. Verifique os campos.",
+  "catalog.error.request_not_found": "Solicitação não encontrada.",
+  "catalog.error.request_has_product":
+    "A solicitação já tem um produto do catálogo; escolha uma solicitação sem produto.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -175,7 +333,7 @@ export const en: Record<keyof typeof pt, string> = {
   "help.catalog.product.body":
     "The sheet gathers everything Wellmix knows about the product: identification, supplier and negotiated price, dimensions and weights, packaging and CBM per carton, photos as evidence and the schedule of upcoming purchases. Only name and line are required; the rest can be completed over time. When an order is created it freezes a copy of this sheet (snapshot) and the inspection compares what arrived with what was bought.",
   "help.catalog.product.steps":
-    "Fill in: complete the sections and save; CBM per carton is computed from the master carton dimensions.\nPhotos: the original is evidence and is never replaced; mark the primary one for listings.\nMeasurements: record weight or size with the scale/ruler photo to prove the declared value.\nSchedule: plan quantity and period of upcoming purchases and create the request from it.",
+    "Fill in: complete the sections and save; CBM per carton is computed from the master carton dimensions.\nPhotos: the original is evidence and is never replaced; mark the primary one for listings.\nMeasurements: record weight or size with the scale/ruler photo to prove the declared value.\nSchedule: plan quantity and period of upcoming purchases and create the request from it.\nNCM: use Suggest NCM or add candidates; only the validated classification (Wellmix or customs broker) goes to the sheet.\nCertifications: record the certificate the line requires with document and validity; without a valid one the order goes to review.\nOpportunity: enter the negotiated tiers and a quantity; the calculation up to the next tier is deterministic and shows the formula.",
 
   "catalog.photos": "Photos",
   "catalog.photos.add": "Add photos",
@@ -250,7 +408,159 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.visitStatus.planned": "Planned",
   "catalog.visitStatus.done": "Done",
   "help.catalog.party.steps":
-    "Edit: registration data and access users.\nContact and address: city, address, contact person and WeChat used in visits and sourcing.\nSupplier: see the visits made and the linked products; open each product sheet.",
+    "Edit: registration data and access users.\nContact and address: city, address, contact person and WeChat used in visits and sourcing.\nSupplier: see the visits made and the linked products; open each product sheet.\nSupplier certifications: record the factory's ISO, BSCI and audits with document and validity; Wellmix validates them.",
+  "catalog.tax.title": "Tax classification (NCM)",
+  "catalog.tax.subtitle": "Product tax classification",
+  "catalog.tax.validated": "Validated NCM",
+  "catalog.tax.none": "Not classified",
+  "catalog.tax.suggest": "Suggest NCM",
+  "catalog.tax.suggestHint":
+    "Automatic keyword suggestions; never final: validate with the customs broker.",
+  "catalog.tax.candidates": "Candidates",
+  "catalog.tax.candidates.empty":
+    "No candidates yet. Use Suggest NCM or add a candidate manually.",
+  "catalog.tax.ncm": "NCM",
+  "catalog.tax.ncmHint": "4, 6 or 8 digits (e.g. 7615.10 or 76151000)",
+  "catalog.tax.description": "Heading description",
+  "catalog.tax.source": "Source",
+  "catalog.tax.source.manual": "Manual",
+  "catalog.tax.source.heuristic": "Heuristic (keywords)",
+  "catalog.tax.source.ai": "AI (suggestion)",
+  "catalog.tax.source.broker": "Customs broker",
+  "catalog.tax.sourceRef": "Source reference",
+  "catalog.tax.sourceRefHint": "Website, tariff table, broker opinion…",
+  "catalog.tax.status.suggested": "Suggested",
+  "catalog.tax.status.validated": "Validated",
+  "catalog.tax.status.rejected": "Rejected",
+  "catalog.tax.suggestedBy": "Suggested by",
+  "catalog.tax.validatedBy": "Validated by",
+  "catalog.tax.rejectedBy": "Rejected by",
+  "catalog.tax.validate": "Validate",
+  "catalog.tax.reject": "Reject",
+  "catalog.tax.rejectNote": "Reason (optional)",
+  "catalog.tax.add": "Add candidate",
+  "catalog.tax.rates": "Tax rates (%), if known",
+  "catalog.tax.taxes": "Tax rates",
+  "catalog.tax.adminTreatment": "Administrative treatment",
+  "catalog.tax.adminTreatmentHint":
+    "E.g. automatic import licence, Inmetro consent, none",
+  "catalog.tax.openPage": "Broker page",
+  "catalog.tax.openPageHint":
+    "NCM section only, also accessible to the customs broker.",
+  "catalog.tax.backToProduct": "View product sheet",
+  "catalog.tax.onlyOne":
+    "Only one validated classification per product; validating another replaces the current one.",
+  "help.catalog.tax.body":
+    "The tax classification (NCM) defines import duties and administrative treatment. The system only suggests candidates by keyword (name, material, category, specification); a suggestion is never final. Only a classification validated by an authorised person (Wellmix or customs broker) counts and is copied to the product sheet.",
+  "help.catalog.tax.steps":
+    "Suggest NCM: generates heuristic candidates from the sheet's words; check each one.\nAdd candidate: enter NCM, description, rates and treatment when you have the source (tariff table, opinion, website).\nValidate: pick the correct candidate; the previous one goes back to candidate and the NCM is copied to the sheet.\nReject: record the reason so the team does not repeat the same classification.",
+
+  "catalog.cert.title": "Certifications and compliance",
+  "catalog.cert.required": "Required by the line",
+  "catalog.cert.valid": "Valid",
+  "catalog.cert.missing": "Missing",
+  "catalog.cert.expiring": "Expiring",
+  "catalog.cert.missingAlert":
+    "Missing required certifications: {list}. Orders for this product go to the review queue until a valid certification exists.",
+  "catalog.cert.okAlert": "All certifications required by the line are valid.",
+  "catalog.cert.noneRequired":
+    "This product's line does not require any certification.",
+  "catalog.cert.expiringAlert": "Expiring within {days} days: {list}.",
+  "catalog.cert.empty": "No certification recorded.",
+  "catalog.cert.kind": "Type",
+  "catalog.cert.kindHint": "Same name required by the line (e.g. Inmetro)",
+  "catalog.cert.name": "Name / title",
+  "catalog.cert.issuer": "Issuing body",
+  "catalog.cert.number": "Number",
+  "catalog.cert.validUntil": "Valid until",
+  "catalog.cert.document": "Document",
+  "catalog.cert.documentHint": "PDF or image of the certificate",
+  "catalog.cert.open": "Open document",
+  "catalog.cert.noDocument": "No document",
+  "catalog.cert.validatedBy": "Validated by",
+  "catalog.cert.registeredBy": "Recorded by",
+  "catalog.cert.status.pending": "Pending",
+  "catalog.cert.status.valid": "Valid",
+  "catalog.cert.status.expired": "Expired",
+  "catalog.cert.status.rejected": "Rejected",
+  "catalog.cert.validate": "Validate",
+  "catalog.cert.markExpired": "Mark expired",
+  "catalog.cert.reject": "Reject",
+  "catalog.cert.add": "Record certification",
+  "catalog.cert.initialStatus": "Initial status",
+  "catalog.cert.supplierPending":
+    "A certification recorded by the supplier stays pending until Wellmix validates it.",
+  "catalog.cert.party.title": "Supplier certifications",
+  "catalog.cert.party.hint":
+    "Factory certifications (ISO, BSCI, audits). Kept separate from each product's certifications.",
+  "catalog.cert.expiresOn": "expires on {date}",
+
+  "catalog.opp.title": "Purchase opportunity",
+  "catalog.opp.tiers": "Negotiated price tiers",
+  "catalog.opp.tiersHint":
+    "One tier per line: minimum quantity;unit price (e.g. 1000;8.90)",
+  "catalog.opp.tiers.empty":
+    "No tiers recorded. Enter the tiers negotiated with the supplier to analyse.",
+  "catalog.opp.saveTiers": "Save tiers",
+  "catalog.opp.from": "From",
+  "catalog.opp.unitPrice": "Unit price",
+  "catalog.opp.quantity": "Quantity analysed",
+  "catalog.opp.quantitySource.param": "quantity entered",
+  "catalog.opp.quantitySource.schedule": "latest purchase schedule",
+  "catalog.opp.quantitySource.moq": "product MOQ",
+  "catalog.opp.analyze": "Analyse",
+  "catalog.opp.deterministic":
+    "Deterministic calculation over the negotiated tiers; nothing is estimated.",
+  "catalog.opp.none":
+    "No tier opportunity for this quantity: it is already in the best tier or there is no higher tier with a lower price.",
+  "catalog.opp.noQuantity": "Enter a quantity to analyse.",
+  "catalog.opp.today": "Today",
+  "catalog.opp.nextTier": "Next tier",
+  "catalog.opp.extraUnits": "Extra units",
+  "catalog.opp.unitSaving": "Saving per unit",
+  "catalog.opp.totalDifference": "Difference in total",
+  "catalog.opp.marginal": "Marginal cost per extra unit",
+  "catalog.opp.formula": "Formula",
+  "catalog.opp.boxes": "cartons",
+  "catalog.opp.internal":
+    "FOB price is internal: this analysis is shown to Wellmix only.",
+  "catalog.opp.container.title": "Free space in container",
+  "catalog.opp.container.line":
+    "{boxes} cartons ({units} units) fit in the {cbm} m³ available",
+  "catalog.opp.container.open": "View container",
+  "catalog.opp.container.formula": "cartons = ⌊free CBM ÷ CBM per carton⌋",
+
+  "catalog.lines.certifications": "Required certifications",
+  "catalog.lines.certificationsHint":
+    "Comma separated (e.g. Inmetro, Anvisa). Without a valid certification on the product, the order goes to the review queue.",
+  "catalog.lines.certifications.none": "None required",
+  "help.catalog.lines.steps":
+    "New / edit: name, PDF manual and the preparation checklist the supplier fulfils.\nRequired certifications: list what every product of the line must have valid (e.g. Inmetro); the compliance gate uses this list when orders are created.",
+
+  "catalog.sourcing.demand": "Customer demand",
+  "catalog.sourcing.demand.open": "View request",
+  "catalog.sourcing.demand.hint":
+    "This item answers a customer request (sourcing on demand).",
+  "catalog.sourcing.demand.link": "Link to a request",
+  "catalog.sourcing.demand.linkHint":
+    "Open requests without a catalogue product. Empty unlinks.",
+  "catalog.sourcing.tiersHint":
+    "Tiers negotiated during the visit; copied to the sheet when promoted to product.",
+
+  "catalog.error.invalid_ncm":
+    "Invalid NCM: use 4, 6 or 8 digits (e.g. 7615.10 or 76151000).",
+  "catalog.error.invalid_tiers":
+    "Invalid tiers: one per line as quantity;price, numbers above zero and distinct quantities.",
+  "catalog.error.no_suggestions":
+    "No keyword recognised in name, material, category or specification. Add the candidate manually.",
+  "catalog.error.kind_required": "Enter the certification type.",
+  "catalog.error.mime": "File format not accepted: upload a PDF or image.",
+  "catalog.error.too_large": "File too large.",
+  "catalog.error.forbidden": "Your role cannot perform this action.",
+  "catalog.error.invalid_input": "Invalid data. Check the fields.",
+  "catalog.error.request_not_found": "Request not found.",
+  "catalog.error.request_has_product":
+    "The request already has a catalogue product; choose a request without one.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -299,7 +609,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "help.catalog.product.body":
     "产品档案汇总了 Wellmix 掌握的全部产品信息：基本信息、供应商与谈判价格、尺寸与重量、包装与每箱体积、作为证据的照片以及后续采购计划。只有名称和产品线为必填，其余可逐步补充。订单创建时会冻结一份档案副本（快照），验货时将到货与采购内容进行比对。",
   "help.catalog.product.steps":
-    "填写：完成各部分后保存；每箱体积由外箱尺寸自动计算。\n照片：原始照片是证据，永不替换；设置主图用于列表显示。\n测量：记录重量或尺寸并附上秤/尺子的照片，以证明申报值。\n采购计划：规划后续采购的数量和时间，并由此创建需求单。",
+    "填写：完成各部分后保存；每箱体积由外箱尺寸自动计算。\n照片：原始照片是证据，永不替换；设置主图用于列表显示。\n测量：记录重量或尺寸并附上秤/尺子的照片，以证明申报值。\n采购计划：规划后续采购的数量和时间，并由此创建需求单。\nNCM：使用“建议 NCM”或添加候选编码；只有经确认（Wellmix 或报关行）的归类才写入档案。\n认证：登记产品线要求的证书及其文件和有效期；没有有效认证时订单会进入审核。\n采购机会：填写已谈定的阶梯和数量；到下一阶梯的计算是确定性的并显示公式。",
 
   "catalog.photos": "照片",
   "catalog.photos.add": "添加照片",
@@ -371,5 +681,148 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.visitStatus.planned": "已计划",
   "catalog.visitStatus.done": "已完成",
   "help.catalog.party.steps":
-    "编辑：登记信息和登录用户。\n联系方式与地址：拜访和采购时使用的城市、地址、联系人和微信。\n供应商：查看已进行的拜访和关联产品；可打开每个产品的档案。",
+    "编辑：登记信息和登录用户。\n联系方式与地址：拜访和采购时使用的城市、地址、联系人和微信。\n供应商：查看已进行的拜访和关联产品；可打开每个产品的档案。\n供应商认证：登记工厂的 ISO、BSCI 和审核证书及其文件与有效期；由 Wellmix 确认。",
+  "catalog.tax.title": "税则归类 (NCM)",
+  "catalog.tax.subtitle": "产品税则归类",
+  "catalog.tax.validated": "已确认的 NCM",
+  "catalog.tax.none": "未归类",
+  "catalog.tax.suggest": "建议 NCM",
+  "catalog.tax.suggestHint":
+    "按关键词自动生成的建议，绝非最终结论：请与报关行核实确认。",
+  "catalog.tax.candidates": "候选编码",
+  "catalog.tax.candidates.empty":
+    "暂无候选编码。请使用“建议 NCM”或手动添加候选编码。",
+  "catalog.tax.ncm": "NCM",
+  "catalog.tax.ncmHint": "4、6 或 8 位数字（如 7615.10 或 76151000）",
+  "catalog.tax.description": "税目描述",
+  "catalog.tax.source": "来源",
+  "catalog.tax.source.manual": "手动录入",
+  "catalog.tax.source.heuristic": "关键词推断",
+  "catalog.tax.source.ai": "AI 建议",
+  "catalog.tax.source.broker": "报关行",
+  "catalog.tax.sourceRef": "来源依据",
+  "catalog.tax.sourceRefHint": "网站、税则表、报关行意见……",
+  "catalog.tax.status.suggested": "建议中",
+  "catalog.tax.status.validated": "已确认",
+  "catalog.tax.status.rejected": "已否决",
+  "catalog.tax.suggestedBy": "建议人",
+  "catalog.tax.validatedBy": "确认人",
+  "catalog.tax.rejectedBy": "否决人",
+  "catalog.tax.validate": "确认",
+  "catalog.tax.reject": "否决",
+  "catalog.tax.rejectNote": "原因（可选）",
+  "catalog.tax.add": "添加候选编码",
+  "catalog.tax.rates": "税率 (%)，如已知",
+  "catalog.tax.taxes": "税率",
+  "catalog.tax.adminTreatment": "行政管理措施",
+  "catalog.tax.adminTreatmentHint":
+    "如：自动进口许可、Inmetro 许可、无特殊要求",
+  "catalog.tax.openPage": "报关行页面",
+  "catalog.tax.openPageHint": "仅含 NCM 部分，报关行也可访问。",
+  "catalog.tax.backToProduct": "查看产品档案",
+  "catalog.tax.onlyOne":
+    "每个产品只能有一个已确认归类；确认另一个会替换当前归类。",
+  "help.catalog.tax.body":
+    "税则归类 (NCM) 决定进口税费和行政管理措施。系统只根据关键词（名称、材质、类别、规格）提出候选编码，建议绝非最终结论。只有经授权人员（Wellmix 或报关行）确认的归类才有效，并会复制到产品档案。",
+  "help.catalog.tax.steps":
+    "建议 NCM：根据档案中的关键词生成推断候选，请逐一核对。\n添加候选编码：在有依据（税则表、意见书、网站）时填写 NCM、描述、税率和管理措施。\n确认：选择正确的候选；原确认项退回候选状态，NCM 写入产品档案。\n否决：记录原因，避免团队重复同样的归类。",
+
+  "catalog.cert.title": "认证与合规",
+  "catalog.cert.required": "产品线要求",
+  "catalog.cert.valid": "有效",
+  "catalog.cert.missing": "缺失",
+  "catalog.cert.expiring": "即将到期",
+  "catalog.cert.missingAlert":
+    "缺少必需认证：{list}。在取得有效认证之前，该产品的订单将进入审核队列。",
+  "catalog.cert.okAlert": "产品线要求的认证均有效。",
+  "catalog.cert.noneRequired": "该产品所属产品线不要求认证。",
+  "catalog.cert.expiringAlert": "{days} 天内到期：{list}。",
+  "catalog.cert.empty": "暂无认证记录。",
+  "catalog.cert.kind": "类型",
+  "catalog.cert.kindHint": "与产品线要求的名称一致（如 Inmetro）",
+  "catalog.cert.name": "名称 / 标题",
+  "catalog.cert.issuer": "发证机构",
+  "catalog.cert.number": "证书编号",
+  "catalog.cert.validUntil": "有效期至",
+  "catalog.cert.document": "文件",
+  "catalog.cert.documentHint": "证书的 PDF 或图片",
+  "catalog.cert.open": "打开文件",
+  "catalog.cert.noDocument": "无文件",
+  "catalog.cert.validatedBy": "确认人",
+  "catalog.cert.registeredBy": "登记人",
+  "catalog.cert.status.pending": "待确认",
+  "catalog.cert.status.valid": "有效",
+  "catalog.cert.status.expired": "已过期",
+  "catalog.cert.status.rejected": "已驳回",
+  "catalog.cert.validate": "确认",
+  "catalog.cert.markExpired": "标记为过期",
+  "catalog.cert.reject": "驳回",
+  "catalog.cert.add": "登记认证",
+  "catalog.cert.initialStatus": "初始状态",
+  "catalog.cert.supplierPending":
+    "供应商登记的认证在 Wellmix 确认之前保持待确认状态。",
+  "catalog.cert.party.title": "供应商认证",
+  "catalog.cert.party.hint":
+    "工厂认证（ISO、BSCI、审核）。与各产品的认证分开管理。",
+  "catalog.cert.expiresOn": "{date} 到期",
+
+  "catalog.opp.title": "采购机会",
+  "catalog.opp.tiers": "已谈定的价格阶梯",
+  "catalog.opp.tiersHint": "每行一个阶梯：最低数量;单价（如 1000;8.90）",
+  "catalog.opp.tiers.empty": "暂无价格阶梯。请填写与供应商谈定的阶梯后再分析。",
+  "catalog.opp.saveTiers": "保存阶梯",
+  "catalog.opp.from": "起订",
+  "catalog.opp.unitPrice": "单价",
+  "catalog.opp.quantity": "分析数量",
+  "catalog.opp.quantitySource.param": "输入的数量",
+  "catalog.opp.quantitySource.schedule": "最近一次采购计划",
+  "catalog.opp.quantitySource.moq": "产品起订量",
+  "catalog.opp.analyze": "分析",
+  "catalog.opp.deterministic": "基于已谈定阶梯的确定性计算；不含任何估算值。",
+  "catalog.opp.none":
+    "该数量没有阶梯机会：已处于最优阶梯，或没有单价更低的更高阶梯。",
+  "catalog.opp.noQuantity": "请输入要分析的数量。",
+  "catalog.opp.today": "当前",
+  "catalog.opp.nextTier": "下一阶梯",
+  "catalog.opp.extraUnits": "需增加数量",
+  "catalog.opp.unitSaving": "每件节省",
+  "catalog.opp.totalDifference": "总额差异",
+  "catalog.opp.marginal": "每增加一件的边际成本",
+  "catalog.opp.formula": "公式",
+  "catalog.opp.boxes": "箱",
+  "catalog.opp.internal": "FOB 价格为内部信息：此分析仅对 Wellmix 显示。",
+  "catalog.opp.container.title": "集装箱剩余空间",
+  "catalog.opp.container.line": "剩余 {cbm} m³ 可装 {boxes} 箱（{units} 件）",
+  "catalog.opp.container.open": "查看集装箱",
+  "catalog.opp.container.formula": "箱数 = ⌊剩余体积 ÷ 每箱体积⌋",
+
+  "catalog.lines.certifications": "必需认证",
+  "catalog.lines.certificationsHint":
+    "以逗号分隔（如 Inmetro, Anvisa）。产品没有有效认证时，订单会进入审核队列。",
+  "catalog.lines.certifications.none": "无要求",
+  "help.catalog.lines.steps":
+    "新建 / 编辑：名称、PDF 手册和供应商需完成的备货清单。\n必需认证：列出该产品线所有产品必须持有的有效认证（如 Inmetro）；创建订单时合规检查会使用此列表。",
+
+  "catalog.sourcing.demand": "客户需求",
+  "catalog.sourcing.demand.open": "查看需求单",
+  "catalog.sourcing.demand.hint": "此项目对应一张客户需求单（按需采购）。",
+  "catalog.sourcing.demand.link": "关联需求单",
+  "catalog.sourcing.demand.linkHint":
+    "尚无目录产品的未结需求单。留空则取消关联。",
+  "catalog.sourcing.tiersHint": "考察时谈定的阶梯；登记为产品时会复制到档案。",
+
+  "catalog.error.invalid_ncm":
+    "NCM 无效：请使用 4、6 或 8 位数字（如 7615.10 或 76151000）。",
+  "catalog.error.invalid_tiers":
+    "阶梯无效：每行一个，格式为 数量;单价，数字须大于零且数量不能重复。",
+  "catalog.error.no_suggestions":
+    "名称、材质、类别或规格中未识别到关键词。请手动添加候选编码。",
+  "catalog.error.kind_required": "请填写认证类型。",
+  "catalog.error.mime": "不支持的文件格式：请上传 PDF 或图片。",
+  "catalog.error.too_large": "文件过大。",
+  "catalog.error.forbidden": "您的角色无法执行此操作。",
+  "catalog.error.invalid_input": "数据无效，请检查各字段。",
+  "catalog.error.request_not_found": "未找到需求单。",
+  "catalog.error.request_has_product":
+    "该需求单已有目录产品；请选择尚无产品的需求单。",
 };

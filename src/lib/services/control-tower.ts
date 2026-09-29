@@ -30,7 +30,8 @@ export interface TowerException {
     | "weight"
     | "erp"
     | "penalty"
-    | "review";
+    | "review"
+    | "compliance";
   severity: "high" | "medium";
   detail: string;
   link: string;
@@ -195,6 +196,23 @@ export async function loadControlTower(): Promise<TowerData> {
       severity: "medium",
       detail: `#${order?.number ?? "?"} · ${p.reason}`,
       link: `/app/orders/${p.orderId}`,
+    });
+  }
+  // Certificações válidas a vencer no prazo de aviso.
+  const { expiringCertifications } = await import("./compliance");
+  const products = await store.list("products");
+  for (const cert of await expiringCertifications()) {
+    const product =
+      cert.entity === "product"
+        ? products.find((p) => p.id === cert.entityId)
+        : null;
+    exceptions.push({
+      kind: "compliance",
+      severity: "medium",
+      detail: `${cert.kind}${product ? ` · ${product.name}` : ""}${cert.validUntil ? ` · ${cert.validUntil.slice(0, 10)}` : ""}`,
+      link: product
+        ? `/app/products/${product.id}`
+        : `/app/parties/${cert.entityId}`,
     });
   }
   // Fila "itens para revisão" (gates): cada item aberto é uma exceção com atalho.

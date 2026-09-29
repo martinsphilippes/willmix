@@ -89,6 +89,7 @@ export async function importCsv(user: User, entity: string, text: string) {
         name: row.name,
         manualDocumentId: null,
         requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+        requiredCertifications: null,
         active: true,
       });
       created++;

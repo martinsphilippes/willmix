@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { audit } from "@/lib/services/audit";
+import { parsePriceTiers } from "@/lib/services/opportunities";
 import {
   addMeasurement,
   addPhotos,
@@ -349,5 +350,101 @@ export async function updatePartyExtraAction(form: FormData) {
       parsed,
     );
     return `/app/parties/${id}?saved=1`;
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Segunda Onda: faixas de preço e demanda de cliente                        */
+/* ------------------------------------------------------------------------ */
+
+/** Faixas negociadas da ficha (base da oportunidade de compra). Texto "quantidade;preço" por linha. */
+export async function saveProductPriceTiersAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const product = await store.get("products", productId);
+    if (!product) throw new Error("product_not_found");
+    const tiers = parsePriceTiers(
+      z.string().max(5000).parse(str(form, "tiers")),
+    );
+    await store.update("products", productId, {
+      priceTiers: tiers.length ? tiers : null,
+    });
+    await audit(
+      user,
+      "product.priceTiers",
+      "product",
+      productId,
+      `${product.name}: ${tiers.length} faixa(s)`,
+      { priceTiers: product.priceTiers },
+      { priceTiers: tiers },
+    );
+    const qty = num(form, "qty");
+    return `/app/products/${productId}${qty ? `?qty=${qty}` : ""}#opportunity`;
+  });
+}
+
+/** Faixas negociadas no item de sourcing; copiadas para a ficha ao promover. */
+export async function saveSourcingPriceTiersAction(form: FormData) {
+  const user = await requireUser();
+  const itemId = str(form, "itemId");
+  await run(`/app/sourcing/items/${itemId}`, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const item = await store.get("sourcing_items", itemId);
+    if (!item) throw new Error("item_not_found");
+    const tiers = parsePriceTiers(
+      z.string().max(5000).parse(str(form, "tiers")),
+    );
+    await store.update("sourcing_items", itemId, {
+      priceTiers: tiers.length ? tiers : null,
+    });
+    await audit(
+      user,
+      "sourcing.priceTiers",
+      "sourcing_item",
+      itemId,
+      `${item.name}: ${tiers.length} faixa(s)`,
+      { priceTiers: item.priceTiers },
+      { priceTiers: tiers },
+    );
+    return `/app/sourcing/items/${itemId}#tiers`;
+  });
+}
+
+/** Vincula (ou desvincula) o item de sourcing à solicitação do cliente que o motivou. */
+export async function linkSourcingItemRequestAction(form: FormData) {
+  const user = await requireUser();
+  const itemId = str(form, "itemId");
+  await run(`/app/sourcing/items/${itemId}`, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const item = await store.get("sourcing_items", itemId);
+    if (!item) throw new Error("item_not_found");
+    const requestId = z
+      .string()
+      .max(80)
+      .nullable()
+      .parse(str(form, "requestId") || null);
+    if (requestId) {
+      const request = await store.get("requests", requestId);
+      if (!request) throw new Error("request_not_found");
+      // Só solicitações sem produto do catálogo (ou já apontando para o produto deste item).
+      if (request.productId && request.productId !== item.productId)
+        throw new Error("request_has_product");
+    }
+    await store.update("sourcing_items", itemId, { requestId });
+    await audit(
+      user,
+      "sourcing.request",
+      "sourcing_item",
+      itemId,
+      `${item.name}: ${item.requestId ?? "—"} → ${requestId ?? "—"}`,
+      { requestId: item.requestId },
+      { requestId },
+    );
+    return `/app/sourcing/items/${itemId}#tiers`;
   });
 }

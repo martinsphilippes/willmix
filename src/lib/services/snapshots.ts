@@ -65,6 +65,7 @@ export async function createPurchaseSnapshot(
     conditions: quote?.conditions ?? sourcing?.conditions ?? null,
     photoDocumentIds: photos.map((p) => p.documentId),
     note,
+    ncm: product?.ncm ?? null,
     createdByUserId: user?.id ?? order.customerId,
   });
   await audit(

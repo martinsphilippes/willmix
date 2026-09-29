@@ -128,6 +128,13 @@ export const pt = {
   "settings.section.general": "Fluxo e prazos",
   "settings.section.inspection": "Inspeção e fila de revisão",
   "settings.section.containers": "Containers",
+  "settings.section.compliance": "Conformidade e pós-venda",
+  "settings.hint.complianceGateEnabled":
+    "Produto sem certificação válida exigida pela linha entra na fila de revisão e o pedido ganha uma conferência obrigatória.",
+  "settings.hint.afterSalesEnabled":
+    "Ao concluir a entrega, abre a avaliação de pós-venda para o cliente (experiência, problemas, interesse em repor).",
+  "settings.hint.certificationExpiryWarningDays":
+    "Dias de antecedência para avisar (Control Tower e ficha) que uma certificação vai vencer.",
   "settings.hint.dimensionTolerancePercent":
     "Divergência aceita nas dimensões (comprimento, largura, altura) entre a compra e a inspeção.",
   "settings.hint.cbmTolerancePercent":
@@ -267,6 +274,13 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.section.general": "Flow and deadlines",
   "settings.section.inspection": "Inspection and review queue",
   "settings.section.containers": "Containers",
+  "settings.section.compliance": "Compliance and after-sales",
+  "settings.hint.complianceGateEnabled":
+    "A product without a valid certification required by its line enters the review queue and the order gets a mandatory check.",
+  "settings.hint.afterSalesEnabled":
+    "When delivery completes, opens the after-sales review for the customer (experience, problems, repurchase interest).",
+  "settings.hint.certificationExpiryWarningDays":
+    "Days in advance to warn (Control Tower and product sheet) that a certification is about to expire.",
   "settings.hint.dimensionTolerancePercent":
     "Accepted divergence in dimensions (length, width, height) between purchase and inspection.",
   "settings.hint.cbmTolerancePercent":
@@ -403,11 +417,18 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.section.general": "流程与期限",
   "settings.section.inspection": "验货与复核队列",
   "settings.section.containers": "集装箱",
+  "settings.section.compliance": "合规与售后",
+  "settings.hint.complianceGateEnabled":
+    "产品缺少产品线要求的有效认证时进入复核队列，订单增加一项必需的核对。",
+  "settings.hint.afterSalesEnabled":
+    "交付完成后为客户打开售后评价（体验、问题、复购意向）。",
+  "settings.hint.certificationExpiryWarningDays":
+    "认证到期前多少天在控制塔和产品档案中提醒。",
   "settings.hint.dimensionTolerancePercent":
     "采购与验货之间尺寸（长、宽、高）允许的偏差。",
-  "settings.hint.cbmTolerancePercent":
-    "采购与验货之间 CBM 和毛重允许的偏差。",
-  "settings.hint.quantityTolerancePercent": "每箱数量允许的偏差（0 = 必须一致）。",
+  "settings.hint.cbmTolerancePercent": "采购与验货之间 CBM 和毛重允许的偏差。",
+  "settings.hint.quantityTolerancePercent":
+    "每箱数量允许的偏差（0 = 必须一致）。",
   "settings.hint.inspectionExtendedChecks":
     "验货时还需填写尺寸、毛重、外箱、材质和颜色（可选），并与采购数据比较。",
   "settings.hint.reviewOnZeroPrice": "FOB 为零或缺失的订单进入复核队列。",

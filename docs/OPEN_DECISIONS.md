@@ -25,6 +25,9 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | `containerTypes`           | 20GP/40GP/40HC | Capacidade útil (m³) e peso máximo por tipo; nada fixo em código        |
 | `containerAllowMultiCustomer` | `false` | Clientes diferentes no mesmo container só manualmente e se ligado           |
 | `containerMaxOccupancyPercent` | `95`   | Acima disso, item na fila de revisão                                        |
+| `afterSalesEnabled`        | `true`     | Abre o pós-venda ao concluir a entrega                                      |
+| `complianceGateEnabled`    | `true`     | Linha com certificação obrigatória sem certificação válida bloqueia a liberação |
+| `certificationExpiryWarningDays` | `30` | Aviso de certificação a vencer                                              |
 
 ## Decisões de modelagem tomadas
 
@@ -37,6 +40,8 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Consolidação: vários produtos do mesmo cliente podem dividir o container; não existe motor automático que junte pedidos de clientes diferentes.
 - Snapshot da compra é criado ao nascer o pedido; para pedidos anteriores, gerado retroativamente sob demanda e marcado como tal.
 - Visão comercial: "disponível" é o volume de itens de container sem pedido; sem estoque cadastrado, não se inventa valor.
+- NCM: sugestão (heurística ou IA) nunca é definitiva; só a classificação validada por Wellmix ou despachante vale e é copiada ao produto e ao snapshot.
+- Oportunidade de compra: só com faixas de preço negociadas e espaço real em container; a fórmula é exibida.
 
 ## A confirmar com o negócio
 

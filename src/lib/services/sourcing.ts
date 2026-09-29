@@ -292,6 +292,7 @@ export async function promoteSourcingItem(
     negotiatedAt: item.foundAt,
     sourcingItemId: item.id,
     primaryPhotoDocumentId: item.primaryPhotoDocumentId,
+    priceTiers: item.priceTiers,
   };
   let product: Product;
   if (item.productId && (await store.get("products", item.productId))) {
@@ -329,6 +330,12 @@ export async function promoteSourcingItem(
     status: "promoted",
     productId: product.id,
   });
+  // Sourcing sob demanda: a solicitação do cliente passa a apontar para o produto encontrado.
+  if (item.requestId) {
+    const request = await store.get("requests", item.requestId);
+    if (request && !request.productId && request.status === "REQUESTED")
+      await store.update("requests", request.id, { productId: product.id });
+  }
   await audit(
     user,
     "sourcing.promote",

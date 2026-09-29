@@ -197,10 +197,15 @@ export default async function SourcingPage({
                           </span>
                         ) : null}
                       </p>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Badge tone={sourcingTone(item.status)}>
                           {t(`sourcing.status.${item.status}`)}
                         </Badge>
+                        {item.requestId ? (
+                          <Badge tone="brand">
+                            {t("catalog.sourcing.demand")}
+                          </Badge>
+                        ) : null}
                         <span className="text-xs text-zinc-500">
                           {formatDate(item.foundAt ?? item.createdAt)}
                         </span>
@@ -245,6 +250,19 @@ export default async function SourcingPage({
                         {item.supplierSku ? (
                           <span className="block font-mono text-xs text-zinc-500">
                             {item.supplierSku}
+                          </span>
+                        ) : null}
+                        {item.requestId ? (
+                          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <Badge tone="brand">
+                              {t("catalog.sourcing.demand")}
+                            </Badge>
+                            <TextLink
+                              href={`/app/requests/${item.requestId}`}
+                              className="text-xs"
+                            >
+                              {t("catalog.sourcing.demand.open")}
+                            </TextLink>
                           </span>
                         ) : null}
                       </Td>

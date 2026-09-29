@@ -33,6 +33,8 @@ function navFor(role: Role, admin: boolean): NavItem[] {
       { href: "/app/products", key: "nav.products" },
       { href: "/app/lines", key: "nav.lines" },
       { href: "/app/finance", key: "nav.finance" },
+      { href: "/app/history", key: "nav.history" },
+      { href: "/app/after-sales", key: "nav.afterSales" },
       { href: "/app/penalties", key: "nav.penalties" },
       { href: "/app/notifications", key: "nav.notifications" },
       ...(admin
@@ -44,8 +46,10 @@ function navFor(role: Role, admin: boolean): NavItem[] {
     { href: "/app", key: "nav.tasks" },
     { href: "/app/orders", key: "nav.orders" },
   ];
-  if (role === "customer")
+  if (role === "customer") {
     base.splice(1, 0, { href: "/app/requests", key: "nav.requests" });
+    base.push({ href: "/app/history", key: "nav.history" });
+  }
   if (role === "supplier")
     base.push({ href: "/app/account", key: "nav.account" });
   if (role === "legal")

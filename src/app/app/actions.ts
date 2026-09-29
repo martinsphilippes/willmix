@@ -100,7 +100,12 @@ export async function createRequestAction(form: FormData) {
       deadline: str(form, "deadline") || null,
       notes: str(form, "notes") || null,
     });
-    const request = await createRequest(user, parsed);
+    // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
+    const sourcingDemand = form.get("sourcingDemand") === "on" && !parsed.productId;
+    const request = await createRequest(user, {
+      ...parsed,
+      origin: sourcingDemand ? "sourcing_demand" : "manual",
+    });
     // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
     const scheduleId = str(form, "scheduleId");
     if (scheduleId && isWellmix(user)) {
@@ -784,6 +789,7 @@ export async function saveLineAction(form: FormData) {
       await store.create("product_lines", {
         name,
         requirements,
+        requiredCertifications: null,
         manualDocumentId,
         active: true,
       });

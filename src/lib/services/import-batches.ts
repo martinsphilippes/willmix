@@ -721,6 +721,8 @@ export async function applyImportBatch(
             status: "draft",
             primaryPhotoDocumentId: null,
             createdByUserId: user.id,
+            requestId: null,
+            priceTiers: null,
           });
           summary.created++;
         }
@@ -762,6 +764,7 @@ export async function applyImportBatch(
             name,
             manualDocumentId: null,
             requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+            requiredCertifications: null,
             active: true,
           });
           summary.created++;

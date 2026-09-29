@@ -27,6 +27,8 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { acknowledgePaymentAction } from "../actions/orders-extra";
+import { listCertifications } from "@/lib/services/compliance";
+import { CertificationsSection } from "../products/_components/certifications-section";
 
 /** Conta corrente do fornecedor: pedidos, valores, pagamentos, saldo. */
 export default async function AccountPage({
@@ -91,6 +93,12 @@ export default async function AccountPage({
   ]);
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
+  /* Segunda Onda: o fornecedor registra as próprias certificações aqui (entram
+     pendentes; a Wellmix valida em /app/parties/[id]). */
+  const certifications =
+    user.role === "supplier"
+      ? await listCertifications("party", supplierId)
+      : [];
   /* Rótulo traduzido da ação de auditoria; cai no código técnico se não houver chave. */
   const actionLabel = (action: string) => {
     const key = `orders.account.action.${action}` as DictionaryKey;
@@ -350,6 +358,22 @@ export default async function AccountPage({
                 })}
               </ul>
             )}
+          </Card>
+        </div>
+      ) : null}
+
+      {user.role === "supplier" ? (
+        <div className="mt-6">
+          <Card title={t("catalog.cert.party.title")}>
+            <CertificationsSection
+              entity="party"
+              entityId={supplierId}
+              certs={certifications}
+              users={users}
+              user={user}
+              t={t}
+              back="account"
+            />
           </Card>
         </div>
       ) : null}

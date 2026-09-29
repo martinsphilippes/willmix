@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   getStore,
+  type Certification,
   type Document,
   type DocumentType,
   type User,
@@ -132,10 +133,17 @@ export async function canAccessDocument(
   } else if (doc.requestId) {
     const request = await store.get("requests", doc.requestId);
     if (!request || !canViewRequest(user, request)) return false;
-  } else if (doc.productId || doc.sourcingItemId) {
-    // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
-    return doc.visibility === "all" && !!doc.productId;
   } else {
+    // Certificado (compliance): o despachante abre qualquer um; o fornecedor, os
+    // do próprio cadastro ou de produtos seus. Cliente não abre (isolamento).
+    const [cert] = await store.list("certifications", {
+      filter: { documentId: doc.id },
+      limit: 1,
+    });
+    if (cert) return canViewCertificationDocument(user, cert);
+    // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
+    if (doc.productId || doc.sourcingItemId)
+      return doc.visibility === "all" && !!doc.productId;
     return false;
   }
   if (doc.visibility === "all") return true;
@@ -143,4 +151,16 @@ export async function canAccessDocument(
   if (doc.visibility === "customer") return user.role === "customer";
   if (doc.visibility === "supplier") return user.role !== "customer";
   return false;
+}
+
+/** Despachante: todos; fornecedor: só o próprio cadastro ou produtos dele. */
+async function canViewCertificationDocument(
+  user: User,
+  cert: Certification,
+): Promise<boolean> {
+  if (user.role === "broker") return true;
+  if (user.role !== "supplier" || !user.partyId) return false;
+  if (cert.entity === "party") return cert.entityId === user.partyId;
+  const product = await getStore().get("products", cert.entityId);
+  return !!product && product.supplierId === user.partyId;
 }

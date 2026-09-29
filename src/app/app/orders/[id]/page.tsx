@@ -10,10 +10,14 @@ import {
 } from "@/lib/auth/permissions";
 import {
   getStore,
+  type AfterSales,
   type Container,
   type Document,
   type InspectionResultRow,
+  type Order,
+  type OrderItem,
   type PurchaseSnapshot,
+  type Request as RequestRow,
   type Requirement,
   type ReviewItem,
   type User,
@@ -33,6 +37,7 @@ import {
 } from "@/lib/services/inspection";
 import { listOpenReviews } from "@/lib/services/reviews";
 import { getSnapshotForOrder } from "@/lib/services/snapshots";
+import { getAfterSales } from "@/lib/services/after-sales";
 import { getT } from "@/i18n/server";
 import { requirementLabel, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -76,6 +81,12 @@ import {
   ensureSnapshotAction,
   remeasureAction,
 } from "../../actions/orders-extra";
+import {
+  answerAfterSalesAction,
+  closeAfterSalesAction,
+  createFollowUpRequestAction,
+  openAfterSalesAction,
+} from "../../actions/after-sales";
 
 export default async function OrderPage({
   params,
@@ -159,6 +170,39 @@ export default async function OrderPage({
   const inspectionStage = stages.find((s) => s.key === "INSPECTION") ?? null;
   const inspectionBlocked = inspectionStage?.status === "blocked";
 
+  /* Módulo cliente 2: pós-venda, "comprar de novo / nova proposta" e origem da solicitação.
+     Só cliente (dono) e Wellmix; fornecedor e parceiros não veem avaliação nem preço de venda. */
+  const customerSide = wellmix || user.role === "customer";
+  const delivered = order.status === "CLOSED" || order.status === "DELIVERED";
+  const [afterSales, sourceRequest, derivedRequests, followProduct] =
+    await Promise.all([
+      customerSide ? getAfterSales(order.id) : Promise.resolve(null),
+      store.get("requests", order.requestId),
+      customerSide
+        ? store.list("requests", {
+            filter: { sourceOrderId: order.id },
+            orderBy: "createdAt",
+            direction: "desc",
+          })
+        : Promise.resolve([] as RequestRow[]),
+      (customerSide || user.role === "broker") && items[0]?.productId
+        ? store.get("products", items[0].productId)
+        : Promise.resolve(null),
+    ]);
+  const origin =
+    sourceRequest?.origin && sourceRequest.origin !== "manual"
+      ? sourceRequest.origin
+      : null;
+  /* Link ao pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
+  const sourceOrderRow =
+    origin && sourceRequest?.sourceOrderId
+      ? await store.get("orders", sourceRequest.sourceOrderId)
+      : null;
+  const sourceOrder =
+    sourceOrderRow && canViewOrder(user, sourceOrderRow)
+      ? sourceOrderRow
+      : null;
+
   return (
     <>
       <PageHeader
@@ -188,6 +232,18 @@ export default async function OrderPage({
             </Badge>
             {overdue ? (
               <Badge tone="danger">{t("common.overdue")}</Badge>
+            ) : null}
+            {origin ? (
+              <Badge tone="brand">{t(`orders.origin.${origin}`)}</Badge>
+            ) : null}
+            {sourceOrder ? (
+              <TextLink
+                href={`/app/orders/${sourceOrder.id}`}
+                className="text-xs"
+              >
+                {t("orders.origin.sourceOrder")}:{" "}
+                {t("orders.number", { number: sourceOrder.number })}
+              </TextLink>
             ) : null}
           </span>
         }
@@ -249,6 +305,31 @@ export default async function OrderPage({
               ))}
             </ol>
           </Card>
+
+          {customerSide && (afterSales || (wellmix && delivered)) ? (
+            <div id="after-sales">
+              <AfterSalesCard
+                t={t}
+                afterSales={afterSales}
+                orderId={order.id}
+                user={user}
+                wellmix={wellmix}
+                answeredBy={userName(afterSales?.answeredByUserId ?? null)}
+              />
+            </div>
+          ) : null}
+
+          {customerSide && delivered && items[0] ? (
+            <div id="followup">
+              <FollowUpCard
+                t={t}
+                order={order}
+                item={items[0]}
+                photoDocumentId={followProduct?.primaryPhotoDocumentId ?? null}
+                derived={derivedRequests}
+              />
+            </div>
+          ) : null}
 
           {stages
             .filter(
@@ -483,6 +564,20 @@ export default async function OrderPage({
                     ]
                   : []),
                 [t("common.date"), formatDate(order.createdAt)],
+                /* Classificação fiscal (NCM) com validação humana: Wellmix e despachante. */
+                ...(followProduct && (wellmix || user.role === "broker")
+                  ? [
+                      [
+                        t("catalog.tax.title"),
+                        <TextLink
+                          key="tax"
+                          href={`/app/products/${followProduct.id}/tax`}
+                        >
+                          {followProduct.ncm ?? t("catalog.tax.none")}
+                        </TextLink>,
+                      ] as [string, ReactNode],
+                    ]
+                  : []),
               ]}
             />
             {wellmix && order.erpSyncStatus === "pending" ? (
@@ -1416,6 +1511,405 @@ function ContainersCard({
           ))}
         </ul>
       )}
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Módulo cliente 2: pós-venda e "comprar de novo / nova proposta"            */
+/* ------------------------------------------------------------------------ */
+
+/** Nota 1–5 como estrelas (texto acessível junto). */
+function Stars({ rating, t }: { rating: number | null; t: Translate }) {
+  if (rating === null)
+    return <span className="text-zinc-500">{t("afterSales.notRated")}</span>;
+  const filled = Math.max(0, Math.min(5, Math.round(rating)));
+  return (
+    <span
+      className="inline-flex items-center gap-1"
+      aria-label={`${rating}/5`}
+      title={`${rating}/5`}
+    >
+      <span className="tracking-tight text-amber-500" aria-hidden>
+        {"★".repeat(filled)}
+        <span className="text-zinc-300">{"★".repeat(5 - filled)}</span>
+      </span>
+      <span className="text-xs font-semibold tabular-nums text-zinc-700">
+        {rating}/5
+      </span>
+    </span>
+  );
+}
+
+/** Botão grande de escolha única (rádio escondido; visual pelo estado :checked). */
+function ChoiceButton({
+  name,
+  value,
+  label,
+  defaultChecked,
+  required,
+  wide,
+}: {
+  name: string;
+  value: string;
+  label: string;
+  defaultChecked?: boolean;
+  required?: boolean;
+  wide?: boolean;
+}) {
+  return (
+    <label className="cursor-pointer">
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        defaultChecked={defaultChecked}
+        required={required}
+        className="peer sr-only"
+      />
+      <span
+        className={cx(
+          "flex min-h-12 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 text-base font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600",
+          wide ? "min-w-24" : "w-12",
+        )}
+      >
+        {label}
+      </span>
+    </label>
+  );
+}
+
+/**
+ * Pós-venda do pedido: o cliente (dono) responde enquanto "open"; depois as
+ * respostas ficam visíveis para ele e para a Wellmix, que encerra com observação.
+ * Pedido entregue/encerrado sem registro (anterior ao recurso): a Wellmix abre.
+ */
+function AfterSalesCard({
+  t,
+  afterSales,
+  orderId,
+  user,
+  wellmix,
+  answeredBy,
+}: {
+  t: Translate;
+  afterSales: AfterSales | null;
+  orderId: string;
+  user: User;
+  wellmix: boolean;
+  answeredBy: string;
+}) {
+  if (!afterSales) {
+    return (
+      <Card title={t("orders.afterSales.title")}>
+        <p className="text-sm text-zinc-600">
+          {t("orders.afterSales.openHint")}
+        </p>
+        <form action={openAfterSalesAction} className="mt-3">
+          <input type="hidden" name="orderId" value={orderId} />
+          <SubmitButton variant="secondary">
+            {t("orders.afterSales.open")}
+          </SubmitButton>
+        </form>
+      </Card>
+    );
+  }
+  const status = afterSales.status;
+  const tone =
+    status === "open" ? "warning" : status === "answered" ? "info" : "success";
+  const canAnswer = status === "open" && user.role === "customer";
+  const interest = (v: AfterSales["repurchaseInterest"]) =>
+    v ? t(`orders.afterSales.repurchase.${v}`) : "—";
+  return (
+    <Card
+      title={t("orders.afterSales.title")}
+      actions={
+        <Badge tone={tone}>{t(`orders.afterSales.status.${status}`)}</Badge>
+      }
+    >
+      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+        {t("orders.afterSales.hint")}
+      </p>
+
+      {canAnswer ? (
+        <form action={answerAfterSalesAction} className="space-y-4">
+          <input type="hidden" name="orderId" value={orderId} />
+          <input type="hidden" name="afterSalesId" value={afterSales.id} />
+          <fieldset>
+            <legend className="text-sm font-medium text-zinc-800">
+              {t("orders.afterSales.rating")}
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <ChoiceButton
+                  key={n}
+                  name="rating"
+                  value={String(n)}
+                  label={String(n)}
+                  required
+                />
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-zinc-500">
+              {t("orders.afterSales.ratingHint")}
+            </p>
+          </fieldset>
+          <Field label={t("orders.afterSales.experience")}>
+            <Textarea name="experience" rows={2} maxLength={2000} />
+          </Field>
+          <Field label={t("orders.afterSales.problems")}>
+            <Textarea name="problems" rows={2} maxLength={2000} />
+          </Field>
+          <Field label={t("orders.afterSales.perceivedCosts")}>
+            <Textarea name="perceivedCosts" rows={2} maxLength={2000} />
+          </Field>
+          <Field label={t("orders.afterSales.suggestions")}>
+            <Textarea name="suggestions" rows={2} maxLength={2000} />
+          </Field>
+          <fieldset>
+            <legend className="text-sm font-medium text-zinc-800">
+              {t("orders.afterSales.repurchase")}
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(["yes", "maybe", "no"] as const).map((v) => (
+                <ChoiceButton
+                  key={v}
+                  name="repurchaseInterest"
+                  value={v}
+                  label={t(`orders.afterSales.repurchase.${v}`)}
+                  wide
+                />
+              ))}
+            </div>
+          </fieldset>
+          <div className="border-t border-zinc-100 pt-4">
+            <SubmitButton pendingText="...">
+              {t("orders.afterSales.submit")}
+            </SubmitButton>
+          </div>
+        </form>
+      ) : status === "open" ? (
+        <p className="text-sm text-zinc-600">
+          {t("orders.afterSales.waitingCustomer")}
+        </p>
+      ) : (
+        <>
+          {user.role === "customer" && status === "answered" ? (
+            <div className="mb-3">
+              <Alert tone="success">{t("orders.afterSales.thanks")}</Alert>
+            </div>
+          ) : null}
+          <DescriptionList
+            items={[
+              [
+                t("orders.afterSales.rating"),
+                <Stars key="s" rating={afterSales.rating} t={t} />,
+              ],
+              [
+                t("orders.afterSales.repurchase"),
+                interest(afterSales.repurchaseInterest),
+              ],
+              [t("orders.afterSales.experience"), afterSales.experience ?? "—"],
+              [t("orders.afterSales.problems"), afterSales.problems ?? "—"],
+              [
+                t("orders.afterSales.perceivedCosts"),
+                afterSales.perceivedCosts ?? "—",
+              ],
+              [
+                t("orders.afterSales.suggestions"),
+                afterSales.suggestions ?? "—",
+              ],
+              [
+                t("orders.afterSales.answeredAt"),
+                `${formatDateTime(afterSales.answeredAt)}${
+                  wellmix ? ` · ${answeredBy}` : ""
+                }`,
+              ],
+              ...(status === "closed"
+                ? ([
+                    [
+                      t("orders.afterSales.closedAt"),
+                      formatDateTime(afterSales.closedAt),
+                    ],
+                    [t("orders.afterSales.notes"), afterSales.notes ?? "—"],
+                  ] as [string, ReactNode][])
+                : []),
+            ]}
+          />
+        </>
+      )}
+
+      {wellmix && status !== "closed" ? (
+        <form
+          action={closeAfterSalesAction}
+          className="mt-4 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:p-4"
+        >
+          <input type="hidden" name="orderId" value={orderId} />
+          <input type="hidden" name="afterSalesId" value={afterSales.id} />
+          <Field
+            label={t("orders.afterSales.notes")}
+            hint={t("orders.afterSales.closeHint")}
+          >
+            <Textarea name="notes" rows={2} maxLength={2000} />
+          </Field>
+          <SubmitButton variant="secondary">
+            {t("orders.afterSales.close")}
+          </SubmitButton>
+        </form>
+      ) : null}
+    </Card>
+  );
+}
+
+/**
+ * "Comprar de novo" (reposição) e "Quero nova proposta": abre uma solicitação
+ * pré-preenchida a partir deste pedido. Mostra só o preço de venda (nunca FOB).
+ */
+function FollowUpCard({
+  t,
+  order,
+  item,
+  photoDocumentId,
+  derived,
+}: {
+  t: Translate;
+  order: Order;
+  item: OrderItem;
+  photoDocumentId: string | null;
+  derived: RequestRow[];
+}) {
+  const unitSell =
+    order.sellPrice !== null && item.quantity > 0
+      ? order.sellPrice / item.quantity
+      : null;
+  return (
+    <Card title={t("orders.followup.title")}>
+      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+        {t("orders.followup.hint")}
+      </p>
+      <div className="flex flex-col gap-4 sm:flex-row">
+        {photoDocumentId ? (
+          <a
+            href={`/api/files/${photoDocumentId}`}
+            target="_blank"
+            className="block shrink-0"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+            <img
+              src={`/api/files/${photoDocumentId}`}
+              alt={item.name}
+              loading="lazy"
+              className="h-28 w-28 rounded-xl border border-zinc-200 bg-zinc-50 object-cover"
+            />
+          </a>
+        ) : (
+          <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-center text-xs text-zinc-400">
+            {t("orders.followup.noPhoto")}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <DescriptionList
+            items={[
+              [t("common.product"), item.name],
+              [
+                t("orders.followup.lastQuantity"),
+                `${item.quantity} ${item.unit}`,
+              ],
+              [
+                t("orders.followup.lastPrice"),
+                unitSell !== null
+                  ? `${formatMoney(unitSell, order.sellCurrency)} / ${item.unit}`
+                  : "—",
+              ],
+              [t("orders.followup.lastDate"), formatDate(order.createdAt)],
+            ]}
+          />
+        </div>
+      </div>
+      <form
+        action={createFollowUpRequestAction}
+        className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-2 sm:p-4"
+      >
+        <input type="hidden" name="orderId" value={order.id} />
+        <Field label={t("orders.followup.newQuantity")}>
+          <Input
+            name="quantity"
+            type="number"
+            min="0.01"
+            step="any"
+            required
+            defaultValue={item.quantity}
+          />
+        </Field>
+        <Field label={t("requests.deadline")}>
+          <Input name="deadline" type="date" />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label={t("orders.followup.notes")}>
+            <Textarea name="notes" rows={2} maxLength={2000} />
+          </Field>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:col-span-2">
+          <SubmitButton name="origin" value="replenishment" pendingText="...">
+            {t("orders.followup.buyAgain")}
+          </SubmitButton>
+          <SubmitButton
+            name="origin"
+            value="proposal"
+            variant="secondary"
+            pendingText="..."
+          >
+            {t("orders.followup.newProposal")}
+          </SubmitButton>
+        </div>
+        <p className="text-xs leading-relaxed text-zinc-500 sm:col-span-2">
+          {t("orders.followup.buyAgainHint")}
+        </p>
+      </form>
+      {derived.length > 0 ? (
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-zinc-900">
+            {t("orders.followup.derived")}
+          </h3>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {derived.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 px-3 py-2"
+              >
+                <TextLink href={`/app/requests/${r.id}`} className="min-w-0">
+                  {r.productName} · {r.quantity} {r.unit}
+                </TextLink>
+                {r.origin && r.origin !== "manual" ? (
+                  <Badge tone="brand">{t(`orders.origin.${r.origin}`)}</Badge>
+                ) : null}
+                <Badge
+                  tone={
+                    r.status === "ORDERED"
+                      ? "success"
+                      : r.status === "CANCELLED"
+                        ? "neutral"
+                        : "warning"
+                  }
+                >
+                  {t(`reqStatusLabel.${r.status}`)}
+                </Badge>
+                <span className="text-xs text-zinc-500">
+                  {formatDate(r.createdAt)}
+                </span>
+                {r.orderId ? (
+                  <TextLink
+                    href={`/app/orders/${r.orderId}`}
+                    className="text-xs"
+                  >
+                    {t("requests.viewOrder")} →
+                  </TextLink>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </Card>
   );
 }

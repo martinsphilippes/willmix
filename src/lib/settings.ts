@@ -61,6 +61,13 @@ export const DEFAULT_SETTINGS = {
   containerAllowMultiCustomer: false,
   /** Ocupação máxima recomendada do container (%): acima disso, aviso. */
   containerMaxOccupancyPercent: 95,
+  /* ---- Segunda Onda ---- */
+  /** Abre o pós-venda automaticamente quando o pedido é entregue. */
+  afterSalesEnabled: true,
+  /** Linha com certificação obrigatória sem certificação válida: pedido entra em revisão e exige conferência. */
+  complianceGateEnabled: true,
+  /** Aviso de certificação a vencer (dias). */
+  certificationExpiryWarningDays: 30,
 };
 
 export type Settings = typeof DEFAULT_SETTINGS;
