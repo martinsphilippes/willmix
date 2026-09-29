@@ -46,6 +46,19 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Motor: contexto `inspectionExtendedChecks`; hook de comparação após cada medida da inspeção; aprovação/liberação resolvem os itens de revisão; preço zerado gera item de revisão na criação do pedido.
 - Configurações novas (`src/lib/settings.ts`): tolerâncias de dimensão/CBM/quantidade, `inspectionExtendedChecks`, `reviewOnZeroPrice`, `containerTypes`, `containerAllowMultiCustomer`, `containerMaxOccupancyPercent`.
 
+### Telas entregues nesta onda
+
+- `/app/sourcing` (itens e visitas), `/app/sourcing/visits/new|[id]`, `/app/sourcing/items/new|[id]`: mobile-first, câmera com compressão no aparelho, galeria por tipo de foto, medições, promoção a produto, descarte sem apagar.
+- `/app/products/[id]` (ficha completa, fotos, medições, programação de compra → nova solicitação pré-preenchida); `/app/products` com colunas novas; `/app/parties/[id]` com contato/WeChat, visitas e produtos do fornecedor.
+- `/app/import` (lote XLSX/CSV ao lado do CSV direto antigo) e `/app/import/[batchId]` (mapeamento → conferência → decisão → resumo).
+- `/app/containers` e `/app/containers/[id]` (ocupação, peso, visão comercial, itens por pedido ou estoque, regra de consolidação); `/app/reviews` (fila com filtro e histórico); Control Tower com faixas Financeiro e Operação e visão comercial por container; `/app/settings` com as chaves novas.
+- Pedido: snapshot da compra (Wellmix), resultado da inspeção, itens em revisão, nova medição (`?remeasure=1`), containers do pedido, trilha enviado → visualizado → confirmado em pagamentos e documentos; conta corrente com comprovante, câmbio e trilha.
+- `src/app/app/error.tsx`: limite de erro amigável (papel sem acesso ou falha) em vez da tela padrão.
+
+### Validação da onda
+
+Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco antigo (registros sem as colunas novas) e sobre seed novo, build de produção, esquema publicado no Appwrite (`npm run appwrite:push`, aditivo).
+
 ## Reutilizado
 
 `uploadDocument` (versionamento e visibilidade), `audit`, `notify`/`notifyWellmix`, `getSettings`, `loadFinance`, `loadControlTower`, `createRequest`/RFQ (para reposição e sourcing sob demanda na Segunda Onda), kit de componentes `ui.tsx`, `PageHeader` com ajuda contextual, dicionários pt/en/zh.
@@ -72,6 +85,12 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - **Limites conhecidos**: `nextNumber` não é atômico (colisão vira 409 no índice único); datas no Appwrite voltam com `+00:00`; MemoryStore não valida enum/tamanho (erros de esquema só aparecem em produção ou no E2E com `E2E_REUSE=1`).
 
 ## Recomendações futuras (não executadas por serem remoções ou mudanças de comportamento)
+
+- Correspondência de fornecedor na importação por nome em chinês (hoje só por nome cadastrado, CNPJ e e-mail): acrescentar um nome alternativo ao parceiro.
+- `PageHelp` recolhido por padrão nas telas de campo (o painel empurra o campo de foto para baixo da primeira dobra no celular).
+- Programação de compra como cards no celular (a tabela rola na horizontal).
+- Excluir container vazio em planejamento (hoje só encerra).
+- Unificar `savePartyAction` com os campos de contato/WeChat (hoje um segundo formulário na tela do parceiro).
 
 - Unificar `checkWeightDivergence` (peso declarado × medido) dentro de `compareInspection` quando todos os pedidos abertos tiverem snapshot.
 - Reduzir as 3 notificações por evento (in-app, e-mail e WhatsApp mock) quando houver provedor real.

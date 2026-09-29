@@ -1,5 +1,7 @@
 # Integrações
 
+> Sistema chinês (planilhas do time na China): modo **manual por XLSX/CSV** em `/app/import` com mapeamento, conferência e correspondência (`src/lib/services/import-batches.ts`). Integração automática só quando houver API ou exportação oficial; nada de scraping.
+
 Regra: toda integração externa crítica tem modo manual ou mock para o fluxo funcionar antes da integração real.
 
 | Integração          | Contrato                            | Estado                                                         |
