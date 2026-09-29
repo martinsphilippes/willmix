@@ -9,6 +9,9 @@ import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
  * Todas as chamadas usam a API key (servidor). A autorização é feita na
  * camada de aplicação antes de chegar aqui.
  */
+const PAGE = 500;
+const MAX_ROWS = 10_000;
+
 export class AppwriteStore implements Store {
   readonly mode = "appwrite" as const;
   private readonly tables: TablesDB;
@@ -28,10 +31,14 @@ export class AppwriteStore implements Store {
     options: ListOptions<Tables[K]> = {},
   ) {
     const queries: string[] = [];
-    for (const [key, value] of Object.entries(options.filter ?? {})) {
+    for (const [rawKey, value] of Object.entries(options.filter ?? {})) {
+      const key = toAppwriteKey(rawKey);
       if (value === null) queries.push(Query.isNull(key));
-      else if (Array.isArray(value)) queries.push(Query.equal(key, value));
-      else queries.push(Query.equal(key, value as string | number | boolean));
+      else if (Array.isArray(value)) {
+        // Lista vazia: nenhum valor casa (o Appwrite rejeitaria a consulta).
+        if (value.length === 0) return [];
+        queries.push(Query.equal(key, value));
+      } else queries.push(Query.equal(key, value as string | number | boolean));
     }
     const orderBy = toAppwriteKey(options.orderBy ?? "createdAt");
     queries.push(
@@ -39,13 +46,26 @@ export class AppwriteStore implements Store {
         ? Query.orderDesc(orderBy)
         : Query.orderAsc(orderBy),
     );
-    queries.push(Query.limit(options.limit ?? 500));
-    const result = await this.tables.listRows({
-      databaseId: DATABASE_ID,
-      tableId: table,
-      queries,
-    });
-    return result.rows.map((row) => fromAppwrite<Tables[K]>(table, row));
+    // Sem limite explícito, percorre todas as páginas (até MAX_ROWS) em vez de truncar em 500.
+    const wanted = options.limit ?? MAX_ROWS;
+    const rows: Record<string, unknown>[] = [];
+    let cursor: string | null = null;
+    while (rows.length < wanted) {
+      const page = [
+        ...queries,
+        Query.limit(Math.min(PAGE, wanted - rows.length)),
+      ];
+      if (cursor) page.push(Query.cursorAfter(cursor));
+      const result = await this.tables.listRows({
+        databaseId: DATABASE_ID,
+        tableId: table,
+        queries: page,
+      });
+      rows.push(...result.rows);
+      if (result.rows.length < PAGE) break;
+      cursor = (result.rows[result.rows.length - 1] as { $id: string }).$id;
+    }
+    return rows.map((row) => fromAppwrite<Tables[K]>(table, row));
   }
 
   async get<K extends TableName>(table: K, id: string) {
@@ -157,7 +177,7 @@ function toAppwrite(table: TableName, data: Record<string, unknown>) {
     const def = columns[key];
     if (!def) continue;
     out[key] =
-      def.type === "json"
+      def.type === "json" || def.type === "json_large"
         ? value === null
           ? null
           : JSON.stringify(value)
@@ -175,7 +195,7 @@ function fromAppwrite<T>(table: TableName, row: Record<string, unknown>): T {
   };
   for (const [key, def] of Object.entries(columns)) {
     const value = row[key];
-    if (def.type === "json") {
+    if (def.type === "json" || def.type === "json_large") {
       out[key] =
         typeof value === "string" && value !== ""
           ? JSON.parse(value)

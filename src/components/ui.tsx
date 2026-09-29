@@ -137,12 +137,7 @@ export function PageHeader({
 }
 
 export type Tone =
-  | "neutral"
-  | "info"
-  | "success"
-  | "warning"
-  | "danger"
-  | "brand";
+  "neutral" | "info" | "success" | "warning" | "danger" | "brand";
 const badgeStyles: Record<Tone, string> = {
   neutral: "bg-zinc-100 text-zinc-700 ring-zinc-200",
   info: "bg-sky-50 text-sky-800 ring-sky-200",
@@ -386,7 +381,14 @@ export function Stat({
   );
 }
 
-export function Progress({ percent }: { percent: number }) {
+export function Progress({
+  percent,
+  tone,
+}: {
+  percent: number;
+  /** "danger": 100% ou mais é problema (ex.: container acima da capacidade), não conclusão. */
+  tone?: "danger";
+}) {
   const value = Math.min(100, Math.max(0, percent));
   return (
     <div
@@ -400,7 +402,13 @@ export function Progress({ percent }: { percent: number }) {
       <div
         className={cx(
           "h-full rounded-full transition-all",
-          value >= 100 ? "bg-emerald-500" : "bg-brand-600",
+          value >= 100
+            ? tone === "danger"
+              ? "bg-red-500"
+              : "bg-emerald-500"
+            : tone === "danger" && value > 90
+              ? "bg-amber-500"
+              : "bg-brand-600",
         )}
         style={{ width: `${value}%` }}
       />

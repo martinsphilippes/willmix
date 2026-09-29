@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/db/schema";
 import { helpEn, helpPt, helpZh } from "./help";
+import { modulesEn, modulesPt, modulesZh } from "./modules";
 
 /**
  * Dicionários simples. Chaves planas com pontos. Interpolação com {nome}.
@@ -167,7 +168,16 @@ const ptBase = {
   "req.photo_unpacked": "Foto sem embalagem",
   "req.photo_packed": "Foto com embalagem",
   "req.weight_measured": "Peso medido (kg)",
-  "req.inspection_review": "Revisão da divergência de peso (Wellmix)",
+  "req.gross_weight_measured": "Peso bruto medido (kg)",
+  "req.length_measured": "Comprimento medido (cm)",
+  "req.width_measured": "Largura medida (cm)",
+  "req.height_measured": "Altura medida (cm)",
+  "req.master_box_cbm_measured": "CBM da caixa master medido (m³)",
+  "req.master_box_measured": "Unidades por caixa master encontradas",
+  "req.inner_box_measured": "Unidades por inner box encontradas",
+  "req.material_found": "Material encontrado",
+  "req.color_found": "Cor encontrada",
+  "req.inspection_review": "Revisão da divergência na inspeção (Wellmix)",
   "req.ship_date": "Data de embarque",
   "req.eta": "Previsão de chegada",
   "req.vessel": "Navio / viagem",
@@ -223,6 +233,9 @@ const ptBase = {
   "ct.exceptions": "Exceções",
   "ct.closed": "Concluídos",
   "nav.finance": "Financeiro",
+  "nav.reviews": "Revisão",
+  "nav.sourcing": "Sourcing",
+  "nav.containers": "Containers",
   "finance.title": "Financeiro",
   "finance.sold": "Vendido",
   "finance.sale": "Venda",
@@ -242,6 +255,7 @@ const ptBase = {
   "ct.exception.weight": "Peso divergente",
   "ct.exception.erp": "Integração ERP pendente",
   "ct.exception.penalty": "Multa em aberto",
+  "ct.exception.review": "Item para revisão",
   "account.title": "Conta corrente",
   "account.balance": "Saldo",
   "account.order": "Pedido",
@@ -282,7 +296,7 @@ const ptBase = {
   "home.welcome": "Olá, {name}",
 };
 
-export const pt = { ...ptBase, ...helpPt };
+export const pt = { ...ptBase, ...helpPt, ...modulesPt };
 
 export type DictionaryKey = keyof typeof pt;
 export type Dictionary = Record<DictionaryKey, string>;
@@ -449,7 +463,16 @@ const enBase = {
   "req.photo_unpacked": "Photo without packaging",
   "req.photo_packed": "Photo with packaging",
   "req.weight_measured": "Measured weight (kg)",
-  "req.inspection_review": "Weight divergence review (Wellmix)",
+  "req.gross_weight_measured": "Measured gross weight (kg)",
+  "req.length_measured": "Measured length (cm)",
+  "req.width_measured": "Measured width (cm)",
+  "req.height_measured": "Measured height (cm)",
+  "req.master_box_cbm_measured": "Measured master carton CBM (m³)",
+  "req.master_box_measured": "Units per master carton found",
+  "req.inner_box_measured": "Units per inner box found",
+  "req.material_found": "Material found",
+  "req.color_found": "Color found",
+  "req.inspection_review": "Inspection divergence review (Wellmix)",
   "req.ship_date": "Shipping date",
   "req.eta": "Estimated arrival",
   "req.vessel": "Vessel / voyage",
@@ -505,6 +528,9 @@ const enBase = {
   "ct.exceptions": "Exceptions",
   "ct.closed": "Completed",
   "nav.finance": "Finance",
+  "nav.reviews": "Review queue",
+  "nav.sourcing": "Sourcing",
+  "nav.containers": "Containers",
   "finance.title": "Finance",
   "finance.sold": "Sold",
   "finance.sale": "Sale",
@@ -524,6 +550,7 @@ const enBase = {
   "ct.exception.weight": "Weight divergence",
   "ct.exception.erp": "ERP sync pending",
   "ct.exception.penalty": "Open penalty",
+  "ct.exception.review": "Review item",
   "account.title": "Account statement",
   "account.balance": "Balance",
   "account.order": "Order",
@@ -725,7 +752,16 @@ const zhBase = {
   "req.photo_unpacked": "无包装照片",
   "req.photo_packed": "带包装照片",
   "req.weight_measured": "实测重量（kg）",
-  "req.inspection_review": "重量差异复核（Wellmix）",
+  "req.gross_weight_measured": "实测毛重（kg）",
+  "req.length_measured": "实测长度（cm）",
+  "req.width_measured": "实测宽度（cm）",
+  "req.height_measured": "实测高度（cm）",
+  "req.master_box_cbm_measured": "实测外箱体积（m³）",
+  "req.master_box_measured": "实测外箱装量",
+  "req.inner_box_measured": "实测内盒装量",
+  "req.material_found": "实际材质",
+  "req.color_found": "实际颜色",
+  "req.inspection_review": "验货差异复核（Wellmix）",
   "req.ship_date": "装运日期",
   "req.eta": "预计到达",
   "req.vessel": "船名 / 航次",
@@ -781,6 +817,9 @@ const zhBase = {
   "ct.exceptions": "异常",
   "ct.closed": "已完成",
   "nav.finance": "财务",
+  "nav.reviews": "待复核",
+  "nav.sourcing": "采购寻源",
+  "nav.containers": "集装箱",
   "finance.title": "财务",
   "finance.sold": "销售额",
   "finance.sale": "销售",
@@ -800,6 +839,7 @@ const zhBase = {
   "ct.exception.weight": "重量差异",
   "ct.exception.erp": "ERP 同步待处理",
   "ct.exception.penalty": "未结罚款",
+  "ct.exception.review": "待复核项",
   "account.title": "往来账",
   "account.balance": "余额",
   "account.order": "订单",
@@ -840,7 +880,7 @@ const zhBase = {
   "home.welcome": "您好，{name}",
 };
 
-export const en: Dictionary = { ...enBase, ...helpEn };
-export const zh: Dictionary = { ...zhBase, ...helpZh };
+export const en: Dictionary = { ...enBase, ...helpEn, ...modulesEn };
+export const zh: Dictionary = { ...zhBase, ...helpZh, ...modulesZh };
 
 export const dictionaries: Record<Locale, Dictionary> = { pt, en, zh };

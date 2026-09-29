@@ -3,7 +3,7 @@ import { withTempStore } from "./setup";
 
 withTempStore();
 
-const { getStore } = await import("@/lib/db");
+const { getStore, DOCUMENT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { createRequest, openRfq, answerQuote, selectQuote, confirmDownPayment } =
   await import("@/lib/services/requests");
@@ -41,6 +41,7 @@ async function fillStage(
     if (!req.required || req.type === "approval") continue;
     if (req.type === "file" || req.type === "photo") {
       const doc = await store.create("documents", {
+      ...DOCUMENT_EXTRA_DEFAULTS,
         orderId,
         requestId: null,
         requirementId: req.id,

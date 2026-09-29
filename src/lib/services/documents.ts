@@ -20,7 +20,10 @@ const ALLOWED_MIME = [
   "image/png",
   "image/jpeg",
   "image/webp",
+  "image/heic",
+  "image/heif",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel.sheet.macroenabled.12",
   "application/vnd.ms-excel",
   "text/csv",
   "application/zip",
@@ -35,6 +38,9 @@ export interface UploadInput {
   orderId?: string | null;
   requestId?: string | null;
   requirementId?: string | null;
+  /** Fotos de produto e de sourcing (sem pedido nem solicitação). */
+  productId?: string | null;
+  sourcingItemId?: string | null;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -81,6 +87,8 @@ export async function uploadDocument(
     previousDocumentId,
     uploadedByUserId: user.id,
     visibility: input.visibility ?? defaultVisibility(input.type),
+    productId: input.productId ?? null,
+    sourcingItemId: input.sourcingItemId ?? null,
   });
   await audit(
     user,
@@ -124,6 +132,9 @@ export async function canAccessDocument(
   } else if (doc.requestId) {
     const request = await store.get("requests", doc.requestId);
     if (!request || !canViewRequest(user, request)) return false;
+  } else if (doc.productId || doc.sourcingItemId) {
+    // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
+    return doc.visibility === "all" && !!doc.productId;
   } else {
     return false;
   }

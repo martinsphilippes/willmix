@@ -36,6 +36,31 @@ export const DEFAULT_SETTINGS = {
   } as Record<string, number>,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
+  /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */
+  /** Tolerância de dimensões (cm) entre snapshot da compra e inspeção (%). */
+  dimensionTolerancePercent: 5,
+  /** Tolerância de CBM e de peso bruto entre snapshot e inspeção (%). */
+  cbmTolerancePercent: 5,
+  /** Tolerância de quantidade por caixa (master/inner) entre snapshot e inspeção (%). 0 = exato. */
+  quantityTolerancePercent: 0,
+  /** Inspeção pede também dimensões, peso bruto, caixa, material e cor (opcionais) para comparar com a compra. */
+  inspectionExtendedChecks: true,
+  /** Gate: pedido com FOB zerado/ausente entra na fila de revisão. */
+  reviewOnZeroPrice: true,
+  /** Tipos de container e capacidade útil. Nada é fixo em código; ajuste aqui. */
+  containerTypes: [
+    { code: "20GP", capacityCbm: 28, maxWeightKg: 21700 },
+    { code: "40GP", capacityCbm: 58, maxWeightKg: 26500 },
+    { code: "40HC", capacityCbm: 68, maxWeightKg: 26500 },
+  ] as Array<{ code: string; capacityCbm: number; maxWeightKg: number }>,
+  /**
+   * Consolidação: itens de clientes diferentes NÃO são juntados automaticamente no mesmo
+   * container. Vários produtos do mesmo cliente podem compartilhar o container.
+   * Só a Wellmix, manualmente, pode montar um container multi-cliente.
+   */
+  containerAllowMultiCustomer: false,
+  /** Ocupação máxima recomendada do container (%): acima disso, aviso. */
+  containerMaxOccupancyPercent: 95,
 };
 
 export type Settings = typeof DEFAULT_SETTINGS;

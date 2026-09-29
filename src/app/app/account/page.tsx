@@ -1,10 +1,18 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
-import { getStore } from "@/lib/db";
+import { getStore, type Document } from "@/lib/db";
+import {
+  ackTrails,
+  recordAck,
+  type AckSummary,
+} from "@/lib/services/acknowledgements";
 import { getT } from "@/i18n/server";
+import type { Translate } from "@/i18n";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Badge,
+  Card,
   Empty,
   PageHeader,
   Stat,
@@ -12,12 +20,13 @@ import {
   Td,
   TextLink,
   Th,
+  cx,
   formatDate,
   formatMoney,
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { confirmSupplierPaymentAction } from "../actions";
+import { acknowledgePaymentAction } from "../actions/orders-extra";
 
 /** Conta corrente do fornecedor: pedidos, valores, pagamentos, saldo. */
 export default async function AccountPage({
@@ -25,7 +34,7 @@ export default async function AccountPage({
 }: PageProps<"/app/account">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  const { supplier } = await searchParams;
+  const { supplier, error } = await searchParams;
   const supplierId =
     user.role === "supplier"
       ? user.partyId
@@ -35,6 +44,7 @@ export default async function AccountPage({
   if (!supplierId) redirect("/app");
   const t = await getT();
   const store = getStore();
+  const wellmix = isWellmix(user);
   const [orders, payments, party] = await Promise.all([
     store.list("orders", {
       filter: { supplierId },
@@ -54,6 +64,40 @@ export default async function AccountPage({
     .reduce((s, p) => s + p.amount, 0);
   const currency = orders[0]?.fobCurrency ?? "USD";
 
+  /* Trilha: listar os pagamentos para o fornecedor registra "visualizado"
+     (uma vez por usuário); confirmar continua sendo o ato explícito do botão. */
+  if (user.role === "supplier") {
+    for (const p of mine) await recordAck(user, "payment", p.id, "viewed");
+  }
+  const proofIds = mine
+    .map((p) => p.proofDocumentId)
+    .filter((id): id is string => !!id);
+  const [proofDocs, users, history] = await Promise.all([
+    proofIds.length
+      ? store.list("documents", { filter: { id: proofIds } })
+      : Promise.resolve([] as Document[]),
+    store.list("users"),
+    mine.length
+      ? store.list("audit_log", {
+          filter: { entity: "payment", entityId: mine.map((p) => p.id) },
+          orderBy: "createdAt",
+          direction: "desc",
+        })
+      : Promise.resolve([]),
+  ]);
+  const [paymentTrails, proofTrails] = await Promise.all([
+    ackTrails("payment", mine, (p) => p.registeredByUserId),
+    ackTrails("document", proofDocs, (d) => d.uploadedByUserId),
+  ]);
+  const userName = (uid: string | null) =>
+    users.find((u) => u.id === uid)?.name ?? "—";
+  /* Rótulo traduzido da ação de auditoria; cai no código técnico se não houver chave. */
+  const actionLabel = (action: string) => {
+    const key = `orders.account.action.${action}` as DictionaryKey;
+    const translated = t(key);
+    return translated === key ? action : translated;
+  };
+
   return (
     <>
       <PageHeader
@@ -62,6 +106,11 @@ export default async function AccountPage({
         title={t("account.title")}
         subtitle={party?.name}
       />
+      {error ? (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {t("common.error")} ({error})
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat
           label={t("common.total")}
@@ -91,6 +140,8 @@ export default async function AccountPage({
                 <Th>{t("orders.value")}</Th>
                 <Th>{t("finance.fx")}</Th>
                 <Th>{t("common.status")}</Th>
+                <Th>{t("orders.account.proof")}</Th>
+                <Th>{t("orders.account.trail")}</Th>
                 <Th />
               </tr>
             </thead>
@@ -115,10 +166,15 @@ export default async function AccountPage({
                     </Badge>
                   </Td>
                   <Td />
+                  <Td />
+                  <Td />
                 </tr>
               ))}
               {mine.map((p) => {
                 const order = orders.find((o) => o.id === p.orderId);
+                const proof = p.proofDocumentId
+                  ? (proofTrails[p.proofDocumentId] ?? null)
+                  : null;
                 return (
                   <tr key={p.id}>
                     <Td className="pl-6">
@@ -140,9 +196,9 @@ export default async function AccountPage({
                         {t(`paymentStatus.${p.status}`)}
                       </Badge>
                     </Td>
-                    <Td>
-                      <span className="flex items-center gap-2">
-                        {p.proofDocumentId ? (
+                    <Td className="whitespace-nowrap">
+                      {p.proofDocumentId ? (
+                        <>
                           <a
                             href={`/api/files/${p.proofDocumentId}`}
                             className={`${linkClass} text-xs`}
@@ -150,9 +206,28 @@ export default async function AccountPage({
                           >
                             {t("requests.payment.proof")}
                           </a>
-                        ) : null}
+                          {proof?.viewedAt ? (
+                            <span className="block text-[11px] text-zinc-500">
+                              {t("orders.account.viewedAt")}{" "}
+                              {formatDateTime(proof.viewedAt)}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td>
+                      <Trail
+                        t={t}
+                        summary={paymentTrails[p.id]}
+                        showNames={wellmix}
+                      />
+                    </Td>
+                    <Td>
+                      <span className="flex items-center gap-2">
                         {p.status === "confirmed" ? (
-                          <form action={confirmSupplierPaymentAction}>
+                          <form action={acknowledgePaymentAction}>
                             <input
                               type="hidden"
                               name="paymentId"
@@ -177,6 +252,161 @@ export default async function AccountPage({
           </Table>
         )}
       </div>
+
+      {orders.length > 0 ? (
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Card title={t("orders.account.summary")}>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("account.order")}</Th>
+                  <Th className="text-right">
+                    {t("orders.account.contracted")}
+                  </Th>
+                  <Th className="text-right">{t("orders.account.paid")}</Th>
+                  <Th className="text-right">
+                    {t("orders.account.pendingConfirm")}
+                  </Th>
+                  <Th className="text-right">{t("account.balance")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => {
+                  const rows = mine.filter((p) => p.orderId === o.id);
+                  const paid = rows
+                    .filter((p) => p.status === "received")
+                    .reduce((s, p) => s + p.amount, 0);
+                  const pending = rows
+                    .filter((p) => p.status === "confirmed")
+                    .reduce((s, p) => s + p.amount, 0);
+                  const balance = (o.fobTotal ?? 0) - paid - pending;
+                  return (
+                    <tr key={o.id}>
+                      <Td>
+                        <TextLink href={`/app/orders/${o.id}`}>
+                          #{o.number}
+                        </TextLink>
+                      </Td>
+                      <Td className="text-right whitespace-nowrap tabular-nums">
+                        {formatMoney(o.fobTotal, o.fobCurrency)}
+                      </Td>
+                      <Td className="text-right whitespace-nowrap tabular-nums text-emerald-700">
+                        {formatMoney(paid, o.fobCurrency)}
+                      </Td>
+                      <Td className="text-right whitespace-nowrap tabular-nums text-amber-700">
+                        {formatMoney(pending, o.fobCurrency)}
+                      </Td>
+                      <Td
+                        className={cx(
+                          "text-right whitespace-nowrap font-semibold tabular-nums",
+                          balance > 0 ? "text-zinc-900" : "text-emerald-700",
+                        )}
+                      >
+                        {formatMoney(balance, o.fobCurrency)}
+                      </Td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </Card>
+
+          <Card title={t("orders.account.history")}>
+            <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+              {t("orders.account.historyHint")}
+            </p>
+            {history.length === 0 ? (
+              <Empty>{t("orders.account.historyEmpty")}</Empty>
+            ) : (
+              <ul className="divide-y divide-zinc-100 text-sm">
+                {history.map((h) => {
+                  const payment = mine.find((p) => p.id === h.entityId);
+                  const order = orders.find((o) => o.id === payment?.orderId);
+                  return (
+                    <li
+                      key={h.id}
+                      className="flex flex-col gap-1 py-2 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <span className="mr-2">
+                          <Badge
+                            tone={
+                              h.action === "payment.received"
+                                ? "success"
+                                : "neutral"
+                            }
+                          >
+                            {actionLabel(h.action)}
+                          </Badge>
+                        </span>
+                        <span className="text-zinc-800">{h.summary}</span>
+                      </div>
+                      <span className="shrink-0 text-xs text-zinc-500">
+                        {order ? `#${order.number} · ` : ""}
+                        {userName(h.userId)} · {formatDateTime(h.createdAt)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Card>
+        </div>
+      ) : null}
     </>
+  );
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Visualizado / confirmado, um por linha (nomes só para a Wellmix). */
+function Trail({
+  t,
+  summary,
+  showNames,
+}: {
+  t: Translate;
+  summary: AckSummary | undefined;
+  showNames: boolean;
+}) {
+  if (!summary) return <span className="text-zinc-400">—</span>;
+  const who = (name: string | null) =>
+    showNames && name ? `${t("orders.ack.by")} ${name} ` : "";
+  return (
+    <span className="block text-[11px] leading-relaxed">
+      <span
+        className={cx(
+          "block whitespace-nowrap",
+          summary.viewedAt ? "text-zinc-700" : "text-zinc-400",
+        )}
+      >
+        {t("orders.ack.viewed")}:{" "}
+        {summary.viewedAt
+          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt)}`
+          : t("orders.ack.pending")}
+      </span>
+      <span
+        className={cx(
+          "block whitespace-nowrap",
+          summary.confirmedAt ? "text-emerald-700" : "text-zinc-400",
+        )}
+      >
+        {t("orders.ack.confirmed")}:{" "}
+        {summary.confirmedAt
+          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt)}`
+          : t("orders.ack.pending")}
+      </span>
+    </span>
   );
 }

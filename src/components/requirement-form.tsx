@@ -7,15 +7,23 @@ import {
 import { Input, Textarea } from "./ui";
 import { SubmitButton } from "./submit-button";
 
-/** Formulário inline de um requisito, conforme o tipo. Só renderizado para quem pode preencher. */
+/**
+ * Formulário inline de um requisito, conforme o tipo. Só renderizado para quem pode preencher.
+ * `action` e `defaultValue` são opcionais (usados pela "nova medição" da inspeção:
+ * reenvio de um requisito já concluído com o valor atual pré-preenchido).
+ */
 export function RequirementForm({
   requirement,
   orderId,
   t,
+  action,
+  defaultValue,
 }: {
   requirement: Requirement;
   orderId: string;
   t: Translate;
+  action?: (form: FormData) => Promise<void>;
+  defaultValue?: string | null;
 }) {
   if (requirement.type === "approval") {
     return (
@@ -42,7 +50,7 @@ export function RequirementForm({
 
   return (
     <form
-      action={submitRequirementAction}
+      action={action ?? submitRequirementAction}
       className="flex flex-wrap items-center gap-2"
     >
       <input type="hidden" name="orderId" value={orderId} />
@@ -62,16 +70,24 @@ export function RequirementForm({
           type="number"
           step="any"
           required
+          defaultValue={defaultValue ?? undefined}
           className="max-w-40 sm:w-40"
         />
       ) : null}
       {requirement.type === "date" ? (
-        <Input name="value" type="date" required className="max-w-48 sm:w-48" />
+        <Input
+          name="value"
+          type="date"
+          required
+          defaultValue={defaultValue ?? undefined}
+          className="max-w-48 sm:w-48"
+        />
       ) : null}
       {requirement.type === "text" ? (
         <Textarea
           name="value"
           required
+          defaultValue={defaultValue ?? undefined}
           className="min-h-10! max-w-md sm:w-72"
           rows={1}
         />

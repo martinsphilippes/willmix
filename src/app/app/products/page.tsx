@@ -3,8 +3,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
+  Badge,
   Card,
   Empty,
   Field,
@@ -14,12 +16,21 @@ import {
   Select,
   Table,
   Td,
+  TextLink,
   Textarea,
   Th,
+  formatMoney,
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveProductAction } from "../actions";
+
+/** Origem do produto: manual, sourcing (visita na China) ou importação de planilha. */
+const sourceTone = {
+  manual: "neutral",
+  sourcing: "brand",
+  import: "info",
+} as const;
 
 export default async function ProductsPage({
   searchParams,
@@ -30,15 +41,21 @@ export default async function ProductsPage({
   const { error } = await searchParams;
   const t = await getT();
   const store = getStore();
-  const [products, lines] = await Promise.all([
+  const [products, lines, suppliers] = await Promise.all([
     store.list("products", { orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
+    store.list("parties", { filter: { type: "supplier" } }),
   ]);
+  const supplierName = (id: string | null) =>
+    id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
 
   return (
     <>
       <PageHeader
-        help={{ body: "help.products.body" }}
+        help={{
+          body: "help.products.body",
+          steps: "help.catalog.products.steps",
+        }}
         t={t}
         title={t("products.title")}
         actions={
@@ -59,13 +76,24 @@ export default async function ProductsPage({
                   <Th>{t("common.name")}</Th>
                   <Th>SKU</Th>
                   <Th>{t("nav.lines")}</Th>
+                  <Th>{t("common.supplier")}</Th>
+                  <Th className="text-right">{t("common.price")}</Th>
+                  <Th className="text-right">{t("catalog.moq")}</Th>
+                  <Th className="text-right">{t("catalog.cbmPerBox")}</Th>
+                  <Th>{t("catalog.source")}</Th>
                 </tr>
               </thead>
               <tbody>
                 {products.map((p) => (
                   <tr key={p.id} className={rowClass}>
                     <Td className="font-medium">
-                      <span className="text-zinc-900">{p.name}</span>
+                      <TextLink
+                        href={`/app/products/${p.id}`}
+                        className="text-zinc-900"
+                        title={t("catalog.open")}
+                      >
+                        {p.name}
+                      </TextLink>
                     </Td>
                     <Td>
                       <span className="font-mono text-xs text-zinc-700">
@@ -73,6 +101,27 @@ export default async function ProductsPage({
                       </span>
                     </Td>
                     <Td>{lines.find((l) => l.id === p.lineId)?.name ?? "—"}</Td>
+                    <Td className="whitespace-nowrap">
+                      {supplierName(p.supplierId)}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums">
+                      {p.price !== null
+                        ? formatMoney(p.price, p.currency)
+                        : "—"}
+                    </Td>
+                    <Td className="text-right tabular-nums">{p.moq ?? "—"}</Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums">
+                      {p.cbm !== null ? `${p.cbm.toFixed(4)} m³` : "—"}
+                    </Td>
+                    <Td>
+                      {p.source ? (
+                        <Badge tone={sourceTone[p.source]}>
+                          {t(`catalog.source.${p.source}` as DictionaryKey)}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
                   </tr>
                 ))}
               </tbody>

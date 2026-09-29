@@ -37,14 +37,26 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 
 Wellmix (admin e operador) pode preencher qualquer requisito. Os demais só preenchem requisitos do próprio papel e em pedidos em que o seu parceiro está designado (`ROLE_PARTY_FIELD`).
 
+## Inspeção cega e comparação comprado × inspecionado
+
+- Ao nascer, o pedido recebe um **snapshot da compra** (`purchase_snapshots`): ficha do produto + cotação congeladas. O cadastro mestre pode mudar depois; o snapshot não.
+- Com `inspectionExtendedChecks` (padrão ligado), a INSPECTION pede também, como opcionais do fornecedor: peso bruto, comprimento, largura, altura, CBM da caixa master, unidades por caixa master e inner box, material e cor encontrados. **O inspetor nunca vê o valor esperado**; ele informa o que encontrou.
+- A cada medida enviada, `compareInspection` compara com o snapshot (tolerâncias `weightTolerancePercent`, `cbmTolerancePercent` para CBM e peso bruto, `dimensionTolerancePercent`, `quantityTolerancePercent`; texto compara igualdade normalizada). Resultado em `inspection_results` (`APPROVED`, `DIVERGENT`, `REVIEW_REQUIRED`). Só atributos presentes no snapshot e medidos entram na comparação: pedidos antigos sem snapshot seguem só com a regra de peso.
+- Cada divergência abre um item na **fila de revisão** (`review_items`: regra, esperado, encontrado, responsável, ação) e bloqueia a etapa com o mesmo requisito `inspection_review`. Aprovar resolve os itens e libera; nova medição dentro da tolerância resolve o item e, sem outros abertos, libera sozinha. `unblockStage` dispensa os itens.
+- Outros gates que alimentam a fila: FOB zerado na criação do pedido (`reviewOnZeroPrice`), container acima da ocupação máxima ou do peso (`containerMaxOccupancyPercent`).
+
 ## Bloqueio e revisão
 
-- **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): etapa `blocked`, motivo em `blockReason`, requisito extra `inspection_review` (aprovação da Wellmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente.
+- **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): etapa `blocked`, motivo em `blockReason`, requisito extra `inspection_review` (aprovação da Wellmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente. Também abre o item `inspection.weightDeclared` na fila de revisão.
 - **Arte reprovada** pela agência: o requisito `art` volta para `rejected`; o fornecedor reenvia (nova versão do documento) e a aprovação volta a pendente.
 
 ## Documentos
 
 Substituir um arquivo do mesmo requisito cria nova versão (`version`, `previousDocumentId`); o anterior é mantido. Download em `/api/files/[id]` com checagem de sessão, pedido e visibilidade.
+
+## Confirmação de visualização
+
+`acknowledgements` registra `viewed` (automático ao baixar um documento ou ao ver um pagamento na conta corrente) e `confirmed` (ato explícito). São eventos diferentes: visualizar nunca vale como confirmar.
 
 ## Pendências e lembretes
 

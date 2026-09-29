@@ -21,7 +21,79 @@ export interface StageContext {
   line: ProductLine | null;
   agencyValidationEnabled: boolean;
   deliveryConfirmationMode: "CUSTOMER" | "WELLMIX" | "BOTH";
+  /** Inspeção cega ampliada: medidas, peso bruto, caixa, material e cor (comparados com o snapshot da compra). */
+  inspectionExtendedChecks?: boolean;
 }
+
+/**
+ * Medidas extras da inspeção. Opcionais: só entram na comparação quando o
+ * snapshot da compra tem o valor esperado. O inspetor nunca vê o esperado.
+ */
+export const EXTENDED_INSPECTION_REQUIREMENTS: RequirementTemplate[] = [
+  {
+    key: "gross_weight_measured",
+    label: "Peso bruto medido (kg)",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "length_measured",
+    label: "Comprimento medido (cm)",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "width_measured",
+    label: "Largura medida (cm)",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "height_measured",
+    label: "Altura medida (cm)",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "master_box_cbm_measured",
+    label: "CBM da caixa master medido (m³)",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "master_box_measured",
+    label: "Unidades por caixa master encontradas",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "inner_box_measured",
+    label: "Unidades por inner box encontradas",
+    type: "number",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "material_found",
+    label: "Material encontrado",
+    type: "text",
+    required: false,
+    role: "supplier",
+  },
+  {
+    key: "color_found",
+    label: "Cor encontrada",
+    type: "text",
+    required: false,
+    role: "supplier",
+  },
+];
 
 /** Checklist padrão de preparação quando a linha de produto não define o seu. */
 export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
@@ -143,7 +215,7 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     key: "INSPECTION",
     responsibleRole: "supplier",
     partyField: "supplierId",
-    requirements: () => [
+    requirements: ({ inspectionExtendedChecks }) => [
       {
         key: "photo_unpacked",
         label: "Foto sem embalagem",
@@ -172,6 +244,7 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         required: true,
         role: "supplier",
       },
+      ...(inspectionExtendedChecks ? EXTENDED_INSPECTION_REQUIREMENTS : []),
     ],
   },
   {

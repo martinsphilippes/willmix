@@ -24,8 +24,11 @@ function navFor(role: Role, admin: boolean): NavItem[] {
     return [
       { href: "/app", key: "nav.controlTower" },
       { href: "/app/tasks", key: "nav.tasks" },
+      { href: "/app/reviews", key: "nav.reviews" },
+      { href: "/app/sourcing", key: "nav.sourcing" },
       { href: "/app/requests", key: "nav.requests" },
       { href: "/app/orders", key: "nav.orders" },
+      { href: "/app/containers", key: "nav.containers" },
       { href: "/app/parties", key: "nav.parties" },
       { href: "/app/products", key: "nav.products" },
       { href: "/app/lines", key: "nav.lines" },

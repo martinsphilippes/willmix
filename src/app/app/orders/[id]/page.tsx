@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
@@ -10,14 +10,32 @@ import {
 } from "@/lib/auth/permissions";
 import {
   getStore,
+  type Container,
   type Document,
+  type InspectionResultRow,
+  type PurchaseSnapshot,
   type Requirement,
+  type ReviewItem,
   type User,
 } from "@/lib/db";
 import { canSubmitRequirement, loadOrderProgress } from "@/lib/workflow/engine";
 import { loadOrderFinance } from "@/lib/services/finance";
+import {
+  ackedByUser,
+  ackTrails,
+  recordAck,
+  type AckSummary,
+} from "@/lib/services/acknowledgements";
+import { containersForOrder } from "@/lib/services/containers";
+import {
+  isInspectionMeasureKey,
+  latestInspectionResult,
+} from "@/lib/services/inspection";
+import { listOpenReviews } from "@/lib/services/reviews";
+import { getSnapshotForOrder } from "@/lib/services/snapshots";
 import { getT } from "@/i18n/server";
 import { requirementLabel, type Translate } from "@/i18n";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
@@ -30,8 +48,11 @@ import {
   Progress,
   Select,
   StepDot,
+  Table,
+  Td,
   Textarea,
   TextLink,
+  Th,
   cx,
   formatDate,
   formatMoney,
@@ -44,12 +65,17 @@ import { RequirementForm } from "@/components/requirement-form";
 import { SubmitButton } from "@/components/submit-button";
 import {
   assignPartnerAction,
-  confirmSupplierPaymentAction,
   createPenaltyAction,
   registerCustomerPaymentAction,
   registerSupplierPaymentAction,
   unblockStageAction,
 } from "../../actions";
+import {
+  acknowledgeDocumentAction,
+  acknowledgePaymentAction,
+  ensureSnapshotAction,
+  remeasureAction,
+} from "../../actions/orders-extra";
 
 export default async function OrderPage({
   params,
@@ -58,13 +84,15 @@ export default async function OrderPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, remeasure } = await searchParams;
   const progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
   const { order, stages, requirements } = progress;
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
+  /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
+  const remeasureMode = remeasure === "1";
 
   const [parties, items, documents, payments, penalties, users] =
     await Promise.all([
@@ -100,6 +128,36 @@ export default async function OrderPage({
           ? p.direction === "supplier_out"
           : false,
   );
+
+  /* Evolução incremental: snapshot da compra, resultado da inspeção e fila (só Wellmix),
+     containers do pedido (todos, filtrado) e trilha visualizado/confirmado. */
+  const [snapshot, inspection, openReviews, containers] = await Promise.all([
+    wellmix ? getSnapshotForOrder(order.id) : Promise.resolve(null),
+    wellmix ? latestInspectionResult(order.id) : Promise.resolve(null),
+    wellmix ? listOpenReviews(order.id) : Promise.resolve([] as ReviewItem[]),
+    containersForOrder(order.id),
+  ]);
+  const showTrail = wellmix || user.role === "supplier";
+  /* Trilha: o fornecedor abrindo o pedido registra "visualizado" nos pagamentos a ele
+     (o mesmo que a conta corrente faz); confirmar continua sendo o ato explícito do botão. */
+  if (user.role === "supplier") {
+    for (const p of visiblePayments)
+      await recordAck(user, "payment", p.id, "viewed");
+  }
+  const [paymentTrails, documentTrails, confirmedDocs] = await Promise.all([
+    showTrail
+      ? ackTrails("payment", visiblePayments, (p) => p.registeredByUserId)
+      : Promise.resolve({} as Record<string, AckSummary>),
+    ackTrails("document", visibleDocs, (d) => d.uploadedByUserId),
+    ackedByUser(
+      user.id,
+      "document",
+      visibleDocs.map((d) => d.id),
+      "confirmed",
+    ),
+  ]);
+  const inspectionStage = stages.find((s) => s.key === "INSPECTION") ?? null;
+  const inspectionBlocked = inspectionStage?.status === "blocked";
 
   return (
     <>
@@ -142,7 +200,10 @@ export default async function OrderPage({
       {currentStage?.status === "blocked" ? (
         <div className="mb-4">
           <Alert tone="warning">
-            <strong>{t("orders.blocked")}:</strong> {currentStage.blockReason}
+            <strong>{t("orders.blocked")}:</strong>{" "}
+            {wellmix || currentStage.key !== "INSPECTION"
+              ? currentStage.blockReason
+              : t("orders.inspection.genericBlock")}
           </Alert>
         </div>
       ) : null}
@@ -151,7 +212,7 @@ export default async function OrderPage({
       ) : null}
 
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <Card title={t("orders.timeline")}>
             <ol className="-mx-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
               {stages.map((s) => (
@@ -198,129 +259,181 @@ export default async function OrderPage({
               const open =
                 stage.status === "active" || stage.status === "blocked";
               return (
-                <Card
-                  key={stage.id}
-                  className={cx(
-                    stage.status === "active" &&
-                      "border-brand-300! ring-4 ring-brand-50",
-                    stage.status === "blocked" &&
-                      "border-amber-400! ring-4 ring-amber-50",
-                  )}
-                  title={
-                    <span
-                      id={`stage-${stage.id}`}
-                      className="flex flex-wrap items-center gap-2"
-                    >
-                      {t(`stage.${stage.key}`)}
-                      <Badge tone={stageTone(stage.status)}>
-                        {t(`stageStatus.${stage.status}`)}
-                      </Badge>
-                      {open && stage.dueAt ? (
-                        <span
-                          className={cx(
-                            "text-xs",
-                            isOverdue(stage.dueAt)
-                              ? "font-semibold text-red-700"
-                              : "font-normal text-zinc-500",
-                          )}
-                        >
-                          {t("common.due")}: {formatDate(stage.dueAt)}
-                        </span>
-                      ) : null}
-                    </span>
-                  }
-                  actions={
-                    open ? (
-                      <span className="flex items-center gap-2 text-xs text-zinc-500">
-                        <span>
-                          {t("common.responsible")}:{" "}
-                          <span className="font-semibold text-zinc-700">
-                            {t(`role.${stage.responsibleRole}`)}
+                <Fragment key={stage.id}>
+                  <Card
+                    className={cx(
+                      stage.status === "active" &&
+                        "border-brand-300! ring-4 ring-brand-50",
+                      stage.status === "blocked" &&
+                        "border-amber-400! ring-4 ring-amber-50",
+                    )}
+                    title={
+                      <span
+                        id={`stage-${stage.id}`}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        {t(`stage.${stage.key}`)}
+                        <Badge tone={stageTone(stage.status)}>
+                          {t(`stageStatus.${stage.status}`)}
+                        </Badge>
+                        {open && stage.dueAt ? (
+                          <span
+                            className={cx(
+                              "text-xs",
+                              isOverdue(stage.dueAt)
+                                ? "font-semibold text-red-700"
+                                : "font-normal text-zinc-500",
+                            )}
+                          >
+                            {t("common.due")}: {formatDate(stage.dueAt)}
+                          </span>
+                        ) : null}
+                      </span>
+                    }
+                    actions={
+                      open ? (
+                        <span className="flex items-center gap-2 text-xs text-zinc-500">
+                          <span>
+                            {t("common.responsible")}:{" "}
+                            <span className="font-semibold text-zinc-700">
+                              {t(`role.${stage.responsibleRole}`)}
+                            </span>
+                          </span>
+                          <span className="w-24">
+                            <Progress percent={stage.percent} />
                           </span>
                         </span>
-                        <span className="w-24">
-                          <Progress percent={stage.percent} />
-                        </span>
-                      </span>
-                    ) : null
-                  }
-                >
-                  <p className="mb-3 text-xs leading-relaxed text-zinc-500">
-                    {t(`help.stage.${stage.key}`)}
-                  </p>
-                  {stage.status === "pending" ? (
-                    <p className="text-sm text-zinc-500">
-                      {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
+                      ) : null
+                    }
+                  >
+                    <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                      {t(`help.stage.${stage.key}`)}
                     </p>
-                  ) : (
-                    <ul className="divide-y divide-zinc-100">
-                      {reqs.map((r) => (
-                        <RequirementRow
-                          key={r.id}
-                          requirement={r}
-                          order={order}
-                          user={user}
-                          t={t}
-                          doc={docById(r.documentId)}
-                          submittedBy={userName(r.submittedByUserId)}
-                          open={open}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                  {stage.status === "blocked" && wellmix ? (
-                    <form action={unblockStageAction} className="mt-3">
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <input type="hidden" name="stageId" value={stage.id} />
-                      <SubmitButton variant="secondary">
-                        {t("orders.unblock")}
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                  {stage.key === "SUPPLIER_PAYMENT" && open && wellmix ? (
-                    <form
-                      action={registerSupplierPaymentAction}
-                      className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
-                    >
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <Field label={t("orders.value")}>
-                        <Input
-                          name="amount"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          required
-                          defaultValue={order.fobTotal ?? ""}
-                        />
-                      </Field>
-                      <Field label={t("common.currency")}>
-                        <Input
-                          name="currency"
-                          maxLength={3}
-                          defaultValue={order.fobCurrency ?? "USD"}
-                        />
-                      </Field>
-                      <Field label={t("finance.fx")}>
-                        <Input name="fxRate" type="number" step="0.0001" />
-                      </Field>
-                      <div className="sm:col-span-3">
-                        <Field label={t("requests.payment.proof")}>
-                          <Input name="proof" type="file" />
-                        </Field>
+                    {stage.key === "INSPECTION" && user.role === "supplier" ? (
+                      <p className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-800">
+                        {t("orders.inspection.blindHint")}
+                      </p>
+                    ) : null}
+                    {stage.key === "INSPECTION" &&
+                    stage.status === "blocked" &&
+                    (wellmix || user.role === "supplier") ? (
+                      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                        {remeasureMode ? (
+                          <>
+                            <span className="text-xs text-zinc-600">
+                              {t("orders.inspection.remeasureHint")}
+                            </span>
+                            <TextLink
+                              href={`/app/orders/${order.id}#stage-${stage.id}`}
+                              className="text-xs"
+                            >
+                              {t("orders.inspection.remeasureClose")}
+                            </TextLink>
+                          </>
+                        ) : (
+                          <TextLink
+                            href={`/app/orders/${order.id}?remeasure=1#stage-${stage.id}`}
+                          >
+                            {t("orders.inspection.remeasure")} →
+                          </TextLink>
+                        )}
                       </div>
-                      <div className="sm:col-span-3">
-                        <SubmitButton>
-                          {t("orders.registerPayment")}
+                    ) : null}
+                    {stage.status === "pending" ? (
+                      <p className="text-sm text-zinc-500">
+                        {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-zinc-100">
+                        {reqs.map((r) => (
+                          <RequirementRow
+                            key={r.id}
+                            requirement={r}
+                            order={order}
+                            user={user}
+                            t={t}
+                            doc={docById(r.documentId)}
+                            submittedBy={userName(r.submittedByUserId)}
+                            open={open}
+                            wellmix={wellmix}
+                            remeasure={
+                              remeasureMode &&
+                              stage.key === "INSPECTION" &&
+                              stage.status === "blocked" &&
+                              isInspectionMeasureKey(r.key)
+                            }
+                          />
+                        ))}
+                      </ul>
+                    )}
+                    {stage.status === "blocked" && wellmix ? (
+                      <form action={unblockStageAction} className="mt-3">
+                        <input type="hidden" name="orderId" value={order.id} />
+                        <input type="hidden" name="stageId" value={stage.id} />
+                        <SubmitButton variant="secondary">
+                          {t("orders.unblock")}
                         </SubmitButton>
-                      </div>
-                    </form>
+                      </form>
+                    ) : null}
+                    {stage.key === "SUPPLIER_PAYMENT" && open && wellmix ? (
+                      <form
+                        action={registerSupplierPaymentAction}
+                        className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
+                      >
+                        <input type="hidden" name="orderId" value={order.id} />
+                        <Field label={t("orders.value")}>
+                          <Input
+                            name="amount"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            required
+                            defaultValue={order.fobTotal ?? ""}
+                          />
+                        </Field>
+                        <Field label={t("common.currency")}>
+                          <Input
+                            name="currency"
+                            maxLength={3}
+                            defaultValue={order.fobCurrency ?? "USD"}
+                          />
+                        </Field>
+                        <Field label={t("finance.fx")}>
+                          <Input name="fxRate" type="number" step="0.0001" />
+                        </Field>
+                        <div className="sm:col-span-3">
+                          <Field label={t("requests.payment.proof")}>
+                            <Input name="proof" type="file" />
+                          </Field>
+                        </div>
+                        <div className="sm:col-span-3">
+                          <SubmitButton>
+                            {t("orders.registerPayment")}
+                          </SubmitButton>
+                        </div>
+                      </form>
+                    ) : null}
+                  </Card>
+                  {stage.key === "INSPECTION" &&
+                  wellmix &&
+                  stage.status !== "pending" ? (
+                    <InspectionResultCard
+                      key={`${stage.id}-result`}
+                      t={t}
+                      result={inspection}
+                      reviews={openReviews}
+                      measuredBy={userName(
+                        inspection?.measuredByUserId ?? null,
+                      )}
+                      blocked={inspectionBlocked}
+                    />
                   ) : null}
-                </Card>
+                </Fragment>
               );
             })}
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <Card title={t("orders.title")}>
             <DescriptionList
               items={[
@@ -378,6 +491,22 @@ export default async function OrderPage({
               </p>
             ) : null}
           </Card>
+
+          {wellmix || containers.length > 0 ? (
+            <ContainersCard t={t} containers={containers} wellmix={wellmix} />
+          ) : null}
+
+          {wellmix ? (
+            <div id="snapshot">
+              <SnapshotCard
+                t={t}
+                snapshot={snapshot}
+                orderId={order.id}
+                supplierName={partyName(snapshot?.supplierId ?? null)}
+                createdBy={userName(snapshot?.createdByUserId ?? null)}
+              />
+            </div>
+          ) : null}
 
           {wellmix ? (
             <Card title={t("orders.partners")}>
@@ -581,13 +710,17 @@ export default async function OrderPage({
                         {t("requests.payment.proof")}
                       </a>
                     ) : null}
+                    {showTrail && paymentTrails[p.id] ? (
+                      <AckTrail
+                        t={t}
+                        summary={paymentTrails[p.id]}
+                        showNames={wellmix}
+                      />
+                    ) : null}
                     {p.direction === "supplier_out" &&
                     p.status === "confirmed" &&
                     (user.role === "supplier" || wellmix) ? (
-                      <form
-                        action={confirmSupplierPaymentAction}
-                        className="mt-2"
-                      >
+                      <form action={acknowledgePaymentAction} className="mt-2">
                         <input type="hidden" name="paymentId" value={p.id} />
                         <input
                           type="hidden"
@@ -613,25 +746,67 @@ export default async function OrderPage({
                 {visibleDocs.map((d) => (
                   <li
                     key={d.id}
-                    className={cx(
-                      rowClass,
-                      "flex items-center justify-between gap-2 rounded-lg px-2 py-1",
-                    )}
+                    className={cx(rowClass, "rounded-lg px-2 py-1")}
                   >
-                    <a
-                      href={`/api/files/${d.id}`}
-                      className={cx(linkClass, "min-w-0 truncate")}
-                      target="_blank"
-                    >
-                      {d.name}
-                    </a>
-                    <span className="shrink-0 text-xs text-zinc-500">
-                      {d.type} · v{d.version}
-                    </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <a
+                        href={`/api/files/${d.id}`}
+                        className={cx(linkClass, "min-w-0 truncate")}
+                        target="_blank"
+                      >
+                        {d.name}
+                      </a>
+                      <span className="shrink-0 text-xs text-zinc-500">
+                        {d.type} · v{d.version}
+                      </span>
+                    </div>
+                    {documentTrails[d.id] ? (
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <AckTrail
+                          t={t}
+                          summary={documentTrails[d.id]}
+                          showNames={wellmix}
+                        />
+                        {d.uploadedByUserId !== user.id ? (
+                          confirmedDocs.has(d.id) ? (
+                            <span className="text-xs text-emerald-700">
+                              ✓ {t("orders.ack.confirmedDoc")}
+                            </span>
+                          ) : (
+                            <form action={acknowledgeDocumentAction}>
+                              <input
+                                type="hidden"
+                                name="documentId"
+                                value={d.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="back"
+                                value={`/app/orders/${order.id}`}
+                              />
+                              <button
+                                type="submit"
+                                className={cx(
+                                  linkClass,
+                                  "inline-flex min-h-9 items-center text-xs",
+                                )}
+                              >
+                                {t("orders.ack.confirmDoc")}
+                              </button>
+                            </form>
+                          )
+                        ) : null}
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>
             )}
+            {visibleDocs.length > 0 ? (
+              <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+                {t("orders.ack.hint")}
+              </p>
+            ) : null}
           </Card>
 
           {wellmix || user.role === "legal" || penalties.length > 0 ? (
@@ -741,6 +916,8 @@ function RequirementRow({
   doc,
   submittedBy,
   open,
+  wellmix,
+  remeasure,
 }: {
   requirement: Requirement;
   order: {
@@ -757,11 +934,28 @@ function RequirementRow({
   doc: Document | null;
   submittedBy: string;
   open: boolean;
+  wellmix: boolean;
+  /** Nova medição: reenvio de um requisito de medida já concluído (inspeção bloqueada). */
+  remeasure: boolean;
 }) {
   const canAct =
     open &&
     r.status !== "done" &&
     canSubmitRequirement(user, order as never, r);
+  const canRemeasure =
+    remeasure &&
+    r.status === "done" &&
+    canSubmitRequirement(user, order as never, r);
+  /* Inspeção cega: a nota da revisão traz os valores esperados; fora da Wellmix vira texto
+     genérico enquanto pendente e some quando resolvida (a reprovação mostra a observação da Wellmix). */
+  const note =
+    r.key === "inspection_review" && !wellmix && r.note
+      ? r.status === "pending"
+        ? t("orders.inspection.genericBlock")
+        : r.status === "done"
+          ? null
+          : r.note
+      : r.note;
   const tone =
     r.status === "done"
       ? "success"
@@ -802,17 +996,426 @@ function RequirementRow({
               </TextLink>
             ) : null}
             {t("orders.submitted")}: {submittedBy} · {formatDate(r.submittedAt)}
-            {r.note ? ` · ${r.note}` : ""}
+            {note ? ` · ${note}` : ""}
           </p>
-        ) : r.note ? (
-          <p className="mt-1 text-xs text-amber-700">{r.note}</p>
+        ) : note ? (
+          <p className="mt-1 text-xs text-amber-700">{note}</p>
         ) : null}
       </div>
       {canAct ? (
         <div className="shrink-0">
           <RequirementForm requirement={r} orderId={order.id} t={t} />
         </div>
+      ) : canRemeasure ? (
+        <div className="shrink-0">
+          <RequirementForm
+            requirement={r}
+            orderId={order.id}
+            t={t}
+            action={remeasureAction}
+            defaultValue={r.value}
+          />
+        </div>
       ) : null}
     </li>
+  );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
+/* ------------------------------------------------------------------------ */
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** Rótulo traduzido de um atributo do snapshot (cai no nome técnico se faltar chave). */
+function attrLabel(t: Translate, attribute: string) {
+  const key = `orders.inspection.attr.${attribute}` as DictionaryKey;
+  const translated = t(key);
+  return translated === key ? attribute : translated;
+}
+
+/** Enviado → visualizado → confirmado. Nomes só para a Wellmix; os demais veem datas. */
+function AckTrail({
+  t,
+  summary,
+  showNames,
+}: {
+  t: Translate;
+  summary: AckSummary;
+  showNames: boolean;
+}) {
+  const who = (name: string | null) =>
+    showNames && name ? `${t("orders.ack.by")} ${name} ` : "";
+  return (
+    <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+      <span className="whitespace-nowrap">
+        {t("orders.ack.sent")} {formatDateTime(summary.sentAt)}
+      </span>
+      {" · "}
+      <span
+        className={cx(
+          "whitespace-nowrap",
+          summary.viewedAt ? "text-zinc-700" : "text-zinc-400",
+        )}
+      >
+        {t("orders.ack.viewed")}{" "}
+        {summary.viewedAt
+          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt)}`
+          : t("orders.ack.pending")}
+      </span>
+      {" · "}
+      <span
+        className={cx(
+          "whitespace-nowrap",
+          summary.confirmedAt ? "text-emerald-700" : "text-zinc-400",
+        )}
+      >
+        {t("orders.ack.confirmed")}{" "}
+        {summary.confirmedAt
+          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt)}`
+          : t("orders.ack.pending")}
+      </span>
+    </p>
+  );
+}
+
+const dims = (
+  a: number | null | undefined,
+  b: number | null | undefined,
+  c: number | null | undefined,
+) => (a || b || c ? `${a ?? "—"} × ${b ?? "—"} × ${c ?? "—"}` : "—");
+
+const numOrDash = (v: number | null | undefined) =>
+  v === null || v === undefined ? "—" : String(v);
+
+/** "Comprado (snapshot)": o que foi negociado, congelado no pedido. Só Wellmix. */
+function SnapshotCard({
+  t,
+  snapshot,
+  orderId,
+  supplierName,
+  createdBy,
+}: {
+  t: Translate;
+  snapshot: PurchaseSnapshot | null;
+  orderId: string;
+  supplierName: string;
+  createdBy: string;
+}) {
+  if (!snapshot) {
+    return (
+      <Card title={t("orders.snapshot.title")}>
+        <p className="text-sm text-zinc-600">{t("orders.snapshot.missing")}</p>
+        <p className="mt-2 text-xs text-amber-700">
+          {t("orders.snapshot.retroWarning")}
+        </p>
+        <form action={ensureSnapshotAction} className="mt-3">
+          <input type="hidden" name="orderId" value={orderId} />
+          <SubmitButton variant="secondary">
+            {t("orders.snapshot.generate")}
+          </SubmitButton>
+        </form>
+      </Card>
+    );
+  }
+  const retro = !!snapshot.note;
+  return (
+    <Card
+      title={t("orders.snapshot.title")}
+      actions={
+        retro ? (
+          <Badge tone="warning">{t("orders.snapshot.retroactive")}</Badge>
+        ) : null
+      }
+    >
+      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+        {t("orders.snapshot.hint")}
+      </p>
+      <DescriptionList
+        items={[
+          [t("common.name"), snapshot.name],
+          [t("common.supplier"), supplierName],
+          [
+            t("orders.snapshot.unitPrice"),
+            snapshot.unitPrice !== null
+              ? `${formatMoney(snapshot.unitPrice, snapshot.currency ?? "USD")} / ${snapshot.unit}`
+              : "—",
+          ],
+          [t("common.quantity"), `${snapshot.quantity} ${snapshot.unit}`],
+          [t("orders.snapshot.moq"), numOrDash(snapshot.moq)],
+          [t("orders.snapshot.supplierSku"), snapshot.supplierSku ?? "—"],
+          [t("orders.snapshot.material"), snapshot.material ?? "—"],
+          [t("orders.snapshot.color"), snapshot.color ?? "—"],
+          [t("orders.snapshot.pantone"), snapshot.pantone ?? "—"],
+          [
+            t("orders.snapshot.dimensions"),
+            dims(snapshot.lengthCm, snapshot.widthCm, snapshot.heightCm),
+          ],
+          [t("orders.snapshot.netWeight"), numOrDash(snapshot.netWeightKg)],
+          [t("orders.snapshot.grossWeight"), numOrDash(snapshot.grossWeightKg)],
+          [t("orders.snapshot.masterBox"), numOrDash(snapshot.masterBoxQty)],
+          [t("orders.snapshot.innerBox"), numOrDash(snapshot.innerBoxQty)],
+          [
+            t("orders.snapshot.boxDimensions"),
+            dims(
+              snapshot.boxLengthCm,
+              snapshot.boxWidthCm,
+              snapshot.boxHeightCm,
+            ),
+          ],
+          [t("orders.snapshot.cbm"), numOrDash(snapshot.cbm)],
+          [t("common.conditions"), snapshot.conditions ?? "—"],
+          [
+            t("orders.snapshot.registeredAt"),
+            `${formatDate(snapshot.createdAt)} · ${createdBy}`,
+          ],
+        ]}
+      />
+      <div className="mt-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          {t("orders.snapshot.photos")}
+        </p>
+        {snapshot.photoDocumentIds.length === 0 ? (
+          <p className="mt-1 text-xs text-zinc-500">
+            {t("orders.snapshot.noPhotos")}
+          </p>
+        ) : (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {snapshot.photoDocumentIds.map((docId) => (
+              <a
+                key={docId}
+                href={`/api/files/${docId}`}
+                target="_blank"
+                className="block"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                <img
+                  src={`/api/files/${docId}`}
+                  alt=""
+                  loading="lazy"
+                  className="h-16 w-16 rounded-lg border border-zinc-200 bg-zinc-50 object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+      {snapshot.note ? (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <strong>{t("orders.snapshot.note")}:</strong> {snapshot.note}
+        </p>
+      ) : null}
+    </Card>
+  );
+}
+
+/** Resultado da inspeção (comprado × inspecionado) e itens abertos na fila. Só Wellmix. */
+function InspectionResultCard({
+  t,
+  result,
+  reviews,
+  measuredBy,
+  blocked,
+}: {
+  t: Translate;
+  result: InspectionResultRow | null;
+  reviews: ReviewItem[];
+  measuredBy: string;
+  blocked: boolean;
+}) {
+  const tone =
+    result?.result === "APPROVED"
+      ? "success"
+      : result?.result === "DIVERGENT"
+        ? "danger"
+        : "warning";
+  return (
+    <Card
+      title={t("orders.inspection.title")}
+      actions={
+        result ? (
+          <Badge tone={tone}>
+            {t(`orders.inspection.result.${result.result}`)}
+          </Badge>
+        ) : blocked ? (
+          <Badge tone="warning">{t("orders.blocked")}</Badge>
+        ) : null
+      }
+    >
+      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+        {t("orders.inspection.hint")}
+      </p>
+      {!result ? (
+        <Empty>{t("orders.inspection.noResult")}</Empty>
+      ) : (
+        <>
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t("orders.inspection.attribute")}</Th>
+                <Th className="text-right">
+                  {t("orders.inspection.expected")}
+                </Th>
+                <Th className="text-right">{t("orders.inspection.found")}</Th>
+                <Th className="text-right">
+                  {t("orders.inspection.tolerance")}
+                </Th>
+                <Th>{t("common.status")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.comparisons.map((c) => (
+                <tr key={c.attribute} className={rowClass}>
+                  <Td className="font-medium">{attrLabel(t, c.attribute)}</Td>
+                  <Td className="text-right tabular-nums">
+                    {c.expected ?? "—"}
+                  </Td>
+                  <Td
+                    className={cx(
+                      "text-right tabular-nums",
+                      !c.ok && "font-semibold text-red-700",
+                    )}
+                  >
+                    {c.found ?? "—"}
+                  </Td>
+                  <Td className="text-right tabular-nums">
+                    {c.tolerancePercent !== null
+                      ? `${c.tolerancePercent}%`
+                      : "—"}
+                  </Td>
+                  <Td>
+                    <Badge tone={c.ok ? "success" : "danger"}>
+                      {c.ok
+                        ? t("orders.inspection.ok")
+                        : t("orders.inspection.divergent")}
+                    </Badge>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+          <p className="mt-2 text-xs text-zinc-500">
+            {t("orders.inspection.comparedAt")}:{" "}
+            {formatDateTime(result.comparedAt)} ·{" "}
+            {t("orders.inspection.measuredBy")}: {measuredBy}
+          </p>
+        </>
+      )}
+      <div className="mt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-zinc-900">
+            {t("orders.inspection.openReviews")}
+            {reviews.length > 0 ? (
+              <span className="ml-2">
+                <Badge tone="warning">{reviews.length}</Badge>
+              </span>
+            ) : null}
+          </h3>
+          <TextLink href="/app/reviews" className="text-xs">
+            {t("orders.inspection.reviewsLink")} →
+          </TextLink>
+        </div>
+        {reviews.length === 0 ? (
+          <p className="mt-1 text-xs text-zinc-500">
+            {t("orders.inspection.noOpenReviews")}
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {reviews.map((r) => (
+              <li
+                key={r.id}
+                className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2"
+              >
+                <p className="font-medium text-zinc-900">{r.problem}</p>
+                <p className="mt-0.5 text-xs text-zinc-600">
+                  {t("orders.inspection.expected")}:{" "}
+                  <span className="font-medium">{r.expected ?? "—"}</span> ·{" "}
+                  {t("orders.inspection.found")}:{" "}
+                  <span className="font-medium text-red-700">
+                    {r.found ?? "—"}
+                  </span>
+                  {r.action ? ` · ${r.action}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** Containers em que o pedido está. Cliente e parceiros: só código e ETA. */
+function ContainersCard({
+  t,
+  containers,
+  wellmix,
+}: {
+  t: Translate;
+  containers: Container[];
+  wellmix: boolean;
+}) {
+  return (
+    <Card title={t("orders.containers.title")}>
+      {containers.length === 0 ? (
+        <Empty>{t("orders.containers.none")}</Empty>
+      ) : (
+        <ul className="space-y-2 text-sm">
+          {containers.map((c) => (
+            <li
+              key={c.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200/80 p-3"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-zinc-900">
+                  {wellmix ? (
+                    <TextLink href={`/app/containers/${c.id}`}>
+                      {c.code}
+                    </TextLink>
+                  ) : (
+                    c.code
+                  )}
+                  {wellmix ? (
+                    <span className="ml-2 text-xs font-normal text-zinc-500">
+                      {c.type}
+                    </span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {wellmix
+                    ? `${t("orders.containers.etd")}: ${formatDate(c.etd)} · `
+                    : ""}
+                  {t("orders.containers.eta")}: {formatDate(c.eta)}
+                </p>
+              </div>
+              {wellmix ? (
+                <Badge
+                  tone={
+                    c.status === "closed" || c.status === "arrived"
+                      ? "success"
+                      : c.status === "shipped"
+                        ? "info"
+                        : "neutral"
+                  }
+                >
+                  {t(`orders.containers.status.${c.status}`)}
+                </Badge>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }

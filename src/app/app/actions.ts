@@ -2,23 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   assertRole,
   assertWellmix,
-  canViewOrder,
   isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
 import {
   getStore,
+  PARTY_EXTRA_DEFAULTS,
   PARTY_TYPES,
+  PRODUCT_EXTRA_DEFAULTS,
   ROLES,
   LOCALES,
   type DocumentType,
-  type User,
 } from "@/lib/db";
 import { isLocale } from "@/i18n";
 import { LOCALE_COOKIE } from "@/i18n/server";
@@ -40,42 +39,10 @@ import { notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
 import { hashPassword } from "@/lib/auth/password";
 import { importCsv } from "@/lib/services/import";
+import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
-/* ------------------------------------------------------------------------ */
-/* Helpers                                                                   */
-/* ------------------------------------------------------------------------ */
-
-async function requireUser(): Promise<User> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  return user;
-}
-
-function str(form: FormData, key: string) {
-  const v = form.get(key);
-  return typeof v === "string" ? v.trim() : "";
-}
-function num(form: FormData, key: string) {
-  const v = str(form, key).replace(",", ".");
-  return v === "" ? null : Number(v);
-}
-
-/** Executa a ação e volta para `back` com ?error=<código> em caso de falha. */
-async function run(back: string, fn: () => Promise<string | void>) {
-  let target = back;
-  try {
-    const result = await fn();
-    if (result) target = result;
-  } catch (error) {
-    const code =
-      error instanceof Error && error.message ? error.message : "error";
-    const url = new URL(back, "http://x");
-    url.searchParams.set("error", code.slice(0, 60));
-    target = url.pathname + url.search;
-  }
-  revalidatePath("/app", "layout");
-  redirect(target);
-}
+/* Helpers compartilhados com src/app/app/actions/*.ts */
+import { num, requireUser, run, str } from "./actions/helpers";
 
 /* ------------------------------------------------------------------------ */
 /* Idioma                                                                    */
@@ -134,6 +101,16 @@ export async function createRequestAction(form: FormData) {
       notes: str(form, "notes") || null,
     });
     const request = await createRequest(user, parsed);
+    // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
+    const scheduleId = str(form, "scheduleId");
+    if (scheduleId && isWellmix(user)) {
+      const schedule = await getStore().get("purchase_schedules", scheduleId);
+      if (schedule && !schedule.requestId)
+        await getStore().update("purchase_schedules", scheduleId, {
+          requestId: request.id,
+          status: "confirmed",
+        });
+    }
     const files = form
       .getAll("attachments")
       .filter((f): f is File => f instanceof File && f.size > 0);
@@ -536,42 +513,8 @@ export async function confirmSupplierPaymentAction(form: FormData) {
   const paymentId = str(form, "paymentId");
   const back = str(form, "back") || "/app/account";
   await run(back, async () => {
-    const store = getStore();
-    const payment = await store.get("payments", paymentId);
-    if (!payment || payment.direction !== "supplier_out" || !payment.orderId)
-      throw new Error("not_found");
-    const order = await store.get("orders", payment.orderId);
-    if (!order) throw new Error("not_found");
-    if (!(
-      isWellmix(user) ||
-      (user.role === "supplier" && order.supplierId === user.partyId)
-    ))
-      throw new Error("forbidden");
-    await store.update("payments", paymentId, {
-      status: "received",
-      confirmedByUserId: user.id,
-      confirmedAt: new Date().toISOString(),
-    });
-    await audit(
-      user,
-      "payment.received",
-      "payment",
-      paymentId,
-      "Recebimento confirmado pelo fornecedor",
-    );
-    const [stage] = await store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    });
-    if (stage && stage.status === "active") {
-      const [req] = await store.list("requirements", {
-        filter: {
-          stageId: stage.id,
-          key: "payment_received",
-          status: "pending",
-        },
-      });
-      if (req) await submitRequirement(user, req.id, { value: paymentId });
-    }
+    // Mesma regra de sempre, agora num serviço único que também registra a confirmação ("confirmed").
+    await confirmSupplierPaymentReceipt(user, paymentId);
   });
 }
 
@@ -682,7 +625,8 @@ export async function savePartyAction(form: FormData) {
         phone: str(form, "phone") || null,
         taxId: str(form, "taxId") || null,
         notes: str(form, "notes") || null,
-        active: form.get("active") !== "off",
+        // O hidden "off" vem antes do checkbox: só a lista diz se "on" foi enviado.
+        active: form.getAll("active").includes("on"),
       });
     const store = getStore();
     if (id) {
@@ -690,7 +634,10 @@ export async function savePartyAction(form: FormData) {
       await audit(user, "party.update", "party", id, parsed.name);
       return `/app/parties/${id}`;
     }
-    const party = await store.create("parties", parsed);
+    const party = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      ...parsed,
+    });
     await audit(user, "party.create", "party", party.id, parsed.name);
     return `/app/parties/${party.id}`;
   });
@@ -773,7 +720,12 @@ export async function saveProductAction(form: FormData) {
     const id = str(form, "id");
     const store = getStore();
     if (id) await store.update("products", id, parsed);
-    else await store.create("products", { ...parsed, active: true });
+    else
+      await store.create("products", {
+        ...PRODUCT_EXTRA_DEFAULTS,
+        ...parsed,
+        active: true,
+      });
   });
 }
 
@@ -856,6 +808,8 @@ export async function saveSettingsAction(form: FormData) {
   const user = await requireUser();
   await run("/app/settings", async () => {
     assertRole(user, ["admin"]);
+    // Valida tudo antes de gravar: um valor inválido não deixa metade salva.
+    const pairs: Array<[SettingKey, unknown]> = [];
     for (const key of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) {
       const raw = form.get(key);
       if (raw === null) continue;
@@ -863,15 +817,21 @@ export async function saveSettingsAction(form: FormData) {
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
       else if (typeof current === "number") value = Number(raw);
-      else if (typeof current === "object") {
+      else if (key === "containerTypes") {
+        // Uma linha por tipo ("código;capacidadeCbm;pesoMaxKg"); JSON também é aceito.
+        const { parseContainerTypes } =
+          await import("@/lib/services/containers");
+        value = parseContainerTypes(String(raw));
+      } else if (typeof current === "object") {
         try {
           value = JSON.parse(String(raw));
         } catch {
           throw new Error("invalid_json");
         }
       }
-      await setSetting(key, value as never);
+      pairs.push([key, value]);
     }
+    for (const [key, value] of pairs) await setSetting(key, value as never);
     await audit(
       user,
       "settings.update",
@@ -881,11 +841,4 @@ export async function saveSettingsAction(form: FormData) {
     );
     return "/app/settings?ok=1";
   });
-}
-
-/** Garante acesso ao pedido em ações genéricas. */
-export async function assertOrderAccess(user: User, orderId: string) {
-  const order = await getStore().get("orders", orderId);
-  if (!order || !canViewOrder(user, order)) throw new Error("forbidden");
-  return order;
 }
