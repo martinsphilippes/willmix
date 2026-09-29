@@ -122,8 +122,7 @@ export const pt = {
   "catalog.party.visit.location": "Local",
   "catalog.party.visit.open": "Ver visita",
   "catalog.party.products": "Produtos do fornecedor",
-  "catalog.party.products.empty":
-    "Nenhum produto vinculado a este fornecedor.",
+  "catalog.party.products.empty": "Nenhum produto vinculado a este fornecedor.",
   "catalog.visitStatus.planned": "Planejada",
   "catalog.visitStatus.done": "Realizada",
   "help.catalog.party.steps":

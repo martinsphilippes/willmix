@@ -1,0 +1,339 @@
+"use server";
+
+import { z } from "zod";
+import { assertWellmix } from "@/lib/auth/permissions";
+import {
+  getStore,
+  MEASUREMENT_KINDS,
+  PHOTO_KINDS,
+  SCHEDULE_STATUSES,
+} from "@/lib/db";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
+import { audit } from "@/lib/services/audit";
+import {
+  addMeasurement,
+  addPhotos,
+  setPrimaryPhoto,
+} from "@/lib/services/sourcing";
+import { files, num, requireUser, run, str } from "./helpers";
+
+/*
+ * Ficha de produto, fotos, medições, programação de compra e dados extras do
+ * parceiro. Tudo só Wellmix. Fotos e medições reutilizam o serviço de sourcing.
+ */
+
+const optionalText = (max: number) => z.string().max(max).nullable();
+const optionalNumber = z.number().finite().nonnegative().nullable();
+const optionalInt = z.number().int().nonnegative().nullable();
+const currencySchema = z
+  .string()
+  .regex(/^[A-Za-z]{3}$/)
+  .transform((s) => s.toUpperCase())
+  .nullable();
+
+/** "2026-11-05" (input date) → ISO; vazio → null. */
+function dateToIso(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) throw new Error("invalid_date");
+  return d.toISOString();
+}
+
+const sheetSchema = z.object({
+  name: z.string().min(2).max(160),
+  lineId: z.string().min(1),
+  sku: optionalText(60),
+  category: optionalText(80),
+  specification: z.string().nullable(),
+  active: z.boolean(),
+  supplierId: z.string().nullable(),
+  supplierSku: optionalText(60),
+  price: optionalNumber,
+  currency: currencySchema,
+  moq: optionalInt,
+  negotiatedAt: z.string().nullable(),
+  material: optionalText(120),
+  color: optionalText(60),
+  pantone: optionalText(40),
+  lengthCm: optionalNumber,
+  widthCm: optionalNumber,
+  heightCm: optionalNumber,
+  netWeightKg: optionalNumber,
+  grossWeightKg: optionalNumber,
+  masterBoxQty: optionalInt,
+  innerBoxQty: optionalInt,
+  boxLengthCm: optionalNumber,
+  boxWidthCm: optionalNumber,
+  boxHeightCm: optionalNumber,
+  cbm: optionalNumber,
+  notes: z.string().nullable(),
+});
+
+export async function updateProductSheetAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(`/app/products/${id}`, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const product = await store.get("products", id);
+    if (!product) throw new Error("product_not_found");
+    const parsed = sheetSchema.parse({
+      name: str(form, "name"),
+      lineId: str(form, "lineId"),
+      sku: str(form, "sku") || null,
+      category: str(form, "category") || null,
+      specification: str(form, "specification") || null,
+      active: form.get("active") !== "off",
+      supplierId: str(form, "supplierId") || null,
+      supplierSku: str(form, "supplierSku") || null,
+      price: num(form, "price"),
+      currency: str(form, "currency") || null,
+      moq: num(form, "moq"),
+      negotiatedAt: dateToIso(str(form, "negotiatedAt")),
+      material: str(form, "material") || null,
+      color: str(form, "color") || null,
+      pantone: str(form, "pantone") || null,
+      lengthCm: num(form, "lengthCm"),
+      widthCm: num(form, "widthCm"),
+      heightCm: num(form, "heightCm"),
+      netWeightKg: num(form, "netWeightKg"),
+      grossWeightKg: num(form, "grossWeightKg"),
+      masterBoxQty: num(form, "masterBoxQty"),
+      innerBoxQty: num(form, "innerBoxQty"),
+      boxLengthCm: num(form, "boxLengthCm"),
+      boxWidthCm: num(form, "boxWidthCm"),
+      boxHeightCm: num(form, "boxHeightCm"),
+      cbm: num(form, "cbm"),
+      notes: str(form, "notes") || null,
+    });
+    if (!(await store.get("product_lines", parsed.lineId)))
+      throw new Error("line_not_found");
+    if (parsed.supplierId) {
+      const supplier = await store.get("parties", parsed.supplierId);
+      if (!supplier || supplier.type !== "supplier")
+        throw new Error("supplier_not_found");
+    }
+    // CBM por caixa: das dimensões da caixa master quando existem; senão o informado.
+    const cbm =
+      cbmFromDimensions(
+        parsed.boxLengthCm,
+        parsed.boxWidthCm,
+        parsed.boxHeightCm,
+      ) ?? (parsed.cbm && parsed.cbm > 0 ? parsed.cbm : null);
+    await store.update("products", id, { ...parsed, cbm });
+    await audit(user, "product.update", "product", id, parsed.name, product, {
+      ...parsed,
+      cbm,
+    });
+    return `/app/products/${id}?saved=1`;
+  });
+}
+
+export async function addProductPhotosAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    assertWellmix(user);
+    const parsed = z
+      .object({
+        kind: z.enum(PHOTO_KINDS),
+        caption: optionalText(200),
+      })
+      .parse({
+        kind: str(form, "kind") || "original",
+        caption: str(form, "caption") || null,
+      });
+    if (!(await getStore().get("products", productId)))
+      throw new Error("product_not_found");
+    const photos = files(form, "photos");
+    if (photos.length === 0) throw new Error("file_required");
+    const added = await addPhotos(user, { productId }, photos, parsed.kind, {
+      caption: parsed.caption,
+    });
+    await audit(
+      user,
+      "product.photo.add",
+      "product",
+      productId,
+      `${added.length} foto(s) ${parsed.kind}`,
+    );
+    return `/app/products/${productId}#photos`;
+  });
+}
+
+export async function setPrimaryPhotoAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    assertWellmix(user);
+    const photoId = z.string().min(1).parse(str(form, "photoId"));
+    await setPrimaryPhoto(user, photoId);
+    await audit(user, "product.photo.primary", "product", productId, photoId);
+    return `/app/products/${productId}#photos`;
+  });
+}
+
+export async function addProductMeasurementAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    assertWellmix(user);
+    const parsed = z
+      .object({
+        kind: z.enum(MEASUREMENT_KINDS),
+        declaredValue: optionalNumber,
+        measuredValue: z.number().finite().nonnegative(),
+        unit: z.string().min(1).max(20),
+        note: optionalText(500),
+      })
+      .parse({
+        kind: str(form, "kind"),
+        declaredValue: num(form, "declaredValue"),
+        measuredValue: num(form, "measuredValue"),
+        unit: str(form, "unit"),
+        note: str(form, "note") || null,
+      });
+    if (!(await getStore().get("products", productId)))
+      throw new Error("product_not_found");
+    const [photo] = files(form, "photo");
+    await addMeasurement(user, "product", productId, {
+      ...parsed,
+      photo: photo ?? null,
+    });
+    return `/app/products/${productId}#measurements`;
+  });
+}
+
+export async function savePurchaseScheduleAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const product = await store.get("products", productId);
+    if (!product) throw new Error("product_not_found");
+    const parsed = z
+      .object({
+        sequence: optionalInt,
+        quantity: z.number().finite().positive(),
+        unit: z.string().min(1).max(20),
+        scheduledFor: z.string().nullable(),
+        periodLabel: optionalText(60),
+        supplierId: z.string().nullable(),
+        customerId: z.string().nullable(),
+        price: optionalNumber,
+        currency: currencySchema,
+        status: z.enum(SCHEDULE_STATUSES),
+        notes: z.string().nullable(),
+      })
+      .parse({
+        sequence: num(form, "sequence"),
+        quantity: num(form, "quantity"),
+        unit: str(form, "unit") || "un",
+        scheduledFor: dateToIso(str(form, "scheduledFor")),
+        periodLabel: str(form, "periodLabel") || null,
+        supplierId: str(form, "supplierId") || null,
+        customerId: str(form, "customerId") || null,
+        price: num(form, "price"),
+        currency: str(form, "currency") || null,
+        status: str(form, "status") || "planned",
+        notes: str(form, "notes") || null,
+      });
+    const existing = await store.list("purchase_schedules", {
+      filter: { productId },
+    });
+    const sequence =
+      parsed.sequence ??
+      existing.reduce((max, s) => Math.max(max, s.sequence), 0) + 1;
+    const schedule = await store.create("purchase_schedules", {
+      ...parsed,
+      sequence,
+      productId,
+      sourcingItemId: product.sourcingItemId ?? null,
+      requestId: null,
+      orderId: null,
+      createdByUserId: user.id,
+    });
+    await audit(
+      user,
+      "schedule.create",
+      "purchase_schedule",
+      schedule.id,
+      `${product.name}: #${sequence} ${parsed.quantity} ${parsed.unit}`,
+    );
+    return `/app/products/${productId}#schedules`;
+  });
+}
+
+export async function setScheduleStatusAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    assertWellmix(user);
+    const parsed = z
+      .object({
+        scheduleId: z.string().min(1),
+        status: z.enum(SCHEDULE_STATUSES),
+      })
+      .parse({
+        scheduleId: str(form, "scheduleId"),
+        status: str(form, "status"),
+      });
+    const store = getStore();
+    const schedule = await store.get("purchase_schedules", parsed.scheduleId);
+    if (!schedule || schedule.productId !== productId)
+      throw new Error("schedule_not_found");
+    await store.update("purchase_schedules", parsed.scheduleId, {
+      status: parsed.status,
+    });
+    await audit(
+      user,
+      "schedule.status",
+      "purchase_schedule",
+      parsed.scheduleId,
+      `${schedule.status} → ${parsed.status}`,
+    );
+    return `/app/products/${productId}#schedules`;
+  });
+}
+
+/** Campos de sourcing do parceiro (cidade, endereço, contato, WeChat); o cadastro básico segue em savePartyAction. */
+export async function updatePartyExtraAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(`/app/parties/${id}`, async () => {
+    assertWellmix(user);
+    const store = getStore();
+    const party = await store.get("parties", id);
+    if (!party) throw new Error("party_not_found");
+    const parsed = z
+      .object({
+        city: optionalText(80),
+        address: optionalText(255),
+        contactName: optionalText(120),
+        wechat: optionalText(80),
+      })
+      .parse({
+        city: str(form, "city") || null,
+        address: str(form, "address") || null,
+        contactName: str(form, "contactName") || null,
+        wechat: str(form, "wechat") || null,
+      });
+    await store.update("parties", id, parsed);
+    await audit(
+      user,
+      "party.update",
+      "party",
+      id,
+      party.name,
+      {
+        city: party.city,
+        address: party.address,
+        contactName: party.contactName,
+        wechat: party.wechat,
+      },
+      parsed,
+    );
+    return `/app/parties/${id}?saved=1`;
+  });
+}

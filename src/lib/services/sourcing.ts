@@ -8,6 +8,7 @@ import {
   type Product,
   type ProductPhoto,
   type SourcingItem,
+  type SourcingStatus,
   type SupplierVisit,
   type User,
 } from "@/lib/db";
@@ -389,4 +390,69 @@ export async function loadProductSheet(productId: string) {
     documents,
     sourcing,
   };
+}
+
+/** Muda só a situação do item (ex.: Descartar). Nada é apagado; fica auditado. */
+export async function setSourcingItemStatus(
+  user: User,
+  itemId: string,
+  status: SourcingStatus,
+) {
+  assertWellmix(user);
+  const store = getStore();
+  const item = await store.get("sourcing_items", itemId);
+  if (!item) throw new Error("item_not_found");
+  if (item.status === "promoted" && status !== "promoted")
+    throw new Error("already_promoted");
+  const updated = await store.update("sourcing_items", itemId, { status });
+  await audit(
+    user,
+    "sourcing.status",
+    "sourcing_item",
+    itemId,
+    `${item.name}: ${item.status} → ${status}`,
+    { status: item.status },
+    { status },
+  );
+  return updated;
+}
+
+/** Visita com os produtos encontrados nela e o fornecedor cadastrado (se houver). */
+export async function loadVisit(visitId: string) {
+  const store = getStore();
+  const visit = await store.get("supplier_visits", visitId);
+  if (!visit) return null;
+  const [items, supplier] = await Promise.all([
+    store.list("sourcing_items", {
+      filter: { visitId },
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    visit.supplierId
+      ? store.get("parties", visit.supplierId)
+      : Promise.resolve(null),
+  ]);
+  return { visit, items, supplier };
+}
+
+/** Listas do sourcing (Wellmix): itens e visitas, mais recentes primeiro, com filtro opcional por situação. */
+export async function loadSourcingLists(filter: {
+  itemStatus?: SourcingStatus | null;
+  visitStatus?: SupplierVisit["status"] | null;
+} = {}) {
+  const store = getStore();
+  const [items, visits, suppliers] = await Promise.all([
+    store.list("sourcing_items", {
+      filter: filter.itemStatus ? { status: filter.itemStatus } : undefined,
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    store.list("supplier_visits", {
+      filter: filter.visitStatus ? { status: filter.visitStatus } : undefined,
+      orderBy: "visitedAt",
+      direction: "desc",
+    }),
+    store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
+  ]);
+  return { items, visits, suppliers };
 }

@@ -785,3 +785,13 @@ export async function applyImportBatch(
   );
   return summary;
 }
+
+/** Cancela um lote ainda não importado; nada foi gravado nas tabelas finais. */
+export async function cancelImportBatch(user: User, batchId: string) {
+  assertWellmix(user);
+  const store = getStore();
+  const batch = await store.get("import_batches", batchId);
+  if (!batch || batch.status === "imported") throw new Error("invalid_batch");
+  await store.update("import_batches", batchId, { status: "cancelled" });
+  await audit(user, "import.cancel", "import_batch", batchId, batch.fileName);
+}
