@@ -43,6 +43,8 @@ const TRANSACTIONAL: TableName[] = [
   "penalties",
   "counters",
   // Evolução incremental: dados operacionais das tabelas novas.
+  "ai_suggestions",
+  "marketing_kits",
   "supplier_visits",
   "sourcing_items",
   "product_photos",

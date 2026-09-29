@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore, PARTY_TYPES } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Badge,
   Empty,
@@ -96,7 +97,19 @@ export default async function PartiesPage({
                 <Td>
                   <TextLink href={`/app/parties/${p.id}`}>{p.name}</TextLink>
                 </Td>
-                <Td>{t(`party.${p.type}`)}</Td>
+                <Td>
+                  {t(`party.${p.type}`)}
+                  {/* Visão de Produto: modalidade de operação do cliente (badge discreto, sem coluna nova). */}
+                  {p.type === "customer" && p.operationMode ? (
+                    <span className="ml-2 inline-flex">
+                      <Badge tone="info">
+                        {t(
+                          `operations.mode.badge.${p.operationMode}` as DictionaryKey,
+                        )}
+                      </Badge>
+                    </span>
+                  ) : null}
+                </Td>
                 <Td>{p.country ?? "—"}</Td>
                 <Td>
                   <span className="text-zinc-600">{p.email ?? "—"}</span>

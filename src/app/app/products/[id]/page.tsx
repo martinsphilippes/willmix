@@ -24,6 +24,10 @@ import {
   tierOpportunity,
 } from "@/lib/services/opportunities";
 import { getSettings } from "@/lib/settings";
+import { checkRequiredAttributes } from "@/lib/ai/prompts";
+import { getAiAdapter } from "@/lib/integrations/ai";
+import { listSuggestions } from "@/lib/services/ai-suggestions";
+import { loadProductCycle } from "@/lib/services/product-cycle";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -65,6 +69,12 @@ import {
 import { CertificationsSection } from "../_components/certifications-section";
 import { TaxSection } from "../_components/tax-section";
 import { catalogError } from "../_components/shared";
+import {
+  AiSection,
+  collectAiPhotos,
+  visionError,
+} from "../_components/ai-section";
+import { CycleCard } from "../_components/cycle-card";
 
 /* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
 const big = "py-2.5";
@@ -145,8 +155,16 @@ export default async function ProductSheetPage({
   const { error, saved, qty } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
-  const { product, photos, measurements, schedules, supplier, line, sourcing } =
-    sheet;
+  const {
+    product,
+    photos,
+    measurements,
+    schedules,
+    supplier,
+    line,
+    sourcing,
+    documents,
+  } = sheet;
   const t = await getT();
   const store = getStore();
   const [lines, suppliers, customers, users] = await Promise.all([
@@ -177,14 +195,32 @@ export default async function ProductSheetPage({
     schedules.reduce((max, s) => Math.max(max, s.sequence), 0) + 1;
 
   /* Segunda Onda: NCM, certificações/compliance e oportunidade de compra. */
-  const [taxRows, certs, compliance, settings, fillOpportunities] =
-    await Promise.all([
-      listTaxClassifications(id),
-      listCertifications("product", id),
-      checkProductCompliance(id),
-      getSettings(),
-      containerFillOpportunities(user),
-    ]);
+  const [
+    taxRows,
+    certs,
+    compliance,
+    settings,
+    fillOpportunities,
+    suggestions,
+    cycle,
+  ] = await Promise.all([
+    listTaxClassifications(id),
+    listCertifications("product", id),
+    checkProductCompliance(id),
+    getSettings(),
+    containerFillOpportunities(user),
+    // Visão de Produto: sugestões por foto (IA) e ciclo contínuo do produto.
+    listSuggestions("product", id),
+    loadProductCycle(id),
+  ]);
+  const aiAdapter = getAiAdapter(settings);
+  const attributeCheck = checkRequiredAttributes(product, line);
+  const aiPhotos = collectAiPhotos(
+    photos,
+    documents,
+    product.primaryPhotoDocumentId,
+    (kind) => t(`catalog.photoKind.${kind}` as DictionaryKey),
+  );
   const containerFits = fillOpportunities.flatMap((c) => {
     const fit = c.suggestions.find((s) => s.productId === product.id);
     return fit ? [{ ...c, fit }] : [];
@@ -208,7 +244,7 @@ export default async function ProductSheetPage({
     : null;
   const currency = product.currency ?? "USD";
   const money = (n: number) => formatMoney(n, currency);
-  const errorText = catalogError(t, error);
+  const errorText = visionError(t, error) ?? catalogError(t, error);
 
   return (
     <>
@@ -254,6 +290,7 @@ export default async function ProductSheetPage({
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
 
       {/* ---- Ficha (um formulário, seções em cards) ---- */}
+      <div id="sheet" className="scroll-mt-4" />
       <form action={updateProductSheetAction} className="mt-4 space-y-6">
         <input type="hidden" name="id" value={product.id} />
         <div className="grid gap-6 lg:grid-cols-2">
@@ -1163,6 +1200,112 @@ export default async function ProductSheetPage({
           </div>
         ) : null}
       </Card>
+
+      {/* ---- Visão de Produto: atributos exigidos pela linha (determinístico) ---- */}
+      <Card title={t("vision.attrs.title")} className="mt-6">
+        <div id="attributes" className="scroll-mt-4" />
+        <p className="mb-3 text-sm text-zinc-600">{t("vision.attrs.hint")}</p>
+        {attributeCheck.required.length === 0 ? (
+          <p className="text-sm text-zinc-500">{t("vision.attrs.none")}</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                {t("vision.attrs.present")} ({attributeCheck.present.length})
+              </h3>
+              <ul className="flex flex-wrap gap-1.5">
+                {attributeCheck.present.map((a) => (
+                  <li key={a}>
+                    <Badge tone="success">✓ {a}</Badge>
+                  </li>
+                ))}
+                {attributeCheck.present.length === 0 ? (
+                  <li className="text-xs text-zinc-500">—</li>
+                ) : null}
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-700">
+                {t("vision.attrs.missing")} ({attributeCheck.missing.length})
+              </h3>
+              <ul className="flex flex-wrap gap-1.5">
+                {attributeCheck.missing.map((a) => (
+                  <li key={a}>
+                    <Badge tone="danger">✗ {a}</Badge>
+                  </li>
+                ))}
+                {attributeCheck.missing.length === 0 ? (
+                  <li className="text-xs text-zinc-500">—</li>
+                ) : null}
+              </ul>
+              {attributeCheck.missing.length > 0 ? (
+                <a
+                  href="#sheet"
+                  className={cx(linkClass, "mt-2 inline-block text-xs")}
+                >
+                  {t("vision.attrs.fill")}
+                </a>
+              ) : null}
+            </div>
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                {t("vision.attrs.manual")} ({attributeCheck.manual.length})
+              </h3>
+              <ul className="flex flex-wrap gap-1.5">
+                {attributeCheck.manual.map((a) => (
+                  <li key={a}>
+                    <Badge tone="warning">? {a}</Badge>
+                  </li>
+                ))}
+                {attributeCheck.manual.length === 0 ? (
+                  <li className="text-xs text-zinc-500">—</li>
+                ) : null}
+              </ul>
+              {attributeCheck.manual.length > 0 ? (
+                <p className="mt-2 text-xs text-zinc-500">
+                  {t("vision.attrs.manualHint")}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        )}
+        {attributeCheck.required.length > 0 &&
+        attributeCheck.missing.length === 0 &&
+        attributeCheck.manual.length === 0 ? (
+          <p className="mt-3 text-xs text-emerald-700">
+            {t("vision.attrs.allPresent")}
+          </p>
+        ) : null}
+      </Card>
+
+      {/* ---- Sugestão por foto (IA): humano confirma campo a campo ---- */}
+      <Card title={t("vision.ai.title")} className="mt-6">
+        <AiSection
+          entity="product"
+          entityId={product.id}
+          photos={aiPhotos}
+          suggestions={suggestions}
+          mode={aiAdapter.mode}
+          model={aiAdapter.model}
+          user={user}
+          users={users}
+          current={{
+            category: product.category,
+            description: product.specification,
+            material: product.material,
+            color: product.color,
+          }}
+          t={t}
+          back={`/app/products/${product.id}`}
+        />
+      </Card>
+
+      {/* ---- Ciclo contínuo do produto ---- */}
+      {cycle ? (
+        <Card title={t("vision.cycle.title")} className="mt-6">
+          <CycleCard cycle={cycle} productId={product.id} t={t} />
+        </Card>
+      ) : null}
     </>
   );
 }

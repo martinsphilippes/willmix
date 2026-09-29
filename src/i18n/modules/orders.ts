@@ -340,7 +340,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.afterSales.experience": "How was the experience?",
   "orders.afterSales.problems":
     "Any problems? (product, lead time, packaging, transport)",
-  "orders.afterSales.perceivedCosts": "Perceived costs (taxes, freight, extras)",
+  "orders.afterSales.perceivedCosts":
+    "Perceived costs (taxes, freight, extras)",
   "orders.afterSales.suggestions": "Suggestions",
   "orders.afterSales.repurchase": "Interest in buying again",
   "orders.afterSales.repurchase.yes": "Yes",

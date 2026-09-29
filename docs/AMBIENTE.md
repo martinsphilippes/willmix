@@ -13,6 +13,7 @@
 
 - `DATA_MODE=memory` (padrão sem Appwrite): JSON em `.data/` (ou `/tmp/wellmix-data` na Vercel, efêmero). Seed automático no primeiro `/login`.
 - `DATA_MODE=appwrite`: exige `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`.
+- `ANTHROPIC_API_KEY` (opcional): liga a IA de cadastro por foto e os textos de marketing. Sem ela, modo manual.
 
 ## Variáveis de ambiente
 

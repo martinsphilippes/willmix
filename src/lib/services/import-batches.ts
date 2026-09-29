@@ -3,6 +3,7 @@ import "server-only";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
+  LINE_EXTRA_DEFAULTS,
   PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
   type ImportBatch,
@@ -761,6 +762,7 @@ export async function applyImportBatch(
           summary.skipped++;
         } else {
           await store.create("product_lines", {
+            ...LINE_EXTRA_DEFAULTS,
             name,
             manualDocumentId: null,
             requirements: DEFAULT_PREPARATION_REQUIREMENTS,

@@ -564,6 +564,31 @@ export default async function OrderPage({
                     ]
                   : []),
                 [t("common.date"), formatDate(order.createdAt)],
+                /* Visão de Produto: modalidade de operação copiada do cliente (importador de registro).
+                   Wellmix, cliente e despachante; nunca fornecedor, agência, armador ou transportador.
+                   Pedidos antigos (nulo): nada aparece. */
+                ...(order.operationMode &&
+                (wellmix ||
+                  user.role === "customer" ||
+                  user.role === "broker" ||
+                  user.role === "legal")
+                  ? [
+                      [
+                        t("operations.mode.title"),
+                        <span
+                          key="operationMode"
+                          className="inline-flex"
+                          title={t("operations.mode.orderHint")}
+                        >
+                          <Badge tone="info">
+                            {t(
+                              `operations.mode.badge.${order.operationMode}` as DictionaryKey,
+                            )}
+                          </Badge>
+                        </span>,
+                      ] as [string, ReactNode],
+                    ]
+                  : []),
                 /* Classificação fiscal (NCM) com validação humana: Wellmix e despachante. */
                 ...(followProduct && (wellmix || user.role === "broker")
                   ? [

@@ -68,6 +68,23 @@ export const DEFAULT_SETTINGS = {
   complianceGateEnabled: true,
   /** Aviso de certificação a vencer (dias). */
   certificationExpiryWarningDays: 30,
+  /* ---- Visão de Produto ---- */
+  /**
+   * IA: AUTO usa a API quando há ANTHROPIC_API_KEY, senão modo manual (sem sugestão);
+   * MOCK devolve um exemplo claramente rotulado (demonstração/testes); MANUAL desliga.
+   */
+  aiMode: "AUTO" as "AUTO" | "MOCK" | "MANUAL",
+  /** Modelo usado na API (lido a cada chamada; nada fixo em componente). */
+  aiModel: "claude-sonnet-5-5",
+  /** Marketing studio e kits de marketing (prévia → oferta → compra → liberação). */
+  marketingEnabled: true,
+  /** Preço padrão do kit de marketing por produto (editável por kit; nunca fixo em código). */
+  marketingKitDefaultPrice: 200,
+  marketingKitCurrency: "BRL",
+  /** Cliente em importação própria sem RADAR informado: pedido entra na fila de revisão. */
+  radarGateEnabled: true,
+  /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
+  importerName: "Wellmix",
 };
 
 export type Settings = typeof DEFAULT_SETTINGS;

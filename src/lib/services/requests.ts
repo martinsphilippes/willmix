@@ -2,6 +2,8 @@ import "server-only";
 
 import {
   getStore,
+  ORDER_EXTRA_DEFAULTS,
+  PAYMENT_EXTRA_DEFAULTS,
   type Order,
   type Request,
   type RequestOrigin,
@@ -22,6 +24,7 @@ import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
+import { runOperationGate } from "./operations";
 
 export class RequestError extends Error {}
 
@@ -284,6 +287,7 @@ export async function selectQuote(
     downPaymentAmount: downPayment,
   });
   await store.create("payments", {
+    ...PAYMENT_EXTRA_DEFAULTS,
     orderId: null,
     requestId: request.id,
     direction: "customer_in",
@@ -375,6 +379,7 @@ async function createOrderFromRequest(
   const fobTotal = quote.price !== null ? quote.price * request.quantity : null;
 
   const order = await store.create("orders", {
+    ...ORDER_EXTRA_DEFAULTS,
     number,
     requestId: request.id,
     customerId: request.customerId,
@@ -411,6 +416,8 @@ async function createOrderFromRequest(
   await createPurchaseSnapshot(user, order, item, quote, product);
   // Gate de conformidade: linha com certificação obrigatória sem certificação válida.
   await runComplianceGate(user, order, product);
+  // Modalidade da operação (RADAR): copia do cliente e revisa importação própria sem RADAR.
+  await runOperationGate(user, order);
   // Gate: FOB zerado ou ausente vai para a fila de revisão (não bloqueia o pedido).
   const gates = await getSettings();
   if (gates.reviewOnZeroPrice && !(fobTotal && fobTotal > 0)) {

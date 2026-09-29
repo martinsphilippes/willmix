@@ -1,9 +1,16 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix, isAdmin } from "@/lib/auth/permissions";
-import { getStore, LOCALES, ROLES } from "@/lib/db";
+import {
+  getStore,
+  LOCALES,
+  OPERATION_MODES,
+  RADAR_STATUSES,
+  ROLES,
+} from "@/lib/db";
+import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
-import { LOCALE_NAMES } from "@/i18n";
+import { LOCALE_NAMES, type Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -17,6 +24,7 @@ import {
   Select,
   Table,
   Td,
+  Textarea,
   TextLink,
   Th,
   formatDate,
@@ -26,10 +34,25 @@ import {
 import { PartyForm } from "@/components/party-form";
 import { SubmitButton } from "@/components/submit-button";
 import { listCertifications } from "@/lib/services/compliance";
+import { radarProblem } from "@/lib/services/operations";
 import { createUserAction } from "../../actions";
 import { updatePartyExtraAction } from "../../actions/catalog";
+import { saveCustomerOperationAction } from "../../actions/vision";
 import { CertificationsSection } from "../../products/_components/certifications-section";
 import { catalogError } from "../../products/_components/shared";
+
+/**
+ * Visão de Produto (módulo operações): erros de saveCustomerOperationAction
+ * (not_found, not_customer, invalid_input) traduzidos em operations.error.*;
+ * os demais seguem o padrão do catálogo. Só entra quando o catálogo não tem o código.
+ */
+function partyError(t: Translate, code: string | string[] | undefined) {
+  if (typeof code !== "string" || !code) return null;
+  const catalogKey = `catalog.error.${code}` as DictionaryKey;
+  const opKey = `operations.error.${code}` as DictionaryKey;
+  if (t(catalogKey) === catalogKey && t(opKey) !== opKey) return t(opKey);
+  return catalogError(t, code);
+}
 
 const roleForType: Record<string, string> = {
   customer: "customer",
@@ -55,22 +78,38 @@ export default async function PartyPage({
   if (!party) notFound();
   const t = await getT();
   const isSupplier = party.type === "supplier";
-  const [users, visits, products, certs, allUsers] = await Promise.all([
-    store.list("users", { filter: { partyId: id } }),
-    isSupplier
-      ? store.list("supplier_visits", {
-          filter: { supplierId: id },
-          orderBy: "visitedAt",
-          direction: "desc",
-        })
-      : Promise.resolve([]),
-    isSupplier
-      ? store.list("products", { filter: { supplierId: id }, orderBy: "name" })
-      : Promise.resolve([]),
-    isSupplier ? listCertifications("party", id) : Promise.resolve([]),
-    store.list("users"),
-  ]);
-  const errorText = catalogError(t, error);
+  const isCustomer = party.type === "customer";
+  const [users, visits, products, certs, allUsers, settings] =
+    await Promise.all([
+      store.list("users", { filter: { partyId: id } }),
+      isSupplier
+        ? store.list("supplier_visits", {
+            filter: { supplierId: id },
+            orderBy: "visitedAt",
+            direction: "desc",
+          })
+        : Promise.resolve([]),
+      isSupplier
+        ? store.list("products", {
+            filter: { supplierId: id },
+            orderBy: "name",
+          })
+        : Promise.resolve([]),
+      isSupplier ? listCertifications("party", id) : Promise.resolve([]),
+      store.list("users"),
+      isCustomer ? getSettings() : Promise.resolve(null),
+    ]);
+  const errorText = partyError(t, error);
+  /* Modalidade de operação do cliente (RADAR): nada presumido; aviso só na importação própria sem RADAR.
+     O serviço decide se há problema; o texto vem do dicionário (radar nulo = não informado, "none" = sem habilitação). */
+  const radarIssue = isCustomer ? radarProblem(party) : null;
+  const radarIssueText = radarIssue
+    ? t(
+        party.radar === null
+          ? "operations.radarProblem.not_informed"
+          : "operations.radarProblem.none",
+      )
+    : null;
   const roles = isAdmin(user)
     ? ROLES
     : ROLES.filter((r) => r !== "admin" && r !== "operator");
@@ -84,6 +123,13 @@ export default async function PartyPage({
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Badge>{t(`party.${party.type}`)}</Badge>
+            {isCustomer && party.operationMode ? (
+              <Badge tone={radarIssue ? "warning" : "info"}>
+                {t(
+                  `operations.mode.badge.${party.operationMode}` as DictionaryKey,
+                )}
+              </Badge>
+            ) : null}
             {party.city || party.country ? (
               <span>
                 {[party.city, party.country].filter(Boolean).join(", ")}
@@ -99,13 +145,97 @@ export default async function PartyPage({
           ) : null
         }
       />
-      {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
+      {saved ? (
+        <Alert tone="success">
+          {saved === "operation"
+            ? t("operations.mode.saved")
+            : t("catalog.saved")}
+        </Alert>
+      ) : null}
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
         <Card title={t("common.edit")}>
           <PartyForm party={party} t={t} />
         </Card>
         <div className="space-y-6">
+          {/* Visão de Produto: modalidade de operação do cliente (importação própria / via trade / outra) e RADAR. */}
+          {isCustomer ? (
+            <Card title={t("operations.mode.title")}>
+              <p className="mb-4 text-xs text-zinc-500">
+                {t("operations.mode.hint")}
+              </p>
+              {radarIssue ? (
+                <div className="mb-4">
+                  <Alert tone="warning">
+                    {t("operations.mode.warning", {
+                      problem: radarIssueText ?? radarIssue,
+                    })}
+                    {settings && !settings.radarGateEnabled ? (
+                      <span className="mt-1 block text-xs">
+                        {t("operations.mode.gateOff")}
+                      </span>
+                    ) : null}
+                  </Alert>
+                </div>
+              ) : null}
+              <form action={saveCustomerOperationAction} className="space-y-4">
+                <input type="hidden" name="partyId" value={party.id} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label={t("operations.mode.operationMode")}>
+                    <Select
+                      name="operationMode"
+                      defaultValue={party.operationMode ?? ""}
+                      className="py-2.5"
+                    >
+                      <option value="">
+                        {t("operations.mode.notInformed")}
+                      </option>
+                      {OPERATION_MODES.map((m) => (
+                        <option key={m} value={m}>
+                          {t(`operations.operationMode.${m}` as DictionaryKey)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field
+                    label={t("operations.mode.radar")}
+                    hint={t("operations.mode.radarHint")}
+                  >
+                    <Select
+                      name="radar"
+                      defaultValue={party.radar ?? ""}
+                      className="py-2.5"
+                    >
+                      <option value="">
+                        {t("operations.mode.notInformed")}
+                      </option>
+                      {RADAR_STATUSES.map((r) => (
+                        <option key={r} value={r}>
+                          {t(`operations.radar.${r}` as DictionaryKey)}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field
+                      label={t("operations.mode.radarNotes")}
+                      hint={t("operations.mode.radarNotesHint")}
+                    >
+                      <Textarea
+                        name="radarNotes"
+                        rows={3}
+                        maxLength={2000}
+                        defaultValue={party.radarNotes ?? ""}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <SubmitButton variant="secondary">
+                  {t("operations.mode.save")}
+                </SubmitButton>
+              </form>
+            </Card>
+          ) : null}
           <Card title={t("catalog.party.sourcing")}>
             <form action={updatePartyExtraAction} className="space-y-4">
               <input type="hidden" name="id" value={party.id} />

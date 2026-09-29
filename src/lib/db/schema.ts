@@ -242,6 +242,44 @@ export type AfterSalesStatus = (typeof AFTER_SALES_STATUSES)[number];
 export const REPURCHASE_INTERESTS = ["yes", "maybe", "no"] as const;
 export type RepurchaseInterest = (typeof REPURCHASE_INTERESTS)[number];
 
+/* ---- Visão de Produto ---- */
+/** Modalidade de operação do cliente: importação própria (RADAR do cliente) ou via estrutura/trade da Wellmix. */
+export const OPERATION_MODES = ["own_import", "via_trade", "other"] as const;
+export type OperationMode = (typeof OPERATION_MODES)[number];
+/** Habilitação RADAR (Siscomex) do cliente. Nulo = não informado. */
+export const RADAR_STATUSES = [
+  "none",
+  "express",
+  "limited",
+  "unlimited",
+] as const;
+export type RadarStatus = (typeof RADAR_STATUSES)[number];
+export const AI_SUGGESTION_KINDS = [
+  "product_fields",
+  "marketing_text",
+] as const;
+export type AiSuggestionKind = (typeof AI_SUGGESTION_KINDS)[number];
+export const AI_SUGGESTION_STATUSES = [
+  "suggested",
+  "applied",
+  "discarded",
+] as const;
+export type AiSuggestionStatus = (typeof AI_SUGGESTION_STATUSES)[number];
+/** De onde veio a sugestão: API real ou mock claramente rotulado (nunca dado falso como real). */
+export const AI_SOURCES = ["api", "mock"] as const;
+export type AiSource = (typeof AI_SOURCES)[number];
+/** Preview → Oferta → Compra → Pagamento → Liberação. */
+export const MARKETING_KIT_STATUSES = [
+  "draft",
+  "preview",
+  "offered",
+  "purchased",
+  "paid",
+  "released",
+  "cancelled",
+] as const;
+export type MarketingKitStatus = (typeof MARKETING_KIT_STATUSES)[number];
+
 export const IMPORT_BATCH_STATUSES = [
   "uploaded",
   "mapped",
@@ -268,6 +306,8 @@ export interface User extends BaseRow {
   locale: Locale;
   passwordHash: string | null;
   active: boolean;
+  /** Preparação multi-importador: nulo = a importadora dona da plataforma (Wellmix). */
+  importerId: string | null;
 }
 
 export interface Party extends BaseRow {
@@ -284,6 +324,12 @@ export interface Party extends BaseRow {
   address: string | null;
   contactName: string | null;
   wechat: string | null;
+  /* Visão de Produto: modalidade de operação do cliente (nulos nos cadastros antigos = não informado) */
+  operationMode: OperationMode | null;
+  radar: RadarStatus | null;
+  radarNotes: string | null;
+  /** Preparação multi-importador: nulo = Wellmix. */
+  importerId: string | null;
 }
 
 export interface RequirementTemplate {
@@ -303,6 +349,19 @@ export interface ProductLine extends BaseRow {
   active: boolean;
   /** Certificações obrigatórias (ex.: ["Inmetro"]); sem certificação válida o pedido entra em revisão. */
   requiredCertifications: string[] | null;
+  /** Prompts e regras da linha (Prompt Base + Linha + Produto + Contexto em src/lib/ai/prompts.ts). */
+  prompts: LinePrompts | null;
+}
+
+/** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
+export interface LinePrompts {
+  descriptionPrompt: string | null;
+  marketingPrompt: string | null;
+  imagePrompt: string | null;
+  /** Atributos que a ficha deve ter (ex.: material, cor, pantone); conferência determinística. */
+  requiredAttributes: string[];
+  /** Regras em texto livre para o operador e para o prompt (ex.: "sem menção a marca de terceiros"). */
+  validationRules: string[];
 }
 
 export interface Product extends BaseRow {
@@ -405,6 +464,8 @@ export interface Order extends BaseRow {
   carrierId: string | null;
   closedAt: string | null;
   notes: string | null;
+  /** Modalidade de operação copiada do cliente ao criar o pedido (nulo nos antigos). */
+  operationMode: OperationMode | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -463,6 +524,8 @@ export interface Document extends BaseRow {
   /* Fotos de produto e de sourcing (sem pedido nem solicitação) */
   productId: string | null;
   sourcingItemId: string | null;
+  /** Arquivo de kit de marketing (prévia ou final); acesso do cliente depende da situação do kit. */
+  kitId: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -479,6 +542,8 @@ export interface Payment extends BaseRow {
   confirmedByUserId: string | null;
   confirmedAt: string | null;
   note: string | null;
+  /** Pagamento de kit de marketing (sem pedido nem solicitação). */
+  kitId: string | null;
 }
 
 export interface Notification extends BaseRow {
@@ -827,6 +892,54 @@ export interface AfterSales extends BaseRow {
   notes: string | null;
 }
 
+/** Sugestão de IA (cadastro por foto ou texto de marketing): humano confirma campo a campo. */
+export interface AiSuggestion extends BaseRow {
+  entity: "product" | "sourcing_item" | "marketing_kit";
+  entityId: string;
+  kind: AiSuggestionKind;
+  source: AiSource;
+  model: string | null;
+  /** Prompt efetivamente enviado (base + linha + produto + contexto), para auditoria. */
+  prompt: string;
+  imageDocumentId: string | null;
+  /** Campos sugeridos (JSON validado no serviço). */
+  fields: Record<string, unknown>;
+  rawText: string | null;
+  status: AiSuggestionStatus;
+  requestedByUserId: string;
+  decidedByUserId: string | null;
+  decidedAt: string | null;
+  /** Quais campos foram aplicados, ou motivo do descarte. */
+  note: string | null;
+}
+
+/** Kit de marketing por produto: prévia → oferta → compra → pagamento → liberação. Preço vem das configurações. */
+export interface MarketingKit extends BaseRow {
+  productId: string;
+  customerId: string | null;
+  name: string;
+  price: number;
+  currency: string;
+  status: MarketingKitStatus;
+  concept: string | null;
+  slogan: string | null;
+  description: string | null;
+  campaign: string | null;
+  colors: string[] | null;
+  pantone: string | null;
+  /** Prévias (visíveis ao cliente a partir da oferta). */
+  previewDocumentIds: string[];
+  /** Arquivos finais (visíveis ao cliente só depois de liberado). */
+  releasedDocumentIds: string[];
+  paymentId: string | null;
+  offeredAt: string | null;
+  purchasedAt: string | null;
+  paidAt: string | null;
+  releasedAt: string | null;
+  notes: string | null;
+  createdByUserId: string;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -860,6 +973,8 @@ export interface Tables {
   tax_classifications: TaxClassification;
   certifications: Certification;
   after_sales: AfterSales;
+  ai_suggestions: AiSuggestion;
+  marketing_kits: MarketingKit;
 }
 export type TableName = keyof Tables;
 
@@ -935,6 +1050,7 @@ export const TABLES: Record<TableName, TableDef> = {
       locale: enumOf(LOCALES),
       passwordHash: str(255),
       active: bool(),
+      importerId: id(false),
     },
     indexes: [{ key: "email_unique", type: "unique", columns: ["email"] }],
   },
@@ -953,6 +1069,10 @@ export const TABLES: Record<TableName, TableDef> = {
       address: str(255),
       contactName: str(120),
       wechat: str(80),
+      operationMode: enumOf(OPERATION_MODES, false),
+      radar: enumOf(RADAR_STATUSES, false),
+      radarNotes: text(),
+      importerId: id(false),
     },
     indexes: [{ key: "by_type", type: "key", columns: ["type"] }],
   },
@@ -964,6 +1084,7 @@ export const TABLES: Record<TableName, TableDef> = {
       requirements: json(),
       active: bool(),
       requiredCertifications: json(),
+      prompts: json(),
     },
   },
   products: {
@@ -1074,6 +1195,7 @@ export const TABLES: Record<TableName, TableDef> = {
       carrierId: id(false),
       closedAt: datetime(),
       notes: text(),
+      operationMode: enumOf(OPERATION_MODES, false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -1154,6 +1276,7 @@ export const TABLES: Record<TableName, TableDef> = {
       visibility: enumOf(VISIBILITIES),
       productId: id(false),
       sourcingItemId: id(false),
+      kitId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
@@ -1177,6 +1300,7 @@ export const TABLES: Record<TableName, TableDef> = {
       confirmedByUserId: id(false),
       confirmedAt: datetime(),
       note: text(),
+      kitId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
@@ -1586,6 +1710,59 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
+  ai_suggestions: {
+    label: "Sugestões de IA",
+    columns: {
+      entity: str(20, true),
+      entityId: id(),
+      kind: enumOf(AI_SUGGESTION_KINDS),
+      source: enumOf(AI_SOURCES),
+      model: str(80),
+      prompt: text(true),
+      imageDocumentId: id(false),
+      fields: json(),
+      rawText: text(),
+      status: enumOf(AI_SUGGESTION_STATUSES),
+      requestedByUserId: id(),
+      decidedByUserId: id(false),
+      decidedAt: datetime(),
+      note: text(),
+    },
+    indexes: [
+      { key: "by_entity", type: "key", columns: ["entity", "entityId"] },
+    ],
+  },
+  marketing_kits: {
+    label: "Kits de marketing",
+    columns: {
+      productId: id(),
+      customerId: id(false),
+      name: str(160, true),
+      price: float(true),
+      currency: str(3, true),
+      status: enumOf(MARKETING_KIT_STATUSES),
+      concept: text(),
+      slogan: str(255),
+      description: text(),
+      campaign: text(),
+      colors: json(),
+      pantone: str(120),
+      previewDocumentIds: json(),
+      releasedDocumentIds: json(),
+      paymentId: id(false),
+      offeredAt: datetime(),
+      purchasedAt: datetime(),
+      paidAt: datetime(),
+      releasedAt: datetime(),
+      notes: text(),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
 };
 
 /* ------------------------------------------------------------------------ */
@@ -1602,7 +1779,28 @@ export const PARTY_EXTRA_DEFAULTS = {
   address: null,
   contactName: null,
   wechat: null,
+  operationMode: null,
+  radar: null,
+  radarNotes: null,
+  importerId: null,
 } satisfies Partial<Party>;
+
+export const USER_EXTRA_DEFAULTS = {
+  importerId: null,
+} satisfies Partial<User>;
+
+export const LINE_EXTRA_DEFAULTS = {
+  requiredCertifications: null,
+  prompts: null,
+} satisfies Partial<ProductLine>;
+
+export const ORDER_EXTRA_DEFAULTS = {
+  operationMode: null,
+} satisfies Partial<Order>;
+
+export const PAYMENT_EXTRA_DEFAULTS = {
+  kitId: null,
+} satisfies Partial<Payment>;
 
 export const PRODUCT_EXTRA_DEFAULTS = {
   supplierId: null,
@@ -1642,6 +1840,7 @@ export const REQUEST_EXTRA_DEFAULTS = {
 export const DOCUMENT_EXTRA_DEFAULTS = {
   productId: null,
   sourcingItemId: null,
+  kitId: null,
 } satisfies Partial<Document>;
 
 /**

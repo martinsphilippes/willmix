@@ -9,7 +9,10 @@ SOURCING (visita → produto encontrado → negociação) → FICHA DO PRODUTO
 → CLIENTE → SOLICITAÇÃO → RFQ → COTAÇÕES → SELEÇÃO → SINAL → PEDIDO (+ snapshot da compra) → (SANKHYA)
 → PREPARAÇÃO → PAGAMENTO AO FORNECEDOR → ARTE/EMBALAGEM → INSPEÇÃO CEGA (comprado × inspecionado)
 → CONTAINER → EMBARQUE → DESEMBARAÇO → TRANSPORTE → ENTREGA → ENCERRAMENTO
+→ PÓS-VENDA → ANÁLISE (histórico, oportunidade) → REPOSIÇÃO / NOVA PROPOSTA → NOVA COMPRA (ciclo contínuo)
 ```
+
+O produto é o objeto central: nasce no sourcing (ou por foto com sugestão de IA confirmada) e é reutilizado em RFQ, pedido (snapshot), inspeção, container, marketing (kit), pós-venda e reposição. O cliente opera via trade da Wellmix ou por importação própria (RADAR), conforme o cadastro.
 
 A evolução incremental (sourcing, ficha completa, importação de planilhas, snapshot, programação de compra, container, fila de revisão, confirmação de visualização) está classificada em `EVOLUTION_PLAN.md`. O fluxo do pedido não mudou; tudo foi acrescentado em volta dele.
 

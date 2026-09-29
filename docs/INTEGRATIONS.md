@@ -16,6 +16,7 @@ Regra: toda integração externa crítica tem modo manual ou mock para o fluxo f
 | WhatsApp            | `src/lib/services/notifications.ts` | Mock                                                           |
 | Booking / armador   | requisitos da etapa `SHIPPING`      | Entrada manual                                                 |
 | Comex / aduana      | requisitos da etapa `CUSTOMS`       | Entrada manual                                                 |
+| IA (cadastro por foto, textos de marketing) | `src/lib/integrations/ai.ts` | `api` com `ANTHROPIC_API_KEY` (API Messages, sem SDK); sem chave, `manual`; `aiMode = MOCK` devolve exemplo rotulado. Humano confirma tudo |
 
 ## EXTERNAL DEPENDENCIES PENDING
 
@@ -27,3 +28,4 @@ Para ativar cada integração real é preciso fornecer:
 4. **E-mail**: provedor (Resend, SES, SendGrid) e chave. Trocar `sendEmail` em `notifications.ts`.
 5. **WhatsApp**: conta WhatsApp Business API (Meta ou BSP), número, token e templates aprovados. Trocar `sendWhatsapp`.
 6. **Vercel**: `SESSION_SECRET`, `CRON_SECRET` e as variáveis do Appwrite no projeto; cron de lembretes já está em `vercel.json`.
+7. **IA**: `ANTHROPIC_API_KEY` na Vercel (e `aiModel` nas configurações, padrão `claude-sonnet-5-5`). Sem a chave nada quebra: a tela informa "IA não configurada" e o cadastro segue manual. Geração de imagem comercial ainda não está ligada (só o prompt de imagem é produzido).

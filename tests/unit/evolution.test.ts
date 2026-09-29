@@ -192,6 +192,7 @@ describe("comparação comprado × inspecionado", () => {
             visibility: "all",
             productId: null,
             sourcingItemId: null,
+            kitId: null,
           });
           await submitRequirement(admin, r.id, { documentId: doc.id });
         } else if (r.type === "number")
