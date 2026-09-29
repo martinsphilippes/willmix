@@ -109,6 +109,119 @@ export const pt = {
   "orders.account.action.payment.received": "Recebimento confirmado",
   "orders.account.action.payment.confirm": "Confirmação na trilha",
   "orders.account.action.payment.customer": "Recebimento do cliente",
+
+  /* ---- Módulo cliente 2: origem da solicitação, pós-venda, recompra, histórico ---- */
+  "orders.origin.replenishment": "Recompra",
+  "orders.origin.proposal": "Nova proposta",
+  "orders.origin.sourcing_demand": "Sourcing sob demanda",
+  "orders.origin.sourceOrder": "Pedido de origem",
+
+  /* Pós-venda no pedido */
+  "orders.afterSales.title": "Pós-venda",
+  "orders.afterSales.hint":
+    "O processo não termina na entrega. Conte como foi a compra: a Wellmix usa as respostas para corrigir problemas e planejar a reposição.",
+  "orders.afterSales.rating": "Nota da compra (1 a 5)",
+  "orders.afterSales.ratingHint": "1 = muito ruim · 5 = excelente",
+  "orders.afterSales.experience": "Como foi a experiência?",
+  "orders.afterSales.problems":
+    "Houve problemas? (produto, prazo, embalagem, transporte)",
+  "orders.afterSales.perceivedCosts":
+    "Custos percebidos (impostos, frete, extras)",
+  "orders.afterSales.suggestions": "Sugestões",
+  "orders.afterSales.repurchase": "Interesse em nova compra",
+  "orders.afterSales.repurchase.yes": "Sim",
+  "orders.afterSales.repurchase.maybe": "Talvez",
+  "orders.afterSales.repurchase.no": "Não",
+  "orders.afterSales.submit": "Enviar avaliação",
+  "orders.afterSales.answered": "Avaliação enviada",
+  "orders.afterSales.answeredAt": "Respondido em",
+  "orders.afterSales.waitingCustomer":
+    "O cliente ainda não respondeu. Ele foi avisado por notificação.",
+  "orders.afterSales.thanks":
+    "Obrigado pela avaliação. A Wellmix vai analisar as respostas.",
+  "orders.afterSales.close": "Encerrar pós-venda",
+  "orders.afterSales.closeHint":
+    "Registre o que foi feito com o retorno do cliente (ação, contato, ajuste).",
+  "orders.afterSales.closed": "Pós-venda encerrado",
+  "orders.afterSales.closedAt": "Encerrado em",
+  "orders.afterSales.notes": "Observação da Wellmix",
+  "orders.afterSales.open": "Abrir pós-venda",
+  "orders.afterSales.openHint":
+    "Pedido encerrado sem pós-venda (anterior ao recurso). Abrir envia ao cliente o convite para avaliar a compra.",
+  "orders.afterSales.status.open": "Aguardando cliente",
+  "orders.afterSales.status.answered": "Respondido",
+  "orders.afterSales.status.closed": "Encerrado",
+
+  /* Comprar de novo / nova proposta */
+  "orders.followup.title": "Comprar de novo / Nova proposta",
+  "orders.followup.hint":
+    "Reposição com os mesmos dados do pedido ou nova proposta para renegociar. As duas abrem uma solicitação pré-preenchida que segue o fluxo normal (RFQ, cotação, sinal).",
+  "orders.followup.lastQuantity": "Última quantidade",
+  "orders.followup.lastPrice": "Último preço unitário de venda",
+  "orders.followup.lastDate": "Data da compra",
+  "orders.followup.newQuantity": "Nova quantidade",
+  "orders.followup.notes": "Observação para a Wellmix",
+  "orders.followup.buyAgain": "Comprar de novo",
+  "orders.followup.newProposal": "Quero nova proposta",
+  "orders.followup.buyAgainHint":
+    "Comprar de novo: mesma especificação, nova quantidade. Nova proposta: a Wellmix renegocia preço, prazo ou condições.",
+  "orders.followup.derived": "Solicitações originadas deste pedido",
+  "orders.followup.noPhoto": "Sem foto",
+
+  /* Lista de pós-venda (Wellmix) */
+  "afterSales.title": "Pós-venda",
+  "afterSales.subtitle":
+    "Avaliações dos clientes após a entrega: nota, problemas e interesse em recompra.",
+  "help.afterSales.body":
+    "Ao concluir a entrega, cada pedido abre um pós-venda e o cliente é convidado a avaliar a compra. Aqui a Wellmix acompanha as respostas, trata os problemas e encerra o registro com uma observação. O interesse em recompra alimenta o histórico comercial.",
+  "help.afterSales.steps":
+    "Aguardando cliente: ainda sem resposta; o cliente foi notificado.\nRespondido: leia nota, problemas e sugestões; abra o pedido para agir.\nEncerrar: no pedido, registre o que foi feito e encerre.\nRecompra: use o histórico comercial para propor a reposição.",
+  "afterSales.filter.open": "Aguardando cliente",
+  "afterSales.filter.answered": "Respondidos",
+  "afterSales.filter.closed": "Encerrados",
+  "afterSales.none": "Nenhum pós-venda nesta situação.",
+  "afterSales.count": "{count} registro(s)",
+  "afterSales.rating": "Nota",
+  "afterSales.problems": "Problemas",
+  "afterSales.noProblems": "Sem problemas relatados",
+  "afterSales.repurchase": "Recompra",
+  "afterSales.openedAt": "Aberto em",
+  "afterSales.openOrder": "Abrir pedido",
+  "afterSales.notRated": "Sem nota",
+
+  /* Histórico comercial */
+  "history.title": "Histórico comercial",
+  "history.subtitle":
+    "Cliente → produto → compras → quantidade → preço → data → frequência → reposição.",
+  "help.history.body":
+    "Só dados lançados no portal: pedidos criados, seus itens, solicitações de recompra e respostas de pós-venda. Nada é estimado. A frequência é a média de dias entre as datas de criação dos pedidos do mesmo cliente para o mesmo produto (com uma compra só, fica em branco).",
+  "help.history.steps":
+    "Filtrar por cliente (Wellmix): escolha o cliente para ver só os produtos dele; o cliente vê só o próprio histórico.\nÚltimo pedido: abre o pedido mais recente daquele produto.\nComprar de novo / Nova proposta: leva ao pedido para abrir a solicitação pré-preenchida.\nRecompra: o interesse vem do último pós-venda respondido.",
+  "history.purchases": "Compras",
+  "history.totalQuantity": "Qtd. total",
+  "history.lastQuantity": "Última qtd.",
+  "history.lastSellUnit": "Último preço unit. (venda)",
+  "history.lastFobUnit": "Último FOB unit.",
+  "history.firstAt": "Primeira compra",
+  "history.lastAt": "Última compra",
+  "history.period": "Primeira / última compra",
+  "history.avgInterval": "Frequência média",
+  "history.days": "{days} dias",
+  "history.replenishments": "Reposições",
+  "history.repurchase": "Recompra",
+  "history.lastOrder": "Último pedido",
+  "history.none": "Nenhuma compra registrada ainda.",
+  "history.allCustomers": "Todos os clientes",
+  "history.filter": "Filtrar",
+  "history.buyAgain": "Comprar de novo",
+  "history.newProposal": "Nova proposta",
+  "history.rows": "{count} linha(s)",
+
+  /* Nova solicitação: sourcing sob demanda */
+  "requests.sourcingDemand.label":
+    "Produto ainda não está no catálogo: quero que a Wellmix encontre fornecedores",
+  "requests.sourcingDemand.hint":
+    "Deixe o produto em branco e descreva o que procura. A Wellmix registra a demanda para o time de sourcing na China, localiza fornecedores e depois abre a RFQ como em qualquer solicitação.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -213,6 +326,112 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.account.action.payment.received": "Receipt confirmed",
   "orders.account.action.payment.confirm": "Confirmation on trail",
   "orders.account.action.payment.customer": "Customer receipt",
+
+  "orders.origin.replenishment": "Repeat purchase",
+  "orders.origin.proposal": "New proposal",
+  "orders.origin.sourcing_demand": "Sourcing on demand",
+  "orders.origin.sourceOrder": "Source order",
+
+  "orders.afterSales.title": "After-sales",
+  "orders.afterSales.hint":
+    "The process does not end at delivery. Tell us how the purchase went: Wellmix uses the answers to fix problems and plan replenishment.",
+  "orders.afterSales.rating": "Purchase rating (1 to 5)",
+  "orders.afterSales.ratingHint": "1 = very poor · 5 = excellent",
+  "orders.afterSales.experience": "How was the experience?",
+  "orders.afterSales.problems":
+    "Any problems? (product, lead time, packaging, transport)",
+  "orders.afterSales.perceivedCosts": "Perceived costs (taxes, freight, extras)",
+  "orders.afterSales.suggestions": "Suggestions",
+  "orders.afterSales.repurchase": "Interest in buying again",
+  "orders.afterSales.repurchase.yes": "Yes",
+  "orders.afterSales.repurchase.maybe": "Maybe",
+  "orders.afterSales.repurchase.no": "No",
+  "orders.afterSales.submit": "Send review",
+  "orders.afterSales.answered": "Review sent",
+  "orders.afterSales.answeredAt": "Answered on",
+  "orders.afterSales.waitingCustomer":
+    "The customer has not answered yet. They were notified.",
+  "orders.afterSales.thanks":
+    "Thank you for your review. Wellmix will look into the answers.",
+  "orders.afterSales.close": "Close after-sales",
+  "orders.afterSales.closeHint":
+    "Record what was done with the customer's feedback (action, contact, adjustment).",
+  "orders.afterSales.closed": "After-sales closed",
+  "orders.afterSales.closedAt": "Closed on",
+  "orders.afterSales.notes": "Wellmix note",
+  "orders.afterSales.open": "Open after-sales",
+  "orders.afterSales.openHint":
+    "Order closed without after-sales (before the feature). Opening sends the customer an invitation to review the purchase.",
+  "orders.afterSales.status.open": "Waiting for customer",
+  "orders.afterSales.status.answered": "Answered",
+  "orders.afterSales.status.closed": "Closed",
+
+  "orders.followup.title": "Buy again / New proposal",
+  "orders.followup.hint":
+    "Replenish with the same order data, or ask for a new proposal to renegotiate. Both open a pre-filled request that follows the normal flow (RFQ, quotation, down payment).",
+  "orders.followup.lastQuantity": "Last quantity",
+  "orders.followup.lastPrice": "Last unit sale price",
+  "orders.followup.lastDate": "Purchase date",
+  "orders.followup.newQuantity": "New quantity",
+  "orders.followup.notes": "Note for Wellmix",
+  "orders.followup.buyAgain": "Buy again",
+  "orders.followup.newProposal": "I want a new proposal",
+  "orders.followup.buyAgainHint":
+    "Buy again: same specification, new quantity. New proposal: Wellmix renegotiates price, lead time or conditions.",
+  "orders.followup.derived": "Requests originated from this order",
+  "orders.followup.noPhoto": "No photo",
+
+  "afterSales.title": "After-sales",
+  "afterSales.subtitle":
+    "Customer reviews after delivery: rating, problems and repurchase interest.",
+  "help.afterSales.body":
+    "When delivery is completed, each order opens an after-sales record and the customer is invited to review the purchase. Here Wellmix follows the answers, handles the problems and closes the record with a note. Repurchase interest feeds the commercial history.",
+  "help.afterSales.steps":
+    "Waiting for customer: no answer yet; the customer was notified.\nAnswered: read rating, problems and suggestions; open the order to act.\nClose: in the order, record what was done and close.\nRepurchase: use the commercial history to propose replenishment.",
+  "afterSales.filter.open": "Waiting for customer",
+  "afterSales.filter.answered": "Answered",
+  "afterSales.filter.closed": "Closed",
+  "afterSales.none": "No after-sales record in this status.",
+  "afterSales.count": "{count} record(s)",
+  "afterSales.rating": "Rating",
+  "afterSales.problems": "Problems",
+  "afterSales.noProblems": "No problems reported",
+  "afterSales.repurchase": "Repurchase",
+  "afterSales.openedAt": "Opened on",
+  "afterSales.openOrder": "Open order",
+  "afterSales.notRated": "Not rated",
+
+  "history.title": "Commercial history",
+  "history.subtitle":
+    "Customer → product → purchases → quantity → price → date → frequency → replenishment.",
+  "help.history.body":
+    "Only data entered in the portal: orders created, their items, repeat-purchase requests and after-sales answers. Nothing is estimated. Frequency is the average number of days between the creation dates of the orders of the same customer for the same product (blank with a single purchase).",
+  "help.history.steps":
+    "Filter by customer (Wellmix): pick the customer to see only their products; a customer sees only their own history.\nLast order: opens the most recent order for that product.\nBuy again / New proposal: takes you to the order to open the pre-filled request.\nRepurchase: the interest comes from the last answered after-sales.",
+  "history.purchases": "Purchases",
+  "history.totalQuantity": "Total qty",
+  "history.lastQuantity": "Last qty",
+  "history.lastSellUnit": "Last unit price (sale)",
+  "history.lastFobUnit": "Last unit FOB",
+  "history.firstAt": "First purchase",
+  "history.lastAt": "Last purchase",
+  "history.period": "First / last purchase",
+  "history.avgInterval": "Average frequency",
+  "history.days": "{days} days",
+  "history.replenishments": "Replenishments",
+  "history.repurchase": "Repurchase",
+  "history.lastOrder": "Last order",
+  "history.none": "No purchases recorded yet.",
+  "history.allCustomers": "All customers",
+  "history.filter": "Filter",
+  "history.buyAgain": "Buy again",
+  "history.newProposal": "New proposal",
+  "history.rows": "{count} row(s)",
+
+  "requests.sourcingDemand.label":
+    "Product not in the catalog yet: I want Wellmix to find suppliers",
+  "requests.sourcingDemand.hint":
+    "Leave the product blank and describe what you are looking for. Wellmix records the demand for the sourcing team in China, finds suppliers and then opens the RFQ like any other request.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -314,4 +533,105 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.account.action.payment.received": "已确认收款",
   "orders.account.action.payment.confirm": "跟踪记录中的确认",
   "orders.account.action.payment.customer": "客户付款",
+
+  "orders.origin.replenishment": "复购",
+  "orders.origin.proposal": "新报价",
+  "orders.origin.sourcing_demand": "按需寻源",
+  "orders.origin.sourceOrder": "来源订单",
+
+  "orders.afterSales.title": "售后",
+  "orders.afterSales.hint":
+    "流程不会在交付时结束。请告诉我们这次采购的情况：Wellmix 会根据您的反馈解决问题并规划补货。",
+  "orders.afterSales.rating": "采购评分（1 至 5）",
+  "orders.afterSales.ratingHint": "1 = 很差 · 5 = 非常好",
+  "orders.afterSales.experience": "整体体验如何？",
+  "orders.afterSales.problems": "是否出现问题？（产品、交期、包装、运输）",
+  "orders.afterSales.perceivedCosts": "感知成本（税费、运费、额外费用）",
+  "orders.afterSales.suggestions": "建议",
+  "orders.afterSales.repurchase": "再次购买意向",
+  "orders.afterSales.repurchase.yes": "是",
+  "orders.afterSales.repurchase.maybe": "也许",
+  "orders.afterSales.repurchase.no": "否",
+  "orders.afterSales.submit": "提交评价",
+  "orders.afterSales.answered": "评价已提交",
+  "orders.afterSales.answeredAt": "回复时间",
+  "orders.afterSales.waitingCustomer": "客户尚未回复，已通过通知提醒。",
+  "orders.afterSales.thanks": "感谢您的评价，Wellmix 将会分析您的反馈。",
+  "orders.afterSales.close": "结束售后",
+  "orders.afterSales.closeHint":
+    "记录针对客户反馈所做的处理（措施、联系、调整）。",
+  "orders.afterSales.closed": "售后已结束",
+  "orders.afterSales.closedAt": "结束时间",
+  "orders.afterSales.notes": "Wellmix 备注",
+  "orders.afterSales.open": "开启售后",
+  "orders.afterSales.openHint":
+    "该订单已关闭但没有售后记录（早于该功能）。开启后会邀请客户评价本次采购。",
+  "orders.afterSales.status.open": "等待客户",
+  "orders.afterSales.status.answered": "已回复",
+  "orders.afterSales.status.closed": "已结束",
+
+  "orders.followup.title": "再次购买 / 新报价",
+  "orders.followup.hint":
+    "按原订单数据补货，或申请新报价重新谈判。两者都会创建预填好的采购申请，并走正常流程（询价、报价、定金）。",
+  "orders.followup.lastQuantity": "上次数量",
+  "orders.followup.lastPrice": "上次销售单价",
+  "orders.followup.lastDate": "采购日期",
+  "orders.followup.newQuantity": "新数量",
+  "orders.followup.notes": "给 Wellmix 的备注",
+  "orders.followup.buyAgain": "再次购买",
+  "orders.followup.newProposal": "申请新报价",
+  "orders.followup.buyAgainHint":
+    "再次购买：相同规格、新数量。新报价：由 Wellmix 重新谈判价格、交期或条件。",
+  "orders.followup.derived": "由本订单产生的申请",
+  "orders.followup.noPhoto": "无照片",
+
+  "afterSales.title": "售后",
+  "afterSales.subtitle": "客户交付后的评价：评分、问题和复购意向。",
+  "help.afterSales.body":
+    "交付完成后，每个订单都会开启售后记录并邀请客户评价。Wellmix 在此跟进回复、处理问题，并附上备注结束记录。复购意向会进入商业历史。",
+  "help.afterSales.steps":
+    "等待客户：尚未回复；客户已收到通知。\n已回复：查看评分、问题和建议；打开订单进行处理。\n结束：在订单中记录处理结果并结束售后。\n复购：使用商业历史提出补货建议。",
+  "afterSales.filter.open": "等待客户",
+  "afterSales.filter.answered": "已回复",
+  "afterSales.filter.closed": "已结束",
+  "afterSales.none": "该状态下没有售后记录。",
+  "afterSales.count": "{count} 条记录",
+  "afterSales.rating": "评分",
+  "afterSales.problems": "问题",
+  "afterSales.noProblems": "未报告问题",
+  "afterSales.repurchase": "复购",
+  "afterSales.openedAt": "开启时间",
+  "afterSales.openOrder": "打开订单",
+  "afterSales.notRated": "未评分",
+
+  "history.title": "商业历史",
+  "history.subtitle":
+    "客户 → 产品 → 采购次数 → 数量 → 价格 → 日期 → 频率 → 补货。",
+  "help.history.body":
+    "仅使用门户中已登记的数据：已创建的订单及其明细、复购申请和售后回复，没有任何估算。频率是同一客户同一产品各订单创建日期之间的平均天数（只有一次采购时留空）。",
+  "help.history.steps":
+    "按客户筛选（Wellmix）：选择客户，只查看其产品；客户只能看到自己的历史。\n最近订单：打开该产品最近的订单。\n再次购买 / 新报价：进入订单并创建预填好的申请。\n复购：意向来自最近一次已回复的售后。",
+  "history.purchases": "采购次数",
+  "history.totalQuantity": "总数量",
+  "history.lastQuantity": "上次数量",
+  "history.lastSellUnit": "上次销售单价",
+  "history.lastFobUnit": "上次 FOB 单价",
+  "history.firstAt": "首次采购",
+  "history.lastAt": "最近采购",
+  "history.period": "首次 / 最近采购",
+  "history.avgInterval": "平均频率",
+  "history.days": "{days} 天",
+  "history.replenishments": "补货次数",
+  "history.repurchase": "复购意向",
+  "history.lastOrder": "最近订单",
+  "history.none": "尚无采购记录。",
+  "history.allCustomers": "全部客户",
+  "history.filter": "筛选",
+  "history.buyAgain": "再次购买",
+  "history.newProposal": "新报价",
+  "history.rows": "{count} 行",
+
+  "requests.sourcingDemand.label": "产品尚未在目录中：希望 Wellmix 寻找供应商",
+  "requests.sourcingDemand.hint":
+    "请将产品留空并描述您需要的商品。Wellmix 会为中国寻源团队登记需求，寻找供应商，然后像普通申请一样发起询价。",
 };

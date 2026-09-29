@@ -6,6 +6,7 @@ import { getT } from "@/i18n/server";
 import { requirementLabel } from "@/i18n";
 import {
   Alert,
+  Badge,
   Card,
   Empty,
   Field,
@@ -17,6 +18,8 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveLineAction } from "../actions";
+import { setLineCertificationsAction } from "../actions/compliance";
+import { catalogError } from "../products/_components/shared";
 
 /** Linhas de produto: nome, manual e checklist de preparação herdado pelos pedidos. */
 export default async function LinesPage({
@@ -25,7 +28,7 @@ export default async function LinesPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertWellmix(user);
-  const { error, edit } = await searchParams;
+  const { error, edit, saved } = await searchParams;
   const t = await getT();
   const store = getStore();
   const lines = await store.list("product_lines", { orderBy: "name" });
@@ -41,11 +44,16 @@ export default async function LinesPage({
   return (
     <>
       <PageHeader
-        help={{ body: "help.lines.body" }}
+        help={{ body: "help.lines.body", steps: "help.catalog.lines.steps" }}
         t={t}
         title={t("lines.title")}
       />
-      {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
+      {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
+      {error ? (
+        <Alert tone="danger">
+          {catalogError(t, error) ?? t("common.error")}
+        </Alert>
+      ) : null}
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
           {lines.length === 0 ? <Empty>{t("common.none")}</Empty> : null}
@@ -88,6 +96,46 @@ export default async function LinesPage({
                   {t("lines.manual")}
                 </a>
               ) : null}
+              {/* Segunda Onda: certificações obrigatórias da linha (gate de conformidade). */}
+              <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                {t("catalog.lines.certifications")}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {l.requiredCertifications?.length ? (
+                  l.requiredCertifications.map((c) => (
+                    <Badge key={c} tone="brand">
+                      {c}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-zinc-500">
+                    {t("catalog.lines.certifications.none")}
+                  </span>
+                )}
+              </div>
+              <form action={setLineCertificationsAction} className="mt-2">
+                <input type="hidden" name="lineId" value={l.id} />
+                <div className="flex gap-2">
+                  <Input
+                    name="certifications"
+                    maxLength={500}
+                    placeholder="Inmetro, Anvisa"
+                    aria-label={t("catalog.lines.certifications")}
+                    defaultValue={(l.requiredCertifications ?? []).join(", ")}
+                    className="flex-1 py-1.5"
+                  />
+                  <SubmitButton
+                    variant="secondary"
+                    className="shrink-0 px-3 py-1.5 text-xs"
+                    pendingText="…"
+                  >
+                    {t("common.save")}
+                  </SubmitButton>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {t("catalog.lines.certificationsHint")}
+                </p>
+              </form>
             </Card>
           ))}
         </div>

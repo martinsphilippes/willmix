@@ -11,13 +11,28 @@ import {
 } from "@/lib/db";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { loadProductSheet } from "@/lib/services/sourcing";
+import { listTaxClassifications } from "@/lib/services/taxes";
+import {
+  checkProductCompliance,
+  listCertifications,
+} from "@/lib/services/compliance";
+import {
+  boxesForQuantity,
+  containerFillOpportunities,
+  formatPriceTiers,
+  sortTiers,
+  tierOpportunity,
+} from "@/lib/services/opportunities";
+import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
+  Button,
   Card,
+  DescriptionList,
   Empty,
   Field,
   Input,
@@ -42,10 +57,14 @@ import {
   addProductMeasurementAction,
   addProductPhotosAction,
   savePurchaseScheduleAction,
+  saveProductPriceTiersAction,
   setPrimaryPhotoAction,
   setScheduleStatusAction,
   updateProductSheetAction,
 } from "../../actions/catalog";
+import { CertificationsSection } from "../_components/certifications-section";
+import { TaxSection } from "../_components/tax-section";
+import { catalogError } from "../_components/shared";
 
 /* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
 const big = "py-2.5";
@@ -123,7 +142,7 @@ export default async function ProductSheetPage({
   if (!user) redirect("/login");
   assertWellmix(user);
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const { error, saved, qty } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
   const { product, photos, measurements, schedules, supplier, line, sourcing } =
@@ -156,6 +175,40 @@ export default async function ProductSheetPage({
   })).filter((g) => g.items.length > 0);
   const nextSequence =
     schedules.reduce((max, s) => Math.max(max, s.sequence), 0) + 1;
+
+  /* Segunda Onda: NCM, certificações/compliance e oportunidade de compra. */
+  const [taxRows, certs, compliance, settings, fillOpportunities] =
+    await Promise.all([
+      listTaxClassifications(id),
+      listCertifications("product", id),
+      checkProductCompliance(id),
+      getSettings(),
+      containerFillOpportunities(user),
+    ]);
+  const containerFits = fillOpportunities.flatMap((c) => {
+    const fit = c.suggestions.find((s) => s.productId === product.id);
+    return fit ? [{ ...c, fit }] : [];
+  });
+  const tiers = sortTiers(product.priceTiers);
+  // Quantidade analisada: ?qty= informado; senão a última programação; senão o MOQ.
+  const lastSchedule = [...schedules]
+    .filter((s) => s.status !== "cancelled")
+    .sort((a, b) => b.sequence - a.sequence)[0];
+  const qtyParam = typeof qty === "string" ? Number(qty) : NaN;
+  const analysis =
+    Number.isFinite(qtyParam) && qtyParam > 0
+      ? { quantity: qtyParam, source: "param" as const }
+      : lastSchedule
+        ? { quantity: lastSchedule.quantity, source: "schedule" as const }
+        : product.moq
+          ? { quantity: product.moq, source: "moq" as const }
+          : null;
+  const opportunity = analysis
+    ? tierOpportunity(tiers, analysis.quantity, product.price)
+    : null;
+  const currency = product.currency ?? "USD";
+  const money = (n: number) => formatMoney(n, currency);
+  const errorText = catalogError(t, error);
 
   return (
     <>
@@ -198,11 +251,7 @@ export default async function ProductSheetPage({
         }
       />
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
-      {error ? (
-        <Alert tone="danger">
-          {t("common.error")} ({error})
-        </Alert>
-      ) : null}
+      {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
 
       {/* ---- Ficha (um formulário, seções em cards) ---- */}
       <form action={updateProductSheetAction} className="mt-4 space-y-6">
@@ -893,6 +942,226 @@ export default async function ProductSheetPage({
             + {t("catalog.schedules.new")}
           </SubmitButton>
         </form>
+      </Card>
+
+      {/* ---- Segunda Onda: classificação fiscal (NCM) ---- */}
+      <Card title={t("catalog.tax.title")} className="mt-6">
+        <TaxSection
+          product={product}
+          rows={taxRows}
+          users={users}
+          user={user}
+          t={t}
+          back="sheet"
+        />
+      </Card>
+
+      {/* ---- Certificações e compliance ---- */}
+      <Card title={t("catalog.cert.title")} className="mt-6">
+        <CertificationsSection
+          entity="product"
+          entityId={product.id}
+          certs={certs}
+          check={compliance}
+          suggestedKinds={compliance.required}
+          users={users}
+          user={user}
+          t={t}
+          warningDays={settings.certificationExpiryWarningDays}
+        />
+      </Card>
+
+      {/* ---- Oportunidade de compra (faixas + container); preço FOB é interno ---- */}
+      <Card title={t("catalog.opp.title")} className="mt-6">
+        <div id="opportunity" className="scroll-mt-4" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("catalog.opp.tiers")}
+            </h3>
+            {tiers.length === 0 ? (
+              <Empty>{t("catalog.opp.tiers.empty")}</Empty>
+            ) : (
+              <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
+                {tiers.map((tier) => (
+                  <li
+                    key={tier.minQty}
+                    className="flex items-center justify-between gap-3 px-3 py-2"
+                  >
+                    <span className="text-zinc-700">
+                      {t("catalog.opp.from")}{" "}
+                      <span className="font-semibold tabular-nums text-zinc-900">
+                        {tier.minQty}
+                      </span>
+                    </span>
+                    <span className="font-semibold tabular-nums text-zinc-900">
+                      {money(tier.price)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form
+              action={saveProductPriceTiersAction}
+              className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
+            >
+              <input type="hidden" name="productId" value={product.id} />
+              {analysis?.source === "param" ? (
+                <input type="hidden" name="qty" value={analysis.quantity} />
+              ) : null}
+              <Field
+                label={t("catalog.opp.tiers")}
+                hint={t("catalog.opp.tiersHint")}
+              >
+                <Textarea
+                  name="tiers"
+                  rows={4}
+                  placeholder={"500;9.50\n1000;8.90"}
+                  defaultValue={formatPriceTiers(tiers)}
+                  className={cx(big, "min-h-0 font-mono")}
+                />
+              </Field>
+              <SubmitButton
+                variant="secondary"
+                className="w-full sm:w-auto"
+                pendingText="…"
+              >
+                {t("catalog.opp.saveTiers")}
+              </SubmitButton>
+            </form>
+          </div>
+
+          <div className="space-y-3">
+            <form
+              method="get"
+              action={`/app/products/${product.id}#opportunity`}
+              className="flex items-end gap-2"
+            >
+              <div className="flex-1">
+                <Field
+                  label={t("catalog.opp.quantity")}
+                  hint={
+                    analysis
+                      ? t(
+                          `catalog.opp.quantitySource.${analysis.source}` as DictionaryKey,
+                        )
+                      : undefined
+                  }
+                >
+                  <Input
+                    name="qty"
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    defaultValue={analysis?.quantity ?? ""}
+                    className={big}
+                  />
+                </Field>
+              </div>
+              <Button
+                type="submit"
+                variant="secondary"
+                className={cx(big, analysis ? "mb-5" : undefined)}
+              >
+                {t("catalog.opp.analyze")}
+              </Button>
+            </form>
+            {tiers.length === 0 ? (
+              <p className="text-sm text-zinc-600">
+                {t("catalog.opp.tiers.empty")}
+              </p>
+            ) : !analysis ? (
+              <p className="text-sm text-zinc-600">
+                {t("catalog.opp.noQuantity")}
+              </p>
+            ) : opportunity ? (
+              <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+                <DescriptionList
+                  items={[
+                    [
+                      t("catalog.opp.today"),
+                      `${opportunity.quantity} × ${money(opportunity.currentUnitPrice)} = ${money(opportunity.currentTotal)}`,
+                    ],
+                    [
+                      t("catalog.opp.nextTier"),
+                      `${opportunity.nextTier.minQty} × ${money(opportunity.nextTier.price)} = ${money(opportunity.nextTotal)}`,
+                    ],
+                    [
+                      t("catalog.opp.extraUnits"),
+                      `${opportunity.extraQuantity}${
+                        boxesForQuantity(product, opportunity.extraQuantity)
+                          ? ` (${boxesForQuantity(product, opportunity.extraQuantity)} ${t("catalog.opp.boxes")})`
+                          : ""
+                      }`,
+                    ],
+                    [
+                      t("catalog.opp.unitSaving"),
+                      `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent}%)`,
+                    ],
+                    [
+                      t("catalog.opp.totalDifference"),
+                      `${opportunity.totalDifference > 0 ? "+" : ""}${money(opportunity.totalDifference)}`,
+                    ],
+                    [
+                      t("catalog.opp.marginal"),
+                      money(opportunity.marginalUnitCost),
+                    ],
+                  ]}
+                />
+                <p className="break-words border-t border-brand-200/70 pt-3 font-mono text-xs text-zinc-700">
+                  {t("catalog.opp.formula")}: {opportunity.formula}
+                </p>
+                <p className="text-xs text-brand-800/80">
+                  {t("catalog.opp.deterministic")}
+                </p>
+              </div>
+            ) : (
+              <Alert tone="neutral">{t("catalog.opp.none")}</Alert>
+            )}
+            <p className="text-xs text-zinc-500">{t("catalog.opp.internal")}</p>
+          </div>
+        </div>
+
+        {containerFits.length > 0 ? (
+          <div className="mt-5 border-t border-zinc-100 pt-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("catalog.opp.container.title")}
+            </h3>
+            <ul className="space-y-1.5 text-sm">
+              {containerFits.map((c) => (
+                <li
+                  key={c.containerId}
+                  className="flex flex-wrap items-center gap-x-2 gap-y-1"
+                >
+                  <span className="font-mono font-semibold text-zinc-900">
+                    {c.containerCode}
+                  </span>
+                  {c.customer ? (
+                    <span className="text-zinc-500">· {c.customer}</span>
+                  ) : null}
+                  <span className="text-zinc-800">
+                    {t("catalog.opp.container.line", {
+                      boxes: c.fit.boxes,
+                      units: c.fit.units ?? "—",
+                      cbm: c.remainingCbm.toFixed(2),
+                    })}
+                  </span>
+                  <TextLink
+                    href={`/app/containers/${c.containerId}`}
+                    className="text-xs"
+                  >
+                    {t("catalog.opp.container.open")}
+                  </TextLink>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-zinc-500">
+              {t("catalog.opp.container.formula")} ·{" "}
+              {t("catalog.opp.deterministic")}
+            </p>
+          </div>
+        ) : null}
       </Card>
     </>
   );

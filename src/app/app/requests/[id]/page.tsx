@@ -1,6 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
+import {
+  canSeeSupplier,
+  canViewOrder,
+  isWellmix,
+} from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getRequestForUser } from "@/lib/services/requests";
 import { getT } from "@/i18n/server";
@@ -62,6 +66,17 @@ export default async function RequestDetailPage({
   const supplierName = (supplierId: string) =>
     suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
   const invited = new Set(quotes.map((q) => q.supplierId));
+  /* Segunda Onda: origem (recompra, nova proposta, sourcing sob demanda) e link ao
+     pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
+  const origin =
+    request.origin && request.origin !== "manual" ? request.origin : null;
+  const sourceOrder = request.sourceOrderId
+    ? await store.get("orders", request.sourceOrderId)
+    : null;
+  const sourceOrderLink =
+    sourceOrder && canViewOrder(user, sourceOrder)
+      ? `/app/orders/${sourceOrder.id}`
+      : null;
   const selectedQuote = quotes.find((q) => q.id === request.selectedQuoteId);
   const downPayment = payments.find((p) => p.direction === "customer_in");
 
@@ -90,6 +105,15 @@ export default async function RequestDetailPage({
               <span className="font-medium text-zinc-700">
                 {customer?.name}
               </span>
+            ) : null}
+            {origin ? (
+              <Badge tone="brand">{t(`orders.origin.${origin}`)}</Badge>
+            ) : null}
+            {sourceOrderLink ? (
+              <TextLink href={sourceOrderLink} className="text-xs">
+                {t("orders.origin.sourceOrder")}
+                {sourceOrder ? ` #${sourceOrder.number}` : ""} →
+              </TextLink>
             ) : null}
           </span>
         }

@@ -59,7 +59,8 @@ export default async function SettingsPage({
   const { ok, error } = await searchParams;
   const t = await getT();
   const s = await getSettings();
-  const errorKey = `settings.error.${typeof error === "string" ? error : ""}` as DictionaryKey;
+  const errorKey =
+    `settings.error.${typeof error === "string" ? error : ""}` as DictionaryKey;
   const errorText =
     typeof error === "string" && error && t(errorKey) !== errorKey
       ? t(errorKey)
@@ -235,6 +236,35 @@ export default async function SettingsPage({
                 name="containerAllowMultiCustomer"
                 checked={s.containerAllowMultiCustomer}
                 hint={t("settings.hint.containerAllowMultiCustomer")}
+              />
+            </div>
+          </div>
+          <h3 className="border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-900">
+            {t("settings.section.compliance")}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="certificationExpiryWarningDays"
+              hint={t("settings.hint.certificationExpiryWarningDays")}
+            >
+              <Input
+                name="certificationExpiryWarningDays"
+                type="number"
+                step="1"
+                min="0"
+                defaultValue={s.certificationExpiryWarningDays}
+              />
+            </Field>
+            <div className="grid gap-3 sm:col-span-2">
+              <Checkbox
+                name="complianceGateEnabled"
+                checked={s.complianceGateEnabled}
+                hint={t("settings.hint.complianceGateEnabled")}
+              />
+              <Checkbox
+                name="afterSalesEnabled"
+                checked={s.afterSalesEnabled}
+                hint={t("settings.hint.afterSalesEnabled")}
               />
             </div>
           </div>

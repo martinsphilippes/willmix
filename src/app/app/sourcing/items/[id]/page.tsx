@@ -8,8 +8,10 @@ import {
   type ProductPhoto,
 } from "@/lib/db";
 import { loadSourcingItem } from "@/lib/services/sourcing";
+import { formatPriceTiers, sortTiers } from "@/lib/services/opportunities";
 import { divergencePercent } from "@/lib/logistics/cbm";
 import { getT } from "@/i18n/server";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
@@ -22,6 +24,8 @@ import {
   PageHeader,
   Select,
   TextLink,
+  Textarea,
+  cx,
   formatDate,
   formatMoney,
   linkClass,
@@ -29,12 +33,17 @@ import {
 import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton } from "@/components/submit-button";
 import {
+  linkSourcingItemRequestAction,
+  saveSourcingPriceTiersAction,
+} from "../../../actions/catalog";
+import {
   addSourcingMeasurementAction,
   addSourcingPhotosAction,
   discardSourcingItemAction,
   promoteSourcingItemAction,
   setPrimaryPhotoAction,
 } from "../../../actions/sourcing";
+import { catalogError } from "../../../products/_components/shared";
 import { ItemForm } from "../../_components/item-form";
 import {
   bigField,
@@ -57,14 +66,32 @@ export default async function SourcingItemPage({
   const { item, photos, measurements, visit, supplier } = data;
   const t = await getT();
   const store = getStore();
-  const [suppliers, lines, users] = await Promise.all([
+  const [suppliers, lines, users, customers, openRequests] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
     store.list("users"),
+    store.list("parties", { filter: { type: "customer" }, orderBy: "name" }),
+    // Demanda de cliente: solicitações em aberto sem produto do catálogo (ou a já vinculada).
+    store.list("requests", {
+      filter: { status: ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"] },
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
   ]);
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
-  const errorText = errorMessage(t, error);
+  const customerName = (pid: string) =>
+    customers.find((c) => c.id === pid)?.name ?? "—";
+  const linkableRequests = openRequests.filter(
+    (r) => !r.productId || r.id === item.requestId,
+  );
+  const tiers = sortTiers(item.priceTiers);
+  // Erros deste módulo (faixas, vínculo) têm texto próprio; os demais seguem o padrão do sourcing.
+  const errorText =
+    typeof error === "string" &&
+    t(`catalog.error.${error}` as DictionaryKey) !== `catalog.error.${error}`
+      ? catalogError(t, error)
+      : errorMessage(t, error);
   const supplierLabel = item.supplierName ?? supplier?.name ?? "—";
   const originals = photos.filter((p) => p.kind === "original");
   const photoLabel = (p: ProductPhoto) =>
@@ -90,6 +117,14 @@ export default async function SourcingItemPage({
             <Badge tone={sourcingTone(item.status)}>
               {t(`sourcing.status.${item.status}`)}
             </Badge>
+            {item.requestId ? (
+              <>
+                <Badge tone="brand">{t("catalog.sourcing.demand")}</Badge>
+                <TextLink href={`/app/requests/${item.requestId}`}>
+                  {t("catalog.sourcing.demand.open")}
+                </TextLink>
+              </>
+            ) : null}
             <span>{supplierLabel}</span>
             {visit ? (
               <TextLink href={`/app/sourcing/visits/${visit.id}`}>
@@ -120,7 +155,7 @@ export default async function SourcingItemPage({
 
       {/* Ordem no celular = ordem do DOM: fotos → ficha → medições → negociação → ações.
           No desktop, a ficha ocupa duas colunas e o resto fica à direita. */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_1fr] lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_1fr] lg:items-start">
         <Card
           title={t("sourcing.photo.gallery")}
           className="lg:col-start-3 lg:row-start-1"
@@ -244,7 +279,7 @@ export default async function SourcingItemPage({
           </form>
         </Card>
 
-        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:row-span-4">
+        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:row-span-5">
           <ItemForm t={t} item={item} suppliers={suppliers} lines={lines} />
         </div>
 
@@ -425,9 +460,112 @@ export default async function SourcingItemPage({
           </p>
         </Card>
 
+        {/* Segunda Onda: faixas de preço negociadas e demanda de cliente. */}
+        <Card
+          title={t("catalog.opp.tiers")}
+          className="lg:col-start-3 lg:row-start-4"
+        >
+          <div id="tiers" className="scroll-mt-4" />
+          {item.requestId ? (
+            <div className="mb-4">
+              <Alert tone="brand">
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span>{t("catalog.sourcing.demand.hint")}</span>
+                  <TextLink href={`/app/requests/${item.requestId}`}>
+                    {t("catalog.sourcing.demand.open")}
+                  </TextLink>
+                </span>
+              </Alert>
+            </div>
+          ) : null}
+          {tiers.length === 0 ? (
+            <p className="mb-3 text-sm text-zinc-500">
+              {t("catalog.opp.tiers.empty")}
+            </p>
+          ) : (
+            <ul className="mb-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
+              {tiers.map((tier) => (
+                <li
+                  key={tier.minQty}
+                  className="flex items-center justify-between gap-3 px-3 py-2"
+                >
+                  <span className="text-zinc-700">
+                    {t("catalog.opp.from")}{" "}
+                    <span className="font-semibold tabular-nums text-zinc-900">
+                      {formatNumber(tier.minQty)}
+                    </span>
+                  </span>
+                  <span className="font-semibold tabular-nums text-zinc-900">
+                    {formatMoney(tier.price, item.currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form
+            action={saveSourcingPriceTiersAction}
+            className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+          >
+            <input type="hidden" name="itemId" value={item.id} />
+            <Field
+              label={t("catalog.opp.tiers")}
+              hint={t("catalog.opp.tiersHint")}
+            >
+              <Textarea
+                name="tiers"
+                rows={3}
+                placeholder={"500;4.10\n1000;3.80"}
+                defaultValue={formatPriceTiers(tiers)}
+                className={cx(bigField, "min-h-0 font-mono")}
+              />
+            </Field>
+            <p className="text-xs text-zinc-500">
+              {t("catalog.sourcing.tiersHint")}
+            </p>
+            <SubmitButton
+              variant="secondary"
+              pendingText="…"
+              className="w-full sm:w-auto"
+            >
+              {t("catalog.opp.saveTiers")}
+            </SubmitButton>
+          </form>
+          <form
+            action={linkSourcingItemRequestAction}
+            className="mt-4 space-y-3 border-t border-zinc-100 pt-4"
+          >
+            <input type="hidden" name="itemId" value={item.id} />
+            <Field
+              label={t("catalog.sourcing.demand.link")}
+              hint={t("catalog.sourcing.demand.linkHint")}
+            >
+              <Select
+                name="requestId"
+                defaultValue={item.requestId ?? ""}
+                className={bigField}
+              >
+                <option value="">—</option>
+                {linkableRequests.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.productName} · {customerName(r.customerId)} ·{" "}
+                    {formatNumber(r.quantity)} {r.unit}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <SubmitButton
+              variant="secondary"
+              pendingText="…"
+              className="w-full sm:w-auto"
+            >
+              {t("common.save")}
+            </SubmitButton>
+          </form>
+        </Card>
+
         <Card
           title={t("sourcing.item.actions")}
-          className="lg:col-start-3 lg:row-start-4"
+          className="lg:col-start-3 lg:row-start-5"
         >
           <div className="space-y-4">
             {item.productId ? (

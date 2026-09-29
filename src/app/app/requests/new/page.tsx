@@ -92,6 +92,22 @@ export default async function NewRequestPage({
               ))}
             </Select>
           </Field>
+          {/* Sourcing sob demanda: produto fora do catálogo (só faz sentido sem produto selecionado). */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
+            <input
+              type="checkbox"
+              name="sourcingDemand"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-zinc-800">
+                {t("requests.sourcingDemand.label")}
+              </span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
+                {t("requests.sourcingDemand.hint")}
+              </span>
+            </span>
+          </label>
           <Field label={`${t("common.product")} (${t("common.name")})`}>
             <Input name="productName" placeholder="Ex.: Jarra de vidro 1,5 L" />
           </Field>

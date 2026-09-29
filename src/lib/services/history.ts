@@ -40,9 +40,11 @@ export async function loadCommercialHistory(
   filter: { customerId?: string } = {},
 ): Promise<HistoryRow[]> {
   const store = getStore();
-  const customerId =
-    user.role === "customer" ? (user.partyId ?? "") : filter.customerId;
   if (!isWellmix(user) && user.role !== "customer") return [];
+  // Cliente sem parceiro vinculado não tem histórico (nunca cai no "todos os clientes").
+  if (user.role === "customer" && !user.partyId) return [];
+  const customerId =
+    user.role === "customer" ? (user.partyId ?? undefined) : filter.customerId;
   const [orders, items, parties, requests, afterSales] = await Promise.all([
     store.list("orders", customerId ? { filter: { customerId } } : {}),
     store.list("order_items"),

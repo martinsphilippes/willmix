@@ -25,8 +25,11 @@ import {
 } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
 import { SubmitButton } from "@/components/submit-button";
+import { listCertifications } from "@/lib/services/compliance";
 import { createUserAction } from "../../actions";
 import { updatePartyExtraAction } from "../../actions/catalog";
+import { CertificationsSection } from "../../products/_components/certifications-section";
+import { catalogError } from "../../products/_components/shared";
 
 const roleForType: Record<string, string> = {
   customer: "customer",
@@ -52,7 +55,7 @@ export default async function PartyPage({
   if (!party) notFound();
   const t = await getT();
   const isSupplier = party.type === "supplier";
-  const [users, visits, products] = await Promise.all([
+  const [users, visits, products, certs, allUsers] = await Promise.all([
     store.list("users", { filter: { partyId: id } }),
     isSupplier
       ? store.list("supplier_visits", {
@@ -64,7 +67,10 @@ export default async function PartyPage({
     isSupplier
       ? store.list("products", { filter: { supplierId: id }, orderBy: "name" })
       : Promise.resolve([]),
+    isSupplier ? listCertifications("party", id) : Promise.resolve([]),
+    store.list("users"),
   ]);
+  const errorText = catalogError(t, error);
   const roles = isAdmin(user)
     ? ROLES
     : ROLES.filter((r) => r !== "admin" && r !== "operator");
@@ -94,11 +100,7 @@ export default async function PartyPage({
         }
       />
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
-      {error ? (
-        <Alert tone="danger">
-          {t("common.error")} ({error})
-        </Alert>
-      ) : null}
+      {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
         <Card title={t("common.edit")}>
           <PartyForm party={party} t={t} />
@@ -323,6 +325,20 @@ export default async function PartyPage({
             )}
           </Card>
         </div>
+      ) : null}
+
+      {/* Segunda Onda: certificações da fábrica (ISO, BSCI, auditorias). */}
+      {isSupplier ? (
+        <Card title={t("catalog.cert.party.title")} className="mt-6">
+          <CertificationsSection
+            entity="party"
+            entityId={party.id}
+            certs={certs}
+            users={allUsers}
+            user={user}
+            t={t}
+          />
+        </Card>
       ) : null}
     </>
   );

@@ -26,6 +26,7 @@ const {
 } = await import("@/lib/services/taxes");
 const { checkProductCompliance, addCertification } =
   await import("@/lib/services/compliance");
+const { canAccessDocument } = await import("@/lib/services/documents");
 const { listOpenReviews } = await import("@/lib/services/reviews");
 const { getAfterSales, answerAfterSales } =
   await import("@/lib/services/after-sales");
@@ -44,6 +45,7 @@ withTempStore();
 let admin: User;
 let customer: User;
 let supplierC: User;
+let supplierA: User;
 let broker: User;
 
 async function orderFor(
@@ -132,6 +134,7 @@ beforeAll(async () => {
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   customer = users.find((u) => u.email === "joao@lojista.com")!;
   supplierC = users.find((u) => u.email === "supplier.c@china.com")!;
+  supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
   broker = users.find((u) => u.email === "despachante@comex.com")!;
 });
 
@@ -196,6 +199,23 @@ describe("certificações e gate de conformidade", () => {
     expect(
       after.requirements.find((r) => r.key === "compliance_check")?.status,
     ).toBe("done");
+  });
+
+  it("certificado: despachante e o fornecedor dono abrem; outro fornecedor e cliente não", async () => {
+    const store = getStore();
+    // prod-piscina é do fornecedor-c; o certificado sobe com visibilidade "supplier".
+    const cert = await addCertification(admin, "product", "prod-piscina", {
+      kind: "CE",
+      document: new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "ce.pdf", {
+        type: "application/pdf",
+      }),
+    });
+    const doc = (await store.get("documents", cert.documentId!))!;
+    expect(doc.productId).toBe("prod-piscina");
+    expect(await canAccessDocument(broker, doc)).toBe(true);
+    expect(await canAccessDocument(supplierC, doc)).toBe(true);
+    expect(await canAccessDocument(supplierA, doc)).toBe(false);
+    expect(await canAccessDocument(customer, doc)).toBe(false);
   });
 });
 

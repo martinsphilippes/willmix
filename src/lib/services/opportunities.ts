@@ -173,3 +173,38 @@ export function boxesForQuantity(
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/**
+ * Faixas de preço em texto (uma por linha: "quantidade mínima;preço"), como o
+ * usuário digita na ficha ou no item de sourcing. Aceita ";" ou "|" como
+ * separador e vírgula decimal. Quantidades repetidas, zero ou negativas
+ * invalidam tudo (erro "invalid_tiers"); o resultado volta ordenado.
+ */
+export function parsePriceTiers(text: string): PriceTier[] {
+  const tiers: PriceTier[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const parts = line.split(/[;|]/).map((p) => p.trim());
+    if (parts.length !== 2) throw new Error("invalid_tiers");
+    const minQty = Number(parts[0].replace(/\./g, "").replace(",", "."));
+    const price = Number(parts[1].replace(",", "."));
+    if (
+      !Number.isInteger(minQty) ||
+      minQty <= 0 ||
+      !Number.isFinite(price) ||
+      price <= 0 ||
+      tiers.some((t) => t.minQty === minQty)
+    )
+      throw new Error("invalid_tiers");
+    tiers.push({ minQty, price });
+  }
+  return sortTiers(tiers);
+}
+
+/** Inverso de parsePriceTiers, para preencher o campo de edição. */
+export function formatPriceTiers(tiers: PriceTier[] | null | undefined) {
+  return sortTiers(tiers)
+    .map((t) => `${t.minQty};${t.price}`)
+    .join("\n");
+}

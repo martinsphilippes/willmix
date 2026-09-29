@@ -57,8 +57,23 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Esquema aditivo publicado (32 tabelas): `tax_classifications`, `certifications`, `after_sales`; `products.ncm`/`priceTiers`; `product_lines.requiredCertifications`; `requests.origin`/`sourceOrderId`; `sourcing_items.requestId`/`priceTiers`; `purchase_snapshots.ncm`.
 - Serviços: `taxes.ts`, `compliance.ts`, `after-sales.ts`, `history.ts`, `opportunities.ts`; `requests.ts` (`createFollowUpRequest`, sourcing sob demanda, gate de conformidade); `sourcing.ts` (promoção devolve o produto à solicitação); `tasks.ts` (pendências de pós-venda e de demanda); `control-tower.ts` (certificação a vencer); `engine.ts` (pós-venda ao concluir a entrega).
 - Configurações: `afterSalesEnabled`, `complianceGateEnabled`, `certificationExpiryWarningDays`.
-- Telas: ficha do produto com NCM, certificações e oportunidade; `/app/products/[id]/tax` (despachante); linhas com certificações obrigatórias; fornecedor com certificações; pedido com pós-venda e "comprar de novo / nova proposta"; `/app/after-sales`; `/app/history`; nova solicitação com "produto fora do catálogo".
-- 6 testes novos (21 no total).
+- Configurações expostas em `/app/settings` (seção "Conformidade e pós-venda").
+- 7 testes novos (22 no total).
+
+### Telas entregues na Segunda Onda
+
+- `/app/products/[id]`: seções "Classificação fiscal (NCM)" (sugestão heurística por palavra-chave, candidatas manuais/do despachante, validar/rejeitar; só a validada vai para o produto), "Certificações e compliance" (exigido pela linha × válido, vencendo, documento, validar/vencer/rejeitar) e "Oportunidade" (faixas de preço editáveis e custo marginal até a próxima faixa, com a fórmula; containers do cliente com espaço).
+- `/app/products/[id]/tax`: página só de classificação fiscal para Wellmix e despachante (sem preço, fornecedor ou cliente); o pedido linka para ela (Wellmix e despachante).
+- `/app/lines`: certificações obrigatórias por linha (badges + formulário). `/app/parties/[id]` (fornecedor): certificações do fornecedor. `/app/account` (fornecedor): registra as próprias certificações, que entram pendentes.
+- `/app/sourcing` e `/app/sourcing/items/[id]`: badge "Demanda de cliente" com link à solicitação, faixas de preço do item (copiadas na promoção), vínculo manual item ↔ solicitação em aberto sem produto.
+- Pedido: card "Pós-venda" (cliente avalia: nota 1–5, experiência, problemas, custos percebidos, sugestões, interesse em repor; Wellmix vê e encerra), card "Comprar de novo / Nova proposta" (solicitação derivada pré-preenchida), badge de origem e link ao pedido de origem (só para quem pode abri-lo). `/app/requests/[id]` mostra a mesma origem.
+- `/app/requests/new`: "produto fora do catálogo" cria a solicitação como sourcing sob demanda (item de sourcing + pendência da Wellmix).
+- `/app/after-sales` (Wellmix): avaliações por situação, nota, problemas e interesse. `/app/history` (Wellmix filtra por cliente; cliente vê o seu): produto → compras → quantidade → custo (FOB só Wellmix) → frequência → reposição.
+- Acesso a documentos: certificado (PDF) abre para o despachante e para o fornecedor dono do cadastro/produto; cliente e outros fornecedores não.
+
+### Validação da Segunda Onda
+
+Lint, typecheck, 22 testes unitários, E2E do caminho principal sobre o banco antigo (`.data-e2e` anterior à onda) e sobre seed novo, build de produção, esquema publicado no Appwrite (aditivo).
 
 ## Implementado na Prioridade Agora
 

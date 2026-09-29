@@ -292,6 +292,7 @@ export async function promoteSourcingItem(
     negotiatedAt: item.foundAt,
     sourcingItemId: item.id,
     primaryPhotoDocumentId: item.primaryPhotoDocumentId,
+    priceTiers: item.priceTiers,
   };
   let product: Product;
   if (item.productId && (await store.get("products", item.productId))) {
