@@ -1,11 +1,18 @@
 import "server-only";
 
-import { getStore, type Order, type Request, type User } from "@/lib/db";
+import {
+  getStore,
+  type Order,
+  type Request,
+  type RequestOrigin,
+  type User,
+} from "@/lib/db";
 import {
   ForbiddenError,
   assertWellmix,
   canViewRequest,
   isWellmix,
+  canViewOrder,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
@@ -14,6 +21,7 @@ import { notify, notifyWellmix } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
 import { openReview } from "./reviews";
+import { runComplianceGate } from "./compliance";
 
 export class RequestError extends Error {}
 
@@ -27,6 +35,9 @@ export interface CreateRequestInput {
   unit: string;
   deadline?: string | null;
   notes?: string | null;
+  /** Segunda Onda: recompra, nova proposta ou sourcing sob demanda (padrão manual). */
+  origin?: RequestOrigin | null;
+  sourceOrderId?: string | null;
 }
 
 /** Cliente cria para si; Wellmix cria em nome de qualquer cliente. Mesmo formulário e fluxo. */
@@ -58,6 +69,8 @@ export async function createRequest(
     sellPrice: null,
     sellCurrency: null,
     downPaymentAmount: null,
+    origin: input.origin ?? "manual",
+    sourceOrderId: input.sourceOrderId ?? null,
     notes: input.notes ?? null,
   });
   await audit(
@@ -67,6 +80,55 @@ export async function createRequest(
     request.id,
     `Solicitação: ${request.productName}`,
   );
+  // Sourcing sob demanda: produto ainda não catalogado vira item de sourcing para o time na China.
+  if (request.origin === "sourcing_demand" && !request.productId) {
+    const customer = await store.get("parties", request.customerId);
+    await store.create("sourcing_items", {
+      visitId: null,
+      supplierId: null,
+      supplierName: null,
+      productId: null,
+      lineId: null,
+      category: null,
+      name: request.productName,
+      description: [request.description, request.specification]
+        .filter(Boolean)
+        .join("\n"),
+      supplierSku: null,
+      material: null,
+      color: null,
+      pantone: null,
+      price: null,
+      currency: null,
+      moq: null,
+      masterBoxQty: null,
+      innerBoxQty: null,
+      netWeightKg: null,
+      grossWeightKg: null,
+      widthCm: null,
+      heightCm: null,
+      lengthCm: null,
+      boxLengthCm: null,
+      boxWidthCm: null,
+      boxHeightCm: null,
+      cbm: null,
+      conditions: null,
+      notes: `Demanda do cliente ${customer?.name ?? request.customerId}: ${request.quantity} ${request.unit}${request.deadline ? ` até ${request.deadline}` : ""}.`,
+      foundAt: null,
+      city: null,
+      location: null,
+      status: "draft",
+      primaryPhotoDocumentId: null,
+      createdByUserId: user.id,
+      requestId: request.id,
+      priceTiers: null,
+    });
+    await notifyWellmix({
+      subject: `Sourcing sob demanda: ${request.productName}`,
+      body: "Cliente pediu um produto fora do catálogo. Localize fornecedores, cadastre opções e abra a RFQ.",
+      link: `/app/sourcing?tab=items&status=draft`,
+    });
+  }
   await notifyWellmix({
     subject: `Nova solicitação: ${request.productName}`,
     body: `${request.quantity} ${request.unit}. Abra a RFQ para os fornecedores.`,
@@ -347,6 +409,8 @@ async function createOrderFromRequest(
   );
   // Snapshot da negociação: o que foi comprado fica congelado neste pedido.
   await createPurchaseSnapshot(user, order, item, quote, product);
+  // Gate de conformidade: linha com certificação obrigatória sem certificação válida.
+  await runComplianceGate(user, order, product);
   // Gate: FOB zerado ou ausente vai para a fila de revisão (não bloqueia o pedido).
   const gates = await getSettings();
   if (gates.reviewOnZeroPrice && !(fobTotal && fobTotal > 0)) {
@@ -355,7 +419,8 @@ async function createOrderFromRequest(
       entity: "order",
       entityId: order.id,
       rule: "order.zeroPrice",
-      problem: "Pedido criado sem valor FOB (preço zerado ou cotação sem preço)",
+      problem:
+        "Pedido criado sem valor FOB (preço zerado ou cotação sem preço)",
       expected: "> 0",
       found: fobTotal ?? "—",
       responsibleRole: "operator",
@@ -440,4 +505,53 @@ export async function getRequestForUser(user: User, requestId: string) {
   const request = await store.get("requests", requestId);
   if (!request || !canViewRequest(user, request)) return null;
   return request;
+}
+
+/**
+ * Recompra ("comprar de novo") ou nova proposta a partir de um pedido anterior:
+ * reaproveita a solicitação/RFQ existente, pré-preenchida com o produto do pedido.
+ * Cliente só para os próprios pedidos; Wellmix para qualquer um.
+ */
+export async function createFollowUpRequest(
+  user: User,
+  orderId: string,
+  input: {
+    quantity: number;
+    origin: "replenishment" | "proposal";
+    notes?: string | null;
+    deadline?: string | null;
+  },
+): Promise<Request> {
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order || !canViewOrder(user, order)) throw new ForbiddenError();
+  if (!(isWellmix(user) || user.role === "customer"))
+    throw new ForbiddenError();
+  const [item] = await store.list("order_items", { filter: { orderId } });
+  if (!item) throw new RequestError("order_item_missing");
+  const previous = await store.get("requests", order.requestId);
+  const product = item.productId
+    ? await store.get("products", item.productId)
+    : null;
+  return createRequest(user, {
+    customerId: order.customerId,
+    productId: item.productId,
+    productName: item.name,
+    description:
+      previous?.description ??
+      `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} do pedido #${order.number}`,
+    specification: previous?.specification ?? product?.specification ?? null,
+    quantity: input.quantity,
+    unit: item.unit,
+    deadline: input.deadline ?? null,
+    notes:
+      [
+        `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} a partir do pedido #${order.number} (última quantidade ${item.quantity} ${item.unit}).`,
+        input.notes,
+      ]
+        .filter(Boolean)
+        .join("\n") || null,
+    origin: input.origin,
+    sourceOrderId: order.id,
+  });
 }

@@ -264,6 +264,13 @@
           "array": false,
           "default": false,
           "type": "boolean"
+        },
+        {
+          "key": "requiredCertifications",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": []
@@ -503,6 +510,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "ncm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "priceTiers",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -665,6 +687,28 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "origin",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "manual",
+            "replenishment",
+            "proposal",
+            "sourcing_demand"
+          ]
+        },
+        {
+          "key": "sourceOrderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -2458,6 +2502,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "requestId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "priceTiers",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -2990,6 +3049,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "ncm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
         }
       ],
       "indexes": [
@@ -3827,6 +3894,419 @@
         }
       ],
       "indexes": [
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "tax_classifications",
+      "databaseId": "willmix",
+      "name": "Classificação fiscal (NCM)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "productId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "ncm",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "description",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "taxes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "adminTreatment",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "source",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "manual",
+            "heuristic",
+            "ai",
+            "broker"
+          ]
+        },
+        {
+          "key": "sourceRef",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "suggested",
+            "validated",
+            "rejected"
+          ]
+        },
+        {
+          "key": "suggestedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "validatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "validatedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_product",
+          "type": "key",
+          "columns": [
+            "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "certifications",
+      "databaseId": "willmix",
+      "name": "Certificações",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "entity",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "entityId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "kind",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "name",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "issuer",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "number",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "validUntil",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "documentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "valid",
+            "expired",
+            "rejected"
+          ]
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "validatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "validatedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_entity",
+          "type": "key",
+          "columns": [
+            "entity",
+            "entityId"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "after_sales",
+      "databaseId": "willmix",
+      "name": "Pós-venda",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "open",
+            "answered",
+            "closed"
+          ]
+        },
+        {
+          "key": "rating",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "experience",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "problems",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "perceivedCosts",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "suggestions",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "repurchaseInterest",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "yes",
+            "maybe",
+            "no"
+          ]
+        },
+        {
+          "key": "answeredAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "answeredByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "closedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_customer",
+          "type": "key",
+          "columns": [
+            "customerId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
         {
           "key": "by_status",
           "type": "key",

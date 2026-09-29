@@ -15,8 +15,12 @@ import { audit } from "@/lib/services/audit";
 import { notify, notifyWellmix } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { ROLE_PARTY_FIELD, STAGE_TEMPLATES, nextStageKey } from "./stages";
-import { compareInspection, isInspectionMeasureKey } from "@/lib/services/inspection";
+import {
+  compareInspection,
+  isInspectionMeasureKey,
+} from "@/lib/services/inspection";
 import { openReview, resolveReviews } from "@/lib/services/reviews";
+import { openAfterSales } from "@/lib/services/after-sales";
 
 export class WorkflowError extends Error {}
 
@@ -347,7 +351,8 @@ async function checkWeightDivergence(
       expected: declaredWeight,
       found: measured,
       responsibleRole: "operator",
-      action: "Revisar com o fornecedor; aprovar a divergência ou pedir nova medição.",
+      action:
+        "Revisar com o fornecedor; aprovar a divergência ou pedir nova medição.",
       link: `/app/orders/${order.id}`,
     });
     await notifyWellmix({
@@ -426,6 +431,8 @@ async function completeStage(user: User | null, stage: Stage) {
 
   const order = await store.get("orders", stage.orderId);
   if (!order) return;
+  // Entregue: o processo continua no pós-venda (entidade própria; as etapas não mudam).
+  if (stage.key === "DELIVERED") await openAfterSales(user, order);
   const next = nextStageKey(stage.key);
   if (!next) {
     await store.update("orders", order.id, {

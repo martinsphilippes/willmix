@@ -198,7 +198,17 @@ export async function saveSourcingItemAction(form: FormData) {
       status: current?.status === "promoted" ? "promoted" : requestedStatus,
     });
     // CBM é sempre recalculado das dimensões da caixa master (nunca digitado aqui).
-    const item = await saveSourcingItem(user, { ...parsed, cbm: null }, id);
+    const item = await saveSourcingItem(
+      user,
+      {
+        ...parsed,
+        cbm: null,
+        // Mantém a demanda do cliente e as faixas de preço já registradas.
+        requestId: current?.requestId ?? null,
+        priceTiers: current?.priceTiers ?? null,
+      },
+      id,
+    );
     const photos = files(form, "photos");
     if (photos.length > 0) {
       await addPhotos(user, { sourcingItemId: item.id }, photos, "original");

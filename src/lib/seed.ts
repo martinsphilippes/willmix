@@ -233,7 +233,13 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     );
   }
 
-  const lines = [
+  // Brinquedos e infláveis exigem Inmetro; utilidades (usada pelo E2E) não exige nada.
+  const lines: Array<{
+    id: string;
+    name: string;
+    requirements: typeof DEFAULT_PREPARATION_REQUIREMENTS;
+    requiredCertifications?: string[];
+  }> = [
     {
       id: "linha-utilidades",
       name: "Utilidades domésticas",
@@ -243,11 +249,13 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       id: "linha-brinquedos",
       name: "Brinquedos",
       requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+      requiredCertifications: ["Inmetro"],
     },
     {
       id: "linha-inflaveis",
       name: "Infláveis",
       requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+      requiredCertifications: ["Inmetro"],
     },
   ];
   for (const line of lines) {
@@ -256,6 +264,7 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: line.name,
       manualDocumentId: null,
       requirements: line.requirements,
+      requiredCertifications: line.requiredCertifications ?? null,
       active: true,
     });
   }
@@ -295,6 +304,11 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       boxWidthCm: 32,
       boxHeightCm: 42,
       source: "sourcing",
+      priceTiers: [
+        { minQty: 500, price: 9.5 },
+        { minQty: 1000, price: 8.9 },
+        { minQty: 2000, price: 8.2 },
+      ],
     },
     {
       id: "prod-boneca",
@@ -320,6 +334,10 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       boxWidthCm: 34,
       boxHeightCm: 68,
       source: "import",
+      priceTiers: [
+        { minQty: 2000, price: 3.2 },
+        { minQty: 5000, price: 2.95 },
+      ],
     },
     {
       id: "prod-piscina",
@@ -357,6 +375,23 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       cbm: boxCbm(sheet),
     });
   }
+
+  // A boneca tem Inmetro válido; a piscina (linha que exige) não tem: mostra o gate de conformidade.
+  await store.create("certifications", {
+    entity: "product",
+    entityId: "prod-boneca",
+    kind: "Inmetro",
+    name: "Certificado de conformidade Inmetro",
+    issuer: "OCP credenciado",
+    number: "INMETRO-2026-0421",
+    validUntil: new Date(Date.now() + 300 * 86400000).toISOString(),
+    documentId: null,
+    status: "valid",
+    notes: null,
+    createdByUserId: users[0].id,
+    validatedByUserId: users[0].id,
+    validatedAt: new Date().toISOString(),
+  });
 
   // Sourcing de demonstração: uma visita e um produto encontrado ainda não promovido.
   const visit = await store.create("supplier_visits", {
@@ -411,6 +446,8 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     status: "negotiating",
     primaryPhotoDocumentId: null,
     createdByUserId: users[0].id,
+    requestId: null,
+    priceTiers: null,
   });
   return { created: true, users };
 }

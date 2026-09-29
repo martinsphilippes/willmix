@@ -212,6 +212,36 @@ export const INSPECTION_RESULTS = [
 ] as const;
 export type InspectionResult = (typeof INSPECTION_RESULTS)[number];
 
+/* ---- Segunda Onda: NCM, certificações, pós-venda, reposição, sourcing sob demanda ---- */
+
+/** Origem de uma solicitação: manual (padrão), recompra, nova proposta ou produto ainda não catalogado. */
+export const REQUEST_ORIGINS = [
+  "manual",
+  "replenishment",
+  "proposal",
+  "sourcing_demand",
+] as const;
+export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
+
+/** Classificação fiscal: sugestão nunca é definitiva; só "validated" vale. */
+export const TAX_STATUSES = ["suggested", "validated", "rejected"] as const;
+export type TaxStatus = (typeof TAX_STATUSES)[number];
+export const TAX_SOURCES = ["manual", "heuristic", "ai", "broker"] as const;
+export type TaxSource = (typeof TAX_SOURCES)[number];
+
+export const CERTIFICATION_STATUSES = [
+  "pending",
+  "valid",
+  "expired",
+  "rejected",
+] as const;
+export type CertificationStatus = (typeof CERTIFICATION_STATUSES)[number];
+
+export const AFTER_SALES_STATUSES = ["open", "answered", "closed"] as const;
+export type AfterSalesStatus = (typeof AFTER_SALES_STATUSES)[number];
+export const REPURCHASE_INTERESTS = ["yes", "maybe", "no"] as const;
+export type RepurchaseInterest = (typeof REPURCHASE_INTERESTS)[number];
+
 export const IMPORT_BATCH_STATUSES = [
   "uploaded",
   "mapped",
@@ -271,6 +301,8 @@ export interface ProductLine extends BaseRow {
   /** JSON: RequirementTemplate[] aplicados na etapa PREPARATION. */
   requirements: RequirementTemplate[];
   active: boolean;
+  /** Certificações obrigatórias (ex.: ["Inmetro"]); sem certificação válida o pedido entra em revisão. */
+  requiredCertifications: string[] | null;
 }
 
 export interface Product extends BaseRow {
@@ -306,6 +338,15 @@ export interface Product extends BaseRow {
   negotiatedAt: string | null;
   sourcingItemId: string | null;
   primaryPhotoDocumentId: string | null;
+  /** NCM validado (cópia da classificação "validated"); nunca vem direto de sugestão. */
+  ncm: string | null;
+  /** Faixas de preço por quantidade negociadas: [{ minQty, price }]. Base da análise de oportunidade. */
+  priceTiers: PriceTier[] | null;
+}
+
+export interface PriceTier {
+  minQty: number;
+  price: number;
 }
 
 export interface Request extends BaseRow {
@@ -326,6 +367,10 @@ export interface Request extends BaseRow {
   sellCurrency: string | null;
   downPaymentAmount: number | null;
   notes: string | null;
+  /* Segunda Onda (nulos nas solicitações antigas = manual) */
+  origin: RequestOrigin | null;
+  /** Pedido anterior de que esta solicitação deriva (recompra, nova proposta). */
+  sourceOrderId: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -535,6 +580,9 @@ export interface SourcingItem extends BaseRow {
   status: SourcingStatus;
   primaryPhotoDocumentId: string | null;
   createdByUserId: string;
+  /** Sourcing sob demanda: solicitação do cliente que originou a busca. */
+  requestId: string | null;
+  priceTiers: PriceTier[] | null;
 }
 
 export interface ProductPhoto extends BaseRow {
@@ -602,6 +650,7 @@ export interface PurchaseSnapshot extends BaseRow {
   /** Ex.: "gerado retroativamente" para pedidos anteriores ao snapshot. */
   note: string | null;
   createdByUserId: string;
+  ncm: string | null;
 }
 
 export interface PurchaseSchedule extends BaseRow {
@@ -723,6 +772,61 @@ export interface ImportBatch extends BaseRow {
   createdByUserId: string;
 }
 
+/* ---- Segunda Onda ---- */
+
+/** Candidatas e classificação fiscal validada de um produto. */
+export interface TaxClassification extends BaseRow {
+  productId: string;
+  ncm: string;
+  description: string | null;
+  /** Alíquotas informadas (%), sem cálculo automático: { II, IPI, PIS, COFINS, ICMS }. */
+  taxes: Record<string, number> | null;
+  adminTreatment: string | null;
+  notes: string | null;
+  source: TaxSource;
+  /** Texto livre da fonte (site, despachante, tabela). */
+  sourceRef: string | null;
+  status: TaxStatus;
+  suggestedByUserId: string | null;
+  validatedByUserId: string | null;
+  validatedAt: string | null;
+}
+
+/** Certificação/ensaio de produto ou fornecedor, com documento e validade. */
+export interface Certification extends BaseRow {
+  entity: "product" | "party";
+  entityId: string;
+  /** Tipo (ex.: Inmetro, CE, ensaio de laboratório) — casa com ProductLine.requiredCertifications. */
+  kind: string;
+  name: string | null;
+  issuer: string | null;
+  number: string | null;
+  validUntil: string | null;
+  documentId: string | null;
+  status: CertificationStatus;
+  notes: string | null;
+  createdByUserId: string;
+  validatedByUserId: string | null;
+  validatedAt: string | null;
+}
+
+/** Pós-venda: aberto na entrega; o cliente responde; a Wellmix encerra. */
+export interface AfterSales extends BaseRow {
+  orderId: string;
+  customerId: string;
+  status: AfterSalesStatus;
+  rating: number | null;
+  experience: string | null;
+  problems: string | null;
+  perceivedCosts: string | null;
+  suggestions: string | null;
+  repurchaseInterest: RepurchaseInterest | null;
+  answeredAt: string | null;
+  answeredByUserId: string | null;
+  closedAt: string | null;
+  notes: string | null;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -753,6 +857,9 @@ export interface Tables {
   review_items: ReviewItem;
   inspection_results: InspectionResultRow;
   import_batches: ImportBatch;
+  tax_classifications: TaxClassification;
+  certifications: Certification;
+  after_sales: AfterSales;
 }
 export type TableName = keyof Tables;
 
@@ -856,6 +963,7 @@ export const TABLES: Record<TableName, TableDef> = {
       manualDocumentId: id(false),
       requirements: json(),
       active: bool(),
+      requiredCertifications: json(),
     },
   },
   products: {
@@ -891,6 +999,8 @@ export const TABLES: Record<TableName, TableDef> = {
       negotiatedAt: datetime(),
       sourcingItemId: id(false),
       primaryPhotoDocumentId: id(false),
+      ncm: str(10),
+      priceTiers: json(),
     },
     indexes: [
       { key: "by_line", type: "key", columns: ["lineId"] },
@@ -916,6 +1026,8 @@ export const TABLES: Record<TableName, TableDef> = {
       sellCurrency: str(3),
       downPaymentAmount: float(),
       notes: text(),
+      origin: enumOf(REQUEST_ORIGINS, false),
+      sourceOrderId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -1190,6 +1302,8 @@ export const TABLES: Record<TableName, TableDef> = {
       status: enumOf(SOURCING_STATUSES),
       primaryPhotoDocumentId: id(false),
       createdByUserId: id(),
+      requestId: id(false),
+      priceTiers: json(),
     },
     indexes: [
       { key: "by_visit", type: "key", columns: ["visitId"] },
@@ -1271,6 +1385,7 @@ export const TABLES: Record<TableName, TableDef> = {
       photoDocumentIds: json(),
       note: text(),
       createdByUserId: id(),
+      ncm: str(10),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
@@ -1408,6 +1523,69 @@ export const TABLES: Record<TableName, TableDef> = {
     },
     indexes: [{ key: "by_status", type: "key", columns: ["status"] }],
   },
+  tax_classifications: {
+    label: "Classificação fiscal (NCM)",
+    columns: {
+      productId: id(),
+      ncm: str(10, true),
+      description: text(),
+      taxes: json(),
+      adminTreatment: text(),
+      notes: text(),
+      source: enumOf(TAX_SOURCES),
+      sourceRef: str(255),
+      status: enumOf(TAX_STATUSES),
+      suggestedByUserId: id(false),
+      validatedByUserId: id(false),
+      validatedAt: datetime(),
+    },
+    indexes: [{ key: "by_product", type: "key", columns: ["productId"] }],
+  },
+  certifications: {
+    label: "Certificações",
+    columns: {
+      entity: str(20, true),
+      entityId: id(),
+      kind: str(60, true),
+      name: str(160),
+      issuer: str(160),
+      number: str(80),
+      validUntil: datetime(),
+      documentId: id(false),
+      status: enumOf(CERTIFICATION_STATUSES),
+      notes: text(),
+      createdByUserId: id(),
+      validatedByUserId: id(false),
+      validatedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_entity", type: "key", columns: ["entity", "entityId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  after_sales: {
+    label: "Pós-venda",
+    columns: {
+      orderId: id(),
+      customerId: id(),
+      status: enumOf(AFTER_SALES_STATUSES),
+      rating: int(),
+      experience: text(),
+      problems: text(),
+      perceivedCosts: text(),
+      suggestions: text(),
+      repurchaseInterest: enumOf(REPURCHASE_INTERESTS, false),
+      answeredAt: datetime(),
+      answeredByUserId: id(false),
+      closedAt: datetime(),
+      notes: text(),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
 };
 
 /* ------------------------------------------------------------------------ */
@@ -1452,7 +1630,14 @@ export const PRODUCT_EXTRA_DEFAULTS = {
   negotiatedAt: null,
   sourcingItemId: null,
   primaryPhotoDocumentId: null,
+  ncm: null,
+  priceTiers: null,
 } satisfies Partial<Product>;
+
+export const REQUEST_EXTRA_DEFAULTS = {
+  origin: null,
+  sourceOrderId: null,
+} satisfies Partial<Request>;
 
 export const DOCUMENT_EXTRA_DEFAULTS = {
   productId: null,

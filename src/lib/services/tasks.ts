@@ -12,7 +12,9 @@ export interface Task {
     | "confirm_payment"
     | "pay"
     | "rfq"
-    | "review";
+    | "review"
+    | "after_sales"
+    | "sourcing_demand";
   title: string;
   detail: string;
   link: string;
@@ -94,6 +96,43 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       });
     }
   }
+  // Pós-venda aberto: o cliente avalia a compra.
+  if (user.role === "customer" && user.partyId) {
+    const open = await store.list("after_sales", {
+      filter: { customerId: user.partyId, status: "open" },
+    });
+    for (const a of open) {
+      const order = await store.get("orders", a.orderId);
+      if (!order) continue;
+      tasks.push({
+        kind: "after_sales",
+        title: `Avalie a compra: pedido #${order.number}`,
+        detail: "Como foi a experiência? Quer repor?",
+        link: `/app/orders/${order.id}#after-sales`,
+        dueAt: null,
+        overdue: false,
+        orderNumber: order.number,
+      });
+    }
+  }
+
+  // Sourcing sob demanda: produto pedido por cliente ainda sem fornecedor.
+  if (isWellmix(user)) {
+    const demands = await store.list("sourcing_items", {
+      filter: { status: ["draft", "negotiating"] },
+    });
+    for (const d of demands.filter((x) => x.requestId)) {
+      tasks.push({
+        kind: "sourcing_demand",
+        title: `Sourcing sob demanda: ${d.name}`,
+        detail: d.notes ?? "Localizar fornecedores e cadastrar opções",
+        link: `/app/sourcing/items/${d.id}`,
+        dueAt: null,
+        overdue: false,
+      });
+    }
+  }
+
   // Fila "itens para revisão" (gates): uma pendência por item aberto, só para a Wellmix.
   if (isWellmix(user)) {
     const reviews = await store.list("review_items", {
