@@ -42,6 +42,8 @@ export interface UploadInput {
   /** Fotos de produto e de sourcing (sem pedido nem solicitação). */
   productId?: string | null;
   sourcingItemId?: string | null;
+  /** Arquivo de kit de marketing (prévia ou final). */
+  kitId?: string | null;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -90,6 +92,7 @@ export async function uploadDocument(
     visibility: input.visibility ?? defaultVisibility(input.type),
     productId: input.productId ?? null,
     sourcingItemId: input.sourcingItemId ?? null,
+    kitId: input.kitId ?? null,
   });
   await audit(
     user,
@@ -127,6 +130,12 @@ export async function canAccessDocument(
 ): Promise<boolean> {
   if (isWellmix(user) || doc.uploadedByUserId === user.id) return true;
   const store = getStore();
+  if (doc.kitId) {
+    // Kit de marketing: prévia a partir da oferta, arquivo final só depois de liberado.
+    const { canViewKitDocument } = await import("./marketing");
+    const kit = await store.get("marketing_kits", doc.kitId);
+    return !!kit && canViewKitDocument(user, kit, doc.id);
+  }
   if (doc.orderId) {
     const order = await store.get("orders", doc.orderId);
     if (!order || !canViewOrder(user, order)) return false;

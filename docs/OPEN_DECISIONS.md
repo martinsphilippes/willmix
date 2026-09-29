@@ -28,6 +28,12 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | `afterSalesEnabled`        | `true`     | Abre o pós-venda ao concluir a entrega                                      |
 | `complianceGateEnabled`    | `true`     | Linha com certificação obrigatória sem certificação válida bloqueia a liberação |
 | `certificationExpiryWarningDays` | `30` | Aviso de certificação a vencer                                              |
+| `aiMode`                   | `AUTO`     | AUTO = API se houver `ANTHROPIC_API_KEY`, senão manual; MOCK = exemplo rotulado; MANUAL = desligado |
+| `aiModel`                  | `claude-sonnet-5-5` | Modelo usado no modo API                                            |
+| `marketingEnabled`         | `true`     | Marketing studio e kits                                                     |
+| `marketingKitDefaultPrice` | `200`      | Preço padrão do kit (editável por kit até a compra); moeda em `marketingKitCurrency` |
+| `radarGateEnabled`         | `true`     | Importação própria sem RADAR abre item de revisão                           |
+| `importerName`             | `Wellmix`  | Nome da importadora dona da plataforma (preparação multi-importador)        |
 
 ## Decisões de modelagem tomadas
 
@@ -42,6 +48,9 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Visão comercial: "disponível" é o volume de itens de container sem pedido; sem estoque cadastrado, não se inventa valor.
 - NCM: sugestão (heurística ou IA) nunca é definitiva; só a classificação validada por Wellmix ou despachante vale e é copiada ao produto e ao snapshot.
 - Oportunidade de compra: só com faixas de preço negociadas e espaço real em container; a fórmula é exibida.
+- IA: sugestão nunca vira cadastro sem confirmação; material e dados comerciais exigem escolha explícita do operador; preço, MOQ, dimensões e certificações nunca são sugeridos.
+- Kit de marketing: prévia visível ao cliente a partir da oferta; arquivos finais só depois do pagamento confirmado e da liberação; preço travado após a compra.
+- Modalidade de operação: cliente sem cadastro explícito = "não informado" (sem gate); o pedido guarda a modalidade vigente na criação.
 
 ## A confirmar com o negócio
 

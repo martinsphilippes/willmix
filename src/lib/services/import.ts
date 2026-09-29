@@ -3,6 +3,7 @@ import "server-only";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
+  LINE_EXTRA_DEFAULTS,
   PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
   type User,
@@ -86,6 +87,7 @@ export async function importCsv(user: User, entity: string, text: string) {
         continue;
       }
       await store.create("product_lines", {
+            ...LINE_EXTRA_DEFAULTS,
         name: row.name,
         manualDocumentId: null,
         requirements: DEFAULT_PREPARATION_REQUIREMENTS,

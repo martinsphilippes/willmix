@@ -21,6 +21,8 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 | Integrações            | Adaptadores com modo manual/mock                   | Sankhya, boleto, e-mail e WhatsApp não bloqueiam o fluxo                                          |
 | i18n                   | Dicionários pt, en, zh em código                   | Fornecedores em chinês e inglês; sem plataforma de tradução                                       |
 | Testes                 | vitest (fluxo e permissões) e Playwright (E2E)     | Happy path garantido antes de aumentar cobertura                                                  |
+| IA                     | Adaptador `api`/`mock`/`manual`, prompts centralizados | Sugere; nunca decide. Sem chave o sistema segue manual; prompts por linha em `product_lines.prompts` |
+| Multi-importador       | `importerId` nulo = Wellmix; sem tenant hoje       | Evita decisões que impeçam oferecer a plataforma a terceiros, sem transformar tudo em SaaS agora  |
 
 ## 4. Módulos
 
@@ -31,6 +33,18 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 5. Control Tower (`services/control-tower.ts`): pedidos ativos, onde estão, quem precisa agir, atrasos e exceções.
 6. Conta corrente do fornecedor, multas (jurídico), cadastros com importação CSV, configurações.
 7. Auditoria (`services/audit.ts`): usuário, ação, entidade, resumo, antes/depois.
+8. Visão de Produto (`ai/prompts.ts`, `integrations/ai.ts`, `services/ai-suggestions.ts`, `services/marketing.ts`, `services/operations.ts`, `services/product-cycle.ts`): cadastro por foto com confirmação humana, marketing studio e kit (prévia → oferta → compra → liberação), modalidade de operação do cliente (RADAR), ciclo contínuo do produto.
+
+### Estratégia multi-importador (preparação)
+
+Hoje há uma importadora (Wellmix): `WELLMIX_ROLES` são os papéis internos e as configurações são globais. Para oferecer a plataforma a outro importador sem reconstruir:
+
+1. Entidade `importers` (nome, marca, configurações próprias) e `importerId` obrigatório em `users`, `parties`, `products`, `requests`, `orders`, `containers` (as colunas em `users` e `parties` já existem, nulas = Wellmix).
+2. `isWellmix(user)` vira `isImporterStaff(user)` e cada `canView*` compara `importerId`; consultas do servidor filtram por importador (o `Store` já só aceita filtros de igualdade, o que facilita).
+3. Configurações por importador (`settings.importerId`), com fallback nas globais.
+4. Fornecedores podem atender vários importadores: a relação vira tabela própria em vez de coluna.
+
+Nada disso é feito agora; a regra é só não tomar decisões que tornem isso impossível (por exemplo, nenhum ID de parceiro fixo em código além do seed).
 
 ## 5. Convenções
 

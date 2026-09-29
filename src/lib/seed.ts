@@ -4,6 +4,11 @@ import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
   PRODUCT_EXTRA_DEFAULTS,
+  USER_EXTRA_DEFAULTS,
+  LINE_EXTRA_DEFAULTS,
+  type LinePrompts,
+  type OperationMode,
+  type RadarStatus,
   type Product,
   type Role,
   type User,
@@ -118,6 +123,8 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     city?: string;
     contactName?: string;
     wechat?: string | null;
+    operationMode?: OperationMode;
+    radar?: RadarStatus;
   }> = [
     {
       id: "cliente-joao",
@@ -125,6 +132,9 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: "Loja do João Ltda",
       country: "BR",
       email: "joao@lojista.com",
+      // Opera via estrutura/trade da Wellmix (não tem RADAR): nenhum gate dispara.
+      operationMode: "via_trade",
+      radar: "none",
     },
     {
       id: "fornecedor-a",
@@ -200,6 +210,8 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       city: party.city ?? null,
       contactName: party.contactName ?? null,
       wechat: party.wechat ?? null,
+      operationMode: party.operationMode ?? null,
+      radar: party.radar ?? null,
     });
   }
 
@@ -222,6 +234,7 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     }
     users.push(
       await store.create("users", {
+        ...USER_EXTRA_DEFAULTS,
         email: u.email,
         name: u.name,
         role: u.role,
@@ -239,11 +252,22 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     name: string;
     requirements: typeof DEFAULT_PREPARATION_REQUIREMENTS;
     requiredCertifications?: string[];
+    prompts?: LinePrompts;
   }> = [
     {
       id: "linha-utilidades",
       name: "Utilidades domésticas",
       requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+      // Prompts por linha (Visão de Produto): base + linha + produto + contexto.
+      prompts: {
+        descriptionPrompt:
+          "Utilidades domésticas para o varejo brasileiro: destaque uso, capacidade e material; nada de promessas técnicas.",
+        marketingPrompt:
+          "Tom prático e acolhedor, foco em praticidade no dia a dia da casa.",
+        imagePrompt: "Ambiente de cozinha clara, produto em primeiro plano.",
+        requiredAttributes: ["material", "cor", "dimensões"],
+        validationRules: ["Não citar marcas de terceiros"],
+      },
     },
     {
       id: "linha-brinquedos",
@@ -260,11 +284,13 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
   ];
   for (const line of lines) {
     await store.create("product_lines", {
+      ...LINE_EXTRA_DEFAULTS,
       id: line.id,
       name: line.name,
       manualDocumentId: null,
       requirements: line.requirements,
       requiredCertifications: line.requiredCertifications ?? null,
+      prompts: line.prompts ?? null,
       active: true,
     });
   }
@@ -448,6 +474,32 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     createdByUserId: users[0].id,
     requestId: null,
     priceTiers: null,
+  });
+
+  // Marketing studio: um kit em rascunho para o cliente, alimentado pela ficha da panela.
+  await store.create("marketing_kits", {
+    id: "kit-panela",
+    productId: "prod-panela",
+    customerId: "cliente-joao",
+    name: "Kit de marketing · Jogo de panelas antiaderentes 5 pçs",
+    price: 200,
+    currency: "BRL",
+    status: "draft",
+    concept: null,
+    slogan: null,
+    description: null,
+    campaign: null,
+    colors: ["Preto"],
+    pantone: "Black 6 C",
+    previewDocumentIds: [],
+    releasedDocumentIds: [],
+    paymentId: null,
+    offeredAt: null,
+    purchasedAt: null,
+    paidAt: null,
+    releasedAt: null,
+    notes: null,
+    createdByUserId: users[0].id,
   });
   return { created: true, users };
 }

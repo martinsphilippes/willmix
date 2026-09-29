@@ -3,8 +3,12 @@ import { withTempStore } from "./setup";
 
 withTempStore();
 
-const { getStore, DOCUMENT_EXTRA_DEFAULTS, PARTY_EXTRA_DEFAULTS } =
-  await import("@/lib/db");
+const {
+  getStore,
+  DOCUMENT_EXTRA_DEFAULTS,
+  PARTY_EXTRA_DEFAULTS,
+  USER_EXTRA_DEFAULTS,
+} = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const {
   createRequest,
@@ -52,6 +56,7 @@ describe("isolamento entre papéis", () => {
       active: true,
     });
     const otherCustomer = await store.create("users", {
+      ...USER_EXTRA_DEFAULTS,
       email: "outra@loja.com",
       name: "Outra",
       role: "customer",

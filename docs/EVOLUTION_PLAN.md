@@ -52,6 +52,27 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - **Estoque/“disponível” fora de container**: não há dados; a visão comercial só calcula sobre itens de container sem pedido.
 - **Segunda parcela do fornecedor, extrato por período, câmbio de referência**: continuam no `BACKLOG_FUTURO.md`.
 
+## Classificação dos requisitos (Visão de Produto)
+
+| # | Requisito | Situação encontrada | Decisão |
+| --- | --- | --- | --- |
+| 40 | IA de cadastro por foto | Fotos e ficha existiam; nenhuma sugestão automática | **Novo**: `ai_suggestions` + `src/lib/integrations/ai.ts` (modos `api` com `ANTHROPIC_API_KEY`, `mock` rotulado, `manual`). FOTO → ANÁLISE → SUGESTÃO → HUMANO CONFIRMA campo a campo → CADASTRO. Material e dados comerciais só entram se o operador escolher; preço/MOQ/dimensões nunca são sugeridos |
+| 41 | Prompts por Product Line | Nenhum prompt no sistema | **Novo, centralizado**: `src/lib/ai/prompts.ts` (Prompt Base + Linha + Produto + Contexto) e `product_lines.prompts` (descrição, marketing, imagem, atributos exigidos, regras). Atributos exigidos são conferidos por código (`checkRequiredAttributes`), não por IA |
+| 42 | Marketing studio | Fotos comerciais (`product_photos.kind = commercial`) existiam | **Novo, alimentado pela ficha**: `marketing_kits` (conceito, slogan, descrição, campanha, cores, Pantone, prévias, arquivos finais); textos sugeridos por IA com confirmação; reutiliza documentos e fotos |
+| 43 | Prévia do marketing | Nenhuma | **Novo**: prévias visíveis ao cliente a partir da oferta; arquivos finais só depois da liberação (`canViewKitDocument`) |
+| 44 | Venda de kit de marketing | Nenhuma | **Novo, reutilizando `payments`**: preço por kit com padrão em `marketingKitDefaultPrice` (nada de R$ 200 fixo); compra cria pagamento `customer_in` (modo manual); Wellmix confirma e libera |
+| 45 | Plataforma multi-importador | Wellmix implícita em `WELLMIX_ROLES` e nas configurações globais | **Preparado, sem virar SaaS**: `users.importerId` e `parties.importerId` (nulos = Wellmix), `importerName` nas configurações e estratégia registrada em `docs/ARQUITETURA.md`. Nenhum filtro mudou |
+| 46 | Cliente com ou sem RADAR | Nenhum campo | **Novo**: `parties.operationMode` (importação própria, via trade, outra) + `radar`; o pedido copia a modalidade (`orders.operationMode`); importação própria sem RADAR abre item de revisão (`customer.radarMissing`). Cadastro antigo = "não informado", sem gate |
+| 47 | Ciclo contínuo | Fluxo terminava no pedido; pós-venda e reposição vieram na Segunda Onda | **Ampliado**: `loadProductCycle` reúne sourcing → produto → solicitações → pedidos → pós-venda → reposição → kits por relacionamento; macrofluxo em `docs/SCOPE.md` |
+| 48 | Princípio de dados | Produto já era a origem da ficha e do snapshot | **Reutilizado**: nada duplicado; kit, sugestão e ciclo apontam para o produto; snapshots continuam onde a história importa |
+
+## Implementado na Visão de Produto
+
+- Esquema aditivo (34 tabelas): `ai_suggestions`, `marketing_kits`; `product_lines.prompts`; `parties.operationMode/radar/radarNotes/importerId`; `users.importerId`; `orders.operationMode`; `documents.kitId`; `payments.kitId`.
+- `src/lib/ai/prompts.ts` (prompts centralizados, conferência determinística de atributos), `src/lib/integrations/ai.ts` (adaptador api/mock/manual), `services/ai-suggestions.ts`, `services/marketing.ts`, `services/operations.ts`, `services/product-cycle.ts`; gate de operação em `createOrderFromRequest`; acesso a arquivos de kit em `canAccessDocument`.
+- Configurações: `aiMode`, `aiModel`, `marketingEnabled`, `marketingKitDefaultPrice`, `marketingKitCurrency`, `radarGateEnabled`, `importerName`.
+- Actions em `src/app/app/actions/vision.ts`; 7 testes novos (29 no total).
+
 ## Implementado na Segunda Onda
 
 - Esquema aditivo publicado (32 tabelas): `tax_classifications`, `certifications`, `after_sales`; `products.ncm`/`priceTiers`; `product_lines.requiredCertifications`; `requests.origin`/`sourceOrderId`; `sourcing_items.requestId`/`priceTiers`; `purchase_snapshots.ncm`.
@@ -107,12 +128,15 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 ## Pendente (próximas ondas)
 
 - Segunda Onda: NCM/tributação com validação humana, integração mais profunda com o sistema chinês (só se houver API oficial), certificações por linha, pós-venda (entidade própria após DELIVERED), análise de oportunidade com fórmula reproduzível, reposição e “nova proposta” reaproveitando solicitação/RFQ, sourcing sob demanda.
-- Visão de Produto: cadastro por foto com sugestão de campos (modo manual/mock até haver chave), prompts por linha centralizados, marketing studio, kit de marketing com preço configurável, preparação multi-importador, cliente com/sem RADAR.
+- Visão de Produto, próximos passos: geração de imagem comercial por IA (hoje só o prompt de imagem), cobrança do kit por gateway (hoje manual), importador como entidade própria quando houver um segundo importador (ver `docs/ARQUITETURA.md`), medição 3D/LiDAR.
 
 ## Decisões técnicas
 
 - **Aditivo sempre**: `ADD` antes de `DROP/RENAME`; enums só ganham valores; nenhum registro é apagado.
 - **IA ≠ regra**: cálculo, saldo, CBM, tolerância, comparação, workflow, autorização e validação são código determinístico e auditável. IA fica para sugestões (descrição, categoria, leitura de imagem) sempre com confirmação humana.
+- **IA sem credencial = manual, nunca inventada**: sem `ANTHROPIC_API_KEY` o adaptador é manual (a tela explica); `aiMode = MOCK` devolve um exemplo com "(mock)" em todo campo, para demonstração e testes. Toda sugestão guarda prompt, origem e modelo e só vira cadastro pelo formulário de confirmação.
+- **Multi-importador por preparação, não por refatoração**: colunas `importerId` nulas (= Wellmix) hoje; a separação real vem com entidade `importers`, configurações por importador e filtro em `canView*` quando houver um segundo importador.
+- **Modalidade de operação é dado do cliente e snapshot do pedido**: nenhum cliente é presumido com ou sem RADAR; só o cadastro explícito dispara o gate.
 - **Snapshot em vez de referência**: o pedido guarda o que foi comprado; o cadastro mestre pode evoluir.
 - **Inspeção cega**: o esperado nunca aparece ao inspetor; o motivo do bloqueio detalhado é visível só para a Wellmix.
 - **Container**: capacidade por tipo em settings; consolidação entre clientes proibida por padrão; “disponível” só existe para itens sem pedido dentro do container.

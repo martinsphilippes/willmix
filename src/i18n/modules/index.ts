@@ -9,6 +9,9 @@ import * as logistics from "./logistics";
 import * as orders from "./orders";
 import * as reviews from "./reviews";
 import * as sourcing from "./sourcing";
+import * as vision from "./vision";
+import * as marketing from "./marketing";
+import * as operations from "./operations";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -17,6 +20,9 @@ export const modulesPt = {
   ...logistics.pt,
   ...reviews.pt,
   ...orders.pt,
+  ...vision.pt,
+  ...marketing.pt,
+  ...operations.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -25,6 +31,9 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...logistics.en,
   ...reviews.en,
   ...orders.en,
+  ...vision.en,
+  ...marketing.en,
+  ...operations.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -33,4 +42,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...logistics.zh,
   ...reviews.zh,
   ...orders.zh,
+  ...vision.zh,
+  ...marketing.zh,
+  ...operations.zh,
 };

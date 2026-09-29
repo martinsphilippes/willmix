@@ -13,6 +13,9 @@ import {
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
+  PAYMENT_EXTRA_DEFAULTS,
+  USER_EXTRA_DEFAULTS,
+  LINE_EXTRA_DEFAULTS,
   PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
   ROLES,
@@ -101,7 +104,8 @@ export async function createRequestAction(form: FormData) {
       notes: str(form, "notes") || null,
     });
     // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
-    const sourcingDemand = form.get("sourcingDemand") === "on" && !parsed.productId;
+    const sourcingDemand =
+      form.get("sourcingDemand") === "on" && !parsed.productId;
     const request = await createRequest(user, {
       ...parsed,
       origin: sourcingDemand ? "sourcing_demand" : "manual",
@@ -399,6 +403,7 @@ export async function registerCustomerPaymentAction(form: FormData) {
     }
     const now = new Date().toISOString();
     const payment = await store.create("payments", {
+      ...PAYMENT_EXTRA_DEFAULTS,
       orderId,
       requestId: order.requestId,
       direction: "customer_in",
@@ -467,6 +472,7 @@ export async function registerSupplierPaymentAction(form: FormData) {
       proofDocumentId = doc.id;
     }
     const payment = await store.create("payments", {
+      ...PAYMENT_EXTRA_DEFAULTS,
       orderId,
       requestId: null,
       direction: "supplier_out",
@@ -686,6 +692,7 @@ export async function createUserAction(form: FormData) {
       });
     }
     const created = await store.create("users", {
+      ...USER_EXTRA_DEFAULTS,
       email: parsed.email,
       name: parsed.name,
       role: parsed.role,
@@ -787,6 +794,7 @@ export async function saveLineAction(form: FormData) {
       });
     } else {
       await store.create("product_lines", {
+        ...LINE_EXTRA_DEFAULTS,
         name,
         requirements,
         requiredCertifications: null,
@@ -823,7 +831,15 @@ export async function saveSettingsAction(form: FormData) {
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
       else if (typeof current === "number") value = Number(raw);
-      else if (key === "containerTypes") {
+      else if (key === "aiMode") {
+        if (!["AUTO", "MOCK", "MANUAL"].includes(String(raw)))
+          throw new Error("invalid_ai_mode");
+        value = String(raw);
+      } else if (key === "marketingKitCurrency") {
+        if (!/^[A-Za-z]{3}$/.test(String(raw)))
+          throw new Error("invalid_currency");
+        value = String(raw).toUpperCase();
+      } else if (key === "containerTypes") {
         // Uma linha por tipo ("código;capacidadeCbm;pesoMaxKg"); JSON também é aceito.
         const { parseContainerTypes } =
           await import("@/lib/services/containers");
