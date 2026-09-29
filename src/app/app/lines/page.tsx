@@ -19,7 +19,9 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { saveLineAction } from "../actions";
 import { setLineCertificationsAction } from "../actions/compliance";
+import { saveLinePromptsAction } from "../actions/vision";
 import { catalogError } from "../products/_components/shared";
+import { visionError } from "../products/_components/ai-section";
 
 /** Linhas de produto: nome, manual e checklist de preparação herdado pelos pedidos. */
 export default async function LinesPage({
@@ -51,7 +53,7 @@ export default async function LinesPage({
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
       {error ? (
         <Alert tone="danger">
-          {catalogError(t, error) ?? t("common.error")}
+          {visionError(t, error) ?? catalogError(t, error) ?? t("common.error")}
         </Alert>
       ) : null}
       <div className="mt-4 grid gap-6 lg:grid-cols-3">
@@ -136,6 +138,125 @@ export default async function LinesPage({
                   {t("catalog.lines.certificationsHint")}
                 </p>
               </form>
+              {/* Visão de Produto: prompts por linha, atributos exigidos e regras (IA só sugere). */}
+              <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                {t("vision.lines.title")}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {l.prompts?.requiredAttributes?.length ? (
+                  l.prompts.requiredAttributes.map((a) => (
+                    <Badge key={a} tone="info">
+                      {a}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-zinc-500">
+                    {t("vision.lines.requiredAttributes.none")}
+                  </span>
+                )}
+                {l.prompts?.validationRules?.length ? (
+                  <Badge tone="warning">
+                    {t("vision.lines.rules.count", {
+                      count: l.prompts.validationRules.length,
+                    })}
+                  </Badge>
+                ) : null}
+                {l.prompts?.descriptionPrompt ||
+                l.prompts?.marketingPrompt ||
+                l.prompts?.imagePrompt ? (
+                  <Badge tone="success">{t("vision.lines.configured")}</Badge>
+                ) : (
+                  <Badge>{t("vision.lines.notConfigured")}</Badge>
+                )}
+              </div>
+              <details
+                open={saved === l.id}
+                className="group mt-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-zinc-800 [&::-webkit-details-marker]:hidden">
+                  {t("common.edit")}: {t("vision.lines.title")}
+                  <span
+                    aria-hidden
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-base font-normal text-zinc-500 transition group-open:rotate-45"
+                  >
+                    +
+                  </span>
+                </summary>
+                <form
+                  action={saveLinePromptsAction}
+                  className="space-y-3 border-t border-zinc-200/80 px-3 py-3"
+                >
+                  <input type="hidden" name="lineId" value={l.id} />
+                  <p className="text-xs text-zinc-500">
+                    {t("vision.lines.hint")}
+                  </p>
+                  <Field label={t("vision.lines.descriptionPrompt")}>
+                    <Textarea
+                      name="descriptionPrompt"
+                      rows={2}
+                      maxLength={4000}
+                      defaultValue={l.prompts?.descriptionPrompt ?? ""}
+                      className="min-h-0"
+                    />
+                  </Field>
+                  <Field label={t("vision.lines.marketingPrompt")}>
+                    <Textarea
+                      name="marketingPrompt"
+                      rows={2}
+                      maxLength={4000}
+                      defaultValue={l.prompts?.marketingPrompt ?? ""}
+                      className="min-h-0"
+                    />
+                  </Field>
+                  <Field label={t("vision.lines.imagePrompt")}>
+                    <Textarea
+                      name="imagePrompt"
+                      rows={2}
+                      maxLength={4000}
+                      defaultValue={l.prompts?.imagePrompt ?? ""}
+                      className="min-h-0"
+                    />
+                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field
+                      label={t("vision.lines.requiredAttributes")}
+                      hint={t("vision.lines.requiredAttributesHint")}
+                    >
+                      <Textarea
+                        name="requiredAttributes"
+                        rows={4}
+                        placeholder={t(
+                          "vision.lines.requiredAttributesPlaceholder",
+                        )}
+                        defaultValue={(
+                          l.prompts?.requiredAttributes ?? []
+                        ).join("\n")}
+                        className="min-h-0 font-mono text-xs"
+                      />
+                    </Field>
+                    <Field
+                      label={t("vision.lines.validationRules")}
+                      hint={t("vision.lines.validationRulesHint")}
+                    >
+                      <Textarea
+                        name="validationRules"
+                        rows={4}
+                        defaultValue={(l.prompts?.validationRules ?? []).join(
+                          "\n",
+                        )}
+                        className="min-h-0 text-xs"
+                      />
+                    </Field>
+                  </div>
+                  <SubmitButton
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                    pendingText="…"
+                  >
+                    {t("vision.lines.save")}
+                  </SubmitButton>
+                </form>
+              </details>
             </Card>
           ))}
         </div>

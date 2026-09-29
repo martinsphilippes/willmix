@@ -3,10 +3,12 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { assertRole } from "@/lib/auth/permissions";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { formatContainerTypes } from "@/lib/services/containers";
+import { getAiAdapter } from "@/lib/integrations/ai";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
+  Badge,
   Card,
   Field,
   Input,
@@ -61,10 +63,25 @@ export default async function SettingsPage({
   const s = await getSettings();
   const errorKey =
     `settings.error.${typeof error === "string" ? error : ""}` as DictionaryKey;
+  /* Visão de Produto: códigos novos (invalid_ai_mode, invalid_currency) em operations.error.*; o padrão settings.error.* continua primeiro. */
+  const operationsErrorKey =
+    `operations.error.${typeof error === "string" ? error : ""}` as DictionaryKey;
   const errorText =
     typeof error === "string" && error && t(errorKey) !== errorKey
       ? t(errorKey)
-      : t("common.error");
+      : typeof error === "string" &&
+          error &&
+          t(operationsErrorKey) !== operationsErrorKey
+        ? t(operationsErrorKey)
+        : t("common.error");
+  /* Modo efetivo da IA (api/mock/manual): diz se a chave está no ambiente sem nunca exibi-la. */
+  const aiEffective = getAiAdapter(s).mode;
+  const aiEffectiveTone =
+    aiEffective === "api"
+      ? "success"
+      : aiEffective === "mock"
+        ? "warning"
+        : "neutral";
 
   return (
     <>
@@ -279,6 +296,88 @@ export default async function SettingsPage({
               defaultValue={formatContainerTypes(s.containerTypes)}
             />
           </Field>
+          {/* Visão de Produto: IA (modo e modelo), marketing studio / kit, gate de RADAR e importadora. */}
+          <h3 className="border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-900">
+            {t("operations.settings.section")}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label={
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  aiMode
+                  <Badge tone={aiEffectiveTone}>
+                    {t("operations.settings.effective")}:{" "}
+                    {t(
+                      `operations.settings.effective.${aiEffective}` as DictionaryKey,
+                    )}
+                  </Badge>
+                </span>
+              }
+              hint={t("operations.settings.hint.aiMode")}
+            >
+              <Select name="aiMode" defaultValue={s.aiMode}>
+                <option value="AUTO">AUTO</option>
+                <option value="MOCK">MOCK</option>
+                <option value="MANUAL">MANUAL</option>
+              </Select>
+            </Field>
+            <Field label="aiModel" hint={t("operations.settings.hint.aiModel")}>
+              <Input
+                name="aiModel"
+                maxLength={80}
+                defaultValue={s.aiModel}
+                className="font-mono text-xs"
+              />
+            </Field>
+            <Field
+              label="marketingKitDefaultPrice"
+              hint={t("operations.settings.hint.marketingKitDefaultPrice")}
+            >
+              <Input
+                name="marketingKitDefaultPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                defaultValue={s.marketingKitDefaultPrice}
+              />
+            </Field>
+            <Field
+              label="marketingKitCurrency"
+              hint={t("operations.settings.hint.marketingKitCurrency")}
+            >
+              <Input
+                name="marketingKitCurrency"
+                maxLength={3}
+                pattern="[A-Za-z]{3}"
+                defaultValue={s.marketingKitCurrency}
+                className="uppercase"
+              />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field
+                label="importerName"
+                hint={t("operations.settings.hint.importerName")}
+              >
+                <Input
+                  name="importerName"
+                  maxLength={120}
+                  defaultValue={s.importerName}
+                />
+              </Field>
+            </div>
+            <div className="grid gap-3 sm:col-span-2">
+              <Checkbox
+                name="marketingEnabled"
+                checked={s.marketingEnabled}
+                hint={t("operations.settings.hint.marketingEnabled")}
+              />
+              <Checkbox
+                name="radarGateEnabled"
+                checked={s.radarGateEnabled}
+                hint={t("operations.settings.hint.radarGateEnabled")}
+              />
+            </div>
+          </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
             paymentMode={DEFAULT_SETTINGS.paymentMode} · whatsappMode=
             {DEFAULT_SETTINGS.whatsappMode} · emailMode=

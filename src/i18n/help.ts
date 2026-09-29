@@ -79,11 +79,11 @@ export const helpPt = {
   "help.products.body":
     "Produtos pertencem a uma linha. Quando o cliente escolhe um produto na solicitação, o pedido herda o checklist de preparação da linha.",
   "help.lines.body":
-    "Linha de produto define o manual e o checklist que o fornecedor cumpre na preparação. Formato de cada requisito: chave | rótulo | tipo (file, photo, text, number, date, confirm) | obrigatório (1/0).",
+    'Linha de produto define o manual e o checklist que o fornecedor cumpre na preparação. Formato de cada requisito: chave | rótulo | tipo (file, photo, text, number, date, confirm) | obrigatório (1/0). Cada linha também define certificações obrigatórias e, em "Prompts e regras (IA)", os prompts de descrição, marketing e imagem, os atributos exigidos (conferidos por código na ficha) e regras de validação. Nenhum prompt fica fixo em tela.',
   "help.import.body":
     "Importe cadastros em lote por CSV com cabeçalho. Separador vírgula ou ponto e vírgula. Linhas inválidas são ignoradas e contadas.",
   "help.settings.body":
-    "Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, validação da agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos.",
+    'Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, validação da agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos. Seção "IA, marketing e operação": modo da IA (AUTO/MOCK/MANUAL) e modelo, kit de marketing (preço padrão e moeda), gate de RADAR e nome da importadora.',
   "help.finance.body":
     "Consolida o que já foi lançado: valor vendido ao cliente e recebimentos; custo FOB e pagamentos ao fornecedor. O custo em reais usa o câmbio informado em cada pagamento; quando falta câmbio ou há saldo a pagar, a margem aparece como estimativa (~).",
   "help.finance.steps":
@@ -171,11 +171,11 @@ export const helpEn: Record<HelpKey, string> = {
   "help.products.body":
     "Products belong to a line. When the customer picks a product in the request, the order inherits the line's preparation checklist.",
   "help.lines.body":
-    "A product line defines the manual and the checklist the supplier completes during preparation. Requirement format: key | label | type (file, photo, text, number, date, confirm) | mandatory (1/0).",
+    'A product line defines the manual and the checklist the supplier completes during preparation. Requirement format: key | label | type (file, photo, text, number, date, confirm) | mandatory (1/0). Each line also defines required certifications and, under "Prompts and rules (AI)", the description, marketing and image prompts, required attributes (checked by code on the product sheet) and validation rules. No prompt is hardcoded in a screen.',
   "help.import.body":
     "Bulk import from CSV with header. Comma or semicolon separator. Invalid rows are skipped and counted.",
   "help.settings.body":
-    "Parameterized business decisions: who creates requests, who confirms delivery, agency validation, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders.",
+    'Parameterized business decisions: who creates requests, who confirms delivery, agency validation, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders. Section "AI, marketing and operation": AI mode (AUTO/MOCK/MANUAL) and model, marketing kit (default price and currency), RADAR gate and importer name.',
   "help.finance.body":
     "Consolidates what is already recorded: customer sale and receipts; FOB cost and supplier payments. Cost in the sale currency uses the FX rate entered on each payment; when a rate is missing or a balance is still payable, the margin is shown as an estimate (~).",
   "help.finance.steps":
@@ -259,11 +259,11 @@ export const helpZh: Record<HelpKey, string> = {
   "help.products.body":
     "产品属于产品线。客户在需求中选择产品后，订单继承该产品线的备货清单。",
   "help.lines.body":
-    "产品线定义手册和供应商在备货阶段需完成的清单。每项要求格式：键 | 标签 | 类型（file, photo, text, number, date, confirm）| 必填（1/0）。",
+    "产品线定义手册和供应商在备货阶段需完成的清单。每项要求格式：键 | 标签 | 类型（file, photo, text, number, date, confirm）| 必填（1/0）。 每条产品线还定义必需认证，并在“提示词与规则（AI）”中定义描述、营销和图片提示词、必需属性（在产品档案中由代码核对）和校验规则。没有任何提示词写死在界面中。",
   "help.import.body":
     "通过带表头的 CSV 批量导入。分隔符为逗号或分号。无效行会被跳过并计数。",
   "help.settings.body":
-    "参数化的业务决策：谁可创建需求、谁确认交付、设计公司审核、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。",
+    "参数化的业务决策：谁可创建需求、谁确认交付、设计公司审核、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。 “AI、营销与运营”部分：AI 模式（AUTO/MOCK/MANUAL）与模型、营销套件（默认价格与币种）、RADAR 门槛和进口商名称。",
   "help.finance.body":
     "汇总已登记的数据：客户销售额与收款；FOB 成本与供应商付款。销售币种成本按每笔付款填写的汇率折算；缺少汇率或仍有应付余额时，毛利显示为估算值（~）。",
   "help.finance.steps":

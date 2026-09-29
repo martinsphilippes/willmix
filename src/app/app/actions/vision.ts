@@ -255,7 +255,7 @@ export async function updateKitAction(form: FormData) {
           str(form, k),
         ),
       );
-    return kitBack(id);
+    return `${kitBack(id)}?ok=saved`;
   });
 }
 
@@ -268,7 +268,7 @@ export async function addKitFileAction(form: FormData) {
     const list = files(form, "files");
     if (list.length === 0) throw new Error("file_required");
     for (const file of list) await addKitFile(user, id, file, stage);
-    return kitBack(id);
+    return `${kitBack(id)}?ok=file`;
   });
 }
 
@@ -295,6 +295,7 @@ export async function offerKitAction(form: FormData) {
   await run(kitBack(id), async () => {
     assertWellmix(user);
     await offerKit(user, id);
+    return `${kitBack(id)}?ok=offered`;
   });
 }
 
@@ -304,6 +305,7 @@ export async function purchaseKitAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     await purchaseKit(user, id);
+    return `${kitBack(id)}?ok=purchased`;
   });
 }
 
@@ -314,6 +316,7 @@ export async function confirmKitPaymentAction(form: FormData) {
     assertWellmix(user);
     const [proof] = files(form, "proof");
     await confirmKitPayment(user, id, proof ?? null);
+    return `${kitBack(id)}?ok=paid`;
   });
 }
 
@@ -323,6 +326,7 @@ export async function releaseKitAction(form: FormData) {
   await run(kitBack(id), async () => {
     assertWellmix(user);
     await releaseKit(user, id);
+    return `${kitBack(id)}?ok=released`;
   });
 }
 
@@ -332,6 +336,7 @@ export async function cancelKitAction(form: FormData) {
   await run(kitBack(id), async () => {
     assertWellmix(user);
     await cancelKit(user, id, str(form, "note") || null);
+    return `${kitBack(id)}?ok=cancelled`;
   });
 }
 

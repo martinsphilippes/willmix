@@ -10,6 +10,9 @@ import {
 import { loadSourcingItem } from "@/lib/services/sourcing";
 import { formatPriceTiers, sortTiers } from "@/lib/services/opportunities";
 import { divergencePercent } from "@/lib/logistics/cbm";
+import { getSettings } from "@/lib/settings";
+import { getAiAdapter } from "@/lib/integrations/ai";
+import { listSuggestions } from "@/lib/services/ai-suggestions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -44,6 +47,11 @@ import {
   setPrimaryPhotoAction,
 } from "../../../actions/sourcing";
 import { catalogError } from "../../../products/_components/shared";
+import {
+  AiSection,
+  collectAiPhotos,
+  visionError,
+} from "../../../products/_components/ai-section";
 import { ItemForm } from "../../_components/item-form";
 import {
   bigField,
@@ -63,10 +71,18 @@ export default async function SourcingItemPage({
   const { error } = await searchParams;
   const data = await loadSourcingItem(id);
   if (!data) notFound();
-  const { item, photos, measurements, visit, supplier } = data;
+  const { item, photos, measurements, visit, supplier, documents } = data;
   const t = await getT();
   const store = getStore();
-  const [suppliers, lines, users, customers, openRequests] = await Promise.all([
+  const [
+    suppliers,
+    lines,
+    users,
+    customers,
+    openRequests,
+    settings,
+    suggestions,
+  ] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" }, orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
     store.list("users"),
@@ -77,7 +93,17 @@ export default async function SourcingItemPage({
       orderBy: "createdAt",
       direction: "desc",
     }),
+    // Visão de Produto: sugestão de campos pela foto (humano confirma).
+    getSettings(),
+    listSuggestions("sourcing_item", id),
   ]);
+  const aiAdapter = getAiAdapter(settings);
+  const aiPhotos = collectAiPhotos(
+    photos,
+    documents,
+    item.primaryPhotoDocumentId,
+    (kind) => t(`sourcing.photo.${kind}` as DictionaryKey),
+  );
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
   const customerName = (pid: string) =>
@@ -86,12 +112,13 @@ export default async function SourcingItemPage({
     (r) => !r.productId || r.id === item.requestId,
   );
   const tiers = sortTiers(item.priceTiers);
-  // Erros deste módulo (faixas, vínculo) têm texto próprio; os demais seguem o padrão do sourcing.
+  // Erros deste módulo (faixas, vínculo) e da IA têm texto próprio; os demais seguem o padrão do sourcing.
   const errorText =
-    typeof error === "string" &&
+    visionError(t, error) ??
+    (typeof error === "string" &&
     t(`catalog.error.${error}` as DictionaryKey) !== `catalog.error.${error}`
       ? catalogError(t, error)
-      : errorMessage(t, error);
+      : errorMessage(t, error));
   const supplierLabel = item.supplierName ?? supplier?.name ?? "—";
   const originals = photos.filter((p) => p.kind === "original");
   const photoLabel = (p: ProductPhoto) =>
@@ -158,8 +185,9 @@ export default async function SourcingItemPage({
       <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_1fr] lg:items-start">
         <Card
           title={t("sourcing.photo.gallery")}
-          className="lg:col-start-3 lg:row-start-1"
+          className="scroll-mt-4 lg:col-start-3 lg:row-start-1"
         >
+          <div id="photos" />
           {groups.length === 0 ? (
             <p className="mb-4 text-sm text-zinc-500">
               {t("sourcing.photo.none")}
@@ -633,6 +661,28 @@ export default async function SourcingItemPage({
           </div>
         </Card>
       </div>
+
+      {/* Visão de Produto: sugestão de campos pela foto (IA); humano confirma campo a campo. */}
+      <Card title={t("vision.ai.title")} className="mt-6">
+        <AiSection
+          entity="sourcing_item"
+          entityId={item.id}
+          photos={aiPhotos}
+          suggestions={suggestions}
+          mode={aiAdapter.mode}
+          model={aiAdapter.model}
+          user={user}
+          users={users}
+          current={{
+            category: item.category,
+            description: item.description,
+            material: item.material,
+            color: item.color,
+          }}
+          t={t}
+          back={`/app/sourcing/items/${item.id}`}
+        />
+      </Card>
     </>
   );
 }

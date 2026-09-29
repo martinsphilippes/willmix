@@ -73,6 +73,18 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Configurações: `aiMode`, `aiModel`, `marketingEnabled`, `marketingKitDefaultPrice`, `marketingKitCurrency`, `radarGateEnabled`, `importerName`.
 - Actions em `src/app/app/actions/vision.ts`; 7 testes novos (29 no total).
 
+### Telas entregues na Visão de Produto
+
+- `/app/lines`: "Prompts e regras (IA)" por linha (prompts de descrição, marketing e imagem; atributos exigidos; regras), com badges-resumo.
+- `/app/products/[id]`: cards "Atributos exigidos pela linha" (conferência determinística: presente, faltando, manual), "Sugestão por foto (IA)" (foto escolhida, contexto, sugestão rotulada mock/api com modelo, prompt em auditoria; aplicação campo a campo com caixas desmarcadas, material e cor por escolha explícita, descarte com nota) e "Ciclo do produto" (sourcing de origem, solicitações, pedidos com pós-venda e recompra, kits, programações). `/app/sourcing/items/[id]`: a mesma sugestão por foto.
+- `/app/marketing` (Wellmix: todos os kits com filtros; cliente: os seus a partir da oferta), `/app/marketing/new` (produto, cliente, preço padrão das configurações) e `/app/marketing/[id]` (studio: produto e imagens comerciais da ficha, textos do kit, sugestão de textos por IA confirmada, prévias, arquivos finais, linha do tempo prévia → oferta → compra → pagamento → liberação e ações por situação; cliente compra, acompanha e baixa depois da liberação).
+- `/app/parties/[id]` (cliente): "Modalidade de operação" (importação própria, via trade, outra; RADAR; observações) com aviso quando importação própria sem RADAR; badge na lista de parceiros; pedido mostra a modalidade para Wellmix, cliente, despachante e jurídico.
+- `/app/settings`: seção "IA, marketing e operação" com o modo efetivo da IA (api/mock/manual) sem expor a chave.
+
+### Validação da Visão de Produto
+
+Lint, typecheck, 29 testes unitários, E2E do caminho principal sobre o banco anterior à onda e sobre seed novo, build de produção, esquema publicado no Appwrite (aditivo); isolamento conferido no navegador pelos revisores com admin, operador, cliente, fornecedor, despachante, agência, armador, transportador e jurídico.
+
 ## Implementado na Segunda Onda
 
 - Esquema aditivo publicado (32 tabelas): `tax_classifications`, `certifications`, `after_sales`; `products.ncm`/`priceTiers`; `product_lines.requiredCertifications`; `requests.origin`/`sourceOrderId`; `sourcing_items.requestId`/`priceTiers`; `purchase_snapshots.ncm`.
