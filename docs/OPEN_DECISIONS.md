@@ -50,6 +50,7 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 - Oportunidade de compra: só com faixas de preço negociadas e espaço real em container; a fórmula é exibida.
 - IA: sugestão nunca vira cadastro sem confirmação; material e dados comerciais exigem escolha explícita do operador; preço, MOQ, dimensões e certificações nunca são sugeridos.
 - Kit de marketing: prévia visível ao cliente a partir da oferta; arquivos finais só depois do pagamento confirmado e da liberação; preço travado após a compra.
+- Visibilidade do cliente por login: cada login vê só as solicitações e pedidos que solicitou (`requests.requestedForUserId`, copiado para `orders.requestedByUserId`); outro login da mesma empresa não vê, e avisos, pendências e histórico seguem a mesma regra. A Wellmix, ao abrir em nome do cliente, indica o login solicitante (na criação ou depois, em /app/requests/[id]); sem solicitante, só a Wellmix vê. Registros antigos: `npm run appwrite:backfill-requesters` (criados por login de cliente → esse login).
 - Modalidade de operação: cliente sem cadastro explícito = "não informado" (sem gate); o pedido guarda a modalidade vigente na criação.
 
 ## A confirmar com o negócio

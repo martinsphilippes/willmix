@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWellmix } from "@/lib/auth/permissions";
+import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -22,12 +22,15 @@ export default async function RequestsPage() {
   if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
   const t = await getT();
   const store = getStore();
-  const requests = await store.list("requests", {
-    filter:
-      user.role === "customer" ? { customerId: user.partyId! } : undefined,
-    orderBy: "createdAt",
-    direction: "desc",
-  });
+  // Cliente: só as solicitações do próprio login (canViewRequest).
+  const requests = (
+    await store.list("requests", {
+      filter:
+        user.role === "customer" ? { customerId: user.partyId! } : undefined,
+      orderBy: "createdAt",
+      direction: "desc",
+    })
+  ).filter((r) => canViewRequest(user, r));
   const parties = await store.list("parties", { filter: { type: "customer" } });
 
   return (

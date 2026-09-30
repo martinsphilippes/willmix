@@ -10,7 +10,7 @@ import {
 import { assertWellmix, canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
-import { notify, notifyWellmix } from "./notifications";
+import { notify, notifyWellmix, requesterTarget } from "./notifications";
 
 /**
  * Pós-venda: o processo não termina na entrega. Ao concluir DELIVERED, abre-se
@@ -46,14 +46,11 @@ export async function openAfterSales(
     notes: null,
   });
   await audit(user, "afterSales.open", "order", order.id, "Pós-venda aberto");
-  await notify(
-    { role: "customer", partyId: order.customerId },
-    {
-      subject: `Pedido #${order.number}: como foi a sua compra?`,
-      body: "Avalie a experiência, conte problemas e diga se quer repor. Leva um minuto.",
-      link: `/app/orders/${order.id}#after-sales`,
-    },
-  );
+  await notify(requesterTarget(order.requestedByUserId), {
+    subject: `Pedido #${order.number}: como foi a sua compra?`,
+    body: "Avalie a experiência, conte problemas e diga se quer repor. Leva um minuto.",
+    link: `/app/orders/${order.id}#after-sales`,
+  });
   return row;
 }
 

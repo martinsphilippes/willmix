@@ -12,7 +12,11 @@ import {
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/services/audit";
-import { notify, notifyWellmix } from "@/lib/services/notifications";
+import {
+  requesterTarget,
+  notify,
+  notifyWellmix,
+} from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
 import { ROLE_PARTY_FIELD, STAGE_TEMPLATES, nextStageKey } from "./stages";
 import {
@@ -105,6 +109,9 @@ export function canSubmitRequirement(
 ): boolean {
   if (isWellmix(user)) return true;
   if (user.role !== requirement.role) return false;
+  // Cliente: só o login solicitante do pedido.
+  if (user.role === "customer" && order.requestedByUserId !== user.id)
+    return false;
   const partyField = ROLE_PARTY_FIELD[user.role];
   if (!partyField) return false;
   return order[partyField] === user.partyId;
@@ -480,10 +487,12 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   const role = required[0].role;
   const partyField = ROLE_PARTY_FIELD[role];
   await notify(
-    {
-      role: role === "operator" ? ["admin", "operator"] : role,
-      partyId: partyField ? order[partyField] : null,
-    },
+    role === "customer"
+      ? requesterTarget(order.requestedByUserId)
+      : {
+          role: role === "operator" ? ["admin", "operator"] : role,
+          partyId: partyField ? order[partyField] : null,
+        },
     {
       subject: `Pedido #${order.number}: etapa ${key} aguarda sua ação`,
       body: `Pendências: ${required.map((r) => r.label).join(", ")}.`,

@@ -1,7 +1,11 @@
 import "server-only";
 
 import { getStore, type User } from "@/lib/db";
-import { canSeeInternalCosts, isWellmix } from "@/lib/auth/permissions";
+import {
+  canSeeInternalCosts,
+  canViewOrder,
+  isWellmix,
+} from "@/lib/auth/permissions";
 
 /**
  * Histórico comercial: Cliente → Produto → Compra → Quantidade → Custo → Data →
@@ -58,6 +62,8 @@ export async function loadCommercialHistory(
     a.createdAt.localeCompare(b.createdAt),
   );
   for (const order of sorted) {
+    // Cliente: só os pedidos do próprio login.
+    if (user.role === "customer" && !canViewOrder(user, order)) continue;
     const item = items.find((i) => i.orderId === order.id);
     if (!item) continue;
     const key = `${order.customerId}|${item.productId ?? item.name.toLowerCase()}`;

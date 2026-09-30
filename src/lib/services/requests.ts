@@ -19,7 +19,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
-import { notify, notifyWellmix } from "./notifications";
+import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
 import { openReview } from "./reviews";
@@ -41,6 +41,52 @@ export interface CreateRequestInput {
   /** Segunda Onda: recompra, nova proposta ou sourcing sob demanda (padrão manual). */
   origin?: RequestOrigin | null;
   sourceOrderId?: string | null;
+  /** Wellmix criando em nome do cliente: o login do cliente que solicitou. */
+  requestedForUserId?: string | null;
+}
+
+/** Login ativo de cliente daquela empresa; senão "invalid_requester". */
+async function validRequester(userId: string, customerId: string) {
+  const requester = await getStore().get("users", userId);
+  if (
+    !requester ||
+    !requester.active ||
+    requester.role !== "customer" ||
+    requester.partyId !== customerId
+  )
+    throw new RequestError("invalid_requester");
+  return requester.id;
+}
+
+/**
+ * Wellmix define ou troca o login solicitante de uma solicitação (e do pedido
+ * dela): só esse login do cliente passa a vê-los. Nulo = nenhum login do cliente.
+ */
+export async function setRequester(
+  user: User,
+  requestId: string,
+  requestedForUserId: string | null,
+) {
+  if (!isWellmix(user)) throw new ForbiddenError();
+  const store = getStore();
+  const request = await store.get("requests", requestId);
+  if (!request) throw new RequestError("not_found");
+  const value = requestedForUserId
+    ? await validRequester(requestedForUserId, request.customerId)
+    : null;
+  await store.update("requests", request.id, { requestedForUserId: value });
+  if (request.orderId)
+    await store.update("orders", request.orderId, { requestedByUserId: value });
+  await audit(
+    user,
+    "request.requester",
+    "request",
+    request.id,
+    value ? `Solicitante: ${value}` : "Sem solicitante do cliente",
+    { requestedForUserId: request.requestedForUserId },
+    { requestedForUserId: value },
+  );
+  return value;
 }
 
 /** Cliente cria para si; Wellmix cria em nome de qualquer cliente. Mesmo formulário e fluxo. */
@@ -56,7 +102,17 @@ export async function createRequest(
   } else if (!isWellmix(user)) {
     throw new ForbiddenError();
   }
+  // Solicitante: o próprio cliente; ou, pela Wellmix, um login daquele cliente.
+  let requestedForUserId: string | null =
+    user.role === "customer" ? user.id : null;
+  if (user.role !== "customer" && input.requestedForUserId) {
+    requestedForUserId = await validRequester(
+      input.requestedForUserId,
+      input.customerId,
+    );
+  }
   const request = await store.create("requests", {
+    requestedForUserId,
     customerId: input.customerId,
     createdByUserId: user.id,
     productId: input.productId ?? null,
@@ -309,14 +365,11 @@ export async function selectQuote(
     request.id,
     `Fornecedor selecionado; sinal ${input.sellCurrency} ${downPayment}`,
   );
-  await notify(
-    { role: "customer", partyId: request.customerId },
-    {
-      subject: `Proposta disponível: ${request.productName}`,
-      body: `Valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
-      link: `/app/requests/${request.id}`,
-    },
-  );
+  await notify(requesterTarget(request.requestedForUserId), {
+    subject: `Proposta disponível: ${request.productName}`,
+    body: `Valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
+    link: `/app/requests/${request.id}`,
+  });
   await notify(
     { role: "supplier", partyId: quote.supplierId },
     {
@@ -380,6 +433,8 @@ async function createOrderFromRequest(
 
   const order = await store.create("orders", {
     ...ORDER_EXTRA_DEFAULTS,
+    // Só o login solicitante do cliente vê o pedido.
+    requestedByUserId: request.requestedForUserId,
     number,
     requestId: request.id,
     customerId: request.customerId,
@@ -467,14 +522,11 @@ async function createOrderFromRequest(
     order.id,
     `Pedido #${number} criado a partir da solicitação`,
   );
-  await notify(
-    { role: "customer", partyId: request.customerId },
-    {
-      subject: `Pedido #${number} criado`,
-      body: "Acompanhe a timeline do seu pedido.",
-      link: `/app/orders/${order.id}`,
-    },
-  );
+  await notify(requesterTarget(request.requestedForUserId), {
+    subject: `Pedido #${number} criado`,
+    body: "Acompanhe a timeline do seu pedido.",
+    link: `/app/orders/${order.id}`,
+  });
   await notify(
     { role: "supplier", partyId: quote.supplierId },
     {
@@ -559,6 +611,8 @@ export async function createFollowUpRequest(
         .filter(Boolean)
         .join("\n") || null,
     origin: input.origin,
+    // Recompra aberta pela Wellmix continua do mesmo login solicitante.
+    requestedForUserId: order.requestedByUserId,
     sourceOrderId: order.id,
   });
 }

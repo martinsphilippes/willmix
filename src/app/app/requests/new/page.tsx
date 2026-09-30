@@ -49,11 +49,18 @@ export default async function NewRequestPage({
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
   const presetCustomerId =
     schedule?.customerId ?? (typeof customerId === "string" ? customerId : "");
-  const [products, customers] = await Promise.all([
+  const [products, customers, customerUsers] = await Promise.all([
     store.list("products", { filter: { active: true }, orderBy: "name" }),
     isWellmix(user)
       ? store.list("parties", {
           filter: { type: "customer", active: true },
+          orderBy: "name",
+        })
+      : Promise.resolve([]),
+    // Logins de cliente, para a Wellmix indicar o solicitante (só ele verá o pedido).
+    isWellmix(user)
+      ? store.list("users", {
+          filter: { role: "customer", active: true },
           orderBy: "name",
         })
       : Promise.resolve([]),
@@ -91,10 +98,13 @@ export default async function NewRequestPage({
     return `/app/requests/new?${params.toString()}`;
   };
   const errorKey = `lookup.error.${typeof error === "string" ? error : ""}`;
+  const accessKey = `access.error.${typeof error === "string" ? error : ""}`;
   const errorText =
     typeof error === "string" && t(errorKey as DictionaryKey) !== errorKey
       ? t(errorKey as DictionaryKey)
-      : t("common.error");
+      : typeof error === "string" && t(accessKey as DictionaryKey) !== accessKey
+        ? t(accessKey as DictionaryKey)
+        : t("common.error");
   const renderMatches = (items: typeof matched) => (
     <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
       {items.map(({ m, p }) => {
@@ -340,6 +350,30 @@ export default async function NewRequestPage({
                     {c.name}
                   </option>
                 ))}
+              </Select>
+            </Field>
+          ) : null}
+          {isWellmix(user) ? (
+            <Field
+              label={t("access.requester")}
+              hint={t("access.requesterHint")}
+            >
+              <Select name="requestedForUserId" defaultValue="">
+                <option value="">{t("access.requesterNone")}</option>
+                {customers.map((c) => {
+                  const logins = customerUsers.filter(
+                    (u) => u.partyId === c.id,
+                  );
+                  return logins.length ? (
+                    <optgroup key={c.id} label={c.name}>
+                      {logins.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null;
+                })}
               </Select>
             </Field>
           ) : null}

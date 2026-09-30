@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getStore, type Order, type Request, type User } from "@/lib/db";
-import { isWellmix } from "@/lib/auth/permissions";
+import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
 
 export interface Task {
@@ -85,7 +85,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     const requests = await store.list("requests", {
       filter: { customerId: user.partyId, status: "WAITING_DOWN_PAYMENT" },
     });
-    for (const request of requests) {
+    for (const request of requests.filter((r) => canViewRequest(user, r))) {
       tasks.push({
         kind: "pay",
         title: `Sinal pendente: ${request.productName}`,
@@ -103,7 +103,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     });
     for (const a of open) {
       const order = await store.get("orders", a.orderId);
-      if (!order) continue;
+      if (!order || !isInvolved(user, order)) continue;
       tasks.push({
         kind: "after_sales",
         title: `Avalie a compra: pedido #${order.number}`,
@@ -194,6 +194,11 @@ function requestTask(request: Request): Task {
 
 export function isInvolved(user: User, order: Order): boolean {
   if (isWellmix(user)) return true;
+  // Cliente: só o login solicitante (mesma regra de canViewOrder).
+  if (user.role === "customer")
+    return (
+      order.customerId === user.partyId && order.requestedByUserId === user.id
+    );
   const field = ROLE_PARTY_FIELD[user.role];
   if (!field) return false;
   return order[field] === user.partyId;

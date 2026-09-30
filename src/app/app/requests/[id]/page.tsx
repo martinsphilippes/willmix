@@ -35,7 +35,9 @@ import {
   confirmDownPaymentAction,
   openRfqAction,
   selectQuoteAction,
+  setRequesterAction,
 } from "../../actions";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 
 export default async function RequestDetailPage({
   params,
@@ -44,25 +46,33 @@ export default async function RequestDetailPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, saved } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
 
-  const [customer, quotes, suppliers, documents, payments] = await Promise.all([
-    store.get("parties", request.customerId),
-    store.list("quotes", { filter: { requestId: request.id } }),
-    wellmix
-      ? store.list("parties", {
-          filter: { type: "supplier", active: true },
-          orderBy: "name",
-        })
-      : Promise.resolve([]),
-    store.list("documents", { filter: { requestId: request.id } }),
-    store.list("payments", { filter: { requestId: request.id } }),
-  ]);
+  const [customer, quotes, suppliers, documents, payments, customerLogins] =
+    await Promise.all([
+      store.get("parties", request.customerId),
+      store.list("quotes", { filter: { requestId: request.id } }),
+      wellmix
+        ? store.list("parties", {
+            filter: { type: "supplier", active: true },
+            orderBy: "name",
+          })
+        : Promise.resolve([]),
+      store.list("documents", { filter: { requestId: request.id } }),
+      store.list("payments", { filter: { requestId: request.id } }),
+      // Logins deste cliente, para a Wellmix indicar o solicitante.
+      wellmix
+        ? store.list("users", {
+            filter: { role: "customer", partyId: request.customerId },
+            orderBy: "name",
+          })
+        : Promise.resolve([]),
+    ]);
   const supplierName = (supplierId: string) =>
     suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
   const invited = new Set(quotes.map((q) => q.supplierId));
@@ -130,8 +140,15 @@ export default async function RequestDetailPage({
       />
       {error ? (
         <Alert tone="danger">
-          {t("common.error")} ({error})
+          {typeof error === "string" &&
+          t(`access.error.${error}` as DictionaryKey) !==
+            `access.error.${error}`
+            ? t(`access.error.${error}` as DictionaryKey)
+            : `${t("common.error")} (${error})`}
         </Alert>
+      ) : null}
+      {saved === "requester" ? (
+        <Alert tone="success">{t("access.requesterSaved")}</Alert>
       ) : null}
 
       <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -462,6 +479,31 @@ export default async function RequestDetailPage({
         </div>
 
         <div className="min-w-0 space-y-6">
+          {wellmix ? (
+            <Card title={t("access.requesterTitle")}>
+              <form action={setRequesterAction} className="space-y-3">
+                <input type="hidden" name="requestId" value={request.id} />
+                <p className="text-xs leading-relaxed text-zinc-500">
+                  {t("access.requesterHint")}
+                </p>
+                <Select
+                  name="requestedForUserId"
+                  defaultValue={request.requestedForUserId ?? ""}
+                  aria-label={t("access.requester")}
+                >
+                  <option value="">{t("access.requesterNone")}</option>
+                  {customerLogins.map((u) => (
+                    <option key={u.id} value={u.id} disabled={!u.active}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </Select>
+                <SubmitButton variant="secondary">
+                  {t("common.save")}
+                </SubmitButton>
+              </form>
+            </Card>
+          ) : null}
           <Card title={t("orders.timeline")}>
             <ol className="-mx-2 space-y-1 text-sm">
               {(
