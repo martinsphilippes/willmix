@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "appwrite:reset": "node scripts/appwrite-reset.ts",
-    "appwrite:rename-brand": "node scripts/appwrite-rename-brand.ts"
+    "appwrite:rename-brand": "node scripts/appwrite-rename-brand.ts",
+    "appwrite:backfill-requesters": "node scripts/appwrite-backfill-requesters.ts"
   },
   "dependencies": {
     "@vercel/oidc": "3.8.9",

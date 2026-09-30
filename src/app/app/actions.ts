@@ -38,7 +38,7 @@ import {
   unblockStage,
 } from "@/lib/workflow/engine";
 import { audit } from "@/lib/services/audit";
-import { notify } from "@/lib/services/notifications";
+import { requesterTarget, notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
 import { hashPassword } from "@/lib/auth/password";
 import { importCsv } from "@/lib/services/import";
@@ -109,6 +109,10 @@ export async function createRequestAction(form: FormData) {
     const request = await createRequest(user, {
       ...parsed,
       origin: sourcingDemand ? "sourcing_demand" : "manual",
+      // Wellmix em nome do cliente: o login do cliente que solicitou.
+      requestedForUserId: isWellmix(user)
+        ? str(form, "requestedForUserId") || null
+        : null,
     });
     // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
     const scheduleId = str(form, "scheduleId");
@@ -138,6 +142,22 @@ export async function createRequestAction(form: FormData) {
       await attachLookupToRequest(user, lookupId, request.id);
     }
     return `/app/requests/${request.id}`;
+  });
+}
+
+/** Wellmix define ou troca o login solicitante (só ele, no cliente, vê a solicitação e o pedido). */
+export async function setRequesterAction(form: FormData) {
+  const user = await requireUser();
+  const requestId = str(form, "requestId");
+  await run(`/app/requests/${requestId}`, async () => {
+    assertWellmix(user);
+    const requesterId = z
+      .string()
+      .max(64)
+      .parse(str(form, "requestedForUserId"));
+    const { setRequester } = await import("@/lib/services/requests");
+    await setRequester(user, requestId, requesterId || null);
+    return `/app/requests/${requestId}?saved=requester`;
   });
 }
 
@@ -432,14 +452,11 @@ export async function registerCustomerPaymentAction(form: FormData) {
       payment.id,
       `${parsed.currency} ${parsed.amount}`,
     );
-    await notify(
-      { role: "customer", partyId: order.customerId },
-      {
-        subject: `Pedido #${order.number}: pagamento registrado`,
-        body: `${parsed.currency} ${parsed.amount.toFixed(2)} recebido pela Wellmix.`,
-        link: `/app/orders/${orderId}`,
-      },
-    );
+    await notify(requesterTarget(order.requestedByUserId), {
+      subject: `Pedido #${order.number}: pagamento registrado`,
+      body: `${parsed.currency} ${parsed.amount.toFixed(2)} recebido pela Wellmix.`,
+      link: `/app/orders/${orderId}`,
+    });
   });
 }
 

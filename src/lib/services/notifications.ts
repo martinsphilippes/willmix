@@ -11,6 +11,16 @@ export interface NotifyTarget {
   partyId?: string | null;
 }
 
+/**
+ * Avisos ao cliente sobre uma solicitação/pedido: só o login solicitante (outros
+ * logins da mesma empresa não veem o pedido). Sem solicitante, ninguém do cliente.
+ */
+export function requesterTarget(
+  userId: string | null | undefined,
+): NotifyTarget {
+  return { userIds: userId ? [userId] : [] };
+}
+
 export interface NotifyMessage {
   subject: string;
   body: string;

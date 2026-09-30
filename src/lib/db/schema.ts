@@ -433,6 +433,12 @@ export interface Request extends BaseRow {
   origin: RequestOrigin | null;
   /** Pedido anterior de que esta solicitação deriva (recompra, nova proposta). */
   sourceOrderId: string | null;
+  /**
+   * Login do cliente que solicitou (só ele vê a solicitação e o pedido). Cliente
+   * criando = ele mesmo; Wellmix criando em nome do cliente = o login escolhido
+   * (nulo = nenhum login do cliente vê).
+   */
+  requestedForUserId: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -469,6 +475,8 @@ export interface Order extends BaseRow {
   notes: string | null;
   /** Modalidade de operação copiada do cliente ao criar o pedido (nulo nos antigos). */
   operationMode: OperationMode | null;
+  /** Login do cliente que solicitou: só ele, entre os logins do cliente, vê o pedido. */
+  requestedByUserId: string | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -951,9 +959,7 @@ export interface LookupMatch {
   /** 0–1; só para ordenar. */
   score: number;
   /** Mesmo produto: foto, foto do link, nome/SKU, IA. Relacionado: mesma categoria, palavra em comum. */
-  reasons: Array<
-    "photo" | "link_photo" | "name" | "ai" | "category" | "word"
-  >;
+  reasons: Array<"photo" | "link_photo" | "name" | "ai" | "category" | "word">;
 }
 
 export type LookupSource = "link" | "catalog" | "ai" | "mock";
@@ -1195,6 +1201,7 @@ export const TABLES: Record<TableName, TableDef> = {
       notes: text(),
       origin: enumOf(REQUEST_ORIGINS, false),
       sourceOrderId: id(false),
+      requestedForUserId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -1242,6 +1249,7 @@ export const TABLES: Record<TableName, TableDef> = {
       closedAt: datetime(),
       notes: text(),
       operationMode: enumOf(OPERATION_MODES, false),
+      requestedByUserId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -1865,6 +1873,7 @@ export const LINE_EXTRA_DEFAULTS = {
 
 export const ORDER_EXTRA_DEFAULTS = {
   operationMode: null,
+  requestedByUserId: null,
 } satisfies Partial<Order>;
 
 export const PAYMENT_EXTRA_DEFAULTS = {
@@ -1904,6 +1913,7 @@ export const PRODUCT_EXTRA_DEFAULTS = {
 export const REQUEST_EXTRA_DEFAULTS = {
   origin: null,
   sourceOrderId: null,
+  requestedForUserId: null,
 } satisfies Partial<Request>;
 
 export const DOCUMENT_EXTRA_DEFAULTS = {

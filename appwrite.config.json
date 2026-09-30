@@ -766,6 +766,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "requestedForUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -1081,6 +1089,14 @@
             "via_trade",
             "other"
           ]
+        },
+        {
+          "key": "requestedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [

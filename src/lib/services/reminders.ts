@@ -3,7 +3,7 @@ import "server-only";
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
-import { notify } from "./notifications";
+import { requesterTarget, notify } from "./notifications";
 
 /**
  * Pendência + prazo + lembrete. Um lembrete por etapa a cada 24h enquanto
@@ -37,10 +37,12 @@ export async function runReminders() {
     const partyField = ROLE_PARTY_FIELD[role];
     const overdue = Date.parse(stage.dueAt) < now;
     await notify(
-      {
-        role: role === "operator" ? ["admin", "operator"] : role,
-        partyId: partyField ? order[partyField] : null,
-      },
+      role === "customer"
+        ? requesterTarget(order.requestedByUserId)
+        : {
+            role: role === "operator" ? ["admin", "operator"] : role,
+            partyId: partyField ? order[partyField] : null,
+          },
       {
         subject: `${overdue ? "ATRASADO" : "Vence em breve"}: pedido #${order.number}, etapa ${stage.key}`,
         body: `Pendências: ${required.map((r) => r.label).join(", ")}.`,

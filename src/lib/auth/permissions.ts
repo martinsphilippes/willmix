@@ -20,10 +20,18 @@ export function assertRole(user: User, roles: Role[]) {
   if (!roles.includes(user.role)) throw new ForbiddenError();
 }
 
-/** Cliente vê apenas as próprias solicitações; Wellmix vê todas. */
+/**
+ * Cliente vê só as solicitações do próprio login (as que criou ou que a Wellmix
+ * abriu em nome dele); outros logins da mesma empresa não. Wellmix vê todas.
+ */
 export function canViewRequest(user: User, request: Request): boolean {
   if (isWellmix(user)) return true;
-  if (user.role === "customer") return request.customerId === user.partyId;
+  if (user.role === "customer")
+    return (
+      request.customerId === user.partyId &&
+      (request.requestedForUserId === user.id ||
+        request.createdByUserId === user.id)
+    );
   return false;
 }
 
@@ -39,7 +47,7 @@ export function canViewQuote(
 /**
  * Quem pode abrir um pedido:
  * - Wellmix: todos;
- * - cliente: os seus;
+ * - cliente: só os do próprio login (quem solicitou), nunca os de outros logins;
  * - fornecedor: os seus;
  * - agência, despachante, armador, transportador: os pedidos em que foram designados;
  * - jurídico: todos (somente leitura, multas).
@@ -50,7 +58,7 @@ export function canViewOrder(user: User, order: Order): boolean {
   if (!party) return false;
   switch (user.role) {
     case "customer":
-      return order.customerId === party;
+      return order.customerId === party && order.requestedByUserId === user.id;
     case "supplier":
       return order.supplierId === party;
     case "agency":
