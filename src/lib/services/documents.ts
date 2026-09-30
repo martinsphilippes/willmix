@@ -5,6 +5,7 @@ import {
   type Certification,
   type Document,
   type DocumentType,
+  type ProductPhoto,
   type User,
   type Visibility,
 } from "@/lib/db";
@@ -156,6 +157,14 @@ export async function canAccessDocument(
       limit: 1,
     });
     if (cert) return canViewCertificationDocument(user, cert);
+    // Cliente: fotos do cadastro de um produto ativo do catálogo, as mesmas que a
+    // nova solicitação mostra ao escolher o produto (ver catalogShowcasePhotos).
+    if (
+      doc.productId &&
+      user.role === "customer" &&
+      (await isCatalogShowcasePhoto(doc.productId, doc.id))
+    )
+      return true;
     // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
     if (doc.productId || doc.sourcingItemId)
       return doc.visibility === "all" && !!doc.productId;
@@ -178,4 +187,67 @@ async function canViewCertificationDocument(
   if (cert.entity === "party") return cert.entityId === user.partyId;
   const product = await getStore().get("products", cert.entityId);
   return !!product && product.supplierId === user.partyId;
+}
+
+/** Máximo de fotos do cadastro mostradas por produto na solicitação. */
+export const CATALOG_SHOWCASE_LIMIT = 8;
+const SHOWCASE_ORDER: ProductPhoto["kind"][] = [
+  "commercial",
+  "original",
+  "packaging",
+  "other",
+];
+
+/**
+ * Fotos do cadastro que acompanham um produto do catálogo na nova solicitação.
+ * Principal primeiro, depois comercial, original, embalagem e o resto (medidas).
+ * Uma original que ganhou versão comercial dá lugar a ela: assim a Wellmix
+ * controla o que o cliente vê (ex.: esconder marca do fornecedor) sem apagar a
+ * original, que segue como evidência.
+ */
+export async function catalogShowcasePhotos(
+  productIds: string[],
+): Promise<Map<string, ProductPhoto[]>> {
+  const wanted = new Set(productIds);
+  const result = new Map<string, ProductPhoto[]>();
+  if (!wanted.size) return result;
+  const photos = (await getStore().list("product_photos")).filter(
+    (p) => p.productId && wanted.has(p.productId),
+  );
+  const replaced = new Set(
+    photos
+      .filter((p) => p.kind === "commercial" && p.derivedFromPhotoId)
+      .map((p) => p.derivedFromPhotoId as string),
+  );
+  const rank = (p: ProductPhoto) => {
+    const i = SHOWCASE_ORDER.indexOf(p.kind);
+    return i === -1 ? SHOWCASE_ORDER.length : i;
+  };
+  for (const photo of photos) {
+    if (replaced.has(photo.id)) continue;
+    const list = result.get(photo.productId!) ?? [];
+    list.push(photo);
+    result.set(photo.productId!, list);
+  }
+  for (const [id, list] of result) {
+    list.sort(
+      (a, b) =>
+        Number(b.isPrimary) - Number(a.isPrimary) ||
+        rank(a) - rank(b) ||
+        a.createdAt.localeCompare(b.createdAt),
+    );
+    result.set(id, list.slice(0, CATALOG_SHOWCASE_LIMIT));
+  }
+  return result;
+}
+
+/** O documento é uma das fotos mostradas de um produto ativo do catálogo? */
+async function isCatalogShowcasePhoto(
+  productId: string,
+  documentId: string,
+): Promise<boolean> {
+  const product = await getStore().get("products", productId);
+  if (!product?.active) return false;
+  const photos = (await catalogShowcasePhotos([productId])).get(productId);
+  return !!photos?.some((p) => p.documentId === documentId);
 }

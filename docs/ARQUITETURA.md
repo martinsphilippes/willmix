@@ -28,7 +28,7 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 
 1. Solicitações e RFQ (`services/requests.ts`): cliente ou Wellmix cria; Wellmix escolhe fornecedores; fornecedores cotam; Wellmix seleciona e define valor e sinal; sinal confirmado manualmente cria o pedido.
 2. Pedidos e workflow (`workflow/`): etapas fixas, requisitos por etapa (checklist da linha na preparação), avanço automático, bloqueio por divergência de peso, aprovação de arte.
-3. Documentos (`services/documents.ts`): storage com metadados, versionamento, visibilidade e download controlado.
+3. Documentos (`services/documents.ts`): storage com metadados, versionamento, visibilidade e download controlado. Fotos de produto são da Wellmix; o cliente abre só as fotos de produto ativo do catálogo que a nova solicitação mostra (a versão comercial substitui a original).
 4. Pendências e notificações (`services/tasks.ts`, `services/notifications.ts`, `services/reminders.ts`): o que cada um precisa fazer, avisos in-app, e-mail e WhatsApp (mock), lembretes por prazo.
 5. Control Tower (`services/control-tower.ts`): pedidos ativos, onde estão, quem precisa agir, atrasos e exceções.
 6. Conta corrente do fornecedor, multas (jurídico), cadastros com importação CSV, configurações.

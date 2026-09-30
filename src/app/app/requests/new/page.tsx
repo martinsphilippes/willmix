@@ -26,6 +26,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
+import { catalogShowcasePhotos } from "@/lib/services/documents";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
 import { lookupProductAction } from "../../actions/lookup";
@@ -114,8 +115,14 @@ export default async function NewRequestPage({
   /* Dados da ficha para preencher a solicitação ao escolher o produto (sem preço nem fornecedor). */
   const dims = (a: number | null, b: number | null, c: number | null) =>
     a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
+  // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
+  const showcase = await catalogShowcasePhotos(products.map((p) => p.id));
   const productFills: ProductFill[] = products.map((p) => ({
     id: p.id,
+    photos: (showcase.get(p.id) ?? []).map((ph) => ({
+      documentId: ph.documentId,
+      caption: ph.caption?.trim() || p.name,
+    })),
     label: `${p.name}${p.sku ? ` (${p.sku})` : ""}`,
     productName: p.name,
     description:
@@ -434,6 +441,8 @@ export default async function NewRequestPage({
               select: t("common.select"),
               filledHint: t("lookup.fill.hint"),
               filledBadge: t("lookup.fill.badge"),
+              photos: t("lookup.fill.photos"),
+              photosNone: t("lookup.fill.photosNone"),
               productName: `${t("common.product")} (${t("common.name")})`,
               placeholder: "Ex.: Jarra de vidro 1,5 L",
               description: t("requests.description"),

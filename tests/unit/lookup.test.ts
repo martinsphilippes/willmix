@@ -8,7 +8,8 @@ withTempStore();
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { setSetting } = await import("@/lib/settings");
-const { uploadDocument } = await import("@/lib/services/documents");
+const { uploadDocument, canAccessDocument, catalogShowcasePhotos } =
+  await import("@/lib/services/documents");
 const { imageHashOf, hashDistance, SAME_PHOTO_MAX_DISTANCE } =
   await import("@/lib/services/image-hash");
 const {
@@ -601,5 +602,63 @@ describe("busca pausada", () => {
     } finally {
       await setSetting("lookupPaused", false);
     }
+  });
+});
+
+describe("fotos do cadastro na nova solicitação", () => {
+  it("cliente abre as fotos de produto ativo; comercial substitui a original; fornecedor não abre", async () => {
+    const store = getStore();
+    const [original] = await store.list("product_photos", {
+      filter: { productId: "prod-panela", kind: "original" },
+    });
+    const originalDoc = (await store.get("documents", original.documentId))!;
+
+    let shown = (await catalogShowcasePhotos(["prod-panela"])).get(
+      "prod-panela",
+    )!;
+    expect(shown[0].documentId).toBe(original.documentId);
+    expect(await canAccessDocument(customer, originalDoc)).toBe(true);
+    expect(await canAccessDocument(supplier, originalDoc)).toBe(false);
+
+    // Versão comercial da original: o cliente passa a ver só a comercial.
+    const commercialDoc = await uploadDocument(
+      admin,
+      asFile(await photo("b"), "panela-comercial.png", "image/png"),
+      { productId: "prod-panela", type: "photo", visibility: "internal" },
+    );
+    await store.create("product_photos", {
+      productId: "prod-panela",
+      sourcingItemId: null,
+      orderId: null,
+      documentId: commercialDoc.id,
+      kind: "commercial",
+      caption: null,
+      takenAt: null,
+      takenByUserId: admin.id,
+      derivedFromPhotoId: original.id,
+      isPrimary: false,
+    });
+    shown = (await catalogShowcasePhotos(["prod-panela"])).get("prod-panela")!;
+    expect(shown.map((p) => p.documentId)).toContain(commercialDoc.id);
+    expect(shown.map((p) => p.documentId)).not.toContain(original.documentId);
+    expect(await canAccessDocument(customer, commercialDoc)).toBe(true);
+    expect(await canAccessDocument(customer, originalDoc)).toBe(false);
+    expect(await canAccessDocument(admin, originalDoc)).toBe(true);
+
+    // Produto inativo sai do catálogo: o cliente não abre mais as fotos.
+    await store.update("products", "prod-panela", { active: false });
+    try {
+      expect(await canAccessDocument(customer, commercialDoc)).toBe(false);
+    } finally {
+      await store.update("products", "prod-panela", { active: true });
+    }
+
+    // Foto só de sourcing (sem produto) continua fechada ao cliente.
+    const sourcingDoc = await uploadDocument(
+      admin,
+      asFile(await photo("c"), "fabrica.png", "image/png"),
+      { sourcingItemId: "src-x", type: "photo", visibility: "internal" },
+    );
+    expect(await canAccessDocument(customer, sourcingDoc)).toBe(false);
   });
 });

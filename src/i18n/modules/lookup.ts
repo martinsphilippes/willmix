@@ -54,6 +54,8 @@ export const pt = {
   "lookup.fill.hint":
     "Ao escolher, nome, descrição e especificação são preenchidos com a ficha do produto; dá para editar.",
   "lookup.fill.badge": "Preenchido com a ficha",
+  "lookup.fill.photos": "Fotos do cadastro",
+  "lookup.fill.photosNone": "Este produto ainda não tem fotos no cadastro.",
   "lookup.fill.attachmentsHint":
     "Fotos, desenhos ou arquivos do produto que você procura (ajudam a Wellmix a encontrar fornecedores).",
   "lookup.paused":
@@ -125,6 +127,8 @@ export const en: Record<keyof typeof pt, string> = {
   "lookup.fill.hint":
     "When chosen, name, description and specification are filled from the product sheet; you can edit them.",
   "lookup.fill.badge": "Filled from the sheet",
+  "lookup.fill.photos": "Catalog photos",
+  "lookup.fill.photosNone": "This product has no photos in the catalog yet.",
   "lookup.fill.attachmentsHint":
     "Photos, drawings or files of the product you are looking for (they help Wellmix find suppliers).",
   "lookup.paused":
@@ -194,6 +198,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "lookup.fill.hint":
     "选择后，名称、描述和规格会根据产品档案自动填写，可以修改。",
   "lookup.fill.badge": "已按档案填写",
+  "lookup.fill.photos": "档案照片",
+  "lookup.fill.photosNone": "该产品档案中还没有照片。",
   "lookup.fill.attachmentsHint":
     "您要找的产品的照片、图纸或文件（帮助 Wellmix 寻找供应商）。",
   "lookup.paused": "使用此功能需要外部 token，正在等待信用卡。",
