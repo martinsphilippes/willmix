@@ -390,6 +390,11 @@ export default async function SettingsPage({
                 checked={s.radarGateEnabled}
                 hint={t("operations.settings.hint.radarGateEnabled")}
               />
+              <Checkbox
+                name="lookupPaused"
+                checked={s.lookupPaused}
+                hint={t("operations.settings.hint.lookupPaused")}
+              />
             </div>
           </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">

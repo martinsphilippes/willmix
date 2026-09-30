@@ -66,6 +66,8 @@ export const pt = {
     "Preço padrão sugerido ao criar um kit de marketing; editável em cada kit. Nada fixo em código.",
   "operations.settings.hint.marketingKitCurrency":
     "Código ISO de 3 letras (BRL, USD, CNY).",
+  "operations.settings.hint.lookupPaused":
+    "Pausa a busca de produto por foto/link na nova solicitação (botões inativos e aviso de que os tokens externos aguardam cartão de crédito). Desmarque quando a IA estiver liberada.",
   "operations.settings.hint.radarGateEnabled":
     "Cliente em importação própria sem RADAR informado ou sem habilitação: o pedido novo entra na fila de revisão (não bloqueia).",
   "operations.settings.hint.importerName":
@@ -141,6 +143,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Default price suggested when creating a marketing kit; editable per kit. Nothing hard-coded.",
   "operations.settings.hint.marketingKitCurrency":
     "3-letter ISO code (BRL, USD, CNY).",
+  "operations.settings.hint.lookupPaused":
+    "Pauses product search by photo/link in new requests (buttons disabled with a notice that external tokens are waiting for a credit card). Uncheck when AI is available.",
   "operations.settings.hint.radarGateEnabled":
     "Customer on own import without RADAR informed or without registration: the new order enters the review queue (does not block).",
   "operations.settings.hint.importerName":
@@ -212,6 +216,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "创建营销套件时建议的默认价格；每个套件可单独修改。代码中不写死。",
   "operations.settings.hint.marketingKitCurrency":
     "3 位 ISO 代码（BRL、USD、CNY）。",
+  "operations.settings.hint.lookupPaused":
+    "暂停新申请中的照片/链接产品查找（按钮不可用，并提示外部 token 正在等待信用卡）。AI 可用后取消勾选。",
   "operations.settings.hint.radarGateEnabled":
     "自主进口客户未填写 RADAR 或无资质：新订单进入复核队列（不阻塞）。",
   "operations.settings.hint.importerName":

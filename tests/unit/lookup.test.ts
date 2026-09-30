@@ -68,6 +68,8 @@ const preview = (over: Partial<LinkPreview>): LinkPreview => ({
 
 beforeAll(async () => {
   const { users } = await seedDemo();
+  // Nos testes a busca fica ativa (em produção começa pausada até o cartão).
+  await setSetting("lookupPaused", false);
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   customer = users.find((u) => u.email === "joao@lojista.com")!;
   supplier = users.find((u) => u.email === "supplier.a@china.com")!;
@@ -586,5 +588,18 @@ describe("link do Mercado Livre e produtos relacionados", () => {
     expect(panela.reasons).toEqual(
       expect.arrayContaining(["category", "word"]),
     );
+  });
+});
+
+describe("busca pausada", () => {
+  it("com lookupPaused a busca é recusada no servidor", async () => {
+    await setSetting("lookupPaused", true);
+    try {
+      await expect(
+        runProductLookup(customer, { url: "https://loja.example.com/x" }),
+      ).rejects.toThrow("lookup_paused");
+    } finally {
+      await setSetting("lookupPaused", false);
+    }
   });
 });
