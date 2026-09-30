@@ -19,6 +19,7 @@ export function PhotoInput({
   label,
   hint,
   className,
+  autoSubmit = false,
 }: {
   name: string;
   multiple?: boolean;
@@ -29,6 +30,8 @@ export function PhotoInput({
   label: string;
   hint?: string;
   className?: string;
+  /** Envia o formulário assim que a foto estiver pronta (busca automática). */
+  autoSubmit?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -55,6 +58,7 @@ export function PhotoInput({
         old.forEach((u) => URL.revokeObjectURL(u));
         return urls;
       });
+      if (autoSubmit) input.form?.requestSubmit();
     } finally {
       setBusy(false);
     }

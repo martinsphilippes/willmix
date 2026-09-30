@@ -1645,6 +1645,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "imageHash",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 32
         }
       ],
       "indexes": [
@@ -4749,6 +4757,154 @@
           "type": "key",
           "columns": [
             "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "product_lookups",
+      "databaseId": "willmix",
+      "name": "Buscas de produto (foto/link)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "userId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "imageDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "url",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "linkStatus",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "ok",
+            "blocked",
+            "failed",
+            "invalid"
+          ]
+        },
+        {
+          "key": "linkTitle",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 500
+        },
+        {
+          "key": "linkSiteName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "linkImageUrl",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "linkPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "imageHash",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 32
+        },
+        {
+          "key": "linkImageHash",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 32
+        },
+        {
+          "key": "matches",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "suggestions",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "aiSource",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "api",
+            "mock"
+          ]
+        },
+        {
+          "key": "requestId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_user",
+          "type": "key",
+          "columns": [
+            "userId"
           ],
           "orders": [
             "ASC"

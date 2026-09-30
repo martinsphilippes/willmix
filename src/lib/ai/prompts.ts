@@ -7,7 +7,7 @@ import type { LinePrompts, Product, ProductLine, SourcingItem } from "@/lib/db";
  * nenhum valor sugerido vira cadastro sem confirmação humana.
  */
 export type PromptKind =
-  "registration" | "description" | "marketing" | "image" | "ncm";
+  "registration" | "description" | "marketing" | "image" | "ncm" | "lookup";
 
 export const BASE_PROMPTS: Record<PromptKind, string> = {
   registration: [
@@ -27,6 +27,15 @@ export const BASE_PROMPTS: Record<PromptKind, string> = {
     "Com base nos dados do produto, proponha material comercial em português do Brasil.",
     'Responda SOMENTE um JSON: {"concept": string, "slogan": string, "description": string, "campaign": string, "colors": string[]}',
     "Não invente certificações, prêmios, preços ou promessas técnicas que não estejam nos dados.",
+  ].join("\n"),
+  lookup: [
+    "Você ajuda um cliente de um importador brasileiro a descrever o produto que quer comprar, a partir da foto e/ou do link de referência.",
+    'Responda SOMENTE um JSON: {"catalogMatches": [{"id": string, "reason": string}], "productName": [string], "description": [string], "specification": [string]}',
+    "catalogMatches: só ids da lista CATÁLOGO que sejam o mesmo produto ou muito provavelmente o mesmo; lista vazia se nenhum.",
+    "productName: até 3 nomes curtos e comerciais em português do Brasil.",
+    "description: até 3 descrições de uma ou duas frases do produto.",
+    "specification: até 3 especificações do que é visível ou informado (material provável, cor, formato, tamanho aparente).",
+    "Não invente medidas, peso, preço, marca ou certificações que não estejam na foto ou no link.",
   ].join("\n"),
   ncm: [
     "Você apoia a classificação fiscal (NCM, Mercosul) de produtos importados da China para o Brasil.",

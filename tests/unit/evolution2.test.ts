@@ -119,6 +119,7 @@ async function completeOrder(orderId: string) {
           productId: null,
           sourcingItemId: null,
           kitId: null,
+          imageHash: null,
         });
         await submitRequirement(admin, r.id, { documentId: doc.id });
       } else if (r.type === "number")

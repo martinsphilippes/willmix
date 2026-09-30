@@ -12,6 +12,7 @@ import * as sourcing from "./sourcing";
 import * as vision from "./vision";
 import * as marketing from "./marketing";
 import * as operations from "./operations";
+import * as lookup from "./lookup";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -23,6 +24,7 @@ export const modulesPt = {
   ...vision.pt,
   ...marketing.pt,
   ...operations.pt,
+  ...lookup.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -34,6 +36,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...vision.en,
   ...marketing.en,
   ...operations.en,
+  ...lookup.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -45,4 +48,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...vision.zh,
   ...marketing.zh,
   ...operations.zh,
+  ...lookup.zh,
 };

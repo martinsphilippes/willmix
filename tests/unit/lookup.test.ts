@@ -1,0 +1,302 @@
+import { beforeAll, describe, expect, it } from "vitest";
+import sharp from "sharp";
+import { withTempStore } from "./setup";
+
+/* Busca de produto por foto ou link na nova solicitação. */
+withTempStore();
+
+const { getStore } = await import("@/lib/db");
+const { seedDemo } = await import("@/lib/seed");
+const { setSetting } = await import("@/lib/settings");
+const { uploadDocument } = await import("@/lib/services/documents");
+const { imageHashOf, hashDistance, SAME_PHOTO_MAX_DISTANCE } =
+  await import("@/lib/services/image-hash");
+const {
+  isPrivateAddress,
+  assertPublicUrl,
+  parseLinkHtml,
+  fetchLinkPreview,
+  decodeEntities,
+} = await import("@/lib/integrations/link-preview");
+const { runProductLookup, getLookup, attachLookupToRequest, nameScore } =
+  await import("@/lib/services/product-lookup");
+const { createRequest } = await import("@/lib/services/requests");
+type User = import("@/lib/db").User;
+type LinkPreview = import("@/lib/integrations/link-preview").LinkPreview;
+
+let admin: User;
+let customer: User;
+let supplier: User;
+
+/** Imagem parecida com foto de produto (formas grandes); "b" é outra composição. */
+async function photo(design: "a" | "b" | "c", width = 800, jpeg = false) {
+  const svg =
+    design === "a"
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#f0e8d0"/><circle cx="250" cy="300" r="140" fill="#303a8a"/><rect x="420" y="150" width="220" height="260" rx="30" fill="#c02a26"/><ellipse cx="400" cy="520" rx="300" ry="40" fill="#555" opacity="0.4"/></svg>`
+      : design === "b"
+        ? `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#20304a"/><rect y="200" width="800" height="120" fill="#e8e8e8"/><polygon points="100,580 400,60 700,580" fill="#3a9a55"/></svg>`
+        : `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><rect width="800" height="600" fill="#ffffff"/><rect x="80" y="80" width="200" height="440" fill="#111"/><rect x="520" y="80" width="200" height="440" fill="#111"/></svg>`;
+  let img = sharp(Buffer.from(svg)).resize(width);
+  img = jpeg ? img.jpeg({ quality: 45 }) : img.png();
+  return new Uint8Array(await img.toBuffer());
+}
+const asFile = (bytes: Uint8Array, name: string, type: string) =>
+  new File([new Uint8Array(bytes)], name, { type });
+
+const preview = (over: Partial<LinkPreview>): LinkPreview => ({
+  status: "ok",
+  url: "https://loja.example.com/p/1",
+  title: null,
+  description: null,
+  siteName: null,
+  imageUrl: null,
+  price: null,
+  product: {
+    name: null,
+    description: null,
+    brand: null,
+    material: null,
+    color: null,
+    sku: null,
+    size: null,
+  },
+  image: null,
+  ...over,
+});
+
+beforeAll(async () => {
+  const { users } = await seedDemo();
+  admin = users.find((u) => u.email === "admin@wellmix.com")!;
+  customer = users.find((u) => u.email === "joao@lojista.com")!;
+  supplier = users.find((u) => u.email === "supplier.a@china.com")!;
+  // Foto cadastrada da panela (a impressão digital nasce no upload).
+  const store = getStore();
+  const doc = await uploadDocument(
+    admin,
+    asFile(await photo("a"), "panela.png", "image/png"),
+    { productId: "prod-panela", type: "photo", visibility: "internal" },
+  );
+  expect(doc.imageHash).toMatch(/^[0-9a-f]{16}$/);
+  await store.create("product_photos", {
+    productId: "prod-panela",
+    sourcingItemId: null,
+    orderId: null,
+    documentId: doc.id,
+    kind: "original",
+    caption: null,
+    takenAt: null,
+    takenByUserId: admin.id,
+    derivedFromPhotoId: null,
+    isPrimary: true,
+  });
+});
+
+describe("impressão digital da imagem", () => {
+  it("a mesma foto redimensionada e recomprimida fica perto; outra foto fica longe", async () => {
+    const a = (await imageHashOf(await photo("a")))!;
+    const b = (await imageHashOf(await photo("a", 320, true)))!;
+    expect(hashDistance(a, b)).toBeLessThanOrEqual(SAME_PHOTO_MAX_DISTANCE);
+    for (const other of ["b", "c"] as const)
+      expect(
+        hashDistance(a, (await imageHashOf(await photo(other)))!),
+      ).toBeGreaterThan(SAME_PHOTO_MAX_DISTANCE);
+    expect(await imageHashOf(new Uint8Array([1, 2, 3]))).toBeNull();
+  });
+});
+
+describe("leitura segura do link", () => {
+  it("bloqueia endereços internos e esquemas não http", async () => {
+    for (const ip of [
+      "127.0.0.1",
+      "10.1.2.3",
+      "192.168.0.10",
+      "172.20.0.1",
+      "169.254.169.254",
+      "100.64.0.1",
+      "::1",
+      "fd00::1",
+      "::ffff:127.0.0.1",
+    ])
+      expect(isPrivateAddress(ip)).toBe(true);
+    expect(isPrivateAddress("8.8.8.8")).toBe(false);
+    for (const u of [
+      "http://127.0.0.1/x",
+      "http://localhost:3000",
+      "file:///etc/passwd",
+      "http://10.0.0.1:8080/",
+      "https://user:pw@8.8.8.8/",
+    ])
+      await expect(assertPublicUrl(new URL(u))).rejects.toThrow();
+    expect((await fetchLinkPreview("http://127.0.0.1/admin")).status).toBe(
+      "invalid",
+    );
+    expect((await fetchLinkPreview("nao é link")).status).toBe("invalid");
+  });
+
+  it("extrai Open Graph e o produto do JSON-LD", () => {
+    const html = `<html><head><title>Ignorado</title>
+      <meta property="og:title" content="Jogo de Panelas 5 pe&ccedil;as &amp; tampa | Loja X">
+      <meta content="Panelas antiaderentes de alumínio" property="og:description">
+      <meta property="og:image" content="/img/panela.jpg">
+      <meta property="og:site_name" content="Loja X">
+      <meta name="description" content="Descri&Ccedil;&Atilde;O">
+      <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Product","name":"Jogo de Panelas 5 peças","brand":{"@type":"Brand","name":"Marca Y"},"material":"Alumínio","color":"Preto","sku":"PAN-5","offers":{"price":"199.90","priceCurrency":"BRL"}}]}</script>
+      </head></html>`;
+    const r = parseLinkHtml(html, "https://loja.example.com/p/1");
+    expect(r.title).toBe("Jogo de Panelas 5 peças & tampa | Loja X");
+    expect(r.description).toBe("Panelas antiaderentes de alumínio");
+    expect(r.imageUrl).toBe("https://loja.example.com/img/panela.jpg");
+    expect(r.siteName).toBe("Loja X");
+    expect(decodeEntities("A&ccedil;&atilde;o &Eacute; &#233; &#x263A;")).toBe(
+      "Ação É é ☺",
+    );
+    expect(r.price).toBe("BRL 199.90");
+    expect(r.product).toMatchObject({
+      name: "Jogo de Panelas 5 peças",
+      brand: "Marca Y",
+      material: "Alumínio",
+      color: "Preto",
+      sku: "PAN-5",
+    });
+  });
+});
+
+describe("busca no catálogo e sugestões", () => {
+  it("foto parecida encontra o produto cadastrado", async () => {
+    await setSetting("aiMode", "MANUAL");
+    const row = await runProductLookup(customer, {
+      file: asFile(await photo("a", 320, true), "whats.jpg", "image/jpeg"),
+    });
+    expect(row.matches[0]).toMatchObject({
+      productId: "prod-panela",
+      reasons: ["photo"],
+    });
+    expect(row.aiSource).toBeNull();
+    expect(row.customerId).toBe("cliente-joao");
+    // Sugestões do catálogo (nome e especificação, nunca preço ou fornecedor).
+    expect(row.suggestions.productName?.[0]).toEqual({
+      value: "Jogo de panelas antiaderentes 5 pçs",
+      source: "catalog",
+    });
+    expect(JSON.stringify(row.suggestions)).not.toMatch(/9\.5|Shenzhen|USD/);
+  });
+
+  it("link com nome parecido encontra o produto e sugere vários valores por campo", async () => {
+    const row = await runProductLookup(
+      customer,
+      { url: "https://loja.example.com/p/1" },
+      {
+        fetchPreview: async () =>
+          preview({
+            title: "Jogo de Panelas Antiaderentes 5 pçs | Loja X",
+            description: "Kit com 5 panelas de alumínio",
+            product: {
+              name: null,
+              description: null,
+              brand: "Marca Y",
+              material: "Alumínio",
+              color: "Vermelho",
+              sku: null,
+              size: null,
+            },
+          }),
+      },
+    );
+    expect(row.matches.map((m) => m.productId)).toContain("prod-panela");
+    expect(
+      row.matches.find((m) => m.productId === "prod-panela")!.reasons,
+    ).toContain("name");
+    const names = row.suggestions.productName!.map((o) => o.value);
+    expect(names).toContain("Jogo de Panelas Antiaderentes 5 pçs");
+    expect(names.length).toBeGreaterThanOrEqual(2);
+    expect(row.suggestions.specification![0]).toEqual({
+      value: "Material: Alumínio; Cor: Vermelho; Marca: Marca Y",
+      source: "link",
+    });
+  });
+
+  it("produto novo: sem correspondência, sugestões do link e da IA (mock rotulado)", async () => {
+    await setSetting("aiMode", "MOCK");
+    const row = await runProductLookup(
+      customer,
+      { url: "https://loja.example.com/p/2" },
+      {
+        fetchPreview: async () =>
+          preview({
+            title: "Luminária solar de jardim LED",
+            description: "Acende sozinha ao anoitecer",
+          }),
+      },
+    );
+    expect(row.matches).toEqual([]);
+    expect(row.aiSource).toBe("mock");
+    expect(row.suggestions.productName!.map((o) => o.source)).toEqual([
+      "link",
+      "mock",
+    ]);
+    expect(row.suggestions.description![0].value).toBe(
+      "Acende sozinha ao anoitecer",
+    );
+    await setSetting("aiMode", "MANUAL");
+  });
+
+  it("link bloqueado não quebra: só registra o status", async () => {
+    const row = await runProductLookup(
+      customer,
+      { url: "https://1688.example.com/x" },
+      { fetchPreview: async () => preview({ status: "blocked" }) },
+    );
+    expect(row.linkStatus).toBe("blocked");
+    expect(row.matches).toEqual([]);
+  });
+
+  it("nome parecido exige ao menos duas palavras do produto", async () => {
+    const p = (await getStore().get("products", "prod-panela"))!;
+    expect(nameScore(p, "Panela de pressão elétrica")).toBe(0);
+    expect(
+      nameScore(p, "Jogo de panelas antiaderentes"),
+    ).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("permissões e anexo à solicitação", async () => {
+    await expect(runProductLookup(customer, {})).rejects.toThrow(
+      "lookup_empty",
+    );
+    await expect(
+      runProductLookup(supplier, { url: "https://x.example.com" }),
+    ).rejects.toThrow("forbidden");
+    await expect(
+      runProductLookup(customer, {
+        file: asFile(
+          new Uint8Array([37, 80, 68, 70]),
+          "a.pdf",
+          "application/pdf",
+        ),
+      }),
+    ).rejects.toThrow("lookup_not_image");
+    const row = await runProductLookup(customer, {
+      file: asFile(await photo("b", 400), "novo.png", "image/png"),
+    });
+    expect(await getLookup(supplier, row.id)).toBeNull();
+    expect(await getLookup(admin, row.id)).not.toBeNull();
+    const request = await createRequest(customer, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Produto novo",
+      description: "Pela foto",
+      specification: null,
+      quantity: 10,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    await attachLookupToRequest(customer, row.id, request.id);
+    const store = getStore();
+    expect(
+      (await store.get("documents", row.imageDocumentId!))!.requestId,
+    ).toBe(request.id);
+    expect((await store.get("product_lookups", row.id))!.requestId).toBe(
+      request.id,
+    );
+  });
+});

@@ -16,6 +16,7 @@ Regra: toda integração externa crítica tem modo manual ou mock para o fluxo f
 | WhatsApp            | `src/lib/services/notifications.ts` | Mock                                                           |
 | Booking / armador   | requisitos da etapa `SHIPPING`      | Entrada manual                                                 |
 | Comex / aduana      | requisitos da etapa `CUSTOMS`       | Entrada manual                                                 |
+| Leitura de link de produto | `src/lib/integrations/link-preview.ts` | Busca pública (Open Graph/JSON-LD) sem navegador; bloqueia endereços internos em cada redirecionamento; site que bloqueia vira aviso na tela |
 | IA (cadastro por foto, textos de marketing) | `src/lib/integrations/ai.ts` | `api` com `ANTHROPIC_API_KEY` (API Messages, sem SDK); sem chave, `manual`; `aiMode = MOCK` devolve exemplo rotulado. Humano confirma tudo |
 
 ## EXTERNAL DEPENDENCIES PENDING

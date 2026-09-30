@@ -279,6 +279,9 @@ export const MARKETING_KIT_STATUSES = [
   "cancelled",
 ] as const;
 export type MarketingKitStatus = (typeof MARKETING_KIT_STATUSES)[number];
+/** Leitura do link de referência: ok, site bloqueou/sem dados, falha de rede, link inválido. */
+export const LINK_STATUSES = ["ok", "blocked", "failed", "invalid"] as const;
+export type LinkStatus = (typeof LINK_STATUSES)[number];
 
 export const IMPORT_BATCH_STATUSES = [
   "uploaded",
@@ -526,6 +529,8 @@ export interface Document extends BaseRow {
   sourcingItemId: string | null;
   /** Arquivo de kit de marketing (prévia ou final); acesso do cliente depende da situação do kit. */
   kitId: string | null;
+  /** Impressão digital visual (dHash, 16 hex) para achar a mesma foto no catálogo; "-" = não é imagem legível. */
+  imageHash: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -940,6 +945,41 @@ export interface MarketingKit extends BaseRow {
   createdByUserId: string;
 }
 
+/** Produto do catálogo que corresponde à foto/link, com o motivo. */
+export interface LookupMatch {
+  productId: string;
+  /** 0–1; só para ordenar. */
+  score: number;
+  reasons: Array<"photo" | "link_photo" | "name" | "ai">;
+}
+
+export type LookupSource = "link" | "catalog" | "ai" | "mock";
+export interface LookupOption {
+  value: string;
+  source: LookupSource;
+}
+export type LookupField = "productName" | "description" | "specification";
+
+/** Busca de produto por foto ou link (tela de nova solicitação). Guarda o que foi achado e sugerido. */
+export interface ProductLookup extends BaseRow {
+  userId: string;
+  customerId: string | null;
+  imageDocumentId: string | null;
+  url: string | null;
+  linkStatus: LinkStatus | null;
+  linkTitle: string | null;
+  linkSiteName: string | null;
+  linkImageUrl: string | null;
+  /** Preço exibido no link (referência de varejo; nunca vira preço de compra). */
+  linkPrice: string | null;
+  imageHash: string | null;
+  linkImageHash: string | null;
+  matches: LookupMatch[];
+  suggestions: Partial<Record<LookupField, LookupOption[]>>;
+  aiSource: AiSource | null;
+  requestId: string | null;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -975,6 +1015,7 @@ export interface Tables {
   after_sales: AfterSales;
   ai_suggestions: AiSuggestion;
   marketing_kits: MarketingKit;
+  product_lookups: ProductLookup;
 }
 export type TableName = keyof Tables;
 
@@ -1277,6 +1318,7 @@ export const TABLES: Record<TableName, TableDef> = {
       productId: id(false),
       sourcingItemId: id(false),
       kitId: id(false),
+      imageHash: str(32),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
@@ -1763,6 +1805,27 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
+  product_lookups: {
+    label: "Buscas de produto (foto/link)",
+    columns: {
+      userId: id(),
+      customerId: id(false),
+      imageDocumentId: id(false),
+      url: text(),
+      linkStatus: enumOf(LINK_STATUSES, false),
+      linkTitle: str(500),
+      linkSiteName: str(160),
+      linkImageUrl: text(),
+      linkPrice: str(60),
+      imageHash: str(32),
+      linkImageHash: str(32),
+      matches: json(),
+      suggestions: json(),
+      aiSource: enumOf(AI_SOURCES, false),
+      requestId: id(false),
+    },
+    indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
+  },
 };
 
 /* ------------------------------------------------------------------------ */
@@ -1841,6 +1904,7 @@ export const DOCUMENT_EXTRA_DEFAULTS = {
   productId: null,
   sourcingItemId: null,
   kitId: null,
+  imageHash: null,
 } satisfies Partial<Document>;
 
 /**

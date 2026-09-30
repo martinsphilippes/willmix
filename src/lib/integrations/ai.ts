@@ -42,30 +42,37 @@ export class MockAiAdapter implements AiAdapter {
   readonly mode = "mock" as const;
   readonly model = "mock";
   async complete(prompt: string, image?: AiImage | null): Promise<AiResult> {
-    const json: Record<string, unknown> = prompt.includes('"concept"')
+    const json: Record<string, unknown> = prompt.includes('"catalogMatches"')
       ? {
-          concept: "Conceito de exemplo (mock): praticidade para o dia a dia",
-          slogan: "Slogan de exemplo (mock)",
-          description:
-            "Descrição comercial de exemplo (mock), para revisão humana.",
-          campaign: "Campanha de exemplo (mock)",
-          colors: ["cor de exemplo (mock)"],
+          catalogMatches: [],
+          productName: ["Nome de exemplo (mock)"],
+          description: ["Descrição de exemplo (mock), para revisão humana."],
+          specification: ["Especificação de exemplo (mock)"],
         }
-      : prompt.includes('"imagePrompt"')
-        ? { imagePrompt: "Prompt de imagem de exemplo (mock)" }
-        : prompt.includes('"materials"')
-          ? {
-              category: "Categoria de exemplo (mock)",
-              description: image
-                ? "Descrição de exemplo (mock) gerada a partir da foto."
-                : "Descrição de exemplo (mock) sem foto.",
-              materials: ["material de exemplo (mock)"],
-              colors: ["cor de exemplo (mock)"],
-              attributes: { atributo: "valor de exemplo (mock)" },
-              confidence: "low",
-              notes: "Modo mock: nenhum dado real foi analisado.",
-            }
-          : { description: "Descrição de exemplo (mock)." };
+      : prompt.includes('"concept"')
+        ? {
+            concept: "Conceito de exemplo (mock): praticidade para o dia a dia",
+            slogan: "Slogan de exemplo (mock)",
+            description:
+              "Descrição comercial de exemplo (mock), para revisão humana.",
+            campaign: "Campanha de exemplo (mock)",
+            colors: ["cor de exemplo (mock)"],
+          }
+        : prompt.includes('"imagePrompt"')
+          ? { imagePrompt: "Prompt de imagem de exemplo (mock)" }
+          : prompt.includes('"materials"')
+            ? {
+                category: "Categoria de exemplo (mock)",
+                description: image
+                  ? "Descrição de exemplo (mock) gerada a partir da foto."
+                  : "Descrição de exemplo (mock) sem foto.",
+                materials: ["material de exemplo (mock)"],
+                colors: ["cor de exemplo (mock)"],
+                attributes: { atributo: "valor de exemplo (mock)" },
+                confidence: "low",
+                notes: "Modo mock: nenhum dado real foi analisado.",
+              }
+            : { description: "Descrição de exemplo (mock)." };
     return { text: JSON.stringify(json), json };
   }
 }
