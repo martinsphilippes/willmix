@@ -75,6 +75,10 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 }) => {
   // 1. Cliente cria solicitação
   await login(page, "joao@lojista.com");
+  // O início do cliente é Solicitações, com o atalho para nova solicitação.
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/requests$/);
+  await expect(page.getByText("Precisa importar um produto?")).toBeVisible();
   await page.goto("/app/requests/new");
   await page.selectOption("select[name=productId]", "prod-jarra");
   await page.fill(

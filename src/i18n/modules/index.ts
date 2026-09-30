@@ -15,6 +15,7 @@ import * as operations from "./operations";
 import * as lookup from "./lookup";
 import * as ai from "./ai";
 import * as access from "./access";
+import * as home from "./home";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -29,6 +30,7 @@ export const modulesPt = {
   ...lookup.pt,
   ...ai.pt,
   ...access.pt,
+  ...home.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -43,6 +45,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...lookup.en,
   ...ai.en,
   ...access.en,
+  ...home.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -57,4 +60,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...lookup.zh,
   ...ai.zh,
   ...access.zh,
+  ...home.zh,
 };

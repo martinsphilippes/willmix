@@ -85,6 +85,11 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Limite: muitos marketplaces chineses bloqueiam a leitura automática do link (a tela avisa).
 - Escolher um produto da Wellmix preenche nome, descrição e especificação com a ficha e mostra as fotos do cadastro (até 8; principal primeiro). O cliente abre só as fotos de produto ativo; uma original com versão comercial dá lugar a ela, e a original segue como evidência para a Wellmix (`catalogShowcasePhotos` e `canAccessDocument` em `services/documents.ts`). Fornecedor e fotos só de sourcing continuam fechados.
 
+### Início do cliente
+
+- O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.
+- A página de pendências continua em `/app/tasks` (item "Pendências" do menu do cliente), com ajuda escrita para o cliente. Demais papéis não mudam. Serviço: `services/customer-home.ts`.
+
 ### Telas entregues na Visão de Produto
 
 - `/app/lines`: "Prompts e regras (IA)" por linha (prompts de descrição, marketing e imagem; atributos exigidos; regras), com badges-resumo.

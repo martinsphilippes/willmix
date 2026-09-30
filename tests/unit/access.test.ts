@@ -22,6 +22,9 @@ const {
 const { canViewOrder, canViewRequest } = await import("@/lib/auth/permissions");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { loadCommercialHistory } = await import("@/lib/services/history");
+const { customerOrdersInProgress } = await import(
+  "@/lib/services/customer-home"
+);
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -141,5 +144,33 @@ describe("cada login do cliente vê só os próprios pedidos", () => {
     await expect(
       setRequester(joao, order.requestId, joao.id),
     ).rejects.toThrow();
+  });
+});
+
+describe("início do cliente (Solicitações)", () => {
+  it("pedidos em andamento: só os do login, sem os encerrados, sem dados de fornecedor", async () => {
+    const { order } = await fullOrder(joao);
+    const mine = await customerOrdersInProgress(joao);
+    const row = mine.find((o) => o.order.id === order.id)!;
+    expect(row).toBeTruthy();
+    expect(row.stageKey).toBe(order.status);
+    expect(row.productName).toBeTruthy();
+    expect(row.eta).toBeNull();
+    expect(Object.keys(row)).not.toContain("supplierId");
+    // Maria (mesma empresa) não vê; Wellmix e fornecedor não usam esta lista.
+    expect(
+      (await customerOrdersInProgress(maria)).some(
+        (o) => o.order.id === order.id,
+      ),
+    ).toBe(false);
+    expect(await customerOrdersInProgress(admin)).toEqual([]);
+    expect(await customerOrdersInProgress(supplier)).toEqual([]);
+    // Encerrado sai da lista.
+    await getStore().update("orders", order.id, { status: "CLOSED" });
+    expect(
+      (await customerOrdersInProgress(joao)).some(
+        (o) => o.order.id === order.id,
+      ),
+    ).toBe(false);
   });
 });

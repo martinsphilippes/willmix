@@ -48,7 +48,9 @@ function navFor(role: Role, admin: boolean): NavItem[] {
     { href: "/app/orders", key: "nav.orders" },
   ];
   if (role === "customer") {
-    base.splice(1, 0, { href: "/app/requests", key: "nav.requests" });
+    // Início do cliente é Solicitações; Pendências segue disponível em /app/tasks.
+    base.splice(0, 1, { href: "/app/requests", key: "nav.requests" });
+    base.splice(1, 0, { href: "/app/tasks", key: "nav.tasks" });
     base.push({ href: "/app/history", key: "nav.history" });
     base.push({ href: "/app/marketing", key: "nav.marketing" });
   }
