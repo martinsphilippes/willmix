@@ -51,6 +51,11 @@ export const pt = {
     "IA de imagem desligada: sem ela, a busca por foto só reconhece fotos iguais às cadastradas, não o mesmo produto em outra foto. Em Configurações, deixe aiMode em AUTO e use Testar IA; na Vercel ela funciona pelo AI Gateway do projeto ou com ANTHROPIC_API_KEY.",
   "lookup.suggestionsHint":
     'Sugestões: toque em uma para preencher (dá para editar depois) ou deixe "Nenhuma dessas".',
+  "lookup.fill.hint":
+    "Ao escolher, nome, descrição e especificação são preenchidos com a ficha do produto; dá para editar.",
+  "lookup.fill.badge": "Preenchido com a ficha",
+  "lookup.fill.attachmentsHint":
+    "Fotos, desenhos ou arquivos do produto que você procura (ajudam a Wellmix a encontrar fornecedores).",
   "lookup.noneOption": "Nenhuma dessas",
   "lookup.source.link": "link",
   "lookup.source.catalog": "catálogo",
@@ -113,6 +118,11 @@ export const en: Record<keyof typeof pt, string> = {
     "Image AI is off: without it, photo search only recognises photos identical to registered ones, not the same product in another photo. In Settings, keep aiMode on AUTO and use Test AI; on Vercel it works through the project's AI Gateway or with ANTHROPIC_API_KEY.",
   "lookup.suggestionsHint":
     'Suggestions: tap one to fill in (you can edit it afterwards) or keep "None of these".',
+  "lookup.fill.hint":
+    "When chosen, name, description and specification are filled from the product sheet; you can edit them.",
+  "lookup.fill.badge": "Filled from the sheet",
+  "lookup.fill.attachmentsHint":
+    "Photos, drawings or files of the product you are looking for (they help Wellmix find suppliers).",
   "lookup.noneOption": "None of these",
   "lookup.source.link": "link",
   "lookup.source.catalog": "catalog",
@@ -173,6 +183,11 @@ export const zh: Record<keyof typeof pt, string> = {
     "图像 AI 未开启：没有它，照片查找只能识别与已登记照片完全相同的照片，无法识别另一张照片中的同一产品。请在设置中将 aiMode 保持为 AUTO 并使用“测试 AI”；在 Vercel 上可通过项目的 AI Gateway 或 ANTHROPIC_API_KEY 使用。",
   "lookup.suggestionsHint":
     "建议：点击其中一项即可填写（之后可修改），或保持“都不选”。",
+  "lookup.fill.hint":
+    "选择后，名称、描述和规格会根据产品档案自动填写，可以修改。",
+  "lookup.fill.badge": "已按档案填写",
+  "lookup.fill.attachmentsHint":
+    "您要找的产品的照片、图纸或文件（帮助 Wellmix 寻找供应商）。",
   "lookup.noneOption": "都不选",
   "lookup.source.link": "链接",
   "lookup.source.catalog": "目录",
