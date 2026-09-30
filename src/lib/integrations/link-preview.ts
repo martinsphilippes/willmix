@@ -20,6 +20,8 @@ export interface LinkPreview {
   siteName: string | null;
   imageUrl: string | null;
   price: string | null;
+  /** Categoria da loja (ex.: "Celulares e Telefones > Celulares e Smartphones"). */
+  category: string | null;
   product: {
     name: string | null;
     description: string | null;
@@ -28,6 +30,7 @@ export interface LinkPreview {
     color: string | null;
     sku: string | null;
     size: string | null;
+    model: string | null;
   };
   image: { bytes: Uint8Array; mime: string } | null;
 }
@@ -113,7 +116,11 @@ async function readLimited(res: Response, max: number): Promise<Uint8Array> {
 }
 
 /** fetch com redirecionamento manual (cada destino passa pela checagem de endereço). */
-async function safeFetch(raw: string, accept: string) {
+async function safeFetch(
+  raw: string,
+  accept: string,
+  extraHeaders?: Record<string, string>,
+) {
   let url = new URL(raw);
   for (let hop = 0; hop < 4; hop++) {
     await assertPublicUrl(url);
@@ -124,6 +131,7 @@ async function safeFetch(raw: string, accept: string) {
         "user-agent": USER_AGENT,
         accept,
         "accept-language": "pt-BR,pt;q=0.9,en;q=0.8,zh;q=0.6",
+        ...extraHeaders,
       },
     });
     const location = res.headers.get("location");
@@ -286,6 +294,7 @@ export function parseLinkHtml(
     price: priceAmount
       ? `${priceCurrency ? `${priceCurrency} ` : ""}${priceAmount}`
       : null,
+    category: clean(nameOf(product?.category), 200),
     product: {
       name: clean(product?.name),
       description: clean(product?.description, 1000),
@@ -294,6 +303,7 @@ export function parseLinkHtml(
       color: clean(product?.color, 60),
       sku: clean(product?.sku ?? product?.mpn, 80),
       size: size || null,
+      model: clean(nameOf(product?.model), 120),
     },
   };
 }
@@ -306,7 +316,154 @@ const EMPTY_PRODUCT: LinkPreview["product"] = {
   color: null,
   sku: null,
   size: null,
+  model: null,
 };
+
+/* ------------------------------------------------------------------------ */
+/* Mercado Livre: API pública oficial (a página costuma barrar leitura)       */
+/* ------------------------------------------------------------------------ */
+
+const ML_HOST = /(^|\.)mercadoli(vre|bre)\.com(\.[a-z]{2})?$/i;
+const ML_API = "https://api.mercadolibre.com";
+
+/** Ids de anúncio (MLB123…) e de produto de catálogo (/p/MLB…) e palavras do endereço. */
+export function mercadoLivreIds(url: URL) {
+  if (!ML_HOST.test(url.hostname)) return null;
+  const all = `${url.pathname} ${decodeURIComponent(url.search)} ${decodeURIComponent(url.hash)}`;
+  const productId =
+    url.pathname.match(/\/p\/([A-Z]{3}\d{5,})/i)?.[1]?.toUpperCase() ?? null;
+  const itemIds = new Set<string>();
+  for (const m of all.matchAll(/(?:item_id[:=]|wid=)([A-Z]{3}\d{5,})/gi))
+    itemIds.add(m[1].toUpperCase());
+  const pathItem = url.pathname.match(/\/([A-Z]{3})-(\d{5,})-([^/]*)/i);
+  if (pathItem) itemIds.add(`${pathItem[1]}${pathItem[2]}`.toUpperCase());
+  const slug = pathItem?.[3]
+    ? pathItem[3]
+        .replace(/-_J[MP].*$/i, "")
+        .replace(/-/g, " ")
+        .trim()
+    : null;
+  if (!productId && itemIds.size === 0 && !slug) return null;
+  return { productId, itemIds: [...itemIds], slug: slug || null };
+}
+
+type MlAttr = { id?: string; value_name?: string | null };
+const mlAttr = (attrs: unknown, ...ids: string[]) =>
+  (Array.isArray(attrs) ? (attrs as MlAttr[]) : []).find(
+    (a) => a.id && ids.includes(a.id) && a.value_name,
+  )?.value_name ?? null;
+
+/** Converte a resposta de /items ou /products da API do Mercado Livre. */
+export function mapMercadoLivre(
+  json: Record<string, unknown>,
+  categoryPath: string | null,
+): Omit<LinkPreview, "status" | "url" | "image"> {
+  const pictures = Array.isArray(json.pictures)
+    ? (json.pictures as Array<{ secure_url?: string; url?: string }>)
+    : [];
+  const shortDescription = (json.short_description as { content?: string })
+    ?.content;
+  const price =
+    typeof json.price === "number"
+      ? `${typeof json.currency_id === "string" ? `${json.currency_id} ` : ""}${json.price}`
+      : null;
+  return {
+    title: clean(json.title ?? json.name, 300),
+    description: clean(shortDescription, 1000),
+    siteName: "Mercado Livre",
+    imageUrl: pictures[0]?.secure_url ?? pictures[0]?.url ?? null,
+    price,
+    category: categoryPath,
+    product: {
+      name: clean(json.title ?? json.name, 300),
+      description: clean(shortDescription, 1000),
+      brand: clean(mlAttr(json.attributes, "BRAND"), 120),
+      material: clean(
+        mlAttr(json.attributes, "MATERIAL", "MAIN_MATERIAL"),
+        120,
+      ),
+      color: clean(mlAttr(json.attributes, "COLOR", "MAIN_COLOR"), 60),
+      sku: clean(mlAttr(json.attributes, "SELLER_SKU", "GTIN"), 80),
+      size: null,
+      model: clean(mlAttr(json.attributes, "MODEL", "LINE"), 120),
+    },
+  };
+}
+
+async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
+  try {
+    const token = process.env.MERCADOLIVRE_ACCESS_TOKEN?.trim();
+    const { res } = await safeFetch(
+      url,
+      "application/json",
+      token ? { authorization: `Bearer ${token}` } : undefined,
+    );
+    if (!res.ok) {
+      console.warn("mercadolivre api", res.status, url.replace(ML_API, ""));
+      return null;
+    }
+    return JSON.parse(
+      new TextDecoder().decode(await readLimited(res, MAX_HTML)),
+    ) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Dados do anúncio/produto pela API; null se a API não responder. */
+async function fetchMercadoLivre(
+  ids: NonNullable<ReturnType<typeof mercadoLivreIds>>,
+) {
+  let json: Record<string, unknown> | null = null;
+  for (const id of ids.itemIds) {
+    json = await fetchJson(`${ML_API}/items/${id}`);
+    if (json?.title) break;
+  }
+  if (!json?.title && ids.productId)
+    json = await fetchJson(`${ML_API}/products/${ids.productId}`);
+  if (!json || !(json.title || json.name)) return null;
+  let categoryPath: string | null = null;
+  if (typeof json.category_id === "string") {
+    const cat = await fetchJson(`${ML_API}/categories/${json.category_id}`);
+    const path = Array.isArray(cat?.path_from_root)
+      ? (cat.path_from_root as Array<{ name?: string }>)
+          .map((c) => c.name)
+          .filter(Boolean)
+          .join(" > ")
+      : null;
+    categoryPath = path || (typeof cat?.name === "string" ? cat.name : null);
+  }
+  return mapMercadoLivre(json, categoryPath);
+}
+
+/** Título que é só o nome da loja ("Mercado Libre", "Amazon.com.br"…) não descreve o produto. */
+export function isGenericTitle(
+  title: string | null,
+  siteName: string | null,
+): boolean {
+  if (!title) return true;
+  const t = title.trim().toLowerCase();
+  if (siteName && t === siteName.trim().toLowerCase()) return true;
+  return /^(mercado ?(libre|livre)|amazon(\.com)?(\.br)?|aliexpress|shopee|alibaba(\.com)?|1688|temu|shein|magazine luiza|magalu|americanas|casas bahia|kabum!?)( ?[-|:].*)?$/i.test(
+    t,
+  );
+}
+
+async function downloadImage(url: string | null) {
+  if (!url) return null;
+  try {
+    const img = await safeFetch(url, "image/*");
+    const type = img.res.headers.get("content-type") ?? "";
+    if (img.res.ok && type.startsWith("image/"))
+      return {
+        bytes: await readLimited(img.res, MAX_IMAGE),
+        mime: type.split(";")[0],
+      };
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 /** Lê o link com segurança. Nunca lança: o status diz o que aconteceu. */
 export async function fetchLinkPreview(raw: string): Promise<LinkPreview> {
@@ -317,6 +474,7 @@ export async function fetchLinkPreview(raw: string): Promise<LinkPreview> {
     siteName: null,
     imageUrl: null,
     price: null,
+    category: null,
     product: EMPTY_PRODUCT,
     image: null,
   };
@@ -327,13 +485,33 @@ export async function fetchLinkPreview(raw: string): Promise<LinkPreview> {
   } catch {
     return { ...base, status: "invalid" };
   }
+  // Mercado Livre: API oficial primeiro; o endereço também dá o nome do anúncio.
+  const ml = mercadoLivreIds(parsedUrl);
+  if (ml) {
+    const data = await fetchMercadoLivre(ml);
+    if (data)
+      return {
+        ...base,
+        ...data,
+        status: "ok",
+        image: await downloadImage(data.imageUrl),
+      };
+  }
+  const fromSlug = ml?.slug
+    ? {
+        ...base,
+        status: "ok" as const,
+        title: ml.slug,
+        siteName: "Mercado Livre",
+      }
+    : null;
   try {
     const { res, url } = await safeFetch(
       parsedUrl.toString(),
       "text/html,application/xhtml+xml",
     );
     const type = res.headers.get("content-type") ?? "";
-    if (!res.ok) return { ...base, status: "blocked" };
+    if (!res.ok) return fromSlug ?? { ...base, status: "blocked" };
     // Link direto para uma imagem: vale como foto.
     if (type.startsWith("image/")) {
       const bytes = await readLimited(res, MAX_IMAGE);
@@ -344,26 +522,18 @@ export async function fetchLinkPreview(raw: string): Promise<LinkPreview> {
         image: { bytes, mime: type.split(";")[0] },
       };
     }
-    if (!/html|xml/i.test(type)) return { ...base, status: "blocked" };
+    if (!/html|xml/i.test(type))
+      return fromSlug ?? { ...base, status: "blocked" };
     const html = new TextDecoder("utf-8", { fatal: false }).decode(
       await readLimited(res, MAX_HTML),
     );
     const meta = parseLinkHtml(html, url.toString());
-    let image: LinkPreview["image"] = null;
-    if (meta.imageUrl) {
-      try {
-        const img = await safeFetch(meta.imageUrl, "image/*");
-        const imgType = img.res.headers.get("content-type") ?? "";
-        if (img.res.ok && imgType.startsWith("image/"))
-          image = {
-            bytes: await readLimited(img.res, MAX_IMAGE),
-            mime: imgType.split(";")[0],
-          };
-      } catch {
-        image = null;
-      }
-    }
+    // Página de verificação/bloqueio: o título é só o nome da loja.
+    if (isGenericTitle(meta.title, meta.siteName) && !meta.product.name)
+      meta.title = ml?.slug ?? null;
+    const image = await downloadImage(meta.imageUrl);
     const nothing = !meta.title && !meta.description && !meta.imageUrl;
+    if (nothing && fromSlug) return fromSlug;
     return {
       ...base,
       ...meta,
@@ -372,6 +542,6 @@ export async function fetchLinkPreview(raw: string): Promise<LinkPreview> {
       image,
     };
   } catch {
-    return { ...base, status: "failed" };
+    return fromSlug ?? { ...base, status: "failed" };
   }
 }

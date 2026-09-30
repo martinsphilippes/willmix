@@ -16,6 +16,7 @@ Regra: toda integração externa crítica tem modo manual ou mock para o fluxo f
 | WhatsApp            | `src/lib/services/notifications.ts` | Mock                                                           |
 | Booking / armador   | requisitos da etapa `SHIPPING`      | Entrada manual                                                 |
 | Comex / aduana      | requisitos da etapa `CUSTOMS`       | Entrada manual                                                 |
+| Mercado Livre (link) | `src/lib/integrations/link-preview.ts` | API pública oficial (anúncio, produto de catálogo, categoria); `MERCADOLIVRE_ACCESS_TOKEN` opcional se a API pedir autenticação; sem resposta, lê a página |
 | Leitura de link de produto | `src/lib/integrations/link-preview.ts` | Busca pública (Open Graph/JSON-LD) sem navegador; bloqueia endereços internos em cada redirecionamento; site que bloqueia vira aviso na tela |
 | IA (busca por foto, cadastro por foto, textos, NCM) | `src/lib/integrations/ai.ts` | Ordem: `ANTHROPIC_API_KEY` (direto) → `AI_GATEWAY_API_KEY` → na Vercel, AI Gateway com o token OIDC do projeto (sem chave). Nome do modelo convertido para o gateway (`anthropic/claude-sonnet-5.5`) e, se não existir, o Sonnet mais novo do catálogo público. `aiMode = MOCK` devolve exemplo rotulado. Configurações → Testar IA mostra se funciona. Humano confirma tudo |
 

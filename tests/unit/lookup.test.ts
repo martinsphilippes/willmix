@@ -59,7 +59,9 @@ const preview = (over: Partial<LinkPreview>): LinkPreview => ({
     color: null,
     sku: null,
     size: null,
+    model: null,
   },
+  category: null,
   image: null,
   ...over,
 });
@@ -198,6 +200,7 @@ describe("busca no catálogo e sugestões", () => {
               color: "Vermelho",
               sku: null,
               size: null,
+              model: null,
             },
           }),
       },
@@ -459,5 +462,129 @@ describe("motivo da falha da IA", () => {
     );
     expect(row.aiError).toBe("card_required");
     expect(row.aiSource).toBeNull();
+  });
+});
+
+describe("link do Mercado Livre e produtos relacionados", () => {
+  it("extrai os ids do endereço compartilhado e ignora título que é só a loja", async () => {
+    const { mercadoLivreIds, mapMercadoLivre, isGenericTitle } =
+      await import("@/lib/integrations/link-preview");
+    const url = new URL(
+      "https://www.mercadolivre.com.br/p/MLB2000141964?pdp_filters=item_id:MLB7535677260&matt_tool=38524122#origin=share&sid=share&wid=MLB7535677260&action=copy",
+    );
+    expect(mercadoLivreIds(url)).toEqual({
+      productId: "MLB2000141964",
+      itemIds: ["MLB7535677260"],
+      slug: null,
+    });
+    expect(
+      mercadoLivreIds(
+        new URL(
+          "https://produto.mercadolivre.com.br/MLB-123456789-capa-case-iphone-15-magsafe-_JM",
+        ),
+      ),
+    ).toEqual({
+      productId: null,
+      itemIds: ["MLB123456789"],
+      slug: "capa case iphone 15 magsafe",
+    });
+    expect(
+      mercadoLivreIds(new URL("https://www.amazon.com.br/dp/B0C")),
+    ).toBeNull();
+    expect(isGenericTitle("Mercado Libre", null)).toBe(true);
+    expect(isGenericTitle("Amazon.com.br", null)).toBe(true);
+    expect(
+      isGenericTitle("Apple iPhone 15 (128 GB) - Preto", "Mercado Livre"),
+    ).toBe(false);
+    const mapped = mapMercadoLivre(
+      {
+        title: "Apple iPhone 15 Pro Max (256 GB) - Titânio Preto",
+        price: 7999,
+        currency_id: "BRL",
+        category_id: "MLB1055",
+        pictures: [{ secure_url: "https://http2.mlstatic.com/x.jpg" }],
+        attributes: [
+          { id: "BRAND", value_name: "Apple" },
+          { id: "MODEL", value_name: "iPhone 15 Pro Max" },
+          { id: "COLOR", value_name: "Titânio preto" },
+        ],
+      },
+      "Celulares e Telefones > Celulares e Smartphones",
+    );
+    expect(mapped).toMatchObject({
+      title: "Apple iPhone 15 Pro Max (256 GB) - Titânio Preto",
+      price: "BRL 7999",
+      category: "Celulares e Telefones > Celulares e Smartphones",
+      imageUrl: "https://http2.mlstatic.com/x.jpg",
+      product: {
+        brand: "Apple",
+        model: "iPhone 15 Pro Max",
+        color: "Titânio preto",
+      },
+    });
+  });
+
+  it("anúncio de iPhone traz o celular cadastrado como relacionado (mesma categoria)", async () => {
+    const { PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
+    const store = getStore();
+    const celular = await store.create("products", {
+      ...PRODUCT_EXTRA_DEFAULTS,
+      lineId: "linha-utilidades",
+      name: "Celular Teste",
+      sku: "01",
+      specification: null,
+      active: true,
+      category: "Celular",
+      material: "Celular",
+    });
+    const row = await runProductLookup(
+      admin,
+      { url: "https://www.mercadolivre.com.br/p/MLB2000141964" },
+      {
+        fetchPreview: async () =>
+          preview({
+            title: "Apple iPhone 15 Pro Max (256 GB) - Titânio Preto",
+            siteName: "Mercado Livre",
+            category: "Celulares e Telefones > Celulares e Smartphones",
+            product: {
+              name: null,
+              description: null,
+              brand: "Apple",
+              material: null,
+              color: "Titânio preto",
+              sku: null,
+              size: null,
+              model: "iPhone 15 Pro Max",
+            },
+          }),
+      },
+    );
+    const hit = row.matches.find((m) => m.productId === celular.id)!;
+    expect(hit).toBeDefined();
+    expect(hit.reasons).toContain("category");
+    expect(hit.reasons.some((r) => ["photo", "name", "ai"].includes(r))).toBe(
+      false,
+    );
+    // Relacionado não vira sugestão de nome (só o que parece ser o mesmo produto).
+    expect(row.suggestions.productName!.every((o) => o.source === "link")).toBe(
+      true,
+    );
+    // A panela não tem relação com celular.
+    expect(row.matches.some((m) => m.productId === "prod-panela")).toBe(false);
+  });
+
+  it("palavra significativa em comum, com plural", async () => {
+    const row = await runProductLookup(
+      admin,
+      { url: "https://loja.example.com/x" },
+      {
+        fetchPreview: async () =>
+          preview({ title: "Panela de pressão elétrica 6L" }),
+      },
+    );
+    const panela = row.matches.find((m) => m.productId === "prod-panela")!;
+    expect(panela.reasons).toEqual(
+      expect.arrayContaining(["category", "word"]),
+    );
   });
 });

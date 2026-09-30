@@ -950,7 +950,10 @@ export interface LookupMatch {
   productId: string;
   /** 0–1; só para ordenar. */
   score: number;
-  reasons: Array<"photo" | "link_photo" | "name" | "ai">;
+  /** Mesmo produto: foto, foto do link, nome/SKU, IA. Relacionado: mesma categoria, palavra em comum. */
+  reasons: Array<
+    "photo" | "link_photo" | "name" | "ai" | "category" | "word"
+  >;
 }
 
 export type LookupSource = "link" | "catalog" | "ai" | "mock";
