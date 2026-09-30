@@ -85,6 +85,77 @@ export class MockAiAdapter implements AiAdapter {
   }
 }
 
+/** Motivos de falha da IA, traduzidos na tela (ai.error.*). */
+export const AI_ERROR_CODES = [
+  "card_required",
+  "unauthorized",
+  "no_credit",
+  "rate_limited",
+  "model_not_found",
+  "timeout",
+  "service_down",
+  "unknown",
+] as const;
+export type AiErrorCode = (typeof AI_ERROR_CODES)[number];
+
+/** Falha da IA com motivo conhecido; a mensagem é "ai_<código>". */
+export class AiError extends Error {
+  constructor(
+    readonly code: AiErrorCode,
+    readonly status: number | null = null,
+  ) {
+    super(`ai_${code}`);
+  }
+}
+
+/** Traduz a resposta de erro (status + corpo) da Anthropic/AI Gateway num motivo. */
+export function classifyAiFailure(status: number, body: string): AiErrorCode {
+  let type = "";
+  let message = "";
+  try {
+    const json = JSON.parse(body) as {
+      error?: { type?: unknown; message?: unknown };
+    };
+    type = String(json.error?.type ?? "");
+    message = String(json.error?.message ?? "");
+  } catch {
+    message = body;
+  }
+  const text = `${type} ${message}`.toLowerCase();
+  if (type === "customer_verification_required" || text.includes("credit card"))
+    return "card_required";
+  if (status === 402 || /insufficient|credit balance|billing|quota/.test(text))
+    return "no_credit";
+  if (
+    status === 401 ||
+    status === 403 ||
+    type === "authentication_error" ||
+    type === "permission_error"
+  )
+    return "unauthorized";
+  if (status === 429 || type === "rate_limit_error") return "rate_limited";
+  if (
+    status === 404 ||
+    type === "not_found_error" ||
+    (status === 400 && text.includes("model"))
+  )
+    return "model_not_found";
+  if (status >= 500) return "service_down";
+  return "unknown";
+}
+
+/** Motivo de qualquer erro vindo de uma chamada à IA. */
+export function aiErrorCode(error: unknown): AiErrorCode {
+  if (error instanceof AiError) return error.code;
+  if (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || error.name === "AbortError")
+  )
+    return "timeout";
+  if (error instanceof TypeError) return "service_down";
+  return "unknown";
+}
+
 /** De onde vem a IA real: chave direta da Anthropic ou AI Gateway da Vercel (chave ou OIDC do projeto). */
 export type AiProvider = "anthropic" | "gateway";
 
@@ -144,12 +215,19 @@ export class AnthropicAiAdapter implements AiAdapter {
   }
 
   private async send(content: Array<Record<string, unknown>>) {
+    let auth: Record<string, string>;
+    try {
+      auth = await this.auth();
+    } catch {
+      // Token do projeto indisponível (OIDC desligado) = credencial recusada.
+      throw new AiError("unauthorized");
+    }
     return fetch(this.provider === "gateway" ? GATEWAY_URL : ANTHROPIC_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "anthropic-version": "2023-06-01",
-        ...(await this.auth()),
+        ...auth,
       },
       body: JSON.stringify({
         model: this.model,
@@ -189,15 +267,18 @@ export class AnthropicAiAdapter implements AiAdapter {
       }
     }
     if (!response.ok) {
-      // Só status e início da resposta (nunca a credencial) para diagnosticar nos logs.
+      const body = await response.text().catch(() => "");
+      const code = classifyAiFailure(response.status, body);
+      // Só status, motivo e início da resposta (nunca a credencial) para os logs.
       console.error(
         "ai_request_failed",
         this.provider,
         this.model,
         response.status,
-        (await response.text().catch(() => "")).slice(0, 300),
+        code,
+        body.slice(0, 300),
       );
-      throw new Error(`ai_request_failed_${response.status}`);
+      throw new AiError(code, response.status);
     }
     const data = (await response.json()) as {
       content?: Array<{ type: string; text?: string }>;

@@ -977,6 +977,8 @@ export interface ProductLookup extends BaseRow {
   matches: LookupMatch[];
   suggestions: Partial<Record<LookupField, LookupOption[]>>;
   aiSource: AiSource | null;
+  /** Motivo da falha da IA nesta busca (card_required, no_credit…); nulo se não falhou. */
+  aiError: string | null;
   requestId: string | null;
 }
 
@@ -1822,6 +1824,7 @@ export const TABLES: Record<TableName, TableDef> = {
       matches: json(),
       suggestions: json(),
       aiSource: enumOf(AI_SOURCES, false),
+      aiError: str(40),
       requestId: id(false),
     },
     indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],

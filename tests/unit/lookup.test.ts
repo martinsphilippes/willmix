@@ -408,3 +408,56 @@ describe("provedor da IA", () => {
     );
   });
 });
+
+describe("motivo da falha da IA", () => {
+  it("classifica a resposta do AI Gateway e traduz o motivo", async () => {
+    const { classifyAiFailure, aiErrorCode, AiError } =
+      await import("@/lib/integrations/ai");
+    const { aiErrorText } = await import("@/i18n/ai-error");
+    const { dictionaries } = await import("@/i18n/dictionaries");
+    const vercel403 =
+      '{"error":{"message":"AI Gateway requires a valid credit card on file to service requests. Please visit https://vercel.com/d to add a card and unlock your free credits.","type":"customer_verification_required"}}';
+    expect(classifyAiFailure(403, vercel403)).toBe("card_required");
+    expect(
+      classifyAiFailure(401, '{"error":{"type":"authentication_error"}}'),
+    ).toBe("unauthorized");
+    expect(classifyAiFailure(402, "")).toBe("no_credit");
+    expect(classifyAiFailure(429, "{}")).toBe("rate_limited");
+    expect(classifyAiFailure(404, "{}")).toBe("model_not_found");
+    expect(
+      classifyAiFailure(529, '{"error":{"type":"overloaded_error"}}'),
+    ).toBe("service_down");
+    expect(classifyAiFailure(400, "{}")).toBe("unknown");
+    const timeout = new Error("t");
+    timeout.name = "TimeoutError";
+    expect(aiErrorCode(timeout)).toBe("timeout");
+    expect(aiErrorCode(new AiError("no_credit"))).toBe("no_credit");
+    expect(new AiError("card_required").message).toBe("ai_card_required");
+    const t = (key: string) =>
+      (dictionaries.pt as Record<string, string>)[key] ?? key;
+    expect(aiErrorText(t as never, "ai_card_required")).toContain(
+      "cartão de crédito",
+    );
+    expect(aiErrorText(t as never, "card_required")).toContain("Vercel");
+    expect(aiErrorText(t as never, "invalid_input")).toBeNull();
+  });
+
+  it("a busca guarda o motivo quando a IA falha", async () => {
+    const { AiError } = await import("@/lib/integrations/ai");
+    const row = await runProductLookup(
+      customer,
+      { file: asFile(await photo("b", 300, true), "x.jpg", "image/jpeg") },
+      {
+        aiAdapter: {
+          mode: "api",
+          model: "fake",
+          async complete() {
+            throw new AiError("card_required", 403);
+          },
+        },
+      },
+    );
+    expect(row.aiError).toBe("card_required");
+    expect(row.aiSource).toBeNull();
+  });
+});

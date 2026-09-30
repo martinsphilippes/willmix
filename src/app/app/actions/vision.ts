@@ -374,7 +374,7 @@ export async function testAiAction() {
   const user = await requireUser();
   await run("/app/settings", async () => {
     assertRole(user, ["admin"]);
-    const [{ getSettings }, { getAiAdapter }] = await Promise.all([
+    const [{ getSettings }, { getAiAdapter, aiErrorCode }] = await Promise.all([
       import("@/lib/settings"),
       import("@/lib/integrations/ai"),
     ]);
@@ -391,10 +391,7 @@ export async function testAiAction() {
       } catch (error) {
         params.set("aiTest", "error");
         params.set("aiModel", adapter.model ?? "");
-        params.set(
-          "aiCode",
-          (error instanceof Error ? error.message : "erro").slice(0, 80),
-        );
+        params.set("aiCode", aiErrorCode(error));
       }
     return `/app/settings?${params.toString()}#ai-test`;
   });
