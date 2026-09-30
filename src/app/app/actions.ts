@@ -130,6 +130,13 @@ export async function createRequestAction(form: FormData) {
         visibility: "internal",
       });
     }
+    // Busca por foto/link: a foto enviada vira anexo da solicitação.
+    const lookupId = str(form, "lookupId");
+    if (lookupId) {
+      const { attachLookupToRequest } =
+        await import("@/lib/services/product-lookup");
+      await attachLookupToRequest(user, lookupId, request.id);
+    }
     return `/app/requests/${request.id}`;
   });
 }

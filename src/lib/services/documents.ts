@@ -14,6 +14,7 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import { imageHashOf } from "./image-hash";
 
 const MAX_BYTES = 30 * 1024 * 1024;
 const ALLOWED_MIME = [
@@ -93,6 +94,11 @@ export async function uploadDocument(
     productId: input.productId ?? null,
     sourcingItemId: input.sourcingItemId ?? null,
     kitId: input.kitId ?? null,
+    // Fotos de catálogo já nascem com a impressão digital (busca por foto).
+    imageHash:
+      mime.startsWith("image/") && (input.productId || input.sourcingItemId)
+        ? ((await imageHashOf(bytes)) ?? "-")
+        : null,
   });
   await audit(
     user,
