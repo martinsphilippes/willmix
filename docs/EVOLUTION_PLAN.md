@@ -83,6 +83,7 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Relacionados: além do mesmo produto, a busca lista os cadastrados da mesma família (grupos da tabela de NCM: "iPhone" e "Celular" caem em smartphones) ou com palavra significativa em comum (plural tratado; cores e termos de anúncio ignorados). Sugestões de preenchimento vêm só do que parece ser o mesmo produto.
 - Mercado Livre: link lido pela API oficial (`/items`, `/products`, `/categories`: título, fotos, marca, modelo, cor, categoria); a página só é lida se a API não responder, e título que é só o nome da loja ("Mercado Libre") não conta como produto. `MERCADOLIVRE_ACCESS_TOKEN` é opcional, para quando a API exigir autenticação.
 - Limite: muitos marketplaces chineses bloqueiam a leitura automática do link (a tela avisa).
+- Escolher um produto da Wellmix preenche nome, descrição e especificação com a ficha e mostra as fotos do cadastro (até 8; principal primeiro). O cliente abre só as fotos de produto ativo; uma original com versão comercial dá lugar a ela, e a original segue como evidência para a Wellmix (`catalogShowcasePhotos` e `canAccessDocument` em `services/documents.ts`). Fornecedor e fotos só de sourcing continuam fechados.
 
 ### Telas entregues na Visão de Produto
 

@@ -15,6 +15,8 @@ import { inputClass } from "@/components/ui";
 export interface ProductFill {
   id: string;
   label: string;
+  /** Fotos do cadastro (servidas por /api/files, com checagem de acesso). */
+  photos: { documentId: string; caption: string }[];
   productName: string;
   description: string;
   specification: string;
@@ -42,6 +44,8 @@ export function RequestProductFields({
     select: string;
     filledHint: string;
     filledBadge: string;
+    photos: string;
+    photosNone: string;
     productName: string;
     placeholder: string;
     description: string;
@@ -93,6 +97,8 @@ export function RequestProductFields({
     setNotInCatalog(checked);
     if (checked && productId) fillFrom("");
   }
+
+  const selected = products.find((p) => p.id === productId) ?? null;
 
   const chip =
     "inline-flex max-w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition";
@@ -225,6 +231,37 @@ export function RequestProductFields({
             ) : null}
             {labels.filledHint}
           </p>
+          {selected ? (
+            <div className="space-y-1.5 pt-2">
+              <p className="text-sm font-medium text-zinc-800">
+                {labels.photos}
+              </p>
+              {selected.photos.length > 0 ? (
+                <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {selected.photos.map((ph) => (
+                    <li key={ph.documentId}>
+                      <a
+                        href={`/api/files/${ph.documentId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 hover:border-brand-300"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                        <img
+                          src={`/api/files/${ph.documentId}`}
+                          alt={ph.caption}
+                          loading="lazy"
+                          className="aspect-square w-full object-cover"
+                        />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-zinc-500">{labels.photosNone}</p>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
