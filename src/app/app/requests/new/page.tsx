@@ -19,7 +19,10 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
-import { SuggestField } from "@/components/suggest-field";
+import {
+  RequestProductFields,
+  type ProductFill,
+} from "@/components/request-product-fields";
 import { getSettings } from "@/lib/settings";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
@@ -105,6 +108,35 @@ export default async function NewRequestPage({
       : typeof error === "string" && t(accessKey as DictionaryKey) !== accessKey
         ? t(accessKey as DictionaryKey)
         : t("common.error");
+  /* Dados da ficha para preencher a solicitação ao escolher o produto (sem preço nem fornecedor). */
+  const dims = (a: number | null, b: number | null, c: number | null) =>
+    a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
+  const productFills: ProductFill[] = products.map((p) => ({
+    id: p.id,
+    label: `${p.name}${p.sku ? ` (${p.sku})` : ""}`,
+    productName: p.name,
+    description:
+      p.specification?.trim() ||
+      `${p.name}${p.category ? ` — ${p.category}` : ""}`,
+    specification: [
+      p.category ? `${t("catalog.category")}: ${p.category}` : null,
+      p.material ? `${t("catalog.material")}: ${p.material}` : null,
+      p.color ? `${t("catalog.color")}: ${p.color}` : null,
+      p.pantone ? `${t("catalog.pantone")}: ${p.pantone}` : null,
+      dims(p.lengthCm, p.widthCm, p.heightCm)
+        ? `${t("catalog.dimensions")}: ${dims(p.lengthCm, p.widthCm, p.heightCm)}`
+        : null,
+      p.netWeightKg !== null
+        ? `${t("catalog.netWeight")}: ${p.netWeightKg}`
+        : null,
+      p.masterBoxQty !== null
+        ? `${t("catalog.masterBoxQty")}: ${p.masterBoxQty}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  }));
+
   const renderMatches = (items: typeof matched) => (
     <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
       {items.map(({ m, p }) => {
@@ -377,85 +409,32 @@ export default async function NewRequestPage({
               </Select>
             </Field>
           ) : null}
-          <Field label={t("common.product")} hint={t("requests.specification")}>
-            <Select name="productId" defaultValue={presetProductId}>
-              <option value="">{t("common.select")}</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                  {p.sku ? ` (${p.sku})` : ""}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          {/* Sourcing sob demanda: produto fora do catálogo (só faz sentido sem produto selecionado). */}
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
-            <input
-              type="checkbox"
-              name="sourcingDemand"
-              defaultChecked={
-                !!found && strong.length === 0 && !presetProductId
-              }
-              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-            />
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-zinc-800">
-                {t("requests.sourcingDemand.label")}
-              </span>
-              <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
-                {t("requests.sourcingDemand.hint")}
-              </span>
-            </span>
-          </label>
-          {hasSuggestions ? (
-            <>
-              {/* Sugestões da busca: nada vem preenchido; "Nenhuma dessas" é o padrão. */}
-              <SuggestField
-                name="productName"
-                label={`${t("common.product")} (${t("common.name")})`}
-                options={optionsFor("productName")}
-                placeholder="Ex.: Jarra de vidro 1,5 L"
-                noneLabel={t("lookup.noneOption")}
-                hint={t("lookup.suggestionsHint")}
-                sourceLabels={sourceLabels}
-              />
-              <SuggestField
-                name="description"
-                label={t("requests.description")}
-                options={optionsFor("description")}
-                multiline
-                required
-                minLength={2}
-                noneLabel={t("lookup.noneOption")}
-                hint={t("lookup.suggestionsHint")}
-                sourceLabels={sourceLabels}
-              />
-              <SuggestField
-                name="specification"
-                label={t("requests.specification")}
-                options={optionsFor("specification")}
-                multiline
-                noneLabel={t("lookup.noneOption")}
-                hint={t("lookup.suggestionsHint")}
-                sourceLabels={sourceLabels}
-              />
-            </>
-          ) : (
-            <>
-              <Field label={`${t("common.product")} (${t("common.name")})`}>
-                <Input
-                  name="productName"
-                  placeholder="Ex.: Jarra de vidro 1,5 L"
-                />
-              </Field>
-              <Field label={t("requests.description")}>
-                <Textarea name="description" required minLength={2} />
-              </Field>
-              <Field label={t("requests.specification")}>
-                <Textarea name="specification" />
-              </Field>
-            </>
-          )}
+          {/* Produto: "fora do catálogo" primeiro; escolher um produto preenche os campos com a ficha; anexos só fora do catálogo. */}
+          <RequestProductFields
+            products={productFills}
+            presetProductId={presetProductId}
+            defaultNotInCatalog={
+              !!found && strong.length === 0 && !presetProductId
+            }
+            suggestions={hasSuggestions ? found!.suggestions : {}}
+            sourceLabels={sourceLabels}
+            labels={{
+              notInCatalog: t("requests.sourcingDemand.label"),
+              notInCatalogHint: t("requests.sourcingDemand.hint"),
+              product: t("common.product"),
+              select: t("common.select"),
+              filledHint: t("lookup.fill.hint"),
+              filledBadge: t("lookup.fill.badge"),
+              productName: `${t("common.product")} (${t("common.name")})`,
+              placeholder: "Ex.: Jarra de vidro 1,5 L",
+              description: t("requests.description"),
+              specification: t("requests.specification"),
+              attachments: t("requests.attachments"),
+              attachmentsHint: t("lookup.fill.attachmentsHint"),
+              suggestionsHint: t("lookup.suggestionsHint"),
+              none: t("lookup.noneOption"),
+            }}
+          />
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Field label={t("common.quantity")}>
               <Input
@@ -476,9 +455,6 @@ export default async function NewRequestPage({
               </Field>
             </div>
           </div>
-          <Field label={t("requests.attachments")}>
-            <Input name="attachments" type="file" multiple />
-          </Field>
           <Field label={t("common.note")}>
             <Textarea name="notes" defaultValue={referenceNote} />
           </Field>
