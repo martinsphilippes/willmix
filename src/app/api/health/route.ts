@@ -4,6 +4,8 @@ import {
   isAppwriteClientConfigured,
   isAppwriteServerConfigured,
 } from "@/lib/env";
+import { getSettings } from "@/lib/settings";
+import { aiStatus } from "@/lib/integrations/ai";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,10 @@ export async function GET() {
       client: isAppwriteClientConfigured,
       server: isAppwriteServerConfigured(),
     },
+    // Só modo, provedor e modelo da IA; nunca a credencial.
+    ai: await getSettings()
+      .then(aiStatus)
+      .catch(() => null),
     timestamp: new Date().toISOString(),
   });
 }

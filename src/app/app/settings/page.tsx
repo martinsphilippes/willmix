@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { assertRole } from "@/lib/auth/permissions";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { formatContainerTypes } from "@/lib/services/containers";
-import { getAiAdapter } from "@/lib/integrations/ai";
+import { aiStatus } from "@/lib/integrations/ai";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveSettingsAction } from "../actions";
+import { testAiAction } from "../actions/vision";
 
 /**
  * Caixa de seleção com valor "false" de reserva: o checkbox marcado vem primeiro
@@ -58,7 +59,7 @@ export default async function SettingsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertRole(user, ["admin"]);
-  const { ok, error } = await searchParams;
+  const { ok, error, aiTest, aiModel, aiCode } = await searchParams;
   const t = await getT();
   const s = await getSettings();
   const errorKey =
@@ -75,7 +76,20 @@ export default async function SettingsPage({
         ? t(operationsErrorKey)
         : t("common.error");
   /* Modo efetivo da IA (api/mock/manual): diz se a chave está no ambiente sem nunca exibi-la. */
-  const aiEffective = getAiAdapter(s).mode;
+  const ai = aiStatus(s);
+  const aiEffective = ai.mode;
+  const aiEffectiveKey = (
+    ai.provider
+      ? `operations.settings.effective.${ai.provider}`
+      : `operations.settings.effective.${aiEffective}`
+  ) as DictionaryKey;
+  const aiTestText =
+    typeof aiTest === "string" && aiTest
+      ? t(`operations.ai.test.${aiTest}` as DictionaryKey, {
+          model: typeof aiModel === "string" ? aiModel : "",
+          code: typeof aiCode === "string" ? aiCode : "",
+        })
+      : null;
   const aiEffectiveTone =
     aiEffective === "api"
       ? "success"
@@ -306,10 +320,7 @@ export default async function SettingsPage({
                 <span className="inline-flex flex-wrap items-center gap-2">
                   aiMode
                   <Badge tone={aiEffectiveTone}>
-                    {t("operations.settings.effective")}:{" "}
-                    {t(
-                      `operations.settings.effective.${aiEffective}` as DictionaryKey,
-                    )}
+                    {t("operations.settings.effective")}: {t(aiEffectiveKey)}
                   </Badge>
                 </span>
               }
@@ -384,6 +395,24 @@ export default async function SettingsPage({
             {DEFAULT_SETTINGS.emailMode} (fixos até haver integração)
           </p>
           <SubmitButton>{t("common.save")}</SubmitButton>
+        </form>
+      </Card>
+
+      {/* Teste real da IA com a configuração salva (mostra provedor/modelo ou o motivo da falha). */}
+      <Card title={t("operations.ai.test")} className="mt-6">
+        <div id="ai-test" className="scroll-mt-4" />
+        <p className="mb-3 text-sm text-zinc-600">
+          {t("operations.ai.testHint")}
+        </p>
+        {aiTestText ? (
+          <Alert tone={aiTest === "ok" ? "success" : "warning"}>
+            {aiTestText}
+          </Alert>
+        ) : null}
+        <form action={testAiAction} className="mt-3">
+          <SubmitButton variant="secondary" pendingText="…">
+            {t("operations.ai.test")}
+          </SubmitButton>
         </form>
       </Card>
     </>

@@ -145,9 +145,9 @@ export default async function NewRequestPage({
               <h3 className="text-sm font-semibold text-zinc-900">
                 {t("lookup.result")}
               </h3>
-              {aiMode === "api" ? (
+              {found.aiSource === "api" ? (
                 <Badge tone="success">{t("lookup.ai.api")}</Badge>
-              ) : aiMode === "mock" ? (
+              ) : found.aiSource === "mock" ? (
                 <Badge tone="warning">{t("lookup.ai.mock")}</Badge>
               ) : null}
             </div>
@@ -199,10 +199,17 @@ export default async function NewRequestPage({
                 {t(`lookup.linkStatus.${found.linkStatus}` as DictionaryKey)}
               </Alert>
             ) : null}
+            {aiMode === "api" && !found.aiSource && isWellmix(user) ? (
+              <Alert tone="warning">{t("lookup.ai.failed")}</Alert>
+            ) : null}
             {aiMode === "manual" ? (
-              <p className="text-xs leading-relaxed text-zinc-500">
-                {t("lookup.ai.manual")}
-              </p>
+              isWellmix(user) ? (
+                <Alert tone="warning">{t("lookup.ai.manual")}</Alert>
+              ) : matched.length === 0 && found.imageDocumentId ? (
+                <p className="text-xs leading-relaxed text-zinc-500">
+                  {t("lookup.ai.customerManual")}
+                </p>
+              ) : null
             ) : null}
 
             {matched.length > 0 ? (

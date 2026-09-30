@@ -79,7 +79,8 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Catálogo: mesma foto por impressão digital visual (dHash via `sharp`, sem IA; `documents.imageHash`), mesma foto do link, nome ou SKU parecido com o do link e, com IA, produto reconhecido na lista do catálogo. "Usar este produto" seleciona o item.
 - Sem produto: cada campo (nome, descrição, especificação) recebe várias sugestões com a origem (link, catálogo, IA). "Nenhuma dessas" vem marcado; nada é preenchido sem a escolha da pessoa. Sem correspondência, "produto fora do catálogo" vem marcado.
 - A foto enviada vira anexo da solicitação e o link vai para a observação. Registro em `product_lookups`. Serviços: `services/product-lookup.ts`, `services/image-hash.ts`, `integrations/link-preview.ts`.
-- Limite honesto: sem chave de IA, a foto só acha fotos iguais ou muito parecidas às cadastradas; muitos marketplaces chineses bloqueiam a leitura automática do link (a tela avisa).
+- Reconhecer o mesmo produto em outra foto (ângulo, mão, fundo diferentes) é trabalho da IA: a foto do cliente e as fotos do catálogo (rotuladas com o id) vão juntas na mesma chamada, e só confiança média/alta vira correspondência. A impressão digital continua achando a mesma foto sem IA. Medido: descritores simples (cor, contorno) não separam o produto do fundo quando as fotos são tiradas no mesmo lugar; modelo local (CLIP) não cabe numa função da Vercel (motor de 536 MB).
+- Limite: muitos marketplaces chineses bloqueiam a leitura automática do link (a tela avisa).
 
 ### Telas entregues na Visão de Produto
 

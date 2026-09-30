@@ -12,7 +12,11 @@ import {
 } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
-import { getAiAdapter, type AiImage } from "@/lib/integrations/ai";
+import {
+  getAiAdapter,
+  type AiAdapter,
+  type AiImage,
+} from "@/lib/integrations/ai";
 import {
   fetchLinkPreview,
   type LinkPreview,
@@ -43,6 +47,10 @@ export class LookupError extends Error {}
 const MAX_OPTIONS = 5;
 const MAX_MATCHES = 5;
 const MAX_HASH_BACKFILL = 200;
+/** Produtos com foto enviados à IA para comparação visual (até 2 fotos cada). */
+const MAX_VISUAL_PRODUCTS = 20;
+/** Fotos que mostram o produto (as de medida/balança costumam mostrar só um detalhe). */
+const VISUAL_KINDS = new Set(["original", "commercial", "packaging", "other"]);
 
 const fold = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -183,6 +191,70 @@ function pushOption(
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
 
+/** Reduz a imagem para enviar à IA (menos dados, mesma informação visual). */
+async function thumbnail(
+  bytes: Uint8Array,
+  size: number,
+): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const out = await sharp(Buffer.from(bytes))
+      .rotate()
+      .resize(size, size, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+    return { bytes: new Uint8Array(out), mime: "image/jpeg" };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fotos do catálogo para a IA comparar com a do cliente: por produto, a foto
+ * principal e mais uma que mostre o produto, rotuladas com o id. Produtos já
+ * indicados (nome/foto igual) entram primeiro; depois os mais recentes.
+ */
+async function catalogImagesForAi(
+  products: Product[],
+  first: Set<string>,
+): Promise<AiImage[]> {
+  const store = getStore();
+  const photos = await store.list("product_photos");
+  const perProduct = new Map<string, string[]>();
+  for (const p of products) {
+    const ids: string[] = [];
+    if (p.primaryPhotoDocumentId) ids.push(p.primaryPhotoDocumentId);
+    for (const ph of photos
+      .filter((ph) => ph.productId === p.id && VISUAL_KINDS.has(ph.kind))
+      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)))
+      if (!ids.includes(ph.documentId)) ids.push(ph.documentId);
+    if (ids.length) perProduct.set(p.id, ids.slice(0, 2));
+  }
+  const ordered = products
+    .filter((p) => perProduct.has(p.id))
+    .sort(
+      (a, b) =>
+        Number(first.has(b.id)) - Number(first.has(a.id)) ||
+        b.updatedAt.localeCompare(a.updatedAt),
+    )
+    .slice(0, MAX_VISUAL_PRODUCTS);
+  const images: AiImage[] = [];
+  for (const p of ordered) {
+    for (const docId of perProduct.get(p.id)!) {
+      const doc = await store.get("documents", docId);
+      if (!doc || !doc.mime.startsWith("image/")) continue;
+      const file = await store.getFile(doc.storageKey);
+      const small = file ? await thumbnail(file.bytes, 384) : null;
+      if (small)
+        images.push({
+          ...small,
+          label: `CATÁLOGO id=${p.id} · ${p.name}${p.category ? ` (${p.category})` : ""}`,
+        });
+    }
+  }
+  return images;
+}
+
 export interface LookupInput {
   file?: File | null;
   url?: string | null;
@@ -192,9 +264,10 @@ export interface LookupInput {
 export async function runProductLookup(
   user: User,
   input: LookupInput,
-  deps: { fetchPreview: (url: string) => Promise<LinkPreview> } = {
-    fetchPreview: fetchLinkPreview,
-  },
+  deps: {
+    fetchPreview?: (url: string) => Promise<LinkPreview>;
+    aiAdapter?: AiAdapter;
+  } = {},
 ): Promise<ProductLookup> {
   if (!(isWellmix(user) || user.role === "customer"))
     throw new LookupError("forbidden");
@@ -224,7 +297,9 @@ export async function runProductLookup(
     aiImage = { bytes, mime: file.type };
   }
 
-  const preview = url ? await deps.fetchPreview(url) : null;
+  const preview = url
+    ? await (deps.fetchPreview ?? fetchLinkPreview)(url)
+    : null;
   const linkImageHash = preview?.image
     ? await imageHashOf(preview.image.bytes)
     : null;
@@ -253,7 +328,7 @@ export async function runProductLookup(
     specification: [],
   };
   let aiSource: AiSource | null = null;
-  const adapter = getAiAdapter(await getSettings());
+  const adapter = deps.aiAdapter ?? getAiAdapter(await getSettings());
   let ai: Record<string, unknown> | null = null;
   if (adapter.mode !== "manual" && (aiImage || preview?.status === "ok")) {
     const context = [
@@ -270,13 +345,22 @@ export async function runProductLookup(
       .filter(Boolean)
       .join("\n\n");
     try {
+      // Comparação visual de verdade: a foto do cliente + as fotos do catálogo.
+      const query = aiImage ? await thumbnail(aiImage.bytes, 768) : null;
+      const images: AiImage[] = [];
+      if (query) images.push({ ...query, label: "FOTO DO CLIENTE:" });
+      if (query && adapter.mode === "api")
+        images.push(
+          ...(await catalogImagesForAi(products, new Set(matches.keys()))),
+        );
       const result = await adapter.complete(
         buildPrompt("lookup", { context }),
-        aiImage,
+        images,
       );
       ai = result?.json ?? null;
       aiSource = adapter.mode;
-    } catch {
+    } catch (error) {
+      console.error("lookup ai failed", error);
       ai = null;
     }
   }
@@ -284,9 +368,14 @@ export async function runProductLookup(
   if (ai) {
     const ids = new Set(products.map((p) => p.id));
     for (const m of Array.isArray(ai.catalogMatches) ? ai.catalogMatches : []) {
-      const id = (m as { id?: unknown })?.id;
-      if (typeof id === "string" && ids.has(id))
-        addMatch(matches, id, 0.7, "ai");
+      const { id, confidence } = (m ?? {}) as {
+        id?: unknown;
+        confidence?: unknown;
+      };
+      // "low" = só a categoria parece: não vira correspondência.
+      if (typeof id !== "string" || !ids.has(id) || confidence === "low")
+        continue;
+      addMatch(matches, id, confidence === "high" ? 0.9 : 0.75, "ai");
     }
   }
 

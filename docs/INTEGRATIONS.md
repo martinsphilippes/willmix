@@ -17,7 +17,7 @@ Regra: toda integração externa crítica tem modo manual ou mock para o fluxo f
 | Booking / armador   | requisitos da etapa `SHIPPING`      | Entrada manual                                                 |
 | Comex / aduana      | requisitos da etapa `CUSTOMS`       | Entrada manual                                                 |
 | Leitura de link de produto | `src/lib/integrations/link-preview.ts` | Busca pública (Open Graph/JSON-LD) sem navegador; bloqueia endereços internos em cada redirecionamento; site que bloqueia vira aviso na tela |
-| IA (cadastro por foto, textos de marketing) | `src/lib/integrations/ai.ts` | `api` com `ANTHROPIC_API_KEY` (API Messages, sem SDK); sem chave, `manual`; `aiMode = MOCK` devolve exemplo rotulado. Humano confirma tudo |
+| IA (busca por foto, cadastro por foto, textos, NCM) | `src/lib/integrations/ai.ts` | Ordem: `ANTHROPIC_API_KEY` (direto) → `AI_GATEWAY_API_KEY` → na Vercel, AI Gateway com o token OIDC do projeto (sem chave). Nome do modelo convertido para o gateway (`anthropic/claude-sonnet-5.5`) e, se não existir, o Sonnet mais novo do catálogo público. `aiMode = MOCK` devolve exemplo rotulado. Configurações → Testar IA mostra se funciona. Humano confirma tudo |
 
 ## EXTERNAL DEPENDENCIES PENDING
 
@@ -29,4 +29,4 @@ Para ativar cada integração real é preciso fornecer:
 4. **E-mail**: provedor (Resend, SES, SendGrid) e chave. Trocar `sendEmail` em `notifications.ts`.
 5. **WhatsApp**: conta WhatsApp Business API (Meta ou BSP), número, token e templates aprovados. Trocar `sendWhatsapp`.
 6. **Vercel**: `SESSION_SECRET`, `CRON_SECRET` e as variáveis do Appwrite no projeto; cron de lembretes já está em `vercel.json`.
-7. **IA**: `ANTHROPIC_API_KEY` na Vercel (e `aiModel` nas configurações, padrão `claude-sonnet-5-5`). Sem a chave nada quebra: a tela informa "IA não configurada" e o cadastro segue manual. Geração de imagem comercial ainda não está ligada (só o prompt de imagem é produzido).
+7. **IA**: na Vercel funciona sem chave pelo AI Gateway do projeto (token OIDC), desde que o AI Gateway esteja disponível/ativado na conta (créditos). Alternativas: `AI_GATEWAY_API_KEY` ou `ANTHROPIC_API_KEY`. Use Configurações → Testar IA para confirmar. A busca por foto compara a foto do cliente com as fotos do catálogo (até 20 produtos, 2 fotos cada, reduzidas); acima disso, a pré-seleção fica para uma busca por similaridade (embeddings) futura.
