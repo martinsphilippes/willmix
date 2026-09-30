@@ -19,6 +19,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { saveSettingsAction } from "../actions";
 import { testAiAction } from "../actions/vision";
+import { aiErrorText } from "@/i18n/ai-error";
 
 /**
  * Caixa de seleção com valor "false" de reserva: o checkbox marcado vem primeiro
@@ -87,7 +88,9 @@ export default async function SettingsPage({
     typeof aiTest === "string" && aiTest
       ? t(`operations.ai.test.${aiTest}` as DictionaryKey, {
           model: typeof aiModel === "string" ? aiModel : "",
-          code: typeof aiCode === "string" ? aiCode : "",
+          code:
+            aiErrorText(t, typeof aiCode === "string" ? aiCode : "") ??
+            (typeof aiCode === "string" ? aiCode : ""),
         })
       : null;
   const aiEffectiveTone =

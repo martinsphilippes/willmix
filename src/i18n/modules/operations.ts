@@ -55,8 +55,7 @@ export const pt = {
     "A IA respondeu, mas fora do formato esperado ({model}).",
   "operations.ai.test.manual":
     "IA desligada: modo MANUAL ou nenhuma credencial disponível.",
-  "operations.ai.test.error":
-    "A IA não respondeu ({model}: {code}). 401/403: o AI Gateway não aceitou o token do projeto ou precisa ser ativado na conta da Vercel (AI Gateway → créditos); 402: sem crédito; outros: veja os logs da função na Vercel.",
+  "operations.ai.test.error": "A IA não respondeu ({model}). {code}",
   "operations.settings.effective.mock": "mock",
   "operations.settings.effective.manual": "manual · sem sugestão",
   "operations.settings.hint.aiModel":
@@ -131,8 +130,7 @@ export const en: Record<keyof typeof pt, string> = {
     "AI answered, but not in the expected format ({model}).",
   "operations.ai.test.manual":
     "AI off: MANUAL mode or no credential available.",
-  "operations.ai.test.error":
-    "AI did not answer ({model}: {code}). 401/403: the AI Gateway did not accept the project token or must be enabled in the Vercel account (AI Gateway → credits); 402: no credit; other: check the function logs on Vercel.",
+  "operations.ai.test.error": "AI did not answer ({model}). {code}",
   "operations.settings.effective.mock": "mock",
   "operations.settings.effective.manual": "manual · no suggestions",
   "operations.settings.hint.aiModel":
@@ -203,8 +201,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "operations.ai.test.ok": "AI 正常（{model}）。",
   "operations.ai.test.bad": "AI 已回复，但格式不符合预期（{model}）。",
   "operations.ai.test.manual": "AI 已关闭：MANUAL 模式或没有可用凭证。",
-  "operations.ai.test.error":
-    "AI 未响应（{model}：{code}）。401/403：AI Gateway 未接受项目令牌，或需要在 Vercel 账户中启用（AI Gateway → 额度）；402：额度不足；其他：请查看 Vercel 上的函数日志。",
+  "operations.ai.test.error": "AI 未响应（{model}）。{code}",
   "operations.settings.effective.mock": "mock",
   "operations.settings.effective.manual": "manual · 无建议",
   "operations.settings.hint.aiModel":

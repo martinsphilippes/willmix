@@ -13,6 +13,7 @@ import {
 import { isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import {
+  aiErrorCode,
   getAiAdapter,
   type AiAdapter,
   type AiImage,
@@ -328,6 +329,7 @@ export async function runProductLookup(
     specification: [],
   };
   let aiSource: AiSource | null = null;
+  let aiError: string | null = null;
   const adapter = deps.aiAdapter ?? getAiAdapter(await getSettings());
   let ai: Record<string, unknown> | null = null;
   if (adapter.mode !== "manual" && (aiImage || preview?.status === "ok")) {
@@ -360,7 +362,8 @@ export async function runProductLookup(
       ai = result?.json ?? null;
       aiSource = adapter.mode;
     } catch (error) {
-      console.error("lookup ai failed", error);
+      aiError = aiErrorCode(error);
+      console.error("lookup ai failed", aiError, error);
       ai = null;
     }
   }
@@ -440,6 +443,7 @@ export async function runProductLookup(
     matches: ranked,
     suggestions,
     aiSource,
+    aiError,
     requestId: null,
   });
   await audit(

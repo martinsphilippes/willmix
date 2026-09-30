@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { aiErrorText } from "@/i18n/ai-error";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Document, MarketingKit, MarketingKitStatus } from "@/lib/db";
 import {
@@ -49,6 +50,8 @@ export function marketingError(
   code: string | string[] | undefined,
 ): string | null {
   if (typeof code !== "string" || !code) return null;
+  const reason = aiErrorText(t, code);
+  if (reason) return reason;
   const key = `marketing.error.${code}` as DictionaryKey;
   const text = t(key);
   return text === key ? `${t("common.error")} (${code})` : text;

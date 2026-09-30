@@ -26,6 +26,7 @@ import { getLookup } from "@/lib/services/product-lookup";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
 import { lookupProductAction } from "../../actions/lookup";
+import { aiErrorText } from "@/i18n/ai-error";
 
 export default async function NewRequestPage({
   searchParams,
@@ -199,8 +200,16 @@ export default async function NewRequestPage({
                 {t(`lookup.linkStatus.${found.linkStatus}` as DictionaryKey)}
               </Alert>
             ) : null}
-            {aiMode === "api" && !found.aiSource && isWellmix(user) ? (
-              <Alert tone="warning">{t("lookup.ai.failed")}</Alert>
+            {/* Falha da IA: a Wellmix vê o motivo traduzido; o cliente, só a mensagem simples. */}
+            {found.aiError && isWellmix(user) ? (
+              <Alert tone="warning">
+                {aiErrorText(t, found.aiError) ?? t("lookup.ai.failed")}
+              </Alert>
+            ) : null}
+            {found.aiError && !isWellmix(user) && matched.length === 0 ? (
+              <p className="text-xs leading-relaxed text-zinc-500">
+                {t("lookup.ai.customerManual")}
+              </p>
             ) : null}
             {aiMode === "manual" ? (
               isWellmix(user) ? (

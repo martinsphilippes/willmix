@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { aiErrorText } from "@/i18n/ai-error";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { isAdmin } from "@/lib/auth/permissions";
@@ -88,6 +89,8 @@ export function visionError(
   code: string | string[] | undefined,
 ): string | null {
   if (typeof code !== "string" || !code) return null;
+  const reason = aiErrorText(t, code);
+  if (reason) return reason;
   const key = `vision.error.${code}` as DictionaryKey;
   const text = t(key);
   return text === key ? null : text;

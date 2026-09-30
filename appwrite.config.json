@@ -4891,6 +4891,14 @@
           ]
         },
         {
+          "key": "aiError",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
           "key": "requestId",
           "required": false,
           "array": false,
