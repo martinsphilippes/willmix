@@ -59,8 +59,10 @@ export async function suggestNcmAction(form: FormData) {
     assertRole(user, TAX_ROLES);
     const product = await getStore().get("products", productId);
     if (!product) throw new Error("product_not_found");
-    if (suggestNcm(product).length === 0) throw new Error("no_suggestions");
-    await suggestTaxCandidates(user, productId);
+    const created = await suggestTaxCandidates(user, productId);
+    // Nenhuma palavra reconhecida e a IA (se configurada) não trouxe nada.
+    if (created.length === 0 && suggestNcm(product).length === 0)
+      throw new Error("no_suggestions");
     return `${back}#tax`;
   });
 }

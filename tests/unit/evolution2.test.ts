@@ -342,3 +342,40 @@ describe("análise de oportunidade (determinística)", () => {
     expect(piscina.units).toBe(piscina.boxes * 6);
   });
 });
+
+describe("heurística de NCM ampliada", () => {
+  const p = (
+    name: string,
+    extra: Partial<
+      Record<"material" | "category" | "specification", string>
+    > = {},
+  ) => ({
+    name,
+    material: extra.material ?? null,
+    category: extra.category ?? null,
+    specification: extra.specification ?? null,
+  });
+  it("reconhece celular, eletrônicos e autopeças", () => {
+    expect(
+      suggestNcm(
+        p("Celular Teste", { material: "Celular", category: "Celular" }),
+      )[0].ncm,
+    ).toBe("8517.13");
+    expect(suggestNcm(p("Smartphone 128GB"))[0].ncm).toBe("8517.13");
+    expect(suggestNcm(p("Fone de ouvido bluetooth"))[0].ncm).toBe("8518.30");
+    expect(suggestNcm(p("Carregador turbo USB-C"))[0].ncm).toBe("8504.40");
+    expect(suggestNcm(p("Amortecedor dianteiro Onix 2020"))[0].ncm).toBe(
+      "8708.80",
+    );
+    expect(suggestNcm(p("手机壳 iPhone"))[0].ncm).toBeDefined();
+  });
+  it("casa palavra inteira (com plural), não trecho de outra palavra", () => {
+    const tel = suggestNcm(p("Telefone celular"));
+    expect(tel.map((s) => s.ncm)).toContain("8517.13");
+    expect(tel.map((s) => s.ncm)).not.toContain("8518.30");
+    expect(suggestNcm(p("Jogo de panelas"))[0].ncm).toBe("7615.10");
+    expect(suggestNcm(p("Parafusadeira 12V"))[0].ncm).toBe("8467.21");
+    expect(suggestNcm(p("螺丝刀套装")).map((s) => s.ncm)).toEqual(["8205.40"]);
+    expect(suggestNcm(p("Produto genérico XPTO"))).toEqual([]);
+  });
+});
