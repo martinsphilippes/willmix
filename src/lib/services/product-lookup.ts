@@ -23,6 +23,7 @@ import {
   type LinkPreview,
 } from "@/lib/integrations/link-preview";
 import { buildPrompt } from "@/lib/ai/prompts";
+import { keywordMatches, NCM_HINTS } from "./taxes";
 import { audit } from "./audit";
 import { uploadDocument } from "./documents";
 import {
@@ -46,7 +47,9 @@ import {
 export class LookupError extends Error {}
 
 const MAX_OPTIONS = 5;
-const MAX_MATCHES = 5;
+const MAX_MATCHES = 10;
+/** Motivos de "é o mesmo produto"; os demais (categoria, palavra) são só relacionados. */
+export const STRONG_REASONS = new Set(["photo", "link_photo", "name", "ai"]);
 const MAX_HASH_BACKFILL = 200;
 /** Produtos com foto enviados à IA para comparação visual (até 2 fotos cada). */
 const MAX_VISUAL_PRODUCTS = 20;
@@ -72,6 +75,40 @@ export function tokens(text: string | null | undefined): string[] {
         .filter((w) => (w.length >= 3 || /\d/.test(w)) && !STOPWORDS.has(w)),
     ),
   ];
+}
+
+/** Palavras que não dizem o que o produto é (cores, tamanhos, genéricas de anúncio). */
+const WEAK_WORDS = new Set(
+  "preto preta branco branca azul vermelho vermelha verde amarelo amarela rosa cinza prata dourado dourada marrom bege roxo laranja black white blue red green pink gray grey silver gold pequeno pequena medio media grande mini maxi pro max plus ultra lite premium qualidade envio imediato pronta entrega lancamento barato promocao unidade unidades pecas modelo teste".split(
+    " ",
+  ),
+);
+
+/** Palavras significativas em comum entre o produto e o link (nome, categoria, material). */
+export function commonWords(product: Product, text: string): string[] {
+  // Singular simples: "panelas" = "panela", "celulares" = "celular".
+  const stem = (w: string) => (w.length > 4 ? w.replace(/(es|s)$/, "") : w);
+  const link = new Set(
+    tokens(text)
+      .filter((w) => !WEAK_WORDS.has(w))
+      .map(stem),
+  );
+  return tokens(
+    `${product.name} ${product.category ?? ""} ${product.material ?? ""}`,
+  ).filter((w) => w.length >= 4 && !WEAK_WORDS.has(w) && link.has(stem(w)));
+}
+
+/**
+ * Famílias de produto (posições da tabela de NCM) que o texto menciona. Dois
+ * textos na mesma família são relacionados: "iPhone 15" e "Celular" caem em
+ * smartphones; "capa MagSafe" e "capinha" em capas.
+ */
+export function productFamilies(text: string): Set<string> {
+  const folded = fold(text);
+  const out = new Set<string>();
+  for (const hint of NCM_HINTS)
+    if (hint.keywords.some((k) => keywordMatches(folded, k))) out.add(hint.ncm);
+  return out;
 }
 
 /** Quanto do nome do produto aparece no texto do link (0–1). SKU exato vale 1. */
@@ -313,7 +350,12 @@ export async function runProductLookup(
   const matches = new Map<string, LookupMatch>();
   photoMatches(matches, imageHash, catalog, "photo");
   photoMatches(matches, linkImageHash, catalog, "link_photo");
-  const linkText = [preview?.title, preview?.product.name, preview?.product.sku]
+  const linkText = [
+    preview?.title,
+    preview?.product.name,
+    preview?.product.sku,
+    preview?.product.model,
+  ]
     .filter(Boolean)
     .join(" ");
   if (linkText)
@@ -321,6 +363,36 @@ export async function runProductLookup(
       const score = nameScore(p, linkText);
       if (score >= 0.5) addMatch(matches, p.id, 0.4 + score * 0.4, "name");
     }
+  // Relacionados: mesma família de produto (ex.: iPhone ↔ Celular) ou palavra significativa em comum.
+  const familyText = [
+    linkText,
+    preview?.category,
+    preview?.product.brand,
+    preview?.product.material,
+    preview?.description,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (familyText) {
+    const linkFamilies = productFamilies(familyText);
+    for (const p of products) {
+      const own = productFamilies(
+        [p.name, p.category, p.material, p.specification]
+          .filter(Boolean)
+          .join(" "),
+      );
+      if ([...own].some((f) => linkFamilies.has(f)))
+        addMatch(matches, p.id, 0.35, "category");
+      const words = commonWords(p, familyText);
+      if (words.length)
+        addMatch(
+          matches,
+          p.id,
+          Math.min(0.3, 0.15 + words.length * 0.05),
+          "word",
+        );
+    }
+  }
 
   // 2) IA (API ou mock rotulado; manual = sem IA).
   const suggestions: Record<LookupField, LookupOption[]> = {
@@ -335,7 +407,7 @@ export async function runProductLookup(
   if (adapter.mode !== "manual" && (aiImage || preview?.status === "ok")) {
     const context = [
       preview?.status === "ok"
-        ? `LINK: ${[preview.title, preview.description, preview.product.brand, preview.product.material, preview.product.color, preview.product.size].filter(Boolean).join(" · ")}`
+        ? `LINK: ${[preview.title, preview.category, preview.description, preview.product.brand, preview.product.model, preview.product.material, preview.product.color, preview.product.size].filter(Boolean).join(" · ")}`
         : null,
       `CATÁLOGO (id | nome):\n${products
         .slice(0, 150)
@@ -386,7 +458,9 @@ export async function runProductLookup(
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_MATCHES)
     .map((m) => ({ ...m, score: Math.round(m.score * 100) / 100 }));
+  // Sugestões de preenchimento só dos que parecem ser o mesmo produto (não dos relacionados).
   const matchedProducts = ranked
+    .filter((m) => m.reasons.some((r) => STRONG_REASONS.has(r)))
     .map((m) => products.find((p) => p.id === m.productId))
     .filter((p): p is Product => !!p);
 
@@ -409,6 +483,7 @@ export async function runProductLookup(
       preview.product.color ? `Cor: ${preview.product.color}` : null,
       preview.product.size ? `Tamanho: ${preview.product.size}` : null,
       preview.product.brand ? `Marca: ${preview.product.brand}` : null,
+      preview.product.model ? `Modelo: ${preview.product.model}` : null,
     ]
       .filter(Boolean)
       .join("; ");

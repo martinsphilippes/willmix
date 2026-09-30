@@ -22,7 +22,7 @@ import { PhotoInput } from "@/components/photo-input";
 import { SuggestField } from "@/components/suggest-field";
 import { getSettings } from "@/lib/settings";
 import { getAiAdapter } from "@/lib/integrations/ai";
-import { getLookup } from "@/lib/services/product-lookup";
+import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
 import { lookupProductAction } from "../../actions/lookup";
@@ -66,6 +66,13 @@ export default async function NewRequestPage({
   const matched = (found?.matches ?? [])
     .map((m) => ({ m, p: products.find((p) => p.id === m.productId) }))
     .filter((x) => !!x.p);
+  /* "Parece ser o seu" (mesma foto, nome, IA) × "relacionado" (mesma categoria, palavra em comum). */
+  const strong = matched.filter(({ m }) =>
+    m.reasons.some((r) => STRONG_REASONS.has(r)),
+  );
+  const related = matched.filter(
+    ({ m }) => !m.reasons.some((r) => STRONG_REASONS.has(r)),
+  );
   const optionsFor = (field: LookupField) => found?.suggestions[field] ?? [];
   const hasSuggestions =
     !!found &&
@@ -88,6 +95,45 @@ export default async function NewRequestPage({
     typeof error === "string" && t(errorKey as DictionaryKey) !== errorKey
       ? t(errorKey as DictionaryKey)
       : t("common.error");
+  const renderMatches = (items: typeof matched) => (
+    <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
+      {items.map(({ m, p }) => {
+        const selected = presetProductId === p!.id;
+        return (
+          <li
+            key={m.productId}
+            className={cx(
+              "flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between",
+              selected && "bg-brand-50/60",
+            )}
+          >
+            <div className="min-w-0">
+              <p className="font-medium text-zinc-900">
+                {p!.name}
+                {p!.sku ? (
+                  <span className="text-zinc-500"> ({p!.sku})</span>
+                ) : null}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {m.reasons.map((r) => (
+                  <Badge key={r} tone="info">
+                    {t(`lookup.reason.${r}` as DictionaryKey)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            {selected ? (
+              <Badge tone="success">{t("lookup.using")}</Badge>
+            ) : (
+              <LinkButton href={pickHref(p!.id)} variant="secondary">
+                {t("lookup.use")}
+              </LinkButton>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
   const referenceNote = found?.url
     ? `${t("lookup.referenceNote")} ${found.url}`
     : "";
@@ -206,22 +252,22 @@ export default async function NewRequestPage({
                 {aiErrorText(t, found.aiError) ?? t("lookup.ai.failed")}
               </Alert>
             ) : null}
-            {found.aiError && !isWellmix(user) && matched.length === 0 ? (
+            {found.aiError && !isWellmix(user) && strong.length === 0 ? (
               <p className="text-xs leading-relaxed text-zinc-500">
                 {t("lookup.ai.customerManual")}
               </p>
             ) : null}
-            {aiMode === "manual" ? (
+            {aiMode === "manual" && !found.aiError ? (
               isWellmix(user) ? (
                 <Alert tone="warning">{t("lookup.ai.manual")}</Alert>
-              ) : matched.length === 0 && found.imageDocumentId ? (
+              ) : strong.length === 0 && found.imageDocumentId ? (
                 <p className="text-xs leading-relaxed text-zinc-500">
                   {t("lookup.ai.customerManual")}
                 </p>
               ) : null
             ) : null}
 
-            {matched.length > 0 ? (
+            {strong.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-zinc-800">
                   {t("lookup.matches")}
@@ -229,58 +275,32 @@ export default async function NewRequestPage({
                 <p className="text-xs text-zinc-500">
                   {t("lookup.matchesHint")}
                 </p>
-                <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
-                  {matched.map(({ m, p }) => {
-                    const selected = presetProductId === p!.id;
-                    return (
-                      <li
-                        key={m.productId}
-                        className={cx(
-                          "flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between",
-                          selected && "bg-brand-50/60",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium text-zinc-900">
-                            {p!.name}
-                            {p!.sku ? (
-                              <span className="text-zinc-500"> ({p!.sku})</span>
-                            ) : null}
-                          </p>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {m.reasons.map((r) => (
-                              <Badge key={r} tone="info">
-                                {t(`lookup.reason.${r}` as DictionaryKey)}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        {selected ? (
-                          <Badge tone="success">{t("lookup.using")}</Badge>
-                        ) : (
-                          <LinkButton
-                            href={pickHref(p!.id)}
-                            variant="secondary"
-                          >
-                            {t("lookup.use")}
-                          </LinkButton>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-                {presetProductId ? (
-                  <TextLink
-                    href={`/app/requests/new?${new URLSearchParams({ lookup: found.id, ...(presetCustomerId ? { customerId: presetCustomerId } : {}) }).toString()}`}
-                    className="text-xs"
-                  >
-                    {t("lookup.none")}
-                  </TextLink>
-                ) : null}
+                {renderMatches(strong)}
               </div>
             ) : (
-              <Alert tone="info">{t("lookup.noMatch")}</Alert>
+              <Alert tone="info">
+                {related.length > 0 ? t("lookup.noExact") : t("lookup.noMatch")}
+              </Alert>
             )}
+            {related.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-zinc-800">
+                  {t("lookup.related")}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {t("lookup.relatedHint")}
+                </p>
+                {renderMatches(related)}
+              </div>
+            ) : null}
+            {presetProductId ? (
+              <TextLink
+                href={`/app/requests/new?${new URLSearchParams({ lookup: found.id, ...(presetCustomerId ? { customerId: presetCustomerId } : {}) }).toString()}`}
+                className="text-xs"
+              >
+                {t("lookup.none")}
+              </TextLink>
+            ) : null}
             <TextLink
               href={`/app/requests/new${presetCustomerId ? `?customerId=${encodeURIComponent(presetCustomerId)}` : ""}`}
               className="text-xs"
@@ -340,7 +360,7 @@ export default async function NewRequestPage({
               type="checkbox"
               name="sourcingDemand"
               defaultChecked={
-                !!found && matched.length === 0 && !presetProductId
+                !!found && strong.length === 0 && !presetProductId
               }
               className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
             />

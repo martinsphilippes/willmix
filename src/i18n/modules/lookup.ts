@@ -30,6 +30,13 @@ export const pt = {
   "lookup.none": "Nenhum destes é o meu produto",
   "lookup.noMatch":
     'Nenhum produto cadastrado corresponde. Use as sugestões nos campos abaixo e, se for um produto novo, mantenha marcado "produto fora do catálogo".',
+  "lookup.reason.category": "mesma categoria",
+  "lookup.reason.word": "palavra em comum",
+  "lookup.related": "Relacionados no catálogo",
+  "lookup.relatedHint":
+    "Produtos cadastrados da mesma categoria ou com palavras em comum. Úteis para comparar ou oferecer uma alternativa.",
+  "lookup.noExact":
+    "Nenhum produto cadastrado parece ser exatamente o mesmo. Veja os relacionados abaixo ou use as sugestões nos campos.",
   "lookup.reason.photo": "mesma foto",
   "lookup.reason.link_photo": "mesma foto do link",
   "lookup.reason.name": "nome parecido",
@@ -85,6 +92,13 @@ export const en: Record<keyof typeof pt, string> = {
   "lookup.none": "None of these is my product",
   "lookup.noMatch":
     'No registered product matches. Use the suggestions in the fields below and, if it is a new product, keep "product outside the catalog" checked.',
+  "lookup.reason.category": "same category",
+  "lookup.reason.word": "word in common",
+  "lookup.related": "Related in the catalog",
+  "lookup.relatedHint":
+    "Registered products in the same category or sharing words. Useful to compare or offer an alternative.",
+  "lookup.noExact":
+    "No registered product looks exactly the same. See the related ones below or use the suggestions in the fields.",
   "lookup.reason.photo": "same photo",
   "lookup.reason.link_photo": "same photo as the link",
   "lookup.reason.name": "similar name",
@@ -138,6 +152,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "lookup.none": "这些都不是我的产品",
   "lookup.noMatch":
     "没有相符的已登记产品。请使用下方字段中的建议；如果是新产品，请保持勾选“目录外产品”。",
+  "lookup.reason.category": "同一类别",
+  "lookup.reason.word": "有共同词",
+  "lookup.related": "目录中的相关产品",
+  "lookup.relatedHint":
+    "同一类别或有共同词的已登记产品，可用于比较或提供替代方案。",
+  "lookup.noExact":
+    "没有看起来完全相同的已登记产品。请查看下方相关产品或使用字段中的建议。",
   "lookup.reason.photo": "相同照片",
   "lookup.reason.link_photo": "与链接照片相同",
   "lookup.reason.name": "名称相似",
