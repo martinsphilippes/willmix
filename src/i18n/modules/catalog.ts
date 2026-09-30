@@ -134,7 +134,7 @@ export const pt = {
   "catalog.tax.none": "Não classificado",
   "catalog.tax.suggest": "Sugerir NCM",
   "catalog.tax.suggestHint":
-    "Sugestões automáticas por palavra-chave; nunca definitivas: valide com o despachante.",
+    "Sugestões automáticas por palavra-chave (e por IA, quando configurada); nunca definitivas: valide com o despachante.",
   "catalog.tax.candidates": "Candidatas",
   "catalog.tax.candidates.empty":
     "Nenhuma candidata ainda. Use Sugerir NCM ou adicione uma candidata manualmente.",
@@ -276,7 +276,7 @@ export const pt = {
   "catalog.error.invalid_tiers":
     "Faixas inválidas: uma por linha no formato quantidade;preço, com números maiores que zero e quantidades diferentes.",
   "catalog.error.no_suggestions":
-    "Nenhuma palavra-chave reconhecida em nome, material, categoria ou especificação. Adicione a candidata manualmente.",
+    "Nenhuma palavra-chave reconhecida em nome, material, categoria ou especificação, e a IA não está configurada ou não sugeriu. Adicione a candidata manualmente ou detalhe o nome e a categoria do produto.",
   "catalog.error.kind_required": "Informe o tipo da certificação.",
   "catalog.error.mime": "Formato de arquivo não aceito: envie PDF ou imagem.",
   "catalog.error.too_large": "Arquivo muito grande.",
@@ -415,7 +415,7 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.tax.none": "Not classified",
   "catalog.tax.suggest": "Suggest NCM",
   "catalog.tax.suggestHint":
-    "Automatic keyword suggestions; never final: validate with the customs broker.",
+    "Automatic keyword suggestions (and AI, when configured); never final: validate with the customs broker.",
   "catalog.tax.candidates": "Candidates",
   "catalog.tax.candidates.empty":
     "No candidates yet. Use Suggest NCM or add a candidate manually.",
@@ -552,7 +552,7 @@ export const en: Record<keyof typeof pt, string> = {
   "catalog.error.invalid_tiers":
     "Invalid tiers: one per line as quantity;price, numbers above zero and distinct quantities.",
   "catalog.error.no_suggestions":
-    "No keyword recognised in name, material, category or specification. Add the candidate manually.",
+    "No keyword recognised in name, material, category or specification, and AI is not configured or returned nothing. Add the candidate manually or describe the product name and category in more detail.",
   "catalog.error.kind_required": "Enter the certification type.",
   "catalog.error.mime": "File format not accepted: upload a PDF or image.",
   "catalog.error.too_large": "File too large.",
@@ -688,7 +688,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.tax.none": "未归类",
   "catalog.tax.suggest": "建议 NCM",
   "catalog.tax.suggestHint":
-    "按关键词自动生成的建议，绝非最终结论：请与报关行核实确认。",
+    "按关键词（以及已配置的 AI）自动生成的建议，绝非最终结论：请与报关行核实确认。",
   "catalog.tax.candidates": "候选编码",
   "catalog.tax.candidates.empty":
     "暂无候选编码。请使用“建议 NCM”或手动添加候选编码。",
@@ -816,7 +816,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.error.invalid_tiers":
     "阶梯无效：每行一个，格式为 数量;单价，数字须大于零且数量不能重复。",
   "catalog.error.no_suggestions":
-    "名称、材质、类别或规格中未识别到关键词。请手动添加候选编码。",
+    "名称、材质、类别或规格中未识别到关键词，且 AI 未配置或未给出建议。请手动添加候选编码，或补充产品名称和类别。",
   "catalog.error.kind_required": "请填写认证类型。",
   "catalog.error.mime": "不支持的文件格式：请上传 PDF 或图片。",
   "catalog.error.too_large": "文件过大。",

@@ -6,7 +6,8 @@ import type { LinePrompts, Product, ProductLine, SourcingItem } from "@/lib/db";
  * buildPrompt. A resposta pedida é sempre JSON, validada no serviço, e
  * nenhum valor sugerido vira cadastro sem confirmação humana.
  */
-export type PromptKind = "registration" | "description" | "marketing" | "image";
+export type PromptKind =
+  "registration" | "description" | "marketing" | "image" | "ncm";
 
 export const BASE_PROMPTS: Record<PromptKind, string> = {
   registration: [
@@ -26,6 +27,13 @@ export const BASE_PROMPTS: Record<PromptKind, string> = {
     "Com base nos dados do produto, proponha material comercial em português do Brasil.",
     'Responda SOMENTE um JSON: {"concept": string, "slogan": string, "description": string, "campaign": string, "colors": string[]}',
     "Não invente certificações, prêmios, preços ou promessas técnicas que não estejam nos dados.",
+  ].join("\n"),
+  ncm: [
+    "Você apoia a classificação fiscal (NCM, Mercosul) de produtos importados da China para o Brasil.",
+    "Com base nos dados do produto, proponha até 3 códigos NCM prováveis, do mais provável ao menos provável.",
+    'Responda SOMENTE um JSON: {"candidates": [{"ncm": "0000.00.00", "description": string, "reason": string}]}',
+    "Use o formato 0000.00 ou 0000.00.00. Na dúvida, prefira a posição de 4 ou 6 dígitos.",
+    "É uma sugestão: a validação é sempre do despachante.",
   ].join("\n"),
   image: [
     "Escreva um prompt de imagem comercial (fundo neutro, iluminação de estúdio, produto em destaque)",
