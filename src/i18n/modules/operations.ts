@@ -42,9 +42,21 @@ export const pt = {
   /* ---- Configurações: IA, marketing e operação ---- */
   "operations.settings.section": "IA, marketing e operação",
   "operations.settings.hint.aiMode":
-    "AUTO usa a API da Anthropic só quando ANTHROPIC_API_KEY existe no ambiente (sem chave, vira manual); MOCK devolve um exemplo claramente rotulado, para demonstração e testes; MANUAL desliga a IA. Em qualquer modo a IA só sugere: o humano confirma campo a campo.",
+    "AUTO usa a IA real quando há credencial: ANTHROPIC_API_KEY (direto), AI_GATEWAY_API_KEY ou, na Vercel, o AI Gateway pelo token do próprio projeto (sem chave). Sem nada disso vira manual. MOCK devolve um exemplo rotulado, para demonstração; MANUAL desliga a IA. A IA só sugere: o humano confirma.",
   "operations.settings.effective": "modo efetivo",
   "operations.settings.effective.api": "api · chave presente",
+  "operations.settings.effective.anthropic": "api · chave Anthropic",
+  "operations.settings.effective.gateway": "api · AI Gateway da Vercel",
+  "operations.ai.test": "Testar IA",
+  "operations.ai.testHint":
+    "Faz uma chamada curta à IA com a configuração salva e mostra se funcionou, com qual modelo, ou o motivo da falha.",
+  "operations.ai.test.ok": "IA funcionando ({model}).",
+  "operations.ai.test.bad":
+    "A IA respondeu, mas fora do formato esperado ({model}).",
+  "operations.ai.test.manual":
+    "IA desligada: modo MANUAL ou nenhuma credencial disponível.",
+  "operations.ai.test.error":
+    "A IA não respondeu ({model}: {code}). 401/403: o AI Gateway não aceitou o token do projeto ou precisa ser ativado na conta da Vercel (AI Gateway → créditos); 402: sem crédito; outros: veja os logs da função na Vercel.",
   "operations.settings.effective.mock": "mock",
   "operations.settings.effective.manual": "manual · sem sugestão",
   "operations.settings.hint.aiModel":
@@ -106,9 +118,21 @@ export const en: Record<keyof typeof pt, string> = {
 
   "operations.settings.section": "AI, marketing and operation",
   "operations.settings.hint.aiMode":
-    "AUTO uses the Anthropic API only when ANTHROPIC_API_KEY exists in the environment (without a key it falls back to manual); MOCK returns a clearly labelled example for demos and tests; MANUAL switches AI off. In every mode AI only suggests: a human confirms field by field.",
+    "AUTO uses real AI when a credential exists: ANTHROPIC_API_KEY (direct), AI_GATEWAY_API_KEY or, on Vercel, the AI Gateway through the project's own token (no key). Without any of these it becomes manual. MOCK returns a labelled example for demos; MANUAL turns AI off. AI only suggests: a person confirms.",
   "operations.settings.effective": "effective mode",
   "operations.settings.effective.api": "api · key present",
+  "operations.settings.effective.anthropic": "api · Anthropic key",
+  "operations.settings.effective.gateway": "api · Vercel AI Gateway",
+  "operations.ai.test": "Test AI",
+  "operations.ai.testHint":
+    "Makes a short AI call with the saved configuration and shows whether it worked, with which model, or why it failed.",
+  "operations.ai.test.ok": "AI working ({model}).",
+  "operations.ai.test.bad":
+    "AI answered, but not in the expected format ({model}).",
+  "operations.ai.test.manual":
+    "AI off: MANUAL mode or no credential available.",
+  "operations.ai.test.error":
+    "AI did not answer ({model}: {code}). 401/403: the AI Gateway did not accept the project token or must be enabled in the Vercel account (AI Gateway → credits); 402: no credit; other: check the function logs on Vercel.",
   "operations.settings.effective.mock": "mock",
   "operations.settings.effective.manual": "manual · no suggestions",
   "operations.settings.hint.aiModel":
@@ -168,9 +192,19 @@ export const zh: Record<keyof typeof pt, string> = {
 
   "operations.settings.section": "AI、营销与运营",
   "operations.settings.hint.aiMode":
-    "AUTO 仅在环境中存在 ANTHROPIC_API_KEY 时使用 Anthropic API（无密钥则转为手动）；MOCK 返回明确标注的示例，用于演示和测试；MANUAL 关闭 AI。任何模式下 AI 只提供建议：由人工逐项确认。",
+    "AUTO 在有凭证时使用真实 AI：ANTHROPIC_API_KEY（直连）、AI_GATEWAY_API_KEY，或在 Vercel 上通过项目自身令牌使用 AI Gateway（无需密钥）。都没有时为手动。MOCK 返回带标注的示例用于演示；MANUAL 关闭 AI。AI 只提供建议，由人工确认。",
   "operations.settings.effective": "当前生效",
   "operations.settings.effective.api": "api · 已有密钥",
+  "operations.settings.effective.anthropic": "api · Anthropic 密钥",
+  "operations.settings.effective.gateway": "api · Vercel AI Gateway",
+  "operations.ai.test": "测试 AI",
+  "operations.ai.testHint":
+    "用已保存的配置对 AI 进行一次简短调用，显示是否成功、使用的模型或失败原因。",
+  "operations.ai.test.ok": "AI 正常（{model}）。",
+  "operations.ai.test.bad": "AI 已回复，但格式不符合预期（{model}）。",
+  "operations.ai.test.manual": "AI 已关闭：MANUAL 模式或没有可用凭证。",
+  "operations.ai.test.error":
+    "AI 未响应（{model}：{code}）。401/403：AI Gateway 未接受项目令牌，或需要在 Vercel 账户中启用（AI Gateway → 额度）；402：额度不足；其他：请查看 Vercel 上的函数日志。",
   "operations.settings.effective.mock": "mock",
   "operations.settings.effective.manual": "manual · 无建议",
   "operations.settings.hint.aiModel":

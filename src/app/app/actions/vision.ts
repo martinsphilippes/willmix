@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { assertRole, assertWellmix } from "@/lib/auth/permissions";
 import {
   getStore,
   OPERATION_MODES,
@@ -362,5 +362,40 @@ export async function saveCustomerOperationAction(form: FormData) {
       });
     await setCustomerOperation(user, partyId, parsed);
     return `/app/parties/${partyId}?saved=operation`;
+  });
+}
+
+/* ------------------------------------------------------------------------ */
+/* Teste da IA (configurações)                                               */
+/* ------------------------------------------------------------------------ */
+
+/** Chamada curta à IA com a configuração atual; volta com ?aiTest=ok|bad|manual|error. */
+export async function testAiAction() {
+  const user = await requireUser();
+  await run("/app/settings", async () => {
+    assertRole(user, ["admin"]);
+    const [{ getSettings }, { getAiAdapter }] = await Promise.all([
+      import("@/lib/settings"),
+      import("@/lib/integrations/ai"),
+    ]);
+    const adapter = getAiAdapter(await getSettings());
+    const params = new URLSearchParams();
+    if (adapter.mode === "manual") params.set("aiTest", "manual");
+    else
+      try {
+        const result = await adapter.complete(
+          'Responda SOMENTE o JSON {"ok": true}.',
+        );
+        params.set("aiTest", result?.json?.ok === true ? "ok" : "bad");
+        params.set("aiModel", `${adapter.mode} · ${adapter.model ?? ""}`);
+      } catch (error) {
+        params.set("aiTest", "error");
+        params.set("aiModel", adapter.model ?? "");
+        params.set(
+          "aiCode",
+          (error instanceof Error ? error.message : "erro").slice(0, 80),
+        );
+      }
+    return `/app/settings?${params.toString()}#ai-test`;
   });
 }

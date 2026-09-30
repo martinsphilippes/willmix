@@ -33,11 +33,15 @@ export const pt = {
   "lookup.reason.photo": "mesma foto",
   "lookup.reason.link_photo": "mesma foto do link",
   "lookup.reason.name": "nome parecido",
-  "lookup.reason.ai": "reconhecido pela IA",
+  "lookup.reason.ai": "semelhança visual (IA)",
+  "lookup.ai.customerManual":
+    "Não reconhecemos o produto pela foto. Descreva-o nos campos abaixo; a Wellmix confere e completa.",
+  "lookup.ai.failed":
+    "A IA de imagem não respondeu nesta busca. Veja o motivo em Configurações → Testar IA.",
   "lookup.ai.api": "Sugestões com IA",
   "lookup.ai.mock": "IA em modo de demonstração (mock)",
   "lookup.ai.manual":
-    "IA não configurada: a busca por foto só encontra fotos iguais ou muito parecidas às cadastradas. As sugestões vêm do link e do catálogo.",
+    "IA de imagem desligada: sem ela, a busca por foto só reconhece fotos iguais às cadastradas, não o mesmo produto em outra foto. Em Configurações, deixe aiMode em AUTO e use Testar IA; na Vercel ela funciona pelo AI Gateway do projeto ou com ANTHROPIC_API_KEY.",
   "lookup.suggestionsHint":
     'Sugestões: toque em uma para preencher (dá para editar depois) ou deixe "Nenhuma dessas".',
   "lookup.noneOption": "Nenhuma dessas",
@@ -84,11 +88,15 @@ export const en: Record<keyof typeof pt, string> = {
   "lookup.reason.photo": "same photo",
   "lookup.reason.link_photo": "same photo as the link",
   "lookup.reason.name": "similar name",
-  "lookup.reason.ai": "recognised by AI",
+  "lookup.reason.ai": "visual similarity (AI)",
+  "lookup.ai.customerManual":
+    "We could not recognise the product from the photo. Describe it in the fields below; Wellmix will check and complete it.",
+  "lookup.ai.failed":
+    "Image AI did not answer in this search. See why in Settings → Test AI.",
   "lookup.ai.api": "AI suggestions",
   "lookup.ai.mock": "AI in demo mode (mock)",
   "lookup.ai.manual":
-    "AI not configured: photo search only finds photos identical or very similar to registered ones. Suggestions come from the link and the catalog.",
+    "Image AI is off: without it, photo search only recognises photos identical to registered ones, not the same product in another photo. In Settings, keep aiMode on AUTO and use Test AI; on Vercel it works through the project's AI Gateway or with ANTHROPIC_API_KEY.",
   "lookup.suggestionsHint":
     'Suggestions: tap one to fill in (you can edit it afterwards) or keep "None of these".',
   "lookup.noneOption": "None of these",
@@ -133,11 +141,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "lookup.reason.photo": "相同照片",
   "lookup.reason.link_photo": "与链接照片相同",
   "lookup.reason.name": "名称相似",
-  "lookup.reason.ai": "AI 识别",
+  "lookup.reason.ai": "视觉相似（AI）",
+  "lookup.ai.customerManual":
+    "未能通过照片识别产品。请在下方字段中描述，Wellmix 会核对并补充。",
+  "lookup.ai.failed":
+    "本次查找中图像 AI 未响应。请在 设置 → 测试 AI 中查看原因。",
   "lookup.ai.api": "AI 建议",
   "lookup.ai.mock": "AI 演示模式（mock）",
   "lookup.ai.manual":
-    "未配置 AI：照片查找只能找到与已登记照片相同或非常相似的照片。建议来自链接和目录。",
+    "图像 AI 未开启：没有它，照片查找只能识别与已登记照片完全相同的照片，无法识别另一张照片中的同一产品。请在设置中将 aiMode 保持为 AUTO 并使用“测试 AI”；在 Vercel 上可通过项目的 AI Gateway 或 ANTHROPIC_API_KEY 使用。",
   "lookup.suggestionsHint":
     "建议：点击其中一项即可填写（之后可修改），或保持“都不选”。",
   "lookup.noneOption": "都不选",

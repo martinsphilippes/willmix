@@ -240,6 +240,75 @@ describe("busca no catálogo e sugestões", () => {
     await setSetting("aiMode", "MANUAL");
   });
 
+  it("com IA de imagem: envia a foto do cliente e as fotos do catálogo; só confiança média/alta vira correspondência", async () => {
+    const store = getStore();
+    // Foto de medida da boneca: não deve ir para a comparação visual.
+    const dim = await uploadDocument(
+      admin,
+      asFile(await photo("c"), "medida.png", "image/png"),
+      { productId: "prod-boneca", type: "photo", visibility: "internal" },
+    );
+    await store.create("product_photos", {
+      productId: "prod-boneca",
+      sourcingItemId: null,
+      orderId: null,
+      documentId: dim.id,
+      kind: "dimension_height",
+      caption: null,
+      takenAt: null,
+      takenByUserId: admin.id,
+      derivedFromPhotoId: null,
+      isPrimary: false,
+    });
+    const sent: Array<{ labels: string[]; count: number }> = [];
+    const fakeAi = {
+      mode: "api" as const,
+      model: "fake-vision",
+      async complete(_prompt: string, images?: unknown) {
+        const list = (Array.isArray(images) ? images : []) as Array<{
+          label?: string;
+        }>;
+        sent.push({
+          labels: list.map((i) => i.label ?? ""),
+          count: list.length,
+        });
+        const json = {
+          catalogMatches: [
+            { id: "prod-panela", confidence: "high", reason: "mesmo formato" },
+            { id: "prod-jarra", confidence: "low", reason: "só a categoria" },
+            { id: "nao-existe", confidence: "high" },
+          ],
+          productName: ["Jogo de panelas preto"],
+          description: [],
+          specification: ["Alumínio, cor preta"],
+        };
+        return { text: JSON.stringify(json), json };
+      },
+    };
+    // Outra foto (composição diferente): impressão digital não casa; a IA reconhece.
+    const row = await runProductLookup(
+      customer,
+      {
+        file: asFile(
+          await photo("b", 500, true),
+          "outra-foto.jpg",
+          "image/jpeg",
+        ),
+      },
+      { aiAdapter: fakeAi },
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0].labels[0]).toBe("FOTO DO CLIENTE:");
+    expect(
+      sent[0].labels.some((l) => l.startsWith("CATÁLOGO id=prod-panela")),
+    ).toBe(true);
+    expect(sent[0].labels.some((l) => l.includes("prod-boneca"))).toBe(false);
+    expect(row.matches.map((m) => m.productId)).toEqual(["prod-panela"]);
+    expect(row.matches[0].reasons).toEqual(["ai"]);
+    expect(row.aiSource).toBe("api");
+    expect(row.suggestions.productName!.map((o) => o.source)).toContain("ai");
+  });
+
   it("link bloqueado não quebra: só registra o status", async () => {
     const row = await runProductLookup(
       customer,
@@ -297,6 +366,45 @@ describe("busca no catálogo e sugestões", () => {
     ).toBe(request.id);
     expect((await store.get("product_lookups", row.id))!.requestId).toBe(
       request.id,
+    );
+  });
+});
+
+describe("provedor da IA", () => {
+  it("escolhe chave direta, chave do gateway ou OIDC na Vercel; sem nada, manual", async () => {
+    const { getAiAdapter, toGatewayModel, aiStatus } =
+      await import("@/lib/integrations/ai");
+    const saved = { ...process.env };
+    const s = { aiMode: "AUTO" as const, aiModel: "claude-sonnet-5-5" };
+    try {
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
+      delete process.env.VERCEL;
+      expect(getAiAdapter(s).mode).toBe("manual");
+      process.env.VERCEL = "1";
+      expect(aiStatus(s)).toEqual({
+        mode: "api",
+        provider: "gateway",
+        model: "anthropic/claude-sonnet-5.5",
+      });
+      process.env.AI_GATEWAY_API_KEY = "x";
+      expect(aiStatus(s).provider).toBe("gateway");
+      process.env.ANTHROPIC_API_KEY = "y";
+      expect(aiStatus(s)).toEqual({
+        mode: "api",
+        provider: "anthropic",
+        model: "claude-sonnet-5-5",
+      });
+      expect(getAiAdapter({ ...s, aiMode: "MANUAL" }).mode).toBe("manual");
+    } finally {
+      process.env = saved;
+    }
+    expect(toGatewayModel("claude-haiku-4-5")).toBe(
+      "anthropic/claude-haiku-4.5",
+    );
+    expect(toGatewayModel("claude-opus-5")).toBe("anthropic/claude-opus-5");
+    expect(toGatewayModel("anthropic/claude-sonnet-5")).toBe(
+      "anthropic/claude-sonnet-5",
     );
   });
 });
