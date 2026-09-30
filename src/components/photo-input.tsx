@@ -20,6 +20,7 @@ export function PhotoInput({
   hint,
   className,
   autoSubmit = false,
+  disabled = false,
 }: {
   name: string;
   multiple?: boolean;
@@ -32,6 +33,8 @@ export function PhotoInput({
   className?: string;
   /** Envia o formulário assim que a foto estiver pronta (busca automática). */
   autoSubmit?: boolean;
+  /** Recurso indisponível: campo inativo e esmaecido. */
+  disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -66,7 +69,14 @@ export function PhotoInput({
 
   return (
     <div className={className}>
-      <label className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/60 px-4 py-5 text-center text-sm text-brand-800 transition hover:bg-brand-50 active:bg-brand-100">
+      <label
+        aria-disabled={disabled || undefined}
+        className={
+          disabled
+            ? "flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-4 py-5 text-center text-sm text-zinc-400 opacity-70"
+            : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/60 px-4 py-5 text-center text-sm text-brand-800 transition hover:bg-brand-50 active:bg-brand-100"
+        }
+      >
         <span aria-hidden className="text-2xl">
           📷
         </span>
@@ -82,6 +92,7 @@ export function PhotoInput({
           capture={capture === false ? undefined : capture}
           multiple={multiple}
           required={required}
+          disabled={disabled}
           onChange={onChange}
           className="sr-only"
         />

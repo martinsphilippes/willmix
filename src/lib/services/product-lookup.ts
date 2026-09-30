@@ -309,6 +309,9 @@ export async function runProductLookup(
 ): Promise<ProductLookup> {
   if (!(isWellmix(user) || user.role === "customer"))
     throw new LookupError("forbidden");
+  // Recurso pausado nas configurações (tokens externos aguardam cartão).
+  if ((await getSettings()).lookupPaused)
+    throw new LookupError("lookup_paused");
   const file = input.file && input.file.size > 0 ? input.file : null;
   const url = input.url?.trim() || null;
   if (!file && !url) throw new LookupError("lookup_empty");

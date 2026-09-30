@@ -72,7 +72,10 @@ export default async function NewRequestPage({
   /* Busca por foto ou link: resultado guardado em product_lookups (só de quem buscou ou Wellmix). */
   const found =
     typeof lookup === "string" ? await getLookup(user, lookup) : null;
-  const aiMode = found ? getAiAdapter(await getSettings()).mode : null;
+  const settings = await getSettings();
+  const aiMode = found ? getAiAdapter(settings).mode : null;
+  /* Busca por foto/link pausada até a IA externa ter cartão (Configurações → lookupPaused). */
+  const lookupPaused = settings.lookupPaused;
   const matched = (found?.matches ?? [])
     .map((m) => ({ m, p: products.find((p) => p.id === m.productId) }))
     .filter((x) => !!x.p);
@@ -196,6 +199,9 @@ export default async function NewRequestPage({
       <Card title={t("lookup.title")} className="mt-4 max-w-2xl">
         <div id="lookup" className="scroll-mt-4" />
         <p className="mb-3 text-sm text-zinc-600">{t("lookup.intro")}</p>
+        {lookupPaused ? (
+          <Alert tone="warning">{t("lookup.paused")}</Alert>
+        ) : null}
         <form action={lookupProductAction} className="space-y-3">
           {isWellmix(user) && presetCustomerId ? (
             <input type="hidden" name="customerId" value={presetCustomerId} />
@@ -205,6 +211,7 @@ export default async function NewRequestPage({
             multiple={false}
             capture={false}
             autoSubmit
+            disabled={lookupPaused}
             label={t("lookup.photo")}
             hint={t("lookup.photoHint")}
           />
@@ -213,6 +220,7 @@ export default async function NewRequestPage({
               <Field label={t("lookup.url")}>
                 <Input
                   name="url"
+                  disabled={lookupPaused}
                   type="url"
                   inputMode="url"
                   placeholder={t("lookup.urlPlaceholder")}
@@ -222,6 +230,7 @@ export default async function NewRequestPage({
             <SubmitButton
               variant="secondary"
               pendingText={t("lookup.searching")}
+              disabled={lookupPaused}
             >
               {t("lookup.search")}
             </SubmitButton>

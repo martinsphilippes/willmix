@@ -83,6 +83,11 @@ export const DEFAULT_SETTINGS = {
   marketingKitCurrency: "BRL",
   /** Cliente em importação própria sem RADAR informado: pedido entra na fila de revisão. */
   radarGateEnabled: true,
+  /**
+   * Busca de produto por foto/link pausada (nova solicitação): a IA externa
+   * aguarda o cartão de crédito no AI Gateway. Desmarcar em Configurações reativa.
+   */
+  lookupPaused: true,
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };

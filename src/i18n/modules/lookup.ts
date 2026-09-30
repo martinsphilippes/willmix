@@ -56,6 +56,10 @@ export const pt = {
   "lookup.fill.badge": "Preenchido com a ficha",
   "lookup.fill.attachmentsHint":
     "Fotos, desenhos ou arquivos do produto que você procura (ajudam a Wellmix a encontrar fornecedores).",
+  "lookup.paused":
+    "Para a utilização desse recurso, a utilização de tokens por fora aguarda Cartão de Crédito.",
+  "lookup.error.lookup_paused":
+    "Para a utilização desse recurso, a utilização de tokens por fora aguarda Cartão de Crédito.",
   "lookup.noneOption": "Nenhuma dessas",
   "lookup.source.link": "link",
   "lookup.source.catalog": "catálogo",
@@ -123,6 +127,10 @@ export const en: Record<keyof typeof pt, string> = {
   "lookup.fill.badge": "Filled from the sheet",
   "lookup.fill.attachmentsHint":
     "Photos, drawings or files of the product you are looking for (they help Wellmix find suppliers).",
+  "lookup.paused":
+    "To use this feature, the use of external tokens is waiting for a credit card.",
+  "lookup.error.lookup_paused":
+    "To use this feature, the use of external tokens is waiting for a credit card.",
   "lookup.noneOption": "None of these",
   "lookup.source.link": "link",
   "lookup.source.catalog": "catalog",
@@ -188,6 +196,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "lookup.fill.badge": "已按档案填写",
   "lookup.fill.attachmentsHint":
     "您要找的产品的照片、图纸或文件（帮助 Wellmix 寻找供应商）。",
+  "lookup.paused": "使用此功能需要外部 token，正在等待信用卡。",
+  "lookup.error.lookup_paused": "使用此功能需要外部 token，正在等待信用卡。",
   "lookup.noneOption": "都不选",
   "lookup.source.link": "链接",
   "lookup.source.catalog": "目录",
