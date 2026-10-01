@@ -6,6 +6,7 @@ import {
 } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
 import { aiStatus } from "@/lib/integrations/ai";
+import { serviceErrorCode } from "@/lib/auth/login-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,10 @@ export async function GET() {
       client: isAppwriteClientConfigured,
       server: isAppwriteServerConfigured(),
     },
+    // Banco respondendo? "appwrite_paused" = projeto pausado no console do Appwrite.
+    database: await getSettings()
+      .then(() => "ok")
+      .catch((error: unknown) => serviceErrorCode(error)),
     // Só modo, provedor e modelo da IA; nunca a credencial.
     ai: await getSettings()
       .then(aiStatus)

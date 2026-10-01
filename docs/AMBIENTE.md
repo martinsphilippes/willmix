@@ -44,3 +44,10 @@ O nome oficial é **Wellmix** (empresa, portal e equipe). Ocorrências de `willm
 | Domínio `willmix.vercel.app`           | Endereço antigo: redireciona (308) para `portal-wellmix.vercel.app`, o endereço principal (`next.config.ts`). `wellmix.vercel.app` pertence a outra conta. Branch de produção na Vercel deve ser `wellmix`. |
 
 Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do banco e as contas `@willmix.com` → `@wellmix.com` (senha `wellmix123`) sem recriar nada.
+
+## Appwrite pausado por inatividade
+
+No plano gratuito, o Appwrite pausa o projeto depois de um período sem uso. Enquanto pausado, nenhum login funciona e nenhuma tela carrega dados.
+
+- Sinal: `/api/health` mostra `"database": "appwrite_paused"`; a tela de login diz que o banco não está respondendo (não "credenciais inválidas").
+- Correção: no console do Appwrite, abrir o projeto e restaurar. Para produção, o plano pago evita a pausa.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { signIn, signOut } from "@/lib/auth/session";
+import { AuthError, signIn, signOut } from "@/lib/auth/session";
+import { classifyLoginError, serviceErrorCode } from "@/lib/auth/login-errors";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -19,10 +20,18 @@ export async function POST(request: Request) {
   try {
     const user = await signIn(parsed.data.email, parsed.data.password);
     return NextResponse.json({ ok: true, userId: user.id, role: user.role });
-  } catch {
+  } catch (error) {
+    if (error instanceof AuthError || classifyLoginError(error) === "invalid") {
+      return NextResponse.json(
+        { error: "Credenciais inválidas" },
+        { status: 401 },
+      );
+    }
+    // Banco fora (ex.: projeto Appwrite pausado): não é a senha da pessoa.
+    console.error("login: serviço indisponível", serviceErrorCode(error));
     return NextResponse.json(
-      { error: "Credenciais inválidas" },
-      { status: 401 },
+      { error: "Serviço indisponível", code: "unavailable" },
+      { status: 503 },
     );
   }
 }
