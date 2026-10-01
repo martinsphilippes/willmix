@@ -126,7 +126,12 @@ async function ensureEnumElements(
   tableId: TableName,
   key: string,
   col: ColumnDef,
-  columns: Array<{ key: string; elements?: string[]; required?: boolean }>,
+  columns: Array<{
+    key: string;
+    elements?: string[];
+    required?: boolean;
+    default?: string | null;
+  }>,
 ) {
   if (col.type !== "string" || !col.enum) return;
   const current = columns.find((c) => c.key === key);
@@ -139,6 +144,8 @@ async function ensureEnumElements(
     key,
     elements: [...(current?.elements ?? []), ...missing],
     required: current?.required ?? col.required ?? false,
+    // O SDK exige o padrão; mantém o atual (nulo em coluna obrigatória).
+    xdefault: current?.required ? null : (current?.default ?? null),
   });
   console.log(`  ${tableId}.${key}: +${missing.join(", ")}`);
 }

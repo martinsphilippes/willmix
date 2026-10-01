@@ -17,6 +17,7 @@ import * as ai from "./ai";
 import * as access from "./access";
 import * as home from "./home";
 import * as payments from "./payments";
+import * as purchaseSheet from "./purchase-sheet";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -33,6 +34,7 @@ export const modulesPt = {
   ...access.pt,
   ...home.pt,
   ...payments.pt,
+  ...purchaseSheet.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -49,6 +51,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...access.en,
   ...home.en,
   ...payments.en,
+  ...purchaseSheet.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -65,4 +68,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...access.zh,
   ...home.zh,
   ...payments.zh,
+  ...purchaseSheet.zh,
 };

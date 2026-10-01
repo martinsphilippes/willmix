@@ -165,8 +165,27 @@ export const PHOTO_KINDS = [
   "weight_scale",
   "packaging",
   "other",
+  /* Ficha de compra (planilha COMPRAS): mais ângulos, cartão do fornecedor e foto de referência. */
+  "angle",
+  "business_card",
+  "prompt",
 ] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
+
+/* ---- Ficha de compra (planilha COMPRAS, etapa Preparação) ---- */
+export const SHEET_INCOTERMS = ["FOB", "EXW"] as const;
+export type SheetIncoterm = (typeof SHEET_INCOTERMS)[number];
+export const SHEET_CURRENCIES = ["USD", "RMB"] as const;
+export type SheetCurrency = (typeof SHEET_CURRENCIES)[number];
+export const SHEET_POWER_SOURCES = [
+  "none",
+  "battery",
+  "110v",
+  "220v",
+  "bivolt",
+  "usb",
+] as const;
+export type SheetPowerSource = (typeof SHEET_POWER_SOURCES)[number];
 
 export const MEASUREMENT_KINDS = [
   "weight_net",
@@ -969,6 +988,57 @@ export interface LookupOption {
 }
 export type LookupField = "productName" | "description" | "specification";
 
+/** Lote da programação de compra: intervalo de saída (dias) e quantidade em caixas master. */
+export interface PurchaseLot {
+  departureIntervalDays: number | null;
+  masterCartons: number | null;
+}
+
+/**
+ * Ficha de compra do pedido (planilha COMPRAS): um registro por pedido, preenchido
+ * à mão na Preparação pelo fornecedor ou pela Wellmix; NCM/II/IPI pelo despachante.
+ * Cliente nunca vê (fornecedor, contato e preço). Peças, CBM, containers e datas
+ * de saída são calculados (services/purchase-sheet.ts), não digitados.
+ */
+export interface PurchaseSheet extends BaseRow {
+  orderId: string;
+  productId: string | null;
+  sheetDate: string | null;
+  location: string | null;
+  supplierName: string | null;
+  supplierStore: string | null;
+  supplierPhone: string | null;
+  factoryItemCode: string | null;
+  incoterm: SheetIncoterm | null;
+  currency: SheetCurrency | null;
+  price: number | null;
+  moq: number | null;
+  masterCartonQty: number | null;
+  innerQty: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+  cbmPerCarton: number | null;
+  heightCm: number | null;
+  widthCm: number | null;
+  lengthCm: number | null;
+  capacityMl: number | null;
+  packageType: string | null;
+  colorAssortment: string | null;
+  material: string | null;
+  powerSource: SheetPowerSource | null;
+  powerDetail: string | null;
+  productionStartAt: string | null;
+  lots: PurchaseLot[] | null;
+  containerType: string | null;
+  ncm: string | null;
+  importTaxPercent: number | null;
+  ipiPercent: number | null;
+  ecommerceDescription: string | null;
+  notes: string | null;
+  updatedByUserId: string | null;
+  completedAt: string | null;
+}
+
 /** Busca de produto por foto ou link (tela de nova solicitação). Guarda o que foi achado e sugerido. */
 export interface ProductLookup extends BaseRow {
   userId: string;
@@ -1027,6 +1097,7 @@ export interface Tables {
   ai_suggestions: AiSuggestion;
   marketing_kits: MarketingKit;
   product_lookups: ProductLookup;
+  purchase_sheets: PurchaseSheet;
 }
 export type TableName = keyof Tables;
 
@@ -1839,6 +1910,48 @@ export const TABLES: Record<TableName, TableDef> = {
       requestId: id(false),
     },
     indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
+  },
+  purchase_sheets: {
+    label: "Fichas de compra (Preparação)",
+    columns: {
+      orderId: id(),
+      productId: id(false),
+      sheetDate: datetime(),
+      location: str(80),
+      supplierName: str(160),
+      supplierStore: str(60),
+      supplierPhone: str(40),
+      factoryItemCode: str(60),
+      incoterm: enumOf(SHEET_INCOTERMS, false),
+      currency: enumOf(SHEET_CURRENCIES, false),
+      price: float(),
+      moq: int(),
+      masterCartonQty: int(),
+      innerQty: int(),
+      netWeightPcKg: float(),
+      grossWeightPcKg: float(),
+      cbmPerCarton: float(),
+      heightCm: float(),
+      widthCm: float(),
+      lengthCm: float(),
+      capacityMl: float(),
+      packageType: str(120),
+      colorAssortment: str(200),
+      material: str(200),
+      powerSource: enumOf(SHEET_POWER_SOURCES, false),
+      powerDetail: str(60),
+      productionStartAt: datetime(),
+      lots: json(),
+      containerType: str(20),
+      ncm: str(12),
+      importTaxPercent: float(),
+      ipiPercent: float(),
+      ecommerceDescription: text(),
+      notes: text(),
+      updatedByUserId: id(false),
+      completedAt: datetime(),
+    },
+    indexes: [{ key: "by_order", type: "unique", columns: ["orderId"] }],
   },
 };
 

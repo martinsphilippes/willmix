@@ -85,6 +85,16 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Limite: muitos marketplaces chineses bloqueiam a leitura automática do link (a tela avisa).
 - Escolher um produto da Wellmix preenche nome, descrição e especificação com a ficha e mostra as fotos do cadastro (até 8; principal primeiro). O cliente abre só as fotos de produto ativo; uma original com versão comercial dá lugar a ela, e a original segue como evidência para a Wellmix (`catalogShowcasePhotos` e `canAccessDocument` em `services/documents.ts`). Fornecedor e fotos só de sourcing continuam fechados.
 
+### Ficha de compra na Preparação (planilha COMPRAS)
+
+- Nova tabela `purchase_sheets` (uma por pedido) com todos os campos da planilha: data, local, fornecedor, nº da loja em Yiwu, telefone, código do item na fábrica, FOB/EXW, moeda U$/RMB, preço, MOQ, peças por caixa master e inner, peso líquido e bruto por peça, CBM e medidas da caixa master, capacidade (ml), embalagem, cor/sortimento, material, função/energia, início da produção, programação em até 3 lotes, NCM, I.I., IPI e descrição para e-commerce.
+- Calculado, não digitado (`services/purchase-sheet-calc.ts`): peças e CBM por lote, totais, containers (CBM ÷ capacidade do tipo escolhido em Configurações) e datas de saída (início da produção + intervalos acumulados). Conferido com os números da planilha.
+- Tela `/app/orders/[id]/purchase-sheet`, pensada para o celular: rascunho pré-preenchido com o cadastro do produto, a cotação e o fornecedor; salvar a qualquer momento; fotos por tipo, várias por tipo (balança, régua, lado, outros ângulos, origem, prompt, cartão de visita), guardadas no pedido e nunca no catálogo do cliente.
+- Checklist padrão da Preparação: "Ficha de compra" (conclui sozinha com os obrigatórios e a foto na balança), "Foto na balança" (cumprida pela foto da ficha) e "Peso (kg)" (preenchido com o peso líquido por peça e comparado na inspeção). Dieline, foto profissional e etiqueta continuam, agora opcionais. O item "Ficha de compra" não aceita envio direto.
+- Acesso: Wellmix e fornecedor do pedido editam; despachante do pedido edita só NCM/I.I./IPI; cliente nunca vê.
+- Dados existentes: `npm run appwrite:purchase-sheet` (simulação; `-- --apply` grava) passa as linhas com o checklist original ao novo e adiciona a ficha aos pedidos com Preparação em aberto, tornando opcionais dieline/foto profissional/etiqueta pendentes. Nada é apagado.
+- Próximos passos: importar a planilha (.xlsx) direto na ficha, exportar a ficha em Excel, aplicar os dados conferidos na ficha do produto e gerar `purchase_schedules` a partir dos lotes.
+
 ### Sinal por Pix e comprovante do cliente
 
 - Proposta aguardando sinal mostra "Pague com Pix": QR Code, Pix copia e cola com botão de copiar, recebedor, chave, valor e referência da solicitação (`WMX` + id). Código BR Code estático do Banco Central gerado no servidor (`services/pix.ts`, CRC16 conferido com o manual), sem banco: a confirmação continua manual.

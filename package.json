@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "appwrite:reset": "node scripts/appwrite-reset.ts",
     "appwrite:rename-brand": "node scripts/appwrite-rename-brand.ts",
-    "appwrite:backfill-requesters": "node scripts/appwrite-backfill-requesters.ts"
+    "appwrite:backfill-requesters": "node scripts/appwrite-backfill-requesters.ts",
+    "appwrite:purchase-sheet": "node scripts/appwrite-purchase-sheet.ts"
   },
   "dependencies": {
     "@vercel/oidc": "3.8.9",

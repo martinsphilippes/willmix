@@ -49,6 +49,7 @@ import {
   Empty,
   Field,
   Input,
+  LinkButton,
   PageHeader,
   Progress,
   Select,
@@ -67,6 +68,7 @@ import {
   stageTone,
 } from "@/components/ui";
 import { RequirementForm } from "@/components/requirement-form";
+import { sheetAccess } from "@/lib/services/purchase-sheet";
 import { SubmitButton } from "@/components/submit-button";
 import {
   assignPartnerAction,
@@ -104,6 +106,9 @@ export default async function OrderPage({
   const wellmix = isWellmix(user);
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
   const remeasureMode = remeasure === "1";
+  /* Ficha de compra (Preparação): quem vê ganha o atalho no item do checklist. */
+  const sheet = sheetAccess(user, order);
+  const sheetHref = sheet.view ? `/app/orders/${order.id}/purchase-sheet` : null;
 
   const [parties, items, documents, payments, penalties, users] =
     await Promise.all([
@@ -250,7 +255,10 @@ export default async function OrderPage({
       />
       {error ? (
         <Alert tone="danger">
-          {t("common.error")} ({error})
+          {typeof error === "string" &&
+          t(`sheet.error.${error}` as DictionaryKey) !== `sheet.error.${error}`
+            ? t(`sheet.error.${error}` as DictionaryKey)
+            : `${t("common.error")} (${error})`}
         </Alert>
       ) : null}
       {currentStage?.status === "blocked" ? (
@@ -443,6 +451,8 @@ export default async function OrderPage({
                               stage.status === "blocked" &&
                               isInspectionMeasureKey(r.key)
                             }
+                            sheetHref={sheetHref}
+                            sheetEditable={sheet.editSupplier}
                           />
                         ))}
                       </ul>
@@ -1038,6 +1048,8 @@ function RequirementRow({
   open,
   wellmix,
   remeasure,
+  sheetHref,
+  sheetEditable,
 }: {
   requirement: Requirement;
   order: {
@@ -1057,7 +1069,11 @@ function RequirementRow({
   wellmix: boolean;
   /** Nova medição: reenvio de um requisito de medida já concluído (inspeção bloqueada). */
   remeasure: boolean;
+  /** Ficha de compra: link para a ficha (o item não tem formulário próprio). */
+  sheetHref: string | null;
+  sheetEditable: boolean;
 }) {
+  const isSheet = r.key === "purchase_sheet";
   const canAct =
     open &&
     r.status !== "done" &&
@@ -1122,7 +1138,25 @@ function RequirementRow({
           <p className="mt-1 text-xs text-amber-700">{note}</p>
         ) : null}
       </div>
-      {canAct ? (
+      {isSheet ? (
+        sheetHref ? (
+          <div className="shrink-0">
+            <LinkButton
+              href={sheetHref}
+              variant={
+                r.status !== "done" && open && sheetEditable
+                  ? "primary"
+                  : "secondary"
+              }
+              className="w-full sm:w-auto"
+            >
+              {r.status !== "done" && open && sheetEditable
+                ? t("sheet.open")
+                : t("sheet.view")}
+            </LinkButton>
+          </div>
+        ) : null
+      ) : canAct ? (
         <div className="shrink-0">
           <RequirementForm requirement={r} orderId={order.id} t={t} />
         </div>

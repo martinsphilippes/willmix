@@ -245,6 +245,9 @@ export async function submitRequirementAction(form: FormData) {
     const requirement = await store.get("requirements", requirementId);
     if (!requirement || requirement.orderId !== orderId)
       throw new Error("not_found");
+    // "Ficha de compra" só se conclui pela própria ficha (campos e foto na balança).
+    if (requirement.key === "purchase_sheet")
+      throw new Error("use_purchase_sheet");
     let documentId: string | null = null;
     const file = form.get("file");
     if (file instanceof File && file.size > 0) {
