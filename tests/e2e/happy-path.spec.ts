@@ -24,6 +24,56 @@ async function login(page: Page, email: string) {
   await page.waitForURL(/\/app/);
 }
 
+/** Ficha de compra da Preparação (planilha COMPRAS): campos obrigatórios + foto na balança. */
+async function fillPurchaseSheet(
+  page: Page,
+  orderUrl: string,
+  netWeight: string,
+) {
+  const sheetUrl = `${orderUrl}/purchase-sheet`;
+  await page.goto(sheetUrl);
+  const fields: Record<string, string> = {
+    supplierName: "YIWU WUJO INTL",
+    supplierStore: "A 154678",
+    price: "8,5",
+    moq: "6000",
+    masterCartonQty: "24",
+    innerQty: "6",
+    cbmPerCarton: "0.045",
+    heightCm: "25",
+    widthCm: "34",
+    lengthCm: "50",
+    packageType: "COLOR BOX",
+    netWeightPcKg: netWeight,
+    grossWeightPcKg: "12.5",
+    colorAssortment: "WHITE / BLACK / RED",
+    material: "PLASTIC / IRON",
+    lot1Interval: "30",
+    lot1Cartons: "100",
+    lot2Interval: "45",
+    lot2Cartons: "100",
+  };
+  for (const [name, value] of Object.entries(fields))
+    await page.fill(`input[name=${name}]`, value);
+  await page.selectOption("select[name=incoterm]", "EXW");
+  await page.selectOption("select[name=currency]", "USD");
+  await page.fill("input[name=productionStartAt]", "2026-11-10");
+  await Promise.all([
+    page.waitForURL(/saved=partial/),
+    page
+      .locator("form:has(input[name=supplierName]) button[type=submit]")
+      .click(),
+  ]);
+  // Planilha: 2 lotes de 100 caixas × 24 = 4.800 peças; 9 m³.
+  await expect(page.getByText("4.800").first()).toBeVisible();
+  const scale = page.locator("form:has(input[name=kind][value=weight_scale])");
+  await scale.locator("input[name=photos]").setInputFiles(png);
+  await Promise.all([
+    page.waitForURL(/photos=weight_scale/),
+    scale.locator("button[type=submit]").click(),
+  ]);
+}
+
 /** Preenche todos os requisitos pendentes que o usuário logado pode preencher na tela do pedido. */
 async function fillMyRequirements(
   page: Page,
@@ -164,8 +214,10 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
 
-  // 8. PREPARATION: fornecedor cumpre checklist (peso 12)
+  // 8. PREPARATION: fornecedor preenche a ficha de compra (peso líquido 12 vira o
+  // peso declarado) e cumpre o resto do checklist.
   await login(page, "supplier.a@china.com");
+  await fillPurchaseSheet(page, orderUrl, "12");
   await fillMyRequirements(page, orderUrl, {
     重量: "12",
     weight: "12",

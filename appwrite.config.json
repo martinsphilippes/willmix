@@ -2720,7 +2720,10 @@
             "dimension_other",
             "weight_scale",
             "packaging",
-            "other"
+            "other",
+            "angle",
+            "business_card",
+            "prompt"
           ]
         },
         {
@@ -4929,6 +4932,313 @@
           "type": "key",
           "columns": [
             "userId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "purchase_sheets",
+      "databaseId": "willmix",
+      "name": "Fichas de compra (Preparação)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sheetDate",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "location",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "supplierName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "supplierStore",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "supplierPhone",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "factoryItemCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "incoterm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "FOB",
+            "EXW"
+          ]
+        },
+        {
+          "key": "currency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "USD",
+            "RMB"
+          ]
+        },
+        {
+          "key": "price",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "moq",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "masterCartonQty",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "innerQty",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "netWeightPcKg",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "grossWeightPcKg",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "cbmPerCarton",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "heightCm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "widthCm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "lengthCm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "capacityMl",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "packageType",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "colorAssortment",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 200
+        },
+        {
+          "key": "material",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 200
+        },
+        {
+          "key": "powerSource",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "none",
+            "battery",
+            "110v",
+            "220v",
+            "bivolt",
+            "usb"
+          ]
+        },
+        {
+          "key": "powerDetail",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "productionStartAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "lots",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "containerType",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "ncm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 12
+        },
+        {
+          "key": "importTaxPercent",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "ipiPercent",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "ecommerceDescription",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "completedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "unique",
+          "columns": [
+            "orderId"
           ],
           "orders": [
             "ASC"
