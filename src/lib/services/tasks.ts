@@ -79,13 +79,33 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         status: ["REQUESTED", "QUOTATION_RECEIVED", "WAITING_DOWN_PAYMENT"],
       },
     });
-    for (const request of requests) tasks.push(requestTask(request));
+    const withProof = new Set(
+      (
+        await store.list("payments", {
+          filter: { direction: "customer_in", status: "pending" },
+        })
+      )
+        .filter((p) => p.requestId && p.proofDocumentId)
+        .map((p) => p.requestId as string),
+    );
+    for (const request of requests) {
+      const task = requestTask(request);
+      if (task.kind === "confirm_payment" && withProof.has(request.id))
+        task.detail = "Comprovante enviado pelo cliente: conferir e confirmar";
+      tasks.push(task);
+    }
   }
   if (user.role === "customer" && user.partyId) {
     const requests = await store.list("requests", {
       filter: { customerId: user.partyId, status: "WAITING_DOWN_PAYMENT" },
     });
     for (const request of requests.filter((r) => canViewRequest(user, r))) {
+      // Comprovante já enviado: agora depende da Wellmix confirmar, não do cliente.
+      const [payment] = await store.list("payments", {
+        filter: { requestId: request.id, direction: "customer_in" },
+        limit: 1,
+      });
+      if (payment?.proofDocumentId) continue;
       tasks.push({
         kind: "pay",
         title: `Sinal pendente: ${request.productName}`,

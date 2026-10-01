@@ -15,6 +15,7 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | `emailMode`                | `MOCK`     | Idem                                                                        |
 | `quotationExpirationDays`  | `15`       | Validade padrão da RFQ                                                      |
 | `downPaymentPercent`       | `30`       | Sinal sugerido sobre o valor ao cliente (editável na seleção)               |
+| `pixKey`, `pixReceiverName`, `pixReceiverCity` | vazios | Pix do sinal (copia e cola e QR Code). Vazios: o cliente vê só a instrução de pagamento |
 | `stageDueDays`             | ver código | Prazo por etapa, em dias                                                    |
 | `reminderDaysBeforeDue`    | `1`        | Lembrete antes do vencimento                                                |
 | `dimensionTolerancePercent` | `5`      | Divergência de comprimento/largura/altura entre snapshot e inspeção        |

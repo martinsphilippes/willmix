@@ -397,6 +397,49 @@ export default async function SettingsPage({
               />
             </div>
           </div>
+          {/* Pix do sinal: a chave do recebedor que aparece para o cliente pagar. */}
+          <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
+            {t("payments.settings.title")}
+          </h3>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            {t("payments.settings.hint")}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field
+                label={t("payments.settings.key")}
+                hint={t("payments.settings.keyHint")}
+              >
+                <Input
+                  name="pixKey"
+                  maxLength={77}
+                  defaultValue={s.pixKey}
+                  autoComplete="off"
+                  className="font-mono text-sm"
+                />
+              </Field>
+            </div>
+            <Field
+              label={t("payments.settings.receiverName")}
+              hint={t("payments.settings.receiverNameHint")}
+            >
+              <Input
+                name="pixReceiverName"
+                maxLength={25}
+                defaultValue={s.pixReceiverName}
+              />
+            </Field>
+            <Field
+              label={t("payments.settings.receiverCity")}
+              hint={t("payments.settings.receiverCityHint")}
+            >
+              <Input
+                name="pixReceiverCity"
+                maxLength={15}
+                defaultValue={s.pixReceiverCity}
+              />
+            </Field>
+          </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
             paymentMode={DEFAULT_SETTINGS.paymentMode} · whatsappMode=
             {DEFAULT_SETTINGS.whatsappMode} · emailMode=

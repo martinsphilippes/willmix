@@ -85,6 +85,12 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Limite: muitos marketplaces chineses bloqueiam a leitura automática do link (a tela avisa).
 - Escolher um produto da Wellmix preenche nome, descrição e especificação com a ficha e mostra as fotos do cadastro (até 8; principal primeiro). O cliente abre só as fotos de produto ativo; uma original com versão comercial dá lugar a ela, e a original segue como evidência para a Wellmix (`catalogShowcasePhotos` e `canAccessDocument` em `services/documents.ts`). Fornecedor e fotos só de sourcing continuam fechados.
 
+### Sinal por Pix e comprovante do cliente
+
+- Proposta aguardando sinal mostra "Pague com Pix": QR Code, Pix copia e cola com botão de copiar, recebedor, chave, valor e referência da solicitação (`WMX` + id). Código BR Code estático do Banco Central gerado no servidor (`services/pix.ts`, CRC16 conferido com o manual), sem banco: a confirmação continua manual.
+- Chave (CPF, CNPJ, e-mail, celular +55 ou aleatória, validada no servidor), recebedor e cidade ficam em Configurações (admin). Sem chave, ou com valor fora de BRL, a tela explica e não mostra Pix.
+- O cliente anexa o comprovante (foto ou PDF) na própria solicitação (`submitDownPaymentProofAction`; só o login que vê a solicitação, só aguardando sinal). O pagamento segue pendente, a Wellmix é avisada, vê o comprovante e confirma; a pendência sai do cliente e a da Wellmix diz que o comprovante chegou. Fornecedor não abre o comprovante.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.

@@ -26,10 +26,14 @@ import {
   cx,
   formatDate,
   formatMoney,
+  linkClass,
   rowClass,
   type StepState,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { PixCopy } from "@/components/pix-copy";
+import { pixForRequest } from "@/lib/services/down-payment";
+import { submitDownPaymentProofAction } from "../../actions/payments";
 import {
   answerQuoteAction,
   confirmDownPaymentAction,
@@ -89,6 +93,16 @@ export default async function RequestDetailPage({
       : null;
   const selectedQuote = quotes.find((q) => q.id === request.selectedQuoteId);
   const downPayment = payments.find((p) => p.direction === "customer_in");
+  /* Sinal: Pix copia e cola + QR Code (chave configurada pelo admin) e comprovante. */
+  const waitingPayment = request.status === "WAITING_DOWN_PAYMENT";
+  const pix = waitingPayment
+    ? await pixForRequest(request).catch(() => ({
+        unavailable: "not_configured" as const,
+      }))
+    : null;
+  const proofDoc = downPayment?.proofDocumentId
+    ? documents.find((d) => d.id === downPayment.proofDocumentId)
+    : undefined;
 
   return (
     <>
@@ -141,10 +155,14 @@ export default async function RequestDetailPage({
       {error ? (
         <Alert tone="danger">
           {typeof error === "string" &&
-          t(`access.error.${error}` as DictionaryKey) !==
-            `access.error.${error}`
-            ? t(`access.error.${error}` as DictionaryKey)
-            : `${t("common.error")} (${error})`}
+          t(`payments.error.${error}` as DictionaryKey) !==
+            `payments.error.${error}`
+            ? t(`payments.error.${error}` as DictionaryKey)
+            : typeof error === "string" &&
+                t(`access.error.${error}` as DictionaryKey) !==
+                  `access.error.${error}`
+              ? t(`access.error.${error}` as DictionaryKey)
+              : `${t("common.error")} (${error})`}
         </Alert>
       ) : null}
       {saved === "requester" ? (
@@ -386,6 +404,7 @@ export default async function RequestDetailPage({
           ) : null}
 
           {/* Proposta e sinal */}
+          <span id="proposal" className="block scroll-mt-24" />
           {request.status === "WAITING_DOWN_PAYMENT" ||
           request.status === "ORDERED" ? (
             <Card
@@ -454,6 +473,125 @@ export default async function RequestDetailPage({
                       ),
                     })}
                   </Alert>
+                  {/* Pix do sinal: copia e cola e QR Code com valor e referência. */}
+                  {pix && "payload" in pix ? (
+                    <div className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
+                      <div>
+                        <h3 className="text-base font-semibold text-zinc-900">
+                          {t("payments.pix.title")}
+                        </h3>
+                        <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+                          {t("payments.pix.howTo")}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- QR gerado no servidor (data URL) */}
+                        <img
+                          src={pix.qrDataUrl}
+                          alt={t("payments.pix.qrAlt")}
+                          className="mx-auto h-48 w-48 shrink-0 rounded-lg border border-zinc-200 bg-white p-2 sm:mx-0"
+                        />
+                        <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                          <div className="col-span-2">
+                            <dt className="text-xs text-zinc-500">
+                              {t("payments.pix.receiver")}
+                            </dt>
+                            <dd className="font-medium text-zinc-900">
+                              {pix.receiverName} · {pix.receiverCity}
+                            </dd>
+                          </div>
+                          <div className="col-span-2">
+                            <dt className="text-xs text-zinc-500">
+                              {t("payments.pix.key")}
+                            </dt>
+                            <dd className="break-all font-mono text-xs text-zinc-900">
+                              {pix.key}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-zinc-500">
+                              {t("payments.pix.amount")}
+                            </dt>
+                            <dd className="font-semibold tabular-nums text-zinc-900">
+                              {formatMoney(pix.amount, "BRL")}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs text-zinc-500">
+                              {t("payments.pix.reference")}
+                            </dt>
+                            <dd className="break-all font-mono text-xs text-zinc-900">
+                              {pix.reference}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                      <PixCopy
+                        payload={pix.payload}
+                        labels={{
+                          code: t("payments.pix.code"),
+                          copy: t("payments.pix.copy"),
+                          copied: t("payments.pix.copied"),
+                        }}
+                      />
+                    </div>
+                  ) : pix && "unavailable" in pix ? (
+                    <Alert tone="neutral">
+                      {t(
+                        `payments.pix.unavailable.${pix.unavailable}${wellmix ? "Wellmix" : ""}` as DictionaryKey,
+                      )}
+                    </Alert>
+                  ) : null}
+
+                  {/* Comprovante: o cliente anexa; a Wellmix confere e confirma. */}
+                  {downPayment?.proofDocumentId ? (
+                    <Alert tone={wellmix ? "info" : "success"}>
+                      <span className="block">
+                        {wellmix
+                          ? t("payments.proof.receivedWellmix")
+                          : t("payments.proof.sent")}
+                      </span>
+                      <a
+                        href={`/api/files/${downPayment.proofDocumentId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cx(linkClass, "mt-1 inline-block")}
+                      >
+                        {t("payments.proof.view")}
+                        {proofDoc ? ` (${proofDoc.name})` : ""}
+                      </a>
+                    </Alert>
+                  ) : null}
+                  {!wellmix ? (
+                    <form
+                      action={submitDownPaymentProofAction}
+                      className="space-y-3 rounded-xl border border-zinc-200 p-4"
+                    >
+                      <input
+                        type="hidden"
+                        name="requestId"
+                        value={request.id}
+                      />
+                      <Field
+                        label={
+                          downPayment?.proofDocumentId
+                            ? t("payments.proof.another")
+                            : t("payments.proof.label")
+                        }
+                        hint={t("payments.proof.hint")}
+                      >
+                        <Input
+                          name="proof"
+                          type="file"
+                          accept="image/*,application/pdf"
+                          required
+                        />
+                      </Field>
+                      <SubmitButton className="w-full sm:w-auto">
+                        {t("payments.proof.submit")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
                   {wellmix ? (
                     <form
                       action={confirmDownPaymentAction}
