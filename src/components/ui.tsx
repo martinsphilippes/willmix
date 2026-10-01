@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
+import { cloneElement, isValidElement, useId } from "react";
 import { twMerge } from "tailwind-merge";
 import type { Translate } from "@/i18n";
 import { PageHelp, type HelpSpec } from "./page-help";
@@ -175,6 +176,29 @@ export function Field({
   hint?: ReactNode;
   children: ReactNode;
 }) {
+  const generatedId = useId();
+  /*
+   * Campo de arquivo não fica dentro do <label>: no Safari (iPhone/iPad) o toque
+   * no botão dentro do rótulo abre o seletor duas vezes e, depois de cancelar,
+   * o campo para de responder. O rótulo aponta para o campo (htmlFor).
+   */
+  if (
+    isValidElement<{ type?: string; id?: string }>(children) &&
+    children.props.type === "file"
+  ) {
+    const id = children.props.id ?? `file-${generatedId}`;
+    return (
+      <div className="block space-y-1">
+        <label htmlFor={id} className="block text-sm font-medium text-zinc-800">
+          {label}
+        </label>
+        {cloneElement(children, { id })}
+        {hint ? (
+          <span className="block text-xs text-zinc-500">{hint}</span>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <label className="block space-y-1">
       <span className="text-sm font-medium text-zinc-800">{label}</span>
