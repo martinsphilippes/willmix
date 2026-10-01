@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AppwriteException } from "node-appwrite";
-import {
-  classifyLoginError,
-  serviceErrorCode,
-} from "@/lib/auth/login-errors";
+import { classifyLoginError, serviceErrorCode } from "@/lib/auth/login-errors";
 
 /* Login: senha errada × banco fora (não dizer "credenciais inválidas" quando o problema é o serviço). */
 describe("erros de login", () => {
@@ -28,7 +25,9 @@ describe("erros de login", () => {
     expect(classifyLoginError(paused)).toBe("unavailable");
     expect(serviceErrorCode(paused)).toBe("appwrite_paused");
     expect(
-      classifyLoginError(new AppwriteException("boom", 500, "general_unknown", "")),
+      classifyLoginError(
+        new AppwriteException("boom", 500, "general_unknown", ""),
+      ),
     ).toBe("unavailable");
     expect(classifyLoginError(new TypeError("fetch failed"))).toBe(
       "unavailable",

@@ -50,7 +50,7 @@ export const helpPt = {
   "help.stage.ORDER_CREATED":
     "Wellmix confere o pedido e libera ao fornecedor. O número do Sankhya pode ser informado agora ou depois (integração em modo manual).",
   "help.stage.PREPARATION":
-    "Fornecedor preenche a ficha de compra (dados da planilha de compras: fornecedor, preço, caixa, pesos, medidas, programação e fotos, com a foto na balança). O peso líquido por peça da ficha é o peso comparado na inspeção. Dieline, foto profissional e etiqueta são opcionais.",
+    "Fornecedor preenche a ficha de compra (dados da planilha de compras: fornecedor, preço, caixa, pesos, medidas, programação e fotos, com a foto na balança). O peso líquido por peça da ficha é o peso comparado na inspeção.",
   "help.stage.SUPPLIER_PAYMENT":
     "Wellmix registra o pagamento (valor, moeda, câmbio, comprovante); o fornecedor confirma o recebimento. Os dois passos são obrigatórios.",
   "help.stage.PACKAGING":
@@ -142,7 +142,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.ORDER_CREATED":
     "Wellmix checks the order and releases it to the supplier. The Sankhya number can be entered now or later (integration in manual mode).",
   "help.stage.PREPARATION":
-    "Supplier fills in the purchase sheet (purchase spreadsheet data: supplier, price, carton, weights, sizes, schedule and photos, including the scale photo). The sheet's net weight per piece is the weight compared at inspection. Dieline, professional photo and label are optional.",
+    "Supplier fills in the purchase sheet (purchase spreadsheet data: supplier, price, carton, weights, sizes, schedule and photos, including the scale photo). The sheet's net weight per piece is the weight compared at inspection.",
   "help.stage.SUPPLIER_PAYMENT":
     "Wellmix registers the payment (amount, currency, FX rate, proof); the supplier confirms receipt. Both steps are mandatory.",
   "help.stage.PACKAGING":
@@ -231,7 +231,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.ORDER_CREATED":
     "Wellmix 核对订单并下达供应商。Sankhya 编号可现在或稍后填写（集成为手动模式）。",
   "help.stage.PREPARATION":
-    "供应商填写采购单（采购表格数据：供应商、价格、外箱、重量、尺寸、计划和照片，含称重照片）。采购单中的每件净重将在验货时比对。刀模图、专业照片和标签为可选项。",
+    "供应商填写采购单（采购表格数据：供应商、价格、外箱、重量、尺寸、计划和照片，含称重照片）。采购单中的每件净重将在验货时比对。",
   "help.stage.SUPPLIER_PAYMENT":
     "Wellmix 登记付款（金额、币种、汇率、凭证）；供应商确认收款。两步均为必填。",
   "help.stage.PACKAGING":

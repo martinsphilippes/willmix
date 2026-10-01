@@ -22,9 +22,8 @@ const {
 const { canViewOrder, canViewRequest } = await import("@/lib/auth/permissions");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { loadCommercialHistory } = await import("@/lib/services/history");
-const { customerOrdersInProgress } = await import(
-  "@/lib/services/customer-home"
-);
+const { customerOrdersInProgress } =
+  await import("@/lib/services/customer-home");
 type User = import("@/lib/db").User;
 
 let admin: User;

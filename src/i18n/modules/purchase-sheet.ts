@@ -13,7 +13,7 @@ export const pt = {
   "sheet.title": "Ficha de compra",
   "sheet.subtitle": "Pedido #{number} · {product}",
   "sheet.intro":
-    "Os dados da planilha de compras, preenchidos à mão. Salve quantas vezes quiser: quando os campos obrigatórios e a foto na balança estiverem completos, o item Ficha de compra da Preparação se conclui sozinho e o peso líquido por peça vira o peso comparado na inspeção.",
+    "Os dados da planilha de compras, preenchidos à mão. Salve quantas vezes quiser: quando os campos obrigatórios e a foto na balança estiverem completos, a Preparação se conclui sozinha e o peso líquido por peça vira o peso comparado na inspeção.",
   "sheet.open": "Preencher ficha de compra",
   "sheet.view": "Ver ficha de compra",
   "sheet.back": "Voltar ao pedido",
@@ -77,7 +77,8 @@ export const pt = {
   "sheet.cbmFromSize": "Pelas medidas: {cbm} m³",
   "sheet.lot.title": "Lote {n}",
   "sheet.lot.interval": "Saída em (dias)",
-  "sheet.lot.intervalHint": "Dias depois do início da produção (1º lote) ou do lote anterior.",
+  "sheet.lot.intervalHint":
+    "Dias depois do início da produção (1º lote) ou do lote anterior.",
   "sheet.lot.cartons": "Caixas master",
   "sheet.lot.pieces": "Peças",
   "sheet.lot.cbm": "CBM",
@@ -88,7 +89,7 @@ export const pt = {
   "sheet.total.hint":
     "Peças = caixas × peças por caixa master. CBM = caixas × CBM da caixa. Containers = CBM total ÷ capacidade útil do container (Configurações).",
   "sheet.photos.hint":
-    "Envie quantas fotos precisar em cada tipo (lado, outros ângulos). A foto na balança é obrigatória e também conclui o item Foto na balança da Preparação. Cliente não vê estas fotos.",
+    "Envie quantas fotos precisar em cada tipo (lado, outros ângulos). A foto na balança é obrigatória. Cliente não vê estas fotos.",
   "sheet.photos.add": "Adicionar fotos",
   "sheet.photos.none": "Nenhuma foto.",
   "sheet.photos.sent": "Fotos enviadas.",
@@ -112,7 +113,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.title": "Purchase sheet",
   "sheet.subtitle": "Order #{number} · {product}",
   "sheet.intro":
-    "The purchase spreadsheet data, filled in by hand. Save as often as you like: once the required fields and the scale photo are complete, the Purchase sheet item of Preparation completes by itself and the net weight per piece becomes the weight compared at inspection.",
+    "The purchase spreadsheet data, filled in by hand. Save as often as you like: once the required fields and the scale photo are complete, Preparation completes by itself and the net weight per piece becomes the weight compared at inspection.",
   "sheet.open": "Fill in purchase sheet",
   "sheet.view": "View purchase sheet",
   "sheet.back": "Back to order",
@@ -176,7 +177,8 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.cbmFromSize": "From the size: {cbm} m³",
   "sheet.lot.title": "Lot {n}",
   "sheet.lot.interval": "Departure in (days)",
-  "sheet.lot.intervalHint": "Days after production start (1st lot) or after the previous lot.",
+  "sheet.lot.intervalHint":
+    "Days after production start (1st lot) or after the previous lot.",
   "sheet.lot.cartons": "Master cartons",
   "sheet.lot.pieces": "Pieces",
   "sheet.lot.cbm": "CBM",
@@ -187,7 +189,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.total.hint":
     "Pieces = cartons × pieces per master carton. CBM = cartons × carton CBM. Containers = total CBM ÷ usable container capacity (Settings).",
   "sheet.photos.hint":
-    "Send as many photos as needed for each type (side, other angles). The scale photo is required and also completes the Photo on the scale item of Preparation. The customer does not see these photos.",
+    "Send as many photos as needed for each type (side, other angles). The scale photo is required. The customer does not see these photos.",
   "sheet.photos.add": "Add photos",
   "sheet.photos.none": "No photos.",
   "sheet.photos.sent": "Photos sent.",
@@ -211,7 +213,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.title": "采购单",
   "sheet.subtitle": "订单 #{number} · {product}",
   "sheet.intro":
-    "采购表格的数据，手动填写。可以随时保存：必填项和称重照片完成后，准备阶段的“采购单”项会自动完成，每件净重将作为验货时比对的重量。",
+    "采购表格的数据，手动填写。可以随时保存：必填项和称重照片完成后，准备阶段会自动完成，每件净重将作为验货时比对的重量。",
   "sheet.open": "填写采购单",
   "sheet.view": "查看采购单",
   "sheet.back": "返回订单",
@@ -285,13 +287,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.total.hint":
     "件数 = 箱数 × 每外箱件数。体积 = 箱数 × 外箱体积。集装箱 = 总体积 ÷ 集装箱可用容量（设置）。",
   "sheet.photos.hint":
-    "每种类型可上传多张照片（侧面、其他角度）。称重照片为必填，并会同时完成准备阶段的“称重照片”项。客户看不到这些照片。",
+    "每种类型可上传多张照片（侧面、其他角度）。称重照片为必填。客户看不到这些照片。",
   "sheet.photos.add": "添加照片",
   "sheet.photos.none": "暂无照片。",
   "sheet.photos.sent": "照片已上传。",
   "sheet.error.forbidden": "您不能编辑此采购单。",
   "sheet.error.not_found": "未找到订单。",
   "sheet.error.photo_required": "请至少选择一张照片。",
-  "sheet.error.invalid_input": "有字段的值无效。请检查数字（不含字母）、日期和 NCM（仅数字和点）。",
-  "sheet.error.use_purchase_sheet": "采购单项需要通过填写采购单完成（“填写采购单”按钮）。",
+  "sheet.error.invalid_input":
+    "有字段的值无效。请检查数字（不含字母）、日期和 NCM（仅数字和点）。",
+  "sheet.error.use_purchase_sheet":
+    "采购单项需要通过填写采购单完成（“填写采购单”按钮）。",
 };

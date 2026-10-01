@@ -11,6 +11,7 @@ const { submitRequirement, decideRequirement, loadOrderProgress } =
   await import("@/lib/workflow/engine");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { canViewOrder } = await import("@/lib/auth/permissions");
+const { saveSheet } = await import("@/lib/services/purchase-sheet");
 type User = import("@/lib/db").User;
 
 let users: Record<string, User> = {};
@@ -41,7 +42,7 @@ async function fillStage(
     if (!req.required || req.type === "approval") continue;
     if (req.type === "file" || req.type === "photo") {
       const doc = await store.create("documents", {
-      ...DOCUMENT_EXTRA_DEFAULTS,
+        ...DOCUMENT_EXTRA_DEFAULTS,
         orderId,
         requestId: null,
         requirementId: req.id,
@@ -150,9 +151,9 @@ describe("fluxo completo: solicitação → entrega", () => {
     await fillStage(operator, order.id, "ORDER_CREATED");
     expect((await store.get("orders", order.id))!.status).toBe("PREPARATION");
 
-    const prep = await fillStage(supplierA, order.id, "PREPARATION", {
-      weight: "12.0",
-    });
+    // Peso declarado = peso líquido por peça da ficha de compra.
+    await saveSheet(supplierA, order.id, { netWeightPcKg: 12 });
+    const prep = await fillStage(supplierA, order.id, "PREPARATION");
     expect(prep.status).toBe("done");
     expect((await store.get("orders", order.id))!.status).toBe(
       "SUPPLIER_PAYMENT",

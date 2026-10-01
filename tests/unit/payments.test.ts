@@ -7,12 +7,10 @@ withTempStore();
 const { getStore, USER_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { setSetting } = await import("@/lib/settings");
-const { crc16, normalizePixKey, buildPixPayload } = await import(
-  "@/lib/services/pix"
-);
-const { pixForRequest, submitDownPaymentProof } = await import(
-  "@/lib/services/down-payment"
-);
+const { crc16, normalizePixKey, buildPixPayload } =
+  await import("@/lib/services/pix");
+const { pixForRequest, submitDownPaymentProof } =
+  await import("@/lib/services/down-payment");
 const { canAccessDocument } = await import("@/lib/services/documents");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const r = await import("@/lib/services/requests");
@@ -100,9 +98,9 @@ describe("Pix copia e cola (BR Code)", () => {
       key: "+5511999998888",
       type: "phone",
     });
-    expect(
-      normalizePixKey("123E4567-E12B-12D1-A456-426655440000").type,
-    ).toBe("random");
+    expect(normalizePixKey("123E4567-E12B-12D1-A456-426655440000").type).toBe(
+      "random",
+    );
     for (const bad of ["", "123.456.789-00", "abc", "11.111.111/1111-11"])
       expect(() => normalizePixKey(bad)).toThrow();
   });
@@ -148,9 +146,9 @@ describe("sinal da solicitação", () => {
     const request = await waitingRequest();
     const store = getStore();
 
-    expect(
-      (await pendingTasksFor(joao)).some((t) => t.kind === "pay"),
-    ).toBe(true);
+    expect((await pendingTasksFor(joao)).some((t) => t.kind === "pay")).toBe(
+      true,
+    );
     await expect(
       submitDownPaymentProof(maria, request.id, proofFile()),
     ).rejects.toThrow("not_found");
