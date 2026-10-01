@@ -95,12 +95,11 @@ export const EXTENDED_INSPECTION_REQUIREMENTS: RequirementTemplate[] = [
   },
 ];
 
-/** Checklist padrão de preparação quando a linha de produto não define o seu. */
 /**
- * Checklist da Preparação (planilha COMPRAS): a ficha de compra concentra os dados
- * do fornecedor, preço, caixa, pesos, medidas e programação de compra; a foto na
- * balança e o peso (líquido por peça, comparado na inspeção) saem da própria ficha.
- * Dieline, foto profissional e etiqueta continuam disponíveis, agora opcionais.
+ * Checklist padrão da Preparação (quando a linha não define o seu): só a ficha de compra (planilha COMPRAS). Ela reúne
+ * fornecedor, preço, caixa, pesos, medidas, programação e fotos (a foto na
+ * balança é obrigatória nela); o peso líquido por peça é o peso comparado na
+ * inspeção. Dieline, foto profissional, peso e etiqueta saíram do checklist.
  */
 export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
   {
@@ -110,50 +109,6 @@ export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
     required: true,
     role: "supplier",
   },
-  {
-    key: "photo_scale",
-    label: "Foto na balança",
-    type: "photo",
-    required: true,
-    role: "supplier",
-  },
-  {
-    key: "weight",
-    label: "Peso (kg)",
-    type: "number",
-    required: true,
-    role: "supplier",
-  },
-  {
-    key: "dieline",
-    label: "Dieline",
-    type: "file",
-    required: false,
-    role: "supplier",
-  },
-  {
-    key: "photo_pro",
-    label: "Foto profissional",
-    type: "photo",
-    required: false,
-    role: "supplier",
-  },
-  {
-    key: "label",
-    label: "Etiqueta",
-    type: "file",
-    required: false,
-    role: "supplier",
-  },
-];
-
-/** Checklist da Preparação anterior à ficha de compra (para a migração reconhecer linhas sem personalização). */
-export const LEGACY_PREPARATION_KEYS = [
-  "dieline",
-  "photo_pro",
-  "weight",
-  "photo_scale",
-  "label",
 ];
 
 export const STAGE_TEMPLATES: StageTemplate[] = [

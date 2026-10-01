@@ -289,7 +289,7 @@ export default async function LinesPage({
                 defaultValue={
                   editing
                     ? toText(editing.requirements)
-                    : "dieline | Dieline | file | 1\nphoto_pro | Foto profissional | photo | 1\nweight | Peso (kg) | number | 1\nphoto_scale | Foto na balança | photo | 1\nlabel | Etiqueta | file | 1"
+                    : "purchase_sheet | Ficha de compra | text | 1"
                 }
               />
             </Field>

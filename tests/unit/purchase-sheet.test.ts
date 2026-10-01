@@ -9,15 +9,12 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
-const { planSheet, missingForCompletion } = await import(
-  "@/lib/services/purchase-sheet-calc"
-);
-const { getSheetForUser, saveSheet, addSheetPhotos } = await import(
-  "@/lib/services/purchase-sheet"
-);
-const { canAccessDocument, catalogShowcasePhotos } = await import(
-  "@/lib/services/documents"
-);
+const { planSheet, missingForCompletion } =
+  await import("@/lib/services/purchase-sheet-calc");
+const { getSheetForUser, saveSheet, addSheetPhotos } =
+  await import("@/lib/services/purchase-sheet");
+const { canAccessDocument, catalogShowcasePhotos } =
+  await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -193,7 +190,12 @@ describe("ficha no pedido", () => {
       ncm: "9999.99.99",
     });
     expect(missing).toEqual(["scalePhoto"]);
-    expect((await req(prep.id, "weight")).value).toBe("0.14");
+    // Preparação tem só a ficha de compra.
+    expect(
+      (
+        await getStore().list("requirements", { filter: { stageId: prep.id } })
+      ).map((x) => x.key),
+    ).toEqual(["purchase_sheet"]);
     expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
 
     await addSheetPhotos(supplierA, order.id, "weight_scale", [await png()]);
@@ -201,7 +203,6 @@ describe("ficha no pedido", () => {
       await png(),
       await png(),
     ]);
-    expect((await req(prep.id, "photo_scale")).status).toBe("done");
     const sheetReq = await req(prep.id, "purchase_sheet");
     expect(sheetReq.status).toBe("done");
     expect(sheetReq.value).toContain("7200 pcs");
@@ -218,7 +219,9 @@ describe("ficha no pedido", () => {
     expect(view.sheet.importTaxPercent).toBe(18);
     expect(view.sheet.price).toBe(8.5);
     expect(view.missing).toEqual([]);
-    expect(view.photos.filter((p) => p.kind === "dimension_side")).toHaveLength(2);
+    expect(view.photos.filter((p) => p.kind === "dimension_side")).toHaveLength(
+      2,
+    );
 
     // Fotos da ficha: fornecedor abre; cliente não; não vão para o catálogo.
     const doc = (await getStore().get("documents", view.photos[0].documentId))!;
