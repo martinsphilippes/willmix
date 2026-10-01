@@ -9,6 +9,7 @@ interface Labels {
   submit: string;
   pending: string;
   invalid: string;
+  unavailable: string;
   demoTitle: string;
   demoHint: string;
 }
@@ -43,13 +44,18 @@ export function LoginForm({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-    });
-    if (response.ok) {
+    }).catch(() => null);
+    if (response?.ok) {
       router.push(next);
       router.refresh();
       return;
     }
-    setError(labels.invalid);
+    // 401: e-mail ou senha; 503 ou sem resposta: o portal está fora, não a senha.
+    setError(
+      response && response.status !== 503 && response.status < 500
+        ? labels.invalid
+        : labels.unavailable,
+    );
     setPending(false);
   }
 

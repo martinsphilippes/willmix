@@ -106,6 +106,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
               submit: t("login.submit"),
               pending: t("login.pending"),
               invalid: t("login.invalid"),
+              unavailable: t("login.unavailable"),
               demoTitle: t("help.login.demo"),
               demoHint: t("help.login.demoHint", { password: DEMO_PASSWORD }),
             }}
