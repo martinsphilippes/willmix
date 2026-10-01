@@ -88,6 +88,17 @@ export const DEFAULT_SETTINGS = {
    * aguarda o cartão de crédito no AI Gateway. Desmarcar em Configurações reativa.
    */
   lookupPaused: true,
+  /* ---- Pagamento do sinal por Pix ---- */
+  /**
+   * Chave Pix da Wellmix (CPF, CNPJ, e-mail, celular +55 ou aleatória). Com chave,
+   * recebedor e cidade preenchidos, o cliente vê o Pix copia e cola e o QR Code do
+   * sinal. Vazia: o cliente vê só a instrução de pagamento. Configura o admin.
+   */
+  pixKey: "",
+  /** Nome do recebedor no Pix (até 25 caracteres, como no banco). */
+  pixReceiverName: "",
+  /** Cidade do recebedor no Pix (até 15 caracteres). */
+  pixReceiverCity: "",
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };

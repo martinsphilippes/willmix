@@ -863,6 +863,15 @@ export async function saveSettingsAction(form: FormData) {
         if (!/^[A-Za-z]{3}$/.test(String(raw)))
           throw new Error("invalid_currency");
         value = String(raw).toUpperCase();
+      } else if (key === "pixKey") {
+        // Chave validada e normalizada no servidor (CPF/CNPJ com dígito, e-mail, +55, aleatória).
+        const { normalizePixKey } = await import("@/lib/services/pix");
+        const trimmed = String(raw).trim();
+        value = trimmed ? normalizePixKey(trimmed).key : "";
+      } else if (key === "pixReceiverName" || key === "pixReceiverCity") {
+        value = String(raw).trim();
+        const max = key === "pixReceiverName" ? 25 : 15;
+        if ((value as string).length > max) throw new Error("pix_too_long");
       } else if (key === "containerTypes") {
         // Uma linha por tipo ("código;capacidadeCbm;pesoMaxKg"); JSON também é aceito.
         const { parseContainerTypes } =
@@ -877,6 +886,15 @@ export async function saveSettingsAction(form: FormData) {
       }
       pairs.push([key, value]);
     }
+    // Pix só fica ativo completo: com chave, recebedor e cidade.
+    const pix = Object.fromEntries(
+      pairs.filter(([k]) => k.startsWith("pix")),
+    ) as Record<string, string | undefined>;
+    if (
+      pix.pixKey &&
+      (!pix.pixReceiverName?.trim() || !pix.pixReceiverCity?.trim())
+    )
+      throw new Error("pix_incomplete");
     for (const [key, value] of pairs) await setSetting(key, value as never);
     await audit(
       user,
