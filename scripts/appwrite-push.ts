@@ -130,7 +130,7 @@ async function ensureEnumElements(
     key: string;
     elements?: string[];
     required?: boolean;
-    default?: string | null;
+    default?: unknown;
   }>,
 ) {
   if (col.type !== "string" || !col.enum) return;
@@ -144,8 +144,11 @@ async function ensureEnumElements(
     key,
     elements: [...(current?.elements ?? []), ...missing],
     required: current?.required ?? col.required ?? false,
-    // O SDK exige o padrão; mantém o atual (nulo em coluna obrigatória).
-    xdefault: current?.required ? null : (current?.default ?? null),
+    // O SDK exige o campo (aceita nulo, embora o tipo diga string): mantém o
+    // padrão atual; coluna obrigatória não tem padrão.
+    xdefault: (current?.required || typeof current?.default !== "string"
+      ? null
+      : current.default) as unknown as string,
   });
   console.log(`  ${tableId}.${key}: +${missing.join(", ")}`);
 }
