@@ -49,7 +49,7 @@ export const pt = {
   "payments.error.too_large": "Arquivo grande demais (máximo 30 MB).",
   "payments.settings.title": "Pagamento do sinal por Pix",
   "payments.settings.hint":
-    "Com chave, recebedor e cidade preenchidos, o cliente vê na proposta o Pix copia e cola e o QR Code com o valor do sinal e a referência da solicitação. A confirmação do recebimento continua com a Wellmix. Deixe a chave vazia para desligar.",
+    "Com a chave preenchida, o cliente vê na proposta o Pix copia e cola e o QR Code com o valor do sinal e a referência da solicitação. A confirmação do recebimento continua com a Wellmix. Deixe a chave vazia para desligar.",
   "payments.settings.key": "Chave Pix",
   "payments.settings.keyHint":
     "CPF, CNPJ, e-mail, celular com +55 ou chave aleatória.",
@@ -112,7 +112,7 @@ export const en: Record<keyof typeof pt, string> = {
   "payments.error.too_large": "File too large (30 MB max).",
   "payments.settings.title": "Down payment by Pix",
   "payments.settings.hint":
-    "With key, payee and city filled in, the customer sees on the proposal the Pix copy-and-paste code and QR Code with the down payment amount and the request reference. Wellmix still confirms receipt. Leave the key empty to turn it off.",
+    "With the key filled in, the customer sees on the proposal the Pix copy-and-paste code and QR Code with the down payment amount and the request reference. Wellmix still confirms receipt. Leave the key empty to turn it off.",
   "payments.settings.key": "Pix key",
   "payments.settings.keyHint":
     "CPF, CNPJ, e-mail, mobile with +55 or random key.",
@@ -170,7 +170,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "payments.error.too_large": "文件过大（最大 30 MB）。",
   "payments.settings.title": "Pix 定金付款",
   "payments.settings.hint":
-    "填写密钥、收款人和城市后，客户会在报价中看到带有定金金额和申请参考号的 Pix 复制粘贴码和二维码。到账确认仍由 Wellmix 负责。密钥留空即关闭。",
+    "填写密钥后，客户会在报价中看到带有定金金额和申请参考号的 Pix 复制粘贴码和二维码。到账确认仍由 Wellmix 负责。密钥留空即关闭。",
   "payments.settings.key": "Pix 密钥",
   "payments.settings.keyHint": "CPF、CNPJ、电子邮件、带 +55 的手机号或随机密钥。",
   "payments.settings.receiverName": "收款人名称",

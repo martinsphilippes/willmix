@@ -98,7 +98,8 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 ### Sinal por Pix e comprovante do cliente
 
 - Proposta aguardando sinal mostra "Pague com Pix": QR Code, Pix copia e cola com botão de copiar, recebedor, chave, valor e referência da solicitação (`WMX` + id). Código BR Code estático do Banco Central gerado no servidor (`services/pix.ts`, CRC16 conferido com o manual), sem banco: a confirmação continua manual.
-- Chave (CPF, CNPJ, e-mail, celular +55 ou aleatória, validada no servidor), recebedor e cidade ficam em Configurações (admin). Sem chave, ou com valor fora de BRL, a tela explica e não mostra Pix.
+- A chave (CPF, CNPJ, e-mail, celular +55 ou aleatória, validada no servidor) fica em Configurações (admin). Sem chave, ou com valor fora de BRL, a tela explica e não mostra Pix.
+- Recebedor e cidade não aparecem mais na tela. São obrigatórios dentro do código, mas só informativos: quem paga vê, na confirmação do banco, o titular real da chave. O sistema usa o que já estiver salvo; se estiver vazio, usa o nome da importadora e "BRASIL" (`pixReceiver`).
 - O cliente anexa o comprovante (foto ou PDF) na própria solicitação (`submitDownPaymentProofAction`; só o login que vê a solicitação, só aguardando sinal). O pagamento segue pendente, a Wellmix é avisada, vê o comprovante e confirma; a pendência sai do cliente e a da Wellmix diz que o comprovante chegou. Fornecedor não abre o comprovante.
 
 ### Pagamento ao fornecedor
