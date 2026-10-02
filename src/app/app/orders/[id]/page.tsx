@@ -1,3 +1,4 @@
+import { sheetProgress } from "@/lib/services/purchase-sheet";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { notFound, redirect } from "next/navigation";
@@ -112,6 +113,18 @@ export default async function OrderPage({
   const sheet = sheetAccess(user, order);
   const sheetHref = sheet.view
     ? `/app/orders/${order.id}/purchase-sheet`
+    : null;
+  /* O que falta na ficha (o item do checklist diz o quê, em vez de só "Preencher"). */
+  const sheetState = sheet.view ? await sheetProgress(order) : null;
+  const sheetHint = sheetState
+    ? {
+        missing: sheetState.missing
+          .map((k) => t(`sheet.field.${k}` as DictionaryKey))
+          .join(", "),
+        count: sheetState.missing.length,
+        started: sheetState.saved || sheetState.prefillSource !== "catalog",
+        source: sheetState.saved ? null : sheetState.prefillSource,
+      }
     : null;
 
   /* Leituras independentes numa rodada só (cada ida ao banco é uma viagem de rede). */
@@ -483,6 +496,7 @@ export default async function OrderPage({
                             }
                             sheetHref={sheetHref}
                             sheetEditable={sheet.editSupplier}
+                            sheetHint={sheetHint}
                           />
                         ))}
                       </ul>
@@ -1038,6 +1052,7 @@ function RequirementRow({
   remeasure,
   sheetHref,
   sheetEditable,
+  sheetHint,
 }: {
   requirement: Requirement;
   order: {
@@ -1060,6 +1075,13 @@ function RequirementRow({
   /** Ficha de compra: link para a ficha (o item não tem formulário próprio). */
   sheetHref: string | null;
   sheetEditable: boolean;
+  /** Ficha: o que falta e se já veio preenchida (cotação ou pedido anterior). */
+  sheetHint: {
+    missing: string;
+    count: number;
+    started: boolean;
+    source: "quote" | "previous" | "catalog" | null;
+  } | null;
 }) {
   const isSheet = r.key === "purchase_sheet";
   const canAct =
@@ -1125,6 +1147,18 @@ function RequirementRow({
         ) : note ? (
           <p className="mt-1 text-xs text-amber-700">{note}</p>
         ) : null}
+        {isSheet && r.status !== "done" && sheetHint ? (
+          <p className="mt-1 text-xs text-zinc-600">
+            {sheetHint.source === "quote" || sheetHint.source === "previous"
+              ? `${t(`sheet.prefilled.${sheetHint.source}`)} `
+              : ""}
+            {sheetHint.count > 0 ? (
+              <span className="text-amber-700">
+                {t("sheet.missingShort", { fields: sheetHint.missing })}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
       {isSheet ? (
         sheetHref ? (
@@ -1139,7 +1173,9 @@ function RequirementRow({
               className="w-full sm:w-auto"
             >
               {r.status !== "done" && open && sheetEditable
-                ? t("sheet.open")
+                ? sheetHint?.started && sheetHint.count > 0
+                  ? t("sheet.completeCta", { count: String(sheetHint.count) })
+                  : t("sheet.open")
                 : t("sheet.view")}
             </LinkButton>
           </div>
