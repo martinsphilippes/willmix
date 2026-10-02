@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { fallbackError } from "@/i18n/error-text";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canSeeInternalCosts, isWellmix } from "@/lib/auth/permissions";
@@ -117,9 +118,7 @@ export default async function HistoryPage({
         subtitle={t("history.subtitle")}
       />
       {error ? (
-        <Alert tone="danger">
-          {t("common.error")} ({error})
-        </Alert>
+        <Alert tone="danger">{fallbackError(t, String(error))}</Alert>
       ) : null}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         {wellmix ? (

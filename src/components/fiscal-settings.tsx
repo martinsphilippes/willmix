@@ -149,6 +149,9 @@ export function FiscalTableCard({
           {part("tec")}
           {part("tipi")}
         </ul>
+        {status.unreadable ? (
+          <Alert tone="danger">{t("fiscal.table.unreadable")}</Alert>
+        ) : null}
         {status.stale ? (
           <Alert tone="warning">{t("fiscal.table.stale")}</Alert>
         ) : null}

@@ -5,6 +5,7 @@ import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore, REVIEW_STATUSES, type ReviewStatus } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
+import { fallbackError } from "@/i18n/error-text";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -39,7 +40,7 @@ function errorMessage(t: Translate, code: string | string[] | undefined) {
   if (typeof code !== "string" || !code) return null;
   const key = `reviews.error.${code}` as DictionaryKey;
   const text = t(key);
-  return text === key ? `${t("common.error")} (${code})` : text;
+  return text === key ? fallbackError(t, code) : text;
 }
 
 /** Fila "itens para revisão" (Wellmix): abertos por padrão; histórico por filtro. */

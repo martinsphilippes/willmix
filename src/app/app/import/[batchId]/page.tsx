@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore, type ImportBatch } from "@/lib/db";
@@ -172,9 +173,7 @@ export default async function ImportBatchPage({
         actions={<LinkButton href="/app/import">{t("common.back")}</LinkButton>}
       />
       {error ? (
-        <Alert tone="danger">
-          {t("common.error")} ({error})
-        </Alert>
+        <Alert tone="danger">{fallbackError(t, String(error))}</Alert>
       ) : null}
 
       {view === "cancelled" ? (

@@ -48,12 +48,32 @@ export const FISCAL_STALE_DAYS = 90;
 
 let cache: { key: string; table: StoredTable } | null = null;
 
+const EMPTY: StoredTable = { version: 1, rows: {} };
+
+/** Lê o arquivo da tabela; null quando não dá para ler (sem arquivo ou conteúdo inválido). */
+async function readTable(fileKey: string): Promise<StoredTable | null> {
+  try {
+    const file = await getStore().getFile(fileKey);
+    if (!file) return null;
+    const table = JSON.parse(new TextDecoder().decode(file.bytes));
+    return table && typeof table.rows === "object" && table.rows
+      ? (table as StoredTable)
+      : null;
+  } catch (error) {
+    console.error("[fiscal] tabela ilegível", fileKey, error);
+    return null;
+  }
+}
+
+/**
+ * Tabela carregada. Ilegível não derruba quem consulta (sugestão de NCM,
+ * preço): vale como vazia e a tela de Configurações avisa (`fiscalStatus`).
+ */
 async function loadTable(meta: FiscalTableMeta | null): Promise<StoredTable> {
-  if (!meta?.fileKey) return { version: 1, rows: {} };
+  if (!meta?.fileKey) return EMPTY;
   if (cache?.key === meta.fileKey) return cache.table;
-  const file = await getStore().getFile(meta.fileKey);
-  if (!file) return { version: 1, rows: {} };
-  const table = JSON.parse(new TextDecoder().decode(file.bytes)) as StoredTable;
+  const table = await readTable(meta.fileKey);
+  if (!table) return EMPTY;
   cache = { key: meta.fileKey, table };
   return table;
 }
@@ -89,10 +109,11 @@ export async function ncmsWithPrefix(prefix: string, limit = 8) {
     .map((n) => rowToRates(n, table.rows[n])!);
 }
 
-/** Há tabela carregada (ao menos uma das partes)? */
+/** Há tabela carregada e legível (ao menos uma das partes)? */
 export async function hasFiscalTable() {
   const meta = (await getSettings()).fiscalTable;
-  return !!(meta?.tec || meta?.tipi);
+  if (!(meta?.tec || meta?.tipi)) return false;
+  return Object.keys((await loadTable(meta)).rows).length > 0;
 }
 
 /**
@@ -111,6 +132,9 @@ export async function importFiscalFile(
     throw new FiscalError("fiscal_unrecognized");
   const settings = await getSettings();
   const current = await loadTable(settings.fiscalTable);
+  // Tabela anterior ilegível: a outra parte não pode ser aproveitada.
+  const previousOk =
+    !settings.fiscalTable?.fileKey || Object.keys(current.rows).length > 0;
   const rows: Record<string, StoredRow> = {};
   // Copia a outra parte; a parte importada é refeita do zero.
   for (const [ncm, row] of Object.entries(current.rows)) {
@@ -145,8 +169,8 @@ export async function importFiscalFile(
   );
   const meta: FiscalTableMeta = {
     fileKey: file.key,
-    tec: settings.fiscalTable?.tec ?? null,
-    tipi: settings.fiscalTable?.tipi ?? null,
+    tec: previousOk ? (settings.fiscalTable?.tec ?? null) : null,
+    tipi: previousOk ? (settings.fiscalTable?.tipi ?? null) : null,
     [kind]: {
       updatedAt: new Date().toISOString(),
       count: entries.length,
@@ -171,6 +195,8 @@ export interface FiscalStatus {
   tipi: FiscalTableMeta["tipi"];
   /** Alguma parte com mais de FISCAL_STALE_DAYS dias (ou faltando). */
   stale: boolean;
+  /** Há tabela registrada, mas o arquivo não pôde ser lido: enviar de novo. */
+  unreadable: boolean;
   lastError: string | null;
   tecUrl: string;
   tipiUrl: string;
@@ -182,7 +208,11 @@ export async function fiscalStatus(now = new Date()): Promise<FiscalStatus> {
     !p ||
     now.getTime() - new Date(p.updatedAt).getTime() >
       FISCAL_STALE_DAYS * 86_400_000;
+  const unreadable =
+    !!s.fiscalTable?.fileKey &&
+    Object.keys((await loadTable(s.fiscalTable)).rows).length === 0;
   return {
+    unreadable,
     tec: s.fiscalTable?.tec ?? null,
     tipi: s.fiscalTable?.tipi ?? null,
     stale: old(s.fiscalTable?.tec ?? null) || old(s.fiscalTable?.tipi ?? null),

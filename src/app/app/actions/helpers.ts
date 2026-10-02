@@ -32,6 +32,8 @@ export function files(form: FormData, key: string): File[] {
     .filter((f): f is File => f instanceof File && f.size > 0);
 }
 
+const ERROR_CODE = /^[a-z][a-z0-9_]{1,59}$/;
+
 /** Executa a ação e volta para `back` com ?error=<código> em caso de falha. */
 export async function run(back: string, fn: () => Promise<string | void>) {
   let target = back;
@@ -39,12 +41,15 @@ export async function run(back: string, fn: () => Promise<string | void>) {
     const result = await fn();
     if (result) target = result;
   } catch (error) {
+    // Só códigos (snake_case) vão para a tela; falha técnica vira "unexpected"
+    // e o detalhe fica no log do servidor.
     const code =
       error instanceof ZodError
         ? "invalid_input"
-        : error instanceof Error && error.message
+        : error instanceof Error && ERROR_CODE.test(error.message)
           ? error.message
-          : "error";
+          : "unexpected";
+    if (code === "unexpected") console.error("[action]", back, error);
     const url = new URL(back, "http://x");
     url.searchParams.set("error", code.slice(0, 60));
     target = url.pathname + url.search;

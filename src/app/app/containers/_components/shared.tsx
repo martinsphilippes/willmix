@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { fallbackError } from "@/i18n/error-text";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { ContainerStatus } from "@/lib/db";
 import type { Tone } from "@/components/ui";
@@ -36,7 +37,7 @@ export function errorMessage(
   if (typeof code !== "string" || !code) return null;
   const key = `containers.error.${code}` as DictionaryKey;
   const text = t(key);
-  return text === key ? `${t("common.error")} (${code})` : text;
+  return text === key ? fallbackError(t, code) : text;
 }
 
 /** Número em pt-BR com até `digits` casas, sem zeros à direita. */

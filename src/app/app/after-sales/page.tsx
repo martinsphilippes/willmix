@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -112,9 +113,7 @@ export default async function AfterSalesPage({
         subtitle={t("afterSales.subtitle")}
       />
       {error ? (
-        <Alert tone="danger">
-          {t("common.error")} ({error})
-        </Alert>
+        <Alert tone="danger">{fallbackError(t, String(error))}</Alert>
       ) : null}
       <nav
         aria-label={t("common.status")}

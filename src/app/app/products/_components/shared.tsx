@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { fallbackError } from "@/i18n/error-text";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
@@ -17,7 +18,7 @@ export function catalogError(
   if (typeof code !== "string" || !code) return null;
   const key = `catalog.error.${code}` as DictionaryKey;
   const text = t(key);
-  return text === key ? `${t("common.error")} (${code})` : text;
+  return text === key ? fallbackError(t, code) : text;
 }
 
 /** Nome do usuário por id (listas de "validado por", "registrado por"). */

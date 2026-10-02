@@ -3,6 +3,7 @@ import { InputFile } from "node-appwrite/file";
 import type { TableName, Tables } from "./schema";
 import { BUCKET_ID, DATABASE_ID, TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
+import { downloadBytes } from "./download-bytes";
 
 /**
  * Implementação sobre Appwrite TablesDB e Storage.
@@ -174,7 +175,8 @@ export class AppwriteStore implements Store {
         this.storage.getFileDownload({ bucketId: BUCKET_ID, fileId: key }),
       ]);
       return {
-        bytes: new Uint8Array(bytes),
+        // JSON vem "aberto" pelo SDK; downloadBytes devolve os bytes do arquivo.
+        bytes: downloadBytes(bytes),
         name: meta.name,
         mime: meta.mimeType,
       };
