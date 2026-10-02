@@ -1,0 +1,40 @@
+name: Publicar esquema Appwrite
+
+# Botão manual (Actions → "Publicar esquema Appwrite" → Run workflow): publica
+# no banco de produção as tabelas, colunas e índices novos de
+# src/lib/db/schema.ts. Só ADICIONA (scripts/appwrite-push.ts nunca apaga nem
+# altera o que existe). A chave fica em Settings → Secrets → APPWRITE_API_KEY.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appwrite-schema
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+      # Endpoint e projeto não são segredos; dá para trocar em Settings → Variables.
+      NEXT_PUBLIC_APPWRITE_ENDPOINT: ${{ vars.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1' }}
+      NEXT_PUBLIC_APPWRITE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '6ab41ae700396f0409b8' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Conferir a chave
+        run: |
+          if [ -z "$APPWRITE_API_KEY" ]; then
+            echo "::error::Cadastre APPWRITE_API_KEY em Settings → Secrets and variables → Actions (ambiente production ou do repositório)."
+            exit 1
+          fi
+      - name: Publicar (só adiciona)
+        run: node scripts/appwrite-push.ts

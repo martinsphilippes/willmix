@@ -15,6 +15,7 @@ import {
 } from "@/lib/pricing";
 import { getFxRates, type FxView } from "./fx";
 import { getQuoteSheet } from "./quote-sheet";
+import { freightByQuote } from "./freight";
 
 /*
  * Valor ao cliente de uma cotação: ficha da cotação (ou o preço da cotação,
@@ -31,6 +32,15 @@ export interface QuotePricing {
   marginSource: "customer" | "line" | "default";
   freightPerCbm: number | null;
   freightCurrency: string;
+  /** Frete da companhia marítima: informado (o menor, em R$) ou aguardando. */
+  shippingFreight: {
+    status: "answered" | "waiting" | "none";
+    carrierName: string | null;
+    amount: number | null;
+    currency: string | null;
+    brl: number | null;
+    transitDays: number | null;
+  };
 }
 
 export interface PricingContext {
@@ -67,9 +77,45 @@ export async function quotePricing(
     product?.lineId ?? null,
   );
   const taxes = await validatedTaxes(request.productId);
+  const freights = await freightByQuote(quotes.map((q) => q.id));
+  const carrierIds = [
+    ...new Set([...freights.values()].flat().map((f) => f.carrierId)),
+  ];
+  const carriers = carrierIds.length
+    ? await store.list("parties", { filter: { id: carrierIds } })
+    : [];
   const out: QuotePricing[] = [];
   for (const quote of quotes) {
     const sheet = await getQuoteSheet(quote.id);
+    // Frete informado pela companhia marítima: o menor em reais.
+    const rows = freights.get(quote.id) ?? [];
+    const answered = rows
+      .filter((f) => f.status === "answered" && f.amount)
+      .map((f) => {
+        const rate = rateFor(fx.rates, f.currency);
+        return { f, brl: rate ? f.amount! * rate : null };
+      })
+      .filter((x) => x.brl !== null)
+      .sort((a, b) => a.brl! - b.brl!);
+    const best = answered[0];
+    const shippingFreight: QuotePricing["shippingFreight"] = best
+      ? {
+          status: "answered",
+          carrierName:
+            carriers.find((c) => c.id === best.f.carrierId)?.name ?? null,
+          amount: best.f.amount,
+          currency: best.f.currency,
+          brl: Math.round(best.brl! * 100) / 100,
+          transitDays: best.f.transitDays,
+        }
+      : {
+          status: rows.length ? "waiting" : "none",
+          carrierName: null,
+          amount: null,
+          currency: null,
+          brl: null,
+          transitDays: null,
+        };
     const input: PricingInput = {
       unitPrice: sheet?.price ?? quote.price,
       currency: sheet?.currency ?? quote.currency,
@@ -84,7 +130,8 @@ export async function quotePricing(
       marginPercent: margin.percent,
       fx: fx.rates,
       freight: {
-        carrierBrl: options.carrierBrl ?? null,
+        // Digitado pelo operador > informado pela companhia marítima > por CBM.
+        carrierBrl: options.carrierBrl ?? shippingFreight.brl,
         perCbm: settings.freightPerCbm,
         perCbmCurrency: settings.freightCurrency,
       },
@@ -97,6 +144,7 @@ export async function quotePricing(
       marginSource: margin.source,
       freightPerCbm: settings.freightPerCbm,
       freightCurrency: settings.freightCurrency,
+      shippingFreight,
     });
   }
   return { fx, quotes: out };

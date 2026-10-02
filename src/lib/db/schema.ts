@@ -222,6 +222,14 @@ export type ContainerStatus = (typeof CONTAINER_STATUSES)[number];
 export const ACK_EVENTS = ["viewed", "confirmed"] as const;
 export type AckEvent = (typeof ACK_EVENTS)[number];
 
+/** Cotação de frete da companhia marítima para a cotação de um fornecedor. */
+export const FREIGHT_QUOTE_STATUSES = [
+  "invited",
+  "answered",
+  "cancelled",
+] as const;
+export type FreightQuoteStatus = (typeof FREIGHT_QUOTE_STATUSES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -1046,6 +1054,32 @@ export interface PurchaseSheet extends BaseRow {
   completedAt: string | null;
 }
 
+/**
+ * Pedido de frete à companhia marítima: nasce quando o fornecedor envia a
+ * cotação (com a ficha) e guarda a carga que a companhia viu (CBM, caixas,
+ * peso) e o valor que ela informou. Uma por cotação de fornecedor e companhia.
+ */
+export interface FreightQuote extends BaseRow {
+  requestId: string;
+  /** Cotação do fornecedor a que este frete se refere. */
+  quoteId: string;
+  /** Companhia marítima (parceiro do tipo shipping_line). */
+  carrierId: string;
+  status: FreightQuoteStatus;
+  /** Carga no momento do pedido de frete (muda se o fornecedor reenviar a ficha). */
+  totalCbm: number | null;
+  cartons: number | null;
+  grossWeightKg: number | null;
+  /** Valor total do frete informado pela companhia. */
+  amount: number | null;
+  currency: string | null;
+  transitDays: number | null;
+  validUntil: string | null;
+  notes: string | null;
+  answeredByUserId: string | null;
+  answeredAt: string | null;
+}
+
 /** Busca de produto por foto ou link (tela de nova solicitação). Guarda o que foi achado e sugerido. */
 export interface ProductLookup extends BaseRow {
   userId: string;
@@ -1105,6 +1139,7 @@ export interface Tables {
   marketing_kits: MarketingKit;
   product_lookups: ProductLookup;
   purchase_sheets: PurchaseSheet;
+  freight_quotes: FreightQuote;
 }
 export type TableName = keyof Tables;
 
@@ -1964,6 +1999,30 @@ export const TABLES: Record<TableName, TableDef> = {
       completedAt: datetime(),
     },
     indexes: [{ key: "by_order", type: "unique", columns: ["orderId"] }],
+  },
+  freight_quotes: {
+    label: "Cotações de frete (companhia marítima)",
+    columns: {
+      requestId: id(),
+      quoteId: id(),
+      carrierId: id(),
+      status: enumOf(FREIGHT_QUOTE_STATUSES),
+      totalCbm: float(),
+      cartons: int(),
+      grossWeightKg: float(),
+      amount: float(),
+      currency: str(3),
+      transitDays: int(),
+      validUntil: datetime(),
+      notes: text(),
+      answeredByUserId: id(false),
+      answeredAt: datetime(),
+    },
+    indexes: [
+      { key: "by_quote", type: "key", columns: ["quoteId"] },
+      { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_carrier_status", type: "key", columns: ["carrierId", "status"] },
+    ],
   },
 };
 

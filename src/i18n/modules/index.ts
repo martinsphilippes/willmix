@@ -25,6 +25,7 @@ import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
 import * as pricing from "./pricing";
 import * as quoteSheet from "./quote-sheet";
+import * as freight from "./freight";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -49,6 +50,7 @@ export const modulesPt = {
   ...requestDelete.pt,
   ...pricing.pt,
   ...quoteSheet.pt,
+  ...freight.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -73,6 +75,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...requestDelete.en,
   ...pricing.en,
   ...quoteSheet.en,
+  ...freight.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -97,4 +100,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...requestDelete.zh,
   ...pricing.zh,
   ...quoteSheet.zh,
+  ...freight.zh,
 };
