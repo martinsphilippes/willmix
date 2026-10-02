@@ -141,6 +141,14 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
   - a Wellmix vê o padrão e pode ajustar uma solicitação específica.
 - Vale para nova solicitação e para recompra/nova proposta. Solicitações antigas ficam com o prazo que já tinham.
 
+### Produto do catálogo e estoque na nova solicitação
+
+- Ao escolher um produto existente, o quadro acima ("Produto ainda não está no catálogo") muda para um quadro verde marcado: "Produto do catálogo Wellmix". Ele traz um atalho para voltar a "fora do catálogo".
+- O estoque vem de dados lançados (`availableStockByProduct` em `services/containers.ts`): itens de container sem pedido, em containers não encerrados.
+  - Com estoque, o quadro diz "Em estoque na Wellmix". Só a Wellmix vê a quantidade e quanto está a caminho; o cliente vê apenas que há estoque.
+  - Sem estoque, o quadro diz que a Wellmix cota com o fornecedor.
+- Limite: não há baixa de estoque por venda fora de pedido. Containers encerrados saem da conta.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.
