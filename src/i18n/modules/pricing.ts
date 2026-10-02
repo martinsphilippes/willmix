@@ -3,6 +3,14 @@
  * câmbio PTAX, frete por CBM): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "pricing.fx.fetchNow": "Buscar",
+  "pricing.fx.fetching": "Buscando...",
+  "pricing.fx.fetchedFrom":
+    "Cotação de {source} ({when}). Salve para guardar no campo manual.",
+  "pricing.fx.source.ptax": "PTAX Banco Central",
+  "pricing.fx.source.awesomeapi": "AwesomeAPI (comercial)",
+  "pricing.fx.fetchError":
+    "Não foi possível buscar agora (Banco Central e AwesomeAPI sem resposta). Informe o valor manualmente.",
   "pricing.calc.useCalculated": "Usar valor calculado",
   "pricing.refresh": "Atualizar proposta com o câmbio de hoje",
   "pricing.refreshed":
@@ -25,7 +33,7 @@ export const pt = {
   "pricing.settings.freightCurrency": "Moeda do frete",
   "pricing.settings.fx": "Câmbio (PTAX venda do Banco Central)",
   "pricing.settings.fxManualHint":
-    "Câmbio manual de reserva: só é usado se a PTAX nunca tiver sido obtida.",
+    'Câmbio manual de reserva: só é usado se nenhuma cotação tiver sido obtida. "Buscar" consulta a cotação do dia na hora.',
   "pricing.settings.byLine": "Margem por linha de produto (facultativa)",
   "pricing.settings.byOptionalHint":
     "Vazio: usa a margem geral. Vale quando o cliente não tem margem própria.",
@@ -79,6 +87,14 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "pricing.fx.fetchNow": "Fetch",
+  "pricing.fx.fetching": "Fetching...",
+  "pricing.fx.fetchedFrom":
+    "Rate from {source} ({when}). Save to keep it in the manual field.",
+  "pricing.fx.source.ptax": "Central Bank PTAX",
+  "pricing.fx.source.awesomeapi": "AwesomeAPI (commercial)",
+  "pricing.fx.fetchError":
+    "Could not fetch now (Central Bank and AwesomeAPI did not respond). Enter the value manually.",
   "pricing.calc.useCalculated": "Use calculated value",
   "pricing.refresh": "Update proposal with today's exchange rate",
   "pricing.refreshed":
@@ -101,7 +117,7 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.settings.freightCurrency": "Freight currency",
   "pricing.settings.fx": "Exchange rate (Central Bank PTAX, selling)",
   "pricing.settings.fxManualHint":
-    "Manual fallback rate: only used if PTAX has never been obtained.",
+    'Manual fallback rate: only used if no rate has ever been obtained. "Fetch" gets today\'s rate right away.',
   "pricing.settings.byLine": "Margin per product line (optional)",
   "pricing.settings.byOptionalHint":
     "Empty: uses the default margin. Applies when the customer has no margin of its own.",
@@ -154,6 +170,14 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "pricing.fx.fetchNow": "获取",
+  "pricing.fx.fetching": "获取中...",
+  "pricing.fx.fetchedFrom":
+    "汇率来源：{source}（{when}）。保存后写入手动字段。",
+  "pricing.fx.source.ptax": "巴西央行 PTAX",
+  "pricing.fx.source.awesomeapi": "AwesomeAPI（商业汇率）",
+  "pricing.fx.fetchError":
+    "暂时无法获取（央行和 AwesomeAPI 均无响应）。请手动填写。",
   "pricing.calc.useCalculated": "使用计算值",
   "pricing.refresh": "按今日汇率更新报价",
   "pricing.refreshed": "报价已按今日汇率更新，已通知客户。",
@@ -169,7 +193,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.settings.freightHint": "留空：不预估（由操作员填写承运人运费）。",
   "pricing.settings.freightCurrency": "运费币种",
   "pricing.settings.fx": "汇率（巴西央行 PTAX 卖出价）",
-  "pricing.settings.fxManualHint": "手动备用汇率：仅在从未获取 PTAX 时使用。",
+  "pricing.settings.fxManualHint":
+    "手动备用汇率：仅在从未获取任何汇率时使用。“获取”可即时查询当日汇率。",
   "pricing.settings.byLine": "按产品线利润率（可选）",
   "pricing.settings.byOptionalHint":
     "留空：使用默认利润率。客户无单独利润率时适用。",

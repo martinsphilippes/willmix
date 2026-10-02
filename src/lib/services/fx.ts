@@ -6,9 +6,15 @@ import type { FxRates } from "@/lib/pricing";
 /*
  * Câmbio para o preço ao cliente: PTAX (venda) do Banco Central, buscada no
  * máximo uma vez por dia (horário de Brasília) e guardada em Configurações.
- * Se a busca falhar, vale a última PTAX obtida (com a data, como sugestão);
- * se nunca houve PTAX, o câmbio manual de Configurações. Nada é inventado.
+ * Se o Banco Central não responder, a cotação comercial (venda) da AwesomeAPI
+ * (pública, sem cadastro). Se as duas falharem, vale a última cotação obtida
+ * (com a data, como sugestão); se nunca houve, o câmbio manual. Nada é inventado.
  */
+
+const AWESOME_URL =
+  "https://economia.awesomeapi.com.br/json/last/USD-BRL,CNY-BRL,EUR-BRL";
+
+export type FxSource = "ptax" | "awesomeapi";
 
 const PTAX_URL =
   "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)";
@@ -25,6 +31,7 @@ export interface FxView {
   /** Dia da busca usada (stale: a última que deu certo). */
   day: string | null;
   quotedAt: FxSnapshot["quotedAt"];
+  source: FxSource | null;
 }
 
 export function brazilDay(now = new Date()) {
@@ -60,14 +67,15 @@ export async function fetchPtax(
   day: string,
   fetcher: typeof fetch = fetch,
 ): Promise<{ rate: number; quotedAt: string }> {
-  const params = new URLSearchParams({
-    "@moeda": `'${PTAX_CODES[currency]}'`,
-    "@dataInicial": `'${bcbDate(daysBefore(day, 7))}'`,
-    "@dataFinalCotacao": `'${bcbDate(day)}'`,
-    $format: "json",
-    $select: "cotacaoVenda,dataHoraCotacao,tipoBoletim",
-  });
-  const res = await fetcher(`${PTAX_URL}?${params.toString()}`, {
+  // Parâmetros OData montados à mão: a API não aceita "@" e "$" codificados.
+  const query = [
+    `@moeda='${PTAX_CODES[currency]}'`,
+    `@dataInicial='${bcbDate(daysBefore(day, 7))}'`,
+    `@dataFinalCotacao='${bcbDate(day)}'`,
+    "$format=json",
+    "$select=cotacaoVenda,dataHoraCotacao,tipoBoletim",
+  ].join("&");
+  const res = await fetcher(`${PTAX_URL}?${query}`, {
     signal: AbortSignal.timeout(8000),
     cache: "no-store",
   });
@@ -83,22 +91,70 @@ export async function fetchPtax(
   return { rate: pick.cotacaoVenda, quotedAt: pick.dataHoraCotacao };
 }
 
+/** Cotação comercial de venda (ask) da AwesomeAPI para as três moedas. */
+export async function fetchAwesome(
+  fetcher: typeof fetch = fetch,
+): Promise<Record<FxCurrency, { rate: number; quotedAt: string }>> {
+  const res = await fetcher(AWESOME_URL, {
+    signal: AbortSignal.timeout(8000),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`awesome_http_${res.status}`);
+  const body = (await res.json()) as Record<
+    string,
+    { ask?: string; create_date?: string }
+  >;
+  const pick = (key: string) => {
+    const row = body[key];
+    const rate = Number(row?.ask);
+    if (!Number.isFinite(rate) || rate <= 0) throw new Error("awesome_empty");
+    return { rate, quotedAt: row?.create_date ?? "" };
+  };
+  return { USD: pick("USDBRL"), RMB: pick("CNYBRL"), EUR: pick("EURBRL") };
+}
+
+/** Busca as três moedas: PTAX; se falhar, AwesomeAPI. */
+async function fetchAll(day: string, now: Date, fetcher?: typeof fetch) {
+  let source: FxSource = "ptax";
+  let entries: Array<readonly [FxCurrency, { rate: number; quotedAt: string }]>;
+  try {
+    entries = await Promise.all(
+      (Object.keys(PTAX_CODES) as FxCurrency[]).map(
+        async (c) => [c, await fetchPtax(c, day, fetcher)] as const,
+      ),
+    );
+  } catch {
+    source = "awesomeapi";
+    entries = Object.entries(await fetchAwesome(fetcher)) as typeof entries;
+  }
+  const snapshot: FxSnapshot = {
+    day,
+    fetchedAt: now.toISOString(),
+    rates: Object.fromEntries(entries.map(([c, v]) => [c, v.rate])),
+    quotedAt: Object.fromEntries(entries.map(([c, v]) => [c, v.quotedAt])),
+    source,
+  };
+  return snapshot;
+}
+
 /**
- * Câmbio do dia. Primeira chamada do dia busca a PTAX e grava; as demais usam
- * o que foi gravado. Falhou: última PTAX (stale) ou câmbio manual.
+ * Câmbio do dia. Primeira chamada do dia busca e grava; as demais usam o que
+ * foi gravado. `force` (botão "Buscar agora") busca de novo na hora.
+ * Falhou: última cotação (stale) ou câmbio manual.
  */
 export async function getFxRates(
-  options: { now?: Date; fetcher?: typeof fetch } = {},
+  options: { now?: Date; fetcher?: typeof fetch; force?: boolean } = {},
 ): Promise<FxView> {
   const settings = await getSettings();
   const day = brazilDay(options.now);
   const stored = settings.fxPtax;
-  if (stored?.day === day)
+  if (stored?.day === day && !options.force)
     return {
       rates: stored.rates,
       status: "today",
       day,
       quotedAt: stored.quotedAt,
+      source: stored.source ?? "ptax",
     };
   // Depois de uma falha, só tenta de novo após 1 hora (a página não fica esperando).
   const now = options.now ?? new Date();
@@ -108,24 +164,16 @@ export async function getFxRates(
   const recentlyFailed =
     Number.isFinite(failedAt) && now.getTime() - failedAt < 60 * 60 * 1000;
   try {
-    if (recentlyFailed) throw new Error("ptax_recently_failed");
-    const entries = await Promise.all(
-      (Object.keys(PTAX_CODES) as FxCurrency[]).map(
-        async (c) => [c, await fetchPtax(c, day, options.fetcher)] as const,
-      ),
-    );
-    const snapshot: FxSnapshot = {
-      day,
-      fetchedAt: now.toISOString(),
-      rates: Object.fromEntries(entries.map(([c, v]) => [c, v.rate])),
-      quotedAt: Object.fromEntries(entries.map(([c, v]) => [c, v.quotedAt])),
-    };
+    if (recentlyFailed && !options.force)
+      throw new Error("ptax_recently_failed");
+    const snapshot = await fetchAll(day, now, options.fetcher);
     await setSetting("fxPtax", snapshot);
     return {
       rates: snapshot.rates,
       status: "today",
       day,
       quotedAt: snapshot.quotedAt,
+      source: snapshot.source ?? "ptax",
     };
   } catch (error) {
     if (!(error instanceof Error && error.message === "ptax_recently_failed"))
@@ -136,6 +184,7 @@ export async function getFxRates(
         status: "stale",
         day: stored.day,
         quotedAt: stored.quotedAt,
+        source: stored.source ?? "ptax",
       };
     const manual = Object.fromEntries(
       Object.entries(settings.fxManualRates).filter(
@@ -147,6 +196,7 @@ export async function getFxRates(
       status: Object.keys(manual).length ? "manual" : "none",
       day: null,
       quotedAt: {},
+      source: null,
     };
   }
 }
