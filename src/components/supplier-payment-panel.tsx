@@ -137,7 +137,7 @@ export async function SupplierPaymentPanel({
             <CurrencySelect name="currency" value={view.currency} t={t} />
           </Field>
           <Field label={t("finance.fx")}>
-            <Input name="fxRate" type="number" step="0.0001" />
+            <Input name="fxRate" type="number" step="any" />
           </Field>
           <div className="sm:col-span-3">
             <Field label={t("requests.payment.proof")}>

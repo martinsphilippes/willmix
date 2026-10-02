@@ -81,7 +81,7 @@ export function FxManualFields({
               id={`fx-${c}`}
               name={`fxManualRates.${c}`}
               type="number"
-              step="0.0001"
+              step="any"
               min="0"
               defaultValue={defaults[c] ?? ""}
               className={inputClass}

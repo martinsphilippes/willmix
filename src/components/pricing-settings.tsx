@@ -48,7 +48,7 @@ export function PricingSettings({
           <Input
             name="marginPercent"
             type="number"
-            step="0.1"
+            step="any"
             min="0"
             max="1000"
             required
@@ -174,7 +174,7 @@ function MarginTable({
                 id={`${field}-${r.id}`}
                 name={`${field}.${r.id}`}
                 type="number"
-                step="0.1"
+                step="any"
                 min="0"
                 max="1000"
                 placeholder={placeholder}
