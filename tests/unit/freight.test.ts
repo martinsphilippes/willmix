@@ -116,8 +116,15 @@ describe("frete pela companhia marítima", () => {
   });
 
   it("frete informado entra no valor ao cliente; escolha encerra os outros", async () => {
-    await setSetting("fxManualRates", { USD: 5, RMB: null, EUR: null });
-    await setSetting("fxPtax", null);
+    // Câmbio fixo: sem depender da rede (no CI a busca real funcionaria).
+    const fx = {
+      rates: { USD: 5 },
+      status: "manual" as const,
+      day: null,
+      quotedAt: {},
+      source: null,
+      lastError: null,
+    };
     await setSetting("freightPerCbm", 100);
     await setSetting("freightCurrency", "USD");
     const { request, quote } = await answeredQuote();
@@ -126,7 +133,7 @@ describe("frete pela companhia marítima", () => {
       filter: { quoteId: quote.id },
     });
 
-    const before = await quotePricing(request, [quote]);
+    const before = await quotePricing(request, [quote], { fx });
     expect(before.quotes[0].shippingFreight.status).toBe("waiting");
     expect(before.quotes[0].result.freightSource).toBe("cbm");
 
@@ -137,7 +144,7 @@ describe("frete pela companhia marítima", () => {
       validUntil: null,
       notes: null,
     });
-    const after = await quotePricing(request, [quote]);
+    const after = await quotePricing(request, [quote], { fx });
     const p = after.quotes[0];
     expect(p.shippingFreight).toMatchObject({
       status: "answered",
@@ -147,7 +154,10 @@ describe("frete pela companhia marítima", () => {
     expect(p.result.freightSource).toBe("carrier");
     expect(p.result.freightBrl).toBe(4000);
     // Valor digitado pelo operador prevalece.
-    const typed = await quotePricing(request, [quote], { carrierBrl: 3000 });
+    const typed = await quotePricing(request, [quote], {
+      carrierBrl: 3000,
+      fx,
+    });
     expect(typed.quotes[0].result.freightBrl).toBe(3000);
 
     // Pendência da companhia some depois de responder.
