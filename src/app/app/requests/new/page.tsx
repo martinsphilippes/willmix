@@ -24,6 +24,7 @@ import {
   type ProductFill,
 } from "@/components/request-product-fields";
 import { getSettings } from "@/lib/settings";
+import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
 import { catalogShowcasePhotos } from "@/lib/services/documents";
@@ -74,6 +75,7 @@ export default async function NewRequestPage({
   const found =
     typeof lookup === "string" ? await getLookup(user, lookup) : null;
   const settings = await getSettings();
+  const slaDate = quoteSlaDeadline(settings.quoteSlaBusinessDays);
   const aiMode = found ? getAiAdapter(settings).mode : null;
   /* Busca por foto/link pausada até a IA externa ter cartão (Configurações → lookupPaused). */
   const lookupPaused = settings.lookupPaused;
@@ -468,9 +470,32 @@ export default async function NewRequestPage({
               <Input name="unit" defaultValue="un" required />
             </Field>
             <div className="col-span-2 sm:col-span-1">
-              <Field label={t("requests.deadline")}>
-                <Input name="deadline" type="date" />
-              </Field>
+              {/* Prazo = SLA da Wellmix (Configurações); o servidor recalcula para o cliente. */}
+              {isWellmix(user) ? (
+                <Field
+                  label={t("requests.deadline")}
+                  hint={t("sla.wellmixHint", {
+                    days: settings.quoteSlaBusinessDays,
+                  })}
+                >
+                  <Input name="deadline" type="date" defaultValue={slaDate} />
+                </Field>
+              ) : (
+                <Field
+                  label={t("requests.deadline")}
+                  hint={t("sla.customerHint", {
+                    days: settings.quoteSlaBusinessDays,
+                  })}
+                >
+                  <Input
+                    type="date"
+                    value={slaDate}
+                    readOnly
+                    aria-readonly="true"
+                    className="bg-zinc-50 text-zinc-700"
+                  />
+                </Field>
+              )}
             </div>
           </div>
           <Field label={t("common.note")}>

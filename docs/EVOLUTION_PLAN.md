@@ -132,6 +132,15 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
   - A regra antiga de peso declarado fica só para pedidos sem ficha, para não abrir duas revisões do mesmo peso.
 - O link para a fila de revisão só aparece quando há item aberto.
 
+### SLA de resposta da cotação
+
+- O antigo "Prazo desejado" da solicitação passa a ser o **prazo de resposta da Wellmix (SLA)**. O campo é o mesmo (`requests.deadline`), e ele já era o vencimento da tarefa da Wellmix e da Control Tower.
+- A Wellmix define em Configurações quantos dias úteis tem para responder (`quoteSlaBusinessDays`, padrão 5, de 1 a 60). A conta usa dias de segunda a sexta, a partir de hoje no horário de Brasília, sem feriados (`src/lib/sla.ts`).
+- O prazo é calculado no servidor (`createRequest`):
+  - o cliente vê o prazo preenchido e não pode alterar, e qualquer data enviada por ele é ignorada;
+  - a Wellmix vê o padrão e pode ajustar uma solicitação específica.
+- Vale para nova solicitação e para recompra/nova proposta. Solicitações antigas ficam com o prazo que já tinham.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.

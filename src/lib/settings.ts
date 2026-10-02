@@ -19,6 +19,8 @@ export const DEFAULT_SETTINGS = {
   whatsappMode: "MOCK" as const,
   emailMode: "MOCK" as const,
   quotationExpirationDays: 15,
+  /** SLA de resposta da cotação: dias úteis para a Wellmix responder uma solicitação. */
+  quoteSlaBusinessDays: 5,
   /** Percentual do sinal cobrado do cliente. */
   downPaymentPercent: 30,
   /** Prazos padrão por etapa, em dias. */

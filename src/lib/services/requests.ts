@@ -22,6 +22,7 @@ import { audit } from "./audit";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
+import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
 import { runOperationGate } from "./operations";
@@ -111,6 +112,11 @@ export async function createRequest(
       input.customerId,
     );
   }
+  // Prazo de resposta = SLA da Wellmix (Configurações). O cliente não escolhe;
+  // a Wellmix pode ajustar numa solicitação específica.
+  const deadline =
+    (isWellmix(user) ? input.deadline : null) ||
+    quoteSlaDeadline(settings.quoteSlaBusinessDays);
   const request = await store.create("requests", {
     requestedForUserId,
     customerId: input.customerId,
@@ -121,7 +127,7 @@ export async function createRequest(
     specification: input.specification ?? null,
     quantity: input.quantity,
     unit: input.unit,
-    deadline: input.deadline ?? null,
+    deadline,
     status: "REQUESTED",
     selectedQuoteId: null,
     orderId: null,

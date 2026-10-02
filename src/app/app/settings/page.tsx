@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertRole } from "@/lib/auth/permissions";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
@@ -395,6 +396,26 @@ export default async function SettingsPage({
                 hint={t("operations.settings.hint.lookupPaused")}
               />
             </div>
+          </div>
+          {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
+          <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
+            {t("sla.settings.title")}
+          </h3>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            {t("sla.settings.hint")}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("sla.settings.days")}>
+              <Input
+                name="quoteSlaBusinessDays"
+                type="number"
+                min={QUOTE_SLA_MIN_DAYS}
+                max={QUOTE_SLA_MAX_DAYS}
+                step="1"
+                required
+                defaultValue={s.quoteSlaBusinessDays}
+              />
+            </Field>
           </div>
           {/* Pagamento ao fornecedor: destino do pedido ao financeiro. */}
           <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
