@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/schema";
 import {
   addSheetPhotos,
+  removeSheetPhoto,
   saveSheet,
   SHEET_PHOTO_KINDS,
   type SheetInput,
@@ -138,5 +139,17 @@ export async function addPurchaseSheetPhotosAction(form: FormData) {
     if (!photos.length) throw new Error("photo_required");
     await addSheetPhotos(user, orderId, kind, photos);
     return `${back}?photos=${kind}#photos`;
+  });
+}
+
+export async function removePurchaseSheetPhotoAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId").slice(0, 64);
+  const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
+  await run(back, async () => {
+    ORDER_ID.parse(orderId);
+    const photoId = ORDER_ID.parse(str(form, "photoId"));
+    await removeSheetPhoto(user, orderId, photoId);
+    return `${back}?photoRemoved=1#photos`;
   });
 }

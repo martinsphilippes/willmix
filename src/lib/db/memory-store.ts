@@ -1,4 +1,10 @@
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  unlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { BaseRow, TableName, Tables } from "./schema";
@@ -169,6 +175,16 @@ export class MemoryStore implements Store {
       mime: string;
     };
     return { bytes: new Uint8Array(readFileSync(path)), ...meta };
+  }
+
+  async removeFile(key: string) {
+    if (!/^[a-f0-9-]{36}$/.test(key)) return;
+    if (!this.persist) {
+      this.memFiles.delete(key);
+      return;
+    }
+    const path = join(this.filesDir, key);
+    for (const f of [path, `${path}.json`]) if (existsSync(f)) unlinkSync(f);
   }
 
   async nextNumber(key: string) {

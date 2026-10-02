@@ -108,6 +108,10 @@ export class CachedStore implements Store {
     return this.base.getFile(key);
   }
 
+  removeFile(key: string) {
+    return this.base.removeFile(key);
+  }
+
   async nextNumber(key: string) {
     this.written();
     return this.base.nextNumber(key);

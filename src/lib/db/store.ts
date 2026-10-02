@@ -53,6 +53,8 @@ export interface Store {
   getFile(
     key: string,
   ): Promise<{ bytes: Uint8Array; name: string; mime: string } | null>;
+  /** Apaga o arquivo do armazenamento (sem erro se já não existir). */
+  removeFile(key: string): Promise<void>;
   /** Próximo valor de um contador sequencial (ex.: número do pedido). */
   nextNumber(key: string): Promise<number>;
 }
