@@ -20,6 +20,8 @@ export interface ProductFill {
   productName: string;
   description: string;
   specification: string;
+  /** Estoque da Wellmix (itens de container sem pedido); `detail` só para a Wellmix. */
+  stock: { available: boolean; detail: string | null };
 }
 type Field = "productName" | "description" | "specification";
 type Option = { value: string; source: string };
@@ -38,6 +40,10 @@ export function RequestProductFields({
   suggestions: Partial<Record<Field, Option[]>>;
   sourceLabels: Record<string, string>;
   labels: {
+    fromCatalog: string;
+    inStock: string;
+    noStock: string;
+    change: string;
     notInCatalog: string;
     notInCatalogHint: string;
     product: string;
@@ -181,24 +187,59 @@ export function RequestProductFields({
 
   return (
     <>
-      {/* 1) Produto fora do catálogo: primeiro, antes da escolha do produto. */}
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
-        <input
-          type="checkbox"
-          name="sourcingDemand"
-          checked={notInCatalog}
-          onChange={(e) => toggleNotInCatalog(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
-        />
-        <span className="min-w-0">
-          <span className="block text-sm font-medium text-zinc-800">
-            {labels.notInCatalog}
+      {/* 1) Com produto escolhido: o quadro mostra que é do catálogo e o estoque.
+             Sem produto: "fora do catálogo", antes da escolha do produto. */}
+      {selected ? (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50/70 p-3"
+        >
+          <span
+            aria-hidden="true"
+            className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded bg-emerald-600 text-[11px] font-bold leading-none text-white"
+          >
+            ✓
           </span>
-          <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
-            {labels.notInCatalogHint}
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-emerald-900">
+              {labels.fromCatalog}
+              {selected.stock.available ? ` · ${labels.inStock}` : ""}
+            </span>
+            {selected.stock.available && !selected.stock.detail ? null : (
+              <span className="mt-0.5 block text-xs leading-relaxed text-emerald-800">
+                {selected.stock.available
+                  ? selected.stock.detail
+                  : labels.noStock}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => toggleNotInCatalog(true)}
+              className="mt-1 text-xs font-medium text-zinc-600 underline underline-offset-2 hover:text-brand-700"
+            >
+              {labels.change}
+            </button>
           </span>
-        </span>
-      </label>
+        </div>
+      ) : (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
+          <input
+            type="checkbox"
+            name="sourcingDemand"
+            checked={notInCatalog}
+            onChange={(e) => toggleNotInCatalog(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-zinc-800">
+              {labels.notInCatalog}
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-zinc-500">
+              {labels.notInCatalogHint}
+            </span>
+          </span>
+        </label>
+      )}
 
       {/* 2) Produto da Wellmix: preenche os campos com a ficha. */}
       {!notInCatalog ? (

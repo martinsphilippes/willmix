@@ -373,7 +373,11 @@ export async function listOrderItemChoices(): Promise<OrderItemChoice[]> {
   return choices;
 }
 
-export type ContainerType = { code: string; capacityCbm: number; maxWeightKg: number };
+export type ContainerType = {
+  code: string;
+  capacityCbm: number;
+  maxWeightKg: number;
+};
 
 /**
  * Tipos de container a partir do texto das Configurações: uma linha por tipo,
@@ -409,7 +413,8 @@ export function parseContainerTypes(text: string): ContainerType[] {
         return {
           code: code?.toUpperCase() ?? "",
           capacityCbm: Number(String(cbm ?? "").replace(",", ".")),
-          maxWeightKg: kg === undefined || kg === "" ? 0 : Number(kg.replace(",", ".")),
+          maxWeightKg:
+            kg === undefined || kg === "" ? 0 : Number(kg.replace(",", ".")),
         };
       });
   }
@@ -431,4 +436,44 @@ export function formatContainerTypes(types: ContainerType[]): string {
   return types
     .map((t) => `${t.code};${t.capacityCbm};${t.maxWeightKg}`)
     .join("\n");
+}
+
+export interface ProductStock {
+  /** Total sem pedido (chegou + a caminho). */
+  quantity: number;
+  /** Parte ainda em container não chegado (planejamento, carregando, embarcado). */
+  inTransit: number;
+  unit: string;
+}
+
+/**
+ * Estoque disponível por produto: itens de container sem pedido (estoque dentro
+ * do container), em containers ainda não encerrados. Só dados lançados.
+ */
+export async function availableStockByProduct(): Promise<
+  Map<string, ProductStock>
+> {
+  const store = getStore();
+  const containers = await store.list("containers", {
+    filter: { status: ["planning", "loading", "shipped", "arrived"] },
+  });
+  const out = new Map<string, ProductStock>();
+  if (containers.length === 0) return out;
+  const statusById = new Map(containers.map((c) => [c.id, c.status]));
+  const items = await store.list("container_items", {
+    filter: { containerId: containers.map((c) => c.id) },
+  });
+  for (const item of items) {
+    if (item.orderId || !item.productId || !(item.quantity > 0)) continue;
+    const entry = out.get(item.productId) ?? {
+      quantity: 0,
+      inTransit: 0,
+      unit: item.unit,
+    };
+    entry.quantity += item.quantity;
+    if (statusById.get(item.containerId) !== "arrived")
+      entry.inTransit += item.quantity;
+    out.set(item.productId, entry);
+  }
+  return out;
 }

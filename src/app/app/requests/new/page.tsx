@@ -28,6 +28,7 @@ import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
 import { catalogShowcasePhotos } from "@/lib/services/documents";
+import { availableStockByProduct } from "@/lib/services/containers";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
 import { lookupProductAction } from "../../actions/lookup";
@@ -118,9 +119,27 @@ export default async function NewRequestPage({
   const dims = (a: number | null, b: number | null, c: number | null) =>
     a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
   // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
-  const showcase = await catalogShowcasePhotos(products.map((p) => p.id));
+  const [showcase, stockByProduct] = await Promise.all([
+    catalogShowcasePhotos(products.map((p) => p.id)),
+    availableStockByProduct(),
+  ]);
+  // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
+  const qty = (n: number) => n.toLocaleString("pt-BR");
+  const stockFor = (productId: string): ProductFill["stock"] => {
+    const st = stockByProduct.get(productId);
+    if (!st) return { available: false, detail: null };
+    if (!isWellmix(user)) return { available: true, detail: null };
+    const parts = [
+      t("reqProduct.inStockQty", { qty: qty(st.quantity), unit: st.unit }),
+      st.inTransit > 0
+        ? t("reqProduct.inTransit", { qty: qty(st.inTransit) })
+        : null,
+    ];
+    return { available: true, detail: parts.filter(Boolean).join(" · ") };
+  };
   const productFills: ProductFill[] = products.map((p) => ({
     id: p.id,
+    stock: stockFor(p.id),
     photos: (showcase.get(p.id) ?? []).map((ph) => ({
       documentId: ph.documentId,
       caption: ph.caption?.trim() || p.name,
@@ -437,6 +456,10 @@ export default async function NewRequestPage({
             suggestions={hasSuggestions ? found!.suggestions : {}}
             sourceLabels={sourceLabels}
             labels={{
+              fromCatalog: t("reqProduct.fromCatalog"),
+              inStock: t("reqProduct.inStock"),
+              noStock: t("reqProduct.noStock"),
+              change: t("reqProduct.change"),
               notInCatalog: t("requests.sourcingDemand.label"),
               notInCatalogHint: t("requests.sourcingDemand.hint"),
               product: t("common.product"),
