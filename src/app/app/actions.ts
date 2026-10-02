@@ -891,7 +891,8 @@ export async function saveSettingsAction(form: FormData) {
     for (const key of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) {
       const raw = form.get(key);
       // Gravados pelo sistema (PTAX do dia); nunca vêm do formulário.
-      if (key === "fxPtax" || key === "fxPtaxFailedAt") continue;
+      if (key === "fxPtax" || key === "fxPtaxFailedAt" || key === "fxLastError")
+        continue;
       if (
         key === "marginByLine" ||
         key === "marginByCustomer" ||

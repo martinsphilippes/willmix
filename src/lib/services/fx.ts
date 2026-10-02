@@ -4,17 +4,29 @@ import { getSettings, setSetting, type FxSnapshot } from "@/lib/settings";
 import type { FxRates } from "@/lib/pricing";
 
 /*
- * Câmbio para o preço ao cliente: PTAX (venda) do Banco Central, buscada no
- * máximo uma vez por dia (horário de Brasília) e guardada em Configurações.
- * Se o Banco Central não responder, a cotação comercial (venda) da AwesomeAPI
- * (pública, sem cadastro). Se as duas falharem, vale a última cotação obtida
- * (com a data, como sugestão); se nunca houve, o câmbio manual. Nada é inventado.
+ * Câmbio para o preço ao cliente, buscado no máximo uma vez por dia (horário de
+ * Brasília) e guardado em Configurações. Três fontes públicas, sem chave,
+ * consultadas em paralelo; vale a primeira que responder nesta ordem:
+ *   1. PTAX (venda) do Banco Central do Brasil;
+ *   2. cotação comercial (venda) da AwesomeAPI;
+ *   3. referência do Banco Central Europeu (Frankfurter), que responde de
+ *      servidores fora do Brasil (a Vercel roda em Frankfurt).
+ * Se todas falharem, vale a última cotação obtida (com a data, como sugestão);
+ * se nunca houve, o câmbio manual. O motivo de cada falha fica registrado.
  */
 
 const AWESOME_URL =
   "https://economia.awesomeapi.com.br/json/last/USD-BRL,CNY-BRL,EUR-BRL";
 
-export type FxSource = "ptax" | "awesomeapi";
+/** Banco Central Europeu via Frankfurter (dois endereços do mesmo serviço). */
+const ECB_URLS = [
+  "https://api.frankfurter.dev/v1/latest",
+  "https://api.frankfurter.app/latest",
+];
+
+export type FxSource = "ptax" | "awesomeapi" | "ecb";
+
+const TIMEOUT_MS = 5000;
 
 const PTAX_URL =
   "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)";
@@ -32,6 +44,8 @@ export interface FxView {
   day: string | null;
   quotedAt: FxSnapshot["quotedAt"];
   source: FxSource | null;
+  /** Por que a última busca falhou (uma linha por fonte), se falhou. */
+  lastError: string | null;
 }
 
 export function brazilDay(now = new Date()) {
@@ -76,7 +90,7 @@ export async function fetchPtax(
     "$select=cotacaoVenda,dataHoraCotacao,tipoBoletim",
   ].join("&");
   const res = await fetcher(`${PTAX_URL}?${query}`, {
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`ptax_http_${res.status}`);
@@ -96,7 +110,7 @@ export async function fetchAwesome(
   fetcher: typeof fetch = fetch,
 ): Promise<Record<FxCurrency, { rate: number; quotedAt: string }>> {
   const res = await fetcher(AWESOME_URL, {
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`awesome_http_${res.status}`);
@@ -113,28 +127,94 @@ export async function fetchAwesome(
   return { USD: pick("USDBRL"), RMB: pick("CNYBRL"), EUR: pick("EURBRL") };
 }
 
-/** Busca as três moedas: PTAX; se falhar, AwesomeAPI. */
-async function fetchAll(day: string, now: Date, fetcher?: typeof fetch) {
-  let source: FxSource = "ptax";
-  let entries: Array<readonly [FxCurrency, { rate: number; quotedAt: string }]>;
-  try {
-    entries = await Promise.all(
-      (Object.keys(PTAX_CODES) as FxCurrency[]).map(
-        async (c) => [c, await fetchPtax(c, day, fetcher)] as const,
-      ),
-    );
-  } catch {
-    source = "awesomeapi";
-    entries = Object.entries(await fetchAwesome(fetcher)) as typeof entries;
+/** Referência do BCE (Frankfurter): R$ por unidade de cada moeda. */
+export async function fetchEcb(
+  fetcher: typeof fetch = fetch,
+): Promise<Record<FxCurrency, { rate: number; quotedAt: string }>> {
+  let lastError: unknown = null;
+  for (const base of ECB_URLS) {
+    try {
+      const one = async (code: "USD" | "CNY" | "EUR") => {
+        const res = await fetcher(`${base}?base=${code}&symbols=BRL`, {
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(`http ${res.status}`);
+        const body = (await res.json()) as {
+          date?: string;
+          rates?: { BRL?: number };
+        };
+        const rate = Number(body.rates?.BRL);
+        if (!Number.isFinite(rate) || rate <= 0) throw new Error("vazio");
+        return { rate, quotedAt: body.date ?? "" };
+      };
+      const [USD, RMB, EUR] = await Promise.all([
+        one("USD"),
+        one("CNY"),
+        one("EUR"),
+      ]);
+      return { USD, RMB, EUR };
+    } catch (error) {
+      lastError = error;
+    }
   }
-  const snapshot: FxSnapshot = {
-    day,
-    fetchedAt: now.toISOString(),
-    rates: Object.fromEntries(entries.map(([c, v]) => [c, v.rate])),
-    quotedAt: Object.fromEntries(entries.map(([c, v]) => [c, v.quotedAt])),
-    source,
-  };
-  return snapshot;
+  throw lastError ?? new Error("ecb_failed");
+}
+
+/** Motivo curto de uma falha de rede/API, para a tela de Configurações. */
+function reason(error: unknown) {
+  if (error instanceof Error) {
+    if (error.name === "TimeoutError" || error.name === "AbortError")
+      return "sem resposta em 5 s";
+    const cause = (error as { cause?: { code?: string } }).cause?.code;
+    return cause ? `${error.message} (${cause})` : error.message;
+  }
+  return String(error);
+}
+
+export class FxFetchError extends Error {}
+
+/** Consulta as três fontes em paralelo; vale a primeira que respondeu, na ordem. */
+async function fetchAll(day: string, now: Date, fetcher?: typeof fetch) {
+  const ptax = async () =>
+    Object.fromEntries(
+      await Promise.all(
+        (Object.keys(PTAX_CODES) as FxCurrency[]).map(
+          async (c) => [c, await fetchPtax(c, day, fetcher)] as const,
+        ),
+      ),
+    ) as Record<FxCurrency, { rate: number; quotedAt: string }>;
+  const sources: Array<
+    [
+      FxSource,
+      () => Promise<Record<FxCurrency, { rate: number; quotedAt: string }>>,
+    ]
+  > = [
+    ["ptax", ptax],
+    ["awesomeapi", () => fetchAwesome(fetcher)],
+    ["ecb", () => fetchEcb(fetcher)],
+  ];
+  const results = await Promise.allSettled(sources.map(([, run]) => run()));
+  const errors: string[] = [];
+  for (let i = 0; i < sources.length; i++) {
+    const result = results[i];
+    const source = sources[i][0];
+    if (result.status === "fulfilled") {
+      const entries = Object.entries(result.value) as Array<
+        [FxCurrency, { rate: number; quotedAt: string }]
+      >;
+      const snapshot: FxSnapshot = {
+        day,
+        fetchedAt: now.toISOString(),
+        rates: Object.fromEntries(entries.map(([c, v]) => [c, v.rate])),
+        quotedAt: Object.fromEntries(entries.map(([c, v]) => [c, v.quotedAt])),
+        source,
+      };
+      return snapshot;
+    }
+    errors.push(`${source}: ${reason(result.reason)}`);
+  }
+  throw new FxFetchError(errors.join(" · "));
 }
 
 /**
@@ -155,6 +235,7 @@ export async function getFxRates(
       day,
       quotedAt: stored.quotedAt,
       source: stored.source ?? "ptax",
+      lastError: null,
     };
   // Depois de uma falha, só tenta de novo após 1 hora (a página não fica esperando).
   const now = options.now ?? new Date();
@@ -174,10 +255,17 @@ export async function getFxRates(
       day,
       quotedAt: snapshot.quotedAt,
       source: snapshot.source ?? "ptax",
+      lastError: null,
     };
   } catch (error) {
-    if (!(error instanceof Error && error.message === "ptax_recently_failed"))
+    if (error instanceof FxFetchError) {
       await setSetting("fxPtaxFailedAt", now.toISOString());
+      await setSetting("fxLastError", error.message.slice(0, 500));
+    }
+    const lastError =
+      error instanceof FxFetchError
+        ? error.message
+        : (settings.fxLastError ?? null);
     if (stored)
       return {
         rates: stored.rates,
@@ -185,6 +273,7 @@ export async function getFxRates(
         day: stored.day,
         quotedAt: stored.quotedAt,
         source: stored.source ?? "ptax",
+        lastError,
       };
     const manual = Object.fromEntries(
       Object.entries(settings.fxManualRates).filter(
@@ -197,6 +286,7 @@ export async function getFxRates(
       day: null,
       quotedAt: {},
       source: null,
+      lastError,
     };
   }
 }

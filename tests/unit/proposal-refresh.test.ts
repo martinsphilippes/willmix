@@ -76,6 +76,7 @@ describe("valor ao cliente e câmbio", () => {
       day: yesterday,
       quotedAt: {},
       source: "ptax" as const,
+      lastError: null,
     };
     const ctx = await qp.quotePricing(request, [quote], { fx: fxYesterday });
     const p = ctx.quotes[0];
@@ -107,6 +108,7 @@ describe("valor ao cliente e câmbio", () => {
       day: today,
       quotedAt: {},
       source: "ptax" as const,
+      lastError: null,
     };
     const variance = qp.fxVariance(record, fxToday)!;
     expect(variance.pct).toBeCloseTo(10, 6);

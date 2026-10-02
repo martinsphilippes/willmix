@@ -3,6 +3,8 @@
  * câmbio PTAX, frete por CBM): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "pricing.fx.source.ecb": "Banco Central Europeu (referência)",
+  "pricing.fx.lastError": "Última busca falhou: {reason}",
   "pricing.fx.fetchNow": "Buscar",
   "pricing.fx.fetching": "Buscando...",
   "pricing.fx.fetchedFrom":
@@ -10,7 +12,7 @@ export const pt = {
   "pricing.fx.source.ptax": "PTAX Banco Central",
   "pricing.fx.source.awesomeapi": "AwesomeAPI (comercial)",
   "pricing.fx.fetchError":
-    "Não foi possível buscar agora (Banco Central e AwesomeAPI sem resposta). Informe o valor manualmente.",
+    "Não foi possível buscar agora: nenhuma fonte respondeu. Informe o valor manualmente.",
   "pricing.calc.useCalculated": "Usar valor calculado",
   "pricing.refresh": "Atualizar proposta com o câmbio de hoje",
   "pricing.refreshed":
@@ -87,6 +89,8 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "pricing.fx.source.ecb": "European Central Bank (reference)",
+  "pricing.fx.lastError": "Last fetch failed: {reason}",
   "pricing.fx.fetchNow": "Fetch",
   "pricing.fx.fetching": "Fetching...",
   "pricing.fx.fetchedFrom":
@@ -94,7 +98,7 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.fx.source.ptax": "Central Bank PTAX",
   "pricing.fx.source.awesomeapi": "AwesomeAPI (commercial)",
   "pricing.fx.fetchError":
-    "Could not fetch now (Central Bank and AwesomeAPI did not respond). Enter the value manually.",
+    "Could not fetch now: no source responded. Enter the value manually.",
   "pricing.calc.useCalculated": "Use calculated value",
   "pricing.refresh": "Update proposal with today's exchange rate",
   "pricing.refreshed":
@@ -170,14 +174,15 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "pricing.fx.source.ecb": "欧洲央行（参考汇率）",
+  "pricing.fx.lastError": "上次获取失败：{reason}",
   "pricing.fx.fetchNow": "获取",
   "pricing.fx.fetching": "获取中...",
   "pricing.fx.fetchedFrom":
     "汇率来源：{source}（{when}）。保存后写入手动字段。",
   "pricing.fx.source.ptax": "巴西央行 PTAX",
   "pricing.fx.source.awesomeapi": "AwesomeAPI（商业汇率）",
-  "pricing.fx.fetchError":
-    "暂时无法获取（央行和 AwesomeAPI 均无响应）。请手动填写。",
+  "pricing.fx.fetchError": "暂时无法获取：没有任何来源响应。请手动填写。",
   "pricing.calc.useCalculated": "使用计算值",
   "pricing.refresh": "按今日汇率更新报价",
   "pricing.refreshed": "报价已按今日汇率更新，已通知客户。",

@@ -24,6 +24,7 @@ export function FxManualField({
     from: string;
     sourcePtax: string;
     sourceAwesome: string;
+    sourceEcb: string;
     error: string;
   };
 }) {
@@ -38,7 +39,8 @@ export function FxManualField({
       const result = await fetchFxNowAction();
       const rate = result.ok ? result.rates[currency] : undefined;
       if (!result.ok || !rate) {
-        setNote({ text: labels.error, ok: false });
+        const why = !result.ok && result.reason ? ` (${result.reason})` : "";
+        setNote({ text: `${labels.error}${why}`, ok: false });
         return;
       }
       if (input.current) input.current.value = rate.toFixed(4);
@@ -48,7 +50,9 @@ export function FxManualField({
             "{source}",
             result.source === "awesomeapi"
               ? labels.sourceAwesome
-              : labels.sourcePtax,
+              : result.source === "ecb"
+                ? labels.sourceEcb
+                : labels.sourcePtax,
           )
           .replace("{when}", result.quotedAt[currency] ?? ""),
         ok: true,

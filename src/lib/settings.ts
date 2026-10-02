@@ -125,6 +125,8 @@ export const DEFAULT_SETTINGS = {
   fxPtax: null as FxSnapshot | null,
   /** Última tentativa de buscar a PTAX que falhou (evita repetir a cada página). */
   fxPtaxFailedAt: null as string | null,
+  /** Motivo da última busca de câmbio que falhou (por fonte). */
+  fxLastError: null as string | null,
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };
@@ -137,7 +139,7 @@ export interface FxSnapshot {
   rates: Partial<Record<"USD" | "RMB" | "EUR", number>>;
   quotedAt: Partial<Record<"USD" | "RMB" | "EUR", string>>;
   /** De onde veio: PTAX do Banco Central ou AwesomeAPI (reserva). */
-  source?: "ptax" | "awesomeapi";
+  source?: "ptax" | "awesomeapi" | "ecb";
 }
 
 export type Settings = typeof DEFAULT_SETTINGS;
