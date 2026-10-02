@@ -74,8 +74,10 @@ import { RequirementForm } from "@/components/requirement-form";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
 import { SupplierPaymentPanel } from "@/components/supplier-payment-panel";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
   assignPartnerAction,
+  clearRequirementDocumentAction,
   createPenaltyAction,
   registerCustomerPaymentAction,
   unblockStageAction,
@@ -1088,6 +1090,12 @@ function RequirementRow({
     open &&
     r.status !== "done" &&
     canSubmitRequirement(user, order as never, r);
+  /* Foto/arquivo enviado: dá para excluir e mandar outro enquanto a etapa está aberta. */
+  const canClear =
+    open &&
+    r.status === "done" &&
+    (r.type === "photo" || r.type === "file") &&
+    canSubmitRequirement(user, order as never, r);
   const canRemeasure =
     remeasure &&
     r.status === "done" &&
@@ -1124,7 +1132,7 @@ function RequirementRow({
           <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
         </div>
         {r.status !== "pending" ? (
-          <p className="mt-1 text-xs text-zinc-500">
+          <div className="mt-1 text-xs text-zinc-500">
             {r.type !== "file" &&
             r.type !== "photo" &&
             r.type !== "confirm" &&
@@ -1141,9 +1149,24 @@ function RequirementRow({
                 {doc.name} (v{doc.version})
               </TextLink>
             ) : null}
+            {doc && canClear ? (
+              <form
+                action={clearRequirementDocumentAction}
+                data-requirement-clear
+                className="mr-2 inline-block align-middle"
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <input type="hidden" name="requirementId" value={r.id} />
+                <ConfirmDeleteButton
+                  label={t("requirement.remove")}
+                  confirmText={t("requirement.removeConfirm")}
+                  className="h-6! w-6!"
+                />
+              </form>
+            ) : null}
             {t("orders.submitted")}: {submittedBy} · {formatDate(r.submittedAt)}
             {note ? ` · ${note}` : ""}
-          </p>
+          </div>
         ) : note ? (
           <p className="mt-1 text-xs text-amber-700">{note}</p>
         ) : null}

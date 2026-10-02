@@ -6,6 +6,8 @@ import {
 } from "@/app/app/actions";
 import { Input, Textarea } from "./ui";
 import { SubmitButton } from "./submit-button";
+import { PhotoInput } from "./photo-input";
+import { FileAutoInput } from "./file-auto-input";
 
 /**
  * Formulário inline de um requisito, conforme o tipo. Só renderizado para quem pode preencher.
@@ -48,6 +50,39 @@ export function RequirementForm({
     );
   }
 
+  // Foto e arquivo enviam sozinhos ao escolher (cancelar a escolha não trava nada);
+  // a foto é reduzida no aparelho antes de subir.
+  if (requirement.type === "photo" || requirement.type === "file") {
+    return (
+      <form
+        action={action ?? submitRequirementAction}
+        className="flex flex-wrap items-center gap-2"
+      >
+        <input type="hidden" name="orderId" value={orderId} />
+        <input type="hidden" name="requirementId" value={requirement.id} />
+        {requirement.type === "photo" ? (
+          <PhotoInput
+            name="file"
+            multiple={false}
+            capture={false}
+            maxDimension={1600}
+            autoSubmit
+            compact
+            label={t("requirement.photo.add")}
+            pendingLabel={t("requirement.sending")}
+          />
+        ) : (
+          <FileAutoInput
+            name="file"
+            label={t("requirement.file.add")}
+            pendingLabel={t("requirement.sending")}
+            tooBigLabel={t("requirement.file.tooBig")}
+          />
+        )}
+      </form>
+    );
+  }
+
   return (
     <form
       action={action ?? submitRequirementAction}
@@ -55,15 +90,6 @@ export function RequirementForm({
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="requirementId" value={requirement.id} />
-      {requirement.type === "file" || requirement.type === "photo" ? (
-        <Input
-          name="file"
-          type="file"
-          required
-          accept={requirement.type === "photo" ? "image/*" : undefined}
-          className="max-w-xs sm:w-72"
-        />
-      ) : null}
       {requirement.type === "number" ? (
         <Input
           name="value"

@@ -70,7 +70,10 @@ async function fillMyRequirements(
 ) {
   for (let guard = 0; guard < limit; guard++) {
     await page.goto(orderUrl);
-    const forms = page.locator("form:has(input[name=requirementId])");
+    // O formulário "Excluir" de um anexo enviado não é um requisito a preencher.
+    const forms = page.locator(
+      "form:has(input[name=requirementId]):not([data-requirement-clear])",
+    );
     const count = await forms.count();
     if (count === 0) return;
     const form = forms.first();
@@ -83,9 +86,21 @@ async function fillMyRequirements(
     const label =
       (await row.locator("span.font-medium").first().textContent()) ?? "";
     if (await file.count()) {
-      await file.setInputFiles(
-        (await file.getAttribute("accept"))?.includes("image") ? png : pdf,
-      );
+      // Foto e arquivo enviam sozinhos ao escolher (sem botão Enviar).
+      await Promise.all([
+        page.waitForResponse((r) => r.request().method() === "POST"),
+        file.setInputFiles(
+          (await file.getAttribute("accept"))?.includes("image") ? png : pdf,
+        ),
+      ]);
+      await page.waitForLoadState("networkidle");
+      if (page.url().includes("error=")) {
+        const alert = await page.locator("main").innerText();
+        throw new Error(
+          `Falha ao enviar "${label}": ${page.url()}\n${alert.slice(0, 400)}`,
+        );
+      }
+      continue;
     } else if (await number.count()) {
       const key = Object.keys(values).find((k) =>
         label.toLowerCase().includes(k.toLowerCase()),
