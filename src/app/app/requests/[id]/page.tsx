@@ -30,6 +30,7 @@ import {
   rowClass,
   type StepState,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { PixCopy } from "@/components/pix-copy";
 import { pixForRequest } from "@/lib/services/down-payment";
@@ -287,11 +288,11 @@ export default async function RequestDetailPage({
                               placeholder={t("common.price")}
                               className="max-w-28"
                             />
-                            <Input
+                            <CurrencySelect
                               name="currency"
-                              maxLength={3}
-                              defaultValue="USD"
-                              className="max-w-20"
+                              value="USD"
+                              t={t}
+                              className="max-w-40"
                             />
                             <Input
                               name="leadTimeDays"
@@ -380,11 +381,7 @@ export default async function RequestDetailPage({
                     />
                   </Field>
                   <Field label={t("common.currency")}>
-                    <Input
-                      name="sellCurrency"
-                      defaultValue="BRL"
-                      maxLength={3}
-                    />
+                    <CurrencySelect name="sellCurrency" value="BRL" t={t} />
                   </Field>
                   <Field label={t("requests.downPayment")}>
                     <Input

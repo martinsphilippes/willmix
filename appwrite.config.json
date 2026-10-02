@@ -5031,7 +5031,9 @@
           "format": "enum",
           "elements": [
             "USD",
-            "RMB"
+            "RMB",
+            "BRL",
+            "EUR"
           ]
         },
         {

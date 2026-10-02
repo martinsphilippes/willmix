@@ -16,6 +16,7 @@ import {
   formatDate,
   linkClass,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { answerQuoteAction } from "../../actions";
 
@@ -126,10 +127,10 @@ export default async function QuotePage({
                     />
                   </Field>
                   <Field label={t("common.currency")}>
-                    <Input
+                    <CurrencySelect
                       name="currency"
-                      maxLength={3}
-                      defaultValue={quote.currency ?? "USD"}
+                      value={quote.currency ?? "USD"}
+                      t={t}
                       required
                     />
                   </Field>

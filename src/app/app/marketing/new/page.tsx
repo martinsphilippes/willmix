@@ -13,6 +13,7 @@ import {
   PageHeader,
   Select,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { createKitAction } from "../../actions/vision";
 import { marketingError } from "../_components/shared";
@@ -125,13 +126,11 @@ export default async function NewMarketingKitPage({
                 </Field>
               </div>
               <Field label={t("marketing.new.currency")}>
-                <Input
+                <CurrencySelect
                   name="currency"
-                  maxLength={3}
-                  pattern="[A-Za-z]{3}"
+                  value={settings.marketingKitCurrency}
+                  t={t}
                   required
-                  defaultValue={settings.marketingKitCurrency}
-                  className="uppercase"
                 />
               </Field>
             </div>

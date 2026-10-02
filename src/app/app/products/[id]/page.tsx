@@ -29,7 +29,6 @@ import { getAiAdapter } from "@/lib/integrations/ai";
 import { listSuggestions } from "@/lib/services/ai-suggestions";
 import { loadProductCycle } from "@/lib/services/product-cycle";
 import { getT } from "@/i18n/server";
-import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -54,6 +53,7 @@ import {
   rowClass,
   type Tone,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
@@ -88,30 +88,6 @@ const scheduleTone: Record<string, Tone> = {
   ordered: "success",
   cancelled: "danger",
 };
-const CURRENCIES = ["USD", "CNY", "BRL", "EUR"];
-
-function CurrencySelect({
-  name,
-  value,
-  t,
-}: {
-  name: string;
-  value: string | null;
-  t: Translate;
-}) {
-  const options =
-    value && !CURRENCIES.includes(value) ? [value, ...CURRENCIES] : CURRENCIES;
-  return (
-    <Select name={name} defaultValue={value ?? ""} className={big}>
-      <option value="">{t("common.select")}</option>
-      {options.map((c) => (
-        <option key={c} value={c}>
-          {c}
-        </option>
-      ))}
-    </Select>
-  );
-}
 
 function NumberInput({
   integer = false,
@@ -406,6 +382,8 @@ export default async function ProductSheetPage({
                   name="currency"
                   value={product.currency}
                   t={t}
+                  allowEmpty
+                  className={big}
                 />
               </Field>
               <Field label={t("catalog.negotiatedAt")}>
@@ -963,7 +941,13 @@ export default async function ProductSheetPage({
               <NumberInput name="price" defaultValue={product.price ?? ""} />
             </Field>
             <Field label={t("common.currency")}>
-              <CurrencySelect name="currency" value={product.currency} t={t} />
+              <CurrencySelect
+                name="currency"
+                value={product.currency}
+                t={t}
+                allowEmpty
+                className={big}
+              />
             </Field>
             <div className="sm:col-span-2">
               <Field label={t("common.note")}>

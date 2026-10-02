@@ -208,7 +208,9 @@ export default async function PurchaseSheetPage({
                 <option value="">—</option>
                 {SHEET_CURRENCIES.map((v) => (
                   <option key={v} value={v}>
-                    {v === "USD" ? "U$ (USD)" : "RMB"}
+                    {v === "RMB"
+                      ? "Yuan (RMB)"
+                      : t(`currency.name.${v}` as DictionaryKey)}
                   </option>
                 ))}
               </Select>

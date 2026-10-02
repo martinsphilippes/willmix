@@ -17,6 +17,7 @@ import {
   setPrimaryPhoto,
 } from "@/lib/services/sourcing";
 import { files, num, requireUser, run, str } from "./helpers";
+import { parseCurrency } from "@/lib/currencies";
 
 /*
  * Ficha de produto, fotos, medições, programação de compra e dados extras do
@@ -89,7 +90,9 @@ export async function updateProductSheetAction(form: FormData) {
       supplierId: str(form, "supplierId") || null,
       supplierSku: str(form, "supplierSku") || null,
       price: num(form, "price"),
-      currency: str(form, "currency") || null,
+      currency: str(form, "currency")
+        ? parseCurrency(str(form, "currency"))
+        : null,
       moq: num(form, "moq"),
       negotiatedAt: dateToIso(str(form, "negotiatedAt")),
       material: str(form, "material") || null,
@@ -240,7 +243,9 @@ export async function savePurchaseScheduleAction(form: FormData) {
         supplierId: str(form, "supplierId") || null,
         customerId: str(form, "customerId") || null,
         price: num(form, "price"),
-        currency: str(form, "currency") || null,
+        currency: str(form, "currency")
+          ? parseCurrency(str(form, "currency"))
+          : null,
         status: str(form, "status") || "planned",
         notes: str(form, "notes") || null,
       });

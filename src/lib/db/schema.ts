@@ -175,7 +175,8 @@ export type PhotoKind = (typeof PHOTO_KINDS)[number];
 /* ---- Ficha de compra (planilha COMPRAS, etapa Preparação) ---- */
 export const SHEET_INCOTERMS = ["FOB", "EXW"] as const;
 export type SheetIncoterm = (typeof SHEET_INCOTERMS)[number];
-export const SHEET_CURRENCIES = ["USD", "RMB"] as const;
+/** Planilha COMPRAS usa U$/RMB; Real e Euro completam as moedas da Wellmix. */
+export const SHEET_CURRENCIES = ["USD", "RMB", "BRL", "EUR"] as const;
 export type SheetCurrency = (typeof SHEET_CURRENCIES)[number];
 export const SHEET_POWER_SOURCES = [
   "none",

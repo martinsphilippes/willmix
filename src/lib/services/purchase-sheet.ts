@@ -156,7 +156,8 @@ async function prefill(
   ]);
   const currencyOf = (c: string | null | undefined) => {
     const v = (c ?? "").toUpperCase();
-    return v === "USD" ? "USD" : v === "CNY" || v === "RMB" ? "RMB" : null;
+    if (v === "CNY" || v === "RMB") return "RMB" as const;
+    return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
   };
   return {
     productId: product?.id ?? null,

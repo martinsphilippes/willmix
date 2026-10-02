@@ -77,7 +77,7 @@ export const pt = {
   "operations.error.invalid_ai_mode":
     "Modo de IA inválido: use AUTO, MOCK ou MANUAL.",
   "operations.error.invalid_currency":
-    "Moeda inválida: use um código de 3 letras (ex.: BRL).",
+    "Moeda inválida: escolha Real, Yuan, Dólar ou Euro.",
   "operations.error.not_found": "Parceiro não encontrado.",
   "operations.error.not_customer":
     "A modalidade de operação só se aplica a clientes.",
@@ -153,7 +153,7 @@ export const en: Record<keyof typeof pt, string> = {
   "operations.error.invalid_ai_mode":
     "Invalid AI mode: use AUTO, MOCK or MANUAL.",
   "operations.error.invalid_currency":
-    "Invalid currency: use a 3-letter code (e.g. BRL).",
+    "Invalid currency: choose Real, Yuan, Dollar or Euro.",
   "operations.error.not_found": "Partner not found.",
   "operations.error.not_customer":
     "The operation mode only applies to customers.",
@@ -226,7 +226,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "operations.error.invalid_ai_mode":
     "AI 模式无效：请使用 AUTO、MOCK 或 MANUAL。",
   "operations.error.invalid_currency":
-    "货币无效：请使用 3 位代码（例如 BRL）。",
+    "币种无效：请选择雷亚尔、人民币、美元或欧元。",
   "operations.error.not_found": "未找到合作方。",
   "operations.error.not_customer": "运营模式仅适用于客户。",
   "operations.error.invalid_input": "数据无效。请检查字段。",

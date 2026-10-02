@@ -13,7 +13,9 @@ export async function submitDownPaymentProofAction(form: FormData) {
   const requestId = str(form, "requestId").slice(0, 64);
   const back = `/app/requests/${encodeURIComponent(requestId)}`;
   await run(back, async () => {
-    z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).parse(requestId);
+    z.string()
+      .regex(/^[A-Za-z0-9_-]{1,64}$/)
+      .parse(requestId);
     const [proof] = files(form, "proof");
     if (!proof) throw new Error("proof_required");
     await submitDownPaymentProof(user, requestId, proof);

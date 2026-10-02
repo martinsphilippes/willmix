@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { CURRENCIES } from "@/lib/currencies";
 import { assertRole, assertWellmix } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -183,10 +184,11 @@ export async function discardSuggestionAction(form: FormData) {
 /* ------------------------------------------------------------------------ */
 
 const kitBack = (id: string) => `/app/marketing/${id}`;
+// Só as moedas da Wellmix (lista única em src/lib/currencies.ts).
 const currencySchema = z
   .string()
-  .regex(/^[A-Za-z]{3}$/)
-  .transform((s) => s.toUpperCase());
+  .transform((s) => s.trim().toUpperCase())
+  .pipe(z.enum(CURRENCIES));
 
 export async function createKitAction(form: FormData) {
   const user = await requireUser();

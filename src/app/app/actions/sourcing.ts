@@ -30,7 +30,7 @@ import { files, num, requireUser, run, str } from "./helpers";
 /** Texto opcional com o limite da coluna no esquema (Appwrite rejeita acima disso). */
 const optional = (max = 10000) => z.string().max(max).nullable();
 const optionalNumber = () => z.number().nonnegative().nullable();
-const CURRENCIES = ["USD", "CNY", "BRL", "EUR"] as const;
+import { CURRENCIES } from "@/lib/currencies";
 
 /** Valida e devolve o objeto; falha vira o código curto "invalid" (traduzido na tela). */
 function parse<T extends z.ZodTypeAny>(schema: T, data: unknown): z.infer<T> {
