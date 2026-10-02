@@ -127,9 +127,39 @@ export const DEFAULT_SETTINGS = {
   fxPtaxFailedAt: null as string | null,
   /** Motivo da última busca de câmbio que falhou (por fonte). */
   fxLastError: null as string | null,
+  /* ---- Tributos da importação (custo importado) ---- */
+  /** Seguro internacional (% do FOB); entra no valor aduaneiro. 0 = sem seguro. */
+  insurancePercent: 0,
+  /** PIS-importação e COFINS-importação: alíquotas gerais (Lei 10.865/2004, art. 8º). */
+  pisImportPercent: 2.1,
+  cofinsImportPercent: 9.65,
+  /** ICMS da importação (% do estado do desembaraço). null = não configurado. */
+  icmsPercent: null as number | null,
+  /** Tabela fiscal carregada (TEC + TIPI): arquivo e situação de cada parte. Gravada pelo sistema. */
+  fiscalTable: null as FiscalTableMeta | null,
+  /** Links oficiais da planilha da TEC e da TIPI, para o robô mensal (vazio = só upload). */
+  fiscalTecUrl: "",
+  fiscalTipiUrl: "",
+  /** Motivo da última atualização automática que falhou. Gravado pelo sistema. */
+  fiscalLastError: null as string | null,
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };
+
+/** Uma parte da tabela fiscal (TEC ou TIPI): quando, quantos NCMs e de onde veio. */
+export interface FiscalPartMeta {
+  updatedAt: string;
+  count: number;
+  fileName: string;
+  source: "upload" | "robot";
+}
+
+/** Tabela fiscal: arquivo JSON no armazenamento + situação da TEC e da TIPI. */
+export interface FiscalTableMeta {
+  fileKey: string;
+  tec: FiscalPartMeta | null;
+  tipi: FiscalPartMeta | null;
+}
 
 /** Câmbio do dia: R$ por unidade (PTAX venda) e a data de cada cotação. */
 export interface FxSnapshot {

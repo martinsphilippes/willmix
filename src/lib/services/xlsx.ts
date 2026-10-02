@@ -156,14 +156,14 @@ function formatNumber(raw: string): string {
 }
 
 /**
- * Lê uma planilha. A primeira linha não vazia é o cabeçalho; cabeçalhos vazios
- * ganham a letra da coluna. Linhas totalmente vazias são ignoradas.
+ * Linhas cruas da planilha (sem cabeçalho), para arquivos com títulos acima do
+ * cabeçalho (ex.: TEC e TIPI). Linhas totalmente vazias são ignoradas.
  */
-export function readSheet(
+export function readGrid(
   bytes: Uint8Array,
   sheet?: string | number,
   maxRows = 2000,
-): SheetData {
+): { name: string; grid: string[][] } {
   const entries = readZip(bytes);
   const sheets = workbookSheets(entries);
   if (sheets.length === 0) throw new Error("xlsx_no_sheets");
@@ -213,7 +213,20 @@ export function readSheet(
     if (cells.some((c) => c !== "")) grid.push(cells);
     if (grid.length > maxRows + 1) break;
   }
-  if (grid.length === 0) return { name: target.name, headers: [], rows: [] };
+  return { name: target.name, grid };
+}
+
+/**
+ * Lê uma planilha. A primeira linha não vazia é o cabeçalho; cabeçalhos vazios
+ * ganham a letra da coluna. Linhas totalmente vazias são ignoradas.
+ */
+export function readSheet(
+  bytes: Uint8Array,
+  sheet?: string | number,
+  maxRows = 2000,
+): SheetData {
+  const { name, grid } = readGrid(bytes, sheet, maxRows);
+  if (grid.length === 0) return { name: name, headers: [], rows: [] };
 
   const width = Math.max(...grid.map((r) => r.length));
   const headerRow = grid[0];
@@ -231,5 +244,5 @@ export function readSheet(
     .map((cells) =>
       Object.fromEntries(headers.map((h, i) => [h, cells[i] ?? ""])),
     );
-  return { name: target.name, headers, rows };
+  return { name: name, headers, rows };
 }

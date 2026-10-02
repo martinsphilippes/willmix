@@ -96,6 +96,7 @@ const config = {
         "xlsx",
         "xls",
         "csv",
+        "json",
         "zip",
         "ai",
         "svg",

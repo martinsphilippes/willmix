@@ -814,6 +814,50 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "ncm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "ncmSource",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "product",
+            "ai",
+            "table",
+            "manual"
+          ]
+        },
+        {
+          "key": "ncmConfirmedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "ncmConfirmedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "ncmSuggestions",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -5459,6 +5503,7 @@
         "xlsx",
         "xls",
         "csv",
+        "json",
         "zip",
         "ai",
         "svg"

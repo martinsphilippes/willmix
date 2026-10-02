@@ -4,14 +4,20 @@
  *
  *   FOB (R$)        = preço da ficha × quantidade × câmbio da moeda da ficha
  *   Frete (R$)      = valor do transportador, ou CBM total × frete por CBM × câmbio
- *   CIF (R$)        = FOB + frete
- *   II (R$)         = CIF × imposto de importação % (ficha)
- *   IPI (R$)        = (CIF + II) × IPI % (ficha)
- *   Custo importado = CIF + II + IPI
+ *   Seguro (R$)     = FOB × seguro %
+ *   Valor aduaneiro = FOB + frete + seguro (o "CIF")
+ *   II (R$)         = valor aduaneiro × II % (TEC pelo NCM)
+ *   IPI (R$)        = (valor aduaneiro + II) × IPI % (TIPI pelo NCM)
+ *   PIS (R$)        = valor aduaneiro × PIS-importação %
+ *   COFINS (R$)     = valor aduaneiro × COFINS-importação %
+ *   ICMS (R$)       = (aduaneiro + II + IPI + PIS + COFINS) ÷ (1 − ICMS %) × ICMS %
+ *   Custo importado = valor aduaneiro + II + IPI + PIS + COFINS + ICMS
  *   Valor ao cliente = custo importado × (1 + margem %)
  *
- * Câmbio = R$ por unidade da moeda (PTAX venda). Outros tributos (PIS, COFINS,
- * ICMS), seguro e despesas portuárias não entram: ficam na margem.
+ * Câmbio = R$ por unidade da moeda (PTAX venda). Taxa Siscomex, AFRMM,
+ * armazenagem e despachante não entram: ficam na margem. Seguro, PIS, COFINS e
+ * ICMS ausentes (registros antigos) valem 0 sem aviso; ICMS null = não
+ * configurado (aviso).
  */
 
 export type FxRates = Partial<Record<"USD" | "RMB" | "EUR" | "BRL", number>>;
@@ -32,21 +38,32 @@ export interface PricingInput {
   totalCbm: number | null;
   importTaxPercent: number | null;
   ipiPercent: number | null;
+  /** Seguro internacional (% do FOB). */
+  insurancePercent?: number | null;
+  pisPercent?: number | null;
+  cofinsPercent?: number | null;
+  /** null = ICMS não configurado. */
+  icmsPercent?: number | null;
   marginPercent: number;
   fx: FxRates;
   freight: FreightInput;
 }
 
 export type PricingMissing =
-  "price" | "fx" | "freight" | "cbm" | "importTax" | "ipi";
+  "price" | "fx" | "freight" | "cbm" | "importTax" | "ipi" | "icms";
 
 export interface PricingResult {
   fobBrl: number | null;
   freightBrl: number;
   freightSource: "carrier" | "cbm" | "none";
+  insuranceBrl: number;
+  /** Valor aduaneiro (FOB + frete + seguro). */
   cifBrl: number | null;
   importTaxBrl: number;
   ipiBrl: number;
+  pisBrl: number;
+  cofinsBrl: number;
+  icmsBrl: number;
   landedBrl: number | null;
   marginPercent: number;
   marginBrl: number | null;
@@ -115,15 +132,20 @@ export function priceToCustomer(input: PricingInput): PricingResult {
 
   if (input.importTaxPercent === null) missing.push("importTax");
   if (input.ipiPercent === null) missing.push("ipi");
+  if (input.icmsPercent === null) missing.push("icms");
 
   if (fobBrl === null)
     return {
       fobBrl: null,
       freightBrl: round2(freightBrl),
       freightSource,
+      insuranceBrl: 0,
       cifBrl: null,
       importTaxBrl: 0,
       ipiBrl: 0,
+      pisBrl: 0,
+      cofinsBrl: 0,
+      icmsBrl: 0,
       landedBrl: null,
       marginPercent: input.marginPercent,
       marginBrl: null,
@@ -132,18 +154,30 @@ export function priceToCustomer(input: PricingInput): PricingResult {
       missing: [...new Set(missing)],
     };
 
-  const cif = fobBrl + freightBrl;
-  const importTax = cif * ((input.importTaxPercent ?? 0) / 100);
-  const ipi = (cif + importTax) * ((input.ipiPercent ?? 0) / 100);
-  const landed = cif + importTax + ipi;
+  const pct = (n: number | null | undefined) => (n ?? 0) / 100;
+  const insurance = fobBrl * pct(input.insurancePercent);
+  const cif = fobBrl + freightBrl + insurance;
+  const importTax = cif * pct(input.importTaxPercent);
+  const ipi = (cif + importTax) * pct(input.ipiPercent);
+  const pis = cif * pct(input.pisPercent);
+  const cofins = cif * pct(input.cofinsPercent);
+  // ICMS "por dentro": o imposto integra a própria base.
+  const icmsRate = Math.min(pct(input.icmsPercent), 0.99);
+  const beforeIcms = cif + importTax + ipi + pis + cofins;
+  const icms = icmsRate > 0 ? (beforeIcms / (1 - icmsRate)) * icmsRate : 0;
+  const landed = beforeIcms + icms;
   const margin = landed * (input.marginPercent / 100);
   return {
     fobBrl: round2(fobBrl),
     freightBrl: round2(freightBrl),
     freightSource,
+    insuranceBrl: round2(insurance),
     cifBrl: round2(cif),
     importTaxBrl: round2(importTax),
     ipiBrl: round2(ipi),
+    pisBrl: round2(pis),
+    cofinsBrl: round2(cofins),
+    icmsBrl: round2(icms),
     landedBrl: round2(landed),
     marginPercent: input.marginPercent,
     marginBrl: round2(margin),

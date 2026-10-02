@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatNcm } from "@/lib/fiscal";
 import {
   getStore,
   ORDER_EXTRA_DEFAULTS,
@@ -318,6 +319,29 @@ export interface SelectQuoteInput {
   pricing?: unknown;
 }
 
+/** Completa a ficha da cotação com o que a conta usou, sem sobrescrever o que já foi digitado. */
+async function stampTaxesOnSheet(quoteId: string, raw: unknown) {
+  const pricing = raw as {
+    ncm?: string | null;
+    input?: { importTaxPercent?: number | null; ipiPercent?: number | null };
+  } | null;
+  if (!pricing?.input) return;
+  const store = getStore();
+  const [sheet] = await store.list("purchase_sheets", {
+    filter: { orderId: quoteId },
+    limit: 1,
+  });
+  if (!sheet) return;
+  const patch: Record<string, unknown> = {};
+  if (sheet.importTaxPercent === null && pricing.input.importTaxPercent != null)
+    patch.importTaxPercent = pricing.input.importTaxPercent;
+  if (sheet.ipiPercent === null && pricing.input.ipiPercent != null)
+    patch.ipiPercent = pricing.input.ipiPercent;
+  if (!sheet.ncm && pricing.ncm) patch.ncm = formatNcm(pricing.ncm);
+  if (Object.keys(patch).length)
+    await store.update("purchase_sheets", sheet.id, patch);
+}
+
 /** Wellmix escolhe o fornecedor, define o valor ao cliente e o sinal. */
 export async function selectQuote(
   user: User,
@@ -347,6 +371,8 @@ export async function selectQuote(
   }
   // Frete das cotações não escolhidas deixa de valer.
   await cancelFreightForRequest(request.id, quote.id);
+  // NCM, II e IPI usados na proposta vão para a ficha escolhida (e dela para o pedido).
+  await stampTaxesOnSheet(quote.id, input.pricing ?? null);
   await store.update("requests", request.id, {
     status: "WAITING_DOWN_PAYMENT",
     selectedQuoteId: quote.id,

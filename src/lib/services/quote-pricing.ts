@@ -16,11 +16,14 @@ import {
 import { getFxRates, type FxView } from "./fx";
 import { getQuoteSheet } from "./quote-sheet";
 import { freightByQuote } from "./freight";
+import { requestNcm, type RequestNcm } from "./request-ncm";
 
 /*
  * Valor ao cliente de uma cotação: ficha da cotação (ou o preço da cotação,
- * quando não há ficha) + câmbio do dia + frete + II/IPI + margem. II e IPI vêm
- * da ficha; vazios, da classificação fiscal validada do produto.
+ * quando não há ficha) + câmbio do dia + frete + tributos + margem.
+ * II e IPI: o que a Wellmix digitou na ficha; vazio, a tabela TEC/TIPI pelo NCM
+ * da solicitação (confirmado ou do cadastro); sem NCM, a classificação
+ * validada do produto. PIS, COFINS, ICMS e seguro vêm das Configurações.
  */
 
 export interface QuotePricing {
@@ -32,6 +35,14 @@ export interface QuotePricing {
   marginSource: "customer" | "line" | "default";
   freightPerCbm: number | null;
   freightCurrency: string;
+  /** De onde saíram NCM, II e IPI (para a tela explicar a conta). */
+  tax: {
+    ncm: string | null;
+    ncmStatus: RequestNcm["status"];
+    description: string | null;
+    iiSource: TaxRateSource;
+    ipiSource: TaxRateSource;
+  };
   /** Frete da companhia marítima: informado (o menor, em R$) ou aguardando. */
   shippingFreight: {
     status: "answered" | "waiting" | "none";
@@ -42,6 +53,8 @@ export interface QuotePricing {
     transitDays: number | null;
   };
 }
+
+export type TaxRateSource = "sheet" | "table" | "classification" | null;
 
 export interface PricingContext {
   fx: FxView;
@@ -77,6 +90,20 @@ export async function quotePricing(
     product?.lineId ?? null,
   );
   const taxes = await validatedTaxes(request.productId);
+  const ncm = await requestNcm(request, product);
+  const tableIpi = ncm.rates?.ipi ?? (ncm.rates?.ipiNt ? 0 : null);
+  const pick = (
+    sheetValue: number | null | undefined,
+    tableValue: number | null | undefined,
+    classValue: number | null,
+  ): [number | null, TaxRateSource] =>
+    sheetValue !== null && sheetValue !== undefined
+      ? [sheetValue, "sheet"]
+      : tableValue !== null && tableValue !== undefined
+        ? [tableValue, "table"]
+        : classValue !== null
+          ? [classValue, "classification"]
+          : [null, null];
   const freights = await freightByQuote(quotes.map((q) => q.id));
   const carrierIds = [
     ...new Set([...freights.values()].flat().map((f) => f.carrierId)),
@@ -116,6 +143,12 @@ export async function quotePricing(
           brl: null,
           transitDays: null,
         };
+    const [ii, iiSource] = pick(
+      sheet?.importTaxPercent,
+      ncm.rates?.ii,
+      taxes.ii,
+    );
+    const [ipi, ipiSource] = pick(sheet?.ipiPercent, tableIpi, taxes.ipi);
     const input: PricingInput = {
       unitPrice: sheet?.price ?? quote.price,
       currency: sheet?.currency ?? quote.currency,
@@ -125,8 +158,12 @@ export async function quotePricing(
         sheet?.masterCartonQty ?? null,
         sheet?.cbmPerCarton ?? null,
       ),
-      importTaxPercent: sheet?.importTaxPercent ?? taxes.ii,
-      ipiPercent: sheet?.ipiPercent ?? taxes.ipi,
+      importTaxPercent: ii,
+      ipiPercent: ipi,
+      insurancePercent: settings.insurancePercent,
+      pisPercent: settings.pisImportPercent,
+      cofinsPercent: settings.cofinsImportPercent,
+      icmsPercent: settings.icmsPercent,
       marginPercent: margin.percent,
       fx: fx.rates,
       freight: {
@@ -144,6 +181,13 @@ export async function quotePricing(
       marginSource: margin.source,
       freightPerCbm: settings.freightPerCbm,
       freightCurrency: settings.freightCurrency,
+      tax: {
+        ncm: ncm.ncm,
+        ncmStatus: ncm.status,
+        description: ncm.rates?.description ?? null,
+        iiSource,
+        ipiSource,
+      },
       shippingFreight,
     });
   }
@@ -161,6 +205,9 @@ export interface PricingRecord {
   /** Valor ao cliente efetivamente proposto (pode ter sido ajustado à mão). */
   sellPrice: number;
   sellCurrency: string;
+  /** NCM e origem das alíquotas (registros antigos não têm). */
+  ncm?: string | null;
+  tax?: QuotePricing["tax"];
 }
 
 export async function latestPricingRecord(
@@ -238,6 +285,8 @@ export async function refreshProposal(user: User, requestId: string) {
     fxDay: ctx.fx.day,
     sellPrice,
     sellCurrency: "BRL",
+    ncm: fresh.tax.ncm,
+    tax: fresh.tax,
   };
   await audit(
     user,

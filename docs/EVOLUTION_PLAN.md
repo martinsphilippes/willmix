@@ -254,6 +254,14 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Tabela nova: precisa rodar o workflow "Publicar esquema Appwrite" (ver `docs/APPWRITE.md`).
 - Próximos passos possíveis: frete por mais de um modal (rodoviário no Brasil, despachante), validade do frete com alerta, comparação de companhias na própria tela.
 
+## Tributos da importação no valor ao cliente
+
+- **Tabela fiscal (TEC + TIPI):** upload da planilha oficial (XLSX/CSV, título acima do cabeçalho, linhas "Ex" ignoradas, "NT" = 0%) e robô mensal pelos links oficiais (`/api/jobs/fiscal`). Fica como JSON no armazenamento; metadados em `settings.fiscalTable`. Cada upload substitui só a sua parte e informa quantas alíquotas mudaram (auditoria `fiscal.import`). Tabela incompleta ou com mais de 90 dias: aviso.
+- **NCM da solicitação:** do cadastro do produto (validado) vale direto; sem ele, a IA (modo API) e as palavras-chave × tabela sugerem, automaticamente na primeira abertura pela Wellmix e no botão "Sugerir com IA". A Wellmix confirma (o NCM precisa existir na tabela carregada). Confirmar leva o NCM ao cadastro do produto quando ele não tem. Colunas novas em `requests`: `ncm`, `ncmSource`, `ncmConfirmedByUserId`, `ncmConfirmedAt`, `ncmSuggestions`.
+- **Custo importado:** valor aduaneiro (FOB + frete + seguro) + II (TEC) + IPI (TIPI, sobre aduaneiro + II) + PIS-importação 2,1% + COFINS-importação 9,65% (gerais, editáveis) + ICMS por dentro (alíquota do estado, em Configurações). Valor digitado na ficha pela Wellmix continua prevalecendo sobre a tabela. Na seleção, NCM, II e IPI usados vão para a ficha escolhida (e dela para o pedido).
+- Registros de proposta antigos (sem os novos campos) seguem com a conta anterior.
+- Próximos passos possíveis: AFRMM (8% do frete marítimo) e taxa Siscomex; PIS/COFINS diferenciados por NCM; Ex-tarifários e antidumping como ajuste com motivo; CBS/IBS quando a reforma tributária passar a cobrar (2027).
+
 ## Reutilizado
 
 `uploadDocument` (versionamento e visibilidade), `audit`, `notify`/`notifyWellmix`, `getSettings`, `loadFinance`, `loadControlTower`, `createRequest`/RFQ (para reposição e sourcing sob demanda na Segunda Onda), kit de componentes `ui.tsx`, `PageHeader` com ajuda contextual, dicionários pt/en/zh.

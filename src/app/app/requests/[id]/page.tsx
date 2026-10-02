@@ -7,6 +7,14 @@ import {
   quotePricing,
 } from "@/lib/services/quote-pricing";
 import { getFxRates } from "@/lib/services/fx";
+import {
+  requestNcm,
+  scheduleNcmSuggestion,
+  suggestionsView,
+} from "@/lib/services/request-ncm";
+import { hasFiscalTable } from "@/lib/services/fiscal";
+import { formatNcm } from "@/lib/fiscal";
+import { RequestNcmCard } from "@/components/request-ncm-card";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   canSeeSupplier,
@@ -137,7 +145,36 @@ export default async function RequestDetailPage({
   const variance = pricingRecord
     ? fxVariance(pricingRecord, await getFxRates())
     : null;
-  const { refreshed } = await searchParams;
+  const { refreshed, ncmConfirmed, ncmSuggested, ncmAi } = await searchParams;
+  /* NCM da solicitação (Wellmix): cadastro ou confirmado; sem ele, sugestões. */
+  const ncmInfo =
+    wellmix && request.status !== "CANCELLED"
+      ? await requestNcm(request)
+      : null;
+  const ncmSuggestionList =
+    ncmInfo?.status === "none" ? await suggestionsView(request) : [];
+  const ncmPendingAuto =
+    ncmInfo?.status === "none" && request.ncmSuggestions == null;
+  if (ncmPendingAuto) scheduleNcmSuggestion(request.id);
+  const fiscalLoaded = ncmInfo ? await hasFiscalTable() : false;
+  const ncmAiCode =
+    typeof ncmAi === "string" ? ncmAi.replace(/^ai_/, "") : null;
+  const ncmAiReason = ncmAiCode
+    ? ncmAiCode === "not_configured"
+      ? t("ncm.ai.not_configured")
+      : t(`ai.error.${ncmAiCode}` as DictionaryKey) !== `ai.error.${ncmAiCode}`
+        ? t(`ai.error.${ncmAiCode}` as DictionaryKey)
+        : ncmAiCode
+    : null;
+  const taxSourceText = (
+    source: "sheet" | "table" | "classification" | null,
+    ncm: string | null,
+  ) =>
+    source === "table"
+      ? t("pricing.calc.taxSource.table", { ncm: ncm ? formatNcm(ncm) : "—" })
+      : source
+        ? t(`pricing.calc.taxSource.${source}`)
+        : null;
   const proofDoc = downPayment?.proofDocumentId
     ? documents.find((d) => d.id === downPayment.proofDocumentId)
     : undefined;
@@ -276,6 +313,31 @@ export default async function RequestDetailPage({
                 <SubmitButton>{t("requests.rfq.open")}</SubmitButton>
               </form>
             </Card>
+          ) : null}
+
+          {/* Classificação fiscal: NCM → II (TEC) e IPI (TIPI) no valor ao cliente. */}
+          {ncmInfo ? (
+            <RequestNcmCard
+              t={t}
+              requestId={request.id}
+              ncm={ncmInfo}
+              suggestions={ncmSuggestionList}
+              suggestionsPending={ncmPendingAuto}
+              hasTable={fiscalLoaded}
+              editable={!request.orderId}
+              notice={
+                ncmConfirmed
+                  ? t("ncm.confirmedOk")
+                  : typeof ncmSuggested === "string"
+                    ? t("ncm.suggestedOk", { count: ncmSuggested })
+                    : null
+              }
+              aiNotice={
+                ncmAiReason
+                  ? t("ncm.aiUnavailable", { reason: ncmAiReason })
+                  : null
+              }
+            />
           ) : null}
 
           {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
@@ -421,6 +483,10 @@ export default async function RequestDetailPage({
                         input: p.input,
                         marginSource: p.marginSource,
                         shippingFreightBrl: p.shippingFreight.brl,
+                        iiSource: taxSourceText(p.tax.iiSource, p.tax.ncm),
+                        ipiSource: taxSourceText(p.tax.ipiSource, p.tax.ncm),
+                        ncmPending:
+                          p.tax.ncmStatus === "none" && p.tax.iiSource === null,
                         shippingFreightNote:
                           p.shippingFreight.status === "answered"
                             ? t("freight.calc.answered", {
@@ -448,6 +514,12 @@ export default async function RequestDetailPage({
                       freightNone: t("pricing.calc.freightNone"),
                       importTax: t("pricing.calc.importTax"),
                       ipi: t("pricing.calc.ipi"),
+                      insurance: t("pricing.calc.insurance"),
+                      customsValue: t("pricing.calc.customsValue"),
+                      pis: t("pricing.calc.pis"),
+                      cofins: t("pricing.calc.cofins"),
+                      icms: t("pricing.calc.icms"),
+                      ncmPending: t("pricing.calc.ncmPending"),
                       landed: t("pricing.calc.landed"),
                       margin: t("pricing.calc.margin"),
                       sell: t("pricing.calc.sell"),
@@ -470,6 +542,7 @@ export default async function RequestDetailPage({
                         cbm: t("pricing.calc.missing.cbm"),
                         importTax: t("pricing.calc.missing.importTax"),
                         ipi: t("pricing.calc.missing.ipi"),
+                        icms: t("pricing.calc.missing.icms"),
                       },
                     }}
                   />

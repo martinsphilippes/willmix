@@ -256,6 +256,23 @@ export const TAX_STATUSES = ["suggested", "validated", "rejected"] as const;
 export type TaxStatus = (typeof TAX_STATUSES)[number];
 export const TAX_SOURCES = ["manual", "heuristic", "ai", "broker"] as const;
 export type TaxSource = (typeof TAX_SOURCES)[number];
+/** De onde veio o NCM confirmado da solicitação. */
+export const REQUEST_NCM_SOURCES = [
+  "product",
+  "ai",
+  "table",
+  "manual",
+] as const;
+export type RequestNcmSource = (typeof REQUEST_NCM_SOURCES)[number];
+
+/** Sugestão de NCM guardada na solicitação (IA ou tabela). Nunca vale sem confirmação. */
+export interface NcmSuggestion {
+  ncm: string;
+  description: string | null;
+  reason: string | null;
+  source: "ai" | "table";
+  model: string | null;
+}
 
 export const CERTIFICATION_STATUSES = [
   "pending",
@@ -473,6 +490,16 @@ export interface Request extends BaseRow {
    * (nulo = nenhum login do cliente vê).
    */
   requestedForUserId: string | null;
+  /*
+   * Classificação fiscal da solicitação (opcionais: solicitações antigas ficam
+   * sem). NCM do cadastro do produto vale direto; sem cadastro, a IA sugere e a
+   * Wellmix confirma. II e IPI saem da tabela TEC/TIPI por este NCM.
+   */
+  ncm?: string | null;
+  ncmSource?: RequestNcmSource | null;
+  ncmConfirmedByUserId?: string | null;
+  ncmConfirmedAt?: string | null;
+  ncmSuggestions?: NcmSuggestion[] | null;
 }
 
 export interface Quote extends BaseRow {
@@ -1320,6 +1347,11 @@ export const TABLES: Record<TableName, TableDef> = {
       origin: enumOf(REQUEST_ORIGINS, false),
       sourceOrderId: id(false),
       requestedForUserId: id(false),
+      ncm: str(10),
+      ncmSource: enumOf(REQUEST_NCM_SOURCES, false),
+      ncmConfirmedByUserId: id(false),
+      ncmConfirmedAt: datetime(),
+      ncmSuggestions: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
