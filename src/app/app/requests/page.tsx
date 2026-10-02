@@ -1,9 +1,15 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
+import { canDeleteRequest } from "@/lib/services/requests";
+import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { deleteRequestsAction } from "../actions/requests";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
+  Alert,
   Badge,
   Card,
   Empty,
@@ -23,7 +29,13 @@ import { TaskItems } from "@/components/task-list";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
 
-export default async function RequestsPage() {
+const BULK_FORM = "requests-bulk-delete";
+
+export default async function RequestsPage({
+  searchParams,
+}: PageProps<"/app/requests">) {
+  const { view, deleted, skipped, error } = await searchParams;
+  const showDeleted = view === "deleted";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
@@ -43,7 +55,16 @@ export default async function RequestsPage() {
     customer ? pendingTasksFor(user) : Promise.resolve([]),
     customer ? customerOrdersInProgress(user) : Promise.resolve([]),
   ]);
-  const requests = allRequests.filter((r) => canViewRequest(user, r));
+  const visible = allRequests.filter((r) => canViewRequest(user, r));
+  // Excluídas (CANCELLED) saem da lista; ficam no filtro "Ver excluídas".
+  const deletedCount = visible.filter((r) => r.status === "CANCELLED").length;
+  const requests = visible.filter((r) =>
+    showDeleted ? r.status === "CANCELLED" : r.status !== "CANCELLED",
+  );
+  const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
+  const count = (v: string | string[] | undefined) =>
+    typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
+  const errorKey = `reqDelete.error.${typeof error === "string" ? error : ""}`;
 
   return (
     <>
@@ -199,6 +220,52 @@ export default async function RequestsPage() {
           </h2>
         </div>
       ) : null}
+      {count(deleted) > 0 ? (
+        <div className="mb-3">
+          <Alert tone="success">
+            {t("reqDelete.done", { n: count(deleted) })}
+            {count(skipped) > 0
+              ? ` ${t("reqDelete.skipped", { n: count(skipped) })}`
+              : ""}
+          </Alert>
+        </div>
+      ) : null}
+      {typeof error === "string" && error ? (
+        <div className="mb-3">
+          <Alert tone="danger">
+            {t(errorKey as DictionaryKey) !== errorKey
+              ? t(errorKey as DictionaryKey)
+              : t("common.error")}
+          </Alert>
+        </div>
+      ) : null}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+        {showDeleted ? (
+          <>
+            <span className="text-zinc-600">{t("reqDelete.deletedTitle")}</span>
+            <TextLink href="/app/requests">
+              {t("reqDelete.backToList")}
+            </TextLink>
+          </>
+        ) : deletedCount > 0 ? (
+          <TextLink href="/app/requests?view=deleted" className="ml-auto">
+            {t("reqDelete.showDeleted", { n: deletedCount })}
+          </TextLink>
+        ) : null}
+      </div>
+      {!showDeleted && anyDeletable ? (
+        <BulkDeleteBar
+          formId={BULK_FORM}
+          action={deleteRequestsAction}
+          labels={{
+            selectAll: t("reqDelete.selectAll"),
+            clear: t("reqDelete.clear"),
+            selected: t("reqDelete.selected"),
+            deleteSelected: t("reqDelete.deleteSelected"),
+            confirmMany: t("reqDelete.confirmMany"),
+          }}
+        />
+      ) : null}
       {requests.length === 0 ? (
         <Empty>
           {customer ? t("customerHome.requests.empty") : t("common.none")}
@@ -207,6 +274,14 @@ export default async function RequestsPage() {
         <Table>
           <thead>
             <tr>
+              {!showDeleted && anyDeletable ? (
+                <Th className="w-10">
+                  <BulkSelectAll
+                    formId={BULK_FORM}
+                    label={t("reqDelete.selectAll")}
+                  />
+                </Th>
+              ) : null}
               <Th>{t("common.product")}</Th>
               {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
               <Th>{t("common.quantity")}</Th>
@@ -218,6 +293,28 @@ export default async function RequestsPage() {
           <tbody>
             {requests.map((r) => (
               <tr key={r.id} className={rowClass}>
+                {!showDeleted && anyDeletable ? (
+                  <Td className="w-10">
+                    {canDeleteRequest(user, r) ? (
+                      <input
+                        type="checkbox"
+                        name="ids"
+                        value={r.id}
+                        form={BULK_FORM}
+                        aria-label={`${t("reqDelete.selectOne")}: ${r.productName}`}
+                        className="h-4 w-4 accent-brand-600"
+                      />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        disabled
+                        aria-label={t("reqDelete.ordered")}
+                        title={t("reqDelete.ordered")}
+                        className="h-4 w-4 cursor-not-allowed opacity-40"
+                      />
+                    )}
+                  </Td>
+                ) : null}
                 <Td className="min-w-40 font-medium text-zinc-900">
                   {r.productName}
                 </Td>
@@ -248,9 +345,20 @@ export default async function RequestsPage() {
                   {formatDate(r.deadline)}
                 </Td>
                 <Td className="text-right">
-                  <TextLink href={`/app/requests/${r.id}`}>
-                    {t("tasks.open")}
-                  </TextLink>
+                  <div className="flex items-center justify-end gap-3">
+                    <TextLink href={`/app/requests/${r.id}`}>
+                      {t("tasks.open")}
+                    </TextLink>
+                    {!showDeleted && canDeleteRequest(user, r) ? (
+                      <form action={deleteRequestsAction}>
+                        <input type="hidden" name="ids" value={r.id} />
+                        <ConfirmDeleteButton
+                          label={t("reqDelete.delete")}
+                          confirmText={t("reqDelete.confirmOne")}
+                        />
+                      </form>
+                    ) : null}
+                  </div>
                 </Td>
               </tr>
             ))}

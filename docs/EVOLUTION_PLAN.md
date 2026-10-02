@@ -149,6 +149,17 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
   - Sem estoque, o quadro diz que a Wellmix cota com o fornecedor.
 - Limite: não há baixa de estoque por venda fora de pedido. Containers encerrados saem da conta.
 
+### Excluir solicitações (uma, várias ou todas)
+
+- Na lista de solicitações há uma caixa em cada linha, "Selecionar todas" (no cabeçalho e na barra), "Excluir selecionadas (N)" e um botão de lixeira por linha. Toda exclusão pede confirmação antes.
+- Excluir não apaga dados (`deleteRequests` em `services/requests.ts`):
+  - a solicitação passa para `CANCELLED`, status que já existia;
+  - as cotações em aberto (convidadas ou respondidas) são encerradas como `rejected`, e somem das pendências do fornecedor;
+  - a ação fica na auditoria como `request.delete`.
+- As excluídas saem da lista e ficam no filtro "Ver excluídas".
+- Quem pode excluir: a Wellmix, qualquer solicitação; o cliente, só as dele (`canViewRequest`). Só vale para solicitação que ainda não virou pedido.
+- Solicitação com pedido criado aparece com a caixa desabilitada, porque o pedido continua. Cancelar pedido é outra decisão: exige status novo de pedido e regras para pagamentos e containers.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.

@@ -622,3 +622,59 @@ export async function createFollowUpRequest(
     sourceOrderId: order.id,
   });
 }
+
+/** Solicitações que ainda podem ser excluídas: não viraram pedido nem foram excluídas. */
+export const DELETABLE_REQUEST_STATUSES = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+  "SUPPLIER_SELECTED",
+  "WAITING_DOWN_PAYMENT",
+] as const;
+
+export function canDeleteRequest(user: User, request: Request) {
+  return (
+    canViewRequest(user, request) &&
+    (DELETABLE_REQUEST_STATUSES as readonly string[]).includes(request.status)
+  );
+}
+
+/**
+ * Excluir solicitações = cancelar (status CANCELLED), sem apagar dados: a
+ * solicitação sai da lista e das pendências, fica na auditoria e pode ser vista
+ * no filtro "Excluídas". Cotações em aberto são encerradas para o fornecedor.
+ * Solicitação que virou pedido não é excluída por aqui (o pedido segue).
+ */
+export async function deleteRequests(
+  user: User,
+  ids: string[],
+): Promise<{ deleted: number; skipped: number }> {
+  if (!(isWellmix(user) || user.role === "customer"))
+    throw new ForbiddenError();
+  const store = getStore();
+  const unique = [...new Set(ids)];
+  const rows = unique.length
+    ? await store.list("requests", { filter: { id: unique } })
+    : [];
+  let deleted = 0;
+  for (const request of rows) {
+    if (!canDeleteRequest(user, request)) continue;
+    await store.update("requests", request.id, { status: "CANCELLED" });
+    const quotes = await store.list("quotes", {
+      filter: { requestId: request.id, status: ["invited", "answered"] },
+    });
+    for (const q of quotes)
+      await store.update("quotes", q.id, { status: "rejected" });
+    await audit(
+      user,
+      "request.delete",
+      "request",
+      request.id,
+      `Solicitação excluída: ${request.productName}`,
+      { status: request.status },
+      { status: "CANCELLED" },
+    );
+    deleted++;
+  }
+  return { deleted, skipped: unique.length - deleted };
+}
