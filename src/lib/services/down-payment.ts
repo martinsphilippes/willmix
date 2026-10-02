@@ -25,6 +25,19 @@ export interface PixForRequest {
 }
 
 /**
+ * Nome e cidade do recebedor: obrigatórios no código Pix (padrão do Banco
+ * Central), mas só informativos — quem paga vê, na confirmação do banco, o
+ * titular real da chave. Não são mais pedidos na tela: usa o que já estiver
+ * salvo; vazio, o nome da importadora e "BRASIL".
+ */
+export function pixReceiver(s: Settings) {
+  return {
+    receiverName: s.pixReceiverName.trim() || s.importerName || "Wellmix",
+    receiverCity: s.pixReceiverCity.trim() || "BRASIL",
+  };
+}
+
+/**
  * Pix do sinal da solicitação, com valor e referência. Só para valor em reais e
  * com a chave configurada pelo admin; caso contrário diz por que não há Pix.
  */
@@ -33,8 +46,8 @@ export async function pixForRequest(
   settings?: Settings,
 ): Promise<PixForRequest | { unavailable: PixUnavailable }> {
   const s = settings ?? (await getSettings());
-  if (!s.pixKey || !s.pixReceiverName || !s.pixReceiverCity)
-    return { unavailable: "not_configured" };
+  if (!s.pixKey) return { unavailable: "not_configured" };
+  const { receiverName, receiverCity } = pixReceiver(s);
   if ((request.sellCurrency ?? "").toUpperCase() !== "BRL")
     return { unavailable: "not_brl" };
   const amount = request.downPaymentAmount;
@@ -42,8 +55,8 @@ export async function pixForRequest(
   const reference = pixReference("WMX", request.id);
   const payload = buildPixPayload({
     key: s.pixKey,
-    receiverName: s.pixReceiverName,
-    receiverCity: s.pixReceiverCity,
+    receiverName,
+    receiverCity,
     amount,
     reference,
   });
@@ -56,8 +69,8 @@ export async function pixForRequest(
     payload,
     qrDataUrl: `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`,
     key: normalizePixKey(s.pixKey).key,
-    receiverName: s.pixReceiverName,
-    receiverCity: s.pixReceiverCity,
+    receiverName,
+    receiverCity,
     amount,
     reference,
   };

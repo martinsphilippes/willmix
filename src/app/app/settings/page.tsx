@@ -488,26 +488,6 @@ export default async function SettingsPage({
                 />
               </Field>
             </div>
-            <Field
-              label={t("payments.settings.receiverName")}
-              hint={t("payments.settings.receiverNameHint")}
-            >
-              <Input
-                name="pixReceiverName"
-                maxLength={25}
-                defaultValue={s.pixReceiverName}
-              />
-            </Field>
-            <Field
-              label={t("payments.settings.receiverCity")}
-              hint={t("payments.settings.receiverCityHint")}
-            >
-              <Input
-                name="pixReceiverCity"
-                maxLength={15}
-                defaultValue={s.pixReceiverCity}
-              />
-            </Field>
           </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
             paymentMode={DEFAULT_SETTINGS.paymentMode} · whatsappMode=

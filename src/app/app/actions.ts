@@ -987,15 +987,6 @@ export async function saveSettingsAction(form: FormData) {
       }
       pairs.push([key, value]);
     }
-    // Pix só fica ativo completo: com chave, recebedor e cidade.
-    const pix = Object.fromEntries(
-      pairs.filter(([k]) => k.startsWith("pix")),
-    ) as Record<string, string | undefined>;
-    if (
-      pix.pixKey &&
-      (!pix.pixReceiverName?.trim() || !pix.pixReceiverCity?.trim())
-    )
-      throw new Error("pix_incomplete");
     for (const [key, value] of pairs) await setSetting(key, value as never);
     await audit(
       user,

@@ -130,10 +130,17 @@ describe("sinal da solicitação", () => {
     expect(await pixForRequest(request)).toEqual({
       unavailable: "not_configured",
     });
+    // Só a chave basta: recebedor e cidade vêm da importadora e "BRASIL".
     await setSetting("pixKey", "financeiro@wellmix.com.br");
+    const onlyKey = await pixForRequest(request);
+    expect("payload" in onlyKey && onlyKey.payload).toContain(
+      "5907WELLMIX6006BRASIL",
+    );
+    // Nome e cidade já salvos continuam valendo.
     await setSetting("pixReceiverName", "Wellmix");
     await setSetting("pixReceiverCity", "Sao Paulo");
     const pix = await pixForRequest(request);
+    expect("payload" in pix && pix.payload).toContain("6009SAO PAULO");
     expect("payload" in pix && pix.payload).toContain("5406300.00");
     expect("qrDataUrl" in pix && pix.qrDataUrl).toMatch(
       /^data:image\/svg\+xml;base64,/,
