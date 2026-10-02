@@ -254,6 +254,12 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Tabela nova: precisa rodar o workflow "Publicar esquema Appwrite" (ver `docs/APPWRITE.md`).
 - Próximos passos possíveis: frete por mais de um modal (rodoviário no Brasil, despachante), validade do frete com alerta, comparação de companhias na própria tela.
 
+## Ficha completa na RFQ; Preparação automática
+
+- A resposta da RFQ exige a ficha inteira, como a Preparação: campos com *, 1º lote da programação e as fotos da balança e da régua (fotos da cotação: `product_photos.orderId` = id da cotação; documento sem pedido/solicitação, visível só à Wellmix e a quem enviou).
+- Ao confirmar o sinal, ficha e fotos da cotação escolhida vão para o pedido (o documento passa a ser do pedido, visível aos parceiros).
+- Quando a Preparação começa (após "Pedido conferido"), se a ficha está completa os requisitos se cumprem na hora e a etapa se conclui sozinha (`syncPreparationFromSheet` no `activateStage`). Pedidos antigos ou cotações registradas sem ficha seguem com a Preparação normal, que mostra o que falta.
+
 ## Tributos da importação no valor ao cliente
 
 - **Tabela fiscal (TEC + TIPI):** upload da planilha oficial (XLSX/CSV, título acima do cabeçalho, linhas "Ex" ignoradas, "NT" = 0%) e robô mensal pelos links oficiais (`/api/jobs/fiscal`). Fica como JSON no armazenamento; metadados em `settings.fiscalTable`. Cada upload substitui só a sua parte e informa quantas alíquotas mudaram (auditoria `fiscal.import`). Tabela incompleta ou com mais de 90 dias: aviso.

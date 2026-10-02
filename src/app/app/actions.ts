@@ -330,6 +330,21 @@ export async function submitRequirementAction(form: FormData) {
   });
 }
 
+/** Exclui a foto/arquivo de um requisito para enviar outro. */
+export async function clearRequirementDocumentAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const requirementId = str(form, "requirementId");
+  await run(`/app/orders/${orderId}`, async () => {
+    const requirement = await getStore().get("requirements", requirementId);
+    if (!requirement || requirement.orderId !== orderId)
+      throw new Error("not_found");
+    const { clearRequirementDocument } = await import("@/lib/workflow/engine");
+    await clearRequirementDocument(user, requirementId);
+    return `/app/orders/${orderId}#stage-${requirement.stageId}`;
+  });
+}
+
 function docTypeForKey(key: string): DocumentType | null {
   const map: Record<string, DocumentType> = {
     dieline: "dieline",

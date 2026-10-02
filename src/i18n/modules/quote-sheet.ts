@@ -4,7 +4,9 @@
  */
 export const pt = {
   "quoteSheet.intro":
-    "Responda a cotação preenchendo a ficha de compra completa (os campos com * são obrigatórios). Fotos não são necessárias agora: ficam para a Preparação, se a sua cotação for escolhida. O preço e a moeda da cotação são os da ficha.",
+    "Responda a cotação preenchendo a ficha de compra completa: os campos com *, a programação dos lotes e as fotos obrigatórias (balança e régua). Se a sua cotação for escolhida, o pedido já nasce com a Preparação concluída. O preço e a moeda da cotação são os da ficha.",
+  "quoteSheet.photosHint":
+    "Envie as fotos antes de clicar em Enviar cotação: a da balança e a com régua são obrigatórias. Salve o rascunho da ficha antes de enviar fotos, para não perder o que digitou.",
   "quoteSheet.title": "Ficha de compra da cotação",
   "quoteSheet.leadTime": "Prazo de produção (dias)",
   "quoteSheet.conditions": "Condições de pagamento e observações",
@@ -16,7 +18,7 @@ export const pt = {
   "quoteSheet.saved.sent": "Cotação enviada à Wellmix com a ficha de compra.",
   "quoteSheet.missing": "Para enviar, falta preencher: {fields}.",
   "quoteSheet.error.sheet_incomplete":
-    "A ficha foi salva, mas ainda está incompleta: preencha os campos com * para enviar a cotação.",
+    "A ficha foi salva, mas ainda está incompleta: preencha os campos com *, o 1º lote da programação e as fotos da balança e da régua para enviar a cotação.",
   "quoteSheet.readOnly": "Cotação encerrada: a ficha fica só para consulta.",
   "quoteSheet.wellmixHint":
     "A Wellmix pode completar NCM, imposto de importação e IPI: entram no custo importado do valor ao cliente.",
@@ -24,7 +26,9 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.intro":
-    "Answer the quotation by filling in the complete purchase sheet (fields with * are required). Photos are not needed now: they come in Preparation if your quotation is chosen. The quotation price and currency are the sheet's.",
+    "Answer the quotation by filling in the complete purchase sheet: fields with *, the lot schedule and the required photos (scale and ruler). If your quotation is chosen, the order starts with Preparation already done. The quotation price and currency are the sheet's.",
+  "quoteSheet.photosHint":
+    "Upload the photos before clicking Send quotation: the scale and ruler photos are required. Save the sheet draft before uploading photos so you do not lose what you typed.",
   "quoteSheet.title": "Quotation purchase sheet",
   "quoteSheet.leadTime": "Production lead time (days)",
   "quoteSheet.conditions": "Payment terms and notes",
@@ -36,7 +40,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.saved.sent": "Quotation sent to Wellmix with the purchase sheet.",
   "quoteSheet.missing": "To send, still missing: {fields}.",
   "quoteSheet.error.sheet_incomplete":
-    "The sheet was saved but is still incomplete: fill in the fields with * to send the quotation.",
+    "The sheet was saved but is still incomplete: fill in the fields with *, the 1st lot of the schedule and the scale and ruler photos to send the quotation.",
   "quoteSheet.readOnly": "Quotation closed: the sheet is read-only.",
   "quoteSheet.wellmixHint":
     "Wellmix can complete NCM, import duty and IPI: they go into the landed cost of the customer value.",
@@ -44,18 +48,21 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "quoteSheet.intro":
-    "请填写完整的采购单来回复报价（带 * 的为必填项）。现在不需要照片：如果您的报价被选中，将在备货阶段上传。报价的价格和币种以采购单为准。",
+    "请填写完整的采购单来回复报价：带 * 的字段、批次计划以及必需的照片（称重和尺子）。如果您的报价被选中，订单的备货阶段将直接完成。报价的价格和币种以采购单为准。",
+  "quoteSheet.photosHint":
+    "请在点击“提交报价”前上传照片：称重照片和带尺子的照片为必需。上传照片前请先保存采购单草稿，以免丢失已填写的内容。",
   "quoteSheet.title": "报价采购单",
   "quoteSheet.leadTime": "生产周期（天）",
   "quoteSheet.conditions": "付款条件和备注",
   "quoteSheet.saveDraft": "保存草稿",
   "quoteSheet.send": "提交报价",
   "quoteSheet.saved.partial": "草稿已保存。尚未填写：{fields}。",
-  "quoteSheet.saved.complete": "草稿已保存，采购单已完整。请检查后点击提交报价。",
+  "quoteSheet.saved.complete":
+    "草稿已保存，采购单已完整。请检查后点击提交报价。",
   "quoteSheet.saved.sent": "报价已连同采购单提交给 Wellmix。",
   "quoteSheet.missing": "提交前还需填写：{fields}。",
   "quoteSheet.error.sheet_incomplete":
-    "采购单已保存，但仍不完整：请填写带 * 的字段后再提交报价。",
+    "采购单已保存，但仍不完整：请填写带 * 的字段、第 1 批计划以及称重和尺子照片后再提交报价。",
   "quoteSheet.readOnly": "报价已关闭：采购单仅供查看。",
   "quoteSheet.wellmixHint":
     "Wellmix 可以补充 NCM、进口税和 IPI：这些将计入客户价格的到岸成本。",

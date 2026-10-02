@@ -30,6 +30,7 @@ import * as importTaxes from "./import-taxes";
 import * as errors from "./errors";
 import * as rfq from "./rfq";
 import * as sheetProgress from "./sheet-progress";
+import * as requirementFiles from "./requirement-files";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -59,6 +60,7 @@ export const modulesPt = {
   ...errors.pt,
   ...rfq.pt,
   ...sheetProgress.pt,
+  ...requirementFiles.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -88,6 +90,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...errors.en,
   ...rfq.en,
   ...sheetProgress.en,
+  ...requirementFiles.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -117,4 +120,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...errors.zh,
   ...rfq.zh,
   ...sheetProgress.zh,
+  ...requirementFiles.zh,
 };

@@ -73,7 +73,8 @@ export async function createStagesForOrder(order: Order) {
         key: req.key,
         label: req.label,
         type: req.type,
-        required: req.required,
+        // Foto é sempre obrigatória (evidência do pedido).
+        required: req.type === "photo" ? true : req.required,
         role: req.role,
         status: "pending",
         value: null,
@@ -210,6 +211,69 @@ export async function submitRequirement(
 
   await evaluateStage(user, stage.id);
   return updated;
+}
+
+/**
+ * Exclui a foto/arquivo enviado num requisito para mandar outro: o requisito
+ * volta a pendente (a etapa recalcula o percentual). Só com a etapa aberta e
+ * por quem pode enviar.
+ */
+export async function clearRequirementDocument(
+  user: User,
+  requirementId: string,
+) {
+  const store = getStore();
+  const requirement = await store.get("requirements", requirementId);
+  if (!requirement) throw new WorkflowError("requirement_not_found");
+  const [stage, order] = await Promise.all([
+    store.get("stages", requirement.stageId),
+    store.get("orders", requirement.orderId),
+  ]);
+  if (!stage || !order) throw new WorkflowError("order_not_found");
+  if (!canSubmitRequirement(user, order, requirement))
+    throw new ForbiddenError();
+  if (stage.status !== "active" && stage.status !== "blocked")
+    throw new WorkflowError("stage_not_active");
+  if (requirement.type !== "photo" && requirement.type !== "file")
+    throw new WorkflowError("not_a_file");
+  const documentId = requirement.documentId;
+  await store.update("requirements", requirement.id, {
+    status: "pending",
+    value: null,
+    documentId: null,
+    submittedByUserId: null,
+    submittedAt: null,
+  });
+  if (documentId) {
+    const doc = await store.get("documents", documentId);
+    if (doc && doc.requirementId === requirement.id) {
+      await store.remove("documents", doc.id);
+      await store.removeFile(doc.storageKey).catch((error) => {
+        console.error("clearRequirementDocument: arquivo não apagado", error);
+      });
+    }
+  }
+  // Arte excluída: a aprovação da agência volta a pendente (como no reenvio).
+  if (requirement.key === "art") {
+    const approvals = await store.list("requirements", {
+      filter: { stageId: stage.id, key: "art_approval" },
+    });
+    for (const approval of approvals)
+      if (approval.status !== "pending")
+        await store.update("requirements", approval.id, {
+          status: "pending",
+          value: null,
+          note: null,
+        });
+  }
+  await audit(
+    user,
+    "requirement.clear",
+    "requirement",
+    requirement.id,
+    `${stage.key}: ${requirement.label} (arquivo excluído)`,
+  );
+  await evaluateStage(user, stage.id);
 }
 
 /** Aprova ou reprova um requisito do tipo approval (agência, revisão Wellmix). */
@@ -541,6 +605,15 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
     currentStageId: stage.id,
   });
   await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
+
+  // Preparação com a ficha completa desde a cotação: conclui sem pedir nada ao fornecedor.
+  if (key === "PREPARATION" && user && required.length > 0) {
+    const { syncPreparationFromSheet } =
+      await import("@/lib/services/purchase-sheet");
+    await syncPreparationFromSheet(user, order.id);
+    const fresh = await store.get("stages", stage.id);
+    if (fresh?.status === "done") return;
+  }
 
   if (required.length === 0) {
     // Etapa sem requisitos (CLOSED) conclui na hora.
