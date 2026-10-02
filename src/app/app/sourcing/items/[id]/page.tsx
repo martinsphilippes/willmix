@@ -18,7 +18,6 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
-  Button,
   Card,
   DescriptionList,
   Field,
@@ -31,10 +30,9 @@ import {
   cx,
   formatDate,
   formatMoney,
-  linkClass,
 } from "@/components/ui";
 import { PhotoInput } from "@/components/photo-input";
-import { SubmitButton } from "@/components/submit-button";
+import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   linkSourcingItemRequestAction,
   saveSourcingPriceTiersAction,
@@ -241,12 +239,9 @@ export default async function SourcingItemPage({
                               value={item.id}
                             />
                             <input type="hidden" name="photoId" value={p.id} />
-                            <button
-                              type="submit"
-                              className={`${linkClass} block w-full py-1.5 text-xs`}
-                            >
+                            <SubmitTextButton className="w-full justify-center py-1.5 text-xs">
                               {t("sourcing.photo.setPrimary")}
-                            </button>
+                            </SubmitTextButton>
                           </form>
                         ) : null}
                       </li>
@@ -646,13 +641,13 @@ export default async function SourcingItemPage({
                 className="border-t border-zinc-100 pt-4"
               >
                 <input type="hidden" name="itemId" value={item.id} />
-                <Button
+                <SubmitButton
                   type="submit"
                   variant="danger"
                   className="w-full sm:w-auto"
                 >
                   {t("sourcing.item.discard")}
-                </Button>
+                </SubmitButton>
                 <p className="mt-2 text-xs text-zinc-500">
                   {t("sourcing.item.discardHint")}
                 </p>

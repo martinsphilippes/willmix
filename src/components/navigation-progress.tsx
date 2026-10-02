@@ -4,7 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 /**
- * Barra de progresso no topo ao clicar em qualquer link interno: a tela responde
+ * Barra de progresso no topo ao clicar em qualquer link interno ou enviar um formulário: a tela responde
  * na hora, enquanto a próxima página chega. Some quando a rota muda. Não usa
  * Suspense (loading.tsx), para as páginas manterem o código de resposta (404).
  */
@@ -39,8 +39,26 @@ export function NavigationProgress() {
         `${here.pathname}?${new URLSearchParams(here.search).toString()}`,
       );
     }
+    // Envio de formulário (ação no servidor ou filtro): a barra aparece na hora e
+    // some quando a rota muda ou o botão avisa que terminou (wellmix:form-done).
+    // Não olha defaultPrevented: o React cancela o envio nativo das Server Actions.
+    function onSubmit() {
+      const here = window.location;
+      setStartedAt(
+        `${here.pathname}?${new URLSearchParams(here.search).toString()}`,
+      );
+    }
+    function onDone() {
+      setStartedAt(null);
+    }
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    document.addEventListener("submit", onSubmit);
+    window.addEventListener("wellmix:form-done", onDone);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("submit", onSubmit);
+      window.removeEventListener("wellmix:form-done", onDone);
+    };
   }, []);
 
   useEffect(() => {

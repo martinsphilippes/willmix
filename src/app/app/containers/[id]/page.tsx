@@ -8,7 +8,6 @@ import { getT } from "@/i18n/server";
 import {
   Alert,
   Badge,
-  Button,
   Card,
   DescriptionList,
   Empty,
@@ -340,13 +339,13 @@ export default async function ContainerPage({
                           value={container.id}
                         />
                         <input type="hidden" name="itemId" value={item.id} />
-                        <Button
+                        <SubmitButton
                           type="submit"
                           variant="danger"
                           className="px-2.5 py-1 text-xs"
                         >
                           {t("containers.remove")}
-                        </Button>
+                        </SubmitButton>
                       </form>
                     )}
                   </Td>

@@ -12,7 +12,6 @@ import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
-  Button,
   Card,
   Empty,
   Field,
@@ -28,6 +27,7 @@ import {
   formatMoney,
   rowClass,
 } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 import { KitStatusBadge, marketingError } from "./_components/shared";
 
 /**
@@ -187,9 +187,13 @@ export default async function MarketingPage({
                 </Select>
               </Field>
               <div className="flex gap-2">
-                <Button type="submit" variant="secondary" className="flex-1">
+                <SubmitButton
+                  type="submit"
+                  variant="secondary"
+                  className="flex-1"
+                >
                   {t("marketing.filter.apply")}
-                </Button>
+                </SubmitButton>
                 {status || customerId || productId ? (
                   <LinkButton href="/app/marketing" variant="ghost">
                     {t("marketing.filter.clear")}

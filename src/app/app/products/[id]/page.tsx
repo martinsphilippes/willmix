@@ -34,7 +34,6 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
-  Button,
   Card,
   DescriptionList,
   Empty,
@@ -56,7 +55,7 @@ import {
   type Tone,
 } from "@/components/ui";
 import { PhotoInput } from "@/components/photo-input";
-import { SubmitButton } from "@/components/submit-button";
+import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   addProductMeasurementAction,
   addProductPhotosAction,
@@ -642,12 +641,9 @@ export default async function ProductSheetPage({
                               name="photoId"
                               value={photo.id}
                             />
-                            <button
-                              type="submit"
-                              className={cx(linkClass, "text-xs")}
-                            >
+                            <SubmitTextButton className="text-xs">
                               {t("catalog.photos.setPrimary")}
-                            </button>
+                            </SubmitTextButton>
                           </form>
                         )}
                       </li>
@@ -1096,13 +1092,13 @@ export default async function ProductSheetPage({
                   />
                 </Field>
               </div>
-              <Button
+              <SubmitButton
                 type="submit"
                 variant="secondary"
                 className={cx(big, analysis ? "mb-5" : undefined)}
               >
                 {t("catalog.opp.analyze")}
-              </Button>
+              </SubmitButton>
             </form>
             {tiers.length === 0 ? (
               <p className="text-sm text-zinc-600">

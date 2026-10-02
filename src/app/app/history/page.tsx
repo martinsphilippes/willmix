@@ -9,7 +9,6 @@ import type { Translate } from "@/i18n";
 import {
   Alert,
   Badge,
-  Button,
   Empty,
   LinkButton,
   PageHeader,
@@ -22,6 +21,7 @@ import {
   formatMoney,
   rowClass,
 } from "@/components/ui";
+import { SubmitButton } from "@/components/submit-button";
 
 const interestTone = (v: string | null) =>
   v === "yes" ? "success" : v === "maybe" ? "warning" : "neutral";
@@ -145,9 +145,9 @@ export default async function HistoryPage({
                 ))}
               </Select>
             </label>
-            <Button type="submit" variant="secondary">
+            <SubmitButton type="submit" variant="secondary">
               {t("history.filter")}
-            </Button>
+            </SubmitButton>
           </form>
         ) : (
           <span />

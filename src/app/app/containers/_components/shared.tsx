@@ -40,14 +40,11 @@ export function errorMessage(
 }
 
 /** Número em pt-BR com até `digits` casas, sem zeros à direita. */
-export function formatNumber(
-  value: number | null | undefined,
-  digits = 3,
-) {
+export function formatNumber(value: number | null | undefined, digits = 3) {
   if (value === null || value === undefined) return "—";
-  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: digits }).format(
-    value,
-  );
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: digits,
+  }).format(value);
 }
 
 /** Percentual com 1 casa (ex.: 42,5%). */

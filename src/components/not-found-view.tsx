@@ -3,7 +3,11 @@ import { WellmixLogo } from "./brand";
 import { LinkButton } from "./ui";
 
 /** 404 com a marca: endereço inexistente ou recurso fora do alcance do papel do usuário. */
-export async function NotFoundView({ withLogo = false }: { withLogo?: boolean }) {
+export async function NotFoundView({
+  withLogo = false,
+}: {
+  withLogo?: boolean;
+}) {
   const t = await getT();
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-16 text-center">

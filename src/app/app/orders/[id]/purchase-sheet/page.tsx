@@ -122,7 +122,7 @@ export default async function PurchaseSheetPage({
         <input type="hidden" name="orderId" value={id} />
 
         <Card title={t("sheet.section.supplier")}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <F t={t} k="sheetDate">
               <Input
                 type="date"
@@ -178,7 +178,7 @@ export default async function PurchaseSheetPage({
         </Card>
 
         <Card title={t("sheet.section.price")}>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <F t={t} k="incoterm" required>
               <Select
                 name="incoterm"
@@ -217,7 +217,7 @@ export default async function PurchaseSheetPage({
         </Card>
 
         <Card title={t("sheet.section.carton")}>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <F t={t} k="masterCartonQty" required>
               <Num
                 name="masterCartonQty"
@@ -263,11 +263,15 @@ export default async function PurchaseSheetPage({
           <fieldset className="mt-4">
             <legend className="text-sm font-medium text-zinc-800">
               {t("sheet.field.size")}{" "}
-              <span className="text-xs font-normal text-zinc-500">
-                ({t("sheet.required")})
+              <span
+                className="ml-0.5 font-semibold text-brand-600"
+                title={t("sheet.required")}
+              >
+                <span aria-hidden>*</span>
+                <span className="sr-only">({t("sheet.required")})</span>
               </span>
             </legend>
-            <div className="mt-1 grid grid-cols-3 gap-3">
+            <div className="mt-1 grid grid-cols-3 gap-4">
               <Field
                 label={
                   <span className="text-xs text-zinc-600">
@@ -312,7 +316,7 @@ export default async function PurchaseSheetPage({
         </Card>
 
         <Card title={t("sheet.section.product")}>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <F t={t} k="netWeightPcKg" required>
               <Num
                 name="netWeightPcKg"
@@ -366,7 +370,7 @@ export default async function PurchaseSheetPage({
                 ))}
               </Select>
             </F>
-            <div className="col-span-2 sm:col-span-3">
+            <div className="sm:col-span-2 lg:col-span-3">
               <F t={t} k="powerDetail">
                 <Input
                   name="powerDetail"
@@ -381,7 +385,7 @@ export default async function PurchaseSheetPage({
         </Card>
 
         <Card title={t("sheet.section.schedule")}>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2">
             <F t={t} k="productionStartAt" required>
               <Input
                 type="date"
@@ -416,12 +420,16 @@ export default async function PurchaseSheetPage({
                 <p className="mb-2 text-sm font-semibold text-zinc-900">
                   {t("sheet.lot.title", { n: String(lot.index) })}
                   {lot.index === 1 ? (
-                    <span className="ml-1 text-xs font-normal text-zinc-500">
-                      ({t("sheet.required")})
+                    <span
+                      className="ml-0.5 font-semibold text-brand-600"
+                      title={t("sheet.required")}
+                    >
+                      <span aria-hidden>*</span>
+                      <span className="sr-only">({t("sheet.required")})</span>
                     </span>
                   ) : null}
                 </p>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                   <Field
                     label={
                       <span className="text-xs text-zinc-600">
@@ -547,7 +555,7 @@ export default async function PurchaseSheetPage({
         </Card>
 
         {access.editSupplier || access.editCustoms ? (
-          <div className="sticky bottom-0 z-10 -mx-4 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
+          <div className="sticky bottom-0 z-10 -mx-4 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
             <SubmitButton className="w-full py-3 text-base sm:w-auto">
               {t("sheet.save")}
             </SubmitButton>
@@ -580,8 +588,12 @@ function F({
         <>
           {t(`sheet.field.${k}` as DictionaryKey)}
           {required ? (
-            <span className="ml-1 text-xs font-normal text-zinc-500">
-              ({t("sheet.required")})
+            <span
+              className="ml-0.5 font-semibold text-brand-600"
+              title={t("sheet.required")}
+            >
+              <span aria-hidden>*</span>
+              <span className="sr-only">({t("sheet.required")})</span>
             </span>
           ) : null}
         </>
@@ -670,8 +682,12 @@ function Photos({
               <p className="text-sm font-semibold text-zinc-900">
                 {t(`catalog.photoKind.${kind}` as DictionaryKey)}
                 {required ? (
-                  <span className="ml-1 text-xs font-normal text-zinc-500">
-                    ({t("sheet.required")})
+                  <span
+                    className="ml-0.5 font-semibold text-brand-600"
+                    title={t("sheet.required")}
+                  >
+                    <span aria-hidden>*</span>
+                    <span className="sr-only">({t("sheet.required")})</span>
                   </span>
                 ) : null}
               </p>
