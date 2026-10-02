@@ -12,7 +12,7 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 
 | Decisão                | Escolha                                            | Motivo                                                                                            |
 | ---------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Front e API            | Next.js 16 App Router, Server Components e Actions | Um só deploy na Vercel (`gru1`); toda escrita passa pelo servidor com zod e checagem de papel     |
+| Front e API            | Next.js 16 App Router, Server Components e Actions | Um só deploy na Vercel (`fra1`, ao lado do Appwrite); toda escrita passa pelo servidor com zod e checagem de papel     |
 | Backend gerenciado     | Appwrite Cloud (Auth, TablesDB, Storage)           | Auth, banco e arquivos em um serviço, com console simples                                         |
 | Camada de dados        | `Store` com MemoryStore e AppwriteStore            | Desenvolver e testar sem credenciais; produção no Appwrite. Esquema único em `schema.ts`          |
 | Autorização            | Server-side, por papel, parceiro e login           | Cliente não vê outro cliente e cada login do cliente vê só o que solicitou; fornecedor não vê outro fornecedor nem margem; Wellmix vê tudo |

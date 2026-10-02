@@ -30,20 +30,20 @@ export default async function RequestsPage() {
   const t = await getT();
   const store = getStore();
   // Cliente: só as solicitações do próprio login (canViewRequest).
-  const requests = (
-    await store.list("requests", {
-      filter:
-        user.role === "customer" ? { customerId: user.partyId! } : undefined,
-      orderBy: "createdAt",
-      direction: "desc",
-    })
-  ).filter((r) => canViewRequest(user, r));
-  const parties = await store.list("parties", { filter: { type: "customer" } });
   // Cliente: esta é a página inicial; pendências e pedidos em andamento vêm no topo.
   const customer = user.role === "customer";
-  const [tasks, inProgress] = customer
-    ? await Promise.all([pendingTasksFor(user), customerOrdersInProgress(user)])
-    : [[], []];
+  // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
+  const [allRequests, parties, tasks, inProgress] = await Promise.all([
+    store.list("requests", {
+      filter: customer ? { customerId: user.partyId! } : undefined,
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    store.list("parties", { filter: { type: "customer" } }),
+    customer ? pendingTasksFor(user) : Promise.resolve([]),
+    customer ? customerOrdersInProgress(user) : Promise.resolve([]),
+  ]);
+  const requests = allRequests.filter((r) => canViewRequest(user, r));
 
   return (
     <>
@@ -58,9 +58,7 @@ export default async function RequestsPage() {
         }
         t={t}
         title={t("requests.title")}
-        subtitle={
-          customer ? t("home.welcome", { name: user.name }) : undefined
-        }
+        subtitle={customer ? t("home.welcome", { name: user.name }) : undefined}
         actions={
           customer ? undefined : (
             <LinkButton href="/app/requests/new" variant="primary">

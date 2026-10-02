@@ -272,12 +272,12 @@ export async function runComplianceGate(
 /** Certificações válidas a vencer (para exceções da Control Tower). */
 export async function expiringCertifications() {
   const store = getStore();
-  const settings = await getSettings();
+  const [settings, certs] = await Promise.all([
+    getSettings(),
+    store.list("certifications", { filter: { status: "valid" } }),
+  ]);
   const now = Date.now();
   const horizon = now + settings.certificationExpiryWarningDays * 86400000;
-  const certs = await store.list("certifications", {
-    filter: { status: "valid" },
-  });
   return certs.filter(
     (c) => c.validUntil && Date.parse(c.validUntil) <= horizon,
   );

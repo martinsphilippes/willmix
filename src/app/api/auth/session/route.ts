@@ -28,7 +28,11 @@ export async function POST(request: Request) {
       );
     }
     // Banco fora (ex.: projeto Appwrite pausado): não é a senha da pessoa.
-    console.error("login: serviço indisponível", serviceErrorCode(error));
+    console.error(
+      "login: serviço indisponível",
+      serviceErrorCode(error),
+      error instanceof Error ? error.message.slice(0, 200) : "",
+    );
     return NextResponse.json(
       { error: "Serviço indisponível", code: "unavailable" },
       { status: 503 },

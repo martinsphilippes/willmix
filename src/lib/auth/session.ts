@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { getStore, type User } from "@/lib/db";
@@ -72,6 +73,8 @@ export async function signOut() {
   }
   const { createSessionClient, sessionCookieName } =
     await import("@/lib/appwrite/server");
+  const secret = jar.get(sessionCookieName())?.value;
+  if (secret) recentSessions.delete(sessionKey(secret));
   const session = await createSessionClient();
   if (session) {
     await session.account
@@ -79,6 +82,23 @@ export async function signOut() {
       .catch(() => undefined);
   }
   jar.delete(sessionCookieName());
+}
+
+/*
+ * Cache curto de sessões conferidas (por instância do servidor). Guarda só o
+ * hash do segredo. Validade curta: usuário desativado ou com papel trocado
+ * perde o acesso antigo em no máximo SESSION_RECHECK_MS; logout apaga na hora.
+ */
+const SESSION_RECHECK_MS = 60_000;
+const recentSessions = new Map<string, { user: User; expires: number }>();
+
+function sessionKey(secret: string) {
+  return createHash("sha256").update(secret).digest("base64url");
+}
+
+function rememberSession(key: string, user: User) {
+  if (recentSessions.size > 5_000) recentSessions.clear();
+  recentSessions.set(key, { user, expires: Date.now() + SESSION_RECHECK_MS });
 }
 
 /** Usuário autenticado ou null. Nunca lança. Memoizado por requisição. */
@@ -95,7 +115,15 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
       const user = await store.get("users", payload.userId);
       return user && user.active ? user : null;
     }
-    const { createSessionClient } = await import("@/lib/appwrite/server");
+    const { createSessionClient, sessionCookieName } =
+      await import("@/lib/appwrite/server");
+    const secret = jar.get(sessionCookieName())?.value;
+    if (!secret) return null;
+    // Sessão já conferida há pouco nesta instância: evita 2 idas ao Appwrite
+    // (conta + usuário) em toda página e em toda foto.
+    const key = sessionKey(secret);
+    const hit = recentSessions.get(key);
+    if (hit && hit.expires > Date.now()) return hit.user;
     const session = await createSessionClient();
     if (!session) return null;
     const account = await session.account.get();
@@ -103,7 +131,9 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
       filter: { email: account.email.toLowerCase() },
       limit: 1,
     });
-    return user && user.active ? user : null;
+    const valid = user && user.active ? user : null;
+    if (valid) rememberSession(key, valid);
+    return valid;
   } catch {
     return null;
   }

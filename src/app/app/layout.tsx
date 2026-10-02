@@ -13,6 +13,8 @@ import { DEMO_PASSWORD, DEMO_USERS } from "@/lib/seed";
 import { setLocaleAction } from "./actions";
 import { dataMode } from "@/lib/env";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { Suspense } from "react";
+import { NavigationProgress } from "@/components/navigation-progress";
 
 interface NavItem {
   href: string;
@@ -74,6 +76,9 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
       <header className="bg-gradient-to-r from-brand-700 via-brand-600 to-brand-600 text-white shadow-md shadow-brand-900/20">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
           <Link

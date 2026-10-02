@@ -108,21 +108,60 @@ export default async function OrderPage({
   const remeasureMode = remeasure === "1";
   /* Ficha de compra (Preparação): quem vê ganha o atalho no item do checklist. */
   const sheet = sheetAccess(user, order);
-  const sheetHref = sheet.view ? `/app/orders/${order.id}/purchase-sheet` : null;
+  const sheetHref = sheet.view
+    ? `/app/orders/${order.id}/purchase-sheet`
+    : null;
 
-  const [parties, items, documents, payments, penalties, users] =
-    await Promise.all([
-      store.list("parties"),
-      store.list("order_items", { filter: { orderId: order.id } }),
-      store.list("documents", {
-        filter: { orderId: order.id },
-        orderBy: "createdAt",
-        direction: "desc",
-      }),
-      store.list("payments", { filter: { orderId: order.id } }),
-      store.list("penalties", { filter: { orderId: order.id } }),
-      store.list("users"),
-    ]);
+  /* Leituras independentes numa rodada só (cada ida ao banco é uma viagem de rede). */
+  const customerSide = wellmix || user.role === "customer";
+  const delivered = order.status === "CLOSED" || order.status === "DELIVERED";
+  const [
+    parties,
+    items,
+    documents,
+    payments,
+    penalties,
+    users,
+    finance,
+    snapshot,
+    inspection,
+    openReviews,
+    containers,
+    afterSales,
+    sourceRequest,
+    derivedRequests,
+  ] = await Promise.all([
+    store.list("parties"),
+    store.list("order_items", { filter: { orderId: order.id } }),
+    store.list("documents", {
+      filter: { orderId: order.id },
+      orderBy: "createdAt",
+      direction: "desc",
+    }),
+    store.list("payments", { filter: { orderId: order.id } }),
+    store.list("penalties", { filter: { orderId: order.id } }),
+    store.list("users"),
+    wellmix || user.role === "customer"
+      ? loadOrderFinance(order)
+      : Promise.resolve(null),
+    /* Evolução incremental: snapshot da compra, resultado da inspeção e fila (só Wellmix),
+       containers do pedido (todos, filtrado) e trilha visualizado/confirmado. */
+    wellmix ? getSnapshotForOrder(order.id) : Promise.resolve(null),
+    wellmix ? latestInspectionResult(order.id) : Promise.resolve(null),
+    wellmix ? listOpenReviews(order.id) : Promise.resolve([] as ReviewItem[]),
+    containersForOrder(order.id),
+    /* Módulo cliente 2: pós-venda, "comprar de novo / nova proposta" e origem da solicitação.
+       Só cliente (dono) e Wellmix; fornecedor e parceiros não veem avaliação nem preço de venda. */
+    customerSide ? getAfterSales(order.id) : Promise.resolve(null),
+    store.get("requests", order.requestId),
+    customerSide
+      ? store.list("requests", {
+          filter: { sourceOrderId: order.id },
+          orderBy: "createdAt",
+          direction: "desc",
+        })
+      : Promise.resolve([] as RequestRow[]),
+  ]);
   const partyName = (pid: string | null) =>
     parties.find((p) => p.id === pid)?.name ?? "—";
   const userName = (uid: string | null) =>
@@ -133,8 +172,6 @@ export default async function OrderPage({
   const currentStage =
     stages.find((s) => s.id === order.currentStageId) ?? null;
   const overdue = isOverdue(currentStage?.dueAt);
-  const finance =
-    wellmix || user.role === "customer" ? await loadOrderFinance(order) : null;
   const visiblePayments = payments.filter((p) =>
     wellmix
       ? true
@@ -145,22 +182,25 @@ export default async function OrderPage({
           : false,
   );
 
-  /* Evolução incremental: snapshot da compra, resultado da inspeção e fila (só Wellmix),
-     containers do pedido (todos, filtrado) e trilha visualizado/confirmado. */
-  const [snapshot, inspection, openReviews, containers] = await Promise.all([
-    wellmix ? getSnapshotForOrder(order.id) : Promise.resolve(null),
-    wellmix ? latestInspectionResult(order.id) : Promise.resolve(null),
-    wellmix ? listOpenReviews(order.id) : Promise.resolve([] as ReviewItem[]),
-    containersForOrder(order.id),
-  ]);
   const showTrail = wellmix || user.role === "supplier";
   /* Trilha: o fornecedor abrindo o pedido registra "visualizado" nos pagamentos a ele
      (o mesmo que a conta corrente faz); confirmar continua sendo o ato explícito do botão. */
   if (user.role === "supplier") {
-    for (const p of visiblePayments)
-      await recordAck(user, "payment", p.id, "viewed");
+    await Promise.all(
+      visiblePayments.map((p) => recordAck(user, "payment", p.id, "viewed")),
+    );
   }
-  const [paymentTrails, documentTrails, confirmedDocs] = await Promise.all([
+  const origin =
+    sourceRequest?.origin && sourceRequest.origin !== "manual"
+      ? sourceRequest.origin
+      : null;
+  const [
+    paymentTrails,
+    documentTrails,
+    confirmedDocs,
+    followProduct,
+    sourceOrderRow,
+  ] = await Promise.all([
     showTrail
       ? ackTrails("payment", visiblePayments, (p) => p.registeredByUserId)
       : Promise.resolve({} as Record<string, AckSummary>),
@@ -171,38 +211,16 @@ export default async function OrderPage({
       visibleDocs.map((d) => d.id),
       "confirmed",
     ),
+    (customerSide || user.role === "broker") && items[0]?.productId
+      ? store.get("products", items[0].productId)
+      : Promise.resolve(null),
+    /* Link ao pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
+    origin && sourceRequest?.sourceOrderId
+      ? store.get("orders", sourceRequest.sourceOrderId)
+      : Promise.resolve(null),
   ]);
   const inspectionStage = stages.find((s) => s.key === "INSPECTION") ?? null;
   const inspectionBlocked = inspectionStage?.status === "blocked";
-
-  /* Módulo cliente 2: pós-venda, "comprar de novo / nova proposta" e origem da solicitação.
-     Só cliente (dono) e Wellmix; fornecedor e parceiros não veem avaliação nem preço de venda. */
-  const customerSide = wellmix || user.role === "customer";
-  const delivered = order.status === "CLOSED" || order.status === "DELIVERED";
-  const [afterSales, sourceRequest, derivedRequests, followProduct] =
-    await Promise.all([
-      customerSide ? getAfterSales(order.id) : Promise.resolve(null),
-      store.get("requests", order.requestId),
-      customerSide
-        ? store.list("requests", {
-            filter: { sourceOrderId: order.id },
-            orderBy: "createdAt",
-            direction: "desc",
-          })
-        : Promise.resolve([] as RequestRow[]),
-      (customerSide || user.role === "broker") && items[0]?.productId
-        ? store.get("products", items[0].productId)
-        : Promise.resolve(null),
-    ]);
-  const origin =
-    sourceRequest?.origin && sourceRequest.origin !== "manual"
-      ? sourceRequest.origin
-      : null;
-  /* Link ao pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
-  const sourceOrderRow =
-    origin && sourceRequest?.sourceOrderId
-      ? await store.get("orders", sourceRequest.sourceOrderId)
-      : null;
   const sourceOrder =
     sourceOrderRow && canViewOrder(user, sourceOrderRow)
       ? sourceOrderRow

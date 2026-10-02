@@ -52,3 +52,13 @@ body {
   outline: 2px solid var(--color-brand-600);
   outline-offset: 2px;
 }
+
+/* Barra de progresso ao navegar (src/components/navigation-progress.tsx). */
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}

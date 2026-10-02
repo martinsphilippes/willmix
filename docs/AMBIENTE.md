@@ -5,7 +5,7 @@
 | Serviço  | Estado                   | Observações                                                                 |
 | -------- | ------------------------ | --------------------------------------------------------------------------- |
 | GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
-| Vercel   | conectado                | Projeto `wellmix`, time `martinsphilippes`, região `gru1`. Deploy por push. |
+| Vercel   | conectado                | Projeto `wellmix`, time `martinsphilippes`, região `fra1` (Frankfurt, a mesma do Appwrite). Deploy por push. |
 | Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados          |
 | Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                       |
 
@@ -51,3 +51,13 @@ No plano gratuito, o Appwrite pausa o projeto depois de um período sem uso. Enq
 
 - Sinal: `/api/health` mostra `"database": "appwrite_paused"`; a tela de login diz que o banco não está respondendo (não "credenciais inválidas").
 - Correção: no console do Appwrite, abrir o projeto e restaurar. Para produção, o plano pago evita a pausa.
+
+## Desempenho
+
+- O servidor roda em `fra1`, ao lado do Appwrite (`fra`). Com o servidor em São Paulo, cada consulta cruzava o Atlântico (cerca de 200 ms) e uma página com 20 consultas levava segundos. O usuário no Brasil paga uma viagem por página; as consultas ficam locais.
+- Leituras repetidas na mesma requisição saem uma vez só (`src/lib/db/cached-store.ts`; qualquer escrita limpa). `DB_TRACE=1` registra cada consulta com o tempo; `DB_CACHE=0` desliga a memorização.
+- Sessão conferida fica 60 s em memória por instância (hash do segredo), sem 2 idas ao Appwrite por página e por foto; logout apaga na hora.
+- Fotos e arquivos (`/api/files`) ficam 1 h no navegador (`private`); versão nova é documento novo.
+- Páginas pesadas buscam em lote e em paralelo (pendências, pedido, início do cliente, Control Tower). Filtro com mais de 100 valores vira consultas paralelas (limite do Appwrite).
+- Barra de progresso no topo na hora do clique em qualquer link (`navigation-progress.tsx`); sem `loading.tsx`, para as páginas manterem o 404 do isolamento.
+- Medição local contra o banco real: build com `set -a && . ./.env.local && set +a` (a sessão cloud tem `NEXT_PUBLIC_APPWRITE_PROJECT_ID` de exemplo no ambiente, que o build gravaria).

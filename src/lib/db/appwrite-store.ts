@@ -11,6 +11,7 @@ import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
  */
 const PAGE = 500;
 const MAX_ROWS = 10_000;
+const MAX_IN = 100;
 
 export class AppwriteStore implements Store {
   readonly mode = "appwrite" as const;
@@ -29,7 +30,36 @@ export class AppwriteStore implements Store {
   async list<K extends TableName>(
     table: K,
     options: ListOptions<Tables[K]> = {},
-  ) {
+  ): Promise<Tables[K][]> {
+    // O Appwrite aceita até 100 valores por filtro "igual a um destes": listas
+    // maiores viram consultas em paralelo, juntadas e reordenadas aqui.
+    const big = Object.entries(options.filter ?? {}).find(
+      ([, v]) => Array.isArray(v) && v.length > MAX_IN,
+    );
+    if (big) {
+      const [field, values] = big as [string, Array<string | number>];
+      const chunks: Array<Array<string | number>> = [];
+      for (let i = 0; i < values.length; i += MAX_IN)
+        chunks.push(values.slice(i, i + MAX_IN));
+      const parts = await Promise.all(
+        chunks.map((chunk) =>
+          this.list(table, {
+            ...options,
+            filter: { ...options.filter, [field]: chunk } as ListOptions<
+              Tables[K]
+            >["filter"],
+          }),
+        ),
+      );
+      const orderBy = (options.orderBy ?? "createdAt") as string;
+      const dir = options.direction === "desc" ? -1 : 1;
+      const merged = parts.flat().sort((a, b) => {
+        const x = (a as unknown as Record<string, string | number>)[orderBy];
+        const y = (b as unknown as Record<string, string | number>)[orderBy];
+        return x < y ? -dir : x > y ? dir : 0;
+      });
+      return options.limit ? merged.slice(0, options.limit) : merged;
+    }
     const queries: string[] = [];
     for (const [rawKey, value] of Object.entries(options.filter ?? {})) {
       const key = toAppwriteKey(rawKey);
@@ -130,14 +160,11 @@ export class AppwriteStore implements Store {
 
   async getFile(key: string) {
     try {
-      const meta = await this.storage.getFile({
-        bucketId: BUCKET_ID,
-        fileId: key,
-      });
-      const bytes = await this.storage.getFileDownload({
-        bucketId: BUCKET_ID,
-        fileId: key,
-      });
+      // Metadados e conteúdo em paralelo: uma ida ao Appwrite em vez de duas.
+      const [meta, bytes] = await Promise.all([
+        this.storage.getFile({ bucketId: BUCKET_ID, fileId: key }),
+        this.storage.getFileDownload({ bucketId: BUCKET_ID, fileId: key }),
+      ]);
       return {
         bytes: new Uint8Array(bytes),
         name: meta.name,

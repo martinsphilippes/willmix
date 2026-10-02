@@ -552,15 +552,13 @@ export async function loadOrderProgress(
   orderId: string,
 ): Promise<OrderProgress | null> {
   const store = getStore();
-  const order = await store.get("orders", orderId);
+  // As três leituras dependem só do id: saem juntas (uma rodada de rede).
+  const [order, stages, requirements] = await Promise.all([
+    store.get("orders", orderId),
+    store.list("stages", { filter: { orderId }, orderBy: "sequence" }),
+    store.list("requirements", { filter: { orderId } }),
+  ]);
   if (!order) return null;
-  const stages = await store.list("stages", {
-    filter: { orderId },
-    orderBy: "sequence",
-  });
-  const requirements = await store.list("requirements", {
-    filter: { orderId },
-  });
   return { order, stages, requirements };
 }
 
