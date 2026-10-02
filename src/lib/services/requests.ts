@@ -22,6 +22,7 @@ import { audit } from "./audit";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
+import { copyQuoteSheetToOrder } from "./quote-sheet";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
@@ -312,6 +313,8 @@ export interface SelectQuoteInput {
   sellPrice: number;
   sellCurrency: string;
   downPaymentAmount?: number | null;
+  /** Memória do cálculo do valor ao cliente (fica na auditoria). */
+  pricing?: unknown;
 }
 
 /** Wellmix escolhe o fornecedor, define o valor ao cliente e o sinal. */
@@ -370,6 +373,13 @@ export async function selectQuote(
     "request",
     request.id,
     `Fornecedor selecionado; sinal ${input.sellCurrency} ${downPayment}`,
+    null,
+    {
+      sellPrice: input.sellPrice,
+      sellCurrency: input.sellCurrency,
+      downPaymentAmount: downPayment,
+      pricing: input.pricing ?? null,
+    },
   );
   await notify(requesterTarget(request.requestedForUserId), {
     subject: `Proposta disponível: ${request.productName}`,
@@ -475,6 +485,8 @@ async function createOrderFromRequest(
   );
   // Snapshot da negociação: o que foi comprado fica congelado neste pedido.
   await createPurchaseSnapshot(user, order, item, quote, product);
+  // A ficha preenchida na cotação vira a ficha do pedido (Preparação já preenchida).
+  await copyQuoteSheetToOrder(quote.id, order.id);
   // Gate de conformidade: linha com certificação obrigatória sem certificação válida.
   await runComplianceGate(user, order, product);
   // Modalidade da operação (RADAR): copia do cliente e revisa importação própria sem RADAR.

@@ -3,6 +3,9 @@ import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertRole } from "@/lib/auth/permissions";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
+import { getStore } from "@/lib/db";
+import { getFxRates } from "@/lib/services/fx";
+import { PricingSettings } from "@/components/pricing-settings";
 import { formatContainerTypes } from "@/lib/services/containers";
 import { aiStatus } from "@/lib/integrations/ai";
 import { getT } from "@/i18n/server";
@@ -64,7 +67,17 @@ export default async function SettingsPage({
   assertRole(user, ["admin"]);
   const { ok, error, aiTest, aiModel, aiCode } = await searchParams;
   const t = await getT();
-  const s = await getSettings();
+  const [s, lineRows, customerRows, fx] = await Promise.all([
+    getSettings(),
+    getStore().list("product_lines", { orderBy: "name" }),
+    getStore().list("parties", {
+      filter: { type: "customer" },
+      orderBy: "name",
+    }),
+    getFxRates(),
+  ]);
+  const lines = lineRows.map((l) => ({ id: l.id, name: l.name }));
+  const customers = customerRows.map((c) => ({ id: c.id, name: c.name }));
   const errorKey =
     `settings.error.${typeof error === "string" ? error : ""}` as DictionaryKey;
   /* Visão de Produto: códigos novos (invalid_ai_mode, invalid_currency) em operations.error.*; o padrão settings.error.* continua primeiro. */
@@ -417,6 +430,14 @@ export default async function SettingsPage({
               />
             </Field>
           </div>
+          {/* Preço ao cliente: margem (geral/linha/cliente), frete e câmbio. */}
+          <PricingSettings
+            t={t}
+            s={s}
+            lines={lines}
+            customers={customers}
+            fx={fx}
+          />
           {/* Pagamento ao fornecedor: destino do pedido ao financeiro. */}
           <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
             {t("supplierPay.settings.title")}

@@ -124,7 +124,7 @@ export function sheetAccess(user: User, order: Order): SheetAccess {
   return none;
 }
 
-async function containerCapacity(type: string | null): Promise<{
+export async function containerCapacity(type: string | null): Promise<{
   type: string | null;
   capacity: number | null;
   types: Array<{ code: string; capacityCbm: number }>;

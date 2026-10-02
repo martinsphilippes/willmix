@@ -106,9 +106,37 @@ export const DEFAULT_SETTINGS = {
   financeEmail: "",
   /** WhatsApp do financeiro com DDI (ex.: 5511999998888). Vazio: escolhe o contato na hora. */
   financeWhatsapp: "",
+  /* ---- Preço ao cliente (custo importado + margem) ---- */
+  /** Margem geral sobre o custo importado (%). Vale quando cliente e linha não têm margem própria. */
+  marginPercent: 0,
+  /** Margem por linha de produto (%), por id da linha. Facultativa. */
+  marginByLine: {} as Record<string, number>,
+  /** Margem por cliente (%), por id do parceiro. Facultativa; vence a da linha. */
+  marginByCustomer: {} as Record<string, number>,
+  /** Frete estimado por CBM (null = sem estimativa; o operador informa o do transportador). */
+  freightPerCbm: null as number | null,
+  freightCurrency: "USD",
+  /** Câmbio manual (R$ por unidade), usado se a PTAX nunca foi obtida. */
+  fxManualRates: { USD: null, RMB: null, EUR: null } as Record<
+    "USD" | "RMB" | "EUR",
+    number | null
+  >,
+  /** Última PTAX obtida do Banco Central (gravada pelo sistema, 1x por dia). */
+  fxPtax: null as FxSnapshot | null,
+  /** Última tentativa de buscar a PTAX que falhou (evita repetir a cada página). */
+  fxPtaxFailedAt: null as string | null,
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };
+
+/** Câmbio do dia: R$ por unidade (PTAX venda) e a data de cada cotação. */
+export interface FxSnapshot {
+  /** Dia (Brasília, AAAA-MM-DD) em que a busca foi feita. */
+  day: string;
+  fetchedAt: string;
+  rates: Partial<Record<"USD" | "RMB" | "EUR", number>>;
+  quotedAt: Partial<Record<"USD" | "RMB" | "EUR", string>>;
+}
 
 export type Settings = typeof DEFAULT_SETTINGS;
 export type SettingKey = keyof Settings;

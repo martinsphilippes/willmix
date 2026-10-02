@@ -211,7 +211,60 @@ export async function selectQuoteAction(form: FormData) {
         sellCurrency: (str(form, "sellCurrency") || "BRL").toUpperCase(),
         downPaymentAmount: num(form, "downPaymentAmount"),
       });
-    await selectQuote(user, parsed.quoteId, parsed);
+    const carrierBrl = z
+      .number()
+      .nonnegative()
+      .max(100_000_000)
+      .nullable()
+      .parse(num(form, "freightCarrierBrl"));
+    // Memória do cálculo refeita no servidor (não confia no navegador).
+    const pricing = await pricingRecordFor(
+      requestId,
+      parsed.quoteId,
+      carrierBrl,
+      parsed.sellPrice,
+      parsed.sellCurrency,
+    );
+    await selectQuote(user, parsed.quoteId, { ...parsed, pricing });
+  });
+}
+
+async function pricingRecordFor(
+  requestId: string,
+  quoteId: string,
+  carrierBrl: number | null,
+  sellPrice: number,
+  sellCurrency: string,
+) {
+  const store = getStore();
+  const [request, quote] = await Promise.all([
+    store.get("requests", requestId),
+    store.get("quotes", quoteId),
+  ]);
+  if (!request || !quote || quote.requestId !== request.id) return null;
+  const { quotePricing } = await import("@/lib/services/quote-pricing");
+  const ctx = await quotePricing(request, [quote], { carrierBrl });
+  const q = ctx.quotes[0];
+  return {
+    quoteId,
+    input: q.input,
+    result: q.result,
+    marginSource: q.marginSource,
+    fxStatus: ctx.fx.status,
+    fxDay: ctx.fx.day,
+    sellPrice,
+    sellCurrency,
+  };
+}
+
+/** Atualiza o valor ao cliente com o câmbio de hoje (antes do comprovante do sinal). */
+export async function refreshProposalAction(form: FormData) {
+  const user = await requireUser();
+  const requestId = str(form, "requestId");
+  await run(`/app/requests/${requestId}`, async () => {
+    const { refreshProposal } = await import("@/lib/services/quote-pricing");
+    await refreshProposal(user, requestId);
+    return `/app/requests/${requestId}?refreshed=1#proposal`;
   });
 }
 
@@ -837,11 +890,53 @@ export async function saveSettingsAction(form: FormData) {
     const pairs: Array<[SettingKey, unknown]> = [];
     for (const key of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) {
       const raw = form.get(key);
+      // Gravados pelo sistema (PTAX do dia); nunca vêm do formulário.
+      if (key === "fxPtax" || key === "fxPtaxFailedAt") continue;
+      if (
+        key === "marginByLine" ||
+        key === "marginByCustomer" ||
+        key === "fxManualRates"
+      ) {
+        // Montados a partir de campos "chave.id" (um por linha/cliente/moeda).
+        if (!form.has(`${key}.__form`)) continue;
+        const out: Record<string, number | null> = {};
+        for (const [name, v] of form.entries()) {
+          if (!name.startsWith(`${key}.`) || name === `${key}.__form`) continue;
+          const id = name.slice(key.length + 1);
+          const text = String(v).trim().replace(",", ".");
+          if (!/^[A-Za-z0-9_-]{1,64}$/.test(id))
+            throw new Error("invalid_input");
+          const n = text === "" ? null : Number(text);
+          if (n !== null && !(Number.isFinite(n) && n >= 0 && n <= 1000))
+            throw new Error(
+              key === "fxManualRates" ? "fx_invalid" : "margin_invalid",
+            );
+          if (key === "fxManualRates") out[id] = n;
+          else if (n !== null) out[id] = n;
+        }
+        pairs.push([key, out]);
+        continue;
+      }
       if (raw === null) continue;
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "quoteSlaBusinessDays") {
+      else if (key === "marginPercent") {
+        const n = Number(String(raw).replace(",", "."));
+        if (!(Number.isFinite(n) && n >= 0 && n <= 1000))
+          throw new Error("margin_invalid");
+        value = n;
+      } else if (key === "freightPerCbm") {
+        const text = String(raw).trim().replace(",", ".");
+        const n = text === "" ? null : Number(text);
+        if (n !== null && !(Number.isFinite(n) && n >= 0 && n <= 1_000_000))
+          throw new Error("freight_invalid");
+        value = n;
+      } else if (key === "freightCurrency") {
+        const c = String(raw).toUpperCase();
+        if (!isCurrency(c)) throw new Error("invalid_currency");
+        value = c;
+      } else if (key === "quoteSlaBusinessDays") {
         const days = Number(raw);
         if (
           !Number.isInteger(days) ||
