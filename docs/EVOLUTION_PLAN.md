@@ -174,7 +174,7 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
   - mais o imposto de importação sobre o CIF e o IPI sobre CIF + II. Os percentuais vêm da ficha ou da classificação fiscal validada do produto;
   - mais a margem.
 - **Margem facultativa:** vale a do cliente; se não houver, a da linha; se não houver, a geral. Tudo é editável em Configurações → Preço ao cliente.
-- **Câmbio:** PTAX do Banco Central, 1x por dia, como descrito em `docs/INTEGRATIONS.md`.
+- **Câmbio:** do dia, 1x por dia: PTAX do Banco Central, AwesomeAPI ou Banco Central Europeu, nessa ordem; o botão "Buscar" de Configurações força na hora e a tela mostra a fonte e o motivo de falhas (`docs/INTEGRATIONS.md`).
 - **Edição e registro:**
   - a tela mostra a memória de cálculo e o que faltou (CBM, II, IPI, câmbio, frete);
   - o operador pode ajustar o valor;

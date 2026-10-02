@@ -125,10 +125,11 @@ describe("câmbio PTAX", () => {
     const first = await getFxRates({ now: day1, fetcher: ok as typeof fetch });
     expect(first.status).toBe("today");
     expect(first.rates.USD).toBe(5.5);
-    expect(calls).toBe(3); // USD, RMB, EUR
+    expect(first.source).toBe("ptax");
+    const afterFirst = calls;
     // Mesmo dia: não busca de novo.
     await getFxRates({ now: day1, fetcher: ok as typeof fetch });
-    expect(calls).toBe(3);
+    expect(calls).toBe(afterFirst);
     // Dia seguinte com falha: última PTAX como sugestão.
     const fail = async () => new Response("down", { status: 503 });
     const next = await getFxRates({
@@ -181,6 +182,41 @@ describe("câmbio PTAX", () => {
     expect(forced.source).toBe("awesomeapi");
     expect(forced.rates).toEqual({ USD: 5.42, RMB: 0.76, EUR: 6.31 });
     expect((await getSettings()).fxPtax?.source).toBe("awesomeapi");
+  });
+
+  it("BC e AwesomeAPI fora: usa o Banco Central Europeu; tudo fora: guarda o motivo", async () => {
+    await setSetting("fxPtax", null);
+    await setSetting("fxPtaxFailedAt", null);
+    const now = new Date("2026-10-06T15:00:00Z");
+    const ecbOnly = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (!url.includes("frankfurter"))
+        return new Response("forbidden", { status: 403 });
+      const base = new URL(url).searchParams.get("base");
+      const brl = { USD: 5.35, CNY: 0.74, EUR: 6.25 }[base ?? ""] ?? 0;
+      return new Response(
+        JSON.stringify({ base, date: "2026-10-05", rates: { BRL: brl } }),
+        { status: 200 },
+      );
+    };
+    const ecb = await getFxRates({
+      now,
+      fetcher: ecbOnly as typeof fetch,
+      force: true,
+    });
+    expect(ecb.source).toBe("ecb");
+    expect(ecb.rates).toEqual({ USD: 5.35, RMB: 0.74, EUR: 6.25 });
+
+    const down = async () => new Response("forbidden", { status: 403 });
+    const failed = await getFxRates({
+      now: new Date("2026-10-07T15:00:00Z"),
+      fetcher: down as typeof fetch,
+      force: true,
+    });
+    expect(failed.status).toBe("stale");
+    expect(failed.lastError).toContain("ptax: ptax_http_403");
+    expect(failed.lastError).toContain("ecb: http 403");
+    expect((await getSettings()).fxLastError).toContain("awesomeapi");
   });
 
   it("sem PTAX guardada e sem rede: câmbio manual", async () => {

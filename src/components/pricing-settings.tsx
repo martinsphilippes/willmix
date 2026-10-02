@@ -89,6 +89,11 @@ export function PricingSettings({
           USD {rateText("USD")} · RMB {rateText("RMB")} · EUR {rateText("EUR")}
           {fx.source ? ` · ${t(`pricing.fx.source.${fx.source}`)}` : ""}
         </p>
+        {fx.status !== "today" && fx.lastError ? (
+          <p className="mt-1 text-xs text-red-700">
+            {t("pricing.fx.lastError", { reason: fx.lastError })}
+          </p>
+        ) : null}
         <p className="mt-3 text-xs leading-relaxed text-zinc-500">
           {t("pricing.settings.fxManualHint")}
         </p>
@@ -106,6 +111,7 @@ export function PricingSettings({
                 from: t("pricing.fx.fetchedFrom"),
                 sourcePtax: t("pricing.fx.source.ptax"),
                 sourceAwesome: t("pricing.fx.source.awesomeapi"),
+                sourceEcb: t("pricing.fx.source.ecb"),
                 error: t("pricing.fx.fetchError"),
               }}
             />
