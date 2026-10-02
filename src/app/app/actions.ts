@@ -499,51 +499,33 @@ export async function registerSupplierPaymentAction(form: FormData) {
       });
       proofDocumentId = doc.id;
     }
-    const payment = await store.create("payments", {
-      ...PAYMENT_EXTRA_DEFAULTS,
-      orderId,
-      requestId: null,
-      direction: "supplier_out",
-      amount: parsed.amount,
-      currency: parsed.currency,
-      fxRate: parsed.fxRate,
+    const { registerSupplierPayment } =
+      await import("@/lib/services/supplier-payment");
+    await registerSupplierPayment(user, orderId, {
       method: "manual",
-      status: "confirmed",
+      ...parsed,
       proofDocumentId,
-      registeredByUserId: user.id,
-      confirmedByUserId: null,
-      confirmedAt: null,
-      note: parsed.note,
     });
-    await audit(
-      user,
-      "payment.register",
-      "payment",
-      payment.id,
-      `${parsed.currency} ${parsed.amount}`,
-    );
-    // Marca o requisito "pagamento registrado" da etapa, se estiver ativa.
-    const [stage] = await store.list("stages", {
-      filter: { orderId, key: "SUPPLIER_PAYMENT" },
-    });
-    if (stage && stage.status === "active") {
-      const [req] = await store.list("requirements", {
-        filter: {
-          stageId: stage.id,
-          key: "payment_registered",
-          status: "pending",
-        },
-      });
-      if (req) await submitRequirement(user, req.id, { value: payment.id });
-    }
-    await notify(
-      { role: "supplier", partyId: order.supplierId },
-      {
-        subject: `Order #${order.number}: payment registered`,
-        body: `${parsed.currency} ${parsed.amount.toFixed(2)}. Please confirm receipt.`,
-        link: `/app/orders/${orderId}`,
-      },
-    );
+  });
+}
+
+/**
+ * Ações rápidas do pagamento ao fornecedor: copiar os dados para o banco ou
+ * pedir ao financeiro (e-mail/WhatsApp). O valor é o devido, calculado no
+ * servidor (nunca vem do navegador). Conclui "pagamento registrado".
+ */
+export async function quickSupplierPaymentAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  await run(`/app/orders/${orderId}`, async () => {
+    assertWellmix(user);
+    const method = z
+      .enum(["transfer_copied", "finance_email", "finance_whatsapp"])
+      .parse(str(form, "method"));
+    const { registerSupplierPayment } =
+      await import("@/lib/services/supplier-payment");
+    await registerSupplierPayment(user, orderId, { method });
+    return `/app/orders/${orderId}?paid=${method}#supplier-payment`;
   });
 }
 
@@ -872,6 +854,16 @@ export async function saveSettingsAction(form: FormData) {
         const { normalizePixKey } = await import("@/lib/services/pix");
         const trimmed = String(raw).trim();
         value = trimmed ? normalizePixKey(trimmed).key : "";
+      } else if (key === "financeEmail") {
+        const v = String(raw).trim();
+        if (v && !z.string().email().safeParse(v).success)
+          throw new Error("finance_email_invalid");
+        value = v;
+      } else if (key === "financeWhatsapp") {
+        const digits = String(raw).replace(/\D/g, "");
+        if (digits && (digits.length < 10 || digits.length > 15))
+          throw new Error("finance_whatsapp_invalid");
+        value = digits;
       } else if (key === "pixReceiverName" || key === "pixReceiverCity") {
         value = String(raw).trim();
         const max = key === "pixReceiverName" ? 25 : 15;

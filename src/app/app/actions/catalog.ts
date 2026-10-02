@@ -332,14 +332,43 @@ export async function updatePartyExtraAction(form: FormData) {
         address: optionalText(255),
         contactName: optionalText(120),
         wechat: optionalText(80),
+        bankBeneficiary: optionalText(160),
+        bankName: optionalText(160),
+        bankAccount: optionalText(80),
+        bankSwift: optionalText(20),
+        bankAddress: optionalText(255),
       })
       .parse({
         city: str(form, "city") || null,
         address: str(form, "address") || null,
         contactName: str(form, "contactName") || null,
         wechat: str(form, "wechat") || null,
+        bankBeneficiary: str(form, "bankBeneficiary") || null,
+        bankName: str(form, "bankName") || null,
+        bankAccount: str(form, "bankAccount") || null,
+        bankSwift: str(form, "bankSwift")
+          ? str(form, "bankSwift").toUpperCase()
+          : null,
+        bankAddress: str(form, "bankAddress") || null,
       });
-    await store.update("parties", id, parsed);
+    // Dados bancários só vão para o banco quando mudam: editar o parceiro
+    // continua funcionando mesmo antes de as colunas novas serem publicadas.
+    const bankKeys = [
+      "bankBeneficiary",
+      "bankName",
+      "bankAccount",
+      "bankSwift",
+      "bankAddress",
+    ] as const;
+    const update: Partial<typeof parsed> = {
+      city: parsed.city,
+      address: parsed.address,
+      contactName: parsed.contactName,
+      wechat: parsed.wechat,
+    };
+    for (const key of bankKeys)
+      if (parsed[key] !== (party[key] ?? null)) update[key] = parsed[key];
+    await store.update("parties", id, update);
     await audit(
       user,
       "party.update",
@@ -351,6 +380,11 @@ export async function updatePartyExtraAction(form: FormData) {
         address: party.address,
         contactName: party.contactName,
         wechat: party.wechat,
+        bankBeneficiary: party.bankBeneficiary,
+        bankName: party.bankName,
+        bankAccount: party.bankAccount,
+        bankSwift: party.bankSwift,
+        bankAddress: party.bankAddress,
       },
       parsed,
     );

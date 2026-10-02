@@ -241,10 +241,15 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // 9. SUPPLIER_PAYMENT: Wellmix registra pagamento, fornecedor confirma
   await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
-  await page
-    .getByRole("button", { name: /Registrar pagamento ao fornecedor/ })
-    .click();
-  await page.waitForLoadState("networkidle");
+  // Valor devido já calculado; copiar os dados para o banco registra o pagamento.
+  await expect(page.getByText("Valor a pagar ao fornecedor")).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/paid=transfer_copied/),
+    page.getByRole("button", { name: /Copiar dados para o banco/ }).click(),
+  ]);
+  await expect(
+    page.getByText(/Dados copiados e pagamento registrado/),
+  ).toBeVisible();
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await page

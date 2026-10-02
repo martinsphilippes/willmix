@@ -70,12 +70,12 @@ import {
 import { CurrencySelect } from "@/components/currency-select";
 import { RequirementForm } from "@/components/requirement-form";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
+import { SupplierPaymentPanel } from "@/components/supplier-payment-panel";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   assignPartnerAction,
   createPenaltyAction,
   registerCustomerPaymentAction,
-  registerSupplierPaymentAction,
   unblockStageAction,
 } from "../../actions";
 import {
@@ -98,7 +98,7 @@ export default async function OrderPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, remeasure } = await searchParams;
+  const { error, remeasure, paid } = await searchParams;
   const progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
   const { order, stages, requirements } = progress;
@@ -272,6 +272,14 @@ export default async function OrderPage({
           </span>
         }
       />
+      {typeof paid === "string" &&
+      ["transfer_copied", "finance_email", "finance_whatsapp"].includes(
+        paid,
+      ) ? (
+        <Alert tone="success">
+          {t(`supplierPay.done.${paid}` as DictionaryKey)}
+        </Alert>
+      ) : null}
       {error ? (
         <Alert tone="danger">
           {typeof error === "string" &&
@@ -486,42 +494,7 @@ export default async function OrderPage({
                       </form>
                     ) : null}
                     {stage.key === "SUPPLIER_PAYMENT" && open && wellmix ? (
-                      <form
-                        action={registerSupplierPaymentAction}
-                        className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
-                      >
-                        <input type="hidden" name="orderId" value={order.id} />
-                        <Field label={t("orders.value")}>
-                          <Input
-                            name="amount"
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            required
-                            defaultValue={order.fobTotal ?? ""}
-                          />
-                        </Field>
-                        <Field label={t("common.currency")}>
-                          <CurrencySelect
-                            name="currency"
-                            value={order.fobCurrency ?? "USD"}
-                            t={t}
-                          />
-                        </Field>
-                        <Field label={t("finance.fx")}>
-                          <Input name="fxRate" type="number" step="0.0001" />
-                        </Field>
-                        <div className="sm:col-span-3">
-                          <Field label={t("requests.payment.proof")}>
-                            <Input name="proof" type="file" />
-                          </Field>
-                        </div>
-                        <div className="sm:col-span-3">
-                          <SubmitButton>
-                            {t("orders.registerPayment")}
-                          </SubmitButton>
-                        </div>
-                      </form>
+                      <SupplierPaymentPanel order={order} t={t} />
                     ) : null}
                   </Card>
                   {stage.key === "INSPECTION" &&
@@ -867,7 +840,7 @@ export default async function OrderPage({
                       />
                     ) : null}
                     {p.direction === "supplier_out" &&
-                    p.status === "confirmed" &&
+                    p.status !== "received" &&
                     (user.role === "supplier" || wellmix) ? (
                       <form action={acknowledgePaymentAction} className="mt-2">
                         <input type="hidden" name="paymentId" value={p.id} />

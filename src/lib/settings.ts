@@ -99,6 +99,11 @@ export const DEFAULT_SETTINGS = {
   pixReceiverName: "",
   /** Cidade do recebedor no Pix (até 15 caracteres). */
   pixReceiverCity: "",
+  /* ---- Pagamento ao fornecedor ---- */
+  /** E-mail do financeiro: destino do "pedir ao financeiro por e-mail". Vazio: escolhe na hora. */
+  financeEmail: "",
+  /** WhatsApp do financeiro com DDI (ex.: 5511999998888). Vazio: escolhe o contato na hora. */
+  financeWhatsapp: "",
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };
