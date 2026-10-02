@@ -39,7 +39,7 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
           <Input
             name="pisImportPercent"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             max="99.99"
             required
@@ -50,7 +50,7 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
           <Input
             name="cofinsImportPercent"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             max="99.99"
             required
@@ -64,7 +64,7 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
           <Input
             name="icmsPercent"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             max="99.99"
             defaultValue={s.icmsPercent ?? ""}
@@ -74,7 +74,7 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
           <Input
             name="insurancePercent"
             type="number"
-            step="0.01"
+            step="any"
             min="0"
             max="99.99"
             required
