@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
 import {
@@ -241,7 +242,7 @@ export default async function RequestDetailPage({
                   t(`access.error.${error}` as DictionaryKey) !==
                     `access.error.${error}`
                 ? t(`access.error.${error}` as DictionaryKey)
-                : `${t("common.error")} (${error})`}
+                : fallbackError(t, String(error))}
         </Alert>
       ) : null}
       {saved === "requester" ? (

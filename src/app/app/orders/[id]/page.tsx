@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { fallbackError } from "@/i18n/error-text";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
@@ -281,7 +282,7 @@ export default async function OrderPage({
           {typeof error === "string" &&
           t(`sheet.error.${error}` as DictionaryKey) !== `sheet.error.${error}`
             ? t(`sheet.error.${error}` as DictionaryKey)
-            : `${t("common.error")} (${error})`}
+            : fallbackError(t, String(error))}
         </Alert>
       ) : null}
       {currentStage?.status === "blocked" ? (

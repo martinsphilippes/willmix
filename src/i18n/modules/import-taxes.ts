@@ -25,6 +25,8 @@ export const pt = {
   "fiscal.table.source.robot": "robô mensal",
   "fiscal.table.stale":
     "Tabela incompleta ou com mais de 90 dias: confira se houve mudança nas alíquotas.",
+  "fiscal.table.unreadable":
+    "Não foi possível ler a tabela fiscal salva. Envie de novo a planilha da TEC e a da TIPI.",
   "fiscal.table.lastError": "A última atualização automática falhou: {reason}",
   "fiscal.table.kind": "Tabela",
   "fiscal.table.file": "Planilha oficial (XLSX ou CSV)",
@@ -124,6 +126,8 @@ export const en: Record<keyof typeof pt, string> = {
   "fiscal.table.source.robot": "monthly robot",
   "fiscal.table.stale":
     "Table incomplete or older than 90 days: check whether rates changed.",
+  "fiscal.table.unreadable":
+    "The saved tax table could not be read. Upload the TEC and TIPI spreadsheets again.",
   "fiscal.table.lastError": "The last automatic update failed: {reason}",
   "fiscal.table.kind": "Table",
   "fiscal.table.file": "Official spreadsheet (XLSX or CSV)",
@@ -220,6 +224,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "fiscal.table.source.upload": "上传的表格",
   "fiscal.table.source.robot": "每月自动更新",
   "fiscal.table.stale": "税率表不完整或超过 90 天：请确认税率是否有变化。",
+  "fiscal.table.unreadable":
+    "无法读取已保存的税率表。请重新上传 TEC 和 TIPI 表格。",
   "fiscal.table.lastError": "上次自动更新失败：{reason}",
   "fiscal.table.kind": "表格",
   "fiscal.table.file": "官方表格（XLSX 或 CSV）",

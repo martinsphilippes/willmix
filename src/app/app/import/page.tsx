@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
@@ -74,9 +75,7 @@ export default async function ImportPage({
         </Alert>
       ) : null}
       {error ? (
-        <Alert tone="danger">
-          {t("common.error")} ({error})
-        </Alert>
+        <Alert tone="danger">{fallbackError(t, String(error))}</Alert>
       ) : null}
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
         <Card title={t("import.batch.title")}>

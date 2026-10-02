@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -57,7 +58,7 @@ export default async function PurchaseSheetPage({
     typeof error === "string"
       ? t(errorKey as DictionaryKey) !== errorKey
         ? t(errorKey as DictionaryKey)
-        : `${t("common.error")} (${error})`
+        : fallbackError(t, String(error))
       : null;
 
   return (

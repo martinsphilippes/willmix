@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type Document } from "@/lib/db";
@@ -116,7 +117,7 @@ export default async function AccountPage({
       />
       {error ? (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {t("common.error")} ({error})
+          {fallbackError(t, String(error))}
         </div>
       ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

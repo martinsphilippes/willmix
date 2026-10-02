@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
+import { fallbackError } from "@/i18n/error-text";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { SourcingStatus, VisitStatus } from "@/lib/db";
 import { cx, type Tone } from "@/components/ui";
@@ -37,7 +38,7 @@ export function errorMessage(
   if (typeof code !== "string" || !code) return null;
   const key = `sourcing.error.${code}` as DictionaryKey;
   const text = t(key);
-  return text === key ? `${t("common.error")} (${code})` : text;
+  return text === key ? fallbackError(t, code) : text;
 }
 
 /** Miniatura da foto principal (ou marcador quando não há foto). */

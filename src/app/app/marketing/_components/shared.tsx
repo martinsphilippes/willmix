@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import { fallbackError } from "@/i18n/error-text";
 import { aiErrorText } from "@/i18n/ai-error";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Document, MarketingKit, MarketingKitStatus } from "@/lib/db";
@@ -54,7 +55,7 @@ export function marketingError(
   if (reason) return reason;
   const key = `marketing.error.${code}` as DictionaryKey;
   const text = t(key);
-  return text === key ? `${t("common.error")} (${code})` : text;
+  return text === key ? fallbackError(t, code) : text;
 }
 
 /** Etapas do kit na ordem do fluxo (cancelado fica à parte). */

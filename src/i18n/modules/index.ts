@@ -27,6 +27,7 @@ import * as pricing from "./pricing";
 import * as quoteSheet from "./quote-sheet";
 import * as freight from "./freight";
 import * as importTaxes from "./import-taxes";
+import * as errors from "./errors";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -53,6 +54,7 @@ export const modulesPt = {
   ...quoteSheet.pt,
   ...freight.pt,
   ...importTaxes.pt,
+  ...errors.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -79,6 +81,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...quoteSheet.en,
   ...freight.en,
   ...importTaxes.en,
+  ...errors.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -105,4 +108,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...quoteSheet.zh,
   ...freight.zh,
   ...importTaxes.zh,
+  ...errors.zh,
 };
