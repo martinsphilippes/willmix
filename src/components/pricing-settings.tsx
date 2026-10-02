@@ -3,7 +3,7 @@ import type { Settings } from "@/lib/settings";
 import type { FxView } from "@/lib/services/fx";
 import { CurrencySelect } from "@/components/currency-select";
 import { Badge, Field, Input } from "@/components/ui";
-import { FxManualField } from "@/components/fx-manual-field";
+import { FxManualFields } from "@/components/fx-manual-field";
 
 /*
  * Configurações do preço ao cliente (dentro do formulário de Configurações):
@@ -98,24 +98,23 @@ export function PricingSettings({
           {t("pricing.settings.fxManualHint")}
         </p>
         <input type="hidden" name="fxManualRates.__form" value="1" />
-        <div className="mt-2 grid gap-3 sm:grid-cols-3">
-          {(["USD", "RMB", "EUR"] as const).map((c) => (
-            <FxManualField
-              key={c}
-              currency={c}
-              defaultValue={s.fxManualRates[c]}
-              labels={{
-                label: `${c} → R$`,
-                fetch: t("pricing.fx.fetchNow"),
-                fetching: t("pricing.fx.fetching"),
-                from: t("pricing.fx.fetchedFrom"),
-                sourcePtax: t("pricing.fx.source.ptax"),
-                sourceAwesome: t("pricing.fx.source.awesomeapi"),
-                sourceEcb: t("pricing.fx.source.ecb"),
-                error: t("pricing.fx.fetchError"),
-              }}
-            />
-          ))}
+        <div className="mt-2">
+          <FxManualFields
+            defaults={{
+              USD: s.fxManualRates.USD ?? fx.rates.USD ?? null,
+              RMB: s.fxManualRates.RMB ?? fx.rates.RMB ?? null,
+              EUR: s.fxManualRates.EUR ?? fx.rates.EUR ?? null,
+            }}
+            labels={{
+              fetch: t("pricing.fx.fetchNow"),
+              fetching: t("pricing.fx.fetching"),
+              from: t("pricing.fx.fetchedFrom"),
+              sourcePtax: t("pricing.fx.source.ptax"),
+              sourceAwesome: t("pricing.fx.source.awesomeapi"),
+              sourceEcb: t("pricing.fx.source.ecb"),
+              error: t("pricing.fx.fetchError"),
+            }}
+          />
         </div>
       </div>
 

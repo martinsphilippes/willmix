@@ -5,10 +5,10 @@
 export const pt = {
   "pricing.fx.source.ecb": "Banco Central Europeu (referência)",
   "pricing.fx.lastError": "Última busca falhou: {reason}",
-  "pricing.fx.fetchNow": "Buscar",
+  "pricing.fx.fetchNow": "Buscar cotações",
   "pricing.fx.fetching": "Buscando...",
   "pricing.fx.fetchedFrom":
-    "Cotação de {source} ({when}). Salve para guardar no campo manual.",
+    "Cotações de {source} ({when}). Já valem para os cálculos; salve para guardar também nos campos.",
   "pricing.fx.source.ptax": "PTAX Banco Central",
   "pricing.fx.source.awesomeapi": "AwesomeAPI (comercial)",
   "pricing.fx.fetchError":
@@ -33,9 +33,9 @@ export const pt = {
   "pricing.settings.freightHint":
     "Vazio: sem estimativa (o operador informa o frete do transportador).",
   "pricing.settings.freightCurrency": "Moeda do frete",
-  "pricing.settings.fx": "Câmbio (PTAX venda do Banco Central)",
+  "pricing.settings.fx": "Câmbio do dia",
   "pricing.settings.fxManualHint":
-    'Câmbio manual de reserva: só é usado se nenhuma cotação tiver sido obtida. "Buscar" consulta a cotação do dia na hora.',
+    'Câmbio manual de reserva: só é usado se nenhuma cotação tiver sido obtida. "Buscar cotações" consulta a do dia e preenche os três campos.',
   "pricing.settings.byLine": "Margem por linha de produto (facultativa)",
   "pricing.settings.byOptionalHint":
     "Vazio: usa a margem geral. Vale quando o cliente não tem margem própria.",
@@ -43,7 +43,7 @@ export const pt = {
   "pricing.settings.byCustomerHint":
     "Vazio: usa a da linha ou a geral. Tem prioridade sobre as demais.",
   "pricing.settings.inherit": "linha/geral",
-  "pricing.fx.status.today": "PTAX de hoje",
+  "pricing.fx.status.today": "Cotação de hoje",
   "pricing.fx.status.stale":
     "Busca falhou: usando a última PTAX ({day}) como sugestão",
   "pricing.fx.status.manual": "Sem PTAX: usando câmbio manual",
@@ -91,10 +91,10 @@ export const pt = {
 export const en: Record<keyof typeof pt, string> = {
   "pricing.fx.source.ecb": "European Central Bank (reference)",
   "pricing.fx.lastError": "Last fetch failed: {reason}",
-  "pricing.fx.fetchNow": "Fetch",
+  "pricing.fx.fetchNow": "Fetch rates",
   "pricing.fx.fetching": "Fetching...",
   "pricing.fx.fetchedFrom":
-    "Rate from {source} ({when}). Save to keep it in the manual field.",
+    "Rates from {source} ({when}). They already apply to calculations; save to keep them in the fields too.",
   "pricing.fx.source.ptax": "Central Bank PTAX",
   "pricing.fx.source.awesomeapi": "AwesomeAPI (commercial)",
   "pricing.fx.fetchError":
@@ -119,9 +119,9 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.settings.freightHint":
     "Empty: no estimate (the operator enters the carrier's freight).",
   "pricing.settings.freightCurrency": "Freight currency",
-  "pricing.settings.fx": "Exchange rate (Central Bank PTAX, selling)",
+  "pricing.settings.fx": "Today's exchange rate",
   "pricing.settings.fxManualHint":
-    'Manual fallback rate: only used if no rate has ever been obtained. "Fetch" gets today\'s rate right away.',
+    'Manual fallback rate: only used if no rate has ever been obtained. "Fetch rates" gets today\'s rates and fills all three fields.',
   "pricing.settings.byLine": "Margin per product line (optional)",
   "pricing.settings.byOptionalHint":
     "Empty: uses the default margin. Applies when the customer has no margin of its own.",
@@ -129,7 +129,7 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.settings.byCustomerHint":
     "Empty: uses the line or default margin. Takes priority over the others.",
   "pricing.settings.inherit": "line/default",
-  "pricing.fx.status.today": "Today's PTAX",
+  "pricing.fx.status.today": "Today's rate",
   "pricing.fx.status.stale":
     "Fetch failed: using the last PTAX ({day}) as a suggestion",
   "pricing.fx.status.manual": "No PTAX: using the manual rate",
@@ -176,10 +176,10 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "pricing.fx.source.ecb": "欧洲央行（参考汇率）",
   "pricing.fx.lastError": "上次获取失败：{reason}",
-  "pricing.fx.fetchNow": "获取",
+  "pricing.fx.fetchNow": "获取汇率",
   "pricing.fx.fetching": "获取中...",
   "pricing.fx.fetchedFrom":
-    "汇率来源：{source}（{when}）。保存后写入手动字段。",
+    "汇率来源：{source}（{when}）。已用于计算；保存后也会写入字段。",
   "pricing.fx.source.ptax": "巴西央行 PTAX",
   "pricing.fx.source.awesomeapi": "AwesomeAPI（商业汇率）",
   "pricing.fx.fetchError": "暂时无法获取：没有任何来源响应。请手动填写。",
@@ -197,9 +197,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.settings.freight": "每立方米预估运费",
   "pricing.settings.freightHint": "留空：不预估（由操作员填写承运人运费）。",
   "pricing.settings.freightCurrency": "运费币种",
-  "pricing.settings.fx": "汇率（巴西央行 PTAX 卖出价）",
+  "pricing.settings.fx": "当日汇率",
   "pricing.settings.fxManualHint":
-    "手动备用汇率：仅在从未获取任何汇率时使用。“获取”可即时查询当日汇率。",
+    "手动备用汇率：仅在从未获取任何汇率时使用。“获取汇率”可查询当日汇率并填入三个字段。",
   "pricing.settings.byLine": "按产品线利润率（可选）",
   "pricing.settings.byOptionalHint":
     "留空：使用默认利润率。客户无单独利润率时适用。",
@@ -207,7 +207,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.settings.byCustomerHint":
     "留空：使用产品线或默认利润率。优先于其他设置。",
   "pricing.settings.inherit": "产品线/默认",
-  "pricing.fx.status.today": "今日 PTAX",
+  "pricing.fx.status.today": "今日汇率",
   "pricing.fx.status.stale": "获取失败：使用最近的 PTAX（{day}）作为建议",
   "pricing.fx.status.manual": "无 PTAX：使用手动汇率",
   "pricing.fx.status.none": "无汇率：请填写手动汇率",
