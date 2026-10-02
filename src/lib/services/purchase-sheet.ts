@@ -15,6 +15,7 @@ import { audit } from "./audit";
 import { uploadDocument } from "./documents";
 import {
   missingForCompletion,
+  REQUIRED_SHEET_PHOTOS,
   normalizeLots,
   planSheet,
   type SheetMissing,
@@ -190,19 +191,24 @@ export async function getSheetPhotos(orderId: string): Promise<ProductPhoto[]> {
   );
 }
 
-async function scalePhotoDone(orderId: string, photos: ProductPhoto[]) {
-  if (photos.some((p) => p.kind === "weight_scale")) return true;
-  const store = getStore();
-  const [stage] = await store.list("stages", {
-    filter: { orderId, key: "PREPARATION" },
-    limit: 1,
-  });
-  if (!stage) return false;
-  const [req] = await store.list("requirements", {
-    filter: { stageId: stage.id, key: "photo_scale", status: "done" },
-    limit: 1,
-  });
-  return !!req;
+/** Tipos de foto já enviados; o item antigo "Foto na balança" concluído conta como balança. */
+async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
+  const kinds = new Set(photos.map((p) => p.kind as string));
+  if (!kinds.has("weight_scale")) {
+    const store = getStore();
+    const [stage] = await store.list("stages", {
+      filter: { orderId, key: "PREPARATION" },
+      limit: 1,
+    });
+    if (stage) {
+      const [req] = await store.list("requirements", {
+        filter: { stageId: stage.id, key: "photo_scale", status: "done" },
+        limit: 1,
+      });
+      if (req) kinds.add("weight_scale");
+    }
+  }
+  return [...kinds];
 }
 
 export interface SheetView {
@@ -256,7 +262,7 @@ export async function getSheetForUser(
       },
       container.capacity,
     ),
-    missing: missingForCompletion(sheet, await scalePhotoDone(orderId, photos)),
+    missing: missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -335,26 +341,29 @@ export async function addSheetPhotos(
     throw new PurchaseSheetError("invalid_kind");
   if (!files.length) throw new PurchaseSheetError("photo_required");
   const now = new Date().toISOString();
-  for (const file of files.slice(0, 12)) {
-    const doc = await uploadDocument(user, file, {
-      orderId,
-      type: "photo",
-      // Fornecedor e Wellmix (e parceiros do pedido); cliente não (cartão, origem).
-      visibility: "supplier",
-    });
-    await store.create("product_photos", {
-      productId: null,
-      sourcingItemId: null,
-      orderId,
-      documentId: doc.id,
-      kind,
-      caption: null,
-      takenAt: now,
-      takenByUserId: user.id,
-      derivedFromPhotoId: null,
-      isPrimary: false,
-    });
-  }
+  // Várias fotos sobem em paralelo (antes, uma depois da outra).
+  await Promise.all(
+    files.slice(0, 12).map(async (file) => {
+      const doc = await uploadDocument(user, file, {
+        orderId,
+        type: "photo",
+        // Fornecedor e Wellmix (e parceiros do pedido); cliente não (cartão, origem).
+        visibility: "supplier",
+      });
+      await store.create("product_photos", {
+        productId: null,
+        sourcingItemId: null,
+        orderId,
+        documentId: doc.id,
+        kind,
+        caption: null,
+        takenAt: now,
+        takenByUserId: user.id,
+        derivedFromPhotoId: null,
+        isPrimary: false,
+      });
+    }),
+  );
   // A foto na balança também cumpre o requisito "Foto na balança" da Preparação.
   if (kind === "weight_scale") {
     const prep = await activePreparation(orderId);
@@ -371,7 +380,9 @@ export async function addSheetPhotos(
     filter: { orderId },
     limit: 1,
   });
-  if (sheet) await syncRequirements(user, order, sheet);
+  // Só fotos obrigatórias podem concluir a ficha; as outras não precisam recalcular.
+  if (sheet && kind in REQUIRED_SHEET_PHOTOS)
+    await syncRequirements(user, order, sheet);
   return Math.min(files.length, 12);
 }
 
@@ -402,7 +413,7 @@ async function syncRequirements(
   const photos = await getSheetPhotos(order.id);
   const missing = missingForCompletion(
     sheet,
-    await scalePhotoDone(order.id, photos),
+    await photoKindsDone(order.id, photos),
   );
   if (!missing.length && !sheet.completedAt) {
     await store.update("purchase_sheets", sheet.id, {
