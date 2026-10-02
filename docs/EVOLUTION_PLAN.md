@@ -110,6 +110,14 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Dados bancários do fornecedor ficam no cadastro do parceiro (`bank*`, só para fornecedores). O e-mail e o WhatsApp do financeiro ficam em Configurações (admin).
 - Aprovação automática na conta exige API de banco ou de pagamentos com credencial. Não há, então não foi simulada.
 
+### Nova medição na inspeção
+
+- Reprovar a revisão da inspeção agora pede uma nova medição. As medidas e a foto na balança voltam a "reprovado" para o fornecedor reenviar, e a etapa fica em andamento. Os valores antigos continuam no item e na auditoria (`inspection.remeasure_requested`).
+- A nova medição é comparada de novo:
+  - divergente: bloqueia e reabre a revisão;
+  - dentro da tolerância: fecha a revisão sozinha, e a etapa conclui quando os obrigatórios estiverem feitos.
+- "Nova medição" (medidas e fotos) aparece enquanto a inspeção estiver aberta, bloqueada ou em andamento, e não só quando bloqueada. Isso destrava pedidos que ficaram parados depois de uma reprovação.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.

@@ -57,7 +57,7 @@ export const pt = {
     "Divergência detectada; aguardando revisão da Wellmix.",
   "orders.inspection.remeasure": "Nova medição",
   "orders.inspection.remeasureHint":
-    "Reenvie as medidas abaixo com o que encontrou. A comparação é refeita a cada envio; dentro da tolerância, a etapa é liberada automaticamente.",
+    "Reenvie as medidas ou fotos abaixo com o que encontrou. A comparação é refeita a cada envio; dentro da tolerância, a etapa é liberada automaticamente.",
   "orders.inspection.remeasureClose": "Fechar nova medição",
   "orders.inspection.attr.netWeightKg": "Peso líquido (kg)",
   "orders.inspection.attr.grossWeightKg": "Peso bruto (kg)",
@@ -277,7 +277,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Divergence detected; waiting for Wellmix review.",
   "orders.inspection.remeasure": "New measurement",
   "orders.inspection.remeasureHint":
-    "Re-send the measurements below with what you found. The comparison runs again on every submission; within tolerance, the stage is released automatically.",
+    "Re-send the measurements or photos below with what you found. The comparison runs again on every submission; within tolerance, the stage is released automatically.",
   "orders.inspection.remeasureClose": "Close new measurement",
   "orders.inspection.attr.netWeightKg": "Net weight (kg)",
   "orders.inspection.attr.grossWeightKg": "Gross weight (kg)",
@@ -486,7 +486,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.inspection.genericBlock": "检测到差异，等待 Wellmix 复核。",
   "orders.inspection.remeasure": "重新测量",
   "orders.inspection.remeasureHint":
-    "请按实际测得的结果重新提交下列数据。每次提交都会重新比对；在容差范围内时，阶段会自动解除阻塞。",
+    "请按实际测得的结果重新提交下列数据或照片。每次提交都会重新比对；在容差范围内时，阶段会自动解除阻塞。",
   "orders.inspection.remeasureClose": "关闭重新测量",
   "orders.inspection.attr.netWeightKg": "净重（kg）",
   "orders.inspection.attr.grossWeightKg": "毛重（kg）",

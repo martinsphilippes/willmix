@@ -212,7 +212,28 @@ describe("fluxo completo: solicitação → entrega", () => {
       filter: { stageId: insp.id, key: "inspection_review" },
     });
     expect(review.status).toBe("pending");
-    await decideRequirement(operator, review.id, "approve", "Diferença aceita");
+
+    // reprovação pede nova medição: medida e foto na balança voltam ao fornecedor
+    await decideRequirement(operator, review.id, "reject", "Pesar de novo");
+    const reopened = await store.list("requirements", {
+      filter: { stageId: insp.id, key: ["weight_measured", "photo_scale"] },
+    });
+    expect(reopened.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+    expect((await store.get("stages", insp.id))!.status).toBe("active");
+    // nova medição ainda divergente bloqueia de novo e reabre a revisão
+    await fillStage(supplierA, order.id, "INSPECTION", {
+      weight_measured: "15",
+    });
+    expect((await store.get("stages", insp.id))!.status).toBe("blocked");
+    expect((await store.get("requirements", review.id))!.status).toBe(
+      "pending",
+    );
+    await decideRequirement(operator, review.id, "reject");
+    // nova medição dentro da tolerância libera e conclui sozinha
+    await fillStage(supplierA, order.id, "INSPECTION", {
+      weight_measured: "12.1",
+    });
+    expect((await store.get("requirements", review.id))!.status).toBe("done");
     expect((await store.get("orders", order.id))!.status).toBe("SHIPPING");
 
     await fillStage(by("shipping_line", "armador"), order.id, "SHIPPING");

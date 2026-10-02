@@ -431,7 +431,11 @@ export default async function OrderPage({
                       </p>
                     ) : null}
                     {stage.key === "INSPECTION" &&
-                    stage.status === "blocked" &&
+                    open &&
+                    (stage.status === "blocked" || stage.status === "active") &&
+                    reqs.some(
+                      (r) => r.status === "done" && isRemeasurable(r),
+                    ) &&
                     (wellmix || user.role === "supplier") ? (
                       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
                         {remeasureMode ? (
@@ -475,8 +479,9 @@ export default async function OrderPage({
                             remeasure={
                               remeasureMode &&
                               stage.key === "INSPECTION" &&
-                              stage.status === "blocked" &&
-                              isInspectionMeasureKey(r.key)
+                              (stage.status === "blocked" ||
+                                stage.status === "active") &&
+                              isRemeasurable(r)
                             }
                             sheetHref={sheetHref}
                             sheetEditable={sheet.editSupplier}
@@ -1011,6 +1016,11 @@ export default async function OrderPage({
   );
 }
 
+/** Itens da inspeção que podem ser refeitos numa nova medição: medidas e fotos. */
+function isRemeasurable(r: Requirement) {
+  return isInspectionMeasureKey(r.key) || r.type === "photo";
+}
+
 function canSeeDoc(user: User, d: Document) {
   if (isWellmix(user)) return true;
   if (d.visibility === "all") return true;
@@ -1148,7 +1158,7 @@ function RequirementRow({
             requirement={r}
             orderId={order.id}
             t={t}
-            action={remeasureAction}
+            action={r.type === "photo" ? undefined : remeasureAction}
             defaultValue={r.value}
           />
         </div>

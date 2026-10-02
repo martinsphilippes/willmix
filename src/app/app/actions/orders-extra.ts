@@ -50,7 +50,7 @@ const remeasureSchema = z.object({
 
 /**
  * Nova medição: reenvio de um requisito de medida da inspeção mesmo já concluído,
- * enquanto a etapa está bloqueada. A comparação com o snapshot roda de novo no
+ * enquanto a etapa está aberta (bloqueada ou em andamento). A comparação com o snapshot roda de novo no
  * motor; se tudo ficar dentro da tolerância a etapa é liberada sozinha.
  */
 export async function remeasureAction(form: FormData) {
@@ -70,7 +70,12 @@ export async function remeasureAction(form: FormData) {
     if (!isInspectionMeasureKey(requirement.key))
       throw new Error("not_measure");
     const stage = await store.get("stages", requirement.stageId);
-    if (!stage || stage.key !== "INSPECTION" || stage.status !== "blocked")
+    // Nova medição vale enquanto a inspeção está aberta (bloqueada ou em andamento).
+    if (
+      !stage ||
+      stage.key !== "INSPECTION" ||
+      (stage.status !== "blocked" && stage.status !== "active")
+    )
       throw new Error("stage_not_blocked");
     // Papel e parceiro são checados no motor (canSubmitRequirement).
     await submitRequirement(user, requirement.id, { value: parsed.value });

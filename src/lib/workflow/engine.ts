@@ -265,6 +265,9 @@ export async function decideRequirement(
       submittedByUserId: user.id,
       submittedAt: now,
     });
+    // Inspeção reprovada: as medidas voltam para o fornecedor medir de novo.
+    if (requirement.key === "inspection_review")
+      await reopenInspectionMeasures(user, stage, note ?? null);
     // O requisito que originou a aprovação volta a pendente para reenvio.
     const sourceKey = requirement.key === "art_approval" ? "art" : null;
     if (sourceKey) {
@@ -294,6 +297,59 @@ export async function decideRequirement(
     );
   }
   await evaluateStage(user, stage.id);
+}
+
+/**
+ * Reprovação da revisão da inspeção = pedido de nova medição: as medidas e a
+ * foto na balança já enviadas voltam a "reprovado" (com formulário para o
+ * fornecedor) e a etapa fica em andamento. Os valores antigos ficam no item e
+ * na auditoria; a comparação usa só o que for reenviado.
+ */
+async function reopenInspectionMeasures(
+  user: User,
+  stage: Stage,
+  note: string | null,
+) {
+  const store = getStore();
+  const requirements = await store.list("requirements", {
+    filter: { stageId: stage.id },
+  });
+  const reopenNote = note
+    ? `Nova medição solicitada pela Wellmix: ${note}`
+    : "Nova medição solicitada pela Wellmix.";
+  for (const r of requirements) {
+    if (r.status !== "done") continue;
+    if (!isInspectionMeasureKey(r.key) && r.key !== "photo_scale") continue;
+    await store.update("requirements", r.id, {
+      status: "rejected",
+      note: reopenNote,
+    });
+  }
+  if (stage.status === "blocked")
+    await store.update("stages", stage.id, {
+      status: "active",
+      blockReason: null,
+    });
+  await audit(
+    user,
+    "inspection.remeasure_requested",
+    "stage",
+    stage.id,
+    reopenNote,
+  );
+}
+
+/** Itens de revisão da inspeção abertos além do peso declarado × medido. */
+async function otherInspectionReviewsOpen(orderId: string) {
+  const open = await getStore().list("review_items", {
+    filter: { entity: "order", entityId: orderId, status: "open" },
+  });
+  return open.some(
+    (r) =>
+      r.rule.startsWith("inspection.") &&
+      r.rule !== "inspection.weightDeclared" &&
+      r.rule !== "inspection.netWeightKg",
+  );
 }
 
 async function checkWeightDivergence(
@@ -381,8 +437,9 @@ async function checkWeightDivergence(
     });
   } else if (
     review &&
-    review.status === "pending" &&
-    stage.status === "blocked"
+    ((review.status === "pending" && stage.status === "blocked") ||
+      (review.status === "rejected" &&
+        !(await otherInspectionReviewsOpen(order.id))))
   ) {
     // Novo peso dentro da tolerância: libera sem exigir revisão.
     await store.update("requirements", review.id, {

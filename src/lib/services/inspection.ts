@@ -280,9 +280,12 @@ export async function compareInspection(
     const stillOpen = await store.list("review_items", {
       filter: { entity: "order", entityId: order.id, status: "open" },
     });
+    // Também fecha a revisão reprovada (nova medição pedida) quando a medição
+    // refeita fica dentro da tolerância.
     if (
-      fresh?.status === "blocked" &&
-      review?.status === "pending" &&
+      review &&
+      ((fresh?.status === "blocked" && review.status === "pending") ||
+        review.status === "rejected") &&
       stillOpen.filter((r) => r.rule.startsWith("inspection.")).length === 0
     ) {
       await store.update("requirements", review.id, {
