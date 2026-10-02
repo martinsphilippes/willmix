@@ -197,3 +197,33 @@ export async function answerQuoteWithSheetAction(form: FormData) {
     return `${back}?saved=sent`;
   });
 }
+
+/** Fotos da ficha na resposta da RFQ (balança e régua obrigatórias para enviar). */
+export async function addQuoteSheetPhotosAction(form: FormData) {
+  const user = await requireUser();
+  const quoteId = str(form, "quoteId").slice(0, 64);
+  const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
+  await run(back, async () => {
+    ORDER_ID.parse(quoteId);
+    const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
+    const photos = files(form, "photos");
+    if (!photos.length) throw new Error("photo_required");
+    const { addQuoteSheetPhotos } = await import("@/lib/services/quote-sheet");
+    await addQuoteSheetPhotos(user, quoteId, kind, photos);
+    return `${back}?photos=${kind}#photos`;
+  });
+}
+
+export async function removeQuoteSheetPhotoAction(form: FormData) {
+  const user = await requireUser();
+  const quoteId = str(form, "quoteId").slice(0, 64);
+  const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
+  await run(back, async () => {
+    ORDER_ID.parse(quoteId);
+    const photoId = ORDER_ID.parse(str(form, "photoId"));
+    const { removeQuoteSheetPhoto } =
+      await import("@/lib/services/quote-sheet");
+    await removeQuoteSheetPhoto(user, quoteId, photoId);
+    return `${back}?photoRemoved=1#photos`;
+  });
+}

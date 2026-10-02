@@ -17,7 +17,12 @@ import {
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { answerQuoteWithSheetAction } from "../../actions/purchase-sheet";
+import {
+  addQuoteSheetPhotosAction,
+  answerQuoteWithSheetAction,
+  removeQuoteSheetPhotoAction,
+} from "../../actions/purchase-sheet";
+import { SheetPhotosCard } from "@/components/sheet-photos";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -30,7 +35,7 @@ export default async function QuotePage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const { error, saved, photos: photoSent, photoRemoved } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
   if (!quote || !canViewQuote(user, quote)) notFound();
@@ -85,6 +90,10 @@ export default async function QuotePage({
           <Alert tone="success">{t("quoteSheet.saved.sent")}</Alert>
         ) : saved === "complete" ? (
           <Alert tone="success">{t("quoteSheet.saved.complete")}</Alert>
+        ) : photoSent ? (
+          <Alert tone="success">{t("sheet.photos.sent")}</Alert>
+        ) : photoRemoved ? (
+          <Alert tone="success">{t("sheet.photos.removed")}</Alert>
         ) : saved === "partial" ? (
           <Alert tone="warning">
             {t("quoteSheet.saved.partial", { fields: missingText })}
@@ -162,6 +171,18 @@ export default async function QuotePage({
         </Card>
       </div>
       {sheetView ? (
+        <SheetPhotosCard
+          t={t}
+          photos={sheetView.photos}
+          canEdit={sheetView.access.addPhotos}
+          ownerField="quoteId"
+          ownerId={quote.id}
+          addAction={addQuoteSheetPhotosAction}
+          removeAction={removeQuoteSheetPhotoAction}
+          hint={t("quoteSheet.photosHint")}
+        />
+      ) : null}
+      {sheetView ? (
         <form action={answerQuoteWithSheetAction} className="mt-6 space-y-6">
           <input type="hidden" name="quoteId" value={quote.id} />
           <h2 className="text-lg font-semibold text-zinc-900">
@@ -187,7 +208,6 @@ export default async function QuotePage({
             containerTypes={sheetView.containerTypes}
             editSupplier={sheetView.access.editSupplier}
             editCustoms={sheetView.access.editCustoms}
-            lotRequired={false}
           />
           {canAnswer && sheetView.access.editSupplier ? (
             <Card title={t("quotes.answer")}>

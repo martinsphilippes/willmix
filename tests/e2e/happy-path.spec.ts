@@ -33,6 +33,23 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("input[name=colorAssortment]", "WHITE");
   await page.fill("input[name=material]", "GLASS");
   await page.fill("input[name=productionStartAt]", "2026-11-02");
+  await page.fill("input[name=lot1Interval]", "30");
+  await page.fill("input[name=lot1Cartons]", "50");
+  // Salva o rascunho antes das fotos (cada foto recarrega a página).
+  await Promise.all([
+    page.waitForURL(/saved=/),
+    page
+      .getByRole("button", { name: /保存草稿|Save draft|Salvar rascunho/ })
+      .click(),
+  ]);
+  // Fotos obrigatórias já na cotação: balança e régua. Escolher a foto já envia.
+  for (const kind of ["weight_scale", "dimension_scale"]) {
+    const row = page.locator(`form:has(input[name=kind][value=${kind}])`);
+    await Promise.all([
+      page.waitForURL(new RegExp(`photos=${kind}`)),
+      row.locator("input[name=photos]").setInputFiles(png),
+    ]);
+  }
 }
 
 async function login(page: Page, email: string) {
@@ -42,61 +59,6 @@ async function login(page: Page, email: string) {
   await page.getByLabel(/senha|password|密码/i).fill(PASSWORD);
   await page.getByRole("button", { name: /entrar|sign in|登录/i }).click();
   await page.waitForURL(/\/app/);
-}
-
-/** Ficha de compra da Preparação (planilha COMPRAS): campos obrigatórios + foto na balança. */
-async function fillPurchaseSheet(
-  page: Page,
-  orderUrl: string,
-  netWeight: string,
-) {
-  const sheetUrl = `${orderUrl}/purchase-sheet`;
-  await page.goto(sheetUrl);
-  const fields: Record<string, string> = {
-    supplierName: "YIWU WUJO INTL",
-    supplierStore: "A 154678",
-    price: "8,5",
-    moq: "6000",
-    masterCartonQty: "24",
-    innerQty: "6",
-    cbmPerCarton: "0.045",
-    heightCm: "25",
-    widthCm: "34",
-    lengthCm: "50",
-    packageType: "COLOR BOX",
-    netWeightPcKg: netWeight,
-    grossWeightPcKg: "12.5",
-    colorAssortment: "WHITE / BLACK / RED",
-    material: "PLASTIC / IRON",
-    lot1Interval: "30",
-    lot1Cartons: "100",
-    lot2Interval: "45",
-    lot2Cartons: "100",
-  };
-  for (const [name, value] of Object.entries(fields))
-    await page.fill(`input[name=${name}]`, value);
-  await page.selectOption("select[name=incoterm]", "EXW");
-  await page.selectOption("select[name=currency]", "USD");
-  await page.fill("input[name=productionStartAt]", "2026-11-10");
-  await Promise.all([
-    page.waitForURL(/saved=partial/),
-    page
-      .locator("form:has(input[name=supplierName]) button[type=submit]")
-      .click(),
-  ]);
-  // Planilha: 2 lotes de 100 caixas × 24 = 4.800 peças; 9 m³.
-  await expect(page.getByText("4.800").first()).toBeVisible();
-  // Fotos obrigatórias: balança e régua. Escolher a foto já envia (sem botão).
-  for (const kind of ["weight_scale", "dimension_scale"]) {
-    const row = page.locator(`form:has(input[name=kind][value=${kind}])`);
-    await Promise.all([
-      page.waitForURL(new RegExp(`photos=${kind}`)),
-      row.locator("input[name=photos]").setInputFiles(png),
-    ]);
-  }
-  await expect(
-    page.getByText(/Ficha completa|Sheet complete|采购单已完成/).first(),
-  ).toBeVisible();
 }
 
 /** Preenche todos os requisitos pendentes que o usuário logado pode preencher na tela do pedido. */
@@ -243,15 +205,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
 
-  // 8. PREPARATION: fornecedor preenche a ficha de compra (peso líquido 12 vira o
-  // peso declarado) e cumpre o resto do checklist.
+  // 8. PREPARATION: a ficha completa (com fotos) veio da cotação, então a etapa
+  // se concluiu sozinha e o pedido já está no pagamento ao fornecedor.
   await login(page, "supplier.a@china.com");
-  await fillPurchaseSheet(page, orderUrl, "12");
-  await fillMyRequirements(page, orderUrl, {
-    重量: "12",
-    weight: "12",
-    peso: "12",
-  });
   await page.goto(orderUrl);
   await expect(
     page

@@ -83,8 +83,32 @@ describe("ficha de compra na cotação", () => {
       ipiPercent: 10,
     });
     const view = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
-    expect(view.missing).toEqual([]);
+    // Campos completos; faltam a programação e as fotos (exigidas já na cotação).
+    expect(view.missing).toEqual(["lot1", "scalePhoto", "rulerPhoto"]);
     expect(view.sheet.importTaxPercent).toBe(18);
+    await qs.saveQuoteSheet(supplierA, quote.id, {
+      lots: [{ departureIntervalDays: 30, masterCartons: 42 }],
+    });
+    const png = () =>
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "foto.png", {
+        type: "image/png",
+      });
+    await qs.addQuoteSheetPhotos(supplierA, quote.id, "weight_scale", [png()]);
+    await qs.addQuoteSheetPhotos(supplierA, quote.id, "dimension_scale", [
+      png(),
+    ]);
+    // Outro fornecedor não envia foto nesta cotação.
+    await expect(
+      qs.addQuoteSheetPhotos(supplierB, quote.id, "angle", [png()]),
+    ).rejects.toThrow();
+    const done = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
+    expect(done.missing).toEqual([]);
+    expect(done.photos).toHaveLength(2);
+    // A foto da cotação não abre para outro fornecedor nem para o cliente.
+    const { canAccessDocument } = await import("@/lib/services/documents");
+    const photoDoc = (await store.get("documents", done.photos[0].documentId))!;
+    expect(await canAccessDocument(supplierB, photoDoc)).toBe(false);
+    expect(await canAccessDocument(joao, photoDoc)).toBe(false);
 
     await r.answerQuote(supplierA, quote.id, {
       price: 2.5,
@@ -102,7 +126,32 @@ describe("ficha de compra na cotação", () => {
     expect(orderSheet.price).toBe(2.5);
     expect(orderSheet.material).toBe("GLASS");
     expect(orderSheet.ipiPercent).toBe(10);
-    expect(orderSheet.completedAt).toBeNull();
+    // Fotos da cotação passam para o pedido.
+    const { getSheetPhotos } = await import("@/lib/services/purchase-sheet");
+    const orderPhotos = await getSheetPhotos(order.id);
+    expect(orderPhotos.map((p) => p.kind).sort()).toEqual([
+      "dimension_scale",
+      "weight_scale",
+    ]);
+    expect(
+      (await store.get("documents", orderPhotos[0].documentId))?.orderId,
+    ).toBe(order.id);
+    // Wellmix libera o pedido: a Preparação se conclui sozinha (ficha completa).
+    const { submitRequirement } = await import("@/lib/workflow/engine");
+    const [created] = await store.list("stages", {
+      filter: { orderId: order.id, key: "ORDER_CREATED" },
+    });
+    const [confirm] = await store.list("requirements", {
+      filter: { stageId: created.id, key: "order_confirmed" },
+    });
+    await submitRequirement(admin, confirm.id, {});
+    const [prep] = await store.list("stages", {
+      filter: { orderId: order.id, key: "PREPARATION" },
+    });
+    expect(prep.status).toBe("done");
+    expect((await store.get("orders", order.id))?.status).toBe(
+      "SUPPLIER_PAYMENT",
+    );
     // A ficha da cotação continua guardada.
     expect((await qs.getQuoteSheet(quote.id))?.id).not.toBe(orderSheet.id);
     // Cotação fechada: ninguém edita mais a ficha da cotação.

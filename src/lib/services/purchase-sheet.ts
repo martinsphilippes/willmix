@@ -595,3 +595,18 @@ export async function sheetProgress(order: Order) {
     ),
   };
 }
+
+/**
+ * Preparação acabou de começar: se a ficha (vinda da cotação) já está completa,
+ * os requisitos se cumprem na hora e a etapa se conclui sozinha.
+ */
+export async function syncPreparationFromSheet(user: User, orderId: string) {
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order) return;
+  const [sheet] = await store.list("purchase_sheets", {
+    filter: { orderId },
+    limit: 1,
+  });
+  if (sheet) await syncRequirements(user, order, sheet);
+}

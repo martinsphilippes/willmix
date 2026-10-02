@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   getStore,
+  type ProductPhoto,
   type PurchaseSheet,
   type Quote,
   type Request,
@@ -12,24 +13,29 @@ import { audit } from "./audit";
 import {
   containerCapacity,
   CUSTOMS_FIELDS,
+  getSheetPhotos,
+  SHEET_PHOTO_KINDS,
   SUPPLIER_FIELDS,
   type SheetAccess,
   type SheetInput,
+  type SheetPhotoKind,
 } from "./purchase-sheet";
+import { uploadDocument } from "./documents";
 import {
+  missingForCompletion,
   normalizeLots,
   planSheet,
-  SHEET_REQUIRED_FIELDS,
+  type SheetMissing,
   type SheetPlan,
-  type SheetRequiredField,
 } from "./purchase-sheet-calc";
 
 /*
  * Ficha de compra na cotação (RFQ): o fornecedor responde preenchendo a ficha
- * completa (fotos opcionais; ficam para a Preparação). Fica na mesma tabela das
- * fichas do pedido, com `orderId` = id da cotação (ids são únicos entre
- * tabelas). Ao confirmar o sinal, a ficha da cotação escolhida é copiada para o
- * pedido e a Preparação já nasce preenchida.
+ * completa, com a programação dos lotes e as fotos obrigatórias (balança e
+ * régua). Fica na mesma tabela das fichas do pedido, com `orderId` = id da
+ * cotação (ids são únicos entre tabelas); as fotos também. Ao confirmar o sinal,
+ * ficha e fotos da cotação escolhida vão para o pedido e a Preparação se
+ * conclui sozinha.
  */
 
 export class QuoteSheetError extends Error {}
@@ -42,14 +48,14 @@ export function quoteSheetAccess(user: User, quote: Quote): SheetAccess {
       view: true,
       editSupplier: open,
       editCustoms: open,
-      addPhotos: false,
+      addPhotos: open,
     };
   if (user.role === "supplier" && canViewQuote(user, quote))
     return {
       view: true,
       editSupplier: open,
       editCustoms: false,
-      addPhotos: false,
+      addPhotos: open,
     };
   return {
     view: false,
@@ -109,14 +115,16 @@ async function prefillQuote(
 }
 
 /** Campos obrigatórios da ficha que faltam para responder a RFQ (sem fotos nem lotes). */
+/** O que falta para enviar a cotação: a ficha completa, como a Preparação exige. */
 export function missingForQuote(
   sheet: Partial<PurchaseSheet> | null,
-): SheetRequiredField[] {
-  return SHEET_REQUIRED_FIELDS.filter((key) => {
-    const value = sheet?.[key];
-    return value === null || value === undefined || value === "";
-  });
+  photoKinds: readonly string[],
+): SheetMissing[] {
+  return missingForCompletion(sheet, photoKinds);
 }
+
+const photoKindsOf = (photos: Array<{ kind: string }>) =>
+  [...new Set(photos.map((p) => p.kind))];
 
 export interface QuoteSheetView {
   quote: Quote;
@@ -125,7 +133,9 @@ export interface QuoteSheetView {
   sheet: SheetInput & { id?: string };
   saved: boolean;
   plan: SheetPlan;
-  missing: SheetRequiredField[];
+  /** Fotos da ficha da cotação (balança e régua obrigatórias). */
+  photos: ProductPhoto[];
+  missing: SheetMissing[];
   containerType: string | null;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
 }
@@ -143,6 +153,7 @@ export async function getQuoteSheetForUser(
   if (!request) return null;
   const existing = await getQuoteSheet(quoteId);
   const sheet = existing ?? (await prefillQuote(quote, request));
+  const photos = await getSheetPhotos(quoteId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
     quote,
@@ -162,7 +173,8 @@ export async function getQuoteSheetForUser(
       },
       container.capacity,
     ),
-    missing: missingForQuote(sheet),
+    photos,
+    missing: missingForQuote(sheet, photoKindsOf(photos)),
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -173,7 +185,7 @@ export async function saveQuoteSheet(
   user: User,
   quoteId: string,
   input: SheetInput,
-): Promise<{ sheet: PurchaseSheet; missing: SheetRequiredField[] }> {
+): Promise<{ sheet: PurchaseSheet; missing: SheetMissing[] }> {
   const store = getStore();
   const quote = await store.get("quotes", quoteId);
   if (!quote) throw new QuoteSheetError("not_found");
@@ -219,7 +231,8 @@ export async function saveQuoteSheet(
     quoteId,
     `Ficha da cotação: ${Object.keys(patch).length} campo(s)`,
   );
-  return { sheet, missing: missingForQuote(sheet) };
+  const photos = await getSheetPhotos(quoteId);
+  return { sheet, missing: missingForQuote(sheet, photoKindsOf(photos)) };
 }
 
 /**
@@ -231,6 +244,23 @@ export async function copyQuoteSheetToOrder(quoteId: string, orderId: string) {
   const store = getStore();
   const source = await getQuoteSheet(quoteId);
   if (!source) return null;
+  // Fotos da cotação passam a ser do pedido (parceiros do pedido veem, como as da Preparação).
+  const [quotePhotos, orderPhotos] = await Promise.all([
+    getSheetPhotos(quoteId),
+    getSheetPhotos(orderId),
+  ]);
+  for (const photo of quotePhotos) {
+    if (orderPhotos.some((p) => p.documentId === photo.documentId)) continue;
+    const { id: _pid, createdAt: _pc, updatedAt: _pu, ...rest } = photo;
+    void _pid;
+    void _pc;
+    void _pu;
+    await store.create("product_photos", { ...rest, orderId });
+    await store.update("documents", photo.documentId, {
+      orderId,
+      visibility: "supplier",
+    });
+  }
   const [already] = await store.list("purchase_sheets", {
     filter: { orderId },
     limit: 1,
@@ -245,4 +275,82 @@ export async function copyQuoteSheetToOrder(quoteId: string, orderId: string) {
     orderId,
     completedAt: null,
   });
+}
+
+/** Fotos da ficha da cotação (o mesmo jeito das do pedido; o arquivo fica só para Wellmix e quem enviou). */
+export async function addQuoteSheetPhotos(
+  user: User,
+  quoteId: string,
+  kind: SheetPhotoKind,
+  files: File[],
+): Promise<number> {
+  const store = getStore();
+  const quote = await store.get("quotes", quoteId);
+  if (!quote) throw new QuoteSheetError("not_found");
+  if (!quoteSheetAccess(user, quote).addPhotos)
+    throw new QuoteSheetError("forbidden");
+  if (!(SHEET_PHOTO_KINDS as readonly string[]).includes(kind))
+    throw new QuoteSheetError("invalid_kind");
+  if (!files.length) throw new QuoteSheetError("photo_required");
+  const now = new Date().toISOString();
+  await Promise.all(
+    files.slice(0, 12).map(async (file) => {
+      // Sem pedido nem solicitação: outros fornecedores da RFQ não abrem.
+      const doc = await uploadDocument(user, file, {
+        type: "photo",
+        visibility: "internal",
+      });
+      await store.create("product_photos", {
+        productId: null,
+        sourcingItemId: null,
+        orderId: quoteId,
+        documentId: doc.id,
+        kind,
+        caption: null,
+        takenAt: now,
+        takenByUserId: user.id,
+        derivedFromPhotoId: null,
+        isPrimary: false,
+      });
+    }),
+  );
+  await audit(
+    user,
+    "quote_sheet.photo_add",
+    "quote",
+    quoteId,
+    `Foto da ficha da cotação: ${kind} (${Math.min(files.length, 12)})`,
+  );
+  return Math.min(files.length, 12);
+}
+
+export async function removeQuoteSheetPhoto(
+  user: User,
+  quoteId: string,
+  photoId: string,
+): Promise<void> {
+  const store = getStore();
+  const [quote, photo] = await Promise.all([
+    store.get("quotes", quoteId),
+    store.get("product_photos", photoId),
+  ]);
+  if (!quote || !photo || photo.orderId !== quoteId)
+    throw new QuoteSheetError("not_found");
+  if (!quoteSheetAccess(user, quote).addPhotos)
+    throw new QuoteSheetError("forbidden");
+  const doc = await store.get("documents", photo.documentId);
+  await store.remove("product_photos", photo.id);
+  if (doc && !doc.orderId) {
+    await store.remove("documents", doc.id);
+    await store.removeFile(doc.storageKey).catch((error) => {
+      console.error("removeQuoteSheetPhoto: arquivo não apagado", error);
+    });
+  }
+  await audit(
+    user,
+    "quote_sheet.photo_remove",
+    "quote",
+    quoteId,
+    `Foto excluída da ficha da cotação: ${photo.kind}`,
+  );
 }

@@ -542,6 +542,15 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   });
   await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
 
+  // Preparação com a ficha completa desde a cotação: conclui sem pedir nada ao fornecedor.
+  if (key === "PREPARATION" && user && required.length > 0) {
+    const { syncPreparationFromSheet } =
+      await import("@/lib/services/purchase-sheet");
+    await syncPreparationFromSheet(user, order.id);
+    const fresh = await store.get("stages", stage.id);
+    if (fresh?.status === "done") return;
+  }
+
   if (required.length === 0) {
     // Etapa sem requisitos (CLOSED) conclui na hora.
     const fresh = await store.get("stages", stage.id);
