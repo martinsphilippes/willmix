@@ -16,6 +16,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { saveSettingsAction } from "../actions";
 import { testAiAction } from "../actions/vision";
@@ -359,12 +360,10 @@ export default async function SettingsPage({
               label="marketingKitCurrency"
               hint={t("operations.settings.hint.marketingKitCurrency")}
             >
-              <Input
+              <CurrencySelect
                 name="marketingKitCurrency"
-                maxLength={3}
-                pattern="[A-Za-z]{3}"
-                defaultValue={s.marketingKitCurrency}
-                className="uppercase"
+                value={s.marketingKitCurrency}
+                t={t}
               />
             </Field>
             <div className="sm:col-span-2">

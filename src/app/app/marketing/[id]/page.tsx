@@ -28,6 +28,7 @@ import {
   formatDate,
   formatMoney,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addKitFileAction,
@@ -593,14 +594,12 @@ export default async function MarketingKitPage({
                           value={kit.currency}
                         />
                       ) : null}
-                      <Input
+                      <CurrencySelect
                         name={priceLocked ? undefined : "currency"}
-                        maxLength={3}
-                        pattern="[A-Za-z]{3}"
+                        value={kit.currency}
+                        t={t}
                         required={!priceLocked}
                         disabled={priceLocked}
-                        defaultValue={kit.currency}
-                        className="uppercase"
                       />
                     </Field>
                   </div>

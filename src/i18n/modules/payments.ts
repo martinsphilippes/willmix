@@ -3,6 +3,11 @@
  * comprovante do cliente): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "currency.name.BRL": "Real (BRL)",
+  "currency.name.CNY": "Yuan (CNY)",
+  "currency.name.USD": "Dólar (USD)",
+  "currency.name.EUR": "Euro (EUR)",
+  "currency.invalid": "Escolha uma das moedas: Real, Yuan, Dólar ou Euro.",
   "payments.pix.title": "Pague com Pix",
   "payments.pix.howTo":
     "No app do banco, escolha Pix copia e cola e cole o código, ou leia o QR Code. Valor e referência já vão preenchidos. Depois, anexe o comprovante aqui embaixo.",
@@ -61,6 +66,11 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "currency.name.BRL": "Real (BRL)",
+  "currency.name.CNY": "Yuan (CNY)",
+  "currency.name.USD": "Dollar (USD)",
+  "currency.name.EUR": "Euro (EUR)",
+  "currency.invalid": "Choose one of the currencies: Real, Yuan, Dollar or Euro.",
   "payments.pix.title": "Pay with Pix",
   "payments.pix.howTo":
     "In your bank app, choose Pix copy and paste and paste the code, or scan the QR Code. Amount and reference are already filled in. Then attach the receipt below.",
@@ -118,6 +128,11 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "currency.name.BRL": "雷亚尔 (BRL)",
+  "currency.name.CNY": "人民币 (CNY)",
+  "currency.name.USD": "美元 (USD)",
+  "currency.name.EUR": "欧元 (EUR)",
+  "currency.invalid": "请选择币种：雷亚尔、人民币、美元或欧元。",
   "payments.pix.title": "使用 Pix 付款",
   "payments.pix.howTo":
     "在银行 App 中选择 Pix 复制粘贴并粘贴代码，或扫描二维码。金额和参考号已自动填写。付款后请在下方上传凭证。",

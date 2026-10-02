@@ -13,6 +13,8 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { CURRENCIES } from "@/lib/currencies";
 import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton } from "@/components/submit-button";
 import { saveSourcingItemAction } from "../../actions/sourcing";
@@ -25,8 +27,6 @@ import {
   sourcingTone,
   todayValue,
 } from "./shared";
-
-const CURRENCIES = ["USD", "CNY", "BRL", "EUR"] as const;
 
 /** Valores herdados da visita quando o item nasce a partir dela. */
 export interface ItemPreset {
@@ -190,7 +190,7 @@ export function ItemForm({
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
-                  {c}
+                  {t(`currency.name.${c}` as DictionaryKey)}
                 </option>
               ))}
             </Select>

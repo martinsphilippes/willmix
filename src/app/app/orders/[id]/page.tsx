@@ -67,6 +67,7 @@ import {
   rowClass,
   stageTone,
 } from "@/components/ui";
+import { CurrencySelect } from "@/components/currency-select";
 import { RequirementForm } from "@/components/requirement-form";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
@@ -501,10 +502,10 @@ export default async function OrderPage({
                           />
                         </Field>
                         <Field label={t("common.currency")}>
-                          <Input
+                          <CurrencySelect
                             name="currency"
-                            maxLength={3}
-                            defaultValue={order.fobCurrency ?? "USD"}
+                            value={order.fobCurrency ?? "USD"}
+                            t={t}
                           />
                         </Field>
                         <Field label={t("finance.fx")}>
@@ -798,10 +799,10 @@ export default async function OrderPage({
                     />
                   </Field>
                   <Field label={t("common.currency")}>
-                    <Input
+                    <CurrencySelect
                       name="currency"
-                      maxLength={3}
-                      defaultValue={finance.sellCurrency}
+                      value={finance.sellCurrency}
+                      t={t}
                     />
                   </Field>
                   <div className="sm:col-span-2">
@@ -999,11 +1000,7 @@ export default async function OrderPage({
                         />
                       </Field>
                       <Field label={t("common.currency")}>
-                        <Input
-                          name="currency"
-                          defaultValue="BRL"
-                          maxLength={3}
-                        />
+                        <CurrencySelect name="currency" value="BRL" t={t} />
                       </Field>
                     </div>
                     <Field label={t("orders.penalty.responsible")}>

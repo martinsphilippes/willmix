@@ -30,6 +30,7 @@ import {
   rowClass,
   type StepState,
 } from "@/components/ui";
+import { CURRENCIES } from "@/lib/currencies";
 import { SubmitButton } from "@/components/submit-button";
 import {
   applyImportBatchAction,
@@ -37,7 +38,6 @@ import {
   setBatchMappingAction,
 } from "../../actions/import-batches";
 
-const CURRENCIES = ["USD", "CNY", "BRL", "EUR"];
 const LIST_URL: Record<ImportEntity, string> = {
   products: "/app/products",
   sourcing_items: "/app/sourcing",
@@ -235,7 +235,7 @@ export default async function ImportBatchPage({
                   >
                     {CURRENCIES.map((c) => (
                       <option key={c} value={c}>
-                        {c}
+                        {t(`currency.name.${c}` as DictionaryKey)}
                       </option>
                     ))}
                   </Select>

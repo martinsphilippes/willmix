@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { CURRENCIES, isCurrency } from "@/lib/currencies";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   assertRole,
@@ -178,7 +179,7 @@ export async function answerQuoteAction(form: FormData) {
     const parsed = z
       .object({
         price: z.number().positive(),
-        currency: z.string().length(3),
+        currency: z.enum(CURRENCIES),
         leadTimeDays: z.number().int().positive(),
         conditions: z.string().optional().nullable(),
       })
@@ -200,7 +201,7 @@ export async function selectQuoteAction(form: FormData) {
       .object({
         quoteId: z.string().min(1),
         sellPrice: z.number().positive(),
-        sellCurrency: z.string().length(3),
+        sellCurrency: z.enum(CURRENCIES),
         downPaymentAmount: z.number().nonnegative().optional().nullable(),
       })
       .parse({
@@ -407,7 +408,7 @@ export async function registerCustomerPaymentAction(form: FormData) {
     const parsed = z
       .object({
         amount: z.number().positive(),
-        currency: z.string().length(3),
+        currency: z.enum(CURRENCIES),
         method: z.string().nullable(),
         note: z.string().nullable(),
       })
@@ -474,7 +475,7 @@ export async function registerSupplierPaymentAction(form: FormData) {
     const parsed = z
       .object({
         amount: z.number().positive(),
-        currency: z.string().length(3),
+        currency: z.enum(CURRENCIES),
         fxRate: z.number().positive().nullable(),
         note: z.string().nullable(),
       })
@@ -565,7 +566,7 @@ export async function createPenaltyAction(form: FormData) {
       .object({
         reason: z.string().min(2),
         amount: z.number().nonnegative(),
-        currency: z.string().length(3),
+        currency: z.enum(CURRENCIES),
         responsiblePartyId: z.string().nullable(),
       })
       .parse({
@@ -863,7 +864,7 @@ export async function saveSettingsAction(form: FormData) {
           throw new Error("invalid_ai_mode");
         value = String(raw);
       } else if (key === "marketingKitCurrency") {
-        if (!/^[A-Za-z]{3}$/.test(String(raw)))
+        if (!isCurrency(String(raw).toUpperCase()))
           throw new Error("invalid_currency");
         value = String(raw).toUpperCase();
       } else if (key === "pixKey") {
