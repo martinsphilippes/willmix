@@ -146,7 +146,9 @@ export default async function ReviewsPage({
                       {ruleLabel(t, r.rule)}
                     </Badge>
                     {r.status !== "open" ? (
-                      <Badge tone={r.status === "resolved" ? "success" : "neutral"}>
+                      <Badge
+                        tone={r.status === "resolved" ? "success" : "neutral"}
+                      >
                         {t(`reviews.status.${r.status}`)}
                       </Badge>
                     ) : null}

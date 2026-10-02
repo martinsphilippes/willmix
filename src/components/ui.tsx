@@ -188,7 +188,7 @@ export function Field({
   ) {
     const id = children.props.id ?? `file-${generatedId}`;
     return (
-      <div className="block space-y-1">
+      <div className="block min-w-0 space-y-1.5">
         <label htmlFor={id} className="block text-sm font-medium text-zinc-800">
           {label}
         </label>
@@ -200,8 +200,8 @@ export function Field({
     );
   }
   return (
-    <label className="block space-y-1">
-      <span className="text-sm font-medium text-zinc-800">{label}</span>
+    <label className="block min-w-0 space-y-1.5">
+      <span className="block text-sm font-medium text-zinc-800">{label}</span>
       {children}
       {hint ? (
         <span className="block text-xs text-zinc-500">{hint}</span>
@@ -211,7 +211,7 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
+  "block w-full min-w-0 max-w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input {...props} className={cx(inputClass, className)} />;

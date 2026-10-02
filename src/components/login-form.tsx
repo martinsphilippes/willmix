@@ -64,10 +64,7 @@ export function LoginForm({
 
   return (
     <div className="space-y-4">
-      <form
-        onSubmit={onSubmit}
-        className="space-y-4"
-      >
+      <form onSubmit={onSubmit} className="space-y-4">
         <label className="block space-y-1">
           <span className="text-sm font-medium text-zinc-800">
             {labels.email}

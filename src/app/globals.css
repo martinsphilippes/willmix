@@ -62,3 +62,29 @@ body {
     transform: translateX(300%);
   }
 }
+
+/*
+ * Campos de data/hora no Safari (iPhone/iPad): o controle nativo tem largura e
+ * altura próprias e passava da coluna, cobrindo o campo ao lado. Aqui ele segue
+ * a largura da coluna e a mesma altura dos outros campos.
+ */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.5rem;
+  line-height: 1.25rem;
+}
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+input::-webkit-datetime-edit {
+  padding: 0;
+}

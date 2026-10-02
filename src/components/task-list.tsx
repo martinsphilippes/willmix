@@ -22,7 +22,10 @@ export async function TaskList({ user }: { user: User }) {
           body: "help.tasks.customer.body" as const,
           steps: "help.tasks.customer.steps" as const,
         }
-      : { body: "help.tasks.body" as const, steps: "help.tasks.steps" as const };
+      : {
+          body: "help.tasks.body" as const,
+          steps: "help.tasks.steps" as const,
+        };
   return (
     <>
       <PageHeader

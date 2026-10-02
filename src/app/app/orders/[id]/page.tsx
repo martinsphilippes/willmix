@@ -69,7 +69,7 @@ import {
 } from "@/components/ui";
 import { RequirementForm } from "@/components/requirement-form";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
-import { SubmitButton } from "@/components/submit-button";
+import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   assignPartnerAction,
   createPenaltyAction,
@@ -932,15 +932,9 @@ export default async function OrderPage({
                                 name="back"
                                 value={`/app/orders/${order.id}`}
                               />
-                              <button
-                                type="submit"
-                                className={cx(
-                                  linkClass,
-                                  "inline-flex min-h-9 items-center text-xs",
-                                )}
-                              >
+                              <SubmitTextButton className="min-h-9 text-xs">
                                 {t("orders.ack.confirmDoc")}
-                              </button>
+                              </SubmitTextButton>
                             </form>
                           )
                         ) : null}

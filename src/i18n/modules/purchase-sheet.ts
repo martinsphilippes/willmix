@@ -13,7 +13,7 @@ export const pt = {
   "sheet.title": "Ficha de compra",
   "sheet.subtitle": "Pedido #{number} · {product}",
   "sheet.intro":
-    "Os dados da planilha de compras, preenchidos à mão. Salve quantas vezes quiser: quando os campos obrigatórios e a foto na balança estiverem completos, a Preparação se conclui sozinha e o peso líquido por peça vira o peso comparado na inspeção.",
+    "Os dados da planilha de compras, preenchidos à mão. Salve quantas vezes quiser: quando os campos obrigatórios e a foto na balança estiverem completos, a Preparação se conclui sozinha e o peso líquido por peça vira o peso comparado na inspeção. Campos com * são obrigatórios.",
   "sheet.open": "Preencher ficha de compra",
   "sheet.view": "Ver ficha de compra",
   "sheet.back": "Voltar ao pedido",
@@ -113,7 +113,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.title": "Purchase sheet",
   "sheet.subtitle": "Order #{number} · {product}",
   "sheet.intro":
-    "The purchase spreadsheet data, filled in by hand. Save as often as you like: once the required fields and the scale photo are complete, Preparation completes by itself and the net weight per piece becomes the weight compared at inspection.",
+    "The purchase spreadsheet data, filled in by hand. Save as often as you like: once the required fields and the scale photo are complete, Preparation completes by itself and the net weight per piece becomes the weight compared at inspection. Fields marked * are required.",
   "sheet.open": "Fill in purchase sheet",
   "sheet.view": "View purchase sheet",
   "sheet.back": "Back to order",
@@ -213,7 +213,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.title": "采购单",
   "sheet.subtitle": "订单 #{number} · {product}",
   "sheet.intro":
-    "采购表格的数据，手动填写。可以随时保存：必填项和称重照片完成后，准备阶段会自动完成，每件净重将作为验货时比对的重量。",
+    "采购表格的数据，手动填写。可以随时保存：必填项和称重照片完成后，准备阶段会自动完成，每件净重将作为验货时比对的重量。带 * 的为必填项。",
   "sheet.open": "填写采购单",
   "sheet.view": "查看采购单",
   "sheet.back": "返回订单",
