@@ -353,6 +353,12 @@ export interface Party extends BaseRow {
   radarNotes: string | null;
   /** Preparação multi-importador: nulo = Wellmix. */
   importerId: string | null;
+  /* Dados bancários (fornecedor): base do "copiar dados para o banco" no pagamento. */
+  bankBeneficiary: string | null;
+  bankName: string | null;
+  bankAccount: string | null;
+  bankSwift: string | null;
+  bankAddress: string | null;
 }
 
 export interface RequirementTemplate {
@@ -1197,6 +1203,11 @@ export const TABLES: Record<TableName, TableDef> = {
       radar: enumOf(RADAR_STATUSES, false),
       radarNotes: text(),
       importerId: id(false),
+      bankBeneficiary: str(160),
+      bankName: str(160),
+      bankAccount: str(80),
+      bankSwift: str(20),
+      bankAddress: str(255),
     },
     indexes: [{ key: "by_type", type: "key", columns: ["type"] }],
   },
@@ -1974,6 +1985,11 @@ export const PARTY_EXTRA_DEFAULTS = {
   radar: null,
   radarNotes: null,
   importerId: null,
+  bankBeneficiary: null,
+  bankName: null,
+  bankAccount: null,
+  bankSwift: null,
+  bankAddress: null,
 } satisfies Partial<Party>;
 
 export const USER_EXTRA_DEFAULTS = {

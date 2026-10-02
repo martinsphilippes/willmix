@@ -101,6 +101,15 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Chave (CPF, CNPJ, e-mail, celular +55 ou aleatória, validada no servidor), recebedor e cidade ficam em Configurações (admin). Sem chave, ou com valor fora de BRL, a tela explica e não mostra Pix.
 - O cliente anexa o comprovante (foto ou PDF) na própria solicitação (`submitDownPaymentProofAction`; só o login que vê a solicitação, só aguardando sinal). O pagamento segue pendente, a Wellmix é avisada, vê o comprovante e confirma; a pendência sai do cliente e a da Wellmix diz que o comprovante chegou. Fornecedor não abre o comprovante.
 
+### Pagamento ao fornecedor
+
+- Na etapa "Pagamento ao fornecedor" o painel mostra o valor a pagar: FOB do pedido menos o que já foi registrado na mesma moeda (`services/supplier-payment.ts`).
+- Três ações de um clique: copiar os dados de transferência para o banco (beneficiário, banco, conta/IBAN, SWIFT, valor e referência `WELLMIX PO #N`, em inglês), pedir ao financeiro por e-mail (`mailto:`) ou pedir por WhatsApp (`wa.me`). Cada uma registra o pagamento como pendente, conclui o item "Pagamento ao fornecedor registrado" e avisa o fornecedor.
+- O registro manual com valor, câmbio e comprovante continua, recolhido em "Já pagou?", e grava o pagamento como confirmado.
+- O fornecedor confirma o recebimento também de pagamentos pendentes, o que fecha a etapa. Pendente não conta como pago na conta corrente.
+- Dados bancários do fornecedor ficam no cadastro do parceiro (`bank*`, só para fornecedores). O e-mail e o WhatsApp do financeiro ficam em Configurações (admin).
+- Aprovação automática na conta exige API de banco ou de pagamentos com credencial. Não há, então não foi simulada.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.

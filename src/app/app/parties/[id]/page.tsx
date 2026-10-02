@@ -275,6 +275,63 @@ export default async function PartyPage({
                   />
                 </Field>
               </div>
+              {party.type === "supplier" ? (
+                <fieldset
+                  id="bank"
+                  className="scroll-mt-24 space-y-3 border-t border-zinc-100 pt-4"
+                >
+                  <legend className="text-sm font-semibold text-zinc-900">
+                    {t("supplierPay.bankTitle")}
+                  </legend>
+                  <p className="text-xs text-zinc-500">
+                    {t("supplierPay.bankHint")}
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label={t("supplierPay.field.bankBeneficiary")}>
+                      <Input
+                        name="bankBeneficiary"
+                        maxLength={160}
+                        defaultValue={party.bankBeneficiary ?? ""}
+                        className="py-2.5"
+                      />
+                    </Field>
+                    <Field label={t("supplierPay.field.bankName")}>
+                      <Input
+                        name="bankName"
+                        maxLength={160}
+                        defaultValue={party.bankName ?? ""}
+                        className="py-2.5"
+                      />
+                    </Field>
+                    <Field label={t("supplierPay.field.bankAccount")}>
+                      <Input
+                        name="bankAccount"
+                        maxLength={80}
+                        defaultValue={party.bankAccount ?? ""}
+                        className="py-2.5 font-mono"
+                      />
+                    </Field>
+                    <Field label={t("supplierPay.field.bankSwift")}>
+                      <Input
+                        name="bankSwift"
+                        maxLength={20}
+                        defaultValue={party.bankSwift ?? ""}
+                        className="py-2.5 font-mono uppercase"
+                      />
+                    </Field>
+                    <div className="sm:col-span-2">
+                      <Field label={t("supplierPay.field.bankAddress")}>
+                        <Input
+                          name="bankAddress"
+                          maxLength={255}
+                          defaultValue={party.bankAddress ?? ""}
+                          className="py-2.5"
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                </fieldset>
+              ) : null}
               <SubmitButton variant="secondary">
                 {t("common.save")}
               </SubmitButton>

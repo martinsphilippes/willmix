@@ -396,6 +396,34 @@ export default async function SettingsPage({
               />
             </div>
           </div>
+          {/* Pagamento ao fornecedor: destino do pedido ao financeiro. */}
+          <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
+            {t("supplierPay.settings.title")}
+          </h3>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            {t("supplierPay.settings.hint")}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("supplierPay.settings.email")}>
+              <Input
+                name="financeEmail"
+                type="email"
+                maxLength={160}
+                defaultValue={s.financeEmail}
+              />
+            </Field>
+            <Field
+              label={t("supplierPay.settings.whatsapp")}
+              hint={t("supplierPay.settings.whatsappHint")}
+            >
+              <Input
+                name="financeWhatsapp"
+                type="tel"
+                maxLength={24}
+                defaultValue={s.financeWhatsapp}
+              />
+            </Field>
+          </div>
           {/* Pix do sinal: a chave do recebedor que aparece para o cliente pagar. */}
           <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
             {t("payments.settings.title")}

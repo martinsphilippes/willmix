@@ -18,6 +18,7 @@ import * as access from "./access";
 import * as home from "./home";
 import * as payments from "./payments";
 import * as purchaseSheet from "./purchase-sheet";
+import * as supplierPayment from "./supplier-payment";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -35,6 +36,7 @@ export const modulesPt = {
   ...home.pt,
   ...payments.pt,
   ...purchaseSheet.pt,
+  ...supplierPayment.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -52,6 +54,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...home.en,
   ...payments.en,
   ...purchaseSheet.en,
+  ...supplierPayment.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -69,4 +72,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...home.zh,
   ...payments.zh,
   ...purchaseSheet.zh,
+  ...supplierPayment.zh,
 };
