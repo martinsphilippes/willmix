@@ -213,6 +213,7 @@ const BUCKET_EXTENSIONS = [
   "xlsm",
   "xls",
   "csv",
+  "json",
   "zip",
   "ai",
   "svg",

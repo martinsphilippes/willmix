@@ -25,6 +25,11 @@ export interface CalculatorQuote {
   shippingFreightBrl: number | null;
   /** Linha de situação do frete da companhia marítima (já traduzida). */
   shippingFreightNote: string | null;
+  /** De onde vieram II e IPI (já traduzido, ex.: "TEC/TIPI · NCM 8517.13.00"). */
+  iiSource: string | null;
+  ipiSource: string | null;
+  /** Sem NCM confirmado: II e IPI em 0%. */
+  ncmPending: boolean;
 }
 
 type Labels = Record<
@@ -40,6 +45,12 @@ type Labels = Record<
   | "freightNone"
   | "importTax"
   | "ipi"
+  | "insurance"
+  | "customsValue"
+  | "pis"
+  | "cofins"
+  | "icms"
+  | "ncmPending"
   | "landed"
   | "margin"
   | "sell"
@@ -56,6 +67,9 @@ const brl = (n: number | null | undefined) =>
   n === null || n === undefined
     ? "—"
     : n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const pctText = (n: number | null | undefined) =>
+  (n ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 const fill = (template: string, values: Record<string, string>) =>
   template.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
@@ -98,6 +112,10 @@ export function SellPriceCalculator({
     default: labels.sourceDefault,
   }[current?.marginSource ?? "default"];
   const input = current?.input;
+  // Sem NCM, o aviso do NCM substitui os de II e IPI.
+  const shownMissing = (result?.missing ?? []).filter(
+    (m) => !(current?.ncmPending && (m === "importTax" || m === "ipi")),
+  );
 
   return (
     <>
@@ -162,16 +180,66 @@ export function SellPriceCalculator({
                   : labels.freightNone}
             </dt>
             <dd className="text-right">{brl(result.freightBrl)}</dd>
+            {result.insuranceBrl > 0 ? (
+              <>
+                <dt className="text-zinc-600">
+                  {fill(labels.insurance, {
+                    pct: pctText(input.insurancePercent),
+                  })}
+                </dt>
+                <dd className="text-right">{brl(result.insuranceBrl)}</dd>
+              </>
+            ) : null}
+            <dt className="border-t border-zinc-100 pt-1 text-zinc-700">
+              {labels.customsValue}
+            </dt>
+            <dd className="border-t border-zinc-100 pt-1 text-right">
+              {brl(result.cifBrl)}
+            </dd>
             <dt className="text-zinc-600">
               {fill(labels.importTax, {
-                pct: String(input.importTaxPercent ?? 0),
+                pct: pctText(input.importTaxPercent),
               })}
+              {current.iiSource ? (
+                <span className="block text-xs text-zinc-500">
+                  {current.iiSource}
+                </span>
+              ) : null}
             </dt>
             <dd className="text-right">{brl(result.importTaxBrl)}</dd>
             <dt className="text-zinc-600">
-              {fill(labels.ipi, { pct: String(input.ipiPercent ?? 0) })}
+              {fill(labels.ipi, { pct: pctText(input.ipiPercent) })}
+              {current.ipiSource ? (
+                <span className="block text-xs text-zinc-500">
+                  {current.ipiSource}
+                </span>
+              ) : null}
             </dt>
             <dd className="text-right">{brl(result.ipiBrl)}</dd>
+            {input.pisPercent != null ? (
+              <>
+                <dt className="text-zinc-600">
+                  {fill(labels.pis, { pct: pctText(input.pisPercent) })}
+                </dt>
+                <dd className="text-right">{brl(result.pisBrl)}</dd>
+              </>
+            ) : null}
+            {input.cofinsPercent != null ? (
+              <>
+                <dt className="text-zinc-600">
+                  {fill(labels.cofins, { pct: pctText(input.cofinsPercent) })}
+                </dt>
+                <dd className="text-right">{brl(result.cofinsBrl)}</dd>
+              </>
+            ) : null}
+            {input.icmsPercent != null ? (
+              <>
+                <dt className="text-zinc-600">
+                  {fill(labels.icms, { pct: pctText(input.icmsPercent) })}
+                </dt>
+                <dd className="text-right">{brl(result.icmsBrl)}</dd>
+              </>
+            ) : null}
             <dt className="border-t border-zinc-100 pt-1 font-medium text-zinc-800">
               {labels.landed}
             </dt>
@@ -192,12 +260,17 @@ export function SellPriceCalculator({
               {brl(result.sellBrl)}
             </dd>
           </dl>
+          {current.ncmPending ? (
+            <p className="text-xs font-medium text-amber-700">
+              {labels.ncmPending}
+            </p>
+          ) : null}
           {result.marginPercent === 0 ? (
             <p className="text-xs text-amber-700">{labels.marginZero}</p>
           ) : null}
-          {result.missing.length ? (
+          {shownMissing.length ? (
             <ul className="list-disc space-y-0.5 pl-5 text-xs text-amber-700">
-              {result.missing.map((m) => (
+              {shownMissing.map((m) => (
                 <li key={m}>{labels.missing[m]}</li>
               ))}
             </ul>

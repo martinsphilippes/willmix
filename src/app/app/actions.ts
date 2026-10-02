@@ -254,6 +254,8 @@ async function pricingRecordFor(
     fxDay: ctx.fx.day,
     sellPrice,
     sellCurrency,
+    ncm: q.tax.ncm,
+    tax: q.tax,
   };
 }
 
@@ -891,7 +893,13 @@ export async function saveSettingsAction(form: FormData) {
     for (const key of Object.keys(DEFAULT_SETTINGS) as SettingKey[]) {
       const raw = form.get(key);
       // Gravados pelo sistema (PTAX do dia); nunca vêm do formulário.
-      if (key === "fxPtax" || key === "fxPtaxFailedAt" || key === "fxLastError")
+      if (
+        key === "fxPtax" ||
+        key === "fxPtaxFailedAt" ||
+        key === "fxLastError" ||
+        key === "fiscalTable" ||
+        key === "fiscalLastError"
+      )
         continue;
       if (
         key === "marginByLine" ||
@@ -933,6 +941,23 @@ export async function saveSettingsAction(form: FormData) {
         if (n !== null && !(Number.isFinite(n) && n >= 0 && n <= 1_000_000))
           throw new Error("freight_invalid");
         value = n;
+      } else if (
+        key === "insurancePercent" ||
+        key === "pisImportPercent" ||
+        key === "cofinsImportPercent" ||
+        key === "icmsPercent"
+      ) {
+        const text = String(raw).trim().replace(",", ".");
+        const n = text === "" ? null : Number(text);
+        if (n === null && key !== "icmsPercent") throw new Error("tax_invalid");
+        if (n !== null && !(Number.isFinite(n) && n >= 0 && n < 100))
+          throw new Error("tax_invalid");
+        value = n;
+      } else if (key === "fiscalTecUrl" || key === "fiscalTipiUrl") {
+        const v = String(raw).trim();
+        if (v && !/^https:\/\/[^\s]+$/i.test(v))
+          throw new Error("fiscal_url_invalid");
+        value = v.slice(0, 500);
       } else if (key === "freightCurrency") {
         const c = String(raw).toUpperCase();
         if (!isCurrency(c)) throw new Error("invalid_currency");

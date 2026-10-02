@@ -25,6 +25,9 @@ beforeAll(async () => {
   await setSetting("marginPercent", 20);
   await setSetting("marginByCustomer", { "cliente-joao": 25 });
   await setSetting("freightPerCbm", 100);
+  // Este teste confere câmbio e margem: PIS/COFINS fora da conta (cobertos em import-taxes).
+  await setSetting("pisImportPercent", 0);
+  await setSetting("cofinsImportPercent", 0);
 });
 
 const fxFor = (day: string, usd: number) => ({

@@ -6,6 +6,8 @@ import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
 import { PricingSettings } from "@/components/pricing-settings";
+import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
+import { fiscalStatus } from "@/lib/services/fiscal";
 import { formatContainerTypes } from "@/lib/services/containers";
 import { aiStatus } from "@/lib/integrations/ai";
 import { getT } from "@/i18n/server";
@@ -65,9 +67,10 @@ export default async function SettingsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertRole(user, ["admin"]);
-  const { ok, error, aiTest, aiModel, aiCode } = await searchParams;
+  const { ok, error, aiTest, aiModel, aiCode, fiscal, fiscalSync } =
+    await searchParams;
   const t = await getT();
-  const [s, lineRows, customerRows, fx] = await Promise.all([
+  const [s, lineRows, customerRows, fx, fiscalInfo] = await Promise.all([
     getSettings(),
     getStore().list("product_lines", { orderBy: "name" }),
     getStore().list("parties", {
@@ -75,7 +78,22 @@ export default async function SettingsPage({
       orderBy: "name",
     }),
     getFxRates(),
+    fiscalStatus(),
   ]);
+  // "?fiscal=tec-10412-3": planilha carregada (tabela, NCMs, alíquotas alteradas).
+  const fiscalMatch =
+    typeof fiscal === "string" ? /^(tec|tipi)-(\d+)-(\d+)$/.exec(fiscal) : null;
+  const fiscalNotice = fiscalMatch
+    ? t("fiscal.table.uploaded", {
+        kind: fiscalMatch[1].toUpperCase(),
+        count: Number(fiscalMatch[2]).toLocaleString("pt-BR"),
+        changed: fiscalMatch[3],
+      })
+    : fiscalSync === "ok"
+      ? t("fiscal.table.synced.ok")
+      : fiscalSync === "partial"
+        ? t("fiscal.table.synced.partial")
+        : null;
   const lines = lineRows.map((l) => ({ id: l.id, name: l.name }));
   const customers = customerRows.map((c) => ({ id: c.id, name: c.name }));
   const errorKey =
@@ -438,6 +456,8 @@ export default async function SettingsPage({
             customers={customers}
             fx={fx}
           />
+          {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}
+          <TaxRateFields t={t} s={s} />
           {/* Pagamento ao fornecedor: destino do pedido ao financeiro. */}
           <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
             {t("supplierPay.settings.title")}
@@ -497,6 +517,7 @@ export default async function SettingsPage({
           <SubmitButton>{t("common.save")}</SubmitButton>
         </form>
       </Card>
+      <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotice} />
 
       {/* Teste real da IA com a configuração salva (mostra provedor/modelo ou o motivo da falha). */}
       <Card title={t("operations.ai.test")} className="mt-6">
