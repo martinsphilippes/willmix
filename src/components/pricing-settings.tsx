@@ -3,6 +3,7 @@ import type { Settings } from "@/lib/settings";
 import type { FxView } from "@/lib/services/fx";
 import { CurrencySelect } from "@/components/currency-select";
 import { Badge, Field, Input } from "@/components/ui";
+import { FxManualField } from "@/components/fx-manual-field";
 
 /*
  * Configurações do preço ao cliente (dentro do formulário de Configurações):
@@ -86,6 +87,7 @@ export function PricingSettings({
         </div>
         <p className="mt-1 text-xs text-zinc-500">
           USD {rateText("USD")} · RMB {rateText("RMB")} · EUR {rateText("EUR")}
+          {fx.source ? ` · ${t(`pricing.fx.source.${fx.source}`)}` : ""}
         </p>
         <p className="mt-3 text-xs leading-relaxed text-zinc-500">
           {t("pricing.settings.fxManualHint")}
@@ -93,15 +95,20 @@ export function PricingSettings({
         <input type="hidden" name="fxManualRates.__form" value="1" />
         <div className="mt-2 grid gap-3 sm:grid-cols-3">
           {(["USD", "RMB", "EUR"] as const).map((c) => (
-            <Field key={c} label={`${c} → R$`}>
-              <Input
-                name={`fxManualRates.${c}`}
-                type="number"
-                step="0.0001"
-                min="0"
-                defaultValue={s.fxManualRates[c] ?? ""}
-              />
-            </Field>
+            <FxManualField
+              key={c}
+              currency={c}
+              defaultValue={s.fxManualRates[c]}
+              labels={{
+                label: `${c} → R$`,
+                fetch: t("pricing.fx.fetchNow"),
+                fetching: t("pricing.fx.fetching"),
+                from: t("pricing.fx.fetchedFrom"),
+                sourcePtax: t("pricing.fx.source.ptax"),
+                sourceAwesome: t("pricing.fx.source.awesomeapi"),
+                error: t("pricing.fx.fetchError"),
+              }}
+            />
           ))}
         </div>
       </div>

@@ -136,6 +136,8 @@ export interface FxSnapshot {
   fetchedAt: string;
   rates: Partial<Record<"USD" | "RMB" | "EUR", number>>;
   quotedAt: Partial<Record<"USD" | "RMB" | "EUR", string>>;
+  /** De onde veio: PTAX do Banco Central ou AwesomeAPI (reserva). */
+  source?: "ptax" | "awesomeapi";
 }
 
 export type Settings = typeof DEFAULT_SETTINGS;

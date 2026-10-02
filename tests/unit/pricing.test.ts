@@ -140,6 +140,49 @@ describe("câmbio PTAX", () => {
     expect(next.rates.USD).toBe(5.5);
   });
 
+  it("monta a URL da PTAX com os parâmetros OData sem codificar", async () => {
+    let url = "";
+    await fetchPtax("RMB", "2026-10-02", async (input) => {
+      url = String(input);
+      return ptaxResponse(0.75);
+    });
+    expect(url).toContain("?@moeda='CNY'&@dataInicial='09-25-2026'");
+    expect(url).toContain("@dataFinalCotacao='10-02-2026'&$format=json");
+  });
+
+  it("Banco Central fora: usa a AwesomeAPI; Buscar agora ignora a espera", async () => {
+    await setSetting("fxPtax", null);
+    const now = new Date("2026-10-05T15:00:00Z");
+    // Falha recente registrada: sem force, nem tenta.
+    await setSetting("fxPtaxFailedAt", now.toISOString());
+    let calls = 0;
+    const fetcher = async (input: RequestInfo | URL) => {
+      calls++;
+      if (String(input).includes("bcb.gov.br"))
+        return new Response("down", { status: 503 });
+      return new Response(
+        JSON.stringify({
+          USDBRL: { ask: "5.42", create_date: "2026-10-05 12:00:00" },
+          CNYBRL: { ask: "0.76", create_date: "2026-10-05 12:00:00" },
+          EURBRL: { ask: "6.31", create_date: "2026-10-05 12:00:00" },
+        }),
+        { status: 200 },
+      );
+    };
+    const skipped = await getFxRates({ now, fetcher: fetcher as typeof fetch });
+    expect(calls).toBe(0);
+    expect(skipped.status).not.toBe("today");
+    const forced = await getFxRates({
+      now,
+      fetcher: fetcher as typeof fetch,
+      force: true,
+    });
+    expect(forced.status).toBe("today");
+    expect(forced.source).toBe("awesomeapi");
+    expect(forced.rates).toEqual({ USD: 5.42, RMB: 0.76, EUR: 6.31 });
+    expect((await getSettings()).fxPtax?.source).toBe("awesomeapi");
+  });
+
   it("sem PTAX guardada e sem rede: câmbio manual", async () => {
     await setSetting("fxPtax", null);
     await setSetting("fxManualRates", { USD: 5.1, RMB: null, EUR: null });
