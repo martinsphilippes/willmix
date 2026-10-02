@@ -142,9 +142,69 @@ export async function containerCapacity(type: string | null): Promise<{
 }
 
 /** Rascunho a partir do cadastro (produto, cotação escolhida, fornecedor): menos digitação. */
+/** De onde veio o rascunho da ficha ainda não salva no pedido. */
+export type SheetPrefillSource = "quote" | "previous" | "catalog";
+
+/**
+ * Campos que valem de outra ficha. Da cotação deste pedido vem tudo menos a
+ * programação dos lotes; de um pedido anterior, também não vêm a data da
+ * ficha nem o início da produção (são deste pedido).
+ */
+const reusableFields = (source: "quote" | "previous") =>
+  [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].filter(
+    (k) =>
+      k !== "lots" &&
+      (source === "quote" || (k !== "sheetDate" && k !== "productionStartAt")),
+  );
+
+/**
+ * Ficha já preenchida antes para este pedido: a da cotação escolhida (pedidos
+ * de antes da cópia automática) ou, na recompra, a do último pedido do mesmo
+ * produto com o mesmo fornecedor.
+ */
+async function earlierSheet(
+  order: Order,
+  request: { productId: string | null; selectedQuoteId: string | null } | null,
+): Promise<{ sheet: PurchaseSheet; source: "quote" | "previous" } | null> {
+  const store = getStore();
+  if (request?.selectedQuoteId) {
+    const [fromQuote] = await store.list("purchase_sheets", {
+      filter: { orderId: request.selectedQuoteId },
+      limit: 1,
+    });
+    if (fromQuote) return { sheet: fromQuote, source: "quote" };
+  }
+  if (!request?.productId) return null;
+  const sameProduct = await store.list("requests", {
+    filter: { productId: request.productId },
+  });
+  const orderIds = sameProduct
+    .map((r) => r.orderId)
+    .filter((id): id is string => !!id && id !== order.id);
+  if (!orderIds.length) return null;
+  const orders = await store.list("orders", {
+    filter: { id: orderIds, supplierId: order.supplierId },
+  });
+  if (!orders.length) return null;
+  // Ficha do pedido anterior ou, se ainda não salva lá, a da cotação dele.
+  const ids = orders.flatMap((o) => [
+    o.id,
+    sameProduct.find((r) => r.orderId === o.id)?.selectedQuoteId ?? o.id,
+  ]);
+  const [last] = await store.list("purchase_sheets", {
+    filter: { orderId: [...new Set(ids)] },
+    orderBy: "updatedAt",
+    direction: "desc",
+    limit: 1,
+  });
+  return last ? { sheet: last, source: "previous" } : null;
+}
+
 async function prefill(
   order: Order,
-): Promise<SheetInput & { productId: string | null }> {
+): Promise<
+  SheetInput & { productId: string | null; prefillSource: SheetPrefillSource }
+> {
   const store = getStore();
   const request = await store.get("requests", order.requestId);
   const [product, supplier, quote] = await Promise.all([
@@ -159,7 +219,20 @@ async function prefill(
     if (v === "CNY" || v === "RMB") return "RMB" as const;
     return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
   };
+  const earlier = await earlierSheet(order, request ?? null);
+  if (earlier) {
+    const reused = Object.fromEntries(
+      reusableFields(earlier.source).map((k) => [k, earlier.sheet[k] ?? null]),
+    ) as SheetInput;
+    return {
+      ...reused,
+      productId: product?.id ?? earlier.sheet.productId ?? null,
+      lots: normalizeLots(null),
+      prefillSource: earlier.source,
+    };
+  }
   return {
+    prefillSource: "catalog",
     productId: product?.id ?? null,
     supplierName: supplier?.name ?? null,
     supplierPhone: supplier?.phone ?? null,
@@ -222,6 +295,8 @@ export interface SheetView {
     updatedAt?: string;
   };
   saved: boolean;
+  /** Ficha ainda não salva: de onde veio o rascunho (cotação, pedido anterior ou catálogo). */
+  prefillSource: SheetPrefillSource | null;
   photos: ProductPhoto[];
   plan: SheetPlan;
   missing: SheetMissing[];
@@ -242,7 +317,8 @@ export async function getSheetForUser(
     filter: { orderId },
     limit: 1,
   });
-  const sheet = existing ?? (await prefill(order));
+  const draft = existing ? null : await prefill(order);
+  const sheet = existing ?? draft!;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
@@ -250,6 +326,7 @@ export async function getSheetForUser(
     access,
     sheet,
     saved: !!existing,
+    prefillSource: draft?.prefillSource ?? null,
     photos,
     plan: planSheet(
       {
@@ -301,7 +378,8 @@ export async function saveSheet(
       updatedByUserId: user.id,
     });
   } else {
-    const base = await prefill(order);
+    const { prefillSource: _source, ...base } = await prefill(order);
+    void _source;
     const blank = Object.fromEntries(
       [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].map((k) => [k, null]),
     );
@@ -497,4 +575,23 @@ async function syncRequirements(
     });
   }
   return missing;
+}
+
+/** Situação da ficha no checklist do pedido: salva? de onde vem o rascunho? o que falta? */
+export async function sheetProgress(order: Order) {
+  const store = getStore();
+  const [existing] = await store.list("purchase_sheets", {
+    filter: { orderId: order.id },
+    limit: 1,
+  });
+  const draft = existing ? null : await prefill(order);
+  const photos = await getSheetPhotos(order.id);
+  return {
+    saved: !!existing,
+    prefillSource: draft?.prefillSource ?? null,
+    missing: missingForCompletion(
+      existing ?? draft,
+      await photoKindsDone(order.id, photos),
+    ),
+  };
 }

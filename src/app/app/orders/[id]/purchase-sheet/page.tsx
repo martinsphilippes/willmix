@@ -104,7 +104,11 @@ export default async function PurchaseSheetPage({
         ) : null}
         {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
         {!view.saved && access.editSupplier ? (
-          <Alert tone="neutral">{t("sheet.prefilled")}</Alert>
+          <Alert tone={view.prefillSource === "catalog" ? "neutral" : "info"}>
+            {view.prefillSource === "quote" || view.prefillSource === "previous"
+              ? t(`sheet.prefilledNotice.${view.prefillSource}`)
+              : t("sheet.prefilled")}
+          </Alert>
         ) : null}
         {!access.editSupplier && !access.editCustoms ? (
           <Alert tone="neutral">{t("sheet.readOnly")}</Alert>
