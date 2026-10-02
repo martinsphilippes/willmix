@@ -100,6 +100,10 @@ export default async function RequestDetailPage({
   const supplierName = (supplierId: string) =>
     suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
   const invited = new Set(quotes.map((q) => q.supplierId));
+  /* RFQ já aberta: o cartão vira "convidar mais"; todos convidados, sem botão. */
+  const rfqOpened = request.status !== "REQUESTED" && quotes.length > 0;
+  const allInvited =
+    suppliers.length > 0 && suppliers.every((s) => invited.has(s.id));
   /* Frete pedido à companhia marítima por cotação (só a Wellmix vê). */
   const freights = wellmix
     ? await freightByQuote(quotes.map((q) => q.id))
@@ -279,11 +283,17 @@ export default async function RequestDetailPage({
           ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
             request.status,
           ) ? (
-            <Card title={t("requests.rfq.open")}>
+            <Card
+              title={rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
+            >
               <form action={openRfqAction} className="space-y-3">
                 <input type="hidden" name="requestId" value={request.id} />
                 <p className="text-sm text-zinc-600">
-                  {t("requests.rfq.select")}
+                  {allInvited
+                    ? t("rfq.allInvited")
+                    : rfqOpened
+                      ? t("rfq.inviteMoreHint")
+                      : t("requests.rfq.select")}
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {suppliers.map((s) => (
@@ -311,7 +321,13 @@ export default async function RequestDetailPage({
                     </label>
                   ))}
                 </div>
-                <SubmitButton>{t("requests.rfq.open")}</SubmitButton>
+                {allInvited ? null : (
+                  <SubmitButton>
+                    {rfqOpened
+                      ? t("rfq.inviteSelected")
+                      : t("requests.rfq.open")}
+                  </SubmitButton>
+                )}
               </form>
             </Card>
           ) : null}
