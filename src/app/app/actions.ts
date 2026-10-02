@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { CURRENCIES, isCurrency } from "@/lib/currencies";
+import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   assertRole,
@@ -840,7 +841,16 @@ export async function saveSettingsAction(form: FormData) {
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (typeof current === "number") value = Number(raw);
+      else if (key === "quoteSlaBusinessDays") {
+        const days = Number(raw);
+        if (
+          !Number.isInteger(days) ||
+          days < QUOTE_SLA_MIN_DAYS ||
+          days > QUOTE_SLA_MAX_DAYS
+        )
+          throw new Error("quote_sla_invalid");
+        value = days;
+      } else if (typeof current === "number") value = Number(raw);
       else if (key === "aiMode") {
         if (!["AUTO", "MOCK", "MANUAL"].includes(String(raw)))
           throw new Error("invalid_ai_mode");

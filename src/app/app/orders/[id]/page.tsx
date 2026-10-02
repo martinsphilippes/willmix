@@ -35,6 +35,8 @@ import {
   type InspectionReport,
 } from "@/lib/services/inspection-report";
 import { getSnapshotForOrder } from "@/lib/services/snapshots";
+import { getSettings } from "@/lib/settings";
+import { quoteSlaDeadline } from "@/lib/sla";
 import { getAfterSales } from "@/lib/services/after-sales";
 import { getT } from "@/i18n/server";
 import { requirementLabel, type Translate } from "@/i18n";
@@ -356,6 +358,7 @@ export default async function OrderPage({
                 item={items[0]}
                 photoDocumentId={followProduct?.primaryPhotoDocumentId ?? null}
                 derived={derivedRequests}
+                wellmix={wellmix}
               />
             </div>
           ) : null}
@@ -1943,19 +1946,23 @@ function AfterSalesCard({
  * "Comprar de novo" (reposição) e "Quero nova proposta": abre uma solicitação
  * pré-preenchida a partir deste pedido. Mostra só o preço de venda (nunca FOB).
  */
-function FollowUpCard({
+async function FollowUpCard({
   t,
   order,
   item,
   photoDocumentId,
   derived,
+  wellmix,
 }: {
   t: Translate;
   order: Order;
   item: OrderItem;
   photoDocumentId: string | null;
   derived: RequestRow[];
+  wellmix: boolean;
 }) {
+  const { quoteSlaBusinessDays } = await getSettings();
+  const slaDate = quoteSlaDeadline(quoteSlaBusinessDays);
   const unitSell =
     order.sellPrice !== null && item.quantity > 0
       ? order.sellPrice / item.quantity
@@ -2019,8 +2026,24 @@ function FollowUpCard({
             defaultValue={item.quantity}
           />
         </Field>
-        <Field label={t("requests.deadline")}>
-          <Input name="deadline" type="date" />
+        {/* Prazo = SLA da Wellmix; o servidor recalcula para o cliente. */}
+        <Field
+          label={t("requests.deadline")}
+          hint={t(wellmix ? "sla.wellmixHint" : "sla.customerHint", {
+            days: quoteSlaBusinessDays,
+          })}
+        >
+          {wellmix ? (
+            <Input name="deadline" type="date" defaultValue={slaDate} />
+          ) : (
+            <Input
+              type="date"
+              value={slaDate}
+              readOnly
+              aria-readonly="true"
+              className="bg-zinc-50 text-zinc-700"
+            />
+          )}
         </Field>
         <div className="sm:col-span-2">
           <Field label={t("orders.followup.notes")}>
