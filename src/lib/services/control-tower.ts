@@ -58,6 +58,22 @@ export interface TowerData {
 /** Visão da Wellmix: onde cada pedido está, quem precisa agir, o que está atrasado ou com problema. */
 export async function loadControlTower(): Promise<TowerData> {
   const store = getStore();
+  // Leituras usadas mais abaixo saem já, junto com as primeiras (sem esperar em fila).
+  const rejectedP = store.list("requirements", {
+    filter: { status: "rejected" },
+  });
+  const productsP = store.list("products");
+  const expiringP = import("./compliance").then((m) =>
+    m.expiringCertifications(),
+  );
+  const reviewsP = store.list("review_items", {
+    filter: { status: "open" },
+    orderBy: "createdAt",
+    direction: "desc",
+  });
+  // Evita rejeição sem tratamento se algo falhar antes de chegar ao await.
+  for (const p of [rejectedP, productsP, expiringP, reviewsP])
+    p.catch(() => undefined);
   const now = Date.now();
   const [orders, parties, stages, requests, penalties, items] =
     await Promise.all([
@@ -155,9 +171,7 @@ export async function loadControlTower(): Promise<TowerData> {
         link: row.link,
       });
   }
-  const rejected = await store.list("requirements", {
-    filter: { status: "rejected" },
-  });
+  const rejected = await rejectedP;
   for (const req of rejected) {
     const order = orders.find((o) => o.id === req.orderId);
     if (order && order.status !== "CLOSED") {
@@ -199,9 +213,8 @@ export async function loadControlTower(): Promise<TowerData> {
     });
   }
   // Certificações válidas a vencer no prazo de aviso.
-  const { expiringCertifications } = await import("./compliance");
-  const products = await store.list("products");
-  for (const cert of await expiringCertifications()) {
+  const products = await productsP;
+  for (const cert of await expiringP) {
     const product =
       cert.entity === "product"
         ? products.find((p) => p.id === cert.entityId)
@@ -216,11 +229,7 @@ export async function loadControlTower(): Promise<TowerData> {
     });
   }
   // Fila "itens para revisão" (gates): cada item aberto é uma exceção com atalho.
-  const reviews = await store.list("review_items", {
-    filter: { status: "open" },
-    orderBy: "createdAt",
-    direction: "desc",
-  });
+  const reviews = await reviewsP;
   for (const r of reviews) {
     const order = orders.find((o) => o.id === r.orderId);
     exceptions.push({

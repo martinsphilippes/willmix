@@ -43,18 +43,20 @@ export async function customerOrdersInProgress(
     store.list("container_items", { filter: { orderId: ids } }),
   ]);
   const containerIds = [...new Set(containerItems.map((c) => c.containerId))];
-  const containers = containerIds.length
-    ? await store.list("containers", { filter: { id: containerIds } })
-    : [];
-  const requirements = stages.length
-    ? await store.list("requirements", {
-        filter: {
-          stageId: stages.map((s) => s.id),
-          status: ["pending", "rejected"],
-          role: "customer",
-        },
-      })
-    : [];
+  const [containers, requirements] = await Promise.all([
+    containerIds.length
+      ? store.list("containers", { filter: { id: containerIds } })
+      : Promise.resolve([]),
+    stages.length
+      ? store.list("requirements", {
+          filter: {
+            stageId: stages.map((s) => s.id),
+            status: ["pending", "rejected"],
+            role: "customer",
+          },
+        })
+      : Promise.resolve([]),
+  ]);
   const now = Date.now();
   return orders.map((order) => {
     const stage = stages.find((s) => s.orderId === order.id);
@@ -72,8 +74,7 @@ export async function customerOrdersInProgress(
       percent: stage?.percent ?? 0,
       stageDueAt: stage?.dueAt ?? null,
       overdue: !!stage?.dueAt && Date.parse(stage.dueAt) < now,
-      waitingOnYou:
-        !!stage && requirements.some((r) => r.stageId === stage.id),
+      waitingOnYou: !!stage && requirements.some((r) => r.stageId === stage.id),
       eta: etas.at(-1) ?? null,
     };
   });

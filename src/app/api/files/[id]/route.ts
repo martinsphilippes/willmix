@@ -39,7 +39,9 @@ export async function GET(
       "Content-Type": doc.mime,
       "Content-Length": String(file.bytes.byteLength),
       "Content-Disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(doc.name)}`,
-      "Cache-Control": "private, no-store",
+      // Arquivo nunca muda (versão nova = documento novo): o navegador guarda
+      // por 1 h e não baixa de novo a cada tela. "private": só neste navegador.
+      "Cache-Control": "private, max-age=3600",
     },
   });
 }

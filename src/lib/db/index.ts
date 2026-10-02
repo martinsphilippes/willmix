@@ -2,6 +2,7 @@ import "server-only";
 
 import { dataDir, dataMode, publicEnv, serverEnv } from "@/lib/env";
 import { AppwriteStore } from "./appwrite-store";
+import { CachedStore } from "./cached-store";
 import { MemoryStore } from "./memory-store";
 import type { Store } from "./store";
 
@@ -18,13 +19,15 @@ export function getStore(): Store {
         "DATA_MODE=appwrite exige NEXT_PUBLIC_APPWRITE_* e APPWRITE_API_KEY.",
       );
     }
-    globalRef.__wellmixStore = new AppwriteStore(
-      publicEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT,
-      publicEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID,
-      env.data.APPWRITE_API_KEY,
+    globalRef.__wellmixStore = new CachedStore(
+      new AppwriteStore(
+        publicEnv.NEXT_PUBLIC_APPWRITE_ENDPOINT,
+        publicEnv.NEXT_PUBLIC_APPWRITE_PROJECT_ID,
+        env.data.APPWRITE_API_KEY,
+      ),
     );
   } else {
-    globalRef.__wellmixStore = new MemoryStore(dataDir());
+    globalRef.__wellmixStore = new CachedStore(new MemoryStore(dataDir()));
   }
   return globalRef.__wellmixStore;
 }
