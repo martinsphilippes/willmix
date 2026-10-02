@@ -386,6 +386,44 @@ export async function addSheetPhotos(
   return Math.min(files.length, 12);
 }
 
+/**
+ * Exclui uma foto da ficha: quem pode enviar fotos pode excluir. Some da ficha e
+ * da lista de documentos do pedido; o arquivo é apagado. A exclusão fica na
+ * auditoria (quem, quando, tipo e nome do arquivo).
+ */
+export async function removeSheetPhoto(
+  user: User,
+  orderId: string,
+  photoId: string,
+): Promise<void> {
+  const store = getStore();
+  const [order, photo] = await Promise.all([
+    store.get("orders", orderId),
+    store.get("product_photos", photoId),
+  ]);
+  if (!order || !photo || photo.orderId !== orderId)
+    throw new PurchaseSheetError("not_found");
+  if (!sheetAccess(user, order).addPhotos)
+    throw new PurchaseSheetError("forbidden");
+  if (!(SHEET_PHOTO_KINDS as readonly string[]).includes(photo.kind))
+    throw new PurchaseSheetError("not_found");
+  const doc = await store.get("documents", photo.documentId);
+  await store.remove("product_photos", photo.id);
+  if (doc && doc.orderId === orderId) {
+    await store.remove("documents", doc.id);
+    await store.removeFile(doc.storageKey).catch((error) => {
+      console.error("removeSheetPhoto: arquivo não apagado", error);
+    });
+  }
+  await audit(
+    user,
+    "purchase_sheet.photo_remove",
+    "order",
+    orderId,
+    `Foto excluída da ficha: ${photo.kind}${doc ? ` (${doc.name})` : ""}`,
+  );
+}
+
 async function activePreparation(orderId: string) {
   const store = getStore();
   const [stage] = await store.list("stages", {

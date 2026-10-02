@@ -30,8 +30,10 @@ import {
   SHEET_PHOTO_KINDS,
   type SheetView,
 } from "@/lib/services/purchase-sheet";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
   addPurchaseSheetPhotosAction,
+  removePurchaseSheetPhotoAction,
   savePurchaseSheetAction,
 } from "../../../actions/purchase-sheet";
 
@@ -47,7 +49,7 @@ export default async function PurchaseSheetPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { saved, error, photos: photosSent } = await searchParams;
+  const { saved, error, photos: photosSent, photoRemoved } = await searchParams;
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
   const t = await getT();
@@ -106,6 +108,9 @@ export default async function PurchaseSheetPage({
           <Alert tone="info">
             {t("sheet.missing", { fields: missingText })}
           </Alert>
+        ) : null}
+        {photoRemoved === "1" ? (
+          <Alert tone="success">{t("sheet.photos.removed")}</Alert>
         ) : null}
         {typeof photosSent === "string" ? (
           <Alert tone="success">{t("sheet.photos.sent")}</Alert>
@@ -740,9 +745,9 @@ function Photos({
                 </div>
               </div>
               {done ? (
-                <ul className="flex flex-wrap gap-2">
+                <ul className="flex flex-wrap gap-3 pr-2 pt-2">
                   {photos.map((p) => (
-                    <li key={p.id}>
+                    <li key={p.id} className="relative">
                       <a
                         href={`/api/files/${p.documentId}`}
                         target="_blank"
@@ -754,9 +759,22 @@ function Photos({
                           src={`/api/files/${p.documentId}`}
                           alt={name}
                           loading="lazy"
-                          className="h-14 w-14 object-cover"
+                          className="h-16 w-16 object-cover"
                         />
                       </a>
+                      {view.access.addPhotos ? (
+                        <form
+                          action={removePurchaseSheetPhotoAction}
+                          className="absolute -right-2 -top-2"
+                        >
+                          <input type="hidden" name="orderId" value={orderId} />
+                          <input type="hidden" name="photoId" value={p.id} />
+                          <ConfirmDeleteButton
+                            label={t("sheet.photos.remove")}
+                            confirmText={t("sheet.photos.removeConfirm")}
+                          />
+                        </form>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

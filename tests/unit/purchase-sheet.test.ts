@@ -11,7 +11,7 @@ const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
 const { planSheet, missingForCompletion } =
   await import("@/lib/services/purchase-sheet-calc");
-const { getSheetForUser, saveSheet, addSheetPhotos } =
+const { getSheetForUser, saveSheet, addSheetPhotos, removeSheetPhoto } =
   await import("@/lib/services/purchase-sheet");
 const { canAccessDocument, catalogShowcasePhotos } =
   await import("@/lib/services/documents");
@@ -240,5 +240,34 @@ describe("ficha no pedido", () => {
     expect(
       (showcase.get("prod-jarra") ?? []).some((p) => p.documentId === doc.id),
     ).toBe(false);
+  });
+});
+
+describe("excluir foto da ficha", () => {
+  it("fornecedor do pedido exclui; cliente e outro fornecedor não; some da ficha e dos documentos", async () => {
+    const { order } = await orderInPreparation();
+    await addSheetPhotos(supplierA, order.id, "angle", [
+      await png(),
+      await png(),
+    ]);
+    let view = (await getSheetForUser(supplierA, order.id))!;
+    const [first] = view.photos.filter((p) => p.kind === "angle");
+    await expect(removeSheetPhoto(joao, order.id, first.id)).rejects.toThrow();
+    await expect(
+      removeSheetPhoto(supplierB, order.id, first.id),
+    ).rejects.toThrow();
+    // Foto de outro pedido não é removida por este.
+    await expect(
+      removeSheetPhoto(supplierA, "outro-pedido", first.id),
+    ).rejects.toThrow("not_found");
+
+    await removeSheetPhoto(supplierA, order.id, first.id);
+    view = (await getSheetForUser(supplierA, order.id))!;
+    expect(view.photos.filter((p) => p.kind === "angle")).toHaveLength(1);
+    expect(await getStore().get("documents", first.documentId)).toBeNull();
+    const audit = await getStore().list("audit_log", {
+      filter: { action: "purchase_sheet.photo_remove" },
+    });
+    expect(audit.length).toBeGreaterThan(0);
   });
 });

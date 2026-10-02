@@ -158,6 +158,14 @@ export class AppwriteStore implements Store {
     return { key: file.$id, name, mime, size: bytes.byteLength };
   }
 
+  async removeFile(key: string) {
+    try {
+      await this.storage.deleteFile({ bucketId: BUCKET_ID, fileId: key });
+    } catch (error) {
+      if (!isNotFound(error)) throw error;
+    }
+  }
+
   async getFile(key: string) {
     try {
       // Metadados e conteúdo em paralelo: uma ida ao Appwrite em vez de duas.
