@@ -13,13 +13,11 @@ import {
   type AfterSales,
   type Container,
   type Document,
-  type InspectionResultRow,
   type Order,
   type OrderItem,
   type PurchaseSnapshot,
   type Request as RequestRow,
   type Requirement,
-  type ReviewItem,
   type User,
 } from "@/lib/db";
 import { canSubmitRequirement, loadOrderProgress } from "@/lib/workflow/engine";
@@ -31,11 +29,11 @@ import {
   type AckSummary,
 } from "@/lib/services/acknowledgements";
 import { containersForOrder } from "@/lib/services/containers";
+import { isInspectionMeasureKey } from "@/lib/services/inspection";
 import {
-  isInspectionMeasureKey,
-  latestInspectionResult,
-} from "@/lib/services/inspection";
-import { listOpenReviews } from "@/lib/services/reviews";
+  inspectionReport,
+  type InspectionReport,
+} from "@/lib/services/inspection-report";
 import { getSnapshotForOrder } from "@/lib/services/snapshots";
 import { getAfterSales } from "@/lib/services/after-sales";
 import { getT } from "@/i18n/server";
@@ -126,7 +124,6 @@ export default async function OrderPage({
     finance,
     snapshot,
     inspection,
-    openReviews,
     containers,
     afterSales,
     sourceRequest,
@@ -148,8 +145,7 @@ export default async function OrderPage({
     /* Evolução incremental: snapshot da compra, resultado da inspeção e fila (só Wellmix),
        containers do pedido (todos, filtrado) e trilha visualizado/confirmado. */
     wellmix ? getSnapshotForOrder(order.id) : Promise.resolve(null),
-    wellmix ? latestInspectionResult(order.id) : Promise.resolve(null),
-    wellmix ? listOpenReviews(order.id) : Promise.resolve([] as ReviewItem[]),
+    wellmix ? inspectionReport(order.id) : Promise.resolve(null),
     containersForOrder(order.id),
     /* Módulo cliente 2: pós-venda, "comprar de novo / nova proposta" e origem da solicitação.
        Só cliente (dono) e Wellmix; fornecedor e parceiros não veem avaliação nem preço de venda. */
@@ -220,8 +216,6 @@ export default async function OrderPage({
       ? store.get("orders", sourceRequest.sourceOrderId)
       : Promise.resolve(null),
   ]);
-  const inspectionStage = stages.find((s) => s.key === "INSPECTION") ?? null;
-  const inspectionBlocked = inspectionStage?.status === "blocked";
   const sourceOrder =
     sourceOrderRow && canViewOrder(user, sourceOrderRow)
       ? sourceOrderRow
@@ -505,16 +499,14 @@ export default async function OrderPage({
                   {stage.key === "INSPECTION" &&
                   wellmix &&
                   stage.status !== "pending" ? (
-                    <InspectionResultCard
-                      key={`${stage.id}-result`}
-                      t={t}
-                      result={inspection}
-                      reviews={openReviews}
-                      measuredBy={userName(
-                        inspection?.measuredByUserId ?? null,
-                      )}
-                      blocked={inspectionBlocked}
-                    />
+                    inspection ? (
+                      <InspectionResultCard
+                        key={`${stage.id}-result`}
+                        t={t}
+                        report={inspection}
+                        userName={userName}
+                      />
+                    ) : null
                   ) : null}
                 </Fragment>
               );
@@ -1366,46 +1358,67 @@ function SnapshotCard({
   );
 }
 
-/** Resultado da inspeção (comprado × inspecionado) e itens abertos na fila. Só Wellmix. */
+/**
+ * Relatório da inspeção (só Wellmix): resultado, medidas × comprado, fotos,
+ * decisão da revisão, divergências registradas e linha do tempo.
+ */
 function InspectionResultCard({
   t,
-  result,
-  reviews,
-  measuredBy,
-  blocked,
+  report,
+  userName,
 }: {
   t: Translate;
-  result: InspectionResultRow | null;
-  reviews: ReviewItem[];
-  measuredBy: string;
-  blocked: boolean;
+  report: InspectionReport;
+  userName: (id: string | null) => string;
 }) {
-  const tone =
-    result?.result === "APPROVED"
-      ? "success"
-      : result?.result === "DIVERGENT"
-        ? "danger"
-        : "warning";
+  const outcomeTone = {
+    waiting: "neutral",
+    approved: "success",
+    accepted: "success",
+    divergent: "danger",
+    remeasure: "warning",
+  } as const;
+  const review = report.review;
+  const decision = !review
+    ? t("inspReport.decision.none")
+    : review.status === "pending"
+      ? t("inspReport.decision.pending")
+      : review.status === "rejected"
+        ? t("inspReport.decision.rejected")
+        : review.value === "auto"
+          ? t("inspReport.decision.auto")
+          : t("inspReport.decision.approved");
+  const openCount = report.reviews.filter((r) => r.status === "open").length;
+  const eventLabel = (action: string) => {
+    const key = `inspReport.event.${action}` as DictionaryKey;
+    const text = t(key);
+    return text === key ? action : text;
+  };
   return (
     <Card
       title={t("orders.inspection.title")}
       actions={
-        result ? (
-          <Badge tone={tone}>
-            {t(`orders.inspection.result.${result.result}`)}
-          </Badge>
-        ) : blocked ? (
-          <Badge tone="warning">{t("orders.blocked")}</Badge>
-        ) : null
+        <Badge tone={outcomeTone[report.outcome]}>
+          {t(`inspReport.outcome.${report.outcome}`)}
+        </Badge>
       }
     >
-      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
-        {t("orders.inspection.hint")}
+      <p className="mb-4 text-xs leading-relaxed text-zinc-500">
+        {t("inspReport.hint")}
       </p>
-      {!result ? (
-        <Empty>{t("orders.inspection.noResult")}</Empty>
+
+      <h3 className="mb-2 text-sm font-semibold text-zinc-900">
+        {t("inspReport.measures")}
+      </h3>
+      {report.rows.length === 0 ? (
+        <Empty>{t("inspReport.noMeasures")}</Empty>
       ) : (
         <>
+          {!report.hasReference ? (
+            <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {t("inspReport.noReference")}
+            </p>
+          ) : null}
           <Table>
             <thead>
               <tr>
@@ -1421,83 +1434,197 @@ function InspectionResultCard({
               </tr>
             </thead>
             <tbody>
-              {result.comparisons.map((c) => (
-                <tr key={c.attribute} className={rowClass}>
-                  <Td className="font-medium">{attrLabel(t, c.attribute)}</Td>
-                  <Td className="text-right tabular-nums">
-                    {c.expected ?? "—"}
-                  </Td>
-                  <Td
-                    className={cx(
-                      "text-right tabular-nums",
-                      !c.ok && "font-semibold text-red-700",
-                    )}
-                  >
-                    {c.found ?? "—"}
-                  </Td>
-                  <Td className="text-right tabular-nums">
-                    {c.tolerancePercent !== null
-                      ? `${c.tolerancePercent}%`
-                      : "—"}
-                  </Td>
-                  <Td>
-                    <Badge tone={c.ok ? "success" : "danger"}>
-                      {c.ok
-                        ? t("orders.inspection.ok")
-                        : t("orders.inspection.divergent")}
-                    </Badge>
-                  </Td>
-                </tr>
-              ))}
+              {report.rows.map((row) => {
+                const c = row.comparison;
+                return (
+                  <tr key={row.requirement.id} className={rowClass}>
+                    <Td className="font-medium">
+                      {attrLabel(t, row.attribute)}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {c?.expected ?? "—"}
+                    </Td>
+                    <Td
+                      className={cx(
+                        "text-right tabular-nums",
+                        c && !c.ok && "font-semibold text-red-700",
+                      )}
+                    >
+                      {row.requirement.value}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {c?.tolerancePercent != null
+                        ? `${c.tolerancePercent}%`
+                        : "—"}
+                    </Td>
+                    <Td>
+                      {row.awaitingRemeasure ? (
+                        <Badge tone="warning">
+                          {t("inspReport.awaitingRemeasure")}
+                        </Badge>
+                      ) : !c ? (
+                        <Badge tone="neutral">
+                          {t("inspReport.noExpected")}
+                        </Badge>
+                      ) : (
+                        <Badge tone={c.ok ? "success" : "danger"}>
+                          {c.ok
+                            ? t("orders.inspection.ok")
+                            : t("orders.inspection.divergent")}
+                        </Badge>
+                      )}
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
           <p className="mt-2 text-xs text-zinc-500">
-            {t("orders.inspection.comparedAt")}:{" "}
-            {formatDateTime(result.comparedAt)} ·{" "}
-            {t("orders.inspection.measuredBy")}: {measuredBy}
+            {t("orders.inspection.measuredBy")}:{" "}
+            {userName(report.rows[0].requirement.submittedByUserId)} ·{" "}
+            {formatDateTime(report.rows[0].requirement.submittedAt)}
           </p>
         </>
       )}
-      <div className="mt-4">
+
+      {report.photos.length > 0 ? (
+        <div className="mt-5">
+          <h3 className="mb-2 text-sm font-semibold text-zinc-900">
+            {t("inspReport.photos")}
+          </h3>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {report.photos.map((p) => (
+              <li key={p.id}>
+                <a
+                  href={`/api/files/${p.documentId}`}
+                  target="_blank"
+                  className="block overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 transition hover:border-brand-300"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/files/${p.documentId}`}
+                    alt={requirementLabel(t, p)}
+                    loading="lazy"
+                    className="aspect-square w-full object-cover"
+                  />
+                </a>
+                <p className="mt-1 text-xs text-zinc-600">
+                  {requirementLabel(t, p)}
+                  {p.status === "rejected" ? (
+                    <span className="ml-1 text-amber-700">
+                      · {t("inspReport.awaitingRemeasure")}
+                    </span>
+                  ) : null}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-5 rounded-xl border border-zinc-200 px-4 py-3">
+        <h3 className="text-sm font-semibold text-zinc-900">
+          {t("inspReport.decision")}
+        </h3>
+        <p className="mt-1 text-sm text-zinc-800">{decision}</p>
+        {review && review.status !== "pending" ? (
+          <p className="mt-0.5 text-xs text-zinc-500">
+            {review.value !== "auto"
+              ? `${userName(review.submittedByUserId)} · `
+              : ""}
+            {formatDateTime(review.submittedAt)}
+            {review.note ? ` · ${review.note}` : ""}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-zinc-900">
-            {t("orders.inspection.openReviews")}
-            {reviews.length > 0 ? (
+            {t("inspReport.divergences")}
+            {openCount > 0 ? (
               <span className="ml-2">
-                <Badge tone="warning">{reviews.length}</Badge>
+                <Badge tone="warning">{openCount}</Badge>
               </span>
             ) : null}
           </h3>
-          <TextLink href="/app/reviews" className="text-xs">
-            {t("orders.inspection.reviewsLink")} →
-          </TextLink>
+          {openCount > 0 ? (
+            <TextLink href="/app/reviews" className="text-xs">
+              {t("orders.inspection.reviewsLink")} →
+            </TextLink>
+          ) : null}
         </div>
-        {reviews.length === 0 ? (
+        {report.reviews.length === 0 ? (
           <p className="mt-1 text-xs text-zinc-500">
-            {t("orders.inspection.noOpenReviews")}
+            {t("inspReport.noDivergences")}
           </p>
         ) : (
           <ul className="mt-2 space-y-1.5 text-sm">
-            {reviews.map((r) => (
+            {report.reviews.map((r) => (
               <li
                 key={r.id}
-                className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2"
+                className={cx(
+                  "rounded-lg border px-3 py-2",
+                  r.status === "open"
+                    ? "border-amber-200 bg-amber-50/60"
+                    : "border-zinc-200",
+                )}
               >
-                <p className="font-medium text-zinc-900">{r.problem}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium text-zinc-900">{r.problem}</p>
+                  <Badge tone={r.status === "open" ? "warning" : "success"}>
+                    {t(`reviews.status.${r.status}`)}
+                  </Badge>
+                </div>
                 <p className="mt-0.5 text-xs text-zinc-600">
                   {t("orders.inspection.expected")}:{" "}
                   <span className="font-medium">{r.expected ?? "—"}</span> ·{" "}
                   {t("orders.inspection.found")}:{" "}
                   <span className="font-medium text-red-700">
                     {r.found ?? "—"}
-                  </span>
-                  {r.action ? ` · ${r.action}` : ""}
+                  </span>{" "}
+                  · {formatDateTime(r.createdAt)}
                 </p>
+                {r.status !== "open" ? (
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    {t("inspReport.resolvedBy")}: {userName(r.resolvedByUserId)}{" "}
+                    · {formatDateTime(r.resolvedAt)}
+                    {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {report.timeline.length > 0 ? (
+        <details className="mt-5">
+          <summary className="cursor-pointer text-sm font-semibold text-zinc-900">
+            {t("inspReport.timeline")} ({report.timeline.length})
+          </summary>
+          <ol className="mt-2 space-y-1.5 border-l border-zinc-200 pl-4 text-xs">
+            {report.timeline.map((e) => (
+              <li key={e.id} className="text-zinc-600">
+                <span className="font-medium text-zinc-800">
+                  {eventLabel(e.action)}
+                </span>{" "}
+                · {e.summary.replace(/^INSPECTION:\s*/, "")}
+                {e.action === "requirement.submit" &&
+                e.after &&
+                typeof e.after === "object" &&
+                "value" in e.after &&
+                (e.after as { value: unknown }).value
+                  ? ` = ${String((e.after as { value: unknown }).value)}`
+                  : ""}
+                <span className="block text-zinc-500">
+                  {userName(e.userId)} · {formatDateTime(e.createdAt)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
     </Card>
   );
 }

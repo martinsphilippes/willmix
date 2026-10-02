@@ -12,6 +12,7 @@ const { submitRequirement, decideRequirement, loadOrderProgress } =
 const { pendingTasksFor } = await import("@/lib/services/tasks");
 const { canViewOrder } = await import("@/lib/auth/permissions");
 const { saveSheet } = await import("@/lib/services/purchase-sheet");
+const { inspectionReport } = await import("@/lib/services/inspection-report");
 type User = import("@/lib/db").User;
 
 let users: Record<string, User> = {};
@@ -235,6 +236,23 @@ describe("fluxo completo: solicitação → entrega", () => {
     });
     expect((await store.get("requirements", review.id))!.status).toBe("done");
     expect((await store.get("orders", order.id))!.status).toBe("SHIPPING");
+
+    // relatório da inspeção conta o que aconteceu
+    const report = (await inspectionReport(order.id))!;
+    expect(report.outcome).toBe("approved");
+    const weight = report.rows.find((r) => r.attribute === "netWeightKg")!;
+    expect(weight.comparison).toMatchObject({
+      expected: 12,
+      found: 12.1,
+      ok: true,
+    });
+    expect(report.photos.length).toBeGreaterThanOrEqual(3);
+    expect(report.reviews.length).toBeGreaterThan(0);
+    expect(report.reviews.every((r) => r.status !== "open")).toBe(true);
+    const actions = report.timeline.map((e) => e.action);
+    expect(actions).toContain("inspection.divergence");
+    expect(actions).toContain("inspection.remeasure_requested");
+    expect(actions).toContain("stage.complete");
 
     await fillStage(by("shipping_line", "armador"), order.id, "SHIPPING");
     expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
