@@ -5,6 +5,7 @@ import {
   type InspectionComparison,
   type InspectionResult,
   type Order,
+  type PurchaseSheet,
   type PurchaseSnapshot,
   type Requirement,
   type Stage,
@@ -97,47 +98,89 @@ export const isInspectionMeasureKey = (key: string) =>
 
 const norm = (v: string) => v.trim().toLowerCase().replace(/\s+/g, " ");
 
+/**
+ * Referência da inspeção: o que foi comprado. A ficha de compra da Preparação
+ * (planilha COMPRAS) vale primeiro para peso, caixa, CBM e material; o snapshot
+ * do cadastro completa o resto (medidas da peça, cor).
+ */
+export type InspectionReference = Partial<
+  Record<keyof PurchaseSnapshot, number | string | null>
+>;
+
+export function inspectionReference(
+  snapshot: PurchaseSnapshot | null,
+  sheet: PurchaseSheet | null,
+): InspectionReference | null {
+  if (!snapshot && !sheet) return null;
+  const pick = <T>(a: T | null | undefined, b: T | null | undefined) =>
+    a !== null && a !== undefined && a !== "" ? a : (b ?? null);
+  return {
+    ...(snapshot ?? {}),
+    netWeightKg: pick(sheet?.netWeightPcKg, snapshot?.netWeightKg),
+    grossWeightKg: pick(sheet?.grossWeightPcKg, snapshot?.grossWeightKg),
+    masterBoxQty: pick(sheet?.masterCartonQty, snapshot?.masterBoxQty),
+    innerBoxQty: pick(sheet?.innerQty, snapshot?.innerBoxQty),
+    cbm: pick(sheet?.cbmPerCarton, snapshot?.cbm),
+    material: pick(sheet?.material, snapshot?.material),
+  } as InspectionReference;
+}
+
+export interface InspectionTolerances {
+  weight: number;
+  cbm: number;
+  dimension: number;
+  quantity: number;
+}
+
+/** Compara uma medida com a referência; null quando não há valor ou referência. */
+export function compareMeasure(
+  m: (typeof INSPECTION_MEASURES)[number],
+  expected: number | string | null | undefined,
+  raw: string | null | undefined,
+  tolerances: InspectionTolerances,
+): InspectionComparison | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (expected === null || expected === undefined || expected === "")
+    return null;
+  if (m.kind === "number") {
+    const found = Number(raw);
+    if (!Number.isFinite(found)) return null;
+    const tol = m.tolerance ? tolerances[m.tolerance] : 0;
+    const div = divergencePercent(Number(expected), found);
+    return {
+      attribute: String(m.attribute),
+      expected: Number(expected),
+      found,
+      tolerancePercent: tol,
+      ok: div !== null && div <= tol + 1e-9,
+    };
+  }
+  return {
+    attribute: String(m.attribute),
+    expected: String(expected),
+    found: raw,
+    tolerancePercent: null,
+    ok: norm(String(expected)) === norm(raw),
+  };
+}
+
 export function compareWithSnapshot(
-  snapshot: PurchaseSnapshot,
+  snapshot: InspectionReference,
   requirements: Pick<Requirement, "key" | "status" | "value">[],
-  tolerances: {
-    weight: number;
-    cbm: number;
-    dimension: number;
-    quantity: number;
-  },
+  tolerances: InspectionTolerances,
 ): InspectionComparison[] {
   const out: InspectionComparison[] = [];
   const valueOf = (key: string) =>
     requirements.find((r) => r.key === key && r.status === "done")?.value ??
     null;
   for (const m of INSPECTION_MEASURES) {
-    const raw = valueOf(m.key);
-    if (raw === null || raw === "") continue;
-    const expected = snapshot[m.attribute] as number | string | null;
-    if (expected === null || expected === undefined || expected === "")
-      continue;
-    if (m.kind === "number") {
-      const found = Number(raw);
-      if (!Number.isFinite(found)) continue;
-      const tol = m.tolerance ? tolerances[m.tolerance] : 0;
-      const div = divergencePercent(Number(expected), found);
-      out.push({
-        attribute: String(m.attribute),
-        expected: Number(expected),
-        found,
-        tolerancePercent: tol,
-        ok: div !== null && div <= tol + 1e-9,
-      });
-    } else {
-      out.push({
-        attribute: String(m.attribute),
-        expected: String(expected),
-        found: raw,
-        tolerancePercent: null,
-        ok: norm(String(expected)) === norm(raw),
-      });
-    }
+    const c = compareMeasure(
+      m,
+      snapshot[m.attribute],
+      valueOf(m.key),
+      tolerances,
+    );
+    if (c) out.push(c);
   }
   return out;
 }
@@ -172,14 +215,18 @@ export async function compareInspection(
   order: Order,
   stage: Stage,
 ) {
-  const snapshot = await getSnapshotForOrder(order.id);
-  if (!snapshot) return null;
   const store = getStore();
-  const settings = await getSettings();
+  const [snapshot, [sheet], settings] = await Promise.all([
+    getSnapshotForOrder(order.id),
+    store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
+    getSettings(),
+  ]);
+  const reference = inspectionReference(snapshot, sheet ?? null);
+  if (!reference) return null;
   const requirements = await store.list("requirements", {
     filter: { stageId: stage.id },
   });
-  const comparisons = compareWithSnapshot(snapshot, requirements, {
+  const comparisons = compareWithSnapshot(reference, requirements, {
     weight: settings.weightTolerancePercent,
     cbm: settings.cbmTolerancePercent,
     dimension: settings.dimensionTolerancePercent,
@@ -190,7 +237,7 @@ export async function compareInspection(
   const row = await store.create("inspection_results", {
     orderId: order.id,
     stageId: stage.id,
-    snapshotId: snapshot.id,
+    snapshotId: snapshot?.id ?? null,
     result,
     comparisons,
     measuredByUserId: user.id,

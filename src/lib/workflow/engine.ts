@@ -364,22 +364,18 @@ async function checkWeightDivergence(
     filter: { orderId: order.id, key: "PREPARATION" },
   });
   if (!stages[0]) return;
-  // Peso declarado: o peso líquido por peça da ficha de compra; pedidos antigos
-  // (sem ficha) usam o item "Peso (kg)" da Preparação.
+  // Com ficha de compra, o peso entra na comparação comprado × inspecionado
+  // (compareInspection). Esta regra fica para pedidos antigos, que usam o item
+  // "Peso (kg)" da Preparação.
   const [sheet] = await store.list("purchase_sheets", {
     filter: { orderId: order.id },
     limit: 1,
   });
-  const [declared] = sheet?.netWeightPcKg
-    ? []
-    : await store.list("requirements", {
-        filter: { stageId: stages[0].id, key: "weight" },
-      });
-  const declaredWeight = sheet?.netWeightPcKg
-    ? sheet.netWeightPcKg
-    : declared?.value
-      ? Number(declared.value)
-      : null;
+  if (sheet?.netWeightPcKg) return;
+  const [declared] = await store.list("requirements", {
+    filter: { stageId: stages[0].id, key: "weight" },
+  });
+  const declaredWeight = declared?.value ? Number(declared.value) : null;
   if (!declaredWeight || declaredWeight <= 0) return;
   const divergence = Math.abs(measured - declaredWeight) / declaredWeight;
   const tolerance = settings.weightTolerancePercent / 100;

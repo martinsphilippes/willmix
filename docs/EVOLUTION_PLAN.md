@@ -118,6 +118,20 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
   - dentro da tolerância: fecha a revisão sozinha, e a etapa conclui quando os obrigatórios estiverem feitos.
 - "Nova medição" (medidas e fotos) aparece enquanto a inspeção estiver aberta, bloqueada ou em andamento, e não só quando bloqueada. Isso destrava pedidos que ficaram parados depois de uma reprovação.
 
+### Relatório da inspeção
+
+- O card "Resultado da inspeção" (só Wellmix) agora é um relatório calculado na hora a partir dos itens da etapa (`services/inspection-report.ts`). Funciona também em pedidos que já passaram da inspeção e nos que não têm snapshot. Ele mostra:
+  - o resultado: aprovada, aprovada com divergência aceita, divergente ou nova medição solicitada;
+  - cada medida enviada com esperado × encontrado, tolerância e situação;
+  - as fotos;
+  - a decisão da revisão: quem, quando e a observação;
+  - as divergências registradas, abertas e resolvidas, com quem resolveu;
+  - a linha do tempo tirada da auditoria.
+- Referência da comparação (`inspectionReference`): a ficha de compra vale primeiro para peso líquido e bruto, unidades por caixa, CBM e material. O snapshot completa as medidas da peça e a cor.
+  - A comparação que bloqueia a etapa usa a mesma referência, então pedidos sem snapshot, mas com ficha, também são comparados.
+  - A regra antiga de peso declarado fica só para pedidos sem ficha, para não abrir duas revisões do mesmo peso.
+- O link para a fila de revisão só aparece quando há item aberto.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.
