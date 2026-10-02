@@ -23,6 +23,7 @@ import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
 import { copyQuoteSheetToOrder } from "./quote-sheet";
+import { cancelFreightForRequest } from "./freight";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
@@ -344,6 +345,8 @@ export async function selectQuote(
       status: other.id === quote.id ? "selected" : "rejected",
     });
   }
+  // Frete das cotações não escolhidas deixa de valer.
+  await cancelFreightForRequest(request.id, quote.id);
   await store.update("requests", request.id, {
     status: "WAITING_DOWN_PAYMENT",
     selectedQuoteId: quote.id,
@@ -677,6 +680,7 @@ export async function deleteRequests(
     });
     for (const q of quotes)
       await store.update("quotes", q.id, { status: "rejected" });
+    await cancelFreightForRequest(request.id);
     await audit(
       user,
       "request.delete",

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
 import {
   fxVariance,
@@ -12,7 +13,8 @@ import {
   canViewOrder,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { getStore } from "@/lib/db";
+import { getStore, type FreightQuote } from "@/lib/db";
+import { freightByQuote } from "@/lib/services/freight";
 import { getRequestForUser } from "@/lib/services/requests";
 import { getT } from "@/i18n/server";
 import {
@@ -89,6 +91,18 @@ export default async function RequestDetailPage({
   const supplierName = (supplierId: string) =>
     suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
   const invited = new Set(quotes.map((q) => q.supplierId));
+  /* Frete pedido à companhia marítima por cotação (só a Wellmix vê). */
+  const freights = wellmix
+    ? await freightByQuote(quotes.map((q) => q.id))
+    : new Map<string, FreightQuote[]>();
+  const carrierIds = [
+    ...new Set([...freights.values()].flat().map((f) => f.carrierId)),
+  ];
+  const carriers = carrierIds.length
+    ? await store.list("parties", { filter: { id: carrierIds } })
+    : [];
+  const carrierName = (id: string) =>
+    carriers.find((c) => c.id === id)?.name ?? "—";
   /* Segunda Onda: origem (recompra, nova proposta, sourcing sob demanda) e link ao
      pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
   const origin =
@@ -372,6 +386,19 @@ export default async function RequestDetailPage({
                         >
                           {t(`quoteStatus.${q.status}`)}
                         </Badge>
+                        {(freights.get(q.id) ?? []).map((f) => (
+                          <Link
+                            key={f.id}
+                            href={`/app/freight/${f.id}`}
+                            className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
+                          >
+                            {t("freight.compare.title")}:{" "}
+                            {carrierName(f.carrierId)} ·{" "}
+                            {f.status === "answered"
+                              ? formatMoney(f.amount, f.currency)
+                              : t("freight.compare.waiting")}
+                          </Link>
+                        ))}
                       </Td>
                     </tr>
                   ))}
@@ -393,6 +420,19 @@ export default async function RequestDetailPage({
                         hasSheet: p.hasSheet,
                         input: p.input,
                         marginSource: p.marginSource,
+                        shippingFreightBrl: p.shippingFreight.brl,
+                        shippingFreightNote:
+                          p.shippingFreight.status === "answered"
+                            ? t("freight.calc.answered", {
+                                carrier: p.shippingFreight.carrierName ?? "—",
+                                amount: formatMoney(
+                                  p.shippingFreight.amount,
+                                  p.shippingFreight.currency ?? "USD",
+                                ),
+                              })
+                            : p.shippingFreight.status === "waiting"
+                              ? t("freight.calc.waiting")
+                              : null,
                       };
                     })}
                     labels={{

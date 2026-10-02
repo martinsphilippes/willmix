@@ -30,6 +30,7 @@ function navFor(role: Role, admin: boolean): NavItem[] {
       { href: "/app/reviews", key: "nav.reviews" },
       { href: "/app/sourcing", key: "nav.sourcing" },
       { href: "/app/requests", key: "nav.requests" },
+      { href: "/app/freight", key: "nav.freight" },
       { href: "/app/orders", key: "nav.orders" },
       { href: "/app/containers", key: "nav.containers" },
       { href: "/app/parties", key: "nav.parties" },
@@ -59,6 +60,8 @@ function navFor(role: Role, admin: boolean): NavItem[] {
   }
   if (role === "supplier")
     base.push({ href: "/app/account", key: "nav.account" });
+  if (role === "shipping_line")
+    base.splice(1, 0, { href: "/app/freight", key: "nav.freight" });
   if (role === "legal")
     base.push({ href: "/app/penalties", key: "nav.penalties" });
   base.push({ href: "/app/notifications", key: "nav.notifications" });

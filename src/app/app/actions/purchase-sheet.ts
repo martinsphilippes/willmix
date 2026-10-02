@@ -191,6 +191,9 @@ export async function answerQuoteWithSheetAction(form: FormData) {
       leadTimeDays,
       conditions: conditions || null,
     });
+    // Companhia marítima recebe o pedido de frete com a carga desta ficha.
+    const { inviteFreightForQuote } = await import("@/lib/services/freight");
+    await inviteFreightForQuote(user, quoteId);
     return `${back}?saved=sent`;
   });
 }

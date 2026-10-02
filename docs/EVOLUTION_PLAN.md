@@ -245,6 +245,15 @@ Lint, typecheck, 22 testes unitários, E2E do caminho principal sobre o banco an
 
 Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco antigo (registros sem as colunas novas) e sobre seed novo, build de produção, esquema publicado no Appwrite (`npm run appwrite:push`, aditivo).
 
+## Cotação de frete pela companhia marítima
+
+- Ao enviar a cotação com a ficha de compra, cada companhia marítima ativa recebe um pedido de frete (`freight_quotes`): notificação, pendência em "Minhas tarefas" e item "Fretes" no menu. Reenvio com carga diferente volta o pedido a pendente.
+- A tela `/app/freight/[id]` mostra só a carga (quantidade, caixas, CBM, peso bruto, medidas, incoterm, origem, embalagem, container, início da produção, NCM). Preço, fornecedor e cliente não aparecem. Acesso: Wellmix ou a própria companhia (`canViewFreight`).
+- O frete informado (o menor, convertido para reais pelo câmbio do dia) entra no custo importado: pré-preenche "Frete do transportador" na escolha do fornecedor. O operador pode digitar outro valor, que prevalece. Sem resposta, vale o frete por CBM.
+- Escolher um fornecedor ou excluir a solicitação encerra os pedidos de frete das outras cotações.
+- Tabela nova: precisa rodar o workflow "Publicar esquema Appwrite" (ver `docs/APPWRITE.md`).
+- Próximos passos possíveis: frete por mais de um modal (rodoviário no Brasil, despachante), validade do frete com alerta, comparação de companhias na própria tela.
+
 ## Reutilizado
 
 `uploadDocument` (versionamento e visibilidade), `audit`, `notify`/`notifyWellmix`, `getSettings`, `loadFinance`, `loadControlTower`, `createRequest`/RFQ (para reposição e sourcing sob demanda na Segunda Onda), kit de componentes `ui.tsx`, `PageHeader` com ajuda contextual, dicionários pt/en/zh.

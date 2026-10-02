@@ -14,7 +14,8 @@ export interface Task {
     | "rfq"
     | "review"
     | "after_sales"
-    | "sourcing_demand";
+    | "sourcing_demand"
+    | "freight_quote";
   title: string;
   detail: string;
   link: string;
@@ -214,6 +215,28 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     });
   }
 
+  // Companhia marítima: pedidos de frete a informar.
+  if (user.role === "shipping_line" && user.partyId) {
+    const freights = await store.list("freight_quotes", {
+      filter: { carrierId: user.partyId, status: "invited" },
+    });
+    const requestIds = [...new Set(freights.map((f) => f.requestId))];
+    const requests = requestIds.length
+      ? await store.list("requests", { filter: { id: requestIds } })
+      : [];
+    for (const f of freights) {
+      const request = requests.find((r) => r.id === f.requestId);
+      if (!request) continue;
+      tasks.push({
+        kind: "freight_quote",
+        title: `Frete: ${request.productName}`,
+        detail: `${f.totalCbm ?? "?"} m³ · ${f.cartons ?? "?"} cx · ${f.grossWeightKg ?? "?"} kg`,
+        link: `/app/freight/${f.id}`,
+        dueAt: request.deadline,
+        overdue: !!request.deadline && Date.parse(request.deadline) < now,
+      });
+    }
+  }
   return tasks.sort((a, b) => Number(b.overdue) - Number(a.overdue));
 }
 

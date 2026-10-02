@@ -21,6 +21,10 @@ export interface CalculatorQuote {
   hasSheet: boolean;
   input: PricingInput;
   marginSource: "customer" | "line" | "default";
+  /** Frete da companhia marítima (R$) para pré-preencher; null se não houver. */
+  shippingFreightBrl: number | null;
+  /** Linha de situação do frete da companhia marítima (já traduzida). */
+  shippingFreightNote: string | null;
 }
 
 type Labels = Record<
@@ -64,9 +68,15 @@ export function SellPriceCalculator({
   labels: Labels;
 }) {
   const [quoteId, setQuoteId] = useState(quotes[0]?.quoteId ?? "");
-  const [carrier, setCarrier] = useState("");
+  // Frete digitado por cotação; sem edição, vale o da companhia marítima.
+  const [carrierEdits, setCarrierEdits] = useState<Record<string, string>>({});
   const [manual, setManual] = useState<string | null>(null);
   const current = quotes.find((q) => q.quoteId === quoteId) ?? quotes[0];
+  const carrier =
+    (current && carrierEdits[current.quoteId]) ??
+    (current?.shippingFreightBrl != null
+      ? current.shippingFreightBrl.toFixed(2)
+      : "");
   const carrierBrl = Number(carrier.replace(",", "."));
   const result = current
     ? priceToCustomer({
@@ -209,9 +219,21 @@ export function SellPriceCalculator({
           step="0.01"
           min="0"
           value={carrier}
-          onChange={(e) => setCarrier(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (current)
+              setCarrierEdits((prev) => ({
+                ...prev,
+                [current.quoteId]: value,
+              }));
+          }}
           className={inputClass}
         />
+        {current?.shippingFreightNote ? (
+          <p className="mt-1 text-xs font-medium text-brand-800">
+            {current.shippingFreightNote}
+          </p>
+        ) : null}
         <p className="mt-1 text-xs text-zinc-500">
           {labels.carrierFreightHint}
         </p>
