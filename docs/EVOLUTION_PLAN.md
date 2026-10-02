@@ -160,6 +160,29 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - Quem pode excluir: a Wellmix, qualquer solicitação; o cliente, só as dele (`canViewRequest`). Só vale para solicitação que ainda não virou pedido.
 - Solicitação com pedido criado aparece com a caixa desabilitada, porque o pedido continua. Cancelar pedido é outra decisão: exige status novo de pedido e regras para pagamentos e containers.
 
+### RFQ pela ficha de compra e valor ao cliente automático
+
+- **Resposta da RFQ:** o fornecedor responde preenchendo a ficha de compra completa, a mesma da Preparação. Os campos obrigatórios estão em `SHEET_REQUIRED_FIELDS`; as fotos são opcionais nessa fase.
+  - O formulário tem "Salvar rascunho" e "Enviar cotação". Só envia com a ficha completa, e o preço e a moeda da cotação vêm da ficha.
+  - A Wellmix pode completar NCM, imposto de importação e IPI na ficha da cotação.
+- **Onde a ficha fica:** a ficha da cotação fica em `purchase_sheets`, com `orderId` = id da cotação (`services/quote-sheet.ts`). Não há coluna nova: os ids são únicos entre tabelas. Ao confirmar o sinal, a ficha da cotação escolhida é copiada para o pedido, e a Preparação nasce preenchida, faltando só as fotos.
+- **Componente compartilhado:** os campos da ficha viraram o componente `PurchaseSheetFields`, usado no pedido e na cotação.
+- **Valor ao cliente:** na seleção do fornecedor, o valor vem calculado (`src/lib/pricing.ts`, funções puras):
+  - FOB = preço da ficha × quantidade × câmbio;
+  - mais o frete: o informado pelo transportador ou o estimado (CBM total × frete por CBM das Configurações);
+  - mais o imposto de importação sobre o CIF e o IPI sobre CIF + II. Os percentuais vêm da ficha ou da classificação fiscal validada do produto;
+  - mais a margem.
+- **Margem facultativa:** vale a do cliente; se não houver, a da linha; se não houver, a geral. Tudo é editável em Configurações → Preço ao cliente.
+- **Câmbio:** PTAX do Banco Central, 1x por dia, como descrito em `docs/INTEGRATIONS.md`.
+- **Edição e registro:**
+  - a tela mostra a memória de cálculo e o que faltou (CBM, II, IPI, câmbio, frete);
+  - o operador pode ajustar o valor;
+  - o servidor refaz a conta e grava a memória na auditoria (`quote.select`).
+- **Variação cambial:** se o câmbio mudou desde a proposta, a solicitação mostra a variação e o botão "Atualizar proposta com o câmbio de hoje" (`proposal.refresh`).
+  - A atualização mantém margem, frete e um eventual ajuste manual, e o sinal acompanha o novo valor. O cliente é avisado.
+  - Fica bloqueada depois que o cliente envia o comprovante do sinal.
+- **Fora da conta:** PIS, COFINS, ICMS, seguro e despesas portuárias não entram no custo importado; ficam cobertos pela margem.
+
 ### Início do cliente
 
 - O cliente entra em `/app/requests` (o `/app` redireciona). No topo: atalho grande para nova solicitação, "Precisa da sua ação" (sinal a pagar, recebimento a confirmar, compra a avaliar; só aparece quando há algo) e "Pedidos em andamento" (etapa, progresso, com quem está o próximo passo, prazo da etapa e chegada prevista do container quando informada). Abaixo, as solicitações.

@@ -1,4 +1,11 @@
 import { notFound, redirect } from "next/navigation";
+import { SellPriceCalculator } from "@/components/sell-price-calculator";
+import {
+  fxVariance,
+  latestPricingRecord,
+  quotePricing,
+} from "@/lib/services/quote-pricing";
+import { getFxRates } from "@/lib/services/fx";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
   canSeeSupplier,
@@ -40,6 +47,7 @@ import {
   confirmDownPaymentAction,
   openRfqAction,
   selectQuoteAction,
+  refreshProposalAction,
   setRequesterAction,
 } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -101,6 +109,21 @@ export default async function RequestDetailPage({
         unavailable: "not_configured" as const,
       }))
     : null;
+  /* Valor ao cliente calculado (custo importado + margem) para as cotações respondidas. */
+  const selectable =
+    wellmix && ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status)
+      ? quotes.filter((q) => q.status === "answered")
+      : [];
+  const pricing = selectable.length
+    ? await quotePricing(request, selectable)
+    : null;
+  /* Proposta aguardando sinal: o câmbio mudou desde a proposta? */
+  const pricingRecord =
+    wellmix && waitingPayment ? await latestPricingRecord(request.id) : null;
+  const variance = pricingRecord
+    ? fxVariance(pricingRecord, await getFxRates())
+    : null;
+  const { refreshed } = await searchParams;
   const proofDoc = downPayment?.proofDocumentId
     ? documents.find((d) => d.id === downPayment.proofDocumentId)
     : undefined;
@@ -156,14 +179,18 @@ export default async function RequestDetailPage({
       {error ? (
         <Alert tone="danger">
           {typeof error === "string" &&
-          t(`payments.error.${error}` as DictionaryKey) !==
-            `payments.error.${error}`
-            ? t(`payments.error.${error}` as DictionaryKey)
+          t(`pricing.error.${error}` as DictionaryKey) !==
+            `pricing.error.${error}`
+            ? t(`pricing.error.${error}` as DictionaryKey)
             : typeof error === "string" &&
-                t(`access.error.${error}` as DictionaryKey) !==
-                  `access.error.${error}`
-              ? t(`access.error.${error}` as DictionaryKey)
-              : `${t("common.error")} (${error})`}
+                t(`payments.error.${error}` as DictionaryKey) !==
+                  `payments.error.${error}`
+              ? t(`payments.error.${error}` as DictionaryKey)
+              : typeof error === "string" &&
+                  t(`access.error.${error}` as DictionaryKey) !==
+                    `access.error.${error}`
+                ? t(`access.error.${error}` as DictionaryKey)
+                : `${t("common.error")} (${error})`}
         </Alert>
       ) : null}
       {saved === "requester" ? (
@@ -357,29 +384,55 @@ export default async function RequestDetailPage({
                   className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
                 >
                   <input type="hidden" name="requestId" value={request.id} />
-                  <div className="sm:col-span-3">
-                    <Field label={t("common.supplier")}>
-                      <Select name="quoteId" required>
-                        {quotes
-                          .filter((q) => q.status === "answered")
-                          .map((q) => (
-                            <option key={q.id} value={q.id}>
-                              {supplierName(q.supplierId)} ·{" "}
-                              {formatMoney(q.price, q.currency)}
-                            </option>
-                          ))}
-                      </Select>
-                    </Field>
-                  </div>
-                  <Field label={t("requests.sellPrice")}>
-                    <Input
-                      name="sellPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required
-                    />
-                  </Field>
+                  <SellPriceCalculator
+                    quotes={(pricing?.quotes ?? []).map((p) => {
+                      const q = selectable.find((x) => x.id === p.quoteId)!;
+                      return {
+                        quoteId: p.quoteId,
+                        label: `${supplierName(q.supplierId)} · ${formatMoney(q.price, q.currency)}`,
+                        hasSheet: p.hasSheet,
+                        input: p.input,
+                        marginSource: p.marginSource,
+                      };
+                    })}
+                    labels={{
+                      supplier: t("common.supplier"),
+                      sellPrice: t("requests.sellPrice"),
+                      carrierFreight: t("pricing.calc.carrierFreight"),
+                      carrierFreightHint: t("pricing.calc.carrierFreightHint"),
+                      title: t("pricing.calc.title"),
+                      fob: t("pricing.calc.fob"),
+                      fx: t("pricing.calc.fx"),
+                      freightCarrier: t("pricing.calc.freightCarrier"),
+                      freightCbm: t("pricing.calc.freightCbm"),
+                      freightNone: t("pricing.calc.freightNone"),
+                      importTax: t("pricing.calc.importTax"),
+                      ipi: t("pricing.calc.ipi"),
+                      landed: t("pricing.calc.landed"),
+                      margin: t("pricing.calc.margin"),
+                      sell: t("pricing.calc.sell"),
+                      useCalculated: t("pricing.calc.useCalculated"),
+                      noSheet: t("pricing.calc.noSheet"),
+                      marginZero: t("pricing.calc.marginZero"),
+                      sourceCustomer: t("pricing.calc.source.customer"),
+                      sourceLine: t("pricing.calc.source.line"),
+                      sourceDefault: t("pricing.calc.source.default"),
+                      fxStale:
+                        pricing?.fx.status === "stale"
+                          ? t("pricing.calc.fxStale", {
+                              day: pricing.fx.day ?? "—",
+                            })
+                          : null,
+                      missing: {
+                        price: t("pricing.calc.missing.price"),
+                        fx: t("pricing.calc.missing.fx"),
+                        freight: t("pricing.calc.missing.freight"),
+                        cbm: t("pricing.calc.missing.cbm"),
+                        importTax: t("pricing.calc.missing.importTax"),
+                        ipi: t("pricing.calc.missing.ipi"),
+                      },
+                    }}
+                  />
                   <Field label={t("common.currency")}>
                     <CurrencySelect name="sellCurrency" value="BRL" t={t} />
                   </Field>
@@ -411,6 +464,29 @@ export default async function RequestDetailPage({
                   "border-brand-300! ring-4 ring-brand-50",
               )}
             >
+              {refreshed === "1" ? (
+                <div className="mb-3">
+                  <Alert tone="success">{t("pricing.refreshed")}</Alert>
+                </div>
+              ) : null}
+              {variance && !downPayment?.proofDocumentId ? (
+                <div className="mb-3 space-y-2">
+                  <Alert tone="warning">
+                    {t("pricing.variance", {
+                      pct: `${variance.pct > 0 ? "+" : ""}${variance.pct.toFixed(2)}`,
+                      currency: variance.currency,
+                      from: variance.before.toFixed(4),
+                      to: variance.now.toFixed(4),
+                    })}
+                  </Alert>
+                  <form action={refreshProposalAction}>
+                    <input type="hidden" name="requestId" value={request.id} />
+                    <SubmitButton variant="secondary">
+                      {t("pricing.refresh")}
+                    </SubmitButton>
+                  </form>
+                </div>
+              ) : null}
               <DescriptionList
                 items={[
                   [

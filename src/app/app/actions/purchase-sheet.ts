@@ -153,3 +153,44 @@ export async function removePurchaseSheetPhotoAction(form: FormData) {
     return `${back}?photoRemoved=1#photos`;
   });
 }
+
+/**
+ * Resposta da RFQ pela ficha de compra. "Salvar" guarda o rascunho; "Enviar"
+ * guarda e, com a ficha completa (fotos opcionais), responde a cotação com o
+ * preço e a moeda da própria ficha.
+ */
+export async function answerQuoteWithSheetAction(form: FormData) {
+  const user = await requireUser();
+  const quoteId = str(form, "quoteId").slice(0, 64);
+  const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
+  await run(back, async () => {
+    ORDER_ID.parse(quoteId);
+    const { saveQuoteSheet } = await import("@/lib/services/quote-sheet");
+    const { sheet, missing } = await saveQuoteSheet(
+      user,
+      quoteId,
+      parseSheet(form),
+    );
+    if (str(form, "intent") !== "send")
+      return `${back}?saved=${missing.length ? "partial" : "complete"}`;
+    if (missing.length) throw new Error("sheet_incomplete");
+    const leadTimeDays = z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(3650)
+      .parse(str(form, "leadTimeDays"));
+    const conditions = z
+      .string()
+      .max(2000)
+      .parse(str(form, "conditions"));
+    const { answerQuote } = await import("@/lib/services/requests");
+    await answerQuote(user, quoteId, {
+      price: sheet.price!,
+      currency: sheet.currency === "RMB" ? "CNY" : sheet.currency!,
+      leadTimeDays,
+      conditions: conditions || null,
+    });
+    return `${back}?saved=sent`;
+  });
+}

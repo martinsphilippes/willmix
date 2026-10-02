@@ -15,6 +15,26 @@ const pdf = {
   buffer: Buffer.from("%PDF-1.4\n%fake\n"),
 };
 
+/** Resposta da RFQ: ficha de compra completa (campos obrigatórios), sem fotos. */
+async function fillQuoteSheet(page: Page, price: string) {
+  await page.fill("input[name=supplierName]", "Supplier Ltd");
+  await page.selectOption("select[name=incoterm]", "FOB");
+  await page.selectOption("select[name=currency]", "USD");
+  await page.fill("input[name=price]", price);
+  await page.fill("input[name=moq]", "500");
+  await page.fill("input[name=masterCartonQty]", "24");
+  await page.fill("input[name=cbmPerCarton]", "0.06");
+  await page.fill("input[name=packageType]", "COLOR BOX");
+  await page.fill("input[name=heightCm]", "30");
+  await page.fill("input[name=widthCm]", "40");
+  await page.fill("input[name=lengthCm]", "50");
+  await page.fill("input[name=netWeightPcKg]", "0.4");
+  await page.fill("input[name=grossWeightPcKg]", "0.5");
+  await page.fill("input[name=colorAssortment]", "WHITE");
+  await page.fill("input[name=material]", "GLASS");
+  await page.fill("input[name=productionStartAt]", "2026-11-02");
+}
+
 async function login(page: Page, email: string) {
   await page.context().clearCookies();
   await page.goto("/login");
@@ -163,10 +183,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .first()
     .click();
   await page.waitForURL(/\/app\/quotes\//);
-  await page.fill("input[name=price]", "2.35");
+  await fillQuoteSheet(page, "2.35");
   await page.fill("input[name=leadTimeDays]", "30");
   await page.fill("textarea[name=conditions]", "FOB Shenzhen, 30/70");
-  await page.getByRole("button", { name: /提交|Send|Enviar/ }).click();
+  await page
+    .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
+    .click();
   await page.waitForLoadState("networkidle");
   await expect(
     page.getByText(/报价已提交|Quotation sent|Cotação enviada/),
@@ -180,9 +202,11 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .first()
     .click();
   await page.waitForURL(/\/app\/quotes\//);
-  await page.fill("input[name=price]", "2.6");
+  await fillQuoteSheet(page, "2.6");
   await page.fill("input[name=leadTimeDays]", "25");
-  await page.getByRole("button", { name: /Send|Enviar/ }).click();
+  await page
+    .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
+    .click();
   await page.waitForLoadState("networkidle");
 
   // 4. Wellmix compara e seleciona A com preço ao cliente

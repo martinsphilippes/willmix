@@ -23,6 +23,8 @@ import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
+import * as pricing from "./pricing";
+import * as quoteSheet from "./quote-sheet";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -45,6 +47,8 @@ export const modulesPt = {
   ...sla.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
+  ...pricing.pt,
+  ...quoteSheet.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -67,6 +71,8 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sla.en,
   ...requestProduct.en,
   ...requestDelete.en,
+  ...pricing.en,
+  ...quoteSheet.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -89,4 +95,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sla.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,
+  ...pricing.zh,
+  ...quoteSheet.zh,
 };
