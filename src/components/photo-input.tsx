@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 
 /**
  * Campo de foto para o celular: abre a câmera (ou a galeria), reduz cada imagem
@@ -21,6 +22,8 @@ export function PhotoInput({
   className,
   autoSubmit = false,
   disabled = false,
+  compact = false,
+  pendingLabel,
 }: {
   name: string;
   multiple?: boolean;
@@ -35,6 +38,10 @@ export function PhotoInput({
   autoSubmit?: boolean;
   /** Recurso indisponível: campo inativo e esmaecido. */
   disabled?: boolean;
+  /** Botão pequeno (cabe numa linha) em vez da área grande pontilhada. */
+  compact?: boolean;
+  /** Texto enquanto reduz/envia (ex.: "Enviando…"). */
+  pendingLabel?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -51,8 +58,11 @@ export function PhotoInput({
     try {
       const transfer = new DataTransfer();
       const urls: string[] = [];
-      for (const file of files) {
-        const reduced = await shrink(file, maxDimension, quality);
+      // Todas as fotos são reduzidas ao mesmo tempo (antes, uma por vez).
+      const reducedFiles = await Promise.all(
+        files.map((file) => shrink(file, maxDimension, quality)),
+      );
+      for (const reduced of reducedFiles) {
         transfer.items.add(reduced);
         urls.push(URL.createObjectURL(reduced));
       }
@@ -65,6 +75,48 @@ export function PhotoInput({
     } finally {
       setBusy(false);
     }
+  }
+
+  const { pending } = useFormStatus();
+  const working = busy || pending;
+  const input = (
+    <input
+      ref={inputRef}
+      name={name}
+      type="file"
+      accept="image/*"
+      capture={capture === false ? undefined : capture}
+      multiple={multiple}
+      required={required}
+      disabled={disabled}
+      onChange={onChange}
+      className="sr-only"
+    />
+  );
+
+  if (compact) {
+    return (
+      <label
+        aria-disabled={disabled || working || undefined}
+        aria-busy={working || undefined}
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition ${
+          disabled || working
+            ? "pointer-events-none cursor-wait border-zinc-200 bg-zinc-50 text-zinc-500"
+            : "cursor-pointer border-brand-300 bg-white text-brand-700 hover:bg-brand-50 active:bg-brand-100"
+        } ${className ?? ""}`}
+      >
+        {working ? (
+          <span
+            aria-hidden
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+          />
+        ) : (
+          <span aria-hidden>📷</span>
+        )}
+        <span>{working && pendingLabel ? pendingLabel : label}</span>
+        {input}
+      </label>
+    );
   }
 
   return (
@@ -80,22 +132,13 @@ export function PhotoInput({
         <span aria-hidden className="text-2xl">
           📷
         </span>
-        <span className="font-semibold">{busy ? "…" : label}</span>
+        <span className="font-semibold">
+          {working ? (pendingLabel ?? "…") : label}
+        </span>
         {hint ? (
           <span className="text-xs text-brand-700/80">{hint}</span>
         ) : null}
-        <input
-          ref={inputRef}
-          name={name}
-          type="file"
-          accept="image/*"
-          capture={capture === false ? undefined : capture}
-          multiple={multiple}
-          required={required}
-          disabled={disabled}
-          onChange={onChange}
-          className="sr-only"
-        />
+        {input}
       </label>
       {previews.length > 0 ? (
         <ul className="mt-2 flex flex-wrap gap-2">

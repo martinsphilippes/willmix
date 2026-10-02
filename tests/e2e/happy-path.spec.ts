@@ -66,12 +66,17 @@ async function fillPurchaseSheet(
   ]);
   // Planilha: 2 lotes de 100 caixas × 24 = 4.800 peças; 9 m³.
   await expect(page.getByText("4.800").first()).toBeVisible();
-  const scale = page.locator("form:has(input[name=kind][value=weight_scale])");
-  await scale.locator("input[name=photos]").setInputFiles(png);
-  await Promise.all([
-    page.waitForURL(/photos=weight_scale/),
-    scale.locator("button[type=submit]").click(),
-  ]);
+  // Fotos obrigatórias: balança e régua. Escolher a foto já envia (sem botão).
+  for (const kind of ["weight_scale", "dimension_scale"]) {
+    const row = page.locator(`form:has(input[name=kind][value=${kind}])`);
+    await Promise.all([
+      page.waitForURL(new RegExp(`photos=${kind}`)),
+      row.locator("input[name=photos]").setInputFiles(png),
+    ]);
+  }
+  await expect(
+    page.getByText(/Ficha completa|Sheet complete|采购单已完成/).first(),
+  ).toBeVisible();
 }
 
 /** Preenche todos os requisitos pendentes que o usuário logado pode preencher na tela do pedido. */

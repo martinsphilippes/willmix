@@ -149,11 +149,21 @@ export const SHEET_REQUIRED_FIELDS = [
 ] as const;
 export type SheetRequiredField = (typeof SHEET_REQUIRED_FIELDS)[number];
 
-export type SheetMissing = SheetRequiredField | "lot1" | "scalePhoto";
+/** Fotos obrigatórias da ficha: balança (peso) e régua (medida com escala). */
+export const REQUIRED_SHEET_PHOTOS = {
+  weight_scale: "scalePhoto",
+  dimension_scale: "rulerPhoto",
+} as const;
 
+export type SheetMissing =
+  | SheetRequiredField
+  | "lot1"
+  | (typeof REQUIRED_SHEET_PHOTOS)[keyof typeof REQUIRED_SHEET_PHOTOS];
+
+/** `photoKinds`: tipos de foto da ficha que já têm ao menos uma foto. */
 export function missingForCompletion(
   sheet: Partial<PurchaseSheet> | null,
-  hasScalePhoto: boolean,
+  photoKinds: readonly string[],
 ): SheetMissing[] {
   const missing: SheetMissing[] = [];
   for (const key of SHEET_REQUIRED_FIELDS) {
@@ -167,6 +177,7 @@ export function missingForCompletion(
     typeof first.departureIntervalDays !== "number"
   )
     missing.push("lot1");
-  if (!hasScalePhoto) missing.push("scalePhoto");
+  for (const [kind, field] of Object.entries(REQUIRED_SHEET_PHOTOS))
+    if (!photoKinds.includes(kind)) missing.push(field);
   return missing;
 }

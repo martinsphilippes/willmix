@@ -24,6 +24,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
+import { REQUIRED_SHEET_PHOTOS } from "@/lib/services/purchase-sheet-calc";
 import {
   getSheetForUser,
   SHEET_PHOTO_KINDS,
@@ -670,71 +671,118 @@ function Photos({
       <p className="mb-4 text-sm leading-relaxed text-zinc-600">
         {t("sheet.photos.hint")}
       </p>
-      <ul className="space-y-5">
+      {/* Uma linha por tipo de foto; verde com check quando já tem foto. */}
+      <ul className="space-y-3">
         {SHEET_PHOTO_KINDS.map((kind) => {
           const photos = view.photos.filter((p) => p.kind === kind);
-          const required = kind === "weight_scale";
+          const required = kind in REQUIRED_SHEET_PHOTOS;
+          const done = photos.length > 0;
+          const name = t(`catalog.photoKind.${kind}` as DictionaryKey);
           return (
             <li
               key={kind}
-              className="border-t border-zinc-100 pt-4 first:border-0 first:pt-0"
+              className={cx(
+                "flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center sm:gap-4",
+                done
+                  ? "border-emerald-300 bg-emerald-50"
+                  : "border-zinc-200 bg-white",
+              )}
             >
-              <p className="text-sm font-semibold text-zinc-900">
-                {t(`catalog.photoKind.${kind}` as DictionaryKey)}
-                {required ? (
-                  <span
-                    className="ml-0.5 font-semibold text-brand-600"
-                    title={t("sheet.required")}
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span
+                  className={cx(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    done
+                      ? "bg-emerald-600 text-white"
+                      : required
+                        ? "border-2 border-brand-300 text-brand-600"
+                        : "border-2 border-zinc-300 text-zinc-400",
+                  )}
+                  aria-hidden
+                >
+                  {done ? (
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      className="h-5 w-5"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  ) : null}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    {name}
+                    {required ? (
+                      <span
+                        className="ml-0.5 font-semibold text-brand-600"
+                        title={t("sheet.required")}
+                      >
+                        <span aria-hidden>*</span>
+                        <span className="sr-only">({t("sheet.required")})</span>
+                      </span>
+                    ) : null}
+                  </p>
+                  <p
+                    className={cx(
+                      "text-xs",
+                      done ? "font-medium text-emerald-800" : "text-zinc-500",
+                    )}
                   >
-                    <span aria-hidden>*</span>
-                    <span className="sr-only">({t("sheet.required")})</span>
-                  </span>
-                ) : null}
-              </p>
-              {photos.length ? (
-                <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                    {done
+                      ? t("sheet.photos.count", { n: String(photos.length) })
+                      : t("sheet.photos.none")}
+                  </p>
+                </div>
+              </div>
+              {done ? (
+                <ul className="flex flex-wrap gap-2">
                   {photos.map((p) => (
                     <li key={p.id}>
                       <a
                         href={`/api/files/${p.documentId}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="block overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50"
+                        className="block overflow-hidden rounded-lg border border-emerald-200 bg-white"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
                         <img
                           src={`/api/files/${p.documentId}`}
-                          alt={t(`catalog.photoKind.${kind}` as DictionaryKey)}
+                          alt={name}
                           loading="lazy"
-                          className="aspect-square w-full object-cover"
+                          className="h-14 w-14 object-cover"
                         />
                       </a>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="mt-1 text-xs text-zinc-500">
-                  {t("sheet.photos.none")}
-                </p>
-              )}
+              ) : null}
               {view.access.addPhotos ? (
                 <form
                   action={addPurchaseSheetPhotosAction}
-                  className="mt-3 space-y-2"
+                  className="shrink-0"
                 >
                   <input type="hidden" name="orderId" value={orderId} />
                   <input type="hidden" name="kind" value={kind} />
+                  {/* Envia sozinho ao escolher ou tirar a foto (sem botão Enviar);
+                      sem "capture", o iPad oferece câmera e biblioteca. */}
                   <PhotoInput
                     name="photos"
-                    label={t("sheet.photos.add")}
-                    required
-                  />
-                  <SubmitButton
-                    variant="secondary"
+                    label={
+                      done ? t("sheet.photos.more") : t("sheet.photos.add")
+                    }
+                    pendingLabel={t("sheet.photos.sending")}
+                    capture={false}
+                    maxDimension={1400}
+                    quality={0.78}
+                    autoSubmit
+                    compact
                     className="w-full sm:w-auto"
-                  >
-                    {t("common.send")}
-                  </SubmitButton>
+                  />
                 </form>
               ) : null}
             </li>

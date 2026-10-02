@@ -130,8 +130,14 @@ describe("contas da planilha", () => {
   });
 
   it("lista o que falta para concluir", () => {
-    expect(missingForCompletion(null, false)).toEqual(
-      expect.arrayContaining(["supplierName", "price", "lot1", "scalePhoto"]),
+    expect(missingForCompletion(null, [])).toEqual(
+      expect.arrayContaining([
+        "supplierName",
+        "price",
+        "lot1",
+        "scalePhoto",
+        "rulerPhoto",
+      ]),
     );
   });
 });
@@ -189,7 +195,7 @@ describe("ficha no pedido", () => {
       // Fornecedor não edita a parte do despachante: ignorado.
       ncm: "9999.99.99",
     });
-    expect(missing).toEqual(["scalePhoto"]);
+    expect(missing).toEqual(["scalePhoto", "rulerPhoto"]);
     // Preparação tem só a ficha de compra.
     expect(
       (
@@ -199,6 +205,9 @@ describe("ficha no pedido", () => {
     expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
 
     await addSheetPhotos(supplierA, order.id, "weight_scale", [await png()]);
+    // Só a balança não basta: falta a régua (medida com escala).
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
+    await addSheetPhotos(supplierA, order.id, "dimension_scale", [await png()]);
     await addSheetPhotos(supplierA, order.id, "dimension_side", [
       await png(),
       await png(),
