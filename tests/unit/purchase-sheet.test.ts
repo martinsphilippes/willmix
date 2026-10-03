@@ -231,12 +231,10 @@ describe("ficha no pedido", () => {
         await png(),
       ]),
     ).rejects.toThrow("invalid_kind");
-    for (const kind of ["angle", "original"] as const)
-      await addSheetPhotos(supplierA, order.id, kind, [await png()]);
-    const sheetReq = await req(prep.id, "purchase_sheet");
-    expect(sheetReq.status).toBe("done");
+    await addSheetPhotos(supplierA, order.id, "angle", [await png()]);
     // Cartão de visita enviado à ficha antes da mudança: segue visível e
-    // excluível, mas não é obrigatório nem conta como foto do produto.
+    // excluível, mas não é obrigatório nem conta como foto do produto: com 4
+    // fotos do produto + o cartão, ainda falta a original.
     const { getSheetPhotos } = await import("@/lib/services/purchase-sheet");
     const legacy = await getStore().create("product_photos", {
       productId: null,
@@ -253,18 +251,21 @@ describe("ficha no pedido", () => {
     expect((await getSheetPhotos(order.id)).map((p) => p.kind)).toContain(
       "business_card",
     );
-    expect(
-      missingForCompletion(
-        { ...(await getSheetForUser(admin, order.id))!.sheet },
-        ["weight_scale", "dimension_scale", "dimension_side", "angle"],
-      ),
-    ).toEqual(["originalPhoto"]);
+    expect((await getSheetForUser(admin, order.id))!.missing).toEqual([
+      "originalPhoto",
+    ]);
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
+    await addSheetPhotos(supplierA, order.id, "original", [await png()]);
+    const sheetReq = await req(prep.id, "purchase_sheet");
+    expect(sheetReq.status).toBe("done");
+    expect(sheetReq.value).toContain("7200 pcs");
+    expect((await getStore().get("stages", prep.id))!.status).toBe("done");
+    // Excluir a foto antiga não mexe no que já está concluído.
     await removeSheetPhoto(admin, order.id, legacy.id);
     expect((await getSheetPhotos(order.id)).map((p) => p.kind)).not.toContain(
       "business_card",
     );
-    expect(sheetReq.value).toContain("7200 pcs");
-    expect((await getStore().get("stages", prep.id))!.status).toBe("done");
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("done");
 
     // Despachante preenche só NCM/impostos.
     await saveSheet(broker, order.id, {
