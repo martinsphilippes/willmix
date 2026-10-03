@@ -84,7 +84,13 @@ export function FileAutoInput({
       form.requestSubmit();
     } catch (err) {
       console.error("upload direto falhou", err);
-      setError(failedLabel);
+      // O motivo real ajuda a diagnosticar (ex.: 401 sem permissão no bucket,
+      // "Failed to fetch" quando o domínio não está cadastrado no Appwrite).
+      const detail =
+        err instanceof Error && err.message
+          ? ` (${err.message.slice(0, 160)})`
+          : "";
+      setError(`${failedLabel}${detail}`);
       input.value = "";
     } finally {
       setProgress(null);
