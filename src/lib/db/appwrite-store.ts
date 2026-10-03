@@ -19,6 +19,10 @@ export class AppwriteStore implements Store {
   private readonly tables: TablesDB;
   private readonly storage: Storage;
 
+  private readonly endpoint: string;
+  private readonly projectId: string;
+  private readonly apiKey: string;
+
   constructor(endpoint: string, projectId: string, apiKey: string) {
     const client = new Client()
       .setEndpoint(endpoint)
@@ -26,6 +30,9 @@ export class AppwriteStore implements Store {
       .setKey(apiKey);
     this.tables = new TablesDB(client);
     this.storage = new Storage(client);
+    this.endpoint = endpoint.replace(/\/$/, "");
+    this.projectId = projectId;
+    this.apiKey = apiKey;
   }
 
   async list<K extends TableName>(
@@ -184,6 +191,50 @@ export class AppwriteStore implements Store {
       if (isNotFound(error)) return null;
       throw error;
     }
+  }
+
+  async statFile(key: string): Promise<StoredFile | null> {
+    try {
+      const meta = await this.storage.getFile({
+        bucketId: BUCKET_ID,
+        fileId: key,
+      });
+      return {
+        key: meta.$id,
+        name: meta.name,
+        mime: meta.mimeType,
+        size: meta.sizeOriginal,
+      };
+    } catch (error) {
+      if (isNotFound(error)) return null;
+      throw error;
+    }
+  }
+
+  /**
+   * Download em fluxo direto da API REST (o SDK carrega o arquivo inteiro na
+   * memória): arquivos grandes (arte da embalagem) descem sem estourar a função.
+   */
+  async streamFile(key: string) {
+    const meta = await this.statFile(key);
+    if (!meta) return null;
+    const res = await fetch(
+      `${this.endpoint}/storage/buckets/${BUCKET_ID}/files/${encodeURIComponent(key)}/download`,
+      {
+        headers: {
+          "X-Appwrite-Project": this.projectId,
+          "X-Appwrite-Key": this.apiKey,
+        },
+      },
+    );
+    if (res.status === 404) return null;
+    if (!res.ok || !res.body) throw new Error(`storage download ${res.status}`);
+    return {
+      body: res.body,
+      name: meta.name,
+      mime: meta.mime,
+      size: meta.size,
+    };
   }
 
   async nextNumber(key: string) {

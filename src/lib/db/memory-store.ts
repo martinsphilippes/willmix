@@ -4,6 +4,7 @@ import {
   writeFileSync,
   existsSync,
   unlinkSync,
+  statSync,
 } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -175,6 +176,36 @@ export class MemoryStore implements Store {
       mime: string;
     };
     return { bytes: new Uint8Array(readFileSync(path)), ...meta };
+  }
+
+  async statFile(key: string): Promise<StoredFile | null> {
+    if (!/^[a-f0-9-]{36}$/.test(key)) return null;
+    if (!this.persist) {
+      const f = this.memFiles.get(key);
+      return f
+        ? { key, name: f.name, mime: f.mime, size: f.bytes.byteLength }
+        : null;
+    }
+    const path = join(this.filesDir, key);
+    if (!existsSync(path)) return null;
+    const meta = JSON.parse(readFileSync(`${path}.json`, "utf8")) as {
+      name: string;
+      mime: string;
+    };
+    return { key, ...meta, size: statSync(path).size };
+  }
+
+  async streamFile(key: string) {
+    const meta = await this.statFile(key);
+    if (!meta) return null;
+    const file = await this.getFile(key);
+    if (!file) return null;
+    return {
+      body: new Blob([file.bytes as BlobPart]).stream(),
+      name: meta.name,
+      mime: meta.mime,
+      size: meta.size,
+    };
   }
 
   async removeFile(key: string) {
