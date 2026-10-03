@@ -132,16 +132,23 @@ export default async function PurchaseSheetPage({
         removeAction={removePurchaseSheetPhotoAction}
       />
 
-      {access.editSupplier || access.editCustoms ? (
-        <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+      {/* Rodapé (fixo no celular): Salvar, para quem edita, e Voltar ao pedido. */}
+      <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex gap-3 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+        {access.editSupplier || access.editCustoms ? (
           <SubmitButton
             form="purchase-sheet"
-            className="w-full py-3 text-base sm:w-auto"
+            className="flex-1 py-3 text-base sm:flex-none"
           >
             {t("sheet.save")}
           </SubmitButton>
-        </div>
-      ) : null}
+        ) : null}
+        <LinkButton
+          href={`/app/orders/${id}`}
+          className="flex-1 py-3 text-base sm:flex-none"
+        >
+          {t("sheet.back")}
+        </LinkButton>
+      </div>
     </>
   );
 }
