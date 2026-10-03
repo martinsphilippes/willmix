@@ -18,6 +18,7 @@ import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { answerFreightAction } from "../../actions/freight";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { MoneyInput } from "@/components/money-input";
 
 const num = (n: number | null | undefined, digits = 2) =>
   n === null || n === undefined
@@ -143,13 +144,11 @@ export default async function FreightPage({
                 {t("freight.form.hint")}
               </p>
               <Field label={t("freight.form.amount")}>
-                <Input
+                <MoneyInput
                   name="amount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                  watchField="currency"
                   required
-                  defaultValue={freight.amount ?? ""}
+                  defaultAmount={freight.amount ?? null}
                 />
               </Field>
               <Field label={t("freight.form.currency")}>

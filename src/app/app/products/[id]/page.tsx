@@ -74,6 +74,7 @@ import {
   visionError,
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
+import { MoneyInput } from "@/components/money-input";
 
 /* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
 const big = "py-2.5";
@@ -375,7 +376,12 @@ export default async function ProductSheetPage({
                 />
               </Field>
               <Field label={t("common.price")}>
-                <NumberInput name="price" defaultValue={product.price ?? ""} />
+                <MoneyInput
+                  name="price"
+                  watchField="currency"
+                  defaultAmount={product.price ?? null}
+                  decimals={4}
+                />
               </Field>
               <Field label={t("common.currency")}>
                 <CurrencySelect
@@ -938,7 +944,12 @@ export default async function ProductSheetPage({
               </Select>
             </Field>
             <Field label={t("common.price")}>
-              <NumberInput name="price" defaultValue={product.price ?? ""} />
+              <MoneyInput
+                name="price"
+                watchField="currency"
+                defaultAmount={product.price ?? null}
+                decimals={4}
+              />
             </Field>
             <Field label={t("common.currency")}>
               <CurrencySelect

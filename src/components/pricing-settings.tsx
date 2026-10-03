@@ -4,6 +4,7 @@ import type { FxView } from "@/lib/services/fx";
 import { CurrencySelect } from "@/components/currency-select";
 import { Badge, Field, Input } from "@/components/ui";
 import { FxManualFields } from "@/components/fx-manual-field";
+import { MoneyInput } from "./money-input";
 
 /*
  * Configurações do preço ao cliente (dentro do formulário de Configurações):
@@ -59,12 +60,10 @@ export function PricingSettings({
           label={t("pricing.settings.freight")}
           hint={t("pricing.settings.freightHint")}
         >
-          <Input
+          <MoneyInput
             name="freightPerCbm"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={s.freightPerCbm ?? ""}
+            watchField="freightCurrency"
+            defaultAmount={s.freightPerCbm ?? null}
           />
         </Field>
         <Field label={t("pricing.settings.freightCurrency")}>

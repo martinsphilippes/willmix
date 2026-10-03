@@ -1,85 +1,218 @@
 "use client";
 
-import { useState } from "react";
-import type { Currency } from "@/lib/currencies";
-import { CURRENCIES, CURRENCY_SYMBOL, parseAmount } from "@/lib/workflow/money";
-import { Select, cx } from "./ui";
+import { useEffect, useRef, useState } from "react";
+import { CURRENCIES, isCurrency, type Currency } from "@/lib/currencies";
+import { CURRENCY_SYMBOL, parseAmount } from "@/lib/workflow/money";
+import { cx, inputClass } from "./ui";
 
 /**
- * Valor em dinheiro para requisitos de custo: moeda à esquerda (Real, Yuan,
- * Dólar, Euro) e valor com o símbolo da moeda escolhida na frente. Ao sair do
- * campo o número é formatado (1.234,56). O formulário recebe `currency` e
- * `amount`; a Server Action monta o valor guardado.
+ * Campo de dinheiro, o mesmo em todo o portal: símbolo da moeda na frente do
+ * valor (R$, ¥, US$, €) e número formatado ao sair do campo (1.234,56).
+ *
+ * A moeda vem de um destes três jeitos:
+ * - `currencyName`: o campo mostra o próprio seletor de moeda (com `labels`);
+ * - `watchField`: segue um seletor de moeda que já existe no mesmo <form>;
+ * - `currency`: moeda fixa (ex.: venda sempre em Real).
+ *
+ * O que vai ao servidor é um campo oculto `name` com o número normalizado
+ * ("1234.56"), então as Server Actions atuais (`num`) seguem iguais. O campo
+ * visível tem `data-money={name}` (testes). Com `value`/`onValueChange` o
+ * campo fica controlado (calculadora do valor ao cliente).
  */
 export function MoneyInput({
-  currencyLabels,
+  name,
+  currency,
+  currencyName,
+  watchField,
+  labels,
+  allowEmptyCurrency,
   defaultCurrency = "BRL",
   defaultAmount,
+  value,
+  onValueChange,
   required,
+  disabled,
+  decimals = 2,
+  placeholder,
+  className,
+  selectClassName,
+  id,
 }: {
-  currencyLabels: Record<Currency, string>;
-  defaultCurrency?: Currency;
-  defaultAmount?: number | null;
+  name?: string;
+  currency?: string | null;
+  currencyName?: string;
+  watchField?: string;
+  labels?: Record<string, string>;
+  allowEmptyCurrency?: boolean;
+  defaultCurrency?: string | null;
+  defaultAmount?: number | string | null;
+  value?: string;
+  onValueChange?: (raw: string) => void;
   required?: boolean;
+  disabled?: boolean;
+  decimals?: number;
+  placeholder?: string;
+  className?: string;
+  selectClassName?: string;
+  id?: string;
 }) {
-  const [currency, setCurrency] = useState<Currency>(defaultCurrency);
-  const [amount, setAmount] = useState(
-    defaultAmount != null ? formatPlain(defaultAmount) : "",
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [ownCurrency, setOwnCurrency] = useState(
+    (currency ?? defaultCurrency ?? "").toUpperCase(),
   );
+  const [watched, setWatched] = useState("");
+  const [rawState, setRaw] = useState(
+    normalizeRaw(defaultAmount == null ? "" : String(defaultAmount)),
+  );
+  const [textState, setText] = useState(() => formatOrRaw(rawState, decimals));
+  const [focused, setFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
+  // Controlado: o valor vem de fora; fora do foco, a tela mostra formatado.
+  const raw = value ?? rawState;
+  const text =
+    value !== undefined && !focused ? formatOrRaw(value, decimals) : textState;
+
+  // Segue o seletor de moeda já existente no formulário (a leitura inicial
+  // é adiada: o campo só existe depois de montar).
+  useEffect(() => {
+    if (!watchField) return;
+    const field = inputRef.current?.form?.elements.namedItem(watchField);
+    if (!(
+      field instanceof HTMLSelectElement || field instanceof HTMLInputElement
+    ))
+      return;
+    const read = () => setWatched(field.value.toUpperCase());
+    const first = setTimeout(read, 0);
+    field.addEventListener("change", read);
+    field.addEventListener("input", read);
+    return () => {
+      clearTimeout(first);
+      field.removeEventListener("change", read);
+      field.removeEventListener("input", read);
+    };
+  }, [watchField]);
+
+  const code = watchField ? watched : ownCurrency;
+  const symbol = symbolOf(code);
+  const legacy =
+    ownCurrency && !(CURRENCIES as readonly string[]).includes(ownCurrency)
+      ? ownCurrency
+      : null;
+
+  function update(next: string) {
+    setText(next);
+    setInvalid(false);
+    const normalized = normalizeRaw(next);
+    setRaw(normalized);
+    onValueChange?.(normalized);
+  }
+
+  function blur() {
+    setFocused(false);
+    if (!text.trim()) {
+      update("");
+      return;
+    }
+    const n = parseAmount(text, decimals);
+    if (n === null) {
+      setInvalid(true);
+      return;
+    }
+    setText(formatPlain(n, decimals));
+    const normalized = n.toFixed(decimals);
+    setRaw(normalized);
+    onValueChange?.(normalized);
+  }
 
   return (
-    <span className="inline-flex flex-wrap items-center gap-2">
-      <Select
-        name="currency"
-        value={currency}
-        onChange={(e) => setCurrency(e.target.value as Currency)}
-        className="w-auto"
-        aria-label="Moeda"
-      >
-        {CURRENCIES.map((c) => (
-          <option key={c} value={c}>
-            {currencyLabels[c]}
-          </option>
-        ))}
-      </Select>
+    <span
+      className={cx(
+        "inline-flex max-w-full flex-wrap items-center gap-2",
+        className,
+      )}
+    >
+      {currencyName ? (
+        <select
+          name={currencyName}
+          value={ownCurrency}
+          onChange={(e) => setOwnCurrency(e.target.value)}
+          disabled={disabled}
+          required={required && !allowEmptyCurrency}
+          className={cx(inputClass, "w-auto", selectClassName)}
+          aria-label={labels?.currency ?? "Moeda"}
+        >
+          {allowEmptyCurrency ? <option value="">—</option> : null}
+          {legacy ? <option value={legacy}>{legacy}</option> : null}
+          {CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {labels?.[c] ?? c}
+            </option>
+          ))}
+        </select>
+      ) : null}
       <span
         className={cx(
-          "inline-flex items-center rounded-lg border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
+          "inline-flex min-w-0 flex-1 items-center rounded-lg border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
           invalid ? "border-red-400" : "border-zinc-300",
+          disabled && "bg-zinc-50 opacity-70",
         )}
       >
-        <span className="pl-3 pr-1 text-sm font-semibold text-zinc-500">
-          {CURRENCY_SYMBOL[currency]}
-        </span>
+        {symbol ? (
+          <span className="shrink-0 pl-3 pr-1 text-sm font-semibold text-zinc-500">
+            {symbol}
+          </span>
+        ) : (
+          <span className="pl-3" />
+        )}
         <input
-          name="amount"
+          ref={inputRef}
+          id={id}
+          data-money={name}
           type="text"
           inputMode="decimal"
           required={required}
-          placeholder="0,00"
-          value={amount}
-          onChange={(e) => {
-            setAmount(e.target.value);
-            setInvalid(false);
+          disabled={disabled}
+          placeholder={placeholder ?? (decimals === 2 ? "0,00" : "0")}
+          value={text}
+          onFocus={() => {
+            if (value !== undefined) setText(formatOrRaw(value, decimals));
+            setFocused(true);
           }}
-          onBlur={() => {
-            if (!amount.trim()) return;
-            const n = parseAmount(amount);
-            if (n === null) setInvalid(true);
-            else setAmount(formatPlain(n));
-          }}
-          className="w-32 rounded-r-lg border-0 bg-transparent py-2 pr-3 text-right text-sm tabular-nums focus:outline-none"
+          onChange={(e) => update(e.target.value)}
+          onBlur={blur}
+          className="w-full min-w-24 rounded-r-lg border-0 bg-transparent py-2 pr-3 text-right text-sm tabular-nums focus:outline-none disabled:cursor-not-allowed"
         />
       </span>
+      {name ? (
+        <input type="hidden" name={name} value={raw} disabled={disabled} />
+      ) : null}
     </span>
   );
 }
 
+function symbolOf(code: string) {
+  const c = code === "RMB" ? "CNY" : code;
+  if (!c) return "";
+  return isCurrency(c) ? CURRENCY_SYMBOL[c as Currency] : c;
+}
+
+/** Texto digitado → número normalizado com ponto ("1.234,56" → "1234.56"); vazio fica vazio. */
+function normalizeRaw(text: string) {
+  const s = text.replace(/\s|[A-Za-z$€¥]/g, "");
+  if (!s) return "";
+  return s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
+}
+
 /** 1234.5 → "1.234,50" (sem símbolo; o símbolo fica fora do campo). */
-function formatPlain(n: number) {
+function formatPlain(n: number, decimals: number) {
   return new Intl.NumberFormat("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: Math.min(decimals, 2),
+    maximumFractionDigits: decimals,
   }).format(n);
+}
+
+function formatOrRaw(raw: string, decimals: number) {
+  if (!raw) return "";
+  const n = Number(raw);
+  return Number.isFinite(n) ? formatPlain(n, decimals) : raw;
 }

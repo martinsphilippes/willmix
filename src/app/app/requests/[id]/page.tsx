@@ -62,6 +62,7 @@ import {
   setRequesterAction,
 } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { MoneyInput } from "@/components/money-input";
 
 export default async function RequestDetailPage({
   params,
@@ -399,14 +400,12 @@ export default async function RequestDetailPage({
                               name="back"
                               value={`/app/requests/${request.id}`}
                             />
-                            <Input
+                            <MoneyInput
                               name="price"
-                              type="number"
-                              step="0.0001"
-                              min="0"
+                              watchField="currency"
+                              decimals={4}
                               required
-                              placeholder={t("common.price")}
-                              className="max-w-28"
+                              className="max-w-44"
                             />
                             <CurrencySelect
                               name="currency"
@@ -567,11 +566,9 @@ export default async function RequestDetailPage({
                     <CurrencySelect name="sellCurrency" value="BRL" t={t} />
                   </Field>
                   <Field label={t("requests.downPayment")}>
-                    <Input
+                    <MoneyInput
                       name="downPaymentAmount"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      watchField="sellCurrency"
                       placeholder="30%"
                     />
                   </Field>
