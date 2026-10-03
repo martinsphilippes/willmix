@@ -260,6 +260,13 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Ao confirmar o sinal, ficha e fotos da cotação escolhida vão para o pedido (o documento passa a ser do pedido, visível aos parceiros).
 - Quando a Preparação começa (após "Pedido conferido"), se a ficha está completa os requisitos se cumprem na hora e a etapa se conclui sozinha (`syncPreparationFromSheet` no `activateStage`). Pedidos antigos ou cotações registradas sem ficha seguem com a Preparação normal, que mostra o que falta.
 
+## Cancelamento de pedido; todas as fotos da ficha obrigatórias
+
+- **Fotos da ficha:** as 7 fotos (balança, régua, lateral, ângulos, original, prompt, cartão de visita) são obrigatórias na RFQ e na Preparação (`REQUIRED_SHEET_PHOTOS`); requisitos do tipo foto são sempre obrigatórios.
+- **Quem cancela:** só o administrador, em qualquer etapa (`cancelOrder`). Nada é apagado: o pedido passa a `CANCELLED` (novo valor de `orders.status`), guarda a etapa em que estava (`cancelStageKey`), motivo, observação, quem e quando; etapas não concluídas viram `cancelled` (novo valor de `stages.status`); o pedido sai dos containers e os fretes em aberto da solicitação são cancelados. Cliente, fornecedor e parceiros são avisados; com número no Sankhya, a Wellmix recebe o lembrete de cancelar lá. Pedido cancelado não avança: requisito, aprovação e desbloqueio são recusados.
+- **Acerto financeiro:** texto livre (`cancelSettlement`), opcional no cancelamento e editável depois pelo admin; o portal não calcula devolução. Pedido cancelado sai de "a receber"/"a pagar", das listas abertas, da Control Tower, do compliance e das pendências de ERP; o histórico de pagamentos continua.
+- **Pedido do cliente:** o cliente (o login solicitante) pede o cancelamento com motivo até o produto entrar em produção: etapas Pedido criado, Preparação ou Pagamento ao fornecedor e antes da data de início da produção da ficha. A Wellmix vê o alerta no pedido e recusa com resposta ou cancela (o pedido fica `approved`). Colunas novas em `orders`: `cancelledAt`, `cancelledByUserId`, `cancelReason`, `cancelNote`, `cancelSettlement`, `cancelStageKey`, `cancelRequestStatus`, `cancelRequestedAt`, `cancelRequestedByUserId`, `cancelRequestReason`, `cancelRequestResponse`.
+
 ## Tributos da importação no valor ao cliente
 
 - **Tabela fiscal (TEC + TIPI):** upload da planilha oficial (XLSX/CSV, título acima do cabeçalho, linhas "Ex" ignoradas, "NT" = 0%) e robô mensal pelos links oficiais (`/api/jobs/fiscal`). Fica como JSON no armazenamento; metadados em `settings.fiscalTable`. Cada upload substitui só a sua parte e informa quantas alíquotas mudaram (auditoria `fiscal.import`). Tabela incompleta ou com mais de 90 dias: aviso.

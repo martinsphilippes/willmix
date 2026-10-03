@@ -76,6 +76,13 @@ import { SupplierPaymentPanel } from "@/components/supplier-payment-panel";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
+  AdminCancelCard,
+  CancelRequestAlert,
+  CancelledBanner,
+  CustomerCancelCard,
+} from "@/components/order-cancel";
+import { customerCanRequestCancel } from "@/lib/services/order-cancel";
+import {
   assignPartnerAction,
   clearRequirementDocumentAction,
   createPenaltyAction,
@@ -102,7 +109,15 @@ export default async function OrderPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, remeasure, paid } = await searchParams;
+  const {
+    error,
+    remeasure,
+    paid,
+    cancelled,
+    cancelRequested,
+    cancelRejected,
+    settlementSaved,
+  } = await searchParams;
   const progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
   const { order, stages, requirements } = progress;
@@ -238,6 +253,23 @@ export default async function OrderPage({
     sourceOrderRow && canViewOrder(user, sourceOrderRow)
       ? sourceOrderRow
       : null;
+  /* Cancelamento: só o admin cancela; o cliente pede até a produção começar. */
+  const isCancelled = order.status === "CANCELLED";
+  const admin = user.role === "admin";
+  const canRequestCancel =
+    user.role === "customer" && !isCancelled
+      ? await customerCanRequestCancel(order)
+      : false;
+  const notice =
+    cancelled === "1"
+      ? "cancel.done"
+      : cancelRequested === "1"
+        ? "cancel.request.sent"
+        : cancelRejected === "1"
+          ? "cancel.request.rejectedOk"
+          : settlementSaved === "1"
+            ? "cancel.settlementSaved"
+            : null;
 
   return (
     <>
@@ -253,13 +285,17 @@ export default async function OrderPage({
                 .join("; ")}
             </span>
             <Badge
-              tone={stageTone(
-                order.status === "CLOSED"
-                  ? "done"
-                  : currentStage?.status === "blocked"
-                    ? "blocked"
-                    : "active",
-              )}
+              tone={
+                isCancelled
+                  ? "danger"
+                  : stageTone(
+                      order.status === "CLOSED"
+                        ? "done"
+                        : currentStage?.status === "blocked"
+                          ? "blocked"
+                          : "active",
+                    )
+              }
             >
               {t(`stage.${order.status}`)}
               {currentStage?.status === "blocked"
@@ -297,8 +333,28 @@ export default async function OrderPage({
           {typeof error === "string" &&
           t(`sheet.error.${error}` as DictionaryKey) !== `sheet.error.${error}`
             ? t(`sheet.error.${error}` as DictionaryKey)
-            : fallbackError(t, String(error))}
+            : typeof error === "string" &&
+                t(`orders.error.${error}` as DictionaryKey) !==
+                  `orders.error.${error}`
+              ? t(`orders.error.${error}` as DictionaryKey)
+              : fallbackError(t, String(error))}
         </Alert>
+      ) : null}
+      {notice ? (
+        <div className="mb-4">
+          <Alert tone="success">{t(notice)}</Alert>
+        </div>
+      ) : null}
+      <CancelledBanner
+        t={t}
+        order={order}
+        byName={userName(order.cancelledByUserId ?? null)}
+        wellmix={wellmix}
+        admin={admin}
+        customer={user.role === "customer"}
+      />
+      {wellmix ? (
+        <CancelRequestAlert t={t} order={order} admin={admin} />
       ) : null}
       {currentStage?.status === "blocked" ? (
         <div className="mb-4">
@@ -381,7 +437,10 @@ export default async function OrderPage({
 
           {stages
             .filter(
-              (s) => s.key !== "CLOSED" && (wellmix || s.status !== "pending"),
+              (s) =>
+                s.key !== "CLOSED" &&
+                (wellmix ||
+                  (s.status !== "pending" && s.status !== "cancelled")),
             )
             .map((stage) => {
               const reqs = requirements.filter((r) => r.stageId === stage.id);
@@ -1021,6 +1080,31 @@ export default async function OrderPage({
                 </details>
               ) : null}
             </Card>
+          ) : null}
+
+          {admin ? (
+            <AdminCancelCard
+              t={t}
+              order={order}
+              money={
+                finance
+                  ? {
+                      received: formatMoney(
+                        finance.received,
+                        finance.sellCurrency,
+                      ),
+                      paid: formatMoney(finance.paid, finance.fobCurrency),
+                    }
+                  : null
+              }
+            />
+          ) : null}
+          {user.role === "customer" ? (
+            <CustomerCancelCard
+              t={t}
+              order={order}
+              canRequest={canRequestCancel}
+            />
           ) : null}
         </div>
       </div>

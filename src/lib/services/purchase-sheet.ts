@@ -99,7 +99,7 @@ export function sheetAccess(user: User, order: Order): SheetAccess {
     addPhotos: false,
   };
   if (!canViewOrder(user, order)) return none;
-  const closed = order.status === "CLOSED";
+  const closed = order.status === "CLOSED" || order.status === "CANCELLED";
   if (isWellmix(user))
     return {
       view: true,

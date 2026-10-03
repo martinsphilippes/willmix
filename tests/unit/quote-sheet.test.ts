@@ -84,7 +84,18 @@ describe("ficha de compra na cotação", () => {
     });
     const view = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
     // Campos completos; faltam a programação e as fotos (exigidas já na cotação).
-    expect(view.missing).toEqual(["lot1", "scalePhoto", "rulerPhoto"]);
+    expect(view.missing).toEqual([
+      "lot1",
+      ...[
+        "scalePhoto",
+        "rulerPhoto",
+        "sidePhoto",
+        "anglePhoto",
+        "originalPhoto",
+        "promptPhoto",
+        "cardPhoto",
+      ],
+    ]);
     expect(view.sheet.importTaxPercent).toBe(18);
     await qs.saveQuoteSheet(supplierA, quote.id, {
       lots: [{ departureIntervalDays: 30, masterCartons: 42 }],
@@ -93,17 +104,23 @@ describe("ficha de compra na cotação", () => {
       new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "foto.png", {
         type: "image/png",
       });
-    await qs.addQuoteSheetPhotos(supplierA, quote.id, "weight_scale", [png()]);
-    await qs.addQuoteSheetPhotos(supplierA, quote.id, "dimension_scale", [
-      png(),
-    ]);
+    for (const kind of [
+      "weight_scale",
+      "dimension_scale",
+      "dimension_side",
+      "angle",
+      "original",
+      "prompt",
+      "business_card",
+    ] as const)
+      await qs.addQuoteSheetPhotos(supplierA, quote.id, kind, [png()]);
     // Outro fornecedor não envia foto nesta cotação.
     await expect(
       qs.addQuoteSheetPhotos(supplierB, quote.id, "angle", [png()]),
     ).rejects.toThrow();
     const done = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
     expect(done.missing).toEqual([]);
-    expect(done.photos).toHaveLength(2);
+    expect(done.photos).toHaveLength(7);
     // A foto da cotação não abre para outro fornecedor nem para o cliente.
     const { canAccessDocument } = await import("@/lib/services/documents");
     const photoDoc = (await store.get("documents", done.photos[0].documentId))!;
@@ -129,10 +146,7 @@ describe("ficha de compra na cotação", () => {
     // Fotos da cotação passam para o pedido.
     const { getSheetPhotos } = await import("@/lib/services/purchase-sheet");
     const orderPhotos = await getSheetPhotos(order.id);
-    expect(orderPhotos.map((p) => p.kind).sort()).toEqual([
-      "dimension_scale",
-      "weight_scale",
-    ]);
+    expect(orderPhotos).toHaveLength(7);
     expect(
       (await store.get("documents", orderPhotos[0].documentId))?.orderId,
     ).toBe(order.id);

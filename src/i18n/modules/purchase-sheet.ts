@@ -13,7 +13,7 @@ export const pt = {
   "sheet.title": "Ficha de compra",
   "sheet.subtitle": "Pedido #{number} · {product}",
   "sheet.intro":
-    "Os dados da planilha de compras, preenchidos à mão. Salve quantas vezes quiser: quando os campos e as fotos obrigatórias (balança e régua) estiverem completos, a Preparação se conclui sozinha e o peso líquido por peça vira o peso comparado na inspeção. Campos com * são obrigatórios.",
+    "Os dados da planilha de compras, preenchidos à mão. Salve quantas vezes quiser: quando os campos e todas as fotos estiverem completos, a Preparação se conclui sozinha e o peso líquido por peça vira o peso comparado na inspeção. Campos com * são obrigatórios.",
   "sheet.open": "Preencher ficha de compra",
   "sheet.view": "Ver ficha de compra",
   "sheet.back": "Voltar ao pedido",
@@ -73,7 +73,8 @@ export const pt = {
   "sheet.photos.more": "Adicionar mais",
   "sheet.photos.sending": "Enviando…",
   "sheet.photos.remove": "Excluir foto",
-  "sheet.photos.removeConfirm": "Excluir esta foto? Ela sai da ficha e dos documentos do pedido.",
+  "sheet.photos.removeConfirm":
+    "Excluir esta foto? Ela sai da ficha e dos documentos do pedido.",
   "sheet.photos.removed": "Foto excluída.",
   "sheet.power.none": "Sem energia",
   "sheet.power.battery": "Bateria / pilha",
@@ -96,7 +97,7 @@ export const pt = {
   "sheet.total.hint":
     "Peças = caixas × peças por caixa master. CBM = caixas × CBM da caixa. Containers = CBM total ÷ capacidade útil do container (Configurações).",
   "sheet.photos.hint":
-    "Uma linha por tipo de foto: toque em Adicionar, tire ou escolha a foto e ela sobe na hora. Pode enviar várias por tipo. Obrigatórias (*): balança e régua. Cliente não vê estas fotos.",
+    "Uma linha por tipo de foto: toque em Adicionar, tire ou escolha a foto e ela sobe na hora. Pode enviar várias por tipo. Todas são obrigatórias (*). Cliente não vê estas fotos.",
   "sheet.photos.add": "Adicionar fotos",
   "sheet.photos.none": "Nenhuma foto.",
   "sheet.photos.sent": "Fotos enviadas.",
@@ -120,7 +121,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.title": "Purchase sheet",
   "sheet.subtitle": "Order #{number} · {product}",
   "sheet.intro":
-    "The purchase spreadsheet data, filled in by hand. Save as often as you like: once the required fields and photos (scale and ruler) are complete, Preparation completes by itself and the net weight per piece becomes the weight compared at inspection. Fields marked * are required.",
+    "The purchase spreadsheet data, filled in by hand. Save as often as you like: once the required fields and all photos are complete, Preparation completes by itself and the net weight per piece becomes the weight compared at inspection. Fields marked * are required.",
   "sheet.open": "Fill in purchase sheet",
   "sheet.view": "View purchase sheet",
   "sheet.back": "Back to order",
@@ -180,7 +181,8 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.photos.more": "Add more",
   "sheet.photos.sending": "Sending…",
   "sheet.photos.remove": "Delete photo",
-  "sheet.photos.removeConfirm": "Delete this photo? It is removed from the sheet and from the order documents.",
+  "sheet.photos.removeConfirm":
+    "Delete this photo? It is removed from the sheet and from the order documents.",
   "sheet.photos.removed": "Photo deleted.",
   "sheet.power.none": "No power",
   "sheet.power.battery": "Battery",
@@ -203,7 +205,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.total.hint":
     "Pieces = cartons × pieces per master carton. CBM = cartons × carton CBM. Containers = total CBM ÷ usable container capacity (Settings).",
   "sheet.photos.hint":
-    "One row per photo type: tap Add, take or pick the photo and it uploads right away. Several per type are fine. Required (*): scale and ruler. The customer does not see these photos.",
+    "One row per photo type: tap Add, take or pick the photo and it uploads right away. Several per type are fine. All are required (*). The customer does not see these photos.",
   "sheet.photos.add": "Add photos",
   "sheet.photos.none": "No photos.",
   "sheet.photos.sent": "Photos sent.",
@@ -227,7 +229,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.title": "采购单",
   "sheet.subtitle": "订单 #{number} · {product}",
   "sheet.intro":
-    "采购表格的数据，手动填写。可以随时保存：必填项和必填照片（称重和尺子）完成后，准备阶段会自动完成，每件净重将作为验货时比对的重量。带 * 的为必填项。",
+    "采购表格的数据，手动填写。可以随时保存：必填项和所有照片完成后，准备阶段会自动完成，每件净重将作为验货时比对的重量。带 * 的为必填项。",
   "sheet.open": "填写采购单",
   "sheet.view": "查看采购单",
   "sheet.back": "返回订单",
@@ -308,7 +310,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.total.hint":
     "件数 = 箱数 × 每外箱件数。体积 = 箱数 × 外箱体积。集装箱 = 总体积 ÷ 集装箱可用容量（设置）。",
   "sheet.photos.hint":
-    "每种照片一行：点击添加，拍照或选择照片后会立即上传。每种可上传多张。必填（*）：称重和尺子。客户看不到这些照片。",
+    "每种照片一行：点击添加，拍照或选择照片后会立即上传。每种可上传多张。全部为必填（*）。客户看不到这些照片。",
   "sheet.photos.add": "添加照片",
   "sheet.photos.none": "暂无照片。",
   "sheet.photos.sent": "照片已上传。",

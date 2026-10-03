@@ -62,8 +62,37 @@ export const STAGE_KEYS = [
 ] as const;
 export type StageKey = (typeof STAGE_KEYS)[number];
 
-export const STAGE_STATUSES = ["pending", "active", "blocked", "done"] as const;
+/** "cancelled": etapa que não aconteceu porque o pedido foi cancelado. */
+export const STAGE_STATUSES = [
+  "pending",
+  "active",
+  "blocked",
+  "done",
+  "cancelled",
+] as const;
 export type StageStatus = (typeof STAGE_STATUSES)[number];
+
+/** Situação do pedido: a etapa em andamento, ou CANCELLED (cancelado pela Wellmix). */
+export const ORDER_STATUSES = [...STAGE_KEYS, "CANCELLED"] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+/** Motivos de cancelamento do pedido (lista curta; o texto livre fica na observação). */
+export const ORDER_CANCEL_REASONS = [
+  "customer_withdrew",
+  "supplier_issue",
+  "quality_rejected",
+  "price_or_deadline",
+  "other",
+] as const;
+export type OrderCancelReason = (typeof ORDER_CANCEL_REASONS)[number];
+
+/** Pedido de cancelamento feito pelo cliente: aguardando, recusado ou aceito (pedido cancelado). */
+export const CANCEL_REQUEST_STATUSES = [
+  "requested",
+  "rejected",
+  "approved",
+] as const;
+export type CancelRequestStatus = (typeof CANCEL_REQUEST_STATUSES)[number];
 
 export const REQUIREMENT_TYPES = [
   "file",
@@ -520,7 +549,7 @@ export interface Order extends BaseRow {
   customerId: string;
   supplierId: string;
   lineId: string | null;
-  status: StageKey;
+  status: OrderStatus;
   currentStageId: string | null;
   fobTotal: number | null;
   fobCurrency: string | null;
@@ -538,6 +567,23 @@ export interface Order extends BaseRow {
   operationMode: OperationMode | null;
   /** Login do cliente que solicitou: só ele, entre os logins do cliente, vê o pedido. */
   requestedByUserId: string | null;
+  /*
+   * Cancelamento (só admin, a qualquer momento). Opcionais: pedidos antigos
+   * ficam sem. O acerto financeiro com o cliente é texto livre, editável.
+   */
+  cancelledAt?: string | null;
+  cancelledByUserId?: string | null;
+  cancelReason?: OrderCancelReason | null;
+  cancelNote?: string | null;
+  cancelSettlement?: string | null;
+  /** Etapa em que o pedido estava quando foi cancelado. */
+  cancelStageKey?: StageKey | null;
+  /** Pedido de cancelamento do cliente (até a produção começar). */
+  cancelRequestStatus?: CancelRequestStatus | null;
+  cancelRequestedAt?: string | null;
+  cancelRequestedByUserId?: string | null;
+  cancelRequestReason?: string | null;
+  cancelRequestResponse?: string | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -1384,7 +1430,7 @@ export const TABLES: Record<TableName, TableDef> = {
       customerId: id(),
       supplierId: id(),
       lineId: id(false),
-      status: enumOf(STAGE_KEYS),
+      status: enumOf(ORDER_STATUSES),
       currentStageId: id(false),
       fobTotal: float(),
       fobCurrency: str(3),
@@ -1400,6 +1446,17 @@ export const TABLES: Record<TableName, TableDef> = {
       notes: text(),
       operationMode: enumOf(OPERATION_MODES, false),
       requestedByUserId: id(false),
+      cancelledAt: datetime(),
+      cancelledByUserId: id(false),
+      cancelReason: enumOf(ORDER_CANCEL_REASONS, false),
+      cancelNote: text(),
+      cancelSettlement: text(),
+      cancelStageKey: enumOf(STAGE_KEYS, false),
+      cancelRequestStatus: enumOf(CANCEL_REQUEST_STATUSES, false),
+      cancelRequestedAt: datetime(),
+      cancelRequestedByUserId: id(false),
+      cancelRequestReason: text(),
+      cancelRequestResponse: text(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },

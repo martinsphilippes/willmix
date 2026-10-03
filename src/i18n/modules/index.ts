@@ -31,6 +31,8 @@ import * as errors from "./errors";
 import * as rfq from "./rfq";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
+import * as sheetPhotos from "./sheet-photos";
+import * as orderCancel from "./order-cancel";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -61,6 +63,8 @@ export const modulesPt = {
   ...rfq.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
+  ...sheetPhotos.pt,
+  ...orderCancel.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -91,6 +95,8 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...rfq.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
+  ...sheetPhotos.en,
+  ...orderCancel.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -121,4 +127,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...rfq.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
+  ...sheetPhotos.zh,
+  ...orderCancel.zh,
 };

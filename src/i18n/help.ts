@@ -38,7 +38,7 @@ export const helpPt = {
   "help.request.steps":
     "Solicitado: a Wellmix seleciona os fornecedores e abre a RFQ.\nRFQ aberta: os fornecedores respondem pelo link recebido.\nCotações recebidas: a Wellmix compara, escolhe o fornecedor e define valor ao cliente e sinal.\nAguardando sinal: o cliente paga; a Wellmix confirma (com comprovante opcional) e o pedido é criado.\nPedido criado: use Ver pedido para acompanhar as etapas.",
   "help.quote.body":
-    "Esta é a sua cotação para a solicitação ao lado. Responda preenchendo a ficha de compra completa (campos com *, programação dos lotes e as fotos da balança e da régua), o prazo de produção e as condições. O preço e a moeda da cotação são os da ficha. Salve o rascunho quando quiser e reenvie enquanto a Wellmix não decidir.",
+    "Esta é a sua cotação para a solicitação ao lado. Responda preenchendo a ficha de compra completa (campos com *, programação dos lotes e todas as fotos), o prazo de produção e as condições. O preço e a moeda da cotação são os da ficha. Salve o rascunho quando quiser e reenvie enquanto a Wellmix não decidir.",
   "help.quote.steps":
     "Respondida: aguarde a decisão da Wellmix.\nSelecionada: o pedido será criado quando o cliente confirmar o sinal; a sua ficha e as fotos vão para o pedido e a Preparação já fica concluída.\nNão selecionada: nenhuma ação necessária.",
   "help.orders.body":
@@ -130,7 +130,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.request.steps":
     "Requested: Wellmix selects suppliers and opens the RFQ.\nRFQ open: suppliers answer through the link they received.\nQuotations received: Wellmix compares, picks the supplier and sets customer price and down payment.\nWaiting for down payment: the customer pays; Wellmix confirms (optional proof) and the order is created.\nOrder created: use View order to follow the stages.",
   "help.quote.body":
-    "This is your quotation for the request on the left. Answer by filling in the complete purchase sheet (fields with *, lot schedule and the scale and ruler photos), the production lead time and the terms. The quotation price and currency are the sheet's. Save a draft anytime and resubmit until Wellmix decides.",
+    "This is your quotation for the request on the left. Answer by filling in the complete purchase sheet (fields with *, lot schedule and all photos), the production lead time and the terms. The quotation price and currency are the sheet's. Save a draft anytime and resubmit until Wellmix decides.",
   "help.quote.steps":
     "Answered: wait for Wellmix's decision.\nSelected: the order is created when the customer confirms the down payment; your sheet and photos go to the order and Preparation is already done.\nNot selected: no action needed.",
   "help.orders.body":
@@ -219,7 +219,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.request.steps":
     "已提交：Wellmix 选择供应商并发起询价。\n询价中：供应商通过收到的链接回复。\n已收到报价：Wellmix 对比后选定供应商，确定客户价格和定金。\n等待定金：客户付款；Wellmix 确认（可附凭证）后创建订单。\n已创建订单：点击“查看订单”跟踪各阶段。",
   "help.quote.body":
-    "这是您对左侧需求的报价。请填写完整的采购单（带 * 的字段、批次计划以及称重和尺子照片）、生产周期和条款。报价的价格和币种以采购单为准。可随时保存草稿，在 Wellmix 做出决定前可重新提交。",
+    "这是您对左侧需求的报价。请填写完整的采购单（带 * 的字段、批次计划以及所有照片）、生产周期和条款。报价的价格和币种以采购单为准。可随时保存草稿，在 Wellmix 做出决定前可重新提交。",
   "help.quote.steps":
     "已回复：等待 Wellmix 决定。\n已选定：客户确认定金后创建订单；您的采购单和照片将带入订单，备货阶段直接完成。\n未选定：无需操作。",
   "help.orders.body":

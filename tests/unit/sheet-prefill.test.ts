@@ -80,8 +80,17 @@ describe("ficha da Preparação", () => {
     const order = await orderWithQuoteSheet();
     const state = await ps.sheetProgress(order);
     expect(state.saved).toBe(true);
-    // Na cotação não se pedem fotos nem a programação dos lotes.
-    expect(state.missing).toEqual(["lot1", "scalePhoto", "rulerPhoto"]);
+    // Cotação registrada sem fotos nem programação: o checklist diz o que falta.
+    expect(state.missing).toEqual([
+      "lot1",
+      "scalePhoto",
+      "rulerPhoto",
+      "sidePhoto",
+      "anglePhoto",
+      "originalPhoto",
+      "promptPhoto",
+      "cardPhoto",
+    ]);
 
     // Pedido sem a cópia (ex.: anterior à cópia automática): rascunho da cotação.
     const store = getStore();
@@ -97,6 +106,11 @@ describe("ficha da Preparação", () => {
       "lot1",
       "scalePhoto",
       "rulerPhoto",
+      "sidePhoto",
+      "anglePhoto",
+      "originalPhoto",
+      "promptPhoto",
+      "cardPhoto",
     ]);
     // Salvar parte da ficha grava junto o que veio da cotação.
     const saved = await ps.saveSheet(supplierB, order.id, { notes: "ok" });

@@ -149,10 +149,15 @@ export const SHEET_REQUIRED_FIELDS = [
 ] as const;
 export type SheetRequiredField = (typeof SHEET_REQUIRED_FIELDS)[number];
 
-/** Fotos obrigatórias da ficha: balança (peso) e régua (medida com escala). */
+/** Fotos da ficha: todas obrigatórias (balança, régua, lado, ângulo, original, referência e cartão). */
 export const REQUIRED_SHEET_PHOTOS = {
   weight_scale: "scalePhoto",
   dimension_scale: "rulerPhoto",
+  dimension_side: "sidePhoto",
+  angle: "anglePhoto",
+  original: "originalPhoto",
+  prompt: "promptPhoto",
+  business_card: "cardPhoto",
 } as const;
 
 export type SheetMissing =
