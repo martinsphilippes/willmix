@@ -7,6 +7,7 @@ import {
   type PricingInput,
   type PricingMissing,
 } from "@/lib/pricing";
+import { MoneyInput } from "./money-input";
 
 /*
  * Escolha do fornecedor com o valor ao cliente calculado (custo importado +
@@ -285,22 +286,19 @@ export function SellPriceCalculator({
         >
           {labels.carrierFreight}
         </label>
-        <input
+        <MoneyInput
           id="sp-carrier"
           name="freightCarrierBrl"
-          type="number"
-          step="0.01"
-          min="0"
+          currency="BRL"
           value={carrier}
-          onChange={(e) => {
-            const value = e.target.value;
+          onValueChange={(value) => {
             if (current)
               setCarrierEdits((prev) => ({
                 ...prev,
                 [current.quoteId]: value,
               }));
           }}
-          className={inputClass}
+          className="w-full"
         />
         {current?.shippingFreightNote ? (
           <p className="mt-1 text-xs font-medium text-brand-800">
@@ -318,16 +316,14 @@ export function SellPriceCalculator({
         >
           {labels.sellPrice}
         </label>
-        <input
+        <MoneyInput
           id="sp-sell"
           name="sellPrice"
-          type="number"
-          step="0.01"
-          min="0"
+          currency="BRL"
           required
           value={sellValue}
-          onChange={(e) => setManual(e.target.value)}
-          className={inputClass}
+          onValueChange={(value) => setManual(value)}
+          className="w-full"
         />
         {manual !== null && calculated ? (
           <button

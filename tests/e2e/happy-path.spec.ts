@@ -20,7 +20,7 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("input[name=supplierName]", "Supplier Ltd");
   await page.selectOption("select[name=incoterm]", "FOB");
   await page.selectOption("select[name=currency]", "USD");
-  await page.fill("input[name=price]", price);
+  await page.fill("[data-money=price]", price);
   await page.fill("input[name=moq]", "500");
   await page.fill("input[name=masterCartonQty]", "24");
   await page.fill("input[name=cbmPerCarton]", "0.06");
@@ -84,7 +84,7 @@ async function fillMyRequirements(
     const form = forms.first();
     const file = form.locator("input[type=file]");
     const number = form.locator("input[type=number]");
-    const amount = form.locator("input[name=amount]");
+    const amount = form.locator("[data-money=amount]");
     const date = form.locator("input[type=date]");
     const text = form.locator("textarea[name=value]");
     // valor específico por rótulo (ex.: peso)
@@ -205,7 +205,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .locator("select[name=quoteId] option", { hasText: "Shenzhen" })
     .getAttribute("value");
   await page.selectOption("select[name=quoteId]", quoteValue!);
-  await page.fill("input[name=sellPrice]", "28000");
+  await page.fill("[data-money=sellPrice]", "28000");
   await page.getByRole("button", { name: /^Selecionar$/ }).click();
   await page.waitForLoadState("networkidle");
   await expect(page.getByText(/Aguardando sinal/).first()).toBeVisible();

@@ -47,6 +47,7 @@ import {
   KitTimeline,
   marketingError,
 } from "../_components/shared";
+import { MoneyInput } from "@/components/money-input";
 
 /* Campos de texto e valor sugerido: só strings/listas de strings entram na tela. */
 function suggestedText(s: AiSuggestion, key: string) {
@@ -575,14 +576,13 @@ export default async function MarketingKitPage({
                         {priceLocked ? (
                           <input type="hidden" name="price" value={kit.price} />
                         ) : null}
-                        <Input
+                        <MoneyInput
                           name={priceLocked ? undefined : "price"}
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          currency={priceLocked ? kit.currency : undefined}
+                          watchField={priceLocked ? undefined : "currency"}
                           required={!priceLocked}
                           disabled={priceLocked}
-                          defaultValue={kit.price}
+                          defaultAmount={kit.price}
                         />
                       </Field>
                     </div>

@@ -17,6 +17,7 @@ import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { createKitAction } from "../../actions/vision";
 import { marketingError } from "../_components/shared";
+import { MoneyInput } from "@/components/money-input";
 
 /**
  * /app/marketing/new (Wellmix): cria o kit a partir de um produto ativo.
@@ -115,13 +116,11 @@ export default async function NewMarketingKitPage({
                   label={t("marketing.new.price")}
                   hint={t("marketing.new.priceHint")}
                 >
-                  <Input
+                  <MoneyInput
                     name="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    watchField="currency"
                     required
-                    defaultValue={settings.marketingKitDefaultPrice}
+                    defaultAmount={settings.marketingKitDefaultPrice}
                   />
                 </Field>
               </div>

@@ -105,6 +105,7 @@ import {
   createFollowUpRequestAction,
   openAfterSalesAction,
 } from "../../actions/after-sales";
+import { MoneyInput } from "@/components/money-input";
 
 export default async function OrderPage({
   params,
@@ -861,13 +862,11 @@ export default async function OrderPage({
                 >
                   <input type="hidden" name="orderId" value={order.id} />
                   <Field label={t("orders.value")}>
-                    <Input
+                    <MoneyInput
                       name="amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      watchField="currency"
                       required
-                      defaultValue={finance.receivable.toFixed(2)}
+                      defaultAmount={finance.receivable}
                     />
                   </Field>
                   <Field label={t("common.currency")}>
@@ -1063,11 +1062,9 @@ export default async function OrderPage({
                     </Field>
                     <div className="grid grid-cols-2 gap-2">
                       <Field label={t("orders.value")}>
-                        <Input
+                        <MoneyInput
                           name="amount"
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          watchField="currency"
                           required
                         />
                       </Field>

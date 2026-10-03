@@ -99,15 +99,15 @@ export function RequirementForm({
       <input type="hidden" name="requirementId" value={requirement.id} />
       {isMoneyRequirement(requirement) ? (
         <MoneyInput
+          name="amount"
+          currencyName="currency"
           required
-          currencyLabels={
-            Object.fromEntries(
-              CURRENCIES.map((c) => [
-                c,
-                t(`currency.name.${c}` as DictionaryKey),
-              ]),
-            ) as Record<(typeof CURRENCIES)[number], string>
-          }
+          labels={Object.fromEntries(
+            CURRENCIES.map((c) => [
+              c,
+              t(`currency.name.${c}` as DictionaryKey),
+            ]),
+          )}
           defaultCurrency={parseMoneyValue(defaultValue)?.currency ?? "BRL"}
           defaultAmount={parseMoneyValue(defaultValue)?.amount ?? null}
         />

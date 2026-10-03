@@ -11,6 +11,7 @@ import { CurrencySelect } from "./currency-select";
 import { PaymentActionButton } from "./payment-action-button";
 import { SubmitButton } from "./submit-button";
 import { Field, Input, TextLink, formatMoney } from "./ui";
+import { MoneyInput } from "./money-input";
 
 /**
  * Pagar o fornecedor (só Wellmix): valor devido calculado (FOB − já
@@ -124,13 +125,11 @@ export async function SupplierPaymentPanel({
         >
           <input type="hidden" name="orderId" value={order.id} />
           <Field label={t("orders.value")}>
-            <Input
+            <MoneyInput
               name="amount"
-              type="number"
-              step="0.01"
-              min="0"
+              watchField="currency"
               required
-              defaultValue={view.due ?? ""}
+              defaultAmount={view.due ?? null}
             />
           </Field>
           <Field label={t("common.currency")}>

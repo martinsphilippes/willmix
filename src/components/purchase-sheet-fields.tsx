@@ -16,6 +16,7 @@ import {
   cx,
   formatDate,
 } from "@/components/ui";
+import { MoneyInput } from "./money-input";
 
 /*
  * Campos da ficha de compra (planilha COMPRAS), usados dentro de um <form>:
@@ -140,7 +141,13 @@ export function PurchaseSheetFields({
             </Select>
           </F>
           <F t={t} k="price" required>
-            <Num name="price" value={numValue(sheet.price)} disabled={sup} />
+            <MoneyInput
+              name="price"
+              watchField="currency"
+              defaultAmount={numValue(sheet.price) || null}
+              disabled={sup}
+              decimals={4}
+            />
           </F>
           <F t={t} k="moq" required>
             <Num name="moq" value={numValue(sheet.moq)} disabled={sup} int />

@@ -27,6 +27,7 @@ import {
   sourcingTone,
   todayValue,
 } from "./shared";
+import { MoneyInput } from "@/components/money-input";
 
 /** Valores herdados da visita quando o item nasce a partir dela. */
 export interface ItemPreset {
@@ -172,14 +173,11 @@ export function ItemForm({
       >
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("common.price")}>
-            <Input
+            <MoneyInput
               name="price"
-              type="number"
-              inputMode="decimal"
-              step="any"
-              min="0"
-              defaultValue={item?.price ?? ""}
-              className={bigField}
+              watchField="currency"
+              defaultAmount={item?.price ?? null}
+              decimals={4}
             />
           </Field>
           <Field label={t("common.currency")}>

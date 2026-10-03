@@ -43,14 +43,15 @@ export function moneyValue(currency: Currency, amount: number) {
  * Valor digitado pela pessoa ("1.234,56", "1234.56", "1 234,5") → número.
  * Vírgula como decimal quando aparece; senão ponto. Inválido → null.
  */
-export function parseAmount(raw: string): number | null {
+export function parseAmount(raw: string, decimals = 2): number | null {
   const s = raw.replace(/\s|[A-Za-z$€¥]/g, "");
   if (!s) return null;
   const normalized = s.includes(",")
     ? s.replace(/\./g, "").replace(",", ".")
     : s;
   const n = Number(normalized);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+  const k = 10 ** decimals;
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * k) / k : null;
 }
 
 /** "BRL 1234.56" → "R$ 1.234,56"; valor antigo ou texto livre → como está. */
