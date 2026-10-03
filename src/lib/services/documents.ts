@@ -19,7 +19,7 @@ import type { StoredFile } from "@/lib/db/store";
 import { imageHashOf } from "./image-hash";
 
 /** Teto por documento. Acima de ~4 MB o navegador envia direto ao armazenamento (`registerUploadedDocument`). */
-export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
+export const MAX_DOCUMENT_BYTES = 50_000_000;
 const MAX_BYTES = MAX_DOCUMENT_BYTES;
 const ALLOWED_MIME = [
   "application/pdf",

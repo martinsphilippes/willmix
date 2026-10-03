@@ -225,8 +225,8 @@ const BUCKET_EXTENSIONS = [
   "tif",
   "tiff",
 ];
-/** 100 MB: arte da embalagem sobe direto do navegador (acima do limite da Vercel). */
-const BUCKET_MAX_BYTES = 104857600;
+/** 50 MB (teto do Appwrite Cloud): arte da embalagem sobe direto do navegador. */
+const BUCKET_MAX_BYTES = 50_000_000;
 /** Usuário logado cria arquivo (envio direto com JWT); leitura só pelo servidor. */
 const BUCKET_PERMISSIONS = [Permission.create(Role.users())];
 

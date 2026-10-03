@@ -271,7 +271,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 
 ## Arquivos grandes (arte da embalagem)
 
-- A Server Action na Vercel aceita ~4 MB por requisição. Arquivo de requisito acima disso sobe do navegador direto ao Appwrite Storage: `createUploadTokenAction` devolve um JWT curto (15 min) da sessão do usuário (`users.createJWT`), o SDK web sobe em pedaços com progresso, e `submitRequirementAction` recebe só `uploadedFileId`; `registerUploadedDocument` confere existência, tamanho (≤ 100 MB) e tipo e cria o documento. Bucket: `create("users")`, 100 MB, extensões de arte (PSD, EPS, CDR, TIFF). Modo memória: só o envio pelo servidor (4 MB), com aviso.
+- A Server Action na Vercel aceita ~4 MB por requisição. Arquivo de requisito acima disso sobe do navegador direto ao Appwrite Storage: `createUploadTokenAction` devolve um JWT curto (15 min) da sessão do usuário (`users.createJWT`), o SDK web sobe em pedaços com progresso, e `submitRequirementAction` recebe só `uploadedFileId`; `registerUploadedDocument` confere existência, tamanho (≤ 50 MB, teto do Appwrite Cloud) e tipo e cria o documento. Bucket: `create("users")`, 50 MB, extensões de arte (PSD, EPS, CDR, TIFF). Modo memória: só o envio pelo servidor (4 MB), com aviso.
 - Download em fluxo (`streamFile`): `/api/files/[id]` repassa o corpo direto do armazenamento, sem carregar o arquivo inteiro na memória.
 
 ## Tributos da importação no valor ao cliente

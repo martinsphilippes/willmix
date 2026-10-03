@@ -5603,7 +5603,7 @@
       "$permissions": [
         "create(\"users\")"
       ],
-      "maximumFileSize": 104857600,
+      "maximumFileSize": 50000000,
       "allowedFileExtensions": [
         "pdf",
         "png",
