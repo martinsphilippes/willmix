@@ -269,6 +269,10 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Acerto financeiro:** texto livre (`cancelSettlement`), opcional no cancelamento e editável depois pelo admin; o portal não calcula devolução. Pedido cancelado sai de "a receber"/"a pagar", das listas abertas, da Control Tower, do compliance e das pendências de ERP; o histórico de pagamentos continua.
 - **Pedido do cliente:** o cliente (o login solicitante) pede o cancelamento com motivo até o produto entrar em produção: etapas Pedido criado, Preparação ou Pagamento ao fornecedor e antes da data de início da produção da ficha. A Wellmix vê o alerta no pedido e recusa com resposta ou cancela (o pedido fica `approved`). Colunas novas em `orders`: `cancelledAt`, `cancelledByUserId`, `cancelReason`, `cancelNote`, `cancelSettlement`, `cancelStageKey`, `cancelRequestStatus`, `cancelRequestedAt`, `cancelRequestedByUserId`, `cancelRequestReason`, `cancelRequestResponse`.
 
+## Custos do desembaraço em dinheiro
+
+- "Custos previstos" e "Custos realizados" (etapa Desembaraço) têm seletor de moeda (Real, Yuan, Dólar, Euro) e campo de valor com o símbolo da moeda escolhida; o valor é formatado ao sair do campo. Guardado no `value` do requisito como `"BRL 1234.56"` (`src/lib/workflow/money.ts`); o tipo no esquema segue `number`, e um valor antigo só numérico continua válido e aparece como foi digitado. Na tela, o valor sai formatado (R$ 1.234,56).
+
 ## Arquivos grandes (arte da embalagem)
 
 - A Server Action na Vercel aceita ~4 MB por requisição. Arquivo de requisito acima disso sobe do navegador direto ao Appwrite Storage: `createUploadTokenAction` devolve um JWT curto (15 min) da sessão do usuário (`users.createJWT`), o SDK web sobe em pedaços com progresso, e `submitRequirementAction` recebe só `uploadedFileId`; `registerUploadedDocument` confere existência, tamanho (≤ 50 MB, teto do Appwrite Cloud) e tipo e cria o documento. Bucket: `create("users")`, 50 MB, extensões de arte (PSD, EPS, CDR, TIFF). Modo memória: só o envio pelo servidor (4 MB), com aviso.

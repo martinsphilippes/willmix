@@ -84,6 +84,7 @@ async function fillMyRequirements(
     const form = forms.first();
     const file = form.locator("input[type=file]");
     const number = form.locator("input[type=number]");
+    const amount = form.locator("input[name=amount]");
     const date = form.locator("input[type=date]");
     const text = form.locator("textarea[name=value]");
     // valor específico por rótulo (ex.: peso)
@@ -106,6 +107,10 @@ async function fillMyRequirements(
         );
       }
       continue;
+    } else if (await amount.count()) {
+      // Custos: moeda + valor (o símbolo vem da moeda escolhida).
+      await form.locator("select[name=currency]").selectOption("BRL");
+      await amount.fill("1.234,56");
     } else if (await number.count()) {
       const key = Object.keys(values).find((k) =>
         label.toLowerCase().includes(k.toLowerCase()),
