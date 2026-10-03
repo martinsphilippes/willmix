@@ -105,6 +105,7 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 ### Pagamento ao fornecedor
 
 - Na etapa "Pagamento ao fornecedor" o painel mostra o valor a pagar: FOB do pedido menos o que já foi registrado na mesma moeda (`services/supplier-payment.ts`).
+- A confirmação de recebimento pelo fornecedor conclui a etapa inteira: o item "Pagamento ao fornecedor registrado" ainda pendente é marcado como concluído pela confirmação do fornecedor (valor `supplier_confirmed`, auditado). A Wellmix pode registrar o pagamento depois, para a conta corrente.
 - Três ações de um clique: copiar os dados de transferência para o banco (beneficiário, banco, conta/IBAN, SWIFT, valor e referência `WELLMIX PO #N`, em inglês), pedir ao financeiro por e-mail (`mailto:`) ou pedir por WhatsApp (`wa.me`). Cada uma registra o pagamento como pendente, conclui o item "Pagamento ao fornecedor registrado" e avisa o fornecedor.
 - O registro manual com valor, câmbio e comprovante continua, recolhido em "Já pagou?", e grava o pagamento como confirmado.
 - O fornecedor confirma o recebimento também de pagamentos pendentes, o que fecha a etapa. Pendente não conta como pago na conta corrente.

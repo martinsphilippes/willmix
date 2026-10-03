@@ -209,6 +209,40 @@ export async function submitRequirement(
     }
   }
 
+  // Regra específica: o fornecedor confirmar o recebimento é a prova do
+  // pagamento. O registro da Wellmix (comprovante, câmbio) não trava a etapa:
+  // conclui junto, marcado como concluído pela confirmação do fornecedor.
+  if (
+    stage.key === "SUPPLIER_PAYMENT" &&
+    requirement.key === "payment_received"
+  ) {
+    const pending = await store.list("requirements", {
+      filter: {
+        stageId: stage.id,
+        key: "payment_registered",
+        status: "pending",
+      },
+    });
+    for (const sibling of pending) {
+      await store.update("requirements", sibling.id, {
+        status: "done",
+        value: "supplier_confirmed",
+        note: "Concluído pela confirmação de recebimento do fornecedor",
+        submittedByUserId: user.id,
+        submittedAt: new Date().toISOString(),
+      });
+      await audit(
+        user,
+        "requirement.submit",
+        "requirement",
+        sibling.id,
+        `${stage.key}: ${sibling.label} (confirmação do fornecedor)`,
+        { status: "pending" },
+        { status: "done", value: "supplier_confirmed" },
+      );
+    }
+  }
+
   await evaluateStage(user, stage.id);
   return updated;
 }

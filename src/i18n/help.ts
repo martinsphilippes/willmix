@@ -52,7 +52,7 @@ export const helpPt = {
   "help.stage.PREPARATION":
     "Fornecedor preenche a ficha de compra (dados da planilha de compras: fornecedor, preço, caixa, pesos, medidas, programação e fotos, com a foto na balança). O peso líquido por peça da ficha é o peso comparado na inspeção.",
   "help.stage.SUPPLIER_PAYMENT":
-    "Wellmix registra o pagamento (valor, moeda, câmbio, comprovante); o fornecedor confirma o recebimento. Os dois passos são obrigatórios.",
+    "Wellmix registra o pagamento (valor, moeda, câmbio, comprovante) e o fornecedor confirma o recebimento. A confirmação do fornecedor conclui a etapa mesmo antes do registro da Wellmix; o registro pode ser feito depois, para a conta corrente.",
   "help.stage.PACKAGING":
     "Fornecedor envia a arte da embalagem; a agência aprova ou reprova com observação. Reprovada, a arte volta ao fornecedor para reenvio.",
   "help.stage.INSPECTION":
@@ -144,7 +144,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.PREPARATION":
     "Supplier fills in the purchase sheet (purchase spreadsheet data: supplier, price, carton, weights, sizes, schedule and photos, including the scale photo). The sheet's net weight per piece is the weight compared at inspection.",
   "help.stage.SUPPLIER_PAYMENT":
-    "Wellmix registers the payment (amount, currency, FX rate, proof); the supplier confirms receipt. Both steps are mandatory.",
+    "Wellmix registers the payment (amount, currency, FX rate, proof) and the supplier confirms receipt. The supplier's confirmation completes the stage even before Wellmix registers the payment; the record can be added later for the ledger.",
   "help.stage.PACKAGING":
     "Supplier sends the packaging artwork; the agency approves or rejects with a note. If rejected, the artwork goes back to the supplier.",
   "help.stage.INSPECTION":
@@ -233,7 +233,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.PREPARATION":
     "供应商填写采购单（采购表格数据：供应商、价格、外箱、重量、尺寸、计划和照片，含称重照片）。采购单中的每件净重将在验货时比对。",
   "help.stage.SUPPLIER_PAYMENT":
-    "Wellmix 登记付款（金额、币种、汇率、凭证）；供应商确认收款。两步均为必填。",
+    "Wellmix 登记付款（金额、币种、汇率、凭证），供应商确认收款。供应商确认后阶段即完成，即使 Wellmix 尚未登记；登记可稍后补录到账目中。",
   "help.stage.PACKAGING":
     "供应商提交包装设计稿；设计公司审核通过或附备注驳回。被驳回后设计稿退回供应商重新提交。",
   "help.stage.INSPECTION":
