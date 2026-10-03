@@ -88,7 +88,7 @@ const config = {
       // Usuário logado cria arquivo (envio direto do navegador, com JWT da
       // sessão); leitura continua só pelo servidor (/api/files, API key).
       $permissions: ['create("users")'],
-      maximumFileSize: 104857600,
+      maximumFileSize: 50000000,
       allowedFileExtensions: [
         "pdf",
         "png",
