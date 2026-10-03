@@ -15,9 +15,12 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import type { StoredFile } from "@/lib/db/store";
 import { imageHashOf } from "./image-hash";
 
-const MAX_BYTES = 30 * 1024 * 1024;
+/** Teto por documento. Acima de ~4 MB o navegador envia direto ao armazenamento (`registerUploadedDocument`). */
+export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
+const MAX_BYTES = MAX_DOCUMENT_BYTES;
 const ALLOWED_MIME = [
   "application/pdf",
   "image/png",
@@ -33,6 +36,14 @@ const ALLOWED_MIME = [
   "application/octet-stream",
   "application/postscript",
   "image/svg+xml",
+  // Arte da embalagem: Photoshop, Illustrator/EPS, CorelDRAW, TIFF.
+  "image/vnd.adobe.photoshop",
+  "application/x-photoshop",
+  "application/illustrator",
+  "application/cdr",
+  "application/x-cdr",
+  "image/x-cdr",
+  "image/tiff",
 ];
 
 export class DocumentError extends Error {}
@@ -64,7 +75,49 @@ export async function uploadDocument(
   const store = getStore();
   const bytes = new Uint8Array(await file.arrayBuffer());
   const stored = await store.putFile(bytes, file.name, mime);
+  return createDocumentRow(user, stored, input, bytes);
+}
 
+/**
+ * Documento cujo arquivo o navegador já subiu direto ao armazenamento (token
+ * de upload): o servidor só confere que existe, tamanho e tipo, e registra.
+ * Assim arquivos grandes (arte da embalagem) não passam pelo limite do corpo
+ * da requisição da Vercel.
+ */
+export async function registerUploadedDocument(
+  user: User,
+  fileKey: string,
+  input: UploadInput,
+): Promise<Document> {
+  const store = getStore();
+  const stored = await store.statFile(fileKey);
+  if (!stored) throw new DocumentError("upload_missing");
+  if (stored.size === 0) throw new DocumentError("empty");
+  if (stored.size > MAX_BYTES) {
+    await store.removeFile(fileKey);
+    throw new DocumentError("too_large");
+  }
+  const mime = stored.mime || "application/octet-stream";
+  if (!ALLOWED_MIME.includes(mime)) {
+    await store.removeFile(fileKey);
+    throw new DocumentError("mime");
+  }
+  const taken = await store.list("documents", {
+    filter: { storageKey: fileKey },
+    limit: 1,
+  });
+  if (taken.length) throw new DocumentError("upload_missing");
+  return createDocumentRow(user, { ...stored, mime }, input, null);
+}
+
+async function createDocumentRow(
+  user: User,
+  stored: StoredFile,
+  input: UploadInput,
+  bytes: Uint8Array | null,
+): Promise<Document> {
+  const store = getStore();
+  const { name, mime } = stored;
   let version = 1;
   let previousDocumentId: string | null = null;
   if (input.requirementId) {
@@ -84,9 +137,9 @@ export async function uploadDocument(
     requestId: input.requestId ?? null,
     requirementId: input.requirementId ?? null,
     type: input.type,
-    name: file.name,
+    name,
     mime,
-    size: file.size,
+    size: stored.size,
     storageKey: stored.key,
     version,
     previousDocumentId,
@@ -97,7 +150,9 @@ export async function uploadDocument(
     kitId: input.kitId ?? null,
     // Fotos de catálogo já nascem com a impressão digital (busca por foto).
     imageHash:
-      mime.startsWith("image/") && (input.productId || input.sourcingItemId)
+      bytes &&
+      mime.startsWith("image/") &&
+      (input.productId || input.sourcingItemId)
         ? ((await imageHashOf(bytes)) ?? "-")
         : null,
   });

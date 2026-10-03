@@ -108,6 +108,14 @@ export class CachedStore implements Store {
     return this.base.getFile(key);
   }
 
+  statFile(key: string) {
+    return this.base.statFile(key);
+  }
+
+  streamFile(key: string) {
+    return this.base.streamFile(key);
+  }
+
   removeFile(key: string) {
     return this.base.removeFile(key);
   }

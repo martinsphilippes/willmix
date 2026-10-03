@@ -50,6 +50,17 @@ export interface Store {
   ): Promise<Tables[K]>;
   remove<K extends TableName>(table: K, id: string): Promise<void>;
   putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile>;
+  /** Metadados de um arquivo já no armazenamento (ex.: enviado direto pelo navegador); null se não existe. */
+  statFile(key: string): Promise<StoredFile | null>;
+  /** Conteúdo em fluxo, sem carregar o arquivo inteiro na memória (downloads grandes). */
+  streamFile(
+    key: string,
+  ): Promise<{
+    body: ReadableStream<Uint8Array>;
+    name: string;
+    mime: string;
+    size: number;
+  } | null>;
   getFile(
     key: string,
   ): Promise<{ bytes: Uint8Array; name: string; mime: string } | null>;

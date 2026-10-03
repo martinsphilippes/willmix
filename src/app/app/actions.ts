@@ -33,7 +33,10 @@ import {
   openRfq,
   selectQuote,
 } from "@/lib/services/requests";
-import { uploadDocument } from "@/lib/services/documents";
+import {
+  registerUploadedDocument,
+  uploadDocument,
+} from "@/lib/services/documents";
 import {
   decideRequirement,
   submitRequirement,
@@ -307,12 +310,24 @@ export async function submitRequirementAction(form: FormData) {
       throw new Error("use_purchase_sheet");
     let documentId: string | null = null;
     const file = form.get("file");
+    const uploadedFileId = str(form, "uploadedFileId");
+    const type: DocumentType =
+      requirement.type === "photo"
+        ? "photo"
+        : (docTypeForKey(requirement.key) ?? "other");
     if (file instanceof File && file.size > 0) {
-      const type: DocumentType =
-        requirement.type === "photo"
-          ? "photo"
-          : (docTypeForKey(requirement.key) ?? "other");
       const doc = await uploadDocument(user, file, {
+        orderId,
+        requirementId,
+        type,
+      });
+      documentId = doc.id;
+    } else if (uploadedFileId) {
+      // Arquivo grande: já subiu direto ao armazenamento; aqui só registra.
+      z.string()
+        .regex(/^[A-Za-z0-9_.-]{1,64}$/)
+        .parse(uploadedFileId);
+      const doc = await registerUploadedDocument(user, uploadedFileId, {
         orderId,
         requirementId,
         type,

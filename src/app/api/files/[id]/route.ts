@@ -20,7 +20,8 @@ export async function GET(
   if (!doc || !(await canAccessDocument(user, doc))) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  const file = await store.getFile(doc.storageKey);
+  // Em fluxo: arquivos grandes (arte da embalagem) não passam inteiros pela memória.
+  const file = await store.streamFile(doc.storageKey);
   if (!file) return NextResponse.json({ error: "missing" }, { status: 404 });
   // Trilha: quem abriu o documento e quando ("visualizou" nunca vale como "confirmou").
   // Só documentos do fluxo (pedido/solicitação) e nunca para quem os enviou:
@@ -34,10 +35,9 @@ export async function GET(
   }
   const inline =
     doc.mime.startsWith("image/") || doc.mime === "application/pdf";
-  return new NextResponse(Buffer.from(file.bytes), {
+  return new NextResponse(file.body, {
     headers: {
       "Content-Type": doc.mime,
-      "Content-Length": String(file.bytes.byteLength),
       "Content-Disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(doc.name)}`,
       // Arquivo nunca muda (versão nova = documento novo): o navegador guarda
       // por 1 h e não baixa de novo a cada tela. "private": só neste navegador.

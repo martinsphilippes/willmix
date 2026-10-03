@@ -12,6 +12,8 @@ import {
   Client,
   Compression,
   OrderBy,
+  Permission,
+  Role,
   Storage,
   TablesDB,
   TablesDBIndexType,
@@ -217,38 +219,58 @@ const BUCKET_EXTENSIONS = [
   "zip",
   "ai",
   "svg",
+  "psd",
+  "eps",
+  "cdr",
+  "tif",
+  "tiff",
 ];
+/** 100 MB: arte da embalagem sobe direto do navegador (acima do limite da Vercel). */
+const BUCKET_MAX_BYTES = 104857600;
+/** Usuário logado cria arquivo (envio direto com JWT); leitura só pelo servidor. */
+const BUCKET_PERMISSIONS = [Permission.create(Role.users())];
 
 async function ensureBucket() {
   try {
     const bucket = await storage.getBucket({ bucketId: BUCKET_ID });
-    // Extensões novas (ex.: fotos HEIC do iPhone, XLSM): acrescenta sem remover as existentes.
+    // Só acrescenta: extensões novas, permissão de criação e teto maior.
     const have = new Set(bucket.allowedFileExtensions);
     const missing = BUCKET_EXTENSIONS.filter((x) => !have.has(x));
-    if (missing.length) {
+    const permissions = [
+      ...bucket.$permissions,
+      ...BUCKET_PERMISSIONS.filter((p) => !bucket.$permissions.includes(p)),
+    ];
+    const maximumFileSize = Math.max(bucket.maximumFileSize, BUCKET_MAX_BYTES);
+    if (
+      missing.length ||
+      permissions.length !== bucket.$permissions.length ||
+      maximumFileSize !== bucket.maximumFileSize
+    ) {
       await storage.updateBucket({
         bucketId: BUCKET_ID,
         name: bucket.name,
-        permissions: bucket.$permissions,
+        permissions,
         fileSecurity: bucket.fileSecurity,
         enabled: bucket.enabled,
-        maximumFileSize: bucket.maximumFileSize,
+        maximumFileSize,
         allowedFileExtensions: [...bucket.allowedFileExtensions, ...missing],
         compression: bucket.compression as Compression,
         encryption: bucket.encryption,
         antivirus: bucket.antivirus,
       });
-      console.log(`  bucket: +${missing.join(", ")}`);
+      console.log(
+        `  bucket: ${[missing.length ? `+${missing.join(", ")}` : null, permissions.length !== bucket.$permissions.length ? "create(users)" : null, maximumFileSize !== bucket.maximumFileSize ? `${maximumFileSize} bytes` : null].filter(Boolean).join(" · ")}`,
+      );
     }
   } catch (e) {
     if (!isNotFound(e)) throw e;
     await storage.createBucket({
       bucketId: BUCKET_ID,
       name: "Arquivos",
-      permissions: [],
+      permissions: BUCKET_PERMISSIONS,
       fileSecurity: false,
       enabled: true,
-      maximumFileSize: 31457280,
+      maximumFileSize: BUCKET_MAX_BYTES,
       allowedFileExtensions: BUCKET_EXTENSIONS,
       compression: Compression.Gzip,
       encryption: true,

@@ -76,7 +76,10 @@ export function RequirementForm({
             name="file"
             label={t("requirement.file.add")}
             pendingLabel={t("requirement.sending")}
+            uploadingLabel={t("requirement.file.uploading")}
             tooBigLabel={t("requirement.file.tooBig")}
+            serverOnlyLabel={t("requirement.file.serverOnly")}
+            failedLabel={t("requirement.file.failed")}
           />
         )}
       </form>
