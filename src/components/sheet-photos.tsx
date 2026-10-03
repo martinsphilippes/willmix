@@ -37,11 +37,25 @@ export function SheetPhotosCard({
       <p className="mb-4 text-sm leading-relaxed text-zinc-600">
         {hint ?? t("sheet.photos.hint")}
       </p>
-      {/* Uma linha por tipo de foto; verde com check quando já tem foto. */}
+      {/* Uma linha por tipo de foto; verde com check quando já tem foto.
+          Fotos antigas de tipos que saíram da ficha (referência, cartão) ficam
+          visíveis e excluíveis, mas sem botão de adicionar. */}
       <ul className="space-y-3">
-        {SHEET_PHOTO_KINDS.map((kind) => {
+        {[
+          ...SHEET_PHOTO_KINDS,
+          ...new Set(
+            allPhotos
+              .map((p) => p.kind)
+              .filter(
+                (k) => !(SHEET_PHOTO_KINDS as readonly string[]).includes(k),
+              ),
+          ),
+        ].map((kind) => {
           const photos = allPhotos.filter((p) => p.kind === kind);
           const required = kind in REQUIRED_SHEET_PHOTOS;
+          const addable = (SHEET_PHOTO_KINDS as readonly string[]).includes(
+            kind,
+          );
           const done = photos.length > 0;
           const name = t(`catalog.photoKind.${kind}` as DictionaryKey);
           return (
@@ -144,7 +158,7 @@ export function SheetPhotosCard({
                   ))}
                 </ul>
               ) : null}
-              {canEdit ? (
+              {canEdit && addable ? (
                 <form action={addAction} className="shrink-0">
                   <input type="hidden" name={ownerField} value={ownerId} />
                   <input type="hidden" name="kind" value={kind} />

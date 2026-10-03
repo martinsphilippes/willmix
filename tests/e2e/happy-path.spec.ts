@@ -35,28 +35,25 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("input[name=productionStartAt]", "2026-11-02");
   await page.fill("input[name=lot1Interval]", "30");
   await page.fill("input[name=lot1Cartons]", "50");
-  // Salva o rascunho antes das fotos (cada foto recarrega a página).
+  // Salva o rascunho (os botões ficam no fim, depois das fotos; o `form` liga ao formulário).
   await Promise.all([
     page.waitForURL(/saved=/),
     page
       .getByRole("button", { name: /保存草稿|Save draft|Salvar rascunho/ })
       .click(),
   ]);
-  // Todas as fotos da ficha são obrigatórias já na cotação. Escolher a foto já envia.
+  // As 5 fotos do produto são obrigatórias já na cotação. Escolher a foto já envia.
   for (const kind of [
     "weight_scale",
     "dimension_scale",
     "dimension_side",
     "angle",
     "original",
-    "prompt",
-    "business_card",
   ]) {
-    const row = page.locator(`form:has(input[name=kind][value=${kind}])`);
-    await Promise.all([
-      page.waitForURL(new RegExp(`photos=${kind}`)),
-      row.locator("input[name=photos]").setInputFiles(png),
-    ]);
+    // A foto sobe no lugar, sem navegar: a linha ganha a miniatura.
+    const row = page.locator(`li:has(input[name=kind][value=${kind}])`);
+    await row.locator("input[name=photos]").setInputFiles(png);
+    await row.locator("img").first().waitFor();
   }
 }
 

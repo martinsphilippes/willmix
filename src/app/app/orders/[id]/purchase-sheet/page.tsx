@@ -101,7 +101,14 @@ export default async function PurchaseSheetPage({
         ) : null}
       </div>
 
-      <form action={savePurchaseSheetAction} className="space-y-6">
+      {/* Ordem da ficha: campos, fotos e, por último, Salvar. O card de fotos tem
+          formulários próprios (cada foto sobe na hora, no lugar), por isso o botão
+          fica fora do <form> e aponta para ele pelo atributo `form`. */}
+      <form
+        id="purchase-sheet"
+        action={savePurchaseSheetAction}
+        className="space-y-6"
+      >
         <input type="hidden" name="orderId" value={id} />
 
         <PurchaseSheetFields
@@ -113,14 +120,6 @@ export default async function PurchaseSheetPage({
           editSupplier={access.editSupplier}
           editCustoms={access.editCustoms}
         />
-
-        {access.editSupplier || access.editCustoms ? (
-          <div className="sticky bottom-0 z-10 -mx-4 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
-            <SubmitButton className="w-full py-3 text-base sm:w-auto">
-              {t("sheet.save")}
-            </SubmitButton>
-          </div>
-        ) : null}
       </form>
 
       <SheetPhotosCard
@@ -132,6 +131,17 @@ export default async function PurchaseSheetPage({
         addAction={addPurchaseSheetPhotosAction}
         removeAction={removePurchaseSheetPhotoAction}
       />
+
+      {access.editSupplier || access.editCustoms ? (
+        <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+          <SubmitButton
+            form="purchase-sheet"
+            className="w-full py-3 text-base sm:w-auto"
+          >
+            {t("sheet.save")}
+          </SubmitButton>
+        </div>
+      ) : null}
     </>
   );
 }

@@ -149,15 +149,18 @@ export const SHEET_REQUIRED_FIELDS = [
 ] as const;
 export type SheetRequiredField = (typeof SHEET_REQUIRED_FIELDS)[number];
 
-/** Fotos da ficha: todas obrigatórias (balança, régua, lado, ângulo, original, referência e cartão). */
+/**
+ * Fotos da ficha: as 5 fotos do produto, todas obrigatórias (balança, régua,
+ * lado, ângulo e original). Foto de referência (prompt) e cartão de visita não
+ * fazem parte da ficha: são da Wellmix, depois, na conversa com o fornecedor e
+ * com o cliente.
+ */
 export const REQUIRED_SHEET_PHOTOS = {
   weight_scale: "scalePhoto",
   dimension_scale: "rulerPhoto",
   dimension_side: "sidePhoto",
   angle: "anglePhoto",
   original: "originalPhoto",
-  prompt: "promptPhoto",
-  business_card: "cardPhoto",
 } as const;
 
 export type SheetMissing =

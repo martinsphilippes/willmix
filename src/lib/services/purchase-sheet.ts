@@ -24,17 +24,28 @@ import {
 
 export class PurchaseSheetError extends Error {}
 
-/** Fotos da ficha (planilha COMPRAS + mais ângulos). A da balança é obrigatória. */
+/** Fotos da ficha (planilha COMPRAS + mais ângulos): as 5 fotos do produto, que o fornecedor envia. */
 export const SHEET_PHOTO_KINDS = [
   "weight_scale",
   "dimension_scale",
   "dimension_side",
   "angle",
   "original",
+] as const satisfies readonly PhotoKind[];
+export type SheetPhotoKind = (typeof SHEET_PHOTO_KINDS)[number];
+/**
+ * Tipos que já fizeram parte da ficha (foto de referência e cartão de visita):
+ * não são do fornecedor e saíram do formulário. Fotos antigas desses tipos
+ * continuam visíveis e excluíveis na ficha; nunca contam como obrigatórias.
+ */
+export const LEGACY_SHEET_PHOTO_KINDS = [
   "prompt",
   "business_card",
 ] as const satisfies readonly PhotoKind[];
-export type SheetPhotoKind = (typeof SHEET_PHOTO_KINDS)[number];
+const VISIBLE_SHEET_PHOTO_KINDS: readonly string[] = [
+  ...SHEET_PHOTO_KINDS,
+  ...LEGACY_SHEET_PHOTO_KINDS,
+];
 
 /** Campos que o fornecedor (e a Wellmix) preenchem. */
 export const SUPPLIER_FIELDS = [
@@ -260,9 +271,7 @@ export async function getSheetPhotos(orderId: string): Promise<ProductPhoto[]> {
     filter: { orderId },
     orderBy: "createdAt",
   });
-  return photos.filter((p) =>
-    (SHEET_PHOTO_KINDS as readonly string[]).includes(p.kind),
-  );
+  return photos.filter((p) => VISIBLE_SHEET_PHOTO_KINDS.includes(p.kind));
 }
 
 /** Tipos de foto já enviados; o item antigo "Foto na balança" concluído conta como balança. */
@@ -484,7 +493,7 @@ export async function removeSheetPhoto(
     throw new PurchaseSheetError("not_found");
   if (!sheetAccess(user, order).addPhotos)
     throw new PurchaseSheetError("forbidden");
-  if (!(SHEET_PHOTO_KINDS as readonly string[]).includes(photo.kind))
+  if (!VISIBLE_SHEET_PHOTO_KINDS.includes(photo.kind))
     throw new PurchaseSheetError("not_found");
   const doc = await store.get("documents", photo.documentId);
   await store.remove("product_photos", photo.id);

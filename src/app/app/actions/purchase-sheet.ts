@@ -14,7 +14,7 @@ import {
   type SheetInput,
 } from "@/lib/services/purchase-sheet";
 import { MAX_LOTS } from "@/lib/services/purchase-sheet-calc";
-import { files, requireUser, run, str } from "./helpers";
+import { files, requireUser, run, runInPlace, str } from "./helpers";
 
 /*
  * Ficha de compra (planilha COMPRAS) da Preparação. Só os campos presentes no
@@ -132,13 +132,13 @@ export async function addPurchaseSheetPhotosAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId").slice(0, 64);
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
-  await run(back, async () => {
+  // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
+  await runInPlace(back, async () => {
     ORDER_ID.parse(orderId);
     const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
     const photos = files(form, "photos");
     if (!photos.length) throw new Error("photo_required");
     await addSheetPhotos(user, orderId, kind, photos);
-    return `${back}?photos=${kind}#photos`;
   });
 }
 
@@ -146,11 +146,11 @@ export async function removePurchaseSheetPhotoAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId").slice(0, 64);
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
-  await run(back, async () => {
+  // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
+  await runInPlace(back, async () => {
     ORDER_ID.parse(orderId);
     const photoId = ORDER_ID.parse(str(form, "photoId"));
     await removeSheetPhoto(user, orderId, photoId);
-    return `${back}?photoRemoved=1#photos`;
   });
 }
 
@@ -180,10 +180,7 @@ export async function answerQuoteWithSheetAction(form: FormData) {
       .positive()
       .max(3650)
       .parse(str(form, "leadTimeDays"));
-    const conditions = z
-      .string()
-      .max(2000)
-      .parse(str(form, "conditions"));
+    const conditions = z.string().max(2000).parse(str(form, "conditions"));
     const { answerQuote } = await import("@/lib/services/requests");
     await answerQuote(user, quoteId, {
       price: sheet.price!,
@@ -198,19 +195,34 @@ export async function answerQuoteWithSheetAction(form: FormData) {
   });
 }
 
-/** Fotos da ficha na resposta da RFQ (balança e régua obrigatórias para enviar). */
+/*
+ * Os botões da resposta ficam fora do <form> (depois do card de fotos) e apontam
+ * para ele pelo atributo `form`. O React só leva nome/valor de botão que está
+ * dentro do formulário, por isso cada botão tem a própria ação (formAction).
+ */
+export async function sendQuoteWithSheetAction(form: FormData) {
+  form.set("intent", "send");
+  return answerQuoteWithSheetAction(form);
+}
+
+export async function saveQuoteSheetDraftAction(form: FormData) {
+  form.set("intent", "draft");
+  return answerQuoteWithSheetAction(form);
+}
+
+/** Fotos da ficha na resposta da RFQ (as 5 fotos do produto, obrigatórias para enviar). */
 export async function addQuoteSheetPhotosAction(form: FormData) {
   const user = await requireUser();
   const quoteId = str(form, "quoteId").slice(0, 64);
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
-  await run(back, async () => {
+  // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
+  await runInPlace(back, async () => {
     ORDER_ID.parse(quoteId);
     const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
     const photos = files(form, "photos");
     if (!photos.length) throw new Error("photo_required");
     const { addQuoteSheetPhotos } = await import("@/lib/services/quote-sheet");
     await addQuoteSheetPhotos(user, quoteId, kind, photos);
-    return `${back}?photos=${kind}#photos`;
   });
 }
 
@@ -218,12 +230,12 @@ export async function removeQuoteSheetPhotoAction(form: FormData) {
   const user = await requireUser();
   const quoteId = str(form, "quoteId").slice(0, 64);
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
-  await run(back, async () => {
+  // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
+  await runInPlace(back, async () => {
     ORDER_ID.parse(quoteId);
     const photoId = ORDER_ID.parse(str(form, "photoId"));
     const { removeQuoteSheetPhoto } =
       await import("@/lib/services/quote-sheet");
     await removeQuoteSheetPhoto(user, quoteId, photoId);
-    return `${back}?photoRemoved=1#photos`;
   });
 }
