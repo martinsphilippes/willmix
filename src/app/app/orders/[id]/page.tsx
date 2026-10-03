@@ -1,4 +1,7 @@
-import { sheetProgress } from "@/lib/services/purchase-sheet";
+import {
+  sheetProgress,
+  syncPreparationFromSheet,
+} from "@/lib/services/purchase-sheet";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { notFound, redirect } from "next/navigation";
@@ -118,21 +121,40 @@ export default async function OrderPage({
     cancelRejected,
     settlementSaved,
   } = await searchParams;
-  const progress = await loadOrderProgress(id);
+  let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
-  const { order, stages, requirements } = progress;
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
   const remeasureMode = remeasure === "1";
   /* Ficha de compra (Preparação): quem vê ganha o atalho no item do checklist. */
-  const sheet = sheetAccess(user, order);
+  const sheet = sheetAccess(user, progress.order);
   const sheetHref = sheet.view
-    ? `/app/orders/${order.id}/purchase-sheet`
+    ? `/app/orders/${progress.order.id}/purchase-sheet`
     : null;
   /* O que falta na ficha (o item do checklist diz o quê, em vez de só "Preencher"). */
-  const sheetState = sheet.view ? await sheetProgress(order) : null;
+  let sheetState = sheet.view ? await sheetProgress(progress.order) : null;
+  /* Ficha completa com a Preparação ainda parada (ex.: a regra das fotos mudou
+     depois de a ficha ser salva): conclui os requisitos agora, como ao salvar a
+     ficha, quando quem abre o pedido pode preenchê-los. */
+  const stuckSheetReq =
+    sheetState &&
+    !sheetState.missing.length &&
+    progress.order.status === "PREPARATION"
+      ? progress.requirements.find(
+          (r) => r.key === "purchase_sheet" && r.status === "pending",
+        )
+      : null;
+  if (
+    stuckSheetReq &&
+    canSubmitRequirement(user, progress.order, stuckSheetReq)
+  ) {
+    await syncPreparationFromSheet(user, progress.order.id);
+    progress = (await loadOrderProgress(id)) ?? progress;
+    sheetState = await sheetProgress(progress.order);
+  }
+  const { order, stages, requirements } = progress;
   const sheetHint = sheetState
     ? {
         missing: sheetState.missing

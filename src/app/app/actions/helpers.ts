@@ -34,6 +34,27 @@ export function files(form: FormData, key: string): File[] {
 
 const ERROR_CODE = /^[a-z][a-z0-9_]{1,59}$/;
 
+/**
+ * Só códigos (snake_case) vão para a tela; falha técnica vira "unexpected" e o
+ * detalhe fica no log do servidor.
+ */
+function errorCode(back: string, error: unknown) {
+  const code =
+    error instanceof ZodError
+      ? "invalid_input"
+      : error instanceof Error && ERROR_CODE.test(error.message)
+        ? error.message
+        : "unexpected";
+  if (code === "unexpected") console.error("[action]", back, error);
+  return code.slice(0, 60);
+}
+
+function withError(back: string, code: string) {
+  const url = new URL(back, "http://x");
+  url.searchParams.set("error", code);
+  return url.pathname + url.search;
+}
+
 /** Executa a ação e volta para `back` com ?error=<código> em caso de falha. */
 export async function run(back: string, fn: () => Promise<string | void>) {
   let target = back;
@@ -41,19 +62,25 @@ export async function run(back: string, fn: () => Promise<string | void>) {
     const result = await fn();
     if (result) target = result;
   } catch (error) {
-    // Só códigos (snake_case) vão para a tela; falha técnica vira "unexpected"
-    // e o detalhe fica no log do servidor.
-    const code =
-      error instanceof ZodError
-        ? "invalid_input"
-        : error instanceof Error && ERROR_CODE.test(error.message)
-          ? error.message
-          : "unexpected";
-    if (code === "unexpected") console.error("[action]", back, error);
-    const url = new URL(back, "http://x");
-    url.searchParams.set("error", code.slice(0, 60));
-    target = url.pathname + url.search;
+    target = withError(back, errorCode(back, error));
   }
   revalidatePath("/app", "layout");
   redirect(target);
+}
+
+/**
+ * Executa a ação e fica na mesma tela: a página é atualizada no lugar, sem
+ * navegar, e o que o usuário digitou em outros formulários não se perde (ex.:
+ * foto da ficha enquanto os campos ainda não foram salvos). Só o erro volta
+ * para `back` com ?error=<código>.
+ */
+export async function runInPlace(back: string, fn: () => Promise<void>) {
+  let failed: string | null = null;
+  try {
+    await fn();
+  } catch (error) {
+    failed = withError(back, errorCode(back, error));
+  }
+  revalidatePath("/app", "layout");
+  if (failed) redirect(failed);
 }

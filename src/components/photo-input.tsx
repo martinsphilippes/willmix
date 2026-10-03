@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { useFormDoneSignal } from "./submit-button";
 
 /**
  * Campo de foto para o celular: abre a câmera (ou a galeria), reduz cada imagem
@@ -78,6 +79,8 @@ export function PhotoInput({
   }
 
   const { pending } = useFormStatus();
+  // Envio no lugar (sem navegar): avisa a barra de progresso que terminou.
+  useFormDoneSignal(pending);
   const working = busy || pending;
   const input = (
     <input

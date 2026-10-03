@@ -88,8 +88,6 @@ describe("ficha da Preparação", () => {
       "sidePhoto",
       "anglePhoto",
       "originalPhoto",
-      "promptPhoto",
-      "cardPhoto",
     ]);
 
     // Pedido sem a cópia (ex.: anterior à cópia automática): rascunho da cotação.
@@ -109,8 +107,6 @@ describe("ficha da Preparação", () => {
       "sidePhoto",
       "anglePhoto",
       "originalPhoto",
-      "promptPhoto",
-      "cardPhoto",
     ]);
     // Salvar parte da ficha grava junto o que veio da cotação.
     const saved = await ps.saveSheet(supplierB, order.id, { notes: "ok" });

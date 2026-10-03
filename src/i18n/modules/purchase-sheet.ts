@@ -97,7 +97,7 @@ export const pt = {
   "sheet.total.hint":
     "Peças = caixas × peças por caixa master. CBM = caixas × CBM da caixa. Containers = CBM total ÷ capacidade útil do container (Configurações).",
   "sheet.photos.hint":
-    "Uma linha por tipo de foto: toque em Adicionar, tire ou escolha a foto e ela sobe na hora. Pode enviar várias por tipo. Todas são obrigatórias (*). Cliente não vê estas fotos.",
+    "Uma linha por tipo de foto: toque em Adicionar, tire ou escolha a foto e ela sobe na hora. Pode enviar várias por tipo. As 5 fotos do produto são obrigatórias (*). Foto de referência e cartão de visita não entram aqui: a Wellmix cuida delas depois. Cliente não vê estas fotos.",
   "sheet.photos.add": "Adicionar fotos",
   "sheet.photos.none": "Nenhuma foto.",
   "sheet.photos.sent": "Fotos enviadas.",
@@ -205,7 +205,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.total.hint":
     "Pieces = cartons × pieces per master carton. CBM = cartons × carton CBM. Containers = total CBM ÷ usable container capacity (Settings).",
   "sheet.photos.hint":
-    "One row per photo type: tap Add, take or pick the photo and it uploads right away. Several per type are fine. All are required (*). The customer does not see these photos.",
+    "One row per photo type: tap Add, take or pick the photo and it uploads right away. Several per type are fine. The 5 product photos are required (*). Reference photo and business card do not go here: Wellmix handles them later. The customer does not see these photos.",
   "sheet.photos.add": "Add photos",
   "sheet.photos.none": "No photos.",
   "sheet.photos.sent": "Photos sent.",
@@ -310,7 +310,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.total.hint":
     "件数 = 箱数 × 每外箱件数。体积 = 箱数 × 外箱体积。集装箱 = 总体积 ÷ 集装箱可用容量（设置）。",
   "sheet.photos.hint":
-    "每种照片一行：点击添加，拍照或选择照片后会立即上传。每种可上传多张。全部为必填（*）。客户看不到这些照片。",
+    "每种照片一行：点击添加，拍照或选择照片后会立即上传。每种可上传多张。5 张产品照片均为必填（*）。参考照片和名片不在此处：由 Wellmix 稍后处理。客户看不到这些照片。",
   "sheet.photos.add": "添加照片",
   "sheet.photos.none": "暂无照片。",
   "sheet.photos.sent": "照片已上传。",

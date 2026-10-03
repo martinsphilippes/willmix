@@ -92,8 +92,6 @@ describe("ficha de compra na cotação", () => {
         "sidePhoto",
         "anglePhoto",
         "originalPhoto",
-        "promptPhoto",
-        "cardPhoto",
       ],
     ]);
     expect(view.sheet.importTaxPercent).toBe(18);
@@ -110,17 +108,19 @@ describe("ficha de compra na cotação", () => {
       "dimension_side",
       "angle",
       "original",
-      "prompt",
-      "business_card",
     ] as const)
       await qs.addQuoteSheetPhotos(supplierA, quote.id, kind, [png()]);
+    // Foto de referência e cartão de visita não são do fornecedor: a ficha recusa.
+    await expect(
+      qs.addQuoteSheetPhotos(supplierA, quote.id, "prompt" as never, [png()]),
+    ).rejects.toThrow("invalid_kind");
     // Outro fornecedor não envia foto nesta cotação.
     await expect(
       qs.addQuoteSheetPhotos(supplierB, quote.id, "angle", [png()]),
     ).rejects.toThrow();
     const done = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
     expect(done.missing).toEqual([]);
-    expect(done.photos).toHaveLength(7);
+    expect(done.photos).toHaveLength(5);
     // A foto da cotação não abre para outro fornecedor nem para o cliente.
     const { canAccessDocument } = await import("@/lib/services/documents");
     const photoDoc = (await store.get("documents", done.photos[0].documentId))!;
@@ -146,7 +146,7 @@ describe("ficha de compra na cotação", () => {
     // Fotos da cotação passam para o pedido.
     const { getSheetPhotos } = await import("@/lib/services/purchase-sheet");
     const orderPhotos = await getSheetPhotos(order.id);
-    expect(orderPhotos).toHaveLength(7);
+    expect(orderPhotos).toHaveLength(5);
     expect(
       (await store.get("documents", orderPhotos[0].documentId))?.orderId,
     ).toBe(order.id);

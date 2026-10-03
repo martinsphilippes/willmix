@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormStatus } from "react-dom";
+import { useFormDoneSignal } from "./submit-button";
 
 /**
  * Botão de excluir dentro de um formulário: pede confirmação antes de enviar e
@@ -17,6 +18,7 @@ export function ConfirmDeleteButton({
   className?: string;
 }) {
   const { pending } = useFormStatus();
+  useFormDoneSignal(pending);
   return (
     <button
       type="submit"

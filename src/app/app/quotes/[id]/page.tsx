@@ -21,6 +21,8 @@ import {
   addQuoteSheetPhotosAction,
   answerQuoteWithSheetAction,
   removeQuoteSheetPhotoAction,
+  saveQuoteSheetDraftAction,
+  sendQuoteWithSheetAction,
 } from "../../actions/purchase-sheet";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
@@ -170,20 +172,16 @@ export default async function QuotePage({
           </div>
         </Card>
       </div>
+      {/* Ordem da ficha: campos, fotos e, por último, a resposta com os botões.
+          O card de fotos tem formulários próprios (cada foto sobe na hora, no
+          lugar), por isso prazo, condições e botões ficam fora do <form> e
+          apontam para ele pelo atributo `form`. */}
       {sheetView ? (
-        <SheetPhotosCard
-          t={t}
-          photos={sheetView.photos}
-          canEdit={sheetView.access.addPhotos}
-          ownerField="quoteId"
-          ownerId={quote.id}
-          addAction={addQuoteSheetPhotosAction}
-          removeAction={removeQuoteSheetPhotoAction}
-          hint={t("quoteSheet.photosHint")}
-        />
-      ) : null}
-      {sheetView ? (
-        <form action={answerQuoteWithSheetAction} className="mt-6 space-y-6">
+        <form
+          id="quote-sheet"
+          action={answerQuoteWithSheetAction}
+          className="mt-6 space-y-6"
+        >
           <input type="hidden" name="quoteId" value={quote.id} />
           <h2 className="text-lg font-semibold text-zinc-900">
             {t("quoteSheet.title")}
@@ -209,40 +207,61 @@ export default async function QuotePage({
             editSupplier={sheetView.access.editSupplier}
             editCustoms={sheetView.access.editCustoms}
           />
-          {canAnswer && sheetView.access.editSupplier ? (
-            <Card title={t("quotes.answer")}>
-              <div className="grid gap-5 sm:grid-cols-3">
-                <Field label={t("quoteSheet.leadTime")}>
-                  <Input
-                    name="leadTimeDays"
-                    type="number"
-                    min="1"
-                    defaultValue={quote.leadTimeDays ?? ""}
-                  />
-                </Field>
-                <div className="sm:col-span-2">
-                  <Field label={t("quoteSheet.conditions")}>
-                    <Textarea
-                      name="conditions"
-                      rows={2}
-                      maxLength={2000}
-                      defaultValue={quote.conditions ?? ""}
-                      placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
-                    />
-                  </Field>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <SubmitButton name="intent" value="send">
-                  {t("quoteSheet.send")}
-                </SubmitButton>
-                <SubmitButton name="intent" value="draft" variant="secondary">
-                  {t("quoteSheet.saveDraft")}
-                </SubmitButton>
-              </div>
-            </Card>
-          ) : null}
         </form>
+      ) : null}
+      {sheetView ? (
+        <SheetPhotosCard
+          t={t}
+          photos={sheetView.photos}
+          canEdit={sheetView.access.addPhotos}
+          ownerField="quoteId"
+          ownerId={quote.id}
+          addAction={addQuoteSheetPhotosAction}
+          removeAction={removeQuoteSheetPhotoAction}
+          hint={t("quoteSheet.photosHint")}
+        />
+      ) : null}
+      {sheetView && canAnswer && sheetView.access.editSupplier ? (
+        <Card title={t("quotes.answer")} className="mt-6">
+          <div className="grid gap-5 sm:grid-cols-3">
+            <Field label={t("quoteSheet.leadTime")}>
+              <Input
+                form="quote-sheet"
+                name="leadTimeDays"
+                type="number"
+                min="1"
+                defaultValue={quote.leadTimeDays ?? ""}
+              />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label={t("quoteSheet.conditions")}>
+                <Textarea
+                  form="quote-sheet"
+                  name="conditions"
+                  rows={2}
+                  maxLength={2000}
+                  defaultValue={quote.conditions ?? ""}
+                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                />
+              </Field>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <SubmitButton
+              form="quote-sheet"
+              formAction={sendQuoteWithSheetAction}
+            >
+              {t("quoteSheet.send")}
+            </SubmitButton>
+            <SubmitButton
+              form="quote-sheet"
+              formAction={saveQuoteSheetDraftAction}
+              variant="secondary"
+            >
+              {t("quoteSheet.saveDraft")}
+            </SubmitButton>
+          </div>
+        </Card>
       ) : null}
     </>
   );

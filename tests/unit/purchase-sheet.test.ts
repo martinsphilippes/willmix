@@ -11,8 +11,14 @@ const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
 const { planSheet, missingForCompletion } =
   await import("@/lib/services/purchase-sheet-calc");
-const { getSheetForUser, saveSheet, addSheetPhotos, removeSheetPhoto } =
-  await import("@/lib/services/purchase-sheet");
+const {
+  getSheetForUser,
+  saveSheet,
+  addSheetPhotos,
+  removeSheetPhoto,
+  sheetProgress,
+  syncPreparationFromSheet,
+} = await import("@/lib/services/purchase-sheet");
 const { canAccessDocument, catalogShowcasePhotos } =
   await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
@@ -201,8 +207,6 @@ describe("ficha no pedido", () => {
       "sidePhoto",
       "anglePhoto",
       "originalPhoto",
-      "promptPhoto",
-      "cardPhoto",
     ]);
     // Preparação tem só a ficha de compra.
     expect(
@@ -220,17 +224,45 @@ describe("ficha no pedido", () => {
       await png(),
       await png(),
     ]);
-    // Todas as fotos da ficha são obrigatórias.
+    // As 5 fotos do produto são obrigatórias; referência e cartão não são do fornecedor.
     expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
-    for (const kind of [
-      "angle",
-      "original",
-      "prompt",
-      "business_card",
-    ] as const)
+    await expect(
+      addSheetPhotos(supplierA, order.id, "business_card" as never, [
+        await png(),
+      ]),
+    ).rejects.toThrow("invalid_kind");
+    for (const kind of ["angle", "original"] as const)
       await addSheetPhotos(supplierA, order.id, kind, [await png()]);
     const sheetReq = await req(prep.id, "purchase_sheet");
     expect(sheetReq.status).toBe("done");
+    // Cartão de visita enviado à ficha antes da mudança: segue visível e
+    // excluível, mas não é obrigatório nem conta como foto do produto.
+    const { getSheetPhotos } = await import("@/lib/services/purchase-sheet");
+    const legacy = await getStore().create("product_photos", {
+      productId: null,
+      sourcingItemId: null,
+      orderId: order.id,
+      documentId: "doc-antigo",
+      kind: "business_card",
+      caption: null,
+      takenAt: null,
+      takenByUserId: admin.id,
+      derivedFromPhotoId: null,
+      isPrimary: false,
+    });
+    expect((await getSheetPhotos(order.id)).map((p) => p.kind)).toContain(
+      "business_card",
+    );
+    expect(
+      missingForCompletion(
+        { ...(await getSheetForUser(admin, order.id))!.sheet },
+        ["weight_scale", "dimension_scale", "dimension_side", "angle"],
+      ),
+    ).toEqual(["originalPhoto"]);
+    await removeSheetPhoto(admin, order.id, legacy.id);
+    expect((await getSheetPhotos(order.id)).map((p) => p.kind)).not.toContain(
+      "business_card",
+    );
     expect(sheetReq.value).toContain("7200 pcs");
     expect((await getStore().get("stages", prep.id))!.status).toBe("done");
 
@@ -286,5 +318,73 @@ describe("excluir foto da ficha", () => {
       filter: { action: "purchase_sheet.photo_remove" },
     });
     expect(audit.length).toBeGreaterThan(0);
+  });
+});
+
+describe("ficha completa com a Preparação parada", () => {
+  it("sincronizar conclui o requisito e a etapa; só para quem pode preenchê-lo", async () => {
+    const { order, prep } = await orderInPreparation();
+    const { missing } = await saveSheet(supplierA, order.id, {
+      supplierName: "YIWU WUJO INTL",
+      supplierStore: "A 154678",
+      incoterm: "EXW",
+      currency: "USD",
+      price: 8.5,
+      moq: 6000,
+      masterCartonQty: 24,
+      innerQty: 6,
+      netWeightPcKg: 0.14,
+      grossWeightPcKg: 0.16,
+      cbmPerCarton: 0.045,
+      heightCm: 25,
+      widthCm: 34,
+      lengthCm: 50,
+      capacityMl: 200,
+      packageType: "COLOR BOX",
+      colorAssortment: "WHITE / BLACK / RED",
+      material: "PLASTIC / IRON",
+      powerSource: "battery",
+      powerDetail: "12V",
+      productionStartAt: "2026-11-10T00:00:00.000Z",
+      lots: [{ departureIntervalDays: 30, masterCartons: 100 }],
+    });
+    expect(missing).toEqual([
+      "scalePhoto",
+      "rulerPhoto",
+      "sidePhoto",
+      "anglePhoto",
+      "originalPhoto",
+    ]);
+    for (const kind of [
+      "weight_scale",
+      "dimension_scale",
+      "dimension_side",
+      "angle",
+    ] as const)
+      await addSheetPhotos(supplierA, order.id, kind, [await png()]);
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
+    // A última foto entra sem passar pela ficha (como quando a regra muda depois
+    // de a ficha ser salva): a ficha fica completa, mas nada sincronizou.
+    await getStore().create("product_photos", {
+      productId: null,
+      sourcingItemId: null,
+      orderId: order.id,
+      documentId: "doc-original",
+      kind: "original",
+      caption: null,
+      takenAt: null,
+      takenByUserId: supplierA.id,
+      derivedFromPhotoId: null,
+      isPrimary: false,
+    });
+    expect((await sheetProgress(order)).missing).toEqual([]);
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
+    // Cliente não preenche requisito do fornecedor: a sincronização não age.
+    await syncPreparationFromSheet(joao, order.id);
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
+    // Wellmix (ou o fornecedor) abre o pedido: a Preparação se conclui.
+    await syncPreparationFromSheet(admin, order.id);
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("done");
+    expect((await getStore().get("stages", prep.id))!.status).toBe("done");
   });
 });
