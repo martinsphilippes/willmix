@@ -42,8 +42,16 @@ async function fillQuoteSheet(page: Page, price: string) {
       .getByRole("button", { name: /保存草稿|Save draft|Salvar rascunho/ })
       .click(),
   ]);
-  // Fotos obrigatórias já na cotação: balança e régua. Escolher a foto já envia.
-  for (const kind of ["weight_scale", "dimension_scale"]) {
+  // Todas as fotos da ficha são obrigatórias já na cotação. Escolher a foto já envia.
+  for (const kind of [
+    "weight_scale",
+    "dimension_scale",
+    "dimension_side",
+    "angle",
+    "original",
+    "prompt",
+    "business_card",
+  ]) {
     const row = page.locator(`form:has(input[name=kind][value=${kind}])`);
     await Promise.all([
       page.waitForURL(new RegExp(`photos=${kind}`)),

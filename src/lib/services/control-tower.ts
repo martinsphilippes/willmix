@@ -101,7 +101,10 @@ export async function loadControlTower(): Promise<TowerData> {
   const stageOf = (order: Order) => stages.find((s) => s.orderId === order.id);
 
   const rows: TowerRow[] = orders
-    .filter((o) => o.status !== "CLOSED")
+    .filter(
+      (o): o is Order & { status: StageKey } =>
+        o.status !== "CLOSED" && o.status !== "CANCELLED",
+    )
     .map((o) => {
       const stage = stageOf(o);
       return {
@@ -120,7 +123,7 @@ export async function loadControlTower(): Promise<TowerData> {
     });
 
   const closedRows: TowerRow[] = orders
-    .filter((o) => o.status === "CLOSED")
+    .filter((o): o is Order & { status: "CLOSED" } => o.status === "CLOSED")
     .map((o) => ({
       id: o.id,
       number: `#${o.number}`,
@@ -174,7 +177,7 @@ export async function loadControlTower(): Promise<TowerData> {
   const rejected = await rejectedP;
   for (const req of rejected) {
     const order = orders.find((o) => o.id === req.orderId);
-    if (order && order.status !== "CLOSED") {
+    if (order && order.status !== "CLOSED" && order.status !== "CANCELLED") {
       exceptions.push({
         kind: "document",
         severity: "medium",
@@ -194,7 +197,11 @@ export async function loadControlTower(): Promise<TowerData> {
     }
   }
   for (const o of orders) {
-    if (o.status !== "CLOSED" && o.erpSyncStatus === "pending") {
+    if (
+      o.status !== "CLOSED" &&
+      o.status !== "CANCELLED" &&
+      o.erpSyncStatus === "pending"
+    ) {
       exceptions.push({
         kind: "erp",
         severity: "medium",
@@ -353,7 +360,9 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
       (purchasedByCurrency[r.fobCurrency] ?? 0) + r.fob;
   }
   const pipeline = PIPELINE.map((p) => {
-    const mine = rows.filter((r) => p.stages.includes(r.order.status));
+    const mine = rows.filter((r) =>
+      (p.stages as readonly string[]).includes(r.order.status),
+    );
     return {
       key: p.key,
       count: mine.length,

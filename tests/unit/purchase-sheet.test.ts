@@ -195,7 +195,15 @@ describe("ficha no pedido", () => {
       // Fornecedor não edita a parte do despachante: ignorado.
       ncm: "9999.99.99",
     });
-    expect(missing).toEqual(["scalePhoto", "rulerPhoto"]);
+    expect(missing).toEqual([
+      "scalePhoto",
+      "rulerPhoto",
+      "sidePhoto",
+      "anglePhoto",
+      "originalPhoto",
+      "promptPhoto",
+      "cardPhoto",
+    ]);
     // Preparação tem só a ficha de compra.
     expect(
       (
@@ -212,6 +220,15 @@ describe("ficha no pedido", () => {
       await png(),
       await png(),
     ]);
+    // Todas as fotos da ficha são obrigatórias.
+    expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
+    for (const kind of [
+      "angle",
+      "original",
+      "prompt",
+      "business_card",
+    ] as const)
+      await addSheetPhotos(supplierA, order.id, kind, [await png()]);
     const sheetReq = await req(prep.id, "purchase_sheet");
     expect(sheetReq.status).toBe("done");
     expect(sheetReq.value).toContain("7200 pcs");

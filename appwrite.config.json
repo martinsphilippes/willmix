@@ -1052,7 +1052,8 @@
             "CUSTOMS",
             "TRANSPORT",
             "DELIVERED",
-            "CLOSED"
+            "CLOSED",
+            "CANCELLED"
           ]
         },
         {
@@ -1181,6 +1182,112 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "cancelledAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "cancelledByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "cancelReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "customer_withdrew",
+            "supplier_issue",
+            "quality_rejected",
+            "price_or_deadline",
+            "other"
+          ]
+        },
+        {
+          "key": "cancelNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "cancelSettlement",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "cancelStageKey",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "ORDER_CREATED",
+            "PREPARATION",
+            "SUPPLIER_PAYMENT",
+            "PACKAGING",
+            "INSPECTION",
+            "SHIPPING",
+            "CUSTOMS",
+            "TRANSPORT",
+            "DELIVERED",
+            "CLOSED"
+          ]
+        },
+        {
+          "key": "cancelRequestStatus",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "requested",
+            "rejected",
+            "approved"
+          ]
+        },
+        {
+          "key": "cancelRequestedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "cancelRequestedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "cancelRequestReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "cancelRequestResponse",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -1348,7 +1455,8 @@
             "pending",
             "active",
             "blocked",
-            "done"
+            "done",
+            "cancelled"
           ]
         },
         {

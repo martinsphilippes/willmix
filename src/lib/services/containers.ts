@@ -355,7 +355,7 @@ export async function listOrderItemChoices(): Promise<OrderItemChoice[]> {
   ]);
   const choices: OrderItemChoice[] = [];
   for (const order of orders) {
-    if (order.status === "CLOSED") continue;
+    if (order.status === "CLOSED" || order.status === "CANCELLED") continue;
     for (const item of items.filter((i) => i.orderId === order.id)) {
       choices.push({
         orderItemId: item.id,

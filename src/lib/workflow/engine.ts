@@ -292,6 +292,8 @@ export async function decideRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  if (order.status === "CANCELLED" || stage.status === "cancelled")
+    throw new WorkflowError("stage_not_active");
 
   const now = new Date().toISOString();
   if (decision === "approve") {
@@ -526,7 +528,13 @@ async function checkWeightDivergence(
 export async function evaluateStage(user: User | null, stageId: string) {
   const store = getStore();
   const stage = await store.get("stages", stageId);
-  if (!stage || stage.status === "done" || stage.status === "pending") return;
+  if (
+    !stage ||
+    stage.status === "done" ||
+    stage.status === "pending" ||
+    stage.status === "cancelled"
+  )
+    return;
   const requirements = await store.list("requirements", {
     filter: { stageId },
   });
@@ -566,7 +574,8 @@ async function completeStage(user: User | null, stage: Stage) {
   );
 
   const order = await store.get("orders", stage.orderId);
-  if (!order) return;
+  // Pedido cancelado não avança.
+  if (!order || order.status === "CANCELLED") return;
   // Entregue: o processo continua no pós-venda (entidade própria; as etapas não mudam).
   if (stage.key === "DELIVERED") await openAfterSales(user, order);
   const next = nextStageKey(stage.key);
@@ -644,6 +653,8 @@ export async function unblockStage(user: User, stageId: string) {
   if (!isWellmix(user)) throw new ForbiddenError();
   const store = getStore();
   const stage = await store.get("stages", stageId);
+  if (stage?.status === "cancelled")
+    throw new WorkflowError("stage_not_active");
   await store.update("stages", stageId, {
     status: "active",
     blockReason: null,

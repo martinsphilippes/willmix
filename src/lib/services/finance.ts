@@ -56,6 +56,7 @@ export function computeOrderFinance(
   const sellCurrency = order.sellCurrency ?? "BRL";
   const fobCurrency = order.fobCurrency ?? "USD";
   const sell = order.sellPrice ?? 0;
+  const cancelled = order.status === "CANCELLED";
   const fob = order.fobTotal ?? 0;
   const inbound = payments.filter(
     (p) => p.direction === "customer_in" && settled(p),
@@ -93,11 +94,12 @@ export function computeOrderFinance(
     sellCurrency,
     sell,
     received,
-    receivable: Math.max(0, sell - received),
+    // Cancelado: nada mais a receber nem a pagar pelo sistema; o acerto é livre.
+    receivable: cancelled ? 0 : Math.max(0, sell - received),
     fobCurrency,
     fob,
     paid,
-    payable: Math.max(0, fob - paid),
+    payable: cancelled ? 0 : Math.max(0, fob - paid),
     cost,
     avgFx,
     estimated,
@@ -152,7 +154,7 @@ export async function loadFinance(): Promise<{
       currency,
       sell,
       received,
-      receivable: Math.max(0, sell - received),
+      receivable: same.reduce((s, r) => s + r.receivable, 0),
       cost,
       margin,
       marginPct: knownSell > 0 ? (margin / knownSell) * 100 : null,

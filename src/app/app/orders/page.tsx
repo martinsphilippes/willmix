@@ -88,13 +88,17 @@ export default async function OrdersPage() {
                   ) : null}
                   <Td className="whitespace-nowrap">
                     <Badge
-                      tone={stageTone(
-                        o.status === "CLOSED"
-                          ? "done"
-                          : stage?.status === "blocked"
-                            ? "blocked"
-                            : "active",
-                      )}
+                      tone={
+                        o.status === "CANCELLED"
+                          ? "danger"
+                          : stageTone(
+                              o.status === "CLOSED"
+                                ? "done"
+                                : stage?.status === "blocked"
+                                  ? "blocked"
+                                  : "active",
+                            )
+                      }
                     >
                       {t(`stage.${o.status}`)}
                       {stage?.status === "blocked"

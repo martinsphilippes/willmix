@@ -440,7 +440,7 @@ export function Progress({
   );
 }
 
-export type StepState = "done" | "active" | "blocked" | "pending";
+export type StepState = "done" | "active" | "blocked" | "pending" | "cancelled";
 
 /**
  * Tom do selo de etapa, igual em todas as telas: concluída verde, em andamento
@@ -470,6 +470,7 @@ export function StepDot({
     active: "bg-brand-600 text-white ring-4 ring-brand-100",
     blocked: "bg-amber-500 text-white ring-4 ring-amber-100",
     pending: "bg-zinc-200 text-zinc-500",
+    cancelled: "bg-zinc-300 text-zinc-600 line-through",
   };
   return (
     <span
@@ -478,7 +479,13 @@ export function StepDot({
         styles[state],
       )}
     >
-      {state === "done" ? "✓" : state === "blocked" ? "!" : children}
+      {state === "done"
+        ? "✓"
+        : state === "blocked"
+          ? "!"
+          : state === "cancelled"
+            ? "×"
+            : children}
     </span>
   );
 }

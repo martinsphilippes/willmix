@@ -32,7 +32,12 @@ export async function customerOrdersInProgress(
       orderBy: "number",
       direction: "desc",
     })
-  ).filter((o) => o.status !== "CLOSED" && canViewOrder(user, o));
+  ).filter(
+    (o): o is Order & { status: StageKey } =>
+      o.status !== "CLOSED" &&
+      o.status !== "CANCELLED" &&
+      canViewOrder(user, o),
+  );
   if (!orders.length) return [];
   const ids = orders.map((o) => o.id);
   const [stages, items, containerItems] = await Promise.all([

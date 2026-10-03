@@ -181,7 +181,8 @@ async function refreshComplianceReviews(user: User, productId: string) {
   const items = await store.list("order_items", { filter: { productId } });
   for (const item of items) {
     const order = await store.get("orders", item.orderId);
-    if (!order || order.status === "CLOSED") continue;
+    if (!order || order.status === "CLOSED" || order.status === "CANCELLED")
+      continue;
     if (check.missing.length === 0) {
       await resolveReviews(user, "order", order.id, {
         rulePrefix: "compliance.",
