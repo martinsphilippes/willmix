@@ -26,6 +26,7 @@ import {
   type User,
 } from "@/lib/db";
 import { canSubmitRequirement, loadOrderProgress } from "@/lib/workflow/engine";
+import { formatMoneyValue } from "@/lib/workflow/money";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
   ackedByUser,
@@ -1244,7 +1245,9 @@ function RequirementRow({
             r.type !== "confirm" &&
             r.type !== "approval" &&
             r.value ? (
-              <span className="mr-2 text-zinc-800">{r.value}</span>
+              <span className="mr-2 text-zinc-800">
+                {formatMoneyValue(r.value)}
+              </span>
             ) : null}
             {doc ? (
               <TextLink

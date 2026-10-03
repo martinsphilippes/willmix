@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { CURRENCIES, isCurrency } from "@/lib/currencies";
+import { moneyValue, parseAmount } from "@/lib/workflow/money";
+import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
@@ -334,8 +335,14 @@ export async function submitRequirementAction(form: FormData) {
       });
       documentId = doc.id;
     }
-    const value =
+    let value =
       requirement.type === "confirm" ? "confirmed" : str(form, "value") || null;
+    // Requisito de dinheiro (custos do desembaraço): moeda escolhida + valor.
+    if (str(form, "amount") || str(form, "currency")) {
+      const amount = parseAmount(str(form, "amount"));
+      if (amount === null) throw new Error("money_required");
+      value = moneyValue(parseCurrency(str(form, "currency"), "BRL"), amount);
+    }
     await submitRequirement(user, requirementId, {
       value,
       documentId,

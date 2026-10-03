@@ -26,6 +26,8 @@ import {
 import { openReview, resolveReviews } from "@/lib/services/reviews";
 import { openAfterSales } from "@/lib/services/after-sales";
 
+import { isMoneyRequirement, parseMoneyValue } from "./money";
+
 export class WorkflowError extends Error {}
 
 /* ------------------------------------------------------------------------ */
@@ -138,10 +140,14 @@ export async function submitRequirement(
   if (requirement.type === "file" || requirement.type === "photo") {
     if (!input.documentId) throw new WorkflowError("document_required");
   } else if (requirement.type === "number") {
+    // Custos (dinheiro): "BRL 1234.56"; um número simples continua aceito.
+    const money =
+      isMoneyRequirement(requirement) && parseMoneyValue(input.value) !== null;
     if (
-      input.value === undefined ||
-      input.value === null ||
-      Number.isNaN(Number(input.value))
+      !money &&
+      (input.value === undefined ||
+        input.value === null ||
+        Number.isNaN(Number(input.value)))
     ) {
       throw new WorkflowError("number_required");
     }

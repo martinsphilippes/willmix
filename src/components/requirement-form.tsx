@@ -1,5 +1,6 @@
 import type { Requirement } from "@/lib/db";
 import type { Translate } from "@/i18n";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   decideRequirementAction,
   submitRequirementAction,
@@ -8,6 +9,9 @@ import { Input, Textarea } from "./ui";
 import { SubmitButton } from "./submit-button";
 import { PhotoInput } from "./photo-input";
 import { FileAutoInput } from "./file-auto-input";
+import { MoneyInput } from "./money-input";
+import { CURRENCIES } from "@/lib/currencies";
+import { isMoneyRequirement, parseMoneyValue } from "@/lib/workflow/money";
 
 /**
  * Formulário inline de um requisito, conforme o tipo. Só renderizado para quem pode preencher.
@@ -93,7 +97,21 @@ export function RequirementForm({
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="requirementId" value={requirement.id} />
-      {requirement.type === "number" ? (
+      {isMoneyRequirement(requirement) ? (
+        <MoneyInput
+          required
+          currencyLabels={
+            Object.fromEntries(
+              CURRENCIES.map((c) => [
+                c,
+                t(`currency.name.${c}` as DictionaryKey),
+              ]),
+            ) as Record<(typeof CURRENCIES)[number], string>
+          }
+          defaultCurrency={parseMoneyValue(defaultValue)?.currency ?? "BRL"}
+          defaultAmount={parseMoneyValue(defaultValue)?.amount ?? null}
+        />
+      ) : requirement.type === "number" ? (
         <Input
           name="value"
           type="number"

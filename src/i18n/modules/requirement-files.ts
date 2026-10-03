@@ -16,6 +16,7 @@ export const pt = {
   "orders.error.upload_missing":
     "O arquivo enviado não foi encontrado no armazenamento. Envie de novo.",
   "orders.error.too_large": "Arquivo grande demais (máx. 50 MB).",
+  "orders.error.money_required": "Informe o valor (ex.: 1.234,56).",
   "orders.error.mime":
     "Formato de arquivo não aceito: envie PDF, imagem, planilha, ZIP ou arte (AI, PSD, EPS, CDR, TIFF).",
   "requirement.remove": "Excluir",
@@ -38,6 +39,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.error.upload_missing":
     "The uploaded file was not found in storage. Please upload it again.",
   "orders.error.too_large": "File too large (max. 50 MB).",
+  "orders.error.money_required": "Enter the amount (e.g. 1,234.56).",
   "orders.error.mime":
     "File format not accepted: send a PDF, image, spreadsheet, ZIP or artwork (AI, PSD, EPS, CDR, TIFF).",
   "requirement.remove": "Delete",
@@ -58,6 +60,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "requirement.file.failed": "上传失败。请检查网络后重试。",
   "orders.error.upload_missing": "未在存储中找到已上传的文件，请重新上传。",
   "orders.error.too_large": "文件过大（最大 50 MB）。",
+  "orders.error.money_required": "请输入金额（例如 1.234,56）。",
   "orders.error.mime":
     "不支持的文件格式：请发送 PDF、图片、表格、ZIP 或设计稿（AI、PSD、EPS、CDR、TIFF）。",
   "requirement.remove": "删除",
