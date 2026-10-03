@@ -142,4 +142,28 @@ describe("pagar o fornecedor", () => {
     expect(finance.paid).toBe(0);
     expect(finance.payable).toBe(200);
   });
+
+  it("o fornecedor confirmar o recebimento conclui a etapa mesmo sem registro da Wellmix", async () => {
+    const order = await orderAtSupplierPayment();
+    const store = getStore();
+    const [stage] = await store.list("stages", {
+      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
+    });
+    const [received] = await store.list("requirements", {
+      filter: { stageId: stage.id, key: "payment_received" },
+    });
+    await submitRequirement(supplierA, received.id, { value: "ok" });
+    const [registered] = await store.list("requirements", {
+      filter: { stageId: stage.id, key: "payment_registered" },
+    });
+    expect(registered.status).toBe("done");
+    expect(registered.value).toBe("supplier_confirmed");
+    expect((await store.get("stages", stage.id))!.status).toBe("done");
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    // A Wellmix ainda registra o pagamento depois, para a conta corrente.
+    const payment = await registerSupplierPayment(admin, order.id, {
+      method: "transfer_copied",
+    });
+    expect(payment.amount).toBe(200);
+  });
 });
