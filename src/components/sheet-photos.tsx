@@ -21,6 +21,7 @@ export function SheetPhotosCard({
   removeAction,
   hint,
   coveredKinds = [],
+  className = "mt-4",
 }: {
   t: Translate;
   photos: ProductPhoto[];
@@ -33,17 +34,18 @@ export function SheetPhotosCard({
   hint?: string;
   /** Tipos cobertos pelas fotos do cadastro do produto (sem precisar reenviar). */
   coveredKinds?: string[];
+  className?: string;
 }) {
   return (
-    <Card title={t("sheet.section.photos")} className="mt-4" dense>
+    <Card title={t("sheet.section.photos")} className={className} dense>
       <span id="photos" className="block scroll-mt-24" />
-      <p className="mb-3 text-sm leading-relaxed text-zinc-600">
+      <p className="mb-2 text-xs leading-relaxed text-zinc-600">
         {hint ?? t("sheet.photos.hint")}
       </p>
       {/* Uma linha por tipo de foto; verde com check quando já tem foto.
           Fotos antigas de tipos que saíram da ficha (referência, cartão) ficam
           visíveis e excluíveis, mas sem botão de adicionar. */}
-      <ul className="space-y-3">
+      <ul className="space-y-1.5">
         {[
           ...SHEET_PHOTO_KINDS,
           ...new Set(
@@ -66,16 +68,16 @@ export function SheetPhotosCard({
             <li
               key={kind}
               className={cx(
-                "flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center sm:gap-4",
+                "flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-2.5 py-1.5 transition",
                 done
                   ? "border-emerald-300 bg-emerald-50"
                   : "border-zinc-200 bg-white",
               )}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex min-w-0 items-center gap-2">
                 <span
                   className={cx(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
                     done
                       ? "bg-emerald-600 text-white"
                       : required
@@ -88,7 +90,7 @@ export function SheetPhotosCard({
                     <svg
                       viewBox="0 0 20 20"
                       fill="currentColor"
-                      className="h-5 w-5"
+                      className="h-4 w-4"
                     >
                       <path
                         fillRule="evenodd"
@@ -99,7 +101,7 @@ export function SheetPhotosCard({
                   ) : null}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-zinc-900">
+                  <p className="text-[13px] font-semibold leading-5 text-zinc-900">
                     {name}
                     {required ? (
                       <span
@@ -121,7 +123,7 @@ export function SheetPhotosCard({
                   ) : null}
                   <p
                     className={cx(
-                      "text-xs",
+                      "text-[11px] leading-4",
                       done ? "font-medium text-emerald-800" : "text-zinc-500",
                     )}
                   >
@@ -131,45 +133,6 @@ export function SheetPhotosCard({
                   </p>
                 </div>
               </div>
-              {done ? (
-                <ul className="flex flex-wrap gap-3 pr-2 pt-2">
-                  {photos.map((p) => (
-                    <li key={p.id} className="relative">
-                      <a
-                        href={`/api/files/${p.documentId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block overflow-hidden rounded-lg border border-emerald-200 bg-white"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                        <img
-                          src={`/api/files/${p.documentId}`}
-                          alt={name}
-                          loading="lazy"
-                          className="h-16 w-16 object-cover"
-                        />
-                      </a>
-                      {canEdit ? (
-                        <form
-                          action={removeAction}
-                          className="absolute -right-2 -top-2"
-                        >
-                          <input
-                            type="hidden"
-                            name={ownerField}
-                            value={ownerId}
-                          />
-                          <input type="hidden" name="photoId" value={p.id} />
-                          <ConfirmDeleteButton
-                            label={t("sheet.photos.remove")}
-                            confirmText={t("sheet.photos.removeConfirm")}
-                          />
-                        </form>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
               {canEdit && addable ? (
                 <form action={addAction} className="shrink-0">
                   <input type="hidden" name={ownerField} value={ownerId} />
@@ -187,9 +150,49 @@ export function SheetPhotosCard({
                     quality={0.78}
                     autoSubmit
                     compact
-                    className="w-full sm:w-auto"
+                    dense
                   />
                 </form>
+              ) : null}
+              {done ? (
+                <ul className="flex flex-wrap gap-2 pr-1">
+                  {photos.map((p) => (
+                    <li key={p.id} className="relative">
+                      <a
+                        href={`/api/files/${p.documentId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block overflow-hidden rounded-lg border border-emerald-200 bg-white"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                        <img
+                          src={`/api/files/${p.documentId}`}
+                          alt={name}
+                          loading="lazy"
+                          className="h-10 w-10 object-cover"
+                        />
+                      </a>
+                      {canEdit ? (
+                        <form
+                          action={removeAction}
+                          className="absolute -right-2 -top-2"
+                        >
+                          <input
+                            type="hidden"
+                            name={ownerField}
+                            value={ownerId}
+                          />
+                          <input type="hidden" name="photoId" value={p.id} />
+                          <ConfirmDeleteButton
+                            label={t("sheet.photos.remove")}
+                            confirmText={t("sheet.photos.removeConfirm")}
+                            className="h-6 w-6"
+                          />
+                        </form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </li>
           );

@@ -274,6 +274,20 @@ export default async function PartyPage({
                     className="py-2.5"
                   />
                 </Field>
+                {party.type === "supplier" ? (
+                  <Field
+                    label={t("catalog.party.storeNumber")}
+                    hint={t("catalog.party.storeNumberHint")}
+                  >
+                    <Input
+                      name="storeNumber"
+                      maxLength={60}
+                      placeholder="A 154678"
+                      defaultValue={party.storeNumber ?? ""}
+                      className="py-2.5"
+                    />
+                  </Field>
+                ) : null}
               </div>
               {party.type === "supplier" ? (
                 <fieldset

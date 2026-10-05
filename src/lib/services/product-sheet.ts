@@ -101,10 +101,17 @@ const sheetCurrency = (c: string | null | undefined) => {
 /** Rascunho da ficha mestre a partir das colunas do produto (quando ainda não há ficha). */
 export function productSheetDraft(
   product: Product,
-  supplier: { name: string; phone?: string | null } | null,
+  supplier: {
+    name: string;
+    phone?: string | null;
+    city?: string | null;
+    storeNumber?: string | null;
+  } | null,
 ): SheetInput {
   return {
     supplierName: supplier?.name ?? null,
+    location: supplier?.city ?? null,
+    supplierStore: supplier?.storeNumber ?? null,
     supplierPhone: supplier?.phone ?? null,
     factoryItemCode: product.supplierSku ?? null,
     currency: sheetCurrency(product.currency),

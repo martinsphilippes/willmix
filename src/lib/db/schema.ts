@@ -413,6 +413,8 @@ export interface Party extends BaseRow {
   bankAccount: string | null;
   bankSwift: string | null;
   bankAddress: string | null;
+  /** Nº da loja no mercado (ex.: Yiwu "A 154678"); vai para a ficha de compra. Nulo nos cadastros antigos. */
+  storeNumber?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -1346,6 +1348,7 @@ export const TABLES: Record<TableName, TableDef> = {
       bankAccount: str(80),
       bankSwift: str(20),
       bankAddress: str(255),
+      storeNumber: str(60),
     },
     indexes: [{ key: "by_type", type: "key", columns: ["type"] }],
   },

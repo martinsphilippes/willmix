@@ -254,12 +254,50 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect(actions).toContain("inspection.remeasure_requested");
     expect(actions).toContain("stage.complete");
 
+    // Datas em ordem: chegada nunca antes do embarque (nos dois sentidos).
+    {
+      const armador = by("shipping_line", "armador");
+      const [shipping] = await store.list("stages", {
+        filter: { orderId: order.id, key: "SHIPPING" as never },
+      });
+      const reqs = await store.list("requirements", {
+        filter: { stageId: shipping.id },
+      });
+      const shipDate = reqs.find((r) => r.key === "ship_date")!;
+      const eta = reqs.find((r) => r.key === "eta")!;
+      await submitRequirement(armador, shipDate.id, { value: "2026-10-13" });
+      await expect(
+        submitRequirement(armador, eta.id, { value: "2026-10-05" }),
+      ).rejects.toThrow("eta_before_ship_date");
+      await expect(
+        submitRequirement(armador, eta.id, { value: "13/10/2026" }),
+      ).rejects.toThrow("date_invalid");
+      await submitRequirement(armador, eta.id, { value: "2026-10-20" });
+      await expect(
+        submitRequirement(armador, shipDate.id, { value: "2026-10-25" }),
+      ).rejects.toThrow("ship_date_after_eta");
+    }
     await fillStage(by("shipping_line", "armador"), order.id, "SHIPPING");
     expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
     await fillStage(by("broker", "despachante"), order.id, "CUSTOMS");
     expect((await store.get("orders", order.id))!.status).toBe("TRANSPORT");
+    // Entrega antes da chegada do navio: recusada.
+    {
+      const [transport] = await store.list("stages", {
+        filter: { orderId: order.id, key: "TRANSPORT" as never },
+      });
+      const delivery = (
+        await store.list("requirements", { filter: { stageId: transport.id } })
+      ).find((r) => r.key === "eta")!;
+      await expect(
+        submitRequirement(by("carrier", "transportador"), delivery.id, {
+          value: "2026-10-15",
+        }),
+      ).rejects.toThrow("delivery_before_eta");
+    }
     await fillStage(by("carrier", "transportador"), order.id, "TRANSPORT", {
       plate: "ABC1D23",
+      eta: "2026-11-01",
     });
     expect((await store.get("orders", order.id))!.status).toBe("DELIVERED");
     await fillStage(customer, order.id, "DELIVERED");

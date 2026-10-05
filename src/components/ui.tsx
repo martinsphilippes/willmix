@@ -331,18 +331,48 @@ export function FieldRow({
   );
 }
 
-export function Input({ className, ...props }: ComponentProps<"input">) {
-  return <input {...props} className={cx(inputClass, className)} />;
-}
-
-export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
+/** `dense`: campo compacto (formulários densos), em vez do campo padrão. */
+export function Input({
+  className,
+  dense,
+  ...props
+}: ComponentProps<"input"> & { dense?: boolean }) {
   return (
-    <textarea {...props} className={cx(inputClass, "min-h-24", className)} />
+    <input
+      {...props}
+      className={cx(dense ? inputDenseClass : inputClass, className)}
+    />
   );
 }
 
-export function Select({ className, ...props }: ComponentProps<"select">) {
-  return <select {...props} className={cx(inputClass, className)} />;
+export function Textarea({
+  className,
+  dense,
+  ...props
+}: ComponentProps<"textarea"> & { dense?: boolean }) {
+  return (
+    <textarea
+      {...props}
+      className={cx(
+        dense ? inputDenseClass : inputClass,
+        dense ? "min-h-16" : "min-h-24",
+        className,
+      )}
+    />
+  );
+}
+
+export function Select({
+  className,
+  dense,
+  ...props
+}: ComponentProps<"select"> & { dense?: boolean }) {
+  return (
+    <select
+      {...props}
+      className={cx(dense ? inputDenseClass : inputClass, className)}
+    />
+  );
 }
 
 export function Table({

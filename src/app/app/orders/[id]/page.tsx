@@ -25,7 +25,11 @@ import {
   type Requirement,
   type User,
 } from "@/lib/db";
-import { canSubmitRequirement, loadOrderProgress } from "@/lib/workflow/engine";
+import {
+  canSubmitRequirement,
+  dateBoundsFor,
+  loadOrderProgress,
+} from "@/lib/workflow/engine";
 import { formatMoneyValue } from "@/lib/workflow/money";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
@@ -468,6 +472,14 @@ export default async function OrderPage({
             )
             .map((stage) => {
               const reqs = requirements.filter((r) => r.stageId === stage.id);
+              // Datas já informadas no pedido (limites: chegada ≥ embarque, entrega ≥ chegada).
+              const dateValueOf = (sk: string, key: string) =>
+                requirements.find(
+                  (x) =>
+                    x.key === key &&
+                    x.status === "done" &&
+                    stages.find((st) => st.id === x.stageId)?.key === sk,
+                )?.value ?? null;
               const open =
                 stage.status === "active" || stage.status === "blocked";
               return (
@@ -568,6 +580,11 @@ export default async function OrderPage({
                             order={order}
                             user={user}
                             t={t}
+                            dateBounds={
+                              r.type === "date"
+                                ? dateBoundsFor(stage.key, r.key, dateValueOf)
+                                : undefined
+                            }
                             doc={docById(r.documentId)}
                             submittedBy={userName(r.submittedByUserId)}
                             open={open}
@@ -1159,8 +1176,11 @@ function RequirementRow({
   sheetHref,
   sheetEditable,
   sheetHint,
+  dateBounds,
 }: {
   requirement: Requirement;
+  /** Data: limites vindos das outras datas do pedido. */
+  dateBounds?: { min?: string; max?: string };
   order: {
     id: string;
     customerId: string;
@@ -1313,7 +1333,12 @@ function RequirementRow({
         ) : null
       ) : canAct ? (
         <div className="shrink-0">
-          <RequirementForm requirement={r} orderId={order.id} t={t} />
+          <RequirementForm
+            requirement={r}
+            orderId={order.id}
+            t={t}
+            dateBounds={dateBounds}
+          />
         </div>
       ) : canRemeasure ? (
         <div className="shrink-0">

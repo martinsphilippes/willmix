@@ -122,76 +122,82 @@ export default async function PurchaseSheetPage({
 
       {/* Ordem da ficha: campos, fotos e, por último, Salvar. O card de fotos tem
           formulários próprios (cada foto sobe na hora, no lugar), por isso o botão
-          fica fora do <form> e aponta para ele pelo atributo `form`. */}
-      <form
-        id="purchase-sheet"
-        action={savePurchaseSheetAction}
-        className="space-y-4"
-      >
-        <input type="hidden" name="orderId" value={id} />
-
-        <PurchaseSheetFields
-          t={t}
-          sheet={sheet}
-          plan={plan}
-          containerType={view.containerType}
-          containerTypes={view.containerTypes}
-          editSupplier={access.editSupplier}
-          editCustoms={access.editCustoms}
-          requestSchedule={request?.schedule ?? null}
-          requestUnit={request?.unit ?? "un"}
-        />
-      </form>
-
-      <SheetPhotosCard
-        t={t}
-        photos={view.photos}
-        canEdit={view.access.addPhotos}
-        ownerField="orderId"
-        ownerId={id}
-        addAction={addPurchaseSheetPhotosAction}
-        removeAction={removePurchaseSheetPhotoAction}
-        coveredKinds={view.catalogPhotoKinds}
-      />
-
-      {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}
-      {view.saved && isWellmix(user) && view.sheet.productId ? (
+          fica fora do <form> e aponta para ele pelo atributo `form`.
+          Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
+          o <form> é display: contents para os cards entrarem na grade. */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <form
-          action={adoptSheetIntoProductAction}
-          className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm"
-          data-adopt-sheet
+          id="purchase-sheet"
+          action={savePurchaseSheetAction}
+          className="contents"
         >
-          <input type="hidden" name="ownerId" value={id} />
-          <input
-            type="hidden"
-            name="back"
-            value={`/app/orders/${id}/purchase-sheet`}
-          />
-          <span className="min-w-0 flex-1 text-xs text-zinc-600">
-            {t("productSheet.adoptHint")}
-          </span>
-          <SubmitButton variant="secondary">
-            {t("productSheet.adopt")}
-          </SubmitButton>
-        </form>
-      ) : null}
+          <input type="hidden" name="orderId" value={id} />
 
-      {/* Rodapé (fixo no celular): Salvar, para quem edita, e Voltar ao pedido. */}
-      <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex gap-3 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
-        {access.editSupplier || access.editCustoms ? (
-          <SubmitButton
-            form="purchase-sheet"
+          <PurchaseSheetFields
+            t={t}
+            sheet={sheet}
+            plan={plan}
+            containerType={view.containerType}
+            containerTypes={view.containerTypes}
+            editSupplier={access.editSupplier}
+            editCustoms={access.editCustoms}
+            requestSchedule={request?.schedule ?? null}
+            requestUnit={request?.unit ?? "un"}
+            records={view.records}
+          />
+        </form>
+
+        <SheetPhotosCard
+          t={t}
+          photos={view.photos}
+          canEdit={view.access.addPhotos}
+          ownerField="orderId"
+          ownerId={id}
+          addAction={addPurchaseSheetPhotosAction}
+          removeAction={removePurchaseSheetPhotoAction}
+          coveredKinds={view.catalogPhotoKinds}
+          className="lg:order-4"
+        />
+
+        {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}
+        {view.saved && isWellmix(user) && view.sheet.productId ? (
+          <form
+            action={adoptSheetIntoProductAction}
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm lg:order-7 lg:col-span-2"
+            data-adopt-sheet
+          >
+            <input type="hidden" name="ownerId" value={id} />
+            <input
+              type="hidden"
+              name="back"
+              value={`/app/orders/${id}/purchase-sheet`}
+            />
+            <span className="min-w-0 flex-1 text-xs text-zinc-600">
+              {t("productSheet.adoptHint")}
+            </span>
+            <SubmitButton variant="secondary">
+              {t("productSheet.adopt")}
+            </SubmitButton>
+          </form>
+        ) : null}
+
+        {/* Rodapé (fixo no celular): Salvar, para quem edita, e Voltar ao pedido. */}
+        <div className="sticky bottom-0 z-10 -mx-4 mt-2 flex gap-3 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 lg:order-8 lg:col-span-2">
+          {access.editSupplier || access.editCustoms ? (
+            <SubmitButton
+              form="purchase-sheet"
+              className="flex-1 py-3 text-base sm:flex-none"
+            >
+              {t("sheet.save")}
+            </SubmitButton>
+          ) : null}
+          <LinkButton
+            href={`/app/orders/${id}`}
             className="flex-1 py-3 text-base sm:flex-none"
           >
-            {t("sheet.save")}
-          </SubmitButton>
-        ) : null}
-        <LinkButton
-          href={`/app/orders/${id}`}
-          className="flex-1 py-3 text-base sm:flex-none"
-        >
-          {t("sheet.back")}
-        </LinkButton>
+            {t("sheet.back")}
+          </LinkButton>
+        </div>
       </div>
     </>
   );

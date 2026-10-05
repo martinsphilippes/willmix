@@ -13,6 +13,13 @@ import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
 import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import {
+  fillRecordsFromSheet,
+  recordFields,
+  sheetRecords,
+  withRecordDefaults,
+  type SheetRecords,
+} from "./sheet-records";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { uploadDocument } from "./documents";
 import {
@@ -243,6 +250,8 @@ async function prefill(
     earlier?.source === "quote"
       ? null
       : await masterSheetInput(product?.id ?? null);
+  // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
+  const records = recordFields(supplier, product);
   if (master) {
     return {
       prefillSource: "master",
@@ -253,6 +262,7 @@ async function prefill(
       currency: currencyOf(quote?.currency) ?? master.currency ?? null,
       price: quote?.price ?? master.price ?? null,
       lots: requestLots(master.masterCartonQty),
+      ...records,
     };
   }
   if (earlier) {
@@ -268,14 +278,13 @@ async function prefill(
           ? normalizeLots(earlier.sheet.lots)
           : requestLots(earlier.sheet.masterCartonQty),
       prefillSource: earlier.source,
+      ...records,
     };
   }
   return {
     prefillSource: "catalog",
     productId: product?.id ?? null,
-    supplierName: supplier?.name ?? null,
-    supplierPhone: supplier?.phone ?? null,
-    factoryItemCode: product?.supplierSku ?? null,
+    ...records,
     currency: currencyOf(quote?.currency ?? product?.currency),
     price: quote?.price ?? product?.price ?? null,
     moq: product?.moq ?? null,
@@ -345,6 +354,8 @@ export interface SheetView {
   photos: ProductPhoto[];
   /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
   catalogPhotoKinds: string[];
+  /** Bloco Fornecedor: o que falta nos cadastros do fornecedor e do produto. */
+  records: SheetRecords;
   plan: SheetPlan;
   missing: SheetMissing[];
   containerType: string | null;
@@ -365,7 +376,15 @@ export async function getSheetForUser(
     limit: 1,
   });
   const draft = existing ? null : await prefill(order);
-  const sheet = existing ?? draft!;
+  const stored = existing ?? draft!;
+  const request = await store.get("requests", order.requestId);
+  const records = await sheetRecords(
+    user,
+    order.supplierId,
+    stored.productId ?? request?.productId ?? null,
+  );
+  // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
+  const sheet = existing ? withRecordDefaults(existing, records) : stored;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
@@ -375,6 +394,7 @@ export async function getSheetForUser(
     saved: !!existing,
     prefillSource: draft?.prefillSource ?? null,
     photos,
+    records,
     plan: planSheet(
       {
         lots: sheet.lots ?? null,
@@ -388,9 +408,7 @@ export async function getSheetForUser(
       container.capacity,
     ),
     missing: missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
-    catalogPhotoKinds: await catalogPhotoKinds(
-      (await store.get("requests", order.requestId))?.productId,
-    ),
+    catalogPhotoKinds: await catalogPhotoKinds(request?.productId),
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -450,6 +468,14 @@ export async function saveSheet(
     orderId,
     `Ficha de compra: ${Object.keys(patch).length} campo(s)`,
   );
+  // Completa o cadastro do fornecedor/produto com o que ele não tinha.
+  if (access.editSupplier)
+    await fillRecordsFromSheet(
+      user,
+      order.supplierId,
+      sheet.productId ?? null,
+      sheet,
+    );
   const missing = await syncRequirements(user, order, sheet);
   return { sheet, missing };
 }

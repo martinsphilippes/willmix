@@ -336,6 +336,7 @@ export async function updatePartyExtraAction(form: FormData) {
         address: optionalText(255),
         contactName: optionalText(120),
         wechat: optionalText(80),
+        storeNumber: optionalText(60),
         bankBeneficiary: optionalText(160),
         bankName: optionalText(160),
         bankAccount: optionalText(80),
@@ -347,6 +348,7 @@ export async function updatePartyExtraAction(form: FormData) {
         address: str(form, "address") || null,
         contactName: str(form, "contactName") || null,
         wechat: str(form, "wechat") || null,
+        storeNumber: str(form, "storeNumber") || null,
         bankBeneficiary: str(form, "bankBeneficiary") || null,
         bankName: str(form, "bankName") || null,
         bankAccount: str(form, "bankAccount") || null,
@@ -363,6 +365,7 @@ export async function updatePartyExtraAction(form: FormData) {
       "bankAccount",
       "bankSwift",
       "bankAddress",
+      "storeNumber",
     ] as const;
     const update: Partial<typeof parsed> = {
       city: parsed.city,
@@ -384,6 +387,7 @@ export async function updatePartyExtraAction(form: FormData) {
         address: party.address,
         contactName: party.contactName,
         wechat: party.wechat,
+        storeNumber: party.storeNumber ?? null,
         bankBeneficiary: party.bankBeneficiary,
         bankName: party.bankName,
         bankAccount: party.bankAccount,

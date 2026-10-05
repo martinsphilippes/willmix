@@ -87,6 +87,7 @@ export const pt = {
   "sheet.lot.title": "Programação {n}",
   "sheet.lot.column": "Prog.",
   "sheet.lot.add": "Programação",
+  "sheet.lot.remove": "Remover programação {n}",
   "sheet.lot.requested": "Pedido do cliente: {quantity} {unit} em {date}",
   "sheet.lot.interval": "Saída em (dias)",
   "sheet.lot.intervalHint":
@@ -199,6 +200,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.lot.title": "Shipment {n}",
   "sheet.lot.column": "Ship.",
   "sheet.lot.add": "Shipment",
+  "sheet.lot.remove": "Remove shipment {n}",
   "sheet.lot.requested": "Customer request: {quantity} {unit} on {date}",
   "sheet.lot.interval": "Departure in (days)",
   "sheet.lot.intervalHint":
@@ -309,6 +311,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.lot.title": "第 {n} 批",
   "sheet.lot.column": "批次",
   "sheet.lot.add": "批次",
+  "sheet.lot.remove": "删除第 {n} 批",
   "sheet.lot.requested": "客户需求：{quantity} {unit}，{date}",
   "sheet.lot.interval": "出货间隔（天）",
   "sheet.lot.intervalHint": "第 1 批从开始生产算起，其余从上一批算起的天数。",

@@ -30,6 +30,87 @@ import { isMoneyRequirement, parseMoneyValue } from "./money";
 
 export class WorkflowError extends Error {}
 
+/*
+ * Datas que precisam vir em ordem: a previsão de chegada não pode ser antes
+ * da data de embarque, nem a previsão de entrega antes da chegada. Vale nos
+ * dois sentidos (mudar o embarque para depois da chegada também é recusado).
+ */
+const DATE_ORDER: Array<{
+  before: { stage: string; key: string };
+  after: { stage: string; key: string };
+  /** Código do erro quando "after" < "before", e quando "before" > "after". */
+  errors: [string, string];
+}> = [
+  {
+    before: { stage: "SHIPPING", key: "ship_date" },
+    after: { stage: "SHIPPING", key: "eta" },
+    errors: ["eta_before_ship_date", "ship_date_after_eta"],
+  },
+  {
+    before: { stage: "SHIPPING", key: "eta" },
+    after: { stage: "TRANSPORT", key: "eta" },
+    errors: ["delivery_before_eta", "eta_after_delivery"],
+  },
+];
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
+
+/** Limites (min/max) de um requisito de data a partir dos outros já informados. */
+export function dateBoundsFor(
+  stageKey: string,
+  requirementKey: string,
+  valueOf: (stageKey: string, key: string) => string | null | undefined,
+): { min?: string; max?: string } {
+  const out: { min?: string; max?: string } = {};
+  for (const rule of DATE_ORDER) {
+    if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
+      const v = valueOf(rule.before.stage, rule.before.key);
+      if (v && ISO_DAY.test(v)) out.min = v.slice(0, 10);
+    }
+    if (rule.before.stage === stageKey && rule.before.key === requirementKey) {
+      const v = valueOf(rule.after.stage, rule.after.key);
+      if (v && ISO_DAY.test(v)) out.max = v.slice(0, 10);
+    }
+  }
+  return out;
+}
+
+async function assertDateOrder(
+  orderId: string,
+  stageKey: string,
+  requirementKey: string,
+  value: string,
+) {
+  if (!ISO_DAY.test(value) || Number.isNaN(Date.parse(value)))
+    throw new WorkflowError("date_invalid");
+  const store = getStore();
+  const [stages, reqs] = await Promise.all([
+    store.list("stages", { filter: { orderId } }),
+    store.list("requirements", { filter: { orderId } }),
+  ]);
+  const stageKeyOf = new Map(stages.map((s) => [s.id, s.key as string]));
+  const valueOf = (sk: string, key: string) =>
+    reqs.find(
+      (r) =>
+        r.key === key &&
+        r.status === "done" &&
+        stageKeyOf.get(r.stageId) === sk,
+    )?.value ?? null;
+  const day = value.slice(0, 10);
+  for (const rule of DATE_ORDER) {
+    if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
+      const before = valueOf(rule.before.stage, rule.before.key);
+      if (before && day < before.slice(0, 10))
+        throw new WorkflowError(rule.errors[0]);
+    }
+    if (rule.before.stage === stageKey && rule.before.key === requirementKey) {
+      const after = valueOf(rule.after.stage, rule.after.key);
+      if (after && day > after.slice(0, 10))
+        throw new WorkflowError(rule.errors[1]);
+    }
+  }
+}
+
 /* ------------------------------------------------------------------------ */
 /* Criação das etapas de um pedido                                           */
 /* ------------------------------------------------------------------------ */
@@ -153,6 +234,13 @@ export async function submitRequirement(
     }
   } else if (requirement.type === "text" || requirement.type === "date") {
     if (!input.value) throw new WorkflowError("value_required");
+    if (requirement.type === "date")
+      await assertDateOrder(
+        order.id,
+        stage.key,
+        requirement.key,
+        String(input.value),
+      );
   }
 
   const before = { status: requirement.status, value: requirement.value };
