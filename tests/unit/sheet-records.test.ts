@@ -101,6 +101,12 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
     expect((await store.get("products", "prod-panela"))!.supplierSku).toBe(
       "SZA-NEW",
     );
+    // Nem a Wellmix grava na ficha de B o código no produto de A.
+    await store.update("products", "prod-panela", { supplierSku: null });
+    await qs.saveQuoteSheet(admin, quoteB.id, { factoryItemCode: "ADMIN-B" });
+    expect(
+      (await store.get("products", "prod-panela"))!.supplierSku ?? null,
+    ).toBeNull();
     const after = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
     expect(after.records.missing).toEqual([]);
   });

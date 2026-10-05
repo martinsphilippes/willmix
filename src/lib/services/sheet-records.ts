@@ -162,10 +162,11 @@ export async function fillRecordsFromSheet(
   const sku = clean(sheet.factoryItemCode);
   if (productId && sku) {
     const product = await store.get("products", productId);
+    // Só no produto desse fornecedor (ou sem fornecedor), seja quem for o usuário.
     if (
       product &&
       !clean(product.supplierSku) &&
-      (product.supplierId === supplierId || isWellmix(user))
+      productOfSupplier({ id: supplierId }, product)
     ) {
       try {
         await store.update("products", product.id, {

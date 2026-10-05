@@ -73,110 +73,216 @@ export function PurchaseSheetFields({
   const F = SheetField;
   return (
     <>
-      <Card title={t("sheet.section.supplier")} dense>
-        <Rows>
-          <F t={t} k="sheetDate" size="sm">
-            <input
-              type="date"
-              name="sheetDate"
-              defaultValue={dateValue(sheet.sheetDate)}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} k="location" size="md">
-            <input
-              name="location"
-              maxLength={80}
-              placeholder="YIWU"
-              defaultValue={sheet.location ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} k="supplierName" size="lg" req>
-            <input
-              name="supplierName"
-              maxLength={160}
-              defaultValue={sheet.supplierName ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} k="supplierStore" size="sm">
-            <input
-              name="supplierStore"
-              maxLength={60}
-              placeholder="A 154678"
-              defaultValue={sheet.supplierStore ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} k="supplierPhone" size="md">
-            <input
-              name="supplierPhone"
-              type="tel"
-              maxLength={40}
-              defaultValue={sheet.supplierPhone ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} k="factoryItemCode" size="md">
-            <input
-              name="factoryItemCode"
-              maxLength={60}
-              defaultValue={sheet.factoryItemCode ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-        </Rows>
-        {records ? (
-          <div
-            className="mt-3 space-y-1 text-xs text-zinc-500"
-            data-sheet-records={records.missing.length ? "missing" : "complete"}
-          >
-            <p>{t("sheet.records.hint")}</p>
-            {records.missing.length ? (
-              <p className="text-amber-800">
-                {t("sheet.records.missing", {
-                  fields: records.missing
-                    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
-                    .join(", "),
-                })}
-              </p>
-            ) : (
-              <p className="text-emerald-800">{t("sheet.records.complete")}</p>
-            )}
-            {records.canEdit ? (
-              <p className="flex flex-wrap gap-x-3 gap-y-1">
-                {records.supplierId &&
-                records.missing.some((k) => k !== "factoryItemCode") ? (
-                  <Link
-                    href={`/app/parties/${records.supplierId}`}
-                    className="font-medium text-brand-700 underline-offset-2 hover:underline"
-                    data-records-edit-supplier
-                  >
-                    {t("sheet.records.editSupplier")}
-                  </Link>
-                ) : null}
-                {records.productId &&
-                records.missing.includes("factoryItemCode") ? (
-                  <Link
-                    href={`/app/products/${records.productId}`}
-                    className="font-medium text-brand-700 underline-offset-2 hover:underline"
-                    data-records-edit-product
-                  >
-                    {t("sheet.records.editProduct")}
-                  </Link>
-                ) : null}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-      </Card>
+      {/* Fornecedor e Produto lado a lado: primeiro quem vende, depois o que se compra. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title={t("sheet.section.supplier")} dense>
+          <Rows>
+            <F t={t} k="sheetDate" size="sm">
+              <input
+                type="date"
+                name="sheetDate"
+                defaultValue={dateValue(sheet.sheetDate)}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} k="location" size="md">
+              <input
+                name="location"
+                maxLength={80}
+                placeholder="YIWU"
+                defaultValue={sheet.location ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} k="supplierName" size="lg" req>
+              <input
+                name="supplierName"
+                maxLength={160}
+                defaultValue={sheet.supplierName ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} k="supplierStore" size="sm">
+              <input
+                name="supplierStore"
+                maxLength={60}
+                placeholder="A 154678"
+                defaultValue={sheet.supplierStore ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} k="supplierPhone" size="md">
+              <input
+                name="supplierPhone"
+                type="tel"
+                maxLength={40}
+                defaultValue={sheet.supplierPhone ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} k="factoryItemCode" size="md">
+              <input
+                name="factoryItemCode"
+                maxLength={60}
+                defaultValue={sheet.factoryItemCode ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+          </Rows>
+          {records ? (
+            <div
+              className="mt-3 space-y-1 text-xs text-zinc-500"
+              data-sheet-records={
+                records.missing.length ? "missing" : "complete"
+              }
+            >
+              <p>{t("sheet.records.hint")}</p>
+              {records.missing.length ? (
+                <p className="text-amber-800">
+                  {t("sheet.records.missing", {
+                    fields: records.missing
+                      .map((k) => t(`sheet.field.${k}` as DictionaryKey))
+                      .join(", "),
+                  })}
+                </p>
+              ) : (
+                <p className="text-emerald-800">
+                  {t("sheet.records.complete")}
+                </p>
+              )}
+              {records.canEdit ? (
+                <p className="flex flex-wrap gap-x-3 gap-y-1">
+                  {records.supplierId &&
+                  records.missing.some((k) => k !== "factoryItemCode") ? (
+                    <Link
+                      href={`/app/parties/${records.supplierId}`}
+                      className="font-medium text-brand-700 underline-offset-2 hover:underline"
+                      data-records-edit-supplier
+                    >
+                      {t("sheet.records.editSupplier")}
+                    </Link>
+                  ) : null}
+                  {records.productId &&
+                  records.missing.includes("factoryItemCode") ? (
+                    <Link
+                      href={`/app/products/${records.productId}`}
+                      className="font-medium text-brand-700 underline-offset-2 hover:underline"
+                      data-records-edit-product
+                    >
+                      {t("sheet.records.editProduct")}
+                    </Link>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </Card>
+        <Card title={t("sheet.section.product")} dense>
+          <Rows>
+            <F t={t} k="netWeightPcKg" size="xs" req>
+              <Num
+                name="netWeightPcKg"
+                value={numValue(sheet.netWeightPcKg)}
+                disabled={sup}
+              />
+            </F>
+            <F t={t} k="grossWeightPcKg" size="xs" req>
+              <Num
+                name="grossWeightPcKg"
+                value={numValue(sheet.grossWeightPcKg)}
+                disabled={sup}
+              />
+            </F>
+            <F t={t} k="capacityMl" size="xs">
+              <Num
+                name="capacityMl"
+                value={numValue(sheet.capacityMl)}
+                disabled={sup}
+              />
+            </F>
+            <F t={t} k="colorAssortment" size="lg" req>
+              <input
+                name="colorAssortment"
+                maxLength={200}
+                placeholder="WHITE / BLACK / RED"
+                defaultValue={sheet.colorAssortment ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <FieldRow
+              label={t("pantone.label")}
+              size="full"
+              hint={t("pantone.hint")}
+            >
+              <PantonePicker
+                name="colorPantones"
+                initial={sheet.colorPantones ?? []}
+                disabled={sup}
+                max={MAX_PANTONE_PER_SHEET}
+                labels={{
+                  search: t("pantone.search"),
+                  scaleAll: t("pantone.scale.all"),
+                  scales: {
+                    C: t("pantone.scale.C"),
+                    U: t("pantone.scale.U"),
+                    M: t("pantone.scale.M"),
+                    P: t("pantone.scale.P"),
+                    TCX: t("pantone.scale.TCX"),
+                  },
+                  loading: t("pantone.loading"),
+                  none: t("pantone.none"),
+                  more: t("pantone.more"),
+                  remove: t("pantone.remove"),
+                  max: t("pantone.max"),
+                  empty: t("pantone.empty"),
+                }}
+              />
+            </FieldRow>
+            <F t={t} k="material" size="lg" req>
+              <input
+                name="material"
+                maxLength={200}
+                placeholder="PLASTIC / IRON"
+                defaultValue={sheet.material ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} k="powerSource" size="sm">
+              <select
+                name="powerSource"
+                defaultValue={sheet.powerSource ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              >
+                <option value="">—</option>
+                {SHEET_POWER_SOURCES.map((v) => (
+                  <option key={v} value={v}>
+                    {t(`sheet.power.${v}` as DictionaryKey)}
+                  </option>
+                ))}
+              </select>
+            </F>
+            <F t={t} k="powerDetail" size="md">
+              <input
+                name="powerDetail"
+                maxLength={60}
+                placeholder="12V"
+                defaultValue={sheet.powerDetail ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+          </Rows>
+        </Card>
+      </div>
 
       <Card title={t("sheet.section.price")} dense>
         <Rows>
@@ -310,106 +416,6 @@ export function PurchaseSheetFields({
         </Rows>
       </Card>
 
-      <Card title={t("sheet.section.product")} dense>
-        <Rows>
-          <F t={t} k="netWeightPcKg" size="xs" req>
-            <Num
-              name="netWeightPcKg"
-              value={numValue(sheet.netWeightPcKg)}
-              disabled={sup}
-            />
-          </F>
-          <F t={t} k="grossWeightPcKg" size="xs" req>
-            <Num
-              name="grossWeightPcKg"
-              value={numValue(sheet.grossWeightPcKg)}
-              disabled={sup}
-            />
-          </F>
-          <F t={t} k="capacityMl" size="xs">
-            <Num
-              name="capacityMl"
-              value={numValue(sheet.capacityMl)}
-              disabled={sup}
-            />
-          </F>
-          <F t={t} k="colorAssortment" size="lg" req>
-            <input
-              name="colorAssortment"
-              maxLength={200}
-              placeholder="WHITE / BLACK / RED"
-              defaultValue={sheet.colorAssortment ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <FieldRow
-            label={t("pantone.label")}
-            size="full"
-            hint={t("pantone.hint")}
-          >
-            <PantonePicker
-              name="colorPantones"
-              initial={sheet.colorPantones ?? []}
-              disabled={sup}
-              max={MAX_PANTONE_PER_SHEET}
-              labels={{
-                search: t("pantone.search"),
-                scaleAll: t("pantone.scale.all"),
-                scales: {
-                  C: t("pantone.scale.C"),
-                  U: t("pantone.scale.U"),
-                  M: t("pantone.scale.M"),
-                  P: t("pantone.scale.P"),
-                  TCX: t("pantone.scale.TCX"),
-                },
-                loading: t("pantone.loading"),
-                none: t("pantone.none"),
-                more: t("pantone.more"),
-                remove: t("pantone.remove"),
-                max: t("pantone.max"),
-                empty: t("pantone.empty"),
-              }}
-            />
-          </FieldRow>
-          <F t={t} k="material" size="lg" req>
-            <input
-              name="material"
-              maxLength={200}
-              placeholder="PLASTIC / IRON"
-              defaultValue={sheet.material ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} k="powerSource" size="sm">
-            <select
-              name="powerSource"
-              defaultValue={sheet.powerSource ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            >
-              <option value="">—</option>
-              {SHEET_POWER_SOURCES.map((v) => (
-                <option key={v} value={v}>
-                  {t(`sheet.power.${v}` as DictionaryKey)}
-                </option>
-              ))}
-            </select>
-          </F>
-          <F t={t} k="powerDetail" size="md">
-            <input
-              name="powerDetail"
-              maxLength={60}
-              placeholder="12V"
-              defaultValue={sheet.powerDetail ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-        </Rows>
-      </Card>
-
       <Card title={t("sheet.section.schedule")} dense>
         <Rows>
           {!master ? (
@@ -496,6 +502,7 @@ export function PurchaseSheetFields({
                 need: t("sheet.fill.need"),
                 applied: t("sheet.fill.applied"),
                 addLot: t("sheet.lot.add"),
+                removeLot: t("sheet.lot.remove", { n: "{n}" }),
                 requested: t("sheet.lot.requested", {
                   quantity: "{quantity}",
                   unit: "{unit}",
