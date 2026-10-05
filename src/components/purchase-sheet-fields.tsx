@@ -73,8 +73,10 @@ export function PurchaseSheetFields({
   const F = SheetField;
   return (
     <>
-      {/* Fornecedor e Produto lado a lado: primeiro quem vende, depois o que se compra. */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Fornecedor e Produto lado a lado: primeiro quem vende, depois o que se compra.
+          Na ficha do pedido/cotação a página é uma grade de 2 colunas (o <form> é
+          display: contents): daí as classes de ordem e de largura dos cards. */}
+      <div className="grid gap-4 lg:order-1 lg:col-span-2 lg:grid-cols-2">
         <Card title={t("sheet.section.supplier")} dense>
           <Rows>
             <F t={t} k="sheetDate" size="sm">
@@ -284,139 +286,141 @@ export function PurchaseSheetFields({
         </Card>
       </div>
 
-      <Card title={t("sheet.section.price")} dense>
-        <Rows>
-          <F t={t} k="incoterm" size="xs" req>
-            <select
-              name="incoterm"
-              defaultValue={sheet.incoterm ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
+      {/* Caixa e embalagem à esquerda, preço e condições à direita. */}
+      <div className="grid gap-4 lg:order-2 lg:col-span-2 lg:grid-cols-2">
+        <Card title={t("sheet.section.carton")} dense>
+          <Rows>
+            <F t={t} k="masterCartonQty" size="xs" req>
+              <Num
+                name="masterCartonQty"
+                value={numValue(sheet.masterCartonQty)}
+                disabled={sup}
+                int
+              />
+            </F>
+            <F t={t} k="innerQty" size="xs">
+              <Num
+                name="innerQty"
+                value={numValue(sheet.innerQty)}
+                disabled={sup}
+                int
+              />
+            </F>
+            <F
+              t={t}
+              k="cbmPerCarton"
+              size="xs"
+              req
+              hint={
+                plan.cbmFromSize !== null
+                  ? t("sheet.cbmFromSize", { cbm: String(plan.cbmFromSize) })
+                  : undefined
+              }
             >
-              <option value="">—</option>
-              {SHEET_INCOTERMS.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </F>
-          <F t={t} k="currency" size="sm" req>
-            <select
-              name="currency"
-              defaultValue={sheet.currency ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
+              <Num
+                name="cbmPerCarton"
+                value={numValue(sheet.cbmPerCarton)}
+                disabled={sup}
+              />
+            </F>
+            <F t={t} k="packageType" size="md" req>
+              <input
+                name="packageType"
+                maxLength={120}
+                placeholder="COLOR BOX"
+                defaultValue={sheet.packageType ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+            {/* Altura × Largura × Comprimento numa linha só. */}
+            <FieldRow
+              label={t("sheet.field.size")}
+              required
+              requiredTitle={required}
+              size="full"
             >
-              <option value="">—</option>
-              {SHEET_CURRENCIES.map((v) => (
-                <option key={v} value={v}>
-                  {v === "RMB"
-                    ? "Yuan (RMB)"
-                    : t(`currency.name.${v}` as DictionaryKey)}
-                </option>
-              ))}
-            </select>
-          </F>
-          <F t={t} k="price" size="sm" req>
-            <MoneyInput
-              name="price"
-              watchField="currency"
-              defaultAmount={numValue(sheet.price) || null}
-              disabled={sup}
-              decimals={4}
-              size="sm"
-            />
-          </F>
-          <F t={t} k="moq" size="xs" req>
-            <Num name="moq" value={numValue(sheet.moq)} disabled={sup} int />
-          </F>
-        </Rows>
-      </Card>
-
-      <Card title={t("sheet.section.carton")} dense>
-        <Rows>
-          <F t={t} k="masterCartonQty" size="xs" req>
-            <Num
-              name="masterCartonQty"
-              value={numValue(sheet.masterCartonQty)}
-              disabled={sup}
-              int
-            />
-          </F>
-          <F t={t} k="innerQty" size="xs">
-            <Num
-              name="innerQty"
-              value={numValue(sheet.innerQty)}
-              disabled={sup}
-              int
-            />
-          </F>
-          <F
-            t={t}
-            k="cbmPerCarton"
-            size="xs"
-            req
-            hint={
-              plan.cbmFromSize !== null
-                ? t("sheet.cbmFromSize", { cbm: String(plan.cbmFromSize) })
-                : undefined
-            }
-          >
-            <Num
-              name="cbmPerCarton"
-              value={numValue(sheet.cbmPerCarton)}
-              disabled={sup}
-            />
-          </F>
-          <F t={t} k="packageType" size="md" req>
-            <input
-              name="packageType"
-              maxLength={120}
-              placeholder="COLOR BOX"
-              defaultValue={sheet.packageType ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
-          {/* Altura × Largura × Comprimento numa linha só. */}
-          <FieldRow
-            label={t("sheet.field.size")}
-            required
-            requiredTitle={required}
-            size="full"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              {(
-                [
-                  ["heightCm", sheet.heightCm],
-                  ["widthCm", sheet.widthCm],
-                  ["lengthCm", sheet.lengthCm],
-                ] as const
-              ).map(([name, value], i) => (
-                <label key={name} className="flex items-center gap-1.5">
-                  {i > 0 ? (
-                    <span aria-hidden className="text-xs text-zinc-400">
-                      ×
+              <div className="flex flex-wrap items-center gap-2">
+                {(
+                  [
+                    ["heightCm", sheet.heightCm],
+                    ["widthCm", sheet.widthCm],
+                    ["lengthCm", sheet.lengthCm],
+                  ] as const
+                ).map(([name, value], i) => (
+                  <label key={name} className="flex items-center gap-1.5">
+                    {i > 0 ? (
+                      <span aria-hidden className="text-xs text-zinc-400">
+                        ×
+                      </span>
+                    ) : null}
+                    <span className="text-xs text-zinc-600">
+                      {t(`sheet.field.${name}` as DictionaryKey)}
                     </span>
-                  ) : null}
-                  <span className="text-xs text-zinc-600">
-                    {t(`sheet.field.${name}` as DictionaryKey)}
-                  </span>
-                  <Num
-                    name={name}
-                    value={numValue(value)}
-                    disabled={sup}
-                    className="w-20"
-                  />
-                </label>
-              ))}
-            </div>
-          </FieldRow>
-        </Rows>
-      </Card>
+                    <Num
+                      name={name}
+                      value={numValue(value)}
+                      disabled={sup}
+                      className="w-20"
+                    />
+                  </label>
+                ))}
+              </div>
+            </FieldRow>
+          </Rows>
+        </Card>
+        <Card title={t("sheet.section.price")} dense>
+          <Rows>
+            <F t={t} k="incoterm" size="xs" req>
+              <select
+                name="incoterm"
+                defaultValue={sheet.incoterm ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              >
+                <option value="">—</option>
+                {SHEET_INCOTERMS.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </F>
+            <F t={t} k="currency" size="sm" req>
+              <select
+                name="currency"
+                defaultValue={sheet.currency ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              >
+                <option value="">—</option>
+                {SHEET_CURRENCIES.map((v) => (
+                  <option key={v} value={v}>
+                    {v === "RMB"
+                      ? "Yuan (RMB)"
+                      : t(`currency.name.${v}` as DictionaryKey)}
+                  </option>
+                ))}
+              </select>
+            </F>
+            <F t={t} k="price" size="sm" req>
+              <MoneyInput
+                name="price"
+                watchField="currency"
+                defaultAmount={numValue(sheet.price) || null}
+                disabled={sup}
+                decimals={4}
+                size="sm"
+              />
+            </F>
+            <F t={t} k="moq" size="xs" req>
+              <Num name="moq" value={numValue(sheet.moq)} disabled={sup} int />
+            </F>
+          </Rows>
+        </Card>
+      </div>
 
-      <Card title={t("sheet.section.schedule")} dense>
+      <Card title={t("sheet.section.schedule")} className="lg:order-3" dense>
         <Rows>
           {!master ? (
             <F t={t} k="productionStartAt" size="sm" req>
@@ -517,7 +521,11 @@ export function PurchaseSheetFields({
         )}
       </Card>
 
-      <Card title={t("sheet.section.customs")} dense>
+      <Card
+        title={t("sheet.section.customs")}
+        className="lg:order-5 lg:col-span-2"
+        dense
+      >
         <Rows>
           <F t={t} k="ncm" size="sm">
             <input
@@ -547,7 +555,11 @@ export function PurchaseSheetFields({
         </Rows>
       </Card>
 
-      <Card title={t("sheet.section.ecommerce")} dense>
+      <Card
+        title={t("sheet.section.ecommerce")}
+        className="lg:order-6 lg:col-span-2"
+        dense
+      >
         <Rows>
           <F t={t} k="ecommerceDescription" size="full">
             <textarea

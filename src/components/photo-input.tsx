@@ -24,6 +24,7 @@ export function PhotoInput({
   autoSubmit = false,
   disabled = false,
   compact = false,
+  dense = false,
   pendingLabel,
 }: {
   name: string;
@@ -41,6 +42,8 @@ export function PhotoInput({
   disabled?: boolean;
   /** Botão pequeno (cabe numa linha) em vez da área grande pontilhada. */
   compact?: boolean;
+  /** Com `compact`: botão ainda menor (linhas finas da ficha). */
+  dense?: boolean;
   /** Texto enquanto reduz/envia (ex.: "Enviando…"). */
   pendingLabel?: string;
 }) {
@@ -102,7 +105,11 @@ export function PhotoInput({
       <label
         aria-disabled={disabled || working || undefined}
         aria-busy={working || undefined}
-        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition ${
+        className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-semibold shadow-sm transition ${
+          dense
+            ? "min-h-7 px-2.5 py-0.5 text-xs"
+            : "min-h-11 gap-2 rounded-lg px-4 py-2 text-sm"
+        } ${
           disabled || working
             ? "pointer-events-none cursor-wait border-zinc-200 bg-zinc-50 text-zinc-500"
             : "cursor-pointer border-brand-300 bg-white text-brand-700 hover:bg-brand-50 active:bg-brand-100"

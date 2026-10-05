@@ -191,116 +191,131 @@ export default async function QuotePage({
           O card de fotos tem formulários próprios (cada foto sobe na hora, no
           lugar), por isso prazo, condições e botões ficam fora do <form> e
           apontam para ele pelo atributo `form`. */}
-      {sheetView ? (
-        <form
-          id="quote-sheet"
-          action={answerQuoteWithSheetAction}
-          className="mt-6 space-y-4"
-        >
-          <input type="hidden" name="quoteId" value={quote.id} />
-          <h2 className="text-lg font-semibold text-zinc-900">
-            {t("quoteSheet.title")}
-          </h2>
-          {!sheetView.access.editSupplier ? (
-            <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
-          ) : sheetView.missing.length ? (
-            <Alert tone="info">
-              {t("quoteSheet.missing", { fields: missingText })}
-            </Alert>
-          ) : null}
-          {sheetView.access.editCustoms ? (
-            <p className="text-xs text-zinc-500">
-              {t("quoteSheet.wellmixHint")}
-            </p>
-          ) : null}
-          <PurchaseSheetFields
+      {/* Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
+          o <form> é display: contents para os cards entrarem na grade. */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {sheetView ? (
+          <form
+            id="quote-sheet"
+            action={answerQuoteWithSheetAction}
+            className="contents"
+          >
+            <input type="hidden" name="quoteId" value={quote.id} />
+            <div className="space-y-3 lg:col-span-2">
+              <h2 className="text-lg font-semibold text-zinc-900">
+                {t("quoteSheet.title")}
+              </h2>
+              {!sheetView.access.editSupplier ? (
+                <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
+              ) : sheetView.missing.length ? (
+                <Alert tone="info">
+                  {t("quoteSheet.missing", { fields: missingText })}
+                </Alert>
+              ) : null}
+              {sheetView.access.editCustoms ? (
+                <p className="text-xs text-zinc-500">
+                  {t("quoteSheet.wellmixHint")}
+                </p>
+              ) : null}
+            </div>
+            <PurchaseSheetFields
+              t={t}
+              sheet={sheetView.sheet}
+              plan={sheetView.plan}
+              containerType={sheetView.containerType}
+              containerTypes={sheetView.containerTypes}
+              editSupplier={sheetView.access.editSupplier}
+              editCustoms={sheetView.access.editCustoms}
+              requestSchedule={request.schedule ?? null}
+              requestUnit={request.unit}
+              records={sheetView.records}
+            />
+          </form>
+        ) : null}
+        {sheetView ? (
+          <SheetPhotosCard
             t={t}
-            sheet={sheetView.sheet}
-            plan={sheetView.plan}
-            containerType={sheetView.containerType}
-            containerTypes={sheetView.containerTypes}
-            editSupplier={sheetView.access.editSupplier}
-            editCustoms={sheetView.access.editCustoms}
-            requestSchedule={request.schedule ?? null}
-            requestUnit={request.unit}
-            records={sheetView.records}
+            photos={sheetView.photos}
+            canEdit={sheetView.access.addPhotos}
+            ownerField="quoteId"
+            ownerId={quote.id}
+            addAction={addQuoteSheetPhotosAction}
+            removeAction={removeQuoteSheetPhotoAction}
+            coveredKinds={sheetView.catalogPhotoKinds}
+            hint={t("quoteSheet.photosHint")}
+            className="lg:order-4"
           />
-        </form>
-      ) : null}
-      {sheetView ? (
-        <SheetPhotosCard
-          t={t}
-          photos={sheetView.photos}
-          canEdit={sheetView.access.addPhotos}
-          ownerField="quoteId"
-          ownerId={quote.id}
-          addAction={addQuoteSheetPhotosAction}
-          removeAction={removeQuoteSheetPhotoAction}
-          coveredKinds={sheetView.catalogPhotoKinds}
-          hint={t("quoteSheet.photosHint")}
-        />
-      ) : null}
-      {sheetView &&
-      sheetView.saved &&
-      isWellmix(user) &&
-      sheetView.sheet.productId ? (
-        <form
-          action={adoptSheetIntoProductAction}
-          className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm"
-          data-adopt-sheet
-        >
-          <input type="hidden" name="ownerId" value={quote.id} />
-          <input type="hidden" name="back" value={`/app/quotes/${quote.id}`} />
-          <span className="min-w-0 flex-1 text-xs text-zinc-600">
-            {t("productSheet.adoptHint")}
-          </span>
-          <SubmitButton variant="secondary">
-            {t("productSheet.adopt")}
-          </SubmitButton>
-        </form>
-      ) : null}
-      {sheetView && canAnswer && sheetView.access.editSupplier ? (
-        <Card title={t("quotes.answer")} className="mt-4" dense>
-          <div className="space-y-2">
-            <FieldRow label={t("quoteSheet.leadTime")} size="xs">
-              <input
-                form="quote-sheet"
-                name="leadTimeDays"
-                type="number"
-                min="1"
-                defaultValue={quote.leadTimeDays ?? ""}
-                className={inputDenseClass}
-              />
-            </FieldRow>
-            <FieldRow label={t("quoteSheet.conditions")} size="full">
-              <textarea
-                form="quote-sheet"
-                name="conditions"
-                rows={2}
-                maxLength={2000}
-                defaultValue={quote.conditions ?? ""}
-                placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
-                className={cx(inputDenseClass, "min-h-12")}
-              />
-            </FieldRow>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <SubmitButton
-              form="quote-sheet"
-              formAction={sendQuoteWithSheetAction}
-            >
-              {t("quoteSheet.send")}
+        ) : null}
+        {sheetView &&
+        sheetView.saved &&
+        isWellmix(user) &&
+        sheetView.sheet.productId ? (
+          <form
+            action={adoptSheetIntoProductAction}
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm lg:order-7 lg:col-span-2"
+            data-adopt-sheet
+          >
+            <input type="hidden" name="ownerId" value={quote.id} />
+            <input
+              type="hidden"
+              name="back"
+              value={`/app/quotes/${quote.id}`}
+            />
+            <span className="min-w-0 flex-1 text-xs text-zinc-600">
+              {t("productSheet.adoptHint")}
+            </span>
+            <SubmitButton variant="secondary">
+              {t("productSheet.adopt")}
             </SubmitButton>
-            <SubmitButton
-              form="quote-sheet"
-              formAction={saveQuoteSheetDraftAction}
-              variant="secondary"
-            >
-              {t("quoteSheet.saveDraft")}
-            </SubmitButton>
-          </div>
-        </Card>
-      ) : null}
+          </form>
+        ) : null}
+        {sheetView && canAnswer && sheetView.access.editSupplier ? (
+          <Card
+            title={t("quotes.answer")}
+            className="lg:order-8 lg:col-span-2"
+            dense
+          >
+            <div className="space-y-2">
+              <FieldRow label={t("quoteSheet.leadTime")} size="xs">
+                <input
+                  form="quote-sheet"
+                  name="leadTimeDays"
+                  type="number"
+                  min="1"
+                  defaultValue={quote.leadTimeDays ?? ""}
+                  className={inputDenseClass}
+                />
+              </FieldRow>
+              <FieldRow label={t("quoteSheet.conditions")} size="full">
+                <textarea
+                  form="quote-sheet"
+                  name="conditions"
+                  rows={2}
+                  maxLength={2000}
+                  defaultValue={quote.conditions ?? ""}
+                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                  className={cx(inputDenseClass, "min-h-12")}
+                />
+              </FieldRow>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <SubmitButton
+                form="quote-sheet"
+                formAction={sendQuoteWithSheetAction}
+              >
+                {t("quoteSheet.send")}
+              </SubmitButton>
+              <SubmitButton
+                form="quote-sheet"
+                formAction={saveQuoteSheetDraftAction}
+                variant="secondary"
+              >
+                {t("quoteSheet.saveDraft")}
+              </SubmitButton>
+            </div>
+          </Card>
+        ) : null}
+      </div>
     </>
   );
 }
