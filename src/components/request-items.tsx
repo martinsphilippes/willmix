@@ -75,7 +75,7 @@ export function RequestItems({
           <fieldset
             key={index}
             data-request-item={index}
-            className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4"
+            className="min-w-0 max-w-full space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4"
           >
             <legend className="flex w-full items-center justify-between gap-2 px-1">
               <span className="text-sm font-semibold text-zinc-800">

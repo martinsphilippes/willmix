@@ -119,7 +119,7 @@ export function RequestScheduleFields({
 
   return (
     <fieldset
-      className="space-y-3 rounded-lg border border-brand-100 bg-brand-50/40 p-3"
+      className="min-w-0 max-w-full space-y-3 rounded-lg border border-brand-100 bg-brand-50/40 p-3"
       data-request-schedule="on"
     >
       <legend className="px-1 text-sm font-semibold text-zinc-800">
@@ -198,8 +198,8 @@ export function RequestScheduleFields({
           />
         </label>
       </div>
-      <div className="-mx-1 overflow-x-auto px-1">
-        <div className="flex min-w-max gap-2">
+      <div className="-mx-1 min-w-0 max-w-full overflow-x-auto px-1">
+        <div className="flex w-max gap-2">
           {qtys.map((q, i) => (
             <div
               key={i}
