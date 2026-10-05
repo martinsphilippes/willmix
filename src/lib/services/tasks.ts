@@ -1,34 +1,195 @@
 import "server-only";
 
-import { getStore, type Order, type Request, type User } from "@/lib/db";
+import {
+  getStore,
+  type Order,
+  type Request,
+  type StageKey,
+  type User,
+} from "@/lib/db";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
-import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD, STAGE_TEMPLATES } from "@/lib/workflow/stages";
+
+export type TaskKind =
+  | "requirement"
+  | "quote"
+  | "select_supplier"
+  | "confirm_payment"
+  | "pay"
+  | "rfq"
+  | "review"
+  | "after_sales"
+  | "sourcing_demand"
+  | "freight_quote";
+
+/** Situação da pendência em relação ao prazo (dia civil em Brasília). */
+export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
 
 export interface Task {
-  kind:
-    | "requirement"
-    | "quote"
-    | "select_supplier"
-    | "confirm_payment"
-    | "pay"
-    | "rfq"
-    | "review"
-    | "after_sales"
-    | "sourcing_demand"
-    | "freight_quote";
+  kind: TaskKind;
   title: string;
   detail: string;
   link: string;
   dueAt: string | null;
   overdue: boolean;
   orderNumber?: number;
+  /** Requisito de etapa: a etapa (a tela traduz). */
+  stageKey?: StageKey;
+  /** Filtro "tipo": a etapa (requisito) ou o tipo da pendência. */
+  group: string;
+  /** Filtro "prazo". */
+  due: TaskDue;
+  /** Dias até o prazo (negativo = atrasada); nulo sem prazo. */
+  daysLeft: number | null;
+}
+
+/* ---------------------------------------------------------------------------
+ * Prazo: dia civil em Brasília. Uma pendência que vence hoje "vence hoje";
+ * só fica atrasada no dia seguinte. Prazos sem hora (AAAA-MM-DD) e com hora
+ * (ISO) são comparados pelo dia.
+ * ------------------------------------------------------------------------ */
+
+function dayInBrazil(value: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value);
+}
+
+/** Dia civil (AAAA-MM-DD, Brasília) de um prazo; nulo se inválido. */
+function dueDay(dueAt: string | null): string | null {
+  if (!dueAt) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) return dueAt;
+  const ms = Date.parse(dueAt);
+  return Number.isNaN(ms) ? null : dayInBrazil(new Date(ms));
+}
+
+/** Dias (civis) até o prazo: 0 = hoje, negativo = atrasada, nulo = sem prazo. */
+export function daysUntil(
+  dueAt: string | null,
+  now = new Date(),
+): number | null {
+  const day = dueDay(dueAt);
+  if (!day) return null;
+  const a = Date.UTC(
+    Number(day.slice(0, 4)),
+    Number(day.slice(5, 7)) - 1,
+    Number(day.slice(8, 10)),
+  );
+  const today = dayInBrazil(now);
+  const b = Date.UTC(
+    Number(today.slice(0, 4)),
+    Number(today.slice(5, 7)) - 1,
+    Number(today.slice(8, 10)),
+  );
+  return Math.round((a - b) / 86_400_000);
+}
+
+export function dueBucket(daysLeft: number | null): TaskDue {
+  if (daysLeft === null) return "none";
+  if (daysLeft < 0) return "overdue";
+  if (daysLeft === 0) return "today";
+  if (daysLeft <= 7) return "week";
+  return "later";
+}
+
+/** Filtros de prazo, na ordem da tela. */
+export const TASK_DUE_FILTERS: TaskDue[] = [
+  "overdue",
+  "today",
+  "week",
+  "later",
+  "none",
+];
+
+/**
+ * Ordem da lista: pelo prazo, as mais urgentes primeiro (atrasadas, depois
+ * hoje, e assim por diante); sem prazo por último. Empate mantém a ordem de
+ * origem (estável).
+ */
+export function sortTasks<T extends Pick<Task, "daysLeft">>(tasks: T[]): T[] {
+  return tasks
+    .map((task, i) => ({ task, i }))
+    .sort((a, b) => {
+      const da = a.task.daysLeft;
+      const db = b.task.daysLeft;
+      if (da === null && db === null) return a.i - b.i;
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db || a.i - b.i;
+    })
+    .map((x) => x.task);
+}
+
+export interface TaskFilter {
+  due?: string | null;
+  group?: string | null;
+}
+
+export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
+  const due = TASK_DUE_FILTERS.includes(filter.due as TaskDue)
+    ? (filter.due as TaskDue)
+    : null;
+  const group = filter.group || null;
+  return tasks.filter(
+    (t) => (!due || t.due === due) && (!group || t.group === group),
+  );
+}
+
+const STAGE_ORDER: string[] = STAGE_TEMPLATES.map((s) => s.key);
+const KIND_ORDER: string[] = [
+  "rfq",
+  "quote",
+  "select_supplier",
+  "confirm_payment",
+  "pay",
+  "freight_quote",
+  "review",
+  "sourcing_demand",
+  "after_sales",
+];
+const GROUP_ORDER = [...STAGE_ORDER, ...KIND_ORDER];
+
+/** Grupos presentes (etapas na ordem do fluxo, depois os tipos), com contagem. */
+export function taskGroups(
+  tasks: Task[],
+): { group: string; stage: boolean; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const t of tasks) counts.set(t.group, (counts.get(t.group) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => GROUP_ORDER.indexOf(a[0]) - GROUP_ORDER.indexOf(b[0]))
+    .map(([group, count]) => ({
+      group,
+      stage: STAGE_ORDER.includes(group),
+      count,
+    }));
+}
+
+/** Completa prazo/grupo de uma pendência montada pelas rotinas abaixo. */
+function finish(
+  task: Omit<Task, "overdue" | "group" | "due" | "daysLeft"> & {
+    group?: string;
+  },
+  now: Date,
+): Task {
+  const daysLeft = daysUntil(task.dueAt, now);
+  const due = dueBucket(daysLeft);
+  return {
+    ...task,
+    group: task.group ?? task.stageKey ?? task.kind,
+    due,
+    daysLeft,
+    overdue: due === "overdue",
+  };
 }
 
 /** Pendências do usuário: o que ele precisa fazer agora. */
 export async function pendingTasksFor(user: User): Promise<Task[]> {
   const store = getStore();
   const tasks: Task[] = [];
-  const now = Date.now();
+  const now = new Date();
   const wellmix = isWellmix(user);
   const supplier = user.role === "supplier" && !!user.partyId;
   const customer = user.role === "customer" && !!user.partyId;
@@ -121,29 +282,38 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       (r) => r.stageId === stage.id && (wellmix || r.role === user.role),
     );
     if (mine.length === 0) continue;
-    tasks.push({
-      kind: "requirement",
-      title: `Pedido #${order.number}: ${stage.key}`,
-      detail: mine.map((r) => r.label).join(", "),
-      link: `/app/orders/${order.id}`,
-      dueAt: stage.dueAt,
-      overdue: !!stage.dueAt && Date.parse(stage.dueAt) < now,
-      orderNumber: order.number,
-    });
+    tasks.push(
+      finish(
+        {
+          kind: "requirement",
+          title: `Pedido #${order.number}: ${stage.key}`,
+          detail: mine.map((r) => r.label).join(", "),
+          link: `/app/orders/${order.id}`,
+          dueAt: stage.dueAt,
+          orderNumber: order.number,
+          stageKey: stage.key,
+        },
+        now,
+      ),
+    );
   }
 
   // Fase de solicitação.
   for (const quote of quotes) {
     const request = quoteRequests.find((r) => r.id === quote.requestId);
     if (!request) continue;
-    tasks.push({
-      kind: "quote",
-      title: `RFQ: ${request.productName}`,
-      detail: `${request.quantity} ${request.unit}`,
-      link: `/app/quotes/${quote.id}`,
-      dueAt: quote.validUntil,
-      overdue: !!quote.validUntil && Date.parse(quote.validUntil) < now,
-    });
+    tasks.push(
+      finish(
+        {
+          kind: "quote",
+          title: `RFQ: ${request.productName}`,
+          detail: `${request.quantity} ${request.unit}`,
+          link: `/app/quotes/${quote.id}`,
+          dueAt: quote.validUntil,
+        },
+        now,
+      ),
+    );
   }
   const withProof = new Set(
     pendingPayments
@@ -154,65 +324,81 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     const task = requestTask(request);
     if (task.kind === "confirm_payment" && withProof.has(request.id))
       task.detail = "Comprovante enviado pelo cliente: conferir e confirmar";
-    tasks.push(task);
+    tasks.push(finish(task, now));
   }
   for (const request of waitingRequests.filter((r) =>
     canViewRequest(user, r),
   )) {
     // Comprovante já enviado: agora depende da Wellmix confirmar, não do cliente.
     if (withProof.has(request.id)) continue;
-    tasks.push({
-      kind: "pay",
-      title: `Sinal pendente: ${request.productName}`,
-      detail: `${request.sellCurrency ?? ""} ${request.downPaymentAmount?.toFixed(2) ?? ""}`,
-      link: `/app/requests/${request.id}`,
-      dueAt: null,
-      overdue: false,
-    });
+    tasks.push(
+      finish(
+        {
+          kind: "pay",
+          title: `Sinal pendente: ${request.productName}`,
+          detail: `${request.sellCurrency ?? ""} ${request.downPaymentAmount?.toFixed(2) ?? ""}`,
+          link: `/app/requests/${request.id}`,
+          dueAt: null,
+        },
+        now,
+      ),
+    );
   }
   // Pós-venda aberto: o cliente avalia a compra.
   for (const a of openAfterSales) {
     const order = orderById.get(a.orderId);
     if (!order || !isInvolved(user, order)) continue;
-    tasks.push({
-      kind: "after_sales",
-      title: `Avalie a compra: pedido #${order.number}`,
-      detail: "Como foi a experiência? Quer repor?",
-      link: `/app/orders/${order.id}#after-sales`,
-      dueAt: null,
-      overdue: false,
-      orderNumber: order.number,
-    });
+    tasks.push(
+      finish(
+        {
+          kind: "after_sales",
+          title: `Avalie a compra: pedido #${order.number}`,
+          detail: "Como foi a experiência? Quer repor?",
+          link: `/app/orders/${order.id}#after-sales`,
+          dueAt: null,
+          orderNumber: order.number,
+        },
+        now,
+      ),
+    );
   }
 
   // Sourcing sob demanda: produto pedido por cliente ainda sem fornecedor.
   for (const d of demands.filter((x) => x.requestId)) {
-    tasks.push({
-      kind: "sourcing_demand",
-      title: `Sourcing sob demanda: ${d.name}`,
-      detail: d.notes ?? "Localizar fornecedores e cadastrar opções",
-      link: `/app/sourcing/items/${d.id}`,
-      dueAt: null,
-      overdue: false,
-    });
+    tasks.push(
+      finish(
+        {
+          kind: "sourcing_demand",
+          title: `Sourcing sob demanda: ${d.name}`,
+          detail: d.notes ?? "Localizar fornecedores e cadastrar opções",
+          link: `/app/sourcing/items/${d.id}`,
+          dueAt: null,
+        },
+        now,
+      ),
+    );
   }
 
   // Fila "itens para revisão" (gates): uma pendência por item aberto, só para a Wellmix.
   for (const r of reviews) {
-    tasks.push({
-      kind: "review",
-      title: r.problem,
-      detail: [
-        r.expected !== null ? `esperado ${r.expected}` : null,
-        r.found !== null ? `encontrado ${r.found}` : null,
-        r.action,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-      link: r.link ?? "/app/reviews",
-      dueAt: null,
-      overdue: false,
-    });
+    tasks.push(
+      finish(
+        {
+          kind: "review",
+          title: r.problem,
+          detail: [
+            r.expected !== null ? `esperado ${r.expected}` : null,
+            r.found !== null ? `encontrado ${r.found}` : null,
+            r.action,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          link: r.link ?? "/app/reviews",
+          dueAt: null,
+        },
+        now,
+      ),
+    );
   }
 
   // Companhia marítima: pedidos de frete a informar.
@@ -227,24 +413,30 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     for (const f of freights) {
       const request = requests.find((r) => r.id === f.requestId);
       if (!request) continue;
-      tasks.push({
-        kind: "freight_quote",
-        title: `Frete: ${request.productName}`,
-        detail: `${f.totalCbm ?? "?"} m³ · ${f.cartons ?? "?"} cx · ${f.grossWeightKg ?? "?"} kg`,
-        link: `/app/freight/${f.id}`,
-        dueAt: request.deadline,
-        overdue: !!request.deadline && Date.parse(request.deadline) < now,
-      });
+      tasks.push(
+        finish(
+          {
+            kind: "freight_quote",
+            title: `Frete: ${request.productName}`,
+            detail: `${f.totalCbm ?? "?"} m³ · ${f.cartons ?? "?"} cx · ${f.grossWeightKg ?? "?"} kg`,
+            link: `/app/freight/${f.id}`,
+            dueAt: request.deadline,
+          },
+          now,
+        ),
+      );
     }
   }
-  return tasks.sort((a, b) => Number(b.overdue) - Number(a.overdue));
+  // Pelo prazo: as mais urgentes primeiro; sem prazo por último.
+  return sortTasks(tasks);
 }
 
-function requestTask(request: Request): Task {
+type DraftTask = Omit<Task, "overdue" | "group" | "due" | "daysLeft">;
+
+function requestTask(request: Request): DraftTask {
   const base = {
     link: `/app/requests/${request.id}`,
     dueAt: request.deadline,
-    overdue: false,
   };
   switch (request.status) {
     case "REQUESTED":
