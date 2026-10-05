@@ -24,12 +24,15 @@ export function RequirementForm({
   t,
   action,
   defaultValue,
+  dateBounds,
 }: {
   requirement: Requirement;
   orderId: string;
   t: Translate;
   action?: (form: FormData) => Promise<void>;
   defaultValue?: string | null;
+  /** Data: limites vindos das outras datas do pedido (chegada ≥ embarque…). */
+  dateBounds?: { min?: string; max?: string };
 }) {
   if (requirement.type === "approval") {
     return (
@@ -126,6 +129,8 @@ export function RequirementForm({
           name="value"
           type="date"
           required
+          min={dateBounds?.min}
+          max={dateBounds?.max}
           defaultValue={defaultValue ?? undefined}
           className="max-w-48 sm:w-48"
         />

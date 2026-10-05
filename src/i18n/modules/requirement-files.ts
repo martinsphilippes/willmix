@@ -17,6 +17,15 @@ export const pt = {
     "O arquivo enviado não foi encontrado no armazenamento. Envie de novo.",
   "orders.error.too_large": "Arquivo grande demais (máx. 50 MB).",
   "orders.error.money_required": "Informe o valor (ex.: 1.234,56).",
+  "orders.error.date_invalid": "Informe uma data válida.",
+  "orders.error.eta_before_ship_date":
+    "A previsão de chegada não pode ser antes da data de embarque.",
+  "orders.error.ship_date_after_eta":
+    "A data de embarque não pode ser depois da previsão de chegada já informada.",
+  "orders.error.delivery_before_eta":
+    "A previsão de entrega não pode ser antes da previsão de chegada do navio.",
+  "orders.error.eta_after_delivery":
+    "A previsão de chegada não pode ser depois da previsão de entrega já informada.",
   "orders.error.mime":
     "Formato de arquivo não aceito: envie PDF, imagem, planilha, ZIP ou arte (AI, PSD, EPS, CDR, TIFF).",
   "requirement.remove": "Excluir",
@@ -40,6 +49,15 @@ export const en: Record<keyof typeof pt, string> = {
     "The uploaded file was not found in storage. Please upload it again.",
   "orders.error.too_large": "File too large (max. 50 MB).",
   "orders.error.money_required": "Enter the amount (e.g. 1,234.56).",
+  "orders.error.date_invalid": "Enter a valid date.",
+  "orders.error.eta_before_ship_date":
+    "The arrival estimate cannot be earlier than the shipment date.",
+  "orders.error.ship_date_after_eta":
+    "The shipment date cannot be later than the arrival estimate already entered.",
+  "orders.error.delivery_before_eta":
+    "The delivery estimate cannot be earlier than the vessel's arrival estimate.",
+  "orders.error.eta_after_delivery":
+    "The arrival estimate cannot be later than the delivery estimate already entered.",
   "orders.error.mime":
     "File format not accepted: send a PDF, image, spreadsheet, ZIP or artwork (AI, PSD, EPS, CDR, TIFF).",
   "requirement.remove": "Delete",
@@ -61,6 +79,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.error.upload_missing": "未在存储中找到已上传的文件，请重新上传。",
   "orders.error.too_large": "文件过大（最大 50 MB）。",
   "orders.error.money_required": "请输入金额（例如 1.234,56）。",
+  "orders.error.date_invalid": "请输入有效日期。",
+  "orders.error.eta_before_ship_date": "预计到港日期不能早于装船日期。",
+  "orders.error.ship_date_after_eta": "装船日期不能晚于已填写的预计到港日期。",
+  "orders.error.delivery_before_eta": "预计送达日期不能早于船舶预计到港日期。",
+  "orders.error.eta_after_delivery":
+    "预计到港日期不能晚于已填写的预计送达日期。",
   "orders.error.mime":
     "不支持的文件格式：请发送 PDF、图片、表格、ZIP 或设计稿（AI、PSD、EPS、CDR、TIFF）。",
   "requirement.remove": "删除",

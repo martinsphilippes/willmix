@@ -360,7 +360,7 @@ export default async function ProductSheetPage({
                   dense
                 />
               </FieldRow>
-              <FieldRow label={t("catalog.active")} size="full">
+              <FieldRow label={t("common.status")} size="full">
                 <label className="inline-flex min-h-8 cursor-pointer items-center gap-2 text-[13px] font-medium text-zinc-800">
                   <input type="hidden" name="active" value="off" />
                   <input
@@ -510,7 +510,7 @@ export default async function ProductSheetPage({
                     name="lengthCm"
                     defaultValue={product.lengthCm ?? ""}
                     aria-label={t("catalog.length")}
-                    className="w-20"
+                    className="w-16"
                   />
                   <span aria-hidden>×</span>
                   <span>{t("catalog.width")}</span>
@@ -518,7 +518,7 @@ export default async function ProductSheetPage({
                     name="widthCm"
                     defaultValue={product.widthCm ?? ""}
                     aria-label={t("catalog.width")}
-                    className="w-20"
+                    className="w-16"
                   />
                   <span aria-hidden>×</span>
                   <span>{t("catalog.height")}</span>
@@ -526,7 +526,7 @@ export default async function ProductSheetPage({
                     name="heightCm"
                     defaultValue={product.heightCm ?? ""}
                     aria-label={t("catalog.height")}
-                    className="w-20"
+                    className="w-16"
                   />
                 </div>
               </FieldRow>
@@ -568,7 +568,7 @@ export default async function ProductSheetPage({
                     name="boxLengthCm"
                     defaultValue={product.boxLengthCm ?? ""}
                     aria-label={t("catalog.length")}
-                    className="w-20"
+                    className="w-16"
                   />
                   <span aria-hidden>×</span>
                   <span>{t("catalog.width")}</span>
@@ -576,7 +576,7 @@ export default async function ProductSheetPage({
                     name="boxWidthCm"
                     defaultValue={product.boxWidthCm ?? ""}
                     aria-label={t("catalog.width")}
-                    className="w-20"
+                    className="w-16"
                   />
                   <span aria-hidden>×</span>
                   <span>{t("catalog.height")}</span>
@@ -584,7 +584,7 @@ export default async function ProductSheetPage({
                     name="boxHeightCm"
                     defaultValue={product.boxHeightCm ?? ""}
                     aria-label={t("catalog.height")}
-                    className="w-20"
+                    className="w-16"
                   />
                 </div>
               </FieldRow>
