@@ -95,6 +95,9 @@ export default async function QuotePage({
       />
       <div className="space-y-3">
         {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+        {typeof adopted === "string" && adopted ? (
+          <Alert tone="success">{t("productSheet.adopted")}</Alert>
+        ) : null}
         {saved === "sent" ? (
           <Alert tone="success">{t("quoteSheet.saved.sent")}</Alert>
         ) : saved === "complete" ? (
@@ -254,11 +257,6 @@ export default async function QuotePage({
             {t("productSheet.adopt")}
           </SubmitButton>
         </form>
-      ) : null}
-      {typeof adopted === "string" && adopted ? (
-        <div className="mt-3">
-          <Alert tone="success">{t("productSheet.adopted")}</Alert>
-        </div>
       ) : null}
       {sheetView && canAnswer && sheetView.access.editSupplier ? (
         <Card title={t("quotes.answer")} className="mt-4" dense>

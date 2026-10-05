@@ -320,8 +320,13 @@ export async function adoptSheetIntoProduct(
   if (!(await store.get("products", productId)))
     throw new ProductSheetError("not_found");
   const input: Record<string, unknown> = {};
-  for (const k of MASTER_SHEET_FIELDS)
-    if (sheet[k] !== undefined) input[k] = sheet[k];
+  for (const k of MASTER_SHEET_FIELDS) {
+    const v = sheet[k];
+    // Só o que está preenchido: campo em branco não apaga o que a mestre já tem.
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    input[k] = v;
+  }
   await saveProductSheet(user, productId, input as SheetInput);
   // Fotos ficam onde foram enviadas (as do cadastro sobem na tela do produto):
   // documentos de pedido/cotação têm acesso próprio e não viram catálogo.

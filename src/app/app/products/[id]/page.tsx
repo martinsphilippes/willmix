@@ -262,7 +262,17 @@ export default async function ProductSheetPage({
     : null;
   const currency = product.currency ?? "USD";
   const money = (n: number) => formatMoney(n, currency);
-  const errorText = visionError(t, error) ?? catalogError(t, error);
+  // Erros da ficha mestre (schema_outdated, pantone_too_many, not_found…) têm texto próprio.
+  const sheetErrorText = (() => {
+    if (typeof error !== "string" || !error) return null;
+    for (const key of [`sheet.error.${error}`, `productSheet.error.${error}`]) {
+      const text = t(key as Parameters<typeof t>[0]);
+      if (text !== key) return text;
+    }
+    return null;
+  })();
+  const errorText =
+    visionError(t, error) ?? sheetErrorText ?? catalogError(t, error);
 
   return (
     <>
@@ -668,6 +678,7 @@ export default async function ProductSheetPage({
             editSupplier
             editCustoms
             lotRequired={false}
+            master
           />
           <p className="text-xs text-zinc-500">
             {t("productSheet.photosHint")}

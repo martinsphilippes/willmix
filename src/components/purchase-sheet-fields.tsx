@@ -39,6 +39,7 @@ export function PurchaseSheetFields({
   lotRequired = true,
   requestSchedule = null,
   requestUnit = "un",
+  master = false,
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -53,6 +54,8 @@ export function PurchaseSheetFields({
   requestSchedule?: RequestSchedule | null;
   /** Unidade da solicitação (para "Pedido do cliente: 1.000 un"). */
   requestUnit?: string;
+  /** Ficha mestre do produto: sem início de produção nem programações (são de cada compra). */
+  master?: boolean;
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -361,15 +364,17 @@ export function PurchaseSheetFields({
 
       <Card title={t("sheet.section.schedule")} dense>
         <Rows>
-          <F t={t} k="productionStartAt" size="sm" req>
-            <input
-              type="date"
-              name="productionStartAt"
-              defaultValue={dateValue(sheet.productionStartAt)}
-              disabled={sup}
-              className={inputDenseClass}
-            />
-          </F>
+          {!master ? (
+            <F t={t} k="productionStartAt" size="sm" req>
+              <input
+                type="date"
+                name="productionStartAt"
+                defaultValue={dateValue(sheet.productionStartAt)}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
+          ) : null}
           <F t={t} k="containerType" size="sm">
             <select
               name="containerType"
@@ -385,65 +390,76 @@ export function PurchaseSheetFields({
             </select>
           </F>
         </Rows>
-        <p className="mt-3 text-xs text-zinc-500">
-          {t("sheet.lot.intervalHint")}
-        </p>
-        {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
-        <SheetSchedule
-          initialLots={lots.map((l) => ({
-            departureIntervalDays: l.departureIntervalDays,
-            masterCartons: l.masterCartons,
-          }))}
-          initial={{
-            masterCartonQty: sheet.masterCartonQty ?? null,
-            cbmPerCarton: sheet.cbmPerCarton ?? null,
-            heightCm: sheet.heightCm ?? null,
-            widthCm: sheet.widthCm ?? null,
-            lengthCm: sheet.lengthCm ?? null,
-            productionStartAt: dateValue(sheet.productionStartAt) || null,
-            containerType: view.containerType ?? null,
-          }}
-          containerTypes={view.containerTypes}
-          disabled={sup}
-          lotRequired={lotRequired}
-          requested={requestSchedule?.items ?? []}
-          unit={requestUnit}
-          labels={{
-            lotColumn: t("sheet.lot.column"),
-            interval: t("sheet.lot.interval"),
-            cartons: t("sheet.lot.cartons"),
-            pieces: t("sheet.lot.pieces"),
-            cbm: t("sheet.lot.cbm"),
-            departure: t("sheet.lot.departure"),
-            lotTitle: t("sheet.lot.title", { n: "{n}" }),
-            required,
-            totalPieces: t("sheet.total.pieces"),
-            totalCbm: t("sheet.total.cbm"),
-            totalContainers: t("sheet.total.containers", {
-              type: "{type}",
-              capacity: "{capacity}",
-            }),
-            live: t("sheet.fill.live"),
-            fillTitle: t("sheet.fill.title"),
-            partial: t("sheet.fill.partial"),
-            add: t("sheet.fill.add"),
-            addNoPieces: t("sheet.fill.addNoPieces"),
-            apply: t("sheet.fill.apply"),
-            remove: t("sheet.fill.remove"),
-            applyRemove: t("sheet.fill.applyRemove"),
-            exact: t("sheet.fill.exact"),
-            full: t("sheet.fill.full"),
-            need: t("sheet.fill.need"),
-            applied: t("sheet.fill.applied"),
-            addLot: t("sheet.lot.add"),
-            requested: t("sheet.lot.requested", {
-              quantity: "{quantity}",
-              unit: "{unit}",
-              date: "{date}",
-            }),
-          }}
-        />
-        <p className="mt-2 text-xs text-zinc-500">{t("sheet.total.hint")}</p>
+        {master ? (
+          <p className="mt-3 text-xs text-zinc-500">
+            {t("productSheet.scheduleHint")}
+          </p>
+        ) : (
+          <>
+            <p className="mt-3 text-xs text-zinc-500">
+              {t("sheet.lot.intervalHint")}
+            </p>
+            {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
+            <SheetSchedule
+              initialLots={lots.map((l) => ({
+                departureIntervalDays: l.departureIntervalDays,
+                masterCartons: l.masterCartons,
+              }))}
+              initial={{
+                masterCartonQty: sheet.masterCartonQty ?? null,
+                cbmPerCarton: sheet.cbmPerCarton ?? null,
+                heightCm: sheet.heightCm ?? null,
+                widthCm: sheet.widthCm ?? null,
+                lengthCm: sheet.lengthCm ?? null,
+                productionStartAt: dateValue(sheet.productionStartAt) || null,
+                containerType: view.containerType ?? null,
+              }}
+              containerTypes={view.containerTypes}
+              disabled={sup}
+              lotRequired={lotRequired}
+              requested={requestSchedule?.items ?? []}
+              unit={requestUnit}
+              labels={{
+                lotColumn: t("sheet.lot.column"),
+                interval: t("sheet.lot.interval"),
+                cartons: t("sheet.lot.cartons"),
+                pieces: t("sheet.lot.pieces"),
+                cbm: t("sheet.lot.cbm"),
+                departure: t("sheet.lot.departure"),
+                lotTitle: t("sheet.lot.title", { n: "{n}" }),
+                required,
+                totalPieces: t("sheet.total.pieces"),
+                totalCbm: t("sheet.total.cbm"),
+                totalContainers: t("sheet.total.containers", {
+                  type: "{type}",
+                  capacity: "{capacity}",
+                }),
+                live: t("sheet.fill.live"),
+                fillTitle: t("sheet.fill.title"),
+                partial: t("sheet.fill.partial"),
+                add: t("sheet.fill.add"),
+                addNoPieces: t("sheet.fill.addNoPieces"),
+                apply: t("sheet.fill.apply"),
+                remove: t("sheet.fill.remove"),
+                removeNoPieces: t("sheet.fill.removeNoPieces"),
+                applyRemove: t("sheet.fill.applyRemove"),
+                exact: t("sheet.fill.exact"),
+                full: t("sheet.fill.full"),
+                need: t("sheet.fill.need"),
+                applied: t("sheet.fill.applied"),
+                addLot: t("sheet.lot.add"),
+                requested: t("sheet.lot.requested", {
+                  quantity: "{quantity}",
+                  unit: "{unit}",
+                  date: "{date}",
+                }),
+              }}
+            />
+            <p className="mt-2 text-xs text-zinc-500">
+              {t("sheet.total.hint")}
+            </p>
+          </>
+        )}
       </Card>
 
       <Card title={t("sheet.section.customs")} dense>

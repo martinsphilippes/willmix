@@ -336,7 +336,8 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.selectOption('select[name="p0.productId"]', "prod-jarra");
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
   await page.fill('input[name="p0.quantity"]', "100");
-  // Programação de entregas: 2 entregas (50 + 50), "+ Programação" → 3, intervalo 30 dias.
+  // Programação de entregas: 2 entregas (50 + 50), "+ Programação" → 3 (34 + 33 + 33),
+  // intervalo 30 dias; a 3ª vira 40 → total 107 e a quantidade acompanha.
   await page.click('[data-request-item="0"] [data-schedule-on]');
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-item]'),
@@ -349,8 +350,8 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.fill('input[name="p0.schedule.qty.3"]', "40");
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-total]'),
-  ).toContainText("108");
-  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("108");
+  ).toContainText("107");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("107");
   await page.click("[data-add-request-item]");
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
@@ -379,6 +380,6 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.locator("[data-batch-siblings] a").first().click();
   await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
   await expect(page.locator("[data-request-schedule-table]")).toContainText(
-    "108",
+    "107",
   );
 });

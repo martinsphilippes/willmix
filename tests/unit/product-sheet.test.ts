@@ -276,6 +276,17 @@ describe("ficha mestre do produto", () => {
     expect(product.price).toBe(30);
     expect(product.currency).toBe("CNY");
     expect(product.material).toBe("ALUMINUM");
+    // Campos em branco na ficha adotada não apagam o que a mestre já tem.
+    await qs.saveQuoteSheet(supplierA, quote.id, {
+      material: null,
+      packageType: null,
+      colorAssortment: "RED",
+    });
+    await ps.adoptSheetIntoProduct(admin, quote.id);
+    const m2 = (await ps.getProductSheet("prod-panela"))!;
+    expect(m2.material).toBe("ALUMINUM");
+    expect(m2.packageType).toBe("BROWN BOX");
+    expect(m2.colorAssortment).toBe("RED");
     // Ficha sem produto do catálogo: recusa.
     const loose = await r.createRequest(joao, {
       customerId: "cliente-joao",

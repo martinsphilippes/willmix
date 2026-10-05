@@ -18,7 +18,9 @@ export const pt = {
     "As 5 fotos da ficha ficam no card Fotos deste produto (balança, régua, lado, ângulo e original). Pedidos e cotações deste produto não precisam delas de novo.",
   "productSheet.adopt": "Atualizar cadastro do produto com esta ficha",
   "productSheet.adoptHint":
-    "Copia os campos desta ficha para a ficha mestre do produto; os próximos pedidos e cotações nascem com os dados do produto (fornecedor e preço ficam como referência da Wellmix).",
+    "Copia os campos preenchidos desta ficha para a ficha mestre do produto (campos em branco não apagam o que o cadastro já tem); os próximos pedidos e cotações nascem com os dados do produto (fornecedor e preço ficam como referência da Wellmix).",
+  "productSheet.scheduleHint":
+    "Início da produção, programações e o fechamento do container são definidos em cada pedido ou cotação; aqui fica só o container padrão do produto.",
   "productSheet.adopted": "Cadastro do produto atualizado com esta ficha.",
   "sheet.prefilledNotice.master":
     "Ficha preenchida com a ficha mestre do produto (cadastro). Confira e ajuste o que for desta compra.",
@@ -47,7 +49,9 @@ export const en: Record<keyof typeof pt, string> = {
     "The 5 sheet photos live in this product's Photos card (scale, ruler, side, angle and original). Orders and quotes for this product do not need them again.",
   "productSheet.adopt": "Update the product record with this sheet",
   "productSheet.adoptHint":
-    "Copies this sheet's fields into the product's master sheet; the next orders and quotes start with the product data (supplier and price stay as Wellmix's reference).",
+    "Copies this sheet's filled fields into the product's master sheet (blank fields do not erase what the record already has); the next orders and quotes start with the product data (supplier and price stay as Wellmix's reference).",
+  "productSheet.scheduleHint":
+    "Production start, shipments and container fill are set on each order or quote; only the product's default container lives here.",
   "productSheet.adopted": "Product record updated with this sheet.",
   "sheet.prefilledNotice.master":
     "Sheet pre-filled from the product's master sheet (catalog). Review and adjust what belongs to this purchase.",
@@ -76,7 +80,9 @@ export const zh: Record<keyof typeof pt, string> = {
     "采购单的 5 张照片放在本产品的“照片”卡片中（称重、带尺、侧面、其他角度、原始）。该产品的订单和报价无需再次上传。",
   "productSheet.adopt": "用此采购单更新产品主档",
   "productSheet.adoptHint":
-    "将此采购单的字段复制到产品主档；后续订单和报价将以产品数据预填（供应商和价格仅作为 Wellmix 的参考）。",
+    "将此采购单中已填写的字段复制到产品主档（空白字段不会清除主档已有内容）；后续订单和报价将以产品数据预填（供应商和价格仅作为 Wellmix 的参考）。",
+  "productSheet.scheduleHint":
+    "生产开始日期、批次和集装箱凑整在每个订单或报价中填写；这里只保留产品的默认集装箱。",
   "productSheet.adopted": "产品主档已按此采购单更新。",
   "sheet.prefilledNotice.master":
     "已用产品主档（产品库）预填采购单，请核对并调整本次采购的内容。",

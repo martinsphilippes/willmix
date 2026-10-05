@@ -37,6 +37,7 @@ export interface ScheduleLabels {
   addNoPieces: string;
   apply: string;
   remove: string;
+  removeNoPieces: string;
   applyRemove: string;
   exact: string;
   full: string;
@@ -379,11 +380,16 @@ export function SheetSchedule({
             )}
             {fillInfo.removeCartons !== null && fillInfo.removeCartons > 0 ? (
               <p className="text-zinc-700">
-                {fill(labels.remove, {
-                  cartons: fmt(fillInfo.removeCartons, 0),
-                  pieces: fmt(fillInfo.removePieces, 0),
-                  n: fillInfo.lower,
-                })}
+                {fillInfo.removePieces !== null
+                  ? fill(labels.remove, {
+                      cartons: fmt(fillInfo.removeCartons, 0),
+                      pieces: fmt(fillInfo.removePieces, 0),
+                      n: fillInfo.lower,
+                    })
+                  : fill(labels.removeNoPieces, {
+                      cartons: fmt(fillInfo.removeCartons, 0),
+                      n: fillInfo.lower,
+                    })}
               </p>
             ) : null}
             {!disabled ? (

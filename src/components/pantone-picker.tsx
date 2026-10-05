@@ -48,6 +48,8 @@ export function PantonePicker({
   const [table, setTable] = useState<PantoneColor[] | null>(null);
   const [loading, setLoading] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  // Clique/arraste dentro da caixa (ex.: barra de rolagem da lista) não fecha a lista.
+  const pressing = useRef(false);
 
   async function load() {
     if (table || loading) return;
@@ -113,7 +115,26 @@ export function PantonePicker({
     [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ");
 
   return (
-    <div ref={box} className="min-w-0 space-y-2" data-pantone-picker>
+    <div
+      ref={box}
+      className="min-w-0 space-y-2"
+      data-pantone-picker
+      onPointerDown={() => {
+        pressing.current = true;
+      }}
+      onPointerUp={() => {
+        pressing.current = false;
+      }}
+      onPointerCancel={() => {
+        pressing.current = false;
+      }}
+      onBlur={(e) => {
+        // Saiu da caixa por teclado (Tab): fecha a lista para não cobrir os campos abaixo.
+        if (pressing.current) return;
+        if (!box.current?.contains(e.relatedTarget as Node | null))
+          setOpen(false);
+      }}
+    >
       {selected.length > 0 || dirty ? (
         <input type="hidden" name={name} value={JSON.stringify(selected)} />
       ) : null}
