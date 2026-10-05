@@ -15,6 +15,7 @@ import {
   fillRecordsFromSheet,
   recordFields,
   sheetRecords,
+  withRecordDefaults,
   type SheetRecords,
 } from "./sheet-records";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
@@ -185,7 +186,14 @@ export async function getQuoteSheetForUser(
   const request = await store.get("requests", quote.requestId);
   if (!request) return null;
   const existing = await getQuoteSheet(quoteId);
-  const sheet = existing ?? (await prefillQuote(quote, request));
+  const stored = existing ?? (await prefillQuote(quote, request));
+  const records = await sheetRecords(
+    user,
+    quote.supplierId,
+    stored.productId ?? request.productId ?? null,
+  );
+  // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
+  const sheet = existing ? withRecordDefaults(existing, records) : stored;
   const photos = await getSheetPhotos(quoteId);
   // Fotos do cadastro do produto contam como enviadas (ficam no catálogo).
   const catalogKinds = await catalogPhotoKinds(request.productId);
@@ -211,11 +219,7 @@ export async function getQuoteSheetForUser(
     photos,
     missing: missingForQuote(sheet, [...photoKindsOf(photos), ...catalogKinds]),
     catalogPhotoKinds: catalogKinds,
-    records: await sheetRecords(
-      user,
-      quote.supplierId,
-      sheet.productId ?? request.productId ?? null,
-    ),
+    records,
     containerType: container.type,
     containerTypes: container.types,
   };

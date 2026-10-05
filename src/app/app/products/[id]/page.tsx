@@ -49,6 +49,7 @@ import {
   Input,
   LinkButton,
   PageHeader,
+  FieldRow,
   Select,
   Table,
   Td,
@@ -86,7 +87,6 @@ import { CycleCard } from "../_components/cycle-card";
 import { MoneyInput } from "@/components/money-input";
 
 /* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
-const big = "py-2.5";
 const sourceTone = {
   manual: "neutral",
   sourcing: "brand",
@@ -110,7 +110,8 @@ function NumberInput({
       step={integer ? 1 : "any"}
       min={0}
       inputMode={integer ? "numeric" : "decimal"}
-      className={cx(big, className)}
+      className={className}
+      dense
       {...props}
     />
   );
@@ -319,35 +320,31 @@ export default async function ProductSheetPage({
 
       {/* ---- Ficha (um formulário, seções em cards) ---- */}
       <div id="sheet" className="scroll-mt-4" />
-      <form action={updateProductSheetAction} className="mt-4 space-y-6">
+      <form action={updateProductSheetAction} className="mt-4 space-y-4">
         <input type="hidden" name="id" value={product.id} />
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Card title={t("catalog.section.identification")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Field label={t("common.name")}>
-                  <Input
-                    name="name"
-                    required
-                    minLength={2}
-                    defaultValue={product.name}
-                    className={big}
-                  />
-                </Field>
-              </div>
-              <Field label="SKU">
+        {/* Cadastro denso, no padrão da ficha de compra: rótulo à esquerda,
+            caixa do tamanho do que se digita, um campo abaixo do outro. */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title={t("catalog.section.identification")} dense>
+            <div className="space-y-2">
+              <FieldRow label={t("common.name")} size="full" required>
                 <Input
-                  name="sku"
-                  defaultValue={product.sku ?? ""}
-                  className={big}
+                  name="name"
+                  required
+                  minLength={2}
+                  defaultValue={product.name}
+                  dense
                 />
-              </Field>
-              <Field label={t("catalog.line")}>
+              </FieldRow>
+              <FieldRow label="SKU" size="sm">
+                <Input name="sku" defaultValue={product.sku ?? ""} dense />
+              </FieldRow>
+              <FieldRow label={t("catalog.line")} size="md" required>
                 <Select
                   name="lineId"
                   required
                   defaultValue={product.lineId}
-                  className={big}
+                  dense
                 >
                   {lines.map((l) => (
                     <option key={l.id} value={l.id}>
@@ -355,105 +352,108 @@ export default async function ProductSheetPage({
                     </option>
                   ))}
                 </Select>
-              </Field>
-              <Field label={t("catalog.category")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.category")} size="md">
                 <Input
                   name="category"
                   defaultValue={product.category ?? ""}
-                  className={big}
+                  dense
                 />
-              </Field>
-              <label className="flex cursor-pointer items-center gap-2 self-end pb-2.5 text-sm font-medium text-zinc-800">
-                <input type="hidden" name="active" value="off" />
-                <input
-                  type="checkbox"
-                  name="active"
-                  value="on"
-                  defaultChecked={product.active}
-                  className="h-5 w-5 cursor-pointer accent-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-                />
-                {t("catalog.active")}
-              </label>
-              <div className="sm:col-span-2">
-                <Field label={t("requests.specification")}>
-                  <Textarea
-                    name="specification"
-                    defaultValue={product.specification ?? ""}
-                    className={big}
+              </FieldRow>
+              <FieldRow label={t("catalog.active")} size="full">
+                <label className="inline-flex min-h-8 cursor-pointer items-center gap-2 text-[13px] font-medium text-zinc-800">
+                  <input type="hidden" name="active" value="off" />
+                  <input
+                    type="checkbox"
+                    name="active"
+                    value="on"
+                    defaultChecked={product.active}
+                    className="h-4 w-4 cursor-pointer accent-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
                   />
-                </Field>
-              </div>
+                  {t("catalog.active")}
+                </label>
+              </FieldRow>
+              <FieldRow label={t("requests.specification")} size="full">
+                <Textarea
+                  name="specification"
+                  rows={3}
+                  defaultValue={product.specification ?? ""}
+                  dense
+                />
+              </FieldRow>
             </div>
           </Card>
 
-          <Card title={t("catalog.section.supplier")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Field
-                  label={t("common.supplier")}
-                  hint={
-                    supplier ? (
-                      <TextLink href={`/app/parties/${supplier.id}`}>
-                        {t("catalog.openSupplier")}
-                      </TextLink>
-                    ) : undefined
-                  }
+          <Card title={t("catalog.section.supplier")} dense>
+            <div className="space-y-2">
+              <FieldRow
+                label={t("common.supplier")}
+                size="lg"
+                hint={
+                  supplier ? (
+                    <TextLink href={`/app/parties/${supplier.id}`}>
+                      {t("catalog.openSupplier")}
+                    </TextLink>
+                  ) : undefined
+                }
+              >
+                <Select
+                  name="supplierId"
+                  defaultValue={product.supplierId ?? ""}
+                  dense
                 >
-                  <Select
-                    name="supplierId"
-                    defaultValue={product.supplierId ?? ""}
-                    className={big}
-                  >
-                    <option value="">{t("catalog.noSupplier")}</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <Field label={t("catalog.supplierSku")}>
+                  <option value="">{t("catalog.noSupplier")}</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </FieldRow>
+              <FieldRow label={t("catalog.supplierSku")} size="md">
                 <Input
                   name="supplierSku"
                   defaultValue={product.supplierSku ?? ""}
-                  className={big}
+                  dense
                 />
-              </Field>
-              <Field label={t("catalog.moq")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.moq")} size="sm">
                 <NumberInput
                   name="moq"
                   integer
                   defaultValue={product.moq ?? ""}
                 />
-              </Field>
-              <Field label={t("common.price")}>
+              </FieldRow>
+              <FieldRow label={t("common.price")} size="md">
                 <MoneyInput
                   name="price"
                   watchField="currency"
                   defaultAmount={product.price ?? null}
                   decimals={4}
+                  size="sm"
                 />
-              </Field>
-              <Field label={t("common.currency")}>
+              </FieldRow>
+              <FieldRow label={t("common.currency")} size="sm">
                 <CurrencySelect
                   name="currency"
                   value={product.currency}
                   t={t}
                   allowEmpty
-                  className={big}
+                  dense
                 />
-              </Field>
-              <Field label={t("catalog.negotiatedAt")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.negotiatedAt")} size="sm">
                 <Input
                   name="negotiatedAt"
                   type="date"
                   defaultValue={product.negotiatedAt?.slice(0, 10) ?? ""}
-                  className={big}
+                  dense
                 />
-              </Field>
-              <Field
-                label={`${t("catalog.source")} (${t("catalog.readOnly")})`}
+              </FieldRow>
+              <FieldRow
+                label={t("catalog.source")}
+                size="md"
+                hint={t("catalog.readOnly")}
               >
                 <Input
                   readOnly
@@ -462,163 +462,163 @@ export default async function ProductSheetPage({
                       ? t(`catalog.source.${product.source}` as DictionaryKey)
                       : "—"
                   }
-                  className={cx(big, "bg-zinc-50 text-zinc-600")}
+                  className="bg-zinc-50 text-zinc-600"
+                  dense
                 />
-              </Field>
+              </FieldRow>
               {product.sourcingItemId ? (
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                <p className="pt-1 text-xs text-zinc-600">
+                  <span className="font-semibold uppercase tracking-wide text-zinc-500">
                     {t("catalog.sourcingOrigin")}
-                  </p>
-                  <p className="mt-0.5 text-sm">
-                    <TextLink
-                      href={`/app/sourcing/items/${product.sourcingItemId}`}
-                    >
-                      {sourcing?.name ?? t("catalog.openSourcing")}
-                    </TextLink>
-                    {sourcing?.foundAt
-                      ? ` · ${formatDate(sourcing.foundAt)}`
-                      : ""}
-                  </p>
-                </div>
+                  </span>{" "}
+                  <TextLink
+                    href={`/app/sourcing/items/${product.sourcingItemId}`}
+                  >
+                    {sourcing?.name ?? t("catalog.openSourcing")}
+                  </TextLink>
+                  {sourcing?.foundAt
+                    ? ` · ${formatDate(sourcing.foundAt)}`
+                    : ""}
+                </p>
               ) : null}
             </div>
           </Card>
 
-          <Card title={t("catalog.section.product")}>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label={t("catalog.material")}>
+          <Card title={t("catalog.section.product")} dense>
+            <div className="space-y-2">
+              <FieldRow label={t("catalog.material")} size="md">
                 <Input
                   name="material"
                   defaultValue={product.material ?? ""}
-                  className={big}
+                  dense
                 />
-              </Field>
-              <Field label={t("catalog.color")}>
-                <Input
-                  name="color"
-                  defaultValue={product.color ?? ""}
-                  className={big}
-                />
-              </Field>
-              <Field label={t("catalog.pantone")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.color")} size="md">
+                <Input name="color" defaultValue={product.color ?? ""} dense />
+              </FieldRow>
+              <FieldRow label={t("catalog.pantone")} size="md">
                 <Input
                   name="pantone"
                   defaultValue={product.pantone ?? ""}
-                  className={big}
+                  dense
                 />
-              </Field>
-              <div className="sm:col-span-3">
-                <p className="mb-1 text-sm font-medium text-zinc-800">
-                  {t("catalog.dimensions")}
-                </p>
-                <div className="grid grid-cols-3 gap-3">
-                  <Field label={t("catalog.length")}>
-                    <NumberInput
-                      name="lengthCm"
-                      defaultValue={product.lengthCm ?? ""}
-                    />
-                  </Field>
-                  <Field label={t("catalog.width")}>
-                    <NumberInput
-                      name="widthCm"
-                      defaultValue={product.widthCm ?? ""}
-                    />
-                  </Field>
-                  <Field label={t("catalog.height")}>
-                    <NumberInput
-                      name="heightCm"
-                      defaultValue={product.heightCm ?? ""}
-                    />
-                  </Field>
+              </FieldRow>
+              <FieldRow label={t("catalog.dimensions")} size="full">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                  <span>{t("catalog.length")}</span>
+                  <NumberInput
+                    name="lengthCm"
+                    defaultValue={product.lengthCm ?? ""}
+                    aria-label={t("catalog.length")}
+                    className="w-20"
+                  />
+                  <span aria-hidden>×</span>
+                  <span>{t("catalog.width")}</span>
+                  <NumberInput
+                    name="widthCm"
+                    defaultValue={product.widthCm ?? ""}
+                    aria-label={t("catalog.width")}
+                    className="w-20"
+                  />
+                  <span aria-hidden>×</span>
+                  <span>{t("catalog.height")}</span>
+                  <NumberInput
+                    name="heightCm"
+                    defaultValue={product.heightCm ?? ""}
+                    aria-label={t("catalog.height")}
+                    className="w-20"
+                  />
                 </div>
-              </div>
-              <Field label={t("catalog.netWeight")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.netWeight")} size="xs">
                 <NumberInput
                   name="netWeightKg"
                   defaultValue={product.netWeightKg ?? ""}
                 />
-              </Field>
-              <Field label={t("catalog.grossWeight")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.grossWeight")} size="xs">
                 <NumberInput
                   name="grossWeightKg"
                   defaultValue={product.grossWeightKg ?? ""}
                 />
-              </Field>
+              </FieldRow>
             </div>
           </Card>
 
-          <Card title={t("catalog.section.packaging")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("catalog.masterBoxQty")}>
+          <Card title={t("catalog.section.packaging")} dense>
+            <div className="space-y-2">
+              <FieldRow label={t("catalog.masterBoxQty")} size="xs">
                 <NumberInput
                   name="masterBoxQty"
                   integer
                   defaultValue={product.masterBoxQty ?? ""}
                 />
-              </Field>
-              <Field label={t("catalog.innerBoxQty")}>
+              </FieldRow>
+              <FieldRow label={t("catalog.innerBoxQty")} size="xs">
                 <NumberInput
                   name="innerBoxQty"
                   integer
                   defaultValue={product.innerBoxQty ?? ""}
                 />
-              </Field>
-              <div className="sm:col-span-2">
-                <p className="mb-1 text-sm font-medium text-zinc-800">
-                  {t("catalog.boxDimensions")}
-                </p>
-                <div className="grid grid-cols-3 gap-3">
-                  <Field label={t("catalog.length")}>
-                    <NumberInput
-                      name="boxLengthCm"
-                      defaultValue={product.boxLengthCm ?? ""}
-                    />
-                  </Field>
-                  <Field label={t("catalog.width")}>
-                    <NumberInput
-                      name="boxWidthCm"
-                      defaultValue={product.boxWidthCm ?? ""}
-                    />
-                  </Field>
-                  <Field label={t("catalog.height")}>
-                    <NumberInput
-                      name="boxHeightCm"
-                      defaultValue={product.boxHeightCm ?? ""}
-                    />
-                  </Field>
+              </FieldRow>
+              <FieldRow label={t("catalog.boxDimensions")} size="full">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                  <span>{t("catalog.length")}</span>
+                  <NumberInput
+                    name="boxLengthCm"
+                    defaultValue={product.boxLengthCm ?? ""}
+                    aria-label={t("catalog.length")}
+                    className="w-20"
+                  />
+                  <span aria-hidden>×</span>
+                  <span>{t("catalog.width")}</span>
+                  <NumberInput
+                    name="boxWidthCm"
+                    defaultValue={product.boxWidthCm ?? ""}
+                    aria-label={t("catalog.width")}
+                    className="w-20"
+                  />
+                  <span aria-hidden>×</span>
+                  <span>{t("catalog.height")}</span>
+                  <NumberInput
+                    name="boxHeightCm"
+                    defaultValue={product.boxHeightCm ?? ""}
+                    aria-label={t("catalog.height")}
+                    className="w-20"
+                  />
                 </div>
-              </div>
-              <div className="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-brand-700">
-                  {t("catalog.cbmPerBox")}
-                </div>
-                <div className="mt-1 text-2xl font-bold tracking-tight text-zinc-900">
-                  {cbmShown !== null ? `${cbmShown.toFixed(4)} m³` : "—"}
-                </div>
-                {cbmComputed !== null ? (
-                  <div className="text-xs text-brand-800/80">
-                    {t("catalog.cbmComputed")}
-                  </div>
-                ) : null}
-              </div>
-              <Field label={t("catalog.cbmPerBox")} hint={t("catalog.cbmHint")}>
+              </FieldRow>
+              <FieldRow
+                label={t("catalog.cbmPerBox")}
+                size="xs"
+                hint={
+                  <>
+                    <strong className="text-zinc-800">
+                      {cbmShown !== null ? `${cbmShown.toFixed(4)} m³` : "—"}
+                    </strong>
+                    {cbmComputed !== null
+                      ? ` · ${t("catalog.cbmComputed")}`
+                      : ` · ${t("catalog.cbmHint")}`}
+                  </>
+                }
+              >
                 <NumberInput
                   name="cbm"
                   defaultValue={product.cbm ?? ""}
                   disabled={cbmComputed !== null}
                   className={cbmComputed !== null ? "bg-zinc-50" : undefined}
                 />
-              </Field>
+              </FieldRow>
             </div>
           </Card>
         </div>
 
-        <Card title={t("catalog.section.notes")}>
+        <Card title={t("catalog.section.notes")} dense>
           <Textarea
             name="notes"
+            rows={3}
             defaultValue={product.notes ?? ""}
-            className={big}
+            dense
           />
         </Card>
 
@@ -759,7 +759,7 @@ export default async function ProductSheetPage({
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t("catalog.photos.kind")}>
-                <Select name="kind" defaultValue="original" className={big}>
+                <Select name="kind" defaultValue="original" dense>
                   {PHOTO_KINDS.map((k) => (
                     <option key={k} value={k}>
                       {t(`catalog.photoKind.${k}` as DictionaryKey)}
@@ -768,7 +768,7 @@ export default async function ProductSheetPage({
                 </Select>
               </Field>
               <Field label={t("catalog.photos.caption")}>
-                <Input name="caption" maxLength={200} className={big} />
+                <Input name="caption" maxLength={200} dense />
               </Field>
             </div>
             <SubmitButton variant="secondary" className="w-full sm:w-auto">
@@ -840,7 +840,7 @@ export default async function ProductSheetPage({
             <input type="hidden" name="productId" value={product.id} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t("catalog.measurements.kind")}>
-                <Select name="kind" defaultValue="weight_net" className={big}>
+                <Select name="kind" defaultValue="weight_net" dense>
                   {MEASUREMENT_KINDS.map((k) => (
                     <option key={k} value={k}>
                       {t(`catalog.measureKind.${k}` as DictionaryKey)}
@@ -854,7 +854,7 @@ export default async function ProductSheetPage({
                   required
                   defaultValue="kg"
                   placeholder="kg, cm, m³, un"
-                  className={big}
+                  dense
                 />
               </Field>
               <Field label={t("catalog.measurements.declared")}>
@@ -865,7 +865,7 @@ export default async function ProductSheetPage({
               </Field>
               <div className="sm:col-span-2">
                 <Field label={t("common.note")}>
-                  <Input name="note" maxLength={500} className={big} />
+                  <Input name="note" maxLength={500} dense />
                 </Field>
               </div>
             </div>
@@ -1008,19 +1008,19 @@ export default async function ProductSheetPage({
               <NumberInput name="quantity" required min={0.01} />
             </Field>
             <Field label={t("requests.unit")}>
-              <Input name="unit" defaultValue="un" className={big} />
+              <Input name="unit" defaultValue="un" dense />
             </Field>
             <Field label={t("catalog.schedules.scheduledFor")}>
-              <Input name="scheduledFor" type="date" className={big} />
+              <Input name="scheduledFor" type="date" dense />
             </Field>
             <Field label={t("catalog.schedules.periodLabel")}>
-              <Input name="periodLabel" maxLength={60} className={big} />
+              <Input name="periodLabel" maxLength={60} dense />
             </Field>
             <Field label={t("common.supplier")}>
               <Select
                 name="supplierId"
                 defaultValue={product.supplierId ?? ""}
-                className={big}
+                dense
               >
                 <option value="">{t("catalog.noSupplier")}</option>
                 {suppliers.map((s) => (
@@ -1034,7 +1034,7 @@ export default async function ProductSheetPage({
               label={t("common.customer")}
               hint={t("catalog.schedules.customerHint")}
             >
-              <Select name="customerId" defaultValue="" className={big}>
+              <Select name="customerId" defaultValue="" dense>
                 <option value="">—</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -1044,7 +1044,7 @@ export default async function ProductSheetPage({
               </Select>
             </Field>
             <Field label={t("common.status")}>
-              <Select name="status" defaultValue="planned" className={big}>
+              <Select name="status" defaultValue="planned" dense>
                 {SCHEDULE_STATUSES.filter((s) => s !== "ordered").map((st) => (
                   <option key={st} value={st}>
                     {t(`catalog.scheduleStatus.${st}` as DictionaryKey)}
@@ -1054,6 +1054,7 @@ export default async function ProductSheetPage({
             </Field>
             <Field label={t("common.price")}>
               <MoneyInput
+                size="sm"
                 name="price"
                 watchField="currency"
                 defaultAmount={product.price ?? null}
@@ -1066,12 +1067,12 @@ export default async function ProductSheetPage({
                 value={product.currency}
                 t={t}
                 allowEmpty
-                className={big}
+                dense
               />
             </Field>
             <div className="sm:col-span-2">
               <Field label={t("common.note")}>
-                <Input name="notes" className={big} />
+                <Input name="notes" dense />
               </Field>
             </div>
           </div>
@@ -1155,7 +1156,8 @@ export default async function ProductSheetPage({
                   rows={4}
                   placeholder={"500;9.50\n1000;8.90"}
                   defaultValue={formatPriceTiers(tiers)}
-                  className={cx(big, "min-h-0 font-mono")}
+                  dense
+                  className={"min-h-0 font-mono"}
                 />
               </Field>
               <SubmitButton
@@ -1192,14 +1194,14 @@ export default async function ProductSheetPage({
                     step={1}
                     inputMode="numeric"
                     defaultValue={analysis?.quantity ?? ""}
-                    className={big}
+                    dense
                   />
                 </Field>
               </div>
               <SubmitButton
                 type="submit"
                 variant="secondary"
-                className={cx(big, analysis ? "mb-5" : undefined)}
+                className={cx("py-2.5", analysis ? "mb-5" : undefined)}
               >
                 {t("catalog.opp.analyze")}
               </SubmitButton>

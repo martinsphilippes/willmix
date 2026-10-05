@@ -144,7 +144,13 @@ export function PurchaseSheetFields({
                 records.missing.length ? "missing" : "complete"
               }
             >
-              <p>{t("sheet.records.hint")}</p>
+              <p>
+                {t(
+                  editSupplier
+                    ? "sheet.records.hint"
+                    : "sheet.records.hintReadOnly",
+                )}
+              </p>
               {records.missing.length ? (
                 <p className="text-amber-800">
                   {t("sheet.records.missing", {
@@ -155,7 +161,11 @@ export function PurchaseSheetFields({
                 </p>
               ) : (
                 <p className="text-emerald-800">
-                  {t("sheet.records.complete")}
+                  {t(
+                    records.productApplies
+                      ? "sheet.records.complete"
+                      : "sheet.records.supplierComplete",
+                  )}
                 </p>
               )}
               {records.canEdit ? (
@@ -171,6 +181,7 @@ export function PurchaseSheetFields({
                     </Link>
                   ) : null}
                   {records.productId &&
+                  records.productApplies &&
                   records.missing.includes("factoryItemCode") ? (
                     <Link
                       href={`/app/products/${records.productId}`}

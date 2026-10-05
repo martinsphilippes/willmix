@@ -111,6 +111,45 @@ describe("ficha: bloco Fornecedor vem dos cadastros", () => {
     expect(after.records.missing).toEqual([]);
   });
 
+  it("produto sem fornecedor: código não entra nem vaza entre fornecedores", async () => {
+    const store = getStore();
+    await store.update("products", "prod-panela", {
+      supplierId: null,
+      supplierSku: null,
+    });
+    const { quoteA, quoteB } = await rfqFor("prod-panela");
+    const b0 = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    expect(b0.records.missing).not.toContain("factoryItemCode");
+    expect(b0.records.productApplies).toBe(false);
+    await qs.saveQuoteSheet(supplierA, quoteA.id, {
+      supplierName: "Shenzhen Supplier A",
+      factoryItemCode: "A-SECRET-123",
+    });
+    expect(
+      (await store.get("products", "prod-panela"))!.supplierSku ?? null,
+    ).toBeNull();
+    const b = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    expect(b.sheet.factoryItemCode ?? null).toBeNull();
+    await store.update("products", "prod-panela", {
+      supplierId: "fornecedor-a",
+      supplierSku: "SZA-PAN5",
+    });
+  });
+
+  it("ficha gravada com campo em branco mostra o valor do cadastro", async () => {
+    const store = getStore();
+    const { quoteB } = await rfqFor("prod-panela");
+    await qs.saveQuoteSheet(supplierB, quoteB.id, {
+      supplierName: "Guangzhou Supplier B",
+      location: null,
+    });
+    await store.update("parties", "fornecedor-b", { city: "Yiwu" });
+    const view = (await qs.getQuoteSheetForUser(supplierB, quoteB.id))!;
+    expect(view.saved).toBe(true);
+    expect(view.sheet.location).toBe("Yiwu");
+    await store.update("parties", "fornecedor-b", { city: "Guangzhou" });
+  });
+
   it("cliente ou fornecedor de fora não grava no cadastro", async () => {
     expect(
       await sr.fillRecordsFromSheet(joao, "fornecedor-c", null, {

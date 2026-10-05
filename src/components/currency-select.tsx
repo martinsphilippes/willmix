@@ -16,6 +16,7 @@ export function CurrencySelect({
   disabled,
   allowEmpty,
   className,
+  dense,
 }: {
   name?: string;
   value: string | null | undefined;
@@ -25,6 +26,8 @@ export function CurrencySelect({
   /** Mostra "Selecione" (campo opcional). */
   allowEmpty?: boolean;
   className?: string;
+  /** Campo compacto (formulários densos). */
+  dense?: boolean;
 }) {
   const current = value ? value.toUpperCase() : "";
   const legacy =
@@ -38,6 +41,7 @@ export function CurrencySelect({
       required={required}
       disabled={disabled}
       className={className}
+      dense={dense}
     >
       {allowEmpty ? <option value="">{t("common.select")}</option> : null}
       {legacy ? <option value={legacy}>{legacy}</option> : null}

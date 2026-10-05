@@ -17,6 +17,7 @@ import {
   fillRecordsFromSheet,
   recordFields,
   sheetRecords,
+  withRecordDefaults,
   type SheetRecords,
 } from "./sheet-records";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
@@ -375,10 +376,17 @@ export async function getSheetForUser(
     limit: 1,
   });
   const draft = existing ? null : await prefill(order);
-  const sheet = existing ?? draft!;
+  const stored = existing ?? draft!;
+  const request = await store.get("requests", order.requestId);
+  const records = await sheetRecords(
+    user,
+    order.supplierId,
+    stored.productId ?? request?.productId ?? null,
+  );
+  // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
+  const sheet = existing ? withRecordDefaults(existing, records) : stored;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
-  const request = await store.get("requests", order.requestId);
   return {
     order,
     access,
@@ -386,11 +394,7 @@ export async function getSheetForUser(
     saved: !!existing,
     prefillSource: draft?.prefillSource ?? null,
     photos,
-    records: await sheetRecords(
-      user,
-      order.supplierId,
-      sheet.productId ?? request?.productId ?? null,
-    ),
+    records,
     plan: planSheet(
       {
         lots: sheet.lots ?? null,

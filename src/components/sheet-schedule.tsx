@@ -240,7 +240,7 @@ export function SheetSchedule({
               </th>
               <th className={cx(th, "w-24 pr-3 text-right")}>{labels.cbm}</th>
               <th className={cx(th, "w-32 pl-3")}>{labels.departure}</th>
-              <th className="w-8">
+              <th className="relative w-8">
                 <span className="sr-only">{labels.removeLot}</span>
               </th>
             </tr>
@@ -248,7 +248,7 @@ export function SheetSchedule({
           <tbody>
             {plan.lots.slice(0, shown).map((lot, i) => (
               <tr key={lot.index} className="border-t border-zinc-100">
-                <td className="py-1.5 pr-3 font-semibold text-zinc-800">
+                <td className="relative py-1.5 pr-3 font-semibold text-zinc-800">
                   {lot.index}
                   {lot.index === 1 && lotRequired ? (
                     <span
