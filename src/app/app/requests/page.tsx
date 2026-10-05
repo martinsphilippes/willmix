@@ -74,6 +74,7 @@ export default async function RequestsPage({
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
   const errorKey = `reqDelete.error.${typeof error === "string" ? error : ""}`;
+  const batchErrorKey = `reqBatch.error.${typeof error === "string" ? error : ""}`;
 
   return (
     <>
@@ -251,7 +252,9 @@ export default async function RequestsPage({
           <Alert tone="danger">
             {t(errorKey as DictionaryKey) !== errorKey
               ? t(errorKey as DictionaryKey)
-              : t("common.error")}
+              : t(batchErrorKey as DictionaryKey) !== batchErrorKey
+                ? t(batchErrorKey as DictionaryKey)
+                : t("common.error")}
           </Alert>
         </div>
       ) : null}

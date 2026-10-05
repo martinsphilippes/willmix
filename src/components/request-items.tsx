@@ -59,6 +59,10 @@ export function RequestItems({
       {rows.map((index, position) => {
         const prefix = `p${index}.`;
         const first = index === 0;
+        const productLabel = labels.productN.replace(
+          "{n}",
+          String(position + 1),
+        );
         return (
           <fieldset
             key={index}
@@ -67,12 +71,13 @@ export function RequestItems({
           >
             <legend className="flex w-full items-center justify-between gap-2 px-1">
               <span className="text-sm font-semibold text-zinc-800">
-                {labels.productN.replace("{n}", String(position + 1))}
+                {productLabel}
               </span>
               {rows.length > 1 ? (
                 <button
                   type="button"
                   onClick={() => remove(index)}
+                  aria-label={`${labels.remove}: ${productLabel}`}
                   className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                 >
                   {labels.remove}

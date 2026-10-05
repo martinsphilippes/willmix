@@ -107,7 +107,7 @@ export default async function PurchaseSheetPage({
       <form
         id="purchase-sheet"
         action={savePurchaseSheetAction}
-        className="space-y-6"
+        className="space-y-4"
       >
         <input type="hidden" name="orderId" value={id} />
 

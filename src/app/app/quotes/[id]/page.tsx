@@ -8,12 +8,11 @@ import {
   Badge,
   Card,
   DescriptionList,
-  Field,
-  Input,
+  FieldRow,
   PageHeader,
-  Textarea,
   cx,
   formatDate,
+  inputDenseClass,
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
@@ -180,7 +179,7 @@ export default async function QuotePage({
         <form
           id="quote-sheet"
           action={answerQuoteWithSheetAction}
-          className="mt-6 space-y-6"
+          className="mt-6 space-y-4"
         >
           <input type="hidden" name="quoteId" value={quote.id} />
           <h2 className="text-lg font-semibold text-zinc-900">
@@ -222,29 +221,29 @@ export default async function QuotePage({
         />
       ) : null}
       {sheetView && canAnswer && sheetView.access.editSupplier ? (
-        <Card title={t("quotes.answer")} className="mt-6">
-          <div className="grid gap-5 sm:grid-cols-3">
-            <Field label={t("quoteSheet.leadTime")}>
-              <Input
+        <Card title={t("quotes.answer")} className="mt-4" dense>
+          <div className="space-y-2">
+            <FieldRow label={t("quoteSheet.leadTime")} size="xs">
+              <input
                 form="quote-sheet"
                 name="leadTimeDays"
                 type="number"
                 min="1"
                 defaultValue={quote.leadTimeDays ?? ""}
+                className={inputDenseClass}
               />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label={t("quoteSheet.conditions")}>
-                <Textarea
-                  form="quote-sheet"
-                  name="conditions"
-                  rows={2}
-                  maxLength={2000}
-                  defaultValue={quote.conditions ?? ""}
-                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
-                />
-              </Field>
-            </div>
+            </FieldRow>
+            <FieldRow label={t("quoteSheet.conditions")} size="full">
+              <textarea
+                form="quote-sheet"
+                name="conditions"
+                rows={2}
+                maxLength={2000}
+                defaultValue={quote.conditions ?? ""}
+                placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                className={cx(inputDenseClass, "min-h-12")}
+              />
+            </FieldRow>
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <SubmitButton

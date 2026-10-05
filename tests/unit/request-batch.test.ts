@@ -193,7 +193,12 @@ describe("lote de solicitações", () => {
         { customerId: "cliente-maria", deadline: null, notes: null },
         [item("A"), item("B")],
       ),
-    ).rejects.toThrow();
+    ).rejects.toThrow("forbidden");
+    expect(
+      await getStore().list("requests", {
+        filter: { customerId: "cliente-maria" },
+      }),
+    ).toEqual([]);
   });
 
   it("falha no meio do lote: o que já nasceu é cancelado e o erro segue", async () => {

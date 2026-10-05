@@ -111,7 +111,14 @@ export async function createRequestBatch(
         throw new Error("schema_outdated");
       // Falhou no meio: o que já nasceu deste lote é cancelado (sem apagar) para
       // o usuário reenviar sem duplicar; o erro original segue para a tela.
-      for (const r of created) {
+      // Pelo groupId, para pegar também a solicitação gravada cuja etapa
+      // seguinte (auditoria, sourcing, aviso) foi o que falhou.
+      const born = groupId
+        ? (await store.list("requests", { filter: { groupId } })).filter(
+            (r) => r.status !== "CANCELLED",
+          )
+        : created;
+      for (const r of born) {
         await store.update("requests", r.id, { status: "CANCELLED" });
         await audit(
           user,

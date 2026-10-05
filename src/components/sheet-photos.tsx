@@ -32,7 +32,7 @@ export function SheetPhotosCard({
   hint?: string;
 }) {
   return (
-    <Card title={t("sheet.section.photos")} className="mt-6">
+    <Card title={t("sheet.section.photos")} className="mt-4">
       <span id="photos" className="block scroll-mt-24" />
       <p className="mb-4 text-sm leading-relaxed text-zinc-600">
         {hint ?? t("sheet.photos.hint")}

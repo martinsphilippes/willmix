@@ -74,24 +74,38 @@ export function Card({
   className,
   title,
   actions,
+  dense,
   children,
 }: {
   className?: string;
   title?: ReactNode;
   actions?: ReactNode;
+  /** Formulário denso: menos espaço interno e título menor. */
+  dense?: boolean;
   children: ReactNode;
 }) {
   return (
     <section
       className={cx(
-        "min-w-0 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5",
+        "min-w-0 rounded-2xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-900/[0.03]",
+        dense ? "p-3 sm:p-4" : "p-4 sm:p-5",
         className,
       )}
     >
       {title || actions ? (
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <header
+          className={cx(
+            "flex flex-wrap items-center justify-between gap-2",
+            dense ? "mb-3" : "mb-4",
+          )}
+        >
           {title ? (
-            <h2 className="text-base font-semibold tracking-tight text-zinc-900">
+            <h2
+              className={cx(
+                "font-semibold tracking-tight text-zinc-900",
+                dense ? "text-sm" : "text-base",
+              )}
+            >
               {title}
             </h2>
           ) : (
@@ -212,6 +226,84 @@ export function Field({
 
 export const inputClass =
   "block w-full min-w-0 max-w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
+
+/** Campo compacto (formulários densos, ex.: ficha de compra): mais baixo e com letra menor. */
+export const inputDenseClass =
+  "block w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
+
+/** Larguras dos campos compactos (no celular ocupam a linha toda). */
+export const fieldRowWidth = {
+  xs: "sm:w-24",
+  sm: "sm:w-36",
+  md: "sm:w-56",
+  lg: "sm:w-80",
+  full: "sm:w-full",
+} as const;
+
+/**
+ * Campo em linha para formulários densos: rótulo à esquerda (largura fixa),
+ * campo à direita com largura por tamanho, dica ao lado. Um campo abaixo do
+ * outro, sem caixas gigantes. No celular, rótulo em cima do campo.
+ */
+export function FieldRow({
+  label,
+  hint,
+  required,
+  size = "md",
+  requiredTitle,
+  children,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  required?: boolean;
+  size?: keyof typeof fieldRowWidth;
+  /** Texto do asterisco de obrigatório (acessibilidade). */
+  requiredTitle?: string;
+  children: ReactNode;
+}) {
+  const generatedId = useId();
+  const single =
+    isValidElement<{ id?: string; type?: string }>(children) &&
+    children.props.type !== "file";
+  const id = single ? (children.props.id ?? `f-${generatedId}`) : undefined;
+  const text = (
+    <>
+      {label}
+      {required ? (
+        <span
+          className="ml-0.5 font-semibold text-brand-600"
+          title={requiredTitle}
+        >
+          <span aria-hidden>*</span>
+          {requiredTitle ? (
+            <span className="sr-only">({requiredTitle})</span>
+          ) : null}
+        </span>
+      ) : null}
+    </>
+  );
+  const labelClass =
+    "block text-xs font-medium leading-5 text-zinc-700 sm:pt-1.5";
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-3">
+      {single ? (
+        <label htmlFor={id} className={labelClass}>
+          {text}
+        </label>
+      ) : (
+        <span className={labelClass}>{text}</span>
+      )}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <div className={cx("w-full min-w-0", fieldRowWidth[size])}>
+          {single ? cloneElement(children, { id }) : children}
+        </div>
+        {hint ? (
+          <span className="text-xs leading-5 text-zinc-500">{hint}</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input {...props} className={cx(inputClass, className)} />;

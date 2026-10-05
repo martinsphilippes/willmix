@@ -62,15 +62,21 @@ export interface UploadInput {
 }
 
 /** Upload com versionamento: um novo arquivo para o mesmo requisito mantém o anterior. */
+/** Mesma checagem do upload, sem gravar: para validar antes de criar o que o arquivo acompanha. */
+export function assertUploadable(file: File): void {
+  if (file.size === 0) throw new DocumentError("empty");
+  if (file.size > MAX_BYTES) throw new DocumentError("too_large");
+  const mime = file.type || "application/octet-stream";
+  if (!ALLOWED_MIME.includes(mime)) throw new DocumentError("mime");
+}
+
 export async function uploadDocument(
   user: User,
   file: File,
   input: UploadInput,
 ): Promise<Document> {
-  if (file.size === 0) throw new DocumentError("empty");
-  if (file.size > MAX_BYTES) throw new DocumentError("too_large");
+  assertUploadable(file);
   const mime = file.type || "application/octet-stream";
-  if (!ALLOWED_MIME.includes(mime)) throw new DocumentError("mime");
 
   const store = getStore();
   const bytes = new Uint8Array(await file.arrayBuffer());

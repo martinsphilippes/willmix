@@ -36,6 +36,7 @@ import {
   type RequestBatchItem,
 } from "@/lib/services/requests";
 import {
+  assertUploadable,
   registerUploadedDocument,
   uploadDocument,
 } from "@/lib/services/documents";
@@ -123,6 +124,9 @@ export async function createRequestAction(form: FormData) {
         sourcingDemand: row.sourcingDemand && !parsed.productId,
       });
     }
+    // Anexos conferidos antes de criar qualquer solicitação (tipo e tamanho).
+    for (const row of rows)
+      for (const file of row.attachments) assertUploadable(file);
     const base = requestBaseSchema.parse({
       customerId:
         user.role === "customer" ? user.partyId : str(form, "customerId"),
@@ -141,35 +145,53 @@ export async function createRequestAction(form: FormData) {
       items,
     );
     const first = created[0];
-    // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
-    const scheduleId = str(form, "scheduleId");
-    if (scheduleId && isWellmix(user)) {
-      const schedule = await store.get("purchase_schedules", scheduleId);
-      if (schedule && !schedule.requestId)
-        await store.update("purchase_schedules", scheduleId, {
-          requestId: first.id,
-          status: "confirmed",
-        });
-    }
-    // Anexos de cada produto fora do catálogo vão para a solicitação dele.
-    for (const [i, row] of rows.entries()) {
-      for (const file of row.attachments) {
-        await uploadDocument(user, file, {
-          requestId: created[i].id,
-          type: "attachment",
-          visibility: "internal",
-        });
+    const destination =
+      created.length === 1
+        ? `/app/requests/${first.id}`
+        : `/app/requests?group=${encodeURIComponent(first.groupId ?? "")}&created=${created.length}`;
+    // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
+    // o usuário a removeu, não há a que ligar.
+    const presetPos = rows.findIndex((r) => r.index === 0);
+    const preset = presetPos >= 0 ? created[presetPos] : null;
+    try {
+      // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
+      const scheduleId = str(form, "scheduleId");
+      if (scheduleId && preset && isWellmix(user)) {
+        const schedule = await store.get("purchase_schedules", scheduleId);
+        if (schedule && !schedule.requestId)
+          await store.update("purchase_schedules", scheduleId, {
+            requestId: preset.id,
+            status: "confirmed",
+          });
       }
+      // Anexos de cada produto fora do catálogo vão para a solicitação dele.
+      for (const [i, row] of rows.entries()) {
+        for (const file of row.attachments) {
+          await uploadDocument(user, file, {
+            requestId: created[i].id,
+            type: "attachment",
+            visibility: "internal",
+          });
+        }
+      }
+      // Busca por foto/link: a foto enviada vira anexo da solicitação da linha 0.
+      const lookupId = str(form, "lookupId");
+      if (lookupId && preset) {
+        const { attachLookupToRequest } =
+          await import("@/lib/services/product-lookup");
+        await attachLookupToRequest(user, lookupId, preset.id);
+      }
+    } catch (error) {
+      // As solicitações já existem: leva o usuário até elas com o aviso, em vez
+      // de voltar ao formulário vazio (reenviar duplicaria tudo).
+      const code =
+        error instanceof Error && /^[a-z_]+$/.test(error.message)
+          ? error.message
+          : "attachment_failed";
+      console.error("[action] /app/requests/new (após criar)", error);
+      return `${destination}${destination.includes("?") ? "&" : "?"}error=${code}`;
     }
-    // Busca por foto/link: a foto enviada vira anexo da primeira solicitação.
-    const lookupId = str(form, "lookupId");
-    if (lookupId) {
-      const { attachLookupToRequest } =
-        await import("@/lib/services/product-lookup");
-      await attachLookupToRequest(user, lookupId, first.id);
-    }
-    if (created.length === 1) return `/app/requests/${first.id}`;
-    return `/app/requests?group=${encodeURIComponent(first.groupId ?? "")}&created=${created.length}`;
+    return destination;
   });
 }
 

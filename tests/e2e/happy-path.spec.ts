@@ -312,3 +312,37 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
 });
+
+test("vários produtos numa solicitação: cada um vira uma solicitação do mesmo lote", async ({
+  page,
+}) => {
+  await login(page, "joao@lojista.com");
+  await page.goto("/app/requests/new");
+  await page.selectOption('select[name="p0.productId"]', "prod-jarra");
+  await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
+  await page.fill('input[name="p0.quantity"]', "100");
+  await page.click("[data-add-request-item]");
+  await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
+  await page.fill('input[name="p1.productName"]', "Copo de vidro");
+  await page.fill('textarea[name="p1.description"]', "Copo de vidro 300 ml");
+  await page.fill('input[name="p1.quantity"]', "200");
+  // Terceira linha adicionada e removida: não vira solicitação.
+  await page.click("[data-add-request-item]");
+  await page.getByRole("button", { name: /Remover: Produto 3/ }).click();
+  await page.getByRole("button", { name: /enviar|send/i }).click();
+  await page.waitForURL(/\/app\/requests\?group=[^&]+&created=2$/);
+  await expect(page.locator("[data-batch-created]")).toBeVisible();
+  await expect(page.locator("[data-batch-badge]")).toHaveCount(2);
+  await expect(
+    page.locator("table tr:has-text('Copo de vidro')"),
+  ).toBeVisible();
+  // Cada solicitação mostra a outra do lote.
+  await page
+    .locator("table tr:has-text('Copo de vidro') a[href^='/app/requests/']")
+    .first()
+    .click();
+  await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
+  await expect(page.locator("[data-batch-siblings]")).toContainText(
+    "Jarra de vidro",
+  );
+});
