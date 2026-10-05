@@ -12,11 +12,11 @@ import {
   FieldRow,
   cx,
   fieldRowWidth,
-  formatDate,
   inputDenseClass,
 } from "@/components/ui";
 import { MoneyInput } from "./money-input";
 import { PantonePicker } from "./pantone-picker";
+import { SheetSchedule } from "./sheet-schedule";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 
 /*
@@ -382,103 +382,53 @@ export function PurchaseSheetFields({
         <p className="mt-3 text-xs text-zinc-500">
           {t("sheet.lot.intervalHint")}
         </p>
-        {/* Lotes: tabela compacta, uma linha por lote. */}
-        <div className="-mx-3 mt-2 overflow-x-auto px-3 sm:mx-0 sm:px-0">
-          <table className="min-w-[34rem] text-[13px]">
-            <thead>
-              <tr className="text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-                <th className="w-12 py-1 pr-3 font-medium">
-                  {t("sheet.lot.column")}
-                </th>
-                <th className="w-28 py-1 pr-3 font-medium">
-                  {t("sheet.lot.interval")}
-                </th>
-                <th className="w-32 py-1 pr-3 font-medium">
-                  {t("sheet.lot.cartons")}
-                </th>
-                <th className="w-24 py-1 pr-3 text-right font-medium">
-                  {t("sheet.lot.pieces")}
-                </th>
-                <th className="w-24 py-1 pr-3 text-right font-medium">
-                  {t("sheet.lot.cbm")}
-                </th>
-                <th className="w-32 py-1 pl-3 font-medium">
-                  {t("sheet.lot.departure")}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {lots.map((lot) => (
-                <tr key={lot.index} className="border-t border-zinc-100">
-                  <td className="py-1.5 pr-3 font-semibold text-zinc-800">
-                    {lot.index}
-                    {lot.index === 1 && lotRequired ? (
-                      <span
-                        className="ml-0.5 font-semibold text-brand-600"
-                        title={required}
-                      >
-                        <span aria-hidden>*</span>
-                        <span className="sr-only">({required})</span>
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <Num
-                      name={`lot${lot.index}Interval`}
-                      value={numValue(lot.departureIntervalDays)}
-                      disabled={sup}
-                      int
-                      className="w-20"
-                      aria-label={`${t("sheet.lot.title", { n: String(lot.index) })}: ${t("sheet.lot.interval")}`}
-                    />
-                  </td>
-                  <td className="py-1.5 pr-3">
-                    <Num
-                      name={`lot${lot.index}Cartons`}
-                      value={numValue(lot.masterCartons)}
-                      disabled={sup}
-                      int
-                      className="w-24"
-                      aria-label={`${t("sheet.lot.title", { n: String(lot.index) })}: ${t("sheet.lot.cartons")}`}
-                    />
-                  </td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums text-zinc-800">
-                    {lot.pieces?.toLocaleString("pt-BR") ?? "—"}
-                  </td>
-                  <td className="py-1.5 pr-3 text-right tabular-nums text-zinc-800">
-                    {lot.cbm !== null ? `${lot.cbm} m³` : "—"}
-                  </td>
-                  <td className="py-1.5 pl-3 tabular-nums text-zinc-800">
-                    {lot.departureAt ? formatDate(lot.departureAt) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 rounded-lg bg-brand-50/60 px-3 py-2 text-sm ring-1 ring-inset ring-brand-100">
-          <Calc
-            label={t("sheet.total.pieces")}
-            value={plan.totalPieces?.toLocaleString("pt-BR")}
-          />
-          <Calc
-            label={t("sheet.total.cbm")}
-            value={plan.totalCbm !== null ? `${plan.totalCbm} m³` : null}
-          />
-          <Calc
-            label={t("sheet.total.containers", {
-              type: view.containerType ?? "—",
-              capacity: String(plan.containerCapacityCbm ?? "—"),
-            })}
-            value={
-              plan.containers !== null
-                ? plan.containers.toLocaleString("pt-BR", {
-                    maximumFractionDigits: 2,
-                  })
-                : null
-            }
-          />
-        </dl>
+        {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
+        <SheetSchedule
+          initialLots={lots.map((l) => ({
+            departureIntervalDays: l.departureIntervalDays,
+            masterCartons: l.masterCartons,
+          }))}
+          initial={{
+            masterCartonQty: sheet.masterCartonQty ?? null,
+            cbmPerCarton: sheet.cbmPerCarton ?? null,
+            heightCm: sheet.heightCm ?? null,
+            widthCm: sheet.widthCm ?? null,
+            lengthCm: sheet.lengthCm ?? null,
+            productionStartAt: dateValue(sheet.productionStartAt) || null,
+            containerType: view.containerType ?? null,
+          }}
+          containerTypes={view.containerTypes}
+          disabled={sup}
+          lotRequired={lotRequired}
+          labels={{
+            lotColumn: t("sheet.lot.column"),
+            interval: t("sheet.lot.interval"),
+            cartons: t("sheet.lot.cartons"),
+            pieces: t("sheet.lot.pieces"),
+            cbm: t("sheet.lot.cbm"),
+            departure: t("sheet.lot.departure"),
+            lotTitle: t("sheet.lot.title", { n: "{n}" }),
+            required,
+            totalPieces: t("sheet.total.pieces"),
+            totalCbm: t("sheet.total.cbm"),
+            totalContainers: t("sheet.total.containers", {
+              type: "{type}",
+              capacity: "{capacity}",
+            }),
+            live: t("sheet.fill.live"),
+            fillTitle: t("sheet.fill.title"),
+            partial: t("sheet.fill.partial"),
+            add: t("sheet.fill.add"),
+            addNoPieces: t("sheet.fill.addNoPieces"),
+            apply: t("sheet.fill.apply"),
+            remove: t("sheet.fill.remove"),
+            applyRemove: t("sheet.fill.applyRemove"),
+            exact: t("sheet.fill.exact"),
+            full: t("sheet.fill.full"),
+            need: t("sheet.fill.need"),
+            applied: t("sheet.fill.applied"),
+          }}
+        />
         <p className="mt-2 text-xs text-zinc-500">{t("sheet.total.hint")}</p>
       </Card>
 
@@ -604,22 +554,5 @@ function Num({
       aria-label={ariaLabel}
       className={cx(inputDenseClass, "tabular-nums", className)}
     />
-  );
-}
-
-function Calc({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | null | undefined;
-}) {
-  return (
-    <div className="flex min-w-0 items-baseline gap-1.5">
-      <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className="font-semibold tabular-nums text-zinc-900">
-        {value ?? "—"}
-      </dd>
-    </div>
   );
 }

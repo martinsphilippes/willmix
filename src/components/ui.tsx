@@ -229,7 +229,7 @@ export const inputClass =
 
 /** Campo compacto (formulários densos, ex.: ficha de compra): mais baixo e com letra menor. */
 export const inputDenseClass =
-  "block w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
+  "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
 
 /** Larguras dos campos compactos (no celular ocupam a linha toda). */
 export const fieldRowWidth = {

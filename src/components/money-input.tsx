@@ -160,7 +160,7 @@ export function MoneyInput({
       <span
         className={cx(
           "inline-flex min-w-0 flex-1 items-center border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
-          size === "sm" ? "rounded-md" : "rounded-lg",
+          size === "sm" ? "min-h-8 rounded-md" : "rounded-lg",
           invalid ? "border-red-400" : "border-zinc-300",
           disabled && "bg-zinc-50 opacity-70",
         )}

@@ -36,6 +36,7 @@ import * as orderCancel from "./order-cancel";
 import * as requestBatch from "./request-batch";
 import * as tasksFilter from "./tasks-filter";
 import * as pantone from "./pantone";
+import * as sheetFill from "./sheet-fill";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -71,6 +72,7 @@ export const modulesPt = {
   ...requestBatch.pt,
   ...tasksFilter.pt,
   ...pantone.pt,
+  ...sheetFill.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -106,6 +108,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...requestBatch.en,
   ...tasksFilter.en,
   ...pantone.en,
+  ...sheetFill.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -141,4 +144,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...requestBatch.zh,
   ...tasksFilter.zh,
   ...pantone.zh,
+  ...sheetFill.zh,
 };

@@ -54,6 +54,11 @@ export function PantonePicker({
     setLoading(false);
   }
 
+  // Hidratado: a tela (e o E2E) pode interagir com segurança.
+  useEffect(() => {
+    box.current?.setAttribute("data-ready", "1");
+  }, []);
+
   // Fecha a lista ao clicar fora.
   useEffect(() => {
     if (!open) return;
