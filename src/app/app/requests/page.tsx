@@ -34,7 +34,9 @@ const BULK_FORM = "requests-bulk-delete";
 export default async function RequestsPage({
   searchParams,
 }: PageProps<"/app/requests">) {
-  const { view, deleted, skipped, error } = await searchParams;
+  const { view, deleted, skipped, error, group, created } = await searchParams;
+  // Lote: ?group=<groupId> mostra só as solicitações criadas juntas.
+  const groupId = typeof group === "string" && group ? group : null;
   const showDeleted = view === "deleted";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -58,9 +60,16 @@ export default async function RequestsPage({
   const visible = allRequests.filter((r) => canViewRequest(user, r));
   // Excluídas (CANCELLED) saem da lista; ficam no filtro "Ver excluídas".
   const deletedCount = visible.filter((r) => r.status === "CANCELLED").length;
-  const requests = visible.filter((r) =>
-    showDeleted ? r.status === "CANCELLED" : r.status !== "CANCELLED",
+  const requests = visible.filter(
+    (r) =>
+      (showDeleted ? r.status === "CANCELLED" : r.status !== "CANCELLED") &&
+      (!groupId || r.groupId === groupId),
   );
+  // Tamanho de cada lote (selo na lista), só entre o que este usuário vê.
+  const groupSize = new Map<string, number>();
+  for (const r of visible)
+    if (r.groupId)
+      groupSize.set(r.groupId, (groupSize.get(r.groupId) ?? 0) + 1);
   const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
@@ -220,6 +229,13 @@ export default async function RequestsPage({
           </h2>
         </div>
       ) : null}
+      {count(created) > 1 ? (
+        <div className="mb-3" data-batch-created>
+          <Alert tone="success">
+            {t("reqBatch.created", { n: count(created) })}
+          </Alert>
+        </div>
+      ) : null}
       {count(deleted) > 0 ? (
         <div className="mb-3">
           <Alert tone="success">
@@ -240,7 +256,14 @@ export default async function RequestsPage({
         </div>
       ) : null}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-        {showDeleted ? (
+        {groupId ? (
+          <>
+            <span className="text-zinc-600" data-batch-filter>
+              {t("reqBatch.filter", { n: requests.length })}
+            </span>
+            <TextLink href="/app/requests">{t("reqBatch.all")}</TextLink>
+          </>
+        ) : showDeleted ? (
           <>
             <span className="text-zinc-600">{t("reqDelete.deletedTitle")}</span>
             <TextLink href="/app/requests">
@@ -317,6 +340,15 @@ export default async function RequestsPage({
                 ) : null}
                 <Td className="min-w-40 font-medium text-zinc-900">
                   {r.productName}
+                  {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
+                    <TextLink
+                      href={`/app/requests?group=${encodeURIComponent(r.groupId)}`}
+                      className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 no-underline ring-1 ring-inset ring-brand-200"
+                      data-batch-badge
+                    >
+                      {t("reqBatch.badge", { n: groupSize.get(r.groupId)! })}
+                    </TextLink>
+                  ) : null}
                 </Td>
                 {isWellmix(user) ? (
                   <Td className="min-w-32">

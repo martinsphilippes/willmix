@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { formatNcm } from "@/lib/fiscal";
 import {
   getStore,
@@ -47,6 +49,74 @@ export interface CreateRequestInput {
   sourceOrderId?: string | null;
   /** Wellmix criando em nome do cliente: o login do cliente que solicitou. */
   requestedForUserId?: string | null;
+  /** Lote: várias solicitações criadas juntas (ver createRequestBatch). */
+  groupId?: string | null;
+}
+
+/** Um produto do lote: vira uma solicitação própria. */
+export interface RequestBatchItem {
+  productId: string | null;
+  productName: string;
+  description: string;
+  specification: string | null;
+  quantity: number;
+  unit: string;
+  /** Produto fora do catálogo: sourcing sob demanda. */
+  sourcingDemand: boolean;
+}
+
+/**
+ * Vários produtos num formulário só. Cada produto vira uma solicitação própria
+ * (cada um pode ter fornecedor, preço, ficha, NCM e inspeção diferentes); com
+ * 2 ou mais, todas nascem com o mesmo `groupId` (lote). Com um só produto, é
+ * a solicitação comum (sem lote).
+ */
+export async function createRequestBatch(
+  user: User,
+  base: Pick<
+    CreateRequestInput,
+    "customerId" | "deadline" | "notes" | "requestedForUserId"
+  >,
+  items: RequestBatchItem[],
+): Promise<Request[]> {
+  if (!items.length) throw new Error("no_products");
+  const groupId = items.length > 1 ? randomUUID() : null;
+  const created: Request[] = [];
+  for (const item of items) {
+    created.push(
+      await createRequest(user, {
+        ...base,
+        productId: item.productId,
+        productName: item.productName,
+        description: item.description,
+        specification: item.specification,
+        quantity: item.quantity,
+        unit: item.unit,
+        origin:
+          item.sourcingDemand && !item.productId ? "sourcing_demand" : "manual",
+        groupId,
+      }),
+    );
+  }
+  if (groupId)
+    await audit(
+      user,
+      "request.batch",
+      "request",
+      groupId,
+      `Lote com ${items.length} produtos: ${items.map((i) => i.productName).join(", ")}`,
+    );
+  return created;
+}
+
+/** Outras solicitações do mesmo lote (a própria fora), mais antigas primeiro. */
+export async function batchSiblings(request: Request): Promise<Request[]> {
+  if (!request.groupId) return [];
+  const rows = await getStore().list("requests", {
+    filter: { groupId: request.groupId },
+    orderBy: "createdAt",
+  });
+  return rows.filter((r) => r.id !== request.id);
 }
 
 /** Login ativo de cliente daquela empresa; senão "invalid_requester". */
@@ -140,6 +210,8 @@ export async function createRequest(
     origin: input.origin ?? "manual",
     sourceOrderId: input.sourceOrderId ?? null,
     notes: input.notes ?? null,
+    // Só vai ao banco quando há lote (coluna opcional; antes dela existir, nada muda).
+    ...(input.groupId ? { groupId: input.groupId } : {}),
   });
   await audit(
     user,

@@ -19,10 +19,8 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
-import {
-  RequestProductFields,
-  type ProductFill,
-} from "@/components/request-product-fields";
+import type { ProductFill } from "@/components/request-product-fields";
+import { RequestItems } from "@/components/request-items";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
@@ -109,12 +107,15 @@ export default async function NewRequestPage({
   };
   const errorKey = `lookup.error.${typeof error === "string" ? error : ""}`;
   const accessKey = `access.error.${typeof error === "string" ? error : ""}`;
+  const batchKey = `reqBatch.error.${typeof error === "string" ? error : ""}`;
   const errorText =
     typeof error === "string" && t(errorKey as DictionaryKey) !== errorKey
       ? t(errorKey as DictionaryKey)
       : typeof error === "string" && t(accessKey as DictionaryKey) !== accessKey
         ? t(accessKey as DictionaryKey)
-        : t("common.error");
+        : typeof error === "string" && t(batchKey as DictionaryKey) !== batchKey
+          ? t(batchKey as DictionaryKey)
+          : t("common.error");
   /* Dados da ficha para preencher a solicitação ao escolher o produto (sem preço nem fornecedor). */
   const dims = (a: number | null, b: number | null, c: number | null) =>
     a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
@@ -446,16 +447,25 @@ export default async function NewRequestPage({
               </Select>
             </Field>
           ) : null}
-          {/* Produto: "fora do catálogo" primeiro; escolher um produto preenche os campos com a ficha; anexos só fora do catálogo. */}
-          <RequestProductFields
+          {/* Produtos: uma linha por produto ("+ Adicionar outro produto"); cada um vira uma solicitação do mesmo lote.
+              Em cada linha: "fora do catálogo" primeiro; escolher um produto preenche os campos com a ficha; anexos só fora do catálogo. */}
+          <RequestItems
             products={productFills}
             presetProductId={presetProductId}
+            presetQuantity={String(presetQuantity)}
             defaultNotInCatalog={
               !!found && strong.length === 0 && !presetProductId
             }
             suggestions={hasSuggestions ? found!.suggestions : {}}
             sourceLabels={sourceLabels}
             labels={{
+              products: t("reqBatch.products"),
+              productN: t("reqBatch.productN"),
+              add: t("reqBatch.add"),
+              remove: t("reqBatch.remove"),
+              hint: t("reqBatch.hint"),
+              quantity: t("common.quantity"),
+              unit: t("requests.unit"),
               fromCatalog: t("reqProduct.fromCatalog"),
               inStock: t("reqProduct.inStock"),
               noStock: t("reqProduct.noStock"),
@@ -478,20 +488,7 @@ export default async function NewRequestPage({
               none: t("lookup.noneOption"),
             }}
           />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            <Field label={t("common.quantity")}>
-              <Input
-                name="quantity"
-                type="number"
-                min="0.01"
-                step="any"
-                required
-                defaultValue={presetQuantity}
-              />
-            </Field>
-            <Field label={t("requests.unit")}>
-              <Input name="unit" defaultValue="un" required />
-            </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="col-span-2 sm:col-span-1">
               {/* Prazo = SLA da Wellmix (Configurações); o servidor recalcula para o cliente. */}
               {isWellmix(user) ? (
