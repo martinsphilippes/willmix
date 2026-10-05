@@ -60,14 +60,14 @@ export default async function RequestsPage({
   const visible = allRequests.filter((r) => canViewRequest(user, r));
   // Excluídas (CANCELLED) saem da lista; ficam no filtro "Ver excluídas".
   const deletedCount = visible.filter((r) => r.status === "CANCELLED").length;
-  const requests = visible.filter(
-    (r) =>
-      (showDeleted ? r.status === "CANCELLED" : r.status !== "CANCELLED") &&
-      (!groupId || r.groupId === groupId),
+  const byStatus = visible.filter((r) =>
+    showDeleted ? r.status === "CANCELLED" : r.status !== "CANCELLED",
   );
-  // Tamanho de cada lote (selo na lista), só entre o que este usuário vê.
+  const requests = byStatus.filter((r) => !groupId || r.groupId === groupId);
+  // Tamanho de cada lote (selo na lista): só o que este usuário vê nesta
+  // mesma lista (excluídas não contam), igual ao filtro do selo.
   const groupSize = new Map<string, number>();
-  for (const r of visible)
+  for (const r of byStatus)
     if (r.groupId)
       groupSize.set(r.groupId, (groupSize.get(r.groupId) ?? 0) + 1);
   const anyDeletable = requests.some((r) => canDeleteRequest(user, r));

@@ -82,21 +82,49 @@ export async function createRequestBatch(
   if (!items.length) throw new Error("no_products");
   const groupId = items.length > 1 ? randomUUID() : null;
   const created: Request[] = [];
+  const store = getStore();
   for (const item of items) {
-    created.push(
-      await createRequest(user, {
-        ...base,
-        productId: item.productId,
-        productName: item.productName,
-        description: item.description,
-        specification: item.specification,
-        quantity: item.quantity,
-        unit: item.unit,
-        origin:
-          item.sourcingDemand && !item.productId ? "sourcing_demand" : "manual",
-        groupId,
-      }),
-    );
+    try {
+      created.push(
+        await createRequest(user, {
+          ...base,
+          productId: item.productId,
+          productName: item.productName,
+          description: item.description,
+          specification: item.specification,
+          quantity: item.quantity,
+          unit: item.unit,
+          origin:
+            item.sourcingDemand && !item.productId
+              ? "sourcing_demand"
+              : "manual",
+          groupId,
+        }),
+      );
+    } catch (error) {
+      // Banco ainda sem a coluna do lote (esquema não publicado): nada foi criado.
+      if (
+        groupId &&
+        error instanceof Error &&
+        /unknown attribute.*groupId/i.test(error.message)
+      )
+        throw new Error("schema_outdated");
+      // Falhou no meio: o que já nasceu deste lote é cancelado (sem apagar) para
+      // o usuário reenviar sem duplicar; o erro original segue para a tela.
+      for (const r of created) {
+        await store.update("requests", r.id, { status: "CANCELLED" });
+        await audit(
+          user,
+          "request.batch_rollback",
+          "request",
+          r.id,
+          `Lote interrompido (${item.productName}): solicitação cancelada`,
+          { status: r.status },
+          { status: "CANCELLED" },
+        );
+      }
+      throw error;
+    }
   }
   if (groupId)
     await audit(

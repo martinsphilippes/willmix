@@ -83,13 +83,15 @@ const requestBaseSchema = z.object({
   deadline: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
+// Limites iguais às colunas de `requests` (productName 160, unit 20): a validação
+// recusa antes de criar qualquer solicitação do lote.
 const requestItemSchema = z.object({
-  productId: z.string().optional().nullable(),
-  productName: z.string().min(2),
-  description: z.string().min(2),
-  specification: z.string().optional().nullable(),
-  quantity: z.number().positive(),
-  unit: z.string().min(1),
+  productId: z.string().max(64).optional().nullable(),
+  productName: z.string().min(2).max(160),
+  description: z.string().min(2).max(10_000),
+  specification: z.string().max(10_000).optional().nullable(),
+  quantity: z.number().positive().finite(),
+  unit: z.string().min(1).max(20),
 });
 
 /**

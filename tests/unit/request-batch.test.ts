@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /* Vários produtos numa solicitação só: cada produto vira uma solicitação; 2+ no mesmo lote. */
@@ -194,6 +194,71 @@ describe("lote de solicitações", () => {
         [item("A"), item("B")],
       ),
     ).rejects.toThrow();
+  });
+
+  it("falha no meio do lote: o que já nasceu é cancelado e o erro segue", async () => {
+    const store = getStore();
+    const before = (
+      await store.list("requests", { filter: { customerId: "cliente-joao" } })
+    ).length;
+    // O banco recusa a segunda solicitação (ex.: coluna fora do limite).
+    const real = store.create.bind(store);
+    let requestCreates = 0;
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (table === "requests" && ++requestCreates === 2)
+          throw new Error("Invalid document structure: value too long");
+        return real(table, data as never);
+      });
+    try {
+      await expect(
+        createRequestBatch(
+          joao,
+          { customerId: "cliente-joao", deadline: null, notes: null },
+          [item("Primeiro ok"), item("Segundo falha")],
+        ),
+      ).rejects.toThrow("value too long");
+    } finally {
+      spy.mockRestore();
+    }
+    const rows = await store.list("requests", {
+      filter: { customerId: "cliente-joao" },
+    });
+    expect(rows.length).toBe(before + 1);
+    const first = rows.find((r) => r.productName === "Primeiro ok");
+    expect(first?.status).toBe("CANCELLED");
+    const logs = await store.list("audit_log", {
+      filter: { entityId: first!.id },
+    });
+    expect(logs.some((l) => l.action === "request.batch_rollback")).toBe(true);
+  });
+
+  it("esquema sem a coluna do lote: erro claro e nada criado", async () => {
+    const store = getStore();
+    const before = (
+      await store.list("requests", { filter: { customerId: "cliente-joao" } })
+    ).length;
+    const spy = vi.spyOn(store, "create").mockImplementation(async () => {
+      throw new Error(
+        'Invalid document structure: Unknown attribute: "groupId"',
+      );
+    });
+    try {
+      await expect(
+        createRequestBatch(
+          joao,
+          { customerId: "cliente-joao", deadline: null, notes: null },
+          [item("A"), item("B")],
+        ),
+      ).rejects.toThrow("schema_outdated");
+    } finally {
+      spy.mockRestore();
+    }
+    expect(
+      (await store.list("requests", { filter: { customerId: "cliente-joao" } }))
+        .length,
+    ).toBe(before);
   });
 
   it("isolamento: outro cliente não vê as solicitações do lote nem seus irmãos", async () => {
