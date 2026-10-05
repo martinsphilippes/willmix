@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { pantoneLabel, parsePantoneRefs } from "@/lib/pantone";
 import {
   SHEET_CURRENCIES,
   SHEET_INCOTERMS,
@@ -86,6 +87,11 @@ function parseSheet(form: FormData): SheetInput {
     capacityMl: num(form, "capacityMl"),
     packageType: text(form, "packageType", 120),
     colorAssortment: text(form, "colorAssortment", 200),
+    // Só vai ao banco quando o formulário traz o campo (coluna nova; antes
+    // da publicação do esquema, fichas sem cor Pantone seguem salvando).
+    ...(form.has("colorPantones")
+      ? { colorPantones: parsePantoneRefs(str(form, "colorPantones")) }
+      : {}),
     material: text(form, "material", 200),
     powerSource: choice(form, "powerSource", SHEET_POWER_SOURCES),
     powerDetail: text(form, "powerDetail", 60),
@@ -105,6 +111,13 @@ function parseSheet(form: FormData): SheetInput {
     importTaxPercent: num(form, "importTaxPercent"),
     ipiPercent: num(form, "ipiPercent"),
   };
+  // Sem texto de cor mas com Pantone escolhidas: o texto vira a lista de códigos
+  // (o campo "Cor / sortimento" continua obrigatório e legível fora do portal).
+  if (!input.colorAssortment && input.colorPantones?.length)
+    input.colorAssortment = input.colorPantones
+      .map((c) => pantoneLabel(c))
+      .join(" / ")
+      .slice(0, 200);
   if (form.has("lot1Cartons")) {
     input.lots = Array.from({ length: MAX_LOTS }, (_, i) => ({
       departureIntervalDays:
@@ -237,5 +250,35 @@ export async function removeQuoteSheetPhotoAction(form: FormData) {
     const { removeQuoteSheetPhoto } =
       await import("@/lib/services/quote-sheet");
     await removeQuoteSheetPhoto(user, quoteId, photoId);
+  });
+}
+
+/** Ficha de compra mestre do produto (cadastro): só Wellmix. */
+export async function saveProductSheetAction(form: FormData) {
+  const user = await requireUser();
+  const productId = z.string().min(1).max(64).parse(str(form, "productId"));
+  await run(`/app/products/${productId}`, async () => {
+    const { saveProductSheet } = await import("@/lib/services/product-sheet");
+    const { missing } = await saveProductSheet(
+      user,
+      productId,
+      parseSheet(form),
+    );
+    return `/app/products/${productId}?sheet=${missing.length ? "partial" : "complete"}#product-sheet`;
+  });
+}
+
+/** "Atualizar cadastro do produto com esta ficha" (pedido ou cotação): só Wellmix. */
+export async function adoptSheetIntoProductAction(form: FormData) {
+  const user = await requireUser();
+  const ownerId = z.string().min(1).max(64).parse(str(form, "ownerId"));
+  // Só volta para telas do portal (nada de redirecionar para fora).
+  const rawBack = str(form, "back");
+  const back = /^\/app\/[A-Za-z0-9\-_/]*$/.test(rawBack) ? rawBack : "/app";
+  await run(back, async () => {
+    const { adoptSheetIntoProduct } =
+      await import("@/lib/services/product-sheet");
+    const { productId } = await adoptSheetIntoProduct(user, ownerId);
+    return `${back}${back.includes("?") ? "&" : "?"}adopted=${encodeURIComponent(productId)}`;
   });
 }

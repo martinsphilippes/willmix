@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
+import { SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
+import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -46,6 +48,20 @@ export default async function ProductsPage({
     store.list("product_lines", { orderBy: "name" }),
     store.list("parties", { filter: { type: "supplier" } }),
   ]);
+  // Ficha mestre de cada produto (uma consulta): completa, parcial ou sem ficha.
+  const masters = products.length
+    ? await store.list("purchase_sheets", {
+        filter: { orderId: products.map((p) => p.id) },
+      })
+    : [];
+  const masterState = (productId: string) => {
+    const m = masters.find((x) => x.orderId === productId);
+    if (!m) return "none" as const;
+    const missing = missingForCompletion(m, SHEET_PHOTO_KINDS).filter(
+      (k) => k !== "lot1" && k !== "productionStartAt",
+    );
+    return missing.length ? ("partial" as const) : ("complete" as const);
+  };
   const supplierName = (id: string | null) =>
     id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
 
@@ -81,6 +97,7 @@ export default async function ProductsPage({
                   <Th className="text-right">{t("catalog.moq")}</Th>
                   <Th className="text-right">{t("catalog.cbmPerBox")}</Th>
                   <Th>{t("catalog.source")}</Th>
+                  <Th>{t("productSheet.column")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -120,6 +137,19 @@ export default async function ProductsPage({
                         </Badge>
                       ) : (
                         "—"
+                      )}
+                    </Td>
+                    <Td>
+                      {masterState(p.id) === "complete" ? (
+                        <Badge tone="success">
+                          {t("productSheet.badge.complete")}
+                        </Badge>
+                      ) : masterState(p.id) === "partial" ? (
+                        <Badge tone="warning">
+                          {t("productSheet.badge.partial")}
+                        </Badge>
+                      ) : (
+                        t("productSheet.badge.none")
                       )}
                     </Td>
                   </tr>

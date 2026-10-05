@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
 import { RequestProductFields } from "@/components/request-product-fields";
+import {
+  RequestScheduleFields,
+  type ScheduleLabels,
+} from "@/components/request-schedule";
 
 type ProductFieldsProps = Omit<
   React.ComponentProps<typeof RequestProductFields>,
@@ -35,10 +39,14 @@ export function RequestItems({
     hint: string;
     quantity: string;
     unit: string;
+    schedule: ScheduleLabels;
   };
 }) {
   const [rows, setRows] = useState<number[]>([0]);
   const [next, setNext] = useState(1);
+  // Quantidade e unidade por linha (a programação de entregas soma na quantidade).
+  const [qty, setQty] = useState<Record<number, string>>({ 0: presetQuantity });
+  const [unit, setUnit] = useState<Record<number, string>>({ 0: "un" });
 
   function add() {
     setRows((r) => [...r, next]);
@@ -59,20 +67,25 @@ export function RequestItems({
       {rows.map((index, position) => {
         const prefix = `p${index}.`;
         const first = index === 0;
+        const productLabel = labels.productN.replace(
+          "{n}",
+          String(position + 1),
+        );
         return (
           <fieldset
             key={index}
             data-request-item={index}
-            className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4"
+            className="min-w-0 max-w-full space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4"
           >
             <legend className="flex w-full items-center justify-between gap-2 px-1">
               <span className="text-sm font-semibold text-zinc-800">
-                {labels.productN.replace("{n}", String(position + 1))}
+                {productLabel}
               </span>
               {rows.length > 1 ? (
                 <button
                   type="button"
                   onClick={() => remove(index)}
+                  aria-label={`${labels.remove}: ${productLabel}`}
                   className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                 >
                   {labels.remove}
@@ -98,7 +111,10 @@ export function RequestItems({
                   min="0.01"
                   step="any"
                   required
-                  defaultValue={first ? presetQuantity : ""}
+                  value={qty[index] ?? ""}
+                  onChange={(e) =>
+                    setQty((q) => ({ ...q, [index]: e.target.value }))
+                  }
                   className={inputClass}
                 />
               </label>
@@ -108,12 +124,25 @@ export function RequestItems({
                 </span>
                 <input
                   name={`${prefix}unit`}
-                  defaultValue="un"
+                  value={unit[index] ?? "un"}
+                  onChange={(e) =>
+                    setUnit((u) => ({ ...u, [index]: e.target.value }))
+                  }
                   required
                   className={inputClass}
                 />
               </label>
             </div>
+            {/* Programação de entregas: divide a quantidade em entregas com intervalo e datas previstas. */}
+            <RequestScheduleFields
+              prefix={prefix}
+              total={qty[index] ?? ""}
+              unit={unit[index] ?? "un"}
+              onTotalChange={(total) =>
+                setQty((q) => ({ ...q, [index]: total }))
+              }
+              labels={labels.schedule}
+            />
           </fieldset>
         );
       })}

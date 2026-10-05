@@ -1186,7 +1186,7 @@ function RequirementRow({
     missing: string;
     count: number;
     started: boolean;
-    source: "quote" | "previous" | "catalog" | null;
+    source: "quote" | "previous" | "catalog" | "master" | null;
   } | null;
 }) {
   const isSheet = r.key === "purchase_sheet";
@@ -1278,7 +1278,9 @@ function RequirementRow({
         ) : null}
         {isSheet && r.status !== "done" && sheetHint ? (
           <p className="mt-1 text-xs text-zinc-600">
-            {sheetHint.source === "quote" || sheetHint.source === "previous"
+            {sheetHint.source === "quote" ||
+            sheetHint.source === "previous" ||
+            sheetHint.source === "master"
               ? `${t(`sheet.prefilled.${sheetHint.source}`)} `
               : ""}
             {sheetHint.count > 0 ? (

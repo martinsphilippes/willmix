@@ -126,6 +126,10 @@ export async function updateProductSheetAction(form: FormData) {
         parsed.boxHeightCm,
       ) ?? (parsed.cbm && parsed.cbm > 0 ? parsed.cbm : null);
     await store.update("products", id, { ...parsed, cbm });
+    // Ficha mestre do produto (se existir) acompanha preço, caixa, medidas, cor e material.
+    const { syncMasterFromProduct } =
+      await import("@/lib/services/product-sheet");
+    await syncMasterFromProduct(id);
     await audit(user, "product.update", "product", id, parsed.name, product, {
       ...parsed,
       cbm,

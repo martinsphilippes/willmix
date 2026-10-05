@@ -866,6 +866,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "schedule",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -5338,6 +5345,13 @@
           "default": null,
           "type": "varchar",
           "size": 200
+        },
+        {
+          "key": "colorPantones",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         },
         {
           "key": "material",

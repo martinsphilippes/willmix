@@ -8,7 +8,7 @@ import type { PurchaseLot, PurchaseSheet } from "@/lib/db/schema";
  * - saída de cada lote = início da produção + intervalos acumulados.
  */
 
-export const MAX_LOTS = 3;
+export const MAX_LOTS = 6;
 
 export interface LotPlan {
   index: number;
@@ -125,6 +125,74 @@ export function planSheet(
       ? containerCapacityCbm
       : null,
     cbmFromSize,
+  };
+}
+
+/**
+ * Sugestão para fechar o container: com 4,6 containers, quantas caixas
+ * (e peças) faltam para fechar 5 sem passar, e quantas tirar para fechar em 4.
+ * Caixas são inteiras, então "fechar" é chegar o mais perto possível por baixo.
+ */
+export interface ContainerFill {
+  /** Containers usados hoje (ex.: 4,6). */
+  containers: number;
+  capacityCbm: number;
+  /** Containers inteiros já fechados (4) e o alvo para completar (5). */
+  lower: number;
+  target: number;
+  /** Quanto do último container está ocupado (0–100). */
+  lastPct: number;
+  /** Já fecha containers inteiros (nada a ajustar). */
+  exact: boolean;
+  /** Para completar o alvo: caixas, peças e m³ a acrescentar (0 = não cabe mais caixa inteira). */
+  addCartons: number;
+  addPieces: number | null;
+  addCbm: number;
+  /** Para fechar no inteiro de baixo: caixas e peças a tirar (null quando lower = 0). */
+  removeCartons: number | null;
+  removePieces: number | null;
+}
+
+export function suggestContainerFill(
+  plan: Pick<SheetPlan, "totalCbm" | "containers" | "containerCapacityCbm">,
+  cbmPerCarton: number | null | undefined,
+  masterCartonQty: number | null | undefined,
+): ContainerFill | null {
+  if (
+    plan.totalCbm === null ||
+    plan.containers === null ||
+    !positive(plan.containerCapacityCbm) ||
+    !positive(cbmPerCarton) ||
+    plan.totalCbm <= 0
+  )
+    return null;
+  const cap = plan.containerCapacityCbm;
+  const containers = plan.totalCbm / cap;
+  const EPS = 1e-6;
+  const lower = Math.floor(containers + EPS);
+  const exact = Math.abs(containers - lower) < EPS;
+  const target = exact ? lower : lower + 1;
+  const missingCbm = exact ? 0 : target * cap - plan.totalCbm;
+  const addCartons = exact ? 0 : Math.floor(missingCbm / cbmPerCarton + EPS);
+  const excessCbm = exact ? 0 : plan.totalCbm - lower * cap;
+  const removeCartons =
+    exact || lower === 0 ? null : Math.ceil(excessCbm / cbmPerCarton - EPS);
+  const pieces = (cartons: number | null) =>
+    cartons !== null && positive(masterCartonQty)
+      ? cartons * masterCartonQty
+      : null;
+  return {
+    containers: round(containers, 4),
+    capacityCbm: cap,
+    lower,
+    target,
+    lastPct: exact ? 100 : Math.round((containers - lower) * 100),
+    exact,
+    addCartons,
+    addPieces: pieces(addCartons),
+    addCbm: round(addCartons * cbmPerCarton, 4),
+    removeCartons,
+    removePieces: pieces(removeCartons),
   };
 }
 

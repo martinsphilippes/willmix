@@ -10,6 +10,8 @@ import {
 } from "@/lib/db";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
   CUSTOMS_FIELDS,
@@ -87,10 +89,29 @@ async function prefillQuote(
   request: Request,
 ): Promise<SheetInput & { productId: string | null }> {
   const store = getStore();
-  const [product, supplier] = await Promise.all([
+  const [product, supplier, master] = await Promise.all([
     request.productId ? store.get("products", request.productId) : null,
     store.get("parties", quote.supplierId),
+    masterSheetInput(request.productId),
   ]);
+  // Programação de entregas pedida pelo cliente vira as programações da ficha.
+  const requestLots =
+    scheduleToLots(
+      request.schedule,
+      master?.masterCartonQty ?? product?.masterBoxQty ?? null,
+    ) ?? normalizeLots(null);
+  // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
+  // desta cotação prevalecem.
+  if (master)
+    return {
+      ...master,
+      productId: product?.id ?? null,
+      supplierName: supplier?.name ?? master.supplierName ?? null,
+      supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
+      currency: sheetCurrency(quote.currency) ?? master.currency ?? null,
+      price: quote.price ?? master.price ?? null,
+      lots: requestLots,
+    };
   return {
     productId: product?.id ?? null,
     supplierName: supplier?.name ?? null,
@@ -110,7 +131,7 @@ async function prefillQuote(
     colorAssortment: product?.color ?? null,
     material: product?.material ?? null,
     ncm: product?.ncm ?? null,
-    lots: normalizeLots(null),
+    lots: requestLots,
   };
 }
 
@@ -123,18 +144,21 @@ export function missingForQuote(
   return missingForCompletion(sheet, photoKinds);
 }
 
-const photoKindsOf = (photos: Array<{ kind: string }>) =>
-  [...new Set(photos.map((p) => p.kind))];
+const photoKindsOf = (photos: Array<{ kind: string }>) => [
+  ...new Set(photos.map((p) => p.kind)),
+];
 
 export interface QuoteSheetView {
   quote: Quote;
   request: Request;
   access: SheetAccess;
-  sheet: SheetInput & { id?: string };
+  sheet: SheetInput & { id?: string; productId?: string | null };
   saved: boolean;
   plan: SheetPlan;
   /** Fotos da ficha da cotação (balança e régua obrigatórias). */
   photos: ProductPhoto[];
+  /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
+  catalogPhotoKinds: string[];
   missing: SheetMissing[];
   containerType: string | null;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
@@ -154,6 +178,8 @@ export async function getQuoteSheetForUser(
   const existing = await getQuoteSheet(quoteId);
   const sheet = existing ?? (await prefillQuote(quote, request));
   const photos = await getSheetPhotos(quoteId);
+  // Fotos do cadastro do produto contam como enviadas (ficam no catálogo).
+  const catalogKinds = await catalogPhotoKinds(request.productId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
     quote,
@@ -174,7 +200,8 @@ export async function getQuoteSheetForUser(
       container.capacity,
     ),
     photos,
-    missing: missingForQuote(sheet, photoKindsOf(photos)),
+    missing: missingForQuote(sheet, [...photoKindsOf(photos), ...catalogKinds]),
+    catalogPhotoKinds: catalogKinds,
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -232,7 +259,13 @@ export async function saveQuoteSheet(
     `Ficha da cotação: ${Object.keys(patch).length} campo(s)`,
   );
   const photos = await getSheetPhotos(quoteId);
-  return { sheet, missing: missingForQuote(sheet, photoKindsOf(photos)) };
+  return {
+    sheet,
+    missing: missingForQuote(sheet, [
+      ...photoKindsOf(photos),
+      ...(await catalogPhotoKinds(request.productId)),
+    ]),
+  };
 }
 
 /**

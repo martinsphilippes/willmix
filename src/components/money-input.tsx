@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CURRENCIES, isCurrency, type Currency } from "@/lib/currencies";
 import { CURRENCY_SYMBOL, parseAmount } from "@/lib/workflow/money";
-import { cx, inputClass } from "./ui";
+import { cx, inputClass, inputDenseClass } from "./ui";
 
 /**
  * Campo de dinheiro, o mesmo em todo o portal: símbolo da moeda na frente do
@@ -36,6 +36,7 @@ export function MoneyInput({
   placeholder,
   className,
   selectClassName,
+  size = "md",
   id,
 }: {
   name?: string;
@@ -53,6 +54,8 @@ export function MoneyInput({
   decimals?: number;
   placeholder?: string;
   className?: string;
+  /** "sm": campo compacto (formulários densos). */
+  size?: "md" | "sm";
   selectClassName?: string;
   id?: string;
 }) {
@@ -138,7 +141,11 @@ export function MoneyInput({
           onChange={(e) => setOwnCurrency(e.target.value)}
           disabled={disabled}
           required={required && !allowEmptyCurrency}
-          className={cx(inputClass, "w-auto", selectClassName)}
+          className={cx(
+            size === "sm" ? inputDenseClass : inputClass,
+            "w-auto",
+            selectClassName,
+          )}
           aria-label={labels?.currency ?? "Moeda"}
         >
           {allowEmptyCurrency ? <option value="">—</option> : null}
@@ -152,17 +159,23 @@ export function MoneyInput({
       ) : null}
       <span
         className={cx(
-          "inline-flex min-w-0 flex-1 items-center rounded-lg border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
+          "inline-flex min-w-0 flex-1 items-center border bg-white shadow-sm focus-within:ring-2 focus-within:ring-brand-200",
+          size === "sm" ? "min-h-8 rounded-md" : "rounded-lg",
           invalid ? "border-red-400" : "border-zinc-300",
           disabled && "bg-zinc-50 opacity-70",
         )}
       >
         {symbol ? (
-          <span className="shrink-0 pl-3 pr-1 text-sm font-semibold text-zinc-500">
+          <span
+            className={cx(
+              "shrink-0 font-semibold text-zinc-500",
+              size === "sm" ? "pl-2 pr-1 text-xs" : "pl-3 pr-1 text-sm",
+            )}
+          >
             {symbol}
           </span>
         ) : (
-          <span className="pl-3" />
+          <span className={size === "sm" ? "pl-2" : "pl-3"} />
         )}
         <input
           ref={inputRef}
@@ -180,7 +193,12 @@ export function MoneyInput({
           }}
           onChange={(e) => update(e.target.value)}
           onBlur={blur}
-          className="w-full min-w-24 rounded-r-lg border-0 bg-transparent py-2 pr-3 text-right text-sm tabular-nums focus:outline-none disabled:cursor-not-allowed"
+          className={cx(
+            "w-full border-0 bg-transparent text-right tabular-nums focus:outline-none disabled:cursor-not-allowed",
+            size === "sm"
+              ? "min-w-20 rounded-r-md py-1 pr-2 text-[13px] leading-5"
+              : "min-w-24 rounded-r-lg py-2 pr-3 text-sm",
+          )}
         />
       </span>
       {name ? (

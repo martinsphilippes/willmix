@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { canViewQuote } from "@/lib/auth/permissions";
+import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -8,17 +8,17 @@ import {
   Badge,
   Card,
   DescriptionList,
-  Field,
-  Input,
+  FieldRow,
   PageHeader,
-  Textarea,
   cx,
   formatDate,
+  inputDenseClass,
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
   addQuoteSheetPhotosAction,
+  adoptSheetIntoProductAction,
   answerQuoteWithSheetAction,
   removeQuoteSheetPhotoAction,
   saveQuoteSheetDraftAction,
@@ -27,6 +27,7 @@ import {
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /** Fornecedor vê a RFQ e responde. Não vê outros fornecedores nem o cliente final. */
@@ -37,7 +38,13 @@ export default async function QuotePage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, saved, photos: photoSent, photoRemoved } = await searchParams;
+  const {
+    error,
+    saved,
+    photos: photoSent,
+    photoRemoved,
+    adopted,
+  } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
   if (!quote || !canViewQuote(user, quote)) notFound();
@@ -88,6 +95,9 @@ export default async function QuotePage({
       />
       <div className="space-y-3">
         {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+        {typeof adopted === "string" && adopted ? (
+          <Alert tone="success">{t("productSheet.adopted")}</Alert>
+        ) : null}
         {saved === "sent" ? (
           <Alert tone="success">{t("quoteSheet.saved.sent")}</Alert>
         ) : saved === "complete" ? (
@@ -112,6 +122,11 @@ export default async function QuotePage({
               [t("requests.description"), request.description],
               [t("requests.specification"), request.specification],
             ]}
+          />
+          <RequestScheduleTable
+            schedule={request.schedule}
+            unit={request.unit}
+            t={t}
           />
           {documents.length > 0 ? (
             <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">
@@ -180,7 +195,7 @@ export default async function QuotePage({
         <form
           id="quote-sheet"
           action={answerQuoteWithSheetAction}
-          className="mt-6 space-y-6"
+          className="mt-6 space-y-4"
         >
           <input type="hidden" name="quoteId" value={quote.id} />
           <h2 className="text-lg font-semibold text-zinc-900">
@@ -206,6 +221,8 @@ export default async function QuotePage({
             containerTypes={sheetView.containerTypes}
             editSupplier={sheetView.access.editSupplier}
             editCustoms={sheetView.access.editCustoms}
+            requestSchedule={request.schedule ?? null}
+            requestUnit={request.unit}
           />
         </form>
       ) : null}
@@ -218,33 +235,53 @@ export default async function QuotePage({
           ownerId={quote.id}
           addAction={addQuoteSheetPhotosAction}
           removeAction={removeQuoteSheetPhotoAction}
+          coveredKinds={sheetView.catalogPhotoKinds}
           hint={t("quoteSheet.photosHint")}
         />
       ) : null}
+      {sheetView &&
+      sheetView.saved &&
+      isWellmix(user) &&
+      sheetView.sheet.productId ? (
+        <form
+          action={adoptSheetIntoProductAction}
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm"
+          data-adopt-sheet
+        >
+          <input type="hidden" name="ownerId" value={quote.id} />
+          <input type="hidden" name="back" value={`/app/quotes/${quote.id}`} />
+          <span className="min-w-0 flex-1 text-xs text-zinc-600">
+            {t("productSheet.adoptHint")}
+          </span>
+          <SubmitButton variant="secondary">
+            {t("productSheet.adopt")}
+          </SubmitButton>
+        </form>
+      ) : null}
       {sheetView && canAnswer && sheetView.access.editSupplier ? (
-        <Card title={t("quotes.answer")} className="mt-6">
-          <div className="grid gap-5 sm:grid-cols-3">
-            <Field label={t("quoteSheet.leadTime")}>
-              <Input
+        <Card title={t("quotes.answer")} className="mt-4" dense>
+          <div className="space-y-2">
+            <FieldRow label={t("quoteSheet.leadTime")} size="xs">
+              <input
                 form="quote-sheet"
                 name="leadTimeDays"
                 type="number"
                 min="1"
                 defaultValue={quote.leadTimeDays ?? ""}
+                className={inputDenseClass}
               />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label={t("quoteSheet.conditions")}>
-                <Textarea
-                  form="quote-sheet"
-                  name="conditions"
-                  rows={2}
-                  maxLength={2000}
-                  defaultValue={quote.conditions ?? ""}
-                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
-                />
-              </Field>
-            </div>
+            </FieldRow>
+            <FieldRow label={t("quoteSheet.conditions")} size="full">
+              <textarea
+                form="quote-sheet"
+                name="conditions"
+                rows={2}
+                maxLength={2000}
+                defaultValue={quote.conditions ?? ""}
+                placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                className={cx(inputDenseClass, "min-h-12")}
+              />
+            </FieldRow>
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
             <SubmitButton

@@ -534,6 +534,8 @@ export interface Request extends BaseRow {
    * solicitação, mesmo lote). Nulo nas solicitações criadas uma a uma.
    */
   groupId?: string | null;
+  /** Programação de entregas pedida pelo cliente (N entregas, intervalo, datas). */
+  schedule?: RequestSchedule | null;
 }
 
 export interface Quote extends BaseRow {
@@ -1081,6 +1083,27 @@ export interface LookupOption {
 }
 export type LookupField = "productName" | "description" | "specification";
 
+/** Programação de entregas pedida pelo cliente na solicitação. */
+export interface RequestScheduleItem {
+  /** 1, 2, 3… */
+  index: number;
+  quantity: number;
+  /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
+  expectedAt: string;
+}
+export interface RequestSchedule {
+  intervalDays: number;
+  /** AAAA-MM-DD da 1ª entrega prevista. */
+  firstDate: string;
+  items: RequestScheduleItem[];
+}
+
+/** Cor Pantone na ficha: código como no leque ("185 C") e hex aproximado. */
+export interface PantoneColorRef {
+  code: string;
+  hex: string;
+}
+
 /** Lote da programação de compra: intervalo de saída (dias) e quantidade em caixas master. */
 export interface PurchaseLot {
   departureIntervalDays: number | null;
@@ -1117,6 +1140,8 @@ export interface PurchaseSheet extends BaseRow {
   capacityMl: number | null;
   packageType: string | null;
   colorAssortment: string | null;
+  /** Cores Pantone escolhidas na tabela (código e sRGB aproximado). */
+  colorPantones?: PantoneColorRef[] | null;
   material: string | null;
   powerSource: SheetPowerSource | null;
   powerDetail: string | null;
@@ -1404,6 +1429,7 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmConfirmedAt: datetime(),
       ncmSuggestions: json(),
       groupId: id(false),
+      schedule: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -2080,6 +2106,7 @@ export const TABLES: Record<TableName, TableDef> = {
       capacityMl: float(),
       packageType: str(120),
       colorAssortment: str(200),
+      colorPantones: json(),
       material: str(200),
       powerSource: enumOf(SHEET_POWER_SOURCES, false),
       powerDetail: str(60),
@@ -2117,7 +2144,11 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_quote", type: "key", columns: ["quoteId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
-      { key: "by_carrier_status", type: "key", columns: ["carrierId", "status"] },
+      {
+        key: "by_carrier_status",
+        type: "key",
+        columns: ["carrierId", "status"],
+      },
     ],
   },
 };

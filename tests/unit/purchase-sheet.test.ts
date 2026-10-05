@@ -122,9 +122,12 @@ describe("contas da planilha", () => {
       },
       68,
     );
-    expect(plan.lots.map((l) => l.pieces)).toEqual([2400, 2400, 2400]);
-    expect(plan.lots.map((l) => l.cbm)).toEqual([4.5, 4.5, 4.5]);
-    expect(plan.lots.map((l) => l.departureAt)).toEqual([
+    // A ficha tem até 6 programações; as não usadas ficam vazias.
+    const used = plan.lots.filter((l) => l.masterCartons);
+    expect(plan.lots).toHaveLength(6);
+    expect(used.map((l) => l.pieces)).toEqual([2400, 2400, 2400]);
+    expect(used.map((l) => l.cbm)).toEqual([4.5, 4.5, 4.5]);
+    expect(used.map((l) => l.departureAt)).toEqual([
       "2026-12-10",
       "2027-01-24",
       "2027-03-10",

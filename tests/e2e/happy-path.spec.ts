@@ -31,10 +31,23 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("input[name=netWeightPcKg]", "0.4");
   await page.fill("input[name=grossWeightPcKg]", "0.5");
   await page.fill("input[name=colorAssortment]", "WHITE");
+  // Cor Pantone pela tabela (busca por número → RGB).
+  await page.locator("[data-pantone-picker][data-ready]").waitFor();
+  await page.fill("[data-pantone-search]", "185 C");
+  await page.getByRole("option", { name: /PANTONE 185 C/ }).click();
+  await expect(page.locator('[data-pantone-chip="185 C"]')).toBeVisible();
   await page.fill("input[name=material]", "GLASS");
   await page.fill("input[name=productionStartAt]", "2026-11-02");
+  await page.locator("[data-sheet-schedule][data-ready]").waitFor();
   await page.fill("input[name=lot1Interval]", "30");
   await page.fill("input[name=lot1Cartons]", "50");
+  // Conta ao vivo e sugestão para fechar o container (sem aplicar).
+  await expect(page.locator("[data-sheet-totals]")).toContainText("1.200");
+  await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
+    "data-fill-suggestion",
+    "partial",
+  );
+  await expect(page.locator("[data-fill-apply=add]")).toBeVisible();
   // Salva o rascunho (os botões ficam no fim, depois das fotos; o `form` liga ao formulário).
   await Promise.all([
     page.waitForURL(/saved=/),
@@ -164,10 +177,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 3. Fornecedor A responde (interface em chinês)
   await login(page, "supplier.a@china.com");
-  await page.goto("/app");
+  // Pendências vêm pelo prazo: abre a da RFQ, não a primeira da lista.
+  await page.goto("/app/tasks");
   await page
-    .getByRole("link", { name: /打开|Open|Abrir/ })
+    .locator("li", { hasText: /RFQ/ })
     .first()
+    .getByRole("link", { name: /打开|Open|Abrir/ })
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.35");
@@ -311,4 +326,60 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await login(page, "admin@wellmix.com");
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
+});
+
+test("vários produtos numa solicitação: cada um vira uma solicitação do mesmo lote", async ({
+  page,
+}) => {
+  await login(page, "joao@lojista.com");
+  await page.goto("/app/requests/new");
+  await page.selectOption('select[name="p0.productId"]', "prod-jarra");
+  await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
+  await page.fill('input[name="p0.quantity"]', "100");
+  // Programação de entregas: 2 entregas (50 + 50), "+ Programação" → 3 (34 + 33 + 33),
+  // intervalo 30 dias; a 3ª vira 40 → total 107 e a quantidade acompanha.
+  await page.click('[data-request-item="0"] [data-schedule-on]');
+  await expect(
+    page.locator('[data-request-item="0"] [data-schedule-item]'),
+  ).toHaveCount(2);
+  await page.click('[data-request-item="0"] [data-schedule-add]');
+  await expect(
+    page.locator('[data-request-item="0"] [data-schedule-item]'),
+  ).toHaveCount(3);
+  await page.click('[data-request-item="0"] [data-schedule-interval="30"]');
+  await page.fill('input[name="p0.schedule.qty.3"]', "40");
+  await expect(
+    page.locator('[data-request-item="0"] [data-schedule-total]'),
+  ).toContainText("107");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("107");
+  await page.click("[data-add-request-item]");
+  await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
+  await page.fill('input[name="p1.productName"]', "Copo de vidro");
+  await page.fill('textarea[name="p1.description"]', "Copo de vidro 300 ml");
+  await page.fill('input[name="p1.quantity"]', "200");
+  // Terceira linha adicionada e removida: não vira solicitação.
+  await page.click("[data-add-request-item]");
+  await page.getByRole("button", { name: /Remover: Produto 3/ }).click();
+  await page.getByRole("button", { name: /enviar|send/i }).click();
+  await page.waitForURL(/\/app\/requests\?group=[^&]+&created=2$/);
+  await expect(page.locator("[data-batch-created]")).toBeVisible();
+  await expect(page.locator("[data-batch-badge]")).toHaveCount(2);
+  await expect(
+    page.locator("table tr:has-text('Copo de vidro')"),
+  ).toBeVisible();
+  // Cada solicitação mostra a outra do lote.
+  await page
+    .locator("table tr:has-text('Copo de vidro') a[href^='/app/requests/']")
+    .first()
+    .click();
+  await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
+  await expect(page.locator("[data-batch-siblings]")).toContainText(
+    "Jarra de vidro",
+  );
+  // A Jarra guarda a programação: 3 entregas, total 108.
+  await page.locator("[data-batch-siblings] a").first().click();
+  await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
+  await expect(page.locator("[data-request-schedule-table]")).toContainText(
+    "107",
+  );
 });

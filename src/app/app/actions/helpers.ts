@@ -44,7 +44,10 @@ function errorCode(back: string, error: unknown) {
       ? "invalid_input"
       : error instanceof Error && ERROR_CODE.test(error.message)
         ? error.message
-        : "unexpected";
+        : error instanceof Error && /unknown attribute/i.test(error.message)
+          ? // Coluna nova ainda não publicada no Appwrite (esquema desatualizado).
+            "schema_outdated"
+          : "unexpected";
   if (code === "unexpected") console.error("[action]", back, error);
   return code.slice(0, 60);
 }
