@@ -39,6 +39,9 @@ export function PantonePicker({
   };
 }) {
   const [selected, setSelected] = useState<PantoneRef[]>(initial);
+  // O campo só vai no formulário quando há cores ou o usuário mexeu (ficha sem
+  // Pantone continua salvando antes de a coluna existir no banco).
+  const [dirty, setDirty] = useState(false);
   const [query, setQuery] = useState("");
   const [scale, setScale] = useState<PantoneScale | "">("");
   const [open, setOpen] = useState(false);
@@ -99,17 +102,21 @@ export function PantonePicker({
   function add(c: PantoneColor) {
     if (selected.length >= max) return;
     setSelected((s) => [...s, { code: c.code, hex: c.hex }]);
+    setDirty(true);
     setQuery("");
   }
   function remove(code: string) {
     setSelected((s) => s.filter((x) => x.code !== code));
+    setDirty(true);
   }
   const rgb = (hex: string) =>
     [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ");
 
   return (
     <div ref={box} className="min-w-0 space-y-2" data-pantone-picker>
-      <input type="hidden" name={name} value={JSON.stringify(selected)} />
+      {selected.length > 0 || dirty ? (
+        <input type="hidden" name={name} value={JSON.stringify(selected)} />
+      ) : null}
       {selected.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5">
           {selected.map((c) => (

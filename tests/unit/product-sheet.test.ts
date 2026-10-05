@@ -65,9 +65,8 @@ describe("ficha mestre do produto", () => {
     expect(sheet.productId).toBe("prod-jarra");
     expect(sheet.price).toBe(2.5);
     expect(sheet.colorPantones).toEqual([{ code: "185 C", hex: "#e4002b" }]);
-    // Campos obrigatórios da ficha preenchidos: faltam só fotos e o fornecedor (sem lote).
-    expect(missing).not.toContain("lot1");
-    expect(missing).toContain("supplierName");
+    // Campos obrigatórios da ficha preenchidos: falta só o fornecedor (lote e fotos à parte).
+    expect(missing).toEqual(["supplierName"]);
     const product = (await store.get("products", "prod-jarra"))!;
     expect(product.price).toBe(2.5);
     expect(product.currency).toBe("USD");
@@ -78,7 +77,7 @@ describe("ficha mestre do produto", () => {
     expect(product.boxHeightCm).toBe(30);
     expect(product.boxLengthCm).toBe(50);
     expect(product.color).toBe("WHITE / RED");
-    expect(product.pantone).toBe("PANTONE 185 C");
+    expect(product.pantone).toBe("185 C");
     expect(product.material).toBe("GLASS");
     expect(product.netWeightKg).toBe(0.4);
     expect(product.ncm).toBe("7013.37.00");
@@ -89,9 +88,15 @@ describe("ficha mestre do produto", () => {
     const again = await ps.saveProductSheet(admin, "prod-jarra", {
       price: 2.75,
       currency: "RMB",
+      colorPantones: null,
+      material: "M".repeat(200),
     });
     expect(again.sheet.id).toBe(sheet.id);
-    expect((await store.get("products", "prod-jarra"))?.currency).toBe("CNY");
+    const mirrored = (await store.get("products", "prod-jarra"))!;
+    expect(mirrored.currency).toBe("CNY");
+    // Sem cores escolhidas o texto "pantone" fica como estava; textos longos cabem na coluna.
+    expect(mirrored.pantone).toBe("185 C");
+    expect(mirrored.material?.length).toBe(120);
   });
 
   it("produto salvo pelo formulário espelha na ficha mestre", async () => {
@@ -150,6 +155,8 @@ describe("ficha mestre do produto", () => {
     expect(await ps.productSheetMissing("prod-jarra", master)).toEqual([
       "supplierName",
     ]);
+    expect((await ps.catalogPhotoKinds("prod-jarra")).length).toBe(5);
+    expect(await ps.catalogPhotoKinds(null)).toEqual([]);
 
     const request = await r.createRequest(joao, {
       customerId: "cliente-joao",
@@ -168,7 +175,7 @@ describe("ficha mestre do produto", () => {
     });
     const view = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
     expect(view.saved).toBe(false);
-    expect(view.sheet.incoterm).toBe("FOB");
+    // Dados do produto vêm da ficha mestre…
     expect(view.sheet.packageType).toBe("COLOR BOX");
     expect(view.sheet.colorPantones).toEqual([
       { code: "185 C", hex: "#e4002b" },
@@ -176,17 +183,24 @@ describe("ficha mestre do produto", () => {
     expect(view.sheet.ecommerceDescription).toBe(
       "Jarra de vidro com tampa de bambu",
     );
-    expect(view.sheet.location).toBe("YIWU");
-    // Fornecedor da cotação prevalece sobre o da ficha mestre (vazia aqui).
+    expect(view.sheet.masterCartonQty).toBe(24);
+    // …mas nada comercial do fornecedor de referência (isolamento entre fornecedores).
+    expect(view.sheet.incoterm ?? null).toBeNull();
+    expect(view.sheet.price ?? null).toBeNull();
+    expect(view.sheet.moq ?? null).toBeNull();
+    expect(view.sheet.location ?? null).toBeNull();
+    expect(view.sheet.supplierStore ?? null).toBeNull();
     expect(view.sheet.supplierName).toBe("Shenzhen Supplier A");
-    // Fotos copiadas (mesmo arquivo), sem reenviar: a ficha já está completa de fotos.
-    expect(view.photos.map((p) => p.kind).sort()).toEqual(
+    // Fotos do cadastro contam como enviadas, sem copiar documentos para a cotação.
+    expect(view.photos).toEqual([]);
+    expect(view.catalogPhotoKinds.sort()).toEqual(
       [...sheets.SHEET_PHOTO_KINDS].sort(),
     );
     expect(view.missing).not.toContain("scalePhoto");
-    // Ver de novo não duplica fotos.
-    const again = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
-    expect(again.photos.length).toBe(sheets.SHEET_PHOTO_KINDS.length);
+    expect(view.missing).not.toContain("originalPhoto");
+    expect(
+      await store.list("product_photos", { filter: { orderId: quote.id } }),
+    ).toEqual([]);
 
     // Pedido: a ficha da Preparação também nasce da mestre quando não há ficha de cotação.
     await r.answerQuote(supplierA, quote.id, {
@@ -203,8 +217,12 @@ describe("ficha mestre do produto", () => {
     const order = await r.confirmDownPayment(admin, request.id);
     const sheetView = (await sheets.getSheetForUser(admin, order.id))!;
     expect(sheetView.sheet.packageType).toBe("COLOR BOX");
-    expect(sheetView.sheet.incoterm).toBe("FOB");
-    expect(sheetView.photos.length).toBe(sheets.SHEET_PHOTO_KINDS.length);
+    expect(sheetView.sheet.incoterm ?? null).toBeNull();
+    expect(sheetView.photos).toEqual([]);
+    expect(sheetView.catalogPhotoKinds.length).toBe(
+      sheets.SHEET_PHOTO_KINDS.length,
+    );
+    expect(sheetView.missing).not.toContain("scalePhoto");
   });
 
   it("adotar a ficha de um pedido atualiza a ficha mestre e as fotos que faltam", async () => {
@@ -241,8 +259,12 @@ describe("ficha mestre do produto", () => {
     await expect(ps.adoptSheetIntoProduct(joao, quote.id)).rejects.toThrow(
       "forbidden",
     );
-    const { productId } = await ps.adoptSheetIntoProduct(admin, quote.id);
+    const { productId, copiedPhotos } = await ps.adoptSheetIntoProduct(
+      admin,
+      quote.id,
+    );
     expect(productId).toBe("prod-panela");
+    expect(copiedPhotos).toBe(0);
     const m = (await ps.getProductSheet("prod-panela"))!;
     expect(m.supplierName).toBe("Panela Factory");
     expect(m.packageType).toBe("BROWN BOX");

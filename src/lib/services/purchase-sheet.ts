@@ -12,7 +12,7 @@ import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
-import { copyProductPhotosToSheet, masterSheetInput } from "./product-sheet";
+import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { uploadDocument } from "./documents";
 import {
@@ -305,6 +305,13 @@ export async function getSheetPhotos(orderId: string): Promise<ProductPhoto[]> {
 /** Tipos de foto já enviados; o item antigo "Foto na balança" concluído conta como balança. */
 async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
   const kinds = new Set(photos.map((p) => p.kind as string));
+  // Fotos do cadastro do produto contam como enviadas (ficam no catálogo).
+  const store0 = getStore();
+  const order0 = await store0.get("orders", orderId);
+  const request0 = order0
+    ? await store0.get("requests", order0.requestId)
+    : null;
+  for (const k of await catalogPhotoKinds(request0?.productId)) kinds.add(k);
   if (!kinds.has("weight_scale")) {
     const store = getStore();
     const [stage] = await store.list("stages", {
@@ -336,6 +343,8 @@ export interface SheetView {
   /** Ficha ainda não salva: de onde veio o rascunho (cotação, pedido anterior ou catálogo). */
   prefillSource: SheetPrefillSource | null;
   photos: ProductPhoto[];
+  /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
+  catalogPhotoKinds: string[];
   plan: SheetPlan;
   missing: SheetMissing[];
   containerType: string | null;
@@ -356,9 +365,6 @@ export async function getSheetForUser(
     limit: 1,
   });
   const draft = existing ? null : await prefill(order);
-  // Sem ficha gravada: as fotos do cadastro do produto valem para esta ficha.
-  if (!existing && draft?.productId)
-    await copyProductPhotosToSheet(draft.productId, orderId);
   const sheet = existing ?? draft!;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
@@ -382,6 +388,9 @@ export async function getSheetForUser(
       container.capacity,
     ),
     missing: missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
+    catalogPhotoKinds: await catalogPhotoKinds(
+      (await store.get("requests", order.requestId))?.productId,
+    ),
     containerType: container.type,
     containerTypes: container.types,
   };

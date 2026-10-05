@@ -2,9 +2,7 @@ import "server-only";
 
 import {
   getStore,
-  type PhotoKind,
   type Product,
-  type ProductPhoto,
   type PurchaseSheet,
   type User,
 } from "@/lib/db";
@@ -21,7 +19,6 @@ import {
   normalizeLots,
   type SheetMissing,
 } from "./purchase-sheet-calc";
-import { pantoneLabel } from "@/lib/pantone";
 
 /*
  * Ficha de compra MESTRE do produto (cadastro): a mesma ficha do pedido e da
@@ -37,17 +34,11 @@ import { pantoneLabel } from "@/lib/pantone";
 
 export class ProductSheetError extends Error {}
 
-/** Campos da ficha que valem para qualquer pedido (o resto é de cada compra). */
-export const MASTER_SHEET_FIELDS = [
-  "location",
-  "supplierName",
-  "supplierStore",
-  "supplierPhone",
-  "factoryItemCode",
-  "incoterm",
-  "currency",
-  "price",
-  "moq",
+/**
+ * Campos do PRODUTO (valem para qualquer fornecedor): vão para a cotação de
+ * qualquer fornecedor convidado e para a ficha do pedido.
+ */
+export const MASTER_PRODUCT_FIELDS = [
   "masterCartonQty",
   "innerQty",
   "netWeightPcKg",
@@ -65,11 +56,31 @@ export const MASTER_SHEET_FIELDS = [
   "powerDetail",
   "containerType",
   "ecommerceDescription",
-  "notes",
   "ncm",
   "importTaxPercent",
   "ipiPercent",
 ] as const satisfies readonly (keyof PurchaseSheet)[];
+/**
+ * Campos COMERCIAIS do fornecedor de referência (loja, telefone, preço, MOQ,
+ * incoterm, observações): ficam só na ficha mestre; nunca vão para a cotação
+ * de outro fornecedor (isolamento entre fornecedores).
+ */
+export const MASTER_COMMERCIAL_FIELDS = [
+  "location",
+  "supplierName",
+  "supplierStore",
+  "supplierPhone",
+  "factoryItemCode",
+  "incoterm",
+  "currency",
+  "price",
+  "moq",
+  "notes",
+] as const satisfies readonly (keyof PurchaseSheet)[];
+export const MASTER_SHEET_FIELDS = [
+  ...MASTER_PRODUCT_FIELDS,
+  ...MASTER_COMMERCIAL_FIELDS,
+] as const;
 
 export async function getProductSheet(
   productId: string,
@@ -115,8 +126,10 @@ export function productSheetDraft(
 }
 
 /**
- * O que a ficha mestre dá a um pedido/cotação novo: só os campos gerais
- * (nada de datas, lotes ou quem preencheu). Nulo sem ficha mestre.
+ * O que a ficha mestre dá a um pedido/cotação novo: só os campos do produto
+ * (caixa, medidas, pesos, embalagem, cor, material, NCM…). Dados comerciais
+ * do fornecedor de referência não saem da ficha mestre; datas, lotes e quem
+ * preencheu são de cada compra. Nulo sem ficha mestre.
  */
 export async function masterSheetInput(
   productId: string | null | undefined,
@@ -125,7 +138,7 @@ export async function masterSheetInput(
   const master = await getProductSheet(productId);
   if (!master) return null;
   const out: Record<string, unknown> = {};
-  for (const k of MASTER_SHEET_FIELDS)
+  for (const k of MASTER_PRODUCT_FIELDS)
     if (master[k] !== undefined && master[k] !== null) out[k] = master[k];
   return out as SheetInput;
 }
@@ -151,13 +164,16 @@ function productPatchFromSheet(
   if (has("heightCm")) patch.boxHeightCm = sheet.heightCm ?? null;
   if (has("widthCm")) patch.boxWidthCm = sheet.widthCm ?? null;
   if (has("lengthCm")) patch.boxLengthCm = sheet.lengthCm ?? null;
-  if (has("colorAssortment")) patch.color = sheet.colorAssortment ?? null;
-  if (has("colorPantones"))
-    patch.pantone = sheet.colorPantones?.length
-      ? sheet.colorPantones.map((c) => pantoneLabel(c)).join(" / ")
-      : null;
-  if (has("material")) patch.material = sheet.material ?? null;
-  if (has("factoryItemCode")) patch.supplierSku = sheet.factoryItemCode ?? null;
+  // Colunas de texto do produto têm tamanho fixo no Appwrite: corta no limite.
+  const cut = (v: string | null | undefined, max: number) =>
+    v ? v.slice(0, max) : null;
+  if (has("colorAssortment")) patch.color = cut(sheet.colorAssortment, 60);
+  // Texto livre "pantone" só é trocado quando há cores escolhidas (nunca apagado por falta delas).
+  if (has("colorPantones") && sheet.colorPantones?.length)
+    patch.pantone = cut(sheet.colorPantones.map((c) => c.code).join(" / "), 40);
+  if (has("material")) patch.material = cut(sheet.material, 120);
+  if (has("factoryItemCode"))
+    patch.supplierSku = cut(sheet.factoryItemCode, 60);
   // NCM validado só entra no produto quando a ficha traz um.
   if (sheet.ncm) patch.ncm = sheet.ncm;
   return patch;
@@ -262,48 +278,26 @@ export async function productSheetMissing(
   productId: string,
   sheet: Partial<PurchaseSheet> | null,
 ): Promise<SheetMissing[]> {
-  const kinds = await productSheetPhotoKinds(productId);
-  // Lotes e início da produção são de cada compra, não da ficha mestre.
-  return missingForCompletion(sheet, kinds).filter(
+  // Lotes, início da produção e fotos são conferidos à parte (fotos no card do produto).
+  return missingForCompletion(sheet, SHEET_PHOTO_KINDS).filter(
     (m) => m !== "lot1" && m !== "productionStartAt",
   );
 }
 
 /**
- * Fotos da ficha mestre viram fotos da ficha do pedido/cotação (mesmo arquivo,
- * sem reenviar), só para os tipos que a ficha de destino ainda não tem.
+ * Tipos de foto da ficha que o cadastro do produto já cobre. Pedido e cotação
+ * de produto do catálogo não precisam dessas fotos de novo: contam como
+ * enviadas (a Wellmix as vê no produto); o arquivo continua só no catálogo,
+ * sem copiar nem reapontar documentos.
  */
-export async function copyProductPhotosToSheet(
+export async function catalogPhotoKinds(
   productId: string | null | undefined,
-  ownerId: string,
-): Promise<number> {
-  if (!productId) return 0;
-  const store = getStore();
-  const [source, target] = await Promise.all([
-    store.list("product_photos", { filter: { productId } }),
-    store.list("product_photos", { filter: { orderId: ownerId } }),
-  ]);
-  const have = new Set(target.map((p) => p.kind as string));
-  let copied = 0;
-  for (const kind of SHEET_PHOTO_KINDS) {
-    if (have.has(kind)) continue;
-    for (const p of source.filter((x) => x.kind === kind)) {
-      await store.create("product_photos", {
-        productId: null,
-        sourcingItemId: null,
-        orderId: ownerId,
-        documentId: p.documentId,
-        kind: p.kind,
-        caption: p.caption,
-        takenAt: p.takenAt,
-        takenByUserId: p.takenByUserId,
-        derivedFromPhotoId: p.id,
-        isPrimary: false,
-      });
-      copied++;
-    }
-  }
-  return copied;
+): Promise<string[]> {
+  if (!productId) return [];
+  const kinds = await productSheetPhotoKinds(productId);
+  return kinds.filter((k) =>
+    (SHEET_PHOTO_KINDS as readonly string[]).includes(k),
+  );
 }
 
 /**
@@ -329,37 +323,15 @@ export async function adoptSheetIntoProduct(
   for (const k of MASTER_SHEET_FIELDS)
     if (sheet[k] !== undefined) input[k] = sheet[k];
   await saveProductSheet(user, productId, input as SheetInput);
-  // Fotos: do pedido/cotação para o produto, só os tipos que faltam.
-  const [source, target] = await Promise.all([
-    store.list("product_photos", { filter: { orderId: ownerId } }),
-    store.list("product_photos", { filter: { productId } }),
-  ]);
-  const have = new Set(target.map((p) => p.kind as string));
-  let copiedPhotos = 0;
-  for (const kind of SHEET_PHOTO_KINDS as readonly PhotoKind[]) {
-    if (have.has(kind)) continue;
-    for (const p of source.filter((x: ProductPhoto) => x.kind === kind)) {
-      await store.create("product_photos", {
-        productId,
-        sourcingItemId: null,
-        orderId: null,
-        documentId: p.documentId,
-        kind: p.kind,
-        caption: p.caption,
-        takenAt: p.takenAt,
-        takenByUserId: p.takenByUserId,
-        derivedFromPhotoId: p.id,
-        isPrimary: false,
-      });
-      copiedPhotos++;
-    }
-  }
+  // Fotos ficam onde foram enviadas (as do cadastro sobem na tela do produto):
+  // documentos de pedido/cotação têm acesso próprio e não viram catálogo.
+  const copiedPhotos = 0;
   await audit(
     user,
     "product.sheet_adopt",
     "product",
     productId,
-    `Ficha mestre atualizada a partir da ficha ${ownerId}${copiedPhotos ? ` (+${copiedPhotos} fotos)` : ""}`,
+    `Ficha mestre atualizada a partir da ficha ${ownerId}`,
   );
   return { productId, copiedPhotos };
 }

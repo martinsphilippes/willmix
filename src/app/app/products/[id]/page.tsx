@@ -12,6 +12,7 @@ import {
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { loadProductSheet } from "@/lib/services/sourcing";
 import {
+  catalogPhotoKinds,
   getProductSheet,
   productSheetDraft,
   productSheetMissing,
@@ -208,6 +209,7 @@ export default async function ProductSheetPage({
     product.id,
     masterSheet ?? masterDraft,
   );
+  const masterPhotoKinds = await catalogPhotoKinds(product.id);
   const masterMissingText = masterMissing
     .map((k) => t(`sheet.field.${k}` as DictionaryKey))
     .join(", ");
@@ -648,6 +650,9 @@ export default async function ProductSheetPage({
             {t("productSheet.missing", { fields: masterMissingText })}
           </p>
         ) : null}
+        <p className="text-xs text-zinc-500" data-master-photos>
+          {t("productSheet.photos", { n: masterPhotoKinds.length })}
+        </p>
         <form
           id="product-sheet-form"
           action={saveProductSheetAction}

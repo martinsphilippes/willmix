@@ -151,6 +151,7 @@ export default async function PurchaseSheetPage({
         ownerId={id}
         addAction={addPurchaseSheetPhotosAction}
         removeAction={removePurchaseSheetPhotoAction}
+        coveredKinds={view.catalogPhotoKinds}
       />
 
       {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}

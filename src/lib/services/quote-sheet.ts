@@ -10,7 +10,7 @@ import {
 } from "@/lib/db";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { copyProductPhotosToSheet, masterSheetInput } from "./product-sheet";
+import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
@@ -157,6 +157,8 @@ export interface QuoteSheetView {
   plan: SheetPlan;
   /** Fotos da ficha da cotação (balança e régua obrigatórias). */
   photos: ProductPhoto[];
+  /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
+  catalogPhotoKinds: string[];
   missing: SheetMissing[];
   containerType: string | null;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
@@ -175,9 +177,9 @@ export async function getQuoteSheetForUser(
   if (!request) return null;
   const existing = await getQuoteSheet(quoteId);
   const sheet = existing ?? (await prefillQuote(quote, request));
-  // Sem ficha gravada: as fotos do cadastro do produto valem para esta cotação.
-  if (!existing) await copyProductPhotosToSheet(request.productId, quoteId);
   const photos = await getSheetPhotos(quoteId);
+  // Fotos do cadastro do produto contam como enviadas (ficam no catálogo).
+  const catalogKinds = await catalogPhotoKinds(request.productId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
     quote,
@@ -198,7 +200,8 @@ export async function getQuoteSheetForUser(
       container.capacity,
     ),
     photos,
-    missing: missingForQuote(sheet, photoKindsOf(photos)),
+    missing: missingForQuote(sheet, [...photoKindsOf(photos), ...catalogKinds]),
+    catalogPhotoKinds: catalogKinds,
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -256,7 +259,13 @@ export async function saveQuoteSheet(
     `Ficha da cotação: ${Object.keys(patch).length} campo(s)`,
   );
   const photos = await getSheetPhotos(quoteId);
-  return { sheet, missing: missingForQuote(sheet, photoKindsOf(photos)) };
+  return {
+    sheet,
+    missing: missingForQuote(sheet, [
+      ...photoKindsOf(photos),
+      ...(await catalogPhotoKinds(request.productId)),
+    ]),
+  };
 }
 
 /**

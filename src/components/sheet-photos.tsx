@@ -20,6 +20,7 @@ export function SheetPhotosCard({
   addAction,
   removeAction,
   hint,
+  coveredKinds = [],
 }: {
   t: Translate;
   photos: ProductPhoto[];
@@ -30,6 +31,8 @@ export function SheetPhotosCard({
   addAction: (form: FormData) => Promise<void>;
   removeAction: (form: FormData) => Promise<void>;
   hint?: string;
+  /** Tipos cobertos pelas fotos do cadastro do produto (sem precisar reenviar). */
+  coveredKinds?: string[];
 }) {
   return (
     <Card title={t("sheet.section.photos")} className="mt-4" dense>
@@ -56,7 +59,8 @@ export function SheetPhotosCard({
           const addable = (SHEET_PHOTO_KINDS as readonly string[]).includes(
             kind,
           );
-          const done = photos.length > 0;
+          const covered = coveredKinds.includes(kind);
+          const done = photos.length > 0 || covered;
           const name = t(`catalog.photoKind.${kind}` as DictionaryKey);
           return (
             <li
@@ -107,6 +111,14 @@ export function SheetPhotosCard({
                       </span>
                     ) : null}
                   </p>
+                  {covered && photos.length === 0 ? (
+                    <span
+                      className="mt-0.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800"
+                      data-photo-covered={kind}
+                    >
+                      {t("sheet.photos.fromCatalog")}
+                    </span>
+                  ) : null}
                   <p
                     className={cx(
                       "text-xs",

@@ -232,6 +232,7 @@ export default async function QuotePage({
           ownerId={quote.id}
           addAction={addQuoteSheetPhotosAction}
           removeAction={removeQuoteSheetPhotoAction}
+          coveredKinds={sheetView.catalogPhotoKinds}
           hint={t("quoteSheet.photosHint")}
         />
       ) : null}

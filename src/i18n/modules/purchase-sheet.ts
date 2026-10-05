@@ -76,6 +76,7 @@ export const pt = {
   "sheet.photos.removeConfirm":
     "Excluir esta foto? Ela sai da ficha e dos documentos do pedido.",
   "sheet.photos.removed": "Foto excluída.",
+  "sheet.photos.fromCatalog": "Coberta pelo cadastro do produto",
   "sheet.power.none": "Sem energia",
   "sheet.power.battery": "Bateria / pilha",
   "sheet.power.110v": "110V",
@@ -187,6 +188,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.photos.removeConfirm":
     "Delete this photo? It is removed from the sheet and from the order documents.",
   "sheet.photos.removed": "Photo deleted.",
+  "sheet.photos.fromCatalog": "Covered by the product record",
   "sheet.power.none": "No power",
   "sheet.power.battery": "Battery",
   "sheet.power.110v": "110V",
@@ -296,6 +298,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.photos.remove": "删除照片",
   "sheet.photos.removeConfirm": "删除这张照片？它将从采购单和订单文件中移除。",
   "sheet.photos.removed": "照片已删除。",
+  "sheet.photos.fromCatalog": "产品档案已提供",
   "sheet.power.none": "无电源",
   "sheet.power.battery": "电池",
   "sheet.power.110v": "110V",

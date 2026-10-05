@@ -256,7 +256,7 @@ export async function removeQuoteSheetPhotoAction(form: FormData) {
 /** Ficha de compra mestre do produto (cadastro): só Wellmix. */
 export async function saveProductSheetAction(form: FormData) {
   const user = await requireUser();
-  const productId = str(form, "productId");
+  const productId = z.string().min(1).max(64).parse(str(form, "productId"));
   await run(`/app/products/${productId}`, async () => {
     const { saveProductSheet } = await import("@/lib/services/product-sheet");
     const { missing } = await saveProductSheet(
@@ -271,8 +271,10 @@ export async function saveProductSheetAction(form: FormData) {
 /** "Atualizar cadastro do produto com esta ficha" (pedido ou cotação): só Wellmix. */
 export async function adoptSheetIntoProductAction(form: FormData) {
   const user = await requireUser();
-  const ownerId = str(form, "ownerId");
-  const back = str(form, "back") || "/app";
+  const ownerId = z.string().min(1).max(64).parse(str(form, "ownerId"));
+  // Só volta para telas do portal (nada de redirecionar para fora).
+  const rawBack = str(form, "back");
+  const back = /^\/app\/[A-Za-z0-9\-_/]*$/.test(rawBack) ? rawBack : "/app";
   await run(back, async () => {
     const { adoptSheetIntoProduct } =
       await import("@/lib/services/product-sheet");
