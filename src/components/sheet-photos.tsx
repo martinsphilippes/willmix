@@ -32,9 +32,9 @@ export function SheetPhotosCard({
   hint?: string;
 }) {
   return (
-    <Card title={t("sheet.section.photos")} className="mt-4">
+    <Card title={t("sheet.section.photos")} className="mt-4" dense>
       <span id="photos" className="block scroll-mt-24" />
-      <p className="mb-4 text-sm leading-relaxed text-zinc-600">
+      <p className="mb-3 text-sm leading-relaxed text-zinc-600">
         {hint ?? t("sheet.photos.hint")}
       </p>
       {/* Uma linha por tipo de foto; verde com check quando já tem foto.

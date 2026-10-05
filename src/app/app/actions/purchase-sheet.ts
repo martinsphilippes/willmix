@@ -252,3 +252,31 @@ export async function removeQuoteSheetPhotoAction(form: FormData) {
     await removeQuoteSheetPhoto(user, quoteId, photoId);
   });
 }
+
+/** Ficha de compra mestre do produto (cadastro): só Wellmix. */
+export async function saveProductSheetAction(form: FormData) {
+  const user = await requireUser();
+  const productId = str(form, "productId");
+  await run(`/app/products/${productId}`, async () => {
+    const { saveProductSheet } = await import("@/lib/services/product-sheet");
+    const { missing } = await saveProductSheet(
+      user,
+      productId,
+      parseSheet(form),
+    );
+    return `/app/products/${productId}?sheet=${missing.length ? "partial" : "complete"}#product-sheet`;
+  });
+}
+
+/** "Atualizar cadastro do produto com esta ficha" (pedido ou cotação): só Wellmix. */
+export async function adoptSheetIntoProductAction(form: FormData) {
+  const user = await requireUser();
+  const ownerId = str(form, "ownerId");
+  const back = str(form, "back") || "/app";
+  await run(back, async () => {
+    const { adoptSheetIntoProduct } =
+      await import("@/lib/services/product-sheet");
+    const { productId } = await adoptSheetIntoProduct(user, ownerId);
+    return `${back}${back.includes("?") ? "&" : "?"}adopted=${encodeURIComponent(productId)}`;
+  });
+}

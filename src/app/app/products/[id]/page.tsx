@@ -11,6 +11,14 @@ import {
 } from "@/lib/db";
 import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import { loadProductSheet } from "@/lib/services/sourcing";
+import {
+  getProductSheet,
+  productSheetDraft,
+  productSheetMissing,
+} from "@/lib/services/product-sheet";
+import { planSheet } from "@/lib/services/purchase-sheet-calc";
+import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { saveProductSheetAction } from "../../actions/purchase-sheet";
 import { listTaxClassifications } from "@/lib/services/taxes";
 import {
   checkProductCompliance,
@@ -128,7 +136,7 @@ export default async function ProductSheetPage({
   if (!user) redirect("/login");
   assertWellmix(user);
   const { id } = await params;
-  const { error, saved, qty } = await searchParams;
+  const { error, saved, qty, sheet: sheetSaved } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
   const {
@@ -190,6 +198,38 @@ export default async function ProductSheetPage({
     loadProductCycle(id),
   ]);
   const aiAdapter = getAiAdapter(settings);
+  // Ficha mestre (ou rascunho a partir das colunas do produto) e o que falta nela.
+  const [masterSheet, masterSupplier] = await Promise.all([
+    getProductSheet(product.id),
+    product.supplierId ? getStore().get("parties", product.supplierId) : null,
+  ]);
+  const masterDraft = productSheetDraft(product, masterSupplier);
+  const masterMissing = await productSheetMissing(
+    product.id,
+    masterSheet ?? masterDraft,
+  );
+  const masterMissingText = masterMissing
+    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
+    .join(", ");
+  const masterContainer =
+    settings.containerTypes.find(
+      (c) => c.code === (masterSheet?.containerType ?? "40HC"),
+    ) ??
+    [...settings.containerTypes].sort(
+      (a, b) => b.capacityCbm - a.capacityCbm,
+    )[0];
+  const masterPlan = planSheet(
+    {
+      lots: masterSheet?.lots ?? null,
+      masterCartonQty: (masterSheet ?? masterDraft).masterCartonQty ?? null,
+      cbmPerCarton: (masterSheet ?? masterDraft).cbmPerCarton ?? null,
+      productionStartAt: masterSheet?.productionStartAt ?? null,
+      heightCm: (masterSheet ?? masterDraft).heightCm ?? null,
+      widthCm: (masterSheet ?? masterDraft).widthCm ?? null,
+      lengthCm: (masterSheet ?? masterDraft).lengthCm ?? null,
+    },
+    masterContainer?.capacityCbm ?? null,
+  );
   const attributeCheck = checkRequiredAttributes(product, line);
   const aiPhotos = collectAiPhotos(
     photos,
@@ -577,6 +617,59 @@ export default async function ProductSheetPage({
           </SubmitButton>
         </div>
       </form>
+
+      {/* ---- Ficha de compra mestre: a mesma ficha do pedido; pedidos e cotações deste produto nascem dela ---- */}
+      <section id="product-sheet" className="mt-6 scroll-mt-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold tracking-tight text-zinc-900">
+            {t("productSheet.title")}
+          </h2>
+          {masterMissing.length === 0 ? (
+            <Badge tone="success">{t("productSheet.complete")}</Badge>
+          ) : masterSheet ? (
+            <Badge tone="warning">
+              {t("productSheet.partial", { n: masterMissing.length })}
+            </Badge>
+          ) : (
+            <Badge tone="neutral">{t("productSheet.none")}</Badge>
+          )}
+        </div>
+        <p className="max-w-3xl text-sm leading-relaxed text-zinc-600">
+          {t("productSheet.hint")}
+        </p>
+        {sheetSaved === "complete" ? (
+          <Alert tone="success">{t("productSheet.saved")}</Alert>
+        ) : sheetSaved === "partial" ? (
+          <Alert tone="warning">
+            {t("productSheet.savedPartial", { fields: masterMissingText })}
+          </Alert>
+        ) : masterMissing.length ? (
+          <p className="text-xs text-zinc-500">
+            {t("productSheet.missing", { fields: masterMissingText })}
+          </p>
+        ) : null}
+        <form
+          id="product-sheet-form"
+          action={saveProductSheetAction}
+          className="space-y-4"
+        >
+          <input type="hidden" name="productId" value={product.id} />
+          <PurchaseSheetFields
+            t={t}
+            sheet={masterSheet ?? masterDraft}
+            plan={masterPlan}
+            containerType={masterContainer.code}
+            containerTypes={settings.containerTypes}
+            editSupplier
+            editCustoms
+            lotRequired={false}
+          />
+          <p className="text-xs text-zinc-500">
+            {t("productSheet.photosHint")}
+          </p>
+          <SubmitButton>{t("productSheet.save")}</SubmitButton>
+        </form>
+      </section>
 
       {/* ---- Fotos e medições ---- */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

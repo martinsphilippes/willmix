@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { canViewQuote } from "@/lib/auth/permissions";
+import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -18,6 +18,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import {
   addQuoteSheetPhotosAction,
+  adoptSheetIntoProductAction,
   answerQuoteWithSheetAction,
   removeQuoteSheetPhotoAction,
   saveQuoteSheetDraftAction,
@@ -36,7 +37,13 @@ export default async function QuotePage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, saved, photos: photoSent, photoRemoved } = await searchParams;
+  const {
+    error,
+    saved,
+    photos: photoSent,
+    photoRemoved,
+    adopted,
+  } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
   if (!quote || !canViewQuote(user, quote)) notFound();
@@ -219,6 +226,25 @@ export default async function QuotePage({
           removeAction={removeQuoteSheetPhotoAction}
           hint={t("quoteSheet.photosHint")}
         />
+      ) : null}
+      {sheetView && sheetView.saved && isWellmix(user) && sheetView.sheet.productId ? (
+        <form
+          action={adoptSheetIntoProductAction}
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm"
+          data-adopt-sheet
+        >
+          <input type="hidden" name="ownerId" value={quote.id} />
+          <input type="hidden" name="back" value={`/app/quotes/${quote.id}`} />
+          <span className="min-w-0 flex-1 text-xs text-zinc-600">
+            {t("productSheet.adoptHint")}
+          </span>
+          <SubmitButton variant="secondary">{t("productSheet.adopt")}</SubmitButton>
+        </form>
+      ) : null}
+      {typeof adopted === "string" && adopted ? (
+        <div className="mt-3">
+          <Alert tone="success">{t("productSheet.adopted")}</Alert>
+        </div>
       ) : null}
       {sheetView && canAnswer && sheetView.access.editSupplier ? (
         <Card title={t("quotes.answer")} className="mt-4" dense>

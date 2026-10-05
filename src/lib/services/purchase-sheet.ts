@@ -12,6 +12,7 @@ import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
+import { copyProductPhotosToSheet, masterSheetInput } from "./product-sheet";
 import { uploadDocument } from "./documents";
 import {
   missingForCompletion,
@@ -155,7 +156,7 @@ export async function containerCapacity(type: string | null): Promise<{
 
 /** Rascunho a partir do cadastro (produto, cotação escolhida, fornecedor): menos digitação. */
 /** De onde veio o rascunho da ficha ainda não salva no pedido. */
-export type SheetPrefillSource = "quote" | "previous" | "catalog";
+export type SheetPrefillSource = "quote" | "previous" | "catalog" | "master";
 
 /**
  * Campos que valem de outra ficha. Da cotação deste pedido vem tudo menos a
@@ -232,6 +233,24 @@ async function prefill(
     return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
   };
   const earlier = await earlierSheet(order, request ?? null);
+  // Ficha mestre do produto (cadastro): vale mais que um pedido anterior,
+  // menos que a cotação desta compra.
+  const master =
+    earlier?.source === "quote"
+      ? null
+      : await masterSheetInput(product?.id ?? null);
+  if (master) {
+    return {
+      prefillSource: "master",
+      ...master,
+      productId: product?.id ?? null,
+      supplierName: supplier?.name ?? master.supplierName ?? null,
+      supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
+      currency: currencyOf(quote?.currency) ?? master.currency ?? null,
+      price: quote?.price ?? master.price ?? null,
+      lots: normalizeLots(null),
+    };
+  }
   if (earlier) {
     const reused = Object.fromEntries(
       reusableFields(earlier.source).map((k) => [k, earlier.sheet[k] ?? null]),
@@ -301,6 +320,7 @@ export interface SheetView {
   /** Ficha gravada, ou o rascunho pré-preenchido quando ainda não existe. */
   sheet: SheetInput & {
     id?: string;
+    productId?: string | null;
     completedAt?: string | null;
     updatedAt?: string;
   };
@@ -328,6 +348,9 @@ export async function getSheetForUser(
     limit: 1,
   });
   const draft = existing ? null : await prefill(order);
+  // Sem ficha gravada: as fotos do cadastro do produto valem para esta ficha.
+  if (!existing && draft?.productId)
+    await copyProductPhotosToSheet(draft.productId, orderId);
   const sheet = existing ?? draft!;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);

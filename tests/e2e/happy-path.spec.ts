@@ -177,10 +177,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 3. Fornecedor A responde (interface em chinês)
   await login(page, "supplier.a@china.com");
-  await page.goto("/app");
+  // Pendências vêm pelo prazo: abre a da RFQ, não a primeira da lista.
+  await page.goto("/app/tasks");
   await page
-    .getByRole("link", { name: /打开|Open|Abrir/ })
+    .locator("li", { hasText: /RFQ/ })
     .first()
+    .getByRole("link", { name: /打开|Open|Abrir/ })
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.35");

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
+import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -11,6 +12,7 @@ import { getSheetForUser } from "@/lib/services/purchase-sheet";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import {
   addPurchaseSheetPhotosAction,
+  adoptSheetIntoProductAction,
   removePurchaseSheetPhotoAction,
   savePurchaseSheetAction,
 } from "../../../actions/purchase-sheet";
@@ -27,7 +29,13 @@ export default async function PurchaseSheetPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { saved, error, photos: photosSent, photoRemoved } = await searchParams;
+  const {
+    saved,
+    error,
+    photos: photosSent,
+    photoRemoved,
+    adopted,
+  } = await searchParams;
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
   const t = await getT();
@@ -85,13 +93,23 @@ export default async function PurchaseSheetPage({
         {photoRemoved === "1" ? (
           <Alert tone="success">{t("sheet.photos.removed")}</Alert>
         ) : null}
+        {typeof adopted === "string" && adopted ? (
+          <Alert tone="success">
+            {t("productSheet.adopted")}{" "}
+            <LinkButton href={`/app/products/${adopted}#product-sheet`}>
+              {t("common.product")}
+            </LinkButton>
+          </Alert>
+        ) : null}
         {typeof photosSent === "string" ? (
           <Alert tone="success">{t("sheet.photos.sent")}</Alert>
         ) : null}
         {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
         {!view.saved && access.editSupplier ? (
           <Alert tone={view.prefillSource === "catalog" ? "neutral" : "info"}>
-            {view.prefillSource === "quote" || view.prefillSource === "previous"
+            {view.prefillSource === "quote" ||
+            view.prefillSource === "previous" ||
+            view.prefillSource === "master"
               ? t(`sheet.prefilledNotice.${view.prefillSource}`)
               : t("sheet.prefilled")}
           </Alert>
@@ -131,6 +149,26 @@ export default async function PurchaseSheetPage({
         addAction={addPurchaseSheetPhotosAction}
         removeAction={removePurchaseSheetPhotoAction}
       />
+
+      {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}
+      {view.saved && isWellmix(user) && view.sheet.productId ? (
+        <form
+          action={adoptSheetIntoProductAction}
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm"
+          data-adopt-sheet
+        >
+          <input type="hidden" name="ownerId" value={id} />
+          <input
+            type="hidden"
+            name="back"
+            value={`/app/orders/${id}/purchase-sheet`}
+          />
+          <span className="min-w-0 flex-1 text-xs text-zinc-600">
+            {t("productSheet.adoptHint")}
+          </span>
+          <SubmitButton variant="secondary">{t("productSheet.adopt")}</SubmitButton>
+        </form>
+      ) : null}
 
       {/* Rodapé (fixo no celular): Salvar, para quem edita, e Voltar ao pedido. */}
       <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex gap-3 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">

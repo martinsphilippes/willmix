@@ -231,6 +231,16 @@ export const inputClass =
 export const inputDenseClass =
   "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
 
+const LABELABLE = new Set([
+  "input",
+  "select",
+  "textarea",
+  "button",
+  "meter",
+  "output",
+  "progress",
+]);
+
 /** Larguras dos campos compactos (no celular ocupam a linha toda). */
 export const fieldRowWidth = {
   xs: "sm:w-24",
@@ -264,8 +274,15 @@ export function FieldRow({
   const generatedId = useId();
   // Um controle só: rótulo ligado por htmlFor (vale para arquivo também, pois o
   // campo não fica dentro do <label>). Vários controles: grupo com nome.
-  const single = isValidElement<{ id?: string }>(children);
-  const id = single ? (children.props.id ?? `f-${generatedId}`) : undefined;
+  // Componente (repassa o id) ou elemento rotulável; um <div> com vários
+  // controles vira grupo com nome.
+  const single =
+    isValidElement<{ id?: string }>(children) &&
+    (typeof children.type !== "string" || LABELABLE.has(children.type));
+  const id =
+    single && isValidElement<{ id?: string }>(children)
+      ? (children.props.id ?? `f-${generatedId}`)
+      : undefined;
   const groupLabelId = `fl-${generatedId}`;
   const text = (
     <>
@@ -302,7 +319,9 @@ export function FieldRow({
           role={single ? undefined : "group"}
           aria-labelledby={single ? undefined : groupLabelId}
         >
-          {single ? cloneElement(children, { id }) : children}
+          {single && isValidElement<{ id?: string }>(children)
+            ? cloneElement(children, { id })
+            : children}
         </div>
         {hint ? (
           <span className="text-xs leading-5 text-zinc-500">{hint}</span>

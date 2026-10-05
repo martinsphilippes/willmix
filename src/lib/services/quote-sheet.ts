@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import { copyProductPhotosToSheet, masterSheetInput } from "./product-sheet";
 import {
   containerCapacity,
   CUSTOMS_FIELDS,
@@ -87,10 +88,23 @@ async function prefillQuote(
   request: Request,
 ): Promise<SheetInput & { productId: string | null }> {
   const store = getStore();
-  const [product, supplier] = await Promise.all([
+  const [product, supplier, master] = await Promise.all([
     request.productId ? store.get("products", request.productId) : null,
     store.get("parties", quote.supplierId),
+    masterSheetInput(request.productId),
   ]);
+  // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
+  // desta cotação prevalecem.
+  if (master)
+    return {
+      ...master,
+      productId: product?.id ?? null,
+      supplierName: supplier?.name ?? master.supplierName ?? null,
+      supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
+      currency: sheetCurrency(quote.currency) ?? master.currency ?? null,
+      price: quote.price ?? master.price ?? null,
+      lots: normalizeLots(null),
+    };
   return {
     productId: product?.id ?? null,
     supplierName: supplier?.name ?? null,
@@ -123,14 +137,15 @@ export function missingForQuote(
   return missingForCompletion(sheet, photoKinds);
 }
 
-const photoKindsOf = (photos: Array<{ kind: string }>) =>
-  [...new Set(photos.map((p) => p.kind))];
+const photoKindsOf = (photos: Array<{ kind: string }>) => [
+  ...new Set(photos.map((p) => p.kind)),
+];
 
 export interface QuoteSheetView {
   quote: Quote;
   request: Request;
   access: SheetAccess;
-  sheet: SheetInput & { id?: string };
+  sheet: SheetInput & { id?: string; productId?: string | null };
   saved: boolean;
   plan: SheetPlan;
   /** Fotos da ficha da cotação (balança e régua obrigatórias). */
@@ -153,6 +168,8 @@ export async function getQuoteSheetForUser(
   if (!request) return null;
   const existing = await getQuoteSheet(quoteId);
   const sheet = existing ?? (await prefillQuote(quote, request));
+  // Sem ficha gravada: as fotos do cadastro do produto valem para esta cotação.
+  if (!existing) await copyProductPhotosToSheet(request.productId, quoteId);
   const photos = await getSheetPhotos(quoteId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
