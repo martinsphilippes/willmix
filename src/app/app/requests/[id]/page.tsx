@@ -64,6 +64,7 @@ import {
 } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { MoneyInput } from "@/components/money-input";
+import { RequestScheduleTable } from "@/components/request-schedule-table";
 
 export default async function RequestDetailPage({
   params,
@@ -289,6 +290,11 @@ export default async function RequestDetailPage({
                 [t("requests.specification"), request.specification],
                 [t("common.note"), request.notes],
               ]}
+            />
+            <RequestScheduleTable
+              schedule={request.schedule}
+              unit={request.unit}
+              t={t}
             />
             {documents.length > 0 ? (
               <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">

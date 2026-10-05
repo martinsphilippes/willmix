@@ -11,6 +11,7 @@ import {
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { copyProductPhotosToSheet, masterSheetInput } from "./product-sheet";
+import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
   CUSTOMS_FIELDS,
@@ -93,6 +94,12 @@ async function prefillQuote(
     store.get("parties", quote.supplierId),
     masterSheetInput(request.productId),
   ]);
+  // Programação de entregas pedida pelo cliente vira as programações da ficha.
+  const requestLots =
+    scheduleToLots(
+      request.schedule,
+      master?.masterCartonQty ?? product?.masterBoxQty ?? null,
+    ) ?? normalizeLots(null);
   // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
   // desta cotação prevalecem.
   if (master)
@@ -103,7 +110,7 @@ async function prefillQuote(
       supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
       currency: sheetCurrency(quote.currency) ?? master.currency ?? null,
       price: quote.price ?? master.price ?? null,
-      lots: normalizeLots(null),
+      lots: requestLots,
     };
   return {
     productId: product?.id ?? null,
@@ -124,7 +131,7 @@ async function prefillQuote(
     colorAssortment: product?.color ?? null,
     material: product?.material ?? null,
     ncm: product?.ncm ?? null,
-    lots: normalizeLots(null),
+    lots: requestLots,
   };
 }
 

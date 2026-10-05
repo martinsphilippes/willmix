@@ -13,6 +13,7 @@ import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
 import { copyProductPhotosToSheet, masterSheetInput } from "./product-sheet";
+import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { uploadDocument } from "./documents";
 import {
   missingForCompletion,
@@ -233,6 +234,9 @@ async function prefill(
     return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
   };
   const earlier = await earlierSheet(order, request ?? null);
+  // Programação de entregas pedida pelo cliente: as programações da ficha nascem dela.
+  const requestLots = (cartonQty: number | null | undefined) =>
+    scheduleToLots(request?.schedule, cartonQty ?? null) ?? normalizeLots(null);
   // Ficha mestre do produto (cadastro): vale mais que um pedido anterior,
   // menos que a cotação desta compra.
   const master =
@@ -248,7 +252,7 @@ async function prefill(
       supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
       currency: currencyOf(quote?.currency) ?? master.currency ?? null,
       price: quote?.price ?? master.price ?? null,
-      lots: normalizeLots(null),
+      lots: requestLots(master.masterCartonQty),
     };
   }
   if (earlier) {
@@ -258,7 +262,11 @@ async function prefill(
     return {
       ...reused,
       productId: product?.id ?? earlier.sheet.productId ?? null,
-      lots: normalizeLots(null),
+      lots:
+        earlier.source === "quote" &&
+        earlier.sheet.lots?.some((l) => l.masterCartons)
+          ? normalizeLots(earlier.sheet.lots)
+          : requestLots(earlier.sheet.masterCartonQty),
       prefillSource: earlier.source,
     };
   }
@@ -282,7 +290,7 @@ async function prefill(
     colorAssortment: product?.color ?? null,
     material: product?.material ?? null,
     ncm: product?.ncm ?? null,
-    lots: normalizeLots(null),
+    lots: requestLots(product?.masterBoxQty),
   };
 }
 

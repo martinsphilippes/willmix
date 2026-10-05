@@ -1,4 +1,4 @@
-import type { PurchaseSheet } from "@/lib/db";
+import type { PurchaseSheet, RequestSchedule } from "@/lib/db";
 import {
   SHEET_CURRENCIES,
   SHEET_INCOTERMS,
@@ -37,6 +37,8 @@ export function PurchaseSheetFields({
   editSupplier,
   editCustoms,
   lotRequired = true,
+  requestSchedule = null,
+  requestUnit = "un",
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -47,6 +49,10 @@ export function PurchaseSheetFields({
   editCustoms: boolean;
   /** Lote 1 obrigatório (Preparação); na cotação os lotes são opcionais. */
   lotRequired?: boolean;
+  /** Programação de entregas pedida pelo cliente na solicitação (referência por programação). */
+  requestSchedule?: RequestSchedule | null;
+  /** Unidade da solicitação (para "Pedido do cliente: 1.000 un"). */
+  requestUnit?: string;
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -400,6 +406,8 @@ export function PurchaseSheetFields({
           containerTypes={view.containerTypes}
           disabled={sup}
           lotRequired={lotRequired}
+          requested={requestSchedule?.items ?? []}
+          unit={requestUnit}
           labels={{
             lotColumn: t("sheet.lot.column"),
             interval: t("sheet.lot.interval"),
@@ -427,6 +435,12 @@ export function PurchaseSheetFields({
             full: t("sheet.fill.full"),
             need: t("sheet.fill.need"),
             applied: t("sheet.fill.applied"),
+            addLot: t("sheet.lot.add"),
+            requested: t("sheet.lot.requested", {
+              quantity: "{quantity}",
+              unit: "{unit}",
+              date: "{date}",
+            }),
           }}
         />
         <p className="mt-2 text-xs text-zinc-500">{t("sheet.total.hint")}</p>

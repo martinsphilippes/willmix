@@ -42,6 +42,9 @@ export interface ScheduleLabels {
   full: string;
   need: string;
   applied: string;
+  /** "+ Programação" (nova linha) e "Pedido do cliente: {quantity} {unit} em {date}". */
+  addLot: string;
+  requested: string;
 }
 
 interface FormValues {
@@ -78,6 +81,8 @@ export function SheetSchedule({
   disabled,
   lotRequired,
   labels,
+  requested = [],
+  unit = "un",
 }: {
   initialLots: PurchaseLot[];
   initial: FormValues;
@@ -85,6 +90,9 @@ export function SheetSchedule({
   disabled: boolean;
   lotRequired: boolean;
   labels: ScheduleLabels;
+  /** Programação pedida pelo cliente na solicitação (por programação). */
+  requested?: { quantity: number; expectedAt: string }[];
+  unit?: string;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [lots, setLots] = useState<{ interval: string; cartons: string }[]>(
@@ -104,6 +112,12 @@ export function SheetSchedule({
   );
   const [form, setForm] = useState<FormValues>(initial);
   const [applied, setApplied] = useState<string | null>(null);
+  // Linhas visíveis: as com dados (ou pedidas pelo cliente) e mais uma; "+ Programação" abre outra.
+  const filled = (ls: { interval: string; cartons: string }[]) =>
+    ls.map((l) => l.interval !== "" || l.cartons !== "").lastIndexOf(true) + 1;
+  const [visible, setVisible] = useState(() =>
+    Math.min(MAX_LOTS, Math.max(2, filled(lots), requested.length)),
+  );
 
   // Lê os outros campos da ficha a cada digitação (mesmo formulário).
   useEffect(() => {
@@ -217,60 +231,87 @@ export function SheetSchedule({
             </tr>
           </thead>
           <tbody>
-            {plan.lots.map((lot, i) => (
-              <tr key={lot.index} className="border-t border-zinc-100">
-                <td className="py-1.5 pr-3 font-semibold text-zinc-800">
-                  {lot.index}
-                  {lot.index === 1 && lotRequired ? (
-                    <span
-                      className="ml-0.5 font-semibold text-brand-600"
-                      title={labels.required}
-                    >
-                      <span aria-hidden>*</span>
-                      <span className="sr-only">({labels.required})</span>
-                    </span>
-                  ) : null}
-                </td>
-                <td className="py-1.5 pr-3">
-                  <input
-                    name={`lot${lot.index}Interval`}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={lots[i].interval}
-                    onChange={(e) => setLot(i, "interval", e.target.value)}
-                    disabled={disabled}
-                    aria-label={`${fill(labels.lotTitle, { n: lot.index })}: ${labels.interval}`}
-                    className={cx(inputDenseClass, "w-20 tabular-nums")}
-                  />
-                </td>
-                <td className="py-1.5 pr-3">
-                  <input
-                    name={`lot${lot.index}Cartons`}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={lots[i].cartons}
-                    onChange={(e) => setLot(i, "cartons", e.target.value)}
-                    disabled={disabled}
-                    aria-label={`${fill(labels.lotTitle, { n: lot.index })}: ${labels.cartons}`}
-                    className={cx(inputDenseClass, "w-24 tabular-nums")}
-                  />
-                </td>
-                <td className="py-1.5 pr-3 text-right tabular-nums text-zinc-800">
-                  {fmt(lot.pieces, 0)}
-                </td>
-                <td className="py-1.5 pr-3 text-right tabular-nums text-zinc-800">
-                  {lot.cbm !== null ? `${fmt(lot.cbm, 4)} m³` : "—"}
-                </td>
-                <td className="py-1.5 pl-3 tabular-nums text-zinc-800">
-                  {lot.departureAt ? formatDate(lot.departureAt) : "—"}
-                </td>
-              </tr>
-            ))}
+            {plan.lots
+              .slice(0, Math.max(visible, filled(lots)))
+              .map((lot, i) => (
+                <tr key={lot.index} className="border-t border-zinc-100">
+                  <td className="py-1.5 pr-3 font-semibold text-zinc-800">
+                    {lot.index}
+                    {lot.index === 1 && lotRequired ? (
+                      <span
+                        className="ml-0.5 font-semibold text-brand-600"
+                        title={labels.required}
+                      >
+                        <span aria-hidden>*</span>
+                        <span className="sr-only">({labels.required})</span>
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    <input
+                      name={`lot${lot.index}Interval`}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={lots[i].interval}
+                      onChange={(e) => setLot(i, "interval", e.target.value)}
+                      disabled={disabled}
+                      aria-label={`${fill(labels.lotTitle, { n: lot.index })}: ${labels.interval}`}
+                      className={cx(inputDenseClass, "w-20 tabular-nums")}
+                    />
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    <input
+                      name={`lot${lot.index}Cartons`}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={lots[i].cartons}
+                      onChange={(e) => setLot(i, "cartons", e.target.value)}
+                      disabled={disabled}
+                      aria-label={`${fill(labels.lotTitle, { n: lot.index })}: ${labels.cartons}`}
+                      className={cx(inputDenseClass, "w-24 tabular-nums")}
+                    />
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums text-zinc-800">
+                    {fmt(lot.pieces, 0)}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums text-zinc-800">
+                    {lot.cbm !== null ? `${fmt(lot.cbm, 4)} m³` : "—"}
+                  </td>
+                  <td className="py-1.5 pl-3 tabular-nums text-zinc-800">
+                    {lot.departureAt ? formatDate(lot.departureAt) : "—"}
+                    {requested[i] ? (
+                      <span
+                        className="block text-[11px] text-brand-700"
+                        data-lot-requested={lot.index}
+                      >
+                        {fill(labels.requested, {
+                          quantity: fmt(requested[i].quantity, 0),
+                          unit,
+                          date: formatDate(requested[i].expectedAt),
+                        })}
+                      </span>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
+      {!disabled && Math.max(visible, filled(lots)) < MAX_LOTS ? (
+        <button
+          type="button"
+          onClick={() =>
+            setVisible((v) => Math.min(MAX_LOTS, Math.max(v, filled(lots)) + 1))
+          }
+          data-add-lot
+          className="mt-2 inline-flex items-center gap-1 rounded-md border border-dashed border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+        >
+          <span aria-hidden>+</span>
+          {labels.addLot}
+        </button>
+      ) : null}
       <dl
         className="mt-3 flex flex-wrap gap-x-6 gap-y-1 rounded-lg bg-brand-50/60 px-3 py-2 text-sm ring-1 ring-inset ring-brand-100"
         data-sheet-totals

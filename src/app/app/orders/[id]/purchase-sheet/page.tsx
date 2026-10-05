@@ -39,6 +39,7 @@ export default async function PurchaseSheetPage({
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
   const t = await getT();
+  const request = await getStore().get("requests", view.order.requestId);
   const [item] = await getStore().list("order_items", {
     filter: { orderId: id },
     limit: 1,
@@ -137,6 +138,8 @@ export default async function PurchaseSheetPage({
           containerTypes={view.containerTypes}
           editSupplier={access.editSupplier}
           editCustoms={access.editCustoms}
+          requestSchedule={request?.schedule ?? null}
+          requestUnit={request?.unit ?? "un"}
         />
       </form>
 
@@ -166,7 +169,9 @@ export default async function PurchaseSheetPage({
           <span className="min-w-0 flex-1 text-xs text-zinc-600">
             {t("productSheet.adoptHint")}
           </span>
-          <SubmitButton variant="secondary">{t("productSheet.adopt")}</SubmitButton>
+          <SubmitButton variant="secondary">
+            {t("productSheet.adopt")}
+          </SubmitButton>
         </form>
       ) : null}
 

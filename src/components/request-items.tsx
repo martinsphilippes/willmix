@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
 import { RequestProductFields } from "@/components/request-product-fields";
+import {
+  RequestScheduleFields,
+  type ScheduleLabels,
+} from "@/components/request-schedule";
 
 type ProductFieldsProps = Omit<
   React.ComponentProps<typeof RequestProductFields>,
@@ -35,10 +39,14 @@ export function RequestItems({
     hint: string;
     quantity: string;
     unit: string;
+    schedule: ScheduleLabels;
   };
 }) {
   const [rows, setRows] = useState<number[]>([0]);
   const [next, setNext] = useState(1);
+  // Quantidade e unidade por linha (a programação de entregas soma na quantidade).
+  const [qty, setQty] = useState<Record<number, string>>({ 0: presetQuantity });
+  const [unit, setUnit] = useState<Record<number, string>>({ 0: "un" });
 
   function add() {
     setRows((r) => [...r, next]);
@@ -103,7 +111,10 @@ export function RequestItems({
                   min="0.01"
                   step="any"
                   required
-                  defaultValue={first ? presetQuantity : ""}
+                  value={qty[index] ?? ""}
+                  onChange={(e) =>
+                    setQty((q) => ({ ...q, [index]: e.target.value }))
+                  }
                   className={inputClass}
                 />
               </label>
@@ -113,12 +124,25 @@ export function RequestItems({
                 </span>
                 <input
                   name={`${prefix}unit`}
-                  defaultValue="un"
+                  value={unit[index] ?? "un"}
+                  onChange={(e) =>
+                    setUnit((u) => ({ ...u, [index]: e.target.value }))
+                  }
                   required
                   className={inputClass}
                 />
               </label>
             </div>
+            {/* Programação de entregas: divide a quantidade em entregas com intervalo e datas previstas. */}
+            <RequestScheduleFields
+              prefix={prefix}
+              total={qty[index] ?? ""}
+              unit={unit[index] ?? "un"}
+              onTotalChange={(total) =>
+                setQty((q) => ({ ...q, [index]: total }))
+              }
+              labels={labels.schedule}
+            />
           </fieldset>
         );
       })}

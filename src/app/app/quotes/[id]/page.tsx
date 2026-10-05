@@ -27,6 +27,7 @@ import {
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /** Fornecedor vê a RFQ e responde. Não vê outros fornecedores nem o cliente final. */
@@ -118,6 +119,11 @@ export default async function QuotePage({
               [t("requests.description"), request.description],
               [t("requests.specification"), request.specification],
             ]}
+          />
+          <RequestScheduleTable
+            schedule={request.schedule}
+            unit={request.unit}
+            t={t}
           />
           {documents.length > 0 ? (
             <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">
@@ -212,6 +218,8 @@ export default async function QuotePage({
             containerTypes={sheetView.containerTypes}
             editSupplier={sheetView.access.editSupplier}
             editCustoms={sheetView.access.editCustoms}
+            requestSchedule={request.schedule ?? null}
+            requestUnit={request.unit}
           />
         </form>
       ) : null}
@@ -227,7 +235,10 @@ export default async function QuotePage({
           hint={t("quoteSheet.photosHint")}
         />
       ) : null}
-      {sheetView && sheetView.saved && isWellmix(user) && sheetView.sheet.productId ? (
+      {sheetView &&
+      sheetView.saved &&
+      isWellmix(user) &&
+      sheetView.sheet.productId ? (
         <form
           action={adoptSheetIntoProductAction}
           className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm"
@@ -238,7 +249,9 @@ export default async function QuotePage({
           <span className="min-w-0 flex-1 text-xs text-zinc-600">
             {t("productSheet.adoptHint")}
           </span>
-          <SubmitButton variant="secondary">{t("productSheet.adopt")}</SubmitButton>
+          <SubmitButton variant="secondary">
+            {t("productSheet.adopt")}
+          </SubmitButton>
         </form>
       ) : null}
       {typeof adopted === "string" && adopted ? (

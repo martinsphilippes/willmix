@@ -534,6 +534,8 @@ export interface Request extends BaseRow {
    * solicitação, mesmo lote). Nulo nas solicitações criadas uma a uma.
    */
   groupId?: string | null;
+  /** Programação de entregas pedida pelo cliente (N entregas, intervalo, datas). */
+  schedule?: RequestSchedule | null;
 }
 
 export interface Quote extends BaseRow {
@@ -1081,6 +1083,21 @@ export interface LookupOption {
 }
 export type LookupField = "productName" | "description" | "specification";
 
+/** Programação de entregas pedida pelo cliente na solicitação. */
+export interface RequestScheduleItem {
+  /** 1, 2, 3… */
+  index: number;
+  quantity: number;
+  /** AAAA-MM-DD: 1ª data + intervalo × (n − 1). */
+  expectedAt: string;
+}
+export interface RequestSchedule {
+  intervalDays: number;
+  /** AAAA-MM-DD da 1ª entrega prevista. */
+  firstDate: string;
+  items: RequestScheduleItem[];
+}
+
 /** Cor Pantone na ficha: código como no leque ("185 C") e hex aproximado. */
 export interface PantoneColorRef {
   code: string;
@@ -1412,6 +1429,7 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmConfirmedAt: datetime(),
       ncmSuggestions: json(),
       groupId: id(false),
+      schedule: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },

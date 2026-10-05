@@ -1,3 +1,7 @@
+import {
+  parseRequestSchedule,
+  type RequestSchedule,
+} from "@/lib/workflow/request-schedule";
 /*
  * Linhas de produto do formulário de nova solicitação. Cada linha usa o
  * prefixo `p<n>.` nos campos (p0.productName, p0.quantity…); linhas removidas
@@ -15,6 +19,8 @@ export interface RequestItemFields {
   unit: string;
   sourcingDemand: boolean;
   attachments: File[];
+  /** Programação de entregas da linha (nula quando não ligada). */
+  schedule: RequestSchedule | null;
 }
 
 const ROW = /^p(\d+)\.(productId|productName|description|quantity)$/;
@@ -46,6 +52,7 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
         quantity: qty === "" ? null : Number(qty),
         unit: text(`${p}unit`) || "un",
         sourcingDemand: form.get(`${p}sourcingDemand`) === "on",
+        schedule: parseRequestSchedule(form, p),
         attachments: form
           .getAll(`${p}attachments`)
           .filter((f): f is File => f instanceof File && f.size > 0),

@@ -55,6 +55,7 @@ import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 /* Helpers compartilhados com src/app/app/actions/*.ts */
 import { num, requireUser, run, str } from "./actions/helpers";
 import { parseRequestItems } from "./actions/request-items";
+import { scheduleTotal } from "@/lib/workflow/request-schedule";
 
 /* ------------------------------------------------------------------------ */
 /* Idioma                                                                    */
@@ -122,6 +123,9 @@ export async function createRequestAction(form: FormData) {
         unit: parsed.unit,
         // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
         sourcingDemand: row.sourcingDemand && !parsed.productId,
+        // Programação de entregas: a quantidade da solicitação é a soma das entregas.
+        schedule: row.schedule,
+        ...(row.schedule ? { quantity: scheduleTotal(row.schedule) } : {}),
       });
     }
     // Anexos conferidos antes de criar qualquer solicitação (tipo e tamanho).

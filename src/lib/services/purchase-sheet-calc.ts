@@ -8,7 +8,7 @@ import type { PurchaseLot, PurchaseSheet } from "@/lib/db/schema";
  * - saída de cada lote = início da produção + intervalos acumulados.
  */
 
-export const MAX_LOTS = 3;
+export const MAX_LOTS = 6;
 
 export interface LotPlan {
   index: number;

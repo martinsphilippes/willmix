@@ -11,6 +11,7 @@ import {
   type Request,
   type RequestOrigin,
   type User,
+  type RequestSchedule,
 } from "@/lib/db";
 import {
   ForbiddenError,
@@ -51,6 +52,8 @@ export interface CreateRequestInput {
   requestedForUserId?: string | null;
   /** Lote: várias solicitações criadas juntas (ver createRequestBatch). */
   groupId?: string | null;
+  /** Programação de entregas pedida pelo cliente. */
+  schedule?: RequestSchedule | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -63,6 +66,7 @@ export interface RequestBatchItem {
   unit: string;
   /** Produto fora do catálogo: sourcing sob demanda. */
   sourcingDemand: boolean;
+  schedule?: RequestSchedule | null;
 }
 
 /**
@@ -99,6 +103,7 @@ export async function createRequestBatch(
               ? "sourcing_demand"
               : "manual",
           groupId,
+          schedule: item.schedule ?? null,
         }),
       );
     } catch (error) {
@@ -252,6 +257,8 @@ export async function createRequest(
     notes: input.notes ?? null,
     // Só vai ao banco quando há lote (coluna opcional; antes dela existir, nada muda).
     ...(input.groupId ? { groupId: input.groupId } : {}),
+    // Idem para a programação de entregas (coluna opcional).
+    ...(input.schedule ? { schedule: input.schedule } : {}),
   });
   await audit(
     user,
