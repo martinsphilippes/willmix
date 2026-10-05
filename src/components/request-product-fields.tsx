@@ -33,8 +33,11 @@ export function RequestProductFields({
   suggestions,
   sourceLabels,
   labels,
+  prefix = "",
 }: {
   products: ProductFill[];
+  /** Prefixo dos nomes dos campos (várias linhas de produto no mesmo formulário). */
+  prefix?: string;
   presetProductId: string;
   defaultNotInCatalog: boolean;
   suggestions: Partial<Record<Field, Option[]>>;
@@ -116,8 +119,8 @@ export function RequestProductFields({
   function field(name: Field, label: string, multiline: boolean) {
     const options = suggestions[name] ?? [];
     const common = {
-      id: `rp-${name}`,
-      name,
+      id: `rp-${prefix}${name}`,
+      name: `${prefix}${name}`,
       value: values[name],
       onChange: (
         e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -127,7 +130,7 @@ export function RequestProductFields({
     return (
       <div className="space-y-2">
         <label
-          htmlFor={`rp-${name}`}
+          htmlFor={`rp-${prefix}${name}`}
           className="block text-sm font-medium text-zinc-800"
         >
           {label}
@@ -225,7 +228,7 @@ export function RequestProductFields({
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
           <input
             type="checkbox"
-            name="sourcingDemand"
+            name={`${prefix}sourcingDemand`}
             checked={notInCatalog}
             onChange={(e) => toggleNotInCatalog(e.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
@@ -245,14 +248,14 @@ export function RequestProductFields({
       {!notInCatalog ? (
         <div className="space-y-1.5">
           <label
-            htmlFor="rp-productId"
+            htmlFor={`rp-${prefix}productId`}
             className="block text-sm font-medium text-zinc-800"
           >
             {labels.product}
           </label>
           <select
-            id="rp-productId"
-            name="productId"
+            id={`rp-${prefix}productId`}
+            name={`${prefix}productId`}
             value={productId}
             onChange={(e) => fillFrom(e.target.value)}
             className={inputClass}
@@ -314,14 +317,14 @@ export function RequestProductFields({
       {notInCatalog ? (
         <div className="space-y-1.5">
           <label
-            htmlFor="rp-attachments"
+            htmlFor={`rp-${prefix}attachments`}
             className="block text-sm font-medium text-zinc-800"
           >
             {labels.attachments}
           </label>
           <input
-            id="rp-attachments"
-            name="attachments"
+            id={`rp-${prefix}attachments`}
+            name={`${prefix}attachments`}
             type="file"
             multiple
             accept="image/*,application/pdf"

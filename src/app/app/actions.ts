@@ -30,9 +30,10 @@ import { LOCALE_COOKIE } from "@/i18n/server";
 import {
   answerQuote,
   confirmDownPayment,
-  createRequest,
   openRfq,
   selectQuote,
+  createRequestBatch,
+  type RequestBatchItem,
 } from "@/lib/services/requests";
 import {
   registerUploadedDocument,
@@ -52,6 +53,7 @@ import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
 /* Helpers compartilhados com src/app/app/actions/*.ts */
 import { num, requireUser, run, str } from "./actions/helpers";
+import { parseRequestItems } from "./actions/request-items";
 
 /* ------------------------------------------------------------------------ */
 /* Idioma                                                                    */
@@ -76,78 +78,98 @@ export async function setLocaleAction(form: FormData) {
 /* Solicitações                                                              */
 /* ------------------------------------------------------------------------ */
 
-const requestSchema = z.object({
+const requestBaseSchema = z.object({
   customerId: z.string().min(1),
-  productId: z.string().optional().nullable(),
-  productName: z.string().min(2),
-  description: z.string().min(2),
-  specification: z.string().optional().nullable(),
-  quantity: z.number().positive(),
-  unit: z.string().min(1),
   deadline: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
+// Limites iguais às colunas de `requests` (productName 160, unit 20): a validação
+// recusa antes de criar qualquer solicitação do lote.
+const requestItemSchema = z.object({
+  productId: z.string().max(64).optional().nullable(),
+  productName: z.string().min(2).max(160),
+  description: z.string().min(2).max(10_000),
+  specification: z.string().max(10_000).optional().nullable(),
+  quantity: z.number().positive().finite(),
+  unit: z.string().min(1).max(20),
+});
 
+/**
+ * Nova solicitação com um ou vários produtos (linhas `p<n>.*`). Cada produto
+ * vira uma solicitação; com 2 ou mais, todas no mesmo lote.
+ */
 export async function createRequestAction(form: FormData) {
   const user = await requireUser();
   await run("/app/requests/new", async () => {
-    const productId = str(form, "productId") || null;
-    let productName = str(form, "productName");
-    if (productId && !productName) {
-      const product = await getStore().get("products", productId);
-      productName = product?.name ?? "";
+    const store = getStore();
+    const rows = parseRequestItems(form);
+    if (!rows.length) throw new Error("no_products");
+    const items: RequestBatchItem[] = [];
+    for (const row of rows) {
+      let productName = row.productName;
+      if (row.productId && !productName) {
+        const product = await store.get("products", row.productId);
+        productName = product?.name ?? "";
+      }
+      const parsed = requestItemSchema.parse({ ...row, productName });
+      items.push({
+        productId: parsed.productId ?? null,
+        productName: parsed.productName,
+        description: parsed.description,
+        specification: parsed.specification ?? null,
+        quantity: parsed.quantity,
+        unit: parsed.unit,
+        // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
+        sourcingDemand: row.sourcingDemand && !parsed.productId,
+      });
     }
-    const parsed = requestSchema.parse({
+    const base = requestBaseSchema.parse({
       customerId:
         user.role === "customer" ? user.partyId : str(form, "customerId"),
-      productId,
-      productName,
-      description: str(form, "description"),
-      specification: str(form, "specification") || null,
-      quantity: num(form, "quantity"),
-      unit: str(form, "unit") || "un",
       deadline: str(form, "deadline") || null,
       notes: str(form, "notes") || null,
     });
-    // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
-    const sourcingDemand =
-      form.get("sourcingDemand") === "on" && !parsed.productId;
-    const request = await createRequest(user, {
-      ...parsed,
-      origin: sourcingDemand ? "sourcing_demand" : "manual",
-      // Wellmix em nome do cliente: o login do cliente que solicitou.
-      requestedForUserId: isWellmix(user)
-        ? str(form, "requestedForUserId") || null
-        : null,
-    });
+    const created = await createRequestBatch(
+      user,
+      {
+        ...base,
+        // Wellmix em nome do cliente: o login do cliente que solicitou.
+        requestedForUserId: isWellmix(user)
+          ? str(form, "requestedForUserId") || null
+          : null,
+      },
+      items,
+    );
+    const first = created[0];
     // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
     const scheduleId = str(form, "scheduleId");
     if (scheduleId && isWellmix(user)) {
-      const schedule = await getStore().get("purchase_schedules", scheduleId);
+      const schedule = await store.get("purchase_schedules", scheduleId);
       if (schedule && !schedule.requestId)
-        await getStore().update("purchase_schedules", scheduleId, {
-          requestId: request.id,
+        await store.update("purchase_schedules", scheduleId, {
+          requestId: first.id,
           status: "confirmed",
         });
     }
-    const files = form
-      .getAll("attachments")
-      .filter((f): f is File => f instanceof File && f.size > 0);
-    for (const file of files) {
-      await uploadDocument(user, file, {
-        requestId: request.id,
-        type: "attachment",
-        visibility: "internal",
-      });
+    // Anexos de cada produto fora do catálogo vão para a solicitação dele.
+    for (const [i, row] of rows.entries()) {
+      for (const file of row.attachments) {
+        await uploadDocument(user, file, {
+          requestId: created[i].id,
+          type: "attachment",
+          visibility: "internal",
+        });
+      }
     }
-    // Busca por foto/link: a foto enviada vira anexo da solicitação.
+    // Busca por foto/link: a foto enviada vira anexo da primeira solicitação.
     const lookupId = str(form, "lookupId");
     if (lookupId) {
       const { attachLookupToRequest } =
         await import("@/lib/services/product-lookup");
-      await attachLookupToRequest(user, lookupId, request.id);
+      await attachLookupToRequest(user, lookupId, first.id);
     }
-    return `/app/requests/${request.id}`;
+    if (created.length === 1) return `/app/requests/${first.id}`;
+    return `/app/requests?group=${encodeURIComponent(first.groupId ?? "")}&created=${created.length}`;
   });
 }
 

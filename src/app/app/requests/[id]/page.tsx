@@ -20,11 +20,12 @@ import { getCurrentUser } from "@/lib/auth/session";
 import {
   canSeeSupplier,
   canViewOrder,
+  canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { getStore, type FreightQuote } from "@/lib/db";
 import { freightByQuote } from "@/lib/services/freight";
-import { getRequestForUser } from "@/lib/services/requests";
+import { batchSiblings, getRequestForUser } from "@/lib/services/requests";
 import { getT } from "@/i18n/server";
 import {
   Alert,
@@ -76,6 +77,10 @@ export default async function RequestDetailPage({
   if (!request) notFound();
   const t = await getT();
   const store = getStore();
+  // Lote: outras solicitações criadas junto com esta (só as que este usuário vê).
+  const siblings = (await batchSiblings(request)).filter((r) =>
+    canViewRequest(user, r),
+  );
   const wellmix = isWellmix(user);
 
   const [customer, quotes, suppliers, documents, payments, customerLogins] =
@@ -233,6 +238,21 @@ export default async function RequestDetailPage({
           ) : null
         }
       />
+      {siblings.length > 0 ? (
+        <div className="mb-4" data-batch-siblings>
+          <Alert tone="info">
+            {t("reqBatch.siblings", { n: siblings.length + 1 })}{" "}
+            {siblings.map((s, i) => (
+              <span key={s.id}>
+                {i > 0 ? ", " : null}
+                <TextLink href={`/app/requests/${s.id}`}>
+                  {s.productName}
+                </TextLink>
+              </span>
+            ))}
+          </Alert>
+        </div>
+      ) : null}
       {error ? (
         <Alert tone="danger">
           {typeof error === "string" &&

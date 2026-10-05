@@ -529,6 +529,11 @@ export interface Request extends BaseRow {
   ncmConfirmedByUserId?: string | null;
   ncmConfirmedAt?: string | null;
   ncmSuggestions?: NcmSuggestion[] | null;
+  /**
+   * Lote: várias solicitações criadas juntas num formulário só (um produto por
+   * solicitação, mesmo lote). Nulo nas solicitações criadas uma a uma.
+   */
+  groupId?: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -1398,10 +1403,12 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmConfirmedByUserId: id(false),
       ncmConfirmedAt: datetime(),
       ncmSuggestions: json(),
+      groupId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_group", type: "key", columns: ["groupId"] },
     ],
   },
   quotes: {

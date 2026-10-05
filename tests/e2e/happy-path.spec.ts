@@ -142,12 +142,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.waitForURL(/\/app\/requests$/);
   await expect(page.getByText("Precisa importar um produto?")).toBeVisible();
   await page.goto("/app/requests/new");
-  await page.selectOption("select[name=productId]", "prod-jarra");
+  await page.selectOption('select[name="p0.productId"]', "prod-jarra");
   await page.fill(
-    "textarea[name=description]",
+    'textarea[name="p0.description"]',
     "Jarra de vidro com tampa de bambu",
   );
-  await page.fill("input[name=quantity]", "1200");
+  await page.fill('input[name="p0.quantity"]', "1200");
   await page.getByRole("button", { name: /enviar|send/i }).click();
   await page.waitForURL(/\/app\/requests\/(?!new)[^/]+$/);
   const requestUrl = page.url();

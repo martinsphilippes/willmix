@@ -858,6 +858,14 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "groupId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -876,6 +884,16 @@
           "type": "key",
           "columns": [
             "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_group",
+          "type": "key",
+          "columns": [
+            "groupId"
           ],
           "orders": [
             "ASC"

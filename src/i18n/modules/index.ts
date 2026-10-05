@@ -33,6 +33,8 @@ import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
 import * as orderCancel from "./order-cancel";
+import * as requestBatch from "./request-batch";
+import * as tasksFilter from "./tasks-filter";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -65,6 +67,8 @@ export const modulesPt = {
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
   ...orderCancel.pt,
+  ...requestBatch.pt,
+  ...tasksFilter.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -97,6 +101,8 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...requirementFiles.en,
   ...sheetPhotos.en,
   ...orderCancel.en,
+  ...requestBatch.en,
+  ...tasksFilter.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -129,4 +135,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...requirementFiles.zh,
   ...sheetPhotos.zh,
   ...orderCancel.zh,
+  ...requestBatch.zh,
+  ...tasksFilter.zh,
 };
