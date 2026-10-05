@@ -5,6 +5,8 @@ import {
   SHEET_POWER_SOURCES,
 } from "@/lib/db/schema";
 import type { SheetPlan } from "@/lib/services/purchase-sheet-calc";
+import type { SheetRecords } from "@/lib/services/sheet-records";
+import Link from "next/link";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Translate } from "@/i18n";
 import {
@@ -40,6 +42,7 @@ export function PurchaseSheetFields({
   requestSchedule = null,
   requestUnit = "un",
   master = false,
+  records = null,
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -56,6 +59,8 @@ export function PurchaseSheetFields({
   requestUnit?: string;
   /** Ficha mestre do produto: sem início de produção nem programações (são de cada compra). */
   master?: boolean;
+  /** Bloco Fornecedor vem dos cadastros: o que falta neles e os atalhos para completar. */
+  records?: SheetRecords | null;
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -128,6 +133,49 @@ export function PurchaseSheetFields({
             />
           </F>
         </Rows>
+        {records ? (
+          <div
+            className="mt-3 space-y-1 text-xs text-zinc-500"
+            data-sheet-records={records.missing.length ? "missing" : "complete"}
+          >
+            <p>{t("sheet.records.hint")}</p>
+            {records.missing.length ? (
+              <p className="text-amber-800">
+                {t("sheet.records.missing", {
+                  fields: records.missing
+                    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
+                    .join(", "),
+                })}
+              </p>
+            ) : (
+              <p className="text-emerald-800">{t("sheet.records.complete")}</p>
+            )}
+            {records.canEdit ? (
+              <p className="flex flex-wrap gap-x-3 gap-y-1">
+                {records.supplierId &&
+                records.missing.some((k) => k !== "factoryItemCode") ? (
+                  <Link
+                    href={`/app/parties/${records.supplierId}`}
+                    className="font-medium text-brand-700 underline-offset-2 hover:underline"
+                    data-records-edit-supplier
+                  >
+                    {t("sheet.records.editSupplier")}
+                  </Link>
+                ) : null}
+                {records.productId &&
+                records.missing.includes("factoryItemCode") ? (
+                  <Link
+                    href={`/app/products/${records.productId}`}
+                    className="font-medium text-brand-700 underline-offset-2 hover:underline"
+                    data-records-edit-product
+                  >
+                    {t("sheet.records.editProduct")}
+                  </Link>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </Card>
 
       <Card title={t("sheet.section.price")} dense>

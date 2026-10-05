@@ -123,6 +123,8 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     city?: string;
     contactName?: string;
     wechat?: string | null;
+    phone?: string;
+    storeNumber?: string;
     operationMode?: OperationMode;
     radar?: RadarStatus;
   }> = [
@@ -145,6 +147,8 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       city: "Shenzhen",
       contactName: "Li Wei",
       wechat: "liwei_sz",
+      phone: "+86 755 1234 5678",
+      storeNumber: "A 154678",
     },
     {
       id: "fornecedor-b",
@@ -203,11 +207,12 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: party.name,
       country: party.country,
       email: party.email,
-      phone: null,
+      phone: party.phone ?? null,
       taxId: null,
       notes: null,
       active: true,
       city: party.city ?? null,
+      ...(party.storeNumber ? { storeNumber: party.storeNumber } : {}),
       contactName: party.contactName ?? null,
       wechat: party.wechat ?? null,
       operationMode: party.operationMode ?? null,

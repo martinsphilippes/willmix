@@ -188,8 +188,9 @@ describe("ficha mestre do produto", () => {
     expect(view.sheet.incoterm ?? null).toBeNull();
     expect(view.sheet.price ?? null).toBeNull();
     expect(view.sheet.moq ?? null).toBeNull();
-    expect(view.sheet.location ?? null).toBeNull();
-    expect(view.sheet.supplierStore ?? null).toBeNull();
+    // Local e nº da loja vêm do cadastro do próprio fornecedor, não da mestre.
+    expect(view.sheet.location).toBe("Shenzhen");
+    expect(view.sheet.supplierStore).toBe("A 154678");
     expect(view.sheet.supplierName).toBe("Shenzhen Supplier A");
     // Fotos do cadastro contam como enviadas, sem copiar documentos para a cotação.
     expect(view.photos).toEqual([]);

@@ -302,6 +302,14 @@
           "default": null,
           "type": "varchar",
           "size": 255
+        },
+        {
+          "key": "storeNumber",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
         }
       ],
       "indexes": [

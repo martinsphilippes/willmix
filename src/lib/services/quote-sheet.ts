@@ -11,6 +11,12 @@ import {
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import {
+  fillRecordsFromSheet,
+  recordFields,
+  sheetRecords,
+  type SheetRecords,
+} from "./sheet-records";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
@@ -102,6 +108,8 @@ async function prefillQuote(
     ) ?? normalizeLots(null);
   // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
   // desta cotação prevalecem.
+  // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
+  const records = recordFields(supplier, product);
   if (master)
     return {
       ...master,
@@ -111,12 +119,11 @@ async function prefillQuote(
       currency: sheetCurrency(quote.currency) ?? master.currency ?? null,
       price: quote.price ?? master.price ?? null,
       lots: requestLots,
+      ...records,
     };
   return {
     productId: product?.id ?? null,
-    supplierName: supplier?.name ?? null,
-    supplierPhone: supplier?.phone ?? null,
-    factoryItemCode: product?.supplierSku ?? null,
+    ...records,
     currency: sheetCurrency(quote.currency ?? product?.currency),
     price: quote.price ?? product?.price ?? null,
     moq: product?.moq ?? null,
@@ -159,6 +166,8 @@ export interface QuoteSheetView {
   photos: ProductPhoto[];
   /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
   catalogPhotoKinds: string[];
+  /** Bloco Fornecedor: o que falta nos cadastros do fornecedor e do produto. */
+  records: SheetRecords;
   missing: SheetMissing[];
   containerType: string | null;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
@@ -202,6 +211,11 @@ export async function getQuoteSheetForUser(
     photos,
     missing: missingForQuote(sheet, [...photoKindsOf(photos), ...catalogKinds]),
     catalogPhotoKinds: catalogKinds,
+    records: await sheetRecords(
+      user,
+      quote.supplierId,
+      sheet.productId ?? request.productId ?? null,
+    ),
     containerType: container.type,
     containerTypes: container.types,
   };
@@ -258,6 +272,14 @@ export async function saveQuoteSheet(
     quoteId,
     `Ficha da cotação: ${Object.keys(patch).length} campo(s)`,
   );
+  // Completa o cadastro do fornecedor/produto com o que ele não tinha.
+  if (access.editSupplier)
+    await fillRecordsFromSheet(
+      user,
+      quote.supplierId,
+      sheet.productId ?? request.productId ?? null,
+      sheet,
+    );
   const photos = await getSheetPhotos(quoteId);
   return {
     sheet,

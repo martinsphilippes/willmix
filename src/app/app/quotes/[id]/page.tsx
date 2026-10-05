@@ -223,6 +223,7 @@ export default async function QuotePage({
             editCustoms={sheetView.access.editCustoms}
             requestSchedule={request.schedule ?? null}
             requestUnit={request.unit}
+            records={sheetView.records}
           />
         </form>
       ) : null}

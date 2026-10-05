@@ -140,6 +140,7 @@ export default async function PurchaseSheetPage({
           editCustoms={access.editCustoms}
           requestSchedule={request?.schedule ?? null}
           requestUnit={request?.unit ?? "un"}
+          records={view.records}
         />
       </form>
 

@@ -38,6 +38,7 @@ import * as tasksFilter from "./tasks-filter";
 import * as pantone from "./pantone";
 import * as sheetFill from "./sheet-fill";
 import * as productSheet from "./product-sheet";
+import * as sheetRecords from "./sheet-records";
 import * as requestSchedule from "./request-schedule";
 
 export const modulesPt = {
@@ -76,6 +77,7 @@ export const modulesPt = {
   ...pantone.pt,
   ...sheetFill.pt,
   ...productSheet.pt,
+  ...sheetRecords.pt,
   ...requestSchedule.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -114,6 +116,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...pantone.en,
   ...sheetFill.en,
   ...productSheet.en,
+  ...sheetRecords.en,
   ...requestSchedule.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -152,5 +155,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...pantone.zh,
   ...sheetFill.zh,
   ...productSheet.zh,
+  ...sheetRecords.zh,
   ...requestSchedule.zh,
 };
