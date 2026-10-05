@@ -5340,6 +5340,13 @@
           "size": 200
         },
         {
+          "key": "colorPantones",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "material",
           "required": false,
           "array": false,

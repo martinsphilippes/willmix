@@ -113,22 +113,27 @@ export async function createRequestBatch(
       // o usuário reenviar sem duplicar; o erro original segue para a tela.
       // Pelo groupId, para pegar também a solicitação gravada cuja etapa
       // seguinte (auditoria, sourcing, aviso) foi o que falhou.
-      const born = groupId
-        ? (await store.list("requests", { filter: { groupId } })).filter(
-            (r) => r.status !== "CANCELLED",
-          )
-        : created;
-      for (const r of born) {
-        await store.update("requests", r.id, { status: "CANCELLED" });
-        await audit(
-          user,
-          "request.batch_rollback",
-          "request",
-          r.id,
-          `Lote interrompido (${item.productName}): solicitação cancelada`,
-          { status: r.status },
-          { status: "CANCELLED" },
-        );
+      try {
+        const born = groupId
+          ? (await store.list("requests", { filter: { groupId } })).filter(
+              (r) => r.status !== "CANCELLED",
+            )
+          : created;
+        for (const r of born) {
+          await store.update("requests", r.id, { status: "CANCELLED" });
+          await audit(
+            user,
+            "request.batch_rollback",
+            "request",
+            r.id,
+            `Lote interrompido (${item.productName}): solicitação cancelada`,
+            { status: r.status },
+            { status: "CANCELLED" },
+          );
+        }
+      } catch (rollbackError) {
+        // A reversão falhou também: o erro original é o que importa na tela.
+        console.error("[requests] reversão do lote falhou", rollbackError);
       }
       throw error;
     }

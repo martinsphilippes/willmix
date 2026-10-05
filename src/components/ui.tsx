@@ -262,10 +262,11 @@ export function FieldRow({
   children: ReactNode;
 }) {
   const generatedId = useId();
-  const single =
-    isValidElement<{ id?: string; type?: string }>(children) &&
-    children.props.type !== "file";
+  // Um controle só: rótulo ligado por htmlFor (vale para arquivo também, pois o
+  // campo não fica dentro do <label>). Vários controles: grupo com nome.
+  const single = isValidElement<{ id?: string }>(children);
   const id = single ? (children.props.id ?? `f-${generatedId}`) : undefined;
+  const groupLabelId = `fl-${generatedId}`;
   const text = (
     <>
       {label}
@@ -291,10 +292,16 @@ export function FieldRow({
           {text}
         </label>
       ) : (
-        <span className={labelClass}>{text}</span>
+        <span id={groupLabelId} className={labelClass}>
+          {text}
+        </span>
       )}
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <div className={cx("w-full min-w-0", fieldRowWidth[size])}>
+        <div
+          className={cx("w-full min-w-0", fieldRowWidth[size])}
+          role={single ? undefined : "group"}
+          aria-labelledby={single ? undefined : groupLabelId}
+        >
           {single ? cloneElement(children, { id }) : children}
         </div>
         {hint ? (

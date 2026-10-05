@@ -31,6 +31,10 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("input[name=netWeightPcKg]", "0.4");
   await page.fill("input[name=grossWeightPcKg]", "0.5");
   await page.fill("input[name=colorAssortment]", "WHITE");
+  // Cor Pantone pela tabela (busca por número → RGB).
+  await page.fill("[data-pantone-search]", "185 C");
+  await page.getByRole("option", { name: /PANTONE 185 C/ }).click();
+  await expect(page.locator('[data-pantone-chip="185 C"]')).toBeVisible();
   await page.fill("input[name=material]", "GLASS");
   await page.fill("input[name=productionStartAt]", "2026-11-02");
   await page.fill("input[name=lot1Interval]", "30");

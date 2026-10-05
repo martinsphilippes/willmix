@@ -16,6 +16,8 @@ import {
   inputDenseClass,
 } from "@/components/ui";
 import { MoneyInput } from "./money-input";
+import { PantonePicker } from "./pantone-picker";
+import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 
 /*
  * Campos da ficha de compra (planilha COMPRAS), usados dentro de um <form>:
@@ -284,6 +286,35 @@ export function PurchaseSheetFields({
               className={inputDenseClass}
             />
           </F>
+          <FieldRow
+            label={t("pantone.label")}
+            size="full"
+            hint={t("pantone.hint")}
+          >
+            <PantonePicker
+              name="colorPantones"
+              initial={sheet.colorPantones ?? []}
+              disabled={sup}
+              max={MAX_PANTONE_PER_SHEET}
+              labels={{
+                search: t("pantone.search"),
+                scaleAll: t("pantone.scale.all"),
+                scales: {
+                  C: t("pantone.scale.C"),
+                  U: t("pantone.scale.U"),
+                  M: t("pantone.scale.M"),
+                  P: t("pantone.scale.P"),
+                  TCX: t("pantone.scale.TCX"),
+                },
+                loading: t("pantone.loading"),
+                none: t("pantone.none"),
+                more: t("pantone.more"),
+                remove: t("pantone.remove"),
+                max: t("pantone.max"),
+                empty: t("pantone.empty"),
+              }}
+            />
+          </FieldRow>
           <F t={t} k="material" size="lg" req>
             <input
               name="material"
@@ -357,7 +388,7 @@ export function PurchaseSheetFields({
             <thead>
               <tr className="text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500">
                 <th className="w-12 py-1 pr-3 font-medium">
-                  {t("sheet.lot.title", { n: "" }).trim()}
+                  {t("sheet.lot.column")}
                 </th>
                 <th className="w-28 py-1 pr-3 font-medium">
                   {t("sheet.lot.interval")}
@@ -549,6 +580,7 @@ function Num({
   disabled,
   int,
   className,
+  id,
   "aria-label": ariaLabel,
 }: {
   name: string;
@@ -556,10 +588,13 @@ function Num({
   disabled?: boolean;
   int?: boolean;
   className?: string;
+  /** Vem do FieldRow (rótulo ligado pelo htmlFor). */
+  id?: string;
   "aria-label"?: string;
 }) {
   return (
     <input
+      id={id}
       name={name}
       type="text"
       inputMode={int ? "numeric" : "decimal"}

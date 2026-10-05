@@ -84,6 +84,7 @@ export const pt = {
   "sheet.power.usb": "USB",
   "sheet.cbmFromSize": "Pelas medidas: {cbm} m³",
   "sheet.lot.title": "Lote {n}",
+  "sheet.lot.column": "Lote",
   "sheet.lot.interval": "Saída em (dias)",
   "sheet.lot.intervalHint":
     "Dias depois do início da produção (1º lote) ou do lote anterior.",
@@ -192,6 +193,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.power.usb": "USB",
   "sheet.cbmFromSize": "From the size: {cbm} m³",
   "sheet.lot.title": "Lot {n}",
+  "sheet.lot.column": "Lot",
   "sheet.lot.interval": "Departure in (days)",
   "sheet.lot.intervalHint":
     "Days after production start (1st lot) or after the previous lot.",
@@ -298,6 +300,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.power.usb": "USB",
   "sheet.cbmFromSize": "按尺寸：{cbm} 立方米",
   "sheet.lot.title": "第 {n} 批",
+  "sheet.lot.column": "批次",
   "sheet.lot.interval": "出货间隔（天）",
   "sheet.lot.intervalHint": "第 1 批从开始生产算起，其余从上一批算起的天数。",
   "sheet.lot.cartons": "外箱数",

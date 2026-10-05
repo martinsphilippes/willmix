@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { pantoneLabel, parsePantoneRefs } from "@/lib/pantone";
 import {
   SHEET_CURRENCIES,
   SHEET_INCOTERMS,
@@ -86,6 +87,11 @@ function parseSheet(form: FormData): SheetInput {
     capacityMl: num(form, "capacityMl"),
     packageType: text(form, "packageType", 120),
     colorAssortment: text(form, "colorAssortment", 200),
+    // Só vai ao banco quando o formulário traz o campo (coluna nova; antes
+    // da publicação do esquema, fichas sem cor Pantone seguem salvando).
+    ...(form.has("colorPantones")
+      ? { colorPantones: parsePantoneRefs(str(form, "colorPantones")) }
+      : {}),
     material: text(form, "material", 200),
     powerSource: choice(form, "powerSource", SHEET_POWER_SOURCES),
     powerDetail: text(form, "powerDetail", 60),
@@ -105,6 +111,13 @@ function parseSheet(form: FormData): SheetInput {
     importTaxPercent: num(form, "importTaxPercent"),
     ipiPercent: num(form, "ipiPercent"),
   };
+  // Sem texto de cor mas com Pantone escolhidas: o texto vira a lista de códigos
+  // (o campo "Cor / sortimento" continua obrigatório e legível fora do portal).
+  if (!input.colorAssortment && input.colorPantones?.length)
+    input.colorAssortment = input.colorPantones
+      .map((c) => pantoneLabel(c))
+      .join(" / ")
+      .slice(0, 200);
   if (form.has("lot1Cartons")) {
     input.lots = Array.from({ length: MAX_LOTS }, (_, i) => ({
       departureIntervalDays:

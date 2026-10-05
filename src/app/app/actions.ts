@@ -158,7 +158,12 @@ export async function createRequestAction(form: FormData) {
       const scheduleId = str(form, "scheduleId");
       if (scheduleId && preset && isWellmix(user)) {
         const schedule = await store.get("purchase_schedules", scheduleId);
-        if (schedule && !schedule.requestId)
+        // Só a programação do mesmo cliente (a tela preenche o cliente por ela).
+        if (
+          schedule &&
+          !schedule.requestId &&
+          (!schedule.customerId || schedule.customerId === preset.customerId)
+        )
           await store.update("purchase_schedules", scheduleId, {
             requestId: preset.id,
             status: "confirmed",
@@ -187,7 +192,7 @@ export async function createRequestAction(form: FormData) {
       const code =
         error instanceof Error && /^[a-z_]+$/.test(error.message)
           ? error.message
-          : "attachment_failed";
+          : "after_create";
       console.error("[action] /app/requests/new (após criar)", error);
       return `${destination}${destination.includes("?") ? "&" : "?"}error=${code}`;
     }

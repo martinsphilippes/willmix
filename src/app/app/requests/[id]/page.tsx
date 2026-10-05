@@ -267,7 +267,11 @@ export default async function RequestDetailPage({
                   t(`access.error.${error}` as DictionaryKey) !==
                     `access.error.${error}`
                 ? t(`access.error.${error}` as DictionaryKey)
-                : fallbackError(t, String(error))}
+                : typeof error === "string" &&
+                    t(`reqBatch.error.${error}` as DictionaryKey) !==
+                      `reqBatch.error.${error}`
+                  ? t(`reqBatch.error.${error}` as DictionaryKey)
+                  : fallbackError(t, String(error))}
         </Alert>
       ) : null}
       {saved === "requester" ? (

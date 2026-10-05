@@ -70,6 +70,7 @@ export const SUPPLIER_FIELDS = [
   "capacityMl",
   "packageType",
   "colorAssortment",
+  "colorPantones",
   "material",
   "powerSource",
   "powerDetail",
