@@ -2181,7 +2181,8 @@ function AfterSalesCard({
               <Textarea name="notes" rows={2} maxLength={2000} />
             </Field>
           </div>
-          <SubmitButton variant="secondary">
+          {/* Alinhado à caixa de texto (a dica fica embaixo dela). */}
+          <SubmitButton variant="secondary" className="sm:mb-6">
             {t("orders.afterSales.close")}
           </SubmitButton>
         </form>

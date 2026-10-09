@@ -812,7 +812,7 @@ export default async function ProductSheetPage({
                   <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     {t(`catalog.photoKind.${group.kind}` as DictionaryKey)}
                   </h3>
-                  <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-5">
+                  <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-5">
                     {group.items.map((photo) => (
                       <li key={photo.id} className="min-w-0 space-y-1">
                         <a

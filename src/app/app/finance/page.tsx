@@ -21,7 +21,8 @@ import {
 /** Valor no card: um pouco menor que o padrão do Stat, para caber seis cards numa linha. */
 function Money({ children }: { children: ReactNode }) {
   return (
-    <span className="block text-lg leading-tight tabular-nums sm:text-xl">
+    // Valor inteiro numa linha (no celular a letra diminui em vez de quebrar o número).
+    <span className="block whitespace-nowrap text-base leading-tight tabular-nums sm:text-xl">
       {children}
     </span>
   );
