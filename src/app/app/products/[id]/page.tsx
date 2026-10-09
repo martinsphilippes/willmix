@@ -156,6 +156,7 @@ export default async function ProductSheetPage({
     qty,
     sheet: sheetSaved,
     suppliers: suppliersDone,
+    at: saveToken,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -723,6 +724,8 @@ export default async function ProductSheetPage({
           // Cada campo que falta é clicável e leva até ele; logo depois de
           // salvar, a tela já vai para o primeiro.
           <MissingFields
+            // Cada salvamento com pendência remonta o aviso e leva de novo ao campo.
+            key={typeof saveToken === "string" ? saveToken : "idle"}
             {...missingFieldsView(
               t,
               sheetSaved === "partial"

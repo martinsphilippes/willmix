@@ -51,6 +51,7 @@ export default async function QuotePage({
     photos: photoSent,
     photoRemoved,
     adopted,
+    at: saveToken,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -66,9 +67,8 @@ export default async function QuotePage({
   const sheetView = await getQuoteSheetForUser(user, quote.id);
   // Quem preenche vê o que falta em vermelho e o aviso leva até cada campo.
   const sheetMissing = sheetView?.missing ?? [];
-  const canFillSheet =
-    !!sheetView &&
-    (sheetView.access.editSupplier || sheetView.access.editCustoms);
+  // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
+  const canFillSheet = !!sheetView && sheetView.access.editSupplier;
   const errorCode = typeof error === "string" ? error : "";
   const errorKeys = [
     `quoteSheet.error.${errorCode}`,
@@ -117,6 +117,7 @@ export default async function QuotePage({
           <Alert tone="success">{t("sheet.photos.removed")}</Alert>
         ) : saved === "partial" && sheetMissing.length ? (
           <MissingFields
+            key={typeof saveToken === "string" ? saveToken : "idle"}
             {...missingFieldsView(t, "quoteSheet.saved.partial", sheetMissing)}
             autoFocus={canFillSheet}
           />
@@ -219,6 +220,8 @@ export default async function QuotePage({
                 <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
               ) : sheetView.missing.length ? (
                 <MissingFields
+                  // Cada recusa do envio remonta o aviso e leva de novo ao campo.
+                  key={typeof saveToken === "string" ? saveToken : "idle"}
                   {...missingFieldsView(
                     t,
                     "quoteSheet.missing",

@@ -41,6 +41,7 @@ export default async function PurchaseSheetPage({
     photos: photosSent,
     photoRemoved,
     adopted,
+    at: saveToken,
   } = await searchParams;
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
@@ -52,7 +53,8 @@ export default async function PurchaseSheetPage({
   });
   const { sheet, access, plan, missing } = view;
   // Quem pode editar vê o que falta em vermelho e o aviso leva até cada campo.
-  const canFill = access.editSupplier || access.editCustoms;
+  // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
+  const canFill = access.editSupplier;
   const shownMissing = canFill ? missing : [];
   const errorKey = `sheet.error.${typeof error === "string" ? error : ""}`;
   const errorText =
@@ -90,6 +92,8 @@ export default async function PurchaseSheetPage({
           <Alert tone="success">{t("sheet.saved.complete")}</Alert>
         ) : missing.length ? (
           <MissingFields
+            // Cada salvamento com pendência remonta o aviso e leva de novo ao campo.
+            key={typeof saveToken === "string" ? saveToken : "idle"}
             {...missingFieldsView(
               t,
               saved === "partial" ? "sheet.saved.partial" : "sheet.missing",

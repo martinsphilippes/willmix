@@ -49,9 +49,11 @@ export function SupplierPicker({
 }) {
   const root = useRef<HTMLSpanElement>(null);
   const known = options.some((o) => o.id === initialId);
-  // Já havia um fornecedor cadastrado escolhido quando a tela abriu.
-  const hadSupplier = known;
   const legacyName = !known && initialName ? initialName : null;
+  // O bloco já é de algum fornecedor (cadastrado ou nome antigo) — desde a
+  // abertura da tela ou depois da primeira escolha. Só sem fornecedor nenhum
+  // o que foi digitado fica quando o cadastro do escolhido não tem.
+  const hadSupplier = useRef(known || !!legacyName);
   const [value, setValue] = useState(
     known ? initialId! : legacyName ? LEGACY_SUPPLIER : "",
   );
@@ -66,10 +68,12 @@ export function SupplierPicker({
     // O bloco Fornecedor passa a ser do escolhido: valores do cadastro. Vindo
     // de outro fornecedor, o que o cadastro não tem fica vazio (não sobra dado
     // do anterior); sem fornecedor antes, o que foi digitado fica.
+    const fromSupplier = hadSupplier.current;
+    hadSupplier.current = true;
     const set = (field: string, v: string | null) => {
       const el = form.elements.namedItem(field);
       if (!(el instanceof HTMLInputElement)) return;
-      if (!v && !hadSupplier) return;
+      if (!v && !fromSupplier) return;
       el.value = v ?? "";
       el.dispatchEvent(new Event("input", { bubbles: true }));
     };

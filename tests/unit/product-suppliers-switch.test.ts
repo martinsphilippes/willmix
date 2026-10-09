@@ -276,8 +276,10 @@ describe("troca do fornecedor principal", () => {
       "USD",
       100,
     ]);
-    // Pela ficha mestre (seletor), produto de novo sem principal.
+    // Pela ficha mestre (seletor), produto de novo sem principal (e a ficha
+    // mestre sem nome de fornecedor: os dados não são de ninguém).
     await store.update("products", "prod-jarra", { supplierId: null });
+    await store.update("purchase_sheets", master.id, { supplierName: null });
     const f = new FormData();
     f.set("productId", "prod-jarra");
     f.set("supplierId", "fornecedor-a");
@@ -304,6 +306,106 @@ describe("troca do fornecedor principal", () => {
     // Código digitado sem fornecedor fica (o vínculo de A não tem outro).
     expect(master.factoryItemCode).toBe("JAR-01");
     expect(product.supplierSku).toBe("JAR-01");
+  });
+
+  it("retirar o principal pelo cadastro leva os dados dele para o vínculo; o próximo não herda", async () => {
+    const store = getStore();
+    await store.update("products", "prod-jarra", {
+      supplierId: "fornecedor-a",
+      supplierSku: "A-JAR",
+      price: 7,
+      currency: "USD",
+      moq: 300,
+    });
+    const before = (await store.get("products", "prod-jarra"))!;
+    await catalog.updateProductSheetAction(
+      productForm(before, { supplierId: "" }),
+    );
+    let product = (await store.get("products", "prod-jarra"))!;
+    expect(product.supplierId).toBeNull();
+    expect([product.supplierSku, product.price, product.moq]).toEqual([
+      null,
+      null,
+      null,
+    ]);
+    const a = (await ps.productSupplierLink("prod-jarra", "fornecedor-a"))!;
+    expect([a.supplierSku, a.price, a.currency, a.moq]).toEqual([
+      "A-JAR",
+      7,
+      "USD",
+      300,
+    ]);
+    // A ficha mestre não guarda mais o bloco de A.
+    const master = (await pss.getProductSheet("prod-jarra"))!;
+    expect(master.supplierName ?? null).toBeNull();
+    // B vira principal: nada de A.
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-b");
+    product = (await store.get("products", "prod-jarra"))!;
+    expect(product.price ?? null).not.toBe(7);
+    expect(product.supplierSku ?? null).not.toBe("A-JAR");
+  });
+
+  it("ficha mestre com nome de outro fornecedor: escolher B não herda os dados dele", async () => {
+    const store = getStore();
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      supplierSku: null,
+      price: 6,
+      currency: "USD",
+      moq: 200,
+    });
+    await pss.saveProductSheet(admin, "prod-jarra", {
+      supplierName: "Fábrica Antiga Ltda",
+      supplierPhone: "+86 1",
+      price: 6,
+      currency: "USD",
+      moq: 200,
+    });
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-c");
+    const product = (await store.get("products", "prod-jarra"))!;
+    expect(product.price ?? null).toBeNull();
+    expect(product.moq ?? null).toBeNull();
+    const master = (await pss.getProductSheet("prod-jarra"))!;
+    expect(master.supplierPhone ?? null).toBeNull();
+    expect(master.price ?? null).toBeNull();
+  });
+
+  it("sem principal: código do vínculo do escolhido vale; preço vazio vem do vínculo com a moeda dele", async () => {
+    const store = getStore();
+    await ps.addProductSupplier(admin, "prod-jarra", "fornecedor-b", "B-OWN");
+    const link = (await ps.productSupplierLink("prod-jarra", "fornecedor-b"))!;
+    await store.update("product_suppliers", link.id, {
+      price: 12.5,
+      currency: "CNY",
+      moq: 50,
+    });
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      supplierSku: "X-NOBODY",
+      price: null,
+      currency: "USD",
+      moq: null,
+    });
+    await pss.saveProductSheet(admin, "prod-jarra", {
+      supplierName: null,
+      price: null,
+      currency: null,
+      moq: null,
+    });
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-b");
+    const product = (await store.get("products", "prod-jarra"))!;
+    expect(product.supplierSku).toBe("B-OWN");
+    expect([product.price, product.currency, product.moq]).toEqual([
+      12.5,
+      "CNY",
+      50,
+    ]);
+    const master = (await pss.getProductSheet("prod-jarra"))!;
+    expect([master.price, master.currency, master.moq]).toEqual([
+      12.5,
+      "RMB",
+      50,
+    ]);
   });
 
   it("tabela ausente no Appwrite vira schema_outdated", () => {

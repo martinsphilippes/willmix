@@ -189,9 +189,21 @@ export async function updateProductSheetAction(form: FormData) {
         console.warn("[catalog] supplier switch fallback", error);
         await store.update("products", id, next);
       }
+    } else if (!parsed.supplierId && product.supplierId) {
+      // Principal retirado: os dados dele vão para o vínculo dele; o produto
+      // fica sem dado de fornecedor (só o que foi digitado neste envio fica).
+      await store.update("products", id, next);
+      const typed: Partial<typeof next> = {};
+      if ((parsed.supplierSku ?? "") !== (product.supplierSku ?? ""))
+        typed.supplierSku = parsed.supplierSku;
+      if (parsed.price !== product.price) typed.price = parsed.price;
+      if (parsed.currency !== product.currency)
+        typed.currency = parsed.currency;
+      if (parsed.moq !== product.moq) typed.moq = parsed.moq;
+      await ps.releaseMainSupplier(user, id, product, typed);
     } else {
       await store.update("products", id, next);
-      // Principal (e o antigo, se saiu) na lista de fornecedores do produto, cada um com o seu código.
+      // Principal na lista de fornecedores do produto, com o seu código.
       await ps.syncMainSupplierLink(user, product, next, id);
     }
     // Ficha mestre do produto (se existir) acompanha preço, caixa, medidas, cor e material.

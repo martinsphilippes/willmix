@@ -471,14 +471,24 @@ export async function setMainSupplier(
     // Sem a tabela e sem dados do antigo a guardar, o principal muda mesmo assim.
     console.warn("[product-suppliers] link new main failed", error);
   }
+  const [master] = await store.list("purchase_sheets", {
+    filter: { orderId: productId },
+    limit: 1,
+  });
   // Sem principal antes, código, preço, moeda e MOQ do produto não são de
-  // nenhum outro fornecedor: ficam (o vínculo do escolhido só completa o que falta).
-  const keep = !previous;
+  // nenhum outro fornecedor e ficam — a não ser que a ficha mestre ainda
+  // traga o nome de outro (principal retirado ou nome antigo digitado).
+  const masterName = clean(master?.supplierName);
+  const keep = !previous && (!masterName || masterName === clean(party.name));
+  // Preço e moeda andam juntos (um preço não fica com a moeda de outra fonte).
+  const linkPrice = product.price === null && link?.price != null;
   const own = keep
     ? {
-        supplierSku: clean(product.supplierSku) ?? link?.supplierSku ?? null,
-        price: product.price ?? link?.price ?? null,
-        currency: product.currency ?? link?.currency ?? null,
+        supplierSku: clean(link?.supplierSku) ?? clean(product.supplierSku),
+        price: linkPrice ? link!.price : product.price,
+        currency: linkPrice
+          ? (link!.currency ?? null)
+          : (product.currency ?? null),
         moq: product.moq ?? link?.moq ?? null,
       }
     : {
@@ -488,15 +498,14 @@ export async function setMainSupplier(
         moq: link?.moq ?? null,
       };
   await store.update("products", productId, { supplierId: party.id, ...own });
-  const [master] = await store.list("purchase_sheets", {
-    filter: { orderId: productId },
-    limit: 1,
-  });
-  // Sem principal antes, preço, moeda e MOQ da ficha mestre também ficam.
+  // Ficha mestre acompanha (sem principal antes, o preço dela fica com a moeda dela).
+  const masterHasPrice = master?.price != null;
   const masterOwn: Partial<PurchaseSheet> = keep
     ? {
-        price: master?.price ?? own.price,
-        currency: master?.currency ?? sheetCurrencyOf(own.currency),
+        price: masterHasPrice ? master!.price : own.price,
+        currency: masterHasPrice
+          ? (master!.currency ?? sheetCurrencyOf(own.currency))
+          : sheetCurrencyOf(own.currency),
         moq: master?.moq ?? own.moq,
       }
     : {
@@ -566,6 +575,68 @@ export async function syncMainSupplierLink(
   } catch (error) {
     console.warn("[product-suppliers] main link sync failed", error);
   }
+}
+
+/**
+ * Principal retirado pelo cadastro do produto ("Sem fornecedor"): código,
+ * preço, moeda e MOQ dele vão para o vínculo dele; o produto e o bloco
+ * Fornecedor da ficha mestre ficam sem dado de fornecedor (só fica o que o
+ * usuário digitou no mesmo envio, em `typed`). Sem a tabela (esquema ainda
+ * não publicado), nada muda e os dados seguem no produto.
+ */
+export async function releaseMainSupplier(
+  user: User,
+  productId: string,
+  before: Pick<
+    Product,
+    "supplierId" | "supplierSku" | "price" | "currency" | "moq"
+  >,
+  typed: Partial<Pick<Product, "supplierSku" | "price" | "currency" | "moq">>,
+): Promise<boolean> {
+  assertWellmix(user);
+  if (!before.supplierId) return false;
+  const priced = before.price !== null;
+  try {
+    await upsertLink(user, productId, before.supplierId, "catalog", (prev) => ({
+      supplierSku: clean(before.supplierSku) ?? prev?.supplierSku ?? null,
+      price: priced ? before.price : (prev?.price ?? null),
+      currency: priced ? (before.currency ?? null) : (prev?.currency ?? null),
+      moq: before.moq ?? prev?.moq ?? null,
+    }));
+  } catch (error) {
+    console.warn("[product-suppliers] release main failed", error);
+    return false;
+  }
+  const store = getStore();
+  await store.update("products", productId, {
+    supplierSku: null,
+    price: null,
+    currency: null,
+    moq: null,
+    ...typed,
+  });
+  const [master] = await store.list("purchase_sheets", {
+    filter: { orderId: productId },
+    limit: 1,
+  });
+  if (master)
+    await store.update("purchase_sheets", master.id, {
+      supplierName: null,
+      location: null,
+      supplierStore: null,
+      supplierPhone: null,
+      factoryItemCode: typed.supplierSku ?? null,
+    });
+  await audit(
+    user,
+    "product.main_supplier_release",
+    "product",
+    productId,
+    `Fornecedor principal retirado: ${before.supplierId}`,
+    before,
+    typed,
+  );
+  return true;
 }
 
 /** Código no vínculo do fornecedor, só quando ainda vazio (escrita de volta da ficha). */
