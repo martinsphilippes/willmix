@@ -116,6 +116,37 @@ export async function registerUploadedDocument(
   return createDocumentRow(user, { ...stored, mime }, input, null);
 }
 
+/**
+ * Foto que o navegador já subiu direto ao armazenamento (lote acima do teto
+ * da requisição na Vercel): só imagem vira documento; o resto é apagado.
+ */
+export async function registerUploadedPhoto(
+  user: User,
+  fileKey: string,
+  input: UploadInput,
+): Promise<Document> {
+  const stored = await getStore().statFile(fileKey);
+  if (!stored) throw new DocumentError("upload_missing");
+  if (!(stored.mime ?? "").startsWith("image/")) {
+    await getStore().removeFile(fileKey);
+    throw new DocumentError("mime");
+  }
+  return registerUploadedDocument(user, fileKey, input);
+}
+
+/** Foto enviada no formulário (File) ou já subida direto (id no armazenamento). */
+export type PhotoSource = File | string;
+
+export async function storePhotoDocument(
+  user: User,
+  source: PhotoSource,
+  input: UploadInput,
+): Promise<Document> {
+  return typeof source === "string"
+    ? registerUploadedPhoto(user, source, input)
+    : uploadDocument(user, source, input);
+}
+
 async function createDocumentRow(
   user: User,
   stored: StoredFile,

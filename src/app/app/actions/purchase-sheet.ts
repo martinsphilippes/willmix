@@ -15,7 +15,14 @@ import {
   type SheetInput,
 } from "@/lib/services/purchase-sheet";
 import { MAX_LOTS } from "@/lib/services/purchase-sheet-calc";
-import { files, requireUser, run, runInPlace, str } from "./helpers";
+import {
+  files,
+  requireUser,
+  run,
+  runInPlace,
+  str,
+  uploadedPhotoKeys,
+} from "./helpers";
 
 /** Opção do seletor para o nome antigo digitado à mão (fornecedor não cadastrado). */
 const LEGACY_SUPPLIER = "__legacy__";
@@ -140,7 +147,7 @@ export async function savePurchaseSheetAction(form: FormData) {
   await run(back, async () => {
     ORDER_ID.parse(orderId);
     const { missing } = await saveSheet(user, orderId, parseSheet(form));
-    return `${back}?saved=${missing.length ? "partial" : "complete"}`;
+    return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
   });
 }
 
@@ -152,7 +159,7 @@ export async function addPurchaseSheetPhotosAction(form: FormData) {
   await runInPlace(back, async () => {
     ORDER_ID.parse(orderId);
     const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (!photos.length) throw new Error("photo_required");
     await addSheetPhotos(user, orderId, kind, photos);
   });
@@ -188,8 +195,10 @@ export async function answerQuoteWithSheetAction(form: FormData) {
       parseSheet(form),
     );
     if (str(form, "intent") !== "send")
-      return `${back}?saved=${missing.length ? "partial" : "complete"}`;
-    if (missing.length) throw new Error("sheet_incomplete");
+      return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
+    // Cada recusa leva de novo até o primeiro campo vazio (token novo).
+    if (missing.length)
+      return `${back}?error=sheet_incomplete&at=${Date.now()}`;
     const leadTimeDays = z.coerce
       .number()
       .int()
@@ -235,7 +244,7 @@ export async function addQuoteSheetPhotosAction(form: FormData) {
   await runInPlace(back, async () => {
     ORDER_ID.parse(quoteId);
     const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (!photos.length) throw new Error("photo_required");
     const { addQuoteSheetPhotos } = await import("@/lib/services/quote-sheet");
     await addQuoteSheetPhotos(user, quoteId, kind, photos);
@@ -305,6 +314,27 @@ export async function saveProductSheetAction(form: FormData) {
           moq: link?.moq ?? null,
         };
         const bag = input as Record<string, unknown>;
+        // Sem principal antes (e sem nome de outro fornecedor na ficha), o
+        // que está no formulário não é de outro fornecedor: fica. Campo vazio
+        // é completado pelo vínculo do escolhido (preço e moeda juntos).
+        const prevName = previousMaster?.supplierName?.trim() || null;
+        const nobodys =
+          !product?.supplierId && (!prevName || prevName === party.name);
+        if (nobodys) {
+          if (!sameValue(bag.price, null) || own.price === null) {
+            delete own.price;
+            delete own.currency;
+          }
+          if (!sameValue(bag.moq, null) || own.moq === null) delete own.moq;
+          // Bloco digitado sem fornecedor: só o que o cadastro tem substitui.
+          for (const key of [
+            "location",
+            "supplierStore",
+            "supplierPhone",
+            "factoryItemCode",
+          ])
+            if (own[key] === null) delete own[key];
+        }
         for (const [key, value] of Object.entries(own)) {
           const before = (shown as Record<string, unknown> | null)?.[key];
           if (sameValue(bag[key], before) || bag[key] === undefined)
@@ -332,7 +362,7 @@ export async function saveProductSheetAction(form: FormData) {
       );
       await fillRecordsFromSheet(user, chosen, productId, sheet);
     }
-    return `/app/products/${productId}?sheet=${missing.length ? "partial" : "complete"}#product-sheet`;
+    return `/app/products/${productId}?sheet=${missing.length ? `partial&at=${Date.now()}` : "complete"}#product-sheet`;
   });
 }
 

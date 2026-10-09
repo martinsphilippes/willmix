@@ -91,6 +91,9 @@ import {
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
 import { SuppliersCard } from "../_components/suppliers-card";
+import { SheetPhotoChecklist } from "../_components/sheet-photo-checklist";
+import { MissingFields } from "@/components/missing-fields";
+import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
 import type { SupplierOption } from "@/components/supplier-picker";
 import { MoneyInput } from "@/components/money-input";
@@ -153,6 +156,8 @@ export default async function ProductSheetPage({
     qty,
     sheet: sheetSaved,
     suppliers: suppliersDone,
+    at: saveToken,
+    from: errorFrom,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -242,9 +247,6 @@ export default async function ProductSheetPage({
     masterSheet ?? masterDraft,
   );
   const masterPhotoKinds = await catalogPhotoKinds(product.id);
-  const masterMissingText = masterMissing
-    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
-    .join(", ");
   const masterContainer =
     settings.containerTypes.find(
       (c) => c.code === (masterSheet?.containerType ?? "40HC"),
@@ -719,17 +721,33 @@ export default async function ProductSheetPage({
         </p>
         {sheetSaved === "complete" ? (
           <Alert tone="success">{t("productSheet.saved")}</Alert>
-        ) : sheetSaved === "partial" ? (
-          <Alert tone="warning">
-            {t("productSheet.savedPartial", { fields: masterMissingText })}
-          </Alert>
         ) : masterMissing.length ? (
-          <p className="text-xs text-zinc-500">
-            {t("productSheet.missing", { fields: masterMissingText })}
-          </p>
+          // Cada campo que falta é clicável e leva até ele; logo depois de
+          // salvar, a tela já vai para o primeiro.
+          <MissingFields
+            // Cada salvamento com pendência remonta o aviso e leva de novo ao campo.
+            key={typeof saveToken === "string" ? saveToken : "idle"}
+            {...missingFieldsView(
+              t,
+              sheetSaved === "partial"
+                ? "productSheet.savedPartial"
+                : "productSheet.missing",
+              masterMissing,
+            )}
+            tone={sheetSaved === "partial" ? "warning" : "neutral"}
+            autoFocus={sheetSaved === "partial"}
+          />
         ) : null}
         <p className="text-xs text-zinc-500" data-master-photos>
           {t("productSheet.photos", { n: masterPhotoKinds.length })}
+          {masterPhotoKinds.length < 5 ? (
+            <>
+              {" "}
+              <TextLink href="#sheet-photos" className="font-medium">
+                {t("productSheet.photosLink")}
+              </TextLink>
+            </>
+          ) : null}
         </p>
         <form
           id="product-sheet-form"
@@ -747,6 +765,7 @@ export default async function ProductSheetPage({
             editCustoms
             lotRequired={false}
             master
+            missing={masterMissing}
             supplierOptions={supplierOptions}
             supplierId={product.supplierId}
             ncmSuggestions={ncmChipsView(
@@ -764,7 +783,20 @@ export default async function ProductSheetPage({
       {/* ---- Fotos e medições ---- */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title={t("catalog.photos")} className="scroll-mt-4">
-          <div id="photos" />
+          <div id="photos" className="scroll-mt-24" />
+          {/* Erro do envio de fotos aparece aqui, onde a pessoa está. */}
+          {errorFrom === "photos" && errorText ? (
+            <div className="mb-3">
+              <Alert tone="danger">{errorText}</Alert>
+            </div>
+          ) : null}
+          {/* As 5 fotos que a ficha mestre exige: o que falta, com envio direto. */}
+          <SheetPhotoChecklist
+            t={t}
+            productId={product.id}
+            photos={photos}
+            canEdit
+          />
           {photosByKind.length === 0 ? (
             <Empty>{t("catalog.photos.empty")}</Empty>
           ) : (
@@ -830,6 +862,10 @@ export default async function ProductSheetPage({
               label={t("catalog.photos.add")}
               hint={t("catalog.photos.hint")}
               required
+              direct
+              pendingLabel={t("sheet.photos.sending")}
+              uploadingLabel={t("photo.uploading")}
+              failedLabel={t("photo.failed")}
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t("catalog.photos.kind")}>

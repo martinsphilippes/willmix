@@ -261,6 +261,9 @@ export function FieldRow({
   required,
   size = "md",
   requiredTitle,
+  anchor,
+  missing,
+  missingText,
   children,
 }: {
   label: ReactNode;
@@ -269,6 +272,12 @@ export function FieldRow({
   size?: keyof typeof fieldRowWidth;
   /** Texto do asterisco de obrigatório (acessibilidade). */
   requiredTitle?: string;
+  /** Chave(s) do campo, separadas por espaço: o aviso "faltam" leva até aqui. */
+  anchor?: string;
+  /** Campo obrigatório ainda vazio: rótulo e caixa em vermelho. */
+  missing?: boolean;
+  /** Texto ao lado do campo vazio (ex.: "Preencha este campo"). */
+  missingText?: string;
   children: ReactNode;
 }) {
   const generatedId = useId();
@@ -300,10 +309,16 @@ export function FieldRow({
       ) : null}
     </>
   );
-  const labelClass =
-    "block text-xs font-medium leading-5 text-zinc-700 sm:pt-1.5";
+  const labelClass = cx(
+    "block text-xs font-medium leading-5 sm:pt-1.5",
+    missing ? "text-red-700" : "text-zinc-700",
+  );
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-3">
+    <div
+      className="grid min-w-0 scroll-mt-24 grid-cols-1 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-3"
+      data-field-anchor={anchor}
+      data-missing={missing ? "true" : undefined}
+    >
       {single ? (
         <label htmlFor={id} className={labelClass}>
           {text}
@@ -315,7 +330,11 @@ export function FieldRow({
       )}
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
         <div
-          className={cx("w-full min-w-0", fieldRowWidth[size])}
+          className={cx(
+            "w-full min-w-0",
+            fieldRowWidth[size],
+            missing && "rounded-md ring-2 ring-red-400 ring-offset-1",
+          )}
           role={single ? undefined : "group"}
           aria-labelledby={single ? undefined : groupLabelId}
         >
@@ -323,6 +342,11 @@ export function FieldRow({
             ? cloneElement(children, { id })
             : children}
         </div>
+        {missing && missingText ? (
+          <span className="text-xs font-medium leading-5 text-red-700">
+            {missingText}
+          </span>
+        ) : null}
         {hint ? (
           <span className="text-xs leading-5 text-zinc-500">{hint}</span>
         ) : null}

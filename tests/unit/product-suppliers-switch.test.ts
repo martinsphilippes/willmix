@@ -246,6 +246,218 @@ describe("troca do fornecedor principal", () => {
     expect(product.price).toBeNull();
   });
 
+  it("produto sem principal: escolher o fornecedor mantém preço, moeda, MOQ e código", async () => {
+    const store = getStore();
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      supplierSku: "JAR-01",
+      price: 5,
+      currency: "USD",
+      moq: 100,
+    });
+    await pss.saveProductSheet(admin, "prod-jarra", {
+      price: 5,
+      currency: "USD",
+      moq: 100,
+      factoryItemCode: "JAR-01",
+    });
+    // Pelo botão (serviço): nada some.
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-c");
+    let product = (await store.get("products", "prod-jarra"))!;
+    expect([product.price, product.currency, product.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    expect(product.supplierSku).toBe("JAR-01");
+    let master = (await pss.getProductSheet("prod-jarra"))!;
+    expect([master.price, master.currency, master.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    // Pela ficha mestre (seletor), produto de novo sem principal (e a ficha
+    // mestre sem nome de fornecedor: os dados não são de ninguém).
+    await store.update("products", "prod-jarra", { supplierId: null });
+    await store.update("purchase_sheets", master.id, { supplierName: null });
+    const f = new FormData();
+    f.set("productId", "prod-jarra");
+    f.set("supplierId", "fornecedor-a");
+    f.set("supplierName", "");
+    f.set("price", "5");
+    f.set("currency", "USD");
+    f.set("moq", "100");
+    f.set("factoryItemCode", "JAR-01");
+    await sheetActions.saveProductSheetAction(f);
+    product = (await store.get("products", "prod-jarra"))!;
+    master = (await pss.getProductSheet("prod-jarra"))!;
+    expect(product.supplierId).toBe("fornecedor-a");
+    expect([product.price, product.currency, product.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    expect([master.price, master.currency, master.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    expect(master.supplierName).toBe("Shenzhen Supplier A");
+    // Código digitado sem fornecedor fica (o vínculo de A não tem outro).
+    expect(master.factoryItemCode).toBe("JAR-01");
+    expect(product.supplierSku).toBe("JAR-01");
+  });
+
+  it("retirar o principal pelo cadastro leva os dados dele para o vínculo; o próximo não herda", async () => {
+    const store = getStore();
+    await store.update("products", "prod-jarra", {
+      supplierId: "fornecedor-a",
+      supplierSku: "A-JAR",
+      price: 7,
+      currency: "USD",
+      moq: 300,
+    });
+    const before = (await store.get("products", "prod-jarra"))!;
+    await catalog.updateProductSheetAction(
+      productForm(before, { supplierId: "" }),
+    );
+    let product = (await store.get("products", "prod-jarra"))!;
+    expect(product.supplierId).toBeNull();
+    expect([product.supplierSku, product.price, product.moq]).toEqual([
+      null,
+      null,
+      null,
+    ]);
+    const a = (await ps.productSupplierLink("prod-jarra", "fornecedor-a"))!;
+    expect([a.supplierSku, a.price, a.currency, a.moq]).toEqual([
+      "A-JAR",
+      7,
+      "USD",
+      300,
+    ]);
+    // A ficha mestre não guarda mais o bloco de A.
+    const master = (await pss.getProductSheet("prod-jarra"))!;
+    expect(master.supplierName ?? null).toBeNull();
+    // B vira principal: nada de A.
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-b");
+    product = (await store.get("products", "prod-jarra"))!;
+    expect(product.price ?? null).not.toBe(7);
+    expect(product.supplierSku ?? null).not.toBe("A-JAR");
+  });
+
+  it("ficha mestre com nome de outro fornecedor: escolher B não herda os dados dele", async () => {
+    const store = getStore();
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      supplierSku: null,
+      price: 6,
+      currency: "USD",
+      moq: 200,
+    });
+    await pss.saveProductSheet(admin, "prod-jarra", {
+      supplierName: "Fábrica Antiga Ltda",
+      supplierPhone: "+86 1",
+      price: 6,
+      currency: "USD",
+      moq: 200,
+    });
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-c");
+    const product = (await store.get("products", "prod-jarra"))!;
+    expect(product.price ?? null).toBeNull();
+    expect(product.moq ?? null).toBeNull();
+    const master = (await pss.getProductSheet("prod-jarra"))!;
+    expect(master.supplierPhone ?? null).toBeNull();
+    expect(master.price ?? null).toBeNull();
+  });
+
+  it("sem principal: código do vínculo do escolhido vale; preço vazio vem do vínculo com a moeda dele", async () => {
+    const store = getStore();
+    await ps.addProductSupplier(admin, "prod-jarra", "fornecedor-b", "B-OWN");
+    const link = (await ps.productSupplierLink("prod-jarra", "fornecedor-b"))!;
+    await store.update("product_suppliers", link.id, {
+      price: 12.5,
+      currency: "CNY",
+      moq: 50,
+    });
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      supplierSku: "X-NOBODY",
+      price: null,
+      currency: "USD",
+      moq: null,
+    });
+    await pss.saveProductSheet(admin, "prod-jarra", {
+      supplierName: null,
+      price: null,
+      currency: null,
+      moq: null,
+    });
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-b");
+    const product = (await store.get("products", "prod-jarra"))!;
+    expect(product.supplierSku).toBe("B-OWN");
+    expect([product.price, product.currency, product.moq]).toEqual([
+      12.5,
+      "CNY",
+      50,
+    ]);
+    const master = (await pss.getProductSheet("prod-jarra"))!;
+    expect([master.price, master.currency, master.moq]).toEqual([
+      12.5,
+      "RMB",
+      50,
+    ]);
+  });
+
+  it("adotar a ficha de outro fornecedor não muda os dados do principal", async () => {
+    const store = getStore();
+    const before = (await store.get("products", "prod-boneca"))!;
+    const quote = await quoteSheetFor("prod-boneca", "fornecedor-c");
+    await store.update("parties", "fornecedor-c", { type: "supplier" });
+    await qs.saveQuoteSheet(admin, quote.id, {
+      supplierName: "Ningbo Supplier C",
+      factoryItemCode: "C-CODE",
+      price: 1.11,
+      currency: "USD",
+      moq: 77,
+      material: "PVC novo",
+    });
+    await pss.adoptSheetIntoProduct(admin, quote.id);
+    const after = (await store.get("products", "prod-boneca"))!;
+    expect(after.supplierId).toBe(before.supplierId);
+    expect([after.supplierSku, after.price, after.moq]).toEqual([
+      before.supplierSku,
+      before.price,
+      before.moq,
+    ]);
+    // Dado do produto (material) vem; as condições de C ficam no vínculo dele.
+    expect(after.material).toBe("PVC novo");
+    const c = (await ps.productSupplierLink("prod-boneca", "fornecedor-c"))!;
+    expect([c.supplierSku, c.price, c.moq]).toEqual(["C-CODE", 1.11, 77]);
+  });
+
+  it("trocar o principal guarda no vínculo dele o preço atual do produto", async () => {
+    const store = getStore();
+    const product = (await store.get("products", "prod-boneca"))!;
+    const main = product.supplierId!;
+    // Vínculo do principal com uma cotação antiga; o produto tem o preço atual.
+    await ps.addProductSupplier(admin, "prod-boneca", main, null);
+    const link = (await ps.productSupplierLink("prod-boneca", main))!;
+    await store.update("product_suppliers", link.id, {
+      price: 1,
+      currency: "USD",
+      moq: 10,
+    });
+    await store.update("products", "prod-boneca", {
+      price: 4.4,
+      currency: "USD",
+      moq: 2500,
+    });
+    const other = main === "fornecedor-a" ? "fornecedor-c" : "fornecedor-a";
+    await ps.setMainSupplier(admin, "prod-boneca", other);
+    const kept = (await ps.productSupplierLink("prod-boneca", main))!;
+    expect([kept.price, kept.currency, kept.moq]).toEqual([4.4, "USD", 2500]);
+  });
+
   it("tabela ausente no Appwrite vira schema_outdated", () => {
     expect(
       errorCode(

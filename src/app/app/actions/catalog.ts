@@ -17,7 +17,14 @@ import {
   addPhotos,
   setPrimaryPhoto,
 } from "@/lib/services/sourcing";
-import { files, num, requireUser, run, str } from "./helpers";
+import {
+  files,
+  num,
+  requireUser,
+  run,
+  str,
+  uploadedPhotoKeys,
+} from "./helpers";
 import { parseCurrency } from "@/lib/currencies";
 
 /*
@@ -189,9 +196,21 @@ export async function updateProductSheetAction(form: FormData) {
         console.warn("[catalog] supplier switch fallback", error);
         await store.update("products", id, next);
       }
+    } else if (!parsed.supplierId && product.supplierId) {
+      // Principal retirado: os dados dele vão para o vínculo dele; o produto
+      // fica sem dado de fornecedor (só o que foi digitado neste envio fica).
+      await store.update("products", id, next);
+      const typed: Partial<typeof next> = {};
+      if ((parsed.supplierSku ?? "") !== (product.supplierSku ?? ""))
+        typed.supplierSku = parsed.supplierSku;
+      if (parsed.price !== product.price) typed.price = parsed.price;
+      if (parsed.currency !== product.currency)
+        typed.currency = parsed.currency;
+      if (parsed.moq !== product.moq) typed.moq = parsed.moq;
+      await ps.releaseMainSupplier(user, id, product, typed);
     } else {
       await store.update("products", id, next);
-      // Principal (e o antigo, se saiu) na lista de fornecedores do produto, cada um com o seu código.
+      // Principal na lista de fornecedores do produto, com o seu código.
       await ps.syncMainSupplierLink(user, product, next, id);
     }
     // Ficha mestre do produto (se existir) acompanha preço, caixa, medidas, cor e material.
@@ -209,7 +228,8 @@ export async function updateProductSheetAction(form: FormData) {
 export async function addProductPhotosAction(form: FormData) {
   const user = await requireUser();
   const productId = str(form, "productId");
-  await run(`/app/products/${productId}`, async () => {
+  // Erro volta para o card Fotos (from=photos), onde a pessoa está.
+  await run(`/app/products/${productId}?from=photos#photos`, async () => {
     assertWellmix(user);
     const parsed = z
       .object({
@@ -222,7 +242,7 @@ export async function addProductPhotosAction(form: FormData) {
       });
     if (!(await getStore().get("products", productId)))
       throw new Error("product_not_found");
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (photos.length === 0) throw new Error("file_required");
     const added = await addPhotos(user, { productId }, photos, parsed.kind, {
       caption: parsed.caption,

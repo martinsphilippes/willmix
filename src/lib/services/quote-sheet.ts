@@ -32,7 +32,7 @@ import {
   type SheetInput,
   type SheetPhotoKind,
 } from "./purchase-sheet";
-import { uploadDocument } from "./documents";
+import { storePhotoDocument, type PhotoSource } from "./documents";
 import {
   missingForCompletion,
   normalizeLots,
@@ -359,7 +359,7 @@ export async function addQuoteSheetPhotos(
   user: User,
   quoteId: string,
   kind: SheetPhotoKind,
-  files: File[],
+  files: PhotoSource[],
 ): Promise<number> {
   const store = getStore();
   const quote = await store.get("quotes", quoteId);
@@ -373,7 +373,7 @@ export async function addQuoteSheetPhotos(
   await Promise.all(
     files.slice(0, 12).map(async (file) => {
       // Sem pedido nem solicitação: outros fornecedores da RFQ não abrem.
-      const doc = await uploadDocument(user, file, {
+      const doc = await storePhotoDocument(user, file, {
         type: "photo",
         visibility: "internal",
       });

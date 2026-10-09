@@ -49,6 +49,7 @@ export function PurchaseSheetFields({
   ncmSuggestions = [],
   supplierOptions = null,
   supplierId = null,
+  missing = [],
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -73,6 +74,8 @@ export function PurchaseSheetFields({
   supplierOptions?: SupplierOption[] | null;
   /** Fornecedor principal do produto (seleção inicial do seletor). */
   supplierId?: string | null;
+  /** Campos obrigatórios ainda vazios: ficam em vermelho e o aviso leva até eles. */
+  missing?: readonly string[];
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -91,7 +94,7 @@ export function PurchaseSheetFields({
       <div className="grid gap-4 lg:order-1 lg:col-span-2 lg:grid-cols-2">
         <Card title={t("sheet.section.supplier")} dense>
           <Rows>
-            <F t={t} k="sheetDate" size="sm">
+            <F t={t} m={missing} k="sheetDate" size="sm">
               <input
                 type="date"
                 name="sheetDate"
@@ -100,7 +103,7 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            <F t={t} k="location" size="md">
+            <F t={t} m={missing} k="location" size="md">
               <input
                 name="location"
                 maxLength={80}
@@ -113,6 +116,7 @@ export function PurchaseSheetFields({
             {master && supplierOptions && !sup ? (
               <F
                 t={t}
+                m={missing}
                 k="supplierName"
                 size="lg"
                 req
@@ -132,7 +136,7 @@ export function PurchaseSheetFields({
                 />
               </F>
             ) : (
-              <F t={t} k="supplierName" size="lg" req>
+              <F t={t} m={missing} k="supplierName" size="lg" req>
                 <input
                   name="supplierName"
                   maxLength={160}
@@ -142,7 +146,7 @@ export function PurchaseSheetFields({
                 />
               </F>
             )}
-            <F t={t} k="supplierStore" size="sm">
+            <F t={t} m={missing} k="supplierStore" size="sm">
               <input
                 name="supplierStore"
                 maxLength={60}
@@ -152,7 +156,7 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            <F t={t} k="supplierPhone" size="md">
+            <F t={t} m={missing} k="supplierPhone" size="md">
               <input
                 name="supplierPhone"
                 type="tel"
@@ -162,7 +166,7 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            <F t={t} k="factoryItemCode" size="md">
+            <F t={t} m={missing} k="factoryItemCode" size="md">
               <input
                 name="factoryItemCode"
                 maxLength={60}
@@ -233,28 +237,28 @@ export function PurchaseSheetFields({
         </Card>
         <Card title={t("sheet.section.product")} dense>
           <Rows>
-            <F t={t} k="netWeightPcKg" size="xs" req>
+            <F t={t} m={missing} k="netWeightPcKg" size="xs" req>
               <Num
                 name="netWeightPcKg"
                 value={numValue(sheet.netWeightPcKg)}
                 disabled={sup}
               />
             </F>
-            <F t={t} k="grossWeightPcKg" size="xs" req>
+            <F t={t} m={missing} k="grossWeightPcKg" size="xs" req>
               <Num
                 name="grossWeightPcKg"
                 value={numValue(sheet.grossWeightPcKg)}
                 disabled={sup}
               />
             </F>
-            <F t={t} k="capacityMl" size="xs">
+            <F t={t} m={missing} k="capacityMl" size="xs">
               <Num
                 name="capacityMl"
                 value={numValue(sheet.capacityMl)}
                 disabled={sup}
               />
             </F>
-            <F t={t} k="colorAssortment" size="lg" req>
+            <F t={t} m={missing} k="colorAssortment" size="lg" req>
               <input
                 name="colorAssortment"
                 maxLength={200}
@@ -293,7 +297,7 @@ export function PurchaseSheetFields({
                 }}
               />
             </FieldRow>
-            <F t={t} k="material" size="lg" req>
+            <F t={t} m={missing} k="material" size="lg" req>
               <input
                 name="material"
                 maxLength={200}
@@ -303,7 +307,7 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            <F t={t} k="powerSource" size="sm">
+            <F t={t} m={missing} k="powerSource" size="sm">
               <select
                 name="powerSource"
                 defaultValue={sheet.powerSource ?? ""}
@@ -318,7 +322,7 @@ export function PurchaseSheetFields({
                 ))}
               </select>
             </F>
-            <F t={t} k="powerDetail" size="md">
+            <F t={t} m={missing} k="powerDetail" size="md">
               <input
                 name="powerDetail"
                 maxLength={60}
@@ -336,7 +340,7 @@ export function PurchaseSheetFields({
       <div className="grid gap-4 lg:order-2 lg:col-span-2 lg:grid-cols-2">
         <Card title={t("sheet.section.carton")} dense>
           <Rows>
-            <F t={t} k="masterCartonQty" size="xs" req>
+            <F t={t} m={missing} k="masterCartonQty" size="xs" req>
               <Num
                 name="masterCartonQty"
                 value={numValue(sheet.masterCartonQty)}
@@ -344,7 +348,7 @@ export function PurchaseSheetFields({
                 int
               />
             </F>
-            <F t={t} k="innerQty" size="xs">
+            <F t={t} m={missing} k="innerQty" size="xs">
               <Num
                 name="innerQty"
                 value={numValue(sheet.innerQty)}
@@ -354,6 +358,7 @@ export function PurchaseSheetFields({
             </F>
             <F
               t={t}
+              m={missing}
               k="cbmPerCarton"
               size="xs"
               req
@@ -369,7 +374,7 @@ export function PurchaseSheetFields({
                 disabled={sup}
               />
             </F>
-            <F t={t} k="packageType" size="md" req>
+            <F t={t} m={missing} k="packageType" size="md" req>
               <input
                 name="packageType"
                 maxLength={120}
@@ -385,6 +390,11 @@ export function PurchaseSheetFields({
               required
               requiredTitle={required}
               size="full"
+              anchor="heightCm widthCm lengthCm"
+              missing={["heightCm", "widthCm", "lengthCm"].some((k) =>
+                missing.includes(k),
+              )}
+              missingText={t("sheet.fillThis")}
             >
               <div className="flex flex-wrap items-center gap-2">
                 {(
@@ -417,7 +427,7 @@ export function PurchaseSheetFields({
         </Card>
         <Card title={t("sheet.section.price")} dense>
           <Rows>
-            <F t={t} k="incoterm" size="xs" req>
+            <F t={t} m={missing} k="incoterm" size="xs" req>
               <select
                 name="incoterm"
                 defaultValue={sheet.incoterm ?? ""}
@@ -432,7 +442,7 @@ export function PurchaseSheetFields({
                 ))}
               </select>
             </F>
-            <F t={t} k="currency" size="sm" req>
+            <F t={t} m={missing} k="currency" size="sm" req>
               <select
                 name="currency"
                 defaultValue={sheet.currency ?? ""}
@@ -447,7 +457,7 @@ export function PurchaseSheetFields({
                 ))}
               </select>
             </F>
-            <F t={t} k="price" size="sm" req>
+            <F t={t} m={missing} k="price" size="sm" req>
               <MoneyInput
                 locale={t.intl}
                 name="price"
@@ -458,7 +468,7 @@ export function PurchaseSheetFields({
                 size="sm"
               />
             </F>
-            <F t={t} k="moq" size="xs" req>
+            <F t={t} m={missing} k="moq" size="xs" req>
               <Num name="moq" value={numValue(sheet.moq)} disabled={sup} int />
             </F>
           </Rows>
@@ -468,7 +478,7 @@ export function PurchaseSheetFields({
       <Card title={t("sheet.section.schedule")} className="lg:order-3" dense>
         <Rows>
           {!master ? (
-            <F t={t} k="productionStartAt" size="sm" req>
+            <F t={t} m={missing} k="productionStartAt" size="sm" req>
               <input
                 type="date"
                 name="productionStartAt"
@@ -478,7 +488,7 @@ export function PurchaseSheetFields({
               />
             </F>
           ) : null}
-          <F t={t} k="containerType" size="sm">
+          <F t={t} m={missing} k="containerType" size="sm">
             <select
               name="containerType"
               defaultValue={view.containerType ?? ""}
@@ -520,6 +530,7 @@ export function PurchaseSheetFields({
               containerTypes={view.containerTypes}
               disabled={sup}
               lotRequired={lotRequired}
+              lot1Missing={missing.includes("lot1")}
               requested={requestSchedule?.items ?? []}
               unit={requestUnit}
               labels={{
@@ -573,7 +584,7 @@ export function PurchaseSheetFields({
         dense
       >
         <Rows>
-          <F t={t} k="ncm" size="sm">
+          <F t={t} m={missing} k="ncm" size="sm">
             <input
               name="ncm"
               inputMode="decimal"
@@ -597,14 +608,14 @@ export function PurchaseSheetFields({
               />
             </div>
           ) : null}
-          <F t={t} k="importTaxPercent" size="xs">
+          <F t={t} m={missing} k="importTaxPercent" size="xs">
             <Num
               name="importTaxPercent"
               value={numValue(sheet.importTaxPercent)}
               disabled={!access.editCustoms}
             />
           </F>
-          <F t={t} k="ipiPercent" size="xs">
+          <F t={t} m={missing} k="ipiPercent" size="xs">
             <Num
               name="ipiPercent"
               value={numValue(sheet.ipiPercent)}
@@ -620,7 +631,7 @@ export function PurchaseSheetFields({
         dense
       >
         <Rows>
-          <F t={t} k="ecommerceDescription" size="full">
+          <F t={t} m={missing} k="ecommerceDescription" size="full">
             <textarea
               name="ecommerceDescription"
               rows={3}
@@ -630,7 +641,7 @@ export function PurchaseSheetFields({
               className={cx(inputDenseClass, "min-h-16")}
             />
           </F>
-          <F t={t} k="notes" size="full">
+          <F t={t} m={missing} k="notes" size="full">
             <textarea
               name="notes"
               rows={2}
@@ -649,6 +660,7 @@ export function PurchaseSheetFields({
 /** Campo da ficha: rótulo traduzido, obrigatório (quando conta para concluir) e largura. */
 function SheetField({
   t,
+  m,
   k,
   size,
   req,
@@ -656,6 +668,8 @@ function SheetField({
   children,
 }: {
   t: Translate;
+  /** Campos que faltam (o deste fica em vermelho). */
+  m?: readonly string[];
   k: string;
   size?: keyof typeof fieldRowWidth;
   req?: boolean;
@@ -669,6 +683,9 @@ function SheetField({
       required={req}
       requiredTitle={t("sheet.required")}
       hint={hint}
+      anchor={k}
+      missing={!!m?.includes(k)}
+      missingText={t("sheet.fillThis")}
     >
       {children}
     </FieldRow>

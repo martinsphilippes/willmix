@@ -26,6 +26,8 @@ import {
   sendQuoteWithSheetAction,
 } from "../../actions/purchase-sheet";
 import { SheetPhotosCard } from "@/components/sheet-photos";
+import { MissingFields } from "@/components/missing-fields";
+import { missingFieldsView } from "@/components/missing-fields-view";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
 import {
   ncmChipsView,
@@ -49,6 +51,7 @@ export default async function QuotePage({
     photos: photoSent,
     photoRemoved,
     adopted,
+    at: saveToken,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -62,9 +65,10 @@ export default async function QuotePage({
   const canAnswer = quote.status === "invited" || quote.status === "answered";
   // Resposta pela ficha de compra (fotos opcionais nesta fase).
   const sheetView = await getQuoteSheetForUser(user, quote.id);
-  const missingText = (sheetView?.missing ?? [])
-    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
-    .join(", ");
+  // Quem preenche vê o que falta em vermelho e o aviso leva até cada campo.
+  const sheetMissing = sheetView?.missing ?? [];
+  // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
+  const canFillSheet = !!sheetView && sheetView.access.editSupplier;
   const errorCode = typeof error === "string" ? error : "";
   const errorKeys = [
     `quoteSheet.error.${errorCode}`,
@@ -111,10 +115,12 @@ export default async function QuotePage({
           <Alert tone="success">{t("sheet.photos.sent")}</Alert>
         ) : photoRemoved ? (
           <Alert tone="success">{t("sheet.photos.removed")}</Alert>
-        ) : saved === "partial" ? (
-          <Alert tone="warning">
-            {t("quoteSheet.saved.partial", { fields: missingText })}
-          </Alert>
+        ) : saved === "partial" && sheetMissing.length ? (
+          <MissingFields
+            key={typeof saveToken === "string" ? saveToken : "idle"}
+            {...missingFieldsView(t, "quoteSheet.saved.partial", sheetMissing)}
+            autoFocus={canFillSheet}
+          />
         ) : null}
       </div>
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
@@ -213,9 +219,19 @@ export default async function QuotePage({
               {!sheetView.access.editSupplier ? (
                 <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
               ) : sheetView.missing.length ? (
-                <Alert tone="info">
-                  {t("quoteSheet.missing", { fields: missingText })}
-                </Alert>
+                <MissingFields
+                  // Cada recusa do envio remonta o aviso e leva de novo ao campo.
+                  key={typeof saveToken === "string" ? saveToken : "idle"}
+                  {...missingFieldsView(
+                    t,
+                    "quoteSheet.missing",
+                    sheetView.missing,
+                  )}
+                  tone={errorCode === "sheet_incomplete" ? "danger" : "info"}
+                  autoFocus={
+                    errorCode === "sheet_incomplete" && saved !== "partial"
+                  }
+                />
               ) : null}
               {sheetView.access.editCustoms ? (
                 <p className="text-xs text-zinc-500">
@@ -234,6 +250,7 @@ export default async function QuotePage({
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
               records={sheetView.records}
+              missing={canFillSheet ? sheetMissing : []}
               ncmSuggestions={
                 sheetView.access.editCustoms
                   ? ncmChipsView(
@@ -259,6 +276,7 @@ export default async function QuotePage({
             coveredKinds={sheetView.catalogPhotoKinds}
             hint={t("quoteSheet.photosHint")}
             className="lg:order-4"
+            missing={canFillSheet ? sheetMissing : []}
           />
         ) : null}
         {sheetView &&

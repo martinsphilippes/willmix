@@ -19,7 +19,11 @@ import {
 } from "@/lib/auth/permissions";
 import { boxCbm } from "@/lib/logistics/cbm";
 import { audit } from "./audit";
-import { uploadDocument } from "./documents";
+import {
+  storePhotoDocument,
+  uploadDocument,
+  type PhotoSource,
+} from "./documents";
 
 /**
  * Sourcing: visitas a fornecedores, produtos encontrados e negociação,
@@ -107,7 +111,7 @@ export async function addPhotos(
     productId?: string | null;
     orderId?: string | null;
   },
-  files: File[],
+  files: PhotoSource[],
   kind: PhotoKind,
   options: {
     caption?: string | null;
@@ -119,8 +123,9 @@ export async function addPhotos(
   await assertPhotoAccess(user, target);
   const out: ProductPhoto[] = [];
   for (const file of files) {
-    if (!file.type.startsWith("image/")) continue;
-    const doc = await uploadDocument(user, file, {
+    // Arquivo do formulário: só imagem; id já subido: conferido no registro.
+    if (typeof file !== "string" && !file.type.startsWith("image/")) continue;
+    const doc = await storePhotoDocument(user, file, {
       type: "photo",
       visibility: kind === "commercial" ? "all" : "internal",
       productId: target.productId ?? null,

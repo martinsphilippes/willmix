@@ -5,6 +5,7 @@ import type {
   Product,
   ProductSupplier,
   ProductSupplierSource,
+  PurchaseSheet,
   User,
 } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -408,9 +409,11 @@ export async function removeProductSupplier(
 }
 
 /** Moeda do cadastro ("CNY") na ficha ("RMB"). */
-function sheetCurrencyOf(c: string | null | undefined) {
+function sheetCurrencyOf(
+  c: string | null | undefined,
+): PurchaseSheet["currency"] {
   const v = (c ?? "").toUpperCase();
-  if (v === "CNY" || v === "RMB") return "RMB" as const;
+  if (v === "CNY" || v === "RMB") return "RMB";
   return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
 }
 
@@ -444,11 +447,16 @@ export async function setMainSupplier(
       product.price !== null ||
       product.moq !== null;
     try {
+      // O produto tem os dados atuais do principal (o vínculo pode ser de
+      // uma cotação antiga): produto primeiro, preço e moeda juntos.
+      const priced = product.price !== null;
       await upsertLink(user, productId, previous, "catalog", (prev) => ({
-        supplierSku: prev?.supplierSku ?? clean(product.supplierSku),
-        price: prev?.price ?? product.price ?? null,
-        currency: prev?.currency ?? product.currency ?? null,
-        moq: prev?.moq ?? product.moq ?? null,
+        supplierSku: clean(product.supplierSku) ?? prev?.supplierSku ?? null,
+        price: priced ? product.price : (prev?.price ?? null),
+        currency: priced
+          ? (product.currency ?? null)
+          : (prev?.currency ?? null),
+        moq: product.moq ?? prev?.moq ?? null,
       }));
     } catch (error) {
       console.warn("[product-suppliers] keep previous main failed", error);
@@ -468,27 +476,57 @@ export async function setMainSupplier(
     // Sem a tabela e sem dados do antigo a guardar, o principal muda mesmo assim.
     console.warn("[product-suppliers] link new main failed", error);
   }
-  const own = {
-    supplierSku: link?.supplierSku ?? null,
-    price: link?.price ?? null,
-    currency: link?.currency ?? null,
-    moq: link?.moq ?? null,
-  };
-  await store.update("products", productId, { supplierId: party.id, ...own });
   const [master] = await store.list("purchase_sheets", {
     filter: { orderId: productId },
     limit: 1,
   });
+  // Sem principal antes, código, preço, moeda e MOQ do produto não são de
+  // nenhum outro fornecedor e ficam — a não ser que a ficha mestre ainda
+  // traga o nome de outro (principal retirado ou nome antigo digitado).
+  const masterName = clean(master?.supplierName);
+  const keep = !previous && (!masterName || masterName === clean(party.name));
+  // Preço e moeda andam juntos (um preço não fica com a moeda de outra fonte).
+  const linkPrice = product.price === null && link?.price != null;
+  const own = keep
+    ? {
+        supplierSku: clean(link?.supplierSku) ?? clean(product.supplierSku),
+        price: linkPrice ? link!.price : product.price,
+        currency: linkPrice
+          ? (link!.currency ?? null)
+          : (product.currency ?? null),
+        moq: product.moq ?? link?.moq ?? null,
+      }
+    : {
+        supplierSku: link?.supplierSku ?? null,
+        price: link?.price ?? null,
+        currency: link?.currency ?? null,
+        moq: link?.moq ?? null,
+      };
+  await store.update("products", productId, { supplierId: party.id, ...own });
+  // Ficha mestre acompanha (sem principal antes, o preço dela fica com a moeda dela).
+  const masterHasPrice = master?.price != null;
+  const masterOwn: Partial<PurchaseSheet> = keep
+    ? {
+        price: masterHasPrice ? master!.price : own.price,
+        currency: masterHasPrice
+          ? (master!.currency ?? sheetCurrencyOf(own.currency))
+          : sheetCurrencyOf(own.currency),
+        moq: master?.moq ?? own.moq,
+      }
+    : {
+        price: own.price,
+        currency: sheetCurrencyOf(own.currency),
+        moq: own.moq,
+      };
   if (master)
     await store.update("purchase_sheets", master.id, {
       supplierName: party.name.slice(0, 160),
       location: party.city?.slice(0, 80) ?? null,
       supplierStore: party.storeNumber?.slice(0, 60) ?? null,
       supplierPhone: party.phone?.slice(0, 40) ?? null,
-      factoryItemCode: own.supplierSku,
-      price: own.price,
-      currency: sheetCurrencyOf(own.currency),
-      moq: own.moq,
+      factoryItemCode:
+        own.supplierSku ?? (keep ? master.factoryItemCode : null),
+      ...masterOwn,
     });
   await audit(
     user,
@@ -541,6 +579,96 @@ export async function syncMainSupplierLink(
       );
   } catch (error) {
     console.warn("[product-suppliers] main link sync failed", error);
+  }
+}
+
+/**
+ * Principal retirado pelo cadastro do produto ("Sem fornecedor"): código,
+ * preço, moeda e MOQ dele vão para o vínculo dele; o produto e o bloco
+ * Fornecedor da ficha mestre ficam sem dado de fornecedor (só fica o que o
+ * usuário digitou no mesmo envio, em `typed`). Sem a tabela (esquema ainda
+ * não publicado), nada muda e os dados seguem no produto.
+ */
+export async function releaseMainSupplier(
+  user: User,
+  productId: string,
+  before: Pick<
+    Product,
+    "supplierId" | "supplierSku" | "price" | "currency" | "moq"
+  >,
+  typed: Partial<Pick<Product, "supplierSku" | "price" | "currency" | "moq">>,
+): Promise<boolean> {
+  assertWellmix(user);
+  if (!before.supplierId) return false;
+  const priced = before.price !== null;
+  try {
+    await upsertLink(user, productId, before.supplierId, "catalog", (prev) => ({
+      supplierSku: clean(before.supplierSku) ?? prev?.supplierSku ?? null,
+      price: priced ? before.price : (prev?.price ?? null),
+      currency: priced ? (before.currency ?? null) : (prev?.currency ?? null),
+      moq: before.moq ?? prev?.moq ?? null,
+    }));
+  } catch (error) {
+    console.warn("[product-suppliers] release main failed", error);
+    return false;
+  }
+  const store = getStore();
+  await store.update("products", productId, {
+    supplierSku: null,
+    price: null,
+    currency: null,
+    moq: null,
+    ...typed,
+  });
+  const [master] = await store.list("purchase_sheets", {
+    filter: { orderId: productId },
+    limit: 1,
+  });
+  if (master)
+    await store.update("purchase_sheets", master.id, {
+      supplierName: null,
+      location: null,
+      supplierStore: null,
+      supplierPhone: null,
+      factoryItemCode: typed.supplierSku ?? null,
+    });
+  await audit(
+    user,
+    "product.main_supplier_release",
+    "product",
+    productId,
+    `Fornecedor principal retirado: ${before.supplierId}`,
+    before,
+    typed,
+  );
+  return true;
+}
+
+/**
+ * Condições de um fornecedor que não é o principal (ex.: ficha da cotação
+ * dele adotada no cadastro): ficam no vínculo dele, nunca no produto.
+ */
+export async function rememberSupplierTerms(
+  user: User,
+  productId: string,
+  supplierId: string,
+  terms: {
+    supplierSku: string | null;
+    price: number | null;
+    currency: string | null;
+    moq: number | null;
+  },
+): Promise<void> {
+  try {
+    const priced = terms.price !== null;
+    await upsertLink(user, productId, supplierId, "quote", (prev) => ({
+      supplierSku: clean(terms.supplierSku) ?? prev?.supplierSku ?? null,
+      price: priced ? terms.price : (prev?.price ?? null),
+      currency: priced ? terms.currency : (prev?.currency ?? null),
+      moq: terms.moq ?? prev?.moq ?? null,
+    }));
+  } catch (error) {
+    console.warn("[product-suppliers] remember terms failed", error);
   }
 }
 

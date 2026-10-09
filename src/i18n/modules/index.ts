@@ -5,6 +5,8 @@
  */
 import * as catalog from "./catalog";
 import * as productSuppliers from "./product-suppliers";
+import * as sheetMissing from "./sheet-missing";
+import * as productPhotos from "./product-photos";
 import * as importing from "./import";
 import * as logistics from "./logistics";
 import * as orders from "./orders";
@@ -89,6 +91,8 @@ export const modulesPt = {
   ...i18nSweep.pt,
   ...requestSchedule.pt,
   ...productSuppliers.pt,
+  ...sheetMissing.pt,
+  ...productPhotos.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -133,6 +137,8 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...i18nSweep.en,
   ...requestSchedule.en,
   ...productSuppliers.en,
+  ...sheetMissing.en,
+  ...productPhotos.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -177,4 +183,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...i18nSweep.zh,
   ...requestSchedule.zh,
   ...productSuppliers.zh,
+  ...sheetMissing.zh,
+  ...productPhotos.zh,
 };

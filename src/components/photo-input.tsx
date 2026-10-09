@@ -1,8 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { createUploadTokenAction } from "@/app/app/actions/uploads";
 import { useFormDoneSignal } from "./submit-button";
+
+/**
+ * Teto do corpo da requisição na Vercel (~4,5 MB) com folga para os outros
+ * campos: acima disso, com `direct`, as fotos sobem direto ao armazenamento.
+ */
+const SERVER_MAX_BYTES = 3.5 * 1024 * 1024;
 
 /**
  * Campo de foto para o celular: abre a câmera (ou a galeria), reduz cada imagem
@@ -26,7 +33,19 @@ export function PhotoInput({
   compact = false,
   dense = false,
   pendingLabel,
+  direct = false,
+  uploadingLabel,
+  failedLabel,
 }: {
+  /**
+   * A Server Action do formulário aceita fotos já subidas (`uploadedPhotoId`):
+   * lote acima do teto da requisição sobe direto ao armazenamento.
+   */
+  direct?: boolean;
+  /** Com {percent}: progresso do envio direto. */
+  uploadingLabel?: string;
+  /** Falha do envio direto (o motivo técnico vai entre parênteses). */
+  failedLabel?: string;
   name: string;
   multiple?: boolean;
   capture?: "environment" | "user" | false;
@@ -50,10 +69,23 @@ export function PhotoInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // Campos escondidos com os ids das fotos que já subiram direto.
+  const uploaded = useRef<HTMLInputElement[]>([]);
+
+  function clearUploaded() {
+    uploaded.current.forEach((el) => el.remove());
+    uploaded.current = [];
+    if (inputRef.current) inputRef.current.required = required;
+  }
 
   async function onChange(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
+    const form = input.form;
     const files = Array.from(input.files ?? []);
+    setError(null);
+    clearUploaded();
     if (files.length === 0) {
       setPreviews([]);
       return;
@@ -75,8 +107,40 @@ export function PhotoInput({
         old.forEach((u) => URL.revokeObjectURL(u));
         return urls;
       });
-      if (autoSubmit) input.form?.requestSubmit();
+      const total = reducedFiles.reduce((sum, f) => sum + f.size, 0);
+      if (direct && form && total > SERVER_MAX_BYTES) {
+        // Lote grande demais para a requisição: sobe direto ao armazenamento
+        // e o formulário leva só os ids.
+        const ids = await uploadDirect(reducedFiles, setProgress);
+        if (ids) {
+          input.value = "";
+          input.required = false;
+          for (const id of ids) {
+            const hidden = document.createElement("input");
+            hidden.type = "hidden";
+            hidden.name = "uploadedPhotoId";
+            hidden.value = id;
+            form.appendChild(hidden);
+            uploaded.current.push(hidden);
+          }
+        }
+      }
+      if (autoSubmit) form?.requestSubmit();
+    } catch (err) {
+      console.error("envio da foto falhou", err);
+      const detail =
+        err instanceof Error && err.message
+          ? ` (${err.message.slice(0, 160)})`
+          : "";
+      setError(`${failedLabel ?? "Falha no envio"}${detail}`);
+      input.value = "";
+      clearUploaded();
+      setPreviews((old) => {
+        old.forEach((u) => URL.revokeObjectURL(u));
+        return [];
+      });
     } finally {
+      setProgress(null);
       setBusy(false);
     }
   }
@@ -84,7 +148,31 @@ export function PhotoInput({
   const { pending } = useFormStatus();
   // Envio no lugar (sem navegar): avisa a barra de progresso que terminou.
   useFormDoneSignal(pending);
+  // Terminou o envio do formulário: os ids já foram usados; a próxima foto
+  // começa limpa (sem miniaturas antigas nem ids repetidos).
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      uploaded.current.forEach((el) => el.remove());
+      uploaded.current = [];
+      if (inputRef.current) inputRef.current.required = required;
+      setPreviews((old) => {
+        old.forEach((u) => URL.revokeObjectURL(u));
+        return [];
+      });
+    }
+    wasPending.current = pending;
+  }, [pending, required]);
   const working = busy || pending;
+  const workingText =
+    progress !== null && uploadingLabel
+      ? uploadingLabel.replace("{percent}", String(progress))
+      : pendingLabel;
+  const errorLine = error ? (
+    <span role="alert" className="block text-xs font-medium text-red-700">
+      {error}
+    </span>
+  ) : null;
   const input = (
     <input
       ref={inputRef}
@@ -101,7 +189,7 @@ export function PhotoInput({
   );
 
   if (compact) {
-    return (
+    const button = (
       <label
         aria-disabled={disabled || working || undefined}
         aria-busy={working || undefined}
@@ -123,9 +211,17 @@ export function PhotoInput({
         ) : (
           <span aria-hidden>📷</span>
         )}
-        <span>{working && pendingLabel ? pendingLabel : label}</span>
+        <span>{working && workingText ? workingText : label}</span>
         {input}
       </label>
+    );
+    return errorLine ? (
+      <span className="inline-flex max-w-full flex-col items-end gap-1">
+        {button}
+        {errorLine}
+      </span>
+    ) : (
+      button
     );
   }
 
@@ -143,13 +239,14 @@ export function PhotoInput({
           📷
         </span>
         <span className="font-semibold">
-          {working ? (pendingLabel ?? "…") : label}
+          {working ? (workingText ?? "…") : label}
         </span>
         {hint ? (
           <span className="text-xs text-brand-700/80">{hint}</span>
         ) : null}
         {input}
       </label>
+      {errorLine ? <div className="mt-1.5">{errorLine}</div> : null}
       {previews.length > 0 ? (
         <ul className="mt-2 flex flex-wrap gap-2">
           {previews.map((src) => (
@@ -168,36 +265,136 @@ export function PhotoInput({
   );
 }
 
-/** Reduz a imagem quando maior que o limite; se o navegador não decodificar (ex.: HEIC), devolve o original. */
-async function shrink(file: File, maxDimension: number, quality: number) {
-  if (!file.type.startsWith("image/")) return file;
+/** Foto já reduzida acima deste tamanho é reduzida de novo (menor e mais leve). */
+const TARGET_BYTES = 1.2 * 1024 * 1024;
+
+/**
+ * Lê a imagem: `createImageBitmap` e, se o navegador não conseguir (alguns
+ * iPads com HEIC), pela tag <img>, que o Safari decodifica.
+ */
+async function decodeImage(file: File): Promise<{
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close: () => void;
+}> {
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(
-      1,
-      maxDimension / Math.max(bitmap.width, bitmap.height),
-    );
-    if (scale === 1 && file.size < 600 * 1024) {
-      bitmap.close();
-      return file;
+    return {
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      close: () => bitmap.close(),
+    };
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await img.decode();
+      return {
+        source: img,
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        close: () => URL.revokeObjectURL(url),
+      };
+    } catch (error) {
+      URL.revokeObjectURL(url);
+      throw error;
     }
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", quality),
-    );
-    if (!blob) return file;
-    const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
-    return new File([blob], name, {
+  }
+}
+
+/**
+ * Reduz a foto no aparelho (JPEG, lado maior até `maxDimension`); se ainda
+ * passar de ~1,2 MB, reduz mais um pouco (até 3 tentativas). Foto pequena em
+ * JPEG/PNG/WebP fica como está; o que o navegador não decodificar vai original.
+ */
+async function shrink(file: File, maxDimension: number, quality: number) {
+  if (file.type && !file.type.startsWith("image/")) return file;
+  let image: Awaited<ReturnType<typeof decodeImage>>;
+  try {
+    image = await decodeImage(file);
+  } catch {
+    return file;
+  }
+  try {
+    const light = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+    if (
+      light &&
+      Math.max(image.width, image.height) <= maxDimension &&
+      file.size < 600 * 1024
+    )
+      return file;
+    let dimension = maxDimension;
+    let q = quality;
+    let best: Blob | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const scale = Math.min(
+        1,
+        dimension / Math.max(image.width, image.height),
+      );
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) break;
+      ctx.drawImage(image.source, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", q),
+      );
+      if (!blob) break;
+      best = blob;
+      if (blob.size <= TARGET_BYTES) break;
+      dimension = Math.round(dimension * 0.8);
+      q = Math.max(0.6, q - 0.1);
+    }
+    if (!best) return file;
+    const name = (file.name || "foto").replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([best], name, {
       type: "image/jpeg",
       lastModified: file.lastModified,
     });
   } catch {
     return file;
+  } finally {
+    image.close();
   }
+}
+
+/**
+ * Sobe as fotos direto ao armazenamento (Appwrite) com o token da sessão;
+ * devolve os ids. Sem envio direto (modo memória, desenvolvimento), devolve
+ * nulo e as fotos seguem no formulário.
+ */
+async function uploadDirect(
+  files: File[],
+  onProgress: (percent: number) => void,
+): Promise<string[] | null> {
+  const token = await createUploadTokenAction();
+  if (token.mode !== "direct") return null;
+  const { Client, ID, Storage } = await import("appwrite");
+  const client = new Client()
+    .setEndpoint(token.endpoint)
+    .setProject(token.project)
+    .setJWT(token.jwt);
+  const storage = new Storage(client);
+  const ids: string[] = [];
+  onProgress(0);
+  for (let i = 0; i < files.length; i++) {
+    const created = await storage.createFile({
+      bucketId: token.bucket,
+      fileId: ID.unique(),
+      file: files[i],
+      onProgress: (p) =>
+        onProgress(
+          Math.min(
+            99,
+            Math.round(((i + p.progress / 100) / files.length) * 100),
+          ),
+        ),
+    });
+    ids.push(created.$id);
+  }
+  return ids;
 }
