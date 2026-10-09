@@ -863,6 +863,7 @@ export default async function OrderPage({
                               {formatMoney(
                                 finance.margin,
                                 finance.sellCurrency,
+                                t,
                               )}
                               {finance.marginPct !== null
                                 ? ` (${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
@@ -1138,6 +1139,7 @@ export default async function OrderPage({
                       received: formatMoney(
                         finance.received,
                         finance.sellCurrency,
+                        t,
                       ),
                       paid: formatMoney(finance.paid, finance.fobCurrency, t),
                     }
@@ -1440,8 +1442,10 @@ const dims = (
   c: number | null | undefined,
 ) => (a || b || c ? `${a ?? "—"} × ${b ?? "—"} × ${c ?? "—"}` : "—");
 
-const numOrDash = (v: number | null | undefined) =>
-  v === null || v === undefined ? "—" : String(v);
+const numOrDash = (v: number | null | undefined, intl = "pt-BR") =>
+  v === null || v === undefined
+    ? "—"
+    : v.toLocaleString(intl, { maximumFractionDigits: 4 });
 
 /** "Comprado (snapshot)": o que foi negociado, congelado no pedido. Só Wellmix. */
 function SnapshotCard({
@@ -1497,7 +1501,7 @@ function SnapshotCard({
               : "—",
           ],
           [t("common.quantity"), `${snapshot.quantity} ${snapshot.unit}`],
-          [t("orders.snapshot.moq"), numOrDash(snapshot.moq)],
+          [t("orders.snapshot.moq"), numOrDash(snapshot.moq, t.intl)],
           [t("orders.snapshot.supplierSku"), snapshot.supplierSku ?? "—"],
           [t("orders.snapshot.material"), snapshot.material ?? "—"],
           [t("orders.snapshot.color"), snapshot.color ?? "—"],
@@ -1506,10 +1510,22 @@ function SnapshotCard({
             t("orders.snapshot.dimensions"),
             dims(snapshot.lengthCm, snapshot.widthCm, snapshot.heightCm),
           ],
-          [t("orders.snapshot.netWeight"), numOrDash(snapshot.netWeightKg)],
-          [t("orders.snapshot.grossWeight"), numOrDash(snapshot.grossWeightKg)],
-          [t("orders.snapshot.masterBox"), numOrDash(snapshot.masterBoxQty)],
-          [t("orders.snapshot.innerBox"), numOrDash(snapshot.innerBoxQty)],
+          [
+            t("orders.snapshot.netWeight"),
+            numOrDash(snapshot.netWeightKg, t.intl),
+          ],
+          [
+            t("orders.snapshot.grossWeight"),
+            numOrDash(snapshot.grossWeightKg, t.intl),
+          ],
+          [
+            t("orders.snapshot.masterBox"),
+            numOrDash(snapshot.masterBoxQty, t.intl),
+          ],
+          [
+            t("orders.snapshot.innerBox"),
+            numOrDash(snapshot.innerBoxQty, t.intl),
+          ],
           [
             t("orders.snapshot.boxDimensions"),
             dims(
@@ -1518,7 +1534,7 @@ function SnapshotCard({
               snapshot.boxHeightCm,
             ),
           ],
-          [t("orders.snapshot.cbm"), numOrDash(snapshot.cbm)],
+          [t("orders.snapshot.cbm"), numOrDash(snapshot.cbm, t.intl)],
           [t("common.conditions"), snapshot.conditions ?? "—"],
           [
             t("orders.snapshot.registeredAt"),
@@ -1648,7 +1664,11 @@ function InspectionResultCard({
                       {attrLabel(t, row.attribute)}
                     </Td>
                     <Td className="text-right tabular-nums">
-                      {c?.expected ?? "—"}
+                      {typeof c?.expected === "number"
+                        ? c.expected.toLocaleString(t.intl, {
+                            maximumFractionDigits: 4,
+                          })
+                        : (c?.expected ?? "—")}
                     </Td>
                     <Td
                       className={cx(
@@ -1660,7 +1680,7 @@ function InspectionResultCard({
                     </Td>
                     <Td className="text-right tabular-nums">
                       {c?.tolerancePercent != null
-                        ? `${c.tolerancePercent}%`
+                        ? `${c.tolerancePercent.toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`
                         : "—"}
                     </Td>
                     <Td>

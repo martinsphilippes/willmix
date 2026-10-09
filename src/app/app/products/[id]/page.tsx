@@ -1275,7 +1275,7 @@ export default async function ProductSheetPage({
                     ],
                     [
                       t("catalog.opp.unitSaving"),
-                      `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent}%)`,
+                      `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`,
                     ],
                     [
                       t("catalog.opp.totalDifference"),

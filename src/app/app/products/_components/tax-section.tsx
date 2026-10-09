@@ -76,7 +76,10 @@ export function TaxSection({
   const rates = (taxes: Record<string, number> | null) =>
     taxes
       ? RATE_KEYS.filter((k) => taxes[k] !== undefined)
-          .map((k) => `${k} ${taxes[k]}%`)
+          .map(
+            (k) =>
+              `${k} ${taxes[k].toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`,
+          )
           .join(" · ")
       : "";
 

@@ -6,7 +6,11 @@ import {
   formatPercent,
 } from "@/app/app/containers/_components/shared";
 import { formatMoneyValue } from "@/lib/workflow/money";
-import { normalizeMoneyText } from "@/components/money-input";
+import {
+  formatMoneyText,
+  normalizeMoneyText,
+  parseMoneyText,
+} from "@/components/money-input";
 
 /** Intl usa espaço inseparável entre símbolo e valor; comparamos com espaço comum. */
 const plain = (s: string) => s.replace(/\u00a0/g, " ");
@@ -71,5 +75,34 @@ describe("formatação no idioma do usuário", () => {
     expect(normalizeMoneyText("1,5", "en-US")).toBe("1.5");
     expect(normalizeMoneyText("R$ 10", "pt-BR")).toBe("10");
     expect(normalizeMoneyText("", "en-US")).toBe("");
+  });
+
+  it("campo de valor: o que é mostrado volta ao mesmo número ao sair do campo", () => {
+    for (const loc of ["pt-BR", "en-US", "zh-CN"])
+      for (const [n, d] of [
+        [1234.5, 2],
+        [28000, 2],
+        [1234567.89, 2],
+        [0.5, 2],
+        [1234.5678, 4],
+        [1235, 0],
+      ] as const) {
+        const shown = formatMoneyText(n, d, loc);
+        expect(parseMoneyText(shown, loc, d), `${loc} ${shown}`).toBe(n);
+      }
+  });
+
+  it("campo de valor: leitura ao sair do campo segue o idioma", () => {
+    expect(parseMoneyText("1,234.56", "en-US")).toBe(1234.56);
+    expect(parseMoneyText("28,000.00", "zh-CN")).toBe(28000);
+    expect(parseMoneyText("1,234.56", "pt-BR")).toBe(1234.56);
+    expect(parseMoneyText("1.234,56", "en-US")).toBe(1234.56);
+    expect(parseMoneyText("1.234.567", "pt-BR")).toBe(1234567);
+    expect(parseMoneyText("2.35", "pt-BR")).toBe(2.35);
+    expect(parseMoneyText("1.235", "pt-BR", 0)).toBe(1235);
+    expect(parseMoneyText("1,235", "en-US", 0)).toBe(1235);
+    expect(parseMoneyText("-5", "pt-BR")).toBeNull();
+    expect(parseMoneyText("abc", "en-US")).toBeNull();
+    expect(parseMoneyText("1.2.3,4.5", "pt-BR")).toBeNull();
   });
 });

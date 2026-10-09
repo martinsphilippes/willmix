@@ -541,6 +541,7 @@ export default async function RequestDetailPage({
                                 amount: formatMoney(
                                   p.shippingFreight.amount,
                                   p.shippingFreight.currency ?? "USD",
+                                  t,
                                 ),
                               })
                             : p.shippingFreight.status === "waiting"
@@ -671,6 +672,7 @@ export default async function RequestDetailPage({
                       {formatMoney(
                         request.downPaymentAmount,
                         request.sellCurrency,
+                        t,
                       )}
                     </span>,
                   ],
@@ -707,6 +709,7 @@ export default async function RequestDetailPage({
                       amount: formatMoney(
                         request.downPaymentAmount,
                         request.sellCurrency,
+                        t,
                       ),
                     })}
                   </Alert>

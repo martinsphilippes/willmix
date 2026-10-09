@@ -134,6 +134,7 @@ export default async function AccountPage({
           value={formatMoney(
             totalOrders - totalReceived - totalPending,
             currency,
+            t,
           )}
         />
       </div>

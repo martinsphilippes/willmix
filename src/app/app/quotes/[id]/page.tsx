@@ -14,6 +14,7 @@ import {
   formatDate,
   inputDenseClass,
   linkClass,
+  formatMoney,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -180,7 +181,7 @@ export default async function QuotePage({
                   [
                     t("common.price"),
                     quote.price !== null
-                      ? `${quote.currency} ${quote.price}`
+                      ? formatMoney(quote.price, quote.currency, t)
                       : "—",
                   ],
                   [t("common.leadTime"), quote.leadTimeDays],
