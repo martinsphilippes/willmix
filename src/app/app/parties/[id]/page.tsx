@@ -282,7 +282,7 @@ export default async function PartyPage({
                     <Input
                       name="storeNumber"
                       maxLength={60}
-                      placeholder="A 154678"
+                      placeholder={t("ph.party.storeNumber")}
                       defaultValue={party.storeNumber ?? ""}
                       className="py-2.5"
                     />

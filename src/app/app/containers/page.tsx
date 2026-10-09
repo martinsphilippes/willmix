@@ -157,7 +157,7 @@ export default async function ContainersPage({
                 required
                 maxLength={40}
                 className={bigField}
-                placeholder="MSKU1234567"
+                placeholder={t("ph.container.number")}
               />
             </Field>
             <Field label={t("containers.type")}>

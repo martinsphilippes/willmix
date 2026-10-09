@@ -878,7 +878,7 @@ export default async function ProductSheetPage({
                   name="unit"
                   required
                   defaultValue="kg"
-                  placeholder="kg, cm, m³, un"
+                  placeholder={t("ph.measure.unit")}
                   dense
                 />
               </Field>

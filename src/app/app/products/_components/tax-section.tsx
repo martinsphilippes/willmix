@@ -259,7 +259,7 @@ export function TaxSection({
                 minLength={4}
                 maxLength={10}
                 inputMode="decimal"
-                placeholder="7615.10"
+                placeholder={t("ph.tax.ncm")}
                 className={`${big} font-mono`}
               />
             </Field>

@@ -212,7 +212,7 @@ export function ItemForm({
               rows={2}
               defaultValue={item?.conditions ?? ""}
               className={bigField}
-              placeholder="Ex.: FOB Ningbo, 30% sinal, saldo contra BL"
+              placeholder={t("ph.item.conditions")}
             />
           </Field>
         </div>

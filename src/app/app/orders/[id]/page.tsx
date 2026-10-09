@@ -895,7 +895,10 @@ export default async function OrderPage({
                   </Field>
                   <div className="sm:col-span-2">
                     <Field label={t("finance.method")}>
-                      <Input name="method" placeholder="PIX, boleto, TED" />
+                      <Input
+                        name="method"
+                        placeholder={t("ph.finance.method")}
+                      />
                     </Field>
                   </div>
                   <div className="sm:col-span-2">

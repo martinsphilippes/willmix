@@ -599,7 +599,7 @@ export default async function RequestDetailPage({
                     <MoneyInput
                       name="downPaymentAmount"
                       watchField="sellCurrency"
-                      placeholder="30%"
+                      placeholder={t("ph.request.downPayment")}
                     />
                   </Field>
                   <div className="sm:col-span-3">

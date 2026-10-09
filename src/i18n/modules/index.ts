@@ -40,6 +40,7 @@ import * as sheetFill from "./sheet-fill";
 import * as productSheet from "./product-sheet";
 import * as sheetRecords from "./sheet-records";
 import * as navGroups from "./nav-groups";
+import * as placeholders from "./placeholders";
 import * as requestSchedule from "./request-schedule";
 
 export const modulesPt = {
@@ -80,6 +81,7 @@ export const modulesPt = {
   ...productSheet.pt,
   ...sheetRecords.pt,
   ...navGroups.pt,
+  ...placeholders.pt,
   ...requestSchedule.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -120,6 +122,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...productSheet.en,
   ...sheetRecords.en,
   ...navGroups.en,
+  ...placeholders.en,
   ...requestSchedule.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -160,5 +163,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...productSheet.zh,
   ...sheetRecords.zh,
   ...navGroups.zh,
+  ...placeholders.zh,
   ...requestSchedule.zh,
 };

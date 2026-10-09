@@ -86,7 +86,7 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
             name="fiscalTecUrl"
             type="url"
             inputMode="url"
-            placeholder="https://"
+            placeholder={t("ph.url")}
             defaultValue={s.fiscalTecUrl}
           />
         </Field>
@@ -95,7 +95,7 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
             name="fiscalTipiUrl"
             type="url"
             inputMode="url"
-            placeholder="https://"
+            placeholder={t("ph.url")}
             defaultValue={s.fiscalTipiUrl}
           />
         </Field>

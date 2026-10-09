@@ -293,7 +293,7 @@ export default async function QuotePage({
                   rows={2}
                   maxLength={2000}
                   defaultValue={quote.conditions ?? ""}
-                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                  placeholder={t("ph.quote.conditions")}
                   className={cx(inputDenseClass, "min-h-12")}
                 />
               </FieldRow>

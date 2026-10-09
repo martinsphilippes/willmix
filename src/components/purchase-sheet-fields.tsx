@@ -92,7 +92,7 @@ export function PurchaseSheetFields({
               <input
                 name="location"
                 maxLength={80}
-                placeholder="YIWU"
+                placeholder={t("ph.sheet.location")}
                 defaultValue={sheet.location ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -111,7 +111,7 @@ export function PurchaseSheetFields({
               <input
                 name="supplierStore"
                 maxLength={60}
-                placeholder="A 154678"
+                placeholder={t("ph.sheet.supplierStore")}
                 defaultValue={sheet.supplierStore ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -223,7 +223,7 @@ export function PurchaseSheetFields({
               <input
                 name="colorAssortment"
                 maxLength={200}
-                placeholder="WHITE / BLACK / RED"
+                placeholder={t("ph.sheet.colorAssortment")}
                 defaultValue={sheet.colorAssortment ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -262,7 +262,7 @@ export function PurchaseSheetFields({
               <input
                 name="material"
                 maxLength={200}
-                placeholder="PLASTIC / IRON"
+                placeholder={t("ph.sheet.material")}
                 defaultValue={sheet.material ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -287,7 +287,7 @@ export function PurchaseSheetFields({
               <input
                 name="powerDetail"
                 maxLength={60}
-                placeholder="12V"
+                placeholder={t("ph.sheet.powerDetail")}
                 defaultValue={sheet.powerDetail ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -338,7 +338,7 @@ export function PurchaseSheetFields({
               <input
                 name="packageType"
                 maxLength={120}
-                placeholder="COLOR BOX"
+                placeholder={t("ph.sheet.packageType")}
                 defaultValue={sheet.packageType ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -543,7 +543,7 @@ export function PurchaseSheetFields({
               name="ncm"
               inputMode="decimal"
               maxLength={12}
-              placeholder="0000.00.00"
+              placeholder={t("ph.ncm")}
               defaultValue={sheet.ncm ?? ""}
               disabled={!access.editCustoms}
               className={inputDenseClass}

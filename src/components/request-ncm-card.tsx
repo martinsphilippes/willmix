@@ -73,7 +73,7 @@ export function RequestNcmCard({
           name="ncm"
           required
           inputMode="numeric"
-          placeholder="0000.00.00"
+          placeholder={t("ph.ncm")}
           pattern="[0-9. -]{8,14}"
           className="max-w-48"
         />

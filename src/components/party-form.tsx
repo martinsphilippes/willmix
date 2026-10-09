@@ -32,7 +32,7 @@ export function PartyForm({
           <Input
             name="country"
             defaultValue={party?.country ?? ""}
-            placeholder="BR, CN"
+            placeholder={t("ph.party.country")}
           />
         </Field>
         <Field label={t("common.email")}>

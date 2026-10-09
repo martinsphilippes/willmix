@@ -121,7 +121,7 @@ export default async function LinesPage({
                   <Input
                     name="certifications"
                     maxLength={500}
-                    placeholder="Inmetro, Anvisa"
+                    placeholder={t("ph.line.certifications")}
                     aria-label={t("catalog.lines.certifications")}
                     defaultValue={(l.requiredCertifications ?? []).join(", ")}
                     className="flex-1 py-1.5"
