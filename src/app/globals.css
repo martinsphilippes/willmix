@@ -48,9 +48,12 @@ body {
   color: var(--color-brand-900);
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-brand-600);
-  outline-offset: 2px;
+/* Em @layer base: no cabeçalho vermelho a utilidade focus-visible:outline-white sobrepõe. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+  }
 }
 
 /* Barra de progresso ao navegar (src/components/navigation-progress.tsx). */

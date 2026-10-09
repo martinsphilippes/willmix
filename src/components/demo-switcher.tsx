@@ -65,7 +65,11 @@ export function DemoSwitcher({
         value={current}
         disabled={pending}
         onChange={(e) => switchTo(e.target.value)}
-        className="max-w-40 rounded-md border-0 bg-white px-2 py-1 text-xs font-medium text-zinc-900 focus-visible:outline-white disabled:opacity-60 sm:max-w-48"
+        className={`max-w-40 rounded-md border-0 bg-white font-medium text-zinc-900 disabled:opacity-60 sm:max-w-48 ${
+          variant === "light"
+            ? "px-2.5 py-2 text-sm"
+            : "px-2 py-1 text-xs focus-visible:outline-white"
+        }`}
       >
         {accounts.map((a) => (
           <option key={a.email} value={a.email}>

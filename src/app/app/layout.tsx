@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getStore } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
@@ -42,20 +43,67 @@ function LocaleSwitcher({
           type="submit"
           aria-label={LOCALE_NAMES[l]}
           aria-pressed={l === locale}
-          className={`rounded-md px-2 py-0.5 text-xs font-semibold transition ${
+          className={`rounded-md font-semibold transition ${
             dark
-              ? l === locale
-                ? "bg-white text-brand-700 shadow-sm"
-                : "text-white/80 hover:text-white focus-visible:outline-white"
-              : l === locale
-                ? "bg-white text-brand-700 shadow-sm"
-                : "text-zinc-600 hover:text-zinc-900"
+              ? `px-2 py-0.5 text-xs focus-visible:outline-white ${
+                  l === locale
+                    ? "bg-white text-brand-700 shadow-sm"
+                    : "text-white/80 hover:text-white"
+                }`
+              : `px-3 py-1.5 text-sm ${
+                  l === locale
+                    ? "bg-white text-brand-700 shadow-sm"
+                    : "text-zinc-600 hover:text-zinc-900"
+                }`
           }`}
         >
           {l.toUpperCase()}
         </button>
       ))}
     </form>
+  );
+}
+
+/** Sino com as notificações não lidas (link para a caixa de entrada). */
+function NotificationsBell({
+  unread,
+  label,
+  unreadLabel,
+}: {
+  unread: number;
+  label: string;
+  unreadLabel: string;
+}) {
+  return (
+    <Link
+      href="/app/notifications"
+      aria-label={unread > 0 ? `${label}: ${unreadLabel}` : label}
+      title={label}
+      data-notifications-bell={unread}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="h-5 w-5"
+      >
+        <path d="M6 9a6 6 0 1 1 12 0v4.5l1.6 2.4a.6.6 0 0 1-.5.9H4.9a.6.6 0 0 1-.5-.9L6 13.5V9Z" />
+        <path d="M10 19.5a2 2 0 0 0 4 0" />
+      </svg>
+      {unread > 0 ? (
+        <span
+          aria-hidden
+          className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold leading-none text-brand-700 ring-2 ring-brand-700"
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
@@ -83,6 +131,22 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
     dataMode() === "memory" ||
     process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "1";
   const roleLabel = t(`role.${user.role}`);
+  // Não lidas no sino (até 100: o que a caixa de entrada mostra).
+  const unread = (
+    await getStore().list("notifications", {
+      filter: { userId: user.id, channel: "inapp" },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 100,
+    })
+  ).filter((n) => !n.readAt).length;
+  const bell = (
+    <NotificationsBell
+      unread={unread}
+      label={t("nav.notifications")}
+      unreadLabel={t("nav.notifications.unread", { n: String(unread) })}
+    />
+  );
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -118,6 +182,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                 />
               </div>
             ) : null}
+            {bell}
             <div className="hidden md:block">
               <UserMenu
                 name={user.name}
@@ -131,7 +196,11 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             <div className="md:hidden">
               <MobileNav
                 entries={entries}
-                labels={{ open: t("nav.menu"), close: t("nav.menu.close") }}
+                labels={{
+                  open: t("nav.menu"),
+                  close: t("nav.menu.close"),
+                  main: t("nav.main"),
+                }}
                 extras={
                   <>
                     <div className="flex items-center gap-3">
@@ -175,7 +244,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         </div>
         <div className="hidden border-t border-white/10 bg-black/10 md:block">
           <div className="mx-auto w-full max-w-7xl px-2">
-            <AppNav entries={entries} />
+            <AppNav entries={entries} label={t("nav.main")} />
           </div>
         </div>
       </header>

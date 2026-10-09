@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { isActiveHref } from "@/lib/nav";
 
 /*
@@ -10,7 +17,9 @@ import { isActiveHref } from "@/lib/nav";
  * grupos (Operação, Cadastros, Gestão) abrindo uma lista. No celular: botão
  * "Menu" que abre um painel com tudo (grupos como títulos) e, no fim, idioma,
  * conta de demonstração e Sair. O item da tela atual fica destacado; um grupo
- * fica destacado quando a tela atual está dentro dele.
+ * fica destacado quando a tela atual está dentro dele. Listas e painel fecham
+ * ao escolher um item, ao navegar, ao clicar fora e com Esc (foco volta ao
+ * botão que abriu).
  */
 
 export interface NavItemView {
@@ -23,6 +32,7 @@ export interface NavEntryView {
   items?: NavItemView[];
 }
 
+/** Fecha quando a rota muda (voltar/avançar, navegação por código). */
 function useCloseOnNavigate(close: () => void) {
   const pathname = usePathname();
   const last = useRef(pathname);
@@ -38,6 +48,12 @@ const linkBase =
   "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition focus-visible:outline-white";
 const linkIdle = "text-white/80 hover:bg-white/10 hover:text-white";
 const linkActive = "bg-white/15 text-white";
+const popover =
+  "absolute top-full z-30 mt-1 min-w-48 rounded-xl border border-zinc-200 bg-white p-1.5 text-zinc-800 shadow-lg shadow-zinc-900/10";
+const popoverLink = (current: boolean) =>
+  `block rounded-lg px-3 py-2 text-sm transition ${
+    current ? "bg-brand-50 font-semibold text-brand-700" : "hover:bg-zinc-100"
+  }`;
 
 function GroupMenu({
   entry,
@@ -47,11 +63,14 @@ function GroupMenu({
   active: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Lista perto da borda direita abre alinhada à direita (não sai da tela).
+  const [alignEnd, setAlignEnd] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const id = useId();
   const pathname = usePathname();
-  useCloseOnNavigate(() => setOpen(false));
+  const close = useCallback(() => setOpen(false), []);
+  useCloseOnNavigate(close);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -71,14 +90,30 @@ function GroupMenu({
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+  function toggle() {
+    if (!open && button.current) {
+      const rect = button.current.getBoundingClientRect();
+      setAlignEnd(rect.left + 224 > window.innerWidth);
+    }
+    setOpen((v) => !v);
+  }
   return (
-    <div ref={root} className="relative">
+    <div
+      ref={root}
+      className="relative"
+      onBlur={(e) => {
+        // Foco saiu da lista (Tab): fecha.
+        if (open && !root.current?.contains(e.relatedTarget as Node | null))
+          setOpen(false);
+      }}
+    >
       <button
         ref={button}
         type="button"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen((v) => !v)}
+        aria-current={active ? "true" : undefined}
+        onClick={toggle}
         data-nav-group={entry.label}
         className={`${linkBase} inline-flex items-center gap-1 ${active ? linkActive : linkIdle}`}
       >
@@ -99,7 +134,8 @@ function GroupMenu({
       {open ? (
         <div
           id={id}
-          className="absolute left-0 top-full z-30 mt-1 min-w-48 rounded-xl border border-zinc-200 bg-white p-1.5 text-zinc-800 shadow-lg shadow-zinc-900/10"
+          data-nav-panel
+          className={`${popover} ${alignEnd ? "right-0" : "left-0"}`}
         >
           {entry.items.map((item) => {
             const current = isActiveHref(item.href, pathname);
@@ -108,11 +144,8 @@ function GroupMenu({
                 key={item.href}
                 href={item.href}
                 aria-current={current ? "page" : undefined}
-                className={`block rounded-lg px-3 py-2 text-sm transition ${
-                  current
-                    ? "bg-brand-50 font-semibold text-brand-700"
-                    : "hover:bg-zinc-100"
-                }`}
+                onClick={close}
+                className={popoverLink(current)}
               >
                 {item.label}
               </Link>
@@ -125,10 +158,19 @@ function GroupMenu({
 }
 
 /** Linha do menu no computador. */
-export function AppNav({ entries }: { entries: NavEntryView[] }) {
+export function AppNav({
+  entries,
+  label,
+}: {
+  entries: NavEntryView[];
+  label: string;
+}) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Principal" className="flex items-center gap-0.5 py-1.5">
+    <nav
+      aria-label={label}
+      className="flex flex-wrap items-center gap-0.5 py-1.5"
+    >
       {entries.map((entry) =>
         entry.items ? (
           <GroupMenu
@@ -160,23 +202,42 @@ export function MobileNav({
   extras,
 }: {
   entries: NavEntryView[];
-  labels: { open: string; close: string };
+  labels: { open: string; close: string; main: string };
   extras?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const id = useId();
-  useCloseOnNavigate(() => setOpen(false));
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useCloseOnNavigate(close);
   useEffect(() => {
     if (!open) return;
+    // Painel modal: Esc fecha, o resto da página fica inerte, foco entra no
+    // painel e volta ao botão ao fechar; crescer a tela (tablet girado) fecha.
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onMedia = (e: MediaQueryListEvent) => {
+      if (e.matches) setOpen(false);
+    };
     document.addEventListener("keydown", onKey);
+    mq.addEventListener("change", onMedia);
     document.body.style.overflow = "hidden";
+    const outside = Array.from(
+      document.querySelectorAll<HTMLElement>("main, footer"),
+    );
+    for (const el of outside) el.setAttribute("inert", "");
+    panel.current?.querySelector<HTMLElement>("a, button")?.focus();
+    const trigger = button.current;
     return () => {
       document.removeEventListener("keydown", onKey);
+      mq.removeEventListener("change", onMedia);
       document.body.style.overflow = "";
+      for (const el of outside) el.removeAttribute("inert");
+      trigger?.focus();
     };
   }, [open]);
   const item = (link: NavItemView) => {
@@ -186,6 +247,7 @@ export function MobileNav({
         key={link.href}
         href={link.href}
         aria-current={current ? "page" : undefined}
+        onClick={close}
         className={`block rounded-lg px-3 py-2.5 text-base transition ${
           current
             ? "bg-brand-50 font-semibold text-brand-700"
@@ -199,13 +261,14 @@ export function MobileNav({
   return (
     <>
       <button
+        ref={button}
         type="button"
         aria-expanded={open}
         aria-controls={id}
         aria-label={open ? labels.close : labels.open}
         onClick={() => setOpen((v) => !v)}
         data-mobile-menu
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
+        className="-mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
       >
         <svg
           viewBox="0 0 24 24"
@@ -226,16 +289,28 @@ export function MobileNav({
       {open ? (
         <div
           id={id}
+          ref={panel}
+          role="dialog"
+          aria-modal="true"
+          aria-label={labels.main}
           data-mobile-panel
           className="fixed inset-x-0 bottom-0 top-14 z-40 overflow-y-auto bg-white text-zinc-900"
         >
-          <nav aria-label="Principal" className="space-y-1 px-3 py-3">
-            {entries.map((entry) =>
+          <nav aria-label={labels.main} className="space-y-1 px-3 py-3">
+            {entries.map((entry, i) =>
               entry.items ? (
-                <div key={entry.label} className="pt-2">
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                <div
+                  key={entry.label}
+                  role="group"
+                  aria-labelledby={`${id}-g${i}`}
+                  className="pt-2"
+                >
+                  <h2
+                    id={`${id}-g${i}`}
+                    className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500"
+                  >
                     {entry.label}
-                  </p>
+                  </h2>
                   {entry.items.map(item)}
                 </div>
               ) : (

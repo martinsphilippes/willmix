@@ -21,6 +21,7 @@ export function UserMenu({
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const id = useId();
   useEffect(() => {
     if (!open) return;
@@ -29,7 +30,10 @@ export function UserMenu({
         setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        button.current?.focus();
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -41,8 +45,17 @@ export function UserMenu({
   const initial = name.trim().charAt(0).toUpperCase();
   const first = name.trim().split(/\s+/)[0] ?? name;
   return (
-    <div ref={root} className="relative">
+    <div
+      ref={root}
+      className="relative"
+      onBlur={(e) => {
+        // Foco saiu do menu (Tab): fecha.
+        if (open && !root.current?.contains(e.relatedTarget as Node | null))
+          setOpen(false);
+      }}
+    >
       <button
+        ref={button}
         type="button"
         aria-expanded={open}
         aria-controls={id}
@@ -57,7 +70,7 @@ export function UserMenu({
         >
           {initial}
         </span>
-        <span className="hidden max-w-32 truncate font-medium lg:block">
+        <span className="hidden max-w-32 truncate font-medium md:block">
           {first}
         </span>
       </button>
