@@ -113,6 +113,9 @@ export function SheetPhotoChecklist({
                     autoSubmit
                     compact
                     dense
+                    direct
+                    uploadingLabel={t("photo.uploading")}
+                    failedLabel={t("photo.failed")}
                   />
                 </form>
               ) : null}

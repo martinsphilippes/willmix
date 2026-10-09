@@ -24,7 +24,7 @@ import {
 } from "./sheet-records";
 import { productSupplierLink } from "./product-suppliers";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
-import { uploadDocument } from "./documents";
+import { storePhotoDocument, type PhotoSource } from "./documents";
 import {
   missingForCompletion,
   REQUIRED_SHEET_PHOTOS,
@@ -498,7 +498,7 @@ export async function addSheetPhotos(
   user: User,
   orderId: string,
   kind: SheetPhotoKind,
-  files: File[],
+  files: PhotoSource[],
 ): Promise<number> {
   const store = getStore();
   const order = await store.get("orders", orderId);
@@ -512,7 +512,7 @@ export async function addSheetPhotos(
   // Várias fotos sobem em paralelo (antes, uma depois da outra).
   await Promise.all(
     files.slice(0, 12).map(async (file) => {
-      const doc = await uploadDocument(user, file, {
+      const doc = await storePhotoDocument(user, file, {
         orderId,
         type: "photo",
         // Fornecedor e Wellmix (e parceiros do pedido); cliente não (cartão, origem).

@@ -15,7 +15,14 @@ import {
   type SheetInput,
 } from "@/lib/services/purchase-sheet";
 import { MAX_LOTS } from "@/lib/services/purchase-sheet-calc";
-import { files, requireUser, run, runInPlace, str } from "./helpers";
+import {
+  files,
+  requireUser,
+  run,
+  runInPlace,
+  str,
+  uploadedPhotoKeys,
+} from "./helpers";
 
 /** Opção do seletor para o nome antigo digitado à mão (fornecedor não cadastrado). */
 const LEGACY_SUPPLIER = "__legacy__";
@@ -152,7 +159,7 @@ export async function addPurchaseSheetPhotosAction(form: FormData) {
   await runInPlace(back, async () => {
     ORDER_ID.parse(orderId);
     const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (!photos.length) throw new Error("photo_required");
     await addSheetPhotos(user, orderId, kind, photos);
   });
@@ -237,7 +244,7 @@ export async function addQuoteSheetPhotosAction(form: FormData) {
   await runInPlace(back, async () => {
     ORDER_ID.parse(quoteId);
     const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (!photos.length) throw new Error("photo_required");
     const { addQuoteSheetPhotos } = await import("@/lib/services/quote-sheet");
     await addQuoteSheetPhotos(user, quoteId, kind, photos);

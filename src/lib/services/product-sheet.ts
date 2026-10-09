@@ -334,10 +334,31 @@ export async function adoptSheetIntoProduct(
   if (!sheet) throw new ProductSheetError("not_found");
   const productId = sheet.productId;
   if (!productId) throw new ProductSheetError("no_product");
-  if (!(await store.get("products", productId)))
-    throw new ProductSheetError("not_found");
+  const product = await store.get("products", productId);
+  if (!product) throw new ProductSheetError("not_found");
+  // De quem é a ficha (cotação ou pedido): só a do fornecedor principal leva
+  // os dados comerciais (código, preço, MOQ, loja, telefone…) para a mestre e
+  // o produto; a de outro fornecedor leva só os dados do produto, e o código,
+  // preço e MOQ dele ficam no vínculo dele (nenhum fornecedor herda de outro).
+  const owner =
+    (await store.get("quotes", ownerId)) ??
+    (await store.get("orders", ownerId));
+  const ownSupplier =
+    !!owner && !!product.supplierId && owner.supplierId === product.supplierId;
+  const fields: readonly string[] = ownSupplier
+    ? MASTER_SHEET_FIELDS
+    : MASTER_PRODUCT_FIELDS;
+  if (!ownSupplier && owner?.supplierId) {
+    const { rememberSupplierTerms } = await import("./product-suppliers");
+    await rememberSupplierTerms(user, productId, owner.supplierId, {
+      supplierSku: sheet.factoryItemCode ?? null,
+      price: sheet.price ?? null,
+      currency: sheet.currency === "RMB" ? "CNY" : (sheet.currency ?? null),
+      moq: sheet.moq ?? null,
+    });
+  }
   const input: Record<string, unknown> = {};
-  for (const k of MASTER_SHEET_FIELDS) {
+  for (const k of fields as readonly (keyof PurchaseSheet)[]) {
     const v = sheet[k];
     // Só o que está preenchido: campo em branco não apaga o que a mestre já tem.
     if (v === undefined || v === null || v === "") continue;

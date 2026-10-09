@@ -19,7 +19,14 @@ import {
   setPrimaryPhoto,
   setSourcingItemStatus,
 } from "@/lib/services/sourcing";
-import { files, num, requireUser, run, str } from "./helpers";
+import {
+  files,
+  num,
+  requireUser,
+  run,
+  str,
+  uploadedPhotoKeys,
+} from "./helpers";
 
 /*
  * Sourcing (Wellmix): visitas, produtos encontrados, fotos por tipo,
@@ -209,7 +216,7 @@ export async function saveSourcingItemAction(form: FormData) {
       },
       id,
     );
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (photos.length > 0) {
       await addPhotos(user, { sourcingItemId: item.id }, photos, "original");
       await audit(
@@ -245,7 +252,7 @@ export async function addSourcingPhotosAction(form: FormData) {
     const store = getStore();
     const item = await store.get("sourcing_items", parsed.itemId);
     if (!item) throw new Error("item_not_found");
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (photos.length === 0) throw new Error("no_photos");
     let derivedFromPhotoId: string | null = null;
     if (parsed.kind === "commercial") {

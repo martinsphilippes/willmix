@@ -9,6 +9,8 @@ export const pt = {
   "productPhotos.sheet.status": "{done} de {total} enviadas",
   "productPhotos.sheet.missing": "Falta enviar",
   "productSheet.photosLink": "Ver quais faltam",
+  "photo.uploading": "Enviando {percent}%",
+  "photo.failed": "Não foi possível enviar a foto. Tente de novo",
 };
 
 export const en = {
@@ -18,6 +20,8 @@ export const en = {
   "productPhotos.sheet.status": "{done} of {total} uploaded",
   "productPhotos.sheet.missing": "Not uploaded yet",
   "productSheet.photosLink": "See which are missing",
+  "photo.uploading": "Uploading {percent}%",
+  "photo.failed": "Could not upload the photo. Try again",
 };
 
 export const zh = {
@@ -27,4 +31,6 @@ export const zh = {
   "productPhotos.sheet.status": "已上传 {done}/{total}",
   "productPhotos.sheet.missing": "尚未上传",
   "productSheet.photosLink": "查看缺少哪些",
+  "photo.uploading": "上传中 {percent}%",
+  "photo.failed": "照片上传失败，请重试",
 };

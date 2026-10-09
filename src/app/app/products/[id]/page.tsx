@@ -157,6 +157,7 @@ export default async function ProductSheetPage({
     sheet: sheetSaved,
     suppliers: suppliersDone,
     at: saveToken,
+    from: errorFrom,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -782,7 +783,13 @@ export default async function ProductSheetPage({
       {/* ---- Fotos e medições ---- */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title={t("catalog.photos")} className="scroll-mt-4">
-          <div id="photos" />
+          <div id="photos" className="scroll-mt-24" />
+          {/* Erro do envio de fotos aparece aqui, onde a pessoa está. */}
+          {errorFrom === "photos" && errorText ? (
+            <div className="mb-3">
+              <Alert tone="danger">{errorText}</Alert>
+            </div>
+          ) : null}
           {/* As 5 fotos que a ficha mestre exige: o que falta, com envio direto. */}
           <SheetPhotoChecklist
             t={t}
@@ -855,6 +862,10 @@ export default async function ProductSheetPage({
               label={t("catalog.photos.add")}
               hint={t("catalog.photos.hint")}
               required
+              direct
+              pendingLabel={t("sheet.photos.sending")}
+              uploadingLabel={t("photo.uploading")}
+              failedLabel={t("photo.failed")}
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t("catalog.photos.kind")}>

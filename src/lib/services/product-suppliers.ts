@@ -447,11 +447,16 @@ export async function setMainSupplier(
       product.price !== null ||
       product.moq !== null;
     try {
+      // O produto tem os dados atuais do principal (o vínculo pode ser de
+      // uma cotação antiga): produto primeiro, preço e moeda juntos.
+      const priced = product.price !== null;
       await upsertLink(user, productId, previous, "catalog", (prev) => ({
-        supplierSku: prev?.supplierSku ?? clean(product.supplierSku),
-        price: prev?.price ?? product.price ?? null,
-        currency: prev?.currency ?? product.currency ?? null,
-        moq: prev?.moq ?? product.moq ?? null,
+        supplierSku: clean(product.supplierSku) ?? prev?.supplierSku ?? null,
+        price: priced ? product.price : (prev?.price ?? null),
+        currency: priced
+          ? (product.currency ?? null)
+          : (prev?.currency ?? null),
+        moq: product.moq ?? prev?.moq ?? null,
       }));
     } catch (error) {
       console.warn("[product-suppliers] keep previous main failed", error);
@@ -637,6 +642,34 @@ export async function releaseMainSupplier(
     typed,
   );
   return true;
+}
+
+/**
+ * Condições de um fornecedor que não é o principal (ex.: ficha da cotação
+ * dele adotada no cadastro): ficam no vínculo dele, nunca no produto.
+ */
+export async function rememberSupplierTerms(
+  user: User,
+  productId: string,
+  supplierId: string,
+  terms: {
+    supplierSku: string | null;
+    price: number | null;
+    currency: string | null;
+    moq: number | null;
+  },
+): Promise<void> {
+  try {
+    const priced = terms.price !== null;
+    await upsertLink(user, productId, supplierId, "quote", (prev) => ({
+      supplierSku: clean(terms.supplierSku) ?? prev?.supplierSku ?? null,
+      price: priced ? terms.price : (prev?.price ?? null),
+      currency: priced ? terms.currency : (prev?.currency ?? null),
+      moq: terms.moq ?? prev?.moq ?? null,
+    }));
+  } catch (error) {
+    console.warn("[product-suppliers] remember terms failed", error);
+  }
 }
 
 /** Código no vínculo do fornecedor, só quando ainda vazio (escrita de volta da ficha). */

@@ -408,6 +408,56 @@ describe("troca do fornecedor principal", () => {
     ]);
   });
 
+  it("adotar a ficha de outro fornecedor não muda os dados do principal", async () => {
+    const store = getStore();
+    const before = (await store.get("products", "prod-boneca"))!;
+    const quote = await quoteSheetFor("prod-boneca", "fornecedor-c");
+    await store.update("parties", "fornecedor-c", { type: "supplier" });
+    await qs.saveQuoteSheet(admin, quote.id, {
+      supplierName: "Ningbo Supplier C",
+      factoryItemCode: "C-CODE",
+      price: 1.11,
+      currency: "USD",
+      moq: 77,
+      material: "PVC novo",
+    });
+    await pss.adoptSheetIntoProduct(admin, quote.id);
+    const after = (await store.get("products", "prod-boneca"))!;
+    expect(after.supplierId).toBe(before.supplierId);
+    expect([after.supplierSku, after.price, after.moq]).toEqual([
+      before.supplierSku,
+      before.price,
+      before.moq,
+    ]);
+    // Dado do produto (material) vem; as condições de C ficam no vínculo dele.
+    expect(after.material).toBe("PVC novo");
+    const c = (await ps.productSupplierLink("prod-boneca", "fornecedor-c"))!;
+    expect([c.supplierSku, c.price, c.moq]).toEqual(["C-CODE", 1.11, 77]);
+  });
+
+  it("trocar o principal guarda no vínculo dele o preço atual do produto", async () => {
+    const store = getStore();
+    const product = (await store.get("products", "prod-boneca"))!;
+    const main = product.supplierId!;
+    // Vínculo do principal com uma cotação antiga; o produto tem o preço atual.
+    await ps.addProductSupplier(admin, "prod-boneca", main, null);
+    const link = (await ps.productSupplierLink("prod-boneca", main))!;
+    await store.update("product_suppliers", link.id, {
+      price: 1,
+      currency: "USD",
+      moq: 10,
+    });
+    await store.update("products", "prod-boneca", {
+      price: 4.4,
+      currency: "USD",
+      moq: 2500,
+    });
+    const other = main === "fornecedor-a" ? "fornecedor-c" : "fornecedor-a";
+    await ps.setMainSupplier(admin, "prod-boneca", other);
+    const kept = (await ps.productSupplierLink("prod-boneca", main))!;
+    expect([kept.price, kept.currency, kept.moq]).toEqual([4.4, "USD", 2500]);
+  });
+
   it("tabela ausente no Appwrite vira schema_outdated", () => {
     expect(
       errorCode(

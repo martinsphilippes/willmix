@@ -83,6 +83,9 @@ export function ItemForm({
             name="photos"
             label={t("sourcing.item.photos")}
             hint={t("sourcing.item.photoHint")}
+            direct
+            uploadingLabel={t("photo.uploading")}
+            failedLabel={t("photo.failed")}
           />
         </div>
       ) : null}

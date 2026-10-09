@@ -162,6 +162,9 @@ export function SheetPhotosCard({
                     autoSubmit
                     compact
                     dense
+                    direct
+                    uploadingLabel={t("photo.uploading")}
+                    failedLabel={t("photo.failed")}
                   />
                 </form>
               ) : null}

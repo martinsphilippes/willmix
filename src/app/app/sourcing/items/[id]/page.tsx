@@ -257,7 +257,13 @@ export default async function SourcingItemPage({
             className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
           >
             <input type="hidden" name="itemId" value={item.id} />
-            <PhotoInput name="photos" label={t("sourcing.photo.add")} />
+            <PhotoInput
+              name="photos"
+              label={t("sourcing.photo.add")}
+              direct
+              uploadingLabel={t("photo.uploading")}
+              failedLabel={t("photo.failed")}
+            />
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("sourcing.photo.kind")}>
                 <Select

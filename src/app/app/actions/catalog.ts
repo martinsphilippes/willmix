@@ -17,7 +17,14 @@ import {
   addPhotos,
   setPrimaryPhoto,
 } from "@/lib/services/sourcing";
-import { files, num, requireUser, run, str } from "./helpers";
+import {
+  files,
+  num,
+  requireUser,
+  run,
+  str,
+  uploadedPhotoKeys,
+} from "./helpers";
 import { parseCurrency } from "@/lib/currencies";
 
 /*
@@ -221,7 +228,8 @@ export async function updateProductSheetAction(form: FormData) {
 export async function addProductPhotosAction(form: FormData) {
   const user = await requireUser();
   const productId = str(form, "productId");
-  await run(`/app/products/${productId}`, async () => {
+  // Erro volta para o card Fotos (from=photos), onde a pessoa está.
+  await run(`/app/products/${productId}?from=photos#photos`, async () => {
     assertWellmix(user);
     const parsed = z
       .object({
@@ -234,7 +242,7 @@ export async function addProductPhotosAction(form: FormData) {
       });
     if (!(await getStore().get("products", productId)))
       throw new Error("product_not_found");
-    const photos = files(form, "photos");
+    const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (photos.length === 0) throw new Error("file_required");
     const added = await addPhotos(user, { productId }, photos, parsed.kind, {
       caption: parsed.caption,

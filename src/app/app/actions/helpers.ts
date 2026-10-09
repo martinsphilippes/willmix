@@ -25,6 +25,21 @@ export function num(form: FormData, key: string) {
   return v === "" ? null : Number(v);
 }
 
+/**
+ * Fotos que o navegador já subiu direto ao armazenamento (lote grande demais
+ * para a requisição): ids no formato do Appwrite, no máximo 12 por envio.
+ */
+export function uploadedPhotoKeys(form: FormData): string[] {
+  return (
+    form
+      .getAll("uploadedPhotoId")
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      // Ids do Appwrite (ID.unique()): letras, números, "_" e "-"; nada de "." ou "/".
+      .filter((v) => /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(v))
+      .slice(0, 12)
+  );
+}
+
 /** Arquivos enviados num campo (ignora vazios). */
 export function files(form: FormData, key: string): File[] {
   return form
@@ -62,7 +77,8 @@ export function errorCode(back: string, error: unknown) {
 function withError(back: string, code: string) {
   const url = new URL(back, "http://x");
   url.searchParams.set("error", code);
-  return url.pathname + url.search;
+  // Mantém a âncora (ex.: #photos): o aviso aparece onde a pessoa está.
+  return url.pathname + url.search + url.hash;
 }
 
 /** Executa a ação e volta para `back` com ?error=<código> em caso de falha. */
