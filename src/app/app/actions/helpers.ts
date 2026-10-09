@@ -44,8 +44,12 @@ function errorCode(back: string, error: unknown) {
       ? "invalid_input"
       : error instanceof Error && ERROR_CODE.test(error.message)
         ? error.message
-        : error instanceof Error && /unknown attribute/i.test(error.message)
-          ? // Coluna nova ainda não publicada no Appwrite (esquema desatualizado).
+        : error instanceof Error &&
+            (/unknown attribute/i.test(error.message) ||
+              /^(table|collection) with the requested id could not be found/i.test(
+                error.message,
+              ))
+          ? // Coluna ou tabela nova ainda não publicada no Appwrite (esquema desatualizado).
             "schema_outdated"
           : "unexpected";
   if (code === "unexpected") console.error("[action]", back, error);

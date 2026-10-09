@@ -3,6 +3,7 @@ import { getStore } from "@/lib/db";
 import type { Party, Product, User } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import { fillLinkCode, productSupplierLink } from "./product-suppliers";
 
 /*
  * Bloco "Fornecedor" da ficha de compra vem dos cadastros: local (cidade),
@@ -63,6 +64,24 @@ export function productOfSupplier(
   );
 }
 
+/**
+ * Produto visto por um fornecedor: o dono usa o código do produto; outro
+ * fornecedor do produto (vínculo em `product_suppliers`) usa o código dele;
+ * quem não é fornecedor do produto não recebe código nenhum.
+ */
+export function productForSupplier(
+  product: Pick<Product, "supplierSku" | "supplierId"> | null | undefined,
+  supplierId: string | null | undefined,
+  link: { supplierId: string; supplierSku: string | null } | null | undefined,
+): Pick<Product, "supplierSku" | "supplierId"> | null {
+  if (!product) return null;
+  if (supplierId && productOfSupplier({ id: supplierId }, product))
+    return product;
+  if (link && link.supplierId === supplierId)
+    return { supplierId: link.supplierId, supplierSku: link.supplierSku };
+  return product;
+}
+
 /** O que falta no cadastro para a ficha nascer completa. */
 export function missingRecordFields(
   supplier:
@@ -103,12 +122,17 @@ export async function sheetRecords(
     supplierId ? store.get("parties", supplierId) : null,
     productId ? store.get("products", productId) : null,
   ]);
+  const link =
+    supplier && product && !productOfSupplier(supplier, product)
+      ? await productSupplierLink(product.id, supplier.id)
+      : null;
+  const seen = productForSupplier(product, supplier?.id, link);
   return {
     supplierId: supplier?.id ?? null,
     productId: product?.id ?? null,
-    productApplies: productOfSupplier(supplier, product),
-    missing: missingRecordFields(supplier, product),
-    values: recordFields(supplier, product),
+    productApplies: productOfSupplier(supplier, seen),
+    missing: missingRecordFields(supplier, seen),
+    values: recordFields(supplier, seen),
     canEdit: isWellmix(user),
   };
 }
@@ -193,7 +217,11 @@ export async function fillRecordsFromSheet(
     const product = await store.get("products", productId);
     // Só no produto desse fornecedor, seja quem for o usuário: produto sem
     // fornecedor não é de ninguém (a Wellmix define o dono na tela do produto).
-    if (
+    // Outro fornecedor do produto: o código vai para o vínculo dele (nunca para o produto).
+    if (product && !productOfSupplier({ id: supplierId }, product)) {
+      if (await fillLinkCode(user, product.id, supplierId, sku))
+        filled.push("factoryItemCode");
+    } else if (
       product &&
       !clean(product.supplierSku) &&
       productOfSupplier({ id: supplierId }, product)

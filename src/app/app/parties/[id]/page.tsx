@@ -39,6 +39,7 @@ import { createUserAction } from "../../actions";
 import { updatePartyExtraAction } from "../../actions/catalog";
 import { saveCustomerOperationAction } from "../../actions/vision";
 import { CertificationsSection } from "../../products/_components/certifications-section";
+import { listSupplierProducts } from "@/lib/services/product-suppliers";
 import { catalogError } from "../../products/_components/shared";
 
 /**
@@ -99,6 +100,40 @@ export default async function PartyPage({
       store.list("users"),
       isCustomer ? getSettings() : Promise.resolve(null),
     ]);
+  // Produtos que o fornecedor fornece: os em que é o principal e os em que
+  // entrou pela cotação (cada um com o código, preço e MOQ dele).
+  const links = isSupplier ? await listSupplierProducts(id) : [];
+  const extraIds = links
+    .map((l) => l.productId)
+    .filter((pid) => !products.some((p) => p.id === pid));
+  const extraProducts = extraIds.length
+    ? await store.list("products", { filter: { id: extraIds } })
+    : [];
+  const supplierProducts = [
+    ...products.map((p) => ({
+      product: p,
+      main: true,
+      code: p.supplierSku,
+      price: p.price,
+      currency: p.currency,
+      moq: p.moq,
+    })),
+    ...links.flatMap((l) => {
+      const p = extraProducts.find((x) => x.id === l.productId);
+      return p
+        ? [
+            {
+              product: p,
+              main: false,
+              code: l.supplierSku,
+              price: l.price,
+              currency: l.currency,
+              moq: l.moq,
+            },
+          ]
+        : [];
+    }),
+  ].sort((a, b) => a.product.name.localeCompare(b.product.name));
   const errorText = partyError(t, error);
   /* Modalidade de operação do cliente (RADAR): nada presumido; aviso só na importação própria sem RADAR.
      O serviço decide se há problema; o texto vem do dicionário (radar nulo = não informado, "none" = sem habilitação). */
@@ -478,7 +513,7 @@ export default async function PartyPage({
             )}
           </Card>
           <Card title={t("catalog.party.products")}>
-            {products.length === 0 ? (
+            {supplierProducts.length === 0 ? (
               <Empty>{t("catalog.party.products.empty")}</Empty>
             ) : (
               <Table>
@@ -491,36 +526,45 @@ export default async function PartyPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((p) => (
-                    <tr key={p.id} className={rowClass}>
-                      <Td className="font-medium">
-                        <TextLink
-                          href={`/app/products/${p.id}`}
-                          className="text-zinc-900"
-                        >
-                          {p.name}
-                        </TextLink>
-                        {p.sku ? (
-                          <span className="block font-mono text-xs font-normal text-zinc-500">
-                            {p.sku}
+                  {supplierProducts.map(
+                    ({ product: p, main, code, price, currency, moq }) => (
+                      <tr
+                        key={p.id}
+                        className={rowClass}
+                        data-party-product={p.id}
+                      >
+                        <Td className="font-medium">
+                          <TextLink
+                            href={`/app/products/${p.id}`}
+                            className="text-zinc-900"
+                          >
+                            {p.name}
+                          </TextLink>
+                          <span className="block text-xs font-normal text-zinc-500">
+                            {p.sku ? (
+                              <span className="font-mono">{p.sku} · </span>
+                            ) : null}
+                            {main
+                              ? t("productSuppliers.partyRole.main")
+                              : t("productSuppliers.partyRole.linked")}
                           </span>
-                        ) : null}
-                      </Td>
-                      <Td>
-                        <span className="font-mono text-xs">
-                          {p.supplierSku ?? "—"}
-                        </span>
-                      </Td>
-                      <Td className="whitespace-nowrap text-right tabular-nums">
-                        {p.price !== null
-                          ? formatMoney(p.price, p.currency, t)
-                          : "—"}
-                      </Td>
-                      <Td className="text-right tabular-nums">
-                        {p.moq ?? "—"}
-                      </Td>
-                    </tr>
-                  ))}
+                        </Td>
+                        <Td>
+                          <span className="font-mono text-xs">
+                            {code ?? "—"}
+                          </span>
+                        </Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {price !== null
+                            ? formatMoney(price, currency, t)
+                            : "—"}
+                        </Td>
+                        <Td className="text-right tabular-nums">
+                          {moq !== null ? moq.toLocaleString(t.intl) : "—"}
+                        </Td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </Table>
             )}

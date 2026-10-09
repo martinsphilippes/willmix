@@ -17,6 +17,9 @@ import {
 import { MAX_LOTS } from "@/lib/services/purchase-sheet-calc";
 import { files, requireUser, run, runInPlace, str } from "./helpers";
 
+/** Opção do seletor para o nome antigo digitado à mão (fornecedor não cadastrado). */
+const LEGACY_SUPPLIER = "__legacy__";
+
 /*
  * Ficha de compra (planilha COMPRAS) da Preparação. Só os campos presentes no
  * formulário mudam; o serviço ainda descarta o que o papel não pode editar.
@@ -259,11 +262,34 @@ export async function saveProductSheetAction(form: FormData) {
   const productId = z.string().min(1).max(64).parse(str(form, "productId"));
   await run(`/app/products/${productId}`, async () => {
     const { saveProductSheet } = await import("@/lib/services/product-sheet");
-    const { missing } = await saveProductSheet(
-      user,
-      productId,
-      parseSheet(form),
-    );
+    const input = parseSheet(form);
+    // Fornecedor escolhido entre os cadastrados: vira o principal do produto
+    // e o nome vem do cadastro (o texto digitado não vale).
+    const supplierId = z.string().max(64).parse(str(form, "supplierId"));
+    const chosen =
+      supplierId && supplierId !== LEGACY_SUPPLIER ? supplierId : null;
+    if (chosen) {
+      const { setMainSupplier } =
+        await import("@/lib/services/product-suppliers");
+      const party = await setMainSupplier(user, productId, chosen);
+      input.supplierName = party.name.slice(0, 160);
+    }
+    const { sheet, missing } = await saveProductSheet(user, productId, input);
+    if (chosen) {
+      const { syncMainSupplierLink } =
+        await import("@/lib/services/product-suppliers");
+      const { fillRecordsFromSheet } =
+        await import("@/lib/services/sheet-records");
+      // Código do principal no vínculo dele; o que faltar no cadastro do
+      // fornecedor (cidade, loja, telefone) é gravado nele.
+      await syncMainSupplierLink(
+        user,
+        { supplierId: chosen, supplierSku: null },
+        { supplierId: chosen, supplierSku: sheet.factoryItemCode },
+        productId,
+      );
+      await fillRecordsFromSheet(user, chosen, productId, sheet);
+    }
     return `/app/products/${productId}?sheet=${missing.length ? "partial" : "complete"}#product-sheet`;
   });
 }

@@ -12,6 +12,8 @@ Modelo: **solicitação → pedido → item → etapa → requisito → submiss�
 | `WAITING_DOWN_PAYMENT` | Cliente / Wellmix | Cliente paga; Wellmix confirma manualmente (`confirmDownPayment`)    |
 | `ORDERED`              |                   | Pedido criado; fluxo continua nas etapas                             |
 
+Quem responde a cotação de um produto do catálogo entra na lista de fornecedores do produto (`product_suppliers`), com o código do item, o preço, o MOQ e o prazo da resposta; escolher a cotação soma no histórico dele. O fornecedor principal continua sendo o do cadastro do produto.
+
 ## Etapas do pedido (tabela `stages`, chave `key`)
 
 Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked`, `done`), responsável, prazo (`dueAt`, calculado por `stageDueDays`), percentual e requisitos.

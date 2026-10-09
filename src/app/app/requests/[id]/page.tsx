@@ -25,6 +25,7 @@ import {
 } from "@/lib/auth/permissions";
 import { getStore, type FreightQuote } from "@/lib/db";
 import { freightByQuote } from "@/lib/services/freight";
+import { listProductSuppliers } from "@/lib/services/product-suppliers";
 import { batchSiblings, getRequestForUser } from "@/lib/services/requests";
 import { getT } from "@/i18n/server";
 import {
@@ -106,6 +107,26 @@ export default async function RequestDetailPage({
     ]);
   const supplierName = (supplierId: string) =>
     suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
+  // RFQ: quem já fornece este produto aparece primeiro (o principal antes).
+  const productForRfq =
+    wellmix && request.productId
+      ? await store.get("products", request.productId)
+      : null;
+  const supplying = new Set(
+    productForRfq
+      ? [
+          ...(productForRfq.supplierId ? [productForRfq.supplierId] : []),
+          ...(await listProductSuppliers(productForRfq.id)).map(
+            (l) => l.supplierId,
+          ),
+        ]
+      : [],
+  );
+  const rfqSuppliers = [...suppliers].sort((a, b) => {
+    const rank = (id: string) =>
+      id === productForRfq?.supplierId ? 0 : supplying.has(id) ? 1 : 2;
+    return rank(a.id) - rank(b.id) || a.name.localeCompare(b.name);
+  });
   const invited = new Set(quotes.map((q) => q.supplierId));
   /* RFQ já aberta: o cartão vira "convidar mais"; todos convidados, sem botão. */
   const rfqOpened = request.status !== "REQUESTED" && quotes.length > 0;
@@ -326,8 +347,13 @@ export default async function RequestDetailPage({
                       ? t("rfq.inviteMoreHint")
                       : t("requests.rfq.select")}
                 </p>
+                {supplying.size ? (
+                  <p className="text-xs text-zinc-500">
+                    {t("productSuppliers.rfqHint")}
+                  </p>
+                ) : null}
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {suppliers.map((s) => (
+                  {rfqSuppliers.map((s) => (
                     <label
                       key={s.id}
                       className={cx(
@@ -348,6 +374,14 @@ export default async function RequestDetailPage({
                       <span>
                         <span className="font-medium">{s.name}</span>{" "}
                         <span className="text-zinc-500">· {s.country}</span>
+                        {supplying.has(s.id) ? (
+                          <span
+                            className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700"
+                            data-rfq-supplying
+                          >
+                            {t("productSuppliers.rfqLinked")}
+                          </span>
+                        ) : null}
                       </span>
                     </label>
                   ))}

@@ -90,6 +90,9 @@ import {
   visionError,
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
+import { SuppliersCard } from "../_components/suppliers-card";
+import { productSuppliersView } from "@/lib/services/product-suppliers";
+import type { SupplierOption } from "@/components/supplier-picker";
 import { MoneyInput } from "@/components/money-input";
 
 /* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
@@ -144,7 +147,13 @@ export default async function ProductSheetPage({
   if (!user) redirect("/login");
   assertWellmix(user);
   const { id } = await params;
-  const { error, saved, qty, sheet: sheetSaved } = await searchParams;
+  const {
+    error,
+    saved,
+    qty,
+    sheet: sheetSaved,
+    suppliers: suppliersDone,
+  } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
   const {
@@ -212,6 +221,22 @@ export default async function ProductSheetPage({
     product.supplierId ? getStore().get("parties", product.supplierId) : null,
   ]);
   const masterDraft = productSheetDraft(product, masterSupplier);
+  // Fornecedores deste produto (principal primeiro) e o seletor da ficha mestre.
+  const supplierRows = await productSuppliersView(product);
+  const supplierOptions: SupplierOption[] = suppliers
+    .filter((s) => s.active || s.id === product.supplierId)
+    .map((s) => {
+      const row = supplierRows.find((r) => r.supplier.id === s.id);
+      return {
+        id: s.id,
+        name: s.name,
+        city: s.city ?? null,
+        storeNumber: s.storeNumber ?? null,
+        phone: s.phone ?? null,
+        code: row?.supplierSku ?? null,
+        linked: !!row,
+      };
+    });
   const masterMissing = await productSheetMissing(
     product.id,
     masterSheet ?? masterDraft,
@@ -662,6 +687,17 @@ export default async function ProductSheetPage({
         </div>
       </form>
 
+      {/* ---- Fornecedores deste produto (vários; quem cota entra sozinho) ---- */}
+      <section className="mt-6">
+        <SuppliersCard
+          t={t}
+          productId={product.id}
+          rows={supplierRows}
+          suppliers={suppliers}
+          done={typeof suppliersDone === "string" ? suppliersDone : null}
+        />
+      </section>
+
       {/* ---- Ficha de compra mestre: a mesma ficha do pedido; pedidos e cotações deste produto nascem dela ---- */}
       <section id="product-sheet" className="mt-6 scroll-mt-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -711,6 +747,8 @@ export default async function ProductSheetPage({
             editCustoms
             lotRequired={false}
             master
+            supplierOptions={supplierOptions}
+            supplierId={product.supplierId}
             ncmSuggestions={ncmChipsView(
               t,
               await ncmSuggestionsFor(product.id),

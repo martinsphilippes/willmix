@@ -13,11 +13,14 @@ import { audit } from "./audit";
 import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
 import {
   fillRecordsFromSheet,
+  productForSupplier,
+  productOfSupplier,
   recordFields,
   sheetRecords,
   withRecordDefaults,
   type SheetRecords,
 } from "./sheet-records";
+import { productSupplierLink } from "./product-suppliers";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
@@ -96,11 +99,20 @@ async function prefillQuote(
   request: Request,
 ): Promise<SheetInput & { productId: string | null }> {
   const store = getStore();
-  const [product, supplier, master] = await Promise.all([
+  const [product, supplier, master, link] = await Promise.all([
     request.productId ? store.get("products", request.productId) : null,
     store.get("parties", quote.supplierId),
     masterSheetInput(request.productId),
+    productSupplierLink(request.productId, quote.supplierId),
   ]);
+  // Dados comerciais só do próprio fornecedor: o vínculo dele (última
+  // cotação) ou, se ele é o principal, o preço e o MOQ do produto. Nunca os
+  // de outro fornecedor (isolamento entre fornecedores).
+  const own = productOfSupplier(supplier, product);
+  const ownPrice = link?.price ?? (own ? (product?.price ?? null) : null);
+  const ownCurrency =
+    link?.currency ?? (own ? (product?.currency ?? null) : null);
+  const ownMoq = link?.moq ?? (own ? (product?.moq ?? null) : null);
   // Programação de entregas pedida pelo cliente vira as programações da ficha.
   const requestLots =
     scheduleToLots(
@@ -110,24 +122,29 @@ async function prefillQuote(
   // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
   // desta cotação prevalecem.
   // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
-  const records = recordFields(supplier, product);
+  const records = recordFields(
+    supplier,
+    productForSupplier(product, quote.supplierId, link),
+  );
   if (master)
     return {
       ...master,
       productId: product?.id ?? null,
       supplierName: supplier?.name ?? master.supplierName ?? null,
       supplierPhone: supplier?.phone ?? master.supplierPhone ?? null,
-      currency: sheetCurrency(quote.currency) ?? master.currency ?? null,
-      price: quote.price ?? master.price ?? null,
+      currency:
+        sheetCurrency(quote.currency ?? ownCurrency) ?? master.currency ?? null,
+      price: quote.price ?? ownPrice ?? master.price ?? null,
+      moq: ownMoq ?? master.moq ?? null,
       lots: requestLots,
       ...records,
     };
   return {
     productId: product?.id ?? null,
     ...records,
-    currency: sheetCurrency(quote.currency ?? product?.currency),
-    price: quote.price ?? product?.price ?? null,
-    moq: product?.moq ?? null,
+    currency: sheetCurrency(quote.currency ?? ownCurrency),
+    price: quote.price ?? ownPrice,
+    moq: ownMoq,
     masterCartonQty: product?.masterBoxQty ?? null,
     innerQty: product?.innerBoxQty ?? null,
     netWeightPcKg: product?.netWeightKg ?? null,

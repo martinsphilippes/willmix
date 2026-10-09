@@ -153,6 +153,10 @@ export async function updateProductSheetAction(form: FormData) {
       ...pantoneField,
     };
     await store.update("products", id, next);
+    // Principal (e o antigo, se trocou) na lista de fornecedores do produto, cada um com o seu código.
+    const { syncMainSupplierLink } =
+      await import("@/lib/services/product-suppliers");
+    await syncMainSupplierLink(user, product, next, id);
     // Ficha mestre do produto (se existir) acompanha preço, caixa, medidas, cor e material.
     const { syncMasterFromProduct } =
       await import("@/lib/services/product-sheet");
