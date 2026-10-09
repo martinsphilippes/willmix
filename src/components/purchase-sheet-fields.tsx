@@ -412,9 +412,7 @@ export function PurchaseSheetFields({
                 <option value="">—</option>
                 {SHEET_CURRENCIES.map((v) => (
                   <option key={v} value={v}>
-                    {v === "RMB"
-                      ? "Yuan (RMB)"
-                      : t(`currency.name.${v}` as DictionaryKey)}
+                    {t(`currency.name.${v}` as DictionaryKey)}
                   </option>
                 ))}
               </select>

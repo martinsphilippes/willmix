@@ -250,8 +250,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       </header>
       {dataMode() === "memory" && process.env.NODE_ENV === "production" ? (
         <div className="bg-amber-100 px-4 py-1 text-center text-xs text-amber-900">
-          Modo demonstração: dados em memória, não persistentes. Configure o
-          Appwrite para produção.
+          {t("app.demoBanner")}
         </div>
       ) : null}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">

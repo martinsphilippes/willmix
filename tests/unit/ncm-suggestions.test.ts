@@ -10,6 +10,7 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const svc = await import("@/lib/services/ncm-suggestions");
 const taxes = await import("@/lib/services/taxes");
+const { translator } = await import("@/i18n");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -42,7 +43,7 @@ describe("sugestões de NCM na ficha", () => {
     expect(
       chips.some((c) => c.ncm === "70139900" && c.source === "suggested"),
     ).toBe(true);
-    const view = svc.ncmChipsView((k: string) => k, chips.slice(0, 1));
+    const view = svc.ncmChipsView(translator("pt"), chips.slice(0, 1));
     expect(view[0].label).toBe("7013.37.00");
   });
 });

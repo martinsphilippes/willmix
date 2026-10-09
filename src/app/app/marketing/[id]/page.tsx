@@ -313,7 +313,14 @@ export default async function MarketingKitPage({
                               )
                             : "—",
                         ],
-                        [t("finance.method"), payment?.method ?? "—"],
+                        [
+                          t("finance.method"),
+                          payment?.method
+                            ? t(
+                                `settings.option.${payment.method}` as DictionaryKey,
+                              )
+                            : "—",
+                        ],
                       ]}
                     />
                     <p className="text-xs text-zinc-500">

@@ -498,7 +498,7 @@ export default async function NewRequestPage({
               photos: t("lookup.fill.photos"),
               photosNone: t("lookup.fill.photosNone"),
               productName: `${t("common.product")} (${t("common.name")})`,
-              placeholder: "Ex.: Jarra de vidro 1,5 L",
+              placeholder: t("ph.request.productName"),
               description: t("requests.description"),
               specification: t("requests.specification"),
               attachments: t("requests.attachments"),

@@ -1,10 +1,21 @@
 import { LOCALES, type Locale } from "@/lib/db/schema";
 import { dictionaries, type DictionaryKey } from "./dictionaries";
 
-export type Translate = (
+export type Translate = ((
   key: DictionaryKey,
   params?: Record<string, string | number>,
-) => string;
+) => string) & {
+  /** Idioma em uso. */
+  locale: Locale;
+  /** Tag para Intl (datas e números): pt-BR, en-US, zh-CN. */
+  intl: string;
+};
+
+export const INTL_TAG: Record<Locale, string> = {
+  pt: "pt-BR",
+  en: "en-US",
+  zh: "zh-CN",
+};
 
 export function isLocale(value: unknown): value is Locale {
   return (
@@ -14,7 +25,7 @@ export function isLocale(value: unknown): value is Locale {
 
 export function translator(locale: Locale): Translate {
   const dict = dictionaries[locale] ?? dictionaries.pt;
-  return (key, params) => {
+  const t = (key: DictionaryKey, params?: Record<string, string | number>) => {
     let text = dict[key] ?? dictionaries.pt[key] ?? key;
     if (params) {
       for (const [name, value] of Object.entries(params)) {
@@ -23,6 +34,7 @@ export function translator(locale: Locale): Translate {
     }
     return text;
   };
+  return Object.assign(t, { locale, intl: INTL_TAG[locale] ?? "pt-BR" });
 }
 
 /** Rótulo de requisito traduzido quando a chave é conhecida; senão o rótulo salvo. */

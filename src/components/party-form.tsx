@@ -38,10 +38,10 @@ export function PartyForm({
         <Field label={t("common.email")}>
           <Input name="email" type="email" defaultValue={party?.email ?? ""} />
         </Field>
-        <Field label="Telefone / WhatsApp">
+        <Field label={t("parties.phone")}>
           <Input name="phone" defaultValue={party?.phone ?? ""} />
         </Field>
-        <Field label="CNPJ / Tax ID">
+        <Field label={t("parties.taxId")}>
           <Input name="taxId" defaultValue={party?.taxId ?? ""} />
         </Field>
       </div>

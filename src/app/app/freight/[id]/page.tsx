@@ -126,7 +126,9 @@ export default async function FreightPage({
               <strong className="text-brand-800">
                 {formatMoney(freight.amount, freight.currency)}
               </strong>
-              {freight.transitDays ? ` · ${freight.transitDays} d` : ""}
+              {freight.transitDays
+                ? ` · ${t("history.days", { days: freight.transitDays })}`
+                : ""}
               <span className="block text-xs text-zinc-500">
                 {t("freight.answeredAt", {
                   date: formatDate(freight.answeredAt),

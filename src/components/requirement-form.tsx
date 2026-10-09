@@ -105,12 +105,13 @@ export function RequirementForm({
           name="amount"
           currencyName="currency"
           required
-          labels={Object.fromEntries(
-            CURRENCIES.map((c) => [
+          labels={Object.fromEntries([
+            ["currency", t("common.currency")],
+            ...CURRENCIES.map((c) => [
               c,
               t(`currency.name.${c}` as DictionaryKey),
             ]),
-          )}
+          ])}
           defaultCurrency={parseMoneyValue(defaultValue)?.currency ?? "BRL"}
           defaultAmount={parseMoneyValue(defaultValue)?.amount ?? null}
         />

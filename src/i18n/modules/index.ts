@@ -42,6 +42,7 @@ import * as sheetRecords from "./sheet-records";
 import * as navGroups from "./nav-groups";
 import * as placeholders from "./placeholders";
 import * as ncmSheet from "./ncm-sheet";
+import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
 
 export const modulesPt = {
@@ -84,6 +85,7 @@ export const modulesPt = {
   ...navGroups.pt,
   ...placeholders.pt,
   ...ncmSheet.pt,
+  ...i18nSweep.pt,
   ...requestSchedule.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -126,6 +128,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...navGroups.en,
   ...placeholders.en,
   ...ncmSheet.en,
+  ...i18nSweep.en,
   ...requestSchedule.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -168,5 +171,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...navGroups.zh,
   ...placeholders.zh,
   ...ncmSheet.zh,
+  ...i18nSweep.zh,
   ...requestSchedule.zh,
 };

@@ -3,6 +3,7 @@
  * idioma escolhido, como todo o resto. Mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "ph.request.productName": "Ex.: Jarra de vidro 1,5 L",
   "ph.sheet.location": "Yiwu",
   "ph.sheet.supplierStore": "A 154678",
   "ph.sheet.colorAssortment": "BRANCO / PRETO / VERMELHO",
@@ -26,6 +27,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "ph.request.productName": "E.g. 1.5 L glass pitcher",
   "ph.sheet.location": "Yiwu",
   "ph.sheet.supplierStore": "A 154678",
   "ph.sheet.colorAssortment": "WHITE / BLACK / RED",
@@ -48,6 +50,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "ph.request.productName": "例：1.5 升玻璃水壶",
   "ph.sheet.location": "义乌",
   "ph.sheet.supplierStore": "A 154678",
   "ph.sheet.colorAssortment": "白 / 黑 / 红",

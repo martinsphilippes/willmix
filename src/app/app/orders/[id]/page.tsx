@@ -997,7 +997,7 @@ export default async function OrderPage({
                         {d.name}
                       </a>
                       <span className="shrink-0 text-xs text-zinc-500">
-                        {d.type} · v{d.version}
+                        {t(`docType.${d.type}` as DictionaryKey)} · v{d.version}
                       </span>
                     </div>
                     {documentTrails[d.id] ? (
