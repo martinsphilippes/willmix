@@ -34,11 +34,14 @@ export function MoneyInput({
   disabled,
   decimals = 2,
   placeholder,
+  locale = "pt-BR",
   className,
   selectClassName,
   size = "md",
   id,
 }: {
+  /** Tag Intl do idioma: separadores de milhar e decimal (pt-BR, en-US, zh-CN). */
+  locale?: string;
   name?: string;
   currency?: string | null;
   currencyName?: string;
@@ -65,15 +68,19 @@ export function MoneyInput({
   );
   const [watched, setWatched] = useState("");
   const [rawState, setRaw] = useState(
-    normalizeRaw(defaultAmount == null ? "" : String(defaultAmount)),
+    normalizeRaw(defaultAmount == null ? "" : String(defaultAmount), locale),
   );
-  const [textState, setText] = useState(() => formatOrRaw(rawState, decimals));
+  const [textState, setText] = useState(() =>
+    formatOrRaw(rawState, decimals, locale),
+  );
   const [focused, setFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
   // Controlado: o valor vem de fora; fora do foco, a tela mostra formatado.
   const raw = value ?? rawState;
   const text =
-    value !== undefined && !focused ? formatOrRaw(value, decimals) : textState;
+    value !== undefined && !focused
+      ? formatOrRaw(value, decimals, locale)
+      : textState;
 
   // Segue o seletor de moeda já existente no formulário (a leitura inicial
   // é adiada: o campo só existe depois de montar).
@@ -105,7 +112,7 @@ export function MoneyInput({
   function update(next: string) {
     setText(next);
     setInvalid(false);
-    const normalized = normalizeRaw(next);
+    const normalized = normalizeRaw(next, locale);
     setRaw(normalized);
     onValueChange?.(normalized);
   }
@@ -121,7 +128,7 @@ export function MoneyInput({
       setInvalid(true);
       return;
     }
-    setText(formatPlain(n, decimals));
+    setText(formatPlain(n, decimals, locale));
     const normalized = n.toFixed(decimals);
     setRaw(normalized);
     onValueChange?.(normalized);
@@ -185,10 +192,13 @@ export function MoneyInput({
           inputMode="decimal"
           required={required}
           disabled={disabled}
-          placeholder={placeholder ?? (decimals === 2 ? "0,00" : "0")}
+          placeholder={
+            placeholder ?? (decimals === 2 ? formatPlain(0, 2, locale) : "0")
+          }
           value={text}
           onFocus={() => {
-            if (value !== undefined) setText(formatOrRaw(value, decimals));
+            if (value !== undefined)
+              setText(formatOrRaw(value, decimals, locale));
             setFocused(true);
           }}
           onChange={(e) => update(e.target.value)}
@@ -214,23 +224,53 @@ function symbolOf(code: string) {
   return isCurrency(c) ? CURRENCY_SYMBOL[c as Currency] : c;
 }
 
-/** Texto digitado → número normalizado com ponto ("1.234,56" → "1234.56"); vazio fica vazio. */
-function normalizeRaw(text: string) {
-  const s = text.replace(/\s|[A-Za-z$€¥]/g, "");
-  if (!s) return "";
-  return s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s;
+/** Separador decimal do idioma ("," em pt-BR, "." em en-US e zh-CN). */
+function decimalSeparator(locale: string) {
+  try {
+    return (
+      new Intl.NumberFormat(locale)
+        .formatToParts(1.1)
+        .find((p) => p.type === "decimal")?.value ?? "."
+    );
+  } catch {
+    return ".";
+  }
 }
 
+/**
+ * Texto digitado → número normalizado com ponto; vazio fica vazio.
+ * Com ponto e vírgula juntos, o último é o decimal ("1.234,56" e "1,234.56" → 1234.56) em qualquer idioma.
+ * Só um separador: no idioma de vírgula decimal (pt-BR) a vírgula é decimal e o ponto fica como está;
+ * no idioma de ponto decimal (en-US, zh-CN) a vírgula é milhar, salvo vírgula única seguida de 1–2 dígitos
+ * (hábito brasileiro: "1,5" → 1.5).
+ */
+export function normalizeMoneyText(text: string, locale = "pt-BR") {
+  const s = text.replace(/\s|[A-Za-z$€¥]/g, "");
+  if (!s) return "";
+  const lastDot = s.lastIndexOf(".");
+  const lastComma = s.lastIndexOf(",");
+  if (lastDot >= 0 && lastComma >= 0)
+    return lastComma > lastDot
+      ? s.replace(/\./g, "").replace(",", ".")
+      : s.replace(/,/g, "");
+  if (decimalSeparator(locale) === ",")
+    return s.includes(",") ? s.replace(",", ".") : s;
+  if (lastComma >= 0 && /^[^,]*,\d{1,2}$/.test(s)) return s.replace(",", ".");
+  return s.replace(/,/g, "");
+}
+
+const normalizeRaw = normalizeMoneyText;
+
 /** 1234.5 → "1.234,50" (sem símbolo; o símbolo fica fora do campo). */
-function formatPlain(n: number, decimals: number) {
-  return new Intl.NumberFormat("pt-BR", {
+function formatPlain(n: number, decimals: number, locale = "pt-BR") {
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: Math.min(decimals, 2),
     maximumFractionDigits: decimals,
   }).format(n);
 }
 
-function formatOrRaw(raw: string, decimals: number) {
+function formatOrRaw(raw: string, decimals: number, locale = "pt-BR") {
   if (!raw) return "";
   const n = Number(raw);
-  return Number.isFinite(n) ? formatPlain(n, decimals) : raw;
+  return Number.isFinite(n) ? formatPlain(n, decimals, locale) : raw;
 }

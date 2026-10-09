@@ -123,12 +123,14 @@ export default async function ProductsPage({
                     </Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">
                       {p.price !== null
-                        ? formatMoney(p.price, p.currency)
+                        ? formatMoney(p.price, p.currency, t)
                         : "—"}
                     </Td>
                     <Td className="text-right tabular-nums">{p.moq ?? "—"}</Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">
-                      {p.cbm !== null ? `${p.cbm.toFixed(4)} m³` : "—"}
+                      {p.cbm !== null
+                        ? `${p.cbm.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
+                        : "—"}
                     </Td>
                     <Td>
                       {p.source ? (

@@ -91,21 +91,21 @@ export default async function FreightListPage() {
                   ) : null}
                   <Td className="tabular-nums">
                     {t("freight.cargo.cartonsSummary", {
-                      cartons: f.cartons?.toLocaleString("pt-BR") ?? "?",
+                      cartons: f.cartons?.toLocaleString(t.intl) ?? "?",
                       cbm:
-                        f.totalCbm?.toLocaleString("pt-BR", {
+                        f.totalCbm?.toLocaleString(t.intl, {
                           maximumFractionDigits: 3,
                         }) ?? "?",
                       kg:
-                        f.grossWeightKg?.toLocaleString("pt-BR", {
+                        f.grossWeightKg?.toLocaleString(t.intl, {
                           maximumFractionDigits: 1,
                         }) ?? "?",
                     })}
                   </Td>
-                  <Td>{formatDate(request?.deadline)}</Td>
+                  <Td>{formatDate(request?.deadline, t)}</Td>
                   <Td className="tabular-nums">
                     {f.status === "answered"
-                      ? formatMoney(f.amount, f.currency)
+                      ? formatMoney(f.amount, f.currency, t)
                       : "—"}
                   </Td>
                 </tr>

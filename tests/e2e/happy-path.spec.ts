@@ -42,7 +42,8 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("input[name=lot1Interval]", "30");
   await page.fill("input[name=lot1Cartons]", "50");
   // Conta ao vivo e sugestão para fechar o container (sem aplicar).
-  await expect(page.locator("[data-sheet-totals]")).toContainText("1.200");
+  // O fornecedor chinês vê "1,200" (zh-CN); em português seria "1.200".
+  await expect(page.locator("[data-sheet-totals]")).toContainText(/1[.,]200/);
   await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
     "data-fill-suggestion",
     "partial",

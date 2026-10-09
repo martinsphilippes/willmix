@@ -20,10 +20,10 @@ import { answerFreightAction } from "../../actions/freight";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { MoneyInput } from "@/components/money-input";
 
-const num = (n: number | null | undefined, digits = 2) =>
+const num = (intl: string, n: number | null | undefined, digits = 2) =>
   n === null || n === undefined
     ? null
-    : n.toLocaleString("pt-BR", { maximumFractionDigits: digits });
+    : n.toLocaleString(intl, { maximumFractionDigits: digits });
 
 /**
  * Pedido de frete para a companhia marítima: só a carga (sem preço, nome do
@@ -49,7 +49,7 @@ export default async function FreightPage({
         .find(([k, v]) => v !== k)?.[1] ?? t("common.error"));
   const size =
     sheet?.heightCm && sheet.widthCm && sheet.lengthCm
-      ? `${num(sheet.heightCm, 1)} × ${num(sheet.widthCm, 1)} × ${num(sheet.lengthCm, 1)} cm`
+      ? `${num(t.intl, sheet.heightCm, 1)} × ${num(t.intl, sheet.widthCm, 1)} × ${num(t.intl, sheet.lengthCm, 1)} cm`
       : null;
   const tone =
     freight.status === "answered"
@@ -78,23 +78,29 @@ export default async function FreightPage({
             items={[
               [
                 t("freight.cargo.quantity"),
-                `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
+                `${request.quantity.toLocaleString(t.intl)} ${request.unit}`,
               ],
-              [t("freight.cargo.cartons"), num(freight.cartons, 0)],
+              [t("freight.cargo.cartons"), num(t.intl, freight.cartons, 0)],
               [
                 t("freight.cargo.cbm"),
                 freight.totalCbm !== null
-                  ? `${num(freight.totalCbm, 3)} m³`
+                  ? `${num(t.intl, freight.totalCbm, 3)} m³`
                   : null,
               ],
               [
                 t("freight.cargo.gross"),
                 freight.grossWeightKg !== null
-                  ? `${num(freight.grossWeightKg)} kg`
+                  ? `${num(t.intl, freight.grossWeightKg)} kg`
                   : null,
               ],
-              [t("freight.cargo.perCarton"), num(sheet?.masterCartonQty, 0)],
-              [t("freight.cargo.cbmPerCarton"), num(sheet?.cbmPerCarton, 4)],
+              [
+                t("freight.cargo.perCarton"),
+                num(t.intl, sheet?.masterCartonQty, 0),
+              ],
+              [
+                t("freight.cargo.cbmPerCarton"),
+                num(t.intl, sheet?.cbmPerCarton, 4),
+              ],
               [t("freight.cargo.cartonSize"), size],
               [t("freight.cargo.incoterm"), sheet?.incoterm ?? null],
               [t("freight.cargo.location"), sheet?.location ?? null],
@@ -103,11 +109,11 @@ export default async function FreightPage({
               [
                 t("freight.cargo.productionStart"),
                 sheet?.productionStartAt
-                  ? formatDate(sheet.productionStartAt)
+                  ? formatDate(sheet.productionStartAt, t)
                   : null,
               ],
               [t("freight.cargo.ncm"), sheet?.ncm ?? null],
-              [t("freight.col.deadline"), formatDate(request.deadline)],
+              [t("freight.col.deadline"), formatDate(request.deadline, t)],
             ]}
           />
           {request.description ? (
@@ -124,14 +130,14 @@ export default async function FreightPage({
           {freight.status === "answered" ? (
             <p className="mb-3 text-sm text-zinc-700">
               <strong className="text-brand-800">
-                {formatMoney(freight.amount, freight.currency)}
+                {formatMoney(freight.amount, freight.currency, t)}
               </strong>
               {freight.transitDays
                 ? ` · ${t("history.days", { days: freight.transitDays })}`
                 : ""}
               <span className="block text-xs text-zinc-500">
                 {t("freight.answeredAt", {
-                  date: formatDate(freight.answeredAt),
+                  date: formatDate(freight.answeredAt, t),
                 })}
               </span>
             </p>
@@ -147,6 +153,7 @@ export default async function FreightPage({
               </p>
               <Field label={t("freight.form.amount")}>
                 <MoneyInput
+                  locale={t.intl}
                   name="amount"
                   watchField="currency"
                   required

@@ -5,7 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Portal Wellmix",
     short_name: "Wellmix",
-    description: "Importação do pedido à entrega: cliente, fornecedor e parceiros.",
+    description:
+      "Importação do pedido à entrega: cliente, fornecedor e parceiros.",
     start_url: "/app",
     display: "standalone",
     background_color: "#f5f5f6",

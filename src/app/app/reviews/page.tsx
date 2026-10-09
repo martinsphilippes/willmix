@@ -159,7 +159,9 @@ export default async function ReviewsPage({
                   </div>
                   <p className="mt-1.5 text-sm text-zinc-800">{r.problem}</p>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {t("reviews.openedAt", { date: formatDate(r.createdAt) })}
+                    {t("reviews.openedAt", {
+                      date: formatDate(r.createdAt, t),
+                    })}
                   </p>
                 </div>
                 {r.link ? (
@@ -236,7 +238,7 @@ export default async function ReviewsPage({
                 <p className="mt-3 border-t border-zinc-100 pt-3 text-xs text-zinc-600">
                   {t("reviews.decidedBy", {
                     name: userName(r.resolvedByUserId),
-                    date: formatDate(r.resolvedAt),
+                    date: formatDate(r.resolvedAt, t),
                   })}
                   {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
                 </p>

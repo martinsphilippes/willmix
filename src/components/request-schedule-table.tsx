@@ -22,7 +22,7 @@ export function RequestScheduleTable({
           {t("reqSchedule.summary", {
             n: schedule.items.length,
             days: schedule.intervalDays,
-            date: formatDate(schedule.firstDate),
+            date: formatDate(schedule.firstDate, t),
           })}
         </span>
       </p>
@@ -44,17 +44,17 @@ export function RequestScheduleTable({
                   {item.index}
                 </td>
                 <td className="py-1 pr-4 text-right tabular-nums">
-                  {item.quantity.toLocaleString("pt-BR")} {unit}
+                  {item.quantity.toLocaleString(t.intl)} {unit}
                 </td>
                 <td className="py-1 tabular-nums">
-                  {formatDate(item.expectedAt)}
+                  {formatDate(item.expectedAt, t)}
                 </td>
               </tr>
             ))}
             <tr className="border-t border-zinc-200 font-semibold">
               <td className="py-1 pr-4" />
               <td className="py-1 pr-4 text-right tabular-nums">
-                {scheduleTotal(schedule).toLocaleString("pt-BR")} {unit}
+                {scheduleTotal(schedule).toLocaleString(t.intl)} {unit}
               </td>
               <td />
             </tr>

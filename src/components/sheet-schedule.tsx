@@ -19,6 +19,8 @@ import { cx, formatDate, inputDenseClass } from "@/components/ui";
  * lidos do próprio formulário (eventos de input), sem duplicar campos.
  */
 export interface ScheduleLabels {
+  /** Tag Intl do idioma (números e datas): pt-BR, en-US, zh-CN. */
+  intl: string;
   lotColumn: string;
   interval: string;
   cartons: string;
@@ -59,10 +61,10 @@ interface FormValues {
   containerType: string | null;
 }
 
-const fmt = (n: number | null | undefined, digits = 2) =>
+const fmtIn = (intl: string, n: number | null | undefined, digits = 2) =>
   n === null || n === undefined
     ? "—"
-    : n.toLocaleString("pt-BR", { maximumFractionDigits: digits });
+    : n.toLocaleString(intl, { maximumFractionDigits: digits });
 
 function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, k) =>
@@ -97,6 +99,8 @@ export function SheetSchedule({
   unit?: string;
 }) {
   const root = useRef<HTMLDivElement>(null);
+  const fmt = (n: number | null | undefined, digits = 2) =>
+    fmtIn(labels.intl, n, digits);
   const [lots, setLots] = useState<{ interval: string; cartons: string }[]>(
     () =>
       Array.from({ length: MAX_LOTS }, (_, i) => ({
@@ -293,7 +297,9 @@ export function SheetSchedule({
                   {lot.cbm !== null ? `${fmt(lot.cbm, 4)} m³` : "—"}
                 </td>
                 <td className="py-1.5 pl-3 tabular-nums text-zinc-800">
-                  {lot.departureAt ? formatDate(lot.departureAt) : "—"}
+                  {lot.departureAt
+                    ? formatDate(lot.departureAt, labels.intl)
+                    : "—"}
                   {requested[i] ? (
                     <span
                       className="block text-[11px] text-brand-700"
@@ -302,7 +308,7 @@ export function SheetSchedule({
                       {fill(labels.requested, {
                         quantity: fmt(requested[i].quantity, 0),
                         unit,
-                        date: formatDate(requested[i].expectedAt),
+                        date: formatDate(requested[i].expectedAt, labels.intl),
                       })}
                     </span>
                   ) : null}

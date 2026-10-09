@@ -27,8 +27,8 @@ export default async function FinancePage() {
   const fmtBy = (map: Record<string, number>) =>
     Object.entries(map)
       .filter(([, v]) => v > 0.005)
-      .map(([c, v]) => formatMoney(v, c))
-      .join(" · ") || formatMoney(0, "USD");
+      .map(([c, v]) => formatMoney(v, c, t))
+      .join(" · ") || formatMoney(0, "USD", t);
 
   return (
     <>
@@ -40,15 +40,15 @@ export default async function FinancePage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Stat
           label={t("finance.sold")}
-          value={formatMoney(summary.sell, summary.currency)}
+          value={formatMoney(summary.sell, summary.currency, t)}
         />
         <Stat
           label={t("finance.received")}
-          value={formatMoney(summary.received, summary.currency)}
+          value={formatMoney(summary.received, summary.currency, t)}
         />
         <Stat
           label={t("finance.receivable")}
-          value={formatMoney(summary.receivable, summary.currency)}
+          value={formatMoney(summary.receivable, summary.currency, t)}
           tone={summary.receivable > 0 ? "warning" : undefined}
         />
         <Stat label={t("finance.paid")} value={fmtBy(summary.paidByCurrency)} />
@@ -69,7 +69,7 @@ export default async function FinancePage() {
           }
           value={
             summary.marginPct !== null
-              ? `${formatMoney(summary.margin, summary.currency)} (${summary.marginPct.toFixed(1)}%)`
+              ? `${formatMoney(summary.margin, summary.currency, t)} (${summary.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
               : "—"
           }
           tone={
@@ -117,10 +117,10 @@ export default async function FinancePage() {
                   <Td>{r.customerName}</Td>
                   <Td>{r.productName}</Td>
                   <Td className="whitespace-nowrap font-semibold text-zinc-900">
-                    {formatMoney(r.sell, r.sellCurrency)}
+                    {formatMoney(r.sell, r.sellCurrency, t)}
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {formatMoney(r.received, r.sellCurrency)}
+                    {formatMoney(r.received, r.sellCurrency, t)}
                   </Td>
                   <Td className="whitespace-nowrap font-medium">
                     <span
@@ -128,14 +128,14 @@ export default async function FinancePage() {
                         r.receivable > 0 ? "text-amber-700" : "text-emerald-700"
                       }
                     >
-                      {formatMoney(r.receivable, r.sellCurrency)}
+                      {formatMoney(r.receivable, r.sellCurrency, t)}
                     </span>
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {formatMoney(r.fob, r.fobCurrency)}
+                    {formatMoney(r.fob, r.fobCurrency, t)}
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {formatMoney(r.paid, r.fobCurrency)}
+                    {formatMoney(r.paid, r.fobCurrency, t)}
                   </Td>
                   <Td className="whitespace-nowrap font-medium">
                     <span
@@ -143,19 +143,22 @@ export default async function FinancePage() {
                         r.payable > 0 ? "text-amber-700" : "text-emerald-700"
                       }
                     >
-                      {formatMoney(r.payable, r.fobCurrency)}
+                      {formatMoney(r.payable, r.fobCurrency, t)}
                     </span>
                   </Td>
                   <Td>
                     {r.avgFx !== null
-                      ? r.avgFx.toFixed(4)
+                      ? r.avgFx.toLocaleString(t.intl, {
+                          minimumFractionDigits: 4,
+                          maximumFractionDigits: 4,
+                        })
                       : r.fobCurrency === r.sellCurrency
                         ? "1"
                         : "—"}
                   </Td>
                   <Td className="whitespace-nowrap">
                     {r.cost !== null ? (
-                      formatMoney(r.cost, r.sellCurrency)
+                      formatMoney(r.cost, r.sellCurrency, t)
                     ) : (
                       <Badge tone="warning">{t("finance.fxMissing")}</Badge>
                     )}
@@ -167,10 +170,13 @@ export default async function FinancePage() {
                     {r.margin !== null ? (
                       <>
                         <span className={cx(r.margin < 0 && "text-red-700")}>
-                          {formatMoney(r.margin, r.sellCurrency)}
+                          {formatMoney(r.margin, r.sellCurrency, t)}
                         </span>
                         <div className="text-xs font-normal text-zinc-500">
-                          {r.marginPct?.toFixed(1)}%
+                          {r.marginPct?.toLocaleString(t.intl, {
+                            maximumFractionDigits: 1,
+                          })}
+                          %
                         </div>
                       </>
                     ) : (

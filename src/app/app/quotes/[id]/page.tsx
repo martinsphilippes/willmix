@@ -121,8 +121,8 @@ export default async function QuotePage({
           <DescriptionList
             items={[
               [t("common.quantity"), `${request.quantity} ${request.unit}`],
-              [t("requests.deadline"), formatDate(request.deadline)],
-              [t("quotes.validUntil"), formatDate(quote.validUntil)],
+              [t("requests.deadline"), formatDate(request.deadline, t)],
+              [t("quotes.validUntil"), formatDate(quote.validUntil, t)],
               [t("requests.description"), request.description],
               [t("requests.specification"), request.specification],
             ]}

@@ -117,6 +117,7 @@ export default async function NewMarketingKitPage({
                   hint={t("marketing.new.priceHint")}
                 >
                   <MoneyInput
+                    locale={t.intl}
                     name="price"
                     watchField="currency"
                     required

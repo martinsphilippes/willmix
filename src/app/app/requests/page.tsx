@@ -195,7 +195,7 @@ export default async function RequestsPage({
                                   : "text-zinc-800",
                               )}
                             >
-                              {formatDate(o.stageDueAt)}
+                              {formatDate(o.stageDueAt, t)}
                             </dd>
                           </div>
                         ) : null}
@@ -205,7 +205,7 @@ export default async function RequestsPage({
                               {t("customerHome.orders.eta")}
                             </dt>
                             <dd className="tabular-nums text-zinc-800">
-                              {formatDate(o.eta)}
+                              {formatDate(o.eta, t)}
                             </dd>
                           </div>
                         ) : null}
@@ -377,7 +377,7 @@ export default async function RequestsPage({
                   </Badge>
                 </Td>
                 <Td className="whitespace-nowrap tabular-nums">
-                  {formatDate(r.deadline)}
+                  {formatDate(r.deadline, t)}
                 </Td>
                 <Td className="text-right">
                   <div className="flex items-center justify-end gap-3">

@@ -15,10 +15,8 @@ import { Alert, Badge, Card, Input } from "@/components/ui";
  * para confirmar com um clique, ou digitar outro.
  */
 
-const pct = (n: number | null) =>
-  n === null
-    ? "—"
-    : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+const pct = (n: number | null, intl: string) =>
+  n === null ? "—" : `${n.toLocaleString(intl, { maximumFractionDigits: 2 })}%`;
 
 function RatesLine({ t, rates }: { t: Translate; rates: NcmRates | null }) {
   if (!rates)
@@ -28,8 +26,8 @@ function RatesLine({ t, rates }: { t: Translate; rates: NcmRates | null }) {
   return (
     <span className="text-xs text-zinc-600">
       {t("ncm.rates", {
-        ii: pct(rates.ii),
-        ipi: rates.ipiNt ? t("ncm.nt") : pct(rates.ipi),
+        ii: pct(rates.ii, t.intl),
+        ipi: rates.ipiNt ? t("ncm.nt") : pct(rates.ipi, t.intl),
       })}
     </span>
   );

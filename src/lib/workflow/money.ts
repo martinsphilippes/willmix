@@ -55,11 +55,14 @@ export function parseAmount(raw: string, decimals = 2): number | null {
 }
 
 /** "BRL 1234.56" → "R$ 1.234,56"; valor antigo ou texto livre → como está. */
-export function formatMoneyValue(value: string | null | undefined) {
+export function formatMoneyValue(
+  value: string | null | undefined,
+  intl = "pt-BR",
+) {
   const money = parseMoneyValue(value);
   if (!money) return value ?? "";
   try {
-    return new Intl.NumberFormat("pt-BR", {
+    return new Intl.NumberFormat(intl, {
       style: "currency",
       currency: money.currency,
     }).format(money.amount);

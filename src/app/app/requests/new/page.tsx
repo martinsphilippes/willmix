@@ -125,7 +125,7 @@ export default async function NewRequestPage({
     availableStockByProduct(),
   ]);
   // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
-  const qty = (n: number) => n.toLocaleString("pt-BR");
+  const qty = (n: number) => n.toLocaleString(t.intl);
   const stockFor = (productId: string): ProductFill["stock"] => {
     const st = stockByProduct.get(productId);
     if (!st) return { available: false, detail: null };
@@ -467,6 +467,7 @@ export default async function NewRequestPage({
               quantity: t("common.quantity"),
               unit: t("requests.unit"),
               schedule: {
+                intl: t.intl,
                 toggle: t("reqSchedule.toggle"),
                 ask: t("reqSchedule.ask"),
                 hint: t("reqSchedule.hint"),

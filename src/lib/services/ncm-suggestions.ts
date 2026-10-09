@@ -80,7 +80,7 @@ export function ncmChipsView(t: Translate, chips: NcmChip[]): NcmChipView[] {
   const pct = (n: number | null) =>
     n === null
       ? "—"
-      : `${n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+      : `${n.toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`;
   return chips.map((c) => ({
     ncm: c.ncm,
     label: formatNcm(c.ncm),

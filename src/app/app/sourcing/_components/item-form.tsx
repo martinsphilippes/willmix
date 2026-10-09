@@ -174,6 +174,7 @@ export function ItemForm({
         <div className="grid grid-cols-2 gap-3">
           <Field label={t("common.price")}>
             <MoneyInput
+              locale={t.intl}
               name="price"
               watchField="currency"
               defaultAmount={item?.price ?? null}
@@ -286,7 +287,7 @@ export function ItemForm({
         </div>
         <div className="sm:col-span-2 rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
           <span className="font-medium">{t("sourcing.item.cbm")}:</span>{" "}
-          {item?.cbm ? `${formatNumber(item.cbm)} m³` : "—"}
+          {item?.cbm ? `${formatNumber(item.cbm, t.intl)} m³` : "—"}
           <span className="block text-xs text-zinc-500">
             {t("sourcing.item.cbmHint")}
           </span>

@@ -97,7 +97,7 @@ export default async function HistoryPage({
       : Promise.resolve([]),
   ]);
   const money = (v: number | null, c: string | null) =>
-    v !== null ? formatMoney(v, c ?? "BRL") : "—";
+    v !== null ? formatMoney(v, c ?? "BRL", t) : "—";
   const interval = (r: HistoryRow) =>
     r.avgIntervalDays !== null
       ? t("history.days", { days: r.avgIntervalDays })
@@ -206,8 +206,8 @@ export default async function HistoryPage({
                       </Td>
                     ) : null}
                     <Td className="whitespace-nowrap text-xs">
-                      <div>{formatDate(r.firstAt)}</div>
-                      <div>{formatDate(r.lastAt)}</div>
+                      <div>{formatDate(r.firstAt, t)}</div>
+                      <div>{formatDate(r.lastAt, t)}</div>
                     </Td>
                     <Td className="text-right tabular-nums whitespace-nowrap">
                       {interval(r)}
@@ -276,7 +276,7 @@ export default async function HistoryPage({
                     </Item>
                   ) : null}
                   <Item label={t("history.period")}>
-                    {formatDate(r.firstAt)} → {formatDate(r.lastAt)}
+                    {formatDate(r.firstAt, t)} → {formatDate(r.lastAt, t)}
                   </Item>
                   <Item label={t("history.avgInterval")}>{interval(r)}</Item>
                   <Item label={t("history.replenishments")}>

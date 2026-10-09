@@ -127,7 +127,7 @@ export function KitTimeline({ t, kit }: { t: Translate; kit: MarketingKit }) {
             </span>
             {date && state !== "pending" ? (
               <span className="ml-auto text-xs tabular-nums text-zinc-500">
-                {formatDate(date)}
+                {formatDate(date, t)}
               </span>
             ) : null}
           </li>

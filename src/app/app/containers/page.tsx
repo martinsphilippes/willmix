@@ -93,13 +93,13 @@ export default async function ContainersPage({
                         {row.container.code}
                       </TextLink>
                       <span className="block text-xs text-zinc-500">
-                        ETD {formatDate(row.container.etd)}
+                        ETD {formatDate(row.container.etd, t)}
                       </span>
                     </Td>
                     <Td className="whitespace-nowrap">
                       {row.container.type}
                       <span className="block text-xs text-zinc-500">
-                        {formatNumber(row.container.capacityCbm)} m³
+                        {formatNumber(row.container.capacityCbm, t.intl)} m³
                       </span>
                     </Td>
                     <Td>{row.customerName ?? t("containers.noCustomer")}</Td>
@@ -122,12 +122,12 @@ export default async function ContainersPage({
                               : "text-zinc-700",
                           )}
                         >
-                          {formatPercent(row.usage.occupancyPercent)}
+                          {formatPercent(row.usage.occupancyPercent, t.intl)}
                         </span>
                       </div>
                       <span className="mt-1 block whitespace-nowrap text-xs tabular-nums text-zinc-500">
-                        {formatNumber(row.usage.totalCbm, 4)} /{" "}
-                        {formatNumber(row.container.capacityCbm)} m³
+                        {formatNumber(row.usage.totalCbm, t.intl, 4)} /{" "}
+                        {formatNumber(row.container.capacityCbm, t.intl)} m³
                       </span>
                     </Td>
                     <Td className="text-right tabular-nums">
@@ -135,11 +135,11 @@ export default async function ContainersPage({
                     </Td>
                     <Td className="whitespace-nowrap tabular-nums">
                       <span className="font-medium text-emerald-700">
-                        {formatPercent(row.split.soldPercent)}
+                        {formatPercent(row.split.soldPercent, t.intl)}
                       </span>{" "}
                       <span className="text-zinc-400">/</span>{" "}
                       <span className="text-zinc-700">
-                        {formatPercent(row.split.availablePercent)}
+                        {formatPercent(row.split.availablePercent, t.intl)}
                       </span>
                     </Td>
                   </tr>
@@ -166,8 +166,8 @@ export default async function ContainersPage({
                   <option key={type.code} value={type.code}>
                     {t("containers.typeOption", {
                       code: type.code,
-                      cbm: formatNumber(type.capacityCbm),
-                      kg: formatNumber(type.maxWeightKg),
+                      cbm: formatNumber(type.capacityCbm, t.intl),
+                      kg: formatNumber(type.maxWeightKg, t.intl),
                     })}
                   </option>
                 ))}

@@ -29,7 +29,8 @@ export const en: Record<keyof typeof pt, string> = {
     "The chosen login is not an active user of this customer.",
 };
 export const zh: Record<keyof typeof pt, string> = {
-  "login.unavailable": "暂时无法登录：门户数据库没有响应。不是您的密码问题，请几分钟后再试。",
+  "login.unavailable":
+    "暂时无法登录：门户数据库没有响应。不是您的密码问题，请几分钟后再试。",
   "access.requester": "申请人（客户登录账号）",
   "access.requesterHint":
     "只有该客户登录账号能看到此申请和订单；同一公司的其他账号看不到。未指定申请人时，客户的任何账号都看不到。",

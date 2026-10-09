@@ -147,7 +147,7 @@ export default async function MarketingKitPage({
   const latest = suggestions.find((s) => s.status === "suggested") ?? null;
   const history = suggestions.filter((s) => s !== latest);
   const errorText = marketingError(t, sp.error);
-  const price = formatMoney(kit.price, kit.currency);
+  const price = formatMoney(kit.price, kit.currency, t);
   const textItems: Array<[string, string | null]> = [
     [t("marketing.field.concept"), kit.concept],
     [t("marketing.field.slogan"), kit.slogan],
@@ -303,7 +303,7 @@ export default async function MarketingKitPage({
                         [t("marketing.payment.amount"), price],
                         [
                           t("marketing.dates.purchased"),
-                          formatDate(kit.purchasedAt),
+                          formatDate(kit.purchasedAt, t),
                         ],
                         [
                           t("common.status"),
@@ -349,7 +349,7 @@ export default async function MarketingKitPage({
                   <>
                     <Alert tone="success">
                       <strong>{t("marketing.payment.confirmed")}</strong>
-                      {kit.paidAt ? ` · ${formatDate(kit.paidAt)}` : ""}
+                      {kit.paidAt ? ` · ${formatDate(kit.paidAt, t)}` : ""}
                     </Alert>
                     <form action={releaseKitAction} className="space-y-2">
                       <input type="hidden" name="id" value={kit.id} />
@@ -425,7 +425,7 @@ export default async function MarketingKitPage({
               <DescriptionList
                 items={dateItems
                   .filter(([, v]) => !!v)
-                  .map(([k, v]) => [k, formatDate(v)])}
+                  .map(([k, v]) => [k, formatDate(v, t)])}
               />
             </div>
           </Card>
@@ -584,6 +584,7 @@ export default async function MarketingKitPage({
                           <input type="hidden" name="price" value={kit.price} />
                         ) : null}
                         <MoneyInput
+                          locale={t.intl}
                           name={priceLocked ? undefined : "price"}
                           currency={priceLocked ? kit.currency : undefined}
                           watchField={priceLocked ? undefined : "currency"}
@@ -746,7 +747,7 @@ export default async function MarketingKitPage({
                         {t("marketing.ai.status.suggested")}
                       </Badge>
                       <span className="text-xs text-zinc-500">
-                        {formatDate(latest.createdAt)}
+                        {formatDate(latest.createdAt, t)}
                       </span>
                     </div>
                     {latest.source === "mock" ? (
@@ -912,7 +913,7 @@ export default async function MarketingKitPage({
                               )}
                             </Badge>
                             <span className="text-xs text-zinc-500">
-                              {formatDate(s.createdAt)}
+                              {formatDate(s.createdAt, t)}
                             </span>
                             {s.note ? (
                               <span className="text-xs text-zinc-600">

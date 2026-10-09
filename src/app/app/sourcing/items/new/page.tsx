@@ -51,7 +51,7 @@ export default async function NewSourcingItemPage({
               <TextLink href={`/app/sourcing/visits/${visit.id}`}>
                 {visit.supplierName ?? visit.factoryName ?? visit.id}
               </TextLink>{" "}
-              · {formatDate(visit.visitedAt)}
+              · {formatDate(visit.visitedAt, t)}
             </span>
           ) : undefined
         }

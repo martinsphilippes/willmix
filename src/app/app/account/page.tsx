@@ -123,11 +123,11 @@ export default async function AccountPage({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat
           label={t("common.total")}
-          value={formatMoney(totalOrders, currency)}
+          value={formatMoney(totalOrders, currency, t)}
         />
         <Stat
           label={t("account.received")}
-          value={formatMoney(totalReceived, currency)}
+          value={formatMoney(totalReceived, currency, t)}
         />
         <Stat
           label={t("account.balance")}
@@ -163,10 +163,10 @@ export default async function AccountPage({
                     </TextLink>
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {formatDate(o.createdAt)}
+                    {formatDate(o.createdAt, t)}
                   </Td>
                   <Td className="whitespace-nowrap font-semibold text-zinc-900">
-                    {formatMoney(o.fobTotal, o.fobCurrency)}
+                    {formatMoney(o.fobTotal, o.fobCurrency, t)}
                   </Td>
                   <Td>—</Td>
                   <Td className="whitespace-nowrap">
@@ -190,11 +190,11 @@ export default async function AccountPage({
                       <span className="text-zinc-500">#{order?.number}</span>
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {formatDate(p.createdAt)}
+                      {formatDate(p.createdAt, t)}
                     </Td>
                     <Td className="whitespace-nowrap font-medium">
                       <span className="text-emerald-700">
-                        − {formatMoney(p.amount, p.currency)}
+                        − {formatMoney(p.amount, p.currency, t)}
                       </span>
                     </Td>
                     <Td>{p.fxRate ?? "—"}</Td>
@@ -218,7 +218,7 @@ export default async function AccountPage({
                           {proof?.viewedAt ? (
                             <span className="block text-[11px] text-zinc-500">
                               {t("orders.account.viewedAt")}{" "}
-                              {formatDateTime(proof.viewedAt)}
+                              {formatDateTime(proof.viewedAt, t.intl)}
                             </span>
                           ) : null}
                         </>
@@ -297,13 +297,13 @@ export default async function AccountPage({
                         </TextLink>
                       </Td>
                       <Td className="text-right whitespace-nowrap tabular-nums">
-                        {formatMoney(o.fobTotal, o.fobCurrency)}
+                        {formatMoney(o.fobTotal, o.fobCurrency, t)}
                       </Td>
                       <Td className="text-right whitespace-nowrap tabular-nums text-emerald-700">
-                        {formatMoney(paid, o.fobCurrency)}
+                        {formatMoney(paid, o.fobCurrency, t)}
                       </Td>
                       <Td className="text-right whitespace-nowrap tabular-nums text-amber-700">
-                        {formatMoney(pending, o.fobCurrency)}
+                        {formatMoney(pending, o.fobCurrency, t)}
                       </Td>
                       <Td
                         className={cx(
@@ -311,7 +311,7 @@ export default async function AccountPage({
                           balance > 0 ? "text-zinc-900" : "text-emerald-700",
                         )}
                       >
-                        {formatMoney(balance, o.fobCurrency)}
+                        {formatMoney(balance, o.fobCurrency, t)}
                       </Td>
                     </tr>
                   );
@@ -352,7 +352,8 @@ export default async function AccountPage({
                       </div>
                       <span className="shrink-0 text-xs text-zinc-500">
                         {order ? `#${order.number} · ` : ""}
-                        {userName(h.userId)} · {formatDateTime(h.createdAt)}
+                        {userName(h.userId)} ·{" "}
+                        {formatDateTime(h.createdAt, t.intl)}
                       </span>
                     </li>
                   );
@@ -382,11 +383,11 @@ export default async function AccountPage({
   );
 }
 
-function formatDateTime(value: string | null | undefined) {
+function formatDateTime(value: string | null | undefined, intl = "pt-BR") {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("pt-BR", {
+  return d.toLocaleString(intl, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -418,7 +419,7 @@ function Trail({
       >
         {t("orders.ack.viewed")}:{" "}
         {summary.viewedAt
-          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt)}`
+          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt, t.intl)}`
           : t("orders.ack.pending")}
       </span>
       <span
@@ -429,7 +430,7 @@ function Trail({
       >
         {t("orders.ack.confirmed")}:{" "}
         {summary.confirmedAt
-          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt)}`
+          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt, t.intl)}`
           : t("orders.ack.pending")}
       </span>
     </span>

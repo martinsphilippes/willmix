@@ -139,9 +139,9 @@ export function SaveBar({
 }
 
 /** Número com até 3 casas, sem zeros à direita. */
-export function formatNumber(value: number | null | undefined) {
+export function formatNumber(value: number | null | undefined, intl = "pt-BR") {
   if (value === null || value === undefined) return "—";
-  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(
+  return new Intl.NumberFormat(intl, { maximumFractionDigits: 3 }).format(
     value,
   );
 }

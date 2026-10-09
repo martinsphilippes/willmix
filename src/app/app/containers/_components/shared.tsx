@@ -41,15 +41,22 @@ export function errorMessage(
 }
 
 /** Número em pt-BR com até `digits` casas, sem zeros à direita. */
-export function formatNumber(value: number | null | undefined, digits = 3) {
+export function formatNumber(
+  value: number | null | undefined,
+  intl = "pt-BR",
+  digits = 3,
+) {
   if (value === null || value === undefined) return "—";
-  return new Intl.NumberFormat("pt-BR", {
+  return new Intl.NumberFormat(intl, {
     maximumFractionDigits: digits,
   }).format(value);
 }
 
 /** Percentual com 1 casa (ex.: 42,5%). */
-export function formatPercent(value: number | null | undefined) {
+export function formatPercent(
+  value: number | null | undefined,
+  intl = "pt-BR",
+) {
   if (value === null || value === undefined) return "—";
-  return `${formatNumber(value, 1)}%`;
+  return `${formatNumber(value, intl, 1)}%`;
 }

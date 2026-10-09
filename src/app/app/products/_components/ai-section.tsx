@@ -113,10 +113,10 @@ const statusTone: Record<AiSuggestionStatus, Tone> = {
 const checkboxClass =
   "h-5 w-5 shrink-0 cursor-pointer accent-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
 
-function when(value: string) {
+function when(value: string, intl: string) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return `${formatDate(value)} ${d.toLocaleTimeString("pt-BR", {
+  return `${formatDate(value, intl)} ${d.toLocaleTimeString(intl, {
     hour: "2-digit",
     minute: "2-digit",
   })}`;
@@ -293,7 +293,7 @@ export function AiSection({
                 >
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="font-medium tabular-nums text-zinc-900">
-                      {when(s.createdAt)}
+                      {when(s.createdAt, t.intl)}
                     </span>
                     <span className="text-zinc-500">
                       {t("vision.ai.requestedBy")}{" "}
@@ -330,7 +330,7 @@ export function AiSection({
                   {s.status !== "suggested" ? (
                     <p className="mt-1 text-xs text-zinc-600">
                       {t("vision.ai.decidedBy")} {userName(s.decidedByUserId)}
-                      {s.decidedAt ? ` · ${when(s.decidedAt)}` : ""}
+                      {s.decidedAt ? ` · ${when(s.decidedAt, t.intl)}` : ""}
                       {s.note
                         ? ` · ${s.status === "applied" ? t("vision.ai.applied") : t("common.note")}: ${s.note}`
                         : ""}

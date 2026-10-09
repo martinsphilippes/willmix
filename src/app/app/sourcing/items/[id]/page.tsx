@@ -120,7 +120,8 @@ export default async function SourcingItemPage({
   const supplierLabel = item.supplierName ?? supplier?.name ?? "—";
   const originals = photos.filter((p) => p.kind === "original");
   const photoLabel = (p: ProductPhoto) =>
-    p.caption ?? `${t(`sourcing.photo.${p.kind}`)} · ${formatDate(p.takenAt)}`;
+    p.caption ??
+    `${t(`sourcing.photo.${p.kind}`)} · ${formatDate(p.takenAt, t)}`;
   const groups = PHOTO_KINDS.map((kind) => ({
     kind,
     photos: photos.filter((p) => p.kind === kind),
@@ -153,7 +154,7 @@ export default async function SourcingItemPage({
             <span>{supplierLabel}</span>
             {visit ? (
               <TextLink href={`/app/sourcing/visits/${visit.id}`}>
-                {t("sourcing.item.visit")} · {formatDate(visit.visitedAt)}
+                {t("sourcing.item.visit")} · {formatDate(visit.visitedAt, t)}
               </TextLink>
             ) : null}
           </span>
@@ -223,7 +224,7 @@ export default async function SourcingItemPage({
                           ) : null}
                         </a>
                         <p className="mt-1 truncate text-xs text-zinc-600">
-                          {p.caption ?? formatDate(p.takenAt)}
+                          {p.caption ?? formatDate(p.takenAt, t)}
                         </p>
                         {p.derivedFromPhotoId ? (
                           <p className="truncate text-[11px] text-zinc-500">
@@ -328,13 +329,13 @@ export default async function SourcingItemPage({
                       <p className="font-medium text-zinc-900">
                         {t(`sourcing.measure.${m.kind}`)}:{" "}
                         <span className="font-semibold">
-                          {formatNumber(m.measuredValue)} {m.unit}
+                          {formatNumber(m.measuredValue, t.intl)} {m.unit}
                         </span>
                         {m.declaredValue !== null ? (
                           <span className="text-zinc-500">
                             {" "}
                             ({t("sourcing.measure.declaredShort")}:{" "}
-                            {formatNumber(m.declaredValue)} {m.unit})
+                            {formatNumber(m.declaredValue, t.intl)} {m.unit})
                           </span>
                         ) : null}
                       </p>
@@ -345,14 +346,16 @@ export default async function SourcingItemPage({
                           }
                         >
                           {t("sourcing.measure.diff")}: {diff > 0 ? "+" : ""}
-                          {formatNumber(diff)} {m.unit}
-                          {pct !== null ? ` (${formatNumber(pct)}%)` : ""}
+                          {formatNumber(diff, t.intl)} {m.unit}
+                          {pct !== null
+                            ? ` (${formatNumber(pct, t.intl)}%)`
+                            : ""}
                         </p>
                       ) : null}
                       <p className="text-xs text-zinc-500">
                         {t("sourcing.measure.by")}{" "}
                         {userName(m.measuredByUserId)} ·{" "}
-                        {formatDate(m.measuredAt)}
+                        {formatDate(m.measuredAt, t)}
                         {m.note ? ` · ${m.note}` : ""}
                       </p>
                     </div>
@@ -454,16 +457,16 @@ export default async function SourcingItemPage({
         >
           <DescriptionList
             items={[
-              [t("common.price"), formatMoney(item.price, item.currency)],
-              [t("sourcing.moq"), formatNumber(item.moq)],
+              [t("common.price"), formatMoney(item.price, item.currency, t)],
+              [t("sourcing.moq"), formatNumber(item.moq, t.intl)],
               [t("common.conditions"), item.conditions ?? "—"],
               [
                 t("sourcing.item.masterBoxQty"),
-                formatNumber(item.masterBoxQty),
+                formatNumber(item.masterBoxQty, t.intl),
               ],
               [
                 t("sourcing.item.cbm"),
-                item.cbm ? `${formatNumber(item.cbm)} m³` : "—",
+                item.cbm ? `${formatNumber(item.cbm, t.intl)} m³` : "—",
               ],
               [
                 t("common.supplier"),
@@ -475,7 +478,7 @@ export default async function SourcingItemPage({
                   supplierLabel
                 ),
               ],
-              [t("sourcing.foundAt"), formatDate(item.foundAt)],
+              [t("sourcing.foundAt"), formatDate(item.foundAt, t)],
             ]}
           />
           <p className="mt-3 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
@@ -515,11 +518,11 @@ export default async function SourcingItemPage({
                   <span className="text-zinc-700">
                     {t("catalog.opp.from")}{" "}
                     <span className="font-semibold tabular-nums text-zinc-900">
-                      {formatNumber(tier.minQty)}
+                      {formatNumber(tier.minQty, t.intl)}
                     </span>
                   </span>
                   <span className="font-semibold tabular-nums text-zinc-900">
-                    {formatMoney(tier.price, item.currency)}
+                    {formatMoney(tier.price, item.currency, t)}
                   </span>
                 </li>
               ))}
@@ -571,7 +574,7 @@ export default async function SourcingItemPage({
                 {linkableRequests.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.productName} · {customerName(r.customerId)} ·{" "}
-                    {formatNumber(r.quantity)} {r.unit}
+                    {formatNumber(r.quantity, t.intl)} {r.unit}
                   </option>
                 ))}
               </Select>

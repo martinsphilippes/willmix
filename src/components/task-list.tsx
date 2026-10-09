@@ -237,7 +237,7 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                           : "text-zinc-500",
                       )}
                     >
-                      {t("common.due")}: {formatDate(task.dueAt)}
+                      {t("common.due")}: {formatDate(task.dueAt, t)}
                       {relative ? ` · ${relative}` : null}
                     </p>
                   ) : null}

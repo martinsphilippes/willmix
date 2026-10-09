@@ -419,6 +419,7 @@ export function PurchaseSheetFields({
             </F>
             <F t={t} k="price" size="sm" req>
               <MoneyInput
+                locale={t.intl}
                 name="price"
                 watchField="currency"
                 defaultAmount={numValue(sheet.price) || null}
@@ -492,6 +493,7 @@ export function PurchaseSheetFields({
               requested={requestSchedule?.items ?? []}
               unit={requestUnit}
               labels={{
+                intl: t.intl,
                 lotColumn: t("sheet.lot.column"),
                 interval: t("sheet.lot.interval"),
                 cartons: t("sheet.lot.cartons"),

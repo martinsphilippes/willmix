@@ -127,8 +127,8 @@ export function FiscalTableCard({
         {p ? (
           <span className="text-xs text-zinc-600">
             {t("fiscal.table.loaded", {
-              count: p.count.toLocaleString("pt-BR"),
-              date: formatDate(p.updatedAt),
+              count: p.count.toLocaleString(t.intl),
+              date: formatDate(p.updatedAt, t),
               source: t(`fiscal.table.source.${p.source}`),
             })}
           </span>

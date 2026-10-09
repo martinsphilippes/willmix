@@ -102,6 +102,7 @@ export function RequirementForm({
       <input type="hidden" name="requirementId" value={requirement.id} />
       {isMoneyRequirement(requirement) ? (
         <MoneyInput
+          locale={t.intl}
           name="amount"
           currencyName="currency"
           required

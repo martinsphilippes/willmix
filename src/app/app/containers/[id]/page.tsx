@@ -95,9 +95,9 @@ export default async function ContainerPage({
         }
         subtitle={
           <>
-            {container.type} · {formatNumber(container.capacityCbm)} m³
+            {container.type} · {formatNumber(container.capacityCbm, t.intl)} m³
             {container.maxWeightKg
-              ? ` · ${formatNumber(container.maxWeightKg)} kg`
+              ? ` · ${formatNumber(container.maxWeightKg, t.intl)} kg`
               : ""}{" "}
             · {customerName ?? t("containers.noCustomer")}
           </>
@@ -138,23 +138,23 @@ export default async function ContainerPage({
             {usage.overCapacity ? (
               <Alert tone="danger">
                 {t("containers.alert.overCapacity", {
-                  total: formatNumber(usage.totalCbm, 4),
-                  capacity: formatNumber(container.capacityCbm),
+                  total: formatNumber(usage.totalCbm, t.intl, 4),
+                  capacity: formatNumber(container.capacityCbm, t.intl),
                 })}
               </Alert>
             ) : overOccupancy ? (
               <Alert tone="warning">
                 {t("containers.alert.overOccupancy", {
                   max: settings.containerMaxOccupancyPercent,
-                  percent: formatNumber(usage.occupancyPercent, 1),
+                  percent: formatNumber(usage.occupancyPercent, t.intl, 1),
                 })}
               </Alert>
             ) : null}
             {usage.overWeight ? (
               <Alert tone="danger">
                 {t("containers.alert.overWeight", {
-                  total: formatNumber(usage.totalWeightKg, 1),
-                  max: formatNumber(container.maxWeightKg),
+                  total: formatNumber(usage.totalWeightKg, t.intl, 1),
+                  max: formatNumber(container.maxWeightKg, t.intl),
                 })}
               </Alert>
             ) : null}
@@ -171,9 +171,9 @@ export default async function ContainerPage({
                       : "text-zinc-700",
                   )}
                 >
-                  {formatNumber(usage.totalCbm, 4)} /{" "}
-                  {formatNumber(container.capacityCbm)} m³ ·{" "}
-                  {formatPercent(usage.occupancyPercent)}
+                  {formatNumber(usage.totalCbm, t.intl, 4)} /{" "}
+                  {formatNumber(container.capacityCbm, t.intl)} m³ ·{" "}
+                  {formatPercent(usage.occupancyPercent, t.intl)}
                 </span>
               </div>
               <Progress percent={usage.occupancyPercent} tone="danger" />
@@ -192,13 +192,13 @@ export default async function ContainerPage({
                   )}
                 >
                   {usage.totalWeightKg !== null
-                    ? `${formatNumber(usage.totalWeightKg, 1)}${
+                    ? `${formatNumber(usage.totalWeightKg, t.intl, 1)}${
                         container.maxWeightKg
-                          ? ` / ${formatNumber(container.maxWeightKg)}`
+                          ? ` / ${formatNumber(container.maxWeightKg, t.intl)}`
                           : ""
                       } kg${
                         usage.weightPercent !== null
-                          ? ` · ${formatPercent(usage.weightPercent)}`
+                          ? ` · ${formatPercent(usage.weightPercent, t.intl)}`
                           : ""
                       }`
                     : t("containers.weightUnknown")}
@@ -213,10 +213,10 @@ export default async function ContainerPage({
                 [t("containers.boxes"), usage.boxes],
                 [
                   t("containers.capacity"),
-                  `${formatNumber(container.capacityCbm)} m³`,
+                  `${formatNumber(container.capacityCbm, t.intl)} m³`,
                 ],
-                [t("containers.etd"), formatDate(container.etd)],
-                [t("containers.eta"), formatDate(container.eta)],
+                [t("containers.etd"), formatDate(container.etd, t)],
+                [t("containers.eta"), formatDate(container.eta, t)],
                 ...(container.notes
                   ? ([[t("containers.notes"), container.notes]] as Array<
                       [string, string]
@@ -234,7 +234,7 @@ export default async function ContainerPage({
                 {t("containers.soldValue")}
               </dt>
               <dd className="mt-0.5 text-2xl font-bold tracking-tight text-zinc-900">
-                {formatMoney(view.soldValue, view.soldCurrency)}
+                {formatMoney(view.soldValue, view.soldCurrency, t)}
               </dd>
             </div>
             <div>
@@ -243,12 +243,12 @@ export default async function ContainerPage({
                   {t("containers.soldPercent")}
                 </dt>
                 <dd className="font-semibold tabular-nums text-emerald-700">
-                  {formatPercent(split.soldPercent)}
+                  {formatPercent(split.soldPercent, t.intl)}
                 </dd>
               </div>
               <Progress percent={split.soldPercent} />
               <p className="mt-1 text-xs text-zinc-500">
-                {formatNumber(split.soldCbm, 4)} m³
+                {formatNumber(split.soldCbm, t.intl, 4)} m³
               </p>
             </div>
             <div className="flex items-baseline justify-between gap-3">
@@ -256,9 +256,9 @@ export default async function ContainerPage({
                 {t("containers.availablePercent")}
               </dt>
               <dd className="font-semibold tabular-nums text-zinc-800">
-                {formatPercent(split.availablePercent)}{" "}
+                {formatPercent(split.availablePercent, t.intl)}{" "}
                 <span className="text-xs font-normal text-zinc-500">
-                  ({formatNumber(split.availableCbm, 4)} m³)
+                  ({formatNumber(split.availableCbm, t.intl, 4)} m³)
                 </span>
               </dd>
             </div>
@@ -306,21 +306,25 @@ export default async function ContainerPage({
                   </Td>
                   <Td>{customerOf(item.orderId)}</Td>
                   <Td className="whitespace-nowrap text-right tabular-nums">
-                    {formatNumber(item.quantity)} {item.unit}
+                    {formatNumber(item.quantity, t.intl)} {item.unit}
                   </Td>
                   <Td className="text-right tabular-nums">
-                    {formatNumber(item.unitsPerBox)}
+                    {formatNumber(item.unitsPerBox, t.intl)}
                   </Td>
                   <Td className="text-right tabular-nums">{item.boxCount}</Td>
                   <Td className="text-right tabular-nums">
-                    {formatNumber(item.cbmPerBox, 4)}
+                    {formatNumber(item.cbmPerBox, t.intl, 4)}
                   </Td>
                   <Td className="text-right font-medium tabular-nums">
-                    {formatNumber(item.boxCount * item.cbmPerBox, 4)}
+                    {formatNumber(item.boxCount * item.cbmPerBox, t.intl, 4)}
                   </Td>
                   <Td className="text-right tabular-nums">
                     {item.weightPerBoxKg !== null
-                      ? formatNumber(item.boxCount * item.weightPerBoxKg, 1)
+                      ? formatNumber(
+                          item.boxCount * item.weightPerBoxKg,
+                          t.intl,
+                          1,
+                        )
                       : "—"}
                   </Td>
                   <Td className="whitespace-nowrap">
@@ -376,7 +380,7 @@ export default async function ContainerPage({
                     {choices.map((c) => (
                       <option key={c.orderItemId} value={c.orderItemId}>
                         #{c.orderNumber} · {c.name} · {c.customerName} (
-                        {formatNumber(c.quantity)} {c.unit})
+                        {formatNumber(c.quantity, t.intl)} {c.unit})
                       </option>
                     ))}
                   </Select>

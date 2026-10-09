@@ -42,7 +42,11 @@ export function normalizePixKey(raw: string): {
   }
   const digits = value.replace(/\D/g, "");
   if (value.startsWith("+")) {
-    if (!/^\+?[\d\s().-]+$/.test(value) || digits.length < 12 || digits.length > 13)
+    if (
+      !/^\+?[\d\s().-]+$/.test(value) ||
+      digits.length < 12 ||
+      digits.length > 13
+    )
       throw new PixError("pix_key_invalid");
     return { key: `+${digits}`, type: "phone" };
   }
@@ -128,9 +132,7 @@ export function buildPixPayload(input: PixInput): string {
     field("00", "br.gov.bcb.pix") +
     field("01", key) +
     (description ? field("02", description) : "");
-  const reference = input.reference
-    ? pixReference("", input.reference)
-    : "***";
+  const reference = input.reference ? pixReference("", input.reference) : "***";
   const payload =
     field("00", "01") +
     field("26", merchant) +

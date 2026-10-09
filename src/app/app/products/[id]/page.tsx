@@ -268,7 +268,7 @@ export default async function ProductSheetPage({
     ? tierOpportunity(tiers, analysis.quantity, product.price)
     : null;
   const currency = product.currency ?? "USD";
-  const money = (n: number) => formatMoney(n, currency);
+  const money = (n: number) => formatMoney(n, currency, t);
   // Erros da ficha mestre (schema_outdated, pantone_too_many, not_found…) têm texto próprio.
   const sheetErrorText = (() => {
     if (typeof error !== "string" || !error) return null;
@@ -432,6 +432,7 @@ export default async function ProductSheetPage({
               </FieldRow>
               <FieldRow label={t("common.price")} size="md">
                 <MoneyInput
+                  locale={t.intl}
                   name="price"
                   watchField="currency"
                   defaultAmount={product.price ?? null}
@@ -483,7 +484,7 @@ export default async function ProductSheetPage({
                     {sourcing?.name ?? t("catalog.openSourcing")}
                   </TextLink>
                   {sourcing?.foundAt
-                    ? ` · ${formatDate(sourcing.foundAt)}`
+                    ? ` · ${formatDate(sourcing.foundAt, t)}`
                     : ""}
                 </p>
               ) : null}
@@ -623,7 +624,9 @@ export default async function ProductSheetPage({
                 hint={
                   <>
                     <strong className="text-zinc-800">
-                      {cbmShown !== null ? `${cbmShown.toFixed(4)} m³` : "—"}
+                      {cbmShown !== null
+                        ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
+                        : "—"}
                     </strong>
                     {cbmComputed !== null
                       ? ` · ${t("catalog.cbmComputed")}`
@@ -858,7 +861,7 @@ export default async function ProductSheetPage({
                       ) : null}
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {formatDate(m.measuredAt)}
+                      {formatDate(m.measuredAt, t)}
                     </Td>
                     <Td>{userName(m.measuredByUserId)}</Td>
                   </tr>
@@ -944,7 +947,7 @@ export default async function ProductSheetPage({
                   <Td className="whitespace-nowrap">
                     {[
                       s.periodLabel,
-                      s.scheduledFor ? formatDate(s.scheduledFor) : null,
+                      s.scheduledFor ? formatDate(s.scheduledFor, t) : null,
                     ]
                       .filter(Boolean)
                       .join(" · ") || "—"}
@@ -952,7 +955,9 @@ export default async function ProductSheetPage({
                   <Td>{partyName(s.supplierId)}</Td>
                   <Td>{partyName(s.customerId)}</Td>
                   <Td className="whitespace-nowrap text-right tabular-nums">
-                    {s.price !== null ? formatMoney(s.price, s.currency) : "—"}
+                    {s.price !== null
+                      ? formatMoney(s.price, s.currency, t)
+                      : "—"}
                   </Td>
                   <Td>
                     <Badge tone={scheduleTone[s.status] ?? "neutral"}>
@@ -1087,6 +1092,7 @@ export default async function ProductSheetPage({
             </Field>
             <Field label={t("common.price")}>
               <MoneyInput
+                locale={t.intl}
                 size="sm"
                 name="price"
                 watchField="currency"
@@ -1316,7 +1322,9 @@ export default async function ProductSheetPage({
                     {t("catalog.opp.container.line", {
                       boxes: c.fit.boxes,
                       units: c.fit.units ?? "—",
-                      cbm: c.remainingCbm.toFixed(2),
+                      cbm: c.remainingCbm.toLocaleString(t.intl, {
+                        maximumFractionDigits: 2,
+                      }),
                     })}
                   </span>
                   <TextLink

@@ -88,7 +88,7 @@ export default async function SettingsPage({
   const fiscalNotice = fiscalMatch
     ? t("fiscal.table.uploaded", {
         kind: fiscalMatch[1].toUpperCase(),
-        count: Number(fiscalMatch[2]).toLocaleString("pt-BR"),
+        count: Number(fiscalMatch[2]).toLocaleString(t.intl),
         changed: fiscalMatch[3],
       })
     : fiscalSync === "ok"
