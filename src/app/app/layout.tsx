@@ -3,69 +3,67 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
-import { LOCALE_NAMES } from "@/i18n";
-import { LOCALES, type Role } from "@/lib/db/schema";
-import { AppNav } from "@/components/app-nav";
+import { LOCALE_NAMES, type Translate } from "@/i18n";
+import { LOCALES, type Locale } from "@/lib/db/schema";
+import { isNavGroup, navFor } from "@/lib/nav";
+import { AppNav, MobileNav } from "@/components/app-nav";
+import { UserMenu } from "@/components/user-menu";
 import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
 import { DemoSwitcher } from "@/components/demo-switcher";
 import { DEMO_PASSWORD, DEMO_USERS } from "@/lib/seed";
 import { setLocaleAction } from "./actions";
 import { dataMode } from "@/lib/env";
-import type { DictionaryKey } from "@/i18n/dictionaries";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { SelectOnFocus } from "@/components/select-on-focus";
 
-interface NavItem {
-  href: string;
-  key: DictionaryKey;
+/** PT / EN / ZH: um toque troca o idioma (Server Action). `dark` para o cabeçalho, claro no painel do celular. */
+function LocaleSwitcher({
+  locale,
+  dark,
+  label,
+}: {
+  locale: Locale;
+  dark: boolean;
+  label: string;
+}) {
+  return (
+    <form
+      action={setLocaleAction}
+      aria-label={label}
+      className={`inline-flex rounded-lg p-0.5 ${dark ? "bg-black/15" : "bg-zinc-100"}`}
+    >
+      {LOCALES.map((l) => (
+        <button
+          key={l}
+          name="locale"
+          value={l}
+          type="submit"
+          aria-label={LOCALE_NAMES[l]}
+          aria-pressed={l === locale}
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold transition ${
+            dark
+              ? l === locale
+                ? "bg-white text-brand-700 shadow-sm"
+                : "text-white/80 hover:text-white focus-visible:outline-white"
+              : l === locale
+                ? "bg-white text-brand-700 shadow-sm"
+                : "text-zinc-600 hover:text-zinc-900"
+          }`}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </form>
+  );
 }
 
-function navFor(role: Role, admin: boolean): NavItem[] {
-  if (role === "admin" || role === "operator") {
-    return [
-      { href: "/app", key: "nav.controlTower" },
-      { href: "/app/tasks", key: "nav.tasks" },
-      { href: "/app/reviews", key: "nav.reviews" },
-      { href: "/app/sourcing", key: "nav.sourcing" },
-      { href: "/app/requests", key: "nav.requests" },
-      { href: "/app/freight", key: "nav.freight" },
-      { href: "/app/orders", key: "nav.orders" },
-      { href: "/app/containers", key: "nav.containers" },
-      { href: "/app/parties", key: "nav.parties" },
-      { href: "/app/products", key: "nav.products" },
-      { href: "/app/lines", key: "nav.lines" },
-      { href: "/app/finance", key: "nav.finance" },
-      { href: "/app/history", key: "nav.history" },
-      { href: "/app/after-sales", key: "nav.afterSales" },
-      { href: "/app/marketing", key: "nav.marketing" },
-      { href: "/app/penalties", key: "nav.penalties" },
-      { href: "/app/notifications", key: "nav.notifications" },
-      ...(admin
-        ? [{ href: "/app/settings", key: "nav.settings" as DictionaryKey }]
-        : []),
-    ];
-  }
-  const base: NavItem[] = [
-    { href: "/app", key: "nav.tasks" },
-    { href: "/app/orders", key: "nav.orders" },
-  ];
-  if (role === "customer") {
-    // Início do cliente é Solicitações; Pendências segue disponível em /app/tasks.
-    base.splice(0, 1, { href: "/app/requests", key: "nav.requests" });
-    base.splice(1, 0, { href: "/app/tasks", key: "nav.tasks" });
-    base.push({ href: "/app/history", key: "nav.history" });
-    base.push({ href: "/app/marketing", key: "nav.marketing" });
-  }
-  if (role === "supplier")
-    base.push({ href: "/app/account", key: "nav.account" });
-  if (role === "shipping_line")
-    base.splice(1, 0, { href: "/app/freight", key: "nav.freight" });
-  if (role === "legal")
-    base.push({ href: "/app/penalties", key: "nav.penalties" });
-  base.push({ href: "/app/notifications", key: "nav.notifications" });
-  return base;
+function demoAccounts(t: Translate) {
+  return DEMO_USERS.map((u) => ({
+    email: u.email,
+    label: `${t(`role.${u.role}`)} · ${u.name}`,
+  }));
 }
 
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
@@ -73,10 +71,18 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   if (!user) redirect("/login?next=/app");
   const t = await getT();
   const locale = await getLocale();
-  const nav = navFor(user.role, isAdmin(user));
+  const entries = navFor(user.role, isAdmin(user)).map((entry) =>
+    isNavGroup(entry)
+      ? {
+          label: t(entry.key),
+          items: entry.items.map((i) => ({ href: i.href, label: t(i.key) })),
+        }
+      : { href: entry.href, label: t(entry.key) },
+  );
   const showDemo =
     dataMode() === "memory" ||
     process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "1";
+  const roleLabel = t(`role.${user.role}`);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -84,78 +90,93 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         <NavigationProgress />
         <SelectOnFocus />
       </Suspense>
-      <header className="bg-gradient-to-r from-brand-700 via-brand-600 to-brand-600 text-white shadow-md shadow-brand-900/20">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-3">
+      {/* Cabeçalho em duas faixas: marca e conta em cima; menu embaixo (no
+          celular o menu vira um painel aberto pelo botão). */}
+      <header className="bg-brand-700 text-white shadow-md shadow-brand-900/20">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-4">
           <Link
             href="/app"
-            className="flex items-center gap-3 rounded-md focus-visible:outline-white"
+            className="flex items-center gap-2.5 rounded-md focus-visible:outline-white"
             aria-label={t("app.name")}
           >
-            <WellmixLogo variant="white" className="h-7 sm:h-8" />
-            <span className="hidden border-l border-white/30 pl-3 text-sm font-medium leading-tight text-white/90 sm:block">
+            <WellmixLogo variant="white" className="h-7" />
+            <span className="hidden border-l border-white/25 pl-2.5 text-sm font-medium text-white/85 sm:block">
               Portal
-              <span className="block text-xs font-normal text-white/70">
-                {t("app.tagline")}
-              </span>
             </span>
           </Link>
-          {/* Celular: logo e Sair na 1ª linha; idioma e conta demo na 2ª. */}
-          <div className="order-last flex w-full items-center justify-between gap-2 text-sm sm:order-none sm:ml-auto sm:w-auto sm:justify-end sm:gap-3">
-            <form
-              action={setLocaleAction}
-              className="flex rounded-lg bg-black/15 p-0.5"
-            >
-              {LOCALES.map((l) => (
-                <button
-                  key={l}
-                  name="locale"
-                  value={l}
-                  type="submit"
-                  aria-label={LOCALE_NAMES[l]}
-                  aria-pressed={l === locale}
-                  className={`rounded-md px-2 py-0.5 text-xs font-semibold transition focus-visible:outline-white ${l === locale ? "bg-white text-brand-700 shadow-sm" : "text-white/80 hover:text-white"}`}
-                >
-                  {l.toUpperCase()}
-                </button>
-              ))}
-            </form>
-            <span
-              className="hidden items-center gap-2 md:flex"
-              title={t(`role.${user.role}`)}
-            >
-              <span
-                aria-hidden
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-brand-700"
-              >
-                {user.name.trim().charAt(0).toUpperCase()}
-              </span>
-              <span className="leading-tight">
-                <span className="block font-medium">{user.name}</span>
-                <span className="block text-xs text-white/70">
-                  {t(`role.${user.role}`)}
-                </span>
-              </span>
-            </span>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden md:block">
+              <LocaleSwitcher locale={locale} dark label={t("nav.language")} />
+            </div>
             {showDemo ? (
-              <DemoSwitcher
-                accounts={DEMO_USERS.map((u) => ({
-                  email: u.email,
-                  label: `${t(`role.${u.role}`)} · ${u.name}`,
-                }))}
-                current={user.email}
-                password={DEMO_PASSWORD}
-                label={t("help.login.demo")}
-              />
+              <div className="hidden md:block">
+                <DemoSwitcher
+                  accounts={demoAccounts(t)}
+                  current={user.email}
+                  password={DEMO_PASSWORD}
+                  label={t("nav.demo")}
+                />
+              </div>
             ) : null}
-          </div>
-          <div className="ml-auto sm:ml-0">
-            <LogoutButton label={t("nav.logout")} />
+            <div className="hidden md:block">
+              <UserMenu
+                name={user.name}
+                role={roleLabel}
+                email={user.email}
+                label={t("nav.user")}
+              >
+                <LogoutButton label={t("nav.logout")} variant="light" />
+              </UserMenu>
+            </div>
+            <div className="md:hidden">
+              <MobileNav
+                entries={entries}
+                labels={{ open: t("nav.menu"), close: t("nav.menu.close") }}
+                extras={
+                  <>
+                    <div className="flex items-center gap-3">
+                      <span
+                        aria-hidden
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white"
+                      >
+                        {user.name.trim().charAt(0).toUpperCase()}
+                      </span>
+                      <span className="min-w-0 leading-tight">
+                        <span className="block truncate text-sm font-semibold">
+                          {user.name}
+                        </span>
+                        <span className="block text-xs text-zinc-500">
+                          {roleLabel}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <LocaleSwitcher
+                        locale={locale}
+                        dark={false}
+                        label={t("nav.language")}
+                      />
+                      {showDemo ? (
+                        <DemoSwitcher
+                          accounts={demoAccounts(t)}
+                          current={user.email}
+                          password={DEMO_PASSWORD}
+                          label={t("nav.demo")}
+                          variant="light"
+                        />
+                      ) : null}
+                    </div>
+                    <LogoutButton label={t("nav.logout")} variant="light" />
+                  </>
+                }
+              />
+            </div>
           </div>
         </div>
-        <div className="mx-auto mt-2 w-full max-w-7xl px-2 sm:px-3">
-          <AppNav
-            items={nav.map((item) => ({ href: item.href, label: t(item.key) }))}
-          />
+        <div className="hidden border-t border-white/10 bg-black/10 md:block">
+          <div className="mx-auto w-full max-w-7xl px-2">
+            <AppNav entries={entries} />
+          </div>
         </div>
       </header>
       {dataMode() === "memory" && process.env.NODE_ENV === "production" ? (

@@ -17,11 +17,14 @@ export function DemoSwitcher({
   current,
   password,
   label,
+  variant = "header",
 }: {
   accounts: DemoAccount[];
   current: string;
   password: string;
   label: string;
+  /** "header": no fundo vermelho; "light": no painel branco do celular. */
+  variant?: "header" | "light";
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -43,8 +46,18 @@ export function DemoSwitcher({
   }
 
   return (
-    <label className="flex items-center gap-1.5 rounded-lg bg-black/15 py-0.5 pl-2 pr-0.5 text-white">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">
+    <label
+      className={`inline-flex items-center gap-1.5 rounded-lg py-0.5 pl-2 pr-0.5 ${
+        variant === "light"
+          ? "bg-zinc-100 text-zinc-700"
+          : "bg-black/15 text-white"
+      }`}
+    >
+      <span
+        className={`text-[10px] font-bold uppercase tracking-wider ${
+          variant === "light" ? "text-zinc-500" : "text-white/80"
+        }`}
+      >
         Demo
       </span>
       <select
@@ -52,7 +65,7 @@ export function DemoSwitcher({
         value={current}
         disabled={pending}
         onChange={(e) => switchTo(e.target.value)}
-        className="max-w-40 rounded-md sm:max-w-44 border-0 bg-white px-2 py-1 text-xs font-medium text-zinc-900 focus-visible:outline-white disabled:opacity-60"
+        className="max-w-40 rounded-md border-0 bg-white px-2 py-1 text-xs font-medium text-zinc-900 focus-visible:outline-white disabled:opacity-60 sm:max-w-48"
       >
         {accounts.map((a) => (
           <option key={a.email} value={a.email}>
