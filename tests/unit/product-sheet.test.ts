@@ -65,8 +65,16 @@ describe("ficha mestre do produto", () => {
     expect(sheet.productId).toBe("prod-jarra");
     expect(sheet.price).toBe(2.5);
     expect(sheet.colorPantones).toEqual([{ code: "185 C", hex: "#e4002b" }]);
-    // Campos obrigatórios da ficha preenchidos: falta só o fornecedor (lote e fotos à parte).
-    expect(missing).toEqual(["supplierName"]);
+    // Campos obrigatórios da ficha preenchidos: falta o fornecedor e as 5
+    // fotos da ficha (do card Fotos do produto); lote é de cada compra.
+    expect(missing).toEqual([
+      "supplierName",
+      "scalePhoto",
+      "rulerPhoto",
+      "sidePhoto",
+      "anglePhoto",
+      "originalPhoto",
+    ]);
     const product = (await store.get("products", "prod-jarra"))!;
     expect(product.price).toBe(2.5);
     expect(product.currency).toBe("USD");

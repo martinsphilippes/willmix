@@ -91,6 +91,7 @@ import {
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
 import { SuppliersCard } from "../_components/suppliers-card";
+import { SheetPhotoChecklist } from "../_components/sheet-photo-checklist";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
@@ -735,6 +736,14 @@ export default async function ProductSheetPage({
         ) : null}
         <p className="text-xs text-zinc-500" data-master-photos>
           {t("productSheet.photos", { n: masterPhotoKinds.length })}
+          {masterPhotoKinds.length < 5 ? (
+            <>
+              {" "}
+              <TextLink href="#sheet-photos" className="font-medium">
+                {t("productSheet.photosLink")}
+              </TextLink>
+            </>
+          ) : null}
         </p>
         <form
           id="product-sheet-form"
@@ -771,6 +780,13 @@ export default async function ProductSheetPage({
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card title={t("catalog.photos")} className="scroll-mt-4">
           <div id="photos" />
+          {/* As 5 fotos que a ficha mestre exige: o que falta, com envio direto. */}
+          <SheetPhotoChecklist
+            t={t}
+            productId={product.id}
+            photos={photos}
+            canEdit
+          />
           {photosByKind.length === 0 ? (
             <Empty>{t("catalog.photos.empty")}</Empty>
           ) : (

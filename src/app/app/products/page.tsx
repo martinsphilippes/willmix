@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
-import { SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
 import { listLinksForProducts } from "@/lib/services/product-suppliers";
@@ -55,10 +54,19 @@ export default async function ProductsPage({
         filter: { orderId: products.map((p) => p.id) },
       })
     : [];
+  // Fotos dos produtos (uma consulta): as 5 da ficha contam para "completa".
+  const productPhotos = products.length
+    ? await store.list("product_photos", {
+        filter: { productId: products.map((p) => p.id) },
+      })
+    : [];
   const masterState = (productId: string) => {
     const m = masters.find((x) => x.orderId === productId);
     if (!m) return "none" as const;
-    const missing = missingForCompletion(m, SHEET_PHOTO_KINDS).filter(
+    const kinds = productPhotos
+      .filter((ph) => ph.productId === productId)
+      .map((ph) => ph.kind as string);
+    const missing = missingForCompletion(m, kinds).filter(
       (k) => k !== "lot1" && k !== "productionStartAt",
     );
     return missing.length ? ("partial" as const) : ("complete" as const);

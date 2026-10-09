@@ -293,10 +293,12 @@ export async function productSheetMissing(
   productId: string,
   sheet: Partial<PurchaseSheet> | null,
 ): Promise<SheetMissing[]> {
-  // Lotes, início da produção e fotos são conferidos à parte (fotos no card do produto).
-  return missingForCompletion(sheet, SHEET_PHOTO_KINDS).filter(
-    (m) => m !== "lot1" && m !== "productionStartAt",
-  );
+  // Lotes e início da produção são de cada compra. As 5 fotos da ficha
+  // contam: vêm do card Fotos do produto (lista do que falta lá).
+  return missingForCompletion(
+    sheet,
+    await productSheetPhotoKinds(productId),
+  ).filter((m) => m !== "lot1" && m !== "productionStartAt");
 }
 
 /**
