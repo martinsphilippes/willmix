@@ -369,7 +369,7 @@ export default async function OrderPage({
         </Alert>
       ) : null}
       {notice ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="success">{t(notice)}</Alert>
         </div>
       ) : null}
@@ -385,7 +385,7 @@ export default async function OrderPage({
         <CancelRequestAlert t={t} order={order} admin={admin} />
       ) : null}
       {currentStage?.status === "blocked" ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="warning">
             <strong>{t("orders.blocked")}:</strong>{" "}
             {wellmix || currentStage.key !== "INSPECTION"
@@ -398,15 +398,19 @@ export default async function OrderPage({
         <Alert tone="success">{t("orders.closed")}</Alert>
       ) : null}
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <div className="min-w-0 space-y-6 lg:col-span-2">
-          <Card title={t("orders.timeline")}>
-            <ol className="-mx-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+      {/* Coluna principal: linha do tempo e etapas. Etapas concluídas ou ainda
+          não iniciadas ficam lado a lado (2 por linha a partir do iPad); a etapa
+          aberta, o relatório da inspeção e os cards de pós-venda ocupam a
+          largura toda. */}
+      <div className="mt-3 grid gap-4 lg:grid-cols-3">
+        <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:col-span-2">
+          <Card title={t("orders.timeline")} className="md:col-span-2">
+            <ol className="-mx-2 grid gap-x-4 gap-y-0.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
               {stages.map((s) => (
                 <li
                   key={s.id}
                   className={cx(
-                    "flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm",
+                    "flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-sm",
                     s.status === "active" && "bg-brand-50",
                     s.status === "blocked" && "bg-amber-50",
                   )}
@@ -438,7 +442,7 @@ export default async function OrderPage({
           </Card>
 
           {customerSide && (afterSales || (wellmix && delivered)) ? (
-            <div id="after-sales">
+            <div id="after-sales" className="min-w-0 md:col-span-2">
               <AfterSalesCard
                 t={t}
                 afterSales={afterSales}
@@ -451,7 +455,7 @@ export default async function OrderPage({
           ) : null}
 
           {customerSide && delivered && items[0] ? (
-            <div id="followup">
+            <div id="followup" className="min-w-0 md:col-span-2">
               <FollowUpCard
                 t={t}
                 order={order}
@@ -486,6 +490,7 @@ export default async function OrderPage({
                 <Fragment key={stage.id}>
                   <Card
                     className={cx(
+                      open && "md:col-span-2",
                       stage.status === "active" &&
                         "border-brand-300! ring-4 ring-brand-50",
                       stage.status === "blocked" &&
@@ -530,11 +535,11 @@ export default async function OrderPage({
                       ) : null
                     }
                   >
-                    <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                    <p className="mb-2 text-xs leading-relaxed text-zinc-500">
                       {t(`help.stage.${stage.key}`)}
                     </p>
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (
-                      <p className="mb-3 rounded-lg bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-800">
+                      <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
                         {t("orders.inspection.blindHint")}
                       </p>
                     ) : null}
@@ -545,7 +550,7 @@ export default async function OrderPage({
                       (r) => r.status === "done" && isRemeasurable(r),
                     ) &&
                     (wellmix || user.role === "supplier") ? (
-                      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
                         {remeasureMode ? (
                           <>
                             <span className="text-xs text-zinc-600">
@@ -604,7 +609,7 @@ export default async function OrderPage({
                       </ul>
                     )}
                     {stage.status === "blocked" && wellmix ? (
-                      <form action={unblockStageAction} className="mt-3">
+                      <form action={unblockStageAction} className="mt-2">
                         <input type="hidden" name="orderId" value={order.id} />
                         <input type="hidden" name="stageId" value={stage.id} />
                         <SubmitButton variant="secondary">
@@ -620,12 +625,14 @@ export default async function OrderPage({
                   wellmix &&
                   stage.status !== "pending" ? (
                     inspection ? (
-                      <InspectionResultCard
-                        key={`${stage.id}-result`}
-                        t={t}
-                        report={inspection}
-                        userName={userName}
-                      />
+                      <div className="min-w-0 md:col-span-2">
+                        <InspectionResultCard
+                          key={`${stage.id}-result`}
+                          t={t}
+                          report={inspection}
+                          userName={userName}
+                        />
+                      </div>
                     ) : null
                   ) : null}
                 </Fragment>
@@ -633,7 +640,9 @@ export default async function OrderPage({
             })}
         </div>
 
-        <div className="min-w-0 space-y-6">
+        {/* Coluna lateral: cards pequenos. No iPad em pé (sem a coluna lateral)
+            ficam 2 por linha; da tela larga em diante, um abaixo do outro. */}
+        <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:grid-cols-1">
           <Card title={t("orders.title")}>
             <DescriptionList
               items={[
@@ -725,7 +734,7 @@ export default async function OrderPage({
               ]}
             />
             {wellmix && order.erpSyncStatus === "pending" ? (
-              <p className="mt-3 text-xs text-amber-700">
+              <p className="mt-2 text-xs text-amber-700">
                 {t("orders.erp.pending")}
               </p>
             ) : null}
@@ -736,7 +745,7 @@ export default async function OrderPage({
           ) : null}
 
           {wellmix ? (
-            <div id="snapshot">
+            <div id="snapshot" className="min-w-0">
               <SnapshotCard
                 t={t}
                 snapshot={snapshot}
@@ -749,7 +758,7 @@ export default async function OrderPage({
 
           {wellmix ? (
             <Card title={t("orders.partners")}>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {(
                   [
                     ["agencyId", "agency"],
@@ -880,7 +889,7 @@ export default async function OrderPage({
               {wellmix && finance.receivable > 0 ? (
                 <form
                   action={registerCustomerPaymentAction}
-                  className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-2"
+                  className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5"
                 >
                   <input type="hidden" name="orderId" value={order.id} />
                   <Field label={t("orders.value")}>
@@ -890,6 +899,7 @@ export default async function OrderPage({
                       watchField="currency"
                       required
                       defaultAmount={finance.receivable}
+                      className="w-full"
                     />
                   </Field>
                   <Field label={t("common.currency")}>
@@ -899,7 +909,7 @@ export default async function OrderPage({
                       t={t}
                     />
                   </Field>
-                  <div className="sm:col-span-2">
+                  <div className="col-span-2">
                     <Field label={t("finance.method")}>
                       <Input
                         name="method"
@@ -907,12 +917,12 @@ export default async function OrderPage({
                       />
                     </Field>
                   </div>
-                  <div className="sm:col-span-2">
+                  <div className="col-span-2">
                     <Field label={t("requests.payment.proof")}>
                       <Input name="proof" type="file" />
                     </Field>
                   </div>
-                  <div className="sm:col-span-2">
+                  <div className="col-span-2">
                     <SubmitButton>{t("finance.registerReceipt")}</SubmitButton>
                   </div>
                 </form>
@@ -922,11 +932,11 @@ export default async function OrderPage({
 
           {visiblePayments.length > 0 ? (
             <Card title={t("orders.payments")}>
-              <ul className="space-y-2 text-sm">
+              <ul className="space-y-1.5 text-sm">
                 {visiblePayments.map((p) => (
                   <li
                     key={p.id}
-                    className="rounded-xl border border-zinc-200/80 p-3"
+                    className="rounded-lg border border-zinc-200/80 px-2.5 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-zinc-900">
@@ -966,7 +976,10 @@ export default async function OrderPage({
                     {p.direction === "supplier_out" &&
                     p.status !== "received" &&
                     (user.role === "supplier" || wellmix) ? (
-                      <form action={acknowledgePaymentAction} className="mt-2">
+                      <form
+                        action={acknowledgePaymentAction}
+                        className="mt-1.5"
+                      >
                         <input type="hidden" name="paymentId" value={p.id} />
                         <input
                           type="hidden"
@@ -1043,7 +1056,7 @@ export default async function OrderPage({
               </ul>
             )}
             {visibleDocs.length > 0 ? (
-              <p className="mt-3 text-[11px] leading-relaxed text-zinc-400">
+              <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
                 {t("orders.ack.hint")}
               </p>
             ) : null}
@@ -1054,11 +1067,11 @@ export default async function OrderPage({
               {penalties.length === 0 ? (
                 <Empty>{t("penalties.empty")}</Empty>
               ) : null}
-              <ul className="space-y-2 text-sm">
+              <ul className="space-y-1.5 text-sm">
                 {penalties.map((p) => (
                   <li
                     key={p.id}
-                    className="rounded-xl border border-zinc-200/80 p-3"
+                    className="rounded-lg border border-zinc-200/80 px-2.5 py-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-zinc-900">
@@ -1068,7 +1081,7 @@ export default async function OrderPage({
                         {t(`penaltyStatus.${p.status}`)}
                       </Badge>
                     </div>
-                    <p className="mt-1 text-zinc-700">{p.reason}</p>
+                    <p className="mt-0.5 text-zinc-700">{p.reason}</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       {t("orders.penalty.responsible")}:{" "}
                       {partyName(p.responsiblePartyId)}
@@ -1077,7 +1090,7 @@ export default async function OrderPage({
                 ))}
               </ul>
               {wellmix ? (
-                <details className="mt-3">
+                <details className="mt-2">
                   <summary className="cursor-pointer text-sm font-semibold text-brand-700 transition hover:text-brand-800">
                     {t("orders.penalty.new")}
                   </summary>
@@ -1093,6 +1106,7 @@ export default async function OrderPage({
                           name="amount"
                           watchField="currency"
                           required
+                          className="w-full"
                         />
                       </Field>
                       <Field label={t("common.currency")}>
@@ -1252,7 +1266,7 @@ function RequirementRow({
         ? "danger"
         : "neutral";
   return (
-    <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <li className="flex flex-col gap-1.5 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
       <div className="min-w-0 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-zinc-900">
@@ -1267,7 +1281,7 @@ function RequirementRow({
           <span className="text-xs text-zinc-500">{t(`role.${r.role}`)}</span>
         </div>
         {r.status !== "pending" ? (
-          <div className="mt-1 text-xs text-zinc-500">
+          <div className="mt-0.5 text-xs text-zinc-500">
             {r.type !== "file" &&
             r.type !== "photo" &&
             r.type !== "confirm" &&
@@ -1306,10 +1320,10 @@ function RequirementRow({
             {note ? ` · ${note}` : ""}
           </div>
         ) : note ? (
-          <p className="mt-1 text-xs text-amber-700">{note}</p>
+          <p className="mt-0.5 text-xs text-amber-700">{note}</p>
         ) : null}
         {isSheet && r.status !== "done" && sheetHint ? (
-          <p className="mt-1 text-xs text-zinc-600">
+          <p className="mt-0.5 text-xs text-zinc-600">
             {sheetHint.source === "quote" ||
             sheetHint.source === "previous" ||
             sheetHint.source === "master"
@@ -1487,7 +1501,7 @@ function SnapshotCard({
         ) : null
       }
     >
-      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+      <p className="mb-2 text-xs leading-relaxed text-zinc-500">
         {t("orders.snapshot.hint")}
       </p>
       <DescriptionList
@@ -1542,7 +1556,7 @@ function SnapshotCard({
           ],
         ]}
       />
-      <div className="mt-4">
+      <div className="mt-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
           {t("orders.snapshot.photos")}
         </p>
@@ -1551,7 +1565,7 @@ function SnapshotCard({
             {t("orders.snapshot.noPhotos")}
           </p>
         ) : (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-1.5 flex flex-wrap gap-2">
             {snapshot.photoDocumentIds.map((docId) => (
               <a
                 key={docId}
@@ -1625,7 +1639,7 @@ function InspectionResultCard({
         </Badge>
       }
     >
-      <p className="mb-4 text-xs leading-relaxed text-zinc-500">
+      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
         {t("inspReport.hint")}
       </p>
 
@@ -1714,11 +1728,11 @@ function InspectionResultCard({
       )}
 
       {report.photos.length > 0 ? (
-        <div className="mt-5">
+        <div className="mt-4">
           <h3 className="mb-2 text-sm font-semibold text-zinc-900">
             {t("inspReport.photos")}
           </h3>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
             {report.photos.map((p) => (
               <li key={p.id}>
                 <a
@@ -1748,84 +1762,88 @@ function InspectionResultCard({
         </div>
       ) : null}
 
-      <div className="mt-5 rounded-xl border border-zinc-200 px-4 py-3">
-        <h3 className="text-sm font-semibold text-zinc-900">
-          {t("inspReport.decision")}
-        </h3>
-        <p className="mt-1 text-sm text-zinc-800">{decision}</p>
-        {review && review.status !== "pending" ? (
-          <p className="mt-0.5 text-xs text-zinc-500">
-            {review.value !== "auto"
-              ? `${userName(review.submittedByUserId)} · `
-              : ""}
-            {formatDateTime(review.submittedAt, t.intl)}
-            {review.note ? ` · ${review.note}` : ""}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* Decisão da revisão | divergências, lado a lado na tela larga. */}
+      <div className="mt-4 grid items-start gap-3 md:grid-cols-2">
+        <div className="min-w-0 rounded-xl border border-zinc-200 px-3 py-2.5">
           <h3 className="text-sm font-semibold text-zinc-900">
-            {t("inspReport.divergences")}
-            {openCount > 0 ? (
-              <span className="ml-2">
-                <Badge tone="warning">{openCount}</Badge>
-              </span>
-            ) : null}
+            {t("inspReport.decision")}
           </h3>
-          {openCount > 0 ? (
-            <TextLink href="/app/reviews" className="text-xs">
-              {t("orders.inspection.reviewsLink")} →
-            </TextLink>
+          <p className="mt-1 text-sm text-zinc-800">{decision}</p>
+          {review && review.status !== "pending" ? (
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {review.value !== "auto"
+                ? `${userName(review.submittedByUserId)} · `
+                : ""}
+              {formatDateTime(review.submittedAt, t.intl)}
+              {review.note ? ` · ${review.note}` : ""}
+            </p>
           ) : null}
         </div>
-        {report.reviews.length === 0 ? (
-          <p className="mt-1 text-xs text-zinc-500">
-            {t("inspReport.noDivergences")}
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-1.5 text-sm">
-            {report.reviews.map((r) => (
-              <li
-                key={r.id}
-                className={cx(
-                  "rounded-lg border px-3 py-2",
-                  r.status === "open"
-                    ? "border-amber-200 bg-amber-50/60"
-                    : "border-zinc-200",
-                )}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-zinc-900">{r.problem}</p>
-                  <Badge tone={r.status === "open" ? "warning" : "success"}>
-                    {t(`reviews.status.${r.status}`)}
-                  </Badge>
-                </div>
-                <p className="mt-0.5 text-xs text-zinc-600">
-                  {t("orders.inspection.expected")}:{" "}
-                  <span className="font-medium">{r.expected ?? "—"}</span> ·{" "}
-                  {t("orders.inspection.found")}:{" "}
-                  <span className="font-medium text-red-700">
-                    {r.found ?? "—"}
-                  </span>{" "}
-                  · {formatDateTime(r.createdAt, t.intl)}
-                </p>
-                {r.status !== "open" ? (
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    {t("inspReport.resolvedBy")}: {userName(r.resolvedByUserId)}{" "}
-                    · {formatDateTime(r.resolvedAt, t.intl)}
-                    {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-zinc-900">
+              {t("inspReport.divergences")}
+              {openCount > 0 ? (
+                <span className="ml-2">
+                  <Badge tone="warning">{openCount}</Badge>
+                </span>
+              ) : null}
+            </h3>
+            {openCount > 0 ? (
+              <TextLink href="/app/reviews" className="text-xs">
+                {t("orders.inspection.reviewsLink")} →
+              </TextLink>
+            ) : null}
+          </div>
+          {report.reviews.length === 0 ? (
+            <p className="mt-1 text-xs text-zinc-500">
+              {t("inspReport.noDivergences")}
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {report.reviews.map((r) => (
+                <li
+                  key={r.id}
+                  className={cx(
+                    "rounded-lg border px-3 py-2",
+                    r.status === "open"
+                      ? "border-amber-200 bg-amber-50/60"
+                      : "border-zinc-200",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium text-zinc-900">{r.problem}</p>
+                    <Badge tone={r.status === "open" ? "warning" : "success"}>
+                      {t(`reviews.status.${r.status}`)}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 text-xs text-zinc-600">
+                    {t("orders.inspection.expected")}:{" "}
+                    <span className="font-medium">{r.expected ?? "—"}</span> ·{" "}
+                    {t("orders.inspection.found")}:{" "}
+                    <span className="font-medium text-red-700">
+                      {r.found ?? "—"}
+                    </span>{" "}
+                    · {formatDateTime(r.createdAt, t.intl)}
                   </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
+                  {r.status !== "open" ? (
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {t("inspReport.resolvedBy")}:{" "}
+                      {userName(r.resolvedByUserId)} ·{" "}
+                      {formatDateTime(r.resolvedAt, t.intl)}
+                      {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       {report.timeline.length > 0 ? (
-        <details className="mt-5">
+        <details className="mt-4">
           <summary className="cursor-pointer text-sm font-semibold text-zinc-900">
             {t("inspReport.timeline")} ({report.timeline.length})
           </summary>
@@ -1870,11 +1888,11 @@ function ContainersCard({
       {containers.length === 0 ? (
         <Empty>{t("orders.containers.none")}</Empty>
       ) : (
-        <ul className="space-y-2 text-sm">
+        <ul className="space-y-1.5 text-sm">
           {containers.map((c) => (
             <li
               key={c.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200/80 p-3"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200/80 px-2.5 py-2"
             >
               <div className="min-w-0">
                 <p className="font-semibold text-zinc-900">
@@ -1973,8 +1991,8 @@ function ChoiceButton({
       />
       <span
         className={cx(
-          "flex min-h-12 items-center justify-center rounded-xl border border-zinc-300 bg-white px-3 text-base font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600",
-          wide ? "min-w-24" : "w-12",
+          "flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600",
+          wide ? "min-w-20" : "w-10",
         )}
       >
         {label}
@@ -2009,7 +2027,7 @@ function AfterSalesCard({
         <p className="text-sm text-zinc-600">
           {t("orders.afterSales.openHint")}
         </p>
-        <form action={openAfterSalesAction} className="mt-3">
+        <form action={openAfterSalesAction} className="mt-2">
           <input type="hidden" name="orderId" value={orderId} />
           <SubmitButton variant="secondary">
             {t("orders.afterSales.open")}
@@ -2031,62 +2049,67 @@ function AfterSalesCard({
         <Badge tone={tone}>{t(`orders.afterSales.status.${status}`)}</Badge>
       }
     >
-      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+      <p className="mb-2 text-xs leading-relaxed text-zinc-500">
         {t("orders.afterSales.hint")}
       </p>
 
       {canAnswer ? (
-        <form action={answerAfterSalesAction} className="space-y-4">
+        <form action={answerAfterSalesAction} className="space-y-3">
           <input type="hidden" name="orderId" value={orderId} />
           <input type="hidden" name="afterSalesId" value={afterSales.id} />
-          <fieldset>
-            <legend className="text-sm font-medium text-zinc-800">
-              {t("orders.afterSales.rating")}
-            </legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <ChoiceButton
-                  key={n}
-                  name="rating"
-                  value={String(n)}
-                  label={String(n)}
-                  required
-                />
-              ))}
-            </div>
-            <p className="mt-1 text-xs text-zinc-500">
-              {t("orders.afterSales.ratingHint")}
-            </p>
-          </fieldset>
-          <Field label={t("orders.afterSales.experience")}>
-            <Textarea name="experience" rows={2} maxLength={2000} />
-          </Field>
-          <Field label={t("orders.afterSales.problems")}>
-            <Textarea name="problems" rows={2} maxLength={2000} />
-          </Field>
-          <Field label={t("orders.afterSales.perceivedCosts")}>
-            <Textarea name="perceivedCosts" rows={2} maxLength={2000} />
-          </Field>
-          <Field label={t("orders.afterSales.suggestions")}>
-            <Textarea name="suggestions" rows={2} maxLength={2000} />
-          </Field>
-          <fieldset>
-            <legend className="text-sm font-medium text-zinc-800">
-              {t("orders.afterSales.repurchase")}
-            </legend>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(["yes", "maybe", "no"] as const).map((v) => (
-                <ChoiceButton
-                  key={v}
-                  name="repurchaseInterest"
-                  value={v}
-                  label={t(`orders.afterSales.repurchase.${v}`)}
-                  wide
-                />
-              ))}
-            </div>
-          </fieldset>
-          <div className="border-t border-zinc-100 pt-4">
+          {/* As duas escolhas lado a lado; os textos em 2 colunas. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <fieldset className="min-w-0">
+              <legend className="text-sm font-medium text-zinc-800">
+                {t("orders.afterSales.rating")}
+              </legend>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <ChoiceButton
+                    key={n}
+                    name="rating"
+                    value={String(n)}
+                    label={String(n)}
+                    required
+                  />
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">
+                {t("orders.afterSales.ratingHint")}
+              </p>
+            </fieldset>
+            <fieldset className="min-w-0">
+              <legend className="text-sm font-medium text-zinc-800">
+                {t("orders.afterSales.repurchase")}
+              </legend>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {(["yes", "maybe", "no"] as const).map((v) => (
+                  <ChoiceButton
+                    key={v}
+                    name="repurchaseInterest"
+                    value={v}
+                    label={t(`orders.afterSales.repurchase.${v}`)}
+                    wide
+                  />
+                ))}
+              </div>
+            </fieldset>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t("orders.afterSales.experience")}>
+              <Textarea name="experience" rows={2} maxLength={2000} />
+            </Field>
+            <Field label={t("orders.afterSales.problems")}>
+              <Textarea name="problems" rows={2} maxLength={2000} />
+            </Field>
+            <Field label={t("orders.afterSales.perceivedCosts")}>
+              <Textarea name="perceivedCosts" rows={2} maxLength={2000} />
+            </Field>
+            <Field label={t("orders.afterSales.suggestions")}>
+              <Textarea name="suggestions" rows={2} maxLength={2000} />
+            </Field>
+          </div>
+          <div className="border-t border-zinc-100 pt-3">
             <SubmitButton pendingText="...">
               {t("orders.afterSales.submit")}
             </SubmitButton>
@@ -2146,17 +2169,20 @@ function AfterSalesCard({
       {wellmix && status !== "closed" ? (
         <form
           action={closeAfterSalesAction}
-          className="mt-4 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:p-4"
+          className="mt-3 flex flex-wrap items-end gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5"
         >
           <input type="hidden" name="orderId" value={orderId} />
           <input type="hidden" name="afterSalesId" value={afterSales.id} />
-          <Field
-            label={t("orders.afterSales.notes")}
-            hint={t("orders.afterSales.closeHint")}
-          >
-            <Textarea name="notes" rows={2} maxLength={2000} />
-          </Field>
-          <SubmitButton variant="secondary">
+          <div className="min-w-0 flex-1 basis-64">
+            <Field
+              label={t("orders.afterSales.notes")}
+              hint={t("orders.afterSales.closeHint")}
+            >
+              <Textarea name="notes" rows={2} maxLength={2000} />
+            </Field>
+          </div>
+          {/* Alinhado à caixa de texto (a dica fica embaixo dela). */}
+          <SubmitButton variant="secondary" className="sm:mb-6">
             {t("orders.afterSales.close")}
           </SubmitButton>
         </form>
@@ -2192,10 +2218,10 @@ async function FollowUpCard({
       : null;
   return (
     <Card title={t("orders.followup.title")}>
-      <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+      <p className="mb-2 text-xs leading-relaxed text-zinc-500">
         {t("orders.followup.hint")}
       </p>
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row">
         {photoDocumentId ? (
           <a
             href={`/api/files/${photoDocumentId}`}
@@ -2207,11 +2233,11 @@ async function FollowUpCard({
               src={`/api/files/${photoDocumentId}`}
               alt={item.name}
               loading="lazy"
-              className="h-28 w-28 rounded-xl border border-zinc-200 bg-zinc-50 object-cover"
+              className="h-20 w-20 rounded-xl border border-zinc-200 bg-zinc-50 object-cover"
             />
           </a>
         ) : (
-          <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-center text-xs text-zinc-400">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-1 text-center text-[11px] text-zinc-400">
             {t("orders.followup.noPhoto")}
           </div>
         )}
@@ -2234,9 +2260,10 @@ async function FollowUpCard({
           />
         </div>
       </div>
+      {/* Quantidade e prazo do tamanho do que se digita; observações ao lado. */}
       <form
         action={createFollowUpRequestAction}
-        className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-2 sm:p-4"
+        className="mt-3 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,9rem)_minmax(0,12rem)_minmax(0,1fr)]"
       >
         <input type="hidden" name="orderId" value={order.id} />
         <Field label={t("orders.followup.newQuantity")}>
@@ -2268,12 +2295,12 @@ async function FollowUpCard({
             />
           )}
         </Field>
-        <div className="sm:col-span-2">
+        <div className="min-w-0 sm:col-span-2 lg:col-span-1">
           <Field label={t("orders.followup.notes")}>
             <Textarea name="notes" rows={2} maxLength={2000} />
           </Field>
         </div>
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
+        <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
           <SubmitButton name="origin" value="replenishment" pendingText="...">
             {t("orders.followup.buyAgain")}
           </SubmitButton>
@@ -2286,12 +2313,12 @@ async function FollowUpCard({
             {t("orders.followup.newProposal")}
           </SubmitButton>
         </div>
-        <p className="text-xs leading-relaxed text-zinc-500 sm:col-span-2">
+        <p className="text-xs leading-relaxed text-zinc-500 sm:col-span-2 lg:col-span-3">
           {t("orders.followup.buyAgainHint")}
         </p>
       </form>
       {derived.length > 0 ? (
-        <div className="mt-4">
+        <div className="mt-3">
           <h3 className="text-sm font-semibold text-zinc-900">
             {t("orders.followup.derived")}
           </h3>

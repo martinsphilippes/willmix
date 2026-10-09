@@ -7,7 +7,7 @@ import {
   requestOrderCancelAction,
   updateCancelSettlementAction,
 } from "@/app/app/actions/order-cancel";
-import { Alert, Card, Field, Select, Textarea, formatDate } from "./ui";
+import { Alert, Card, Field, Select, Textarea, cx, formatDate } from "./ui";
 import { SubmitButton } from "./submit-button";
 
 /*
@@ -39,7 +39,14 @@ export function CancelledBanner({
     ? t(`stage.${order.cancelStageKey}` as DictionaryKey)
     : null;
   return (
-    <div id="cancel" className="mb-4 space-y-3" data-order-cancelled>
+    <div
+      id="cancel"
+      className={cx(
+        "mb-3 grid items-start gap-3",
+        (admin || wellmix || customer) && "lg:grid-cols-2",
+      )}
+      data-order-cancelled
+    >
       <Alert tone="danger">
         <strong>
           {t("cancel.banner", {
@@ -63,7 +70,7 @@ export function CancelledBanner({
       </Alert>
       {admin ? (
         <Card title={t("cancel.settlementLabel")}>
-          <form action={updateCancelSettlementAction} className="space-y-3">
+          <form action={updateCancelSettlementAction} className="space-y-2">
             <input type="hidden" name="orderId" value={order.id} />
             <Field
               label={t("cancel.settlementLabel")}
@@ -72,6 +79,7 @@ export function CancelledBanner({
               <Textarea
                 name="settlement"
                 maxLength={2000}
+                rows={3}
                 defaultValue={order.cancelSettlement ?? ""}
               />
             </Field>
@@ -100,7 +108,7 @@ export function CancelRequestAlert({
   if (order.status === "CANCELLED" || order.cancelRequestStatus !== "requested")
     return null;
   return (
-    <div id="cancel" className="mb-4" data-cancel-request>
+    <div id="cancel" className="mb-3" data-cancel-request>
       <Alert tone="warning">
         <strong>{t("cancel.request.wellmixTitle")}</strong>
         <span className="block">
@@ -110,17 +118,23 @@ export function CancelRequestAlert({
           })}
         </span>
         {admin ? (
-          <form action={rejectCancelRequestAction} className="mt-3 space-y-2">
+          <form
+            action={rejectCancelRequestAction}
+            className="mt-2 flex flex-wrap items-end gap-2"
+          >
             <input type="hidden" name="orderId" value={order.id} />
-            <Field label={t("cancel.request.response")}>
-              <Textarea
-                name="response"
-                required
-                minLength={3}
-                maxLength={1000}
-                className="min-h-16 bg-white"
-              />
-            </Field>
+            <div className="min-w-0 max-w-2xl flex-1 basis-64">
+              <Field label={t("cancel.request.response")}>
+                <Textarea
+                  name="response"
+                  required
+                  minLength={3}
+                  maxLength={1000}
+                  rows={2}
+                  className="bg-white"
+                />
+              </Field>
+            </div>
             <SubmitButton variant="secondary">
               {t("cancel.request.reject")}
             </SubmitButton>
@@ -143,7 +157,7 @@ export function AdminCancelCard({
   if (order.status === "CANCELLED") return null;
   return (
     <Card title={t("cancel.title")}>
-      <form action={cancelOrderAction} className="space-y-3" data-order-cancel>
+      <form action={cancelOrderAction} className="space-y-2" data-order-cancel>
         <input type="hidden" name="orderId" value={order.id} />
         <p className="text-xs text-zinc-500">{t("cancel.hint")}</p>
         {money ? (
@@ -170,10 +184,10 @@ export function AdminCancelCard({
           </Select>
         </Field>
         <Field label={t("cancel.note")}>
-          <Textarea name="note" maxLength={1000} className="min-h-16" />
+          <Textarea name="note" maxLength={1000} rows={2} />
         </Field>
         <Field label={t("cancel.settlement")} hint={t("cancel.settlementHint")}>
-          <Textarea name="settlement" maxLength={2000} className="min-h-16" />
+          <Textarea name="settlement" maxLength={2000} rows={2} />
         </Field>
         <label className="flex items-start gap-2 text-sm text-zinc-800">
           <input
@@ -214,7 +228,7 @@ export function CustomerCancelCard({
     );
   return (
     <Card title={t("cancel.request.title")}>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {status === "rejected" ? (
           <Alert tone="warning">
             {t("cancel.request.rejected", {
@@ -225,7 +239,7 @@ export function CustomerCancelCard({
         {canRequest ? (
           <form
             action={requestOrderCancelAction}
-            className="space-y-3"
+            className="space-y-2"
             data-cancel-request-form
           >
             <input type="hidden" name="orderId" value={order.id} />
@@ -236,7 +250,7 @@ export function CustomerCancelCard({
                 required
                 minLength={3}
                 maxLength={1000}
-                className="min-h-16"
+                rows={2}
               />
             </Field>
             <SubmitButton variant="secondary">

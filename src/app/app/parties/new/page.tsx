@@ -21,7 +21,7 @@ export default async function NewPartyPage({
         title={t("parties.new")}
       />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
-      <Card className="mt-4 max-w-2xl">
+      <Card className="mt-3 max-w-2xl">
         <PartyForm t={t} />
       </Card>
     </>

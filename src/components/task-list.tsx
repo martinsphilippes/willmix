@@ -131,60 +131,63 @@ function TaskFilters({
     </span>
   );
   return (
-    <div className="mb-4 space-y-2" data-task-filters>
+    <div className="mb-3 space-y-2" data-task-filters>
       <p className="text-xs text-zinc-500">{t("tasks.sortHint")}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {t("tasks.filter.due")}
-        </span>
-        <Link
-          href={href({ due: null })}
-          aria-pressed={!due}
-          data-task-filter="due:all"
-          className={chip(!due)}
-        >
-          {t("tasks.filter.all")} {count(tasks.length, !due)}
-        </Link>
-        {TASK_DUE_FILTERS.filter((d) => dueCounts.has(d)).map((d) => (
-          <Link
-            key={d}
-            href={href({ due: d })}
-            aria-pressed={due === d}
-            data-task-filter={`due:${d}`}
-            className={chip(due === d)}
-          >
-            {t(`tasks.filter.${d}` as DictionaryKey)}{" "}
-            {count(dueCounts.get(d) ?? 0, due === d)}
-          </Link>
-        ))}
-      </div>
-      {groups.length > 1 ? (
+      {/* Prazo e tipo na mesma linha quando cabem. */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            {t("tasks.filter.type")}
+            {t("tasks.filter.due")}
           </span>
           <Link
-            href={href({ type: null })}
-            aria-pressed={!group}
-            data-task-filter="type:all"
-            className={chip(!group)}
+            href={href({ due: null })}
+            aria-pressed={!due}
+            data-task-filter="due:all"
+            className={chip(!due)}
           >
-            {t("tasks.filter.all")}
+            {t("tasks.filter.all")} {count(tasks.length, !due)}
           </Link>
-          {groups.map((g) => (
+          {TASK_DUE_FILTERS.filter((d) => dueCounts.has(d)).map((d) => (
             <Link
-              key={g.group}
-              href={href({ type: g.group })}
-              aria-pressed={group === g.group}
-              data-task-filter={`type:${g.group}`}
-              className={chip(group === g.group)}
+              key={d}
+              href={href({ due: d })}
+              aria-pressed={due === d}
+              data-task-filter={`due:${d}`}
+              className={chip(due === d)}
             >
-              {groupLabel(g.group, g.stage, t)}{" "}
-              {count(g.count, group === g.group)}
+              {t(`tasks.filter.${d}` as DictionaryKey)}{" "}
+              {count(dueCounts.get(d) ?? 0, due === d)}
             </Link>
           ))}
         </div>
-      ) : null}
+        {groups.length > 1 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("tasks.filter.type")}
+            </span>
+            <Link
+              href={href({ type: null })}
+              aria-pressed={!group}
+              data-task-filter="type:all"
+              className={chip(!group)}
+            >
+              {t("tasks.filter.all")}
+            </Link>
+            {groups.map((g) => (
+              <Link
+                key={g.group}
+                href={href({ type: g.group })}
+                aria-pressed={group === g.group}
+                data-task-filter={`type:${g.group}`}
+                className={chip(group === g.group)}
+              >
+                {groupLabel(g.group, g.stage, t)}{" "}
+                {count(g.count, group === g.group)}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -200,60 +203,73 @@ function dueLabel(task: Task, t: Translate): string | null {
   return t("tasks.due.in", { n });
 }
 
-/** Lista de pendências (também usada no início do cliente, em Solicitações). */
+/**
+ * Lista de pendências (também usada no início do cliente, em Solicitações).
+ * Duas colunas quando o espaço é largo (@container): a ordem pelo prazo segue
+ * linha a linha; numa coluna estreita fica uma pendência por linha.
+ */
 export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
   return (
-    <ul className="space-y-3">
-      {tasks.map((task, i) => {
-        // Requisito de etapa: etapa traduzida (o serviço guarda a chave).
-        const title =
-          task.stageKey && task.orderNumber
-            ? t("tasks.orderStage", {
-                n: task.orderNumber,
-                stage: t(`stage.${task.stageKey}` as DictionaryKey),
-              })
-            : task.title;
-        const relative = dueLabel(task, t);
-        return (
-          <li key={i} data-task-due={task.due} data-task-group={task.group}>
-            <Card>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-zinc-900">{title}</span>
-                    {task.overdue ? (
-                      <Badge tone="danger">{t("common.overdue")}</Badge>
-                    ) : task.due === "today" ? (
-                      <Badge tone="warning">{t("tasks.due.today")}</Badge>
+    <div className="@container">
+      <ul className="grid items-start gap-2 @2xl:grid-cols-2">
+        {tasks.map((task, i) => {
+          // Requisito de etapa: etapa traduzida (o serviço guarda a chave).
+          const title =
+            task.stageKey && task.orderNumber
+              ? t("tasks.orderStage", {
+                  n: task.orderNumber,
+                  stage: t(`stage.${task.stageKey}` as DictionaryKey),
+                })
+              : task.title;
+          const relative = dueLabel(task, t);
+          return (
+            <li
+              key={i}
+              data-task-due={task.due}
+              data-task-group={task.group}
+              className="min-w-0"
+            >
+              <Card className="p-3 sm:p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-zinc-900">
+                        {title}
+                      </span>
+                      {task.overdue ? (
+                        <Badge tone="danger">{t("common.overdue")}</Badge>
+                      ) : task.due === "today" ? (
+                        <Badge tone="warning">{t("tasks.due.today")}</Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-zinc-600">{task.detail}</p>
+                    {task.dueAt ? (
+                      <p
+                        className={cx(
+                          "mt-1.5 text-xs",
+                          task.overdue
+                            ? "font-semibold text-red-700"
+                            : "text-zinc-500",
+                        )}
+                      >
+                        {t("common.due")}: {formatDate(task.dueAt, t)}
+                        {relative ? ` · ${relative}` : null}
+                      </p>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-sm text-zinc-600">{task.detail}</p>
-                  {task.dueAt ? (
-                    <p
-                      className={cx(
-                        "mt-1.5 text-xs",
-                        task.overdue
-                          ? "font-semibold text-red-700"
-                          : "text-zinc-500",
-                      )}
-                    >
-                      {t("common.due")}: {formatDate(task.dueAt, t)}
-                      {relative ? ` · ${relative}` : null}
-                    </p>
-                  ) : null}
+                  <LinkButton
+                    href={task.link}
+                    variant="primary"
+                    className="shrink-0"
+                  >
+                    {t("tasks.open")}
+                  </LinkButton>
                 </div>
-                <LinkButton
-                  href={task.link}
-                  variant="primary"
-                  className="shrink-0"
-                >
-                  {t("tasks.open")}
-                </LinkButton>
-              </div>
-            </Card>
-          </li>
-        );
-      })}
-    </ul>
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

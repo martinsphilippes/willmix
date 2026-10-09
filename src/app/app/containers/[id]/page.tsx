@@ -129,12 +129,12 @@ export default async function ContainerPage({
       />
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
 
-      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
         <Card
           className="min-w-0 lg:col-span-2"
           title={t("containers.occupancy")}
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             {usage.overCapacity ? (
               <Alert tone="danger">
                 {t("containers.alert.overCapacity", {
@@ -263,13 +263,13 @@ export default async function ContainerPage({
               </dd>
             </div>
           </dl>
-          <p className="mt-4 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
+          <p className="mt-3 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
             {t("containers.commercialHint")}
           </p>
         </Card>
       </div>
 
-      <Card className="mt-6 min-w-0" title={t("containers.items")}>
+      <Card className="mt-4 min-w-0" title={t("containers.items")}>
         {items.length === 0 ? (
           <Empty>{t("containers.items.none")}</Empty>
         ) : (
@@ -361,7 +361,7 @@ export default async function ContainerPage({
       </Card>
 
       {closed ? null : (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
           <Card
             className="min-w-0"
             title={`${t("containers.addItem")} · ${t("containers.addItem.byOrder")}`}
@@ -369,37 +369,43 @@ export default async function ContainerPage({
             {choices.length === 0 ? (
               <Empty>{t("containers.addItem.noOrders")}</Empty>
             ) : (
-              <form action={addContainerItemAction} className="space-y-3">
+              <form
+                action={addContainerItemAction}
+                className="@container space-y-3"
+              >
                 <input type="hidden" name="containerId" value={container.id} />
                 <input type="hidden" name="mode" value="order" />
-                <Field
-                  label={t("containers.addItem.order")}
-                  hint={t("containers.addItem.orderHint")}
-                >
-                  <Select name="orderItemId" required className={bigField}>
-                    {choices.map((c) => (
-                      <option key={c.orderItemId} value={c.orderItemId}>
-                        #{c.orderNumber} · {c.name} · {c.customerName} (
-                        {formatNumber(c.quantity, t.intl)} {c.unit})
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field
-                  label={t("common.quantity")}
-                  hint={t("containers.addItem.quantityHint")}
-                >
-                  <Input
-                    name="quantity"
-                    type="number"
-                    min="0"
-                    step="1"
-                    inputMode="numeric"
-                    className={bigField}
-                  />
-                </Field>
+                {/* Pedido largo e quantidade estreita na mesma linha. */}
+                <div className="grid items-start gap-3 @md:grid-cols-[minmax(0,1fr)_9rem]">
+                  <Field
+                    label={t("containers.addItem.order")}
+                    hint={t("containers.addItem.orderHint")}
+                  >
+                    <Select name="orderItemId" required className={bigField}>
+                      {choices.map((c) => (
+                        <option key={c.orderItemId} value={c.orderItemId}>
+                          #{c.orderNumber} · {c.name} · {c.customerName} (
+                          {formatNumber(c.quantity, t.intl)} {c.unit})
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field
+                    label={t("common.quantity")}
+                    hint={t("containers.addItem.quantityHint")}
+                  >
+                    <Input
+                      name="quantity"
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      className={bigField}
+                    />
+                  </Field>
+                </div>
                 <BoxFields t={t} />
-                <SubmitButton className="w-full py-2.5 text-base sm:w-auto sm:py-2 sm:text-sm">
+                <SubmitButton className="w-full py-2 sm:w-auto sm:py-1.5">
                   {t("containers.addItem.submit")}
                 </SubmitButton>
               </form>
@@ -410,32 +416,38 @@ export default async function ContainerPage({
             className="min-w-0"
             title={`${t("containers.addItem")} · ${t("containers.addItem.byStock")}`}
           >
-            <form action={addContainerItemAction} className="space-y-3">
+            <form
+              action={addContainerItemAction}
+              className="@container space-y-3"
+            >
               <input type="hidden" name="containerId" value={container.id} />
               <input type="hidden" name="mode" value="stock" />
-              <Field label={t("containers.addItem.product")}>
-                <Select name="productId" required className={bigField}>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                      {p.sku ? ` (${p.sku})` : ""}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label={t("common.quantity")}>
-                <Input
-                  name="quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  required
-                  inputMode="numeric"
-                  className={bigField}
-                />
-              </Field>
+              {/* Produto largo e quantidade estreita na mesma linha. */}
+              <div className="grid items-start gap-3 @md:grid-cols-[minmax(0,1fr)_9rem]">
+                <Field label={t("containers.addItem.product")}>
+                  <Select name="productId" required className={bigField}>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.sku ? ` (${p.sku})` : ""}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label={t("common.quantity")}>
+                  <Input
+                    name="quantity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    required
+                    inputMode="numeric"
+                    className={bigField}
+                  />
+                </Field>
+              </div>
               <BoxFields t={t} open />
-              <SubmitButton className="w-full py-2.5 text-base sm:w-auto sm:py-2 sm:text-sm">
+              <SubmitButton className="w-full py-2 sm:w-auto sm:py-1.5">
                 {t("containers.addItem.submit")}
               </SubmitButton>
             </form>
@@ -456,7 +468,7 @@ function BoxFields({
 }) {
   return (
     <details open={open} className="group rounded-xl border border-zinc-200/80">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-medium text-zinc-800 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-zinc-800 [&::-webkit-details-marker]:hidden">
         {t("containers.item.unitsPerBox")} · {t("containers.item.cbmPerBox")} ·{" "}
         {t("containers.item.weight")}
         <span
@@ -466,8 +478,9 @@ function BoxFields({
           +
         </span>
       </summary>
-      <div className="grid gap-3 border-t border-zinc-100 px-3 py-3 sm:grid-cols-2">
-        <p className="text-xs text-zinc-500 sm:col-span-2">
+      {/* Quatro números curtos lado a lado (dois no celular). */}
+      <div className="grid grid-cols-2 items-end gap-3 border-t border-zinc-100 px-3 py-2.5 @md:grid-cols-4">
+        <p className="col-span-2 text-xs text-zinc-500 @md:col-span-4">
           {t("containers.addItem.boxHint")}
         </p>
         <Field label={t("containers.item.unitsPerBox")}>

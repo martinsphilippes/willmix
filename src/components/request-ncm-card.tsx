@@ -82,14 +82,14 @@ export function RequestNcmCard({
 
   return (
     <Card title={t("ncm.title")}>
-      <div id="ncm" className="space-y-3">
+      <div id="ncm" className="space-y-2.5">
         <p className="text-xs leading-relaxed text-zinc-500">{t("ncm.hint")}</p>
         {notice ? <Alert tone="success">{notice}</Alert> : null}
         {aiNotice ? <Alert tone="warning">{aiNotice}</Alert> : null}
         {!hasTable ? <Alert tone="warning">{t("ncm.noTable")}</Alert> : null}
 
         {ncm.ncm ? (
-          <div className="rounded-xl border border-zinc-200 p-3">
+          <div className="rounded-xl border border-zinc-200 p-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-base font-semibold text-zinc-900">
                 {formatNcm(ncm.ncm)}
@@ -112,7 +112,7 @@ export function RequestNcmCard({
               <RatesLine t={t} rates={ncm.rates} />
             </div>
             {editable ? (
-              <details className="mt-3">
+              <details className="mt-2">
                 <summary className="cursor-pointer text-xs font-medium text-brand-700">
                   {t("ncm.change")}
                 </summary>
@@ -127,11 +127,11 @@ export function RequestNcmCard({
               {t("ncm.suggestions")}
             </p>
             {suggestions.length ? (
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {suggestions.map((s) => (
                   <li
                     key={s.ncm}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 p-3"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 p-2.5"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -177,7 +177,8 @@ export function RequestNcmCard({
               </p>
             )}
             {editable ? (
-              <>
+              /* "Sugerir" e "Outro NCM" na mesma linha quando cabem. */
+              <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
                 <form action={suggestRequestNcmAction}>
                   <input type="hidden" name="requestId" value={requestId} />
                   <SubmitButton variant="secondary">
@@ -185,7 +186,7 @@ export function RequestNcmCard({
                   </SubmitButton>
                 </form>
                 {confirmForm}
-              </>
+              </div>
             ) : null}
           </>
         )}

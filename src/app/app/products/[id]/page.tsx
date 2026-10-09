@@ -602,84 +602,87 @@ export default async function ProductSheetPage({
             </div>
           </Card>
 
-          <Card title={t("catalog.section.packaging")} dense>
-            <div className="space-y-2">
-              <FieldRow label={t("catalog.masterBoxQty")} size="xs">
-                <NumberInput
-                  name="masterBoxQty"
-                  integer
-                  defaultValue={product.masterBoxQty ?? ""}
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.innerBoxQty")} size="xs">
-                <NumberInput
-                  name="innerBoxQty"
-                  integer
-                  defaultValue={product.innerBoxQty ?? ""}
-                />
-              </FieldRow>
-              <FieldRow label={t("catalog.boxDimensions")} size="full">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
-                  <span>{t("catalog.length")}</span>
+          {/* Embalagem e observações na mesma coluna: sem linha extra. */}
+          <div className="flex min-w-0 flex-col gap-4">
+            <Card title={t("catalog.section.packaging")} dense>
+              <div className="space-y-2">
+                <FieldRow label={t("catalog.masterBoxQty")} size="xs">
                   <NumberInput
-                    name="boxLengthCm"
-                    defaultValue={product.boxLengthCm ?? ""}
-                    aria-label={t("catalog.length")}
-                    className="w-16"
+                    name="masterBoxQty"
+                    integer
+                    defaultValue={product.masterBoxQty ?? ""}
                   />
-                  <span aria-hidden>×</span>
-                  <span>{t("catalog.width")}</span>
+                </FieldRow>
+                <FieldRow label={t("catalog.innerBoxQty")} size="xs">
                   <NumberInput
-                    name="boxWidthCm"
-                    defaultValue={product.boxWidthCm ?? ""}
-                    aria-label={t("catalog.width")}
-                    className="w-16"
+                    name="innerBoxQty"
+                    integer
+                    defaultValue={product.innerBoxQty ?? ""}
                   />
-                  <span aria-hidden>×</span>
-                  <span>{t("catalog.height")}</span>
+                </FieldRow>
+                <FieldRow label={t("catalog.boxDimensions")} size="full">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+                    <span>{t("catalog.length")}</span>
+                    <NumberInput
+                      name="boxLengthCm"
+                      defaultValue={product.boxLengthCm ?? ""}
+                      aria-label={t("catalog.length")}
+                      className="w-16"
+                    />
+                    <span aria-hidden>×</span>
+                    <span>{t("catalog.width")}</span>
+                    <NumberInput
+                      name="boxWidthCm"
+                      defaultValue={product.boxWidthCm ?? ""}
+                      aria-label={t("catalog.width")}
+                      className="w-16"
+                    />
+                    <span aria-hidden>×</span>
+                    <span>{t("catalog.height")}</span>
+                    <NumberInput
+                      name="boxHeightCm"
+                      defaultValue={product.boxHeightCm ?? ""}
+                      aria-label={t("catalog.height")}
+                      className="w-16"
+                    />
+                  </div>
+                </FieldRow>
+                <FieldRow
+                  label={t("catalog.cbmPerBox")}
+                  size="xs"
+                  hint={
+                    <>
+                      <strong className="text-zinc-800">
+                        {cbmShown !== null
+                          ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
+                          : "—"}
+                      </strong>
+                      {cbmComputed !== null
+                        ? ` · ${t("catalog.cbmComputed")}`
+                        : ` · ${t("catalog.cbmHint")}`}
+                    </>
+                  }
+                >
                   <NumberInput
-                    name="boxHeightCm"
-                    defaultValue={product.boxHeightCm ?? ""}
-                    aria-label={t("catalog.height")}
-                    className="w-16"
+                    name="cbm"
+                    defaultValue={product.cbm ?? ""}
+                    disabled={cbmComputed !== null}
+                    className={cbmComputed !== null ? "bg-zinc-50" : undefined}
                   />
-                </div>
-              </FieldRow>
-              <FieldRow
-                label={t("catalog.cbmPerBox")}
-                size="xs"
-                hint={
-                  <>
-                    <strong className="text-zinc-800">
-                      {cbmShown !== null
-                        ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
-                        : "—"}
-                    </strong>
-                    {cbmComputed !== null
-                      ? ` · ${t("catalog.cbmComputed")}`
-                      : ` · ${t("catalog.cbmHint")}`}
-                  </>
-                }
-              >
-                <NumberInput
-                  name="cbm"
-                  defaultValue={product.cbm ?? ""}
-                  disabled={cbmComputed !== null}
-                  className={cbmComputed !== null ? "bg-zinc-50" : undefined}
-                />
-              </FieldRow>
-            </div>
-          </Card>
-        </div>
+                </FieldRow>
+              </div>
+            </Card>
 
-        <Card title={t("catalog.section.notes")} dense>
-          <Textarea
-            name="notes"
-            rows={3}
-            defaultValue={product.notes ?? ""}
-            dense
-          />
-        </Card>
+            <Card title={t("catalog.section.notes")} className="flex-1" dense>
+              <Textarea
+                name="notes"
+                rows={3}
+                defaultValue={product.notes ?? ""}
+                dense
+              />
+            </Card>
+          </div>
+        </div>
 
         {/* Botão principal no fim, fixo ao alcance do polegar no celular. */}
         <div className="sticky bottom-0 z-10 -mx-4 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
@@ -690,7 +693,7 @@ export default async function ProductSheetPage({
       </form>
 
       {/* ---- Fornecedores deste produto (vários; quem cota entra sozinho) ---- */}
-      <section className="mt-6">
+      <section className="mt-4">
         <SuppliersCard
           t={t}
           productId={product.id}
@@ -701,7 +704,7 @@ export default async function ProductSheetPage({
       </section>
 
       {/* ---- Ficha de compra mestre: a mesma ficha do pedido; pedidos e cotações deste produto nascem dela ---- */}
-      <section id="product-sheet" className="mt-6 scroll-mt-4 space-y-3">
+      <section id="product-sheet" className="mt-4 scroll-mt-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-semibold tracking-tight text-zinc-900">
             {t("productSheet.title")}
@@ -752,7 +755,8 @@ export default async function ProductSheetPage({
         <form
           id="product-sheet-form"
           action={saveProductSheetAction}
-          className="space-y-4"
+          // Mesma grade de 2 colunas da ficha do pedido: cards pequenos lado a lado.
+          className="grid gap-4 lg:grid-cols-2"
         >
           <input type="hidden" name="productId" value={product.id} />
           <PurchaseSheetFields
@@ -773,15 +777,17 @@ export default async function ProductSheetPage({
               await ncmSuggestionsFor(product.id),
             )}
           />
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-500 lg:order-7 lg:col-span-2">
             {t("productSheet.photosHint")}
           </p>
-          <SubmitButton>{t("productSheet.save")}</SubmitButton>
+          <div className="lg:order-7 lg:col-span-2">
+            <SubmitButton>{t("productSheet.save")}</SubmitButton>
+          </div>
         </form>
       </section>
 
       {/* ---- Fotos e medições ---- */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
         <Card title={t("catalog.photos")} className="scroll-mt-4">
           <div id="photos" className="scroll-mt-24" />
           {/* Erro do envio de fotos aparece aqui, onde a pessoa está. */}
@@ -800,13 +806,13 @@ export default async function ProductSheetPage({
           {photosByKind.length === 0 ? (
             <Empty>{t("catalog.photos.empty")}</Empty>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {photosByKind.map((group) => (
                 <div key={group.kind}>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     {t(`catalog.photoKind.${group.kind}` as DictionaryKey)}
                   </h3>
-                  <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                  <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-5">
                     {group.items.map((photo) => (
                       <li key={photo.id} className="min-w-0 space-y-1">
                         <a
@@ -854,7 +860,7 @@ export default async function ProductSheetPage({
           )}
           <form
             action={addProductPhotosAction}
-            className="mt-4 space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
+            className="mt-3 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
           >
             <input type="hidden" name="productId" value={product.id} />
             <PhotoInput
@@ -867,23 +873,28 @@ export default async function ProductSheetPage({
               uploadingLabel={t("photo.uploading")}
               failedLabel={t("photo.failed")}
             />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t("catalog.photos.kind")}>
-                <Select name="kind" defaultValue="original" dense>
-                  {PHOTO_KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {t(`catalog.photoKind.${k}` as DictionaryKey)}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label={t("catalog.photos.caption")}>
-                <Input name="caption" maxLength={200} dense />
-              </Field>
+            {/* Tipo (curto), legenda e botão numa linha só. */}
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="w-full sm:w-44">
+                <Field label={t("catalog.photos.kind")}>
+                  <Select name="kind" defaultValue="original" dense>
+                    {PHOTO_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {t(`catalog.photoKind.${k}` as DictionaryKey)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className="min-w-40 flex-1">
+                <Field label={t("catalog.photos.caption")}>
+                  <Input name="caption" maxLength={200} dense />
+                </Field>
+              </div>
+              <SubmitButton variant="secondary" className="w-full sm:w-auto">
+                {t("catalog.photos.add")}
+              </SubmitButton>
             </div>
-            <SubmitButton variant="secondary" className="w-full sm:w-auto">
-              {t("catalog.photos.add")}
-            </SubmitButton>
           </form>
         </Card>
 
@@ -945,10 +956,10 @@ export default async function ProductSheetPage({
           )}
           <form
             action={addProductMeasurementAction}
-            className="mt-4 space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
+            className="@container mt-3 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
           >
             <input type="hidden" name="productId" value={product.id} />
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 @lg:grid-cols-4">
               <Field label={t("catalog.measurements.kind")}>
                 <Select name="kind" defaultValue="weight_net" dense>
                   {MEASUREMENT_KINDS.map((k) => (
@@ -973,7 +984,7 @@ export default async function ProductSheetPage({
               <Field label={t("catalog.measurements.measured")}>
                 <NumberInput name="measuredValue" required />
               </Field>
-              <div className="sm:col-span-2">
+              <div className="col-span-2 @lg:col-span-4">
                 <Field label={t("common.note")}>
                   <Input name="note" maxLength={500} dense />
                 </Field>
@@ -992,7 +1003,7 @@ export default async function ProductSheetPage({
       </div>
 
       {/* ---- Programação de compra ---- */}
-      <Card title={t("catalog.schedules")} className="mt-6">
+      <Card title={t("catalog.schedules")} className="mt-4">
         <div id="schedules" />
         {schedules.length === 0 ? (
           <Empty>{t("catalog.schedules.empty")}</Empty>
@@ -1102,13 +1113,14 @@ export default async function ProductSheetPage({
         )}
         <form
           action={savePurchaseScheduleAction}
-          className="mt-4 space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
+          className="@container mt-3 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
         >
           <input type="hidden" name="productId" value={product.id} />
           <h3 className="text-sm font-semibold text-zinc-900">
             {t("catalog.schedules.new")}
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Campos curtos em colunas estreitas: duas linhas na tela larga. */}
+          <div className="grid grid-cols-2 gap-2 @xl:grid-cols-4 @4xl:grid-cols-6">
             <Field label={t("catalog.schedules.sequence")}>
               <NumberInput
                 name="sequence"
@@ -1127,33 +1139,6 @@ export default async function ProductSheetPage({
             </Field>
             <Field label={t("catalog.schedules.periodLabel")}>
               <Input name="periodLabel" maxLength={60} dense />
-            </Field>
-            <Field label={t("common.supplier")}>
-              <Select
-                name="supplierId"
-                defaultValue={product.supplierId ?? ""}
-                dense
-              >
-                <option value="">{t("catalog.noSupplier")}</option>
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field
-              label={t("common.customer")}
-              hint={t("catalog.schedules.customerHint")}
-            >
-              <Select name="customerId" defaultValue="" dense>
-                <option value="">—</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
             </Field>
             <Field label={t("common.status")}>
               <Select name="status" defaultValue="planned" dense>
@@ -1183,7 +1168,38 @@ export default async function ProductSheetPage({
                 dense
               />
             </Field>
-            <div className="sm:col-span-2">
+            <div className="col-span-2 @xl:col-span-1">
+              <Field label={t("common.supplier")}>
+                <Select
+                  name="supplierId"
+                  defaultValue={product.supplierId ?? ""}
+                  dense
+                >
+                  <option value="">{t("catalog.noSupplier")}</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className="col-span-2 @xl:col-span-1">
+              <Field
+                label={t("common.customer")}
+                hint={t("catalog.schedules.customerHint")}
+              >
+                <Select name="customerId" defaultValue="" dense>
+                  <option value="">—</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className="col-span-2">
               <Field label={t("common.note")}>
                 <Input name="notes" dense />
               </Field>
@@ -1195,49 +1211,22 @@ export default async function ProductSheetPage({
         </form>
       </Card>
 
-      {/* ---- Segunda Onda: classificação fiscal (NCM) ---- */}
-      <Card title={t("catalog.tax.title")} className="mt-6">
-        <TaxSection
-          product={product}
-          rows={taxRows}
-          users={users}
-          user={user}
-          t={t}
-          back="sheet"
-        />
-      </Card>
-
-      {/* ---- Certificações e compliance ---- */}
-      <Card title={t("catalog.cert.title")} className="mt-6">
-        <CertificationsSection
-          entity="product"
-          entityId={product.id}
-          certs={certs}
-          check={compliance}
-          suggestedKinds={compliance.required}
-          users={users}
-          user={user}
-          t={t}
-          warningDays={settings.certificationExpiryWarningDays}
-        />
-      </Card>
-
       {/* ---- Oportunidade de compra (faixas + container); preço FOB é interno ---- */}
-      <Card title={t("catalog.opp.title")} className="mt-6">
+      <Card title={t("catalog.opp.title")} className="mt-4">
         <div id="opportunity" className="scroll-mt-4" />
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-3">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="min-w-0 space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {t("catalog.opp.tiers")}
             </h3>
             {tiers.length === 0 ? (
               <Empty>{t("catalog.opp.tiers.empty")}</Empty>
             ) : (
-              <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
+              <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200/80 text-[13px]">
                 {tiers.map((tier) => (
                   <li
                     key={tier.minQty}
-                    className="flex items-center justify-between gap-3 px-3 py-2"
+                    className="flex items-center justify-between gap-3 px-3 py-1.5"
                   >
                     <span className="text-zinc-700">
                       {t("catalog.opp.from")}{" "}
@@ -1254,7 +1243,7 @@ export default async function ProductSheetPage({
             )}
             <form
               action={saveProductPriceTiersAction}
-              className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
+              className="space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
             >
               <input type="hidden" name="productId" value={product.id} />
               {analysis?.source === "param" ? (
@@ -1266,11 +1255,11 @@ export default async function ProductSheetPage({
               >
                 <Textarea
                   name="tiers"
-                  rows={4}
+                  rows={3}
                   placeholder={"500;9.50\n1000;8.90"}
                   defaultValue={formatPriceTiers(tiers)}
                   dense
-                  className={"min-h-0 font-mono"}
+                  className={"min-h-0 max-w-56 font-mono"}
                 />
               </Field>
               <SubmitButton
@@ -1283,13 +1272,14 @@ export default async function ProductSheetPage({
             </form>
           </div>
 
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-2">
+            {/* Quantidade (campo curto) com o botão ao lado. */}
             <form
               method="get"
               action={`/app/products/${product.id}#opportunity`}
-              className="flex items-end gap-2"
+              className="flex flex-wrap items-start gap-2"
             >
-              <div className="flex-1">
+              <div className="w-44">
                 <Field
                   label={t("catalog.opp.quantity")}
                   hint={
@@ -1311,11 +1301,7 @@ export default async function ProductSheetPage({
                   />
                 </Field>
               </div>
-              <SubmitButton
-                type="submit"
-                variant="secondary"
-                className={cx("py-2.5", analysis ? "mb-5" : undefined)}
-              >
+              <SubmitButton type="submit" variant="secondary" className="mt-6">
                 {t("catalog.opp.analyze")}
               </SubmitButton>
             </form>
@@ -1328,7 +1314,7 @@ export default async function ProductSheetPage({
                 {t("catalog.opp.noQuantity")}
               </p>
             ) : opportunity ? (
-              <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+              <div className="space-y-2 rounded-lg border border-brand-200 bg-brand-50/60 p-3">
                 <DescriptionList
                   items={[
                     [
@@ -1361,7 +1347,7 @@ export default async function ProductSheetPage({
                     ],
                   ]}
                 />
-                <p className="break-words border-t border-brand-200/70 pt-3 font-mono text-xs text-zinc-700">
+                <p className="break-words border-t border-brand-200/70 pt-2 font-mono text-xs text-zinc-700">
                   {t("catalog.opp.formula")}: {opportunity.formula}
                 </p>
                 <p className="text-xs text-brand-800/80">
@@ -1376,7 +1362,7 @@ export default async function ProductSheetPage({
         </div>
 
         {containerFits.length > 0 ? (
-          <div className="mt-5 border-t border-zinc-100 pt-4">
+          <div className="mt-3 border-t border-zinc-100 pt-3">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {t("catalog.opp.container.title")}
             </h3>
@@ -1418,108 +1404,139 @@ export default async function ProductSheetPage({
         ) : null}
       </Card>
 
-      {/* ---- Visão de Produto: atributos exigidos pela linha (determinístico) ---- */}
-      <Card title={t("vision.attrs.title")} className="mt-6">
-        <div id="attributes" className="scroll-mt-4" />
-        <p className="mb-3 text-sm text-zinc-600">{t("vision.attrs.hint")}</p>
-        {attributeCheck.required.length === 0 ? (
-          <p className="text-sm text-zinc-500">{t("vision.attrs.none")}</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                {t("vision.attrs.present")} ({attributeCheck.present.length})
-              </h3>
-              <ul className="flex flex-wrap gap-1.5">
-                {attributeCheck.present.map((a) => (
-                  <li key={a}>
-                    <Badge tone="success">✓ {a}</Badge>
-                  </li>
-                ))}
-                {attributeCheck.present.length === 0 ? (
-                  <li className="text-xs text-zinc-500">—</li>
-                ) : null}
-              </ul>
-            </div>
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-700">
-                {t("vision.attrs.missing")} ({attributeCheck.missing.length})
-              </h3>
-              <ul className="flex flex-wrap gap-1.5">
-                {attributeCheck.missing.map((a) => (
-                  <li key={a}>
-                    <Badge tone="danger">✗ {a}</Badge>
-                  </li>
-                ))}
-                {attributeCheck.missing.length === 0 ? (
-                  <li className="text-xs text-zinc-500">—</li>
-                ) : null}
-              </ul>
-              {attributeCheck.missing.length > 0 ? (
-                <a
-                  href="#sheet"
-                  className={cx(linkClass, "mt-2 inline-block text-xs")}
-                >
-                  {t("vision.attrs.fill")}
-                </a>
-              ) : null}
-            </div>
-            <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
-                {t("vision.attrs.manual")} ({attributeCheck.manual.length})
-              </h3>
-              <ul className="flex flex-wrap gap-1.5">
-                {attributeCheck.manual.map((a) => (
-                  <li key={a}>
-                    <Badge tone="warning">? {a}</Badge>
-                  </li>
-                ))}
-                {attributeCheck.manual.length === 0 ? (
-                  <li className="text-xs text-zinc-500">—</li>
-                ) : null}
-              </ul>
-              {attributeCheck.manual.length > 0 ? (
-                <p className="mt-2 text-xs text-zinc-500">
-                  {t("vision.attrs.manualHint")}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        )}
-        {attributeCheck.required.length > 0 &&
-        attributeCheck.missing.length === 0 &&
-        attributeCheck.manual.length === 0 ? (
-          <p className="mt-3 text-xs text-emerald-700">
-            {t("vision.attrs.allPresent")}
-          </p>
-        ) : null}
-      </Card>
+      {/* ---- NCM e certificações lado a lado (o que a linha exige para importar) ---- */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
+        {/* ---- Segunda Onda: classificação fiscal (NCM) ---- */}
+        <Card title={t("catalog.tax.title")}>
+          <TaxSection
+            product={product}
+            rows={taxRows}
+            users={users}
+            user={user}
+            t={t}
+            back="sheet"
+          />
+        </Card>
+        {/* ---- Certificações e compliance ---- */}
+        <Card title={t("catalog.cert.title")}>
+          <CertificationsSection
+            entity="product"
+            entityId={product.id}
+            certs={certs}
+            check={compliance}
+            suggestedKinds={compliance.required}
+            users={users}
+            user={user}
+            t={t}
+            warningDays={settings.certificationExpiryWarningDays}
+          />
+        </Card>
+      </div>
 
-      {/* ---- Sugestão por foto (IA): humano confirma campo a campo ---- */}
-      <Card title={t("vision.ai.title")} className="mt-6">
-        <AiSection
-          entity="product"
-          entityId={product.id}
-          photos={aiPhotos}
-          suggestions={suggestions}
-          mode={aiAdapter.mode}
-          model={aiAdapter.model}
-          user={user}
-          users={users}
-          current={{
-            category: product.category,
-            description: product.specification,
-            material: product.material,
-            color: product.color,
-          }}
-          t={t}
-          back={`/app/products/${product.id}`}
-        />
-      </Card>
+      {/* ---- Atributos da linha e sugestão por foto lado a lado ---- */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
+        {/* ---- Visão de Produto: atributos exigidos pela linha (determinístico) ---- */}
+        <Card title={t("vision.attrs.title")}>
+          <div id="attributes" className="scroll-mt-4" />
+          <p className="mb-2 text-sm text-zinc-600">{t("vision.attrs.hint")}</p>
+          {attributeCheck.required.length === 0 ? (
+            <p className="text-sm text-zinc-500">{t("vision.attrs.none")}</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  {t("vision.attrs.present")} ({attributeCheck.present.length})
+                </h3>
+                <ul className="flex flex-wrap gap-1.5">
+                  {attributeCheck.present.map((a) => (
+                    <li key={a}>
+                      <Badge tone="success">✓ {a}</Badge>
+                    </li>
+                  ))}
+                  {attributeCheck.present.length === 0 ? (
+                    <li className="text-xs text-zinc-500">—</li>
+                  ) : null}
+                </ul>
+              </div>
+              <div>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-red-700">
+                  {t("vision.attrs.missing")} ({attributeCheck.missing.length})
+                </h3>
+                <ul className="flex flex-wrap gap-1.5">
+                  {attributeCheck.missing.map((a) => (
+                    <li key={a}>
+                      <Badge tone="danger">✗ {a}</Badge>
+                    </li>
+                  ))}
+                  {attributeCheck.missing.length === 0 ? (
+                    <li className="text-xs text-zinc-500">—</li>
+                  ) : null}
+                </ul>
+                {attributeCheck.missing.length > 0 ? (
+                  <a
+                    href="#sheet"
+                    className={cx(linkClass, "mt-2 inline-block text-xs")}
+                  >
+                    {t("vision.attrs.fill")}
+                  </a>
+                ) : null}
+              </div>
+              <div>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                  {t("vision.attrs.manual")} ({attributeCheck.manual.length})
+                </h3>
+                <ul className="flex flex-wrap gap-1.5">
+                  {attributeCheck.manual.map((a) => (
+                    <li key={a}>
+                      <Badge tone="warning">? {a}</Badge>
+                    </li>
+                  ))}
+                  {attributeCheck.manual.length === 0 ? (
+                    <li className="text-xs text-zinc-500">—</li>
+                  ) : null}
+                </ul>
+                {attributeCheck.manual.length > 0 ? (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    {t("vision.attrs.manualHint")}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          )}
+          {attributeCheck.required.length > 0 &&
+          attributeCheck.missing.length === 0 &&
+          attributeCheck.manual.length === 0 ? (
+            <p className="mt-2 text-xs text-emerald-700">
+              {t("vision.attrs.allPresent")}
+            </p>
+          ) : null}
+        </Card>
+        {/* ---- Sugestão por foto (IA): humano confirma campo a campo ---- */}
+        <Card title={t("vision.ai.title")}>
+          <AiSection
+            entity="product"
+            entityId={product.id}
+            photos={aiPhotos}
+            suggestions={suggestions}
+            mode={aiAdapter.mode}
+            model={aiAdapter.model}
+            user={user}
+            users={users}
+            current={{
+              category: product.category,
+              description: product.specification,
+              material: product.material,
+              color: product.color,
+            }}
+            t={t}
+            back={`/app/products/${product.id}`}
+          />
+        </Card>
+      </div>
 
       {/* ---- Ciclo contínuo do produto ---- */}
       {cycle ? (
-        <Card title={t("vision.cycle.title")} className="mt-6">
+        <Card title={t("vision.cycle.title")} className="mt-4">
           <CycleCard cycle={cycle} productId={product.id} t={t} />
         </Card>
       ) : null}

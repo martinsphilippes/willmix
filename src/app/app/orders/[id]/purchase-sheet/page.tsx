@@ -84,10 +84,10 @@ export default async function PurchaseSheetPage({
           <LinkButton href={`/app/orders/${id}`}>{t("sheet.back")}</LinkButton>
         }
       />
-      <p className="mb-4 max-w-3xl text-sm leading-relaxed text-zinc-600">
+      <p className="mb-3 max-w-3xl text-sm leading-relaxed text-zinc-600">
         {t("sheet.intro")}
       </p>
-      <div className="mb-4 space-y-3">
+      <div className="mb-3 space-y-2">
         {saved === "complete" ? (
           <Alert tone="success">{t("sheet.saved.complete")}</Alert>
         ) : missing.length ? (
@@ -206,18 +206,18 @@ export default async function PurchaseSheetPage({
         ) : null}
 
         {/* Rodapé (fixo no celular): Salvar, para quem edita, e Voltar ao pedido. */}
-        <div className="sticky bottom-0 z-10 -mx-4 mt-2 flex gap-3 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 lg:order-8 lg:col-span-2">
+        <div className="sticky bottom-0 z-10 -mx-4 mt-1 flex gap-3 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 lg:order-8 lg:col-span-2">
           {access.editSupplier || access.editCustoms ? (
             <SubmitButton
               form="purchase-sheet"
-              className="flex-1 py-3 text-base sm:flex-none"
+              className="flex-1 py-3 text-base sm:flex-none sm:py-1.5 sm:text-sm"
             >
               {t("sheet.save")}
             </SubmitButton>
           ) : null}
           <LinkButton
             href={`/app/orders/${id}`}
-            className="flex-1 py-3 text-base sm:flex-none"
+            className="flex-1 py-3 text-base sm:flex-none sm:py-1.5 sm:text-sm"
           >
             {t("sheet.back")}
           </LinkButton>

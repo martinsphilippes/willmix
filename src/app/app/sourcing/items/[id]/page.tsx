@@ -174,32 +174,33 @@ export default async function SourcingItemPage({
         }
       />
       {errorText ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
 
       {/* Ordem no celular = ordem do DOM: fotos → ficha → medições → negociação → ações.
+          No tablet, os cartões menores ficam dois a dois abaixo da ficha.
           No desktop, a ficha ocupa duas colunas e o resto fica à direita. */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_1fr] lg:items-start">
+      <div className="grid gap-4 md:grid-cols-2 md:items-start lg:grid-cols-3 lg:grid-rows-[auto_auto_auto_auto_1fr]">
         <Card
           title={t("sourcing.photo.gallery")}
-          className="scroll-mt-4 lg:col-start-3 lg:row-start-1"
+          className="scroll-mt-4 md:col-span-2 lg:col-span-1 lg:col-start-3 lg:row-start-1"
         >
           <div id="photos" />
           {groups.length === 0 ? (
-            <p className="mb-4 text-sm text-zinc-500">
+            <p className="mb-3 text-sm text-zinc-500">
               {t("sourcing.photo.none")}
             </p>
           ) : (
-            <div className="mb-4 space-y-4">
+            <div className="mb-3 space-y-3">
               {groups.map((group) => (
                 <div key={group.kind}>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     {t(`sourcing.photo.${group.kind}`)}{" "}
                     <span className="font-normal">({group.photos.length})</span>
                   </h3>
-                  <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
+                  <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-3">
                     {group.photos.map((p) => (
                       <li key={p.id} className="min-w-0">
                         <a
@@ -240,7 +241,7 @@ export default async function SourcingItemPage({
                               value={item.id}
                             />
                             <input type="hidden" name="photoId" value={p.id} />
-                            <SubmitTextButton className="w-full justify-center py-1.5 text-xs">
+                            <SubmitTextButton className="w-full justify-center py-1 text-xs">
                               {t("sourcing.photo.setPrimary")}
                             </SubmitTextButton>
                           </form>
@@ -254,7 +255,7 @@ export default async function SourcingItemPage({
           )}
           <form
             action={addSourcingPhotosAction}
-            className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+            className="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3 @container"
           >
             <input type="hidden" name="itemId" value={item.id} />
             <PhotoInput
@@ -264,7 +265,8 @@ export default async function SourcingItemPage({
               uploadingLabel={t("photo.uploading")}
               failedLabel={t("photo.failed")}
             />
-            <div className="grid grid-cols-2 gap-3">
+            {/* Tipo, legenda e origem numa linha quando o cartão é largo. */}
+            <div className="grid grid-cols-2 gap-2 @lg:grid-cols-3">
               <Field label={t("sourcing.photo.kind")}>
                 <Select
                   name="kind"
@@ -281,24 +283,26 @@ export default async function SourcingItemPage({
               <Field label={t("sourcing.photo.caption")}>
                 <Input name="caption" maxLength={200} className={bigField} />
               </Field>
+              <div className="col-span-2 @lg:col-span-1">
+                <Field
+                  label={t("sourcing.photo.derivedFrom")}
+                  hint={t("sourcing.photo.derivedHint")}
+                >
+                  <Select
+                    name="derivedFromPhotoId"
+                    defaultValue=""
+                    className={bigField}
+                  >
+                    <option value="">—</option>
+                    {originals.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {photoLabel(p)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
             </div>
-            <Field
-              label={t("sourcing.photo.derivedFrom")}
-              hint={t("sourcing.photo.derivedHint")}
-            >
-              <Select
-                name="derivedFromPhotoId"
-                defaultValue=""
-                className={bigField}
-              >
-                <option value="">—</option>
-                {originals.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {photoLabel(p)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
             <SubmitButton
               variant="secondary"
               pendingText="…"
@@ -309,7 +313,7 @@ export default async function SourcingItemPage({
           </form>
         </Card>
 
-        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:row-span-5">
+        <div className="min-w-0 md:col-span-2 lg:col-start-1 lg:row-span-5 lg:row-start-1">
           <ItemForm t={t} item={item} suppliers={suppliers} lines={lines} />
         </div>
 
@@ -318,11 +322,11 @@ export default async function SourcingItemPage({
           className="lg:col-start-3 lg:row-start-2"
         >
           {measurements.length === 0 ? (
-            <p className="mb-4 text-sm text-zinc-500">
+            <p className="mb-3 text-sm text-zinc-500">
               {t("sourcing.measure.none")}
             </p>
           ) : (
-            <ul className="mb-4 divide-y divide-zinc-100 text-sm">
+            <ul className="mb-3 divide-y divide-zinc-100 text-[13px]">
               {measurements.map((m) => {
                 const diff =
                   m.declaredValue !== null
@@ -330,7 +334,7 @@ export default async function SourcingItemPage({
                     : null;
                 const pct = divergencePercent(m.declaredValue, m.measuredValue);
                 return (
-                  <li key={m.id} className="flex items-start gap-3 py-2.5">
+                  <li key={m.id} className="flex items-start gap-3 py-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-zinc-900">
                         {t(`sourcing.measure.${m.kind}`)}:{" "}
@@ -377,7 +381,7 @@ export default async function SourcingItemPage({
                           src={`/api/files/${m.photoDocumentId}`}
                           alt={t("sourcing.measure.photo")}
                           loading="lazy"
-                          className="h-14 w-14 rounded-lg border border-zinc-200 object-cover"
+                          className="h-12 w-12 rounded-lg border border-zinc-200 object-cover"
                         />
                       </a>
                     ) : null}
@@ -388,24 +392,27 @@ export default async function SourcingItemPage({
           )}
           <form
             action={addSourcingMeasurementAction}
-            className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+            className="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3 @container"
           >
             <input type="hidden" name="itemId" value={item.id} />
-            <Field label={t("sourcing.measure.kind")}>
-              <Select
-                name="kind"
-                defaultValue="weight_net"
-                className={bigField}
-              >
-                {MEASUREMENT_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {t(`sourcing.measure.${k}`)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            {/* items-end: os rótulos têm alturas diferentes; os campos ficam alinhados. */}
-            <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-3">
+            {/* items-end: os rótulos têm alturas diferentes; os campos ficam alinhados.
+                Cartão largo: tipo, declarado, medido e unidade numa linha só. */}
+            <div className="grid grid-cols-3 items-end gap-2 @md:grid-cols-5">
+              <div className="col-span-3 @md:col-span-2">
+                <Field label={t("sourcing.measure.kind")}>
+                  <Select
+                    name="kind"
+                    defaultValue="weight_net"
+                    className={bigField}
+                  >
+                    {MEASUREMENT_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {t(`sourcing.measure.${k}`)}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
               <Field label={t("sourcing.measure.declared")}>
                 <Input
                   name="declaredValue"
@@ -427,33 +434,36 @@ export default async function SourcingItemPage({
                   className={bigField}
                 />
               </Field>
-              <div className="col-span-2 sm:col-span-1">
-                <Field label={t("sourcing.measure.unit")}>
-                  <Input
-                    name="unit"
-                    defaultValue="kg"
-                    required
-                    maxLength={10}
-                    className={bigField}
-                  />
-                </Field>
-              </div>
+              <Field label={t("sourcing.measure.unit")}>
+                <Input
+                  name="unit"
+                  defaultValue="kg"
+                  required
+                  maxLength={10}
+                  className={bigField}
+                />
+              </Field>
             </div>
             <PhotoInput
               name="photo"
               multiple={false}
               label={t("sourcing.measure.photo")}
             />
-            <Field label={t("common.note")}>
-              <Input name="note" className={bigField} />
-            </Field>
-            <SubmitButton
-              variant="secondary"
-              pendingText="…"
-              className="w-full sm:w-auto"
-            >
-              + {t("sourcing.measure.add")}
-            </SubmitButton>
+            {/* Observação e botão na mesma linha quando cabem. */}
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-0 flex-1 basis-48">
+                <Field label={t("common.note")}>
+                  <Input name="note" className={bigField} />
+                </Field>
+              </div>
+              <SubmitButton
+                variant="secondary"
+                pendingText="…"
+                className="w-full sm:w-auto"
+              >
+                + {t("sourcing.measure.add")}
+              </SubmitButton>
+            </div>
           </form>
         </Card>
 
@@ -499,7 +509,7 @@ export default async function SourcingItemPage({
         >
           <div id="tiers" className="scroll-mt-4" />
           {item.requestId ? (
-            <div className="mb-4">
+            <div className="mb-3">
               <Alert tone="brand">
                 <span className="flex flex-wrap items-center justify-between gap-2">
                   <span>{t("catalog.sourcing.demand.hint")}</span>
@@ -515,11 +525,11 @@ export default async function SourcingItemPage({
               {t("catalog.opp.tiers.empty")}
             </p>
           ) : (
-            <ul className="mb-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
+            <ul className="mb-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-[13px]">
               {tiers.map((tier) => (
                 <li
                   key={tier.minQty}
-                  className="flex items-center justify-between gap-3 px-3 py-2"
+                  className="flex items-center justify-between gap-3 px-3 py-1.5"
                 >
                   <span className="text-zinc-700">
                     {t("catalog.opp.from")}{" "}
@@ -536,7 +546,7 @@ export default async function SourcingItemPage({
           )}
           <form
             action={saveSourcingPriceTiersAction}
-            className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+            className="space-y-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
           >
             <input type="hidden" name="itemId" value={item.id} />
             <Field
@@ -564,7 +574,7 @@ export default async function SourcingItemPage({
           </form>
           <form
             action={linkSourcingItemRequestAction}
-            className="mt-4 space-y-3 border-t border-zinc-100 pt-4"
+            className="mt-3 space-y-2 border-t border-zinc-100 pt-3"
           >
             <input type="hidden" name="itemId" value={item.id} />
             <Field
@@ -599,7 +609,7 @@ export default async function SourcingItemPage({
           title={t("sourcing.item.actions")}
           className="lg:col-start-3 lg:row-start-5"
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             {item.productId ? (
               <Alert tone="success">
                 <span className="flex flex-wrap items-center justify-between gap-2">
@@ -611,28 +621,31 @@ export default async function SourcingItemPage({
               </Alert>
             ) : null}
             {canPromote ? (
-              <form action={promoteSourcingItemAction} className="space-y-3">
+              <form action={promoteSourcingItemAction} className="space-y-2">
                 <input type="hidden" name="itemId" value={item.id} />
-                <Field label={t("sourcing.item.line")}>
-                  <Select
-                    name="lineId"
-                    required
-                    defaultValue={item.lineId ?? ""}
-                    className={bigField}
-                  >
-                    <option value="" disabled>
-                      {t("common.select")}
-                    </option>
-                    {lines.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
+                {/* Linha e SKU lado a lado (campos curtos). */}
+                <div className="grid grid-cols-2 items-end gap-2">
+                  <Field label={t("sourcing.item.line")}>
+                    <Select
+                      name="lineId"
+                      required
+                      defaultValue={item.lineId ?? ""}
+                      className={bigField}
+                    >
+                      <option value="" disabled>
+                        {t("common.select")}
                       </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label={t("sourcing.item.sku")}>
-                  <Input name="sku" maxLength={60} className={bigField} />
-                </Field>
+                      {lines.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label={t("sourcing.item.sku")}>
+                    <Input name="sku" maxLength={60} className={bigField} />
+                  </Field>
+                </div>
                 <SubmitButton pendingText="…" className="w-full sm:w-auto">
                   {t("sourcing.item.promote")}
                 </SubmitButton>
@@ -647,7 +660,7 @@ export default async function SourcingItemPage({
             {canDiscard ? (
               <form
                 action={discardSourcingItemAction}
-                className="border-t border-zinc-100 pt-4"
+                className="border-t border-zinc-100 pt-3"
               >
                 <input type="hidden" name="itemId" value={item.id} />
                 <SubmitButton
@@ -657,7 +670,7 @@ export default async function SourcingItemPage({
                 >
                   {t("sourcing.item.discard")}
                 </SubmitButton>
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-1.5 text-xs text-zinc-500">
                   {t("sourcing.item.discardHint")}
                 </p>
               </form>
@@ -667,7 +680,7 @@ export default async function SourcingItemPage({
       </div>
 
       {/* Visão de Produto: sugestão de campos pela foto (IA); humano confirma campo a campo. */}
-      <Card title={t("vision.ai.title")} className="mt-6">
+      <Card title={t("vision.ai.title")} className="mt-4">
         <AiSection
           entity="sourcing_item"
           entityId={item.id}

@@ -211,6 +211,12 @@ export default async function RequestDetailPage({
   const proofDoc = downPayment?.proofDocumentId
     ? documents.find((d) => d.id === downPayment.proofDocumentId)
     : undefined;
+  /* RFQ: Wellmix escolhe fornecedores (antes da proposta). */
+  const showRfq =
+    wellmix &&
+    ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
+  /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
+  const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
 
   return (
     <>
@@ -300,9 +306,13 @@ export default async function RequestDetailPage({
         <Alert tone="success">{t("access.requesterSaved")}</Alert>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="min-w-0 space-y-6 lg:col-span-2">
-          <Card title={t("requests.title")}>
+      {/* Telas médias e grandes: dados | andamento lado a lado, depois os cartões
+          de ação da Wellmix lado a lado; cotações e proposta na largura toda.
+          No celular (uma coluna) a ordem segue a de antes: solicitante e
+          andamento por último (order-*). */}
+      <div className="mt-4 flex flex-col gap-4">
+        <div className="contents md:grid md:grid-cols-3 md:items-start md:gap-4">
+          <Card title={t("requests.title")} className="md:col-span-2">
             <DescriptionList
               items={[
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
@@ -318,7 +328,7 @@ export default async function RequestDetailPage({
               t={t}
             />
             {documents.length > 0 ? (
-              <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-2.5 text-sm">
                 {documents.map((d) => (
                   <li key={d.id}>
                     <TextLink href={`/api/files/${d.id}`} target="_blank">
@@ -329,443 +339,549 @@ export default async function RequestDetailPage({
               </ul>
             ) : null}
           </Card>
-
-          {/* RFQ: Wellmix escolhe fornecedores */}
-          {wellmix &&
-          ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
-            request.status,
-          ) ? (
-            <Card
-              title={rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
-            >
-              <form action={openRfqAction} className="space-y-3">
-                <input type="hidden" name="requestId" value={request.id} />
-                <p className="text-sm text-zinc-600">
-                  {allInvited
-                    ? t("rfq.allInvited")
-                    : rfqOpened
-                      ? t("rfq.inviteMoreHint")
-                      : t("requests.rfq.select")}
-                </p>
-                {supplying.size ? (
-                  <p className="text-xs text-zinc-500">
-                    {t("productSuppliers.rfqHint")}
-                  </p>
-                ) : null}
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {rfqSuppliers.map((s) => (
-                    <label
-                      key={s.id}
+          <Card title={t("orders.timeline")} className="order-2 md:order-none">
+            <ol className="-mx-2 space-y-0.5 text-sm">
+              {(
+                [
+                  "REQUESTED",
+                  "RFQ_OPEN",
+                  "QUOTATION_RECEIVED",
+                  "WAITING_DOWN_PAYMENT",
+                  "ORDERED",
+                ] as const
+              ).map((s, i, arr) => {
+                const idx = arr.indexOf(request.status as (typeof arr)[number]);
+                const done = idx >= i;
+                const current = idx === i;
+                const state: StepState = done
+                  ? current && s !== "ORDERED"
+                    ? "active"
+                    : "done"
+                  : "pending";
+                return (
+                  <li
+                    key={s}
+                    aria-current={state === "active" ? "step" : undefined}
+                    className={cx(
+                      "flex items-center gap-3 rounded-lg px-2 py-1",
+                      state === "active" && "bg-brand-50",
+                    )}
+                  >
+                    <StepDot state={state}>{i + 1}</StepDot>
+                    <span
                       className={cx(
-                        "flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition",
-                        invited.has(s.id)
-                          ? "cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-500"
-                          : "cursor-pointer border-zinc-300 bg-white text-zinc-900 hover:border-brand-300 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:text-brand-900",
+                        state === "active"
+                          ? "font-semibold text-brand-800"
+                          : state === "done"
+                            ? "text-zinc-900"
+                            : "text-zinc-500",
                       )}
                     >
-                      <input
-                        type="checkbox"
-                        name="supplierIds"
-                        value={s.id}
-                        disabled={invited.has(s.id)}
-                        defaultChecked={invited.has(s.id)}
-                        className="h-4 w-4 shrink-0 accent-brand-600"
-                      />
-                      <span>
-                        <span className="font-medium">{s.name}</span>{" "}
-                        <span className="text-zinc-500">· {s.country}</span>
-                        {supplying.has(s.id) ? (
-                          <span
-                            className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700"
-                            data-rfq-supplying
-                          >
-                            {t("productSuppliers.rfqLinked")}
-                          </span>
-                        ) : null}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                {allInvited ? null : (
-                  <SubmitButton>
-                    {rfqOpened
-                      ? t("rfq.inviteSelected")
-                      : t("requests.rfq.open")}
-                  </SubmitButton>
-                )}
-              </form>
-            </Card>
-          ) : null}
+                      {t(`reqStatusLabel.${s}`)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </Card>
+        </div>
 
-          {/* Classificação fiscal: NCM → II (TEC) e IPI (TIPI) no valor ao cliente. */}
-          {ncmInfo ? (
-            <RequestNcmCard
-              t={t}
-              requestId={request.id}
-              ncm={ncmInfo}
-              suggestions={ncmSuggestionList}
-              suggestionsPending={ncmPendingAuto}
-              hasTable={fiscalLoaded}
-              editable={!request.orderId}
-              notice={
-                ncmConfirmed
-                  ? t("ncm.confirmedOk")
-                  : typeof ncmSuggested === "string"
-                    ? t("ncm.suggestedOk", { count: ncmSuggested })
-                    : null
-              }
-              aiNotice={
-                ncmAiReason
-                  ? t("ncm.aiUnavailable", { reason: ncmAiReason })
-                  : null
-              }
-            />
-          ) : null}
-
-          {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
-          {wellmix && quotes.length > 0 ? (
-            <Card title={t("requests.quotes.compare")}>
-              <Table>
-                <thead>
-                  <tr>
-                    <Th>{t("common.supplier")}</Th>
-                    <Th>{t("common.price")}</Th>
-                    <Th className="whitespace-nowrap">
-                      {t("common.leadTime")}
-                    </Th>
-                    <Th>{t("common.conditions")}</Th>
-                    <Th>{t("common.status")}</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {quotes.map((q) => (
-                    <tr
-                      key={q.id}
-                      className={cx(
-                        rowClass,
-                        q.status === "selected" && "bg-emerald-50/50",
-                      )}
-                    >
-                      <Td className="font-medium text-zinc-900">
-                        {supplierName(q.supplierId)}
-                      </Td>
-                      {q.status === "invited" &&
-                      ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
-                        request.status,
-                      ) ? (
-                        <Td colSpan={3}>
-                          <form
-                            action={answerQuoteAction}
-                            className="flex flex-wrap items-end gap-2"
-                          >
-                            <input type="hidden" name="quoteId" value={q.id} />
-                            <input
-                              type="hidden"
-                              name="back"
-                              value={`/app/requests/${request.id}`}
-                            />
-                            <MoneyInput
-                              locale={t.intl}
-                              name="price"
-                              watchField="currency"
-                              decimals={4}
-                              required
-                              className="max-w-44"
-                            />
-                            <CurrencySelect
-                              name="currency"
-                              value="USD"
-                              t={t}
-                              className="max-w-40"
-                            />
-                            <Input
-                              name="leadTimeDays"
-                              type="number"
-                              min="1"
-                              required
-                              placeholder={t("common.leadTime")}
-                              className="max-w-32"
-                            />
-                            <Input
-                              name="conditions"
-                              placeholder={t("common.conditions")}
-                              className="max-w-44"
-                            />
-                            <SubmitButton variant="secondary">
-                              {t("requests.quotes.register")}
-                            </SubmitButton>
-                          </form>
-                          <p className="mt-1 text-xs text-zinc-500">
-                            {t("requests.quotes.registerHint")}
-                          </p>
-                        </Td>
-                      ) : (
-                        <>
-                          <Td
-                            className={cx(
-                              "whitespace-nowrap tabular-nums",
-                              q.price === null && "text-zinc-500",
-                            )}
-                          >
-                            {q.price !== null
-                              ? `${formatMoney(q.price, q.currency, t)} / ${request.unit}`
-                              : t("requests.quotes.waiting")}
-                          </Td>
-                          <Td className="tabular-nums">
-                            {q.leadTimeDays ?? "—"}
-                          </Td>
-                          <Td>{q.conditions ?? "—"}</Td>
-                        </>
-                      )}
-                      <Td className="whitespace-nowrap">
-                        <Badge
-                          tone={
-                            q.status === "selected"
-                              ? "success"
-                              : q.status === "answered"
-                                ? "info"
-                                : "neutral"
-                          }
-                        >
-                          {t(`quoteStatus.${q.status}`)}
-                        </Badge>
-                        {(freights.get(q.id) ?? []).map((f) => (
-                          <Link
-                            key={f.id}
-                            href={`/app/freight/${f.id}`}
-                            className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
-                          >
-                            {t("freight.compare.title")}:{" "}
-                            {carrierName(f.carrierId)} ·{" "}
-                            {f.status === "answered"
-                              ? formatMoney(f.amount, f.currency, t)
-                              : t("freight.compare.waiting")}
-                          </Link>
-                        ))}
-                      </Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-              {["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
-              quotes.some((q) => q.status === "answered") ? (
-                <form
-                  action={selectQuoteAction}
-                  className="mt-4 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-3 sm:p-4"
-                >
+        {actionCards > 0 ? (
+          <div
+            className={cx(
+              "contents md:grid md:grid-cols-2 md:items-start md:gap-4",
+              actionCards !== 2 && "lg:grid-cols-3",
+            )}
+          >
+            {/* RFQ: Wellmix escolhe fornecedores */}
+            {showRfq ? (
+              <Card
+                title={rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
+              >
+                <form action={openRfqAction} className="space-y-2.5">
                   <input type="hidden" name="requestId" value={request.id} />
-                  <SellPriceCalculator
-                    quotes={(pricing?.quotes ?? []).map((p) => {
-                      const q = selectable.find((x) => x.id === p.quoteId)!;
-                      return {
-                        quoteId: p.quoteId,
-                        label: `${supplierName(q.supplierId)} · ${formatMoney(q.price, q.currency, t)}`,
-                        hasSheet: p.hasSheet,
-                        input: p.input,
-                        marginSource: p.marginSource,
-                        shippingFreightBrl: p.shippingFreight.brl,
-                        iiSource: taxSourceText(p.tax.iiSource, p.tax.ncm),
-                        ipiSource: taxSourceText(p.tax.ipiSource, p.tax.ncm),
-                        ncmPending:
-                          p.tax.ncmStatus === "none" && p.tax.iiSource === null,
-                        shippingFreightNote:
-                          p.shippingFreight.status === "answered"
-                            ? t("freight.calc.answered", {
-                                carrier: p.shippingFreight.carrierName ?? "—",
-                                amount: formatMoney(
-                                  p.shippingFreight.amount,
-                                  p.shippingFreight.currency ?? "USD",
-                                  t,
-                                ),
-                              })
-                            : p.shippingFreight.status === "waiting"
-                              ? t("freight.calc.waiting")
-                              : null,
-                      };
-                    })}
-                    labels={{
-                      supplier: t("common.supplier"),
-                      sellPrice: t("requests.sellPrice"),
-                      carrierFreight: t("pricing.calc.carrierFreight"),
-                      carrierFreightHint: t("pricing.calc.carrierFreightHint"),
-                      title: t("pricing.calc.title"),
-                      fob: t("pricing.calc.fob"),
-                      fx: t("pricing.calc.fx"),
-                      freightCarrier: t("pricing.calc.freightCarrier"),
-                      freightCbm: t("pricing.calc.freightCbm"),
-                      freightNone: t("pricing.calc.freightNone"),
-                      importTax: t("pricing.calc.importTax"),
-                      ipi: t("pricing.calc.ipi"),
-                      insurance: t("pricing.calc.insurance"),
-                      customsValue: t("pricing.calc.customsValue"),
-                      pis: t("pricing.calc.pis"),
-                      cofins: t("pricing.calc.cofins"),
-                      icms: t("pricing.calc.icms"),
-                      ncmPending: t("pricing.calc.ncmPending"),
-                      landed: t("pricing.calc.landed"),
-                      margin: t("pricing.calc.margin"),
-                      sell: t("pricing.calc.sell"),
-                      useCalculated: t("pricing.calc.useCalculated"),
-                      noSheet: t("pricing.calc.noSheet"),
-                      marginZero: t("pricing.calc.marginZero"),
-                      sourceCustomer: t("pricing.calc.source.customer"),
-                      sourceLine: t("pricing.calc.source.line"),
-                      sourceDefault: t("pricing.calc.source.default"),
-                      intl: t.intl,
-                      fxStale:
-                        pricing?.fx.status === "stale"
-                          ? t("pricing.calc.fxStale", {
-                              day: pricing.fx.day ?? "—",
-                            })
-                          : null,
-                      missing: {
-                        price: t("pricing.calc.missing.price"),
-                        fx: t("pricing.calc.missing.fx"),
-                        freight: t("pricing.calc.missing.freight"),
-                        cbm: t("pricing.calc.missing.cbm"),
-                        importTax: t("pricing.calc.missing.importTax"),
-                        ipi: t("pricing.calc.missing.ipi"),
-                        icms: t("pricing.calc.missing.icms"),
-                      },
-                    }}
-                  />
-                  <Field label={t("common.currency")}>
-                    <CurrencySelect name="sellCurrency" value="BRL" t={t} />
-                  </Field>
-                  <Field label={t("requests.downPayment")}>
-                    <MoneyInput
-                      locale={t.intl}
-                      name="downPaymentAmount"
-                      watchField="sellCurrency"
-                      placeholder={t("ph.request.downPayment")}
-                    />
-                  </Field>
-                  <div className="sm:col-span-3">
-                    <SubmitButton>{t("requests.quotes.select")}</SubmitButton>
+                  <p className="text-sm text-zinc-600">
+                    {allInvited
+                      ? t("rfq.allInvited")
+                      : rfqOpened
+                        ? t("rfq.inviteMoreHint")
+                        : t("requests.rfq.select")}
+                  </p>
+                  {supplying.size ? (
+                    <p className="text-xs text-zinc-500">
+                      {t("productSuppliers.rfqHint")}
+                    </p>
+                  ) : null}
+                  <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-1">
+                    {rfqSuppliers.map((s) => (
+                      <label
+                        key={s.id}
+                        className={cx(
+                          "flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-sm transition",
+                          invited.has(s.id)
+                            ? "cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-500"
+                            : "cursor-pointer border-zinc-300 bg-white text-zinc-900 hover:border-brand-300 has-checked:border-brand-600 has-checked:bg-brand-50 has-checked:text-brand-900",
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          name="supplierIds"
+                          value={s.id}
+                          disabled={invited.has(s.id)}
+                          defaultChecked={invited.has(s.id)}
+                          className="h-4 w-4 shrink-0 accent-brand-600"
+                        />
+                        <span>
+                          <span className="font-medium">{s.name}</span>{" "}
+                          <span className="text-zinc-500">· {s.country}</span>
+                          {supplying.has(s.id) ? (
+                            <span
+                              className="ml-1.5 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700"
+                              data-rfq-supplying
+                            >
+                              {t("productSuppliers.rfqLinked")}
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {allInvited ? null : (
+                    <SubmitButton>
+                      {rfqOpened
+                        ? t("rfq.inviteSelected")
+                        : t("requests.rfq.open")}
+                    </SubmitButton>
+                  )}
+                </form>
+              </Card>
+            ) : null}
+
+            {/* Classificação fiscal: NCM → II (TEC) e IPI (TIPI) no valor ao cliente.
+                Em 2 colunas (md) ocupa duas linhas: RFQ e solicitante ficam
+                um abaixo do outro, sem buraco. */}
+            {ncmInfo ? (
+              <div className="min-w-0 md:row-span-2 lg:row-span-1">
+                <RequestNcmCard
+                  t={t}
+                  requestId={request.id}
+                  ncm={ncmInfo}
+                  suggestions={ncmSuggestionList}
+                  suggestionsPending={ncmPendingAuto}
+                  hasTable={fiscalLoaded}
+                  editable={!request.orderId}
+                  notice={
+                    ncmConfirmed
+                      ? t("ncm.confirmedOk")
+                      : typeof ncmSuggested === "string"
+                        ? t("ncm.suggestedOk", { count: ncmSuggested })
+                        : null
+                  }
+                  aiNotice={
+                    ncmAiReason
+                      ? t("ncm.aiUnavailable", { reason: ncmAiReason })
+                      : null
+                  }
+                />
+              </div>
+            ) : null}
+
+            {wellmix ? (
+              <Card
+                title={t("access.requesterTitle")}
+                className="order-1 md:order-none"
+              >
+                <form action={setRequesterAction} className="space-y-2">
+                  <input type="hidden" name="requestId" value={request.id} />
+                  <p className="text-xs leading-relaxed text-zinc-500">
+                    {t("access.requesterHint")}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      name="requestedForUserId"
+                      defaultValue={request.requestedForUserId ?? ""}
+                      aria-label={t("access.requester")}
+                      className="flex-1"
+                    >
+                      <option value="">{t("access.requesterNone")}</option>
+                      {customerLogins.map((u) => (
+                        <option key={u.id} value={u.id} disabled={!u.active}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </Select>
+                    <SubmitButton variant="secondary">
+                      {t("common.save")}
+                    </SubmitButton>
                   </div>
                 </form>
-              ) : null}
-            </Card>
-          ) : null}
+              </Card>
+            ) : null}
+          </div>
+        ) : null}
 
-          {/* Proposta e sinal */}
-          <span id="proposal" className="block scroll-mt-24" />
-          {request.status === "WAITING_DOWN_PAYMENT" ||
-          request.status === "ORDERED" ? (
-            <Card
-              title={t("requests.proposal")}
-              className={cx(
-                request.status === "WAITING_DOWN_PAYMENT" &&
-                  "border-brand-300! ring-4 ring-brand-50",
-              )}
-            >
-              {refreshed === "1" ? (
-                <div className="mb-3">
-                  <Alert tone="success">{t("pricing.refreshed")}</Alert>
-                </div>
-              ) : null}
-              {variance && !downPayment?.proofDocumentId ? (
-                <div className="mb-3 space-y-2">
-                  <Alert tone="warning">
-                    {t("pricing.variance", {
-                      pct: `${variance.pct > 0 ? "+" : ""}${variance.pct.toLocaleString(t.intl, { maximumFractionDigits: 2 })}`,
-                      currency: variance.currency,
-                      from: variance.before.toLocaleString(t.intl, {
-                        maximumFractionDigits: 4,
-                      }),
-                      to: variance.now.toLocaleString(t.intl, {
-                        maximumFractionDigits: 4,
-                      }),
-                    })}
-                  </Alert>
-                  <form action={refreshProposalAction}>
-                    <input type="hidden" name="requestId" value={request.id} />
-                    <SubmitButton variant="secondary">
-                      {t("pricing.refresh")}
-                    </SubmitButton>
-                  </form>
-                </div>
-              ) : null}
-              <DescriptionList
-                items={[
-                  [
-                    t("requests.sellPrice"),
-                    <span
-                      key="sellPrice"
-                      className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
-                    >
-                      {formatMoney(request.sellPrice, request.sellCurrency, t)}
-                    </span>,
-                  ],
-                  [
-                    t("requests.downPayment"),
-                    <span
-                      key="downPayment"
-                      className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
-                    >
-                      {formatMoney(
-                        request.downPaymentAmount,
-                        request.sellCurrency,
-                        t,
-                      )}
-                    </span>,
-                  ],
-                  [
-                    t("common.status"),
-                    downPayment ? (
+        {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
+        {wellmix && quotes.length > 0 ? (
+          <Card title={t("requests.quotes.compare")}>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("common.supplier")}</Th>
+                  <Th>{t("common.price")}</Th>
+                  <Th className="whitespace-nowrap">{t("common.leadTime")}</Th>
+                  <Th>{t("common.conditions")}</Th>
+                  <Th>{t("common.status")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotes.map((q) => (
+                  <tr
+                    key={q.id}
+                    className={cx(
+                      rowClass,
+                      q.status === "selected" && "bg-emerald-50/50",
+                    )}
+                  >
+                    <Td className="font-medium text-zinc-900">
+                      {supplierName(q.supplierId)}
+                    </Td>
+                    {q.status === "invited" &&
+                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                      request.status,
+                    ) ? (
+                      <Td colSpan={3}>
+                        <form
+                          action={answerQuoteAction}
+                          className="flex flex-wrap items-end gap-2"
+                        >
+                          <input type="hidden" name="quoteId" value={q.id} />
+                          <input
+                            type="hidden"
+                            name="back"
+                            value={`/app/requests/${request.id}`}
+                          />
+                          <MoneyInput
+                            locale={t.intl}
+                            name="price"
+                            watchField="currency"
+                            decimals={4}
+                            required
+                            className="w-36"
+                          />
+                          <CurrencySelect
+                            name="currency"
+                            value="USD"
+                            t={t}
+                            className="w-32"
+                          />
+                          <Input
+                            name="leadTimeDays"
+                            type="number"
+                            min="1"
+                            required
+                            placeholder={t("common.leadTime")}
+                            className="w-28"
+                          />
+                          <Input
+                            name="conditions"
+                            placeholder={t("common.conditions")}
+                            className="w-44"
+                          />
+                          <SubmitButton variant="secondary">
+                            {t("requests.quotes.register")}
+                          </SubmitButton>
+                        </form>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {t("requests.quotes.registerHint")}
+                        </p>
+                      </Td>
+                    ) : (
+                      <>
+                        <Td
+                          className={cx(
+                            "whitespace-nowrap tabular-nums",
+                            q.price === null && "text-zinc-500",
+                          )}
+                        >
+                          {q.price !== null
+                            ? `${formatMoney(q.price, q.currency, t)} / ${request.unit}`
+                            : t("requests.quotes.waiting")}
+                        </Td>
+                        <Td className="tabular-nums">
+                          {q.leadTimeDays ?? "—"}
+                        </Td>
+                        <Td>{q.conditions ?? "—"}</Td>
+                      </>
+                    )}
+                    <Td className="whitespace-nowrap">
                       <Badge
                         tone={
-                          downPayment.status === "pending"
-                            ? "warning"
-                            : "success"
+                          q.status === "selected"
+                            ? "success"
+                            : q.status === "answered"
+                              ? "info"
+                              : "neutral"
                         }
                       >
-                        {t(`paymentStatus.${downPayment.status}`)}
+                        {t(`quoteStatus.${q.status}`)}
                       </Badge>
-                    ) : (
-                      "—"
-                    ),
-                  ],
-                  ...(canSeeSupplier(user) && selectedQuote
-                    ? [
-                        [
-                          t("common.supplier"),
-                          supplierName(selectedQuote.supplierId),
-                        ] as [string, string],
-                      ]
-                    : []),
-                ]}
-              />
-              {request.status === "WAITING_DOWN_PAYMENT" ? (
-                <div className="mt-5 space-y-3 border-t border-zinc-100 pt-4">
-                  <Alert tone="warning">
-                    {t("requests.payment.instructions", {
-                      amount: formatMoney(
-                        request.downPaymentAmount,
-                        request.sellCurrency,
-                        t,
+                      {(freights.get(q.id) ?? []).map((f) => (
+                        <Link
+                          key={f.id}
+                          href={`/app/freight/${f.id}`}
+                          className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
+                        >
+                          {t("freight.compare.title")}:{" "}
+                          {carrierName(f.carrierId)} ·{" "}
+                          {f.status === "answered"
+                            ? formatMoney(f.amount, f.currency, t)
+                            : t("freight.compare.waiting")}
+                        </Link>
+                      ))}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            {["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
+            quotes.some((q) => q.status === "answered") ? (
+              /* Telas médias e grandes: memória de cálculo à esquerda;
+                 fornecedor, fretes, valores e botão à direita (sem rolar). */
+              <form
+                action={selectQuoteAction}
+                className="mt-3 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 sm:grid-cols-2 md:grid-cols-4 md:grid-rows-[auto_auto_auto_auto_1fr]"
+              >
+                <input type="hidden" name="requestId" value={request.id} />
+                <SellPriceCalculator
+                  quotes={(pricing?.quotes ?? []).map((p) => {
+                    const q = selectable.find((x) => x.id === p.quoteId)!;
+                    return {
+                      quoteId: p.quoteId,
+                      label: `${supplierName(q.supplierId)} · ${formatMoney(q.price, q.currency, t)}`,
+                      hasSheet: p.hasSheet,
+                      input: p.input,
+                      marginSource: p.marginSource,
+                      shippingFreightBrl: p.shippingFreight.brl,
+                      iiSource: taxSourceText(p.tax.iiSource, p.tax.ncm),
+                      ipiSource: taxSourceText(p.tax.ipiSource, p.tax.ncm),
+                      ncmPending:
+                        p.tax.ncmStatus === "none" && p.tax.iiSource === null,
+                      shippingFreightNote:
+                        p.shippingFreight.status === "answered"
+                          ? t("freight.calc.answered", {
+                              carrier: p.shippingFreight.carrierName ?? "—",
+                              amount: formatMoney(
+                                p.shippingFreight.amount,
+                                p.shippingFreight.currency ?? "USD",
+                                t,
+                              ),
+                            })
+                          : p.shippingFreight.status === "waiting"
+                            ? t("freight.calc.waiting")
+                            : null,
+                    };
+                  })}
+                  labels={{
+                    supplier: t("common.supplier"),
+                    sellPrice: t("requests.sellPrice"),
+                    carrierFreight: t("pricing.calc.carrierFreight"),
+                    carrierFreightHint: t("pricing.calc.carrierFreightHint"),
+                    title: t("pricing.calc.title"),
+                    fob: t("pricing.calc.fob"),
+                    fx: t("pricing.calc.fx"),
+                    freightCarrier: t("pricing.calc.freightCarrier"),
+                    freightCbm: t("pricing.calc.freightCbm"),
+                    freightNone: t("pricing.calc.freightNone"),
+                    importTax: t("pricing.calc.importTax"),
+                    ipi: t("pricing.calc.ipi"),
+                    insurance: t("pricing.calc.insurance"),
+                    customsValue: t("pricing.calc.customsValue"),
+                    pis: t("pricing.calc.pis"),
+                    cofins: t("pricing.calc.cofins"),
+                    icms: t("pricing.calc.icms"),
+                    ncmPending: t("pricing.calc.ncmPending"),
+                    landed: t("pricing.calc.landed"),
+                    margin: t("pricing.calc.margin"),
+                    sell: t("pricing.calc.sell"),
+                    useCalculated: t("pricing.calc.useCalculated"),
+                    noSheet: t("pricing.calc.noSheet"),
+                    marginZero: t("pricing.calc.marginZero"),
+                    sourceCustomer: t("pricing.calc.source.customer"),
+                    sourceLine: t("pricing.calc.source.line"),
+                    sourceDefault: t("pricing.calc.source.default"),
+                    intl: t.intl,
+                    fxStale:
+                      pricing?.fx.status === "stale"
+                        ? t("pricing.calc.fxStale", {
+                            day: pricing.fx.day ?? "—",
+                          })
+                        : null,
+                    missing: {
+                      price: t("pricing.calc.missing.price"),
+                      fx: t("pricing.calc.missing.fx"),
+                      freight: t("pricing.calc.missing.freight"),
+                      cbm: t("pricing.calc.missing.cbm"),
+                      importTax: t("pricing.calc.missing.importTax"),
+                      ipi: t("pricing.calc.missing.ipi"),
+                      icms: t("pricing.calc.missing.icms"),
+                    },
+                  }}
+                />
+                <Field label={t("common.currency")}>
+                  <CurrencySelect name="sellCurrency" value="BRL" t={t} />
+                </Field>
+                <Field label={t("requests.downPayment")}>
+                  <MoneyInput
+                    locale={t.intl}
+                    name="downPaymentAmount"
+                    watchField="sellCurrency"
+                    placeholder={t("ph.request.downPayment")}
+                    className="w-full"
+                  />
+                </Field>
+                <div className="sm:col-span-2 md:col-start-3">
+                  <SubmitButton>{t("requests.quotes.select")}</SubmitButton>
+                </div>
+              </form>
+            ) : null}
+          </Card>
+        ) : null}
+
+        {/* Proposta e sinal */}
+        <span id="proposal" className="-mt-4 block scroll-mt-24" />
+        {request.status === "WAITING_DOWN_PAYMENT" ||
+        request.status === "ORDERED" ? (
+          <Card
+            title={t("requests.proposal")}
+            className={cx(
+              request.status === "WAITING_DOWN_PAYMENT" &&
+                "border-brand-300! ring-4 ring-brand-50",
+            )}
+          >
+            {refreshed === "1" ? (
+              <div className="mb-3">
+                <Alert tone="success">{t("pricing.refreshed")}</Alert>
+              </div>
+            ) : null}
+            {variance && !downPayment?.proofDocumentId ? (
+              <div className="mb-3 space-y-2">
+                <Alert tone="warning">
+                  {t("pricing.variance", {
+                    pct: `${variance.pct > 0 ? "+" : ""}${variance.pct.toLocaleString(t.intl, { maximumFractionDigits: 2 })}`,
+                    currency: variance.currency,
+                    from: variance.before.toLocaleString(t.intl, {
+                      maximumFractionDigits: 4,
+                    }),
+                    to: variance.now.toLocaleString(t.intl, {
+                      maximumFractionDigits: 4,
+                    }),
+                  })}
+                </Alert>
+                <form action={refreshProposalAction}>
+                  <input type="hidden" name="requestId" value={request.id} />
+                  <SubmitButton variant="secondary">
+                    {t("pricing.refresh")}
+                  </SubmitButton>
+                </form>
+              </div>
+            ) : null}
+            {/* Aguardando sinal, telas grandes: proposta, instruções e
+                comprovante à esquerda; Pix (QR Code e copia e cola) à direita. */}
+            <div
+              className={cx(
+                "grid gap-3",
+                request.status === "WAITING_DOWN_PAYMENT" &&
+                  "lg:grid-cols-2 lg:grid-rows-[auto_auto_auto_auto_1fr] lg:gap-x-5",
+              )}
+            >
+              <div className="min-w-0 lg:col-start-1">
+                <DescriptionList
+                  items={[
+                    [
+                      t("requests.sellPrice"),
+                      <span
+                        key="sellPrice"
+                        className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
+                      >
+                        {formatMoney(
+                          request.sellPrice,
+                          request.sellCurrency,
+                          t,
+                        )}
+                      </span>,
+                    ],
+                    [
+                      t("requests.downPayment"),
+                      <span
+                        key="downPayment"
+                        className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
+                      >
+                        {formatMoney(
+                          request.downPaymentAmount,
+                          request.sellCurrency,
+                          t,
+                        )}
+                      </span>,
+                    ],
+                    [
+                      t("common.status"),
+                      downPayment ? (
+                        <Badge
+                          tone={
+                            downPayment.status === "pending"
+                              ? "warning"
+                              : "success"
+                          }
+                        >
+                          {t(`paymentStatus.${downPayment.status}`)}
+                        </Badge>
+                      ) : (
+                        "—"
                       ),
-                    })}
-                  </Alert>
+                    ],
+                    ...(canSeeSupplier(user) && selectedQuote
+                      ? [
+                          [
+                            t("common.supplier"),
+                            supplierName(selectedQuote.supplierId),
+                          ] as [string, string],
+                        ]
+                      : []),
+                  ]}
+                />
+              </div>
+              {request.status === "WAITING_DOWN_PAYMENT" ? (
+                <>
+                  <div className="min-w-0 border-t border-zinc-100 pt-3 lg:col-start-1">
+                    <Alert tone="warning">
+                      {t("requests.payment.instructions", {
+                        amount: formatMoney(
+                          request.downPaymentAmount,
+                          request.sellCurrency,
+                          t,
+                        ),
+                      })}
+                    </Alert>
+                  </div>
                   {/* Pix do sinal: copia e cola e QR Code com valor e referência. */}
                   {pix && "payload" in pix ? (
-                    <div className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/70 p-4">
+                    <div className="min-w-0 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-start">
                       <div>
-                        <h3 className="text-base font-semibold text-zinc-900">
+                        <h3 className="text-sm font-semibold text-zinc-900">
                           {t("payments.pix.title")}
                         </h3>
-                        <p className="mt-1 text-sm leading-relaxed text-zinc-600">
+                        <p className="mt-0.5 text-sm leading-relaxed text-zinc-600">
                           {t("payments.pix.howTo")}
                         </p>
                       </div>
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                         {/* eslint-disable-next-line @next/next/no-img-element -- QR gerado no servidor (data URL) */}
                         <img
                           src={pix.qrDataUrl}
                           alt={t("payments.pix.qrAlt")}
-                          className="mx-auto h-48 w-48 shrink-0 rounded-lg border border-zinc-200 bg-white p-2 sm:mx-0"
+                          className="mx-auto h-40 w-40 shrink-0 rounded-lg border border-zinc-200 bg-white p-2 sm:mx-0"
                         />
-                        <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <dl className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                           <div className="col-span-2">
                             <dt className="text-xs text-zinc-500">
                               {t("payments.pix.receiver")}
@@ -810,36 +926,40 @@ export default async function RequestDetailPage({
                       />
                     </div>
                   ) : pix && "unavailable" in pix ? (
-                    <Alert tone="neutral">
-                      {t(
-                        `payments.pix.unavailable.${pix.unavailable}${wellmix ? "Wellmix" : ""}` as DictionaryKey,
-                      )}
-                    </Alert>
+                    <div className="min-w-0 lg:col-start-2 lg:row-span-5 lg:row-start-1 lg:self-start">
+                      <Alert tone="neutral">
+                        {t(
+                          `payments.pix.unavailable.${pix.unavailable}${wellmix ? "Wellmix" : ""}` as DictionaryKey,
+                        )}
+                      </Alert>
+                    </div>
                   ) : null}
 
                   {/* Comprovante: o cliente anexa; a Wellmix confere e confirma. */}
                   {downPayment?.proofDocumentId ? (
-                    <Alert tone={wellmix ? "info" : "success"}>
-                      <span className="block">
-                        {wellmix
-                          ? t("payments.proof.receivedWellmix")
-                          : t("payments.proof.sent")}
-                      </span>
-                      <a
-                        href={`/api/files/${downPayment.proofDocumentId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cx(linkClass, "mt-1 inline-block")}
-                      >
-                        {t("payments.proof.view")}
-                        {proofDoc ? ` (${proofDoc.name})` : ""}
-                      </a>
-                    </Alert>
+                    <div className="min-w-0 lg:col-start-1">
+                      <Alert tone={wellmix ? "info" : "success"}>
+                        <span className="block">
+                          {wellmix
+                            ? t("payments.proof.receivedWellmix")
+                            : t("payments.proof.sent")}
+                        </span>
+                        <a
+                          href={`/api/files/${downPayment.proofDocumentId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cx(linkClass, "mt-1 inline-block")}
+                        >
+                          {t("payments.proof.view")}
+                          {proofDoc ? ` (${proofDoc.name})` : ""}
+                        </a>
+                      </Alert>
+                    </div>
                   ) : null}
                   {!wellmix ? (
                     <form
                       action={submitDownPaymentProofAction}
-                      className="space-y-3 rounded-xl border border-zinc-200 p-4"
+                      className="min-w-0 space-y-2 rounded-xl border border-zinc-200 p-3 sm:max-w-lg lg:col-start-1 lg:max-w-none"
                     >
                       <input
                         type="hidden"
@@ -869,7 +989,7 @@ export default async function RequestDetailPage({
                   {wellmix ? (
                     <form
                       action={confirmDownPaymentAction}
-                      className="flex flex-wrap items-end gap-3"
+                      className="flex min-w-0 flex-wrap items-end gap-3 lg:col-start-1"
                     >
                       <input
                         type="hidden"
@@ -884,84 +1004,11 @@ export default async function RequestDetailPage({
                       </SubmitButton>
                     </form>
                   ) : null}
-                </div>
+                </>
               ) : null}
-            </Card>
-          ) : null}
-        </div>
-
-        <div className="min-w-0 space-y-6">
-          {wellmix ? (
-            <Card title={t("access.requesterTitle")}>
-              <form action={setRequesterAction} className="space-y-3">
-                <input type="hidden" name="requestId" value={request.id} />
-                <p className="text-xs leading-relaxed text-zinc-500">
-                  {t("access.requesterHint")}
-                </p>
-                <Select
-                  name="requestedForUserId"
-                  defaultValue={request.requestedForUserId ?? ""}
-                  aria-label={t("access.requester")}
-                >
-                  <option value="">{t("access.requesterNone")}</option>
-                  {customerLogins.map((u) => (
-                    <option key={u.id} value={u.id} disabled={!u.active}>
-                      {u.name} ({u.email})
-                    </option>
-                  ))}
-                </Select>
-                <SubmitButton variant="secondary">
-                  {t("common.save")}
-                </SubmitButton>
-              </form>
-            </Card>
-          ) : null}
-          <Card title={t("orders.timeline")}>
-            <ol className="-mx-2 space-y-1 text-sm">
-              {(
-                [
-                  "REQUESTED",
-                  "RFQ_OPEN",
-                  "QUOTATION_RECEIVED",
-                  "WAITING_DOWN_PAYMENT",
-                  "ORDERED",
-                ] as const
-              ).map((s, i, arr) => {
-                const idx = arr.indexOf(request.status as (typeof arr)[number]);
-                const done = idx >= i;
-                const current = idx === i;
-                const state: StepState = done
-                  ? current && s !== "ORDERED"
-                    ? "active"
-                    : "done"
-                  : "pending";
-                return (
-                  <li
-                    key={s}
-                    aria-current={state === "active" ? "step" : undefined}
-                    className={cx(
-                      "flex items-center gap-3 rounded-lg px-2 py-1.5",
-                      state === "active" && "bg-brand-50",
-                    )}
-                  >
-                    <StepDot state={state}>{i + 1}</StepDot>
-                    <span
-                      className={cx(
-                        state === "active"
-                          ? "font-semibold text-brand-800"
-                          : state === "done"
-                            ? "text-zinc-900"
-                            : "text-zinc-500",
-                      )}
-                    >
-                      {t(`reqStatusLabel.${s}`)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+            </div>
           </Card>
-        </div>
+        ) : null}
       </div>
     </>
   );

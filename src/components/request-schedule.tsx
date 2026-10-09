@@ -105,10 +105,12 @@ export function RequestScheduleFields({
     update(splitEvenly(sum(qtys), qtys.length - 1).map(String));
   }
 
+  /* Na grade da linha de produto (RequestItems): desligada, fica ao lado de
+     quantidade e unidade; ligada, ocupa a linha toda. */
   if (!on)
     return (
       <div
-        className="flex flex-wrap items-center gap-2"
+        className="col-span-2 flex flex-wrap items-center gap-x-2 gap-y-1 self-end sm:min-h-8"
         data-request-schedule="off"
       >
         <span className="text-xs text-zinc-500">{labels.ask}</span>
@@ -126,7 +128,7 @@ export function RequestScheduleFields({
 
   return (
     <fieldset
-      className="min-w-0 max-w-full space-y-3 rounded-lg border border-brand-100 bg-brand-50/40 p-3"
+      className="col-span-2 min-w-0 max-w-full space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5 sm:col-span-4"
       data-request-schedule="on"
     >
       <legend className="px-1 text-sm font-semibold text-zinc-800">
@@ -201,7 +203,7 @@ export function RequestScheduleFields({
             type="date"
             value={firstDate}
             onChange={(e) => setFirstDate(e.target.value)}
-            className={cx(inputClass, "w-40 py-1 text-sm")}
+            className={cx(inputClass, "w-40")}
           />
         </label>
       </div>
@@ -242,7 +244,7 @@ export function RequestScheduleFields({
                   onChange={(e) =>
                     update(qtys.map((x, j) => (j === i ? e.target.value : x)))
                   }
-                  className={cx(inputClass, "py-1 text-sm tabular-nums")}
+                  className={cx(inputClass, "tabular-nums")}
                 />
               </label>
               <p className="text-[11px] text-zinc-500">

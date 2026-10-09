@@ -57,11 +57,12 @@ export default async function NewSourcingItemPage({
         }
       />
       {errorText ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
-      <div className="max-w-3xl">
+      {/* Largura toda: num espaço largo as seções do formulário ficam duas a duas. */}
+      <div className="min-w-0">
         <ItemForm t={t} suppliers={suppliers} lines={lines} preset={preset} />
       </div>
     </>

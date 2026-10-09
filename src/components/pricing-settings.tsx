@@ -41,14 +41,15 @@ export function PricingSettings({
         }).format(fx.rates[c]!)
       : "—";
   return (
-    <>
-      <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
+    <div className="space-y-3 border-t border-zinc-100 pt-3">
+      <h3 className="text-sm font-semibold text-zinc-900">
         {t("pricing.settings.title")}
       </h3>
       <p className="text-xs leading-relaxed text-zinc-500">
         {t("pricing.settings.hint")}
       </p>
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Campos curtos em grade densa (pela largura da coluna, @container do pai). */}
+      <div className="grid gap-3 @sm:grid-cols-2 @xl:grid-cols-3">
         <Field
           label={t("pricing.settings.margin")}
           hint={t("pricing.settings.marginHint")}
@@ -83,7 +84,7 @@ export function PricingSettings({
         </Field>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 p-4">
+      <div className="@container rounded-xl border border-zinc-200 p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-medium text-zinc-900">
             {t("pricing.settings.fx")}
@@ -101,7 +102,7 @@ export function PricingSettings({
             {t("pricing.fx.lastError", { reason: fx.lastError })}
           </p>
         ) : null}
-        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+        <p className="mt-2 text-xs leading-relaxed text-zinc-500">
           {t("pricing.settings.fxManualHint")}
         </p>
         <input type="hidden" name="fxManualRates.__form" value="1" />
@@ -141,7 +142,7 @@ export function PricingSettings({
         values={s.marginByCustomer}
         placeholder={t("pricing.settings.inherit")}
       />
-    </>
+    </div>
   );
 }
 
@@ -161,22 +162,22 @@ function MarginTable({
   placeholder: string;
 }) {
   return (
-    <details className="rounded-xl border border-zinc-200 p-4" open>
+    <details className="rounded-xl border border-zinc-200 p-3" open>
       <summary className="cursor-pointer text-sm font-medium text-zinc-900">
         {title}
       </summary>
       <p className="mt-1 text-xs text-zinc-500">{hint}</p>
       <input type="hidden" name={`${field}.__form`} value="1" />
-      <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+      <ul className="mt-2 grid gap-x-6 gap-y-1.5 @sm:grid-cols-2 @2xl:grid-cols-3">
         {rows.map((r) => (
           <li key={r.id} className="flex items-center justify-between gap-3">
             <label
               htmlFor={`${field}-${r.id}`}
-              className="min-w-0 truncate text-sm text-zinc-700"
+              className="min-w-0 truncate text-[13px] text-zinc-700"
             >
               {r.name}
             </label>
-            <span className="flex items-center gap-1">
+            <span className="flex shrink-0 items-center gap-1">
               <Input
                 id={`${field}-${r.id}`}
                 name={`${field}.${r.id}`}

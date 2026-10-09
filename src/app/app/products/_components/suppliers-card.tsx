@@ -66,7 +66,7 @@ export function SuppliersCard({
                   key={row.supplier.id}
                   data-product-supplier={row.supplier.id}
                   data-main={row.main ? "true" : undefined}
-                  className="grid gap-2 px-3 py-2.5 text-sm lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_auto] lg:items-center lg:gap-4"
+                  className="grid gap-2 px-3 py-2 text-sm lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_auto] lg:items-center lg:gap-4"
                 >
                   <div className="min-w-0 space-y-1">
                     <TextLink
@@ -201,7 +201,7 @@ export function SuppliersCard({
                 name="supplierId"
                 required
                 defaultValue=""
-                className={`${inputDenseClass} mt-1 w-56`}
+                className={`${inputDenseClass} mt-1 w-56 max-w-full`}
               >
                 <option value="" disabled>
                   {t("supplierPick.placeholder")}

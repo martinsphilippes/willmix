@@ -71,7 +71,7 @@ function Steps({ t, current }: { t: Translate; current: 1 | 2 | 3 }) {
   const state = (n: number): StepState =>
     n < current ? "done" : n === current ? "active" : "pending";
   return (
-    <ol className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+    <ol className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
       {items.map(([n, key]) => (
         <li key={n} className="flex items-center gap-2">
           <StepDot state={state(n)}>{n}</StepDot>
@@ -191,7 +191,7 @@ export default async function ImportBatchPage({
               errors: batch.summary?.errors ?? 0,
             })}
           </Alert>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <LinkButton href={LIST_URL[entity] ?? "/app"} variant="primary">
               {t("import.done.goList")}
             </LinkButton>
@@ -204,11 +204,11 @@ export default async function ImportBatchPage({
       {view === "mapping" ? (
         <Card title={t("import.step.mapping")}>
           <Steps t={t} current={1} />
-          <form action={setBatchMappingAction} className="space-y-4">
+          <form action={setBatchMappingAction} className="space-y-3">
             <input type="hidden" name="batchId" value={batch.id} />
             <input type="hidden" name="entity" value={entity} />
             {entity === "products" || entity === "sourcing_items" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {entity === "products" ? (
                   <Field
                     label={t("import.mapping.defaultLine")}
@@ -297,7 +297,7 @@ export default async function ImportBatchPage({
               <SubmitButton>{t("import.mapping.preview")}</SubmitButton>
             </div>
           </form>
-          <div className="mt-4">
+          <div className="mt-3">
             <CancelForm batch={batch} t={t} />
           </div>
         </Card>
@@ -322,11 +322,11 @@ export default async function ImportBatchPage({
             })}
           </Alert>
           {preview.length === 0 ? (
-            <div className="mt-4">
+            <div className="mt-3">
               <Empty>{t("import.preview.empty")}</Empty>
             </div>
           ) : (
-            <form action={applyImportBatchAction} className="mt-4 space-y-4">
+            <form action={applyImportBatchAction} className="mt-3 space-y-3">
               <input type="hidden" name="batchId" value={batch.id} />
               <Table>
                 <thead>
@@ -442,7 +442,7 @@ export default async function ImportBatchPage({
               </div>
             </form>
           )}
-          <div className="mt-4">
+          <div className="mt-3">
             <CancelForm batch={batch} t={t} />
           </div>
         </Card>

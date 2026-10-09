@@ -4,11 +4,14 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
  * Peças compartilhadas do catálogo (ficha do produto, página de NCM, parceiro
- * e linhas): mensagem de erro traduzida e campo maior para o celular.
+ * e linhas): mensagem de erro traduzida e nome de usuário por id.
  */
 
-/** Campo maior para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
-export const big = "py-2.5";
+/**
+ * Antes deixava o campo mais alto (py-2.5) para o celular; agora os campos
+ * seguem o tamanho compacto do kit (ui.tsx), então não acrescenta nada.
+ */
+export const big = "";
 
 /** Mensagem de ?error=: traduzida quando o código é do módulo; senão a genérica com o código. */
 export function catalogError(

@@ -9,8 +9,8 @@ import type { Tone } from "@/components/ui";
  * mensagem de erro traduzida e formatação de números (CBM com até 4 casas).
  */
 
-/** Campo maior no celular (py-2.5, 16 px para o iOS não dar zoom); tamanho padrão no desktop. */
-export const bigField = "py-2.5 text-base sm:text-sm";
+/** Campo maior no celular (16 px para o iOS não dar zoom); compacto (13 px) a partir do tablet. */
+export const bigField = "py-2 text-base sm:py-1 sm:text-[13px] sm:leading-5";
 
 export function containerTone(status: ContainerStatus): Tone {
   switch (status) {

@@ -32,7 +32,7 @@ import {
   discardSuggestionAction,
   requestProductSuggestionAction,
 } from "../../actions/vision";
-import { big, catalogError, userNameFor } from "./shared";
+import { catalogError, userNameFor } from "./shared";
 
 /*
  * Seção "Sugestão por foto (IA)" da ficha do produto e do item de sourcing.
@@ -167,7 +167,7 @@ export function AiSection({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="@container space-y-3">
       <div id="ai" className="scroll-mt-4" />
       <p className="text-sm text-zinc-600">{t("vision.ai.hint")}</p>
 
@@ -204,58 +204,62 @@ export function AiSection({
           ) : null}
           <form
             action={requestProductSuggestionAction}
-            className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
+            className="space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
           >
             {hidden}
-            <div className="flex items-start gap-3">
-              {defaultPhoto ? (
-                // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
-                <img
-                  src={`/api/files/${defaultPhoto.documentId}`}
-                  alt={defaultPhoto.label}
-                  loading="lazy"
-                  className="h-16 w-16 shrink-0 rounded-lg border border-zinc-200 bg-zinc-100 object-cover"
-                />
-              ) : null}
-              <div className="min-w-0 flex-1">
-                <Field
-                  label={t("vision.ai.photo")}
-                  hint={
-                    photos.length === 0 && mode === "mock"
-                      ? t("vision.ai.photo.noneMock")
-                      : undefined
-                  }
-                >
-                  <Select
-                    name="photoDocumentId"
-                    defaultValue={defaultPhoto?.documentId ?? ""}
-                    className={big}
-                    disabled={photos.length === 0}
+            {/* Foto e contexto lado a lado quando há largura. */}
+            <div className="grid gap-2 @2xl:grid-cols-2 @2xl:items-start">
+              <div className="flex items-start gap-2">
+                {defaultPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
+                  <img
+                    src={`/api/files/${defaultPhoto.documentId}`}
+                    alt={defaultPhoto.label}
+                    loading="lazy"
+                    className="h-12 w-12 shrink-0 rounded-lg border border-zinc-200 bg-zinc-100 object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <Field
+                    label={t("vision.ai.photo")}
+                    hint={
+                      photos.length === 0 && mode === "mock"
+                        ? t("vision.ai.photo.noneMock")
+                        : undefined
+                    }
                   >
-                    {photos.length === 0 ? (
-                      <option value="">{t("vision.ai.noImage")}</option>
-                    ) : null}
-                    {photos.map((p) => (
-                      <option key={p.documentId} value={p.documentId}>
-                        {p.label}
-                        {p.primary ? ` (${t("vision.ai.photo.primary")})` : ""}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                    <Select
+                      name="photoDocumentId"
+                      defaultValue={defaultPhoto?.documentId ?? ""}
+                      disabled={photos.length === 0}
+                    >
+                      {photos.length === 0 ? (
+                        <option value="">{t("vision.ai.noImage")}</option>
+                      ) : null}
+                      {photos.map((p) => (
+                        <option key={p.documentId} value={p.documentId}>
+                          {p.label}
+                          {p.primary
+                            ? ` (${t("vision.ai.photo.primary")})`
+                            : ""}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
               </div>
+              <Field
+                label={t("vision.ai.context")}
+                hint={t("vision.ai.contextHint")}
+              >
+                <Textarea
+                  name="context"
+                  rows={2}
+                  maxLength={2000}
+                  className="min-h-0"
+                />
+              </Field>
             </div>
-            <Field
-              label={t("vision.ai.context")}
-              hint={t("vision.ai.contextHint")}
-            >
-              <Textarea
-                name="context"
-                rows={2}
-                maxLength={2000}
-                className={cx(big, "min-h-0")}
-              />
-            </Field>
             <SubmitButton
               pendingText="…"
               disabled={mode === "api" && photos.length === 0}
@@ -271,13 +275,13 @@ export function AiSection({
       )}
 
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
           {t("vision.ai.history")}
         </h3>
         {suggestions.length === 0 ? (
           <Empty>{t("vision.ai.history.empty")}</Empty>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2">
             {suggestions.map((s) => {
               const fields = s.fields as ProductFieldSuggestion;
               const isPending = pending?.id === s.id;
@@ -285,7 +289,7 @@ export function AiSection({
                 <li
                   key={s.id}
                   className={cx(
-                    "rounded-xl border p-3 sm:p-4",
+                    "rounded-lg border p-3",
                     isPending
                       ? "border-brand-200 bg-brand-50/40"
                       : "border-zinc-200/80 bg-white",
@@ -366,7 +370,7 @@ export function AiSection({
                     <SuggestedSummary fields={fields} t={t} />
                   )}
 
-                  <details className="mt-3 text-xs">
+                  <details className="mt-2 text-xs">
                     <summary className="cursor-pointer font-medium text-zinc-600">
                       {t("vision.ai.prompt")}
                     </summary>
@@ -444,8 +448,8 @@ function ApplyRow({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-3">
-      <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-900">
+    <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
+      <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-zinc-900">
         <input
           type="checkbox"
           name="apply"
@@ -454,7 +458,7 @@ function ApplyRow({
         />
         {t("vision.ai.apply.check")}: {label}
       </label>
-      <div className="mt-2">{children}</div>
+      <div className="mt-1.5">{children}</div>
       <p className="mt-1 text-xs text-zinc-500">
         {t("vision.ai.apply.current")}:{" "}
         {current?.trim() ? (
@@ -504,7 +508,7 @@ function ChoiceInput({
           name={name}
           aria-label={`${label} · ${t("vision.ai.apply.other")}`}
           maxLength={name === "material" ? 120 : 60}
-          className={cx(big, "min-w-0 flex-1")}
+          className="min-w-0 flex-1"
         />
       </label>
       <p className="text-xs text-zinc-500">{t("vision.ai.apply.choiceHint")}</p>
@@ -538,7 +542,7 @@ function PendingForms({
     !!fields.colors?.length ||
     attrs.length > 0;
   return (
-    <div className="mt-3 space-y-3">
+    <div className="mt-2 space-y-2">
       <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
         {fields.confidence ? (
           <span>
@@ -566,7 +570,7 @@ function PendingForms({
       {!hasAny ? (
         <p className="text-sm text-zinc-600">{t("vision.ai.apply.nothing")}</p>
       ) : (
-        <form action={applyProductSuggestionAction} className="space-y-3">
+        <form action={applyProductSuggestionAction} className="space-y-2">
           <input type="hidden" name="entity" value={entity} />
           <input type="hidden" name="entityId" value={entityId} />
           <input type="hidden" name="id" value={suggestion.id} />
@@ -574,7 +578,7 @@ function PendingForms({
             {t("vision.ai.apply.title")}
           </h4>
           <p className="text-xs text-zinc-600">{t("vision.ai.apply.hint")}</p>
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-2 @2xl:grid-cols-2">
             {fields.category ? (
               <ApplyRow
                 name="category"
@@ -587,7 +591,6 @@ function PendingForms({
                   defaultValue={fields.category}
                   maxLength={120}
                   aria-label={t("catalog.category")}
-                  className={big}
                 />
               </ApplyRow>
             ) : null}
@@ -622,7 +625,7 @@ function PendingForms({
               </ApplyRow>
             ) : null}
             {fields.description ? (
-              <div className="lg:col-span-2">
+              <div className="@2xl:col-span-2">
                 <ApplyRow
                   name="description"
                   label={t("vision.ai.apply.description")}
@@ -635,13 +638,13 @@ function PendingForms({
                     rows={3}
                     maxLength={2000}
                     aria-label={t("vision.ai.apply.description")}
-                    className={cx(big, "min-h-0")}
+                    className="min-h-0"
                   />
                 </ApplyRow>
               </div>
             ) : null}
             {attrs.length ? (
-              <div className="rounded-lg border border-zinc-200 bg-white p-3 lg:col-span-2">
+              <div className="rounded-lg border border-zinc-200 bg-white p-2.5 @2xl:col-span-2">
                 <ul className="mb-2 flex flex-wrap gap-1.5 text-xs">
                   {attrs.map(([k, v]) => (
                     <li
@@ -675,13 +678,13 @@ function PendingForms({
 
       <form
         action={discardSuggestionAction}
-        className="flex flex-col gap-2 border-t border-zinc-200/70 pt-3 sm:flex-row sm:items-end"
+        className="flex flex-col gap-2 border-t border-zinc-200/70 pt-2 sm:flex-row sm:items-end"
       >
         <input type="hidden" name="id" value={suggestion.id} />
         <input type="hidden" name="back" value={back} />
         <div className="min-w-0 flex-1">
           <Field label={t("vision.ai.discard.note")}>
-            <Input name="note" maxLength={2000} className={big} />
+            <Input name="note" maxLength={2000} />
           </Field>
         </div>
         <SubmitButton

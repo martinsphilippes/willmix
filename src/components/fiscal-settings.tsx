@@ -24,14 +24,15 @@ import {
 /** Seguro, PIS, COFINS, ICMS e links oficiais: campos do formulário geral. */
 export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
   return (
-    <>
-      <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
+    <div className="space-y-3 border-t border-zinc-100 pt-3">
+      <h3 className="text-sm font-semibold text-zinc-900">
         {t("fiscal.settings.title")}
       </h3>
       <p className="text-xs leading-relaxed text-zinc-500">
         {t("fiscal.settings.hint")}
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* Alíquotas em grade densa (pela largura da coluna, @container do pai); links ocupam duas colunas. */}
+      <div className="grid gap-3 @sm:grid-cols-2 @2xl:grid-cols-4">
         <Field
           label={t("fiscal.settings.pis")}
           hint={t("fiscal.settings.pisHint")}
@@ -81,29 +82,33 @@ export function TaxRateFields({ t, s }: { t: Translate; s: Settings }) {
             defaultValue={s.insurancePercent}
           />
         </Field>
-        <Field label={t("fiscal.table.tecUrl")}>
-          <Input
-            name="fiscalTecUrl"
-            type="url"
-            inputMode="url"
-            placeholder={t("ph.url")}
-            defaultValue={s.fiscalTecUrl}
-          />
-        </Field>
-        <Field label={t("fiscal.table.tipiUrl")}>
-          <Input
-            name="fiscalTipiUrl"
-            type="url"
-            inputMode="url"
-            placeholder={t("ph.url")}
-            defaultValue={s.fiscalTipiUrl}
-          />
-        </Field>
+        <div className="min-w-0 @2xl:col-span-2">
+          <Field label={t("fiscal.table.tecUrl")}>
+            <Input
+              name="fiscalTecUrl"
+              type="url"
+              inputMode="url"
+              placeholder={t("ph.url")}
+              defaultValue={s.fiscalTecUrl}
+            />
+          </Field>
+        </div>
+        <div className="min-w-0 @2xl:col-span-2">
+          <Field label={t("fiscal.table.tipiUrl")}>
+            <Input
+              name="fiscalTipiUrl"
+              type="url"
+              inputMode="url"
+              placeholder={t("ph.url")}
+              defaultValue={s.fiscalTipiUrl}
+            />
+          </Field>
+        </div>
       </div>
       <p className="text-xs leading-relaxed text-zinc-500">
         {t("fiscal.table.urlHint")}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -139,13 +144,13 @@ export function FiscalTableCard({
     );
   };
   return (
-    <Card title={t("fiscal.table.title")} className="mt-6 max-w-2xl">
-      <div id="fiscal" className="space-y-3">
+    <Card title={t("fiscal.table.title")}>
+      <div id="fiscal" className="@container space-y-3">
         <p className="text-xs leading-relaxed text-zinc-500">
           {t("fiscal.table.hint")}
         </p>
         {notice ? <Alert tone="success">{notice}</Alert> : null}
-        <ul className="space-y-2 rounded-xl border border-zinc-200 p-3">
+        <ul className="space-y-1.5 rounded-xl border border-zinc-200 px-3 py-2">
           {part("tec")}
           {part("tipi")}
         </ul>
@@ -162,7 +167,7 @@ export function FiscalTableCard({
         ) : null}
         <form
           action={uploadFiscalTableAction}
-          className="grid gap-3 sm:grid-cols-[10rem_1fr_auto] sm:items-end"
+          className="grid gap-3 @md:grid-cols-[9rem_minmax(0,1fr)_auto] @md:items-end"
         >
           <Field label={t("fiscal.table.kind")}>
             <Select name="kind" defaultValue="tec">

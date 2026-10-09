@@ -35,12 +35,13 @@ export default async function NotificationsPage() {
       {items.length === 0 ? (
         <Empty>{t("notifications.empty")}</Empty>
       ) : (
-        <ul className="space-y-2">
+        /* Duas colunas em telas grandes (mais recentes primeiro, linha a linha). */
+        <ul className="grid items-start gap-2 lg:grid-cols-2">
           {items.map((n) => (
-            <li key={n.id}>
+            <li key={n.id} className="min-w-0">
               <Card
                 className={cx(
-                  "border-l-4",
+                  "border-l-4 p-3 sm:p-3",
                   n.readAt
                     ? "border-l-zinc-200 bg-zinc-50"
                     : "border-l-brand-600",

@@ -84,7 +84,7 @@ export default async function VisitPage({
             <LinkButton
               href={addHref}
               variant="primary"
-              className="py-2.5 text-base sm:py-2 sm:text-sm"
+              className="py-2.5 text-base sm:py-1.5 sm:text-sm"
             >
               + {t("sourcing.addItem")}
             </LinkButton>
@@ -92,13 +92,14 @@ export default async function VisitPage({
         }
       />
       {errorText ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="min-w-0 space-y-4">
+      {/* Resumo e itens à esquerda, edição à direita (uma coluna no celular). */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="min-w-0 space-y-3">
           <Card title={t("sourcing.visit.summary")}>
             <DescriptionList
               items={[
@@ -139,7 +140,7 @@ export default async function VisitPage({
                   <li key={item.id}>
                     <Link
                       href={`/app/sourcing/items/${item.id}`}
-                      className="flex gap-3 py-3 transition hover:bg-brand-50/40 active:bg-brand-50"
+                      className="flex gap-3 py-2 transition hover:bg-brand-50/40 active:bg-brand-50"
                     >
                       <Thumb
                         documentId={item.primaryPhotoDocumentId}
@@ -148,13 +149,13 @@ export default async function VisitPage({
                             ? item.name
                             : t("sourcing.noPhoto")
                         }
-                        className="h-14 w-14"
+                        className="h-12 w-12"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-zinc-900">
                           {item.name}
                         </p>
-                        <p className="text-sm text-zinc-700">
+                        <p className="text-[13px] text-zinc-700">
                           {formatMoney(item.price, item.currency, t)}
                           {item.moq ? (
                             <span className="text-zinc-500">
@@ -164,7 +165,7 @@ export default async function VisitPage({
                             </span>
                           ) : null}
                         </p>
-                        <div className="mt-1">
+                        <div className="mt-0.5">
                           <Badge tone={sourcingTone(item.status)}>
                             {t(`sourcing.status.${item.status}`)}
                           </Badge>
@@ -183,7 +184,7 @@ export default async function VisitPage({
           </Card>
         </div>
         <div className="min-w-0">
-          <h2 className="mb-3 text-base font-semibold tracking-tight text-zinc-900">
+          <h2 className="mb-2 text-base font-semibold tracking-tight text-zinc-900">
             {t("common.edit")}
           </h2>
           <VisitForm t={t} visit={visit} suppliers={suppliers} />

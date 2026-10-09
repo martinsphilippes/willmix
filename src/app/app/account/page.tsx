@@ -116,7 +116,7 @@ export default async function AccountPage({
         subtitle={party?.name}
       />
       {error ? (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {fallbackError(t, String(error))}
         </div>
       ) : null}
@@ -138,7 +138,7 @@ export default async function AccountPage({
           )}
         />
       </div>
-      <div className="mt-6">
+      <div className="mt-4">
         {mine.length === 0 && orders.length === 0 ? (
           <Empty>{t("common.none")}</Empty>
         ) : (
@@ -264,7 +264,7 @@ export default async function AccountPage({
       </div>
 
       {orders.length > 0 ? (
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
           <Card title={t("orders.account.summary")}>
             <Table>
               <thead>
@@ -366,7 +366,7 @@ export default async function AccountPage({
       ) : null}
 
       {user.role === "supplier" ? (
-        <div className="mt-6">
+        <div className="mt-4">
           <Card title={t("catalog.cert.party.title")}>
             <CertificationsSection
               entity="party"

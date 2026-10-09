@@ -33,7 +33,7 @@ export function SheetPhotoChecklist({
   return (
     <div
       id="sheet-photos"
-      className="mb-4 scroll-mt-24 rounded-lg border border-zinc-200 bg-zinc-50/60 p-3"
+      className="@container mb-3 scroll-mt-24 rounded-lg border border-zinc-200 bg-zinc-50/60 p-3"
       data-sheet-photo-checklist={`${done}/${rows.length}`}
     >
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
@@ -52,7 +52,8 @@ export function SheetPhotoChecklist({
       <p className="mb-2 text-xs leading-relaxed text-zinc-600">
         {t("productPhotos.sheet.hint")}
       </p>
-      <ul className="space-y-1.5">
+      {/* Duas colunas quando o cartão é largo (iPad em pé, tela cheia). */}
+      <ul className="grid gap-1.5 @xl:grid-cols-2">
         {rows.map((row) => {
           const ok = row.count > 0;
           return (

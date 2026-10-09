@@ -57,7 +57,7 @@ export function RequestItems({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
         <p className="text-sm font-semibold text-zinc-900">{labels.products}</p>
         <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">
@@ -75,7 +75,7 @@ export function RequestItems({
           <fieldset
             key={index}
             data-request-item={index}
-            className="min-w-0 max-w-full space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/40 p-4"
+            className="min-w-0 max-w-full rounded-xl border border-zinc-200 bg-zinc-50/40 p-3"
           >
             <legend className="flex w-full items-center justify-between gap-2 px-1">
               <span className="text-sm font-semibold text-zinc-800">
@@ -92,17 +92,19 @@ export function RequestItems({
                 </button>
               ) : null}
             </legend>
-            <RequestProductFields
-              {...fields}
-              labels={labels}
-              prefix={prefix}
-              presetProductId={first ? presetProductId : ""}
-              defaultNotInCatalog={first ? defaultNotInCatalog : false}
-              suggestions={first ? suggestions : {}}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <label className="block min-w-0 space-y-1.5">
-                <span className="block text-sm font-medium text-zinc-800">
+            {/* Grade de 4 colunas (2 no celular): textos em meia linha ou linha
+                cheia; quantidade e unidade estreitas, ao lado da programação. */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <RequestProductFields
+                {...fields}
+                labels={labels}
+                prefix={prefix}
+                presetProductId={first ? presetProductId : ""}
+                defaultNotInCatalog={first ? defaultNotInCatalog : false}
+                suggestions={first ? suggestions : {}}
+              />
+              <label className="block min-w-0 space-y-1">
+                <span className="block text-xs font-medium leading-5 text-zinc-700">
                   {labels.quantity}
                 </span>
                 <input
@@ -118,8 +120,8 @@ export function RequestItems({
                   className={inputClass}
                 />
               </label>
-              <label className="block min-w-0 space-y-1.5">
-                <span className="block text-sm font-medium text-zinc-800">
+              <label className="block min-w-0 space-y-1">
+                <span className="block text-xs font-medium leading-5 text-zinc-700">
                   {labels.unit}
                 </span>
                 <input
@@ -132,17 +134,17 @@ export function RequestItems({
                   className={inputClass}
                 />
               </label>
+              {/* Programação de entregas: divide a quantidade em entregas com intervalo e datas previstas. */}
+              <RequestScheduleFields
+                prefix={prefix}
+                total={qty[index] ?? ""}
+                unit={unit[index] ?? "un"}
+                onTotalChange={(total) =>
+                  setQty((q) => ({ ...q, [index]: total }))
+                }
+                labels={labels.schedule}
+              />
             </div>
-            {/* Programação de entregas: divide a quantidade em entregas com intervalo e datas previstas. */}
-            <RequestScheduleFields
-              prefix={prefix}
-              total={qty[index] ?? ""}
-              unit={unit[index] ?? "un"}
-              onTotalChange={(total) =>
-                setQty((q) => ({ ...q, [index]: total }))
-              }
-              labels={labels.schedule}
-            />
           </fieldset>
         );
       })}
@@ -150,7 +152,7 @@ export function RequestItems({
         type="button"
         onClick={add}
         data-add-request-item
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-dashed border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-dashed border-brand-300 bg-white px-3 py-1.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
       >
         <span aria-hidden>+</span>
         {labels.add}

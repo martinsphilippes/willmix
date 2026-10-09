@@ -77,57 +77,79 @@ export default async function ImportPage({
       {error ? (
         <Alert tone="danger">{fallbackError(t, String(error))}</Alert>
       ) : null}
-      <div className="mt-4 grid gap-6 lg:grid-cols-2">
+      {/* Os dois jeitos de importar lado a lado; campos em grade pela largura do cartão (@container). */}
+      <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
         <Card title={t("import.batch.title")}>
-          <p className="mb-4 text-sm text-zinc-600">
+          <p className="mb-3 text-sm text-zinc-600">
             {t("import.batch.intro")}
           </p>
-          <form action={createImportBatchAction} className="space-y-4">
-            <Field label={t("import.batch.entity")}>
-              <Select name="entity" defaultValue={batchEntity}>
-                {IMPORT_ENTITIES.map((e) => (
-                  <option key={e} value={e}>
-                    {t(`import.entity.${e}` as DictionaryKey)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label={t("import.batch.file")}>
-              <Input
-                name="file"
-                type="file"
-                accept=".xlsx,.xlsm,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                required
-              />
-            </Field>
-            <Field
-              label={t("import.batch.sheet")}
-              hint={t("import.batch.sheetHint")}
-            >
-              <Input name="sheet" maxLength={80} />
-            </Field>
-            <SubmitButton>{t("import.batch.start")}</SubmitButton>
+          <form
+            action={createImportBatchAction}
+            className="@container space-y-3"
+          >
+            <div className="grid items-end gap-3 @md:grid-cols-3">
+              <Field label={t("import.batch.entity")}>
+                <Select name="entity" defaultValue={batchEntity}>
+                  {IMPORT_ENTITIES.map((e) => (
+                    <option key={e} value={e}>
+                      {t(`import.entity.${e}` as DictionaryKey)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <div className="min-w-0 @md:col-span-2">
+                <Field label={t("import.batch.file")}>
+                  <Input
+                    name="file"
+                    type="file"
+                    accept=".xlsx,.xlsm,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+                    required
+                  />
+                </Field>
+              </div>
+            </div>
+            <div className="grid gap-3 @md:grid-cols-3">
+              <Field
+                label={t("import.batch.sheet")}
+                hint={t("import.batch.sheetHint")}
+              >
+                <Input name="sheet" maxLength={80} />
+              </Field>
+              {/* Botão na linha da aba (alinhado à caixa, abaixo do rótulo). */}
+              <div className="min-w-0 @md:col-span-2 @md:pt-6">
+                <SubmitButton>{t("import.batch.start")}</SubmitButton>
+              </div>
+            </div>
           </form>
         </Card>
         <Card title={t("import.batch.direct")}>
-          <form action={importCsvAction} className="space-y-4">
-            <Field label={t("parties.type")}>
-              <Select name="entity" defaultValue={current}>
-                <option value="parties">{t("parties.title")}</option>
-                <option value="products">{t("products.title")}</option>
-                <option value="lines">{t("lines.title")}</option>
-              </Select>
-            </Field>
-            <Field
-              label="CSV"
-              hint={t("import.help", {
-                columns: Object.values(IMPORT_COLUMNS)
-                  .map((c) => c.join(", "))
-                  .join(" / "),
-              })}
-            >
-              <Input name="file" type="file" accept=".csv,text/csv" required />
-            </Field>
+          <form action={importCsvAction} className="@container space-y-3">
+            <div className="grid gap-3 @md:grid-cols-3">
+              <Field label={t("parties.type")}>
+                <Select name="entity" defaultValue={current}>
+                  <option value="parties">{t("parties.title")}</option>
+                  <option value="products">{t("products.title")}</option>
+                  <option value="lines">{t("lines.title")}</option>
+                </Select>
+              </Field>
+              <div className="min-w-0 @md:col-span-2">
+                <Field
+                  label="CSV"
+                  hint={t("import.help", {
+                    columns: Object.values(IMPORT_COLUMNS)
+                      .map((c) => c.join(", "))
+                      .join(" / "),
+                  })}
+                >
+                  <Input
+                    name="file"
+                    type="file"
+                    accept=".csv,text/csv"
+                    required
+                  />
+                </Field>
+              </div>
+            </div>
             <SubmitButton variant="secondary">
               {t("parties.import")}
             </SubmitButton>
@@ -135,7 +157,7 @@ export default async function ImportPage({
         </Card>
       </div>
 
-      <Card title={t("import.batch.previous")} className="mt-6">
+      <Card title={t("import.batch.previous")} className="mt-4">
         {batches.length === 0 ? (
           <Empty>{t("import.batch.previous.empty")}</Empty>
         ) : (

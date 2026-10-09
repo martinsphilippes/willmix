@@ -36,7 +36,7 @@ import {
 /** Chip de filtro: selecionado na cor da marca, demais neutros (mesmo padrão de Parceiros). */
 const chipClass = (selected: boolean) =>
   cx(
-    "rounded-full px-3 py-1.5 font-medium ring-1 ring-inset transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
+    "rounded-full px-3 py-1 font-medium ring-1 ring-inset transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
     selected
       ? "bg-brand-600 text-white ring-brand-600"
       : "bg-white text-zinc-700 ring-zinc-200 hover:bg-brand-50 hover:text-brand-800 hover:ring-brand-200",
@@ -44,7 +44,7 @@ const chipClass = (selected: boolean) =>
 
 const tabClass = (selected: boolean) =>
   cx(
-    "flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold transition sm:flex-none sm:px-4",
+    "flex-1 rounded-lg px-3 py-1.5 text-center text-sm font-semibold transition sm:flex-none sm:px-4",
     selected
       ? "bg-white text-brand-700 shadow-sm ring-1 ring-inset ring-zinc-200"
       : "text-zinc-600 hover:text-zinc-900",
@@ -92,14 +92,14 @@ export default async function SourcingPage({
           <>
             <LinkButton
               href="/app/sourcing/visits/new"
-              className="py-2.5 text-base sm:py-2 sm:text-sm"
+              className="py-2.5 text-base sm:py-1.5 sm:text-sm"
             >
               + {t("sourcing.newVisit")}
             </LinkButton>
             <LinkButton
               href="/app/sourcing/items/new"
               variant="primary"
-              className="py-2.5 text-base sm:py-2 sm:text-sm"
+              className="py-2.5 text-base sm:py-1.5 sm:text-sm"
             >
               + {t("sourcing.newItem")}
             </LinkButton>
@@ -108,55 +108,58 @@ export default async function SourcingPage({
       />
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
 
-      <nav
-        aria-label={t("sourcing.title")}
-        className="mb-4 flex gap-1 rounded-xl bg-zinc-200/60 p-1"
-      >
-        <Link
-          href={href("items")}
-          aria-current={tab === "items" ? "page" : undefined}
-          className={tabClass(tab === "items")}
+      {/* Abas e filtros de situação na mesma linha a partir do tablet. */}
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+        <nav
+          aria-label={t("sourcing.title")}
+          className="flex shrink-0 gap-1 rounded-xl bg-zinc-200/60 p-1"
         >
-          {t("sourcing.tab.items")}
-        </Link>
-        <Link
-          href={href("visits")}
-          aria-current={tab === "visits" ? "page" : undefined}
-          className={tabClass(tab === "visits")}
-        >
-          {t("sourcing.tab.visits")}
-        </Link>
-      </nav>
+          <Link
+            href={href("items")}
+            aria-current={tab === "items" ? "page" : undefined}
+            className={tabClass(tab === "items")}
+          >
+            {t("sourcing.tab.items")}
+          </Link>
+          <Link
+            href={href("visits")}
+            aria-current={tab === "visits" ? "page" : undefined}
+            className={tabClass(tab === "visits")}
+          >
+            {t("sourcing.tab.visits")}
+          </Link>
+        </nav>
 
-      <div className="mb-4 flex flex-wrap gap-2 text-sm">
-        <Link
-          href={href(tab)}
-          aria-current={!itemStatus && !visitStatus ? "page" : undefined}
-          className={chipClass(!itemStatus && !visitStatus)}
-        >
-          {t("common.all")}
-        </Link>
-        {tab === "items"
-          ? SOURCING_STATUSES.map((s) => (
-              <Link
-                key={s}
-                href={href("items", s)}
-                aria-current={itemStatus === s ? "page" : undefined}
-                className={chipClass(itemStatus === s)}
-              >
-                {t(`sourcing.status.${s}`)}
-              </Link>
-            ))
-          : VISIT_STATUSES.map((s) => (
-              <Link
-                key={s}
-                href={href("visits", s)}
-                aria-current={visitStatus === s ? "page" : undefined}
-                className={chipClass(visitStatus === s)}
-              >
-                {t(`sourcing.visitStatus.${s}`)}
-              </Link>
-            ))}
+        <div className="flex min-w-0 flex-wrap gap-1.5 text-sm">
+          <Link
+            href={href(tab)}
+            aria-current={!itemStatus && !visitStatus ? "page" : undefined}
+            className={chipClass(!itemStatus && !visitStatus)}
+          >
+            {t("common.all")}
+          </Link>
+          {tab === "items"
+            ? SOURCING_STATUSES.map((s) => (
+                <Link
+                  key={s}
+                  href={href("items", s)}
+                  aria-current={itemStatus === s ? "page" : undefined}
+                  className={chipClass(itemStatus === s)}
+                >
+                  {t(`sourcing.status.${s}`)}
+                </Link>
+              ))
+            : VISIT_STATUSES.map((s) => (
+                <Link
+                  key={s}
+                  href={href("visits", s)}
+                  aria-current={visitStatus === s ? "page" : undefined}
+                  className={chipClass(visitStatus === s)}
+                >
+                  {t(`sourcing.visitStatus.${s}`)}
+                </Link>
+              ))}
+        </div>
       </div>
 
       {tab === "items" ? (
@@ -179,7 +182,7 @@ export default async function SourcingPage({
                           ? item.name
                           : t("sourcing.noPhoto")
                       }
-                      className="h-16 w-16"
+                      className="h-14 w-14"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold text-zinc-900">
@@ -241,7 +244,7 @@ export default async function SourcingPage({
                               ? item.name
                               : t("sourcing.noPhoto")
                           }
-                          className="h-12 w-12"
+                          className="h-10 w-10"
                         />
                       </Td>
                       <Td>

@@ -31,11 +31,12 @@ export default async function NewVisitPage({
         title={t("sourcing.newVisit")}
       />
       {errorText ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
-      <div className="max-w-3xl">
+      {/* Largura toda: num espaço largo as seções do formulário ficam duas a duas. */}
+      <div className="min-w-0">
         <VisitForm t={t} suppliers={suppliers} />
       </div>
     </>

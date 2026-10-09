@@ -86,7 +86,10 @@ function stepDate(kit: MarketingKit, step: KitStep) {
   }
 }
 
-/** Linha do tempo Rascunho → Prévia → Oferta → Compra → Pagamento → Liberação (mesmos StepDot/stageTone do pedido). */
+/**
+ * Linha do tempo Rascunho → Prévia → Oferta → Compra → Pagamento → Liberação (mesmos StepDot/stageTone do pedido).
+ * Colunas pela largura do cartão (@container do pai): lista numa coluna estreita, grade num espaço largo.
+ */
 export function KitTimeline({ t, kit }: { t: Translate; kit: MarketingKit }) {
   const cancelled = kit.status === "cancelled";
   const current = KIT_STEPS.indexOf(kit.status as KitStep);
@@ -101,7 +104,7 @@ export function KitTimeline({ t, kit }: { t: Translate; kit: MarketingKit }) {
             : "active"
           : "pending";
   return (
-    <ol className="-mx-2 grid gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+    <ol className="-mx-2 grid gap-x-3 gap-y-0.5 @md:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-6">
       {KIT_STEPS.map((step, i) => {
         const state = stateOf(i);
         const date = stepDate(kit, step);
@@ -109,7 +112,7 @@ export function KitTimeline({ t, kit }: { t: Translate; kit: MarketingKit }) {
           <li
             key={step}
             className={cx(
-              "flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm",
+              "flex items-center gap-2 rounded-lg px-2 py-1 text-[13px]",
               state === "active" && "bg-brand-50",
             )}
           >
@@ -156,7 +159,10 @@ export function FileThumb({
   );
 }
 
-/** Miniatura (imagem) ou link (PDF e outros) de um arquivo do kit, sempre via /api/files (acesso controlado). */
+/**
+ * Miniatura (imagem) ou link (PDF e outros) de um arquivo do kit, sempre via /api/files (acesso controlado).
+ * Colunas pela largura do cartão (@container do pai): miniaturas pequenas, mais por linha.
+ */
 export function KitDocList({
   t,
   docs,
@@ -168,7 +174,7 @@ export function KitDocList({
 }) {
   if (docs.length === 0) return <Empty>{empty}</Empty>;
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <ul className="grid grid-cols-3 gap-2 @md:grid-cols-4 @2xl:grid-cols-6">
       {docs.map((doc) => (
         <li key={doc.id} className="min-w-0 space-y-1">
           <a
