@@ -41,6 +41,7 @@ import * as productSheet from "./product-sheet";
 import * as sheetRecords from "./sheet-records";
 import * as navGroups from "./nav-groups";
 import * as placeholders from "./placeholders";
+import * as ncmSheet from "./ncm-sheet";
 import * as requestSchedule from "./request-schedule";
 
 export const modulesPt = {
@@ -82,6 +83,7 @@ export const modulesPt = {
   ...sheetRecords.pt,
   ...navGroups.pt,
   ...placeholders.pt,
+  ...ncmSheet.pt,
   ...requestSchedule.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -123,6 +125,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetRecords.en,
   ...navGroups.en,
   ...placeholders.en,
+  ...ncmSheet.en,
   ...requestSchedule.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -164,5 +167,6 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetRecords.zh,
   ...navGroups.zh,
   ...placeholders.zh,
+  ...ncmSheet.zh,
   ...requestSchedule.zh,
 };

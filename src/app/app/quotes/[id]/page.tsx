@@ -26,6 +26,10 @@ import {
 } from "../../actions/purchase-sheet";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
+import {
+  ncmChipsView,
+  ncmSuggestionsFor,
+} from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -229,6 +233,16 @@ export default async function QuotePage({
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
               records={sheetView.records}
+              ncmSuggestions={
+                sheetView.access.editCustoms
+                  ? ncmChipsView(
+                      t,
+                      await ncmSuggestionsFor(
+                        sheetView.sheet.productId ?? request.productId ?? null,
+                      ),
+                    )
+                  : []
+              }
             />
           </form>
         ) : null}

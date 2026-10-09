@@ -9,6 +9,10 @@ import { Alert, Badge, LinkButton, PageHeader } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { getSheetForUser } from "@/lib/services/purchase-sheet";
+import {
+  ncmChipsView,
+  ncmSuggestionsFor,
+} from "@/lib/services/ncm-suggestions";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import {
   addPurchaseSheetPhotosAction,
@@ -144,6 +148,16 @@ export default async function PurchaseSheetPage({
             requestSchedule={request?.schedule ?? null}
             requestUnit={request?.unit ?? "un"}
             records={view.records}
+            ncmSuggestions={
+              access.editCustoms
+                ? ncmChipsView(
+                    t,
+                    await ncmSuggestionsFor(
+                      view.sheet.productId ?? request?.productId ?? null,
+                    ),
+                  )
+                : []
+            }
           />
         </form>
 

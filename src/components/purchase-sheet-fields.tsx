@@ -6,6 +6,8 @@ import {
 } from "@/lib/db/schema";
 import type { SheetPlan } from "@/lib/services/purchase-sheet-calc";
 import type { SheetRecords } from "@/lib/services/sheet-records";
+import type { NcmChipView } from "@/lib/services/ncm-suggestions";
+import { NcmSuggestions } from "./ncm-suggestions";
 import Link from "next/link";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Translate } from "@/i18n";
@@ -43,6 +45,7 @@ export function PurchaseSheetFields({
   requestUnit = "un",
   master = false,
   records = null,
+  ncmSuggestions = [],
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -61,6 +64,8 @@ export function PurchaseSheetFields({
   master?: boolean;
   /** Bloco Fornecedor vem dos cadastros: o que falta neles e os atalhos para completar. */
   records?: SheetRecords | null;
+  /** Sugestões de NCM (cadastro do produto, classificações, tabela) para quem edita a alfândega. */
+  ncmSuggestions?: NcmChipView[];
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -549,6 +554,19 @@ export function PurchaseSheetFields({
               className={inputDenseClass}
             />
           </F>
+          {access.editCustoms && ncmSuggestions.length ? (
+            <div className="sm:pl-[11.75rem]">
+              <NcmSuggestions
+                items={ncmSuggestions}
+                labels={{
+                  title: t("ncm.sheet.title"),
+                  use: t("ncm.sheet.use"),
+                  hint: t("ncm.sheet.hint"),
+                  applied: t("ncm.sheet.applied", { ncm: "{ncm}" }),
+                }}
+              />
+            </div>
+          ) : null}
           <F t={t} k="importTaxPercent" size="xs">
             <Num
               name="importTaxPercent"

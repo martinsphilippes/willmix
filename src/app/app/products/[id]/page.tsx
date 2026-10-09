@@ -21,6 +21,10 @@ import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { PantonePicker } from "@/components/pantone-picker";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
+import {
+  ncmChipsView,
+  ncmSuggestionsFor,
+} from "@/lib/services/ncm-suggestions";
 import { saveProductSheetAction } from "../../actions/purchase-sheet";
 import { listTaxClassifications } from "@/lib/services/taxes";
 import {
@@ -704,6 +708,10 @@ export default async function ProductSheetPage({
             editCustoms
             lotRequired={false}
             master
+            ncmSuggestions={ncmChipsView(
+              t,
+              await ncmSuggestionsFor(product.id),
+            )}
           />
           <p className="text-xs text-zinc-500">
             {t("productSheet.photosHint")}
