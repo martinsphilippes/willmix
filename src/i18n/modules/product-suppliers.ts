@@ -8,7 +8,7 @@ export const pt = {
   "supplierPick.others": "Outros fornecedores cadastrados",
   "supplierPick.legacy": "{name} (não cadastrado)",
   "supplierPick.hint":
-    "Ao escolher, local, nº da loja, telefone e código do item vêm do cadastro; ao salvar, ele vira o fornecedor principal do produto.",
+    "Ao escolher, local, nº da loja, telefone e código do item vêm do cadastro; ao salvar, ele vira o fornecedor principal e o preço e o MOQ passam a ser os da última cotação dele.",
   "productSuppliers.title": "Fornecedores deste produto",
   "productSuppliers.hint":
     "Todo fornecedor que responde a uma cotação deste produto entra aqui sozinho, com o código do item e a última cotação. O principal é o da ficha mestre.",
@@ -61,7 +61,7 @@ export const en = {
   "supplierPick.others": "Other registered suppliers",
   "supplierPick.legacy": "{name} (not registered)",
   "supplierPick.hint":
-    "When you choose, location, store no., phone and item code come from the records; on save, it becomes the product's main supplier.",
+    "When you choose, location, store no., phone and item code come from the records; on save, it becomes the main supplier and price and MOQ become those of its latest quote.",
   "productSuppliers.title": "Suppliers of this product",
   "productSuppliers.hint":
     "Every supplier that answers a quotation for this product is added here automatically, with its item code and latest quote. The main one is the master sheet's.",
@@ -112,7 +112,7 @@ export const zh = {
   "supplierPick.others": "其他已登记的供应商",
   "supplierPick.legacy": "{name}（未登记）",
   "supplierPick.hint":
-    "选择后，地点、店铺号、电话和货号取自档案；保存后，该供应商成为本产品的主供应商。",
+    "选择后，地点、店铺号、电话和货号取自档案；保存后，该供应商成为主供应商，价格和起订量改为其最近一次报价。",
   "productSuppliers.title": "本产品的供应商",
   "productSuppliers.hint":
     "凡是对本产品报过价的供应商都会自动列入此处，并带上货号和最近一次报价。主供应商即主采购单上的供应商。",

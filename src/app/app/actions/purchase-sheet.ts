@@ -261,21 +261,63 @@ export async function saveProductSheetAction(form: FormData) {
   const user = await requireUser();
   const productId = z.string().min(1).max(64).parse(str(form, "productId"));
   await run(`/app/products/${productId}`, async () => {
-    const { saveProductSheet } = await import("@/lib/services/product-sheet");
+    const { saveProductSheet, getProductSheet, productSheetDraft } =
+      await import("@/lib/services/product-sheet");
     const input = parseSheet(form);
     // Fornecedor escolhido entre os cadastrados: vira o principal do produto
     // e o nome vem do cadastro (o texto digitado não vale).
     const supplierId = z.string().max(64).parse(str(form, "supplierId"));
     const chosen =
       supplierId && supplierId !== LEGACY_SUPPLIER ? supplierId : null;
+    // O bloco Fornecedor salvo é do escolhido? (decide a escrita de volta no cadastro)
+    let blockIsChosen = false;
     if (chosen) {
+      const { getStore } = await import("@/lib/db");
       const { setMainSupplier } =
         await import("@/lib/services/product-suppliers");
-      const party = await setMainSupplier(user, productId, chosen);
+      const store = getStore();
+      const product = await store.get("products", productId);
+      const [previousParty, previousMaster] = await Promise.all([
+        product?.supplierId ? store.get("parties", product.supplierId) : null,
+        getProductSheet(productId),
+      ]);
+      // O que a tela mostrava antes de salvar (ficha mestre ou rascunho do produto).
+      const shown =
+        previousMaster ??
+        (product ? productSheetDraft(product, previousParty) : null);
+      const { party, changed, link } = await setMainSupplier(
+        user,
+        productId,
+        chosen,
+      );
       input.supplierName = party.name.slice(0, 160);
+      if (changed) {
+        // Trocou o principal: campo que veio igual ao que a tela mostrava é
+        // do fornecedor anterior e passa a ser o do escolhido (cadastro e
+        // vínculo dele); o que o usuário digitou fica.
+        const own: Record<string, string | number | null> = {
+          location: party.city?.slice(0, 80) ?? null,
+          supplierStore: party.storeNumber?.slice(0, 60) ?? null,
+          supplierPhone: party.phone?.slice(0, 40) ?? null,
+          factoryItemCode: link?.supplierSku?.slice(0, 60) ?? null,
+          price: link?.price ?? null,
+          currency: sheetCurrencyOf(link?.currency),
+          moq: link?.moq ?? null,
+        };
+        const bag = input as Record<string, unknown>;
+        for (const [key, value] of Object.entries(own)) {
+          const before = (shown as Record<string, unknown> | null)?.[key];
+          if (sameValue(bag[key], before) || bag[key] === undefined)
+            bag[key] = value;
+        }
+        blockIsChosen = true;
+      } else {
+        blockIsChosen =
+          !previousMaster || previousMaster.supplierName === party.name;
+      }
     }
     const { sheet, missing } = await saveProductSheet(user, productId, input);
-    if (chosen) {
+    if (chosen && blockIsChosen) {
       const { syncMainSupplierLink } =
         await import("@/lib/services/product-suppliers");
       const { fillRecordsFromSheet } =
@@ -292,6 +334,25 @@ export async function saveProductSheetAction(form: FormData) {
     }
     return `/app/products/${productId}?sheet=${missing.length ? "partial" : "complete"}#product-sheet`;
   });
+}
+
+/** Mesmo valor do formulário e do banco (texto vazio = nulo; "CNY" = "RMB"). */
+function sameValue(a: unknown, b: unknown) {
+  const norm = (v: unknown) => {
+    if (v === undefined || v === null) return null;
+    if (typeof v === "string") {
+      const s = v.trim();
+      return s === "" ? null : s.toUpperCase() === "CNY" ? "RMB" : s;
+    }
+    return v;
+  };
+  return norm(a) === norm(b);
+}
+
+function sheetCurrencyOf(c: string | null | undefined) {
+  const v = (c ?? "").toUpperCase();
+  if (v === "CNY" || v === "RMB") return "RMB";
+  return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
 }
 
 /** "Atualizar cadastro do produto com esta ficha" (pedido ou cotação): só Wellmix. */

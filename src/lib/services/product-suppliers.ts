@@ -110,16 +110,15 @@ async function upsertLink(
   patchOf: (prev: ProductSupplier | null) => LinkPatch,
 ): Promise<{ link: ProductSupplier; created: boolean }> {
   const store = getStore();
+  // Atualização vazia não vai ao banco (o Appwrite recusa e não há o que gravar).
+  const apply = async (row: ProductSupplier) => {
+    const patch = definedOnly(patchOf(row));
+    return Object.keys(patch).length
+      ? await store.update("product_suppliers", row.id, patch)
+      : row;
+  };
   const existing = await productSupplierLink(productId, supplierId);
-  if (existing)
-    return {
-      link: await store.update(
-        "product_suppliers",
-        existing.id,
-        patchOf(existing),
-      ),
-      created: false,
-    };
+  if (existing) return { link: await apply(existing), created: false };
   try {
     const link = await store.create("product_suppliers", {
       productId,
@@ -136,18 +135,21 @@ async function upsertLink(
       selectedCount: 0,
       lastSelectedAt: null,
       createdByUserId: user?.id ?? null,
-      ...patchOf(null),
+      ...definedOnly(patchOf(null)),
     });
     return { link, created: true };
   } catch (error) {
     // Duas gravações ao mesmo tempo: o índice único barra a segunda.
     const again = await productSupplierLink(productId, supplierId);
     if (!again) throw error;
-    return {
-      link: await store.update("product_suppliers", again.id, patchOf(again)),
-      created: false,
-    };
+    return { link: await apply(again), created: false };
   }
+}
+
+function definedOnly(patch: LinkPatch): LinkPatch {
+  return Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined),
+  ) as LinkPatch;
 }
 
 /**
@@ -362,9 +364,16 @@ export async function setProductSupplierCode(
         factoryItemCode: sku,
       });
   }
-  await upsertLink(user, productId, party.id, "manual", () => ({
-    supplierSku: sku,
-  }));
+  try {
+    await upsertLink(user, productId, party.id, "manual", () => ({
+      supplierSku: sku,
+    }));
+  } catch (error) {
+    // O código do principal já ficou no produto e na ficha mestre; o dos
+    // outros só existe no vínculo (sem a tabela, a ação avisa).
+    if (product.supplierId !== party.id) throw error;
+    console.warn("[product-suppliers] main code link failed", error);
+  }
   await audit(
     user,
     "product.supplier_code",
@@ -398,39 +407,52 @@ export async function removeProductSupplier(
   );
 }
 
+/** Moeda do cadastro ("CNY") na ficha ("RMB"). */
+function sheetCurrencyOf(c: string | null | undefined) {
+  const v = (c ?? "").toUpperCase();
+  if (v === "CNY" || v === "RMB") return "RMB" as const;
+  return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
+}
+
 /**
- * Troca o fornecedor principal. O código do antigo fica guardado no vínculo
- * dele; o produto e o bloco Fornecedor da ficha mestre passam a ser do novo
- * (nome, local, nº da loja, telefone e código do cadastro dele). Preço, MOQ e
- * os campos do produto ficam como estão.
+ * Troca o fornecedor principal. O código, o preço, a moeda e o MOQ do antigo
+ * ficam no vínculo dele; o produto e a ficha mestre passam a ter só os dados
+ * do novo (do vínculo dele, ou vazios): nome, local, nº da loja, telefone e
+ * código no bloco Fornecedor; preço, moeda e MOQ. Assim nenhum fornecedor
+ * herda os dados comerciais de outro. Sem a tabela (esquema ainda não
+ * publicado) e com dados do antigo a guardar, a troca não acontece.
  */
 export async function setMainSupplier(
   user: User,
   productId: string,
   supplierId: string,
-): Promise<Party> {
+): Promise<{ party: Party; changed: boolean; link: ProductSupplier | null }> {
   assertWellmix(user);
   const product = await productOrThrow(productId);
   const party = await supplierParty(supplierId);
-  if (product.supplierId === party.id) return party;
+  if (product.supplierId === party.id)
+    return {
+      party,
+      changed: false,
+      link: await productSupplierLink(productId, party.id),
+    };
   const store = getStore();
   const previous = product.supplierId;
-  // O código do antigo principal fica no vínculo dele. Sem a tabela (esquema
-  // ainda não publicado) a troca não acontece, para o código não se perder.
-  if (previous && clean(product.supplierSku)) {
+  if (previous) {
+    const hasData =
+      !!clean(product.supplierSku) ||
+      product.price !== null ||
+      product.moq !== null;
     try {
       await upsertLink(user, productId, previous, "catalog", (prev) => ({
         supplierSku: prev?.supplierSku ?? clean(product.supplierSku),
+        price: prev?.price ?? product.price ?? null,
+        currency: prev?.currency ?? product.currency ?? null,
+        moq: prev?.moq ?? product.moq ?? null,
       }));
     } catch (error) {
       console.warn("[product-suppliers] keep previous main failed", error);
-      throw new ProductSupplierError("schema_outdated");
-    }
-  } else if (previous) {
-    try {
-      await upsertLink(user, productId, previous, "catalog", () => ({}));
-    } catch (error) {
-      console.warn("[product-suppliers] keep previous main failed", error);
+      if (hasData) throw new ProductSupplierError("schema_outdated");
     }
   }
   let link: ProductSupplier | null = null;
@@ -443,14 +465,16 @@ export async function setMainSupplier(
       () => ({}),
     ));
   } catch (error) {
-    // Sem a tabela, o principal muda mesmo assim (o vínculo nasce depois).
+    // Sem a tabela e sem dados do antigo a guardar, o principal muda mesmo assim.
     console.warn("[product-suppliers] link new main failed", error);
   }
-  const sku = link?.supplierSku ?? null;
-  await store.update("products", productId, {
-    supplierId: party.id,
-    supplierSku: sku,
-  });
+  const own = {
+    supplierSku: link?.supplierSku ?? null,
+    price: link?.price ?? null,
+    currency: link?.currency ?? null,
+    moq: link?.moq ?? null,
+  };
+  await store.update("products", productId, { supplierId: party.id, ...own });
   const [master] = await store.list("purchase_sheets", {
     filter: { orderId: productId },
     limit: 1,
@@ -461,7 +485,10 @@ export async function setMainSupplier(
       location: party.city?.slice(0, 80) ?? null,
       supplierStore: party.storeNumber?.slice(0, 60) ?? null,
       supplierPhone: party.phone?.slice(0, 40) ?? null,
-      factoryItemCode: sku,
+      factoryItemCode: own.supplierSku,
+      price: own.price,
+      currency: sheetCurrencyOf(own.currency),
+      moq: own.moq,
     });
   await audit(
     user,
@@ -469,10 +496,16 @@ export async function setMainSupplier(
     "product",
     productId,
     `Fornecedor principal: ${party.name}`,
-    { supplierId: previous },
-    { supplierId: party.id },
+    {
+      supplierId: previous,
+      supplierSku: product.supplierSku,
+      price: product.price,
+      currency: product.currency,
+      moq: product.moq,
+    },
+    { supplierId: party.id, ...own },
   );
-  return party;
+  return { party, changed: true, link };
 }
 
 /**

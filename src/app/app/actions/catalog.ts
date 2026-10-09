@@ -152,11 +152,48 @@ export async function updateProductSheetAction(form: FormData) {
       cbm,
       ...pantoneField,
     };
-    await store.update("products", id, next);
-    // Principal (e o antigo, se trocou) na lista de fornecedores do produto, cada um com o seu código.
-    const { syncMainSupplierLink } =
-      await import("@/lib/services/product-suppliers");
-    await syncMainSupplierLink(user, product, next, id);
+    const ps = await import("@/lib/services/product-suppliers");
+    // Troca de fornecedor pelo cadastro: a mesma troca do "Tornar principal"
+    // (código, preço, moeda e MOQ do antigo ficam no vínculo dele; o novo
+    // traz os dele). Campo que o usuário mudou neste envio prevalece.
+    const switched =
+      !!parsed.supplierId && parsed.supplierId !== product.supplierId;
+    if (switched) {
+      await store.update("products", id, {
+        ...next,
+        supplierId: product.supplierId,
+        supplierSku: product.supplierSku,
+        price: product.price,
+        currency: product.currency,
+        moq: product.moq,
+      });
+      try {
+        await ps.setMainSupplier(user, id, parsed.supplierId!);
+        const typed: Partial<typeof next> = {};
+        if (parsed.price !== product.price) typed.price = parsed.price;
+        if (parsed.currency !== product.currency)
+          typed.currency = parsed.currency;
+        if (parsed.moq !== product.moq) typed.moq = parsed.moq;
+        if (Object.keys(typed).length)
+          await store.update("products", id, typed);
+        if ((parsed.supplierSku ?? "") !== (product.supplierSku ?? ""))
+          await ps.setProductSupplierCode(
+            user,
+            id,
+            parsed.supplierId!,
+            parsed.supplierSku,
+          );
+      } catch (error) {
+        // Esquema ainda sem a tabela de fornecedores: grava como antes.
+        if (!(error instanceof ps.ProductSupplierError)) throw error;
+        console.warn("[catalog] supplier switch fallback", error);
+        await store.update("products", id, next);
+      }
+    } else {
+      await store.update("products", id, next);
+      // Principal (e o antigo, se saiu) na lista de fornecedores do produto, cada um com o seu código.
+      await ps.syncMainSupplierLink(user, product, next, id);
+    }
     // Ficha mestre do produto (se existir) acompanha preço, caixa, medidas, cor e material.
     const { syncMasterFromProduct } =
       await import("@/lib/services/product-sheet");
