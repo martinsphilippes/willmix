@@ -53,9 +53,7 @@ export interface Store {
   /** Metadados de um arquivo já no armazenamento (ex.: enviado direto pelo navegador); null se não existe. */
   statFile(key: string): Promise<StoredFile | null>;
   /** Conteúdo em fluxo, sem carregar o arquivo inteiro na memória (downloads grandes). */
-  streamFile(
-    key: string,
-  ): Promise<{
+  streamFile(key: string): Promise<{
     body: ReadableStream<Uint8Array>;
     name: string;
     mime: string;

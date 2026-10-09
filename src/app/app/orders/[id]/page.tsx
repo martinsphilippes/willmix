@@ -509,7 +509,7 @@ export default async function OrderPage({
                                 : "font-normal text-zinc-500",
                             )}
                           >
-                            {t("common.due")}: {formatDate(stage.dueAt)}
+                            {t("common.due")}: {formatDate(stage.dueAt, t)}
                           </span>
                         ) : null}
                       </span>
@@ -658,7 +658,7 @@ export default async function OrderPage({
                   ? [
                       [
                         t("orders.fob"),
-                        formatMoney(order.fobTotal, order.fobCurrency),
+                        formatMoney(order.fobTotal, order.fobCurrency, t),
                       ] as [string, string],
                     ]
                   : []),
@@ -666,7 +666,7 @@ export default async function OrderPage({
                   ? [
                       [
                         t("orders.sell"),
-                        formatMoney(order.sellPrice, order.sellCurrency),
+                        formatMoney(order.sellPrice, order.sellCurrency, t),
                       ] as [string, string],
                     ]
                   : []),
@@ -682,7 +682,7 @@ export default async function OrderPage({
                       ] as [string, ReactNode],
                     ]
                   : []),
-                [t("common.date"), formatDate(order.createdAt)],
+                [t("common.date"), formatDate(order.createdAt, t)],
                 /* Visão de Produto: modalidade de operação copiada do cliente (importador de registro).
                    Wellmix, cliente e despachante; nunca fornecedor, agência, armador ou transportador.
                    Pedidos antigos (nulo): nada aparece. */
@@ -797,11 +797,11 @@ export default async function OrderPage({
                 items={[
                   [
                     t("finance.sale"),
-                    formatMoney(finance.sell, finance.sellCurrency),
+                    formatMoney(finance.sell, finance.sellCurrency, t),
                   ],
                   [
                     t("finance.received"),
-                    formatMoney(finance.received, finance.sellCurrency),
+                    formatMoney(finance.received, finance.sellCurrency, t),
                   ],
                   [
                     t("finance.receivable"),
@@ -813,18 +813,18 @@ export default async function OrderPage({
                           : "text-emerald-700"
                       }
                     >
-                      {formatMoney(finance.receivable, finance.sellCurrency)}
+                      {formatMoney(finance.receivable, finance.sellCurrency, t)}
                     </span>,
                   ],
                   ...(wellmix
                     ? ([
                         [
                           t("orders.fob"),
-                          formatMoney(finance.fob, finance.fobCurrency),
+                          formatMoney(finance.fob, finance.fobCurrency, t),
                         ],
                         [
                           t("finance.paid"),
-                          formatMoney(finance.paid, finance.fobCurrency),
+                          formatMoney(finance.paid, finance.fobCurrency, t),
                         ],
                         [
                           t("finance.payable"),
@@ -836,13 +836,17 @@ export default async function OrderPage({
                                 : "text-emerald-700"
                             }
                           >
-                            {formatMoney(finance.payable, finance.fobCurrency)}
+                            {formatMoney(
+                              finance.payable,
+                              finance.fobCurrency,
+                              t,
+                            )}
                           </span>,
                         ],
                         [
                           t("finance.cost"),
                           finance.cost !== null
-                            ? `${formatMoney(finance.cost, finance.sellCurrency)}${finance.estimated ? " ~" : ""}`
+                            ? `${formatMoney(finance.cost, finance.sellCurrency, t)}${finance.estimated ? " ~" : ""}`
                             : t("finance.fxMissing"),
                         ],
                         [
@@ -859,9 +863,10 @@ export default async function OrderPage({
                               {formatMoney(
                                 finance.margin,
                                 finance.sellCurrency,
+                                t,
                               )}
                               {finance.marginPct !== null
-                                ? ` (${finance.marginPct.toFixed(1)}%)`
+                                ? ` (${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
                                 : ""}
                             </span>
                           ) : (
@@ -880,6 +885,7 @@ export default async function OrderPage({
                   <input type="hidden" name="orderId" value={order.id} />
                   <Field label={t("orders.value")}>
                     <MoneyInput
+                      locale={t.intl}
                       name="amount"
                       watchField="currency"
                       required
@@ -895,7 +901,10 @@ export default async function OrderPage({
                   </Field>
                   <div className="sm:col-span-2">
                     <Field label={t("finance.method")}>
-                      <Input name="method" placeholder="PIX, boleto, TED" />
+                      <Input
+                        name="method"
+                        placeholder={t("ph.finance.method")}
+                      />
                     </Field>
                   </div>
                   <div className="sm:col-span-2">
@@ -921,7 +930,7 @@ export default async function OrderPage({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-zinc-900">
-                        {formatMoney(p.amount, p.currency)}
+                        {formatMoney(p.amount, p.currency, t)}
                       </span>
                       <Badge
                         tone={p.status === "pending" ? "warning" : "success"}
@@ -933,7 +942,7 @@ export default async function OrderPage({
                       {p.direction === "customer_in"
                         ? t("common.customer")
                         : t("common.supplier")}{" "}
-                      · {formatDate(p.confirmedAt ?? p.createdAt)}
+                      · {formatDate(p.confirmedAt ?? p.createdAt, t)}
                       {p.note ? ` · ${p.note}` : ""}
                     </p>
                     {p.proofDocumentId &&
@@ -994,7 +1003,7 @@ export default async function OrderPage({
                         {d.name}
                       </a>
                       <span className="shrink-0 text-xs text-zinc-500">
-                        {d.type} · v{d.version}
+                        {t(`docType.${d.type}` as DictionaryKey)} · v{d.version}
                       </span>
                     </div>
                     {documentTrails[d.id] ? (
@@ -1053,7 +1062,7 @@ export default async function OrderPage({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-semibold text-zinc-900">
-                        {formatMoney(p.amount, p.currency)}
+                        {formatMoney(p.amount, p.currency, t)}
                       </span>
                       <Badge tone={p.status === "open" ? "danger" : "neutral"}>
                         {t(`penaltyStatus.${p.status}`)}
@@ -1080,6 +1089,7 @@ export default async function OrderPage({
                     <div className="grid grid-cols-2 gap-2">
                       <Field label={t("orders.value")}>
                         <MoneyInput
+                          locale={t.intl}
                           name="amount"
                           watchField="currency"
                           required
@@ -1129,8 +1139,9 @@ export default async function OrderPage({
                       received: formatMoney(
                         finance.received,
                         finance.sellCurrency,
+                        t,
                       ),
-                      paid: formatMoney(finance.paid, finance.fobCurrency),
+                      paid: formatMoney(finance.paid, finance.fobCurrency, t),
                     }
                   : null
               }
@@ -1263,7 +1274,7 @@ function RequirementRow({
             r.type !== "approval" &&
             r.value ? (
               <span className="mr-2 text-zinc-800">
-                {formatMoneyValue(r.value)}
+                {formatMoneyValue(r.value, t.intl)}
               </span>
             ) : null}
             {doc ? (
@@ -1290,7 +1301,8 @@ function RequirementRow({
                 />
               </form>
             ) : null}
-            {t("orders.submitted")}: {submittedBy} · {formatDate(r.submittedAt)}
+            {t("orders.submitted")}: {submittedBy} ·{" "}
+            {formatDate(r.submittedAt, t)}
             {note ? ` · ${note}` : ""}
           </div>
         ) : note ? (
@@ -1359,11 +1371,11 @@ function RequirementRow({
 /* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
 /* ------------------------------------------------------------------------ */
 
-function formatDateTime(value: string | null | undefined) {
+function formatDateTime(value: string | null | undefined, intl = "pt-BR") {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("pt-BR", {
+  return d.toLocaleString(intl, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -1394,7 +1406,7 @@ function AckTrail({
   return (
     <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
       <span className="whitespace-nowrap">
-        {t("orders.ack.sent")} {formatDateTime(summary.sentAt)}
+        {t("orders.ack.sent")} {formatDateTime(summary.sentAt, t.intl)}
       </span>
       {" · "}
       <span
@@ -1405,7 +1417,7 @@ function AckTrail({
       >
         {t("orders.ack.viewed")}{" "}
         {summary.viewedAt
-          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt)}`
+          ? `${who(summary.viewedBy)}${formatDateTime(summary.viewedAt, t.intl)}`
           : t("orders.ack.pending")}
       </span>
       {" · "}
@@ -1417,7 +1429,7 @@ function AckTrail({
       >
         {t("orders.ack.confirmed")}{" "}
         {summary.confirmedAt
-          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt)}`
+          ? `${who(summary.confirmedBy)}${formatDateTime(summary.confirmedAt, t.intl)}`
           : t("orders.ack.pending")}
       </span>
     </p>
@@ -1430,8 +1442,10 @@ const dims = (
   c: number | null | undefined,
 ) => (a || b || c ? `${a ?? "—"} × ${b ?? "—"} × ${c ?? "—"}` : "—");
 
-const numOrDash = (v: number | null | undefined) =>
-  v === null || v === undefined ? "—" : String(v);
+const numOrDash = (v: number | null | undefined, intl = "pt-BR") =>
+  v === null || v === undefined
+    ? "—"
+    : v.toLocaleString(intl, { maximumFractionDigits: 4 });
 
 /** "Comprado (snapshot)": o que foi negociado, congelado no pedido. Só Wellmix. */
 function SnapshotCard({
@@ -1483,11 +1497,11 @@ function SnapshotCard({
           [
             t("orders.snapshot.unitPrice"),
             snapshot.unitPrice !== null
-              ? `${formatMoney(snapshot.unitPrice, snapshot.currency ?? "USD")} / ${snapshot.unit}`
+              ? `${formatMoney(snapshot.unitPrice, snapshot.currency ?? "USD", t)} / ${snapshot.unit}`
               : "—",
           ],
           [t("common.quantity"), `${snapshot.quantity} ${snapshot.unit}`],
-          [t("orders.snapshot.moq"), numOrDash(snapshot.moq)],
+          [t("orders.snapshot.moq"), numOrDash(snapshot.moq, t.intl)],
           [t("orders.snapshot.supplierSku"), snapshot.supplierSku ?? "—"],
           [t("orders.snapshot.material"), snapshot.material ?? "—"],
           [t("orders.snapshot.color"), snapshot.color ?? "—"],
@@ -1496,10 +1510,22 @@ function SnapshotCard({
             t("orders.snapshot.dimensions"),
             dims(snapshot.lengthCm, snapshot.widthCm, snapshot.heightCm),
           ],
-          [t("orders.snapshot.netWeight"), numOrDash(snapshot.netWeightKg)],
-          [t("orders.snapshot.grossWeight"), numOrDash(snapshot.grossWeightKg)],
-          [t("orders.snapshot.masterBox"), numOrDash(snapshot.masterBoxQty)],
-          [t("orders.snapshot.innerBox"), numOrDash(snapshot.innerBoxQty)],
+          [
+            t("orders.snapshot.netWeight"),
+            numOrDash(snapshot.netWeightKg, t.intl),
+          ],
+          [
+            t("orders.snapshot.grossWeight"),
+            numOrDash(snapshot.grossWeightKg, t.intl),
+          ],
+          [
+            t("orders.snapshot.masterBox"),
+            numOrDash(snapshot.masterBoxQty, t.intl),
+          ],
+          [
+            t("orders.snapshot.innerBox"),
+            numOrDash(snapshot.innerBoxQty, t.intl),
+          ],
           [
             t("orders.snapshot.boxDimensions"),
             dims(
@@ -1508,11 +1534,11 @@ function SnapshotCard({
               snapshot.boxHeightCm,
             ),
           ],
-          [t("orders.snapshot.cbm"), numOrDash(snapshot.cbm)],
+          [t("orders.snapshot.cbm"), numOrDash(snapshot.cbm, t.intl)],
           [t("common.conditions"), snapshot.conditions ?? "—"],
           [
             t("orders.snapshot.registeredAt"),
-            `${formatDate(snapshot.createdAt)} · ${createdBy}`,
+            `${formatDate(snapshot.createdAt, t)} · ${createdBy}`,
           ],
         ]}
       />
@@ -1638,7 +1664,11 @@ function InspectionResultCard({
                       {attrLabel(t, row.attribute)}
                     </Td>
                     <Td className="text-right tabular-nums">
-                      {c?.expected ?? "—"}
+                      {typeof c?.expected === "number"
+                        ? c.expected.toLocaleString(t.intl, {
+                            maximumFractionDigits: 4,
+                          })
+                        : (c?.expected ?? "—")}
                     </Td>
                     <Td
                       className={cx(
@@ -1650,7 +1680,7 @@ function InspectionResultCard({
                     </Td>
                     <Td className="text-right tabular-nums">
                       {c?.tolerancePercent != null
-                        ? `${c.tolerancePercent}%`
+                        ? `${c.tolerancePercent.toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`
                         : "—"}
                     </Td>
                     <Td>
@@ -1678,7 +1708,7 @@ function InspectionResultCard({
           <p className="mt-2 text-xs text-zinc-500">
             {t("orders.inspection.measuredBy")}:{" "}
             {userName(report.rows[0].requirement.submittedByUserId)} ·{" "}
-            {formatDateTime(report.rows[0].requirement.submittedAt)}
+            {formatDateTime(report.rows[0].requirement.submittedAt, t.intl)}
           </p>
         </>
       )}
@@ -1728,7 +1758,7 @@ function InspectionResultCard({
             {review.value !== "auto"
               ? `${userName(review.submittedByUserId)} · `
               : ""}
-            {formatDateTime(review.submittedAt)}
+            {formatDateTime(review.submittedAt, t.intl)}
             {review.note ? ` · ${review.note}` : ""}
           </p>
         ) : null}
@@ -1779,12 +1809,12 @@ function InspectionResultCard({
                   <span className="font-medium text-red-700">
                     {r.found ?? "—"}
                   </span>{" "}
-                  · {formatDateTime(r.createdAt)}
+                  · {formatDateTime(r.createdAt, t.intl)}
                 </p>
                 {r.status !== "open" ? (
                   <p className="mt-0.5 text-xs text-zinc-500">
                     {t("inspReport.resolvedBy")}: {userName(r.resolvedByUserId)}{" "}
-                    · {formatDateTime(r.resolvedAt)}
+                    · {formatDateTime(r.resolvedAt, t.intl)}
                     {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
                   </p>
                 ) : null}
@@ -1814,7 +1844,7 @@ function InspectionResultCard({
                   ? ` = ${String((e.after as { value: unknown }).value)}`
                   : ""}
                 <span className="block text-zinc-500">
-                  {userName(e.userId)} · {formatDateTime(e.createdAt)}
+                  {userName(e.userId)} · {formatDateTime(e.createdAt, t.intl)}
                 </span>
               </li>
             ))}
@@ -1863,9 +1893,9 @@ function ContainersCard({
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-500">
                   {wellmix
-                    ? `${t("orders.containers.etd")}: ${formatDate(c.etd)} · `
+                    ? `${t("orders.containers.etd")}: ${formatDate(c.etd, t)} · `
                     : ""}
-                  {t("orders.containers.eta")}: {formatDate(c.eta)}
+                  {t("orders.containers.eta")}: {formatDate(c.eta, t)}
                 </p>
               </div>
               {wellmix ? (
@@ -2095,7 +2125,7 @@ function AfterSalesCard({
               ],
               [
                 t("orders.afterSales.answeredAt"),
-                `${formatDateTime(afterSales.answeredAt)}${
+                `${formatDateTime(afterSales.answeredAt, t.intl)}${
                   wellmix ? ` · ${answeredBy}` : ""
                 }`,
               ],
@@ -2103,7 +2133,7 @@ function AfterSalesCard({
                 ? ([
                     [
                       t("orders.afterSales.closedAt"),
-                      formatDateTime(afterSales.closedAt),
+                      formatDateTime(afterSales.closedAt, t.intl),
                     ],
                     [t("orders.afterSales.notes"), afterSales.notes ?? "—"],
                   ] as [string, ReactNode][])
@@ -2196,10 +2226,10 @@ async function FollowUpCard({
               [
                 t("orders.followup.lastPrice"),
                 unitSell !== null
-                  ? `${formatMoney(unitSell, order.sellCurrency)} / ${item.unit}`
+                  ? `${formatMoney(unitSell, order.sellCurrency, t)} / ${item.unit}`
                   : "—",
               ],
-              [t("orders.followup.lastDate"), formatDate(order.createdAt)],
+              [t("orders.followup.lastDate"), formatDate(order.createdAt, t)],
             ]}
           />
         </div>
@@ -2289,7 +2319,7 @@ async function FollowUpCard({
                   {t(`reqStatusLabel.${r.status}`)}
                 </Badge>
                 <span className="text-xs text-zinc-500">
-                  {formatDate(r.createdAt)}
+                  {formatDate(r.createdAt, t)}
                 </span>
                 {r.orderId ? (
                   <TextLink

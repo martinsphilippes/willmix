@@ -657,11 +657,20 @@ export function DescriptionList({
   );
 }
 
-export function formatDate(value: string | null | undefined, locale = "pt-BR") {
+/** Tag Intl a partir de t (idioma do usuário) ou de uma tag direta; sem nada, pt-BR. */
+export function intlOf(locale?: string | { intl: string } | null) {
+  if (!locale) return "pt-BR";
+  return typeof locale === "string" ? locale : locale.intl;
+}
+
+export function formatDate(
+  value: string | null | undefined,
+  locale?: string | { intl: string } | null,
+) {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString(locale, {
+  return d.toLocaleDateString(intlOf(locale), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -671,10 +680,11 @@ export function formatDate(value: string | null | undefined, locale = "pt-BR") {
 export function formatMoney(
   amount: number | null | undefined,
   currency: string | null | undefined,
+  locale?: string | { intl: string } | null,
 ) {
   if (amount === null || amount === undefined) return "—";
   try {
-    return new Intl.NumberFormat("pt-BR", {
+    return new Intl.NumberFormat(intlOf(locale), {
       style: "currency",
       currency: currency ?? "BRL",
     }).format(amount);

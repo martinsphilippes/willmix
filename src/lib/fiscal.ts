@@ -49,15 +49,13 @@ export function parseRate(
   const m = /^(\d+(?:[.,]\d+)?)\s*%?$/.exec(v);
   if (!m) return null;
   const n = Number(m[1].replace(",", "."));
-  return Number.isFinite(n) && n >= 0 && n <= 1000 ? { rate: n, nt: false } : null;
+  return Number.isFinite(n) && n >= 0 && n <= 1000
+    ? { rate: n, nt: false }
+    : null;
 }
 
 const fold = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toUpperCase()
-    .trim();
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
 
 interface Columns {
   header: number;

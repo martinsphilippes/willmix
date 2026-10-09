@@ -65,7 +65,7 @@ export default async function VisitPage({
             <Badge tone={visitTone(visit.status)}>
               {t(`sourcing.visitStatus.${visit.status}`)}
             </Badge>
-            <span>{formatDate(visit.visitedAt)}</span>
+            <span>{formatDate(visit.visitedAt, t)}</span>
             {visit.factoryName ? (
               <span className="text-zinc-500">{visit.factoryName}</span>
             ) : null}
@@ -102,7 +102,7 @@ export default async function VisitPage({
           <Card title={t("sourcing.visit.summary")}>
             <DescriptionList
               items={[
-                [t("sourcing.visit.date"), formatDate(visit.visitedAt)],
+                [t("sourcing.visit.date"), formatDate(visit.visitedAt, t)],
                 [t("sourcing.visit.participants"), visit.participants ?? "—"],
                 [
                   t("sourcing.visit.location"),
@@ -113,7 +113,10 @@ export default async function VisitPage({
                   t("sourcing.visit.items"),
                   t("sourcing.visit.itemsCount", { count: items.length }),
                 ],
-                [t("sourcing.visit.nextVisit"), formatDate(visit.nextVisitAt)],
+                [
+                  t("sourcing.visit.nextVisit"),
+                  formatDate(visit.nextVisitAt, t),
+                ],
                 [t("sourcing.visit.followUp"), visit.followUp ?? "—"],
               ]}
             />
@@ -152,11 +155,12 @@ export default async function VisitPage({
                           {item.name}
                         </p>
                         <p className="text-sm text-zinc-700">
-                          {formatMoney(item.price, item.currency)}
+                          {formatMoney(item.price, item.currency, t)}
                           {item.moq ? (
                             <span className="text-zinc-500">
                               {" "}
-                              · {t("sourcing.moq")} {formatNumber(item.moq)}
+                              · {t("sourcing.moq")}{" "}
+                              {formatNumber(item.moq, t.intl)}
                             </span>
                           ) : null}
                         </p>

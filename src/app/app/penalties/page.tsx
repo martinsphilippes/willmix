@@ -83,10 +83,10 @@ export default async function PenaltiesPage() {
                     ) : null}
                   </Td>
                   <Td className="whitespace-nowrap font-semibold text-zinc-900">
-                    {formatMoney(p.amount, p.currency)}
+                    {formatMoney(p.amount, p.currency, t)}
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {formatDate(p.createdAt)}
+                    {formatDate(p.createdAt, t)}
                   </Td>
                   <Td>
                     <Badge

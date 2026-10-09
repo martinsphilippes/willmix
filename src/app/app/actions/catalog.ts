@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { parsePantoneRefs } from "@/lib/pantone";
 import { assertWellmix } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -125,13 +126,39 @@ export async function updateProductSheetAction(form: FormData) {
         parsed.boxWidthCm,
         parsed.boxHeightCm,
       ) ?? (parsed.cbm && parsed.cbm > 0 ? parsed.cbm : null);
-    await store.update("products", id, { ...parsed, cbm });
+    // Cores Pantone do seletor: só entram quando o campo veio (cores ou usuário
+    // mexeu); o texto "pantone" e a cor (se vazia) ganham os códigos.
+    const pantoneField = form.has("colorPantones")
+      ? { colorPantones: parsePantoneRefs(str(form, "colorPantones")) }
+      : {};
+    const codes = pantoneField.colorPantones?.map((c) => c.code) ?? [];
+    const pantoneText = form.has("colorPantones")
+      ? codes.length
+        ? codes.join(" / ").slice(0, 40)
+        : null
+      : parsed.pantone;
+    const color =
+      parsed.color ??
+      (codes.length
+        ? codes
+            .map((c) => `PANTONE ${c}`)
+            .join(" / ")
+            .slice(0, 60)
+        : null);
+    const next = {
+      ...parsed,
+      pantone: pantoneText,
+      color,
+      cbm,
+      ...pantoneField,
+    };
+    await store.update("products", id, next);
     // Ficha mestre do produto (se existir) acompanha preço, caixa, medidas, cor e material.
     const { syncMasterFromProduct } =
       await import("@/lib/services/product-sheet");
     await syncMasterFromProduct(id);
     await audit(user, "product.update", "product", id, parsed.name, product, {
-      ...parsed,
+      ...next,
       cbm,
     });
     return `/app/products/${id}?saved=1`;

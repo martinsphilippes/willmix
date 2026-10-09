@@ -19,6 +19,12 @@ import {
 } from "@/lib/services/product-sheet";
 import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { PantonePicker } from "@/components/pantone-picker";
+import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
+import {
+  ncmChipsView,
+  ncmSuggestionsFor,
+} from "@/lib/services/ncm-suggestions";
 import { saveProductSheetAction } from "../../actions/purchase-sheet";
 import { listTaxClassifications } from "@/lib/services/taxes";
 import {
@@ -262,7 +268,7 @@ export default async function ProductSheetPage({
     ? tierOpportunity(tiers, analysis.quantity, product.price)
     : null;
   const currency = product.currency ?? "USD";
-  const money = (n: number) => formatMoney(n, currency);
+  const money = (n: number) => formatMoney(n, currency, t);
   // Erros da ficha mestre (schema_outdated, pantone_too_many, not_found…) têm texto próprio.
   const sheetErrorText = (() => {
     if (typeof error !== "string" || !error) return null;
@@ -426,6 +432,7 @@ export default async function ProductSheetPage({
               </FieldRow>
               <FieldRow label={t("common.price")} size="md">
                 <MoneyInput
+                  locale={t.intl}
                   name="price"
                   watchField="currency"
                   defaultAmount={product.price ?? null}
@@ -477,7 +484,7 @@ export default async function ProductSheetPage({
                     {sourcing?.name ?? t("catalog.openSourcing")}
                   </TextLink>
                   {sourcing?.foundAt
-                    ? ` · ${formatDate(sourcing.foundAt)}`
+                    ? ` · ${formatDate(sourcing.foundAt, t)}`
                     : ""}
                 </p>
               ) : null}
@@ -496,11 +503,34 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.color")} size="md">
                 <Input name="color" defaultValue={product.color ?? ""} dense />
               </FieldRow>
-              <FieldRow label={t("catalog.pantone")} size="md">
-                <Input
-                  name="pantone"
-                  defaultValue={product.pantone ?? ""}
-                  dense
+              <FieldRow
+                label={t("catalog.pantone")}
+                size="full"
+                hint={t("pantone.productHint")}
+              >
+                <PantonePicker
+                  name="colorPantones"
+                  initial={
+                    product.colorPantones ?? masterSheet?.colorPantones ?? []
+                  }
+                  max={MAX_PANTONE_PER_SHEET}
+                  labels={{
+                    search: t("pantone.search"),
+                    scaleAll: t("pantone.scale.all"),
+                    scales: {
+                      C: t("pantone.scale.C"),
+                      U: t("pantone.scale.U"),
+                      M: t("pantone.scale.M"),
+                      P: t("pantone.scale.P"),
+                      TCX: t("pantone.scale.TCX"),
+                    },
+                    loading: t("pantone.loading"),
+                    none: t("pantone.none"),
+                    more: t("pantone.more"),
+                    remove: t("pantone.remove"),
+                    max: t("pantone.max"),
+                    empty: t("pantone.empty"),
+                  }}
                 />
               </FieldRow>
               <FieldRow label={t("catalog.dimensions")} size="full">
@@ -594,7 +624,9 @@ export default async function ProductSheetPage({
                 hint={
                   <>
                     <strong className="text-zinc-800">
-                      {cbmShown !== null ? `${cbmShown.toFixed(4)} m³` : "—"}
+                      {cbmShown !== null
+                        ? `${cbmShown.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
+                        : "—"}
                     </strong>
                     {cbmComputed !== null
                       ? ` · ${t("catalog.cbmComputed")}`
@@ -679,6 +711,10 @@ export default async function ProductSheetPage({
             editCustoms
             lotRequired={false}
             master
+            ncmSuggestions={ncmChipsView(
+              t,
+              await ncmSuggestionsFor(product.id),
+            )}
           />
           <p className="text-xs text-zinc-500">
             {t("productSheet.photosHint")}
@@ -825,7 +861,7 @@ export default async function ProductSheetPage({
                       ) : null}
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {formatDate(m.measuredAt)}
+                      {formatDate(m.measuredAt, t)}
                     </Td>
                     <Td>{userName(m.measuredByUserId)}</Td>
                   </tr>
@@ -853,7 +889,7 @@ export default async function ProductSheetPage({
                   name="unit"
                   required
                   defaultValue="kg"
-                  placeholder="kg, cm, m³, un"
+                  placeholder={t("ph.measure.unit")}
                   dense
                 />
               </Field>
@@ -911,7 +947,7 @@ export default async function ProductSheetPage({
                   <Td className="whitespace-nowrap">
                     {[
                       s.periodLabel,
-                      s.scheduledFor ? formatDate(s.scheduledFor) : null,
+                      s.scheduledFor ? formatDate(s.scheduledFor, t) : null,
                     ]
                       .filter(Boolean)
                       .join(" · ") || "—"}
@@ -919,7 +955,9 @@ export default async function ProductSheetPage({
                   <Td>{partyName(s.supplierId)}</Td>
                   <Td>{partyName(s.customerId)}</Td>
                   <Td className="whitespace-nowrap text-right tabular-nums">
-                    {s.price !== null ? formatMoney(s.price, s.currency) : "—"}
+                    {s.price !== null
+                      ? formatMoney(s.price, s.currency, t)
+                      : "—"}
                   </Td>
                   <Td>
                     <Badge tone={scheduleTone[s.status] ?? "neutral"}>
@@ -1054,6 +1092,7 @@ export default async function ProductSheetPage({
             </Field>
             <Field label={t("common.price")}>
               <MoneyInput
+                locale={t.intl}
                 size="sm"
                 name="price"
                 watchField="currency"
@@ -1236,7 +1275,7 @@ export default async function ProductSheetPage({
                     ],
                     [
                       t("catalog.opp.unitSaving"),
-                      `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent}%)`,
+                      `${money(opportunity.unitSaving)} (${opportunity.unitSavingPercent.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`,
                     ],
                     [
                       t("catalog.opp.totalDifference"),
@@ -1283,7 +1322,9 @@ export default async function ProductSheetPage({
                     {t("catalog.opp.container.line", {
                       boxes: c.fit.boxes,
                       units: c.fit.units ?? "—",
-                      cbm: c.remainingCbm.toFixed(2),
+                      cbm: c.remainingCbm.toLocaleString(t.intl, {
+                        maximumFractionDigits: 2,
+                      }),
                     })}
                   </span>
                   <TextLink

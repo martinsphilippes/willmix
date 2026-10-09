@@ -18,6 +18,8 @@ import {
  * O total da solicitação passa a ser a soma das programações.
  */
 export interface ScheduleLabels {
+  /** Tag Intl do idioma (datas e números): pt-BR, en-US, zh-CN. */
+  intl: string;
   toggle: string;
   ask: string;
   hint: string;
@@ -37,9 +39,14 @@ export interface ScheduleLabels {
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`));
 
-const fmtDate = (iso: string) => {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
+const fmtDate = (iso: string, intl: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(intl, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 export function RequestScheduleFields({
@@ -241,7 +248,9 @@ export function RequestScheduleFields({
               <p className="text-[11px] text-zinc-500">
                 {labels.expected}:{" "}
                 <span className="font-medium text-zinc-800" data-schedule-date>
-                  {firstDate ? fmtDate(addDaysIso(firstDate, days * i)) : "—"}
+                  {firstDate
+                    ? fmtDate(addDaysIso(firstDate, days * i), labels.intl)
+                    : "—"}
                 </span>
               </p>
             </div>
@@ -264,7 +273,7 @@ export function RequestScheduleFields({
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span className="font-medium text-zinc-800" data-schedule-total>
           {fill(labels.total, {
-            total: sum(qtys).toLocaleString("pt-BR"),
+            total: sum(qtys).toLocaleString(labels.intl),
             unit,
           })}
         </span>

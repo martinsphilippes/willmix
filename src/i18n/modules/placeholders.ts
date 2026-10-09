@@ -1,0 +1,73 @@
+/**
+ * Dicionário do módulo "placeholders" (exemplos dentro dos campos): seguem o
+ * idioma escolhido, como todo o resto. Mesmas chaves em pt, en e zh.
+ */
+export const pt = {
+  "ph.request.productName": "Ex.: Jarra de vidro 1,5 L",
+  "ph.sheet.location": "Yiwu",
+  "ph.sheet.supplierStore": "A 154678",
+  "ph.sheet.colorAssortment": "BRANCO / PRETO / VERMELHO",
+  "ph.sheet.material": "PLÁSTICO / FERRO",
+  "ph.sheet.powerDetail": "12V, 2 pilhas AA",
+  "ph.sheet.packageType": "COLOR BOX (caixa impressa)",
+  "ph.ncm": "0000.00.00",
+  "ph.party.country": "BR, CN",
+  "ph.party.storeNumber": "A 154678",
+  "ph.visit.location": "Ex.: Feira de Cantão, pavilhão 3",
+  "ph.item.conditions": "Ex.: FOB Ningbo, 30% de sinal, saldo contra BL",
+  "ph.request.downPayment": "30%",
+  "ph.quote.conditions":
+    "Ex.: FOB Shenzhen, 30% de sinal, 70% antes do embarque",
+  "ph.measure.unit": "kg, cm, m³, un",
+  "ph.finance.method": "PIX, boleto, TED",
+  "ph.line.certifications": "Inmetro, Anvisa",
+  "ph.container.number": "MSKU1234567",
+  "ph.tax.ncm": "7615.10",
+  "ph.url": "https://",
+};
+
+export const en: Record<keyof typeof pt, string> = {
+  "ph.request.productName": "E.g. 1.5 L glass pitcher",
+  "ph.sheet.location": "Yiwu",
+  "ph.sheet.supplierStore": "A 154678",
+  "ph.sheet.colorAssortment": "WHITE / BLACK / RED",
+  "ph.sheet.material": "PLASTIC / IRON",
+  "ph.sheet.powerDetail": "12V, 2 AA batteries",
+  "ph.sheet.packageType": "COLOR BOX",
+  "ph.ncm": "0000.00.00",
+  "ph.party.country": "BR, CN",
+  "ph.party.storeNumber": "A 154678",
+  "ph.visit.location": "E.g. Canton Fair, hall 3",
+  "ph.item.conditions": "E.g. FOB Ningbo, 30% deposit, balance against BL",
+  "ph.request.downPayment": "30%",
+  "ph.quote.conditions": "E.g. FOB Shenzhen, 30% deposit, 70% before shipment",
+  "ph.measure.unit": "kg, cm, m³, pcs",
+  "ph.finance.method": "PIX, bank slip, wire transfer",
+  "ph.line.certifications": "Inmetro, Anvisa",
+  "ph.container.number": "MSKU1234567",
+  "ph.tax.ncm": "7615.10",
+  "ph.url": "https://",
+};
+
+export const zh: Record<keyof typeof pt, string> = {
+  "ph.request.productName": "例：1.5 升玻璃水壶",
+  "ph.sheet.location": "义乌",
+  "ph.sheet.supplierStore": "A 154678",
+  "ph.sheet.colorAssortment": "白 / 黑 / 红",
+  "ph.sheet.material": "塑料 / 铁",
+  "ph.sheet.powerDetail": "12V，2 节 AA 电池",
+  "ph.sheet.packageType": "彩盒",
+  "ph.ncm": "0000.00.00",
+  "ph.party.country": "BR, CN",
+  "ph.party.storeNumber": "A 154678",
+  "ph.visit.location": "例：广交会 3 号馆",
+  "ph.item.conditions": "例：FOB 宁波，30% 定金，余款凭提单",
+  "ph.request.downPayment": "30%",
+  "ph.quote.conditions": "例：FOB 深圳，30% 定金，70% 发货前付清",
+  "ph.measure.unit": "kg、cm、m³、件",
+  "ph.finance.method": "PIX、银行票据、电汇",
+  "ph.line.certifications": "Inmetro, Anvisa",
+  "ph.container.number": "MSKU1234567",
+  "ph.tax.ncm": "7615.10",
+  "ph.url": "https://",
+};

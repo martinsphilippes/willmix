@@ -76,7 +76,10 @@ export function TaxSection({
   const rates = (taxes: Record<string, number> | null) =>
     taxes
       ? RATE_KEYS.filter((k) => taxes[k] !== undefined)
-          .map((k) => `${k} ${taxes[k]}%`)
+          .map(
+            (k) =>
+              `${k} ${taxes[k].toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`,
+          )
           .join(" · ")
       : "";
 
@@ -97,7 +100,7 @@ export function TaxSection({
                 {validated.description ? `${validated.description} · ` : ""}
                 {t("catalog.tax.validatedBy")}{" "}
                 {userName(validated.validatedByUserId)} ·{" "}
-                {formatDate(validated.validatedAt)}
+                {formatDate(validated.validatedAt, t)}
               </span>
             ) : null}
           </>
@@ -185,13 +188,13 @@ export function TaxSection({
                   <p className="text-xs text-zinc-500">
                     {t("catalog.tax.suggestedBy")}{" "}
                     {userName(row.suggestedByUserId)} ·{" "}
-                    {formatDate(row.createdAt)}
+                    {formatDate(row.createdAt, t)}
                     {row.validatedAt
                       ? ` · ${t(
                           row.status === "rejected"
                             ? "catalog.tax.rejectedBy"
                             : "catalog.tax.validatedBy",
-                        )} ${userName(row.validatedByUserId)} · ${formatDate(row.validatedAt)}`
+                        )} ${userName(row.validatedByUserId)} · ${formatDate(row.validatedAt, t)}`
                       : ""}
                   </p>
                 </div>
@@ -259,7 +262,7 @@ export function TaxSection({
                 minLength={4}
                 maxLength={10}
                 inputMode="decimal"
-                placeholder="7615.10"
+                placeholder={t("ph.tax.ncm")}
                 className={`${big} font-mono`}
               />
             </Field>

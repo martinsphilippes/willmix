@@ -285,7 +285,7 @@ export default async function RequestDetailPage({
             <DescriptionList
               items={[
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
-                [t("requests.deadline"), formatDate(request.deadline)],
+                [t("requests.deadline"), formatDate(request.deadline, t)],
                 [t("requests.description"), request.description],
                 [t("requests.specification"), request.specification],
                 [t("common.note"), request.notes],
@@ -431,6 +431,7 @@ export default async function RequestDetailPage({
                               value={`/app/requests/${request.id}`}
                             />
                             <MoneyInput
+                              locale={t.intl}
                               name="price"
                               watchField="currency"
                               decimals={4}
@@ -473,7 +474,7 @@ export default async function RequestDetailPage({
                             )}
                           >
                             {q.price !== null
-                              ? `${formatMoney(q.price, q.currency)} / ${request.unit}`
+                              ? `${formatMoney(q.price, q.currency, t)} / ${request.unit}`
                               : t("requests.quotes.waiting")}
                           </Td>
                           <Td className="tabular-nums">
@@ -503,7 +504,7 @@ export default async function RequestDetailPage({
                             {t("freight.compare.title")}:{" "}
                             {carrierName(f.carrierId)} ·{" "}
                             {f.status === "answered"
-                              ? formatMoney(f.amount, f.currency)
+                              ? formatMoney(f.amount, f.currency, t)
                               : t("freight.compare.waiting")}
                           </Link>
                         ))}
@@ -524,7 +525,7 @@ export default async function RequestDetailPage({
                       const q = selectable.find((x) => x.id === p.quoteId)!;
                       return {
                         quoteId: p.quoteId,
-                        label: `${supplierName(q.supplierId)} · ${formatMoney(q.price, q.currency)}`,
+                        label: `${supplierName(q.supplierId)} · ${formatMoney(q.price, q.currency, t)}`,
                         hasSheet: p.hasSheet,
                         input: p.input,
                         marginSource: p.marginSource,
@@ -540,6 +541,7 @@ export default async function RequestDetailPage({
                                 amount: formatMoney(
                                   p.shippingFreight.amount,
                                   p.shippingFreight.currency ?? "USD",
+                                  t,
                                 ),
                               })
                             : p.shippingFreight.status === "waiting"
@@ -575,6 +577,7 @@ export default async function RequestDetailPage({
                       sourceCustomer: t("pricing.calc.source.customer"),
                       sourceLine: t("pricing.calc.source.line"),
                       sourceDefault: t("pricing.calc.source.default"),
+                      intl: t.intl,
                       fxStale:
                         pricing?.fx.status === "stale"
                           ? t("pricing.calc.fxStale", {
@@ -597,9 +600,10 @@ export default async function RequestDetailPage({
                   </Field>
                   <Field label={t("requests.downPayment")}>
                     <MoneyInput
+                      locale={t.intl}
                       name="downPaymentAmount"
                       watchField="sellCurrency"
-                      placeholder="30%"
+                      placeholder={t("ph.request.downPayment")}
                     />
                   </Field>
                   <div className="sm:col-span-3">
@@ -630,10 +634,14 @@ export default async function RequestDetailPage({
                 <div className="mb-3 space-y-2">
                   <Alert tone="warning">
                     {t("pricing.variance", {
-                      pct: `${variance.pct > 0 ? "+" : ""}${variance.pct.toFixed(2)}`,
+                      pct: `${variance.pct > 0 ? "+" : ""}${variance.pct.toLocaleString(t.intl, { maximumFractionDigits: 2 })}`,
                       currency: variance.currency,
-                      from: variance.before.toFixed(4),
-                      to: variance.now.toFixed(4),
+                      from: variance.before.toLocaleString(t.intl, {
+                        maximumFractionDigits: 4,
+                      }),
+                      to: variance.now.toLocaleString(t.intl, {
+                        maximumFractionDigits: 4,
+                      }),
                     })}
                   </Alert>
                   <form action={refreshProposalAction}>
@@ -652,7 +660,7 @@ export default async function RequestDetailPage({
                       key="sellPrice"
                       className="text-lg font-bold tracking-tight text-zinc-900 tabular-nums"
                     >
-                      {formatMoney(request.sellPrice, request.sellCurrency)}
+                      {formatMoney(request.sellPrice, request.sellCurrency, t)}
                     </span>,
                   ],
                   [
@@ -664,6 +672,7 @@ export default async function RequestDetailPage({
                       {formatMoney(
                         request.downPaymentAmount,
                         request.sellCurrency,
+                        t,
                       )}
                     </span>,
                   ],
@@ -700,6 +709,7 @@ export default async function RequestDetailPage({
                       amount: formatMoney(
                         request.downPaymentAmount,
                         request.sellCurrency,
+                        t,
                       ),
                     })}
                   </Alert>
@@ -743,7 +753,7 @@ export default async function RequestDetailPage({
                               {t("payments.pix.amount")}
                             </dt>
                             <dd className="font-semibold tabular-nums text-zinc-900">
-                              {formatMoney(pix.amount, "BRL")}
+                              {formatMoney(pix.amount, "BRL", t)}
                             </dd>
                           </div>
                           <div>

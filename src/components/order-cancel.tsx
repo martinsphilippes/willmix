@@ -43,7 +43,7 @@ export function CancelledBanner({
       <Alert tone="danger">
         <strong>
           {t("cancel.banner", {
-            date: formatDate(order.cancelledAt),
+            date: formatDate(order.cancelledAt, t),
             user: byName,
           })}
         </strong>
@@ -105,7 +105,7 @@ export function CancelRequestAlert({
         <strong>{t("cancel.request.wellmixTitle")}</strong>
         <span className="block">
           {t("cancel.request.wellmixBody", {
-            date: formatDate(order.cancelRequestedAt),
+            date: formatDate(order.cancelRequestedAt, t),
             reason: order.cancelRequestReason ?? "—",
           })}
         </span>
@@ -207,7 +207,7 @@ export function CustomerCancelCard({
       <Card title={t("cancel.request.title")}>
         <p className="text-sm text-zinc-700" data-cancel-pending>
           {t("cancel.request.pending", {
-            date: formatDate(order.cancelRequestedAt),
+            date: formatDate(order.cancelRequestedAt, t),
           })}
         </p>
       </Card>

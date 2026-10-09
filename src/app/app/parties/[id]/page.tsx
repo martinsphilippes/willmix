@@ -282,7 +282,7 @@ export default async function PartyPage({
                     <Input
                       name="storeNumber"
                       maxLength={60}
-                      placeholder="A 154678"
+                      placeholder={t("ph.party.storeNumber")}
                       defaultValue={party.storeNumber ?? ""}
                       className="py-2.5"
                     />
@@ -447,7 +447,7 @@ export default async function PartyPage({
                   {visits.map((v) => (
                     <tr key={v.id} className={rowClass}>
                       <Td className="whitespace-nowrap">
-                        {formatDate(v.visitedAt)}
+                        {formatDate(v.visitedAt, t)}
                       </Td>
                       <Td>
                         {[v.factoryName, v.location, v.city]
@@ -513,7 +513,7 @@ export default async function PartyPage({
                       </Td>
                       <Td className="whitespace-nowrap text-right tabular-nums">
                         {p.price !== null
-                          ? formatMoney(p.price, p.currency)
+                          ? formatMoney(p.price, p.currency, t)
                           : "—"}
                       </Td>
                       <Td className="text-right tabular-nums">

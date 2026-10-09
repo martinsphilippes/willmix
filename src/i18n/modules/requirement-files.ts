@@ -78,7 +78,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "requirement.file.failed": "上传失败。请检查网络后重试。",
   "orders.error.upload_missing": "未在存储中找到已上传的文件，请重新上传。",
   "orders.error.too_large": "文件过大（最大 50 MB）。",
-  "orders.error.money_required": "请输入金额（例如 1.234,56）。",
+  "orders.error.money_required": "请输入金额（例如 1,234.56）。",
   "orders.error.date_invalid": "请输入有效日期。",
   "orders.error.eta_before_ship_date": "预计到港日期不能早于装船日期。",
   "orders.error.ship_date_after_eta": "装船日期不能晚于已填写的预计到港日期。",

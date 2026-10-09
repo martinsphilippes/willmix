@@ -297,6 +297,7 @@ async function prefill(
     widthCm: product?.boxWidthCm ?? null,
     lengthCm: product?.boxLengthCm ?? null,
     colorAssortment: product?.color ?? null,
+    colorPantones: product?.colorPantones ?? null,
     material: product?.material ?? null,
     ncm: product?.ncm ?? null,
     lots: requestLots(product?.masterBoxQty),

@@ -154,7 +154,7 @@ export default async function ImportPage({
               {batches.map((b) => (
                 <tr key={b.id} className={rowClass}>
                   <Td className="whitespace-nowrap">
-                    {formatDate(b.createdAt)}
+                    {formatDate(b.createdAt, t)}
                   </Td>
                   <Td>{t(`import.entity.${b.entity}` as DictionaryKey)}</Td>
                   <Td className="font-medium">

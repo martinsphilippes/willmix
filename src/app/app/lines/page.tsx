@@ -121,7 +121,7 @@ export default async function LinesPage({
                   <Input
                     name="certifications"
                     maxLength={500}
-                    placeholder="Inmetro, Anvisa"
+                    placeholder={t("ph.line.certifications")}
                     aria-label={t("catalog.lines.certifications")}
                     defaultValue={(l.requiredCertifications ?? []).join(", ")}
                     className="flex-1 py-1.5"
@@ -280,7 +280,7 @@ export default async function LinesPage({
             </Field>
             <Field
               label={t("lines.requirements")}
-              hint="chave | rótulo | tipo (file, photo, text, number, date, confirm) | obrigatório (1/0)"
+              hint={t("lines.requirementsHint")}
             >
               <Textarea
                 name="requirements"
@@ -289,7 +289,7 @@ export default async function LinesPage({
                 defaultValue={
                   editing
                     ? toText(editing.requirements)
-                    : "purchase_sheet | Ficha de compra | text | 1"
+                    : t("lines.requirementsExample")
                 }
               />
             </Field>

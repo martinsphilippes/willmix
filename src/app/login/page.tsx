@@ -8,7 +8,10 @@ import { getStore, STAGE_KEYS } from "@/lib/db";
 import { DEMO_PASSWORD, DEMO_USERS, seedDemo } from "@/lib/seed";
 import { getT } from "@/i18n/server";
 
-export const metadata: Metadata = { title: "Entrar" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t("login.title") };
+}
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next } = await searchParams;
@@ -71,7 +74,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
         <details className="mt-4 max-w-3xl rounded-xl bg-white/10 p-4 text-sm ring-1 ring-inset ring-white/15">
           <summary className="cursor-pointer font-semibold text-white">
-            {t("common.role")}s
+            {t("login.roles")}
           </summary>
           <ul className="mt-3 space-y-1.5 text-white/90">
             {roles.map((line, i) => {
@@ -86,8 +89,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           </ul>
         </details>
         <p className="mt-4 text-xs text-white/75">
-          {STAGE_KEYS.length} {t("orders.stage").toLowerCase()}s · pt · en ·
-          中文
+          {t("login.stagesNote", { n: STAGE_KEYS.length })}
         </p>
       </section>
 

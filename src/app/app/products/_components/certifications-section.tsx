@@ -138,7 +138,7 @@ export function CertificationsSection({
               {t("catalog.cert.expiringAlert", {
                 days: warningDays ?? 30,
                 list: check.expiring
-                  .map((c) => `${c.kind} (${formatDate(c.validUntil)})`)
+                  .map((c) => `${c.kind} (${formatDate(c.validUntil, t)})`)
                   .join(", "),
               })}
             </Alert>
@@ -171,7 +171,7 @@ export function CertificationsSection({
                     {status === "valid" && expiringIds.has(cert.id) ? (
                       <Badge tone="warning">
                         {t("catalog.cert.expiresOn", {
-                          date: formatDate(cert.validUntil),
+                          date: formatDate(cert.validUntil, t),
                         })}
                       </Badge>
                     ) : null}
@@ -186,7 +186,7 @@ export function CertificationsSection({
                         ? `${t("catalog.cert.number")} ${cert.number}`
                         : null,
                       cert.validUntil
-                        ? `${t("catalog.cert.validUntil")} ${formatDate(cert.validUntil)}`
+                        ? `${t("catalog.cert.validUntil")} ${formatDate(cert.validUntil, t)}`
                         : null,
                     ]
                       .filter(Boolean)
@@ -208,9 +208,9 @@ export function CertificationsSection({
                     {" · "}
                     {t("catalog.cert.registeredBy")}{" "}
                     {userName(cert.createdByUserId)} ·{" "}
-                    {formatDate(cert.createdAt)}
+                    {formatDate(cert.createdAt, t)}
                     {cert.validatedAt
-                      ? ` · ${t("catalog.cert.validatedBy")} ${userName(cert.validatedByUserId)} · ${formatDate(cert.validatedAt)}`
+                      ? ` · ${t("catalog.cert.validatedBy")} ${userName(cert.validatedByUserId)} · ${formatDate(cert.validatedAt, t)}`
                       : ""}
                   </p>
                   {cert.notes ? (

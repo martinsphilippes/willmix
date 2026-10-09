@@ -39,6 +39,10 @@ import * as pantone from "./pantone";
 import * as sheetFill from "./sheet-fill";
 import * as productSheet from "./product-sheet";
 import * as sheetRecords from "./sheet-records";
+import * as navGroups from "./nav-groups";
+import * as placeholders from "./placeholders";
+import * as ncmSheet from "./ncm-sheet";
+import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
 
 export const modulesPt = {
@@ -78,6 +82,10 @@ export const modulesPt = {
   ...sheetFill.pt,
   ...productSheet.pt,
   ...sheetRecords.pt,
+  ...navGroups.pt,
+  ...placeholders.pt,
+  ...ncmSheet.pt,
+  ...i18nSweep.pt,
   ...requestSchedule.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
@@ -117,6 +125,10 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetFill.en,
   ...productSheet.en,
   ...sheetRecords.en,
+  ...navGroups.en,
+  ...placeholders.en,
+  ...ncmSheet.en,
+  ...i18nSweep.en,
   ...requestSchedule.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
@@ -156,5 +168,9 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetFill.zh,
   ...productSheet.zh,
   ...sheetRecords.zh,
+  ...navGroups.zh,
+  ...placeholders.zh,
+  ...ncmSheet.zh,
+  ...i18nSweep.zh,
   ...requestSchedule.zh,
 };

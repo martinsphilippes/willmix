@@ -35,10 +35,12 @@ import { aiErrorText } from "@/i18n/ai-error";
  */
 function Checkbox({
   name,
+  label,
   checked,
   hint,
 }: {
   name: string;
+  label: string;
   checked: boolean;
   hint: string;
 }) {
@@ -53,7 +55,7 @@ function Checkbox({
       />
       <input type="hidden" name={name} value="false" />
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-zinc-800">{name}</span>
+        <span className="block text-sm font-medium text-zinc-800">{label}</span>
         <span className="block text-xs text-zinc-500">{hint}</span>
       </span>
     </label>
@@ -86,7 +88,7 @@ export default async function SettingsPage({
   const fiscalNotice = fiscalMatch
     ? t("fiscal.table.uploaded", {
         kind: fiscalMatch[1].toUpperCase(),
-        count: Number(fiscalMatch[2]).toLocaleString("pt-BR"),
+        count: Number(fiscalMatch[2]).toLocaleString(t.intl),
         changed: fiscalMatch[3],
       })
     : fiscalSync === "ok"
@@ -148,35 +150,37 @@ export default async function SettingsPage({
             {t("settings.section.general")}
           </h3>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="customerCanCreateRequest">
+            <Field label={t("settings.label.customerCanCreateRequest")}>
               <Select
                 name="customerCanCreateRequest"
                 defaultValue={String(s.customerCanCreateRequest)}
               >
-                <option value="true">true</option>
-                <option value="false">false</option>
+                <option value="true">{t("common.yes")}</option>
+                <option value="false">{t("common.no")}</option>
               </Select>
             </Field>
-            <Field label="agencyValidationEnabled">
+            <Field label={t("settings.label.agencyValidationEnabled")}>
               <Select
                 name="agencyValidationEnabled"
                 defaultValue={String(s.agencyValidationEnabled)}
               >
-                <option value="true">true</option>
-                <option value="false">false</option>
+                <option value="true">{t("common.yes")}</option>
+                <option value="false">{t("common.no")}</option>
               </Select>
             </Field>
-            <Field label="deliveryConfirmationMode">
+            <Field label={t("settings.label.deliveryConfirmationMode")}>
               <Select
                 name="deliveryConfirmationMode"
                 defaultValue={s.deliveryConfirmationMode}
               >
-                <option value="BOTH">BOTH</option>
-                <option value="CUSTOMER">CUSTOMER</option>
-                <option value="WELLMIX">WELLMIX</option>
+                <option value="BOTH">{t("settings.option.BOTH")}</option>
+                <option value="CUSTOMER">
+                  {t("settings.option.CUSTOMER")}
+                </option>
+                <option value="WELLMIX">{t("settings.option.WELLMIX")}</option>
               </Select>
             </Field>
-            <Field label="weightTolerancePercent (%)">
+            <Field label={t("settings.label.weightTolerancePercent")}>
               <Input
                 name="weightTolerancePercent"
                 type="number"
@@ -185,7 +189,7 @@ export default async function SettingsPage({
                 defaultValue={s.weightTolerancePercent}
               />
             </Field>
-            <Field label="downPaymentPercent (%)">
+            <Field label={t("settings.label.downPaymentPercent")}>
               <Input
                 name="downPaymentPercent"
                 type="number"
@@ -195,7 +199,7 @@ export default async function SettingsPage({
                 defaultValue={s.downPaymentPercent}
               />
             </Field>
-            <Field label="quotationExpirationDays">
+            <Field label={t("settings.label.quotationExpirationDays")}>
               <Input
                 name="quotationExpirationDays"
                 type="number"
@@ -203,7 +207,7 @@ export default async function SettingsPage({
                 defaultValue={s.quotationExpirationDays}
               />
             </Field>
-            <Field label="reminderDaysBeforeDue">
+            <Field label={t("settings.label.reminderDaysBeforeDue")}>
               <Input
                 name="reminderDaysBeforeDue"
                 type="number"
@@ -211,14 +215,14 @@ export default async function SettingsPage({
                 defaultValue={s.reminderDaysBeforeDue}
               />
             </Field>
-            <Field label="sankhyaMode">
+            <Field label={t("settings.label.sankhyaMode")}>
               <Select name="sankhyaMode" defaultValue={s.sankhyaMode}>
-                <option value="MOCK">MOCK</option>
-                <option value="MANUAL">MANUAL</option>
+                <option value="MOCK">{t("settings.option.MOCK")}</option>
+                <option value="MANUAL">{t("settings.option.MANUAL")}</option>
               </Select>
             </Field>
           </div>
-          <Field label="stageDueDays (JSON)">
+          <Field label={t("settings.label.stageDueDays")}>
             <Textarea
               name="stageDueDays"
               rows={6}
@@ -232,7 +236,7 @@ export default async function SettingsPage({
           </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="dimensionTolerancePercent (%)"
+              label={t("settings.label.dimensionTolerancePercent")}
               hint={t("settings.hint.dimensionTolerancePercent")}
             >
               <Input
@@ -244,7 +248,7 @@ export default async function SettingsPage({
               />
             </Field>
             <Field
-              label="cbmTolerancePercent (%)"
+              label={t("settings.label.cbmTolerancePercent")}
               hint={t("settings.hint.cbmTolerancePercent")}
             >
               <Input
@@ -256,7 +260,7 @@ export default async function SettingsPage({
               />
             </Field>
             <Field
-              label="quantityTolerancePercent (%)"
+              label={t("settings.label.quantityTolerancePercent")}
               hint={t("settings.hint.quantityTolerancePercent")}
             >
               <Input
@@ -270,11 +274,13 @@ export default async function SettingsPage({
             <div className="grid gap-3 sm:col-span-2">
               <Checkbox
                 name="inspectionExtendedChecks"
+                label={t("settings.label.inspectionExtendedChecks")}
                 checked={s.inspectionExtendedChecks}
                 hint={t("settings.hint.inspectionExtendedChecks")}
               />
               <Checkbox
                 name="reviewOnZeroPrice"
+                label={t("settings.label.reviewOnZeroPrice")}
                 checked={s.reviewOnZeroPrice}
                 hint={t("settings.hint.reviewOnZeroPrice")}
               />
@@ -286,7 +292,7 @@ export default async function SettingsPage({
           </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="containerMaxOccupancyPercent (%)"
+              label={t("settings.label.containerMaxOccupancyPercent")}
               hint={t("settings.hint.containerMaxOccupancyPercent")}
             >
               <Input
@@ -301,6 +307,7 @@ export default async function SettingsPage({
             <div className="sm:col-span-2">
               <Checkbox
                 name="containerAllowMultiCustomer"
+                label={t("settings.label.containerAllowMultiCustomer")}
                 checked={s.containerAllowMultiCustomer}
                 hint={t("settings.hint.containerAllowMultiCustomer")}
               />
@@ -311,7 +318,7 @@ export default async function SettingsPage({
           </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="certificationExpiryWarningDays"
+              label={t("settings.label.certificationExpiryWarningDays")}
               hint={t("settings.hint.certificationExpiryWarningDays")}
             >
               <Input
@@ -325,18 +332,20 @@ export default async function SettingsPage({
             <div className="grid gap-3 sm:col-span-2">
               <Checkbox
                 name="complianceGateEnabled"
+                label={t("settings.label.complianceGateEnabled")}
                 checked={s.complianceGateEnabled}
                 hint={t("settings.hint.complianceGateEnabled")}
               />
               <Checkbox
                 name="afterSalesEnabled"
+                label={t("settings.label.afterSalesEnabled")}
                 checked={s.afterSalesEnabled}
                 hint={t("settings.hint.afterSalesEnabled")}
               />
             </div>
           </div>
           <Field
-            label={`containerTypes (${t("settings.containerTypes.label")})`}
+            label={t("settings.containerTypes.label")}
             hint={t("settings.hint.containerTypes")}
           >
             <Textarea
@@ -354,7 +363,7 @@ export default async function SettingsPage({
             <Field
               label={
                 <span className="inline-flex flex-wrap items-center gap-2">
-                  aiMode
+                  {t("settings.label.aiMode")}
                   <Badge tone={aiEffectiveTone}>
                     {t("operations.settings.effective")}: {t(aiEffectiveKey)}
                   </Badge>
@@ -363,12 +372,15 @@ export default async function SettingsPage({
               hint={t("operations.settings.hint.aiMode")}
             >
               <Select name="aiMode" defaultValue={s.aiMode}>
-                <option value="AUTO">AUTO</option>
-                <option value="MOCK">MOCK</option>
-                <option value="MANUAL">MANUAL</option>
+                <option value="AUTO">{t("settings.option.AUTO")}</option>
+                <option value="MOCK">{t("settings.option.MOCK")}</option>
+                <option value="MANUAL">{t("settings.option.MANUAL")}</option>
               </Select>
             </Field>
-            <Field label="aiModel" hint={t("operations.settings.hint.aiModel")}>
+            <Field
+              label={t("settings.label.aiModel")}
+              hint={t("operations.settings.hint.aiModel")}
+            >
               <Input
                 name="aiModel"
                 maxLength={80}
@@ -377,7 +389,7 @@ export default async function SettingsPage({
               />
             </Field>
             <Field
-              label="marketingKitDefaultPrice"
+              label={t("settings.label.marketingKitDefaultPrice")}
               hint={t("operations.settings.hint.marketingKitDefaultPrice")}
             >
               <Input
@@ -389,7 +401,7 @@ export default async function SettingsPage({
               />
             </Field>
             <Field
-              label="marketingKitCurrency"
+              label={t("settings.label.marketingKitCurrency")}
               hint={t("operations.settings.hint.marketingKitCurrency")}
             >
               <CurrencySelect
@@ -400,7 +412,7 @@ export default async function SettingsPage({
             </Field>
             <div className="sm:col-span-2">
               <Field
-                label="importerName"
+                label={t("settings.label.importerName")}
                 hint={t("operations.settings.hint.importerName")}
               >
                 <Input
@@ -413,16 +425,19 @@ export default async function SettingsPage({
             <div className="grid gap-3 sm:col-span-2">
               <Checkbox
                 name="marketingEnabled"
+                label={t("settings.label.marketingEnabled")}
                 checked={s.marketingEnabled}
                 hint={t("operations.settings.hint.marketingEnabled")}
               />
               <Checkbox
                 name="radarGateEnabled"
+                label={t("settings.label.radarGateEnabled")}
                 checked={s.radarGateEnabled}
                 hint={t("operations.settings.hint.radarGateEnabled")}
               />
               <Checkbox
                 name="lookupPaused"
+                label={t("settings.label.lookupPaused")}
                 checked={s.lookupPaused}
                 hint={t("operations.settings.hint.lookupPaused")}
               />
@@ -510,9 +525,11 @@ export default async function SettingsPage({
             </div>
           </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
-            paymentMode={DEFAULT_SETTINGS.paymentMode} · whatsappMode=
-            {DEFAULT_SETTINGS.whatsappMode} · emailMode=
-            {DEFAULT_SETTINGS.emailMode} (fixos até haver integração)
+            {t("settings.fixedModes", {
+              payment: DEFAULT_SETTINGS.paymentMode,
+              whatsapp: DEFAULT_SETTINGS.whatsappMode,
+              email: DEFAULT_SETTINGS.emailMode,
+            })}
           </p>
           <SubmitButton>{t("common.save")}</SubmitButton>
         </form>

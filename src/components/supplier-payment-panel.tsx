@@ -46,13 +46,13 @@ export async function SupplierPaymentPanel({
             {t("supplierPay.due")}
           </p>
           <p className="text-2xl font-bold tracking-tight tabular-nums text-zinc-900">
-            {view.due !== null ? formatMoney(view.due, view.currency) : "—"}
+            {view.due !== null ? formatMoney(view.due, view.currency, t) : "—"}
           </p>
           <p className="mt-0.5 text-xs text-zinc-500">
             {view.fobTotal !== null
               ? t("supplierPay.dueHint", {
-                  fob: formatMoney(view.fobTotal, view.currency),
-                  paid: formatMoney(view.alreadyRegistered, view.currency),
+                  fob: formatMoney(view.fobTotal, view.currency, t),
+                  paid: formatMoney(view.alreadyRegistered, view.currency, t),
                 })
               : t("supplierPay.noFob")}
           </p>
@@ -126,6 +126,7 @@ export async function SupplierPaymentPanel({
           <input type="hidden" name="orderId" value={order.id} />
           <Field label={t("orders.value")}>
             <MoneyInput
+              locale={t.intl}
               name="amount"
               watchField="currency"
               required

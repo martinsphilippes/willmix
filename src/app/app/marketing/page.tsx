@@ -251,7 +251,7 @@ export default async function MarketingPage({
                       {t("common.price")}
                     </dt>
                     <dd className="mt-0.5 font-medium text-zinc-900">
-                      {formatMoney(kit.price, kit.currency)}
+                      {formatMoney(kit.price, kit.currency, t)}
                     </dd>
                   </div>
                   <div>
@@ -259,7 +259,7 @@ export default async function MarketingPage({
                       {t("marketing.col.offered")}
                     </dt>
                     <dd className="mt-0.5 text-zinc-900">
-                      {formatDate(kit.offeredAt)}
+                      {formatDate(kit.offeredAt, t)}
                     </dd>
                   </div>
                   <div>
@@ -267,7 +267,7 @@ export default async function MarketingPage({
                       {t("marketing.col.created")}
                     </dt>
                     <dd className="mt-0.5 text-zinc-900">
-                      {formatDate(kit.createdAt)}
+                      {formatDate(kit.createdAt, t)}
                     </dd>
                   </div>
                   <div>
@@ -275,7 +275,7 @@ export default async function MarketingPage({
                       {t("marketing.col.released")}
                     </dt>
                     <dd className="mt-0.5 text-zinc-900">
-                      {formatDate(kit.releasedAt)}
+                      {formatDate(kit.releasedAt, t)}
                     </dd>
                   </div>
                 </dl>
@@ -317,19 +317,19 @@ export default async function MarketingPage({
                     <Td>{productName(kit.productId)}</Td>
                     {wellmix ? <Td>{customerName(kit.customerId)}</Td> : null}
                     <Td className="whitespace-nowrap font-medium">
-                      {formatMoney(kit.price, kit.currency)}
+                      {formatMoney(kit.price, kit.currency, t)}
                     </Td>
                     <Td>
                       <KitStatusBadge t={t} status={kit.status} />
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {formatDate(kit.createdAt)}
+                      {formatDate(kit.createdAt, t)}
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {formatDate(kit.offeredAt)}
+                      {formatDate(kit.offeredAt, t)}
                     </Td>
                     <Td className="whitespace-nowrap">
-                      {formatDate(kit.releasedAt)}
+                      {formatDate(kit.releasedAt, t)}
                     </Td>
                     <Td className="text-right">
                       <TextLink

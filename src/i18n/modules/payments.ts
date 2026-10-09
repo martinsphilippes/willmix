@@ -5,6 +5,7 @@
 export const pt = {
   "currency.name.BRL": "Real (BRL)",
   "currency.name.CNY": "Yuan (CNY)",
+  "currency.name.RMB": "Yuan (RMB)",
   "currency.name.USD": "Dólar (USD)",
   "currency.name.EUR": "Euro (EUR)",
   "currency.invalid": "Escolha uma das moedas: Real, Yuan, Dólar ou Euro.",
@@ -43,7 +44,8 @@ export const pt = {
   "payments.error.proof_required": "Escolha o arquivo do comprovante.",
   "payments.error.invalid_status":
     "Esta solicitação não está mais aguardando o sinal.",
-  "payments.error.forbidden": "Só o cliente da solicitação envia o comprovante.",
+  "payments.error.forbidden":
+    "Só o cliente da solicitação envia o comprovante.",
   "payments.error.not_found": "Solicitação não encontrada.",
   "payments.error.mime": "Formato não aceito. Envie uma foto ou um PDF.",
   "payments.error.too_large": "Arquivo grande demais (máximo 30 MB).",
@@ -61,16 +63,17 @@ export const pt = {
     "Chave Pix inválida. Use CPF ou CNPJ válidos, e-mail, celular com +55 ou chave aleatória.",
   "settings.error.pix_incomplete":
     "Para ligar o Pix, preencha também o nome e a cidade do recebedor.",
-  "settings.error.pix_too_long":
-    "Recebedor até 25 caracteres e cidade até 15.",
+  "settings.error.pix_too_long": "Recebedor até 25 caracteres e cidade até 15.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "currency.name.BRL": "Real (BRL)",
   "currency.name.CNY": "Yuan (CNY)",
+  "currency.name.RMB": "Yuan (RMB)",
   "currency.name.USD": "Dollar (USD)",
   "currency.name.EUR": "Euro (EUR)",
-  "currency.invalid": "Choose one of the currencies: Real, Yuan, Dollar or Euro.",
+  "currency.invalid":
+    "Choose one of the currencies: Real, Yuan, Dollar or Euro.",
   "payments.pix.title": "Pay with Pix",
   "payments.pix.howTo":
     "In your bank app, choose Pix copy and paste and paste the code, or scan the QR Code. Amount and reference are already filled in. Then attach the receipt below.",
@@ -130,6 +133,7 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "currency.name.BRL": "雷亚尔 (BRL)",
   "currency.name.CNY": "人民币 (CNY)",
+  "currency.name.RMB": "人民币 (RMB)",
   "currency.name.USD": "美元 (USD)",
   "currency.name.EUR": "欧元 (EUR)",
   "currency.invalid": "请选择币种：雷亚尔、人民币、美元或欧元。",
@@ -148,7 +152,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "Wellmix 将发送付款信息。付款后请在此上传凭证。",
   "payments.pix.unavailable.not_brl":
     "该金额不是雷亚尔，无法使用 Pix。Wellmix 会告知付款方式；付款后请在此上传凭证。",
-  "payments.pix.unavailable.no_amount": "定金金额尚未确定，Wellmix 准备好后会通知您。",
+  "payments.pix.unavailable.no_amount":
+    "定金金额尚未确定，Wellmix 准备好后会通知您。",
   "payments.pix.unavailable.not_configuredWellmix":
     "Pix 未启用：请在设置中填写密钥、收款人和城市，客户才能看到 Pix 代码和二维码。",
   "payments.pix.unavailable.not_brlWellmix":
@@ -172,7 +177,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "payments.settings.hint":
     "填写密钥后，客户会在报价中看到带有定金金额和申请参考号的 Pix 复制粘贴码和二维码。到账确认仍由 Wellmix 负责。密钥留空即关闭。",
   "payments.settings.key": "Pix 密钥",
-  "payments.settings.keyHint": "CPF、CNPJ、电子邮件、带 +55 的手机号或随机密钥。",
+  "payments.settings.keyHint":
+    "CPF、CNPJ、电子邮件、带 +55 的手机号或随机密钥。",
   "payments.settings.receiverName": "收款人名称",
   "payments.settings.receiverNameHint": "与银行显示一致（最多 25 个字符）。",
   "payments.settings.receiverCity": "收款人城市",

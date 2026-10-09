@@ -462,6 +462,8 @@ export interface Product extends BaseRow {
   material: string | null;
   color: string | null;
   pantone: string | null;
+  /** Cores Pantone escolhidas no seletor (código + hex); `pantone` guarda o texto. Nulo nos cadastros antigos. */
+  colorPantones?: PantoneColorRef[] | null;
   moq: number | null;
   price: number | null;
   currency: string | null;
@@ -1377,6 +1379,7 @@ export const TABLES: Record<TableName, TableDef> = {
       material: str(120),
       color: str(60),
       pantone: str(40),
+      colorPantones: json(),
       moq: int(),
       price: float(),
       currency: str(3),

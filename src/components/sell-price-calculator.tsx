@@ -62,15 +62,20 @@ type Labels = Record<
   | "sourceLine"
   | "sourceDefault",
   string
-> & { missing: Record<PricingMissing, string>; fxStale: string | null };
+> & {
+  missing: Record<PricingMissing, string>;
+  fxStale: string | null;
+  /** Tag Intl do idioma (números e moeda). */
+  intl: string;
+};
 
-const brl = (n: number | null | undefined) =>
+const brl = (n: number | null | undefined, intl: string) =>
   n === null || n === undefined
     ? "—"
-    : n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    : n.toLocaleString(intl, { style: "currency", currency: "BRL" });
 
-const pctText = (n: number | null | undefined) =>
-  (n ?? 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+const pctText = (n: number | null | undefined, intl: string) =>
+  (n ?? 0).toLocaleString(intl, { maximumFractionDigits: 2 });
 
 const fill = (template: string, values: Record<string, string>) =>
   template.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
@@ -155,51 +160,58 @@ export function SellPriceCalculator({
           <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 tabular-nums">
             <dt className="text-zinc-600">
               {fill(labels.fob, {
-                qty: input.quantity.toLocaleString("pt-BR"),
+                qty: input.quantity.toLocaleString(labels.intl),
                 price: `${input.currency ?? ""} ${input.unitPrice ?? "—"}`,
               })}
               {result.fxRate ? (
                 <span className="block text-xs text-zinc-500">
                   {fill(labels.fx, {
                     currency: input.currency ?? "",
-                    rate: result.fxRate.toFixed(4),
+                    rate: result.fxRate.toLocaleString(labels.intl, {
+                      minimumFractionDigits: 4,
+                      maximumFractionDigits: 4,
+                    }),
                   })}
                 </span>
               ) : null}
             </dt>
-            <dd className="text-right">{brl(result.fobBrl)}</dd>
+            <dd className="text-right">{brl(result.fobBrl, labels.intl)}</dd>
             <dt className="text-zinc-600">
               {result.freightSource === "carrier"
                 ? labels.freightCarrier
                 : result.freightSource === "cbm"
                   ? fill(labels.freightCbm, {
-                      cbm: (input.totalCbm ?? 0).toLocaleString("pt-BR", {
+                      cbm: (input.totalCbm ?? 0).toLocaleString(labels.intl, {
                         maximumFractionDigits: 3,
                       }),
                       rate: `${input.freight.perCbmCurrency ?? ""} ${input.freight.perCbm ?? ""}`,
                     })
                   : labels.freightNone}
             </dt>
-            <dd className="text-right">{brl(result.freightBrl)}</dd>
+            <dd className="text-right">
+              {brl(result.freightBrl, labels.intl)}
+            </dd>
             {result.insuranceBrl > 0 ? (
               <>
                 <dt className="text-zinc-600">
                   {fill(labels.insurance, {
-                    pct: pctText(input.insurancePercent),
+                    pct: pctText(input.insurancePercent, labels.intl),
                   })}
                 </dt>
-                <dd className="text-right">{brl(result.insuranceBrl)}</dd>
+                <dd className="text-right">
+                  {brl(result.insuranceBrl, labels.intl)}
+                </dd>
               </>
             ) : null}
             <dt className="border-t border-zinc-100 pt-1 text-zinc-700">
               {labels.customsValue}
             </dt>
             <dd className="border-t border-zinc-100 pt-1 text-right">
-              {brl(result.cifBrl)}
+              {brl(result.cifBrl, labels.intl)}
             </dd>
             <dt className="text-zinc-600">
               {fill(labels.importTax, {
-                pct: pctText(input.importTaxPercent),
+                pct: pctText(input.importTaxPercent, labels.intl),
               })}
               {current.iiSource ? (
                 <span className="block text-xs text-zinc-500">
@@ -207,45 +219,61 @@ export function SellPriceCalculator({
                 </span>
               ) : null}
             </dt>
-            <dd className="text-right">{brl(result.importTaxBrl)}</dd>
+            <dd className="text-right">
+              {brl(result.importTaxBrl, labels.intl)}
+            </dd>
             <dt className="text-zinc-600">
-              {fill(labels.ipi, { pct: pctText(input.ipiPercent) })}
+              {fill(labels.ipi, {
+                pct: pctText(input.ipiPercent, labels.intl),
+              })}
               {current.ipiSource ? (
                 <span className="block text-xs text-zinc-500">
                   {current.ipiSource}
                 </span>
               ) : null}
             </dt>
-            <dd className="text-right">{brl(result.ipiBrl)}</dd>
+            <dd className="text-right">{brl(result.ipiBrl, labels.intl)}</dd>
             {input.pisPercent != null ? (
               <>
                 <dt className="text-zinc-600">
-                  {fill(labels.pis, { pct: pctText(input.pisPercent) })}
+                  {fill(labels.pis, {
+                    pct: pctText(input.pisPercent, labels.intl),
+                  })}
                 </dt>
-                <dd className="text-right">{brl(result.pisBrl)}</dd>
+                <dd className="text-right">
+                  {brl(result.pisBrl, labels.intl)}
+                </dd>
               </>
             ) : null}
             {input.cofinsPercent != null ? (
               <>
                 <dt className="text-zinc-600">
-                  {fill(labels.cofins, { pct: pctText(input.cofinsPercent) })}
+                  {fill(labels.cofins, {
+                    pct: pctText(input.cofinsPercent, labels.intl),
+                  })}
                 </dt>
-                <dd className="text-right">{brl(result.cofinsBrl)}</dd>
+                <dd className="text-right">
+                  {brl(result.cofinsBrl, labels.intl)}
+                </dd>
               </>
             ) : null}
             {input.icmsPercent != null ? (
               <>
                 <dt className="text-zinc-600">
-                  {fill(labels.icms, { pct: pctText(input.icmsPercent) })}
+                  {fill(labels.icms, {
+                    pct: pctText(input.icmsPercent, labels.intl),
+                  })}
                 </dt>
-                <dd className="text-right">{brl(result.icmsBrl)}</dd>
+                <dd className="text-right">
+                  {brl(result.icmsBrl, labels.intl)}
+                </dd>
               </>
             ) : null}
             <dt className="border-t border-zinc-100 pt-1 font-medium text-zinc-800">
               {labels.landed}
             </dt>
             <dd className="border-t border-zinc-100 pt-1 text-right font-medium">
-              {brl(result.landedBrl)}
+              {brl(result.landedBrl, labels.intl)}
             </dd>
             <dt className="text-zinc-600">
               {fill(labels.margin, {
@@ -253,12 +281,12 @@ export function SellPriceCalculator({
                 source,
               })}
             </dt>
-            <dd className="text-right">{brl(result.marginBrl)}</dd>
+            <dd className="text-right">{brl(result.marginBrl, labels.intl)}</dd>
             <dt className="border-t border-zinc-100 pt-1 font-semibold text-zinc-900">
               {labels.sell}
             </dt>
             <dd className="border-t border-zinc-100 pt-1 text-right font-semibold text-brand-800">
-              {brl(result.sellBrl)}
+              {brl(result.sellBrl, labels.intl)}
             </dd>
           </dl>
           {current.ncmPending ? (
@@ -287,6 +315,7 @@ export function SellPriceCalculator({
           {labels.carrierFreight}
         </label>
         <MoneyInput
+          locale={labels.intl}
           id="sp-carrier"
           name="freightCarrierBrl"
           currency="BRL"
@@ -317,6 +346,7 @@ export function SellPriceCalculator({
           {labels.sellPrice}
         </label>
         <MoneyInput
+          locale={labels.intl}
           id="sp-sell"
           name="sellPrice"
           currency="BRL"
@@ -331,7 +361,7 @@ export function SellPriceCalculator({
             onClick={() => setManual(null)}
             className="mt-1 text-xs font-medium text-brand-700 underline underline-offset-2"
           >
-            {labels.useCalculated} ({brl(Number(calculated))})
+            {labels.useCalculated} ({brl(Number(calculated), labels.intl)})
           </button>
         ) : null}
       </div>

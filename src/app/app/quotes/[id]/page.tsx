@@ -14,6 +14,7 @@ import {
   formatDate,
   inputDenseClass,
   linkClass,
+  formatMoney,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import {
@@ -26,6 +27,10 @@ import {
 } from "../../actions/purchase-sheet";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
+import {
+  ncmChipsView,
+  ncmSuggestionsFor,
+} from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -117,8 +122,8 @@ export default async function QuotePage({
           <DescriptionList
             items={[
               [t("common.quantity"), `${request.quantity} ${request.unit}`],
-              [t("requests.deadline"), formatDate(request.deadline)],
-              [t("quotes.validUntil"), formatDate(quote.validUntil)],
+              [t("requests.deadline"), formatDate(request.deadline, t)],
+              [t("quotes.validUntil"), formatDate(quote.validUntil, t)],
               [t("requests.description"), request.description],
               [t("requests.specification"), request.specification],
             ]}
@@ -176,7 +181,7 @@ export default async function QuotePage({
                   [
                     t("common.price"),
                     quote.price !== null
-                      ? `${quote.currency} ${quote.price}`
+                      ? formatMoney(quote.price, quote.currency, t)
                       : "—",
                   ],
                   [t("common.leadTime"), quote.leadTimeDays],
@@ -229,6 +234,16 @@ export default async function QuotePage({
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
               records={sheetView.records}
+              ncmSuggestions={
+                sheetView.access.editCustoms
+                  ? ncmChipsView(
+                      t,
+                      await ncmSuggestionsFor(
+                        sheetView.sheet.productId ?? request.productId ?? null,
+                      ),
+                    )
+                  : []
+              }
             />
           </form>
         ) : null}
@@ -293,7 +308,7 @@ export default async function QuotePage({
                   rows={2}
                   maxLength={2000}
                   defaultValue={quote.conditions ?? ""}
-                  placeholder="FOB Shenzhen, 30% deposit, 70% before shipment"
+                  placeholder={t("ph.quote.conditions")}
                   className={cx(inputDenseClass, "min-h-12")}
                 />
               </FieldRow>

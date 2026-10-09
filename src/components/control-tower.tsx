@@ -1,3 +1,4 @@
+import type { Translate } from "@/i18n";
 import type { ReactNode } from "react";
 import type { User } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -26,12 +27,16 @@ import {
 } from "./ui";
 
 /** Valores por moeda ("USD 1.000,00 · CNY 500,00"); zero na moeda de venda quando não há nada. */
-function moneyByCurrency(map: Record<string, number>, fallback: string) {
+function moneyByCurrency(
+  map: Record<string, number>,
+  fallback: string,
+  t: Translate,
+) {
   return (
     Object.entries(map)
       .filter(([, v]) => v > 0.005)
-      .map(([c, v]) => formatMoney(v, c))
-      .join(" · ") || formatMoney(0, fallback)
+      .map(([c, v]) => formatMoney(v, c, t))
+      .join(" · ") || formatMoney(0, fallback, t)
   );
 }
 
@@ -39,10 +44,10 @@ const hasValue = (map: Record<string, number>) =>
   Object.values(map).some((v) => v > 0.005);
 
 /** Percentual com 1 casa (ex.: 42,5%). */
-const percent = (v: number | null) =>
+const percent = (v: number | null, intl: string) =>
   v === null
     ? "—"
-    : `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(v)}%`;
+    : `${new Intl.NumberFormat(intl, { maximumFractionDigits: 1 }).format(v)}%`;
 
 /** Valor monetário no card: um pouco menor que o padrão do Stat para o número não quebrar no meio. */
 function Money({ children }: { children: ReactNode }) {
@@ -86,14 +91,16 @@ async function TowerTotalsStrip({
           <Stat
             label={t("finance.sold")}
             value={
-              <Money>{formatMoney(totals.sold, totals.sellCurrency)}</Money>
+              <Money>{formatMoney(totals.sold, totals.sellCurrency, t)}</Money>
             }
             href="/app/finance"
           />
           <Stat
             label={t("finance.received")}
             value={
-              <Money>{formatMoney(totals.received, totals.sellCurrency)}</Money>
+              <Money>
+                {formatMoney(totals.received, totals.sellCurrency, t)}
+              </Money>
             }
             href="/app/finance"
           />
@@ -101,7 +108,7 @@ async function TowerTotalsStrip({
             label={t("finance.receivable")}
             value={
               <Money>
-                {formatMoney(totals.receivable, totals.sellCurrency)}
+                {formatMoney(totals.receivable, totals.sellCurrency, t)}
               </Money>
             }
             href="/app/finance"
@@ -111,7 +118,7 @@ async function TowerTotalsStrip({
             label={t("ct.finance.purchased")}
             value={
               <Money>
-                {moneyByCurrency(totals.purchasedByCurrency, "USD")}
+                {moneyByCurrency(totals.purchasedByCurrency, "USD", t)}
               </Money>
             }
             href="/app/finance"
@@ -119,14 +126,16 @@ async function TowerTotalsStrip({
           <Stat
             label={t("ct.finance.paid")}
             value={
-              <Money>{moneyByCurrency(totals.paidByCurrency, "USD")}</Money>
+              <Money>{moneyByCurrency(totals.paidByCurrency, "USD", t)}</Money>
             }
             href="/app/finance"
           />
           <Stat
             label={t("ct.finance.payable")}
             value={
-              <Money>{moneyByCurrency(totals.payableByCurrency, "USD")}</Money>
+              <Money>
+                {moneyByCurrency(totals.payableByCurrency, "USD", t)}
+              </Money>
             }
             href="/app/finance"
             tone={hasValue(totals.payableByCurrency) ? "warning" : undefined}
@@ -147,7 +156,7 @@ async function TowerTotalsStrip({
                 <>
                   {t("ct.operation.orders", { count: p.count })}
                   <span className="block text-xs font-medium text-zinc-500">
-                    {formatMoney(p.value, totals.sellCurrency)}
+                    {formatMoney(p.value, totals.sellCurrency, t)}
                   </span>
                 </>
               }
@@ -168,7 +177,7 @@ async function TowerTotalsStrip({
           />
           <Stat
             label={t("ct.operation.avgOccupancy")}
-            value={percent(totals.containers.avgOccupancyPercent)}
+            value={percent(totals.containers.avgOccupancyPercent, t.intl)}
             href="/app/containers"
           />
         </div>
@@ -220,18 +229,18 @@ function CommercialCard({
                           : "text-zinc-700",
                       )}
                     >
-                      {percent(c.occupancyPercent)}
+                      {percent(c.occupancyPercent, t.intl)}
                     </span>
                   </div>
                 </Td>
                 <Td className="text-right font-medium tabular-nums text-emerald-700">
-                  {percent(c.soldPercent)}
+                  {percent(c.soldPercent, t.intl)}
                 </Td>
                 <Td className="text-right tabular-nums">
-                  {percent(c.availablePercent)}
+                  {percent(c.availablePercent, t.intl)}
                 </Td>
                 <Td className="whitespace-nowrap text-right tabular-nums">
-                  {formatMoney(c.soldValue, c.soldCurrency)}
+                  {formatMoney(c.soldValue, c.soldCurrency, t)}
                 </Td>
               </tr>
             ))}
@@ -353,7 +362,7 @@ export async function ControlTower({
                           row.overdue && "font-semibold text-red-700",
                         )}
                       >
-                        {formatDate(row.dueAt)}
+                        {formatDate(row.dueAt, t)}
                       </span>
                     </Td>
                   </tr>

@@ -177,12 +177,12 @@ export default async function AfterSalesPage({
                       </span>
                     </div>
                     <p className="mt-1.5 text-xs text-zinc-500">
-                      {t("afterSales.openedAt")} {formatDate(a.createdAt)}
+                      {t("afterSales.openedAt")} {formatDate(a.createdAt, t)}
                       {a.answeredAt
-                        ? ` · ${t("orders.afterSales.answeredAt")} ${formatDate(a.answeredAt)}`
+                        ? ` · ${t("orders.afterSales.answeredAt")} ${formatDate(a.answeredAt, t)}`
                         : ""}
                       {a.closedAt
-                        ? ` · ${t("orders.afterSales.closedAt")} ${formatDate(a.closedAt)}`
+                        ? ` · ${t("orders.afterSales.closedAt")} ${formatDate(a.closedAt, t)}`
                         : ""}
                     </p>
                   </div>

@@ -126,6 +126,7 @@ export function productSheetDraft(
     widthCm: product.boxWidthCm ?? null,
     lengthCm: product.boxLengthCm ?? null,
     colorAssortment: product.color ?? null,
+    colorPantones: product.colorPantones ?? null,
     material: product.material ?? null,
     ncm: product.ncm ?? null,
     lots: normalizeLots(null),
@@ -175,9 +176,12 @@ function productPatchFromSheet(
   const cut = (v: string | null | undefined, max: number) =>
     v ? v.slice(0, max) : null;
   if (has("colorAssortment")) patch.color = cut(sheet.colorAssortment, 60);
-  // Texto livre "pantone" só é trocado quando há cores escolhidas (nunca apagado por falta delas).
-  if (has("colorPantones") && sheet.colorPantones?.length)
+  // Texto livre "pantone" só é trocado quando há cores escolhidas (nunca apagado por falta delas);
+  // as cores escolhidas vão para o produto (coluna nova: só quando há alguma).
+  if (has("colorPantones") && sheet.colorPantones?.length) {
     patch.pantone = cut(sheet.colorPantones.map((c) => c.code).join(" / "), 40);
+    patch.colorPantones = sheet.colorPantones;
+  }
   if (has("material")) patch.material = cut(sheet.material, 120);
   if (has("factoryItemCode"))
     patch.supplierSku = cut(sheet.factoryItemCode, 60);
@@ -204,6 +208,10 @@ function sheetPatchFromProduct(product: Product): Partial<PurchaseSheet> {
     material: product.material ?? null,
     factoryItemCode: product.supplierSku ?? null,
     ...(product.ncm ? { ncm: product.ncm } : {}),
+    // Produto antigo sem a coluna não apaga as cores da ficha mestre.
+    ...(product.colorPantones !== undefined
+      ? { colorPantones: product.colorPantones }
+      : {}),
   };
 }
 

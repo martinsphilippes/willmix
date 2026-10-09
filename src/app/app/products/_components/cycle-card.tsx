@@ -100,7 +100,7 @@ export function CycleCard({
                 >
                   {t("vision.cycle.visit")}
                   {sourcing.visitDate
-                    ? ` · ${formatDate(sourcing.visitDate)}`
+                    ? ` · ${formatDate(sourcing.visitDate, t)}`
                     : ""}
                 </TextLink>
               ) : null}
@@ -162,7 +162,7 @@ export function CycleCard({
                   className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2"
                 >
                   <span className="tabular-nums text-zinc-600">
-                    {formatDate(r.createdAt)}
+                    {formatDate(r.createdAt, t)}
                   </span>
                   <span className="font-medium text-zinc-900">
                     {r.customerName}
@@ -221,7 +221,7 @@ export function CycleCard({
                       {o.customerName}
                     </span>
                     <span className="ml-auto tabular-nums text-xs text-zinc-500">
-                      {formatDate(o.createdAt)}
+                      {formatDate(o.createdAt, t)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-600">

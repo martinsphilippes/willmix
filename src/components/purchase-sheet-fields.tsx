@@ -6,6 +6,8 @@ import {
 } from "@/lib/db/schema";
 import type { SheetPlan } from "@/lib/services/purchase-sheet-calc";
 import type { SheetRecords } from "@/lib/services/sheet-records";
+import type { NcmChipView } from "@/lib/services/ncm-suggestions";
+import { NcmSuggestions } from "./ncm-suggestions";
 import Link from "next/link";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Translate } from "@/i18n";
@@ -43,6 +45,7 @@ export function PurchaseSheetFields({
   requestUnit = "un",
   master = false,
   records = null,
+  ncmSuggestions = [],
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -61,6 +64,8 @@ export function PurchaseSheetFields({
   master?: boolean;
   /** Bloco Fornecedor vem dos cadastros: o que falta neles e os atalhos para completar. */
   records?: SheetRecords | null;
+  /** Sugestões de NCM (cadastro do produto, classificações, tabela) para quem edita a alfândega. */
+  ncmSuggestions?: NcmChipView[];
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -92,7 +97,7 @@ export function PurchaseSheetFields({
               <input
                 name="location"
                 maxLength={80}
-                placeholder="YIWU"
+                placeholder={t("ph.sheet.location")}
                 defaultValue={sheet.location ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -111,7 +116,7 @@ export function PurchaseSheetFields({
               <input
                 name="supplierStore"
                 maxLength={60}
-                placeholder="A 154678"
+                placeholder={t("ph.sheet.supplierStore")}
                 defaultValue={sheet.supplierStore ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -223,7 +228,7 @@ export function PurchaseSheetFields({
               <input
                 name="colorAssortment"
                 maxLength={200}
-                placeholder="WHITE / BLACK / RED"
+                placeholder={t("ph.sheet.colorAssortment")}
                 defaultValue={sheet.colorAssortment ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -262,7 +267,7 @@ export function PurchaseSheetFields({
               <input
                 name="material"
                 maxLength={200}
-                placeholder="PLASTIC / IRON"
+                placeholder={t("ph.sheet.material")}
                 defaultValue={sheet.material ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -287,7 +292,7 @@ export function PurchaseSheetFields({
               <input
                 name="powerDetail"
                 maxLength={60}
-                placeholder="12V"
+                placeholder={t("ph.sheet.powerDetail")}
                 defaultValue={sheet.powerDetail ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -338,7 +343,7 @@ export function PurchaseSheetFields({
               <input
                 name="packageType"
                 maxLength={120}
-                placeholder="COLOR BOX"
+                placeholder={t("ph.sheet.packageType")}
                 defaultValue={sheet.packageType ?? ""}
                 disabled={sup}
                 className={inputDenseClass}
@@ -407,15 +412,14 @@ export function PurchaseSheetFields({
                 <option value="">—</option>
                 {SHEET_CURRENCIES.map((v) => (
                   <option key={v} value={v}>
-                    {v === "RMB"
-                      ? "Yuan (RMB)"
-                      : t(`currency.name.${v}` as DictionaryKey)}
+                    {t(`currency.name.${v}` as DictionaryKey)}
                   </option>
                 ))}
               </select>
             </F>
             <F t={t} k="price" size="sm" req>
               <MoneyInput
+                locale={t.intl}
                 name="price"
                 watchField="currency"
                 defaultAmount={numValue(sheet.price) || null}
@@ -489,6 +493,7 @@ export function PurchaseSheetFields({
               requested={requestSchedule?.items ?? []}
               unit={requestUnit}
               labels={{
+                intl: t.intl,
                 lotColumn: t("sheet.lot.column"),
                 interval: t("sheet.lot.interval"),
                 cartons: t("sheet.lot.cartons"),
@@ -543,12 +548,25 @@ export function PurchaseSheetFields({
               name="ncm"
               inputMode="decimal"
               maxLength={12}
-              placeholder="0000.00.00"
+              placeholder={t("ph.ncm")}
               defaultValue={sheet.ncm ?? ""}
               disabled={!access.editCustoms}
               className={inputDenseClass}
             />
           </F>
+          {access.editCustoms && ncmSuggestions.length ? (
+            <div className="sm:pl-[11.75rem]">
+              <NcmSuggestions
+                items={ncmSuggestions}
+                labels={{
+                  title: t("ncm.sheet.title"),
+                  use: t("ncm.sheet.use"),
+                  hint: t("ncm.sheet.hint"),
+                  applied: t("ncm.sheet.applied", { ncm: "{ncm}" }),
+                }}
+              />
+            </div>
+          ) : null}
           <F t={t} k="importTaxPercent" size="xs">
             <Num
               name="importTaxPercent"

@@ -120,7 +120,7 @@ export default async function OrdersPage() {
                       overdue && "font-semibold text-red-700",
                     )}
                   >
-                    {formatDate(stage?.dueAt)}
+                    {formatDate(stage?.dueAt, t)}
                   </Td>
                 </tr>
               );

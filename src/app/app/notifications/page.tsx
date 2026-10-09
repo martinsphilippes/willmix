@@ -59,7 +59,7 @@ export default async function NotificationsPage() {
                     </p>
                     <p className="mt-0.5 text-sm text-zinc-600">{n.body}</p>
                     <p className="mt-1.5 text-xs text-zinc-500">
-                      {new Date(n.createdAt).toLocaleString("pt-BR")}
+                      {new Date(n.createdAt).toLocaleString(t.intl)}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

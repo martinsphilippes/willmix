@@ -71,7 +71,7 @@ export function VisitForm({
             maxLength={160}
             defaultValue={visit?.location ?? ""}
             className={bigField}
-            placeholder="Ex.: Feira de Cantão, pavilhão 3"
+            placeholder={t("ph.visit.location")}
           />
         </Field>
         <Field label={t("sourcing.visit.city")}>

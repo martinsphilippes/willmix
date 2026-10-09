@@ -32,7 +32,14 @@ export function PricingSettings({
         ? "danger"
         : "warning";
   const rateText = (c: "USD" | "RMB" | "EUR") =>
-    fx.rates[c] ? `R$ ${fx.rates[c]!.toFixed(4)}` : "—";
+    fx.rates[c]
+      ? new Intl.NumberFormat(t.intl, {
+          style: "currency",
+          currency: "BRL",
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        }).format(fx.rates[c]!)
+      : "—";
   return (
     <>
       <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
@@ -61,6 +68,7 @@ export function PricingSettings({
           hint={t("pricing.settings.freightHint")}
         >
           <MoneyInput
+            locale={t.intl}
             name="freightPerCbm"
             watchField="freightCurrency"
             defaultAmount={s.freightPerCbm ?? null}

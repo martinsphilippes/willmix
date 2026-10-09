@@ -189,11 +189,12 @@ export default async function SourcingPage({
                         {supplierName(item.supplierId, item.supplierName)}
                       </p>
                       <p className="text-sm text-zinc-800">
-                        {formatMoney(item.price, item.currency)}
+                        {formatMoney(item.price, item.currency, t)}
                         {item.moq ? (
                           <span className="text-zinc-500">
                             {" "}
-                            · {t("sourcing.moq")} {formatNumber(item.moq)}
+                            · {t("sourcing.moq")}{" "}
+                            {formatNumber(item.moq, t.intl)}
                           </span>
                         ) : null}
                       </p>
@@ -207,7 +208,7 @@ export default async function SourcingPage({
                           </Badge>
                         ) : null}
                         <span className="text-xs text-zinc-500">
-                          {formatDate(item.foundAt ?? item.createdAt)}
+                          {formatDate(item.foundAt ?? item.createdAt, t)}
                         </span>
                       </div>
                     </div>
@@ -269,14 +270,14 @@ export default async function SourcingPage({
                       <Td>
                         {supplierName(item.supplierId, item.supplierName)}
                       </Td>
-                      <Td>{formatMoney(item.price, item.currency)}</Td>
-                      <Td>{formatNumber(item.moq)}</Td>
+                      <Td>{formatMoney(item.price, item.currency, t)}</Td>
+                      <Td>{formatNumber(item.moq, t.intl)}</Td>
                       <Td>
                         <Badge tone={sourcingTone(item.status)}>
                           {t(`sourcing.status.${item.status}`)}
                         </Badge>
                       </Td>
-                      <Td>{formatDate(item.foundAt ?? item.createdAt)}</Td>
+                      <Td>{formatDate(item.foundAt ?? item.createdAt, t)}</Td>
                     </tr>
                   ))}
                 </tbody>
@@ -313,7 +314,7 @@ export default async function SourcingPage({
                       "—"}
                   </p>
                   <p className="mt-1 text-sm text-zinc-800">
-                    {formatDate(visit.visitedAt)}
+                    {formatDate(visit.visitedAt, t)}
                     {visit.participants ? (
                       <span className="text-zinc-500">
                         {" "}
@@ -324,7 +325,7 @@ export default async function SourcingPage({
                   {visit.nextVisitAt ? (
                     <p className="mt-1 text-xs text-brand-700">
                       {t("sourcing.visit.nextVisit")}:{" "}
-                      {formatDate(visit.nextVisitAt)}
+                      {formatDate(visit.nextVisitAt, t)}
                     </p>
                   ) : null}
                 </Link>
@@ -361,9 +362,9 @@ export default async function SourcingPage({
                         .filter(Boolean)
                         .join(" · ") || "—"}
                     </Td>
-                    <Td>{formatDate(visit.visitedAt)}</Td>
+                    <Td>{formatDate(visit.visitedAt, t)}</Td>
                     <Td>{visit.participants ?? "—"}</Td>
-                    <Td>{formatDate(visit.nextVisitAt)}</Td>
+                    <Td>{formatDate(visit.nextVisitAt, t)}</Td>
                     <Td>
                       <Badge tone={visitTone(visit.status)}>
                         {t(`sourcing.visitStatus.${visit.status}`)}
