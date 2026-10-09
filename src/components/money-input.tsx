@@ -37,7 +37,7 @@ export function MoneyInput({
   locale = "pt-BR",
   className,
   selectClassName,
-  size = "md",
+  size = "sm",
   id,
 }: {
   /** Tag Intl do idioma: separadores de milhar e decimal (pt-BR, en-US, zh-CN). */

@@ -25,7 +25,7 @@ export function cx(...classes: Array<string | false | null | undefined>) {
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60";
 const buttonStyles: Record<ButtonVariant, string> = {
   primary:
     "bg-brand-600 text-white shadow-sm shadow-brand-900/10 hover:bg-brand-700 active:bg-brand-800",
@@ -88,7 +88,7 @@ export function Card({
     <section
       className={cx(
         "min-w-0 rounded-2xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-900/[0.03]",
-        dense ? "p-3 sm:p-4" : "p-4 sm:p-5",
+        dense ? "p-3 sm:p-4" : "p-3.5 sm:p-4",
         className,
       )}
     >
@@ -96,7 +96,7 @@ export function Card({
         <header
           className={cx(
             "flex flex-wrap items-center justify-between gap-2",
-            dense ? "mb-3" : "mb-4",
+            "mb-3",
           )}
         >
           {title ? (
@@ -202,8 +202,11 @@ export function Field({
   ) {
     const id = children.props.id ?? `file-${generatedId}`;
     return (
-      <div className="block min-w-0 space-y-1.5">
-        <label htmlFor={id} className="block text-sm font-medium text-zinc-800">
+      <div className="block min-w-0 space-y-1">
+        <label
+          htmlFor={id}
+          className="block text-xs font-medium leading-5 text-zinc-700"
+        >
           {label}
         </label>
         {cloneElement(children, { id })}
@@ -214,8 +217,10 @@ export function Field({
     );
   }
   return (
-    <label className="block min-w-0 space-y-1.5">
-      <span className="block text-sm font-medium text-zinc-800">{label}</span>
+    <label className="block min-w-0 space-y-1">
+      <span className="block text-xs font-medium leading-5 text-zinc-700">
+        {label}
+      </span>
       {children}
       {hint ? (
         <span className="block text-xs text-zinc-500">{hint}</span>
@@ -224,8 +229,12 @@ export function Field({
   );
 }
 
+/**
+ * Campo padrão do portal: compacto (mesma altura e letra da ficha de compra),
+ * para as telas ocuparem menos espaço e pedirem menos rolagem.
+ */
 export const inputClass =
-  "block w-full min-w-0 max-w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
+  "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500 file:mr-2 file:rounded file:border-0 file:bg-brand-50 file:px-2 file:py-0.5 file:text-xs file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
 
 /** Campo compacto (formulários densos, ex.: ficha de compra): mais baixo e com letra menor. */
 export const inputDenseClass =
@@ -379,7 +388,7 @@ export function Textarea({
       {...props}
       className={cx(
         dense ? inputDenseClass : inputClass,
-        dense ? "min-h-16" : "min-h-24",
+        dense ? "min-h-14" : "min-h-16",
         className,
       )}
     />
@@ -430,7 +439,7 @@ export function Th({
   return (
     <th
       className={cx(
-        "border-b border-zinc-200 bg-zinc-50/80 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500",
+        "border-b border-zinc-200 bg-zinc-50/80 px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500",
         className,
       )}
     >
@@ -452,7 +461,7 @@ export function Td({
     <td
       colSpan={colSpan}
       className={cx(
-        "border-b border-zinc-100 px-3 py-2.5 align-top text-zinc-800",
+        "border-b border-zinc-100 px-2.5 py-2 align-top text-[13px] text-zinc-800",
         className,
       )}
     >
@@ -466,11 +475,11 @@ export const rowClass = "transition hover:bg-brand-50/40";
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-white/60 px-4 py-8 text-center text-sm text-zinc-500">
+    <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 bg-white/60 px-3 py-3 text-center text-[13px] text-zinc-500">
       <svg
         aria-hidden
         viewBox="0 0 24 24"
-        className="h-8 w-8 text-zinc-300"
+        className="h-5 w-5 shrink-0 text-zinc-300"
         fill="none"
         stroke="currentColor"
         strokeWidth={1.5}

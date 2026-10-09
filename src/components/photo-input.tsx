@@ -231,11 +231,11 @@ export function PhotoInput({
         aria-disabled={disabled || undefined}
         className={
           disabled
-            ? "flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 px-4 py-5 text-center text-sm text-zinc-400 opacity-70"
-            : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/60 px-4 py-5 text-center text-sm text-brand-800 transition hover:bg-brand-50 active:bg-brand-100"
+            ? "flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 px-3 py-2.5 text-center text-[13px] text-zinc-400 opacity-70"
+            : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-brand-300 bg-brand-50/60 px-3 py-2.5 text-center text-[13px] text-brand-800 transition hover:bg-brand-50 active:bg-brand-100"
         }
       >
-        <span aria-hidden className="text-2xl">
+        <span aria-hidden className="text-lg leading-none">
           📷
         </span>
         <span className="font-semibold">
