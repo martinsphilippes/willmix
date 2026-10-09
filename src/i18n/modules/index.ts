@@ -4,6 +4,7 @@
  * src/i18n/dictionaries.ts. O teste de paridade cobre estas chaves também.
  */
 import * as catalog from "./catalog";
+import * as productSuppliers from "./product-suppliers";
 import * as importing from "./import";
 import * as logistics from "./logistics";
 import * as orders from "./orders";
@@ -87,6 +88,7 @@ export const modulesPt = {
   ...ncmSheet.pt,
   ...i18nSweep.pt,
   ...requestSchedule.pt,
+  ...productSuppliers.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -130,6 +132,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...ncmSheet.en,
   ...i18nSweep.en,
   ...requestSchedule.en,
+  ...productSuppliers.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -173,4 +176,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...ncmSheet.zh,
   ...i18nSweep.zh,
   ...requestSchedule.zh,
+  ...productSuppliers.zh,
 };

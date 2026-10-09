@@ -32,6 +32,10 @@ import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
 import { runOperationGate } from "./operations";
+import {
+  linkSupplierFromQuote,
+  markSupplierSelected,
+} from "./product-suppliers";
 
 export class RequestError extends Error {}
 
@@ -408,6 +412,8 @@ export async function answerQuote(
     status: "answered",
     answeredAt: new Date().toISOString(),
   });
+  // Quem responde a cotação de um produto do catálogo entra na lista de fornecedores dele.
+  await linkSupplierFromQuote(user, quoteId, quote.status === "invited");
   const request = await store.get("requests", quote.requestId);
   if (request && request.status === "RFQ_OPEN") {
     await store.update("requests", request.id, {
@@ -490,6 +496,8 @@ export async function selectQuote(
   }
   // Frete das cotações não escolhidas deixa de valer.
   await cancelFreightForRequest(request.id, quote.id);
+  // Histórico do fornecedor no produto: mais uma cotação escolhida.
+  await markSupplierSelected(user, quote.id);
   // NCM, II e IPI usados na proposta vão para a ficha escolhida (e dela para o pedido).
   await stampTaxesOnSheet(quote.id, input.pricing ?? null);
   await store.update("requests", request.id, {

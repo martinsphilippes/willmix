@@ -22,6 +22,7 @@ import { MoneyInput } from "./money-input";
 import { PantonePicker } from "./pantone-picker";
 import { SheetSchedule } from "./sheet-schedule";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
+import { SupplierPicker, type SupplierOption } from "./supplier-picker";
 
 /*
  * Campos da ficha de compra (planilha COMPRAS), usados dentro de um <form>:
@@ -46,6 +47,8 @@ export function PurchaseSheetFields({
   master = false,
   records = null,
   ncmSuggestions = [],
+  supplierOptions = null,
+  supplierId = null,
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -66,6 +69,10 @@ export function PurchaseSheetFields({
   records?: SheetRecords | null;
   /** Sugestões de NCM (cadastro do produto, classificações, tabela) para quem edita a alfândega. */
   ncmSuggestions?: NcmChipView[];
+  /** Ficha mestre: o nome do fornecedor é escolhido entre os cadastrados. */
+  supplierOptions?: SupplierOption[] | null;
+  /** Fornecedor principal do produto (seleção inicial do seletor). */
+  supplierId?: string | null;
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -103,15 +110,38 @@ export function PurchaseSheetFields({
                 className={inputDenseClass}
               />
             </F>
-            <F t={t} k="supplierName" size="lg" req>
-              <input
-                name="supplierName"
-                maxLength={160}
-                defaultValue={sheet.supplierName ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              />
-            </F>
+            {master && supplierOptions && !sup ? (
+              <F
+                t={t}
+                k="supplierName"
+                size="lg"
+                req
+                hint={t("supplierPick.hint")}
+              >
+                <SupplierPicker
+                  options={supplierOptions}
+                  initialId={supplierId}
+                  initialName={sheet.supplierName ?? null}
+                  labels={{
+                    placeholder: t("supplierPick.placeholder"),
+                    linked: t("supplierPick.linked"),
+                    others: t("supplierPick.others"),
+                    legacy: t("supplierPick.legacy"),
+                  }}
+                  className={inputDenseClass}
+                />
+              </F>
+            ) : (
+              <F t={t} k="supplierName" size="lg" req>
+                <input
+                  name="supplierName"
+                  maxLength={160}
+                  defaultValue={sheet.supplierName ?? ""}
+                  disabled={sup}
+                  className={inputDenseClass}
+                />
+              </F>
+            )}
             <F t={t} k="supplierStore" size="sm">
               <input
                 name="supplierStore"

@@ -214,6 +214,19 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 4. Wellmix compara e seleciona A com preço ao cliente
   await login(page, "operador@wellmix.com");
+  // Quem respondeu a cotação entra sozinho nos fornecedores do produto; a
+  // ficha mestre escolhe o fornecedor entre os cadastrados.
+  await page.goto("/app/products/prod-jarra");
+  const productSuppliers = page.locator("[data-product-suppliers]");
+  await expect(
+    productSuppliers.locator('[data-product-supplier="fornecedor-a"]'),
+  ).toBeVisible();
+  await expect(
+    productSuppliers.locator('[data-product-supplier="fornecedor-b"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-supplier-picker] select[name=supplierId] optgroup"),
+  ).toHaveCount(2);
   await page.goto(requestUrl);
   await expect(page.getByText("Shenzhen Supplier A").first()).toBeVisible();
   await expect(page.getByText("Guangzhou Supplier B").first()).toBeVisible();

@@ -259,6 +259,10 @@ export const FREIGHT_QUOTE_STATUSES = [
 ] as const;
 export type FreightQuoteStatus = (typeof FREIGHT_QUOTE_STATUSES)[number];
 
+/** Como o fornecedor entrou na lista do produto: cadastro (principal), cotação respondida ou à mão. */
+export const PRODUCT_SUPPLIER_SOURCES = ["catalog", "quote", "manual"] as const;
+export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -1166,6 +1170,32 @@ export interface PurchaseSheet extends BaseRow {
  * cotação (com a ficha) e guarda a carga que a companhia viu (CBM, caixas,
  * peso) e o valor que ela informou. Uma por cotação de fornecedor e companhia.
  */
+/**
+ * Fornecedor de um produto do catálogo (um produto pode ter vários). O
+ * principal continua em `products.supplierId`; aqui fica cada um com o seu
+ * código do item na fábrica e o histórico de cotações. Só a Wellmix vê:
+ * nada daqui vai para outro fornecedor nem para o cliente.
+ */
+export interface ProductSupplier extends BaseRow {
+  productId: string;
+  supplierId: string;
+  /** Código do item na fábrica deste fornecedor. */
+  supplierSku: string | null;
+  /** Última cotação respondida (preço, moeda, MOQ, prazo). */
+  price: number | null;
+  currency: string | null;
+  moq: number | null;
+  leadTimeDays: number | null;
+  source: ProductSupplierSource;
+  lastQuoteId: string | null;
+  lastQuotedAt: string | null;
+  /** Cotações respondidas e escolhidas para este produto. */
+  quoteCount: number | null;
+  selectedCount: number | null;
+  lastSelectedAt: string | null;
+  createdByUserId: string | null;
+}
+
 export interface FreightQuote extends BaseRow {
   requestId: string;
   /** Cotação do fornecedor a que este frete se refere. */
@@ -1247,6 +1277,7 @@ export interface Tables {
   product_lookups: ProductLookup;
   purchase_sheets: PurchaseSheet;
   freight_quotes: FreightQuote;
+  product_suppliers: ProductSupplier;
 }
 export type TableName = keyof Tables;
 
@@ -2155,6 +2186,33 @@ export const TABLES: Record<TableName, TableDef> = {
         type: "key",
         columns: ["carrierId", "status"],
       },
+    ],
+  },
+  product_suppliers: {
+    label: "Fornecedores do produto",
+    columns: {
+      productId: id(),
+      supplierId: id(),
+      supplierSku: str(60),
+      price: float(),
+      currency: str(3),
+      moq: int(),
+      leadTimeDays: int(),
+      source: enumOf(PRODUCT_SUPPLIER_SOURCES),
+      lastQuoteId: id(false),
+      lastQuotedAt: datetime(),
+      quoteCount: int(),
+      selectedCount: int(),
+      lastSelectedAt: datetime(),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      {
+        key: "product_supplier_unique",
+        type: "unique",
+        columns: ["productId", "supplierId"],
+      },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
     ],
   },
 };

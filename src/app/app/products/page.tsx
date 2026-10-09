@@ -5,6 +5,7 @@ import { getStore } from "@/lib/db";
 import { SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
+import { listLinksForProducts } from "@/lib/services/product-suppliers";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -64,6 +65,14 @@ export default async function ProductsPage({
   };
   const supplierName = (id: string | null) =>
     id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
+  // Outros fornecedores de cada produto (além do principal), numa consulta.
+  const links = await listLinksForProducts(products.map((p) => p.id));
+  const otherSuppliers = (p: { id: string; supplierId: string | null }) =>
+    new Set(
+      links
+        .filter((l) => l.productId === p.id && l.supplierId !== p.supplierId)
+        .map((l) => l.supplierId),
+    ).size;
 
   return (
     <>
@@ -120,6 +129,16 @@ export default async function ProductsPage({
                     <Td>{lines.find((l) => l.id === p.lineId)?.name ?? "—"}</Td>
                     <Td className="whitespace-nowrap">
                       {supplierName(p.supplierId)}
+                      {otherSuppliers(p) ? (
+                        <span
+                          className="ml-1.5 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
+                          title={t("productSuppliers.moreTitle", {
+                            n: otherSuppliers(p),
+                          })}
+                        >
+                          {t("productSuppliers.more", { n: otherSuppliers(p) })}
+                        </span>
+                      ) : null}
                     </Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">
                       {p.price !== null

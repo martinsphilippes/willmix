@@ -15,11 +15,14 @@ import { audit } from "./audit";
 import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
 import {
   fillRecordsFromSheet,
+  productForSupplier,
+  productOfSupplier,
   recordFields,
   sheetRecords,
   withRecordDefaults,
   type SheetRecords,
 } from "./sheet-records";
+import { productSupplierLink } from "./product-suppliers";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { uploadDocument } from "./documents";
 import {
@@ -228,13 +231,16 @@ async function prefill(
 > {
   const store = getStore();
   const request = await store.get("requests", order.requestId);
-  const [product, supplier, quote] = await Promise.all([
+  const [product, supplier, quote, link] = await Promise.all([
     request?.productId ? store.get("products", request.productId) : null,
     store.get("parties", order.supplierId),
     request?.selectedQuoteId
       ? store.get("quotes", request.selectedQuoteId)
       : null,
+    productSupplierLink(request?.productId, order.supplierId),
   ]);
+  // Preço e MOQ do próprio fornecedor do pedido (nunca os do principal, se é outro).
+  const own = productOfSupplier(supplier, product);
   const currencyOf = (c: string | null | undefined) => {
     const v = (c ?? "").toUpperCase();
     if (v === "CNY" || v === "RMB") return "RMB" as const;
@@ -251,7 +257,10 @@ async function prefill(
       ? null
       : await masterSheetInput(product?.id ?? null);
   // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
-  const records = recordFields(supplier, product);
+  const records = recordFields(
+    supplier,
+    productForSupplier(product, order.supplierId, link),
+  );
   if (master) {
     return {
       prefillSource: "master",
@@ -285,9 +294,12 @@ async function prefill(
     prefillSource: "catalog",
     productId: product?.id ?? null,
     ...records,
-    currency: currencyOf(quote?.currency ?? product?.currency),
-    price: quote?.price ?? product?.price ?? null,
-    moq: product?.moq ?? null,
+    currency: currencyOf(
+      quote?.currency ?? link?.currency ?? (own ? product?.currency : null),
+    ),
+    price:
+      quote?.price ?? link?.price ?? (own ? (product?.price ?? null) : null),
+    moq: link?.moq ?? (own ? (product?.moq ?? null) : null),
     masterCartonQty: product?.masterBoxQty ?? null,
     innerQty: product?.innerBoxQty ?? null,
     netWeightPcKg: product?.netWeightKg ?? null,

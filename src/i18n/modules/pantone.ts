@@ -25,7 +25,7 @@ export const pt = {
     "Escolha pela tabela Pantone, com o RGB de cada cor. O texto Pantone e, se estiver vazia, a Cor recebem os códigos; a ficha mestre acompanha.",
   "sheet.error.pantone_too_many": "No máximo 20 cores Pantone por ficha.",
   "sheet.error.schema_outdated":
-    "O banco ainda não tem a coluna nova desta ficha. Publique o esquema Appwrite (GitHub → Publicar esquema Appwrite) e salve de novo.",
+    "O banco ainda não tem a coluna ou tabela nova. Publique o esquema Appwrite (GitHub → Publicar esquema Appwrite) e salve de novo.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -50,7 +50,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Pick from the Pantone table, with each color's RGB. The Pantone text and, when empty, the Color get the codes; the master sheet follows.",
   "sheet.error.pantone_too_many": "At most 20 Pantone colors per sheet.",
   "sheet.error.schema_outdated":
-    "The database does not have this sheet's new column yet. Publish the Appwrite schema (GitHub → Publicar esquema Appwrite) and save again.",
+    "The database does not have the new column or table yet. Publish the Appwrite schema (GitHub → Publicar esquema Appwrite) and save again.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -75,5 +75,5 @@ export const zh: Record<keyof typeof pt, string> = {
     "从 Pantone 色表中选择，并显示每种颜色的 RGB。Pantone 文本以及（为空时）颜色字段将填入色号；主采购单同步。",
   "sheet.error.pantone_too_many": "每张采购单最多 20 种 Pantone 颜色。",
   "sheet.error.schema_outdated":
-    "数据库尚无此采购单的新字段。请先发布 Appwrite 架构（GitHub → Publicar esquema Appwrite）后重新保存。",
+    "数据库尚无新的字段或数据表。请先发布 Appwrite 架构（GitHub → Publicar esquema Appwrite）后重新保存。",
 };

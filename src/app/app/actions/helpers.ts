@@ -38,14 +38,21 @@ const ERROR_CODE = /^[a-z][a-z0-9_]{1,59}$/;
  * Só códigos (snake_case) vão para a tela; falha técnica vira "unexpected" e o
  * detalhe fica no log do servidor.
  */
-function errorCode(back: string, error: unknown) {
+export function errorCode(back: string, error: unknown) {
   const code =
     error instanceof ZodError
       ? "invalid_input"
       : error instanceof Error && ERROR_CODE.test(error.message)
         ? error.message
-        : error instanceof Error && /unknown attribute/i.test(error.message)
-          ? // Coluna nova ainda não publicada no Appwrite (esquema desatualizado).
+        : error instanceof Error &&
+            (/unknown attribute/i.test(error.message) ||
+              /^(table|collection) with the requested id\b.*could not be found/i.test(
+                error.message,
+              ) ||
+              ["table_not_found", "collection_not_found"].includes(
+                String((error as { type?: unknown }).type ?? ""),
+              ))
+          ? // Coluna ou tabela nova ainda não publicada no Appwrite (esquema desatualizado).
             "schema_outdated"
           : "unexpected";
   if (code === "unexpected") console.error("[action]", back, error);
