@@ -14,6 +14,8 @@ import {
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { SheetPhotosCard } from "@/components/sheet-photos";
+import { MissingFields } from "@/components/missing-fields";
+import { missingFieldsView } from "@/components/missing-fields-view";
 import {
   addPurchaseSheetPhotosAction,
   adoptSheetIntoProductAction,
@@ -49,9 +51,9 @@ export default async function PurchaseSheetPage({
     limit: 1,
   });
   const { sheet, access, plan, missing } = view;
-  const missingText = missing
-    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
-    .join(", ");
+  // Quem pode editar vê o que falta em vermelho e o aviso leva até cada campo.
+  const canFill = access.editSupplier || access.editCustoms;
+  const shownMissing = canFill ? missing : [];
   const errorKey = `sheet.error.${typeof error === "string" ? error : ""}`;
   const errorText =
     typeof error === "string"
@@ -86,14 +88,16 @@ export default async function PurchaseSheetPage({
       <div className="mb-4 space-y-3">
         {saved === "complete" ? (
           <Alert tone="success">{t("sheet.saved.complete")}</Alert>
-        ) : saved === "partial" ? (
-          <Alert tone="warning">
-            {t("sheet.saved.partial", { fields: missingText })}
-          </Alert>
         ) : missing.length ? (
-          <Alert tone="info">
-            {t("sheet.missing", { fields: missingText })}
-          </Alert>
+          <MissingFields
+            {...missingFieldsView(
+              t,
+              saved === "partial" ? "sheet.saved.partial" : "sheet.missing",
+              missing,
+            )}
+            tone={saved === "partial" ? "warning" : "info"}
+            autoFocus={saved === "partial" && canFill}
+          />
         ) : null}
         {photoRemoved === "1" ? (
           <Alert tone="success">{t("sheet.photos.removed")}</Alert>
@@ -148,6 +152,7 @@ export default async function PurchaseSheetPage({
             requestSchedule={request?.schedule ?? null}
             requestUnit={request?.unit ?? "un"}
             records={view.records}
+            missing={shownMissing}
             ncmSuggestions={
               access.editCustoms
                 ? ncmChipsView(
@@ -171,6 +176,7 @@ export default async function PurchaseSheetPage({
           removeAction={removePurchaseSheetPhotoAction}
           coveredKinds={view.catalogPhotoKinds}
           className="lg:order-4"
+          missing={shownMissing}
         />
 
         {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}

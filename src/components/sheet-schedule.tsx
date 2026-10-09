@@ -87,7 +87,10 @@ export function SheetSchedule({
   labels,
   requested = [],
   unit = "un",
+  lot1Missing = false,
 }: {
+  /** Programação 1 obrigatória e vazia: a linha fica em vermelho (o aviso leva até ela). */
+  lot1Missing?: boolean;
   initialLots: PurchaseLot[];
   initial: FormValues;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
@@ -251,7 +254,19 @@ export function SheetSchedule({
           </thead>
           <tbody>
             {plan.lots.slice(0, shown).map((lot, i) => (
-              <tr key={lot.index} className="border-t border-zinc-100">
+              <tr
+                key={lot.index}
+                className={cx(
+                  "scroll-mt-24 border-t border-zinc-100",
+                  lot.index === 1 &&
+                    lot1Missing &&
+                    "bg-red-50 outline-2 -outline-offset-2 outline-red-400",
+                )}
+                data-field-anchor={lot.index === 1 ? "lot1" : undefined}
+                data-missing={
+                  lot.index === 1 && lot1Missing ? "true" : undefined
+                }
+              >
                 <td className="relative py-1.5 pr-3 font-semibold text-zinc-800">
                   {lot.index}
                   {lot.index === 1 && lotRequired ? (

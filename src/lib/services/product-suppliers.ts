@@ -5,6 +5,7 @@ import type {
   Product,
   ProductSupplier,
   ProductSupplierSource,
+  PurchaseSheet,
   User,
 } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -408,9 +409,11 @@ export async function removeProductSupplier(
 }
 
 /** Moeda do cadastro ("CNY") na ficha ("RMB"). */
-function sheetCurrencyOf(c: string | null | undefined) {
+function sheetCurrencyOf(
+  c: string | null | undefined,
+): PurchaseSheet["currency"] {
   const v = (c ?? "").toUpperCase();
-  if (v === "CNY" || v === "RMB") return "RMB" as const;
+  if (v === "CNY" || v === "RMB") return "RMB";
   return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
 }
 
@@ -468,27 +471,48 @@ export async function setMainSupplier(
     // Sem a tabela e sem dados do antigo a guardar, o principal muda mesmo assim.
     console.warn("[product-suppliers] link new main failed", error);
   }
-  const own = {
-    supplierSku: link?.supplierSku ?? null,
-    price: link?.price ?? null,
-    currency: link?.currency ?? null,
-    moq: link?.moq ?? null,
-  };
+  // Sem principal antes, código, preço, moeda e MOQ do produto não são de
+  // nenhum outro fornecedor: ficam (o vínculo do escolhido só completa o que falta).
+  const keep = !previous;
+  const own = keep
+    ? {
+        supplierSku: clean(product.supplierSku) ?? link?.supplierSku ?? null,
+        price: product.price ?? link?.price ?? null,
+        currency: product.currency ?? link?.currency ?? null,
+        moq: product.moq ?? link?.moq ?? null,
+      }
+    : {
+        supplierSku: link?.supplierSku ?? null,
+        price: link?.price ?? null,
+        currency: link?.currency ?? null,
+        moq: link?.moq ?? null,
+      };
   await store.update("products", productId, { supplierId: party.id, ...own });
   const [master] = await store.list("purchase_sheets", {
     filter: { orderId: productId },
     limit: 1,
   });
+  // Sem principal antes, preço, moeda e MOQ da ficha mestre também ficam.
+  const masterOwn: Partial<PurchaseSheet> = keep
+    ? {
+        price: master?.price ?? own.price,
+        currency: master?.currency ?? sheetCurrencyOf(own.currency),
+        moq: master?.moq ?? own.moq,
+      }
+    : {
+        price: own.price,
+        currency: sheetCurrencyOf(own.currency),
+        moq: own.moq,
+      };
   if (master)
     await store.update("purchase_sheets", master.id, {
       supplierName: party.name.slice(0, 160),
       location: party.city?.slice(0, 80) ?? null,
       supplierStore: party.storeNumber?.slice(0, 60) ?? null,
       supplierPhone: party.phone?.slice(0, 40) ?? null,
-      factoryItemCode: own.supplierSku,
-      price: own.price,
-      currency: sheetCurrencyOf(own.currency),
-      moq: own.moq,
+      factoryItemCode:
+        own.supplierSku ?? (keep ? master.factoryItemCode : null),
+      ...masterOwn,
     });
   await audit(
     user,

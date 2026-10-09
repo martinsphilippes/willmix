@@ -305,6 +305,21 @@ export async function saveProductSheetAction(form: FormData) {
           moq: link?.moq ?? null,
         };
         const bag = input as Record<string, unknown>;
+        // Sem principal antes, preço, moeda e MOQ do formulário não são de
+        // outro fornecedor: ficam como o usuário deixou.
+        if (!product?.supplierId) {
+          delete own.price;
+          delete own.currency;
+          delete own.moq;
+          // Bloco digitado sem fornecedor: só o que o cadastro tem substitui.
+          for (const key of [
+            "location",
+            "supplierStore",
+            "supplierPhone",
+            "factoryItemCode",
+          ])
+            if (own[key] === null) delete own[key];
+        }
         for (const [key, value] of Object.entries(own)) {
           const before = (shown as Record<string, unknown> | null)?.[key];
           if (sameValue(bag[key], before) || bag[key] === undefined)

@@ -246,6 +246,66 @@ describe("troca do fornecedor principal", () => {
     expect(product.price).toBeNull();
   });
 
+  it("produto sem principal: escolher o fornecedor mantém preço, moeda, MOQ e código", async () => {
+    const store = getStore();
+    await store.update("products", "prod-jarra", {
+      supplierId: null,
+      supplierSku: "JAR-01",
+      price: 5,
+      currency: "USD",
+      moq: 100,
+    });
+    await pss.saveProductSheet(admin, "prod-jarra", {
+      price: 5,
+      currency: "USD",
+      moq: 100,
+      factoryItemCode: "JAR-01",
+    });
+    // Pelo botão (serviço): nada some.
+    await ps.setMainSupplier(admin, "prod-jarra", "fornecedor-c");
+    let product = (await store.get("products", "prod-jarra"))!;
+    expect([product.price, product.currency, product.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    expect(product.supplierSku).toBe("JAR-01");
+    let master = (await pss.getProductSheet("prod-jarra"))!;
+    expect([master.price, master.currency, master.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    // Pela ficha mestre (seletor), produto de novo sem principal.
+    await store.update("products", "prod-jarra", { supplierId: null });
+    const f = new FormData();
+    f.set("productId", "prod-jarra");
+    f.set("supplierId", "fornecedor-a");
+    f.set("supplierName", "");
+    f.set("price", "5");
+    f.set("currency", "USD");
+    f.set("moq", "100");
+    f.set("factoryItemCode", "JAR-01");
+    await sheetActions.saveProductSheetAction(f);
+    product = (await store.get("products", "prod-jarra"))!;
+    master = (await pss.getProductSheet("prod-jarra"))!;
+    expect(product.supplierId).toBe("fornecedor-a");
+    expect([product.price, product.currency, product.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    expect([master.price, master.currency, master.moq]).toEqual([
+      5,
+      "USD",
+      100,
+    ]);
+    expect(master.supplierName).toBe("Shenzhen Supplier A");
+    // Código digitado sem fornecedor fica (o vínculo de A não tem outro).
+    expect(master.factoryItemCode).toBe("JAR-01");
+    expect(product.supplierSku).toBe("JAR-01");
+  });
+
   it("tabela ausente no Appwrite vira schema_outdated", () => {
     expect(
       errorCode(

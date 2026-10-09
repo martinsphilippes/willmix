@@ -91,6 +91,8 @@ import {
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
 import { SuppliersCard } from "../_components/suppliers-card";
+import { MissingFields } from "@/components/missing-fields";
+import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
 import type { SupplierOption } from "@/components/supplier-picker";
 import { MoneyInput } from "@/components/money-input";
@@ -242,9 +244,6 @@ export default async function ProductSheetPage({
     masterSheet ?? masterDraft,
   );
   const masterPhotoKinds = await catalogPhotoKinds(product.id);
-  const masterMissingText = masterMissing
-    .map((k) => t(`sheet.field.${k}` as DictionaryKey))
-    .join(", ");
   const masterContainer =
     settings.containerTypes.find(
       (c) => c.code === (masterSheet?.containerType ?? "40HC"),
@@ -719,14 +718,20 @@ export default async function ProductSheetPage({
         </p>
         {sheetSaved === "complete" ? (
           <Alert tone="success">{t("productSheet.saved")}</Alert>
-        ) : sheetSaved === "partial" ? (
-          <Alert tone="warning">
-            {t("productSheet.savedPartial", { fields: masterMissingText })}
-          </Alert>
         ) : masterMissing.length ? (
-          <p className="text-xs text-zinc-500">
-            {t("productSheet.missing", { fields: masterMissingText })}
-          </p>
+          // Cada campo que falta é clicável e leva até ele; logo depois de
+          // salvar, a tela já vai para o primeiro.
+          <MissingFields
+            {...missingFieldsView(
+              t,
+              sheetSaved === "partial"
+                ? "productSheet.savedPartial"
+                : "productSheet.missing",
+              masterMissing,
+            )}
+            tone={sheetSaved === "partial" ? "warning" : "neutral"}
+            autoFocus={sheetSaved === "partial"}
+          />
         ) : null}
         <p className="text-xs text-zinc-500" data-master-photos>
           {t("productSheet.photos", { n: masterPhotoKinds.length })}
@@ -747,6 +752,7 @@ export default async function ProductSheetPage({
             editCustoms
             lotRequired={false}
             master
+            missing={masterMissing}
             supplierOptions={supplierOptions}
             supplierId={product.supplierId}
             ncmSuggestions={ncmChipsView(

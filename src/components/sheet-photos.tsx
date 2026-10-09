@@ -22,7 +22,10 @@ export function SheetPhotosCard({
   hint,
   coveredKinds = [],
   className = "mt-4",
+  missing = [],
 }: {
+  /** Fotos obrigatórias que faltam (scalePhoto…): ficam em vermelho e o aviso leva até elas. */
+  missing?: readonly string[];
   t: Translate;
   photos: ProductPhoto[];
   canEdit: boolean;
@@ -64,14 +67,22 @@ export function SheetPhotosCard({
           const covered = coveredKinds.includes(kind);
           const done = photos.length > 0 || covered;
           const name = t(`catalog.photoKind.${kind}` as DictionaryKey);
+          const field = required
+            ? REQUIRED_SHEET_PHOTOS[kind as keyof typeof REQUIRED_SHEET_PHOTOS]
+            : null;
+          const lacking = !done && !!field && missing.includes(field);
           return (
             <li
               key={kind}
+              data-field-anchor={field ?? undefined}
+              data-missing={lacking ? "true" : undefined}
               className={cx(
-                "flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-2.5 py-1.5 transition",
+                "flex scroll-mt-24 flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-2.5 py-1.5 transition",
                 done
                   ? "border-emerald-300 bg-emerald-50"
-                  : "border-zinc-200 bg-white",
+                  : lacking
+                    ? "border-red-400 bg-red-50"
+                    : "border-zinc-200 bg-white",
               )}
             >
               <div className="flex min-w-0 items-center gap-2">
