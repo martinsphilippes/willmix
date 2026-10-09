@@ -63,7 +63,7 @@ export default async function ContainersPage({
       />
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
 
-      <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
         <Card className="min-w-0 lg:col-span-2" title={t("containers.title")}>
           {rows.length === 0 ? (
             <Empty>{t("containers.none")}</Empty>
@@ -150,56 +150,75 @@ export default async function ContainersPage({
         </Card>
 
         <Card className="min-w-0" title={t("containers.new")}>
-          <form action={createContainerAction} className="space-y-3">
-            <Field label={t("containers.code")} hint={t("containers.codeHint")}>
-              <Input
-                name="code"
-                required
-                maxLength={40}
-                className={bigField}
-                placeholder={t("ph.container.number")}
-              />
-            </Field>
-            <Field label={t("containers.type")}>
-              <Select name="type" required className={bigField}>
-                {settings.containerTypes.map((type) => (
-                  <option key={type.code} value={type.code}>
-                    {t("containers.typeOption", {
-                      code: type.code,
-                      cbm: formatNumber(type.capacityCbm, t.intl),
-                      kg: formatNumber(type.maxWeightKg, t.intl),
-                    })}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field
-              label={t("containers.customerOptional")}
-              hint={t("containers.customerHint")}
-            >
-              <Select name="customerId" defaultValue="" className={bigField}>
-                <option value="">{t("containers.noCustomer")}</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
+          {/* Grade pela largura do cartão: estreito ao lado da lista (mesa),
+              largo abaixo dela (tablet em pé). */}
+          <form action={createContainerAction} className="@container">
+            <div className="grid gap-3 @3xs:grid-cols-2 @2xl:grid-cols-4">
+              <div className="min-w-0 @3xs:col-span-2 @lg:col-span-1">
+                <Field
+                  label={t("containers.code")}
+                  hint={t("containers.codeHint")}
+                >
+                  <Input
+                    name="code"
+                    required
+                    maxLength={40}
+                    className={bigField}
+                    placeholder={t("ph.container.number")}
+                  />
+                </Field>
+              </div>
+              <div className="min-w-0 @3xs:col-span-2 @lg:col-span-1">
+                <Field label={t("containers.type")}>
+                  <Select name="type" required className={bigField}>
+                    {settings.containerTypes.map((type) => (
+                      <option key={type.code} value={type.code}>
+                        {t("containers.typeOption", {
+                          code: type.code,
+                          cbm: formatNumber(type.capacityCbm, t.intl),
+                          kg: formatNumber(type.maxWeightKg, t.intl),
+                        })}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <div className="min-w-0 @3xs:col-span-2">
+                <Field
+                  label={t("containers.customerOptional")}
+                  hint={t("containers.customerHint")}
+                >
+                  <Select
+                    name="customerId"
+                    defaultValue=""
+                    className={bigField}
+                  >
+                    <option value="">{t("containers.noCustomer")}</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
               <Field label={t("containers.etd")}>
                 <Input name="etd" type="date" className={bigField} />
               </Field>
               <Field label={t("containers.eta")}>
                 <Input name="eta" type="date" className={bigField} />
               </Field>
+              <div className="min-w-0 @3xs:col-span-2">
+                <Field label={t("containers.notes")}>
+                  <Textarea name="notes" rows={2} className={bigField} />
+                </Field>
+              </div>
+              <div className="@3xs:col-span-2 @2xl:col-span-4">
+                <SubmitButton className="w-full py-2 sm:w-auto sm:py-1.5">
+                  {t("containers.create")}
+                </SubmitButton>
+              </div>
             </div>
-            <Field label={t("containers.notes")}>
-              <Textarea name="notes" rows={2} className={bigField} />
-            </Field>
-            <SubmitButton className="w-full py-2.5 text-base sm:w-auto sm:py-2 sm:text-sm">
-              {t("containers.create")}
-            </SubmitButton>
           </form>
         </Card>
       </div>

@@ -177,7 +177,7 @@ export default async function NewRequestPage({
           <li
             key={m.productId}
             className={cx(
-              "flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between",
+              "flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
               selected && "bg-brand-50/60",
             )}
           >
@@ -224,328 +224,335 @@ export default async function NewRequestPage({
       />
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
 
-      {/* Busca do produto por foto ou link: procura no catálogo e sugere os campos. */}
-      <Card title={t("lookup.title")} className="mt-4 max-w-2xl">
-        <div id="lookup" className="scroll-mt-4" />
-        <p className="mb-3 text-sm text-zinc-600">{t("lookup.intro")}</p>
-        {lookupPaused ? (
-          <Alert tone="warning">{t("lookup.paused")}</Alert>
-        ) : null}
-        <form action={lookupProductAction} className="space-y-3">
-          {isWellmix(user) && presetCustomerId ? (
-            <input type="hidden" name="customerId" value={presetCustomerId} />
+      {/* Telas grandes: busca por foto/link (estreita) ao lado do formulário. */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        {/* Busca do produto por foto ou link: procura no catálogo e sugere os campos. */}
+        <Card title={t("lookup.title")} className="max-w-2xl lg:max-w-none">
+          <div id="lookup" className="scroll-mt-4" />
+          <p className="mb-2 text-sm text-zinc-600">{t("lookup.intro")}</p>
+          {lookupPaused ? (
+            <Alert tone="warning">{t("lookup.paused")}</Alert>
           ) : null}
-          <PhotoInput
-            name="photo"
-            multiple={false}
-            capture={false}
-            autoSubmit
-            disabled={lookupPaused}
-            label={t("lookup.photo")}
-            hint={t("lookup.photoHint")}
-          />
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1">
-              <Field label={t("lookup.url")}>
-                <Input
-                  name="url"
-                  disabled={lookupPaused}
-                  type="url"
-                  inputMode="url"
-                  placeholder={t("lookup.urlPlaceholder")}
-                />
-              </Field>
-            </div>
-            <SubmitButton
-              variant="secondary"
-              pendingText={t("lookup.searching")}
+          <form action={lookupProductAction} className="space-y-2.5">
+            {isWellmix(user) && presetCustomerId ? (
+              <input type="hidden" name="customerId" value={presetCustomerId} />
+            ) : null}
+            <PhotoInput
+              name="photo"
+              multiple={false}
+              capture={false}
+              autoSubmit
               disabled={lookupPaused}
-            >
-              {t("lookup.search")}
-            </SubmitButton>
-          </div>
-        </form>
-
-        {found ? (
-          <div className="mt-5 space-y-4 border-t border-zinc-100 pt-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-zinc-900">
-                {t("lookup.result")}
-              </h3>
-              {found.aiSource === "api" ? (
-                <Badge tone="success">{t("lookup.ai.api")}</Badge>
-              ) : found.aiSource === "mock" ? (
-                <Badge tone="warning">{t("lookup.ai.mock")}</Badge>
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              {found.imageDocumentId ? (
-                <a
-                  href={`/api/files/${found.imageDocumentId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
-                  <img
-                    src={`/api/files/${found.imageDocumentId}`}
-                    alt={t("lookup.yourPhoto")}
-                    className="h-24 w-24 rounded-xl border border-zinc-200 bg-zinc-50 object-cover"
+              label={t("lookup.photo")}
+              hint={t("lookup.photoHint")}
+            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <Field label={t("lookup.url")}>
+                  <Input
+                    name="url"
+                    disabled={lookupPaused}
+                    type="url"
+                    inputMode="url"
+                    placeholder={t("lookup.urlPlaceholder")}
                   />
-                </a>
-              ) : null}
-              {found.url ? (
-                <div className="min-w-0 space-y-1 text-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    {t("lookup.link")}
-                    {found.linkSiteName ? ` · ${found.linkSiteName}` : ""}
-                  </p>
-                  {found.linkTitle ? (
-                    <p className="font-medium text-zinc-900">
-                      {found.linkTitle}
-                    </p>
-                  ) : null}
-                  <a
-                    href={found.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="block break-all text-xs text-brand-700 underline"
-                  >
-                    {found.url}
-                  </a>
-                  {found.linkPrice ? (
-                    <p className="text-xs text-zinc-500">
-                      {t("lookup.linkPrice")}: {found.linkPrice}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
+                </Field>
+              </div>
+              <SubmitButton
+                variant="secondary"
+                pendingText={t("lookup.searching")}
+                disabled={lookupPaused}
+              >
+                {t("lookup.search")}
+              </SubmitButton>
             </div>
-            {found.linkStatus && found.linkStatus !== "ok" ? (
-              <Alert tone="warning">
-                {t(`lookup.linkStatus.${found.linkStatus}` as DictionaryKey)}
-              </Alert>
-            ) : null}
-            {/* Falha da IA: a Wellmix vê o motivo traduzido; o cliente, só a mensagem simples. */}
-            {found.aiError && isWellmix(user) ? (
-              <Alert tone="warning">
-                {aiErrorText(t, found.aiError) ?? t("lookup.ai.failed")}
-              </Alert>
-            ) : null}
-            {found.aiError && !isWellmix(user) && strong.length === 0 ? (
-              <p className="text-xs leading-relaxed text-zinc-500">
-                {t("lookup.ai.customerManual")}
-              </p>
-            ) : null}
-            {aiMode === "manual" && !found.aiError ? (
-              isWellmix(user) ? (
-                <Alert tone="warning">{t("lookup.ai.manual")}</Alert>
-              ) : strong.length === 0 && found.imageDocumentId ? (
+          </form>
+
+          {found ? (
+            <div className="mt-4 space-y-3 border-t border-zinc-100 pt-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-zinc-900">
+                  {t("lookup.result")}
+                </h3>
+                {found.aiSource === "api" ? (
+                  <Badge tone="success">{t("lookup.ai.api")}</Badge>
+                ) : found.aiSource === "mock" ? (
+                  <Badge tone="warning">{t("lookup.ai.mock")}</Badge>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {found.imageDocumentId ? (
+                  <a
+                    href={`/api/files/${found.imageDocumentId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                    <img
+                      src={`/api/files/${found.imageDocumentId}`}
+                      alt={t("lookup.yourPhoto")}
+                      className="h-24 w-24 rounded-xl border border-zinc-200 bg-zinc-50 object-cover"
+                    />
+                  </a>
+                ) : null}
+                {found.url ? (
+                  <div className="min-w-0 space-y-1 text-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      {t("lookup.link")}
+                      {found.linkSiteName ? ` · ${found.linkSiteName}` : ""}
+                    </p>
+                    {found.linkTitle ? (
+                      <p className="font-medium text-zinc-900">
+                        {found.linkTitle}
+                      </p>
+                    ) : null}
+                    <a
+                      href={found.url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="block break-all text-xs text-brand-700 underline"
+                    >
+                      {found.url}
+                    </a>
+                    {found.linkPrice ? (
+                      <p className="text-xs text-zinc-500">
+                        {t("lookup.linkPrice")}: {found.linkPrice}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              {found.linkStatus && found.linkStatus !== "ok" ? (
+                <Alert tone="warning">
+                  {t(`lookup.linkStatus.${found.linkStatus}` as DictionaryKey)}
+                </Alert>
+              ) : null}
+              {/* Falha da IA: a Wellmix vê o motivo traduzido; o cliente, só a mensagem simples. */}
+              {found.aiError && isWellmix(user) ? (
+                <Alert tone="warning">
+                  {aiErrorText(t, found.aiError) ?? t("lookup.ai.failed")}
+                </Alert>
+              ) : null}
+              {found.aiError && !isWellmix(user) && strong.length === 0 ? (
                 <p className="text-xs leading-relaxed text-zinc-500">
                   {t("lookup.ai.customerManual")}
                 </p>
-              ) : null
-            ) : null}
+              ) : null}
+              {aiMode === "manual" && !found.aiError ? (
+                isWellmix(user) ? (
+                  <Alert tone="warning">{t("lookup.ai.manual")}</Alert>
+                ) : strong.length === 0 && found.imageDocumentId ? (
+                  <p className="text-xs leading-relaxed text-zinc-500">
+                    {t("lookup.ai.customerManual")}
+                  </p>
+                ) : null
+              ) : null}
 
-            {strong.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-800">
-                  {t("lookup.matches")}
-                </p>
-                <p className="text-xs text-zinc-500">
-                  {t("lookup.matchesHint")}
-                </p>
-                {renderMatches(strong)}
-              </div>
-            ) : (
-              <Alert tone="info">
-                {related.length > 0 ? t("lookup.noExact") : t("lookup.noMatch")}
-              </Alert>
-            )}
-            {related.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-800">
-                  {t("lookup.related")}
-                </p>
-                <p className="text-xs text-zinc-500">
-                  {t("lookup.relatedHint")}
-                </p>
-                {renderMatches(related)}
-              </div>
-            ) : null}
-            {presetProductId ? (
+              {strong.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-zinc-800">
+                    {t("lookup.matches")}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {t("lookup.matchesHint")}
+                  </p>
+                  {renderMatches(strong)}
+                </div>
+              ) : (
+                <Alert tone="info">
+                  {related.length > 0
+                    ? t("lookup.noExact")
+                    : t("lookup.noMatch")}
+                </Alert>
+              )}
+              {related.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-zinc-800">
+                    {t("lookup.related")}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {t("lookup.relatedHint")}
+                  </p>
+                  {renderMatches(related)}
+                </div>
+              ) : null}
+              {presetProductId ? (
+                <TextLink
+                  href={`/app/requests/new?${new URLSearchParams({ lookup: found.id, ...(presetCustomerId ? { customerId: presetCustomerId } : {}) }).toString()}`}
+                  className="text-xs"
+                >
+                  {t("lookup.none")}
+                </TextLink>
+              ) : null}
               <TextLink
-                href={`/app/requests/new?${new URLSearchParams({ lookup: found.id, ...(presetCustomerId ? { customerId: presetCustomerId } : {}) }).toString()}`}
+                href={`/app/requests/new${presetCustomerId ? `?customerId=${encodeURIComponent(presetCustomerId)}` : ""}`}
                 className="text-xs"
               >
-                {t("lookup.none")}
+                {t("lookup.new")}
               </TextLink>
-            ) : null}
-            <TextLink
-              href={`/app/requests/new${presetCustomerId ? `?customerId=${encodeURIComponent(presetCustomerId)}` : ""}`}
-              className="text-xs"
-            >
-              {t("lookup.new")}
-            </TextLink>
-          </div>
-        ) : null}
-      </Card>
-
-      <Card className="mt-4 max-w-2xl">
-        {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
-            é recriado, senão o navegador mantém o valor anterior dos campos. */}
-        <form
-          key={`${found?.id ?? "none"}-${presetProductId}-${presetCustomerId}`}
-          action={createRequestAction}
-          className="space-y-4"
-        >
-          {found ? (
-            <input type="hidden" name="lookupId" value={found.id} />
-          ) : null}
-          {schedule ? (
-            <input type="hidden" name="scheduleId" value={schedule.id} />
-          ) : null}
-          {isWellmix(user) ? (
-            <Field label={t("common.customer")}>
-              <Select
-                name="customerId"
-                required
-                defaultValue={presetCustomerId}
-              >
-                <option value="" disabled>
-                  {t("common.select")}
-                </option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : null}
-          {isWellmix(user) ? (
-            <Field
-              label={t("access.requester")}
-              hint={t("access.requesterHint")}
-            >
-              <Select name="requestedForUserId" defaultValue="">
-                <option value="">{t("access.requesterNone")}</option>
-                {customers.map((c) => {
-                  const logins = customerUsers.filter(
-                    (u) => u.partyId === c.id,
-                  );
-                  return logins.length ? (
-                    <optgroup key={c.id} label={c.name}>
-                      {logins.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.email})
-                        </option>
-                      ))}
-                    </optgroup>
-                  ) : null;
-                })}
-              </Select>
-            </Field>
-          ) : null}
-          {/* Produtos: uma linha por produto ("+ Adicionar outro produto"); cada um vira uma solicitação do mesmo lote.
-              Em cada linha: "fora do catálogo" primeiro; escolher um produto preenche os campos com a ficha; anexos só fora do catálogo. */}
-          <RequestItems
-            products={productFills}
-            presetProductId={presetProductId}
-            presetQuantity={String(presetQuantity)}
-            defaultNotInCatalog={
-              !!found && strong.length === 0 && !presetProductId
-            }
-            suggestions={hasSuggestions ? found!.suggestions : {}}
-            sourceLabels={sourceLabels}
-            labels={{
-              products: t("reqBatch.products"),
-              productN: t("reqBatch.productN"),
-              add: t("reqBatch.add"),
-              remove: t("reqBatch.remove"),
-              hint: t("reqBatch.hint"),
-              quantity: t("common.quantity"),
-              unit: t("requests.unit"),
-              schedule: {
-                intl: t.intl,
-                toggle: t("reqSchedule.toggle"),
-                ask: t("reqSchedule.ask"),
-                hint: t("reqSchedule.hint"),
-                interval: t("reqSchedule.interval"),
-                days: t("reqSchedule.days", { n: "{n}" }),
-                custom: t("reqSchedule.custom"),
-                firstDate: t("reqSchedule.firstDate"),
-                n: t("reqSchedule.n", { n: "{n}" }),
-                quantity: t("reqSchedule.quantity"),
-                expected: t("reqSchedule.expected"),
-                add: t("reqSchedule.add"),
-                remove: t("reqSchedule.remove", { n: "{n}" }),
-                total: t("reqSchedule.total", {
-                  total: "{total}",
-                  unit: "{unit}",
-                }),
-                off: t("reqSchedule.off"),
-              },
-              fromCatalog: t("reqProduct.fromCatalog"),
-              inStock: t("reqProduct.inStock"),
-              noStock: t("reqProduct.noStock"),
-              change: t("reqProduct.change"),
-              notInCatalog: t("requests.sourcingDemand.label"),
-              notInCatalogHint: t("requests.sourcingDemand.hint"),
-              product: t("common.product"),
-              select: t("common.select"),
-              filledHint: t("lookup.fill.hint"),
-              filledBadge: t("lookup.fill.badge"),
-              photos: t("lookup.fill.photos"),
-              photosNone: t("lookup.fill.photosNone"),
-              productName: `${t("common.product")} (${t("common.name")})`,
-              placeholder: t("ph.request.productName"),
-              description: t("requests.description"),
-              specification: t("requests.specification"),
-              attachments: t("requests.attachments"),
-              attachmentsHint: t("lookup.fill.attachmentsHint"),
-              suggestionsHint: t("lookup.suggestionsHint"),
-              none: t("lookup.noneOption"),
-            }}
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="col-span-2 sm:col-span-1">
-              {/* Prazo = SLA da Wellmix (Configurações); o servidor recalcula para o cliente. */}
-              {isWellmix(user) ? (
-                <Field
-                  label={t("requests.deadline")}
-                  hint={t("sla.wellmixHint", {
-                    days: settings.quoteSlaBusinessDays,
-                  })}
-                >
-                  <Input name="deadline" type="date" defaultValue={slaDate} />
-                </Field>
-              ) : (
-                <Field
-                  label={t("requests.deadline")}
-                  hint={t("sla.customerHint", {
-                    days: settings.quoteSlaBusinessDays,
-                  })}
-                >
-                  <Input
-                    type="date"
-                    value={slaDate}
-                    readOnly
-                    aria-readonly="true"
-                    className="bg-zinc-50 text-zinc-700"
-                  />
-                </Field>
-              )}
             </div>
-          </div>
-          <Field label={t("common.note")}>
-            <Textarea name="notes" defaultValue={referenceNote} />
-          </Field>
-          <div className="border-t border-zinc-100 pt-4">
-            <SubmitButton pendingText="...">{t("common.send")}</SubmitButton>
-          </div>
-        </form>
-      </Card>
+          ) : null}
+        </Card>
+
+        <Card className="max-w-2xl lg:max-w-none">
+          {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
+            é recriado, senão o navegador mantém o valor anterior dos campos. */}
+          <form
+            key={`${found?.id ?? "none"}-${presetProductId}-${presetCustomerId}`}
+            action={createRequestAction}
+            className="space-y-3"
+          >
+            {found ? (
+              <input type="hidden" name="lookupId" value={found.id} />
+            ) : null}
+            {schedule ? (
+              <input type="hidden" name="scheduleId" value={schedule.id} />
+            ) : null}
+            {/* Cliente e solicitante lado a lado (Wellmix). */}
+            {isWellmix(user) ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t("common.customer")}>
+                  <Select
+                    name="customerId"
+                    required
+                    defaultValue={presetCustomerId}
+                  >
+                    <option value="" disabled>
+                      {t("common.select")}
+                    </option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field
+                  label={t("access.requester")}
+                  hint={t("access.requesterHint")}
+                >
+                  <Select name="requestedForUserId" defaultValue="">
+                    <option value="">{t("access.requesterNone")}</option>
+                    {customers.map((c) => {
+                      const logins = customerUsers.filter(
+                        (u) => u.partyId === c.id,
+                      );
+                      return logins.length ? (
+                        <optgroup key={c.id} label={c.name}>
+                          {logins.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name} ({u.email})
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null;
+                    })}
+                  </Select>
+                </Field>
+              </div>
+            ) : null}
+            {/* Produtos: uma linha por produto ("+ Adicionar outro produto"); cada um vira uma solicitação do mesmo lote.
+              Em cada linha: "fora do catálogo" primeiro; escolher um produto preenche os campos com a ficha; anexos só fora do catálogo. */}
+            <RequestItems
+              products={productFills}
+              presetProductId={presetProductId}
+              presetQuantity={String(presetQuantity)}
+              defaultNotInCatalog={
+                !!found && strong.length === 0 && !presetProductId
+              }
+              suggestions={hasSuggestions ? found!.suggestions : {}}
+              sourceLabels={sourceLabels}
+              labels={{
+                products: t("reqBatch.products"),
+                productN: t("reqBatch.productN"),
+                add: t("reqBatch.add"),
+                remove: t("reqBatch.remove"),
+                hint: t("reqBatch.hint"),
+                quantity: t("common.quantity"),
+                unit: t("requests.unit"),
+                schedule: {
+                  intl: t.intl,
+                  toggle: t("reqSchedule.toggle"),
+                  ask: t("reqSchedule.ask"),
+                  hint: t("reqSchedule.hint"),
+                  interval: t("reqSchedule.interval"),
+                  days: t("reqSchedule.days", { n: "{n}" }),
+                  custom: t("reqSchedule.custom"),
+                  firstDate: t("reqSchedule.firstDate"),
+                  n: t("reqSchedule.n", { n: "{n}" }),
+                  quantity: t("reqSchedule.quantity"),
+                  expected: t("reqSchedule.expected"),
+                  add: t("reqSchedule.add"),
+                  remove: t("reqSchedule.remove", { n: "{n}" }),
+                  total: t("reqSchedule.total", {
+                    total: "{total}",
+                    unit: "{unit}",
+                  }),
+                  off: t("reqSchedule.off"),
+                },
+                fromCatalog: t("reqProduct.fromCatalog"),
+                inStock: t("reqProduct.inStock"),
+                noStock: t("reqProduct.noStock"),
+                change: t("reqProduct.change"),
+                notInCatalog: t("requests.sourcingDemand.label"),
+                notInCatalogHint: t("requests.sourcingDemand.hint"),
+                product: t("common.product"),
+                select: t("common.select"),
+                filledHint: t("lookup.fill.hint"),
+                filledBadge: t("lookup.fill.badge"),
+                photos: t("lookup.fill.photos"),
+                photosNone: t("lookup.fill.photosNone"),
+                productName: `${t("common.product")} (${t("common.name")})`,
+                placeholder: t("ph.request.productName"),
+                description: t("requests.description"),
+                specification: t("requests.specification"),
+                attachments: t("requests.attachments"),
+                attachmentsHint: t("lookup.fill.attachmentsHint"),
+                suggestionsHint: t("lookup.suggestionsHint"),
+                none: t("lookup.noneOption"),
+              }}
+            />
+            {/* Prazo (data, estreito) ao lado da observação. */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
+              <div className="min-w-0">
+                {/* Prazo = SLA da Wellmix (Configurações); o servidor recalcula para o cliente. */}
+                {isWellmix(user) ? (
+                  <Field
+                    label={t("requests.deadline")}
+                    hint={t("sla.wellmixHint", {
+                      days: settings.quoteSlaBusinessDays,
+                    })}
+                  >
+                    <Input name="deadline" type="date" defaultValue={slaDate} />
+                  </Field>
+                ) : (
+                  <Field
+                    label={t("requests.deadline")}
+                    hint={t("sla.customerHint", {
+                      days: settings.quoteSlaBusinessDays,
+                    })}
+                  >
+                    <Input
+                      type="date"
+                      value={slaDate}
+                      readOnly
+                      aria-readonly="true"
+                      className="bg-zinc-50 text-zinc-700"
+                    />
+                  </Field>
+                )}
+              </div>
+              <Field label={t("common.note")}>
+                <Textarea name="notes" defaultValue={referenceNote} rows={2} />
+              </Field>
+            </div>
+            <div className="border-t border-zinc-100 pt-3">
+              <SubmitButton pendingText="...">{t("common.send")}</SubmitButton>
+            </div>
+          </form>
+        </Card>
+      </div>
     </>
   );
 }

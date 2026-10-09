@@ -164,16 +164,18 @@ export default async function MarketingKitPage({
     [t("marketing.dates.released"), kit.releasedAt],
   ];
 
-  /* Formulário de cancelamento (Wellmix; até a compra). */
+  /* Formulário de cancelamento (Wellmix; até a compra): observação e botão na mesma linha quando cabem. */
   const cancelForm = (
     <form
       action={cancelKitAction}
-      className="space-y-2 border-t border-zinc-100 pt-3"
+      className="flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3"
     >
       <input type="hidden" name="id" value={kit.id} />
-      <Field label={t("marketing.action.cancelNote")}>
-        <Input name="note" maxLength={2000} />
-      </Field>
+      <div className="min-w-0 flex-1 basis-40">
+        <Field label={t("marketing.action.cancelNote")}>
+          <Input name="note" maxLength={2000} />
+        </Field>
+      </div>
       <SubmitButton variant="danger" className="w-full sm:w-auto">
         {t("marketing.action.cancel")}
       </SubmitButton>
@@ -235,13 +237,12 @@ export default async function MarketingKitPage({
         </div>
       ) : null}
 
-      <Card title={t("marketing.kit.timeline")} className="mt-4">
-        <KitTimeline t={t} kit={kit} />
-      </Card>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* ---- Situação e ações (primeiro no celular, à direita na mesa) ---- */}
-        <div className="min-w-0 space-y-6 lg:order-2">
+      <div className="mt-3 grid gap-4 lg:grid-cols-3 lg:items-start">
+        {/* ---- Linha do tempo, situação e ações (primeiro no celular, à direita na mesa) ---- */}
+        <div className="min-w-0 space-y-4 lg:order-2">
+          <Card title={t("marketing.kit.timeline")} className="@container">
+            <KitTimeline t={t} kit={kit} />
+          </Card>
           <Card title={t("marketing.status.title")}>
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <KitStatusBadge t={t} status={kit.status} />
@@ -251,7 +252,7 @@ export default async function MarketingKitPage({
             </div>
 
             {wellmix ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {kit.status === "draft" || kit.status === "preview" ? (
                   <>
                     <form action={offerKitAction} className="space-y-2">
@@ -380,7 +381,7 @@ export default async function MarketingKitPage({
                 ) : null}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {kit.status === "offered" ? (
                   <>
                     <Alert tone="brand">
@@ -421,7 +422,7 @@ export default async function MarketingKitPage({
               </div>
             )}
 
-            <div className="mt-4 border-t border-zinc-100 pt-3">
+            <div className="mt-3 border-t border-zinc-100 pt-3">
               <DescriptionList
                 items={dateItems
                   .filter(([, v]) => !!v)
@@ -432,22 +433,22 @@ export default async function MarketingKitPage({
         </div>
 
         {/* ---- Conteúdo principal ---- */}
-        <div className="min-w-0 space-y-6 lg:order-1 lg:col-span-2">
-          {/* Produto (ficha, somente leitura) */}
-          <Card title={t("marketing.product.title")}>
-            <p className="mb-3 text-xs text-zinc-500">
+        <div className="min-w-0 space-y-4 lg:order-1 lg:col-span-2">
+          {/* Produto (ficha, somente leitura): fotos e dados lado a lado num cartão largo */}
+          <Card title={t("marketing.product.title")} className="@container">
+            <p className="mb-2 text-xs text-zinc-500">
               {t("marketing.product.fromSheet")}
             </p>
             {product ? (
-              <div className="space-y-4">
+              <div className="grid gap-3 @2xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @2xl:items-start">
                 {primaryVisible || commercialVisible.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="min-w-0 space-y-2">
                     {primaryVisible && primaryId ? (
                       <div>
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                           {t("marketing.product.primaryPhoto")}
                         </h3>
-                        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                        <ul className="grid grid-cols-4 gap-2 @md:grid-cols-6 @2xl:grid-cols-3">
                           <li>
                             <a
                               href={`/api/files/${primaryId}`}
@@ -466,10 +467,10 @@ export default async function MarketingKitPage({
                     ) : null}
                     {commercialVisible.length > 0 ? (
                       <div>
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                           {t("marketing.product.commercialPhotos")}
                         </h3>
-                        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                        <ul className="grid grid-cols-4 gap-2 @md:grid-cols-6 @2xl:grid-cols-3">
                           {commercialVisible.map((photo) => (
                             <li key={photo.id} className="min-w-0 space-y-1">
                               <a
@@ -528,20 +529,25 @@ export default async function MarketingKitPage({
             )}
           </Card>
 
-          {/* Textos do kit */}
-          <Card title={t("marketing.texts.title")}>
+          {/* Textos do kit: grade de 6 colunas num cartão largo (campos do tamanho do conteúdo) */}
+          <Card title={t("marketing.texts.title")} className="@container">
             {editable ? (
-              <form action={updateKitAction} className="space-y-4">
+              <form
+                action={updateKitAction}
+                className="grid gap-x-3 gap-y-2.5 @xl:grid-cols-6"
+              >
                 <input type="hidden" name="id" value={kit.id} />
-                <Field label={t("marketing.field.name")}>
-                  <Input
-                    name="name"
-                    required
-                    maxLength={160}
-                    defaultValue={kit.name}
-                  />
-                </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="min-w-0 @xl:col-span-3">
+                  <Field label={t("marketing.field.name")}>
+                    <Input
+                      name="name"
+                      required
+                      maxLength={160}
+                      defaultValue={kit.name}
+                    />
+                  </Field>
+                </div>
+                <div className="min-w-0 @xl:col-span-3">
                   <Field
                     label={t("marketing.field.customer")}
                     hint={
@@ -570,30 +576,32 @@ export default async function MarketingKitPage({
                       ))}
                     </Select>
                   </Field>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-2">
-                      <Field
-                        label={t("marketing.field.price")}
-                        hint={
-                          priceLocked
-                            ? t("marketing.texts.priceLocked")
-                            : t("marketing.texts.priceEditable")
-                        }
-                      >
-                        {priceLocked ? (
-                          <input type="hidden" name="price" value={kit.price} />
-                        ) : null}
-                        <MoneyInput
-                          locale={t.intl}
-                          name={priceLocked ? undefined : "price"}
-                          currency={priceLocked ? kit.currency : undefined}
-                          watchField={priceLocked ? undefined : "currency"}
-                          required={!priceLocked}
-                          disabled={priceLocked}
-                          defaultAmount={kit.price}
-                        />
-                      </Field>
-                    </div>
+                </div>
+                <div className="grid min-w-0 grid-cols-5 gap-3 @xl:col-span-3">
+                  <div className="col-span-3 min-w-0">
+                    <Field
+                      label={t("marketing.field.price")}
+                      hint={
+                        priceLocked
+                          ? t("marketing.texts.priceLocked")
+                          : t("marketing.texts.priceEditable")
+                      }
+                    >
+                      {priceLocked ? (
+                        <input type="hidden" name="price" value={kit.price} />
+                      ) : null}
+                      <MoneyInput
+                        locale={t.intl}
+                        name={priceLocked ? undefined : "price"}
+                        currency={priceLocked ? kit.currency : undefined}
+                        watchField={priceLocked ? undefined : "currency"}
+                        required={!priceLocked}
+                        disabled={priceLocked}
+                        defaultAmount={kit.price}
+                      />
+                    </Field>
+                  </div>
+                  <div className="col-span-2 min-w-0">
                     <Field label={t("marketing.field.currency")}>
                       {priceLocked ? (
                         <input
@@ -612,44 +620,58 @@ export default async function MarketingKitPage({
                     </Field>
                   </div>
                 </div>
-                <Field label={t("marketing.field.concept")}>
-                  <Textarea
-                    name="concept"
-                    maxLength={2000}
-                    defaultValue={kit.concept ?? ""}
-                  />
-                </Field>
-                <Field label={t("marketing.field.slogan")}>
-                  <Input
-                    name="slogan"
-                    maxLength={255}
-                    defaultValue={kit.slogan ?? ""}
-                  />
-                </Field>
-                <Field label={t("marketing.field.description")}>
-                  <Textarea
-                    name="description"
-                    maxLength={4000}
-                    defaultValue={kit.description ?? ""}
-                  />
-                </Field>
-                <Field label={t("marketing.field.campaign")}>
-                  <Textarea
-                    name="campaign"
-                    maxLength={4000}
-                    defaultValue={kit.campaign ?? ""}
-                  />
-                </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="min-w-0 @xl:col-span-3">
+                  <Field label={t("marketing.field.concept")}>
+                    <Textarea
+                      name="concept"
+                      rows={2}
+                      maxLength={2000}
+                      defaultValue={kit.concept ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="min-w-0 @xl:col-span-3">
+                  <Field label={t("marketing.field.slogan")}>
+                    <Input
+                      name="slogan"
+                      maxLength={255}
+                      defaultValue={kit.slogan ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="min-w-0 @xl:col-span-3">
+                  <Field label={t("marketing.field.description")}>
+                    <Textarea
+                      name="description"
+                      rows={3}
+                      maxLength={4000}
+                      defaultValue={kit.description ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="min-w-0 @xl:col-span-3">
+                  <Field label={t("marketing.field.campaign")}>
+                    <Textarea
+                      name="campaign"
+                      rows={3}
+                      maxLength={4000}
+                      defaultValue={kit.campaign ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="min-w-0 @xl:col-span-3">
                   <Field
                     label={t("marketing.field.colors")}
                     hint={t("marketing.field.colorsHint")}
                   >
                     <Textarea
                       name="colors"
+                      rows={2}
                       defaultValue={kit.colors?.join("\n") ?? ""}
                     />
                   </Field>
+                </div>
+                <div className="min-w-0 @xl:col-span-2">
                   <Field label={t("marketing.field.pantone")}>
                     <Input
                       name="pantone"
@@ -658,17 +680,20 @@ export default async function MarketingKitPage({
                     />
                   </Field>
                 </div>
-                <Field label={t("marketing.field.notes")}>
-                  <Textarea
-                    name="notes"
-                    maxLength={4000}
-                    defaultValue={kit.notes ?? ""}
-                  />
-                </Field>
-                <div className="border-t border-zinc-100 pt-4">
+                <div className="min-w-0 @xl:col-span-4">
+                  <Field label={t("marketing.field.notes")}>
+                    <Textarea
+                      name="notes"
+                      rows={2}
+                      maxLength={4000}
+                      defaultValue={kit.notes ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="border-t border-zinc-100 pt-3 @xl:col-span-6">
                   <SubmitButton
                     pendingText="..."
-                    className="w-full py-2.5 sm:w-auto sm:py-2"
+                    className="w-full py-2.5 sm:w-auto sm:py-1.5"
                   >
                     {t("marketing.texts.save")}
                   </SubmitButton>
@@ -688,9 +713,12 @@ export default async function MarketingKitPage({
 
           {/* Sugestão de textos (IA): só a Wellmix; humano confirma */}
           {wellmix ? (
-            <Card title={t("marketing.ai.title")} className="scroll-mt-4">
+            <Card
+              title={t("marketing.ai.title")}
+              className="scroll-mt-4 @container"
+            >
               <div id="ai" className="scroll-mt-4" />
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <Alert tone="info">{t("marketing.ai.principle")}</Alert>
                 {aiMode === "manual" ? (
                   <Alert tone="warning">
@@ -707,7 +735,7 @@ export default async function MarketingKitPage({
                 ) : editable ? (
                   <form
                     action={requestMarketingSuggestionAction}
-                    className="space-y-3"
+                    className="space-y-2"
                   >
                     <input type="hidden" name="id" value={kit.id} />
                     {aiMode === "mock" ? (
@@ -722,6 +750,7 @@ export default async function MarketingKitPage({
                     >
                       <Textarea
                         name="context"
+                        rows={2}
                         maxLength={2000}
                         className="min-h-16"
                       />
@@ -737,7 +766,7 @@ export default async function MarketingKitPage({
                 ) : null}
 
                 {latest ? (
-                  <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+                  <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-semibold text-zinc-900">
                         {t("marketing.ai.latest")}
@@ -755,11 +784,14 @@ export default async function MarketingKitPage({
                         {t("marketing.ai.mockHint")}
                       </p>
                     ) : null}
-                    <p className="mt-2 text-sm text-zinc-700">
+                    <p className="mt-1.5 text-sm text-zinc-700">
                       {t("marketing.ai.review")}
                     </p>
                     {editable ? (
-                      <form action={updateKitAction} className="mt-3 space-y-3">
+                      <form
+                        action={updateKitAction}
+                        className="mt-2 grid gap-x-3 gap-y-2.5 @xl:grid-cols-2"
+                      >
                         <input type="hidden" name="id" value={kit.id} />
                         <input
                           type="hidden"
@@ -791,6 +823,7 @@ export default async function MarketingKitPage({
                         <Field label={t("marketing.field.concept")}>
                           <Textarea
                             name="concept"
+                            rows={2}
                             maxLength={2000}
                             defaultValue={suggestedText(latest, "concept")}
                           />
@@ -805,6 +838,7 @@ export default async function MarketingKitPage({
                         <Field label={t("marketing.field.description")}>
                           <Textarea
                             name="description"
+                            rows={3}
                             maxLength={4000}
                             defaultValue={suggestedText(latest, "description")}
                           />
@@ -812,6 +846,7 @@ export default async function MarketingKitPage({
                         <Field label={t("marketing.field.campaign")}>
                           <Textarea
                             name="campaign"
+                            rows={3}
                             maxLength={4000}
                             defaultValue={suggestedText(latest, "campaign")}
                           />
@@ -822,6 +857,7 @@ export default async function MarketingKitPage({
                         >
                           <Textarea
                             name="colors"
+                            rows={2}
                             className="min-h-16"
                             defaultValue={suggestedList(latest, "colors").join(
                               "\n",
@@ -829,23 +865,30 @@ export default async function MarketingKitPage({
                           />
                         </Field>
                         {suggestedText(latest, "imagePrompt") ? (
-                          <DescriptionList
-                            items={[
-                              [
-                                t("marketing.ai.imagePrompt"),
-                                <span key="ip" className="whitespace-pre-wrap">
-                                  {suggestedText(latest, "imagePrompt")}
-                                </span>,
-                              ],
-                            ]}
-                          />
+                          <div className="min-w-0">
+                            <DescriptionList
+                              items={[
+                                [
+                                  t("marketing.ai.imagePrompt"),
+                                  <span
+                                    key="ip"
+                                    className="whitespace-pre-wrap"
+                                  >
+                                    {suggestedText(latest, "imagePrompt")}
+                                  </span>,
+                                ],
+                              ]}
+                            />
+                          </div>
                         ) : null}
-                        <SubmitButton
-                          pendingText="..."
-                          className="w-full py-2.5 sm:w-auto sm:py-2"
-                        >
-                          {t("marketing.ai.use")}
-                        </SubmitButton>
+                        <div className="@xl:col-span-2">
+                          <SubmitButton
+                            pendingText="..."
+                            className="w-full py-2.5 sm:w-auto sm:py-1.5"
+                          >
+                            {t("marketing.ai.use")}
+                          </SubmitButton>
+                        </div>
                       </form>
                     ) : (
                       <DescriptionList
@@ -873,7 +916,7 @@ export default async function MarketingKitPage({
                         ]}
                       />
                     )}
-                    <details className="mt-3 text-sm">
+                    <details className="mt-2 text-sm">
                       <summary className="cursor-pointer font-medium text-zinc-700">
                         {t("marketing.ai.prompt")}
                       </summary>
@@ -891,11 +934,11 @@ export default async function MarketingKitPage({
                     <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       {t("marketing.ai.history")}
                     </h3>
-                    <ul className="space-y-2">
+                    <ul className="space-y-1.5">
                       {history.map((s) => (
                         <li
                           key={s.id}
-                          className="rounded-lg border border-zinc-200 bg-white p-3 text-sm"
+                          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px]"
                         >
                           <div className="flex flex-wrap items-center gap-2">
                             <SourceBadge t={t} s={s} />
@@ -926,7 +969,7 @@ export default async function MarketingKitPage({
                               {suggestedText(s, "slogan")}
                             </p>
                           ) : null}
-                          <details className="mt-2 text-xs">
+                          <details className="mt-1 text-xs">
                             <summary className="cursor-pointer text-zinc-600">
                               {t("marketing.ai.prompt")}
                             </summary>
@@ -943,98 +986,106 @@ export default async function MarketingKitPage({
             </Card>
           ) : null}
 
-          {/* Prévias */}
-          <Card title={t("marketing.previews.title")}>
-            {wellmix ? (
-              <p className="mb-3 text-xs text-zinc-500">
-                {t("marketing.previews.hint")}
-              </p>
-            ) : null}
-            <KitDocList
-              t={t}
-              docs={previewDocs}
-              empty={t("marketing.previews.none")}
-            />
-            {editable ? (
-              <form
-                action={addKitFileAction}
-                className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-end"
-              >
-                <input type="hidden" name="id" value={kit.id} />
-                <input type="hidden" name="stage" value="preview" />
-                <div className="min-w-0 flex-1">
-                  <Field label={t("marketing.files.select")}>
-                    <Input
-                      name="files"
-                      type="file"
-                      multiple
-                      required
-                      accept="image/*,application/pdf"
-                    />
-                  </Field>
-                </div>
-                <SubmitButton
-                  variant="secondary"
-                  pendingText="..."
-                  className="w-full sm:w-auto"
-                >
-                  {t("marketing.previews.upload")}
-                </SubmitButton>
-              </form>
-            ) : null}
-          </Card>
-
-          {/* Arquivos finais */}
-          <Card title={t("marketing.files.title")} className="scroll-mt-4">
-            <div id="files" className="scroll-mt-4" />
-            {wellmix ? (
-              <>
-                <p className="mb-3 text-xs text-zinc-500">
-                  {t("marketing.files.hint")}
+          {/* Prévias e arquivos finais lado a lado a partir do tablet */}
+          <div className="grid gap-4 md:grid-cols-2 md:items-start">
+            {/* Prévias */}
+            <Card title={t("marketing.previews.title")} className="@container">
+              {wellmix ? (
+                <p className="mb-2 text-xs text-zinc-500">
+                  {t("marketing.previews.hint")}
                 </p>
+              ) : null}
+              <KitDocList
+                t={t}
+                docs={previewDocs}
+                empty={t("marketing.previews.none")}
+              />
+              {editable ? (
+                <form
+                  action={addKitFileAction}
+                  className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3"
+                >
+                  <input type="hidden" name="id" value={kit.id} />
+                  <input type="hidden" name="stage" value="preview" />
+                  <div className="min-w-0 flex-1 basis-48">
+                    <Field label={t("marketing.files.select")}>
+                      <Input
+                        name="files"
+                        type="file"
+                        multiple
+                        required
+                        accept="image/*,application/pdf"
+                      />
+                    </Field>
+                  </div>
+                  <SubmitButton
+                    variant="secondary"
+                    pendingText="..."
+                    className="w-full sm:w-auto"
+                  >
+                    {t("marketing.previews.upload")}
+                  </SubmitButton>
+                </form>
+              ) : null}
+            </Card>
+
+            {/* Arquivos finais */}
+            <Card
+              title={t("marketing.files.title")}
+              className="scroll-mt-4 @container"
+            >
+              <div id="files" className="scroll-mt-4" />
+              {wellmix ? (
+                <>
+                  <p className="mb-2 text-xs text-zinc-500">
+                    {t("marketing.files.hint")}
+                  </p>
+                  <KitDocList
+                    t={t}
+                    docs={releasedDocs}
+                    empty={t("marketing.files.none")}
+                  />
+                  {editable ? (
+                    <form
+                      action={addKitFileAction}
+                      className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-100 pt-3"
+                    >
+                      <input type="hidden" name="id" value={kit.id} />
+                      <input type="hidden" name="stage" value="final" />
+                      <div className="min-w-0 flex-1 basis-48">
+                        <Field label={t("marketing.files.select")}>
+                          <Input
+                            name="files"
+                            type="file"
+                            multiple
+                            required
+                            accept="image/*,application/pdf"
+                          />
+                        </Field>
+                      </div>
+                      <SubmitButton
+                        variant="secondary"
+                        pendingText="..."
+                        className="w-full sm:w-auto"
+                      >
+                        {t("marketing.files.upload")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
+                </>
+              ) : kit.status === "released" ? (
                 <KitDocList
                   t={t}
                   docs={releasedDocs}
                   empty={t("marketing.files.none")}
                 />
-                {editable ? (
-                  <form
-                    action={addKitFileAction}
-                    className="mt-4 flex flex-col gap-3 border-t border-zinc-100 pt-4 sm:flex-row sm:items-end"
-                  >
-                    <input type="hidden" name="id" value={kit.id} />
-                    <input type="hidden" name="stage" value="final" />
-                    <div className="min-w-0 flex-1">
-                      <Field label={t("marketing.files.select")}>
-                        <Input
-                          name="files"
-                          type="file"
-                          multiple
-                          required
-                          accept="image/*,application/pdf"
-                        />
-                      </Field>
-                    </div>
-                    <SubmitButton
-                      variant="secondary"
-                      pendingText="..."
-                      className="w-full sm:w-auto"
-                    >
-                      {t("marketing.files.upload")}
-                    </SubmitButton>
-                  </form>
-                ) : null}
-              </>
-            ) : kit.status === "released" ? (
-              <KitDocList
-                t={t}
-                docs={releasedDocs}
-                empty={t("marketing.files.none")}
-              />
-            ) : (
-              <Alert tone="neutral">{t("marketing.files.afterPayment")}</Alert>
-            )}
-          </Card>
+              ) : (
+                <Alert tone="neutral">
+                  {t("marketing.files.afterPayment")}
+                </Alert>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
     </>

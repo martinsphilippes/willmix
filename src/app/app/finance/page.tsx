@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { loadFinance } from "@/lib/services/finance";
 import { getT } from "@/i18n/server";
+import type { ReactNode } from "react";
 import {
   Badge,
   cx,
@@ -16,6 +17,15 @@ import {
   formatMoney,
   rowClass,
 } from "@/components/ui";
+
+/** Valor no card: um pouco menor que o padrão do Stat, para caber seis cards numa linha. */
+function Money({ children }: { children: ReactNode }) {
+  return (
+    <span className="block text-lg leading-tight tabular-nums sm:text-xl">
+      {children}
+    </span>
+  );
+}
 
 /** Financeiro: venda, recebimentos, custo, pagamentos e margem por pedido. Só Wellmix. */
 export default async function FinancePage() {
@@ -37,24 +47,35 @@ export default async function FinancePage() {
         help={{ body: "help.finance.body", steps: "help.finance.steps" }}
         t={t}
       />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         <Stat
           label={t("finance.sold")}
-          value={formatMoney(summary.sell, summary.currency, t)}
+          value={
+            <Money>{formatMoney(summary.sell, summary.currency, t)}</Money>
+          }
         />
         <Stat
           label={t("finance.received")}
-          value={formatMoney(summary.received, summary.currency, t)}
+          value={
+            <Money>{formatMoney(summary.received, summary.currency, t)}</Money>
+          }
         />
         <Stat
           label={t("finance.receivable")}
-          value={formatMoney(summary.receivable, summary.currency, t)}
+          value={
+            <Money>
+              {formatMoney(summary.receivable, summary.currency, t)}
+            </Money>
+          }
           tone={summary.receivable > 0 ? "warning" : undefined}
         />
-        <Stat label={t("finance.paid")} value={fmtBy(summary.paidByCurrency)} />
+        <Stat
+          label={t("finance.paid")}
+          value={<Money>{fmtBy(summary.paidByCurrency)}</Money>}
+        />
         <Stat
           label={t("finance.payable")}
-          value={fmtBy(summary.payableByCurrency)}
+          value={<Money>{fmtBy(summary.payableByCurrency)}</Money>}
           tone={
             Object.values(summary.payableByCurrency).some((v) => v > 0.005)
               ? "warning"
@@ -68,9 +89,11 @@ export default async function FinancePage() {
               : t("finance.margin")
           }
           value={
-            summary.marginPct !== null
-              ? `${formatMoney(summary.margin, summary.currency, t)} (${summary.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
-              : "—"
+            <Money>
+              {summary.marginPct !== null
+                ? `${formatMoney(summary.margin, summary.currency, t)} (${summary.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
+                : "—"}
+            </Money>
           }
           tone={
             summary.margin < 0
@@ -82,7 +105,7 @@ export default async function FinancePage() {
         />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         {rows.length === 0 ? (
           <Empty>{t("common.none")}</Empty>
         ) : (

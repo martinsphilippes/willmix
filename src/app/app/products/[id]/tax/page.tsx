@@ -72,7 +72,7 @@ export default async function ProductTaxPage({
         }
       />
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
-      <div className="mt-4 grid gap-6 lg:grid-cols-3 lg:items-start">
+      <div className="mt-4 grid gap-4 lg:grid-cols-3 lg:items-start">
         <Card title={t("catalog.tax.title")} className="lg:col-span-2">
           <TaxSection
             product={product}
@@ -109,7 +109,7 @@ export default async function ProductTaxPage({
             ]}
           />
           {product.specification ? (
-            <div className="mt-4 border-t border-zinc-100 pt-3">
+            <div className="mt-3 border-t border-zinc-100 pt-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("requests.specification")}
               </p>

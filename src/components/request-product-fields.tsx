@@ -128,10 +128,10 @@ export function RequestProductFields({
       className: inputClass,
     };
     return (
-      <div className="space-y-2">
+      <div className="col-span-2 min-w-0 space-y-1">
         <label
           htmlFor={`rp-${prefix}${name}`}
-          className="block text-sm font-medium text-zinc-800"
+          className="block text-xs font-medium leading-5 text-zinc-700"
         >
           {label}
         </label>
@@ -176,7 +176,7 @@ export function RequestProductFields({
             {...common}
             rows={Math.min(
               10,
-              Math.max(3, values[name].split("\n").length + 1),
+              Math.max(2, values[name].split("\n").length + 1),
             )}
             required={name === "description"}
             minLength={name === "description" ? 2 : undefined}
@@ -188,6 +188,9 @@ export function RequestProductFields({
     );
   }
 
+  /* Os blocos entram na grade da linha de produto (RequestItems: 2 colunas no
+     celular, 4 a partir de sm): quadro do catálogo na linha toda; produto,
+     nome, descrição, especificação e anexos em meia linha (dois por linha). */
   return (
     <>
       {/* 1) Com produto escolhido: o quadro mostra que é do catálogo e o estoque.
@@ -195,7 +198,7 @@ export function RequestProductFields({
       {selected ? (
         <div
           role="status"
-          className="flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50/70 p-3"
+          className="col-span-2 flex items-start gap-3 rounded-xl border border-emerald-300 bg-emerald-50/70 px-3 py-2 sm:col-span-4"
         >
           <span
             aria-hidden="true"
@@ -225,7 +228,7 @@ export function RequestProductFields({
           </span>
         </div>
       ) : (
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
+        <label className="col-span-2 flex cursor-pointer items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 sm:col-span-4">
           <input
             type="checkbox"
             name={`${prefix}sourcingDemand`}
@@ -246,10 +249,10 @@ export function RequestProductFields({
 
       {/* 2) Produto da Wellmix: preenche os campos com a ficha. */}
       {!notInCatalog ? (
-        <div className="space-y-1.5">
+        <div className="col-span-2 min-w-0 space-y-1">
           <label
             htmlFor={`rp-${prefix}productId`}
-            className="block text-sm font-medium text-zinc-800"
+            className="block text-xs font-medium leading-5 text-zinc-700"
           >
             {labels.product}
           </label>
@@ -276,12 +279,12 @@ export function RequestProductFields({
             {labels.filledHint}
           </p>
           {selected ? (
-            <div className="space-y-1.5 pt-2">
-              <p className="text-sm font-medium text-zinc-800">
+            <div className="space-y-1 pt-1">
+              <p className="text-xs font-medium leading-5 text-zinc-700">
                 {labels.photos}
               </p>
               {selected.photos.length > 0 ? (
-                <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
                   {selected.photos.map((ph) => (
                     <li key={ph.documentId}>
                       <a
@@ -315,10 +318,10 @@ export function RequestProductFields({
 
       {/* 3) Anexos só para produto fora do catálogo (fotos do que se procura). */}
       {notInCatalog ? (
-        <div className="space-y-1.5">
+        <div className="col-span-2 min-w-0 space-y-1">
           <label
             htmlFor={`rp-${prefix}attachments`}
-            className="block text-sm font-medium text-zinc-800"
+            className="block text-xs font-medium leading-5 text-zinc-700"
           >
             {labels.attachments}
           </label>

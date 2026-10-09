@@ -125,10 +125,12 @@ export function SellPriceCalculator({
 
   return (
     <>
-      <div className="sm:col-span-3">
+      {/* Grade do formulário (requests/[id]): no celular, uma coluna; a partir
+          de md, memória de cálculo à esquerda e campos à direita. */}
+      <div className="sm:col-span-2 md:col-start-3">
         <label
           htmlFor="sp-quote"
-          className="mb-1.5 block text-sm font-medium text-zinc-800"
+          className="mb-1 block text-xs font-medium leading-5 text-zinc-700"
         >
           {labels.supplier}
         </label>
@@ -149,7 +151,7 @@ export function SellPriceCalculator({
       </div>
 
       {result && input ? (
-        <div className="space-y-2 rounded-xl border border-brand-100 bg-white p-3 text-sm sm:col-span-3">
+        <div className="space-y-1.5 rounded-xl border border-brand-100 bg-white p-3 text-[13px] sm:col-span-2 md:col-start-1 md:row-span-5 md:row-start-1">
           <p className="font-semibold text-zinc-900">{labels.title}</p>
           {!current.hasSheet ? (
             <p className="text-xs text-amber-700">{labels.noSheet}</p>
@@ -157,7 +159,7 @@ export function SellPriceCalculator({
           {labels.fxStale ? (
             <p className="text-xs text-amber-700">{labels.fxStale}</p>
           ) : null}
-          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 tabular-nums">
+          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 tabular-nums">
             <dt className="text-zinc-600">
               {fill(labels.fob, {
                 qty: input.quantity.toLocaleString(labels.intl),
@@ -310,7 +312,7 @@ export function SellPriceCalculator({
       <div>
         <label
           htmlFor="sp-carrier"
-          className="mb-1.5 block text-sm font-medium text-zinc-800"
+          className="mb-1 block text-xs font-medium leading-5 text-zinc-700"
         >
           {labels.carrierFreight}
         </label>
@@ -341,7 +343,7 @@ export function SellPriceCalculator({
       <div>
         <label
           htmlFor="sp-sell"
-          className="mb-1.5 block text-sm font-medium text-zinc-800"
+          className="mb-1 block text-xs font-medium leading-5 text-zinc-700"
         >
           {labels.sellPrice}
         </label>

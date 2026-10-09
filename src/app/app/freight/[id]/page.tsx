@@ -72,7 +72,7 @@ export default async function FreightPage({
         {saved ? <Alert tone="success">{t("freight.saved")}</Alert> : null}
         {!canAnswer ? <Alert tone="info">{t("freight.closed")}</Alert> : null}
       </div>
-      <div className="mt-4 grid gap-6 lg:grid-cols-2">
+      <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
         <Card title={t("freight.cargoTitle")}>
           <DescriptionList
             items={[
@@ -117,7 +117,7 @@ export default async function FreightPage({
             ]}
           />
           {request.description ? (
-            <p className="mt-4 border-t border-zinc-100 pt-3 text-sm text-zinc-700">
+            <p className="mt-3 border-t border-zinc-100 pt-3 text-sm text-zinc-700">
               <span className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("freight.cargo.description")}
               </span>
@@ -143,63 +143,63 @@ export default async function FreightPage({
             </p>
           ) : null}
           {canAnswer ? (
-            <form
-              action={answerFreightAction}
-              className="grid gap-4 sm:grid-cols-2"
-            >
+            <form action={answerFreightAction} className="@container">
               <input type="hidden" name="freightId" value={freight.id} />
-              <p className="text-xs leading-relaxed text-zinc-500 sm:col-span-2">
-                {t("freight.form.hint")}
-              </p>
-              <Field label={t("freight.form.amount")}>
-                <MoneyInput
-                  locale={t.intl}
-                  name="amount"
-                  watchField="currency"
-                  required
-                  defaultAmount={freight.amount ?? null}
-                />
-              </Field>
-              <Field label={t("freight.form.currency")}>
-                <CurrencySelect
-                  name="currency"
-                  value={freight.currency ?? "USD"}
-                  t={t}
-                />
-              </Field>
-              <Field label={t("freight.form.transitDays")}>
-                <Input
-                  name="transitDays"
-                  type="number"
-                  step="1"
-                  min="0"
-                  max="365"
-                  defaultValue={freight.transitDays ?? ""}
-                />
-              </Field>
-              <Field label={t("freight.form.validUntil")}>
-                <Input
-                  name="validUntil"
-                  type="date"
-                  defaultValue={freight.validUntil?.slice(0, 10) ?? ""}
-                />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label={t("freight.form.notes")}>
-                  <Textarea
-                    name="notes"
-                    rows={3}
-                    maxLength={1000}
-                    defaultValue={freight.notes ?? ""}
+              {/* Valor, moeda, dias e validade lado a lado; observação na linha toda. */}
+              <div className="grid gap-3 @2xs:grid-cols-2 @2xl:grid-cols-4">
+                <p className="text-xs leading-relaxed text-zinc-500 @2xs:col-span-2 @2xl:col-span-4">
+                  {t("freight.form.hint")}
+                </p>
+                <Field label={t("freight.form.amount")}>
+                  <MoneyInput
+                    locale={t.intl}
+                    name="amount"
+                    watchField="currency"
+                    required
+                    defaultAmount={freight.amount ?? null}
                   />
                 </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <SubmitButton>
-                  {freight.status === "answered"
-                    ? t("freight.form.update")
-                    : t("freight.form.save")}
-                </SubmitButton>
+                <Field label={t("freight.form.currency")}>
+                  <CurrencySelect
+                    name="currency"
+                    value={freight.currency ?? "USD"}
+                    t={t}
+                  />
+                </Field>
+                <Field label={t("freight.form.transitDays")}>
+                  <Input
+                    name="transitDays"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="365"
+                    defaultValue={freight.transitDays ?? ""}
+                  />
+                </Field>
+                <Field label={t("freight.form.validUntil")}>
+                  <Input
+                    name="validUntil"
+                    type="date"
+                    defaultValue={freight.validUntil?.slice(0, 10) ?? ""}
+                  />
+                </Field>
+                <div className="@2xs:col-span-2 @2xl:col-span-4">
+                  <Field label={t("freight.form.notes")}>
+                    <Textarea
+                      name="notes"
+                      rows={2}
+                      maxLength={1000}
+                      defaultValue={freight.notes ?? ""}
+                    />
+                  </Field>
+                </div>
+                <div className="@2xs:col-span-2 @2xl:col-span-4">
+                  <SubmitButton>
+                    {freight.status === "answered"
+                      ? t("freight.form.update")
+                      : t("freight.form.save")}
+                  </SubmitButton>
+                </div>
               </div>
             </form>
           ) : null}

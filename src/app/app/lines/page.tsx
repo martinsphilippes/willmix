@@ -56,14 +56,22 @@ export default async function LinesPage({
           {visionError(t, error) ?? catalogError(t, error) ?? t("common.error")}
         </Alert>
       ) : null}
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3 lg:col-span-2">
-          {lines.length === 0 ? <Empty>{t("common.none")}</Empty> : null}
+      {/* Linhas em grade de dois cartões (iPad/desktop) e o formulário fixo ao lado. */}
+      <div className="mt-3 grid items-start gap-4 lg:grid-cols-3">
+        <div className="grid min-w-0 items-start gap-3 md:grid-cols-2 lg:col-span-2">
+          {lines.length === 0 ? (
+            <div className="min-w-0 md:col-span-2">
+              <Empty>{t("common.none")}</Empty>
+            </div>
+          ) : null}
           {lines.map((l) => (
             <Card
               key={l.id}
               title={l.name}
-              className={editing?.id === l.id ? "ring-2 ring-brand-600" : ""}
+              className={cx(
+                "@container",
+                editing?.id === l.id && "ring-2 ring-brand-600",
+              )}
               actions={
                 <a
                   href={`/app/lines?edit=${l.id}`}
@@ -74,7 +82,7 @@ export default async function LinesPage({
                 </a>
               }
             >
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("lines.requirements")}
               </p>
               <ul className="flex flex-wrap gap-1.5 text-xs">
@@ -91,7 +99,7 @@ export default async function LinesPage({
               {l.manualDocumentId ? (
                 <a
                   href={`/api/files/${l.manualDocumentId}`}
-                  className={cx(linkClass, "mt-3 inline-block text-sm")}
+                  className={cx(linkClass, "mt-2 inline-block text-sm")}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -99,7 +107,7 @@ export default async function LinesPage({
                 </a>
               ) : null}
               {/* Segunda Onda: certificações obrigatórias da linha (gate de conformidade). */}
-              <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <p className="mb-1.5 mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("catalog.lines.certifications")}
               </p>
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -124,7 +132,7 @@ export default async function LinesPage({
                     placeholder={t("ph.line.certifications")}
                     aria-label={t("catalog.lines.certifications")}
                     defaultValue={(l.requiredCertifications ?? []).join(", ")}
-                    className="flex-1 py-1.5"
+                    className="flex-1"
                   />
                   <SubmitButton
                     variant="secondary"
@@ -139,7 +147,7 @@ export default async function LinesPage({
                 </p>
               </form>
               {/* Visão de Produto: prompts por linha, atributos exigidos e regras (IA só sugere). */}
-              <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              <p className="mb-1.5 mt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 {t("vision.lines.title")}
               </p>
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -217,14 +225,14 @@ export default async function LinesPage({
                       className="min-h-0"
                     />
                   </Field>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 @md:grid-cols-2">
                     <Field
                       label={t("vision.lines.requiredAttributes")}
                       hint={t("vision.lines.requiredAttributesHint")}
                     >
                       <Textarea
                         name="requiredAttributes"
-                        rows={4}
+                        rows={3}
                         placeholder={t(
                           "vision.lines.requiredAttributesPlaceholder",
                         )}
@@ -240,7 +248,7 @@ export default async function LinesPage({
                     >
                       <Textarea
                         name="validationRules"
-                        rows={4}
+                        rows={3}
                         defaultValue={(l.prompts?.validationRules ?? []).join(
                           "\n",
                         )}
@@ -261,7 +269,10 @@ export default async function LinesPage({
           ))}
         </div>
         <Card
-          className={editing ? "order-first lg:order-none" : undefined}
+          className={cx(
+            "lg:sticky lg:top-4",
+            editing && "order-first lg:order-none",
+          )}
           title={
             editing
               ? `${t("common.edit")}: ${editing.name}`
@@ -284,7 +295,7 @@ export default async function LinesPage({
             >
               <Textarea
                 name="requirements"
-                rows={7}
+                rows={6}
                 className="font-mono text-xs"
                 defaultValue={
                   editing

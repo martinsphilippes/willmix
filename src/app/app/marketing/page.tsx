@@ -117,19 +117,20 @@ export default async function MarketingPage({
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
       {params.ok ? <Alert tone="success">{t("marketing.ok")}</Alert> : null}
       {!settings.marketingEnabled ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="warning">{t("marketing.disabled")}</Alert>
         </div>
       ) : null}
       {!wellmix ? (
-        <div className="mb-4">
+        <div className="mb-3">
           <Alert tone="info">{t("marketing.customer.intro")}</Alert>
         </div>
       ) : null}
 
       {wellmix ? (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Contagem por situação: uma linha só no desktop. */}
+          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
             <Stat
               label={t("common.all")}
               value={kits.length}
@@ -149,11 +150,12 @@ export default async function MarketingPage({
               />
             ))}
           </div>
-          <Card className="mb-4">
+          <Card className="mb-3">
+            {/* Situação é curta; cliente e produto ficam com o espaço que sobra. */}
             <form
               method="get"
               action="/app/marketing"
-              className="grid gap-3 sm:grid-cols-4 sm:items-end"
+              className="grid gap-3 sm:grid-cols-2 sm:items-end md:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_minmax(0,1fr)_auto]"
             >
               <Field label={t("marketing.filter.status")}>
                 <Select name="status" defaultValue={status ?? ""}>
@@ -212,11 +214,11 @@ export default async function MarketingPage({
       ) : (
         <>
           {/* Celular: cards */}
-          <ul className="space-y-3 sm:hidden">
+          <ul className="space-y-2 sm:hidden">
             {rows.map((kit) => (
               <li
                 key={kit.id}
-                className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03]"
+                className="rounded-2xl border border-zinc-200/80 bg-white p-3 shadow-sm shadow-zinc-900/[0.03]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <TextLink
@@ -227,7 +229,7 @@ export default async function MarketingPage({
                   </TextLink>
                   <KitStatusBadge t={t} status={kit.status} />
                 </div>
-                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       {t("common.product")}
@@ -279,10 +281,10 @@ export default async function MarketingPage({
                     </dd>
                   </div>
                 </dl>
-                <div className="mt-3 border-t border-zinc-100 pt-3">
+                <div className="mt-2 border-t border-zinc-100 pt-2">
                   <LinkButton
                     href={`/app/marketing/${kit.id}`}
-                    className="w-full py-2.5"
+                    className="w-full py-2"
                   >
                     {t("marketing.open")}
                   </LinkButton>

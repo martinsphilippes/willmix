@@ -120,7 +120,7 @@ export default async function HistoryPage({
       {error ? (
         <Alert tone="danger">{fallbackError(t, String(error))}</Alert>
       ) : null}
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         {wellmix ? (
           <form
             method="get"
@@ -128,7 +128,7 @@ export default async function HistoryPage({
             className="flex flex-wrap items-end gap-2"
           >
             <label className="block w-full space-y-1 sm:w-auto">
-              <span className="text-sm font-medium text-zinc-800">
+              <span className="block text-xs font-medium leading-5 text-zinc-700">
                 {t("common.customer")}
               </span>
               <Select
@@ -236,11 +236,11 @@ export default async function HistoryPage({
           </div>
 
           {/* Cards (celular) */}
-          <ul className="space-y-3 md:hidden">
+          <ul className="grid gap-3 sm:grid-cols-2 md:hidden">
             {rows.map((r) => (
               <li
                 key={`${r.customerId}|${r.productId ?? r.product}`}
-                className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03]"
+                className="min-w-0 rounded-2xl border border-zinc-200/80 bg-white p-3.5 shadow-sm shadow-zinc-900/[0.03]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">

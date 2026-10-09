@@ -98,7 +98,7 @@ export default async function ProductsPage({
         }
       />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
+      <div className="mt-4 grid gap-4 lg:grid-cols-3 lg:items-start">
         <div className="min-w-0 lg:col-span-2">
           {products.length === 0 ? (
             <Empty>{t("common.none")}</Empty>
@@ -188,27 +188,30 @@ export default async function ProductsPage({
           )}
         </div>
         <Card title={`${t("common.new")} ${t("common.product").toLowerCase()}`}>
-          <form action={saveProductAction} className="space-y-3">
+          <form action={saveProductAction} className="space-y-2">
             <Field label={t("common.name")}>
               <Input name="name" required />
             </Field>
-            <Field label="SKU">
-              <Input name="sku" />
-            </Field>
-            <Field label={t("nav.lines")}>
-              <Select name="lineId" required defaultValue="">
-                <option value="" disabled>
-                  {t("common.select")}
-                </option>
-                {lines.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
+            {/* SKU (curto) ao lado da linha. */}
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
+              <Field label="SKU">
+                <Input name="sku" />
+              </Field>
+              <Field label={t("nav.lines")}>
+                <Select name="lineId" required defaultValue="">
+                  <option value="" disabled>
+                    {t("common.select")}
                   </option>
-                ))}
-              </Select>
-            </Field>
+                  {lines.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
             <Field label={t("requests.specification")}>
-              <Textarea name="specification" />
+              <Textarea name="specification" rows={2} />
             </Field>
             <SubmitButton>{t("common.save")}</SubmitButton>
           </form>

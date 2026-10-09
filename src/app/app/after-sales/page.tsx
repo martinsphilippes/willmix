@@ -117,7 +117,7 @@ export default async function AfterSalesPage({
       ) : null}
       <nav
         aria-label={t("common.status")}
-        className="mb-4 flex flex-wrap items-center gap-2"
+        className="mb-3 flex flex-wrap items-center gap-2"
       >
         {AFTER_SALES_STATUSES.map((s) => (
           <Link
@@ -146,7 +146,8 @@ export default async function AfterSalesPage({
       {rows.length === 0 ? (
         <Empty>{t("afterSales.none")}</Empty>
       ) : (
-        <ul className="space-y-3">
+        /* Dois registros por linha em telas grandes: menos rolagem. */
+        <ul className="grid items-start gap-3 lg:grid-cols-2">
           {rows.map((a) => {
             const order = orderOf(a);
             const orderHref = order
@@ -155,7 +156,7 @@ export default async function AfterSalesPage({
             return (
               <li
                 key={a.id}
-                className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5"
+                className="min-w-0 rounded-2xl border border-zinc-200/80 bg-white p-3.5 shadow-sm shadow-zinc-900/[0.03] sm:p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -195,7 +196,7 @@ export default async function AfterSalesPage({
                     </TextLink>
                   ) : null}
                 </div>
-                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm lg:grid-cols-4">
+                <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
                   <Item label={t("afterSales.rating")}>
                     <Stars rating={a.rating} t={t} />
                   </Item>
@@ -233,7 +234,7 @@ export default async function AfterSalesPage({
                     </dd>
                   </div>
                   {a.status === "closed" && a.notes ? (
-                    <div className="col-span-2 min-w-0 lg:col-span-4">
+                    <div className="col-span-2 min-w-0 sm:col-span-4 lg:col-span-2 xl:col-span-4">
                       <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                         {t("orders.afterSales.notes")}
                       </dt>

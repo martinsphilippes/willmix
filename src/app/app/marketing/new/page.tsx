@@ -67,16 +67,20 @@ export default async function NewMarketingKitPage({
       />
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
       {!settings.marketingEnabled ? (
-        <div className="mt-4">
+        <div className="mt-3">
           <Alert tone="warning">{t("marketing.disabled")}</Alert>
         </div>
       ) : products.length === 0 ? (
-        <div className="mt-4">
+        <div className="mt-3">
           <Alert tone="warning">{t("marketing.new.noProducts")}</Alert>
         </div>
       ) : (
-        <Card className="mt-4 max-w-2xl">
-          <form action={createKitAction} className="space-y-4">
+        <Card className="mt-3 max-w-3xl">
+          {/* Duas colunas a partir do tablet: produto | cliente, nome | preço e moeda. */}
+          <form
+            action={createKitAction}
+            className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2"
+          >
             <input type="hidden" name="back" value={back} />
             <Field label={t("marketing.new.product")}>
               <Select name="productId" required defaultValue={presetProductId}>
@@ -110,8 +114,8 @@ export default async function NewMarketingKitPage({
             >
               <Input name="name" maxLength={160} />
             </Field>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-2">
+            <div className="grid min-w-0 grid-cols-5 gap-3">
+              <div className="col-span-3 min-w-0">
                 <Field
                   label={t("marketing.new.price")}
                   hint={t("marketing.new.priceHint")}
@@ -125,19 +129,21 @@ export default async function NewMarketingKitPage({
                   />
                 </Field>
               </div>
-              <Field label={t("marketing.new.currency")}>
-                <CurrencySelect
-                  name="currency"
-                  value={settings.marketingKitCurrency}
-                  t={t}
-                  required
-                />
-              </Field>
+              <div className="col-span-2 min-w-0">
+                <Field label={t("marketing.new.currency")}>
+                  <CurrencySelect
+                    name="currency"
+                    value={settings.marketingKitCurrency}
+                    t={t}
+                    required
+                  />
+                </Field>
+              </div>
             </div>
-            <div className="border-t border-zinc-100 pt-4">
+            <div className="border-t border-zinc-100 pt-3 sm:col-span-2">
               <SubmitButton
                 pendingText="..."
-                className="w-full py-2.5 sm:w-auto sm:py-2"
+                className="w-full py-2.5 sm:w-auto sm:py-1.5"
               >
                 {t("marketing.new.submit")}
               </SubmitButton>

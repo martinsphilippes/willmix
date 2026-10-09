@@ -53,11 +53,11 @@ export function CycleCard({
 }) {
   const { counts, sourcing, requests, orders, kits, schedules } = cycle;
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <div id="cycle" className="scroll-mt-4" />
       <p className="text-sm text-zinc-600">{t("vision.cycle.hint")}</p>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label={t("vision.cycle.requests")} value={counts.requests} />
         <Stat label={t("vision.cycle.orders")} value={counts.orders} />
         <Stat label={t("vision.cycle.delivered")} value={counts.delivered} />
@@ -76,7 +76,7 @@ export function CycleCard({
         />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         {/* Sourcing de origem */}
         <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">

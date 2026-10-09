@@ -59,7 +59,7 @@ export default async function PartiesPage({
           </>
         }
       />
-      <div className="mb-4 flex flex-wrap gap-2 text-sm">
+      <div className="mb-3 flex flex-wrap gap-2 text-sm">
         <Link
           href="/app/parties"
           aria-current={!type ? "page" : undefined}

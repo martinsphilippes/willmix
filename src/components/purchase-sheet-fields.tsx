@@ -578,11 +578,8 @@ export function PurchaseSheetFields({
         )}
       </Card>
 
-      <Card
-        title={t("sheet.section.customs")}
-        className="lg:order-5 lg:col-span-2"
-        dense
-      >
+      {/* Despachante e e-commerce lado a lado (menos rolagem). */}
+      <Card title={t("sheet.section.customs")} className="lg:order-5" dense>
         <Rows>
           <F t={t} m={missing} k="ncm" size="sm">
             <input
@@ -625,11 +622,7 @@ export function PurchaseSheetFields({
         </Rows>
       </Card>
 
-      <Card
-        title={t("sheet.section.ecommerce")}
-        className="lg:order-6 lg:col-span-2"
-        dense
-      >
+      <Card title={t("sheet.section.ecommerce")} className="lg:order-6" dense>
         <Rows>
           <F t={t} m={missing} k="ecommerceDescription" size="full">
             <textarea

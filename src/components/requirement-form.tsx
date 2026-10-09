@@ -38,14 +38,14 @@ export function RequirementForm({
     return (
       <form
         action={decideRequirementAction}
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-wrap items-center gap-1.5"
       >
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="requirementId" value={requirement.id} />
         <Input
           name="note"
           placeholder={t("common.note")}
-          className="max-w-xs sm:w-56"
+          className="max-w-xs sm:w-48"
         />
         <SubmitButton name="decision" value="approve" variant="primary">
           {t("common.approve")}
@@ -63,7 +63,7 @@ export function RequirementForm({
     return (
       <form
         action={action ?? submitRequirementAction}
-        className="flex flex-wrap items-center gap-2"
+        className="flex flex-wrap items-center gap-1.5"
       >
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="requirementId" value={requirement.id} />
@@ -96,7 +96,7 @@ export function RequirementForm({
   return (
     <form
       action={action ?? submitRequirementAction}
-      className="flex flex-wrap items-center gap-2"
+      className="flex flex-wrap items-center gap-1.5"
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="requirementId" value={requirement.id} />
@@ -123,7 +123,7 @@ export function RequirementForm({
           step="any"
           required
           defaultValue={defaultValue ?? undefined}
-          className="max-w-40 sm:w-40"
+          className="max-w-32 sm:w-32"
         />
       ) : null}
       {requirement.type === "date" ? (
@@ -134,7 +134,7 @@ export function RequirementForm({
           min={dateBounds?.min}
           max={dateBounds?.max}
           defaultValue={defaultValue ?? undefined}
-          className="max-w-48 sm:w-48"
+          className="max-w-40 sm:w-40"
         />
       ) : null}
       {requirement.type === "text" ? (
@@ -142,7 +142,7 @@ export function RequirementForm({
           name="value"
           required
           defaultValue={defaultValue ?? undefined}
-          className="min-h-10! max-w-md sm:w-72"
+          className="min-h-8! max-w-md sm:w-64"
           rows={1}
         />
       ) : null}

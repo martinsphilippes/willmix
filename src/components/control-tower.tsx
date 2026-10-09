@@ -80,7 +80,7 @@ async function TowerTotalsStrip({
     };
   return (
     <>
-      <section aria-label={t("ct.finance.title")} className="mb-5">
+      <section aria-label={t("ct.finance.title")} className="mb-4">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             {t("ct.finance.title")}
@@ -143,7 +143,7 @@ async function TowerTotalsStrip({
         </div>
       </section>
 
-      <section aria-label={t("ct.operation.title")} className="mb-5">
+      <section aria-label={t("ct.operation.title")} className="mb-4">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
           {t("ct.operation.title")}
         </h2>
@@ -163,7 +163,8 @@ async function TowerTotalsStrip({
             />
           ))}
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Três números curtos: uma linha só também no celular. */}
+        <div className="mt-3 grid grid-cols-3 gap-3">
           <Stat
             label={t("ct.operation.reviewsOpen")}
             value={totals.reviewsOpen}
@@ -195,8 +196,8 @@ function CommercialCard({
   t: Awaited<ReturnType<typeof getT>>;
 }) {
   return (
-    <Card className="mt-6 min-w-0" title={t("ct.commercial.title")}>
-      <p className="mb-3 text-xs text-zinc-500">{t("ct.commercial.hint")}</p>
+    <Card className="mt-4 min-w-0" title={t("ct.commercial.title")}>
+      <p className="mb-2 text-xs text-zinc-500">{t("ct.commercial.hint")}</p>
       {totals.commercial.length === 0 ? (
         <Empty>{t("ct.commercial.none")}</Empty>
       ) : (
@@ -310,7 +311,7 @@ export async function ControlTower({
         ))}
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
         <Card
           className="min-w-0 lg:col-span-2"
           title={cards.find((c) => c.key === selected)?.label}
@@ -379,13 +380,13 @@ export async function ControlTower({
               {data.exceptions.map((e, i) => (
                 <li
                   key={i}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 p-3"
+                  className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
                 >
                   <div className="min-w-0">
                     <Badge tone={e.severity === "high" ? "danger" : "warning"}>
                       {t(`ct.exception.${e.kind}`)}
                     </Badge>
-                    <p className="mt-1.5 text-zinc-700">{e.detail}</p>
+                    <p className="mt-1 text-zinc-700">{e.detail}</p>
                   </div>
                   <TextLink href={e.link} className="whitespace-nowrap text-xs">
                     {t("tasks.open")}

@@ -123,7 +123,7 @@ export default async function QuotePage({
           />
         ) : null}
       </div>
-      <div className="mt-4 grid gap-6 lg:grid-cols-2">
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <Card title={t("requests.title")}>
           <DescriptionList
             items={[
@@ -140,7 +140,7 @@ export default async function QuotePage({
             t={t}
           />
           {documents.length > 0 ? (
-            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-100 pt-3 text-sm">
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-2.5 text-sm">
               {documents
                 .filter(
                   (d) =>
@@ -167,7 +167,7 @@ export default async function QuotePage({
               "border-brand-300! ring-4 ring-brand-50",
           )}
         >
-          <div className="space-y-4">
+          <div className="space-y-3">
             {quote.status === "selected" ? (
               <Alert tone="success">{t("quotes.selected")}</Alert>
             ) : null}
@@ -204,7 +204,7 @@ export default async function QuotePage({
           apontam para ele pelo atributo `form`. */}
       {/* Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
           o <form> é display: contents para os cards entrarem na grade. */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {sheetView ? (
           <form
             id="quote-sheet"
@@ -212,7 +212,7 @@ export default async function QuotePage({
             className="contents"
           >
             <input type="hidden" name="quoteId" value={quote.id} />
-            <div className="space-y-3 lg:col-span-2">
+            <div className="space-y-2 lg:col-span-2">
               <h2 className="text-lg font-semibold text-zinc-900">
                 {t("quoteSheet.title")}
               </h2>
@@ -308,7 +308,8 @@ export default async function QuotePage({
             className="lg:order-8 lg:col-span-2"
             dense
           >
-            <div className="space-y-2">
+            {/* Prazo (curto) e condições lado a lado em telas grandes. */}
+            <div className="grid gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-4">
               <FieldRow label={t("quoteSheet.leadTime")} size="xs">
                 <input
                   form="quote-sheet"
@@ -331,7 +332,7 @@ export default async function QuotePage({
                 />
               </FieldRow>
             </div>
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               <SubmitButton
                 form="quote-sheet"
                 formAction={sendQuoteWithSheetAction}

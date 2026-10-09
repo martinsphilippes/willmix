@@ -16,6 +16,7 @@ import {
   Input,
   Textarea,
   TextLink,
+  cx,
   formatDate,
   type Tone,
 } from "@/components/ui";
@@ -26,7 +27,7 @@ import {
   suggestNcmAction,
   validateTaxAction,
 } from "../../actions/compliance";
-import { big, userNameFor } from "./shared";
+import { userNameFor } from "./shared";
 
 /*
  * Seção "Classificação fiscal (NCM)": NCM validado em destaque, sugestão por
@@ -84,11 +85,11 @@ export function TaxSection({
       : "";
 
   return (
-    <div className="space-y-4">
+    <div className="@container space-y-3">
       <div id="tax" className="scroll-mt-4" />
 
       {/* NCM validado em destaque (ou "não classificado") */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 px-3 py-2">
         {product.ncm ? (
           <>
             <Badge tone="success">
@@ -136,146 +137,161 @@ export function TaxSection({
         </span>
       </Alert>
 
-      {/* Candidatas */}
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {t("catalog.tax.candidates")}
-        </h3>
-        {rows.length === 0 ? (
-          <Empty>{t("catalog.tax.candidates.empty")}</Empty>
-        ) : (
-          <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200/80">
-            {rows.map((row) => (
-              <li
-                key={row.id}
-                className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between"
-              >
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-base font-semibold text-zinc-900">
-                      {row.ncm}
-                    </span>
-                    <Badge tone={statusTone[row.status]}>
-                      {t(`catalog.tax.status.${row.status}` as DictionaryKey)}
-                    </Badge>
-                    <Badge tone={sourceTone[row.source]}>
-                      {t(`catalog.tax.source.${row.source}` as DictionaryKey)}
-                    </Badge>
-                  </div>
-                  {row.description ? (
-                    <p className="text-sm text-zinc-800">{row.description}</p>
-                  ) : null}
-                  {row.taxes && rates(row.taxes) ? (
-                    <p className="text-xs text-zinc-600">
-                      {t("catalog.tax.taxes")}: {rates(row.taxes)}
-                    </p>
-                  ) : null}
-                  {row.adminTreatment ? (
-                    <p className="text-xs text-zinc-600">
-                      {t("catalog.tax.adminTreatment")}: {row.adminTreatment}
-                    </p>
-                  ) : null}
-                  {row.sourceRef ? (
-                    <p className="text-xs text-zinc-500">
-                      {t("catalog.tax.sourceRef")}: {row.sourceRef}
-                    </p>
-                  ) : null}
-                  {row.notes ? (
-                    <p className="whitespace-pre-line text-xs text-zinc-500">
-                      {row.notes}
-                    </p>
-                  ) : null}
-                  <p className="text-xs text-zinc-500">
-                    {t("catalog.tax.suggestedBy")}{" "}
-                    {userName(row.suggestedByUserId)} ·{" "}
-                    {formatDate(row.createdAt, t)}
-                    {row.validatedAt
-                      ? ` · ${t(
-                          row.status === "rejected"
-                            ? "catalog.tax.rejectedBy"
-                            : "catalog.tax.validatedBy",
-                        )} ${userName(row.validatedByUserId)} · ${formatDate(row.validatedAt, t)}`
-                      : ""}
-                  </p>
-                </div>
-                {canAct ? (
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {row.status !== "validated" ? (
-                      <form action={validateTaxAction}>
-                        {hidden}
-                        <input type="hidden" name="id" value={row.id} />
-                        <SubmitButton
-                          className="px-3 py-1.5 text-xs"
-                          pendingText="…"
-                        >
-                          {t("catalog.tax.validate")}
-                        </SubmitButton>
-                      </form>
-                    ) : null}
-                    {row.status !== "rejected" ? (
-                      <form
-                        action={rejectTaxAction}
-                        className="flex items-center gap-1.5"
-                      >
-                        {hidden}
-                        <input type="hidden" name="id" value={row.id} />
-                        <Input
-                          name="note"
-                          maxLength={2000}
-                          placeholder={t("catalog.tax.rejectNote")}
-                          aria-label={t("catalog.tax.rejectNote")}
-                          className="w-36 py-1.5 text-xs sm:w-44"
-                        />
-                        <SubmitButton
-                          variant="danger"
-                          className="shrink-0 px-3 py-1.5 text-xs"
-                          pendingText="…"
-                        >
-                          {t("catalog.tax.reject")}
-                        </SubmitButton>
-                      </form>
-                    ) : null}
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+      {/* Candidatas ao lado do formulário quando há largura (página do despachante). */}
+      <div
+        className={cx(
+          "grid gap-3",
+          canAct && "@4xl:grid-cols-2 @4xl:items-start",
         )}
-        <p className="mt-2 text-xs text-zinc-500">{t("catalog.tax.onlyOne")}</p>
-      </div>
-
-      {/* Candidata manual / do despachante */}
-      {canAct ? (
-        <form
-          action={addTaxCandidateAction}
-          className="space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4"
-        >
-          {hidden}
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {t("catalog.tax.add")}
+      >
+        {/* Candidatas */}
+        <div className="@container min-w-0">
+          <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            {t("catalog.tax.candidates")}
           </h3>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label={t("catalog.tax.ncm")} hint={t("catalog.tax.ncmHint")}>
-              <Input
-                name="ncm"
-                required
-                minLength={4}
-                maxLength={10}
-                inputMode="decimal"
-                placeholder={t("ph.tax.ncm")}
-                className={`${big} font-mono`}
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field label={t("catalog.tax.description")}>
-                <Input name="description" maxLength={2000} className={big} />
+          {rows.length === 0 ? (
+            <Empty>{t("catalog.tax.candidates.empty")}</Empty>
+          ) : (
+            <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200/80">
+              {rows.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex flex-col gap-2 px-3 py-2 @xl:flex-row @xl:items-start @xl:justify-between"
+                >
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-sm font-semibold text-zinc-900">
+                        {row.ncm}
+                      </span>
+                      <Badge tone={statusTone[row.status]}>
+                        {t(`catalog.tax.status.${row.status}` as DictionaryKey)}
+                      </Badge>
+                      <Badge tone={sourceTone[row.source]}>
+                        {t(`catalog.tax.source.${row.source}` as DictionaryKey)}
+                      </Badge>
+                    </div>
+                    {row.description ? (
+                      <p className="text-[13px] text-zinc-800">
+                        {row.description}
+                      </p>
+                    ) : null}
+                    {row.taxes && rates(row.taxes) ? (
+                      <p className="text-xs text-zinc-600">
+                        {t("catalog.tax.taxes")}: {rates(row.taxes)}
+                      </p>
+                    ) : null}
+                    {row.adminTreatment ? (
+                      <p className="text-xs text-zinc-600">
+                        {t("catalog.tax.adminTreatment")}: {row.adminTreatment}
+                      </p>
+                    ) : null}
+                    {row.sourceRef ? (
+                      <p className="text-xs text-zinc-500">
+                        {t("catalog.tax.sourceRef")}: {row.sourceRef}
+                      </p>
+                    ) : null}
+                    {row.notes ? (
+                      <p className="whitespace-pre-line text-xs text-zinc-500">
+                        {row.notes}
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-zinc-500">
+                      {t("catalog.tax.suggestedBy")}{" "}
+                      {userName(row.suggestedByUserId)} ·{" "}
+                      {formatDate(row.createdAt, t)}
+                      {row.validatedAt
+                        ? ` · ${t(
+                            row.status === "rejected"
+                              ? "catalog.tax.rejectedBy"
+                              : "catalog.tax.validatedBy",
+                          )} ${userName(row.validatedByUserId)} · ${formatDate(row.validatedAt, t)}`
+                        : ""}
+                    </p>
+                  </div>
+                  {canAct ? (
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {row.status !== "validated" ? (
+                        <form action={validateTaxAction}>
+                          {hidden}
+                          <input type="hidden" name="id" value={row.id} />
+                          <SubmitButton
+                            className="px-3 py-1.5 text-xs"
+                            pendingText="…"
+                          >
+                            {t("catalog.tax.validate")}
+                          </SubmitButton>
+                        </form>
+                      ) : null}
+                      {row.status !== "rejected" ? (
+                        <form
+                          action={rejectTaxAction}
+                          className="flex items-center gap-1.5"
+                        >
+                          {hidden}
+                          <input type="hidden" name="id" value={row.id} />
+                          <Input
+                            name="note"
+                            maxLength={2000}
+                            placeholder={t("catalog.tax.rejectNote")}
+                            aria-label={t("catalog.tax.rejectNote")}
+                            className="w-36 text-xs @xl:w-44"
+                          />
+                          <SubmitButton
+                            variant="danger"
+                            className="shrink-0 px-3 py-1.5 text-xs"
+                            pendingText="…"
+                          >
+                            {t("catalog.tax.reject")}
+                          </SubmitButton>
+                        </form>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1.5 text-xs text-zinc-500">
+            {t("catalog.tax.onlyOne")}
+          </p>
+        </div>
+
+        {/* Candidata manual / do despachante */}
+        {canAct ? (
+          <form
+            action={addTaxCandidateAction}
+            className="@container min-w-0 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
+          >
+            {hidden}
+            <h3 className="text-sm font-semibold text-zinc-900">
+              {t("catalog.tax.add")}
+            </h3>
+            <div className="grid gap-2 @sm:grid-cols-3">
+              <Field
+                label={t("catalog.tax.ncm")}
+                hint={t("catalog.tax.ncmHint")}
+              >
+                <Input
+                  name="ncm"
+                  required
+                  minLength={4}
+                  maxLength={10}
+                  inputMode="decimal"
+                  placeholder={t("ph.tax.ncm")}
+                  className="font-mono @sm:max-w-36"
+                />
               </Field>
+              <div className="@sm:col-span-2">
+                <Field label={t("catalog.tax.description")}>
+                  <Input name="description" maxLength={2000} />
+                </Field>
+              </div>
             </div>
-            <div className="sm:col-span-3">
-              <p className="mb-1 text-sm font-medium text-zinc-800">
+            <div>
+              <p className="mb-1 text-xs font-medium leading-5 text-zinc-700">
                 {t("catalog.tax.rates")}
               </p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              <div className="grid grid-cols-3 gap-2 @sm:grid-cols-5 @sm:max-w-md">
                 {RATE_KEYS.map((k) => (
                   <Field key={k} label={k}>
                     <Input
@@ -285,41 +301,38 @@ export function TaxSection({
                       min={0}
                       max={100}
                       inputMode="decimal"
-                      className={big}
                     />
                   </Field>
                 ))}
               </div>
             </div>
-            <div className="sm:col-span-2">
+            <div className="grid gap-2 @sm:grid-cols-2">
               <Field
                 label={t("catalog.tax.adminTreatment")}
                 hint={t("catalog.tax.adminTreatmentHint")}
               >
-                <Input name="adminTreatment" maxLength={2000} className={big} />
+                <Input name="adminTreatment" maxLength={2000} />
+              </Field>
+              <Field
+                label={t("catalog.tax.sourceRef")}
+                hint={t("catalog.tax.sourceRefHint")}
+              >
+                <Input name="sourceRef" maxLength={255} />
               </Field>
             </div>
-            <Field
-              label={t("catalog.tax.sourceRef")}
-              hint={t("catalog.tax.sourceRefHint")}
-            >
-              <Input name="sourceRef" maxLength={255} className={big} />
+            <Field label={t("common.note")}>
+              <Textarea name="notes" rows={2} />
             </Field>
-            <div className="sm:col-span-3">
-              <Field label={t("common.note")}>
-                <Textarea name="notes" rows={2} className={big} />
-              </Field>
-            </div>
-          </div>
-          <SubmitButton
-            variant="secondary"
-            className="w-full sm:w-auto"
-            pendingText="…"
-          >
-            + {t("catalog.tax.add")}
-          </SubmitButton>
-        </form>
-      ) : null}
+            <SubmitButton
+              variant="secondary"
+              className="w-full sm:w-auto"
+              pendingText="…"
+            >
+              + {t("catalog.tax.add")}
+            </SubmitButton>
+          </form>
+        ) : null}
+      </div>
     </div>
   );
 }

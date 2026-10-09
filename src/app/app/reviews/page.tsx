@@ -95,7 +95,7 @@ export default async function ReviewsPage({
 
       <nav
         aria-label={t("common.status")}
-        className="mt-4 mb-4 flex flex-wrap gap-2"
+        className="mt-3 mb-3 flex flex-wrap gap-2"
       >
         {REVIEW_STATUSES.map((s) => (
           <Link
@@ -124,11 +124,12 @@ export default async function ReviewsPage({
           {status === "open" ? t("reviews.none.open") : t("reviews.none")}
         </Empty>
       ) : (
-        <ul className="space-y-3">
+        /* Dois itens por linha em telas grandes: menos rolagem na fila. */
+        <ul className="grid items-start gap-3 lg:grid-cols-2">
           {items.map((r) => (
             <li
               key={r.id}
-              className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5"
+              className="min-w-0 rounded-2xl border border-zinc-200/80 bg-white p-3.5 shadow-sm shadow-zinc-900/[0.03] sm:p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -171,7 +172,7 @@ export default async function ReviewsPage({
                 ) : null}
               </div>
 
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm lg:grid-cols-4">
+              <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                     {t("reviews.expected")}
@@ -205,7 +206,7 @@ export default async function ReviewsPage({
               {r.status === "open" ? (
                 <form
                   action={decideReviewAction}
-                  className="mt-4 flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center"
+                  className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center"
                 >
                   <input type="hidden" name="id" value={r.id} />
                   <input type="hidden" name="status" value={status} />
@@ -214,13 +215,13 @@ export default async function ReviewsPage({
                     maxLength={2000}
                     placeholder={t("reviews.noteHint")}
                     aria-label={t("common.note")}
-                    className="py-2.5 text-base sm:flex-1 sm:py-2 sm:text-sm"
+                    className="py-2 text-base sm:flex-1 sm:py-1 sm:text-[13px]"
                   />
                   <div className="flex gap-2">
                     <SubmitButton
                       name="decision"
                       value="resolved"
-                      className="flex-1 py-2.5 text-base sm:flex-none sm:py-2 sm:text-sm"
+                      className="flex-1 py-2 sm:flex-none sm:py-1.5"
                     >
                       {t("reviews.resolve")}
                     </SubmitButton>
@@ -228,7 +229,7 @@ export default async function ReviewsPage({
                       name="decision"
                       value="dismissed"
                       variant="secondary"
-                      className="flex-1 py-2.5 text-base sm:flex-none sm:py-2 sm:text-sm"
+                      className="flex-1 py-2 sm:flex-none sm:py-1.5"
                     >
                       {t("reviews.dismiss")}
                     </SubmitButton>

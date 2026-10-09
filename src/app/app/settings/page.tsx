@@ -45,7 +45,7 @@ function Checkbox({
   hint: string;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 shadow-sm">
+    <label className="flex min-w-0 items-start gap-2.5 rounded-lg border border-zinc-300 bg-white px-2.5 py-2 shadow-sm">
       <input
         type="checkbox"
         name={name}
@@ -55,7 +55,9 @@ function Checkbox({
       />
       <input type="hidden" name={name} value="false" />
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-zinc-800">{label}</span>
+        <span className="block text-[13px] font-medium leading-5 text-zinc-800">
+          {label}
+        </span>
         <span className="block text-xs text-zinc-500">{hint}</span>
       </span>
     </label>
@@ -135,6 +137,11 @@ export default async function SettingsPage({
         ? "warning"
         : "neutral";
 
+  /* Seções do formulário em duas colunas (iPad/desktop): cada coluna é um @container e os campos curtos formam grades densas. */
+  const section = "space-y-3 border-t border-zinc-100 pt-3";
+  const h3 = "text-sm font-semibold text-zinc-900";
+  const hintP = "text-xs leading-relaxed text-zinc-500";
+
   return (
     <>
       <PageHeader
@@ -144,384 +151,394 @@ export default async function SettingsPage({
       />
       {ok ? <Alert tone="success">{t("settings.saved")}</Alert> : null}
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
-      <Card className="mt-4 max-w-2xl">
+      <Card className="mt-3">
         <form action={saveSettingsAction} className="space-y-4">
-          <h3 className="text-sm font-semibold text-zinc-900">
-            {t("settings.section.general")}
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("settings.label.customerCanCreateRequest")}>
-              <Select
-                name="customerCanCreateRequest"
-                defaultValue={String(s.customerCanCreateRequest)}
-              >
-                <option value="true">{t("common.yes")}</option>
-                <option value="false">{t("common.no")}</option>
-              </Select>
-            </Field>
-            <Field label={t("settings.label.agencyValidationEnabled")}>
-              <Select
-                name="agencyValidationEnabled"
-                defaultValue={String(s.agencyValidationEnabled)}
-              >
-                <option value="true">{t("common.yes")}</option>
-                <option value="false">{t("common.no")}</option>
-              </Select>
-            </Field>
-            <Field label={t("settings.label.deliveryConfirmationMode")}>
-              <Select
-                name="deliveryConfirmationMode"
-                defaultValue={s.deliveryConfirmationMode}
-              >
-                <option value="BOTH">{t("settings.option.BOTH")}</option>
-                <option value="CUSTOMER">
-                  {t("settings.option.CUSTOMER")}
-                </option>
-                <option value="WELLMIX">{t("settings.option.WELLMIX")}</option>
-              </Select>
-            </Field>
-            <Field label={t("settings.label.weightTolerancePercent")}>
-              <Input
-                name="weightTolerancePercent"
-                type="number"
-                step="0.1"
-                min="0"
-                defaultValue={s.weightTolerancePercent}
-              />
-            </Field>
-            <Field label={t("settings.label.downPaymentPercent")}>
-              <Input
-                name="downPaymentPercent"
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                defaultValue={s.downPaymentPercent}
-              />
-            </Field>
-            <Field label={t("settings.label.quotationExpirationDays")}>
-              <Input
-                name="quotationExpirationDays"
-                type="number"
-                min="1"
-                defaultValue={s.quotationExpirationDays}
-              />
-            </Field>
-            <Field label={t("settings.label.reminderDaysBeforeDue")}>
-              <Input
-                name="reminderDaysBeforeDue"
-                type="number"
-                min="0"
-                defaultValue={s.reminderDaysBeforeDue}
-              />
-            </Field>
-            <Field label={t("settings.label.sankhyaMode")}>
-              <Select name="sankhyaMode" defaultValue={s.sankhyaMode}>
-                <option value="MOCK">{t("settings.option.MOCK")}</option>
-                <option value="MANUAL">{t("settings.option.MANUAL")}</option>
-              </Select>
-            </Field>
-          </div>
-          <Field label={t("settings.label.stageDueDays")}>
-            <Textarea
-              name="stageDueDays"
-              rows={6}
-              className="font-mono text-xs"
-              defaultValue={JSON.stringify(s.stageDueDays, null, 2)}
-            />
-          </Field>
+          <div className="grid items-start gap-x-6 gap-y-3 lg:grid-cols-2">
+            {/* Coluna 1: fluxo e prazos, SLA, inspeção, containers, conformidade, pagamentos. */}
+            <div className="@container min-w-0 space-y-3">
+              <div className="space-y-3">
+                <h3 className={h3}>{t("settings.section.general")}</h3>
+                <div className="grid items-end gap-3 @sm:grid-cols-2 @xl:grid-cols-4">
+                  <Field label={t("settings.label.customerCanCreateRequest")}>
+                    <Select
+                      name="customerCanCreateRequest"
+                      defaultValue={String(s.customerCanCreateRequest)}
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
+                  <Field label={t("settings.label.agencyValidationEnabled")}>
+                    <Select
+                      name="agencyValidationEnabled"
+                      defaultValue={String(s.agencyValidationEnabled)}
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
+                  <Field label={t("settings.label.deliveryConfirmationMode")}>
+                    <Select
+                      name="deliveryConfirmationMode"
+                      defaultValue={s.deliveryConfirmationMode}
+                    >
+                      <option value="BOTH">{t("settings.option.BOTH")}</option>
+                      <option value="CUSTOMER">
+                        {t("settings.option.CUSTOMER")}
+                      </option>
+                      <option value="WELLMIX">
+                        {t("settings.option.WELLMIX")}
+                      </option>
+                    </Select>
+                  </Field>
+                  <Field label={t("settings.label.weightTolerancePercent")}>
+                    <Input
+                      name="weightTolerancePercent"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      defaultValue={s.weightTolerancePercent}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.downPaymentPercent")}>
+                    <Input
+                      name="downPaymentPercent"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      defaultValue={s.downPaymentPercent}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.quotationExpirationDays")}>
+                    <Input
+                      name="quotationExpirationDays"
+                      type="number"
+                      min="1"
+                      defaultValue={s.quotationExpirationDays}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.reminderDaysBeforeDue")}>
+                    <Input
+                      name="reminderDaysBeforeDue"
+                      type="number"
+                      min="0"
+                      defaultValue={s.reminderDaysBeforeDue}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.sankhyaMode")}>
+                    <Select name="sankhyaMode" defaultValue={s.sankhyaMode}>
+                      <option value="MOCK">{t("settings.option.MOCK")}</option>
+                      <option value="MANUAL">
+                        {t("settings.option.MANUAL")}
+                      </option>
+                    </Select>
+                  </Field>
+                </div>
+                <Field label={t("settings.label.stageDueDays")}>
+                  <Textarea
+                    name="stageDueDays"
+                    rows={6}
+                    className="font-mono text-xs"
+                    defaultValue={JSON.stringify(s.stageDueDays, null, 2)}
+                  />
+                </Field>
+              </div>
 
-          <h3 className="border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-900">
-            {t("settings.section.inspection")}
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label={t("settings.label.dimensionTolerancePercent")}
-              hint={t("settings.hint.dimensionTolerancePercent")}
-            >
-              <Input
-                name="dimensionTolerancePercent"
-                type="number"
-                step="0.1"
-                min="0"
-                defaultValue={s.dimensionTolerancePercent}
-              />
-            </Field>
-            <Field
-              label={t("settings.label.cbmTolerancePercent")}
-              hint={t("settings.hint.cbmTolerancePercent")}
-            >
-              <Input
-                name="cbmTolerancePercent"
-                type="number"
-                step="0.1"
-                min="0"
-                defaultValue={s.cbmTolerancePercent}
-              />
-            </Field>
-            <Field
-              label={t("settings.label.quantityTolerancePercent")}
-              hint={t("settings.hint.quantityTolerancePercent")}
-            >
-              <Input
-                name="quantityTolerancePercent"
-                type="number"
-                step="0.1"
-                min="0"
-                defaultValue={s.quantityTolerancePercent}
-              />
-            </Field>
-            <div className="grid gap-3 sm:col-span-2">
-              <Checkbox
-                name="inspectionExtendedChecks"
-                label={t("settings.label.inspectionExtendedChecks")}
-                checked={s.inspectionExtendedChecks}
-                hint={t("settings.hint.inspectionExtendedChecks")}
-              />
-              <Checkbox
-                name="reviewOnZeroPrice"
-                label={t("settings.label.reviewOnZeroPrice")}
-                checked={s.reviewOnZeroPrice}
-                hint={t("settings.hint.reviewOnZeroPrice")}
-              />
-            </div>
-          </div>
+              {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
+              <div className={section}>
+                <h3 className={h3}>{t("sla.settings.title")}</h3>
+                <p className={hintP}>{t("sla.settings.hint")}</p>
+                <div className="grid gap-3 @sm:grid-cols-2 @xl:grid-cols-4">
+                  <Field label={t("sla.settings.days")}>
+                    <Input
+                      name="quoteSlaBusinessDays"
+                      type="number"
+                      min={QUOTE_SLA_MIN_DAYS}
+                      max={QUOTE_SLA_MAX_DAYS}
+                      step="1"
+                      required
+                      defaultValue={s.quoteSlaBusinessDays}
+                    />
+                  </Field>
+                </div>
+              </div>
 
-          <h3 className="border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-900">
-            {t("settings.section.containers")}
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label={t("settings.label.containerMaxOccupancyPercent")}
-              hint={t("settings.hint.containerMaxOccupancyPercent")}
-            >
-              <Input
-                name="containerMaxOccupancyPercent"
-                type="number"
-                step="1"
-                min="1"
-                max="100"
-                defaultValue={s.containerMaxOccupancyPercent}
-              />
-            </Field>
-            <div className="sm:col-span-2">
-              <Checkbox
-                name="containerAllowMultiCustomer"
-                label={t("settings.label.containerAllowMultiCustomer")}
-                checked={s.containerAllowMultiCustomer}
-                hint={t("settings.hint.containerAllowMultiCustomer")}
-              />
+              <div className={section}>
+                <h3 className={h3}>{t("settings.section.inspection")}</h3>
+                <div className="grid gap-3 @sm:grid-cols-2 @xl:grid-cols-3">
+                  <Field
+                    label={t("settings.label.dimensionTolerancePercent")}
+                    hint={t("settings.hint.dimensionTolerancePercent")}
+                  >
+                    <Input
+                      name="dimensionTolerancePercent"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      defaultValue={s.dimensionTolerancePercent}
+                    />
+                  </Field>
+                  <Field
+                    label={t("settings.label.cbmTolerancePercent")}
+                    hint={t("settings.hint.cbmTolerancePercent")}
+                  >
+                    <Input
+                      name="cbmTolerancePercent"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      defaultValue={s.cbmTolerancePercent}
+                    />
+                  </Field>
+                  <Field
+                    label={t("settings.label.quantityTolerancePercent")}
+                    hint={t("settings.hint.quantityTolerancePercent")}
+                  >
+                    <Input
+                      name="quantityTolerancePercent"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      defaultValue={s.quantityTolerancePercent}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-2 @xl:grid-cols-2">
+                  <Checkbox
+                    name="inspectionExtendedChecks"
+                    label={t("settings.label.inspectionExtendedChecks")}
+                    checked={s.inspectionExtendedChecks}
+                    hint={t("settings.hint.inspectionExtendedChecks")}
+                  />
+                  <Checkbox
+                    name="reviewOnZeroPrice"
+                    label={t("settings.label.reviewOnZeroPrice")}
+                    checked={s.reviewOnZeroPrice}
+                    hint={t("settings.hint.reviewOnZeroPrice")}
+                  />
+                </div>
+              </div>
+
+              <div className={section}>
+                <h3 className={h3}>{t("settings.section.containers")}</h3>
+                <div className="grid items-start gap-3 @sm:grid-cols-2">
+                  <Field
+                    label={t("settings.label.containerMaxOccupancyPercent")}
+                    hint={t("settings.hint.containerMaxOccupancyPercent")}
+                  >
+                    <Input
+                      name="containerMaxOccupancyPercent"
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="100"
+                      defaultValue={s.containerMaxOccupancyPercent}
+                    />
+                  </Field>
+                  <Checkbox
+                    name="containerAllowMultiCustomer"
+                    label={t("settings.label.containerAllowMultiCustomer")}
+                    checked={s.containerAllowMultiCustomer}
+                    hint={t("settings.hint.containerAllowMultiCustomer")}
+                  />
+                </div>
+                <Field
+                  label={t("settings.containerTypes.label")}
+                  hint={t("settings.hint.containerTypes")}
+                >
+                  <Textarea
+                    name="containerTypes"
+                    rows={4}
+                    className="font-mono text-xs"
+                    defaultValue={formatContainerTypes(s.containerTypes)}
+                  />
+                </Field>
+              </div>
+
+              <div className={section}>
+                <h3 className={h3}>{t("settings.section.compliance")}</h3>
+                <div className="grid gap-3 @sm:grid-cols-2 @xl:grid-cols-3">
+                  <Field
+                    label={t("settings.label.certificationExpiryWarningDays")}
+                    hint={t("settings.hint.certificationExpiryWarningDays")}
+                  >
+                    <Input
+                      name="certificationExpiryWarningDays"
+                      type="number"
+                      step="1"
+                      min="0"
+                      defaultValue={s.certificationExpiryWarningDays}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-2 @xl:grid-cols-2">
+                  <Checkbox
+                    name="complianceGateEnabled"
+                    label={t("settings.label.complianceGateEnabled")}
+                    checked={s.complianceGateEnabled}
+                    hint={t("settings.hint.complianceGateEnabled")}
+                  />
+                  <Checkbox
+                    name="afterSalesEnabled"
+                    label={t("settings.label.afterSalesEnabled")}
+                    checked={s.afterSalesEnabled}
+                    hint={t("settings.hint.afterSalesEnabled")}
+                  />
+                </div>
+              </div>
+
+              {/* Pagamento ao fornecedor: destino do pedido ao financeiro. */}
+              <div className={section}>
+                <h3 className={h3}>{t("supplierPay.settings.title")}</h3>
+                <p className={hintP}>{t("supplierPay.settings.hint")}</p>
+                <div className="grid gap-3 @sm:grid-cols-2">
+                  <Field label={t("supplierPay.settings.email")}>
+                    <Input
+                      name="financeEmail"
+                      type="email"
+                      maxLength={160}
+                      defaultValue={s.financeEmail}
+                    />
+                  </Field>
+                  <Field
+                    label={t("supplierPay.settings.whatsapp")}
+                    hint={t("supplierPay.settings.whatsappHint")}
+                  >
+                    <Input
+                      name="financeWhatsapp"
+                      type="tel"
+                      maxLength={24}
+                      defaultValue={s.financeWhatsapp}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {/* Pix do sinal: a chave do recebedor que aparece para o cliente pagar. */}
+              <div className={section}>
+                <h3 className={h3}>{t("payments.settings.title")}</h3>
+                <p className={hintP}>{t("payments.settings.hint")}</p>
+                <Field
+                  label={t("payments.settings.key")}
+                  hint={t("payments.settings.keyHint")}
+                >
+                  <Input
+                    name="pixKey"
+                    maxLength={77}
+                    defaultValue={s.pixKey}
+                    autoComplete="off"
+                    className="font-mono text-sm"
+                  />
+                </Field>
+              </div>
             </div>
-          </div>
-          <h3 className="border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-900">
-            {t("settings.section.compliance")}
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label={t("settings.label.certificationExpiryWarningDays")}
-              hint={t("settings.hint.certificationExpiryWarningDays")}
-            >
-              <Input
-                name="certificationExpiryWarningDays"
-                type="number"
-                step="1"
-                min="0"
-                defaultValue={s.certificationExpiryWarningDays}
-              />
-            </Field>
-            <div className="grid gap-3 sm:col-span-2">
-              <Checkbox
-                name="complianceGateEnabled"
-                label={t("settings.label.complianceGateEnabled")}
-                checked={s.complianceGateEnabled}
-                hint={t("settings.hint.complianceGateEnabled")}
-              />
-              <Checkbox
-                name="afterSalesEnabled"
-                label={t("settings.label.afterSalesEnabled")}
-                checked={s.afterSalesEnabled}
-                hint={t("settings.hint.afterSalesEnabled")}
-              />
-            </div>
-          </div>
-          <Field
-            label={t("settings.containerTypes.label")}
-            hint={t("settings.hint.containerTypes")}
-          >
-            <Textarea
-              name="containerTypes"
-              rows={4}
-              className="font-mono text-xs"
-              defaultValue={formatContainerTypes(s.containerTypes)}
-            />
-          </Field>
-          {/* Visão de Produto: IA (modo e modelo), marketing studio / kit, gate de RADAR e importadora. */}
-          <h3 className="border-t border-zinc-200 pt-4 text-sm font-semibold text-zinc-900">
-            {t("operations.settings.section")}
-          </h3>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label={
-                <span className="inline-flex flex-wrap items-center gap-2">
-                  {t("settings.label.aiMode")}
-                  <Badge tone={aiEffectiveTone}>
-                    {t("operations.settings.effective")}: {t(aiEffectiveKey)}
-                  </Badge>
-                </span>
-              }
-              hint={t("operations.settings.hint.aiMode")}
-            >
-              <Select name="aiMode" defaultValue={s.aiMode}>
-                <option value="AUTO">{t("settings.option.AUTO")}</option>
-                <option value="MOCK">{t("settings.option.MOCK")}</option>
-                <option value="MANUAL">{t("settings.option.MANUAL")}</option>
-              </Select>
-            </Field>
-            <Field
-              label={t("settings.label.aiModel")}
-              hint={t("operations.settings.hint.aiModel")}
-            >
-              <Input
-                name="aiModel"
-                maxLength={80}
-                defaultValue={s.aiModel}
-                className="font-mono text-xs"
-              />
-            </Field>
-            <Field
-              label={t("settings.label.marketingKitDefaultPrice")}
-              hint={t("operations.settings.hint.marketingKitDefaultPrice")}
-            >
-              <Input
-                name="marketingKitDefaultPrice"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={s.marketingKitDefaultPrice}
-              />
-            </Field>
-            <Field
-              label={t("settings.label.marketingKitCurrency")}
-              hint={t("operations.settings.hint.marketingKitCurrency")}
-            >
-              <CurrencySelect
-                name="marketingKitCurrency"
-                value={s.marketingKitCurrency}
+
+            {/* Coluna 2: IA e importadora, preço ao cliente e tributos. */}
+            <div className="@container min-w-0 space-y-3">
+              {/* Visão de Produto: IA (modo e modelo), marketing studio / kit, gate de RADAR e importadora. */}
+              <div className={`${section} lg:border-t-0 lg:pt-0`}>
+                <h3 className={h3}>{t("operations.settings.section")}</h3>
+                <div className="grid gap-3 @sm:grid-cols-2">
+                  <Field
+                    label={
+                      <span className="inline-flex flex-wrap items-center gap-2">
+                        {t("settings.label.aiMode")}
+                        <Badge tone={aiEffectiveTone}>
+                          {t("operations.settings.effective")}:{" "}
+                          {t(aiEffectiveKey)}
+                        </Badge>
+                      </span>
+                    }
+                    hint={t("operations.settings.hint.aiMode")}
+                  >
+                    <Select name="aiMode" defaultValue={s.aiMode}>
+                      <option value="AUTO">{t("settings.option.AUTO")}</option>
+                      <option value="MOCK">{t("settings.option.MOCK")}</option>
+                      <option value="MANUAL">
+                        {t("settings.option.MANUAL")}
+                      </option>
+                    </Select>
+                  </Field>
+                  <Field
+                    label={t("settings.label.aiModel")}
+                    hint={t("operations.settings.hint.aiModel")}
+                  >
+                    <Input
+                      name="aiModel"
+                      maxLength={80}
+                      defaultValue={s.aiModel}
+                      className="font-mono text-xs"
+                    />
+                  </Field>
+                  <Field
+                    label={t("settings.label.marketingKitDefaultPrice")}
+                    hint={t(
+                      "operations.settings.hint.marketingKitDefaultPrice",
+                    )}
+                  >
+                    <Input
+                      name="marketingKitDefaultPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      defaultValue={s.marketingKitDefaultPrice}
+                    />
+                  </Field>
+                  <Field
+                    label={t("settings.label.marketingKitCurrency")}
+                    hint={t("operations.settings.hint.marketingKitCurrency")}
+                  >
+                    <CurrencySelect
+                      name="marketingKitCurrency"
+                      value={s.marketingKitCurrency}
+                      t={t}
+                    />
+                  </Field>
+                  <div className="min-w-0 @sm:col-span-2">
+                    <Field
+                      label={t("settings.label.importerName")}
+                      hint={t("operations.settings.hint.importerName")}
+                    >
+                      <Input
+                        name="importerName"
+                        maxLength={120}
+                        defaultValue={s.importerName}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <div className="grid gap-2 @xl:grid-cols-2 @3xl:grid-cols-3">
+                  <Checkbox
+                    name="marketingEnabled"
+                    label={t("settings.label.marketingEnabled")}
+                    checked={s.marketingEnabled}
+                    hint={t("operations.settings.hint.marketingEnabled")}
+                  />
+                  <Checkbox
+                    name="radarGateEnabled"
+                    label={t("settings.label.radarGateEnabled")}
+                    checked={s.radarGateEnabled}
+                    hint={t("operations.settings.hint.radarGateEnabled")}
+                  />
+                  <Checkbox
+                    name="lookupPaused"
+                    label={t("settings.label.lookupPaused")}
+                    checked={s.lookupPaused}
+                    hint={t("operations.settings.hint.lookupPaused")}
+                  />
+                </div>
+              </div>
+              {/* Preço ao cliente: margem (geral/linha/cliente), frete e câmbio. */}
+              <PricingSettings
                 t={t}
+                s={s}
+                lines={lines}
+                customers={customers}
+                fx={fx}
               />
-            </Field>
-            <div className="sm:col-span-2">
-              <Field
-                label={t("settings.label.importerName")}
-                hint={t("operations.settings.hint.importerName")}
-              >
-                <Input
-                  name="importerName"
-                  maxLength={120}
-                  defaultValue={s.importerName}
-                />
-              </Field>
-            </div>
-            <div className="grid gap-3 sm:col-span-2">
-              <Checkbox
-                name="marketingEnabled"
-                label={t("settings.label.marketingEnabled")}
-                checked={s.marketingEnabled}
-                hint={t("operations.settings.hint.marketingEnabled")}
-              />
-              <Checkbox
-                name="radarGateEnabled"
-                label={t("settings.label.radarGateEnabled")}
-                checked={s.radarGateEnabled}
-                hint={t("operations.settings.hint.radarGateEnabled")}
-              />
-              <Checkbox
-                name="lookupPaused"
-                label={t("settings.label.lookupPaused")}
-                checked={s.lookupPaused}
-                hint={t("operations.settings.hint.lookupPaused")}
-              />
-            </div>
-          </div>
-          {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
-          <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
-            {t("sla.settings.title")}
-          </h3>
-          <p className="text-xs leading-relaxed text-zinc-500">
-            {t("sla.settings.hint")}
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("sla.settings.days")}>
-              <Input
-                name="quoteSlaBusinessDays"
-                type="number"
-                min={QUOTE_SLA_MIN_DAYS}
-                max={QUOTE_SLA_MAX_DAYS}
-                step="1"
-                required
-                defaultValue={s.quoteSlaBusinessDays}
-              />
-            </Field>
-          </div>
-          {/* Preço ao cliente: margem (geral/linha/cliente), frete e câmbio. */}
-          <PricingSettings
-            t={t}
-            s={s}
-            lines={lines}
-            customers={customers}
-            fx={fx}
-          />
-          {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}
-          <TaxRateFields t={t} s={s} />
-          {/* Pagamento ao fornecedor: destino do pedido ao financeiro. */}
-          <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
-            {t("supplierPay.settings.title")}
-          </h3>
-          <p className="text-xs leading-relaxed text-zinc-500">
-            {t("supplierPay.settings.hint")}
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("supplierPay.settings.email")}>
-              <Input
-                name="financeEmail"
-                type="email"
-                maxLength={160}
-                defaultValue={s.financeEmail}
-              />
-            </Field>
-            <Field
-              label={t("supplierPay.settings.whatsapp")}
-              hint={t("supplierPay.settings.whatsappHint")}
-            >
-              <Input
-                name="financeWhatsapp"
-                type="tel"
-                maxLength={24}
-                defaultValue={s.financeWhatsapp}
-              />
-            </Field>
-          </div>
-          {/* Pix do sinal: a chave do recebedor que aparece para o cliente pagar. */}
-          <h3 className="border-t border-zinc-100 pt-4 text-sm font-semibold text-zinc-900">
-            {t("payments.settings.title")}
-          </h3>
-          <p className="text-xs leading-relaxed text-zinc-500">
-            {t("payments.settings.hint")}
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Field
-                label={t("payments.settings.key")}
-                hint={t("payments.settings.keyHint")}
-              >
-                <Input
-                  name="pixKey"
-                  maxLength={77}
-                  defaultValue={s.pixKey}
-                  autoComplete="off"
-                  className="font-mono text-sm"
-                />
-              </Field>
+              {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}
+              <TaxRateFields t={t} s={s} />
             </div>
           </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">
@@ -534,25 +551,28 @@ export default async function SettingsPage({
           <SubmitButton>{t("common.save")}</SubmitButton>
         </form>
       </Card>
-      <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotice} />
+      {/* Tabela fiscal e teste da IA lado a lado. */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+        <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotice} />
 
-      {/* Teste real da IA com a configuração salva (mostra provedor/modelo ou o motivo da falha). */}
-      <Card title={t("operations.ai.test")} className="mt-6">
-        <div id="ai-test" className="scroll-mt-4" />
-        <p className="mb-3 text-sm text-zinc-600">
-          {t("operations.ai.testHint")}
-        </p>
-        {aiTestText ? (
-          <Alert tone={aiTest === "ok" ? "success" : "warning"}>
-            {aiTestText}
-          </Alert>
-        ) : null}
-        <form action={testAiAction} className="mt-3">
-          <SubmitButton variant="secondary" pendingText="…">
-            {t("operations.ai.test")}
-          </SubmitButton>
-        </form>
-      </Card>
+        {/* Teste real da IA com a configuração salva (mostra provedor/modelo ou o motivo da falha). */}
+        <Card title={t("operations.ai.test")}>
+          <div id="ai-test" className="scroll-mt-4" />
+          <p className="mb-3 text-sm text-zinc-600">
+            {t("operations.ai.testHint")}
+          </p>
+          {aiTestText ? (
+            <Alert tone={aiTest === "ok" ? "success" : "warning"}>
+              {aiTestText}
+            </Alert>
+          ) : null}
+          <form action={testAiAction} className="mt-3">
+            <SubmitButton variant="secondary" pendingText="…">
+              {t("operations.ai.test")}
+            </SubmitButton>
+          </form>
+        </Card>
+      </div>
     </>
   );
 }

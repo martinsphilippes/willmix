@@ -7,12 +7,13 @@ import { cx, type Tone } from "@/components/ui";
 
 /*
  * Peças compartilhadas do módulo Sourcing (uso no celular, na fábrica ou na feira):
- * campos grandes, seções recolhíveis, barra de salvar ao alcance do polegar e
- * miniatura da foto principal servida por /api/files/<documentId>.
+ * campos fáceis de tocar no celular e compactos a partir do tablet, seções
+ * recolhíveis, barra de salvar ao alcance do polegar e miniatura da foto
+ * principal servida por /api/files/<documentId>.
  */
 
-/** Campo maior no celular (py-2.5, 16 px para o iOS não dar zoom); tamanho padrão no desktop. */
-export const bigField = "py-2.5 text-base sm:text-sm";
+/** Campo maior no celular (16 px para o iOS não dar zoom); compacto (32 px, como o resto do portal) a partir do tablet. */
+export const bigField = "py-2 text-base sm:py-1 sm:text-[13px] sm:leading-5";
 
 export function sourcingTone(status: SourcingStatus): Tone {
   switch (status) {
@@ -78,7 +79,11 @@ export function Thumb({
   );
 }
 
-/** Seção recolhível do formulário (<details>): a primeira abre por padrão. */
+/**
+ * Seção recolhível do formulário (<details>): a primeira abre por padrão.
+ * Grade pela largura da própria seção (@container): uma coluna no celular,
+ * duas numa seção média e quatro numa seção larga (campos do tamanho do conteúdo).
+ */
 export function Section({
   title,
   open = false,
@@ -93,9 +98,9 @@ export function Section({
   return (
     <details
       open={open}
-      className="group rounded-2xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-900/[0.03]"
+      className="group min-w-0 rounded-2xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-900/[0.03]"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-base font-semibold text-zinc-900 [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold text-zinc-900 sm:px-4 [&::-webkit-details-marker]:hidden">
         {title}
         <span
           aria-hidden
@@ -104,13 +109,15 @@ export function Section({
           +
         </span>
       </summary>
-      <div
-        className={cx(
-          "grid gap-3 border-t border-zinc-100 px-4 py-4 sm:grid-cols-2",
-          className,
-        )}
-      >
-        {children}
+      <div className="border-t border-zinc-100 @container">
+        <div
+          className={cx(
+            "grid gap-x-3 gap-y-2.5 px-3 py-3 @md:grid-cols-2 @2xl:grid-cols-4 sm:px-4",
+            className,
+          )}
+        >
+          {children}
+        </div>
       </div>
     </details>
   );
