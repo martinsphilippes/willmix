@@ -19,6 +19,8 @@ import {
 } from "@/lib/services/product-sheet";
 import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { PantonePicker } from "@/components/pantone-picker";
+import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import { saveProductSheetAction } from "../../actions/purchase-sheet";
 import { listTaxClassifications } from "@/lib/services/taxes";
 import {
@@ -496,11 +498,34 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.color")} size="md">
                 <Input name="color" defaultValue={product.color ?? ""} dense />
               </FieldRow>
-              <FieldRow label={t("catalog.pantone")} size="md">
-                <Input
-                  name="pantone"
-                  defaultValue={product.pantone ?? ""}
-                  dense
+              <FieldRow
+                label={t("catalog.pantone")}
+                size="full"
+                hint={t("pantone.productHint")}
+              >
+                <PantonePicker
+                  name="colorPantones"
+                  initial={
+                    product.colorPantones ?? masterSheet?.colorPantones ?? []
+                  }
+                  max={MAX_PANTONE_PER_SHEET}
+                  labels={{
+                    search: t("pantone.search"),
+                    scaleAll: t("pantone.scale.all"),
+                    scales: {
+                      C: t("pantone.scale.C"),
+                      U: t("pantone.scale.U"),
+                      M: t("pantone.scale.M"),
+                      P: t("pantone.scale.P"),
+                      TCX: t("pantone.scale.TCX"),
+                    },
+                    loading: t("pantone.loading"),
+                    none: t("pantone.none"),
+                    more: t("pantone.more"),
+                    remove: t("pantone.remove"),
+                    max: t("pantone.max"),
+                    empty: t("pantone.empty"),
+                  }}
                 />
               </FieldRow>
               <FieldRow label={t("catalog.dimensions")} size="full">

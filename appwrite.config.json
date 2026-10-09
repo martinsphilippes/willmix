@@ -475,6 +475,13 @@
           "size": 40
         },
         {
+          "key": "colorPantones",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
           "key": "moq",
           "required": false,
           "array": false,
