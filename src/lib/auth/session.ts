@@ -13,6 +13,9 @@ const SESSION_DAYS = 7;
 
 export class AuthError extends Error {}
 
+/** Tamanho mínimo de senha no Appwrite (contas sempre criadas com 8+). */
+const APPWRITE_MIN_PASSWORD = 8;
+
 /**
  * Login. Modo memória: valida senha localmente e assina um cookie.
  * Modo Appwrite: cria sessão com a API key e guarda o segredo em cookie.
@@ -47,6 +50,10 @@ export async function signIn(email: string, password: string): Promise<User> {
     );
     return user;
   }
+
+  // O Appwrite só aceita senha com 8+ caracteres: abaixo disso responde
+  // "argumento inválido", que viraria "banco fora" na tela. É senha errada.
+  if (password.length < APPWRITE_MIN_PASSWORD) throw new AuthError("invalid");
 
   const { createAdminClient, sessionCookieName } =
     await import("@/lib/appwrite/server");

@@ -343,7 +343,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 
 ## Banco pausado no login
 
-- Quando o projeto Appwrite está pausado por inatividade (plano gratuito), `/api/auth/session` responde 503 com `code: "paused"` (`isProjectPaused` em `src/lib/auth/login-errors.ts`) e a tela de login explica que a senha não é o problema, que o banco só volta quando for reativado e como o administrador reativa (console do Appwrite → projeto → Restore). Antes dizia "tente de novo em alguns minutos", o que não resolve uma pausa. Outras falhas do banco seguem com a mensagem anterior; senha errada continua 401 sem revelar o estado do banco. Regra da pausa e prevenção em `docs/AMBIENTE.md`.
+- Quando o projeto Appwrite está pausado por inatividade (plano gratuito), `/api/auth/session` responde 503 com `code: "paused"` (`isProjectPaused` em `src/lib/auth/login-errors.ts`) e a tela de login explica que a senha não é o problema, que o banco só volta quando for reativado e como o administrador reativa (console do Appwrite → projeto → Restore). Antes dizia "tente de novo em alguns minutos", o que não resolve uma pausa. Outras falhas do banco seguem com a mensagem anterior; senha errada continua 401 sem revelar o estado do banco. Senha com menos de 8 caracteres no modo Appwrite (o mínimo do Appwrite) é senha errada: antes o Appwrite respondia "argumento inválido" e a tela dizia que o banco estava fora. Regra da pausa e prevenção em `docs/AMBIENTE.md`.
 
 ## Reutilizado
 
