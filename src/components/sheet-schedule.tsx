@@ -169,6 +169,16 @@ export function SheetSchedule({
     message: string;
     before: { lots: { interval: string; cartons: string }[]; visible: number };
   } | null>(null);
+  // Foco do teclado depois de fechar o painel: no "Desfazer" (gerou) ou de
+  // volta no botão do atalho (cancelou ou desfez), em vez de cair no <body>.
+  const genToggleRef = useRef<HTMLButtonElement>(null);
+  const genUndoRef = useRef<HTMLButtonElement>(null);
+  const genFocus = useRef<"toggle" | "undo" | null>(null);
+  useEffect(() => {
+    if (genOpen || !genFocus.current) return;
+    (genFocus.current === "undo" ? genUndoRef : genToggleRef).current?.focus();
+    genFocus.current = null;
+  }, [genOpen, generated]);
   // Linhas visíveis: começa com uma (ou as com dados / pedidas pelo cliente);
   // "+ Programação" abre outra e o × da linha a remove (as de baixo sobem).
   const filled = (ls: { interval: string; cartons: string }[]) =>
@@ -306,15 +316,18 @@ export function SheetSchedule({
           )
         : 0;
     const total = plan.totalCartons || fromRequest;
+    // Intervalo entre programações vem da 2ª linha; a 1ª linha conta do
+    // início da produção (prazo de produção), então vira a "1ª saída" e fica
+    // como está ao trocar o intervalo.
     const interval =
-      whole(lots[1]?.interval ?? "") ??
-      whole(lots[0]?.interval ?? "") ??
-      DEFAULT_SCHEDULE_INTERVAL;
+      whole(lots[1]?.interval ?? "") ?? DEFAULT_SCHEDULE_INTERVAL;
+    const sheetFirst = whole(lots[0]?.interval ?? "");
     return {
       total: total > 0 ? String(total) : "",
       count: Math.min(MAX_LOTS, filled(lots) || requested.length || 2),
       interval,
-      first: whole(lots[0]?.interval ?? "") ?? interval,
+      first: sheetFirst ?? interval,
+      firstFromSheet: sheetFirst !== null,
     };
   }
   function applyGenerated(input: {
@@ -350,6 +363,7 @@ export function SheetSchedule({
       }),
     );
     setVisible(result.lots.length);
+    genFocus.current = "undo";
     setGenOpen(0);
     return null;
   }
@@ -358,11 +372,16 @@ export function SheetSchedule({
     setLots(generated.before.lots);
     setVisible(generated.before.visible);
     setGenerated(null);
+    genFocus.current = "toggle";
   }
 
   const th = "py-1 font-medium";
   return (
     <div ref={root} data-sheet-schedule>
+      {/* Aviso do atalho sempre montado, para o leitor de tela anunciar. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {generated && !genOpen ? generated.message : ""}
+      </p>
       {!disabled ? (
         genOpen ? (
           <ScheduleGenerator
@@ -374,11 +393,15 @@ export function SheetSchedule({
             labels={labels.gen}
             fmt={fmt}
             onGenerate={applyGenerated}
-            onCancel={() => setGenOpen(0)}
+            onCancel={() => {
+              genFocus.current = "toggle";
+              setGenOpen(0);
+            }}
           />
         ) : (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
+              ref={genToggleRef}
               type="button"
               onClick={() => setGenOpen((k) => k + 1)}
               data-generate-open
@@ -390,10 +413,10 @@ export function SheetSchedule({
               <p
                 className="flex flex-wrap items-center gap-2 text-xs font-medium text-emerald-800"
                 data-generated
-                aria-live="polite"
               >
                 {generated.message}
                 <button
+                  ref={genUndoRef}
                   type="button"
                   onClick={undoGenerated}
                   data-generate-undo
@@ -658,6 +681,8 @@ interface GeneratorDefaults {
   count: number;
   interval: number;
   first: number;
+  /** 1ª saída já preenchida na ficha: não acompanha o intervalo. */
+  firstFromSheet: boolean;
 }
 
 /*
@@ -700,7 +725,7 @@ function ScheduleGenerator({
   const [first, setFirst] = useState(String(defaults.first));
   // A 1ª saída acompanha o intervalo até a pessoa mexer nela.
   const [firstTouched, setFirstTouched] = useState(
-    defaults.first !== defaults.interval,
+    defaults.firstFromSheet || defaults.first !== defaults.interval,
   );
   const [error, setError] = useState<GenerateLotsError | null>(null);
   const totalRef = useRef<HTMLInputElement>(null);
@@ -826,10 +851,13 @@ function ScheduleGenerator({
               inputMode="numeric"
               placeholder={labels.custom}
               value={interval === 0 ? custom : ""}
-              onFocus={() => pickInterval(0)}
               onChange={(e) => {
-                setCustom(e.target.value);
-                pickInterval(0, e.target.value);
+                // Só passa para "outro" quando algo é digitado: passar pelo
+                // campo (Tab, "próximo" do teclado) não troca o intervalo.
+                const v = e.target.value;
+                setCustom(v);
+                setError(null);
+                if (v.trim() !== "" || interval === 0) pickInterval(0, v);
               }}
               aria-label={`${labels.interval}: ${labels.custom}`}
               aria-invalid={error === "interval" || undefined}

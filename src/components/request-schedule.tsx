@@ -184,10 +184,12 @@ export function RequestScheduleFields({
                 max="365"
                 placeholder={labels.custom}
                 value={interval === 0 ? customInterval : ""}
-                onFocus={() => setInterval(0)}
                 onChange={(e) => {
-                  setInterval(0);
-                  setCustomInterval(e.target.value);
+                  // Só passa para "outro" quando algo é digitado: passar pelo
+                  // campo não zera o intervalo (0 dias é recusado ao enviar).
+                  const v = e.target.value;
+                  setCustomInterval(v);
+                  if (v.trim() !== "" || interval === 0) setInterval(0);
                 }}
                 aria-label={labels.custom}
                 className={cx(inputClass, "w-20 py-1 text-xs")}
