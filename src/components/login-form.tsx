@@ -10,6 +10,7 @@ interface Labels {
   pending: string;
   invalid: string;
   unavailable: string;
+  paused: string;
   demoTitle: string;
   demoHint: string;
 }
@@ -51,10 +52,17 @@ export function LoginForm({
       return;
     }
     // 401: e-mail ou senha; 503 ou sem resposta: o portal está fora, não a senha.
+    // Banco pausado não volta sozinho: a mensagem diz como reativar.
+    const code: unknown = await response
+      ?.json()
+      .then((body: { code?: unknown }) => body?.code)
+      .catch(() => null);
     setError(
       response && response.status !== 503 && response.status < 500
         ? labels.invalid
-        : labels.unavailable,
+        : code === "paused"
+          ? labels.paused
+          : labels.unavailable,
     );
     setPending(false);
   }

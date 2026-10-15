@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AuthError, signIn, signOut } from "@/lib/auth/session";
-import { classifyLoginError, serviceErrorCode } from "@/lib/auth/login-errors";
+import {
+  classifyLoginError,
+  isProjectPaused,
+  serviceErrorCode,
+} from "@/lib/auth/login-errors";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -33,8 +37,12 @@ export async function POST(request: Request) {
       serviceErrorCode(error),
       error instanceof Error ? error.message.slice(0, 200) : "",
     );
+    // "paused": a tela explica como reativar (não volta sozinho).
     return NextResponse.json(
-      { error: "Serviço indisponível", code: "unavailable" },
+      {
+        error: "Serviço indisponível",
+        code: isProjectPaused(error) ? "paused" : "unavailable",
+      },
       { status: 503 },
     );
   }
