@@ -4,10 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import type { PurchaseLot } from "@/lib/db/schema";
 import {
   MAX_LOTS,
+  generateLots,
   planSheet,
   suggestContainerFill,
   type ContainerFill,
+  type GenerateLotsError,
 } from "@/lib/services/purchase-sheet-calc";
+import {
+  DEFAULT_SCHEDULE_INTERVAL,
+  SCHEDULE_INTERVALS,
+} from "@/lib/workflow/request-schedule";
 import { cx, formatDate, inputDenseClass } from "@/components/ui";
 
 /*
@@ -49,6 +55,33 @@ export interface ScheduleLabels {
   addLot: string;
   removeLot: string;
   requested: string;
+  /** Atalho "Gerar programação". */
+  gen: GenerateLabels;
+}
+
+export interface GenerateLabels {
+  toggle: string;
+  hint: string;
+  total: string;
+  count: string;
+  interval: string;
+  /** "{n} dias" */
+  days: string;
+  custom: string;
+  first: string;
+  /** "= {pieces} peças · {cbm} m³" */
+  equals: string;
+  replace: string;
+  submit: string;
+  cancel: string;
+  /** "{total} caixas em {count} programações, a 1ª em {first} dias, depois a cada {days}" */
+  done: string;
+  /** Uma programação só: "{total} caixas, saída em {first} dias". */
+  doneOne: string;
+  undo: string;
+  errorTotal: string;
+  errorInterval: string;
+  errorFirst: string;
 }
 
 interface FormValues {
@@ -70,6 +103,14 @@ function fill(template: string, vars: Record<string, string | number>) {
   return template.replace(/\{(\w+)\}/g, (_, k) =>
     k in vars ? String(vars[k]) : `{${k}}`,
   );
+}
+
+/** Inteiro digitado ("1000", "1.000" ou "1 000"); outra coisa vira NaN. */
+function parseWhole(raw: string): number {
+  const t = raw.trim();
+  if (/^\d+$/.test(t)) return Number(t);
+  if (/^\d{1,3}([.,\s]\d{3})+$/.test(t)) return Number(t.replace(/\D/g, ""));
+  return NaN;
 }
 
 function parseNum(raw: string | null | undefined): number | null {
@@ -121,6 +162,13 @@ export function SheetSchedule({
   );
   const [form, setForm] = useState<FormValues>(initial);
   const [applied, setApplied] = useState<string | null>(null);
+  // Atalho "Gerar programação": painel aberto, aviso do que foi gerado e o
+  // estado anterior para desfazer (some na próxima edição de uma linha).
+  const [genOpen, setGenOpen] = useState(0);
+  const [generated, setGenerated] = useState<{
+    message: string;
+    before: { lots: { interval: string; cartons: string }[]; visible: number };
+  } | null>(null);
   // Linhas visíveis: começa com uma (ou as com dados / pedidas pelo cliente);
   // "+ Programação" abre outra e o × da linha a remove (as de baixo sobem).
   const filled = (ls: { interval: string; cartons: string }[]) =>
@@ -205,6 +253,14 @@ export function SheetSchedule({
     form.cbmPerCarton,
     form.masterCartonQty,
   );
+  // Programação 1 marcada como faltando pelo servidor: o vermelho sai assim
+  // que a linha ganha caixas e intervalo (digitados ou gerados).
+  const lot1Open =
+    lot1Missing &&
+    !(
+      (parseNum(lots[0].cartons) ?? 0) > 0 &&
+      parseNum(lots[0].interval) !== null
+    );
   // Lote que recebe o ajuste: o último com caixas (ou o 1º).
   const lastIdx = Math.max(
     0,
@@ -213,10 +269,12 @@ export function SheetSchedule({
 
   function setLot(i: number, key: "interval" | "cartons", value: string) {
     setApplied(null);
+    setGenerated(null);
     setLots((ls) => ls.map((l, j) => (j === i ? { ...l, [key]: value } : l)));
   }
   function removeLot(i: number) {
     setApplied(null);
+    setGenerated(null);
     setLots((ls) => [
       ...ls.filter((_, j) => j !== i),
       { interval: "", cartons: "" },
@@ -224,6 +282,7 @@ export function SheetSchedule({
     setVisible((v) => Math.max(1, Math.min(v, shown) - 1));
   }
   function adjust(delta: number) {
+    setGenerated(null);
     const current = parseNum(lots[lastIdx].cartons) ?? 0;
     const next = Math.max(0, current + delta);
     setLots((ls) =>
@@ -232,9 +291,121 @@ export function SheetSchedule({
     setApplied(fill(labels.applied, { lot: lastIdx + 1, cartons: next }));
   }
 
+  // Valores iniciais do atalho: o que a ficha já tem (total, linhas,
+  // intervalos) ou a programação pedida pelo cliente.
+  function generatorDefaults(): GeneratorDefaults {
+    const whole = (v: string) => {
+      const n = parseNum(v);
+      return n !== null && Number.isInteger(n) && n >= 1 && n <= 365 ? n : null;
+    };
+    const fromRequest =
+      requested.length && form.masterCartonQty
+        ? requested.reduce(
+            (sum, r) => sum + Math.ceil(r.quantity / form.masterCartonQty!),
+            0,
+          )
+        : 0;
+    const total = plan.totalCartons || fromRequest;
+    const interval =
+      whole(lots[1]?.interval ?? "") ??
+      whole(lots[0]?.interval ?? "") ??
+      DEFAULT_SCHEDULE_INTERVAL;
+    return {
+      total: total > 0 ? String(total) : "",
+      count: Math.min(MAX_LOTS, filled(lots) || requested.length || 2),
+      interval,
+      first: whole(lots[0]?.interval ?? "") ?? interval,
+    };
+  }
+  function applyGenerated(input: {
+    totalCartons: number;
+    count: number;
+    intervalDays: number;
+    firstDays: number;
+  }): GenerateLotsError | null {
+    const result = generateLots(input);
+    if ("error" in result) return result.error;
+    setGenerated({
+      message: fill(
+        result.lots.length === 1 ? labels.gen.doneOne : labels.gen.done,
+        {
+          total: fmt(input.totalCartons, 0),
+          count: result.lots.length,
+          first: input.firstDays,
+          days: input.intervalDays,
+        },
+      ),
+      before: { lots, visible: shown },
+    });
+    setApplied(null);
+    setLots(
+      Array.from({ length: MAX_LOTS }, (_, i) => {
+        const lot = result.lots[i];
+        return lot
+          ? {
+              interval: String(lot.departureIntervalDays),
+              cartons: String(lot.masterCartons),
+            }
+          : { interval: "", cartons: "" };
+      }),
+    );
+    setVisible(result.lots.length);
+    setGenOpen(0);
+    return null;
+  }
+  function undoGenerated() {
+    if (!generated) return;
+    setLots(generated.before.lots);
+    setVisible(generated.before.visible);
+    setGenerated(null);
+  }
+
   const th = "py-1 font-medium";
   return (
     <div ref={root} data-sheet-schedule>
+      {!disabled ? (
+        genOpen ? (
+          <ScheduleGenerator
+            key={genOpen}
+            defaults={generatorDefaults()}
+            hasData={filled(lots) > 0}
+            masterCartonQty={form.masterCartonQty}
+            cbmPerCarton={form.cbmPerCarton}
+            labels={labels.gen}
+            fmt={fmt}
+            onGenerate={applyGenerated}
+            onCancel={() => setGenOpen(0)}
+          />
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setGenOpen((k) => k + 1)}
+              data-generate-open
+              className="inline-flex items-center gap-1 rounded-md border border-brand-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+            >
+              {labels.gen.toggle}
+            </button>
+            {generated ? (
+              <p
+                className="flex flex-wrap items-center gap-2 text-xs font-medium text-emerald-800"
+                data-generated
+                aria-live="polite"
+              >
+                {generated.message}
+                <button
+                  type="button"
+                  onClick={undoGenerated}
+                  data-generate-undo
+                  className="rounded border border-emerald-300 bg-white px-1.5 py-0.5 font-semibold text-emerald-800 hover:bg-emerald-50"
+                >
+                  {labels.gen.undo}
+                </button>
+              </p>
+            ) : null}
+          </div>
+        )
+      ) : null}
       <div className="-mx-3 mt-2 overflow-x-auto px-3 sm:mx-0 sm:px-0">
         <table className="min-w-[34rem] text-[13px]">
           <thead>
@@ -259,13 +430,11 @@ export function SheetSchedule({
                 className={cx(
                   "scroll-mt-24 border-t border-zinc-100",
                   lot.index === 1 &&
-                    lot1Missing &&
+                    lot1Open &&
                     "bg-red-50 outline-2 -outline-offset-2 outline-red-400",
                 )}
                 data-field-anchor={lot.index === 1 ? "lot1" : undefined}
-                data-missing={
-                  lot.index === 1 && lot1Missing ? "true" : undefined
-                }
+                data-missing={lot.index === 1 && lot1Open ? "true" : undefined}
               >
                 <td className="relative py-1.5 pr-3 font-semibold text-zinc-800">
                   {lot.index}
@@ -479,6 +648,257 @@ export function SheetSchedule({
             {applied}
           </p>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+interface GeneratorDefaults {
+  total: string;
+  count: number;
+  interval: number;
+  first: number;
+}
+
+/*
+ * Painel do atalho: total de caixas, nº de programações (1 a 6), intervalo
+ * (30/45/60 ou outro) e 1ª saída. Campos sem `name`: não vão no envio da
+ * ficha; só preenchem as linhas, que continuam editáveis. Enter gera (não
+ * envia a ficha) e Esc fecha.
+ */
+function ScheduleGenerator({
+  defaults,
+  hasData,
+  masterCartonQty,
+  cbmPerCarton,
+  labels,
+  fmt,
+  onGenerate,
+  onCancel,
+}: {
+  defaults: GeneratorDefaults;
+  hasData: boolean;
+  masterCartonQty: number | null;
+  cbmPerCarton: number | null;
+  labels: GenerateLabels;
+  fmt: (n: number | null | undefined, digits?: number) => string;
+  onGenerate: (input: {
+    totalCartons: number;
+    count: number;
+    intervalDays: number;
+    firstDays: number;
+  }) => GenerateLotsError | null;
+  onCancel: () => void;
+}) {
+  const preset = (SCHEDULE_INTERVALS as readonly number[]).includes(
+    defaults.interval,
+  );
+  const [total, setTotal] = useState(defaults.total);
+  const [count, setCount] = useState(defaults.count);
+  const [interval, setInterval] = useState(preset ? defaults.interval : 0);
+  const [custom, setCustom] = useState(preset ? "" : String(defaults.interval));
+  const [first, setFirst] = useState(String(defaults.first));
+  // A 1ª saída acompanha o intervalo até a pessoa mexer nela.
+  const [firstTouched, setFirstTouched] = useState(
+    defaults.first !== defaults.interval,
+  );
+  const [error, setError] = useState<GenerateLotsError | null>(null);
+  const totalRef = useRef<HTMLInputElement>(null);
+  useEffect(() => totalRef.current?.focus(), []);
+
+  const days = interval > 0 ? interval : parseWhole(custom);
+  const totalNum = parseWhole(total);
+  function pickInterval(n: number, customText = custom) {
+    setInterval(n);
+    setError(null);
+    const d = n > 0 ? n : parseWhole(customText);
+    if (!firstTouched && Number.isFinite(d)) setFirst(String(d));
+  }
+  function submit() {
+    setError(
+      onGenerate({
+        totalCartons: totalNum,
+        count,
+        intervalDays: days,
+        firstDays: parseWhole(first),
+      }),
+    );
+  }
+  const chip = (on: boolean) =>
+    cx(
+      "min-w-8 rounded-md border px-2 py-1 text-xs font-semibold tabular-nums",
+      on
+        ? "border-brand-600 bg-brand-600 text-white"
+        : "border-zinc-300 bg-white text-zinc-700 hover:bg-brand-50",
+    );
+  const small = cx(inputDenseClass, "w-24 tabular-nums");
+  const errorText =
+    error === "total"
+      ? labels.errorTotal
+      : error === "interval"
+        ? labels.errorInterval
+        : error === "first"
+          ? labels.errorFirst
+          : null;
+
+  return (
+    <div
+      className="mt-2 rounded-lg border border-brand-200 bg-brand-50/40 p-3 text-[13px]"
+      data-generate-panel
+      role="group"
+      aria-label={labels.toggle}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+          e.preventDefault();
+          submit();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+    >
+      <p className="font-semibold text-zinc-900">{labels.toggle}</p>
+      <p className="mt-0.5 text-xs text-zinc-600">{labels.hint}</p>
+      <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+        <label className="space-y-1">
+          <span className="block text-xs font-medium text-zinc-700">
+            {labels.total}
+          </span>
+          <input
+            ref={totalRef}
+            type="text"
+            inputMode="numeric"
+            value={total}
+            onChange={(e) => {
+              setTotal(e.target.value);
+              setError(null);
+            }}
+            aria-invalid={error === "total" || undefined}
+            data-generate-total
+            className={cx(small, error === "total" && "border-red-400")}
+          />
+        </label>
+        <div className="space-y-1">
+          <span className="block text-xs font-medium text-zinc-700">
+            {labels.count}
+          </span>
+          <div className="flex gap-1" role="group" aria-label={labels.count}>
+            {Array.from({ length: MAX_LOTS }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-pressed={count === n}
+                onClick={() => {
+                  setCount(n);
+                  setError(null);
+                }}
+                data-generate-count={n}
+                className={chip(count === n)}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-1">
+          <span className="block text-xs font-medium text-zinc-700">
+            {labels.interval}
+          </span>
+          <div
+            className="flex flex-wrap items-center gap-1"
+            role="group"
+            aria-label={labels.interval}
+          >
+            {SCHEDULE_INTERVALS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={interval === d}
+                onClick={() => pickInterval(d)}
+                data-generate-interval={d}
+                className={chip(interval === d)}
+              >
+                {fill(labels.days, { n: d })}
+              </button>
+            ))}
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder={labels.custom}
+              value={interval === 0 ? custom : ""}
+              onFocus={() => pickInterval(0)}
+              onChange={(e) => {
+                setCustom(e.target.value);
+                pickInterval(0, e.target.value);
+              }}
+              aria-label={`${labels.interval}: ${labels.custom}`}
+              aria-invalid={error === "interval" || undefined}
+              data-generate-custom
+              className={cx(
+                inputDenseClass,
+                "w-20 tabular-nums",
+                error === "interval" && "border-red-400",
+              )}
+            />
+          </div>
+        </div>
+        <label className="space-y-1">
+          <span className="block text-xs font-medium text-zinc-700">
+            {labels.first}
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={first}
+            onChange={(e) => {
+              setFirst(e.target.value);
+              setFirstTouched(true);
+              setError(null);
+            }}
+            aria-invalid={error === "first" || undefined}
+            data-generate-first
+            className={cx(small, error === "first" && "border-red-400")}
+          />
+        </label>
+      </div>
+      {Number.isFinite(totalNum) &&
+      totalNum > 0 &&
+      (masterCartonQty || cbmPerCarton) ? (
+        <p className="mt-2 text-xs text-zinc-600" data-generate-equals>
+          {fill(labels.equals, {
+            pieces: masterCartonQty ? fmt(totalNum * masterCartonQty, 0) : "—",
+            cbm: cbmPerCarton ? fmt(totalNum * cbmPerCarton, 4) : "—",
+          })}
+        </p>
+      ) : null}
+      {hasData ? (
+        <p className="mt-1 text-xs text-amber-800">{labels.replace}</p>
+      ) : null}
+      {errorText ? (
+        <p
+          role="alert"
+          className="mt-1 text-xs font-medium text-red-700"
+          data-generate-error
+        >
+          {errorText}
+        </p>
+      ) : null}
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={submit}
+          data-generate-submit
+          className="rounded-md bg-brand-700 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-800"
+        >
+          {labels.submit}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border border-zinc-300 bg-white px-3 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
+        >
+          {labels.cancel}
+        </button>
       </div>
     </div>
   );

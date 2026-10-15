@@ -534,6 +534,37 @@ export function PurchaseSheetFields({
               requested={requestSchedule?.items ?? []}
               unit={requestUnit}
               labels={{
+                gen: {
+                  toggle: t("sheet.gen.toggle"),
+                  hint: t("sheet.gen.hint"),
+                  total: t("sheet.gen.total"),
+                  count: t("sheet.gen.count"),
+                  interval: t("sheet.gen.interval"),
+                  days: t("sheet.gen.days", { n: "{n}" }),
+                  custom: t("sheet.gen.custom"),
+                  first: t("sheet.gen.first"),
+                  equals: t("sheet.gen.equals", {
+                    pieces: "{pieces}",
+                    cbm: "{cbm}",
+                  }),
+                  replace: t("sheet.gen.replace"),
+                  submit: t("sheet.gen.submit"),
+                  cancel: t("sheet.gen.cancel"),
+                  done: t("sheet.gen.done", {
+                    total: "{total}",
+                    count: "{count}",
+                    first: "{first}",
+                    days: "{days}",
+                  }),
+                  doneOne: t("sheet.gen.doneOne", {
+                    total: "{total}",
+                    first: "{first}",
+                  }),
+                  undo: t("sheet.gen.undo"),
+                  errorTotal: t("sheet.gen.error.total"),
+                  errorInterval: t("sheet.gen.error.interval"),
+                  errorFirst: t("sheet.gen.error.first"),
+                },
                 intl: t.intl,
                 lotColumn: t("sheet.lot.column"),
                 interval: t("sheet.lot.interval"),

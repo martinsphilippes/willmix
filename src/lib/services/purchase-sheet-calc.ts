@@ -257,3 +257,44 @@ export function missingForCompletion(
     if (!photoKinds.includes(kind)) missing.push(field);
   return missing;
 }
+
+/** Limites do atalho "Gerar programação". */
+export const GENERATE_MAX_CARTONS = 10_000_000;
+export const GENERATE_MAX_DAYS = 365;
+
+export type GenerateLotsError = "total" | "interval" | "first";
+
+/**
+ * Atalho "Gerar programação": divide o total de caixas master em N
+ * programações iguais (o resto vai para as primeiras). A 1ª sai `firstDays`
+ * depois do início da produção e as seguintes a cada `intervalDays` (a mesma
+ * regra de intervalo das linhas da ficha). Só preenche os campos: tudo continua
+ * editável e o servidor valida ao salvar, como se fosse digitado.
+ */
+export function generateLots(input: {
+  totalCartons: number;
+  count: number;
+  intervalDays: number;
+  firstDays: number;
+}): { lots: PurchaseLot[] } | { error: GenerateLotsError } {
+  const count = Math.max(1, Math.min(MAX_LOTS, Math.floor(input.count) || 1));
+  const days = (n: number) =>
+    Number.isInteger(n) && n >= 1 && n <= GENERATE_MAX_DAYS;
+  const { totalCartons, intervalDays, firstDays } = input;
+  if (
+    !Number.isInteger(totalCartons) ||
+    totalCartons < count ||
+    totalCartons > GENERATE_MAX_CARTONS
+  )
+    return { error: "total" };
+  if (!days(intervalDays)) return { error: "interval" };
+  if (!days(firstDays)) return { error: "first" };
+  const base = Math.floor(totalCartons / count);
+  const rest = totalCartons - base * count;
+  return {
+    lots: Array.from({ length: count }, (_, i) => ({
+      departureIntervalDays: i === 0 ? firstDays : intervalDays,
+      masterCartons: base + (i < rest ? 1 : 0),
+    })),
+  };
+}
