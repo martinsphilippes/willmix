@@ -2,9 +2,10 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { Role } from "@/lib/db/schema";
 
 /*
- * Menu principal do portal. A Wellmix tem muitas telas: as quatro do dia a
- * dia ficam à vista e o resto entra em três grupos (Operação, Cadastros,
- * Gestão). Os outros papéis têm poucas telas e veem tudo em linha.
+ * Menu principal do portal. A Wellmix tem muitas telas: tudo fica em quatro
+ * grupos (Início, Pedidos, Cadastros, Gestão), sem links soltos na barra; a
+ * logo continua levando ao Control Tower. Os outros papéis têm poucas telas e
+ * veem tudo em linha.
  */
 
 export interface NavLink {
@@ -26,18 +27,24 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 export function navFor(role: Role, admin: boolean): NavEntry[] {
   if (role === "admin" || role === "operator") {
     return [
-      { href: "/app", key: "nav.controlTower" },
-      { href: "/app/tasks", key: "nav.tasks" },
-      { href: "/app/requests", key: "nav.requests" },
-      { href: "/app/orders", key: "nav.orders" },
       {
-        key: "nav.group.operations",
+        key: "nav.group.home",
         items: [
-          { href: "/app/reviews", key: "nav.reviews" },
+          { href: "/app", key: "nav.controlTower" },
+          { href: "/app/tasks", key: "nav.tasks" },
+          { href: "/app/notifications", key: "nav.notifications" },
+        ],
+      },
+      {
+        // Do pedido do cliente à entrega: comercial e operação juntos.
+        key: "nav.group.orders",
+        items: [
+          { href: "/app/requests", key: "nav.requests" },
+          { href: "/app/orders", key: "nav.orders" },
           { href: "/app/sourcing", key: "nav.sourcing" },
+          { href: "/app/reviews", key: "nav.reviews" },
           { href: "/app/freight", key: "nav.freight" },
           { href: "/app/containers", key: "nav.containers" },
-          { href: "/app/notifications", key: "nav.notifications" },
         ],
       },
       {

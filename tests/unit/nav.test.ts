@@ -8,29 +8,37 @@ import {
 } from "@/lib/nav";
 import { ROLES } from "@/lib/db/schema";
 
-/* Menu principal: Wellmix vê o dia a dia em linha e o resto em grupos; os
-   outros papéis veem tudo em linha. Nenhuma tela some nem se repete. */
+/* Menu principal: Wellmix vê tudo em grupos (sem links soltos); os outros
+   papéis veem tudo em linha. Nenhuma tela some nem se repete. */
 describe("menu principal", () => {
-  it("Wellmix: quatro telas à vista e três grupos com todas as outras", () => {
+  it("Wellmix: tudo em quatro grupos, sem links soltos na barra", () => {
     const entries = navFor("admin", true);
     const direct = entries
       .filter((e): e is NavLink => !isNavGroup(e))
       .map((e) => e.href);
-    expect(direct).toEqual([
-      "/app",
-      "/app/tasks",
-      "/app/requests",
-      "/app/orders",
-    ]);
+    expect(direct).toEqual([]);
     const groups = entries.filter(isNavGroup).map((g) => g.key);
     expect(groups).toEqual([
-      "nav.group.operations",
+      "nav.group.home",
+      "nav.group.orders",
       "nav.group.registry",
       "nav.group.management",
     ]);
     const hrefs = flattenNav(entries).map((l) => l.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
+    // O dia a dia continua no começo do menu (celular mostra na ordem).
+    expect(hrefs.slice(0, 5)).toEqual([
+      "/app",
+      "/app/tasks",
+      "/app/notifications",
+      "/app/requests",
+      "/app/orders",
+    ]);
     for (const href of [
+      "/app",
+      "/app/tasks",
+      "/app/requests",
+      "/app/orders",
       "/app/reviews",
       "/app/sourcing",
       "/app/freight",

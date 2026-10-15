@@ -341,6 +341,10 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Registros de proposta antigos (sem os novos campos) seguem com a conta anterior.
 - Próximos passos possíveis: AFRMM (8% do frete marítimo) e taxa Siscomex; PIS/COFINS diferenciados por NCM; Ex-tarifários e antidumping como ajuste com motivo; CBS/IBS quando a reforma tributária passar a cobrar (2027).
 
+## Menu da Wellmix só com grupos
+
+- A barra do menu da Wellmix passou de 7 itens (4 links soltos + 3 grupos) para 4 grupos com lista suspensa: **Início** (Control Tower, Pendências, Notificações), **Pedidos** (Solicitações, Pedidos, Sourcing, Revisões, Fretes, Containers: do pedido do cliente à entrega), **Cadastros** e **Gestão** (sem mudança). A logo continua levando ao Control Tower em um clique e o sino às notificações. Nenhuma tela saiu nem se repetiu (`tests/unit/nav.test.ts`); no celular, o painel mostra os mesmos grupos como títulos, com o dia a dia no começo. Os outros papéis (poucas telas) seguem com links em linha.
+
 ## Excluir notificações
 
 - Na tela de Notificações, cada aviso tem "Excluir" (sai da lista na hora, sem confirmação) e o topo tem "Excluir todas" (pergunta antes). Cada usuário só exclui os próprios avisos da lista (canal in-app): o serviço `deleteInAppNotifications` (`src/lib/services/notifications.ts`) filtra pelo usuário logado, então um id de outra pessoa não é encontrado. Os registros de e-mail e WhatsApp do mesmo aviso ficam como histórico do envio; cada exclusão grava uma linha na auditoria (`notification.delete`, com a quantidade). Server Actions em `src/app/app/actions/notifications.ts`.
