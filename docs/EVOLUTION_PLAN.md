@@ -341,6 +341,14 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Registros de proposta antigos (sem os novos campos) seguem com a conta anterior.
 - Próximos passos possíveis: AFRMM (8% do frete marítimo) e taxa Siscomex; PIS/COFINS diferenciados por NCM; Ex-tarifários e antidumping como ajuste com motivo; CBS/IBS quando a reforma tributária passar a cobrar (2027).
 
+## Gerar programação na ficha de compra
+
+- Atalho "Gerar programação" acima das programações da ficha (Preparação do pedido e resposta da cotação): total de caixas master, nº de programações (1 a 6), intervalo (30/45/60 dias ou outro) e 1ª saída em dias depois do início da produção (acompanha o intervalo até ser editada). "Gerar" (ou Enter, sem enviar a ficha) divide as caixas igualmente, com o resto nas primeiras (`generateLots` em `src/lib/services/purchase-sheet-calc.ts`), e preenche as linhas; peças, CBM, datas, containers e a sugestão do container se recalculam na hora, como se tivesse sido digitado. Mostra "= N peças · M m³" enquanto digita o total, avisa quando vai substituir linhas preenchidas e tem "Desfazer" até a próxima edição de uma linha.
+- Só preenche campos do formulário: nenhuma escrita nova no servidor, que valida as programações ao salvar como sempre. O atalho abre já com o total, o nº de linhas e os intervalos que a ficha tem (ou com a programação pedida pelo cliente convertida em caixas).
+- A linha 1 marcada em vermelho ("falta preencher") sai do vermelho assim que ganha caixas e intervalo, sem esperar salvar.
+- O intervalo padrão do atalho vem da 2ª linha (entre programações); o da 1ª linha é o prazo de produção e vira a "1ª saída", que fica como está ao trocar o intervalo. Depois de gerar, o foco vai para "Desfazer" e o aviso é anunciado ao leitor de tela; Esc devolve o foco ao botão do atalho.
+- Campo "outro" do intervalo (no atalho e na programação de entregas da Nova solicitação): só passa a valer quando algo é digitado. Antes, só passar pelo campo (Tab ou "próximo" do teclado do celular) trocava o intervalo; na solicitação ele virava 0 dias e o envio era recusado.
+
 ## Banco pausado no login
 
 - Quando o projeto Appwrite está pausado por inatividade (plano gratuito), `/api/auth/session` responde 503 com `code: "paused"` (`isProjectPaused` em `src/lib/auth/login-errors.ts`) e a tela de login explica que a senha não é o problema, que o banco só volta quando for reativado e como o administrador reativa (console do Appwrite → projeto → Restore). Antes dizia "tente de novo em alguns minutos", o que não resolve uma pausa. Outras falhas do banco seguem com a mensagem anterior; senha errada continua 401 sem revelar o estado do banco. Senha com menos de 8 caracteres no modo Appwrite (o mínimo do Appwrite) é senha errada: antes o Appwrite respondia "argumento inválido" e a tela dizia que o banco estava fora. Regra da pausa e prevenção em `docs/AMBIENTE.md`.
