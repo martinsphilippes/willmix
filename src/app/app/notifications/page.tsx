@@ -2,11 +2,26 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
-import { Badge, Card, Empty, PageHeader, TextLink, cx } from "@/components/ui";
-import { SubmitButton } from "@/components/submit-button";
+import {
+  Alert,
+  Badge,
+  Card,
+  Empty,
+  PageHeader,
+  TextLink,
+  cx,
+} from "@/components/ui";
+import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import { markNotificationsReadAction } from "../actions";
+import {
+  deleteAllNotificationsAction,
+  deleteNotificationAction,
+} from "../actions/notifications";
 
-export default async function NotificationsPage() {
+export default async function NotificationsPage({
+  searchParams,
+}: PageProps<"/app/notifications">) {
+  const { deleted } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const t = await getT();
@@ -25,13 +40,40 @@ export default async function NotificationsPage() {
         t={t}
         title={t("notifications.title")}
         actions={
-          unread > 0 ? (
-            <form action={markNotificationsReadAction}>
-              <SubmitButton variant="secondary">✓ {unread}</SubmitButton>
-            </form>
+          items.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {unread > 0 ? (
+                <form action={markNotificationsReadAction}>
+                  <SubmitButton
+                    variant="secondary"
+                    title={t("notifications.markAllRead")}
+                    aria-label={`${t("notifications.markAllRead")} (${unread})`}
+                  >
+                    ✓ {unread}
+                  </SubmitButton>
+                </form>
+              ) : null}
+              <form action={deleteAllNotificationsAction}>
+                <SubmitButton
+                  variant="secondary"
+                  confirmText={t("notifications.deleteAllConfirm")}
+                  data-notifications-delete-all
+                  className="text-red-700"
+                >
+                  {t("notifications.deleteAll")}
+                </SubmitButton>
+              </form>
+            </div>
           ) : null
         }
       />
+      {typeof deleted === "string" && /^\d+$/.test(deleted) ? (
+        <div className="mb-3">
+          <Alert tone="success">
+            {t("notifications.deleted", { n: deleted })}
+          </Alert>
+        </div>
+      ) : null}
       {items.length === 0 ? (
         <Empty>{t("notifications.empty")}</Empty>
       ) : (
@@ -70,6 +112,17 @@ export default async function NotificationsPage() {
                         {t("tasks.open")}
                       </TextLink>
                     ) : null}
+                    <form action={deleteNotificationAction}>
+                      <input type="hidden" name="id" value={n.id} />
+                      <SubmitTextButton
+                        aria-label={t("notifications.deleteOne")}
+                        title={t("notifications.deleteOne")}
+                        data-notification-delete={n.id}
+                        className="text-sm text-zinc-500 no-underline hover:text-red-700"
+                      >
+                        {t("notifications.delete")}
+                      </SubmitTextButton>
+                    </form>
                   </div>
                 </div>
               </Card>

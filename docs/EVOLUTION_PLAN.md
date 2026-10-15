@@ -341,6 +341,11 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Registros de proposta antigos (sem os novos campos) seguem com a conta anterior.
 - Próximos passos possíveis: AFRMM (8% do frete marítimo) e taxa Siscomex; PIS/COFINS diferenciados por NCM; Ex-tarifários e antidumping como ajuste com motivo; CBS/IBS quando a reforma tributária passar a cobrar (2027).
 
+## Excluir notificações
+
+- Na tela de Notificações, cada aviso tem "Excluir" (sai da lista na hora, sem confirmação) e o topo tem "Excluir todas" (pergunta antes). Cada usuário só exclui os próprios avisos da lista (canal in-app): o serviço `deleteInAppNotifications` (`src/lib/services/notifications.ts`) filtra pelo usuário logado, então um id de outra pessoa não é encontrado. Os registros de e-mail e WhatsApp do mesmo aviso ficam como histórico do envio; cada exclusão grava uma linha na auditoria (`notification.delete`, com a quantidade). Server Actions em `src/app/app/actions/notifications.ts`.
+- O botão "✓ N" (marcar todas como lidas) ganhou título e rótulo para leitor de tela. `SubmitButton` ganhou `confirmText` opcional (pergunta antes de enviar).
+
 ## Gerar programação na ficha de compra
 
 - Atalho "Gerar programação" acima das programações da ficha (Preparação do pedido e resposta da cotação): total de caixas master, nº de programações (1 a 6), intervalo (30/45/60 dias ou outro) e 1ª saída em dias depois do início da produção (acompanha o intervalo até ser editada). "Gerar" (ou Enter, sem enviar a ficha) divide as caixas igualmente, com o resto nas primeiras (`generateLots` em `src/lib/services/purchase-sheet-calc.ts`), e preenche as linhas; peças, CBM, datas, containers e a sugestão do container se recalculam na hora, como se tivesse sido digitado. Mostra "= N peças · M m³" enquanto digita o total, avisa quando vai substituir linhas preenchidas e tem "Desfazer" até a próxima edição de uma linha.

@@ -116,3 +116,42 @@ async function sendWhatsapp(
   void message;
   return "mock";
 }
+
+/**
+ * Exclui avisos da lista do portal (canal in-app) do próprio usuário: os de
+ * `ids` ou, sem `ids`, todos. O filtro por userId garante o isolamento (id de
+ * outra pessoa simplesmente não é encontrado). Os registros de e-mail e
+ * WhatsApp do mesmo aviso ficam, como histórico do envio.
+ */
+export async function deleteInAppNotifications(
+  user: User,
+  ids?: string[],
+): Promise<number> {
+  if (ids && ids.length === 0) return 0;
+  const store = getStore();
+  const mine = await store.list("notifications", {
+    filter: {
+      userId: user.id,
+      channel: "inapp",
+      ...(ids ? { id: ids } : {}),
+    },
+  });
+  // Em lotes, para "Excluir todas" com muitos avisos não estourar o tempo.
+  for (let i = 0; i < mine.length; i += 20)
+    await Promise.all(
+      mine.slice(i, i + 20).map((n) => store.remove("notifications", n.id)),
+    );
+  if (mine.length) {
+    const { audit } = await import("./audit");
+    await audit(
+      user,
+      "notification.delete",
+      "notification",
+      ids?.length === 1 ? ids[0] : "inapp",
+      `${mine.length} aviso(s) excluído(s) da lista`,
+      null,
+      { count: mine.length, all: !ids },
+    );
+  }
+  return mine.length;
+}
