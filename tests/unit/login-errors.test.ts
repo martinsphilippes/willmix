@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AppwriteException } from "node-appwrite";
-import { classifyLoginError, serviceErrorCode } from "@/lib/auth/login-errors";
+import {
+  classifyLoginError,
+  isProjectPaused,
+  serviceErrorCode,
+} from "@/lib/auth/login-errors";
 
 /* Login: senha errada × banco fora (não dizer "credenciais inválidas" quando o problema é o serviço). */
 describe("erros de login", () => {
@@ -32,5 +36,32 @@ describe("erros de login", () => {
     expect(classifyLoginError(new TypeError("fetch failed"))).toBe(
       "unavailable",
     );
+  });
+
+  it("só o projeto pausado é reconhecido como pausa (a tela diz como reativar)", () => {
+    expect(
+      isProjectPaused(
+        new AppwriteException(
+          "Project is paused due to inactivity.",
+          403,
+          "project_paused",
+          "",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isProjectPaused(new AppwriteException("x", 403, "project_paused", "")),
+    ).toBe(true);
+    expect(
+      isProjectPaused(
+        new AppwriteException("boom", 500, "general_unknown", ""),
+      ),
+    ).toBe(false);
+    expect(
+      isProjectPaused(
+        new AppwriteException("x", 401, "user_invalid_credentials", ""),
+      ),
+    ).toBe(false);
+    expect(isProjectPaused(new Error("paused"))).toBe(false);
   });
 });

@@ -22,10 +22,22 @@ export function classifyLoginError(error: unknown): LoginFailure {
   return "unavailable";
 }
 
+/**
+ * Projeto Appwrite pausado (plano gratuito sem atividade no console). Não volta
+ * sozinho: alguém precisa restaurar no console. Por isso a tela diz o que fazer
+ * em vez de "tente em alguns minutos".
+ */
+export function isProjectPaused(error: unknown): boolean {
+  return (
+    error instanceof AppwriteException &&
+    (error.type === "project_paused" || /paused/i.test(error.message))
+  );
+}
+
 /** Motivo curto (sem segredo) para log e diagnóstico. */
 export function serviceErrorCode(error: unknown): string {
   if (error instanceof AppwriteException) {
-    if (/paused/i.test(error.message)) return "appwrite_paused";
+    if (isProjectPaused(error)) return "appwrite_paused";
     return `appwrite_${error.type || error.code || "error"}`.slice(0, 60);
   }
   return error instanceof Error ? error.name : "error";

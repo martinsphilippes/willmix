@@ -47,10 +47,11 @@ Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do b
 
 ## Appwrite pausado por inatividade
 
-No plano gratuito, o Appwrite pausa o projeto depois de um período sem uso. Enquanto pausado, nenhum login funciona e nenhuma tela carrega dados.
+No plano gratuito (Free), o Appwrite pausa o projeto depois de 7 dias seguidos sem atividade de desenvolvimento no console. O uso do portal não conta: o cron diário de lembretes consulta o banco todos os dias pela chave de API, e o projeto foi pausado mesmo assim (out/2026). Enquanto pausado, nenhum login funciona e nenhuma tela carrega dados. Os dados não somem na pausa, mas o Appwrite apaga projetos gratuitos que ficam pausados por 90 dias (avisa o dono por e-mail antes).
 
-- Sinal: `/api/health` mostra `"database": "appwrite_paused"`; a tela de login diz que o banco não está respondendo (não "credenciais inválidas").
-- Correção: no console do Appwrite, abrir o projeto e restaurar. Para produção, o plano pago evita a pausa.
+- Sinal: `/api/health` mostra `"database": "appwrite_paused"`; a tela de login diz que o banco foi pausado e como reativar (código `paused` na resposta de `/api/auth/session`). Outras falhas do banco seguem com "tente de novo em alguns minutos".
+- Correção: com a conta dona do projeto, abrir o console do Appwrite (cloud.appwrite.io), entrar no projeto e clicar em Restore. Volta em poucos minutos, sem perda de dados. Se o login continuar com o aviso depois de uns 10 minutos, abrir chamado no suporte do Appwrite.
+- Prevenção: plano Pro (US$ 25/mês por projeto) não pausa. No Free, abrir o projeto no console pelo menos uma vez por semana. Rotina automática com a chave de API não serve (ver acima); automatizar login no console exigiria guardar a senha do dono, que dá acesso a tudo, e não é recomendado.
 
 ## Desempenho
 
