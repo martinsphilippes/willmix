@@ -53,6 +53,10 @@ export async function answerFreightAction(form: FormData) {
       validUntil,
       notes,
     });
+    // Companhia segue para a lista de fretes: confirmação e o próximo pedido.
+    // A Wellmix (informando por ela) fica no pedido de frete.
+    if (user.role === "shipping_line")
+      return `/app/freight?sent=${encodeURIComponent(freightId)}`;
     return `${back}?saved=1`;
   });
 }

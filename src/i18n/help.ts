@@ -42,7 +42,7 @@ export const helpPt = {
   "help.quote.steps":
     "Respondida: aguarde a decisão da Wellmix.\nSelecionada: o pedido será criado quando o cliente confirmar o sinal; a sua ficha e as fotos vão para o pedido e a Preparação já fica concluída.\nNão selecionada: nenhuma ação necessária.",
   "help.orders.body":
-    "Lista dos pedidos que você pode ver. A coluna Etapa mostra onde cada um está; Progresso, quanto da etapa atual foi cumprido; Prazo, quando a etapa vence.",
+    "Todos os pedidos que você pode ver: em andamento, bloqueados, concluídos e cancelados (com a etapa em que pararam); para a Wellmix, também as solicitações que ainda não viraram pedido. Etapa mostra onde cada um está; Progresso, quanto da etapa atual foi cumprido; Prazo, quando a etapa vence. Filtre por qualquer coluna e toque no título para ordenar.",
   "help.quotes.body":
     "Todas as suas cotações. Para responder: abra e preencha a ficha de compra. Enviadas: aguardam a decisão da Wellmix e dá para corrigir e reenviar até lá. Escolhidas viram pedido quando o cliente confirma o sinal.",
   "help.order.body":
@@ -136,7 +136,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.quote.steps":
     "Answered: wait for Wellmix's decision.\nSelected: the order is created when the customer confirms the down payment; your sheet and photos go to the order and Preparation is already done.\nNot selected: no action needed.",
   "help.orders.body":
-    "Orders you can see. The Stage column shows where each one is; Progress, how much of the current stage is done; Due, when the stage expires.",
+    "Every order you can see: in progress, blocked, completed and cancelled (with the stage where it stopped); for Wellmix, also the requests that have not become an order yet. Stage shows where each one is; Progress, how much of the current stage is done; Due, when the stage expires. Filter by any column and tap a heading to sort.",
   "help.quotes.body":
     "All your quotations. To answer: open it and fill in the purchase sheet. Sent: waiting for Wellmix's decision; you can correct and resend until then. Selected ones become an order when the customer confirms the down payment.",
   "help.order.body":
@@ -227,7 +227,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.quote.steps":
     "已回复：等待 Wellmix 决定。\n已选定：客户确认定金后创建订单；您的采购单和照片将带入订单，备货阶段直接完成。\n未选定：无需操作。",
   "help.orders.body":
-    "您可查看的订单。“阶段”列显示每单所处位置；“进度”显示当前阶段完成度；“截止”显示阶段到期日。",
+    "您可查看的全部订单：进行中、受阻、已完成和已取消（显示停止时的阶段）；对 Wellmix 还包括尚未成为订单的需求。“阶段”显示每单所处位置；“进度”显示当前阶段完成度；“截止”显示阶段到期日。可按任意列筛选，点击标题排序。",
   "help.quotes.body":
     "您的全部报价。待回复：打开并填写采购单。已提交：等待 Wellmix 决定，在此之前可以修改并重新提交。被选中的报价在客户确认定金后成为订单。",
   "help.order.body":

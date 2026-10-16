@@ -25,6 +25,8 @@ export interface QuoteRow {
   createdAt: string;
   /** Só para a Wellmix (o fornecedor já sabe quem é). */
   supplierName: string | null;
+  /** Solicitação cancelada ou excluída: a cotação fica entre as não escolhidas. */
+  requestCancelled: boolean;
 }
 
 /** Ordem da lista: para responder (pelo prazo), enviadas, escolhidas, não escolhidas. */
@@ -58,9 +60,11 @@ export async function quotesForUser(user: User): Promise<QuoteRow[]> {
   for (const quote of quotes) {
     const request = requests.find((r) => r.id === quote.requestId);
     if (!request) continue;
+    const requestCancelled = request.status === "CANCELLED";
     rows.push({
       id: quote.id,
-      status: quote.status,
+      // Solicitação cancelada/excluída: nenhuma cotação dela vira pedido.
+      status: requestCancelled ? "rejected" : quote.status,
       productName: request.productName,
       requestNumber: request.number ?? null,
       quantity: request.quantity,
@@ -74,6 +78,7 @@ export async function quotesForUser(user: User): Promise<QuoteRow[]> {
       supplierName: wellmix
         ? (suppliers.find((p) => p.id === quote.supplierId)?.name ?? null)
         : null,
+      requestCancelled,
     });
   }
   const time = (v: string | null) => (v ? Date.parse(v) : NaN);

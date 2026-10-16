@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { listFreightFor } from "@/lib/services/freight";
+import { FreightSentNotice } from "@/components/freight-sent-notice";
 import { getT } from "@/i18n/server";
 import {
   Badge,
@@ -19,9 +20,12 @@ import {
 } from "@/components/ui";
 
 /** Pedidos de frete da companhia marítima (a Wellmix vê todos). */
-export default async function FreightListPage() {
+export default async function FreightListPage({
+  searchParams,
+}: PageProps<"/app/freight">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const { sent } = await searchParams;
   const wellmix = isWellmix(user);
   if (!wellmix && user.role !== "shipping_line") redirect("/app");
   const t = await getT();
@@ -50,6 +54,17 @@ export default async function FreightListPage() {
         title={t("freight.title")}
         subtitle={t("freight.subtitle")}
       />
+      {typeof sent === "string" &&
+      /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/.test(sent) ? (
+        <FreightSentNotice
+          user={user}
+          freightId={sent}
+          next={sorted.find((f) => f.status === "invited" && f.id !== sent)}
+          productOf={(id) => requestOf.get(id)?.productName ?? "—"}
+          pending={sorted.filter((f) => f.status === "invited").length}
+          t={t}
+        />
+      ) : null}
       {sorted.length === 0 ? (
         <Empty>{t("freight.empty")}</Empty>
       ) : (
@@ -67,7 +82,12 @@ export default async function FreightListPage() {
             {sorted.map((f) => {
               const request = requestOf.get(f.requestId);
               return (
-                <tr key={f.id} className={rowClass}>
+                <tr
+                  key={f.id}
+                  className={rowClass}
+                  data-freight-row={f.id}
+                  data-freight-status={f.status}
+                >
                   <Td>
                     <Link href={`/app/freight/${f.id}`} className={linkClass}>
                       {request?.productName ?? "—"}

@@ -194,4 +194,39 @@ describe("frete pela companhia marítima", () => {
       }),
     ).rejects.toThrow("closed");
   });
+
+  it("frete enviado: confirmação só para a companhia dele, com o próximo pedido", async () => {
+    const first = await answeredQuote();
+    const second = await answeredQuote();
+    await fr.inviteFreightForQuote(supplierA, first.quote.id);
+    await fr.inviteFreightForQuote(supplierA, second.quote.id);
+    const [fq] = await getStore().list("freight_quotes", {
+      filter: { quoteId: first.quote.id },
+    });
+    // Ainda sem valor: nada a confirmar.
+    expect(await fr.sentFreightView(carrier, fq.id)).toBeNull();
+    await fr.answerFreight(carrier, fq.id, {
+      amount: 900,
+      currency: "USD",
+      transitDays: 30,
+      validUntil: null,
+      notes: null,
+    });
+    expect(await fr.sentFreightView(carrier, fq.id)).toMatchObject({
+      id: fq.id,
+      productName: "Jarra frete",
+      amount: 900,
+      currency: "USD",
+      transitDays: 30,
+    });
+    // Fornecedor e cliente não veem; id estranho não derruba.
+    expect(await fr.sentFreightView(supplierA, fq.id)).toBeNull();
+    expect(await fr.sentFreightView(joao, fq.id)).toBeNull();
+    expect(await fr.sentFreightView(carrier, "nao-existe")).toBeNull();
+    // O outro pedido continua para informar.
+    const open = (await fr.listFreightFor(carrier)).filter(
+      (f) => f.status === "invited",
+    );
+    expect(open.some((f) => f.quoteId === second.quote.id)).toBe(true);
+  });
 });

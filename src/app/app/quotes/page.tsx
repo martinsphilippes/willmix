@@ -91,7 +91,7 @@ export default async function QuotesPage({
             >
               {t("quotes.list.all")} {badge(all.length, !active)}
             </Link>
-            {TABS.filter((s) => count(s) > 0).map((s) => (
+            {TABS.filter((s) => count(s) > 0 || s === active).map((s) => (
               <Link
                 key={s}
                 href={`/app/quotes?status=${s}`}
@@ -123,6 +123,8 @@ export default async function QuotesPage({
               <tbody>
                 {shown.map((q) => {
                   const toAnswer = q.status === "invited";
+                  // Enviada é a que tem data de resposta (rascunho não conta).
+                  const sent = !!q.answeredAt;
                   const due = toAnswer && isOverdue(q.validUntil);
                   return (
                     <tr key={q.id} className={rowClass} data-quote-row={q.id}>
@@ -150,7 +152,9 @@ export default async function QuotesPage({
                           {/* "Convidado" vira o que fazer: "Para responder". */}
                           {toAnswer
                             ? t("quotes.list.tab.invited")
-                            : t(`quoteStatus.${q.status}`)}
+                            : q.requestCancelled
+                              ? t("quotes.list.requestCancelled")
+                              : t(`quoteStatus.${q.status}`)}
                         </Badge>
                       </Td>
                       <Td
@@ -161,13 +165,15 @@ export default async function QuotesPage({
                       >
                         {toAnswer
                           ? `${t("quotes.list.until")} ${formatDate(q.validUntil, t)}`
-                          : `${t("quotes.list.sentOn")} ${formatDate(q.answeredAt, t)}`}
+                          : sent
+                            ? `${t("quotes.list.sentOn")} ${formatDate(q.answeredAt, t)}`
+                            : t("quotes.list.notAnswered")}
                       </Td>
                       <Td className="whitespace-nowrap tabular-nums">
-                        {q.price !== null && !toAnswer
+                        {q.price !== null && sent
                           ? formatMoney(q.price, q.currency, t)
                           : "—"}
-                        {q.leadTimeDays && !toAnswer ? (
+                        {q.leadTimeDays && sent ? (
                           <span className="block text-xs text-zinc-500">
                             {t("quoteSent.lead", { days: q.leadTimeDays })}
                           </span>

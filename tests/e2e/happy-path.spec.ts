@@ -204,8 +204,10 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     page.getByText(/报价已提交|Quotation sent|Cotação enviada/),
   ).toBeVisible();
   // A enviada continua à mão na tela Cotações (menu), entre as enviadas.
+  const sentId = new URL(page.url()).searchParams.get("sent");
+  expect(sentId).toBeTruthy();
   await page.goto("/app/quotes?status=answered");
-  await expect(page.locator("[data-quote-row]")).toHaveCount(1);
+  await expect(page.locator(`[data-quote-row="${sentId}"]`)).toBeVisible();
 
   // Fornecedor B responde (inglês)
   await login(page, "supplier.b@china.com");
