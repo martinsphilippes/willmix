@@ -4,9 +4,9 @@ import type { Role } from "@/lib/db/schema";
 /*
  * Menu principal do portal. A Wellmix tem muitas telas: tudo fica em quatro
  * grupos (Início, Pedidos, Cadastros, Gestão), sem links soltos na barra; a
- * logo continua levando ao Control Tower. O cliente também vê dois grupos
- * (Início, Pedidos); a logo leva às Solicitações, que são o início dele. Os
- * outros papéis têm poucas telas e veem tudo em linha.
+ * logo continua levando ao Control Tower. Cliente, fornecedores e parceiros
+ * também veem dois grupos (Início, Pedidos); a logo leva ao início de cada
+ * um. Grupo com uma tela só vira link direto (sem lista de um item).
  */
 
 export interface NavLink {
@@ -23,6 +23,11 @@ export type NavEntry = NavLink | NavGroup;
 
 export function isNavGroup(entry: NavEntry): entry is NavGroup {
   return "items" in entry;
+}
+
+/** Grupo do menu; com uma tela só, vira o próprio link. */
+function group(key: DictionaryKey, items: NavLink[]): NavEntry {
+  return items.length === 1 ? items[0] : { key, items };
 }
 
 export function navFor(role: Role, admin: boolean): NavEntry[] {
@@ -91,18 +96,22 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
         ],
       },
     ];
-  const base: NavLink[] = [
-    { href: "/app", key: "nav.tasks" },
-    { href: "/app/orders", key: "nav.orders" },
-  ];
+  // Fornecedores e parceiros: início nas Pendências; no grupo Pedidos, a tela
+  // própria do papel (conta corrente, fretes, multas), quando houver.
+  const orders: NavLink[] = [{ href: "/app/orders", key: "nav.orders" }];
   if (role === "supplier")
-    base.push({ href: "/app/account", key: "nav.account" });
+    orders.push({ href: "/app/account", key: "nav.account" });
   if (role === "shipping_line")
-    base.splice(1, 0, { href: "/app/freight", key: "nav.freight" });
+    orders.unshift({ href: "/app/freight", key: "nav.freight" });
   if (role === "legal")
-    base.push({ href: "/app/penalties", key: "nav.penalties" });
-  base.push({ href: "/app/notifications", key: "nav.notifications" });
-  return base;
+    orders.push({ href: "/app/penalties", key: "nav.penalties" });
+  return [
+    group("nav.group.home", [
+      { href: "/app", key: "nav.tasks" },
+      { href: "/app/notifications", key: "nav.notifications" },
+    ]),
+    group("nav.group.orders", orders),
+  ];
 }
 
 /** Todos os links, na ordem, sem os grupos (celular e testes). */
