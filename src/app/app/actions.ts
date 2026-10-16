@@ -152,7 +152,7 @@ export async function createRequestAction(form: FormData) {
     const destination =
       created.length === 1
         ? `/app/requests/${first.id}`
-        : `/app/requests?group=${encodeURIComponent(first.groupId ?? "")}&created=${created.length}`;
+        : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
     // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
     // o usuário a removeu, não há a que ligar.
     const presetPos = rows.findIndex((r) => r.index === 0);

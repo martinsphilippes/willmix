@@ -145,3 +145,62 @@ export function BulkDeleteBar({
     </form>
   );
 }
+
+/**
+ * Caixa de um lote na tabela (uma linha com vários produtos): marca de uma vez
+ * as caixas escondidas de cada produto que pode ser excluído, que são as que
+ * vão no formulário. "Selecionar todas" também as marca.
+ */
+export function BatchSelect({
+  formId,
+  groupKey,
+  ids,
+  label,
+}: {
+  formId: string;
+  groupKey: string;
+  ids: string[];
+  label: string;
+}) {
+  const selector = `input[type="checkbox"][name="ids"][form="${formId}"][data-batch-box="${groupKey}"]`;
+  const all = useSyncExternalStore(
+    subscribe,
+    () => {
+      const list = Array.from(
+        document.querySelectorAll<HTMLInputElement>(selector),
+      );
+      return list.length > 0 && list.every((b) => b.checked);
+    },
+    () => false,
+  );
+  return (
+    <>
+      <input
+        type="checkbox"
+        aria-label={label}
+        title={label}
+        checked={all}
+        onChange={(e) => {
+          for (const b of document.querySelectorAll<HTMLInputElement>(selector))
+            b.checked = e.target.checked;
+          document.dispatchEvent(new Event("change"));
+        }}
+        className="h-4 w-4 accent-brand-600"
+      />
+      {ids.map((id) => (
+        <input
+          key={id}
+          type="checkbox"
+          name="ids"
+          value={id}
+          form={formId}
+          data-batch-box={groupKey}
+          hidden
+          aria-hidden
+          tabIndex={-1}
+          readOnly
+        />
+      ))}
+    </>
+  );
+}

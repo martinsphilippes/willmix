@@ -7,7 +7,17 @@ import {
   requestDisplayStatus,
   requestStatusTone,
 } from "@/lib/services/order-status";
-import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
+import {
+  BatchSelect,
+  BulkDeleteBar,
+  BulkSelectAll,
+} from "@/components/bulk-delete";
+import {
+  earliestDeadline,
+  groupRequestRows,
+  statusCounts,
+  type RequestListEntry,
+} from "@/lib/services/request-groups";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -76,12 +86,19 @@ export default async function RequestsPage({
     showDeleted ? closed(r) : !closed(r),
   );
   const requests = byStatus.filter((r) => !groupId || r.groupId === groupId);
-  // Tamanho de cada lote (selo na lista): só o que este usuário vê nesta
-  // mesma lista (excluídas não contam), igual ao filtro do selo.
+  // Tamanho de cada lote (selo da linha que ficou sozinha nesta lista, ex.:
+  // o outro produto do lote foi excluído): tudo o que este usuário vê.
   const groupSize = new Map<string, number>();
-  for (const r of byStatus)
+  for (const r of visible)
     if (r.groupId)
       groupSize.set(r.groupId, (groupSize.get(r.groupId) ?? 0) + 1);
+  // Produtos pedidos juntos viram uma linha só (abre a página do lote). No
+  // filtro de um lote (?group=, links antigos) cada produto segue numa linha.
+  const entries: RequestListEntry<(typeof requests)[number]>[] = groupId
+    ? requests.map((row) => ({ kind: "single", row }))
+    : groupRequestRows(requests);
+  const batchHref = (id: string) =>
+    `/app/requests/batch/${encodeURIComponent(id)}`;
   const anyDeletable = requests.some((r) => canDeleteRequest(user, r));
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
@@ -348,7 +365,110 @@ export default async function RequestsPage({
             </tr>
           </thead>
           <tbody>
-            {requests.map((r) => {
+            {entries.map((entry) => {
+              if (entry.kind === "batch") {
+                const rows = entry.rows;
+                const deletable = rows.filter((r) => canDeleteRequest(user, r));
+                const names = rows.map((r) => r.productName);
+                return (
+                  <tr key={entry.groupId} className={rowClass} data-batch-row>
+                    {!showDeleted && anyDeletable ? (
+                      <Td className="w-10">
+                        {deletable.length > 0 ? (
+                          <BatchSelect
+                            formId={BULK_FORM}
+                            groupKey={entry.groupId}
+                            ids={deletable.map((r) => r.id)}
+                            label={`${t("reqBatch.selectBatch")}: ${names.slice(0, 2).join(", ")}${names.length > 2 ? ` +${names.length - 2}` : ""}`}
+                          />
+                        ) : (
+                          <input
+                            type="checkbox"
+                            disabled
+                            aria-label={t("reqDelete.ordered")}
+                            title={t("reqDelete.ordered")}
+                            className="h-4 w-4 cursor-not-allowed opacity-40"
+                          />
+                        )}
+                      </Td>
+                    ) : null}
+                    <Td className="min-w-40 font-medium text-zinc-900">
+                      <TextLink
+                        href={batchHref(entry.groupId)}
+                        className="text-zinc-900 no-underline hover:underline"
+                      >
+                        {names.slice(0, 2).join(", ")}
+                        {names.length > 2 ? ` +${names.length - 2}` : ""}
+                      </TextLink>
+                      <span
+                        className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 ring-1 ring-inset ring-brand-200"
+                        data-batch-count
+                      >
+                        {t("reqBatch.count", { n: rows.length })}
+                      </span>
+                    </Td>
+                    {isWellmix(user) ? (
+                      <Td className="min-w-32">
+                        {parties.find((p) => p.id === rows[0].customerId)
+                          ?.name ?? "—"}
+                      </Td>
+                    ) : null}
+                    <Td className="tabular-nums">
+                      {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
+                      {rows.slice(0, 2).map((r, i) => (
+                        <span key={r.id} className="whitespace-nowrap">
+                          {i > 0 ? " · " : ""}
+                          {r.quantity} {r.unit}
+                        </span>
+                      ))}
+                      {rows.length > 2 ? (
+                        <span className="whitespace-nowrap">
+                          {` +${rows.length - 2}`}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td>
+                      <span className="flex flex-wrap gap-1">
+                        {statusCounts(
+                          rows.map((r) => requestDisplayStatus(r, cancelled)),
+                        ).map(({ status, count: n }) => (
+                          <Badge key={status} tone={requestStatusTone(status)}>
+                            {t(`reqStatusLabel.${status}`)}
+                            {n > 1 ? ` ×${n}` : ""}
+                          </Badge>
+                        ))}
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {formatDate(earliestDeadline(rows), t)}
+                    </Td>
+                    <Td className="text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <TextLink href={batchHref(entry.groupId)}>
+                          {t("tasks.open")}
+                        </TextLink>
+                        {!showDeleted && deletable.length > 0 ? (
+                          <form action={deleteRequestsAction}>
+                            {deletable.map((r) => (
+                              <input
+                                key={r.id}
+                                type="hidden"
+                                name="ids"
+                                value={r.id}
+                              />
+                            ))}
+                            <ConfirmDeleteButton
+                              label={t("reqBatch.deleteAll")}
+                              confirmText={t("reqBatch.deleteAllConfirm")}
+                            />
+                          </form>
+                        ) : null}
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              }
+              const r = entry.row;
               const status = requestDisplayStatus(r, cancelled);
               // Pedido cancelado: a dica não diz mais que "o pedido continua".
               const lockedHint =
@@ -383,7 +503,7 @@ export default async function RequestsPage({
                     {r.productName}
                     {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
                       <TextLink
-                        href={`/app/requests?group=${encodeURIComponent(r.groupId)}`}
+                        href={batchHref(r.groupId)}
                         className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 no-underline ring-1 ring-inset ring-brand-200"
                         data-batch-badge
                       >

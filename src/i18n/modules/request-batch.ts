@@ -14,6 +14,16 @@ export const pt = {
   "reqBatch.filter": "Mostrando só o lote ({n} produtos).",
   "reqBatch.all": "Ver todas",
   "reqBatch.siblings": "Faz parte de um lote com {n} produtos. Os outros:",
+  "reqBatch.title": "Solicitação com {n} produtos",
+  "reqBatch.count": "{n} produtos",
+  "reqBatch.pageHint":
+    "Os produtos foram pedidos juntos. Cada um segue com a própria cotação, fornecedor e pedido: abra um produto para ver os detalhes.",
+  "reqBatch.viewBatch": "Ver o lote completo",
+  "reqBatch.selectBatch": "Selecionar os produtos do lote",
+  "reqBatch.deleteAll": "Excluir o lote",
+  "reqBatch.deleteAllConfirm":
+    "Excluir os produtos deste lote que ainda não viraram pedido? Os que já viraram pedido continuam.",
+  "reqBatch.order": "Pedido #{n}",
   "reqBatch.error.no_products": "Informe ao menos um produto.",
   "reqBatch.error.invalid_input":
     "Confira os produtos: nome, descrição e quantidade são obrigatórios.",
@@ -41,6 +51,16 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.filter": "Showing only this batch ({n} products).",
   "reqBatch.all": "Show all",
   "reqBatch.siblings": "Part of a batch with {n} products. The others:",
+  "reqBatch.title": "Request with {n} products",
+  "reqBatch.count": "{n} products",
+  "reqBatch.pageHint":
+    "These products were requested together. Each one has its own quotation, supplier and order: open a product to see the details.",
+  "reqBatch.viewBatch": "See the whole batch",
+  "reqBatch.selectBatch": "Select the batch products",
+  "reqBatch.deleteAll": "Delete the batch",
+  "reqBatch.deleteAllConfirm":
+    "Delete the products of this batch that have not become orders yet? Those already ordered stay.",
+  "reqBatch.order": "Order #{n}",
   "reqBatch.error.no_products": "Enter at least one product.",
   "reqBatch.error.invalid_input":
     "Check the products: name, description and quantity are required.",
@@ -69,6 +89,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.filter": "仅显示该批次（{n} 个产品）。",
   "reqBatch.all": "查看全部",
   "reqBatch.siblings": "属于一个包含 {n} 个产品的批次。其他产品：",
+  "reqBatch.title": "包含 {n} 个产品的需求",
+  "reqBatch.count": "{n} 个产品",
+  "reqBatch.pageHint":
+    "这些产品是一起提交的。每个产品都有自己的报价、供应商和订单：打开产品查看详情。",
+  "reqBatch.viewBatch": "查看整个批次",
+  "reqBatch.selectBatch": "选择批次中的产品",
+  "reqBatch.deleteAll": "删除整个批次",
+  "reqBatch.deleteAllConfirm":
+    "删除此批次中尚未生成订单的产品？已生成订单的产品保留。",
+  "reqBatch.order": "订单 #{n}",
   "reqBatch.error.no_products": "请至少填写一个产品。",
   "reqBatch.error.invalid_input": "请检查产品：名称、描述和数量为必填项。",
   "reqBatch.error.too_many_products":
