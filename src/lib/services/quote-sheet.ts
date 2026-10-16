@@ -10,7 +10,11 @@ import {
 } from "@/lib/db";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import {
+  catalogPhotoKinds,
+  completeMasterFromSheet,
+  masterSheetInput,
+} from "./product-sheet";
 import {
   fillRecordsFromSheet,
   productForSupplier,
@@ -301,6 +305,16 @@ export async function saveQuoteSheet(
       quote.supplierId,
       sheet.productId ?? request.productId ?? null,
       sheet,
+    );
+  // Produto do catálogo: o que a ficha mestre ainda não tem fica cadastrado
+  // (a próxima cotação/venda já vem preenchida). Nunca troca valor existente.
+  if (access.editSupplier)
+    await completeMasterFromSheet(
+      user,
+      sheet.productId ?? request.productId ?? null,
+      sheet,
+      quote.supplierId,
+      "fill",
     );
   const photos = await getSheetPhotos(quoteId);
   return {

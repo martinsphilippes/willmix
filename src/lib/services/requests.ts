@@ -782,6 +782,25 @@ async function createOrderFromRequest(
   await createPurchaseSnapshot(user, order, item, quote, product);
   // A ficha preenchida na cotação vira a ficha do pedido (Preparação já preenchida).
   await copyQuoteSheetToOrder(quote.id, order.id);
+  // Pedido fechado: a ficha da compra atualiza o cadastro do produto (a próxima
+  // venda já vem preenchida). Produto fora do catálogo: a ficha do pedido
+  // oferece cadastrar.
+  if (request.productId) {
+    const [orderSheet] = await store.list("purchase_sheets", {
+      filter: { orderId: order.id },
+      limit: 1,
+    });
+    if (orderSheet) {
+      const { completeMasterFromSheet } = await import("./product-sheet");
+      await completeMasterFromSheet(
+        user,
+        request.productId,
+        orderSheet,
+        quote.supplierId,
+        "adopt",
+      );
+    }
+  }
   // Gate de conformidade: linha com certificação obrigatória sem certificação válida.
   await runComplianceGate(user, order, product);
   // Modalidade da operação (RADAR): copia do cliente e revisa importação própria sem RADAR.

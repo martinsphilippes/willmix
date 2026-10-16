@@ -1,5 +1,6 @@
 "use client";
 
+import { parseNumberInput } from "@/lib/number-input";
 import { useEffect, useRef, useState } from "react";
 import type { PurchaseLot } from "@/lib/db/schema";
 import {
@@ -135,10 +136,10 @@ function parseWhole(raw: string): number {
   return NaN;
 }
 
-function parseNum(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const n = Number(raw.trim().replace(",", "."));
-  return Number.isFinite(n) && n >= 0 ? n : null;
+/** Mesma leitura do servidor ("1.000" caixas = 1000; "0,050" m³ = 0,05). */
+function parseNum(raw: string | null | undefined, int = false): number | null {
+  const n = parseNumberInput(raw, { int });
+  return n !== null && Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 export function SheetSchedule({
@@ -229,7 +230,7 @@ export function SheetSchedule({
       const v = (name: string) =>
         (el.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "";
       setForm({
-        masterCartonQty: parseNum(v("masterCartonQty")),
+        masterCartonQty: parseNum(v("masterCartonQty"), true),
         cbmPerCarton: parseNum(v("cbmPerCarton")),
         heightCm: parseNum(v("heightCm")),
         widthCm: parseNum(v("widthCm")),
@@ -277,8 +278,9 @@ export function SheetSchedule({
   const plan = planSheet(
     {
       lots: lots.map((l) => ({
-        departureIntervalDays: l.interval === "" ? null : parseNum(l.interval),
-        masterCartons: l.cartons === "" ? null : parseNum(l.cartons),
+        departureIntervalDays:
+          l.interval === "" ? null : parseNum(l.interval, true),
+        masterCartons: l.cartons === "" ? null : parseNum(l.cartons, true),
       })),
       masterCartonQty: form.masterCartonQty,
       cbmPerCarton: form.cbmPerCarton,
@@ -301,8 +303,8 @@ export function SheetSchedule({
   const lot1Open =
     lot1Missing &&
     !(
-      (parseNum(lots[0].cartons) ?? 0) > 0 &&
-      parseNum(lots[0].interval) !== null
+      (parseNum(lots[0].cartons, true) ?? 0) > 0 &&
+      parseNum(lots[0].interval, true) !== null
     );
 
   function setLot(i: number, key: "interval" | "cartons", value: string) {
@@ -323,7 +325,7 @@ export function SheetSchedule({
      caixas; tirar começa pela última e sobe (nenhuma fica negativa). */
   function adjust(delta: number) {
     setGenerated(null);
-    const before = lots.map((l) => parseNum(l.cartons) ?? 0);
+    const before = lots.map((l) => parseNum(l.cartons, true) ?? 0);
     const after = spreadCartons(before, delta);
     setLots((ls) =>
       ls.map((l, j) =>
@@ -576,7 +578,6 @@ export function SheetSchedule({
                     name={`lot${lot.index}Interval`}
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     value={lots[i].interval}
                     onChange={(e) => setLot(i, "interval", e.target.value)}
                     disabled={disabled}
@@ -589,7 +590,6 @@ export function SheetSchedule({
                     name={`lot${lot.index}Cartons`}
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     value={lots[i].cartons}
                     onChange={(e) => setLot(i, "cartons", e.target.value)}
                     disabled={disabled}

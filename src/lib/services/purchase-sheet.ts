@@ -12,7 +12,11 @@ import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
-import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import {
+  catalogPhotoKinds,
+  completeMasterFromSheet,
+  masterSheetInput,
+} from "./product-sheet";
 import {
   fillRecordsFromSheet,
   productForSupplier,
@@ -493,6 +497,16 @@ export async function saveSheet(
     );
   if ("lots" in patch || "masterCartonQty" in patch)
     await syncOrderQuantity(user, order, sheet);
+  // O cadastro do produto acompanha a ficha do pedido: a Wellmix atualiza com
+  // a compra de verdade; o fornecedor só completa o que falta.
+  if (access.editSupplier)
+    await completeMasterFromSheet(
+      user,
+      sheet.productId ?? null,
+      sheet,
+      order.supplierId,
+      isWellmix(user) ? "adopt" : "fill",
+    );
   const missing = await syncRequirements(user, order, sheet);
   return { sheet, missing };
 }

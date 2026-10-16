@@ -20,6 +20,7 @@ import {
 import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { PantonePicker } from "@/components/pantone-picker";
+import { SheetSafety } from "@/components/sheet-safety";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import {
   ncmChipsView,
@@ -159,6 +160,7 @@ export default async function ProductSheetPage({
     suppliers: suppliersDone,
     at: saveToken,
     from: errorFrom,
+    fields: invalidFields,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -753,6 +755,21 @@ export default async function ProductSheetPage({
             autoFocus={sheetSaved === "partial"}
           />
         ) : null}
+        <SheetSafety
+          t={t}
+          formId="product-sheet-form"
+          storageKey={`product:${id}`}
+          // Erro que veio deste formulário (a página tem outros formulários).
+          error={
+            typeof error === "string" &&
+            (error === "invalid_fields" || typeof sheetSaved !== "string")
+              ? error
+              : undefined
+          }
+          fields={invalidFields}
+          saved={typeof sheetSaved === "string" && !!sheetSaved}
+          token={saveToken}
+        />
         <p className="text-xs text-zinc-500" data-master-photos>
           {t("productSheet.photos", { n: masterPhotoKinds.length })}
           {masterPhotoKinds.length < 5 ? (

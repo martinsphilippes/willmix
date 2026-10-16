@@ -773,7 +773,6 @@ function Num({
       name={name}
       type="text"
       inputMode={int ? "numeric" : "decimal"}
-      pattern={int ? "[0-9]*" : "[0-9]*[.,]?[0-9]*"}
       defaultValue={value}
       disabled={disabled}
       aria-label={ariaLabel}

@@ -34,6 +34,7 @@ import {
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { SheetSafety } from "@/components/sheet-safety";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
@@ -52,6 +53,7 @@ export default async function QuotePage({
     photoRemoved,
     adopted,
     at: saveToken,
+    fields: invalidFields,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -226,6 +228,17 @@ export default async function QuotePage({
               <h2 className="text-lg font-semibold text-zinc-900">
                 {t("quoteSheet.title")}
               </h2>
+              {sheetView.access.editSupplier || sheetView.access.editCustoms ? (
+                <SheetSafety
+                  t={t}
+                  formId="quote-sheet"
+                  storageKey={`quote:${quote.id}`}
+                  error={error}
+                  fields={invalidFields}
+                  saved={typeof saved === "string" && !!saved}
+                  token={saveToken}
+                />
+              ) : null}
               {!sheetView.access.editSupplier ? (
                 <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
               ) : sheetView.missing.length ? (
