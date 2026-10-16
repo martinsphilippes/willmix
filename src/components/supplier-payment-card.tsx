@@ -5,7 +5,10 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { parseTerms, sameTerms } from "@/lib/supplier-terms";
 import { supplierPaymentView } from "@/lib/services/supplier-payment";
 import { orderPayable } from "@/lib/services/supplier-terms";
-import { applySupplierTermsAction } from "@/app/app/actions/supplier-terms";
+import {
+  applySupplierTermsAction,
+  markSupplierPaymentPaidAction,
+} from "@/app/app/actions/supplier-terms";
 import { SupplierPaymentPanel } from "./supplier-payment-panel";
 import { SubmitButton } from "./submit-button";
 import {
@@ -22,7 +25,10 @@ import {
   Td,
   TextLink,
   Th,
+  Field,
+  Input,
   cx,
+  formatDate,
   formatMoney,
 } from "./ui";
 
@@ -70,8 +76,9 @@ export async function SupplierPaymentCard({
     !!supplierTerms &&
     !sameTerms(schedule.terms, supplierTerms);
   const next = view?.installment ?? null;
+  // Abre sozinho só quando a parcela da vez vence em breve ou já venceu.
   const urgent =
-    !next || next.status === "overdue" || next.status === "due_soon";
+    !!next && (next.status === "overdue" || next.status === "due_soon");
   const money = (n: number) => formatMoney(n, schedule.currency, t);
 
   return (
@@ -241,6 +248,69 @@ export async function SupplierPaymentCard({
           </p>
         ) : null}
 
+        {schedule.legacySettled ? (
+          <p
+            className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
+            data-legacy-settled
+          >
+            {t("supplierTerms.legacySettled")}
+          </p>
+        ) : null}
+
+        {/* Pedidos ao banco/financeiro ainda sem "pago": marcar aqui, em vez de
+            registrar outro pagamento (contaria em dobro). */}
+        {view && view.pending.length ? (
+          <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
+            <p className="text-sm font-semibold text-sky-900">
+              {t("supplierTerms.pendingTitle")}
+            </p>
+            <p className="text-xs text-sky-900/80">
+              {t("supplierTerms.pendingHint")}
+            </p>
+            <ul className="space-y-2">
+              {view.pending.map((p) => (
+                <li
+                  key={p.id}
+                  className="rounded-lg border border-sky-100 bg-white p-2"
+                  data-pending-payment={p.id}
+                >
+                  <p className="text-sm">
+                    <span className="font-semibold text-zinc-900">
+                      {formatMoney(p.amount, p.currency, t)}
+                    </span>{" "}
+                    <span className="text-xs text-zinc-500">
+                      {p.note ? `${p.note} · ` : ""}
+                      {formatDate(p.createdAt, t)}
+                    </span>
+                  </p>
+                  {wellmix && !cancelled ? (
+                    <form
+                      action={markSupplierPaymentPaidAction}
+                      className="mt-1.5 flex flex-wrap items-end gap-2"
+                    >
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <input type="hidden" name="paymentId" value={p.id} />
+                      <div className="w-28 min-w-0">
+                        <Field label={t("finance.fx")}>
+                          <Input name="fxRate" type="number" step="any" />
+                        </Field>
+                      </div>
+                      <div className="min-w-48 flex-1">
+                        <Field label={t("requests.payment.proof")}>
+                          <Input name="proof" type="file" />
+                        </Field>
+                      </div>
+                      <SubmitButton variant="secondary">
+                        {t("supplierTerms.markPaid")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {view && !cancelled && view.due !== null && view.due > 0 ? (
           /* Pagar a parcela da vez: aberto quando vence em breve ou já venceu. */
           <details
@@ -267,10 +337,17 @@ export async function SupplierPaymentCard({
               <SupplierPaymentPanel order={order} t={t} view={view} />
             </div>
           </details>
-        ) : wellmix && schedule.total !== null && !cancelled ? (
-          <p className="text-xs text-emerald-700">
-            {t("supplierTerms.settled")}
-          </p>
+        ) : view && !cancelled ? (
+          /* Nada a pagar agora (ou FOB desconhecido): o registro de um
+             pagamento feito por fora continua à mão. */
+          <>
+            {schedule.total !== null && !schedule.legacySettled ? (
+              <p className="text-xs text-emerald-700">
+                {t("supplierTerms.settled")}
+              </p>
+            ) : null}
+            <SupplierPaymentPanel order={order} t={t} view={view} manualOnly />
+          </>
         ) : null}
       </div>
     </Card>

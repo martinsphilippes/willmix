@@ -5,6 +5,7 @@ import {
   parseTerms,
   paymentEventsFor,
   sameTerms,
+  sortTerms,
   type PaymentEvents,
 } from "@/lib/supplier-terms";
 
@@ -69,6 +70,20 @@ describe("parseTerms", () => {
         })),
       ),
     ).toBeNull();
+  });
+
+  it("ordena as parcelas pela ordem em que vencem", () => {
+    expect(
+      sortTerms([
+        { percent: 70, base: "delivered", days: 0 },
+        { percent: 10, base: "order_created", days: 60 },
+        { percent: 20, base: "order_created", days: 0 },
+      ]),
+    ).toEqual([
+      { percent: 20, base: "order_created", days: 0 },
+      { percent: 10, base: "order_created", days: 60 },
+      { percent: 70, base: "delivered", days: 0 },
+    ]);
   });
 
   it("compara condições", () => {
@@ -229,6 +244,49 @@ describe("cronograma de parcelas", () => {
       payments: [pay(60, "confirmed")],
     });
     expect(paid.installments[0].status).toBe("paid");
+  });
+
+  it("o dinheiro quita a parcela que vence primeiro, mesmo digitada depois", () => {
+    // 70% na entrega (ainda não aconteceu) digitada antes de 30% no pedido.
+    const s = buildSupplierSchedule({
+      ...base,
+      total: 100,
+      terms: [
+        { percent: 70, base: "delivered", days: 0 },
+        { percent: 30, base: "order_created", days: 0 },
+      ],
+      events: { order_created: "2026-09-01", shipped: null, delivered: null },
+      payments: [pay(30, "confirmed")],
+    });
+    expect(s.installments[1].status).toBe("paid");
+    expect(s.installments[0].status).toBe("waiting");
+    expect(s.installments[0].paid).toBe(0);
+    expect(s.next?.index).toBe(1);
+    expect(s.next?.open).toBe(70);
+
+    // Mesmo marco, dias fora de ordem.
+    const days = buildSupplierSchedule({
+      ...base,
+      total: 100,
+      terms: [
+        { percent: 50, base: "order_created", days: 60 },
+        { percent: 50, base: "order_created", days: 0 },
+      ],
+      events: { order_created: "2026-09-01", shipped: null, delivered: null },
+      payments: [pay(50, "confirmed")],
+    });
+    expect(days.installments[1].status).toBe("paid");
+    // 01/09 + 60 dias = 31/10: ainda programada.
+    expect(days.installments[0].status).toBe("scheduled");
+    expect(days.next?.index).toBe(1);
+  });
+
+  it("pedido pago no fluxo antigo: nada a pagar nem a vencer", () => {
+    const s = buildSupplierSchedule({ ...base, legacySettled: true });
+    expect(s.legacySettled).toBe(true);
+    expect(s.installments).toEqual([]);
+    expect(s.open).toBe(0);
+    expect(s.next).toBeNull();
   });
 
   it("pagamento em outra moeda não entra na conta", () => {

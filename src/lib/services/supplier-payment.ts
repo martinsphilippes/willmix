@@ -16,6 +16,7 @@ import type {
   SupplierSchedule,
 } from "@/lib/supplier-terms";
 import { audit } from "./audit";
+import { uploadDocument } from "./documents";
 import { notify } from "./notifications";
 import { orderPayable, type TermsSource } from "./supplier-terms";
 
@@ -59,6 +60,8 @@ export interface SupplierPaymentView {
   transferText: string;
   emailUrl: string;
   whatsappUrl: string;
+  /** Pedidos ao banco/financeiro ainda sem confirmação de pago ("Marcar como pago"). */
+  pending: Payment[];
 }
 
 const money = (value: number, currency: string) =>
@@ -90,12 +93,14 @@ export async function supplierPaymentView(
   const due =
     order.fobTotal === null
       ? null
-      : schedule.terms
-        ? (installment?.open ?? 0)
-        : Math.max(
-            0,
-            Math.round((order.fobTotal - alreadyRegistered) * 100) / 100,
-          );
+      : schedule.legacySettled
+        ? 0 // pago no fluxo antigo (etapa de pagamento concluída)
+        : schedule.terms
+          ? (installment?.open ?? 0)
+          : Math.max(
+              0,
+              Math.round((order.fobTotal - alreadyRegistered) * 100) / 100,
+            );
   // Parcela na referência: o banco e o fornecedor sabem o que está sendo pago.
   const part = installment ? ` ${installment.index}/${installment.count}` : "";
   const reference = `WELLMIX PO #${order.number}${part}`;
@@ -145,6 +150,9 @@ export async function supplierPaymentView(
     transferText,
     emailUrl,
     whatsappUrl,
+    pending: payments.filter(
+      (p) => p.direction === "supplier_out" && p.status === "pending",
+    ),
   };
 }
 
@@ -248,4 +256,65 @@ export async function registerSupplierPayment(
     },
   );
   return payment;
+}
+
+/**
+ * "Marcar como pago" (só Wellmix): o pagamento pedido ao banco/financeiro
+ * (pendente) foi feito. Vira confirmado, com câmbio e comprovante opcionais,
+ * em vez de registrar outro pagamento (que contaria em dobro). O fornecedor é
+ * avisado para confirmar o recebimento.
+ */
+export async function markSupplierPaymentPaid(
+  user: User,
+  orderId: string,
+  paymentId: string,
+  input: { fxRate?: number | null; proof?: File | null } = {},
+): Promise<Payment> {
+  if (!isWellmix(user)) throw new SupplierPaymentError("forbidden");
+  const store = getStore();
+  const payment = await store.get("payments", paymentId);
+  if (
+    !payment ||
+    payment.direction !== "supplier_out" ||
+    payment.orderId !== orderId
+  )
+    throw new SupplierPaymentError("not_found");
+  if (payment.status !== "pending")
+    throw new SupplierPaymentError("payment_not_pending");
+  const order = await store.get("orders", orderId);
+  if (!order) throw new SupplierPaymentError("not_found");
+  // Comprovante só depois de conferir o pagamento (nada de arquivo solto).
+  const proofDocumentId =
+    input.proof && input.proof.size > 0
+      ? (
+          await uploadDocument(user, input.proof, {
+            orderId,
+            type: "proof",
+            visibility: "supplier",
+          })
+        ).id
+      : null;
+  const updated = await store.update("payments", paymentId, {
+    status: "confirmed",
+    ...(input.fxRate ? { fxRate: input.fxRate } : {}),
+    ...(proofDocumentId ? { proofDocumentId } : {}),
+  });
+  await audit(
+    user,
+    "payment.paid",
+    "payment",
+    paymentId,
+    `${payment.currency} ${payment.amount} pago (era pedido ao banco/financeiro)`,
+    { status: "pending" },
+    { status: "confirmed", fxRate: updated.fxRate },
+  );
+  await notify(
+    { role: "supplier", partyId: order.supplierId },
+    {
+      subject: `Order #${order.number}: payment sent`,
+      body: `${payment.currency} ${payment.amount.toFixed(2)}. Please confirm receipt.`,
+      link: "/app/account",
+    },
+  );
+  return updated;
 }

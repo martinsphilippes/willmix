@@ -25,7 +25,8 @@ export type TaskKind =
   | "after_sales"
   | "sourcing_demand"
   | "freight_quote"
-  | "supplier_payment";
+  | "supplier_payment"
+  | "confirm_receipt";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -152,6 +153,7 @@ const KIND_ORDER: string[] = [
   "pay",
   "freight_quote",
   "supplier_payment",
+  "confirm_receipt",
   "review",
   "sourcing_demand",
   "after_sales",
@@ -444,6 +446,41 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       );
     }
   }
+  // Fornecedor: pagamentos da Wellmix a confirmar (pedido ou pago, ainda não
+  // recebido) nos pedidos dele; confirma na conta corrente.
+  if (supplier) {
+    const myOrders = await store.list("orders", {
+      filter: { supplierId: user.partyId! },
+    });
+    const live = myOrders.filter((o) => o.status !== "CANCELLED");
+    const toConfirm = live.length
+      ? await store.list("payments", {
+          filter: {
+            orderId: live.map((o) => o.id),
+            direction: "supplier_out",
+            status: ["pending", "confirmed"],
+          },
+        })
+      : [];
+    for (const p of toConfirm) {
+      const order = live.find((o) => o.id === p.orderId);
+      if (!order) continue;
+      tasks.push(
+        finish(
+          {
+            kind: "confirm_receipt",
+            title: `Confirmar recebimento: pedido #${order.number}`,
+            detail: `${p.currency} ${p.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${p.note ? ` · ${p.note}` : ""}`,
+            link: "/app/account",
+            dueAt: null,
+            orderNumber: order.number,
+          },
+          now,
+        ),
+      );
+    }
+  }
+
   // Wellmix: parcelas a pagar a fornecedores vencidas ou vencendo em 7 dias.
   if (wellmix) {
     const { listPayables, payableRows } = await import("./supplier-terms");

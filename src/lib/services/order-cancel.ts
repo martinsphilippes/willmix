@@ -50,8 +50,9 @@ function todayBr(now: Date) {
 
 /**
  * O cliente ainda pode pedir o cancelamento? Até o produto entrar em produção:
- * antes de haver pagamento ao fornecedor feito (confirmado ou recebido) e
- * antes da data de início da produção da ficha de compra.
+ * antes de haver pagamento ao fornecedor feito (confirmado ou recebido, ou o
+ * recebimento confirmado na etapa antiga) e antes da data de início da
+ * produção da ficha de compra.
  */
 export async function customerCanRequestCancel(
   order: Order,
@@ -59,7 +60,7 @@ export async function customerCanRequestCancel(
 ): Promise<boolean> {
   if (!OPEN_FOR_REQUEST.includes(order.status as StageKey)) return false;
   const store = getStore();
-  const [[sheet], paid] = await Promise.all([
+  const [[sheet], paid, receivedInOldFlow] = await Promise.all([
     store.list("purchase_sheets", {
       filter: { orderId: order.id },
       limit: 1,
@@ -72,8 +73,14 @@ export async function customerCanRequestCancel(
       },
       limit: 1,
     }),
+    // Pedido antigo: o fornecedor confirmou o recebimento pela etapa de
+    // pagamento (às vezes sem linha de pagamento confirmada).
+    store.list("requirements", {
+      filter: { orderId: order.id, key: "payment_received", status: "done" },
+      limit: 1,
+    }),
   ]);
-  if (paid.length) return false;
+  if (paid.length || receivedInOldFlow.length) return false;
   const start = sheet?.productionStartAt?.slice(0, 10);
   return !start || todayBr(now) < start;
 }

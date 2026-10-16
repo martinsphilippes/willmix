@@ -9,7 +9,7 @@ import {
   applySupplierTermsToOrder,
   saveSupplierPaymentTerms,
 } from "@/lib/services/supplier-terms";
-import { requireUser, run, str } from "./helpers";
+import { num, requireUser, run, str } from "./helpers";
 
 /*
  * Condição de pagamento ao fornecedor (só a Wellmix): parcelas no cadastro do
@@ -74,9 +74,32 @@ export async function saveSupplierTermsAction(form: FormData) {
 export async function applySupplierTermsAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
-  await run(`/app/orders/${orderId}#supplier-payment`, async () => {
+  // Erro volta para o topo do pedido, onde o aviso aparece.
+  await run(`/app/orders/${orderId}`, async () => {
     assertWellmix(user);
     await applySupplierTermsToOrder(user, orderId);
     return `/app/orders/${orderId}?terms=applied#supplier-payment`;
+  });
+}
+
+/**
+ * "Marcar como pago" no pagamento pedido ao banco/financeiro: vira pago (com
+ * câmbio e comprovante opcionais), sem criar outro pagamento.
+ */
+export async function markSupplierPaymentPaidAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const paymentId = str(form, "paymentId");
+  await run(`/app/orders/${orderId}`, async () => {
+    assertWellmix(user);
+    const fxRate = z.number().positive().nullable().parse(num(form, "fxRate"));
+    const proof = form.get("proof");
+    const { markSupplierPaymentPaid } =
+      await import("@/lib/services/supplier-payment");
+    await markSupplierPaymentPaid(user, orderId, paymentId, {
+      fxRate,
+      proof: proof instanceof File ? proof : null,
+    });
+    return `/app/orders/${orderId}?paid=marked#supplier-payment`;
   });
 }

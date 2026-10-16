@@ -71,12 +71,16 @@ function inTab(tab: Tab, status: InstallmentStatus) {
 function sumBy(rows: PayableRow[]) {
   const out: Record<string, number> = {};
   for (const { payable, installment } of rows) {
+    // Em aberto: o que falta; solicitada: o pedido; paga: o valor; pedido
+    // cancelado: só o que chegou a ser pago (o resto nunca será).
     const value =
       installment.status === "requested"
         ? installment.requested
         : OPEN.includes(installment.status)
           ? installment.open
-          : installment.amount;
+          : installment.status === "cancelled"
+            ? installment.paid
+            : installment.amount;
     const c = payable.schedule.currency;
     out[c] = Math.round(((out[c] ?? 0) + value) * 100) / 100;
   }
@@ -360,7 +364,8 @@ export default async function PayablesPage({
             </tbody>
           </Table>
         )}
-        {shown.length ? (
+        {/* "Todas" mistura em aberto e pago: um total só não diria nada. */}
+        {shown.length && tab !== "all" ? (
           <p
             className="mt-2 text-right text-sm font-semibold tabular-nums text-zinc-700"
             data-payables-total

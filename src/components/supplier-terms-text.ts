@@ -5,7 +5,7 @@ import {
   type PaymentTermBase,
   type PaymentTermInstallment,
 } from "@/lib/db/schema";
-import type { InstallmentStatus } from "@/lib/supplier-terms";
+import { MAX_TERM_DAYS, type InstallmentStatus } from "@/lib/supplier-terms";
 import type { PaymentTermsTexts } from "./payment-terms-editor";
 import { formatDate, type Tone } from "./ui";
 
@@ -60,6 +60,8 @@ export function paymentTermsTexts(t: Translate): PaymentTermsTexts {
     presets: t("payTerms.presets"),
     save: t("payTerms.save"),
     installment: t("payTerms.installment", { n: "{n}", count: "{count}" }),
+    rowInvalid: t("payTerms.rowInvalid"),
+    maxDays: MAX_TERM_DAYS,
     baseLabels: byBase((b) => t(`payTerms.base.${b}` as DictionaryKey)),
     when: byBase((b) => ({
       zero: t(`payTerms.when.${b}.0` as DictionaryKey),

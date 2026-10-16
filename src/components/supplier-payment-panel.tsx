@@ -22,12 +22,61 @@ export function SupplierPaymentPanel({
   order,
   t,
   view,
+  manualOnly = false,
 }: {
   order: Order;
   t: Translate;
   view: SupplierPaymentView;
+  /** Só o "Já pagou? Registrar…" (nada a pagar agora, ou FOB desconhecido). */
+  manualOnly?: boolean;
 }) {
   const hasDue = view.due !== null && view.due > 0;
+  /* Já pagou por fora: registra com valor, câmbio e comprovante. Valor, moeda
+     e câmbio do tamanho do que se digita, numa linha só. */
+  const manual = (
+    <details className="group min-w-0 rounded-lg border border-zinc-200 bg-white md:col-span-2">
+      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-zinc-800">
+        {t("supplierPay.manual")}
+      </summary>
+      <form
+        action={registerSupplierPaymentAction}
+        className="flex flex-wrap items-end gap-2 border-t border-zinc-100 p-2.5"
+      >
+        <input type="hidden" name="orderId" value={order.id} />
+        <div className="w-[calc(50%-0.25rem)] min-w-0 sm:w-40">
+          <Field label={t("orders.value")}>
+            <MoneyInput
+              locale={t.intl}
+              name="amount"
+              watchField="currency"
+              required
+              defaultAmount={view.due ?? null}
+              className="w-full"
+            />
+          </Field>
+        </div>
+        <div className="w-[calc(50%-0.25rem)] min-w-0 sm:w-36">
+          <Field label={t("common.currency")}>
+            <CurrencySelect name="currency" value={view.currency} t={t} />
+          </Field>
+        </div>
+        <div className="w-full min-w-0 sm:w-28">
+          <Field label={t("finance.fx")}>
+            <Input name="fxRate" type="number" step="any" />
+          </Field>
+        </div>
+        <div className="w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-1">
+          <Field label={t("requests.payment.proof")}>
+            <Input name="proof" type="file" />
+          </Field>
+        </div>
+        <div>
+          <SubmitButton>{t("orders.registerPayment")}</SubmitButton>
+        </div>
+      </form>
+    </details>
+  );
+  if (manualOnly) return manual;
   // Parcela que a tela mostra: o servidor recusa se outra pessoa já a cobriu.
   const installment = view.installment ? (
     <input type="hidden" name="installment" value={view.installment.index} />
@@ -114,49 +163,7 @@ export function SupplierPaymentPanel({
         </>
       ) : null}
 
-      {/* Já pagou por fora: registra com valor, câmbio e comprovante.
-          Valor, moeda e câmbio do tamanho do que se digita, numa linha só. */}
-      <details className="group min-w-0 rounded-lg border border-zinc-200 bg-white md:col-span-2">
-        <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-zinc-800">
-          {t("supplierPay.manual")}
-        </summary>
-        <form
-          action={registerSupplierPaymentAction}
-          className="flex flex-wrap items-end gap-2 border-t border-zinc-100 p-2.5"
-        >
-          <input type="hidden" name="orderId" value={order.id} />
-          <div className="w-[calc(50%-0.25rem)] min-w-0 sm:w-40">
-            <Field label={t("orders.value")}>
-              <MoneyInput
-                locale={t.intl}
-                name="amount"
-                watchField="currency"
-                required
-                defaultAmount={view.due ?? null}
-                className="w-full"
-              />
-            </Field>
-          </div>
-          <div className="w-[calc(50%-0.25rem)] min-w-0 sm:w-36">
-            <Field label={t("common.currency")}>
-              <CurrencySelect name="currency" value={view.currency} t={t} />
-            </Field>
-          </div>
-          <div className="w-full min-w-0 sm:w-28">
-            <Field label={t("finance.fx")}>
-              <Input name="fxRate" type="number" step="any" />
-            </Field>
-          </div>
-          <div className="w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-1">
-            <Field label={t("requests.payment.proof")}>
-              <Input name="proof" type="file" />
-            </Field>
-          </div>
-          <div>
-            <SubmitButton>{t("orders.registerPayment")}</SubmitButton>
-          </div>
-        </form>
-      </details>
+      {manual}
     </div>
   );
 }

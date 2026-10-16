@@ -22,6 +22,7 @@ import {
   buildSupplierSchedule,
   parseTerms,
   paymentEventsFor,
+  sortTerms,
   termsTotal,
   type ScheduleInstallment,
   type SupplierSchedule,
@@ -78,7 +79,8 @@ export async function saveSupplierPaymentTerms(
       term.days > MAX_TERM_DAYS
     )
       throw new SupplierTermsError("terms_invalid");
-  const terms = input.terms.length ? parseTerms(input.terms) : null;
+  // Salva na ordem em que vencem: a parcela 1 é a primeira a vencer.
+  const terms = input.terms.length ? parseTerms(sortTerms(input.terms)) : null;
   if (input.terms.length && !terms) {
     throw new SupplierTermsError(
       Math.abs(termsTotal(input.terms) - 100) > 0.01
@@ -157,6 +159,23 @@ export interface OrderPayable {
   source: TermsSource | null;
 }
 
+/** Itens da etapa antiga de pagamento: quem marcou, pagou no fluxo antigo. */
+export const LEGACY_PAYMENT_KEYS = ["payment_registered", "payment_received"];
+
+/**
+ * Pedido de antes da mudança pago pela etapa "Pagamento ao fornecedor" (algum
+ * item dela concluído). Os pedidos novos não têm itens nessa etapa, e liberar
+ * um pedido parado não conclui item nenhum.
+ */
+function paidInOldFlow(requirements: Requirement[]) {
+  return requirements.some(
+    (r) => LEGACY_PAYMENT_KEYS.includes(r.key) && r.status === "done",
+  );
+}
+
+/** Requisitos que o cronograma usa: data de embarque e os itens da etapa antiga. */
+const SCHEDULE_REQUIREMENT_KEYS = ["ship_date", ...LEGACY_PAYMENT_KEYS];
+
 /** Hoje (AAAA-MM-DD) em Brasília. */
 export const todayInBrazil = () => brazilDay(new Date()) as string;
 
@@ -178,6 +197,7 @@ function payableFor(
     payments: payments.filter((p) => p.direction === "supplier_out"),
     today,
     cancelled: order.status === "CANCELLED",
+    legacySettled: paidInOldFlow(requirements),
   });
   return {
     order,
@@ -202,7 +222,7 @@ export async function orderPayable(order: Order): Promise<OrderPayable> {
     store.list("order_items", { filter: { orderId: order.id }, limit: 1 }),
   ]);
   const requirements = await store.list("requirements", {
-    filter: { orderId: order.id, key: "ship_date" },
+    filter: { orderId: order.id, key: SCHEDULE_REQUIREMENT_KEYS },
   });
   return payableFor(
     order,
@@ -224,8 +244,12 @@ export async function listPayables(
   filter: { supplierId?: string } = {},
 ): Promise<OrderPayable[]> {
   const store = getStore();
+  // Com a chave presente (mesmo vazia), só os pedidos daquele fornecedor.
   const orders = await store.list("orders", {
-    filter: filter.supplierId ? { supplierId: filter.supplierId } : undefined,
+    filter:
+      "supplierId" in filter
+        ? { supplierId: filter.supplierId ?? "" }
+        : undefined,
     orderBy: "number",
     direction: "desc",
   });
@@ -239,7 +263,9 @@ export async function listPayables(
     store.list("stages", {
       filter: { orderId: ids, key: ["SHIPPING", "DELIVERED"] },
     }),
-    store.list("requirements", { filter: { orderId: ids, key: "ship_date" } }),
+    store.list("requirements", {
+      filter: { orderId: ids, key: SCHEDULE_REQUIREMENT_KEYS },
+    }),
     store.list("order_items", { filter: { orderId: ids } }),
     store.list("parties", { filter: { id: supplierIds } }),
   ]);
@@ -295,35 +321,76 @@ export function payableRows(payables: OrderPayable[]): PayableRow[] {
   );
 }
 
-/*
- * Pedidos parados na etapa de pagamento ao fornecedor (de antes da mudança)
- * seguem para a próxima etapa. Idempotente: depois da primeira passada não
- * sobra nenhum, e esta instância do servidor deixa de consultar.
- */
 let releasedAll = false;
+/** Passada em andamento nesta instância: chamadas ao mesmo tempo esperam a mesma. */
+const inflight = new Map<string, Promise<number>>();
 
-export async function releaseOffFlowStages(orderId?: string): Promise<number> {
-  if (!orderId && releasedAll) return 0;
+async function releaseStage(stage: Stage) {
+  const store = getStore();
+  // Lê de novo: outra chamada pode ter liberado enquanto esta esperava.
+  const fresh = await store.get("stages", stage.id);
+  if (!fresh) return false;
+  const order = await store.get("orders", fresh.orderId);
+  const open = fresh.status === "active" || fresh.status === "blocked";
+  // Concluída, mas o pedido ainda está nela (a próxima etapa não começou).
+  const stuck = fresh.status === "done" && order?.status === fresh.key;
+  if (!open && !stuck) return false;
+  await audit(
+    null,
+    "stage.off_flow",
+    "stage",
+    fresh.id,
+    `${fresh.key}: fora do fluxo (condição de pagamento do fornecedor); o pedido segue`,
+  );
+  if (fresh.status !== "active")
+    await store.update("stages", fresh.id, {
+      status: "active",
+      blockReason: null,
+    });
+  await evaluateStage(null, fresh.id);
+  return true;
+}
+
+async function runRelease(orderId?: string): Promise<number> {
   const store = getStore();
   const stages = await store.list("stages", {
     filter: {
       key: [...OFF_FLOW_STAGES],
-      status: "active",
-      ...(orderId ? { orderId } : {}),
+      ...(orderId ? { orderId } : { status: ["active", "blocked"] }),
     },
   });
+  let released = 0;
   for (const stage of stages) {
-    await audit(
-      null,
-      "stage.off_flow",
-      "stage",
-      stage.id,
-      `${stage.key}: fora do fluxo (condição de pagamento do fornecedor); o pedido segue`,
-    );
-    await evaluateStage(null, stage.id);
+    try {
+      if (await releaseStage(stage)) released++;
+    } catch (error) {
+      // Um pedido com problema não segura os outros nem a tela.
+      console.error("[supplier-terms] etapa não liberada", stage.id, error);
+    }
   }
   if (!orderId && stages.length === 0) releasedAll = true;
-  return stages.length;
+  return released;
+}
+
+/**
+ * Pedidos parados na etapa de pagamento ao fornecedor (de antes da mudança)
+ * seguem para a próxima etapa. Idempotente e sem erro para quem chama (falha
+ * vai para o log): depois da primeira passada sem nada a liberar, esta
+ * instância do servidor deixa de consultar.
+ */
+export async function releaseOffFlowStages(orderId?: string): Promise<number> {
+  if (!orderId && releasedAll) return 0;
+  const key = orderId ?? "*";
+  const running = inflight.get(key);
+  if (running) return running;
+  const job = runRelease(orderId)
+    .catch((error) => {
+      console.error("[supplier-terms] liberação falhou", error);
+      return 0;
+    })
+    .finally(() => inflight.delete(key));
+  inflight.set(key, job);
+  return job;
 }
 
 /**

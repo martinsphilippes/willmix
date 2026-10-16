@@ -185,6 +185,11 @@ export default async function AccountPage({
                 {party.paymentTermsNote}
               </span>
             ) : null}
+            {terms ? (
+              <span className="block text-xs text-zinc-500">
+                {t("account.forecast.currentHint")}
+              </span>
+            ) : null}
           </p>
           {forecast.length === 0 ? (
             <Empty>{t("account.forecast.empty")}</Empty>
@@ -223,9 +228,14 @@ export default async function AccountPage({
                     </Td>
                     <Td>
                       {i.dueDate ? (
-                        <span className="whitespace-nowrap tabular-nums">
-                          {formatDay(i.dueDate, t)}
-                        </span>
+                        <>
+                          <span className="whitespace-nowrap tabular-nums">
+                            {formatDay(i.dueDate, t)}
+                          </span>
+                          <span className="block text-xs text-zinc-500">
+                            {termWhen(t, i.base, i.days)}
+                          </span>
+                        </>
                       ) : (
                         <span className="text-xs text-zinc-600">
                           {t("supplierTerms.waiting", {
@@ -234,8 +244,21 @@ export default async function AccountPage({
                         </span>
                       )}
                     </Td>
-                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
-                      {formatMoney(i.amount, payable.schedule.currency, t)}
+                    <Td className="whitespace-nowrap text-right tabular-nums">
+                      <span className="font-semibold">
+                        {formatMoney(i.amount, payable.schedule.currency, t)}
+                      </span>
+                      {i.paid > 0 && i.paid < i.amount - 0.005 ? (
+                        <span className="block text-xs text-zinc-500">
+                          {t("supplierTerms.partial", {
+                            paid: formatMoney(
+                              i.paid,
+                              payable.schedule.currency,
+                              t,
+                            ),
+                          })}
+                        </span>
+                      ) : null}
                     </Td>
                     <Td className="whitespace-nowrap">
                       <Badge tone={INSTALLMENT_TONE[i.status]}>

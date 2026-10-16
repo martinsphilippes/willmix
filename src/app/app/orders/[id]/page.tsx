@@ -684,6 +684,7 @@ export default async function OrderPage({
                   "transfer_copied",
                   "finance_email",
                   "finance_whatsapp",
+                  "marked",
                 ].includes(paid)
                   ? t(`supplierPay.done.${paid}` as DictionaryKey)
                   : termsNotice === "applied"

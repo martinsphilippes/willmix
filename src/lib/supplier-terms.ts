@@ -63,6 +63,31 @@ export function parseTerms(raw: unknown): PaymentTermInstallment[] | null {
   return out;
 }
 
+/** Ordem dos marcos no pedido: pedido gerado, embarque, entrega. */
+const BASE_RANK: Record<PaymentTermBase, number> = {
+  order_created: 0,
+  shipped: 1,
+  delivered: 2,
+};
+
+/**
+ * Parcelas na ordem em que vencem (marco, depois dias): a condição é salva
+ * assim, e a parcela 1 é sempre a primeira a vencer.
+ */
+export function sortTerms(
+  terms: PaymentTermInstallment[],
+): PaymentTermInstallment[] {
+  return terms
+    .map((term, i) => ({ term, i }))
+    .sort(
+      (a, b) =>
+        BASE_RANK[a.term.base] - BASE_RANK[b.term.base] ||
+        a.term.days - b.term.days ||
+        a.i - b.i,
+    )
+    .map(({ term }) => term);
+}
+
 export function sameTerms(
   a: PaymentTermInstallment[] | null,
   b: PaymentTermInstallment[] | null,
@@ -209,6 +234,11 @@ export interface SupplierSchedule {
   open: number;
   /** Próxima parcela com valor em aberto (a que se paga agora). */
   next: ScheduleInstallment | null;
+  /**
+   * Pedido de antes da mudança que já passou pela etapa "Pagamento ao
+   * fornecedor" (pago no fluxo antigo): nada a pagar pelo cronograma.
+   */
+  legacySettled: boolean;
 }
 
 export interface SchedulePayment {
@@ -239,6 +269,8 @@ export function buildSupplierSchedule(input: {
   /** Hoje (AAAA-MM-DD, Brasília). */
   today: string;
   cancelled: boolean;
+  /** Pago no fluxo antigo (etapa de pagamento concluída pelos itens dela). */
+  legacySettled?: boolean;
 }): SupplierSchedule {
   const currency = input.currency.toUpperCase();
   const same = input.payments.filter(
@@ -253,20 +285,21 @@ export function buildSupplierSchedule(input: {
   const pending = sum("pending");
   const paidTotal = cents(received + confirmed);
 
-  if (input.total === null || !input.terms) {
+  if (input.total === null || !input.terms || input.legacySettled) {
     const open =
-      input.total === null || input.cancelled
+      input.total === null || input.cancelled || input.legacySettled
         ? 0
         : Math.max(0, cents(input.total - paidTotal - pending));
     return {
       currency,
       total: input.total,
-      terms: input.terms,
+      terms: input.legacySettled ? null : input.terms,
       installments: [],
       paid: paidTotal,
       requested: pending,
       open,
       next: null,
+      legacySettled: !!input.legacySettled,
     };
   }
 
@@ -277,12 +310,33 @@ export function buildSupplierSchedule(input: {
   amounts[amounts.length - 1] = cents(
     total - amounts.slice(0, -1).reduce((s, a) => s + a, 0),
   );
-  // Distribui o dinheiro na ordem das parcelas: recebido, depois pago, depois pedido.
+  const soon = addDays(input.today, DUE_SOON_DAYS);
+  const dueDates = terms.map((term) => {
+    const event = input.events[term.base];
+    return event ? addDays(event, term.days) : null;
+  });
+  /*
+   * O dinheiro quita as parcelas na ordem em que vencem (data; sem data, pelo
+   * marco e pelos dias), não na ordem em que foram digitadas: recebido, depois
+   * pago, depois pedido. A numeração mostrada continua a da condição.
+   */
+  const order = terms
+    .map((_, i) => i)
+    .sort(
+      (a, b) =>
+        (dueDates[a] ?? "9999-12-31").localeCompare(
+          dueDates[b] ?? "9999-12-31",
+        ) ||
+        BASE_RANK[terms[a].base] - BASE_RANK[terms[b].base] ||
+        terms[a].days - terms[b].days ||
+        a - b,
+    );
   let receivedLeft = received;
   let confirmedLeft = confirmed;
   let pendingLeft = pending;
-  const soon = addDays(input.today, DUE_SOON_DAYS);
-  const installments = terms.map((term, i): ScheduleInstallment => {
+  const byIndex: ScheduleInstallment[] = new Array(terms.length);
+  for (const i of order) {
+    const term = terms[i];
     const amount = amounts[i];
     let need = Math.max(0, amount);
     const take = (left: number) => {
@@ -297,8 +351,7 @@ export function buildSupplierSchedule(input: {
     const fromPending = take(pendingLeft);
     pendingLeft = cents(pendingLeft - fromPending);
     const paid = cents(fromReceived + fromConfirmed);
-    const event = input.events[term.base];
-    const dueDate = event ? addDays(event, term.days) : null;
+    const dueDate = dueDates[i];
     const status: InstallmentStatus =
       fromReceived >= amount - EPS
         ? "received"
@@ -315,7 +368,7 @@ export function buildSupplierSchedule(input: {
                   : dueDate <= soon
                     ? "due_soon"
                     : "scheduled";
-    return {
+    byIndex[i] = {
       index: i + 1,
       count: terms.length,
       percent: term.percent,
@@ -328,7 +381,8 @@ export function buildSupplierSchedule(input: {
       dueDate,
       status,
     };
-  });
+  }
+  const installments = byIndex;
   return {
     currency,
     total,
@@ -337,6 +391,8 @@ export function buildSupplierSchedule(input: {
     paid: paidTotal,
     requested: pending,
     open: cents(installments.reduce((s, i) => s + i.open, 0)),
-    next: installments.find((i) => i.open > EPS) ?? null,
+    // A da vez é a primeira a vencer que ainda tem valor em aberto.
+    next: order.map((i) => installments[i]).find((i) => i.open > EPS) ?? null,
+    legacySettled: false,
   };
 }

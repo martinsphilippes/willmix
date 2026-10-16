@@ -34,6 +34,10 @@ export interface PaymentTermsTexts {
   save: string;
   /** "Parcela {n}/{count}" */
   installment: string;
+  /** Parcela fora do que o servidor aceita (% ou dias). */
+  rowInvalid: string;
+  /** Máximo de dias depois do marco (o mesmo do servidor). */
+  maxDays: number;
   baseLabels: Record<PaymentTermBase, string>;
   /** Por marco: texto com 0 dias e com {days} dias. */
   when: Record<PaymentTermBase, { zero: string; days: string }>;
@@ -92,11 +96,28 @@ export function PaymentTermsEditor({
       ? texts.when[base].zero
       : texts.when[base].days.replace("{days}", String(days));
   const filled = rows.filter((r) => r.percent !== "" || r.days !== "");
+  // Mesmas regras do servidor: 0 < % ≤ 100 e 0 a 720 dias.
+  const rowValid = (r: Row) => {
+    const percent = parseNumberInput(r.percent);
+    const days = r.days === "" ? 0 : parseNumberInput(r.days, { int: true });
+    return (
+      percent !== null &&
+      Number.isFinite(percent) &&
+      percent > 0 &&
+      percent <= 100 &&
+      days !== null &&
+      Number.isInteger(days) &&
+      days >= 0 &&
+      days <= texts.maxDays
+    );
+  };
   const sum =
     Math.round(
       filled.reduce((s, r) => s + (parseNumberInput(r.percent) ?? 0), 0) * 100,
     ) / 100;
-  const ok = filled.length === 0 || Math.abs(sum - 100) <= 0.01;
+  const ok =
+    filled.length === 0 ||
+    (filled.every(rowValid) && Math.abs(sum - 100) <= 0.01);
   const update = (id: number, patch: Partial<Row>) =>
     setRows((list) => list.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const add = () => {
@@ -145,14 +166,21 @@ export function PaymentTermsEditor({
           const percent = parseNumberInput(row.percent);
           const days =
             row.days === "" ? 0 : parseNumberInput(row.days, { int: true });
+          const blank = row.percent === "" && row.days === "";
+          const invalid = !blank && !rowValid(row);
           const described =
-            percent !== null && percent > 0 && days !== null && days >= 0
+            !blank && !invalid && percent !== null && days !== null
               ? `${fmt(percent)}% ${when(row.base, days)}`
               : null;
           return (
             <li
               key={row.id}
-              className="rounded-lg border border-zinc-200 bg-zinc-50/60 p-2"
+              className={cx(
+                "rounded-lg border p-2",
+                invalid
+                  ? "border-red-300 bg-red-50/60"
+                  : "border-zinc-200 bg-zinc-50/60",
+              )}
               data-term-row={i + 1}
             >
               <div className="grid grid-cols-[5.5rem_minmax(0,1fr)_5rem_auto] items-end gap-2">
@@ -163,6 +191,7 @@ export function PaymentTermsEditor({
                   <span className="relative block">
                     <input
                       name="termPercent"
+                      aria-invalid={invalid || undefined}
                       inputMode="decimal"
                       autoComplete="off"
                       value={row.percent}
@@ -208,6 +237,7 @@ export function PaymentTermsEditor({
                   </span>
                   <input
                     name="termDays"
+                    aria-invalid={invalid || undefined}
                     inputMode="numeric"
                     autoComplete="off"
                     placeholder="0"
@@ -236,7 +266,14 @@ export function PaymentTermsEditor({
                   ×
                 </button>
               </div>
-              {described ? (
+              {invalid ? (
+                <p
+                  className="mt-1 text-xs font-medium text-red-700"
+                  role="alert"
+                >
+                  {texts.rowInvalid}
+                </p>
+              ) : described ? (
                 <p className="mt-1 text-xs text-zinc-600">
                   <span className="font-semibold">
                     {texts.installment
@@ -273,7 +310,10 @@ export function PaymentTermsEditor({
           data-terms-sum={sum}
           aria-live="polite"
         >
-          {(ok ? texts.sum : texts.sumOff).replace("{sum}", fmt(sum))}
+          {(Math.abs(sum - 100) <= 0.01 ? texts.sum : texts.sumOff).replace(
+            "{sum}",
+            fmt(sum),
+          )}
         </span>
       </div>
       {children}

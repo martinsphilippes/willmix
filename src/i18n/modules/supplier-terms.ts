@@ -16,7 +16,11 @@ export const pt = {
   "payTerms.sum": "Total {sum}%",
   "payTerms.sumOff": "Total {sum}%: as parcelas precisam somar 100%",
   "payTerms.presets": "Atalhos",
-  "payTerms.note": "Observação",
+  "payTerms.note": "Observação para o fornecedor",
+  "payTerms.noteHint":
+    "O fornecedor vê esta observação na conta corrente dele (Previsão de pagamentos). Não use para anotações internas.",
+  "payTerms.rowInvalid":
+    "Confira esta parcela: % maior que 0 e até 100, e de 0 a 720 dias.",
   "payTerms.notePlaceholder":
     "Ex.: T/T para conta em Hong Kong; antecipado com 2% de desconto",
   "payTerms.save": "Salvar condição",
@@ -79,6 +83,17 @@ export const pt = {
   "supplierTerms.payNow": "Pagar a parcela {n}/{count}",
   "supplierTerms.payBalance": "Pagar o saldo",
   "supplierTerms.settled": "Nada em aberto: tudo pago ou solicitado.",
+  "supplierTerms.legacySettled":
+    'Pago no fluxo antigo: a etapa "Pagamento ao fornecedor" deste pedido foi concluída pelos itens dela. Nada a pagar pelo cronograma.',
+  "supplierTerms.pendingTitle": "Pedidos ao banco/financeiro",
+  "supplierTerms.pendingHint":
+    'Quando o pagamento sair, use "Marcar como pago" (com câmbio e comprovante, se tiver). Não registre outro pagamento para o mesmo valor.',
+  "supplierTerms.markPaid": "Marcar como pago",
+  "orders.error.payment_not_pending":
+    "Este pagamento já não está pendente (outra pessoa marcou ou o fornecedor confirmou).",
+  "tasks.group.confirm_receipt": "Confirmar recebimento",
+  "account.forecast.currentHint":
+    "Condição atual do cadastro. Pedidos já gerados seguem a condição combinada em cada um, mostrada em cada parcela.",
   "supplierTerms.supplierHint":
     "Previsão de pagamento da Wellmix pela condição combinada. Quando o dinheiro chegar, confirme o recebimento em Conta corrente.",
   "payables.title": "Contas a pagar",
@@ -133,7 +148,11 @@ export const en: Record<keyof typeof pt, string> = {
   "payTerms.sum": "Total {sum}%",
   "payTerms.sumOff": "Total {sum}%: installments must add up to 100%",
   "payTerms.presets": "Shortcuts",
-  "payTerms.note": "Note",
+  "payTerms.note": "Note for the supplier",
+  "payTerms.noteHint":
+    "The supplier sees this note in their account (Payment forecast). Do not use it for internal remarks.",
+  "payTerms.rowInvalid":
+    "Check this installment: % above 0 and up to 100, and 0 to 720 days.",
   "payTerms.notePlaceholder":
     "E.g. T/T to a Hong Kong account; 2% discount if paid in advance",
   "payTerms.save": "Save terms",
@@ -193,6 +212,17 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierTerms.payNow": "Pay installment {n}/{count}",
   "supplierTerms.payBalance": "Pay the balance",
   "supplierTerms.settled": "Nothing open: all paid or requested.",
+  "supplierTerms.legacySettled":
+    'Paid in the old flow: this order\'s "Supplier payment" stage was completed through its items. Nothing to pay on the schedule.',
+  "supplierTerms.pendingTitle": "Requests to bank/finance",
+  "supplierTerms.pendingHint":
+    'When the payment goes out, use "Mark as paid" (with FX rate and proof, if any). Do not register another payment for the same amount.',
+  "supplierTerms.markPaid": "Mark as paid",
+  "orders.error.payment_not_pending":
+    "This payment is no longer pending (someone else marked it or the supplier confirmed).",
+  "tasks.group.confirm_receipt": "Confirm receipt",
+  "account.forecast.currentHint":
+    "Current terms in the record. Existing orders follow the terms agreed for each one, shown on each installment.",
   "supplierTerms.supplierHint":
     "Wellmix payment forecast under the agreed terms. When the money arrives, confirm receipt in your Account.",
   "payables.title": "Payables",
@@ -246,7 +276,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "payTerms.sum": "合计 {sum}%",
   "payTerms.sumOff": "合计 {sum}%：各期之和必须为 100%",
   "payTerms.presets": "快捷选项",
-  "payTerms.note": "备注",
+  "payTerms.note": "给供应商的备注",
+  "payTerms.noteHint":
+    "供应商会在其往来账（付款预计）中看到此备注。请勿用于内部记录。",
+  "payTerms.rowInvalid":
+    "请检查此期：百分比须大于 0 且不超过 100，天数为 0 至 720。",
   "payTerms.notePlaceholder": "例如：电汇至香港账户；预付可享 2% 折扣",
   "payTerms.save": "保存条件",
   "payTerms.saved": "付款条件已保存。",
@@ -303,6 +337,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierTerms.payNow": "支付第 {n}/{count} 期",
   "supplierTerms.payBalance": "支付余额",
   "supplierTerms.settled": "无未结款项：均已支付或已申请。",
+  "supplierTerms.legacySettled":
+    "已在旧流程中付款：本订单的“供应商付款”阶段已通过其各项完成。付款计划中无待付款项。",
+  "supplierTerms.pendingTitle": "已向银行/财务申请",
+  "supplierTerms.pendingHint":
+    "付款发出后，请点击“标记为已付”（如有汇率和凭证请一并填写）。请勿为同一金额再登记一笔付款。",
+  "supplierTerms.markPaid": "标记为已付",
+  "orders.error.payment_not_pending":
+    "该付款已不是待处理状态（他人已标记或供应商已确认）。",
+  "tasks.group.confirm_receipt": "确认收款",
+  "account.forecast.currentHint":
+    "资料中的当前条件。已生成的订单按各自约定的条件执行，见每期说明。",
   "supplierTerms.supplierHint":
     "按约定条件的 Wellmix 付款预计。款项到账后，请在往来账中确认收款。",
   "payables.title": "应付账款",

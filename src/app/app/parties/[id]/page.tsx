@@ -519,7 +519,10 @@ export default async function PartyPage({
                   texts={paymentTermsTexts(t)}
                   locale={t.intl}
                 >
-                  <Field label={t("payTerms.note")}>
+                  <Field
+                    label={t("payTerms.note")}
+                    hint={t("payTerms.noteHint")}
+                  >
                     <Textarea
                       name="paymentTermsNote"
                       maxLength={500}
