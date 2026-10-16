@@ -49,7 +49,7 @@ Nada disso é feito agora; a regra é só não tomar decisões que tornem isso i
 ## 5. Convenções
 
 - Rotas públicas na raiz; área autenticada em `/app/*`. Proxy faz checagem otimista do cookie; páginas e ações validam a sessão.
-- Toda escrita passa por Server Action em `src/app/app/actions.ts` com zod e `assert*` de papel. Erros voltam por `?error=` na mesma página.
+- Toda escrita passa por Server Action em `src/app/app/actions.ts` com zod e `assert*` de papel. Erros voltam por `?error=` na mesma página. Valor recusado volta com o nome do campo (`?error=invalid_input&fields=a,b`): validar um objeto com zod já leva os nomes; um campo só, use `field(form, "nome", schema)` de `actions/helpers.ts`. A tela mostra com `ActionError` (`src/components/action-error.tsx`), que acha o campo pelo nome, mostra o rótulo, destaca e leva até ele. A ficha de compra usa `?error=invalid_fields` (leitura campo a campo em `actions/sheet-form.ts`).
 - Nunca ler dados no browser: Server Components recebem dados já filtrados por papel.
 - Esquema em `src/lib/db/schema.ts`; `appwrite.config.json` é gerado (`npm run appwrite:config`), nunca editado à mão.
 - Português na interface e docs; inglês em identificadores.

@@ -10,6 +10,8 @@ export const pt = {
     "Alguns campos não puderam ser lidos e ficaram sem salvar; o resto foi salvo. Veja abaixo.",
   "sheet.field.colorPantones": "Cores Pantone",
   "sheet.field.lots": "Programação",
+  "sheet.field.leadTimeDays": "Prazo de produção (dias)",
+  "sheet.field.conditions": "Condições de pagamento e observações",
   "productSheet.register.title": "Este produto ainda não está no catálogo",
   "productSheet.register.hint":
     "Cadastre com os dados desta ficha: na próxima venda o produto já vem preenchido.",
@@ -23,7 +25,16 @@ export const pt = {
   "sheet.qty.quoteDraft":
     "ao salvar ou enviar a ficha, a cotação passa a valer {to} {unit} ({diff} em relação aos {from} pedidos).",
   "sheet.draftRestored":
-    "O envio não deu certo, mas o que você digitou foi mantido nesta tela. Confira e salve de novo.",
+    "O que você digitou nesta ficha ainda não está salvo e foi mantido nesta tela. Confira e salve.",
+  "sheet.draftDiscard": "Descartar e ver o que está salvo",
+  "form.invalid.before": "Confira o valor de: ",
+  "sheet.error.too_large":
+    "Foto grande demais. Tire de novo ou envie uma menor.",
+  "sheet.error.mime":
+    "Formato não aceito: envie foto (JPG, PNG, WEBP, HEIC) ou PDF.",
+  "sheet.error.empty": "O arquivo chegou vazio. Escolha a foto de novo.",
+  "sheet.error.upload_missing":
+    "A foto não terminou de subir. Escolha de novo (de preferência no Wi-Fi).",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -33,6 +44,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Some fields could not be read and were not saved; the rest was saved. See below.",
   "sheet.field.colorPantones": "Pantone colors",
   "sheet.field.lots": "Schedule",
+  "sheet.field.leadTimeDays": "Production lead time (days)",
+  "sheet.field.conditions": "Payment terms and notes",
   "productSheet.register.title": "This product is not in the catalog yet",
   "productSheet.register.hint":
     "Register it with this sheet's data: next time the product comes pre-filled.",
@@ -46,7 +59,16 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.qty.quoteDraft":
     "once the sheet is saved or sent, the quote is for {to} {unit} ({diff} versus the {from} requested).",
   "sheet.draftRestored":
-    "Sending did not work, but what you typed was kept on this screen. Check it and save again.",
+    "What you typed in this sheet is not saved yet and was kept on this screen. Check it and save.",
+  "sheet.draftDiscard": "Discard and show what is saved",
+  "form.invalid.before": "Check the value of: ",
+  "sheet.error.too_large":
+    "Photo too large. Take it again or send a smaller one.",
+  "sheet.error.mime":
+    "Format not accepted: send a photo (JPG, PNG, WEBP, HEIC) or a PDF.",
+  "sheet.error.empty": "The file arrived empty. Pick the photo again.",
+  "sheet.error.upload_missing":
+    "The photo did not finish uploading. Pick it again (preferably on Wi-Fi).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -56,6 +78,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "部分字段无法识别，未保存；其余内容已保存。请看下方。",
   "sheet.field.colorPantones": "Pantone 颜色",
   "sheet.field.lots": "排期",
+  "sheet.field.leadTimeDays": "生产周期（天）",
+  "sheet.field.conditions": "付款条件和备注",
   "productSheet.register.title": "该产品尚未加入产品库",
   "productSheet.register.hint":
     "用此采购单的数据登记：下次销售时产品信息会自动带出。",
@@ -69,5 +93,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.qty.quoteDraft":
     "保存或提交采购单后，本报价数量为 {to} {unit}（与需求 {from} 相差 {diff}）。",
   "sheet.draftRestored":
-    "提交未成功，但您填写的内容已保留在此页面。请检查后再次保存。",
+    "您在此采购单中填写的内容尚未保存，已保留在此页面。请检查后保存。",
+  "sheet.draftDiscard": "放弃并查看已保存内容",
+  "form.invalid.before": "请检查以下字段：",
+  "sheet.error.too_large": "照片太大。请重新拍摄或上传较小的照片。",
+  "sheet.error.mime": "格式不支持：请上传照片（JPG、PNG、WEBP、HEIC）或 PDF。",
+  "sheet.error.empty": "文件为空。请重新选择照片。",
+  "sheet.error.upload_missing":
+    "照片未上传完成。请重新选择（最好使用 Wi-Fi）。",
 };

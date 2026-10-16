@@ -16,6 +16,14 @@ export function LogoutButton({
 
   async function onClick() {
     setPending(true);
+    // Rascunhos de ficha desta aba não ficam para a próxima pessoa.
+    try {
+      for (const key of Object.keys(sessionStorage))
+        if (key.startsWith("wellmix-draft:") || key === "wellmix:last-submit")
+          sessionStorage.removeItem(key);
+    } catch {
+      // Sem armazenamento: nada a limpar.
+    }
     await fetch("/api/auth/session", { method: "DELETE" });
     router.push("/login");
     router.refresh();

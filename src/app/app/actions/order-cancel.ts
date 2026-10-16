@@ -8,7 +8,7 @@ import {
   requestOrderCancel,
   updateCancelSettlement,
 } from "@/lib/services/order-cancel";
-import { requireUser, run, str } from "./helpers";
+import { field, requireUser, run, str } from "./helpers";
 
 /*
  * Cancelamento de pedido. Só o administrador cancela (o serviço confere o
@@ -34,9 +34,9 @@ export async function cancelOrderAction(form: FormData) {
     id.parse(orderId);
     if (str(form, "confirm") !== "1") throw new Error("confirm_required");
     await cancelOrder(user, orderId, {
-      reason: z.enum(ORDER_CANCEL_REASONS).parse(str(form, "reason")),
-      note: text(1000).parse(str(form, "note")),
-      settlement: text(2000).parse(str(form, "settlement")),
+      reason: field(form, "reason", z.enum(ORDER_CANCEL_REASONS)),
+      note: field(form, "note", text(1000)),
+      settlement: field(form, "settlement", text(2000)),
     });
     return `${back}?cancelled=1`;
   });
@@ -50,7 +50,7 @@ export async function updateCancelSettlementAction(form: FormData) {
     await updateCancelSettlement(
       user,
       orderId,
-      text(2000).parse(str(form, "settlement")),
+      field(form, "settlement", text(2000)),
     );
     return `${back}?settlementSaved=1`;
   });
@@ -61,7 +61,7 @@ export async function requestOrderCancelAction(form: FormData) {
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
     id.parse(orderId);
-    const reason = z.string().min(3).max(1000).parse(str(form, "reason"));
+    const reason = field(form, "reason", z.string().min(3).max(1000));
     await requestOrderCancel(user, orderId, reason);
     return `${back}?cancelRequested=1#cancel`;
   });
@@ -72,7 +72,7 @@ export async function rejectCancelRequestAction(form: FormData) {
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
     id.parse(orderId);
-    const response = z.string().min(3).max(1000).parse(str(form, "response"));
+    const response = field(form, "response", z.string().min(3).max(1000));
     await rejectCancelRequest(user, orderId, response);
     return `${back}?cancelRejected=1#cancel`;
   });

@@ -5,7 +5,11 @@
  * navegador (conta ao vivo da ficha) e no servidor (o que se grava), com a
  * mesma regra dos dois lados.
  *
- * - Espaços e a unidade no fim são ignorados.
+ * - Espaços e uma unidade conhecida no fim são ignorados ("kg", "pcs",
+ *   "m³", "dias", "个"…). Outro texto colado no número ("2 mil", "10k",
+ *   "1万", "5OO" com letra O) não é lido: vira NaN (campo apontado), em vez
+ *   de gravar 2, 10, 1 ou 5. Unidade que muda o tamanho do número no campo
+ *   ("50 g" no peso em kg, "300 mm" na medida em cm) também não.
  * - Com ponto e vírgula, o último é o decimal ("1.234,56" e "1,234.56").
  * - Só um tipo de separador: em número inteiro (caixas, peças, MOQ), grupos
  *   de 3 dígitos são milhar ("1.000" = 1000); nos demais é decimal
@@ -22,8 +26,8 @@ export function parseNumberInput(
     .trim();
   if (!t) return null;
   // Unidade no fim ("kg", "pcs", "m³", "个", "dias"...): fica só o número.
-  const m = /^([+-]?[\d.,]+)[^\d.,]*$/.exec(t);
-  if (!m) return NaN;
+  const m = /^([+-]?[\d.,]+)([^\d.,]*)$/.exec(t);
+  if (!m || !isKnownUnit(m[2])) return NaN;
   t = m[1];
   if (/[^\d]$/.test(t)) t = t.slice(0, -1); // "1.000." / "1,5,"
   const lastDot = t.lastIndexOf(".");
@@ -47,4 +51,121 @@ export function parseNumberInput(
   if (!normalized || !/^[+-]?\d*\.?\d+$/.test(normalized)) return NaN;
   const n = Number(normalized);
   return Number.isFinite(n) ? n : NaN;
+}
+
+/**
+ * Unidades que podem vir coladas no número (peso, peças, caixas, medidas,
+ * dias, moeda, %). Palavras de grandeza (mil, k, 万, 千) ficam de fora: "2 mil"
+ * não pode virar 2.
+ */
+const UNITS = new Set([
+  "",
+  // peso (em kg: "50 g" não é aceito, viraria 50 kg)
+  "kg",
+  "kgs",
+  "公斤",
+  "千克",
+  // peças e conjuntos
+  "u",
+  "un",
+  "und",
+  "unid",
+  "unidade",
+  "unidades",
+  "unit",
+  "units",
+  "pc",
+  "pcs",
+  "pca",
+  "pcas",
+  "peca",
+  "pecas",
+  "piece",
+  "pieces",
+  "ea",
+  "pz",
+  "pzs",
+  "kit",
+  "kits",
+  "jogo",
+  "jogos",
+  "set",
+  "sets",
+  "par",
+  "pares",
+  "pair",
+  "pairs",
+  "个",
+  "件",
+  "只",
+  "套",
+  "双",
+  "对",
+  "台",
+  "把",
+  "片",
+  "张",
+  "条",
+  "瓶",
+  "包",
+  "盒",
+  "袋",
+  "卷",
+  "支",
+  "颗",
+  // caixas
+  "cx",
+  "cxs",
+  "caixa",
+  "caixas",
+  "ctn",
+  "ctns",
+  "carton",
+  "cartons",
+  "箱",
+  // medidas na unidade do campo (cm, m³, ml): "300 mm", "0,3 m" e "1 l"
+  // não são aceitos, mudariam o tamanho do número
+  "m3",
+  "m³",
+  "cbm",
+  "立方",
+  "cm",
+  "厘米",
+  "ml",
+  "毫升",
+  // prazo
+  "d",
+  "dia",
+  "dias",
+  "day",
+  "days",
+  "天",
+  "日",
+  "工作日",
+  // moeda e porcentagem
+  "%",
+  "usd",
+  "us$",
+  "$",
+  "rmb",
+  "cny",
+  "¥",
+  "元",
+  "brl",
+  "r$",
+  "eur",
+  "€",
+]);
+
+/** Unidade conhecida, também composta ("pcs/ctn", "件/箱", "kg/pc", "cbm/ctn"). */
+function isKnownUnit(raw: string): boolean {
+  const u = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\(s\)/g, "")
+    .replace(/[.()]/g, "");
+  if (!u.includes("/")) return UNITS.has(u);
+  const parts = u.split("/");
+  return parts.every((part) => part !== "" && UNITS.has(part));
 }

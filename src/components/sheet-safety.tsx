@@ -13,6 +13,7 @@ export function SheetSafety({
   t,
   formId,
   storageKey,
+  userId,
   error,
   fields,
   saved,
@@ -21,6 +22,8 @@ export function SheetSafety({
   t: Translate;
   formId: string;
   storageKey: string;
+  /** Rascunho é de quem digitou (tablet compartilhado). */
+  userId: string;
   error: unknown;
   fields: unknown;
   saved: boolean;
@@ -39,11 +42,13 @@ export function SheetSafety({
       <FormDraftGuard
         formId={formId}
         storageKey={storageKey}
+        userId={userId}
         failed={failed}
         saved={saved}
         token={typeof token === "string" ? token : String(failed)}
         // Campo ilegível: o aviso de baixo já explica; o digitado volta sem outro aviso.
         message={invalid.length ? "" : t("sheet.draftRestored")}
+        discardLabel={t("sheet.draftDiscard")}
       />
       {invalid.length ? (
         <div data-invalid-fields={invalid.join(" ")}>

@@ -4,7 +4,8 @@ import { z } from "zod";
 import { CURRENCIES } from "@/lib/currencies";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { answerFreight } from "@/lib/services/freight";
-import { requireUser, run, str } from "./helpers";
+import { field, requireUser, run, str } from "./helpers";
+import { parseNumberInput } from "@/lib/number-input";
 
 /*
  * Companhia marítima (ou a Wellmix por ela) informa o frete de um pedido de
@@ -26,13 +27,17 @@ export async function answerFreightAction(form: FormData) {
     ID.parse(freightId);
     if (!isWellmix(user) && user.role !== "shipping_line")
       throw new ForbiddenError();
-    const amount = z.coerce
-      .number()
-      .positive()
-      .max(100_000_000)
-      .parse(str(form, "amount").replace(",", "."));
-    const currency = z.enum(CURRENCIES).parse(str(form, "currency"));
-    const transitDays = optionalInt.parse(str(form, "transitDays"));
+    // Valor como as pessoas digitam ("1.250,00", "1,250.00"); recusado aponta o campo.
+    const amount = field(
+      form,
+      "amount",
+      z.preprocess(
+        (v) => parseNumberInput(String(v ?? "")),
+        z.number().positive().max(100_000_000),
+      ),
+    );
+    const currency = field(form, "currency", z.enum(CURRENCIES));
+    const transitDays = field(form, "transitDays", optionalInt);
     const rawValid = str(form, "validUntil");
     const validUntil = rawValid
       ? z
@@ -40,7 +45,7 @@ export async function answerFreightAction(form: FormData) {
           .regex(/^\d{4}-\d{2}-\d{2}$/)
           .parse(rawValid) + "T00:00:00.000Z"
       : null;
-    const notes = z.string().max(1000).parse(str(form, "notes")) || null;
+    const notes = field(form, "notes", z.string().max(1000)) || null;
     await answerFreight(user, freightId, {
       amount,
       currency,

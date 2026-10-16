@@ -344,5 +344,98 @@ describe("quantidade da programação: segurança (revisão)", () => {
     });
     expect(reviews).toHaveLength(1);
     expect(reviews[0]).toMatchObject({ expected: "2750", found: "2700" });
+
+    // Tratada a revisão, salvar outro campo não a reabre.
+    const { resolveReviewById } = await import("@/lib/services/reviews");
+    await resolveReviewById(admin, reviews[0].id, "resolved", "visto");
+    await ps.saveSheet(admin, order.id, {
+      lots: lots(20, 20, 14),
+      packageType: "COLOR BOX",
+    });
+    expect(
+      (
+        await store.list("review_items", {
+          filter: { entityId: order.id, rule: "order.quantity_after_payment" },
+        })
+      ).filter((r) => r.status === "open"),
+    ).toHaveLength(0);
+
+    // Conferido o acerto, a Wellmix aplica a quantidade (fornecedor não pode).
+    await expect(ps.applySheetQuantity(supplierA, order.id)).rejects.toThrow();
+    expect(await ps.applySheetQuantity(admin, order.id)).toEqual({
+      from: 2750,
+      to: 2700,
+    });
+    const [applied] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    expect(applied.quantity).toBe(2700);
+    expect((await store.get("orders", order.id))!.fobTotal).toBe(5400);
+    // Já igual: nada a aplicar.
+    expect(await ps.applySheetQuantity(admin, order.id)).toBeNull();
+
+    // Fecha para cima e de novo para baixo: cada mudança nova abre revisão,
+    // mesmo repetindo uma já tratada.
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 15) });
+    await ps.applySheetQuantity(admin, order.id);
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 14) });
+    const open = (
+      await store.list("review_items", {
+        filter: { entityId: order.id, rule: "order.quantity_after_payment" },
+      })
+    ).filter((r) => r.status === "open");
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ expected: "2750", found: "2700" });
+
+    // Dispensada, volta às caixas do pedido e muda de novo: abre outra.
+    await resolveReviewById(admin, open[0].id, "dismissed", "ok");
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 15) });
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 14) });
+    expect(
+      (
+        await store.list("review_items", {
+          filter: { entityId: order.id, rule: "order.quantity_after_payment" },
+        })
+      ).filter((r) => r.status === "open"),
+    ).toHaveLength(1);
+  });
+
+  it("cotação respondida: mudar as caixas pede o frete de novo com a carga nova", async () => {
+    const store = getStore();
+    const { inviteFreightForQuote } = await import("@/lib/services/freight");
+    const { quote } = await quoted();
+    await inviteFreightForQuote(admin, quote.id);
+    const before = await store.list("freight_quotes", {
+      filter: { quoteId: quote.id },
+    });
+    expect(before.length).toBeGreaterThan(0);
+    expect(before[0].cartons).toBe(55);
+    // Rascunho (sem reenviar): "Reduzir" tira uma caixa da última programação.
+    await qs.saveQuoteSheet(supplierA, quote.id, { lots: lots(20, 20, 14) });
+    const after = await store.list("freight_quotes", {
+      filter: { quoteId: quote.id },
+    });
+    expect(after.every((f) => f.cartons === 54)).toBe(true);
+  });
+});
+
+describe("unidades que contam peça", () => {
+  it("kit, jogo, par, set, peça(s), 套 acompanham as caixas; cx e kg não", () => {
+    for (const u of [
+      "kit",
+      "Kits",
+      "jogo",
+      "par",
+      "sets",
+      "peça(s)",
+      "unidade(s)",
+      "pçs.",
+      "套",
+      "双",
+      "ea",
+    ])
+      expect(calc.isPiecesUnit(u)).toBe(true);
+    for (const u of ["cx", "caixa", "kg", "m", "litro", "ctn"])
+      expect(calc.isPiecesUnit(u)).toBe(false);
   });
 });

@@ -2,6 +2,7 @@ import {
   sheetProgress,
   syncPreparationFromSheet,
 } from "@/lib/services/purchase-sheet";
+import { ActionError } from "@/components/action-error";
 import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { notFound, redirect } from "next/navigation";
@@ -132,6 +133,8 @@ export default async function OrderPage({
     cancelRequested,
     cancelRejected,
     settlementSaved,
+    fields: invalidFields,
+    at: errorToken,
   } = await searchParams;
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
@@ -377,18 +380,25 @@ export default async function OrderPage({
           {t(`supplierPay.done.${paid}` as DictionaryKey)}
         </Alert>
       ) : null}
-      {error ? (
-        <Alert tone="danger">
-          {typeof error === "string" &&
-          t(`sheet.error.${error}` as DictionaryKey) !== `sheet.error.${error}`
-            ? t(`sheet.error.${error}` as DictionaryKey)
+      <ActionError
+        t={t}
+        code={error}
+        text={
+          !error
+            ? null
             : typeof error === "string" &&
-                t(`orders.error.${error}` as DictionaryKey) !==
-                  `orders.error.${error}`
-              ? t(`orders.error.${error}` as DictionaryKey)
-              : fallbackError(t, String(error))}
-        </Alert>
-      ) : null}
+                t(`sheet.error.${error}` as DictionaryKey) !==
+                  `sheet.error.${error}`
+              ? t(`sheet.error.${error}` as DictionaryKey)
+              : typeof error === "string" &&
+                  t(`orders.error.${error}` as DictionaryKey) !==
+                    `orders.error.${error}`
+                ? t(`orders.error.${error}` as DictionaryKey)
+                : fallbackError(t, String(error))
+        }
+        fields={invalidFields}
+        token={errorToken}
+      />
       {notice ? (
         <div className="mb-3">
           <Alert tone="success">{t(notice)}</Alert>

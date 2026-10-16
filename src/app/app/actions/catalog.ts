@@ -19,6 +19,7 @@ import {
   setPrimaryPhoto,
 } from "@/lib/services/sourcing";
 import {
+  field,
   files,
   num,
   requireUser,
@@ -499,9 +500,7 @@ export async function saveProductPriceTiersAction(form: FormData) {
     const store = getStore();
     const product = await store.get("products", productId);
     if (!product) throw new Error("product_not_found");
-    const tiers = parsePriceTiers(
-      z.string().max(5000).parse(str(form, "tiers")),
-    );
+    const tiers = parsePriceTiers(field(form, "tiers", z.string().max(5000)));
     await store.update("products", productId, {
       priceTiers: tiers.length ? tiers : null,
     });
@@ -528,9 +527,7 @@ export async function saveSourcingPriceTiersAction(form: FormData) {
     const store = getStore();
     const item = await store.get("sourcing_items", itemId);
     if (!item) throw new Error("item_not_found");
-    const tiers = parsePriceTiers(
-      z.string().max(5000).parse(str(form, "tiers")),
-    );
+    const tiers = parsePriceTiers(field(form, "tiers", z.string().max(5000)));
     await store.update("sourcing_items", itemId, {
       priceTiers: tiers.length ? tiers : null,
     });

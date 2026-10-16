@@ -4,12 +4,13 @@ import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import {
   getStore,
   type Order,
+  type OrderItem,
   type PhotoKind,
   type ProductPhoto,
   type PurchaseSheet,
   type User,
 } from "@/lib/db";
-import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
+import { assertWellmix, canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
@@ -41,7 +42,7 @@ import {
   type SheetPlan,
 } from "./purchase-sheet-calc";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
-import { openReview } from "./reviews";
+import { openReview, resolveReviews } from "./reviews";
 
 export class PurchaseSheetError extends Error {}
 
@@ -272,18 +273,17 @@ async function prefillBase(
   // Programação de entregas pedida pelo cliente: as programações da ficha nascem dela.
   const requestLots = (cartonQty: number | null | undefined) =>
     scheduleToLots(request?.schedule, cartonQty ?? null) ?? normalizeLots(null);
-  // Ficha mestre do produto (cadastro): vale mais que um pedido anterior,
-  // menos que a cotação desta compra.
-  const master =
-    earlier?.source === "quote"
-      ? null
-      : await masterSheetInput(product?.id ?? null);
+  // Ficha mestre do produto (cadastro): vale quando não há ficha desta compra
+  // (cotação) nem de uma compra anterior com o mesmo fornecedor; na recompra,
+  // só completa o que a ficha dele não tem (a mestre pode ter vindo da compra
+  // com outro fornecedor).
+  const master = await masterSheetInput(product?.id ?? null);
   // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
   const records = recordFields(
     supplier,
     productForSupplier(product, order.supplierId, link),
   );
-  if (master) {
+  if (master && !earlier) {
     return {
       prefillSource: "master",
       ...master,
@@ -300,6 +300,12 @@ async function prefillBase(
     const reused = Object.fromEntries(
       reusableFields(earlier.source).map((k) => [k, earlier.sheet[k] ?? null]),
     ) as SheetInput;
+    if (earlier.source === "previous" && master) {
+      const bag = reused as Record<string, unknown>;
+      for (const [k, v] of Object.entries(master))
+        if (k !== "lots" && (bag[k] === null || bag[k] === undefined))
+          bag[k] = v;
+    }
     return {
       ...reused,
       productId: product?.id ?? earlier.sheet.productId ?? null,
@@ -519,15 +525,38 @@ export async function saveSheet(
       existing ? sheetTotalPieces(existing) : null,
     );
   // O cadastro do produto acompanha a ficha do pedido: a Wellmix atualiza com
-  // a compra de verdade; o fornecedor só completa o que falta.
-  if (access.editSupplier)
+  // a compra de verdade; o fornecedor só completa o que falta. Na atualização
+  // vai só o que este salvamento mudou (salvar o NCM de um pedido antigo não
+  // devolve ao cadastro o preço e a caixa daquela compra); pedido encerrado
+  // ou cancelado não mexe no cadastro.
+  if (
+    access.editSupplier &&
+    order.status !== "CLOSED" &&
+    order.status !== "CANCELLED"
+  ) {
+    const adopt = isWellmix(user);
+    const before = existing as unknown as Record<string, unknown> | undefined;
+    const after = sheet as unknown as Record<string, unknown>;
+    const changed =
+      adopt && before
+        ? Object.fromEntries(
+            Object.keys(patch)
+              .filter(
+                (k) =>
+                  JSON.stringify(before[k] ?? null) !==
+                  JSON.stringify(after[k] ?? null),
+              )
+              .map((k) => [k, after[k]]),
+          )
+        : sheet;
     await completeMasterFromSheet(
       user,
       sheet.productId ?? null,
-      sheet,
+      changed,
       order.supplierId,
-      isWellmix(user) ? "adopt" : "fill",
+      adopt ? "adopt" : "fill",
     );
+  }
   const missing = await syncRequirements(user, order, sheet);
   return { sheet, missing };
 }
@@ -575,35 +604,113 @@ async function syncOrderQuantity(
     return;
   if (!isPiecesUnit(item.unit)) return;
   const link = `/app/orders/${order.id}/purchase-sheet`;
+  const supplierPaid = await supplierPaymentRegistered(order.id);
   if (!isWellmix(user)) {
     // Só quando a programação mudou neste salvamento (sem repetir o aviso).
     if (previousPieces !== pieces)
       await notifyWellmix({
         subject: `Pedido #${order.number}: o fornecedor mudou a programação`,
-        body: `${item.name}: a programação soma ${pieces} ${item.unit}; o pedido tem ${item.quantity}. Abra a ficha e salve para ajustar a quantidade e os valores.`,
+        body: `${item.name}: a programação soma ${pieces} ${item.unit}; o pedido tem ${item.quantity}. ${
+          supplierPaid
+            ? "Já há pagamento ao fornecedor registrado: confira o acerto e aplique a quantidade na ficha."
+            : "Abra a ficha e salve para ajustar a quantidade e os valores."
+        }`,
         link,
       });
     return;
   }
-  const supplierPaid = (
-    await store.list("payments", {
-      filter: { orderId: order.id, direction: "supplier_out" },
-    })
-  ).length;
   if (supplierPaid) {
-    await openReview(user, {
-      orderId: order.id,
-      entity: "order",
-      entityId: order.id,
-      rule: "order.quantity_after_payment",
-      problem: `A programação passou a ${pieces} ${item.unit} (pedido: ${item.quantity}), mas o fornecedor já recebeu pagamento. Ajuste à mão a quantidade, o FOB, o valor ao cliente e o acerto com o fornecedor.`,
-      expected: item.quantity,
-      found: pieces,
-      responsibleRole: "operator",
-      link,
+    // Uma revisão por mudança: a mais recente desta regra já é esta (de/para)
+    // → salvar outro campo não reabre o que foi tratado ou dispensado; uma
+    // mudança nova (mesmo que repita uma antiga) abre de novo.
+    const [latest] = await store.list("review_items", {
+      filter: {
+        entity: "order",
+        entityId: order.id,
+        rule: "order.quantity_after_payment",
+      },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 1,
     });
+    const seen =
+      previousPieces === pieces &&
+      !!latest &&
+      latest.expected === String(item.quantity) &&
+      latest.found === String(pieces);
+    if (!seen)
+      await openReview(user, {
+        orderId: order.id,
+        entity: "order",
+        entityId: order.id,
+        rule: "order.quantity_after_payment",
+        problem: `A programação passou a ${pieces} ${item.unit} (pedido: ${item.quantity}), mas já há pagamento ao fornecedor registrado. Confira o acerto com o fornecedor e use "Aplicar a quantidade" na ficha para ajustar quantidade, FOB e valor ao cliente.`,
+        expected: item.quantity,
+        found: pieces,
+        responsibleRole: "operator",
+        link,
+      });
     return;
   }
+  await applyQuantity(user, order, item, pieces, false);
+}
+
+/** Há pagamento ao fornecedor registrado (pedido, confirmado ou recebido)? */
+export async function supplierPaymentRegistered(
+  orderId: string,
+): Promise<boolean> {
+  const rows = await getStore().list("payments", {
+    filter: { orderId, direction: "supplier_out" },
+    limit: 1,
+  });
+  return rows.length > 0;
+}
+
+/**
+ * "Aplicar a quantidade" (Wellmix): depois de pagar o fornecedor a ficha não
+ * muda o pedido sozinha; quem confere o acerto aplica as caixas da
+ * programação na quantidade, no FOB e no valor ao cliente, com auditoria.
+ */
+export async function applySheetQuantity(
+  user: User,
+  orderId: string,
+): Promise<{ from: number; to: number } | null> {
+  assertWellmix(user);
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order) throw new PurchaseSheetError("not_found");
+  if (!QUANTITY_FOLLOWS_SHEET.includes(order.status))
+    throw new PurchaseSheetError("quantity_locked");
+  const [[sheet], [item]] = await Promise.all([
+    store.list("purchase_sheets", { filter: { orderId }, limit: 1 }),
+    store.list("order_items", { filter: { orderId }, limit: 1 }),
+  ]);
+  const pieces = sheet ? sheetTotalPieces(sheet) : null;
+  if (
+    !item ||
+    !(item.quantity > 0) ||
+    pieces === null ||
+    !isPiecesUnit(item.unit)
+  )
+    throw new PurchaseSheetError("quantity_locked");
+  if (item.quantity === pieces) return null;
+  const from = item.quantity;
+  await applyQuantity(user, order, item, pieces, true);
+  await resolveReviews(user, "order", order.id, {
+    rulePrefix: "order.quantity_after_payment",
+    note: `Quantidade aplicada: ${from} → ${pieces} ${item.unit}`,
+  });
+  return { from, to: pieces };
+}
+
+async function applyQuantity(
+  user: User,
+  order: Order,
+  item: OrderItem,
+  pieces: number,
+  afterPayment: boolean,
+) {
+  const store = getStore();
   const ratio = pieces / item.quantity;
   const money = (v: number | null) =>
     v === null ? null : Math.round(v * ratio * 100) / 100;
@@ -619,13 +726,15 @@ async function syncOrderQuantity(
     "order.quantity_from_sheet",
     "order",
     order.id,
-    `Quantidade ajustada à programação da ficha: ${item.quantity} → ${pieces} ${item.unit}`,
+    `Quantidade ajustada à programação da ficha${
+      afterPayment ? " (com pagamento ao fornecedor registrado)" : ""
+    }: ${item.quantity} → ${pieces} ${item.unit}`,
     {
       quantity: item.quantity,
       fobTotal: order.fobTotal,
       sellPrice: order.sellPrice,
     },
-    { quantity: pieces, fobTotal, sellPrice },
+    { quantity: pieces, fobTotal, sellPrice, afterPayment },
   );
   await notify(requesterTarget(order.requestedByUserId), {
     subject: `Pedido #${order.number}: quantidade ajustada`,

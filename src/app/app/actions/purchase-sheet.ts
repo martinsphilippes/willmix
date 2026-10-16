@@ -8,6 +8,7 @@ import {
   SHEET_PHOTO_KINDS,
 } from "@/lib/services/purchase-sheet";
 import { invalidTarget, parseSheet } from "./sheet-form";
+import { parseNumberInput } from "@/lib/number-input";
 import {
   files,
   requireUser,
@@ -77,23 +78,42 @@ export async function answerQuoteWithSheetAction(form: FormData) {
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
   await run(back, async () => {
     ORDER_ID.parse(quoteId);
-    const { saveQuoteSheet } = await import("@/lib/services/quote-sheet");
+    const { saveQuoteSheet, saveQuoteTermsDraft } =
+      await import("@/lib/services/quote-sheet");
     const { input, invalid } = parseSheet(form);
     const { sheet, missing } = await saveQuoteSheet(user, quoteId, input);
+    // Prazo como na ficha ("30", "30 dias") e condições (quebra de linha
+    // conta como no navegador); ilegível é apontado, vazio entra no "falta".
+    const leadTimeDays = parseNumberInput(str(form, "leadTimeDays"), {
+      int: true,
+    });
+    const conditions = str(form, "conditions").replace(/\r\n/g, "\n");
+    const leadOk =
+      leadTimeDays === null ||
+      (Number.isInteger(leadTimeDays) &&
+        leadTimeDays > 0 &&
+        leadTimeDays <= 3650);
+    const unreadable = [
+      ...invalid,
+      ...(leadOk ? [] : ["leadTimeDays"]),
+      ...(conditions.length > 2000 ? ["conditions"] : []),
+    ];
+    // Rascunho: prazo e condições ficam guardados na cotação não enviada.
+    if (form.has("leadTimeDays") || form.has("conditions"))
+      await saveQuoteTermsDraft(user, quoteId, {
+        leadTimeDays: leadOk ? leadTimeDays : null,
+        conditions: conditions.slice(0, 2000) || null,
+      });
     // Campo ilegível: o resto ficou salvo; não envia e aponta o campo.
-    if (invalid.length) return invalidTarget(back, invalid);
+    if (unreadable.length) return invalidTarget(back, unreadable);
     if (str(form, "intent") !== "send")
       return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
+    const noLead = leadTimeDays === null ? "&missing=leadTimeDays" : "";
     // Cada recusa leva de novo até o primeiro campo vazio (token novo).
     if (missing.length)
-      return `${back}?error=sheet_incomplete&at=${Date.now()}`;
-    const leadTimeDays = z.coerce
-      .number()
-      .int()
-      .positive()
-      .max(3650)
-      .parse(str(form, "leadTimeDays"));
-    const conditions = z.string().max(2000).parse(str(form, "conditions"));
+      return `${back}?error=sheet_incomplete${noLead}&at=${Date.now()}`;
+    if (leadTimeDays === null)
+      return `${back}?error=lead_time_required${noLead}&at=${Date.now()}`;
     const { answerQuote } = await import("@/lib/services/requests");
     await answerQuote(user, quoteId, {
       price: sheet.price!,
@@ -158,8 +178,12 @@ export async function saveProductSheetAction(form: FormData) {
   const user = await requireUser();
   const productId = z.string().min(1).max(64).parse(str(form, "productId"));
   await run(`/app/products/${productId}`, async () => {
-    const { saveProductSheet, getProductSheet, productSheetDraft } =
-      await import("@/lib/services/product-sheet");
+    const {
+      saveProductSheet,
+      getProductSheet,
+      productSheetDraft,
+      withProductColumns,
+    } = await import("@/lib/services/product-sheet");
     const { input, invalid } = parseSheet(form);
     // Fornecedor escolhido entre os cadastrados: vira o principal do produto
     // e o nome vem do cadastro (o texto digitado não vale).
@@ -179,9 +203,11 @@ export async function saveProductSheetAction(form: FormData) {
         getProductSheet(productId),
       ]);
       // O que a tela mostrava antes de salvar (ficha mestre ou rascunho do produto).
+      const draft = product ? productSheetDraft(product, previousParty) : null;
       const shown =
-        previousMaster ??
-        (product ? productSheetDraft(product, previousParty) : null);
+        previousMaster && draft
+          ? withProductColumns(previousMaster, draft)
+          : (previousMaster ?? draft);
       const { party, changed, link } = await setMainSupplier(
         user,
         productId,
@@ -306,5 +332,23 @@ export async function registerProductFromSheetAction(form: FormData) {
       lineId,
     );
     return `${back}?adopted=${encodeURIComponent(productId)}`;
+  });
+}
+
+/**
+ * Wellmix: aplica as caixas da programação na quantidade do pedido (FOB e
+ * valor ao cliente acompanham) quando já há pagamento ao fornecedor e a ficha
+ * não muda o pedido sozinha.
+ */
+export async function applySheetQuantityAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId").slice(0, 64);
+  const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
+  await run(back, async () => {
+    ORDER_ID.parse(orderId);
+    const { applySheetQuantity } =
+      await import("@/lib/services/purchase-sheet");
+    await applySheetQuantity(user, orderId);
+    return `${back}?quantityApplied=1`;
   });
 }

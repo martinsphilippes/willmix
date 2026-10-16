@@ -272,7 +272,9 @@ export function isPiecesUnit(unit: string | null | undefined): boolean {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[.\s]/g, "");
+    // "peça(s)", "unidade(s)", "pcs." valem o mesmo que "peça", "unidade", "pcs".
+    .replace(/\(s\)/g, "")
+    .replace(/[.\s()]/g, "");
   return [
     "",
     "u",
@@ -291,9 +293,30 @@ export function isPiecesUnit(unit: string | null | undefined): boolean {
     "pieces",
     "unit",
     "units",
+    "ea",
+    "pz",
+    "pzs",
+    // Vendidos por conjunto, contados como peça: kit, jogo, par, set.
+    "kit",
+    "kits",
+    "jogo",
+    "jogos",
+    "conjunto",
+    "conjuntos",
+    "set",
+    "sets",
+    "par",
+    "pares",
+    "pair",
+    "pairs",
     "个",
     "件",
     "只",
+    "套",
+    "双",
+    "对",
+    "台",
+    "把",
   ].includes(u);
 }
 

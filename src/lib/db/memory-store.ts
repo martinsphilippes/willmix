@@ -105,6 +105,9 @@ export class MemoryStore implements Store {
       createdAt: now,
       updatedAt: now,
     } as Tables[K];
+    // Como o Appwrite: id escolhido que já existe é recusado.
+    if (data.id && this.db[table].some((r) => r.id === data.id))
+      throw new Error(`Id duplicado em ${table}: ${data.id}`);
     for (const idx of TABLES[table].indexes ?? []) {
       if (idx.type !== "unique") continue;
       const candidate = row as unknown as Record<string, unknown>;

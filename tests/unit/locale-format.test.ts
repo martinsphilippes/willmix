@@ -99,6 +99,11 @@ describe("formatação no idioma do usuário", () => {
     expect(parseMoneyText("1.234,56", "en-US")).toBe(1234.56);
     expect(parseMoneyText("1.234.567", "pt-BR")).toBe(1234567);
     expect(parseMoneyText("2.35", "pt-BR")).toBe(2.35);
+    // pt-BR: "1.000" num valor de 2 casas é mil, não 1; "0.500" continua 0,5.
+    expect(parseMoneyText("1.000", "pt-BR")).toBe(1000);
+    expect(parseMoneyText("12.500", "pt-BR")).toBe(12500);
+    expect(parseMoneyText("0.500", "pt-BR")).toBe(0.5);
+    expect(parseMoneyText("1.250", "pt-BR", 4)).toBe(1.25);
     expect(parseMoneyText("1.235", "pt-BR", 0)).toBe(1235);
     expect(parseMoneyText("1,235", "en-US", 0)).toBe(1235);
     expect(parseMoneyText("-5", "pt-BR")).toBeNull();

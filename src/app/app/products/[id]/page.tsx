@@ -15,12 +15,14 @@ import {
   catalogPhotoKinds,
   getProductSheet,
   productSheetDraft,
+  withProductColumns,
   productSheetMissing,
 } from "@/lib/services/product-sheet";
 import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { PantonePicker } from "@/components/pantone-picker";
 import { SheetSafety } from "@/components/sheet-safety";
+import { ActionError } from "@/components/action-error";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import {
   ncmChipsView,
@@ -231,6 +233,11 @@ export default async function ProductSheetPage({
     product.supplierId ? getStore().get("parties", product.supplierId) : null,
   ]);
   const masterDraft = productSheetDraft(product, masterSupplier);
+  // Campo em branco na ficha mestre mostra o que as colunas do produto têm
+  // (ficha criada só com parte dos campos não esconde o cadastro).
+  const masterView = masterSheet
+    ? withProductColumns(masterSheet, masterDraft)
+    : masterDraft;
   // Fornecedores deste produto (principal primeiro) e o seletor da ficha mestre.
   const supplierRows = await productSuppliersView(product);
   const supplierOptions: SupplierOption[] = suppliers
@@ -247,10 +254,7 @@ export default async function ProductSheetPage({
         linked: !!row,
       };
     });
-  const masterMissing = await productSheetMissing(
-    product.id,
-    masterSheet ?? masterDraft,
-  );
+  const masterMissing = await productSheetMissing(product.id, masterView);
   const masterPhotoKinds = await catalogPhotoKinds(product.id);
   const masterContainer =
     settings.containerTypes.find(
@@ -262,12 +266,12 @@ export default async function ProductSheetPage({
   const masterPlan = planSheet(
     {
       lots: masterSheet?.lots ?? null,
-      masterCartonQty: (masterSheet ?? masterDraft).masterCartonQty ?? null,
-      cbmPerCarton: (masterSheet ?? masterDraft).cbmPerCarton ?? null,
+      masterCartonQty: masterView.masterCartonQty ?? null,
+      cbmPerCarton: masterView.cbmPerCarton ?? null,
       productionStartAt: masterSheet?.productionStartAt ?? null,
-      heightCm: (masterSheet ?? masterDraft).heightCm ?? null,
-      widthCm: (masterSheet ?? masterDraft).widthCm ?? null,
-      lengthCm: (masterSheet ?? masterDraft).lengthCm ?? null,
+      heightCm: masterView.heightCm ?? null,
+      widthCm: masterView.widthCm ?? null,
+      lengthCm: masterView.lengthCm ?? null,
     },
     masterContainer?.capacityCbm ?? null,
   );
@@ -360,7 +364,13 @@ export default async function ProductSheetPage({
         }
       />
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
-      {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      <ActionError
+        t={t}
+        code={error}
+        text={errorText}
+        fields={invalidFields}
+        token={saveToken}
+      />
 
       {/* ---- Ficha (um formulário, seções em cards) ---- */}
       <div id="sheet" className="scroll-mt-4" />
@@ -374,6 +384,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("common.name")} size="full" required>
                 <Input
                   name="name"
+                  maxLength={160}
                   required
                   minLength={2}
                   defaultValue={product.name}
@@ -381,7 +392,12 @@ export default async function ProductSheetPage({
                 />
               </FieldRow>
               <FieldRow label="SKU" size="sm">
-                <Input name="sku" defaultValue={product.sku ?? ""} dense />
+                <Input
+                  name="sku"
+                  maxLength={60}
+                  defaultValue={product.sku ?? ""}
+                  dense
+                />
               </FieldRow>
               <FieldRow label={t("catalog.line")} size="md" required>
                 <Select
@@ -400,6 +416,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.category")} size="md">
                 <Input
                   name="category"
+                  maxLength={80}
                   defaultValue={product.category ?? ""}
                   dense
                 />
@@ -457,6 +474,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.supplierSku")} size="md">
                 <Input
                   name="supplierSku"
+                  maxLength={60}
                   defaultValue={product.supplierSku ?? ""}
                   dense
                 />
@@ -534,6 +552,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.material")} size="md">
                 <Input
                   name="material"
+                  maxLength={120}
                   defaultValue={product.material ?? ""}
                   dense
                 />
@@ -572,7 +591,12 @@ export default async function ProductSheetPage({
               </FieldRow>
               {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
               <FieldRow label={t("catalog.color")} size="md">
-                <Input name="color" defaultValue={product.color ?? ""} dense />
+                <Input
+                  name="color"
+                  maxLength={60}
+                  defaultValue={product.color ?? ""}
+                  dense
+                />
               </FieldRow>
               <FieldRow label={t("catalog.dimensions")} size="full">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
@@ -759,6 +783,7 @@ export default async function ProductSheetPage({
           t={t}
           formId="product-sheet-form"
           storageKey={`product:${id}`}
+          userId={user.id}
           // Erro que veio deste formulário (a página tem outros formulários).
           error={
             typeof error === "string" &&
@@ -790,7 +815,7 @@ export default async function ProductSheetPage({
           <input type="hidden" name="productId" value={product.id} />
           <PurchaseSheetFields
             t={t}
-            sheet={masterSheet ?? masterDraft}
+            sheet={masterView}
             plan={masterPlan}
             containerType={masterContainer.code}
             containerTypes={settings.containerTypes}

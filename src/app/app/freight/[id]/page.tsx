@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { ActionError } from "@/components/action-error";
 import { quotedQuantity } from "@/lib/services/purchase-sheet-calc";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getFreightView } from "@/lib/services/freight";
@@ -37,7 +38,12 @@ export default async function FreightPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const {
+    error,
+    saved,
+    fields: invalidFields,
+    at: errorToken,
+  } = await searchParams;
   const view = await getFreightView(user, id);
   if (!view) notFound();
   const t = await getT();
@@ -69,7 +75,13 @@ export default async function FreightPage({
         }
       />
       <div className="space-y-3">
-        {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+        <ActionError
+          t={t}
+          code={errorCode}
+          text={errorText}
+          fields={invalidFields}
+          token={errorToken}
+        />
         {saved ? <Alert tone="success">{t("freight.saved")}</Alert> : null}
         {!canAnswer ? <Alert tone="info">{t("freight.closed")}</Alert> : null}
       </div>

@@ -111,10 +111,14 @@ async function prefillQuoteBase(
   request: Request,
 ): Promise<SheetInput & { productId: string | null }> {
   const store = getStore();
+  // RFQ decidida (cotação escolhida ou recusada): o cadastro do produto já
+  // pode ter os dados da compra com o vencedor; quem não salvou ficha vê só
+  // os próprios dados (isolamento entre fornecedores).
+  const open = quote.status === "invited" || quote.status === "answered";
   const [product, supplier, master, link] = await Promise.all([
     request.productId ? store.get("products", request.productId) : null,
     store.get("parties", quote.supplierId),
-    masterSheetInput(request.productId),
+    open ? masterSheetInput(request.productId) : null,
     productSupplierLink(request.productId, quote.supplierId),
   ]);
   // Dados comerciais só do próprio fornecedor: o vínculo dele (última
@@ -138,6 +142,16 @@ async function prefillQuoteBase(
     supplier,
     productForSupplier(product, quote.supplierId, link),
   );
+  if (!open)
+    return {
+      productId: product?.id ?? null,
+      ...records,
+      currency: sheetCurrency(quote.currency ?? ownCurrency),
+      price: quote.price ?? ownPrice,
+      moq: ownMoq,
+      // Sem caixas pela quantidade por caixa do cadastro (seria a do vencedor).
+      lots: scheduleToLots(request.schedule, null) ?? normalizeLots(null),
+    };
   if (master)
     return {
       ...master,
@@ -171,6 +185,30 @@ async function prefillQuoteBase(
     ncm: product?.ncm ?? null,
     lots: requestLots,
   };
+}
+
+/**
+ * "Salvar rascunho" da resposta: prazo e condições ficam guardados na
+ * cotação ainda não enviada (antes se perdiam e o envio voltava sem prazo).
+ * Cotação já respondida só muda prazo e condições ao enviar de novo.
+ */
+export async function saveQuoteTermsDraft(
+  user: User,
+  quoteId: string,
+  terms: { leadTimeDays: number | null; conditions: string | null },
+): Promise<void> {
+  const store = getStore();
+  const quote = await store.get("quotes", quoteId);
+  if (!quote) throw new QuoteSheetError("not_found");
+  if (!quoteSheetAccess(user, quote).editSupplier)
+    throw new QuoteSheetError("forbidden");
+  if (quote.status !== "invited") return;
+  const patch: Partial<Pick<Quote, "leadTimeDays" | "conditions">> = {};
+  if (terms.leadTimeDays !== (quote.leadTimeDays ?? null))
+    patch.leadTimeDays = terms.leadTimeDays;
+  if (terms.conditions !== (quote.conditions ?? null))
+    patch.conditions = terms.conditions;
+  if (Object.keys(patch).length) await store.update("quotes", quote.id, patch);
 }
 
 /** Campos obrigatórios da ficha que faltam para responder a RFQ (sem fotos nem lotes). */
@@ -314,6 +352,17 @@ export async function saveQuoteSheet(
       sheet.productId ?? request.productId ?? null,
       sheet,
     );
+  // Cotação já respondida e com frete pedido: a carga desta ficha (caixas,
+  // CBM, peso) é a que vale no preço; a companhia marítima revisa o frete
+  // quando ela muda (sem mudança, nada é enviado).
+  if (
+    quote.status === "answered" &&
+    (await store.list("freight_quotes", { filter: { quoteId }, limit: 1 }))
+      .length
+  ) {
+    const { inviteFreightForQuote } = await import("./freight");
+    await inviteFreightForQuote(user, quoteId);
+  }
   const photos = await getSheetPhotos(quoteId);
   return {
     sheet,

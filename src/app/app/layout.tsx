@@ -18,6 +18,7 @@ import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { SelectOnFocus } from "@/components/select-on-focus";
+import { SubmitTracker } from "@/components/field-errors";
 
 /** PT / EN / ZH: um toque troca o idioma (Server Action). `dark` para o cabeçalho, claro no painel do celular. */
 function LocaleSwitcher({
@@ -153,6 +154,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       <Suspense fallback={null}>
         <NavigationProgress />
         <SelectOnFocus />
+        <SubmitTracker />
       </Suspense>
       {/* Cabeçalho em duas faixas: marca e conta em cima; menu embaixo (no
           celular o menu vira um painel aberto pelo botão). */}

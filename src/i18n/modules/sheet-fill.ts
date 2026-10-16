@@ -49,6 +49,14 @@ export const pt = {
     "esta cotação vale para {to} {unit} ({diff} em relação aos {from} pedidos). A proposta ao cliente usa essa quantidade.",
   "sheet.qty.readonly":
     "{from} {unit}. A programação soma {to} {unit} ({diff}); a Wellmix confirma a mudança ao salvar.",
+  "sheet.qty.paid":
+    '{from} → {to} {unit} ({diff}). Já há pagamento ao fornecedor registrado: salvar não muda o pedido; confira o acerto e use "Aplicar a quantidade".',
+  "sheet.qty.apply.hint":
+    "A programação soma {to} {unit} e o pedido tem {from}. Já há pagamento ao fornecedor registrado: depois de conferir o acerto com ele, aplique para ajustar quantidade, FOB e valor ao cliente (o cliente é avisado).",
+  "sheet.qty.apply.submit": "Aplicar a quantidade",
+  "sheet.qty.applied": "Quantidade do pedido ajustada à programação.",
+  "sheet.error.quantity_locked":
+    "A quantidade deste pedido não acompanha mais a programação (etapa ou unidade).",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -95,6 +103,14 @@ export const en: Record<keyof typeof pt, string> = {
     "this quote is for {to} {unit} ({diff} versus the {from} requested). The customer proposal uses this quantity.",
   "sheet.qty.readonly":
     "{from} {unit}. The schedule adds up to {to} {unit} ({diff}); Wellmix confirms the change on save.",
+  "sheet.qty.paid":
+    '{from} → {to} {unit} ({diff}). A supplier payment is already registered: saving does not change the order; check the settlement and use "Apply quantity".',
+  "sheet.qty.apply.hint":
+    "The schedule adds up to {to} {unit} and the order has {from}. A supplier payment is already registered: after checking the settlement with the supplier, apply it to update quantity, FOB and customer value (the customer is notified).",
+  "sheet.qty.apply.submit": "Apply quantity",
+  "sheet.qty.applied": "Order quantity updated to the schedule.",
+  "sheet.error.quantity_locked":
+    "This order's quantity no longer follows the schedule (stage or unit).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -137,4 +153,11 @@ export const zh: Record<keyof typeof pt, string> = {
     "本报价数量为 {to} {unit}（与客户需求 {from} 相差 {diff}）。给客户的报价按此数量计算。",
   "sheet.qty.readonly":
     "{from} {unit}。排期合计 {to} {unit}（{diff}），由 Wellmix 保存时确认。",
+  "sheet.qty.paid":
+    "{from} → {to} {unit}（{diff}）。已登记向供应商付款：保存不会更改订单；请核对结算后点击“应用数量”。",
+  "sheet.qty.apply.hint":
+    "排期合计 {to} {unit}，订单为 {from}。已登记向供应商付款：与供应商核对结算后，应用以更新数量、FOB 和客户金额（将通知客户）。",
+  "sheet.qty.apply.submit": "应用数量",
+  "sheet.qty.applied": "订单数量已按排期更新。",
+  "sheet.error.quantity_locked": "该订单的数量已不再跟随排期（阶段或单位）。",
 };

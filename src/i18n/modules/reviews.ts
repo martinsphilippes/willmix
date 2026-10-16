@@ -41,6 +41,8 @@ export const pt = {
   "reviews.rule.inspection.color": "Inspeção: cor",
   "reviews.rule.inspection.weightDeclared": "Inspeção: peso declarado",
   "reviews.rule.order.zeroPrice": "Pedido: preço zerado",
+  "reviews.rule.order.quantity_after_payment":
+    "Pedido: programação mudou com pagamento ao fornecedor",
   "reviews.rule.customer.radarMissing": "Cliente: importação própria sem RADAR",
   "reviews.rule.container.overCapacity": "Container: acima da capacidade",
   "reviews.rule.container.overWeight": "Container: acima do peso",
@@ -90,6 +92,8 @@ export const en: Record<keyof typeof pt, string> = {
   "reviews.rule.inspection.color": "Inspection: color",
   "reviews.rule.inspection.weightDeclared": "Inspection: declared weight",
   "reviews.rule.order.zeroPrice": "Order: zero price",
+  "reviews.rule.order.quantity_after_payment":
+    "Order: schedule changed after a supplier payment",
   "reviews.rule.customer.radarMissing": "Customer: own import without RADAR",
   "reviews.rule.container.overCapacity": "Container: over capacity",
   "reviews.rule.container.overWeight": "Container: over weight",
@@ -138,6 +142,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reviews.rule.inspection.color": "验货：颜色",
   "reviews.rule.inspection.weightDeclared": "验货：申报重量",
   "reviews.rule.order.zeroPrice": "订单：价格为零",
+  "reviews.rule.order.quantity_after_payment": "订单：已付款给供应商后排期变更",
   "reviews.rule.customer.radarMissing": "客户：自主进口但无 RADAR",
   "reviews.rule.container.overCapacity": "集装箱：超过容量",
   "reviews.rule.container.overWeight": "集装箱：超重",

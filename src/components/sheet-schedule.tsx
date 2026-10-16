@@ -2,6 +2,7 @@
 
 import { parseNumberInput } from "@/lib/number-input";
 import { useEffect, useRef, useState } from "react";
+import { DRAFT_RESTORE_EVENT } from "./form-draft-guard";
 import type { PurchaseLot } from "@/lib/db/schema";
 import {
   MAX_LOTS,
@@ -74,6 +75,7 @@ export interface ScheduleLabels {
     quote: string;
     quoteDraft: string;
     readonly: string;
+    paid: string;
   };
   /** "+ Programação" (nova linha) e "Pedido do cliente: {quantity} {unit} em {date}". */
   addLot: string;
@@ -174,7 +176,7 @@ export function SheetSchedule({
   quantity?: {
     current: number;
     unit: string;
-    mode: "order" | "quote" | "quoteDraft" | "readonly";
+    mode: "order" | "paid" | "quote" | "quoteDraft" | "readonly";
   } | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
@@ -271,6 +273,32 @@ export function SheetSchedule({
       el.removeEventListener("input", read);
       el.removeEventListener("change", read);
     };
+  }, []);
+
+  // Volta de um envio que não salvou: a programação digitada volta, inclusive
+  // linhas abertas com "+ Programação" e o que os botões mudaram.
+  useEffect(() => {
+    const el = root.current?.closest("form");
+    if (!el) return;
+    const onRestore = (e: Event) => {
+      const d = (e as CustomEvent<Record<string, string>>).detail ?? {};
+      const at = (i: number, k: "Interval" | "Cartons") => {
+        const v = d[`lot${i + 1}${k}`];
+        return typeof v === "string" ? v : null;
+      };
+      let last = 0;
+      for (let i = 0; i < MAX_LOTS; i++)
+        if (at(i, "Interval") || at(i, "Cartons")) last = i + 1;
+      setLots((ls) =>
+        ls.map((l, i) => ({
+          interval: at(i, "Interval") ?? l.interval,
+          cartons: at(i, "Cartons") ?? l.cartons,
+        })),
+      );
+      if (last) setVisible((v) => Math.max(v, last));
+    };
+    el.addEventListener(DRAFT_RESTORE_EVENT, onRestore);
+    return () => el.removeEventListener(DRAFT_RESTORE_EVENT, onRestore);
   }, []);
 
   const capacity =

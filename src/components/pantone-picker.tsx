@@ -5,6 +5,7 @@ import { cx, inputDenseClass } from "@/components/ui";
 import type { PantoneColor, PantoneRef, PantoneScale } from "@/lib/pantone";
 import { PANTONE_SCALES } from "@/lib/pantone";
 import { syncColorText } from "@/lib/pantone/color-text";
+import { DRAFT_RESTORE_EVENT } from "./form-draft-guard";
 
 /*
  * Seletor de cores Pantone (ficha de compra): busca por número/nome, filtro
@@ -72,6 +73,36 @@ export function PantonePicker({
   useEffect(() => {
     box.current?.setAttribute("data-ready", "1");
   }, []);
+
+  // Volta de um envio que não salvou: as cores escolhidas voltam (o texto da
+  // Cor volta pelo guarda da ficha) e vão no próximo envio.
+  useEffect(() => {
+    const form = box.current?.closest("form");
+    if (!form) return;
+    const onRestore = (e: Event) => {
+      const raw = (e as CustomEvent<Record<string, string>>).detail?.[name];
+      if (typeof raw !== "string") return;
+      try {
+        const list: unknown = JSON.parse(raw);
+        if (!Array.isArray(list)) return;
+        const next = list
+          .filter(
+            (c): c is PantoneRef =>
+              !!c &&
+              typeof (c as PantoneRef).code === "string" &&
+              typeof (c as PantoneRef).hex === "string",
+          )
+          .slice(0, max)
+          .map((c) => ({ code: c.code, hex: c.hex }));
+        setSelected(next);
+        setDirty(true);
+      } catch {
+        // Rascunho ilegível: fica o que o servidor mostrou.
+      }
+    };
+    form.addEventListener(DRAFT_RESTORE_EVENT, onRestore);
+    return () => form.removeEventListener(DRAFT_RESTORE_EVENT, onRestore);
+  }, [name, max]);
 
   // Fecha a lista ao clicar fora.
   useEffect(() => {
@@ -166,6 +197,25 @@ export function PantonePicker({
     syncText(selected, next);
     setDirty(true);
   }
+  /** Próximo campo do formulário depois do seletor (pula a escala). */
+  function focusAfterPicker(from: HTMLInputElement) {
+    const form = from.form;
+    if (!form) return;
+    const fields = Array.from(form.elements).filter(
+      (f): f is HTMLElement =>
+        f instanceof HTMLElement &&
+        (f instanceof HTMLInputElement ||
+          f instanceof HTMLSelectElement ||
+          f instanceof HTMLTextAreaElement) &&
+        !f.disabled &&
+        !(f instanceof HTMLInputElement && f.type === "hidden") &&
+        f.offsetParent !== null,
+    );
+    const next = fields
+      .slice(fields.indexOf(from) + 1)
+      .find((f) => !box.current?.contains(f));
+    next?.focus();
+  }
   const rgb = (hex: string) =>
     [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ");
 
@@ -191,7 +241,12 @@ export function PantonePicker({
       }}
     >
       {selected.length > 0 || dirty ? (
-        <input type="hidden" name={name} value={JSON.stringify(selected)} />
+        <input
+          type="hidden"
+          name={name}
+          value={JSON.stringify(selected)}
+          data-draft
+        />
       ) : null}
       {selected.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5">
@@ -251,15 +306,18 @@ export function PantonePicker({
               onKeyDown={(e) => {
                 if (e.key === "Escape") setOpen(false);
                 if (e.key === "Enter") {
+                  // Nunca envia o formulário. Com a lista aberta e busca:
+                  // escolhe a primeira (a que a pessoa está vendo). Senão
+                  // fecha a lista e vai para o campo depois do seletor (como
+                  // o Enter nos outros campos da ficha), sem ficar preso.
                   e.preventDefault();
-                  // Lista fechada (depois de escolher): Enter só a abre; nunca
-                  // escolhe uma cor que a pessoa não está vendo.
-                  if (!open) {
-                    setOpen(true);
-                    void load();
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                  if (open && q && results[0]) {
+                    add(results[0]);
                     return;
                   }
-                  if (q && results[0]) add(results[0]);
+                  setOpen(false);
+                  focusAfterPicker(e.currentTarget);
                 }
               }}
               className={cx(inputDenseClass, "min-w-0 flex-1 sm:max-w-sm")}

@@ -174,4 +174,156 @@ describe("cadastro do produto acompanha a ficha", () => {
       ),
     ).toBe(productId);
   });
+
+  it("ficha mestre nasce com o que o produto já tem; a próxima cotação vem completa", async () => {
+    expect(await pm.getProductSheet("prod-boneca")).toBeNull();
+    const { request, qb } = await rfq("prod-boneca", "Boneca");
+    await qs.saveQuoteSheet(supplierB, qb.id, {
+      price: 3.3,
+      currency: "USD",
+      packageType: "COLOR BOX",
+    });
+    await r.answerQuote(supplierB, qb.id, {
+      price: 3.3,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    await r.selectQuote(admin, qb.id, { sellPrice: 9000, sellCurrency: "BRL" });
+    await r.confirmDownPayment(admin, request.id);
+    // A ficha da compra trouxe só a embalagem nova: o resto do cadastro fica.
+    expect(await pm.getProductSheet("prod-boneca")).toMatchObject({
+      packageType: "COLOR BOX",
+      masterCartonQty: 48,
+      material: "PVC atóxico",
+      netWeightPcKg: 0.28,
+    });
+    const next = await rfq("prod-boneca", "Boneca");
+    const view = (await qs.getQuoteSheetForUser(supplierA, next.qa.id))!;
+    expect(view.sheet).toMatchObject({
+      packageType: "COLOR BOX",
+      masterCartonQty: 48,
+      material: "PVC atóxico",
+    });
+    // Preço do fornecedor principal (B) não vai para a cotação de A.
+    expect(view.sheet.price ?? null).not.toBe(3.3);
+  });
+
+  it("salvar um campo na ficha de um pedido antigo não desfaz o cadastro mais novo", async () => {
+    const store = getStore();
+    const { request, qa } = await rfq("prod-panela", "Panela");
+    await qs.saveQuoteSheet(supplierA, qa.id, { price: 9.1, currency: "USD" });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 9.1,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    await r.selectQuote(admin, qa.id, { sellPrice: 9000, sellCurrency: "BRL" });
+    const order = await r.confirmDownPayment(admin, request.id);
+    expect((await store.get("products", "prod-panela"))!.price).toBe(9.1);
+    // A Wellmix atualiza o cadastro depois da compra…
+    await pm.saveProductSheet(admin, "prod-panela", { price: 8.2, moq: 2000 });
+    const [entry] = await store.list("audit_log", {
+      filter: { entity: "product", entityId: "prod-panela" },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 1,
+    });
+    expect(entry.before).toMatchObject({ price: 9.1, moq: 500 });
+    expect(entry.after).toMatchObject({ price: 8.2, moq: 2000 });
+    // …e depois salva só o NCM na ficha do pedido antigo.
+    await ps.saveSheet(admin, order.id, { ncm: "7323.99.00" });
+    const product = (await store.get("products", "prod-panela"))!;
+    expect(product).toMatchObject({ price: 8.2, moq: 2000, ncm: "7323.99.00" });
+  });
+
+  it("RFQ decidida: quem perdeu não vê na própria cotação os dados do vencedor", async () => {
+    const { request, qa, qb } = await rfq("prod-jarra", "Jarra");
+    await qs.saveQuoteSheet(supplierA, qa.id, {
+      price: 2.4,
+      currency: "USD",
+      packageType: "SECRET BOX A",
+      material: "VIDRO A",
+      heightCm: 33,
+    });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 2.4,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    await r.answerQuote(supplierB, qb.id, {
+      price: 2.6,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    await r.selectQuote(admin, qa.id, { sellPrice: 6000, sellCurrency: "BRL" });
+    await r.confirmDownPayment(admin, request.id);
+    // O cadastro aprendeu com a compra…
+    expect((await pm.getProductSheet("prod-jarra"))!.packageType).toBe(
+      "SECRET BOX A",
+    );
+    // …mas a cotação recusada de B, sem ficha salva, não mostra nada disso.
+    const view = (await qs.getQuoteSheetForUser(supplierB, qb.id))!;
+    expect(view.sheet.packageType ?? null).not.toBe("SECRET BOX A");
+    expect(view.sheet.material ?? null).not.toBe("VIDRO A");
+    expect(view.sheet.heightCm ?? null).not.toBe(33);
+    expect(view.sheet.price).toBe(2.6);
+  });
+
+  it("cadastrar pela ficha duas vezes ao mesmo tempo não duplica o produto", async () => {
+    const store = getStore();
+    const { request, qa } = await rfq(null, "Copo duplo");
+    await qs.saveQuoteSheet(supplierA, qa.id, { price: 1.1, currency: "USD" });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 1.1,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    await r.selectQuote(admin, qa.id, { sellPrice: 3000, sellCurrency: "BRL" });
+    const order = await r.confirmDownPayment(admin, request.id);
+    const [a, b] = await Promise.all([
+      pm.registerProductFromOrderSheet(admin, order.id, "linha-utilidades"),
+      pm.registerProductFromOrderSheet(admin, order.id, "linha-utilidades"),
+    ]);
+    expect(a).toBe(b);
+    const named = (await store.list("products")).filter(
+      (p) => p.name === "Copo duplo",
+    );
+    expect(named).toHaveLength(1);
+  });
+
+  it("NCM da ficha só vai para o produto com 8 dígitos", async () => {
+    const store = getStore();
+    await pm.saveProductSheet(admin, "prod-piscina", { ncm: "95066900" });
+    expect((await store.get("products", "prod-piscina"))!.ncm).toBe(
+      "9506.69.00",
+    );
+    await pm.saveProductSheet(admin, "prod-piscina", { ncm: "9506.69.0012" });
+    expect((await store.get("products", "prod-piscina"))!.ncm).toBe(
+      "9506.69.00",
+    );
+  });
+
+  it("tirar as cores Pantone da ficha mestre tira do produto (não voltam)", async () => {
+    const store = getStore();
+    const color = { code: "PANTONE 185 C", hex: "#E4002B" };
+    await pm.saveProductSheet(admin, "prod-piscina", {
+      colorPantones: [color],
+    });
+    expect(
+      (await store.get("products", "prod-piscina"))!.colorPantones,
+    ).toEqual([color]);
+    await pm.saveProductSheet(admin, "prod-piscina", { colorPantones: [] });
+    expect(
+      (await store.get("products", "prod-piscina"))!.colorPantones ?? null,
+    ).toBeNull();
+    const input = await pm.masterSheetInput("prod-piscina");
+    expect(input?.colorPantones ?? []).toEqual([]);
+    // NCM apagado na mestre também sai do produto (não volta).
+    await pm.saveProductSheet(admin, "prod-piscina", { ncm: "95066900" });
+    await pm.saveProductSheet(admin, "prod-piscina", { ncm: null });
+    expect(
+      (await store.get("products", "prod-piscina"))!.ncm ?? null,
+    ).toBeNull();
+    expect((await pm.masterSheetInput("prod-piscina"))?.ncm ?? null).toBeNull();
+  });
 });
