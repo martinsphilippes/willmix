@@ -94,6 +94,7 @@ export default async function RequestDetailPage({
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
   const t = await getT();
+  const settings = await getSettings();
   const store = getStore();
   // Lote: outras solicitações criadas junto com esta (só as que este usuário vê).
   const siblings = (await batchSiblings(request)).filter((r) =>
@@ -739,6 +740,16 @@ export default async function RequestDetailPage({
               >
                 <input type="hidden" name="requestId" value={request.id} />
                 <SellPriceCalculator
+                  container={(() => {
+                    // Referência para "≈ N containers": o maior das configurações (40HC).
+                    const types = settings.containerTypes ?? [];
+                    const big = [...types].sort(
+                      (a, b) => b.capacityCbm - a.capacityCbm,
+                    )[0];
+                    return big
+                      ? { code: big.code, capacityCbm: big.capacityCbm }
+                      : null;
+                  })()}
                   quotes={(pricing?.quotes ?? []).map((p) => {
                     const q = selectable.find((x) => x.id === p.quoteId)!;
                     return {
@@ -795,6 +806,18 @@ export default async function RequestDetailPage({
                     sourceCustomer: t("pricing.calc.source.customer"),
                     sourceLine: t("pricing.calc.source.line"),
                     sourceDefault: t("pricing.calc.source.default"),
+                    inCurrency: t("pricing.calc.inCurrency", {
+                      currency: "{currency}",
+                      rate: "{rate}",
+                    }),
+                    noFx: t("pricing.calc.noFx", { currency: "{currency}" }),
+                    cargo: t("pricing.calc.cargo"),
+                    cargoValue: t("pricing.calc.cargoValue", {
+                      cbm: "{cbm}",
+                      n: "{n}",
+                      code: "{code}",
+                    }),
+                    cargoHigh: t("pricing.calc.cargoHigh"),
                     intl: t.intl,
                     fxStale:
                       pricing?.fx.status === "stale"
@@ -820,12 +843,15 @@ export default async function RequestDetailPage({
                   {/* Porcentagem do valor ao cliente (0 a 100), com o valor ao lado. */}
                   <DownPaymentInput
                     name="downPaymentPercent"
-                    defaultPercent={(await getSettings()).downPaymentPercent}
+                    defaultPercent={settings.downPaymentPercent}
                     sellField="sellPrice"
                     currencyField="sellCurrency"
                     locale={t.intl}
                     equals={t("requests.downPayment.equals", {
                       amount: "{amount}",
+                      percent: "{percent}",
+                      total: "{total}",
+                      rest: "{rest}",
                     })}
                   />
                 </Field>

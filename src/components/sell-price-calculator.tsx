@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { inputClass } from "@/components/ui";
 import {
   priceToCustomer,
+  rateFor,
   type PricingInput,
   type PricingMissing,
 } from "@/lib/pricing";
@@ -60,7 +61,12 @@ type Labels = Record<
   | "marginZero"
   | "sourceCustomer"
   | "sourceLine"
-  | "sourceDefault",
+  | "sourceDefault"
+  | "inCurrency"
+  | "noFx"
+  | "cargo"
+  | "cargoValue"
+  | "cargoHigh",
   string
 > & {
   missing: Record<PricingMissing, string>;
@@ -80,14 +86,26 @@ const pctText = (n: number | null | undefined, intl: string) =>
 const fill = (template: string, values: Record<string, string>) =>
   template.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
 
+/** Acima disso a carga é fora do normal para um pedido (provável CBM errado). */
+const MANY_CONTAINERS = 10;
+
 export function SellPriceCalculator({
   quotes,
   labels,
+  container,
 }: {
   quotes: CalculatorQuote[];
   labels: Labels;
+  /** Container de referência para "≈ N containers" (ex.: 40HC, 68 m³). */
+  container: { code: string; capacityCbm: number } | null;
 }) {
   const [quoteId, setQuoteId] = useState(quotes[0]?.quoteId ?? "");
+  // Moeda da proposta (seletor "Moeda" do mesmo formulário): o valor ao
+  // cliente é calculado em reais e convertido pelo câmbio do dia; o sinal
+  // segue a mesma moeda.
+  const anchor = useRef<HTMLSpanElement>(null);
+  const [currency, setCurrency] = useState("BRL");
+  const currencyRef = useRef("BRL");
   // Frete digitado por cotação; sem edição, vale o da companhia marítima.
   const [carrierEdits, setCarrierEdits] = useState<Record<string, string>>({});
   const [manual, setManual] = useState<string | null>(null);
@@ -107,10 +125,39 @@ export function SellPriceCalculator({
         },
       })
     : null;
+  const rate = current ? rateFor(current.input.fx, currency) : null;
   const calculated =
-    result?.sellBrl !== null && result?.sellBrl !== undefined
-      ? result.sellBrl.toFixed(2)
+    result?.sellBrl !== null && result?.sellBrl !== undefined && rate
+      ? (Math.round((result.sellBrl / rate) * 100) / 100).toFixed(2)
       : "";
+  const money = (n: number) => {
+    try {
+      return n.toLocaleString(labels.intl, { style: "currency", currency });
+    } catch {
+      return `${currency} ${n.toFixed(2)}`;
+    }
+  };
+
+  useEffect(() => {
+    const form = anchor.current?.closest("form");
+    if (!form) return;
+    const read = () => {
+      const el = form.elements.namedItem("sellCurrency");
+      const next =
+        el instanceof HTMLSelectElement && el.value ? el.value : "BRL";
+      if (next === currencyRef.current) return;
+      currencyRef.current = next;
+      setCurrency(next);
+      // Outra moeda: o valor digitado era na anterior; volta ao calculado.
+      setManual(null);
+    };
+    const id = window.setTimeout(read, 0);
+    form.addEventListener("change", read);
+    return () => {
+      window.clearTimeout(id);
+      form.removeEventListener("change", read);
+    };
+  }, []);
   const sellValue = manual ?? calculated;
   const source = {
     customer: labels.sourceCustomer,
@@ -128,6 +175,7 @@ export function SellPriceCalculator({
       {/* Grade do formulário (requests/[id]): no celular, uma coluna; a partir
           de md, memória de cálculo à esquerda e campos à direita. */}
       <div className="sm:col-span-2 md:col-start-3">
+        <span ref={anchor} hidden />
         <label
           htmlFor="sp-quote"
           className="mb-1 block text-xs font-medium leading-5 text-zinc-700"
@@ -202,6 +250,23 @@ export function SellPriceCalculator({
             <dd className="text-right">
               {brl(result.freightBrl, labels.intl)}
             </dd>
+            {input.totalCbm && container ? (
+              <>
+                <dt className="text-zinc-600">{labels.cargo}</dt>
+                <dd className="text-right" data-cargo-cbm>
+                  {fill(labels.cargoValue, {
+                    cbm: input.totalCbm.toLocaleString(labels.intl, {
+                      maximumFractionDigits: 2,
+                    }),
+                    n: (input.totalCbm / container.capacityCbm).toLocaleString(
+                      labels.intl,
+                      { maximumFractionDigits: 1 },
+                    ),
+                    code: container.code,
+                  })}
+                </dd>
+              </>
+            ) : null}
             {result.insuranceBrl > 0 ? (
               <>
                 <dt className="text-zinc-600">
@@ -299,7 +364,38 @@ export function SellPriceCalculator({
             <dd className="border-t border-zinc-100 pt-1 text-right font-semibold text-brand-800">
               {brl(result.sellBrl, labels.intl)}
             </dd>
+            {currency !== "BRL" && rate && result.sellBrl ? (
+              <>
+                <dt className="text-zinc-600">
+                  {fill(labels.inCurrency, {
+                    currency,
+                    rate: rate.toLocaleString(labels.intl, {
+                      minimumFractionDigits: 4,
+                      maximumFractionDigits: 4,
+                    }),
+                  })}
+                </dt>
+                <dd
+                  className="text-right font-semibold text-brand-800"
+                  data-sell-converted
+                >
+                  {money(Math.round((result.sellBrl / rate) * 100) / 100)}
+                </dd>
+              </>
+            ) : null}
           </dl>
+          {input.totalCbm &&
+          container &&
+          input.totalCbm / container.capacityCbm > MANY_CONTAINERS ? (
+            <p className="text-xs font-medium text-amber-700" data-cargo-high>
+              {labels.cargoHigh}
+            </p>
+          ) : null}
+          {currency !== "BRL" && !rate ? (
+            <p className="text-xs font-medium text-amber-700" data-no-fx>
+              {fill(labels.noFx, { currency })}
+            </p>
+          ) : null}
           {current.ncmPending ? (
             <p className="text-xs font-medium text-amber-700">
               {labels.ncmPending}
@@ -360,7 +456,7 @@ export function SellPriceCalculator({
           locale={labels.intl}
           id="sp-sell"
           name="sellPrice"
-          currency="BRL"
+          currency={currency}
           required
           value={sellValue}
           onValueChange={(value) => setManual(value)}
@@ -372,7 +468,7 @@ export function SellPriceCalculator({
             onClick={() => setManual(null)}
             className="mt-1 text-xs font-medium text-brand-700 underline underline-offset-2"
           >
-            {labels.useCalculated} ({brl(Number(calculated), labels.intl)})
+            {labels.useCalculated} ({money(Number(calculated))})
           </button>
         ) : null}
       </div>

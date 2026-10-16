@@ -209,6 +209,11 @@ export interface PricingRecord {
   /** Valor ao cliente efetivamente proposto (pode ter sido ajustado à mão). */
   sellPrice: number;
   sellCurrency: string;
+  /**
+   * Câmbio usado para levar o valor em reais à moeda da proposta (1 em
+   * reais; nulo sem câmbio do dia, valor digitado na moeda). Antigos não têm.
+   */
+  sellFxRate?: number | null;
   /** NCM e origem das alíquotas (registros antigos não têm). */
   ncm?: string | null;
   tax?: QuotePricing["tax"];

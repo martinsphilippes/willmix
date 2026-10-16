@@ -253,8 +253,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.fill("[data-down-payment]", "150");
   await expect(page.locator("[data-down-payment]")).toHaveValue("100");
   await page.fill("[data-down-payment]", "40");
+  // 40% de R$ 28.000 = R$ 11.200, restante R$ 16.800 (na moeda da proposta).
   await expect(page.locator("[data-down-payment-amount]")).toContainText(
-    /11[.,]200/,
+    /11[.,]200.*28[.,]000.*16[.,]800/,
   );
   await page.getByRole("button", { name: /^Selecionar$/ }).click();
   await page.waitForLoadState("networkidle");
