@@ -258,16 +258,6 @@ export function PurchaseSheetFields({
                 disabled={sup}
               />
             </F>
-            <F t={t} m={missing} k="colorAssortment" size="lg" req>
-              <input
-                name="colorAssortment"
-                maxLength={200}
-                placeholder={t("ph.sheet.colorAssortment")}
-                defaultValue={sheet.colorAssortment ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              />
-            </F>
             <FieldRow
               label={t("pantone.label")}
               size="full"
@@ -278,6 +268,8 @@ export function PurchaseSheetFields({
                 initial={sheet.colorPantones ?? []}
                 disabled={sup}
                 max={MAX_PANTONE_PER_SHEET}
+                syncName="colorAssortment"
+                syncMax={200}
                 labels={{
                   search: t("pantone.search"),
                   scaleAll: t("pantone.scale.all"),
@@ -297,6 +289,17 @@ export function PurchaseSheetFields({
                 }}
               />
             </FieldRow>
+            {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
+            <F t={t} m={missing} k="colorAssortment" size="lg" req>
+              <input
+                name="colorAssortment"
+                maxLength={200}
+                placeholder={t("ph.sheet.colorAssortment")}
+                defaultValue={sheet.colorAssortment ?? ""}
+                disabled={sup}
+                className={inputDenseClass}
+              />
+            </F>
             <F t={t} m={missing} k="material" size="lg" req>
               <input
                 name="material"

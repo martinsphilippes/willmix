@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { pantoneLabel, parsePantoneRefs } from "@/lib/pantone";
+import { cutAtSeparator } from "@/lib/pantone/color-text";
 import {
   SHEET_CURRENCIES,
   SHEET_INCOTERMS,
@@ -124,10 +125,10 @@ function parseSheet(form: FormData): SheetInput {
   // Sem texto de cor mas com Pantone escolhidas: o texto vira a lista de códigos
   // (o campo "Cor / sortimento" continua obrigatório e legível fora do portal).
   if (!input.colorAssortment && input.colorPantones?.length)
-    input.colorAssortment = input.colorPantones
-      .map((c) => pantoneLabel(c))
-      .join(" / ")
-      .slice(0, 200);
+    input.colorAssortment = cutAtSeparator(
+      input.colorPantones.map((c) => pantoneLabel(c)).join(" / "),
+      200,
+    );
   if (form.has("lot1Cartons")) {
     input.lots = Array.from({ length: MAX_LOTS }, (_, i) => ({
       departureIntervalDays:

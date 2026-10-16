@@ -536,9 +536,6 @@ export default async function ProductSheetPage({
                   dense
                 />
               </FieldRow>
-              <FieldRow label={t("catalog.color")} size="md">
-                <Input name="color" defaultValue={product.color ?? ""} dense />
-              </FieldRow>
               <FieldRow
                 label={t("catalog.pantone")}
                 size="full"
@@ -550,6 +547,8 @@ export default async function ProductSheetPage({
                     product.colorPantones ?? masterSheet?.colorPantones ?? []
                   }
                   max={MAX_PANTONE_PER_SHEET}
+                  syncName="color"
+                  syncMax={60}
                   labels={{
                     search: t("pantone.search"),
                     scaleAll: t("pantone.scale.all"),
@@ -568,6 +567,10 @@ export default async function ProductSheetPage({
                     empty: t("pantone.empty"),
                   }}
                 />
+              </FieldRow>
+              {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
+              <FieldRow label={t("catalog.color")} size="md">
+                <Input name="color" defaultValue={product.color ?? ""} dense />
               </FieldRow>
               <FieldRow label={t("catalog.dimensions")} size="full">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">

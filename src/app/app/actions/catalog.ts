@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { parsePantoneRefs } from "@/lib/pantone";
+import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { assertWellmix } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -141,16 +142,13 @@ export async function updateProductSheetAction(form: FormData) {
     const codes = pantoneField.colorPantones?.map((c) => c.code) ?? [];
     const pantoneText = form.has("colorPantones")
       ? codes.length
-        ? codes.join(" / ").slice(0, 40)
+        ? cutAtSeparator(codes.join(" / "), 40)
         : null
       : parsed.pantone;
     const color =
       parsed.color ??
       (codes.length
-        ? codes
-            .map((c) => `PANTONE ${c}`)
-            .join(" / ")
-            .slice(0, 60)
+        ? cutAtSeparator(codes.map((c) => `PANTONE ${c}`).join(" / "), 60)
         : null);
     const next = {
       ...parsed,
