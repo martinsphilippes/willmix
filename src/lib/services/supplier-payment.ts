@@ -150,9 +150,12 @@ export async function supplierPaymentView(
     transferText,
     emailUrl,
     whatsappUrl,
-    pending: payments.filter(
-      (p) => p.direction === "supplier_out" && p.status === "pending",
-    ),
+    // Pedido antigo com o recebimento confirmado na etapa: nada a marcar.
+    pending: payable.legacyReceived
+      ? []
+      : payments.filter(
+          (p) => p.direction === "supplier_out" && p.status === "pending",
+        ),
   };
 }
 
@@ -201,6 +204,12 @@ export async function registerSupplierPayment(
     currency = view.currency;
     if (view.installment && !note)
       note = `Parcela ${view.installment.index}/${view.installment.count}`;
+  } else if (input.installment != null && !note) {
+    // Registro à mão da parcela da vez: liga o pagamento à parcela.
+    const { schedule } = await orderPayable(order);
+    const count = schedule.terms?.length ?? 0;
+    if (input.installment >= 1 && input.installment <= count)
+      note = `Parcela ${input.installment}/${count}`;
   }
   if (!(amount > 0)) throw new SupplierPaymentError("invalid_amount");
   const status = input.method === "manual" ? "confirmed" : "pending";

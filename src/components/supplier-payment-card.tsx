@@ -72,6 +72,7 @@ export async function SupplierPaymentCard({
   const supplierTerms = parseTerms(supplier?.paymentTerms ?? null);
   const differs =
     wellmix &&
+    !schedule.legacySettled &&
     source === "order" &&
     !!supplierTerms &&
     !sameTerms(schedule.terms, supplierTerms);
@@ -130,7 +131,7 @@ export async function SupplierPaymentCard({
               </>
             ) : null}
           </p>
-        ) : (
+        ) : schedule.legacySettled ? null : (
           <p
             className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
             data-terms-missing
@@ -283,7 +284,8 @@ export async function SupplierPaymentCard({
                       {formatDate(p.createdAt, t)}
                     </span>
                   </p>
-                  {wellmix && !cancelled ? (
+                  {/* Também em pedido cancelado: o dinheiro que já saiu fica registrado. */}
+                  {wellmix ? (
                     <form
                       action={markSupplierPaymentPaidAction}
                       className="mt-1.5 flex flex-wrap items-end gap-2"

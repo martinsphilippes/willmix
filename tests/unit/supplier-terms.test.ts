@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   buildSupplierSchedule,
+  installmentFromNote,
   parseTerms,
   paymentEventsFor,
   sameTerms,
@@ -84,6 +85,30 @@ describe("parseTerms", () => {
       { percent: 10, base: "order_created", days: 60 },
       { percent: 70, base: "delivered", days: 0 },
     ]);
+  });
+
+  it("vale o que se grava em centésimos: 0,001% e 33,333 × 3 são recusados", () => {
+    expect(
+      parseTerms([
+        { percent: 0.001, base: "order_created", days: 0 },
+        { percent: 99.999, base: "order_created", days: 30 },
+      ]),
+    ).toBeNull();
+    expect(
+      parseTerms([
+        { percent: 33.333, base: "order_created", days: 0 },
+        { percent: 33.333, base: "order_created", days: 30 },
+        { percent: 33.334, base: "order_created", days: 60 },
+      ]),
+    ).toBeNull();
+  });
+
+  it("lê a parcela da nota gravada pelo portal", () => {
+    expect(installmentFromNote("Parcela 2/3", 3)).toBe(2);
+    expect(installmentFromNote("Parcela 2/3", 2)).toBeNull();
+    expect(installmentFromNote("Parcela 4/3", 3)).toBeNull();
+    expect(installmentFromNote("pago à parte", 3)).toBeNull();
+    expect(installmentFromNote(null, 3)).toBeNull();
   });
 
   it("compara condições", () => {
@@ -281,9 +306,71 @@ describe("cronograma de parcelas", () => {
     expect(days.next?.index).toBe(1);
   });
 
+  it("parcela paga não volta a ficar em aberto quando outro marco chega antes", () => {
+    // Salva como 1 = 30% 60 dias após o pedido; 2 = 70% no embarque.
+    const terms2 = [
+      { percent: 30, base: "order_created" as const, days: 60 },
+      { percent: 70, base: "shipped" as const, days: 0 },
+    ];
+    const paidFirst = [{ ...pay(300, "received"), installment: 1 }];
+    const before = buildSupplierSchedule({
+      ...base,
+      total: 1000,
+      terms: terms2,
+      events: { order_created: "2026-01-01", shipped: null, delivered: null },
+      payments: paidFirst,
+      today: "2026-01-10",
+    });
+    expect(before.installments[0].status).toBe("received");
+    // O embarque (15/02) chega antes do vencimento da parcela 1 (02/03).
+    const after = buildSupplierSchedule({
+      ...base,
+      total: 1000,
+      terms: terms2,
+      events: {
+        order_created: "2026-01-01",
+        shipped: "2026-02-15",
+        delivered: null,
+      },
+      payments: paidFirst,
+      today: "2026-02-20",
+    });
+    expect(after.installments[0].status).toBe("received");
+    expect(after.installments[1].open).toBe(700);
+    expect(after.installments[1].status).toBe("overdue");
+    expect(after.next?.index).toBe(2);
+    // Pagamento sem parcela segue a ordem da condição.
+    const loose = buildSupplierSchedule({
+      ...base,
+      total: 1000,
+      terms: terms2,
+      events: {
+        order_created: "2026-01-01",
+        shipped: "2026-02-15",
+        delivered: null,
+      },
+      payments: [pay(300, "received")],
+      today: "2026-02-20",
+    });
+    expect(loose.installments[0].status).toBe("received");
+  });
+
+  it("pagamento ligado a uma parcela quita aquela; o que sobra segue a ordem", () => {
+    const s = buildSupplierSchedule({
+      ...base,
+      payments: [{ ...pay(160, "confirmed"), installment: 2 }],
+    });
+    // 140 vai para a parcela 2; os 20 que sobram, para a parcela 1.
+    expect(s.installments[1].status).toBe("paid");
+    expect(s.installments[0].paid).toBe(20);
+    expect(s.installments[0].open).toBe(40);
+  });
+
   it("pedido pago no fluxo antigo: nada a pagar nem a vencer", () => {
     const s = buildSupplierSchedule({ ...base, legacySettled: true });
     expect(s.legacySettled).toBe(true);
+    // A condição continua visível (não vira "não configurada").
+    expect(s.terms).toEqual(terms);
     expect(s.installments).toEqual([]);
     expect(s.open).toBe(0);
     expect(s.next).toBeNull();

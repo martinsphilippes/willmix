@@ -13,13 +13,14 @@ import {
 } from "@/lib/db";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { evaluateStage } from "@/lib/workflow/engine";
-import { OFF_FLOW_STAGES } from "@/lib/workflow/stages";
+import { OFF_FLOW_STAGES, nextStageKey } from "@/lib/workflow/stages";
 import {
   INSTALLMENT_STATUS_ORDER,
   MAX_TERM_DAYS,
   MAX_TERM_INSTALLMENTS,
   brazilDay,
   buildSupplierSchedule,
+  installmentFromNote,
   parseTerms,
   paymentEventsFor,
   sortTerms,
@@ -83,7 +84,7 @@ export async function saveSupplierPaymentTerms(
   const terms = input.terms.length ? parseTerms(sortTerms(input.terms)) : null;
   if (input.terms.length && !terms) {
     throw new SupplierTermsError(
-      Math.abs(termsTotal(input.terms) - 100) > 0.01
+      Math.round(termsTotal(input.terms) * 100) !== 10_000
         ? "terms_total"
         : "terms_invalid",
     );
@@ -157,6 +158,11 @@ export interface OrderPayable {
   productName: string;
   schedule: SupplierSchedule;
   source: TermsSource | null;
+  /**
+   * Pedido antigo em que o fornecedor confirmou o recebimento pela etapa de
+   * pagamento: pagamentos ainda "pendentes" dele já foram recebidos.
+   */
+  legacyReceived: boolean;
 }
 
 /** Itens da etapa antiga de pagamento: quem marcou, pagou no fluxo antigo. */
@@ -194,7 +200,15 @@ function payableFor(
     currency: order.fobCurrency ?? "USD",
     terms,
     events: paymentEventsFor(order, stages, requirements),
-    payments: payments.filter((p) => p.direction === "supplier_out"),
+    payments: payments
+      .filter((p) => p.direction === "supplier_out")
+      .map((p) => ({
+        amount: p.amount,
+        currency: p.currency,
+        status: p.status,
+        // "Parcela 1/2" gravado pelo portal liga o pagamento à parcela.
+        installment: terms ? installmentFromNote(p.note, terms.length) : null,
+      })),
     today,
     cancelled: order.status === "CANCELLED",
     legacySettled: paidInOldFlow(requirements),
@@ -205,6 +219,9 @@ function payableFor(
     productName: items[0]?.name ?? "—",
     schedule,
     source,
+    legacyReceived: requirements.some(
+      (r) => r.key === "payment_received" && r.status === "done",
+    ),
   };
 }
 
@@ -321,19 +338,34 @@ export function payableRows(payables: OrderPayable[]): PayableRow[] {
   );
 }
 
-let releasedAll = false;
+/** Última passada geral sem nada a liberar (nesta instância do servidor). */
+let quietSince = 0;
+/** Telas não repetem a passada geral antes disso; o job diário sempre passa. */
+const QUIET_MS = 10 * 60_000;
 /** Passada em andamento nesta instância: chamadas ao mesmo tempo esperam a mesma. */
 const inflight = new Map<string, Promise<number>>();
+/** Etapa sendo liberada agora: a passada geral e a do pedido não liberam duas vezes. */
+const releasing = new Map<string, Promise<boolean>>();
 
-async function releaseStage(stage: Stage) {
+async function releaseStageOnce(stage: Stage): Promise<boolean> {
   const store = getStore();
   // Lê de novo: outra chamada pode ter liberado enquanto esta esperava.
   const fresh = await store.get("stages", stage.id);
   if (!fresh) return false;
   const order = await store.get("orders", fresh.orderId);
   const open = fresh.status === "active" || fresh.status === "blocked";
-  // Concluída, mas o pedido ainda está nela (a próxima etapa não começou).
-  const stuck = fresh.status === "done" && order?.status === fresh.key;
+  let stuck = false;
+  if (fresh.status === "done" && order?.status === fresh.key) {
+    // Concluída, mas o pedido ainda está nela: só se a próxima não começou.
+    const next = nextStageKey(fresh.key);
+    const [nextStage] = next
+      ? await store.list("stages", {
+          filter: { orderId: fresh.orderId, key: next },
+          limit: 1,
+        })
+      : [];
+    stuck = !nextStage || nextStage.status === "pending";
+  }
   if (!open && !stuck) return false;
   await audit(
     null,
@@ -351,14 +383,43 @@ async function releaseStage(stage: Stage) {
   return true;
 }
 
+function releaseStage(stage: Stage): Promise<boolean> {
+  const running = releasing.get(stage.id);
+  if (running) return running.then(() => false);
+  const job = releaseStageOnce(stage).finally(() => releasing.delete(stage.id));
+  releasing.set(stage.id, job);
+  return job;
+}
+
 async function runRelease(orderId?: string): Promise<number> {
   const store = getStore();
-  const stages = await store.list("stages", {
-    filter: {
-      key: [...OFF_FLOW_STAGES],
-      ...(orderId ? { orderId } : { status: ["active", "blocked"] }),
-    },
-  });
+  let stages: Stage[];
+  if (orderId) {
+    stages = await store.list("stages", {
+      filter: { orderId, key: [...OFF_FLOW_STAGES] },
+    });
+  } else {
+    // Etapas abertas e pedidos que ainda estão nela (etapa já concluída).
+    const [openStages, stuckOrders] = await Promise.all([
+      store.list("stages", {
+        filter: { key: [...OFF_FLOW_STAGES], status: ["active", "blocked"] },
+      }),
+      store.list("orders", { filter: { status: [...OFF_FLOW_STAGES] } }),
+    ]);
+    const stuckStages = stuckOrders.length
+      ? await store.list("stages", {
+          filter: {
+            orderId: stuckOrders.map((o) => o.id),
+            key: [...OFF_FLOW_STAGES],
+          },
+        })
+      : [];
+    stages = [
+      ...new Map(
+        [...openStages, ...stuckStages].map((st) => [st.id, st]),
+      ).values(),
+    ];
+  }
   let released = 0;
   for (const stage of stages) {
     try {
@@ -368,18 +429,22 @@ async function runRelease(orderId?: string): Promise<number> {
       console.error("[supplier-terms] etapa não liberada", stage.id, error);
     }
   }
-  if (!orderId && stages.length === 0) releasedAll = true;
+  if (!orderId) quietSince = stages.length === 0 ? Date.now() : 0;
   return released;
 }
 
 /**
  * Pedidos parados na etapa de pagamento ao fornecedor (de antes da mudança)
  * seguem para a próxima etapa. Idempotente e sem erro para quem chama (falha
- * vai para o log): depois da primeira passada sem nada a liberar, esta
- * instância do servidor deixa de consultar.
+ * vai para o log). Telas chamam à vontade: depois de uma passada geral sem
+ * nada a liberar, esta instância espera 10 minutos para olhar de novo; o job
+ * diário (`force`) sempre olha.
  */
-export async function releaseOffFlowStages(orderId?: string): Promise<number> {
-  if (!orderId && releasedAll) return 0;
+export async function releaseOffFlowStages(
+  orderId?: string,
+  opts: { force?: boolean } = {},
+): Promise<number> {
+  if (!orderId && !opts.force && Date.now() - quietSince < QUIET_MS) return 0;
   const key = orderId ?? "*";
   const running = inflight.get(key);
   if (running) return running;
@@ -425,4 +490,50 @@ export async function notifyPayablesDue(): Promise<number> {
     },
   );
   return rows.length;
+}
+
+/**
+ * Lembrete diário ao fornecedor (job de lembretes): pagamentos que a Wellmix
+ * marcou como pagos há mais de 3 dias e que ele ainda não confirmou ter
+ * recebido. Um aviso por fornecedor, com link para a conta corrente. Pedidos
+ * cancelados e os antigos já confirmados pela etapa ficam de fora.
+ */
+export async function notifySuppliersToConfirm(
+  now = new Date(),
+): Promise<number> {
+  const store = getStore();
+  const limit = now.getTime() - 3 * 86_400_000;
+  const paid = (
+    await store.list("payments", {
+      filter: { direction: "supplier_out", status: "confirmed" },
+    })
+  ).filter((p) => p.orderId && Date.parse(p.updatedAt) < limit);
+  if (!paid.length) return 0;
+  const orderIds = [...new Set(paid.map((p) => p.orderId as string))];
+  const [orders, oldConfirmed] = await Promise.all([
+    store.list("orders", { filter: { id: orderIds } }),
+    store.list("requirements", {
+      filter: { orderId: orderIds, key: "payment_received", status: "done" },
+    }),
+  ]);
+  const skip = new Set(oldConfirmed.map((r) => r.orderId));
+  const bySupplier = new Map<string, string[]>();
+  for (const p of paid) {
+    const order = orders.find((o) => o.id === p.orderId);
+    if (!order || order.status === "CANCELLED" || skip.has(order.id)) continue;
+    bySupplier.set(order.supplierId, [
+      ...(bySupplier.get(order.supplierId) ?? []),
+      `#${order.number} ${p.currency} ${p.amount.toFixed(2)}`,
+    ]);
+  }
+  for (const [supplierId, lines] of bySupplier)
+    await notify(
+      { role: "supplier", partyId: supplierId },
+      {
+        subject: `Wellmix: please confirm receipt of ${lines.length} payment(s)`,
+        body: lines.slice(0, 6).join("\n"),
+        link: "/app/account",
+      },
+    );
+  return bySupplier.size;
 }

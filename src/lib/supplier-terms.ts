@@ -26,6 +26,11 @@ export function termsTotal(terms: PaymentTermInstallment[]): number {
   return cents(terms.reduce((sum, term) => sum + term.percent, 0));
 }
 
+/** Soma exatamente 100% (em centésimos de ponto percentual, sem erro de conta). */
+export function sumsTo100(terms: PaymentTermInstallment[]): boolean {
+  return Math.round(termsTotal(terms) * 100) === 10_000;
+}
+
 /**
  * Lê a condição gravada (JSON do banco) e devolve só uma condição válida:
  * 1 a 6 parcelas, cada uma com 0 < % ≤ 100, marco conhecido e 0 a 720 dias,
@@ -57,9 +62,12 @@ export function parseTerms(raw: unknown): PaymentTermInstallment[] | null {
       days > MAX_TERM_DAYS
     )
       return null;
-    out.push({ percent: cents(percent), base: base as PaymentTermBase, days });
+    // Vale o que se grava (centésimos): 0,001% vira 0 e é recusado.
+    const rounded = cents(percent);
+    if (!(rounded > 0)) return null;
+    out.push({ percent: rounded, base: base as PaymentTermBase, days });
   }
-  if (Math.abs(termsTotal(out) - 100) > 0.01) return null;
+  if (!sumsTo100(out)) return null;
   return out;
 }
 
@@ -245,6 +253,23 @@ export interface SchedulePayment {
   amount: number;
   currency: string;
   status: PaymentStatus;
+  /**
+   * Parcela a que o pagamento foi feito (1, 2…), quando se sabe (pagamento
+   * da parcela da vez, "Parcela 1/2"). Sem ela, o dinheiro quita as parcelas
+   * na ordem da condição.
+   */
+  installment?: number | null;
+}
+
+/** "Parcela 2/3" (nota que o portal grava no pagamento) → 2, se a condição tem 3 parcelas. */
+export function installmentFromNote(
+  note: string | null | undefined,
+  count: number,
+): number | null {
+  const m = /^Parcela (\d{1,2})\/(\d{1,2})$/.exec(note?.trim() ?? "");
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number(m[2]) === count && n >= 1 && n <= count ? n : null;
 }
 
 /** Ordem de prioridade (a lista de contas a pagar começa pelo que venceu). */
@@ -293,7 +318,7 @@ export function buildSupplierSchedule(input: {
     return {
       currency,
       total: input.total,
-      terms: input.legacySettled ? null : input.terms,
+      terms: input.terms,
       installments: [],
       paid: paidTotal,
       requested: pending,
@@ -316,41 +341,53 @@ export function buildSupplierSchedule(input: {
     return event ? addDays(event, term.days) : null;
   });
   /*
-   * O dinheiro quita as parcelas na ordem em que vencem (data; sem data, pelo
-   * marco e pelos dias), não na ordem em que foram digitadas: recebido, depois
-   * pago, depois pedido. A numeração mostrada continua a da condição.
+   * Ordem fixa da condição (marco, dias, posição): não muda quando as datas
+   * dos marcos chegam, então uma parcela paga não volta a ficar em aberto.
    */
-  const order = terms
+  const fixed = terms
     .map((_, i) => i)
     .sort(
       (a, b) =>
-        (dueDates[a] ?? "9999-12-31").localeCompare(
-          dueDates[b] ?? "9999-12-31",
-        ) ||
         BASE_RANK[terms[a].base] - BASE_RANK[terms[b].base] ||
         terms[a].days - terms[b].days ||
         a - b,
     );
-  let receivedLeft = received;
-  let confirmedLeft = confirmed;
-  let pendingLeft = pending;
-  const byIndex: ScheduleInstallment[] = new Array(terms.length);
-  for (const i of order) {
-    const term = terms[i];
+  const STATUSES: PaymentStatus[] = ["received", "confirmed", "pending"];
+  const need = amounts.map((a) => Math.max(0, a));
+  const got: Record<PaymentStatus, number[]> = {
+    received: terms.map(() => 0),
+    confirmed: terms.map(() => 0),
+    pending: terms.map(() => 0),
+  };
+  const pool: Record<PaymentStatus, number> = {
+    received: 0,
+    confirmed: 0,
+    pending: 0,
+  };
+  const fill = (status: PaymentStatus, i: number, money: number) => {
+    const used = cents(Math.min(money, need[i]));
+    need[i] = cents(need[i] - used);
+    got[status][i] = cents(got[status][i] + used);
+    return cents(money - used);
+  };
+  // 1) Pagamento feito para uma parcela quita aquela parcela; o que sobra
+  //    vai para o caixa comum.
+  for (const status of STATUSES)
+    for (const p of same.filter((x) => x.status === status)) {
+      const k = p.installment ?? 0;
+      const left =
+        k >= 1 && k <= terms.length ? fill(status, k - 1, p.amount) : p.amount;
+      pool[status] = cents(pool[status] + left);
+    }
+  // 2) O resto quita as parcelas na ordem da condição: recebido, pago, pedido.
+  for (const status of STATUSES)
+    for (const i of fixed) pool[status] = fill(status, i, pool[status]);
+
+  const byIndex: ScheduleInstallment[] = terms.map((term, i) => {
     const amount = amounts[i];
-    let need = Math.max(0, amount);
-    const take = (left: number) => {
-      const used = Math.min(left, need);
-      need = cents(need - used);
-      return cents(used);
-    };
-    const fromReceived = take(receivedLeft);
-    receivedLeft = cents(receivedLeft - fromReceived);
-    const fromConfirmed = take(confirmedLeft);
-    confirmedLeft = cents(confirmedLeft - fromConfirmed);
-    const fromPending = take(pendingLeft);
-    pendingLeft = cents(pendingLeft - fromPending);
-    const paid = cents(fromReceived + fromConfirmed);
+    const fromReceived = got.received[i];
+    const paid = cents(fromReceived + got.confirmed[i]);
+    const fromPending = got.pending[i];
     const dueDate = dueDates[i];
     const status: InstallmentStatus =
       fromReceived >= amount - EPS
@@ -368,7 +405,7 @@ export function buildSupplierSchedule(input: {
                   : dueDate <= soon
                     ? "due_soon"
                     : "scheduled";
-    byIndex[i] = {
+    return {
       index: i + 1,
       count: terms.length,
       percent: term.percent,
@@ -377,11 +414,18 @@ export function buildSupplierSchedule(input: {
       amount,
       paid,
       requested: fromPending,
-      open: status === "cancelled" ? 0 : need,
+      open: status === "cancelled" ? 0 : need[i],
       dueDate,
       status,
     };
-  }
+  });
+  // A da vez: a primeira a vencer (data; sem data por último) com valor em aberto.
+  const dueOrder = [...fixed].sort(
+    (a, b) =>
+      (dueDates[a] ?? "9999-12-31").localeCompare(
+        dueDates[b] ?? "9999-12-31",
+      ) || fixed.indexOf(a) - fixed.indexOf(b),
+  );
   const installments = byIndex;
   return {
     currency,
@@ -392,7 +436,8 @@ export function buildSupplierSchedule(input: {
     requested: pending,
     open: cents(installments.reduce((s, i) => s + i.open, 0)),
     // A da vez é a primeira a vencer que ainda tem valor em aberto.
-    next: order.map((i) => installments[i]).find((i) => i.open > EPS) ?? null,
+    next:
+      dueOrder.map((i) => installments[i]).find((i) => i.open > EPS) ?? null,
     legacySettled: false,
   };
 }

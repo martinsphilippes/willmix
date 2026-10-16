@@ -96,9 +96,14 @@ export function PaymentTermsEditor({
       ? texts.when[base].zero
       : texts.when[base].days.replace("{days}", String(days));
   const filled = rows.filter((r) => r.percent !== "" || r.days !== "");
-  // Mesmas regras do servidor: 0 < % ≤ 100 e 0 a 720 dias.
+  /** % como o servidor grava (centésimos). */
+  const pct = (r: Row) => {
+    const n = parseNumberInput(r.percent);
+    return n !== null && Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+  };
+  // Mesmas regras do servidor: 0 < % ≤ 100 (em centésimos) e 0 a 720 dias.
   const rowValid = (r: Row) => {
-    const percent = parseNumberInput(r.percent);
+    const percent = pct(r);
     const days = r.days === "" ? 0 : parseNumberInput(r.days, { int: true });
     return (
       percent !== null &&
@@ -111,13 +116,11 @@ export function PaymentTermsEditor({
       days <= texts.maxDays
     );
   };
-  const sum =
-    Math.round(
-      filled.reduce((s, r) => s + (parseNumberInput(r.percent) ?? 0), 0) * 100,
-    ) / 100;
-  const ok =
-    filled.length === 0 ||
-    (filled.every(rowValid) && Math.abs(sum - 100) <= 0.01);
+  // Soma em centésimos inteiros, como o servidor (33,333 × 3 = 99,99).
+  const cents = filled.reduce((s, r) => s + Math.round((pct(r) ?? 0) * 100), 0);
+  const sum = cents / 100;
+  const hundred = cents === 10_000;
+  const ok = filled.length === 0 || (filled.every(rowValid) && hundred);
   const update = (id: number, patch: Partial<Row>) =>
     setRows((list) => list.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const add = () => {
@@ -310,7 +313,7 @@ export function PaymentTermsEditor({
           data-terms-sum={sum}
           aria-live="polite"
         >
-          {(Math.abs(sum - 100) <= 0.01 ? texts.sum : texts.sumOff).replace(
+          {(filled.length === 0 || hundred ? texts.sum : texts.sumOff).replace(
             "{sum}",
             fmt(sum),
           )}

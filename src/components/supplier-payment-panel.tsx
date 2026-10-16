@@ -43,6 +43,14 @@ export function SupplierPaymentPanel({
         className="flex flex-wrap items-end gap-2 border-t border-zinc-100 p-2.5"
       >
         <input type="hidden" name="orderId" value={order.id} />
+        {/* Parcela da vez: o pagamento fica ligado a ela. */}
+        {hasDue && view.installment ? (
+          <input
+            type="hidden"
+            name="installment"
+            value={view.installment.index}
+          />
+        ) : null}
         <div className="w-[calc(50%-0.25rem)] min-w-0 sm:w-40">
           <Field label={t("orders.value")}>
             <MoneyInput
@@ -50,7 +58,7 @@ export function SupplierPaymentPanel({
               name="amount"
               watchField="currency"
               required
-              defaultAmount={view.due ?? null}
+              defaultAmount={hasDue ? view.due : null}
               className="w-full"
             />
           </Field>

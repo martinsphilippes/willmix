@@ -443,3 +443,166 @@ describe("pedidos antigos e correções da revisão", () => {
     ]);
   });
 });
+
+describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
+  async function inPackaging(): Promise<Order> {
+    const store = getStore();
+    const order = await newOrder(supplierA, "fornecedor-a");
+    for (const key of ["ORDER_CREATED", "PREPARATION"]) {
+      const [stage] = await store.list("stages", {
+        filter: { orderId: order.id, key: key as never },
+      });
+      for (const req of await store.list("requirements", {
+        filter: { stageId: stage.id, status: "pending" },
+      }))
+        if ((await store.get("stages", stage.id))?.status === "active")
+          await submitRequirement(admin, req.id, { value: "1" });
+    }
+    return (await store.get("orders", order.id))!;
+  }
+
+  async function oldItem(order: Order, key: string) {
+    const store = getStore();
+    const [pay] = await store.list("stages", {
+      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
+    });
+    await store.create("requirements", {
+      orderId: order.id,
+      stageId: pay.id,
+      key,
+      label: key,
+      type: "confirm",
+      required: true,
+      role: key === "payment_received" ? "supplier" : "operator",
+      status: "done",
+      value: "ok",
+      documentId: null,
+      submittedByUserId: admin.id,
+      submittedAt: new Date().toISOString(),
+      note: null,
+    });
+  }
+
+  async function pendingRow(order: Order, amount: number) {
+    return getStore().create("payments", {
+      orderId: order.id,
+      requestId: null,
+      direction: "supplier_out",
+      amount,
+      currency: "USD",
+      fxRate: null,
+      method: "Transferência (dados copiados para o banco)",
+      status: "pending",
+      proofDocumentId: null,
+      registeredByUserId: admin.id,
+      confirmedByUserId: null,
+      confirmedAt: null,
+      note: null,
+    } as never);
+  }
+
+  it("recebimento confirmado pela etapa antiga: sem pendência de confirmar nem 'Marcar como pago'", async () => {
+    const { supplierPaymentView } =
+      await import("@/lib/services/supplier-payment");
+    const store = getStore();
+    const received = await inPackaging();
+    await store.update("orders", received.id, { supplierPaymentTerms: null });
+    await oldItem(received, "payment_registered");
+    await oldItem(received, "payment_received");
+    await pendingRow(received, 1000);
+    const fresh = (await store.get("orders", received.id))!;
+    const view = await supplierPaymentView(fresh, "");
+    expect(view.pending).toEqual([]);
+    expect(view.schedule.legacySettled).toBe(true);
+    expect(view.schedule.terms).not.toBeNull();
+    const tasks = await pendingTasksFor(supplierA);
+    expect(
+      tasks.some(
+        (x) => x.kind === "confirm_receipt" && x.orderNumber === fresh.number,
+      ),
+    ).toBe(false);
+
+    // Só a Wellmix registrou (o fornecedor não confirmou): a pendência fica.
+    const registered = await inPackaging();
+    await oldItem(registered, "payment_registered");
+    await pendingRow(registered, 1000);
+    const again = await pendingTasksFor(supplierA);
+    expect(
+      again.some(
+        (x) =>
+          x.kind === "confirm_receipt" && x.orderNumber === registered.number,
+      ),
+    ).toBe(true);
+  });
+
+  it("passada geral e a do pedido ao mesmo tempo liberam uma vez; a geral acha pedido parado com a etapa concluída", async () => {
+    const store = getStore();
+    const order = await inPackaging();
+    const stages = await store.list("stages", {
+      filter: { orderId: order.id },
+    });
+    const pay = stages.find((s) => s.key === "SUPPLIER_PAYMENT")!;
+    const pack = stages.find((s) => s.key === "PACKAGING")!;
+    const reset = async (status: "active" | "done") => {
+      await store.update("stages", pack.id, {
+        status: "pending",
+        startedAt: null,
+      });
+      await store.update("stages", pay.id, { status });
+      await store.update("orders", order.id, {
+        status: "SUPPLIER_PAYMENT",
+        currentStageId: pay.id,
+      });
+    };
+    const offFlowAudits = async () =>
+      (
+        await store.list("audit_log", {
+          filter: {
+            entity: "stage",
+            entityId: pay.id,
+            action: "stage.off_flow",
+          },
+        })
+      ).length;
+
+    await reset("active");
+    const before = await offFlowAudits();
+    await Promise.all([
+      terms.releaseOffFlowStages(undefined, { force: true }),
+      terms.releaseOffFlowStages(order.id),
+    ]);
+    expect(await offFlowAudits()).toBe(before + 1);
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+
+    await reset("done");
+    // Job diário (force): passa mesmo logo depois de uma passada vazia.
+    expect(
+      await terms.releaseOffFlowStages(undefined, { force: true }),
+    ).toBeGreaterThanOrEqual(1);
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    // Próxima etapa já começou: nada a refazer.
+    expect(await terms.releaseOffFlowStages(order.id)).toBe(0);
+  });
+
+  it("lembra o fornecedor de confirmar pagamento feito há mais de 3 dias", async () => {
+    const store = getStore();
+    const order = await inPackaging();
+    const row = await pendingRow(order, 300);
+    await store.update("payments", row.id, { status: "confirmed" });
+    const later = new Date(Date.now() + 4 * 86_400_000);
+    const sent = await terms.notifySuppliersToConfirm(later);
+    expect(sent).toBeGreaterThanOrEqual(1);
+    const notes = await store.list("notifications", {
+      filter: { userId: supplierA.id },
+    });
+    expect(
+      notes.some(
+        (n) =>
+          n.subject.startsWith("Wellmix: please confirm receipt") &&
+          n.link === "/app/account",
+      ),
+    ).toBe(true);
+    // Ainda dentro dos 3 dias: nada.
+    expect(await terms.notifySuppliersToConfirm(new Date())).toBe(0);
+  });
+});

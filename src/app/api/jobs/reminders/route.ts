@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runReminders } from "@/lib/services/reminders";
 import {
   notifyPayablesDue,
+  notifySuppliersToConfirm,
   releaseOffFlowStages,
 } from "@/lib/services/supplier-terms";
 
@@ -18,9 +19,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   // Pedidos parados na etapa de pagamento ao fornecedor seguem o fluxo.
-  const released = await releaseOffFlowStages();
+  const released = await releaseOffFlowStages(undefined, { force: true });
   const result = await runReminders();
   // Resumo diário das parcelas a fornecedores vencidas ou vencendo.
   const payablesDue = await notifyPayablesDue();
-  return NextResponse.json({ ...result, released, payablesDue });
+  // Fornecedor que ainda não confirmou o recebimento de pagamento feito.
+  const toConfirm = await notifySuppliersToConfirm();
+  return NextResponse.json({ ...result, released, payablesDue, toConfirm });
 }

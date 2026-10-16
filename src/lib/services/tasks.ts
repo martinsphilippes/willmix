@@ -452,7 +452,19 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     const myOrders = await store.list("orders", {
       filter: { supplierId: user.partyId! },
     });
-    const live = myOrders.filter((o) => o.status !== "CANCELLED");
+    const open = myOrders.filter((o) => o.status !== "CANCELLED");
+    // Pedido antigo: o recebimento já foi confirmado pela etapa de pagamento.
+    const confirmedInOldFlow = open.length
+      ? await store.list("requirements", {
+          filter: {
+            orderId: open.map((o) => o.id),
+            key: "payment_received",
+            status: "done",
+          },
+        })
+      : [];
+    const skip = new Set(confirmedInOldFlow.map((r) => r.orderId));
+    const live = open.filter((o) => !skip.has(o.id));
     const toConfirm = live.length
       ? await store.list("payments", {
           filter: {
