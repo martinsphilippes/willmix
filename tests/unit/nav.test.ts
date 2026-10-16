@@ -60,15 +60,35 @@ describe("menu principal", () => {
     expect(operator).toEqual(hrefs.filter((h) => h !== "/app/settings"));
   });
 
+  it("cliente: dois grupos (Início, Pedidos), sem links soltos, começando pelas solicitações", () => {
+    const entries = navFor("customer", false);
+    expect(entries.every(isNavGroup)).toBe(true);
+    expect(entries.filter(isNavGroup).map((g) => g.key)).toEqual([
+      "nav.group.home",
+      "nav.group.orders",
+    ]);
+    const hrefs = flattenNav(entries).map((l) => l.href);
+    expect(hrefs).toEqual([
+      "/app/requests",
+      "/app/tasks",
+      "/app/notifications",
+      "/app/orders",
+      "/app/history",
+      "/app/marketing",
+    ]);
+  });
+
   it("outros papéis: menu em linha, sem grupos, começando pelas pendências", () => {
-    for (const role of ROLES.filter((r) => r !== "admin" && r !== "operator")) {
+    for (const role of ROLES.filter(
+      (r) => r !== "admin" && r !== "operator" && r !== "customer",
+    )) {
       const entries = navFor(role, false);
       expect(entries.some(isNavGroup)).toBe(false);
       const hrefs = flattenNav(entries).map((l) => l.href);
       expect(new Set(hrefs).size).toBe(hrefs.length);
       expect(hrefs).toContain("/app/orders");
       expect(hrefs).toContain("/app/notifications");
-      expect(hrefs[0]).toBe(role === "customer" ? "/app/requests" : "/app");
+      expect(hrefs[0]).toBe("/app");
     }
     expect(flattenNav(navFor("supplier", false)).map((l) => l.href)).toContain(
       "/app/account",

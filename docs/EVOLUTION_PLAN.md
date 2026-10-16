@@ -349,7 +349,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 
 ## Menu da Wellmix só com grupos
 
-- A barra do menu da Wellmix passou de 7 itens (4 links soltos + 3 grupos) para 4 grupos com lista suspensa: **Início** (Control Tower, Pendências, Notificações), **Pedidos** (Solicitações, Pedidos, Sourcing, Revisões, Fretes, Containers: do pedido do cliente à entrega), **Cadastros** e **Gestão** (sem mudança). A logo continua levando ao Control Tower em um clique e o sino às notificações. Nenhuma tela saiu nem se repetiu (`tests/unit/nav.test.ts`); no celular, o painel mostra os mesmos grupos como títulos, com o dia a dia no começo. Os outros papéis (poucas telas) seguem com links em linha.
+- A barra do menu da Wellmix passou de 7 itens (4 links soltos + 3 grupos) para 4 grupos com lista suspensa: **Início** (Control Tower, Pendências, Notificações), **Pedidos** (Solicitações, Pedidos, Sourcing, Revisões, Fretes, Containers: do pedido do cliente à entrega), **Cadastros** e **Gestão** (sem mudança). A logo continua levando ao Control Tower em um clique e o sino às notificações. Nenhuma tela saiu nem se repetiu (`tests/unit/nav.test.ts`); no celular, o painel mostra os mesmos grupos como títulos, com o dia a dia no começo. O cliente também ficou só com grupos: **Início** (Solicitações, que é a tela inicial dele, Pendências, Notificações) e **Pedidos** (Pedidos, Histórico, Marketing); a logo leva às Solicitações. Os outros papéis (poucas telas) seguem com links em linha.
 
 ## Excluir notificações
 

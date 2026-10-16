@@ -4,8 +4,9 @@ import type { Role } from "@/lib/db/schema";
 /*
  * Menu principal do portal. A Wellmix tem muitas telas: tudo fica em quatro
  * grupos (Início, Pedidos, Cadastros, Gestão), sem links soltos na barra; a
- * logo continua levando ao Control Tower. Os outros papéis têm poucas telas e
- * veem tudo em linha.
+ * logo continua levando ao Control Tower. O cliente também vê dois grupos
+ * (Início, Pedidos); a logo leva às Solicitações, que são o início dele. Os
+ * outros papéis têm poucas telas e veem tudo em linha.
  */
 
 export interface NavLink {
@@ -70,17 +71,30 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
       },
     ];
   }
+  if (role === "customer")
+    // Início do cliente é Solicitações; Pendências segue disponível em /app/tasks.
+    return [
+      {
+        key: "nav.group.home",
+        items: [
+          { href: "/app/requests", key: "nav.requests" },
+          { href: "/app/tasks", key: "nav.tasks" },
+          { href: "/app/notifications", key: "nav.notifications" },
+        ],
+      },
+      {
+        key: "nav.group.orders",
+        items: [
+          { href: "/app/orders", key: "nav.orders" },
+          { href: "/app/history", key: "nav.history" },
+          { href: "/app/marketing", key: "nav.marketing" },
+        ],
+      },
+    ];
   const base: NavLink[] = [
     { href: "/app", key: "nav.tasks" },
     { href: "/app/orders", key: "nav.orders" },
   ];
-  if (role === "customer") {
-    // Início do cliente é Solicitações; Pendências segue disponível em /app/tasks.
-    base.splice(0, 1, { href: "/app/requests", key: "nav.requests" });
-    base.splice(1, 0, { href: "/app/tasks", key: "nav.tasks" });
-    base.push({ href: "/app/history", key: "nav.history" });
-    base.push({ href: "/app/marketing", key: "nav.marketing" });
-  }
   if (role === "supplier")
     base.push({ href: "/app/account", key: "nav.account" });
   if (role === "shipping_line")
