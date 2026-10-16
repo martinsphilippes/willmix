@@ -99,8 +99,11 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
   // Fornecedores e parceiros: início nas Pendências; no grupo Pedidos, a tela
   // própria do papel (conta corrente, fretes, multas), quando houver.
   const orders: NavLink[] = [{ href: "/app/orders", key: "nav.orders" }];
-  if (role === "supplier")
+  if (role === "supplier") {
+    // Cotações primeiro: é por onde o fornecedor começa (e volta às enviadas).
+    orders.unshift({ href: "/app/quotes", key: "nav.quotes" });
     orders.push({ href: "/app/account", key: "nav.account" });
+  }
   if (role === "shipping_line")
     orders.unshift({ href: "/app/freight", key: "nav.freight" });
   if (role === "legal")

@@ -3,7 +3,7 @@ import type { Translate } from "@/i18n";
 import type { Task } from "@/lib/services/tasks";
 import { sentQuoteView } from "@/lib/services/quote-sheet";
 import { ClearDraft } from "./form-draft-guard";
-import { LinkButton, formatMoney } from "./ui";
+import { LinkButton, TextLink, formatMoney } from "./ui";
 
 /*
  * Cotação enviada: o fornecedor chega às Pendências com a confirmação do que
@@ -32,9 +32,7 @@ export async function QuoteSentNotice({
       ? t("requests.numbered", { n: view.requestNumber })
       : null,
     view.price !== null ? formatMoney(view.price, view.currency, t) : null,
-    view.leadTimeDays
-      ? t("quoteSent.lead", { days: view.leadTimeDays })
-      : null,
+    view.leadTimeDays ? t("quoteSent.lead", { days: view.leadTimeDays }) : null,
   ].filter(Boolean);
   return (
     <section
@@ -84,6 +82,9 @@ export async function QuoteSentNotice({
             <LinkButton href={`/app/quotes/${view.quoteId}`}>
               {t("quoteSent.view")}
             </LinkButton>
+            <TextLink href="/app/quotes" className="text-sm">
+              {t("quoteSent.all")}
+            </TextLink>
           </div>
           {pending.length > 1 ? (
             <p className="text-xs text-emerald-800">

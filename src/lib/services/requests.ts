@@ -560,6 +560,8 @@ export interface SelectQuoteInput {
   sellPrice: number;
   sellCurrency: string;
   downPaymentAmount?: number | null;
+  /** Sinal em % do valor ao cliente (0 a 100); sem ele, o das configurações. */
+  downPaymentPercent?: number | null;
   /** Memória do cálculo do valor ao cliente (fica na auditoria). */
   pricing?: unknown;
   /**
@@ -614,10 +616,12 @@ export async function selectQuote(
   )
     throw new RequestError("sheet_changed");
   const settings = await getSettings();
+  const percent = input.downPaymentPercent ?? settings.downPaymentPercent;
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100)
+    throw new RequestError("invalid_down_payment");
+  // Valor informado (quem chama já calculou) ou a % do valor ao cliente.
   const downPayment =
-    input.downPaymentAmount ??
-    Math.round(input.sellPrice * (settings.downPaymentPercent / 100) * 100) /
-      100;
+    input.downPaymentAmount ?? Math.round(input.sellPrice * percent) / 100;
 
   const others = await store.list("quotes", {
     filter: { requestId: request.id },

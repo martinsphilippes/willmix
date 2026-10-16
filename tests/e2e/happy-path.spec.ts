@@ -203,6 +203,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     page.getByText(/报价已提交|Quotation sent|Cotação enviada/),
   ).toBeVisible();
+  // A enviada continua à mão na tela Cotações (menu), entre as enviadas.
+  await page.goto("/app/quotes?status=answered");
+  await expect(page.locator("[data-quote-row]")).toHaveCount(1);
 
   // Fornecedor B responde (inglês)
   await login(page, "supplier.b@china.com");
@@ -242,6 +245,15 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .getAttribute("value");
   await page.selectOption("select[name=quoteId]", quoteValue!);
   await page.fill("[data-money=sellPrice]", "28000");
+  // Sinal em % do valor ao cliente (30% das configurações), com o valor ao lado;
+  // acima de 100 não entra.
+  await expect(page.locator("[data-down-payment]")).toHaveValue("30");
+  await page.fill("[data-down-payment]", "150");
+  await expect(page.locator("[data-down-payment]")).toHaveValue("100");
+  await page.fill("[data-down-payment]", "40");
+  await expect(page.locator("[data-down-payment-amount]")).toContainText(
+    /11[.,]200/,
+  );
   await page.getByRole("button", { name: /^Selecionar$/ }).click();
   await page.waitForLoadState("networkidle");
   await expect(page.getByText(/Aguardando sinal/).first()).toBeVisible();

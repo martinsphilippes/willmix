@@ -22,6 +22,8 @@ export const pt = {
     "O cadastro do produto acompanha esta ficha: ao salvar, a ficha mestre do produto é atualizada.",
   "pricing.error.sheet_changed":
     "A ficha da cotação mudou depois da conta (outra quantidade de caixas). Confira o valor ao cliente na tela atualizada e selecione de novo.",
+  "pricing.error.invalid_down_payment":
+    "O sinal é uma porcentagem do valor ao cliente: informe de 0 a 100.",
   "sheet.qty.quoteDraft":
     "ao salvar ou enviar a ficha, a cotação passa a valer {to} {unit} ({diff} em relação aos {from} pedidos).",
   "sheet.draftRestored":
@@ -56,6 +58,8 @@ export const en: Record<keyof typeof pt, string> = {
     "The product record follows this sheet: saving updates the product's master sheet.",
   "pricing.error.sheet_changed":
     "The quote sheet changed after the calculation (a different number of cartons). Check the customer value on the refreshed screen and select again.",
+  "pricing.error.invalid_down_payment":
+    "The down payment is a percentage of the customer price: enter 0 to 100.",
   "sheet.qty.quoteDraft":
     "once the sheet is saved or sent, the quote is for {to} {unit} ({diff} versus the {from} requested).",
   "sheet.draftRestored":
@@ -90,6 +94,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "产品主档随此采购单更新：保存时会同步产品的主采购单。",
   "pricing.error.sheet_changed":
     "计算后报价采购单已更改（箱数不同）。请在刷新后的页面核对客户金额，然后重新选择。",
+  "pricing.error.invalid_down_payment": "定金是客户价格的百分比：请填写 0 到 100。",
   "sheet.qty.quoteDraft":
     "保存或提交采购单后，本报价数量为 {to} {unit}（与需求 {from} 相差 {diff}）。",
   "sheet.draftRestored":

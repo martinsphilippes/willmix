@@ -74,6 +74,8 @@ import {
 } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { MoneyInput } from "@/components/money-input";
+import { DownPaymentInput } from "@/components/down-payment-input";
+import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 
 export default async function RequestDetailPage({
@@ -371,7 +373,15 @@ export default async function RequestDetailPage({
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
                 [t("requests.deadline"), formatDate(request.deadline, t)],
                 [t("requests.description"), request.description],
-                [t("requests.specification"), request.specification],
+                [
+                  t("requests.specification"),
+                  // Uma informação por linha (como a especificação é montada).
+                  request.specification ? (
+                    <span className="whitespace-pre-line">
+                      {request.specification}
+                    </span>
+                  ) : null,
+                ],
                 [t("common.note"), request.notes],
               ]}
             />
@@ -806,13 +816,17 @@ export default async function RequestDetailPage({
                 <Field label={t("common.currency")}>
                   <CurrencySelect name="sellCurrency" value="BRL" t={t} />
                 </Field>
-                <Field label={t("requests.downPayment")}>
-                  <MoneyInput
+                <Field label={t("requests.downPaymentPercent")}>
+                  {/* Porcentagem do valor ao cliente (0 a 100), com o valor ao lado. */}
+                  <DownPaymentInput
+                    name="downPaymentPercent"
+                    defaultPercent={(await getSettings()).downPaymentPercent}
+                    sellField="sellPrice"
+                    currencyField="sellCurrency"
                     locale={t.intl}
-                    name="downPaymentAmount"
-                    watchField="sellCurrency"
-                    placeholder={t("ph.request.downPayment")}
-                    className="w-full"
+                    equals={t("requests.downPayment.equals", {
+                      amount: "{amount}",
+                    })}
                   />
                 </Field>
                 <div className="sm:col-span-2 md:col-start-3">

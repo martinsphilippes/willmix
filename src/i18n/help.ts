@@ -43,6 +43,8 @@ export const helpPt = {
     "Respondida: aguarde a decisão da Wellmix.\nSelecionada: o pedido será criado quando o cliente confirmar o sinal; a sua ficha e as fotos vão para o pedido e a Preparação já fica concluída.\nNão selecionada: nenhuma ação necessária.",
   "help.orders.body":
     "Lista dos pedidos que você pode ver. A coluna Etapa mostra onde cada um está; Progresso, quanto da etapa atual foi cumprido; Prazo, quando a etapa vence.",
+  "help.quotes.body":
+    "Todas as suas cotações. Para responder: abra e preencha a ficha de compra. Enviadas: aguardam a decisão da Wellmix e dá para corrigir e reenviar até lá. Escolhidas viram pedido quando o cliente confirma o sinal.",
   "help.order.body":
     "O pedido avança por etapas fixas. Cada etapa lista seus requisitos e quem preenche. Preencha o que é seu; quando todos os obrigatórios estão concluídos, a próxima etapa abre automaticamente e o responsável é avisado.",
   "help.order.steps":
@@ -135,6 +137,8 @@ export const helpEn: Record<HelpKey, string> = {
     "Answered: wait for Wellmix's decision.\nSelected: the order is created when the customer confirms the down payment; your sheet and photos go to the order and Preparation is already done.\nNot selected: no action needed.",
   "help.orders.body":
     "Orders you can see. The Stage column shows where each one is; Progress, how much of the current stage is done; Due, when the stage expires.",
+  "help.quotes.body":
+    "All your quotations. To answer: open it and fill in the purchase sheet. Sent: waiting for Wellmix's decision; you can correct and resend until then. Selected ones become an order when the customer confirms the down payment.",
   "help.order.body":
     "The order moves through fixed stages. Each stage lists its requirements and who fills them. Fill what is yours; when all mandatory items are done, the next stage opens automatically and its owner is notified.",
   "help.order.steps":
@@ -224,6 +228,8 @@ export const helpZh: Record<HelpKey, string> = {
     "已回复：等待 Wellmix 决定。\n已选定：客户确认定金后创建订单；您的采购单和照片将带入订单，备货阶段直接完成。\n未选定：无需操作。",
   "help.orders.body":
     "您可查看的订单。“阶段”列显示每单所处位置；“进度”显示当前阶段完成度；“截止”显示阶段到期日。",
+  "help.quotes.body":
+    "您的全部报价。待回复：打开并填写采购单。已提交：等待 Wellmix 决定，在此之前可以修改并重新提交。被选中的报价在客户确认定金后成为订单。",
   "help.order.body":
     "订单按固定阶段推进。每个阶段列出其要求和填写人。填写属于您的项目；所有必填项完成后，下一阶段自动开启并通知负责人。",
   "help.order.steps":
