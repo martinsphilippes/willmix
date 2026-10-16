@@ -78,34 +78,42 @@ export async function answerQuoteWithSheetAction(form: FormData) {
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
   await run(back, async () => {
     ORDER_ID.parse(quoteId);
-    const { saveQuoteSheet } = await import("@/lib/services/quote-sheet");
+    const { saveQuoteSheet, saveQuoteTermsDraft } =
+      await import("@/lib/services/quote-sheet");
     const { input, invalid } = parseSheet(form);
     const { sheet, missing } = await saveQuoteSheet(user, quoteId, input);
-    // Campo ilegível: o resto ficou salvo; não envia e aponta o campo.
-    if (invalid.length) return invalidTarget(back, invalid);
-    if (str(form, "intent") !== "send")
-      return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
-    // Prazo como na ficha ("30", "30 dias"); vazio entra no "falta preencher"
-    // e ilegível é apontado, em vez do aviso genérico sem dizer o campo.
+    // Prazo como na ficha ("30", "30 dias") e condições (quebra de linha
+    // conta como no navegador); ilegível é apontado, vazio entra no "falta".
     const leadTimeDays = parseNumberInput(str(form, "leadTimeDays"), {
       int: true,
     });
+    const conditions = str(form, "conditions").replace(/\r\n/g, "\n");
+    const leadOk =
+      leadTimeDays === null ||
+      (Number.isInteger(leadTimeDays) &&
+        leadTimeDays > 0 &&
+        leadTimeDays <= 3650);
+    const unreadable = [
+      ...invalid,
+      ...(leadOk ? [] : ["leadTimeDays"]),
+      ...(conditions.length > 2000 ? ["conditions"] : []),
+    ];
+    // Rascunho: prazo e condições ficam guardados na cotação não enviada.
+    if (form.has("leadTimeDays") || form.has("conditions"))
+      await saveQuoteTermsDraft(user, quoteId, {
+        leadTimeDays: leadOk ? leadTimeDays : null,
+        conditions: conditions.slice(0, 2000) || null,
+      });
+    // Campo ilegível: o resto ficou salvo; não envia e aponta o campo.
+    if (unreadable.length) return invalidTarget(back, unreadable);
+    if (str(form, "intent") !== "send")
+      return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
     const noLead = leadTimeDays === null ? "&missing=leadTimeDays" : "";
     // Cada recusa leva de novo até o primeiro campo vazio (token novo).
     if (missing.length)
       return `${back}?error=sheet_incomplete${noLead}&at=${Date.now()}`;
     if (leadTimeDays === null)
       return `${back}?error=lead_time_required${noLead}&at=${Date.now()}`;
-    const conditions = str(form, "conditions").trim();
-    const unreadable = [
-      ...(Number.isInteger(leadTimeDays) &&
-      leadTimeDays > 0 &&
-      leadTimeDays <= 3650
-        ? []
-        : ["leadTimeDays"]),
-      ...(conditions.length > 2000 ? ["conditions"] : []),
-    ];
-    if (unreadable.length) return invalidTarget(back, unreadable);
     const { answerQuote } = await import("@/lib/services/requests");
     await answerQuote(user, quoteId, {
       price: sheet.price!,

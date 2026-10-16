@@ -9,6 +9,9 @@ import { getStore, type Order, type Payment } from "@/lib/db";
  * O custo em BRL usa o câmbio informado em cada pagamento; sem câmbio, estima pela
  * média dos pagamentos que têm câmbio e sinaliza `estimated`.
  */
+/** Arredonda para centavos (resto de conta em ponto flutuante não conta). */
+const cents = (n: number) => Math.round(n * 100) / 100;
+
 export interface OrderFinance {
   order: Order;
   customerName: string;
@@ -96,11 +99,13 @@ export function computeOrderFinance(
     sell,
     received,
     // Cancelado: nada mais a receber nem a pagar pelo sistema; o acerto é livre.
-    receivable: cancelled ? 0 : Math.max(0, sell - received),
+    // Em centavos: duas parcelas (30% + saldo) deixavam 0,00000000000005 a
+    // receber, com o formulário de recebimento aberto e um valor ilegível.
+    receivable: cancelled ? 0 : Math.max(0, cents(sell - received)),
     fobCurrency,
     fob,
     paid,
-    payable: cancelled ? 0 : Math.max(0, fob - paid),
+    payable: cancelled ? 0 : Math.max(0, cents(fob - paid)),
     cost,
     avgFx,
     estimated,

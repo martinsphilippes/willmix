@@ -186,6 +186,30 @@ async function prefillQuoteBase(
   };
 }
 
+/**
+ * "Salvar rascunho" da resposta: prazo e condições ficam guardados na
+ * cotação ainda não enviada (antes se perdiam e o envio voltava sem prazo).
+ * Cotação já respondida só muda prazo e condições ao enviar de novo.
+ */
+export async function saveQuoteTermsDraft(
+  user: User,
+  quoteId: string,
+  terms: { leadTimeDays: number | null; conditions: string | null },
+): Promise<void> {
+  const store = getStore();
+  const quote = await store.get("quotes", quoteId);
+  if (!quote) throw new QuoteSheetError("not_found");
+  if (!quoteSheetAccess(user, quote).editSupplier)
+    throw new QuoteSheetError("forbidden");
+  if (quote.status !== "invited") return;
+  const patch: Partial<Pick<Quote, "leadTimeDays" | "conditions">> = {};
+  if (terms.leadTimeDays !== (quote.leadTimeDays ?? null))
+    patch.leadTimeDays = terms.leadTimeDays;
+  if (terms.conditions !== (quote.conditions ?? null))
+    patch.conditions = terms.conditions;
+  if (Object.keys(patch).length) await store.update("quotes", quote.id, patch);
+}
+
 /** Campos obrigatórios da ficha que faltam para responder a RFQ (sem fotos nem lotes). */
 /** O que falta para enviar a cotação: a ficha completa, como a Preparação exige. */
 export function missingForQuote(

@@ -67,9 +67,18 @@ export function MoneyInput({
     (currency ?? defaultCurrency ?? "").toUpperCase(),
   );
   const [watched, setWatched] = useState("");
+  // Valor numérico vindo do sistema vira texto com as casas do campo
+  // ("350.39"): nunca notação científica (5.6e-14) nem um número com 3 casas
+  // que a leitura do texto tomaria por milhar.
   const [rawState, setRaw] = useState(
     normalizeRaw(
-      defaultAmount == null ? "" : String(defaultAmount),
+      defaultAmount == null
+        ? ""
+        : typeof defaultAmount === "number"
+          ? Number.isFinite(defaultAmount)
+            ? defaultAmount.toFixed(decimals)
+            : ""
+          : defaultAmount,
       locale,
       decimals,
     ),

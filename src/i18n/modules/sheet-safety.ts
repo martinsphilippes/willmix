@@ -28,6 +28,13 @@ export const pt = {
     "O que você digitou nesta ficha ainda não está salvo e foi mantido nesta tela. Confira e salve.",
   "sheet.draftDiscard": "Descartar e ver o que está salvo",
   "form.invalid.before": "Confira o valor de: ",
+  "sheet.error.too_large":
+    "Foto grande demais. Tire de novo ou envie uma menor.",
+  "sheet.error.mime":
+    "Formato não aceito: envie foto (JPG, PNG, WEBP, HEIC) ou PDF.",
+  "sheet.error.empty": "O arquivo chegou vazio. Escolha a foto de novo.",
+  "sheet.error.upload_missing":
+    "A foto não terminou de subir. Escolha de novo (de preferência no Wi-Fi).",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -55,6 +62,13 @@ export const en: Record<keyof typeof pt, string> = {
     "What you typed in this sheet is not saved yet and was kept on this screen. Check it and save.",
   "sheet.draftDiscard": "Discard and show what is saved",
   "form.invalid.before": "Check the value of: ",
+  "sheet.error.too_large":
+    "Photo too large. Take it again or send a smaller one.",
+  "sheet.error.mime":
+    "Format not accepted: send a photo (JPG, PNG, WEBP, HEIC) or a PDF.",
+  "sheet.error.empty": "The file arrived empty. Pick the photo again.",
+  "sheet.error.upload_missing":
+    "The photo did not finish uploading. Pick it again (preferably on Wi-Fi).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -82,4 +96,9 @@ export const zh: Record<keyof typeof pt, string> = {
     "您在此采购单中填写的内容尚未保存，已保留在此页面。请检查后保存。",
   "sheet.draftDiscard": "放弃并查看已保存内容",
   "form.invalid.before": "请检查以下字段：",
+  "sheet.error.too_large": "照片太大。请重新拍摄或上传较小的照片。",
+  "sheet.error.mime": "格式不支持：请上传照片（JPG、PNG、WEBP、HEIC）或 PDF。",
+  "sheet.error.empty": "文件为空。请重新选择照片。",
+  "sheet.error.upload_missing":
+    "照片未上传完成。请重新选择（最好使用 Wi-Fi）。",
 };
