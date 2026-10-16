@@ -10,6 +10,7 @@ import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
 import * as sheetSafety from "./sheet-safety";
+import * as productSpec from "./product-spec";
 import * as importing from "./import";
 import * as logistics from "./logistics";
 import * as orders from "./orders";
@@ -99,6 +100,7 @@ export const modulesPt = {
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
   ...sheetSafety.pt,
+  ...productSpec.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -148,6 +150,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetGenerate.en,
   ...notificationsDelete.en,
   ...sheetSafety.en,
+  ...productSpec.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -197,4 +200,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,
   ...sheetSafety.zh,
+  ...productSpec.zh,
 };

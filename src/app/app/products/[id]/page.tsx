@@ -1,4 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { ProductSpecField } from "@/components/product-spec-field";
+import { productSpecLabels, sameSpec } from "@/lib/product-spec";
+import { translator } from "@/i18n";
 import type { ComponentProps } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -16,6 +19,7 @@ import {
   getProductSheet,
   productSheetDraft,
   withProductColumns,
+  autoProductSpec,
   productSheetMissing,
 } from "@/lib/services/product-sheet";
 import { planSheet } from "@/lib/services/purchase-sheet-calc";
@@ -238,6 +242,8 @@ export default async function ProductSheetPage({
   const masterView = masterSheet
     ? withProductColumns(masterSheet, masterDraft)
     : masterDraft;
+  // Especificação montada com os dados do produto e da ficha mestre.
+  const autoSpec = autoProductSpec(product, masterView);
   // Fornecedores deste produto (principal primeiro) e o seletor da ficha mestre.
   const supplierRows = await productSuppliersView(product);
   const supplierOptions: SupplierOption[] = suppliers
@@ -435,11 +441,30 @@ export default async function ProductSheetPage({
                 </label>
               </FieldRow>
               <FieldRow label={t("requests.specification")} size="full">
-                <Textarea
+                <ProductSpecField
                   name="specification"
-                  rows={3}
-                  defaultValue={product.specification ?? ""}
-                  dense
+                  defaultValue={
+                    product.specification?.trim()
+                      ? product.specification
+                      : autoSpec
+                  }
+                  initialAuto={
+                    !product.specification?.trim() ||
+                    sameSpec(product.specification, autoSpec)
+                  }
+                  extras={{
+                    capacityMl: masterView.capacityMl ?? null,
+                    packageType: masterView.packageType ?? null,
+                    powerSource: masterView.powerSource ?? null,
+                    powerDetail: masterView.powerDetail ?? null,
+                  }}
+                  labels={productSpecLabels(translator("pt"))}
+                  texts={{
+                    auto: t("productSpec.hint.auto"),
+                    manual: t("productSpec.hint.manual"),
+                    rebuild: t("productSpec.rebuild"),
+                    empty: t("productSpec.empty"),
+                  }}
                 />
               </FieldRow>
             </div>

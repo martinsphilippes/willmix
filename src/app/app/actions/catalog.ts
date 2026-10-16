@@ -158,6 +158,25 @@ export async function updateProductSheetAction(form: FormData) {
       cbm,
       ...pantoneField,
     };
+    // Especificação: vazia ou ainda a automática de antes → montada com os
+    // dados enviados agora; escrita à mão fica como veio.
+    {
+      const { autoProductSpec, getProductSheet } =
+        await import("@/lib/services/product-sheet");
+      const { sameSpec } = await import("@/lib/product-spec");
+      const master = await getProductSheet(id);
+      const typed = parsed.specification;
+      const after = autoProductSpec({ ...product, ...next }, master);
+      // Automática (o campo diz, ou o texto é o montado com os dados de
+      // antes ou de agora): monta com o que fica gravado.
+      if (
+        str(form, "specificationAuto") === "1" ||
+        !typed ||
+        sameSpec(typed, autoProductSpec(product, master)) ||
+        sameSpec(typed, after)
+      )
+        next.specification = after || null;
+    }
     const ps = await import("@/lib/services/product-suppliers");
     // Troca de fornecedor pelo cadastro: a mesma troca do "Tornar principal"
     // (código, preço, moeda e MOQ do antigo ficam no vínculo dele; o novo

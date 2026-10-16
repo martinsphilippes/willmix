@@ -677,11 +677,21 @@ export async function applyImportBatch(
       if (entity === "products") {
         const patch = productPatch(f, row.supplierId);
         if (updateId) {
+          const before = await store.get("products", updateId);
           await store.update("products", updateId, {
             ...definedOnly(patch),
             ...(f.sku ? { sku: String(f.sku) } : {}),
             ...(f.description ? { specification: String(f.description) } : {}),
           });
+          // Sem descrição na planilha: a especificação automática acompanha.
+          if (before && !f.description) {
+            const { refreshAutoSpecification, getProductSheet } =
+              await import("./product-sheet");
+            await refreshAutoSpecification(updateId, {
+              product: before,
+              master: await getProductSheet(updateId),
+            });
+          }
           summary.updated++;
         } else {
           if (!row.lineId) throw new Error("line_not_found");
