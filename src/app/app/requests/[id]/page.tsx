@@ -292,6 +292,17 @@ export default async function RequestDetailPage({
                 </TextLink>
               </span>
             ))}
+            {request.groupId ? (
+              <>
+                {" · "}
+                <TextLink
+                  href={`/app/requests/batch/${encodeURIComponent(request.groupId)}`}
+                  data-batch-link
+                >
+                  {t("reqBatch.viewBatch")}
+                </TextLink>
+              </>
+            ) : null}
           </Alert>
         </div>
       ) : null}

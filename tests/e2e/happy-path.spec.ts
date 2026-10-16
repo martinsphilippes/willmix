@@ -375,15 +375,25 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.click("[data-add-request-item]");
   await page.getByRole("button", { name: /Remover: Produto 3/ }).click();
   await page.getByRole("button", { name: /enviar|send/i }).click();
-  await page.waitForURL(/\/app\/requests\?group=[^&]+&created=2$/);
+  // O lote abre numa página só, com os dois produtos dentro.
+  await page.waitForURL(/\/app\/requests\/batch\/[^?]+\?created=2$/);
+  const batchUrl = page.url().replace(/\?.*$/, "");
   await expect(page.locator("[data-batch-created]")).toBeVisible();
-  await expect(page.locator("[data-batch-badge]")).toHaveCount(2);
-  await expect(
-    page.locator("table tr:has-text('Copo de vidro')"),
-  ).toBeVisible();
+  await expect(page.locator("[data-batch-item]")).toHaveCount(2);
+  // Na lista, o lote é uma linha só, que leva à página do lote.
+  await page.goto("/app/requests");
+  const batchRow = page.locator("[data-batch-row]", {
+    hasText: "Copo de vidro",
+  });
+  await expect(batchRow).toHaveCount(1);
+  await expect(batchRow).toContainText("Jarra de vidro");
+  await batchRow.getByRole("link", { name: /Abrir|Open|打开/ }).click();
+  await page.waitForURL(batchUrl);
   // Cada solicitação mostra a outra do lote.
   await page
-    .locator("table tr:has-text('Copo de vidro') a[href^='/app/requests/']")
+    .locator(
+      "[data-batch-item]:has-text('Copo de vidro') a[href^='/app/requests/']",
+    )
     .first()
     .click();
   await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
