@@ -58,12 +58,19 @@ export default async function AccountPage({
     store.get("parties", supplierId),
   ]);
   const mine = payments.filter((p) => orders.some((o) => o.id === p.orderId));
-  const totalOrders = orders.reduce((s, o) => s + (o.fobTotal ?? 0), 0);
+  /* Pedido cancelado não soma ao total nem ao saldo (o acerto é livre); os
+     pagamentos já feitos continuam listados e no "Recebido". */
+  const live = orders.filter((o) => o.status !== "CANCELLED");
+  const totalOrders = live.reduce((s, o) => s + (o.fobTotal ?? 0), 0);
   const totalReceived = mine
     .filter((p) => p.status === "received")
     .reduce((s, p) => s + p.amount, 0);
-  const totalPending = mine
-    .filter((p) => p.status === "confirmed")
+  const livePaid = mine
+    .filter(
+      (p) =>
+        (p.status === "received" || p.status === "confirmed") &&
+        live.some((o) => o.id === p.orderId),
+    )
     .reduce((s, p) => s + p.amount, 0);
   const currency = orders[0]?.fobCurrency ?? "USD";
 
@@ -131,11 +138,7 @@ export default async function AccountPage({
         />
         <Stat
           label={t("account.balance")}
-          value={formatMoney(
-            totalOrders - totalReceived - totalPending,
-            currency,
-            t,
-          )}
+          value={formatMoney(totalOrders - livePaid, currency, t)}
         />
       </div>
       <div className="mt-4">
@@ -171,7 +174,15 @@ export default async function AccountPage({
                   </Td>
                   <Td>—</Td>
                   <Td className="whitespace-nowrap">
-                    <Badge tone={o.status === "CLOSED" ? "success" : "neutral"}>
+                    <Badge
+                      tone={
+                        o.status === "CLOSED"
+                          ? "success"
+                          : o.status === "CANCELLED"
+                            ? "danger"
+                            : "neutral"
+                      }
+                    >
                       {t(`stage.${o.status}`)}
                     </Badge>
                   </Td>
@@ -289,13 +300,22 @@ export default async function AccountPage({
                   const pending = rows
                     .filter((p) => p.status === "confirmed")
                     .reduce((s, p) => s + p.amount, 0);
-                  const balance = (o.fobTotal ?? 0) - paid - pending;
+                  // Cancelado: nada mais a pagar pelo sistema (saldo 0).
+                  const cancelled = o.status === "CANCELLED";
+                  const balance = cancelled
+                    ? 0
+                    : (o.fobTotal ?? 0) - paid - pending;
                   return (
                     <tr key={o.id}>
                       <Td>
                         <TextLink href={`/app/orders/${o.id}`}>
                           #{o.number}
                         </TextLink>
+                        {cancelled ? (
+                          <span className="ml-2">
+                            <Badge tone="danger">{t("stage.CANCELLED")}</Badge>
+                          </span>
+                        ) : null}
                       </Td>
                       <Td className="text-right whitespace-nowrap tabular-nums">
                         {formatMoney(o.fobTotal, o.fobCurrency, t)}

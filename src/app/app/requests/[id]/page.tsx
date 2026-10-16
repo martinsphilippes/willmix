@@ -27,6 +27,10 @@ import { getStore, type FreightQuote } from "@/lib/db";
 import { freightByQuote } from "@/lib/services/freight";
 import { listProductSuppliers } from "@/lib/services/product-suppliers";
 import { batchSiblings, getRequestForUser } from "@/lib/services/requests";
+import {
+  requestDisplayStatus,
+  requestStatusTone,
+} from "@/lib/services/order-status";
 import { getT } from "@/i18n/server";
 import {
   Alert,
@@ -105,6 +109,16 @@ export default async function RequestDetailPage({
           })
         : Promise.resolve([]),
     ]);
+  /* Pedido cancelado: a solicitação segue ORDERED (histórico), mas o selo, a
+     linha do tempo e o aviso mostram o cancelamento. */
+  const order = request.orderId
+    ? await store.get("orders", request.orderId)
+    : null;
+  const orderCancelled = order?.status === "CANCELLED";
+  const displayStatus = requestDisplayStatus(
+    request,
+    new Set(order && orderCancelled ? [order.id] : []),
+  );
   const supplierName = (supplierId: string) =>
     suppliers.find((s) => s.id === supplierId)?.name ?? supplierId;
   // RFQ: quem já fornece este produto aparece primeiro (o principal antes).
@@ -226,18 +240,8 @@ export default async function RequestDetailPage({
         title={request.productName}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge
-              tone={
-                request.status === "ORDERED"
-                  ? "success"
-                  : request.status === "CANCELLED"
-                    ? "neutral"
-                    : request.status === "WAITING_DOWN_PAYMENT"
-                      ? "warning"
-                      : "neutral"
-              }
-            >
-              {t(`reqStatusLabel.${request.status}`)}
+            <Badge tone={requestStatusTone(displayStatus)}>
+              {t(`reqStatusLabel.${displayStatus}`)}
             </Badge>
             {wellmix ? (
               <span className="font-medium text-zinc-700">
@@ -266,6 +270,16 @@ export default async function RequestDetailPage({
           ) : null
         }
       />
+      {order && orderCancelled && canViewOrder(user, order) ? (
+        <div className="mb-4" data-order-cancelled>
+          <Alert tone="danger">
+            {t("reqCancelled.banner", { n: order.number })}{" "}
+            <TextLink href={`/app/orders/${order.id}`}>
+              {t("reqCancelled.open")}
+            </TextLink>
+          </Alert>
+        </div>
+      ) : null}
       {siblings.length > 0 ? (
         <div className="mb-4" data-batch-siblings>
           <Alert tone="info">
@@ -353,11 +367,16 @@ export default async function RequestDetailPage({
                 const idx = arr.indexOf(request.status as (typeof arr)[number]);
                 const done = idx >= i;
                 const current = idx === i;
-                const state: StepState = done
-                  ? current && s !== "ORDERED"
-                    ? "active"
-                    : "done"
-                  : "pending";
+                // Pedido cancelado: o passo "Pedido criado" aparece cancelado.
+                const cancelledStep =
+                  s === "ORDERED" && displayStatus === "ORDER_CANCELLED";
+                const state: StepState = cancelledStep
+                  ? "cancelled"
+                  : done
+                    ? current && s !== "ORDERED"
+                      ? "active"
+                      : "done"
+                    : "pending";
                 return (
                   <li
                     key={s}
@@ -372,12 +391,16 @@ export default async function RequestDetailPage({
                       className={cx(
                         state === "active"
                           ? "font-semibold text-brand-800"
-                          : state === "done"
-                            ? "text-zinc-900"
-                            : "text-zinc-500",
+                          : state === "cancelled"
+                            ? "font-medium text-red-700"
+                            : state === "done"
+                              ? "text-zinc-900"
+                              : "text-zinc-500",
                       )}
                     >
-                      {t(`reqStatusLabel.${s}`)}
+                      {t(
+                        `reqStatusLabel.${cancelledStep ? "ORDER_CANCELLED" : s}`,
+                      )}
                     </span>
                   </li>
                 );

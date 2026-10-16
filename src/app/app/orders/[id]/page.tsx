@@ -91,6 +91,11 @@ import {
 } from "@/components/order-cancel";
 import { customerCanRequestCancel } from "@/lib/services/order-cancel";
 import {
+  cancelledOrderIds,
+  requestDisplayStatus,
+  requestStatusTone,
+} from "@/lib/services/order-status";
+import {
   assignPartnerAction,
   clearRequirementDocumentAction,
   createPenaltyAction,
@@ -683,11 +688,15 @@ export default async function OrderPage({
                   ? [
                       [
                         t("orders.erp"),
-                        order.erpNumber ?? (
-                          <Badge tone="warning">
-                            {t(`erpStatus.${order.erpSyncStatus}`)}
-                          </Badge>
-                        ),
+                        /* Cancelado sem número no ERP: nada a lançar no Sankhya. */
+                        order.erpNumber ??
+                          (isCancelled ? (
+                            "—"
+                          ) : (
+                            <Badge tone="warning">
+                              {t(`erpStatus.${order.erpSyncStatus}`)}
+                            </Badge>
+                          )),
                       ] as [string, ReactNode],
                     ]
                   : []),
@@ -733,7 +742,7 @@ export default async function OrderPage({
                   : []),
               ]}
             />
-            {wellmix && order.erpSyncStatus === "pending" ? (
+            {wellmix && !isCancelled && order.erpSyncStatus === "pending" ? (
               <p className="mt-2 text-xs text-amber-700">
                 {t("orders.erp.pending")}
               </p>
@@ -2210,7 +2219,11 @@ async function FollowUpCard({
   derived: RequestRow[];
   wellmix: boolean;
 }) {
-  const { quoteSlaBusinessDays } = await getSettings();
+  /* Solicitação derivada cujo pedido foi cancelado aparece como "Pedido cancelado". */
+  const [{ quoteSlaBusinessDays }, cancelledOrders] = await Promise.all([
+    getSettings(),
+    cancelledOrderIds(derived.map((r) => r.orderId)),
+  ]);
   const slaDate = quoteSlaDeadline(quoteSlaBusinessDays);
   const unitSell =
     order.sellPrice !== null && item.quantity > 0
@@ -2323,41 +2336,37 @@ async function FollowUpCard({
             {t("orders.followup.derived")}
           </h3>
           <ul className="mt-2 space-y-1.5 text-sm">
-            {derived.map((r) => (
-              <li
-                key={r.id}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 px-3 py-2"
-              >
-                <TextLink href={`/app/requests/${r.id}`} className="min-w-0">
-                  {r.productName} · {r.quantity} {r.unit}
-                </TextLink>
-                {r.origin && r.origin !== "manual" ? (
-                  <Badge tone="brand">{t(`orders.origin.${r.origin}`)}</Badge>
-                ) : null}
-                <Badge
-                  tone={
-                    r.status === "ORDERED"
-                      ? "success"
-                      : r.status === "CANCELLED"
-                        ? "neutral"
-                        : "warning"
-                  }
+            {derived.map((r) => {
+              const status = requestDisplayStatus(r, cancelledOrders);
+              return (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/80 px-3 py-2"
                 >
-                  {t(`reqStatusLabel.${r.status}`)}
-                </Badge>
-                <span className="text-xs text-zinc-500">
-                  {formatDate(r.createdAt, t)}
-                </span>
-                {r.orderId ? (
-                  <TextLink
-                    href={`/app/orders/${r.orderId}`}
-                    className="text-xs"
-                  >
-                    {t("requests.viewOrder")} →
+                  <TextLink href={`/app/requests/${r.id}`} className="min-w-0">
+                    {r.productName} · {r.quantity} {r.unit}
                   </TextLink>
-                ) : null}
-              </li>
-            ))}
+                  {r.origin && r.origin !== "manual" ? (
+                    <Badge tone="brand">{t(`orders.origin.${r.origin}`)}</Badge>
+                  ) : null}
+                  <Badge tone={requestStatusTone(status)}>
+                    {t(`reqStatusLabel.${status}`)}
+                  </Badge>
+                  <span className="text-xs text-zinc-500">
+                    {formatDate(r.createdAt, t)}
+                  </span>
+                  {/* O link fica também no pedido cancelado (histórico). */}
+                  {r.orderId ? (
+                    <TextLink
+                      href={`/app/orders/${r.orderId}`}
+                      className="text-xs"
+                    >
+                      {t("requests.viewOrder")} →
+                    </TextLink>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}

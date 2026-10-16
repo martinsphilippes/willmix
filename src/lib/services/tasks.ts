@@ -250,10 +250,12 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   ]);
 
   // Pedidos, requisitos e solicitações citados acima, em uma rodada paralela.
+  // Os pedidos dos itens de revisão entram para pular os de pedido cancelado.
   const orderIds = [
     ...new Set([
       ...stages.map((s) => s.orderId),
       ...openAfterSales.map((a) => a.orderId),
+      ...reviews.map((r) => r.orderId).filter((id): id is string => !!id),
     ]),
   ];
   const quoteRequestIds = [...new Set(quotes.map((q) => q.requestId))];
@@ -344,10 +346,12 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ),
     );
   }
-  // Pós-venda aberto: o cliente avalia a compra.
+  // Pós-venda aberto: o cliente avalia a compra (pedido cancelado não conta;
+  // os cancelados antes de o cancelamento encerrar o pós-venda ainda o têm aberto).
   for (const a of openAfterSales) {
     const order = orderById.get(a.orderId);
-    if (!order || !isInvolved(user, order)) continue;
+    if (!order || order.status === "CANCELLED" || !isInvolved(user, order))
+      continue;
     tasks.push(
       finish(
         {
@@ -380,7 +384,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
 
   // Fila "itens para revisão" (gates): uma pendência por item aberto, só para a Wellmix.
+  // Item de pedido cancelado fica de fora (cancelamentos antigos ainda o têm aberto).
   for (const r of reviews) {
+    if (r.orderId && orderById.get(r.orderId)?.status === "CANCELLED") continue;
     tasks.push(
       finish(
         {
