@@ -43,7 +43,11 @@ export async function QuoteSentNotice({
       className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm"
     >
       {/* Enviada: o rascunho guardado desta ficha não volta mais. */}
-      <ClearDraft userId={user.id} storageKey={`quote:${view.quoteId}`} />
+      <ClearDraft
+        userId={user.id}
+        storageKey={`quote:${view.quoteId}`}
+        token={view.answeredAt ?? view.quoteId}
+      />
       <div className="flex items-start gap-3">
         <span
           aria-hidden

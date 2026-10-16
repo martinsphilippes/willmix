@@ -251,6 +251,8 @@ export interface SentQuoteView {
   price: number | null;
   currency: string | null;
   leadTimeDays: number | null;
+  /** Muda a cada envio: o rascunho é apagado uma vez por envio. */
+  answeredAt: string | null;
 }
 
 /**
@@ -262,7 +264,8 @@ export async function sentQuoteView(
   quoteId: string,
 ): Promise<SentQuoteView | null> {
   const store = getStore();
-  const quote = await store.get("quotes", quoteId);
+  // Aviso opcional: id estranho no link (o banco recusa) não derruba a tela.
+  const quote = await store.get("quotes", quoteId).catch(() => null);
   if (!quote || !canViewQuote(user, quote) || quote.status !== "answered")
     return null;
   const request = await store.get("requests", quote.requestId);
@@ -274,6 +277,7 @@ export async function sentQuoteView(
     price: quote.price,
     currency: quote.currency,
     leadTimeDays: quote.leadTimeDays,
+    answeredAt: quote.answeredAt,
   };
 }
 

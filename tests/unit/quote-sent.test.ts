@@ -64,6 +64,8 @@ describe("cotação enviada", () => {
       currency: "USD",
       leadTimeDays: 30,
     });
+    // Data da resposta: o rascunho é apagado uma vez por envio.
+    expect(view?.answeredAt).toBeTruthy();
 
     // Outro fornecedor e o cliente não veem a cotação pelo link.
     expect(await qs.sentQuoteView(supplierB, first.quote.id)).toBeNull();

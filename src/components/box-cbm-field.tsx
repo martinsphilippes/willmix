@@ -28,12 +28,15 @@ function useBoxCbm(
   ref: RefObject<HTMLElement | null>,
   initial: number | null,
   onLost?: (last: number) => void,
+  onCalc?: (next: number) => void,
 ) {
   const [cbm, setCbm] = useState(initial);
   const last = useRef(initial);
   const lost = useRef(onLost);
+  const calc = useRef(onCalc);
   useEffect(() => {
     lost.current = onLost;
+    calc.current = onCalc;
   });
   useEffect(() => {
     const form = ref.current?.closest("form");
@@ -45,6 +48,7 @@ function useBoxCbm(
       timer = window.setTimeout(() => {
         const next = readBoxCbm(form);
         if (last.current !== null && next === null) lost.current?.(last.current);
+        else if (next !== null) calc.current?.(next);
         last.current = next;
         setCbm(next);
       }, 0);
@@ -84,10 +88,18 @@ export function BoxCbmInput({
   // Valor escrito no campo enquanto calculado (só a volta do rascunho faz
   // isso): vale quando uma medida some e o campo volta a ser digitado.
   const typed = useRef<string | null>(null);
-  const cbm = useBoxCbm(ref, initialCbm, (prev) => {
-    setManual(typed.current ?? String(prev));
-    typed.current = null;
-  });
+  const cbm = useBoxCbm(
+    ref,
+    initialCbm,
+    (prev) => {
+      setManual(typed.current ?? String(prev));
+      typed.current = null;
+    },
+    // Medidas completas de novo: o valor da volta do rascunho já não vale.
+    () => {
+      typed.current = null;
+    },
+  );
   // O valor muda sem tecla neste campo: avisa o formulário (programação,
   // containers e o vermelho de "Preencha este campo" leem daqui). Também ao
   // abrir, se o calculado não é o salvo (ex.: ficha sem CBM com medidas).

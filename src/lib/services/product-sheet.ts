@@ -482,12 +482,24 @@ export async function completeMasterFromSheet(
       if (JSON.stringify(current[k]) === JSON.stringify(v)) continue;
       input[k] = v;
     }
-    // A caixa é um grupo (medidas e o CBM que sai delas): completar só quando
-    // o cadastro não tem nada dela. Senão a ficha de outra caixa trocaria o
-    // CBM que o produto já tem ou misturaria medidas de duas caixas.
-    const box = ["heightCm", "widthCm", "lengthCm", "cbmPerCarton"];
-    if (!overwrite && box.some((k) => filled(current[k])))
-      for (const k of box) delete input[k];
+    // A caixa é um grupo (medidas e o CBM que sai delas). Completar não troca
+    // o CBM que o cadastro já tem e não mistura caixas: medidas só entram se
+    // a ficha traz a caixa inteira e as que o cadastro já tem são iguais (a
+    // mesma caixa); cadastro sem nada da caixa recebe o que vier.
+    if (!overwrite) {
+      const from = sheet as Record<string, unknown>;
+      const dims = ["heightCm", "widthCm", "lengthCm"];
+      const conflict = dims.some(
+        (k) =>
+          filled(current[k]) &&
+          filled(from[k]) &&
+          JSON.stringify(current[k]) !== JSON.stringify(from[k]),
+      );
+      const whole = dims.every((k) => filled(from[k]));
+      const partial = dims.some((k) => filled(current[k]));
+      if (filled(current.cbmPerCarton) || conflict || (partial && !whole))
+        for (const k of [...dims, "cbmPerCarton"]) delete input[k];
+    }
     if (!Object.keys(input).length) return [];
     await writeProductSheet(
       user,

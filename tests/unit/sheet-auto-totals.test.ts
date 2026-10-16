@@ -186,6 +186,48 @@ describe("CBM da caixa master pelas medidas", () => {
     expect(adopted?.boxLengthCm).toBe(50);
   });
 
+  it("completar termina uma caixa pela metade com a mesma caixa, sem misturar outra", async () => {
+    const store = getStore();
+    // Sem ficha mestre: o cadastro tem altura e largura, sem comprimento nem CBM.
+    await store.update("products", "prod-boneca", {
+      cbm: null,
+      boxHeightCm: 30,
+      boxWidthCm: 40,
+      boxLengthCm: null,
+    });
+    // Outra caixa (altura diferente): nada muda.
+    const other = await ps.completeMasterFromSheet(
+      admin,
+      "prod-boneca",
+      { heightCm: 35, widthCm: 40, lengthCm: 50 },
+      "fornecedor-c",
+      "fill",
+    );
+    expect(other).not.toContain("lengthCm");
+    // Só o comprimento (caixa pela metade na ficha): nada muda.
+    const half = await ps.completeMasterFromSheet(
+      admin,
+      "prod-boneca",
+      { lengthCm: 50 },
+      "fornecedor-c",
+      "fill",
+    );
+    expect(half).not.toContain("lengthCm");
+    expect((await store.get("products", "prod-boneca"))?.cbm ?? null).toBeNull();
+    // A mesma caixa inteira: completa o comprimento e o CBM sai das medidas.
+    const same = await ps.completeMasterFromSheet(
+      admin,
+      "prod-boneca",
+      { heightCm: 30, widthCm: 40, lengthCm: 50 },
+      "fornecedor-c",
+      "fill",
+    );
+    expect(same).toContain("lengthCm");
+    const product = await store.get("products", "prod-boneca");
+    expect(product?.boxLengthCm).toBe(50);
+    expect(product?.cbm).toBe(0.06);
+  });
+
   it("ficha mestre: grava o calculado na ficha e no cadastro do produto", async () => {
     const { sheet } = await ps.saveProductSheet(admin, "prod-jarra", {
       heightCm: 30,

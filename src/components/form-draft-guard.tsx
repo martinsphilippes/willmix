@@ -41,13 +41,24 @@ interface Draft {
 export function ClearDraft({
   userId,
   storageKey,
+  token,
 }: {
   userId: string;
   storageKey: string;
+  /** Um por envio (ex.: data da resposta): voltar a esta tela não apaga de novo. */
+  token: string;
 }) {
   useEffect(() => {
+    const mark = `wellmix:draft-cleared:${userId}:${storageKey}`;
+    try {
+      if (sessionStorage.getItem(mark) === token) return;
+      sessionStorage.setItem(mark, token);
+    } catch {
+      // Sem armazenamento: não há rascunho para apagar.
+      return;
+    }
     remove(`${PREFIX}${userId}:${storageKey}`);
-  }, [userId, storageKey]);
+  }, [userId, storageKey, token]);
   return null;
 }
 
