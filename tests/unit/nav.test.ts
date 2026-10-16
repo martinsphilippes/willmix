@@ -47,6 +47,7 @@ describe("menu principal", () => {
       "/app/products",
       "/app/lines",
       "/app/finance",
+      "/app/payables",
       "/app/history",
       "/app/after-sales",
       "/app/marketing",

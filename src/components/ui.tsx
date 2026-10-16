@@ -426,9 +426,11 @@ export function Table({
   className?: string;
 }) {
   return (
+    /* relative: texto só para leitor de tela (sr-only, posição absoluta) numa
+       coluna fora da tela fica dentro da rolagem, sem alargar a página. */
     <div
       className={cx(
-        "-mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
+        "relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border",
         className,
       )}
     >

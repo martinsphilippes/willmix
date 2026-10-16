@@ -2,7 +2,7 @@ import "server-only";
 
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
-import { ROLE_PARTY_FIELD } from "@/lib/workflow/stages";
+import { ROLE_PARTY_FIELD, isOffFlowStage } from "@/lib/workflow/stages";
 import { requesterTarget, notify } from "./notifications";
 
 /**
@@ -20,6 +20,8 @@ export async function runReminders() {
   let sent = 0;
 
   for (const stage of stages) {
+    // Pagamento ao fornecedor não cobra prazo de etapa (tem Contas a pagar).
+    if (isOffFlowStage(stage.key)) continue;
     if (!stage.dueAt || Date.parse(stage.dueAt) > soon) continue;
     if (
       stage.reminderSentAt &&

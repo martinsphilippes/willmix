@@ -787,6 +787,9 @@ async function createOrderFromRequest(
     unit: request.unit,
     unitPrice: quote.price,
   });
+  // Condição de pagamento combinada com o fornecedor vale como estava hoje.
+  const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
+  await snapshotOrderPaymentTerms(order);
   await assignDefaultPartners(order);
   await createStagesForOrder(
     await store.get("orders", order.id).then((o) => o ?? order),

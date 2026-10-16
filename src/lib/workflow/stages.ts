@@ -111,6 +111,15 @@ export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
   },
 ];
 
+/**
+ * Etapas que não seguram o pedido: concluem na hora em que começam (mesmo nos
+ * pedidos antigos, que ainda têm itens nelas) e não aparecem no fluxo.
+ */
+export const OFF_FLOW_STAGES: readonly StageKey[] = ["SUPPLIER_PAYMENT"];
+
+export const isOffFlowStage = (key: string) =>
+  (OFF_FLOW_STAGES as readonly string[]).includes(key);
+
 export const STAGE_TEMPLATES: StageTemplate[] = [
   {
     key: "ORDER_CREATED",
@@ -143,25 +152,17 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         : DEFAULT_PREPARATION_REQUIREMENTS,
   },
   {
+    /*
+     * Fora do fluxo (OFF_FLOW_STAGES): o pagamento ao fornecedor segue a
+     * condição negociada com cada um (cadastro do fornecedor) e costuma vencer
+     * meses depois da entrega. A etapa fica no esquema (pedidos antigos), mas
+     * conclui sozinha; o pagamento vive em Contas a pagar, no card do pedido e
+     * na conta corrente do fornecedor.
+     */
     key: "SUPPLIER_PAYMENT",
     responsibleRole: "operator",
     partyField: "supplierId",
-    requirements: () => [
-      {
-        key: "payment_registered",
-        label: "Pagamento ao fornecedor registrado",
-        type: "confirm",
-        required: true,
-        role: "operator",
-      },
-      {
-        key: "payment_received",
-        label: "Recebimento confirmado pelo fornecedor",
-        type: "confirm",
-        required: true,
-        role: "supplier",
-      },
-    ],
+    requirements: () => [],
   },
   {
     key: "PACKAGING",

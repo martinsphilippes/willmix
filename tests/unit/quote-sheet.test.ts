@@ -163,9 +163,8 @@ describe("ficha de compra na cotação", () => {
       filter: { orderId: order.id, key: "PREPARATION" },
     });
     expect(prep.status).toBe("done");
-    expect((await store.get("orders", order.id))?.status).toBe(
-      "SUPPLIER_PAYMENT",
-    );
+    // O pagamento ao fornecedor está fora do fluxo: segue para a embalagem.
+    expect((await store.get("orders", order.id))?.status).toBe("PACKAGING");
     // A ficha da cotação continua guardada.
     expect((await qs.getQuoteSheet(quote.id))?.id).not.toBe(orderSheet.id);
     // Cotação fechada: ninguém edita mais a ficha da cotação.

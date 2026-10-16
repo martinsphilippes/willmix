@@ -8,7 +8,11 @@ import {
   type User,
 } from "@/lib/db";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
-import { ROLE_PARTY_FIELD, STAGE_TEMPLATES } from "@/lib/workflow/stages";
+import {
+  ROLE_PARTY_FIELD,
+  STAGE_TEMPLATES,
+  isOffFlowStage,
+} from "@/lib/workflow/stages";
 
 export type TaskKind =
   | "requirement"
@@ -20,7 +24,9 @@ export type TaskKind =
   | "review"
   | "after_sales"
   | "sourcing_demand"
-  | "freight_quote";
+  | "freight_quote"
+  | "supplier_payment"
+  | "confirm_receipt";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -146,6 +152,8 @@ const KIND_ORDER: string[] = [
   "confirm_payment",
   "pay",
   "freight_quote",
+  "supplier_payment",
+  "confirm_receipt",
   "review",
   "sourcing_demand",
   "after_sales",
@@ -192,6 +200,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   const now = new Date();
   const wellmix = isWellmix(user);
   const supplier = user.role === "supplier" && !!user.partyId;
+  // Pedidos antigos parados na etapa de pagamento ao fornecedor seguem o
+  // fluxo (uma consulta por instância do servidor depois que não sobra nenhum).
+  await (await import("./supplier-terms")).releaseOffFlowStages();
   const customer = user.role === "customer" && !!user.partyId;
   const none = Promise.resolve([] as never[]);
 
@@ -277,6 +288,8 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 
   // Requisitos pendentes em etapas ativas/bloqueadas.
   for (const stage of stages) {
+    // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
+    if (isOffFlowStage(stage.key)) continue;
     const order = orderById.get(stage.orderId);
     if (!order) continue;
     if (!isInvolved(user, order)) continue;
@@ -427,6 +440,76 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             detail: `${f.totalCbm ?? "?"} m³ · ${f.cartons ?? "?"} cx · ${f.grossWeightKg ?? "?"} kg`,
             link: `/app/freight/${f.id}`,
             dueAt: request.deadline,
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Fornecedor: pagamentos da Wellmix a confirmar (pedido ou pago, ainda não
+  // recebido) nos pedidos dele; confirma na conta corrente.
+  if (supplier) {
+    const myOrders = await store.list("orders", {
+      filter: { supplierId: user.partyId! },
+    });
+    const open = myOrders.filter((o) => o.status !== "CANCELLED");
+    // Pedido antigo: o recebimento já foi confirmado pela etapa de pagamento.
+    const confirmedInOldFlow = open.length
+      ? await store.list("requirements", {
+          filter: {
+            orderId: open.map((o) => o.id),
+            key: "payment_received",
+            status: "done",
+          },
+        })
+      : [];
+    const skip = new Set(confirmedInOldFlow.map((r) => r.orderId));
+    const live = open.filter((o) => !skip.has(o.id));
+    const toConfirm = live.length
+      ? await store.list("payments", {
+          filter: {
+            orderId: live.map((o) => o.id),
+            direction: "supplier_out",
+            status: ["pending", "confirmed"],
+          },
+        })
+      : [];
+    for (const p of toConfirm) {
+      const order = live.find((o) => o.id === p.orderId);
+      if (!order) continue;
+      tasks.push(
+        finish(
+          {
+            kind: "confirm_receipt",
+            title: `Confirmar recebimento: pedido #${order.number}`,
+            detail: `${p.currency} ${p.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${p.note ? ` · ${p.note}` : ""}`,
+            link: "/app/account",
+            dueAt: null,
+            orderNumber: order.number,
+          },
+          now,
+        ),
+      );
+    }
+  }
+
+  // Wellmix: parcelas a pagar a fornecedores vencidas ou vencendo em 7 dias.
+  if (wellmix) {
+    const { listPayables, payableRows } = await import("./supplier-terms");
+    for (const { payable, installment: i } of payableRows(
+      await listPayables(),
+    )) {
+      if (i.status !== "overdue" && i.status !== "due_soon") continue;
+      if (!(i.open > 0)) continue;
+      tasks.push(
+        finish(
+          {
+            kind: "supplier_payment",
+            title: `Pagar fornecedor: pedido #${payable.order.number}`,
+            detail: `${payable.supplier?.name ?? "—"} · parcela ${i.index}/${i.count} · ${payable.schedule.currency} ${i.open.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            link: `/app/orders/${payable.order.id}#supplier-payment`,
+            dueAt: i.dueDate,
+            orderNumber: payable.order.number,
           },
           now,
         ),

@@ -54,7 +54,7 @@ export const helpPt = {
   "help.stage.PREPARATION":
     "Fornecedor preenche a ficha de compra (dados da planilha de compras: fornecedor, preço, caixa, pesos, medidas, programação e fotos, com a foto na balança). O peso líquido por peça da ficha é o peso comparado na inspeção.",
   "help.stage.SUPPLIER_PAYMENT":
-    "Wellmix registra o pagamento (valor, moeda, câmbio, comprovante) e o fornecedor confirma o recebimento. A confirmação do fornecedor conclui a etapa mesmo antes do registro da Wellmix; o registro pode ser feito depois, para a conta corrente.",
+    "Não segura mais o pedido: conclui sozinha. O pagamento segue a condição combinada com o fornecedor (cadastro do fornecedor) e fica em Contas a pagar, no card Pagamento ao fornecedor do pedido e na conta corrente do fornecedor, onde ele confirma o recebimento.",
   "help.stage.PACKAGING":
     "Fornecedor envia a arte da embalagem; a agência aprova ou reprova com observação. Reprovada, a arte volta ao fornecedor para reenvio.",
   "help.stage.INSPECTION":
@@ -69,7 +69,7 @@ export const helpPt = {
     "Cliente confirma o recebimento (a Wellmix pode confirmar por ele). Com a confirmação o pedido é encerrado.",
   "help.stage.CLOSED": "Pedido encerrado. Nada mais a fazer.",
   "help.account.body":
-    "Conta corrente do fornecedor: valor FOB de cada pedido, pagamentos registrados pela Wellmix, câmbio e saldo. O fornecedor confirma cada recebimento; isso também conclui o requisito da etapa de pagamento.",
+    "Conta corrente do fornecedor: valor FOB de cada pedido, pagamentos registrados pela Wellmix, câmbio e saldo. A previsão de pagamentos mostra cada parcela pela condição combinada (vencimento e situação). O fornecedor confirma cada recebimento aqui; o pagamento não segura o andamento do pedido.",
   "help.penalties.body":
     "Multas registradas pela Wellmix por atraso, avaria ou descumprimento, com responsável, valor e evidência. O jurídico acompanha e altera a situação: contestada, paga ou cancelada.",
   "help.parties.body":
@@ -89,7 +89,7 @@ export const helpPt = {
   "help.finance.body":
     "Consolida o que já foi lançado: valor vendido ao cliente e recebimentos; custo FOB e pagamentos ao fornecedor. O custo em reais usa o câmbio informado em cada pagamento; quando falta câmbio ou há saldo a pagar, a margem aparece como estimativa (~).",
   "help.finance.steps":
-    "Recebimento do cliente: registre no pedido (card Financeiro) o sinal e as parcelas seguintes, com comprovante.\nPagamento ao fornecedor: registre na etapa de pagamento com valor, moeda e câmbio; o fornecedor confirma.\nMargem: venda menos custo convertido. Informe o câmbio nos pagamentos para a margem deixar de ser estimativa.\nA receber e A pagar em destaque indicam pendência de caixa.",
+    "Recebimento do cliente: registre no pedido (card Financeiro) o sinal e as parcelas seguintes, com comprovante.\nPagamento ao fornecedor: segue a condição do cadastro do fornecedor; as parcelas ficam em Gestão → Contas a pagar. Registre no card Pagamento ao fornecedor do pedido, com valor, moeda e câmbio; o fornecedor confirma na conta corrente.\nMargem: venda menos custo convertido. Informe o câmbio nos pagamentos para a margem deixar de ser estimativa.\nA receber e A pagar em destaque indicam pendência de caixa.",
   "help.notifications.body":
     "Avisos gerados pelo portal quando algo depende de você ou mudou em um pedido seu. E-mail e WhatsApp ainda estão em modo simulado; a lista aqui é a fonte confiável.",
 };
@@ -148,7 +148,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.PREPARATION":
     "Supplier fills in the purchase sheet (purchase spreadsheet data: supplier, price, carton, weights, sizes, schedule and photos, including the scale photo). The sheet's net weight per piece is the weight compared at inspection.",
   "help.stage.SUPPLIER_PAYMENT":
-    "Wellmix registers the payment (amount, currency, FX rate, proof) and the supplier confirms receipt. The supplier's confirmation completes the stage even before Wellmix registers the payment; the record can be added later for the ledger.",
+    "No longer holds the order: it completes on its own. Payment follows the terms agreed with the supplier (supplier record) and lives in Payables, on the order's Supplier payment card and in the supplier's account, where they confirm receipt.",
   "help.stage.PACKAGING":
     "Supplier sends the packaging artwork; the agency approves or rejects with a note. If rejected, the artwork goes back to the supplier.",
   "help.stage.INSPECTION":
@@ -163,7 +163,7 @@ export const helpEn: Record<HelpKey, string> = {
     "Customer confirms receipt (Wellmix may confirm on their behalf). The order is then closed.",
   "help.stage.CLOSED": "Order closed. Nothing left to do.",
   "help.account.body":
-    "Supplier account statement: FOB value per order, payments registered by Wellmix, FX rate and balance. The supplier confirms each receipt; that also completes the payment stage requirement.",
+    "Supplier account statement: FOB value per order, payments registered by Wellmix, FX rate and balance. The payment forecast shows each installment under the agreed terms (due date and status). The supplier confirms each receipt here; payment does not hold up the order.",
   "help.penalties.body":
     "Penalties registered by Wellmix for delays, damage or non-compliance, with responsible party, amount and evidence. Legal follows and updates the status: disputed, paid or cancelled.",
   "help.parties.body":
@@ -183,7 +183,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.finance.body":
     "Consolidates what is already recorded: customer sale and receipts; FOB cost and supplier payments. Cost in the sale currency uses the FX rate entered on each payment; when a rate is missing or a balance is still payable, the margin is shown as an estimate (~).",
   "help.finance.steps":
-    "Customer receipt: register on the order (Finance card) the down payment and the following installments, with proof.\nSupplier payment: register on the payment stage with amount, currency and FX rate; the supplier confirms.\nMargin: sale minus converted cost. Enter the FX rate on payments so the margin stops being an estimate.\nHighlighted Receivable and Payable indicate pending cash.",
+    "Customer receipt: register on the order (Finance card) the down payment and the following installments, with proof.\nSupplier payment: follows the terms in the supplier record; installments are in Management → Payables. Register it on the order's Supplier payment card with amount, currency and FX rate; the supplier confirms in their account.\nMargin: sale minus converted cost. Enter the FX rate on payments so the margin stops being an estimate.\nHighlighted Receivable and Payable indicate pending cash.",
   "help.notifications.body":
     "Notices generated by the portal when something depends on you or changed in one of your orders. Email and WhatsApp are still simulated; this list is the reliable source.",
 };
@@ -239,7 +239,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.PREPARATION":
     "供应商填写采购单（采购表格数据：供应商、价格、外箱、重量、尺寸、计划和照片，含称重照片）。采购单中的每件净重将在验货时比对。",
   "help.stage.SUPPLIER_PAYMENT":
-    "Wellmix 登记付款（金额、币种、汇率、凭证），供应商确认收款。供应商确认后阶段即完成，即使 Wellmix 尚未登记；登记可稍后补录到账目中。",
+    "不再影响订单进度：此阶段自动完成。付款按与供应商约定的条件（供应商资料）执行，显示在应付账款、订单的“供应商付款”卡片以及供应商的往来账中，供应商在往来账中确认收款。",
   "help.stage.PACKAGING":
     "供应商提交包装设计稿；设计公司审核通过或附备注驳回。被驳回后设计稿退回供应商重新提交。",
   "help.stage.INSPECTION":
@@ -253,7 +253,7 @@ export const helpZh: Record<HelpKey, string> = {
     "客户确认收货（Wellmix 可代为确认）。确认后订单结案。",
   "help.stage.CLOSED": "订单已结案，无需操作。",
   "help.account.body":
-    "供应商往来账：每单 FOB 金额、Wellmix 登记的付款、汇率和余额。供应商确认每笔收款，同时完成付款阶段的要求。",
+    "供应商往来账：每单 FOB 金额、Wellmix 登记的付款、汇率和余额。付款预计按约定条件列出每期款项（到期日和状态）。供应商在此确认每笔收款；付款不影响订单进度。",
   "help.penalties.body":
     "Wellmix 因延误、损坏或违约登记的罚款，含责任方、金额和证据。法务跟进并更新状态：争议中、已支付或已取消。",
   "help.parties.body":
@@ -273,7 +273,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.finance.body":
     "汇总已登记的数据：客户销售额与收款；FOB 成本与供应商付款。销售币种成本按每笔付款填写的汇率折算；缺少汇率或仍有应付余额时，毛利显示为估算值（~）。",
   "help.finance.steps":
-    "客户收款：在订单的“财务”卡片登记定金及后续款项，并附凭证。\n供应商付款：在付款阶段登记金额、币种和汇率；供应商确认。\n毛利：销售额减去折算成本。为付款填写汇率后毛利不再是估算。\n高亮的应收和应付表示待处理的现金。",
+    "客户收款：在订单的“财务”卡片登记定金及后续款项，并附凭证。\n供应商付款：按供应商资料中的付款条件执行；分期款项在“管理 → 应付账款”。在订单的“供应商付款”卡片登记金额、币种和汇率；供应商在往来账中确认。\n毛利：销售额减去折算成本。为付款填写汇率后毛利不再是估算。\n高亮的应收和应付表示待处理的现金。",
   "help.notifications.body":
     "当有事项需要您处理或您的订单发生变化时，门户生成的通知。邮件和 WhatsApp 仍为模拟模式；此列表是可靠来源。",
 };

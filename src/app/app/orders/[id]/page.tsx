@@ -33,6 +33,9 @@ import {
   loadOrderProgress,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue } from "@/lib/workflow/money";
+import { isOffFlowStage } from "@/lib/workflow/stages";
+import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
+import { SupplierPaymentCard } from "@/components/supplier-payment-card";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
   ackedByUser,
@@ -82,7 +85,6 @@ import {
 import { CurrencySelect } from "@/components/currency-select";
 import { RequirementForm } from "@/components/requirement-form";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
-import { SupplierPaymentPanel } from "@/components/supplier-payment-panel";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import {
@@ -133,11 +135,18 @@ export default async function OrderPage({
     cancelRequested,
     cancelRejected,
     settlementSaved,
+    terms: termsNotice,
     fields: invalidFields,
     at: errorToken,
   } = await searchParams;
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
+  /* Pedido parado na etapa de pagamento ao fornecedor (de antes de ela sair do
+     fluxo): segue para a próxima etapa agora. */
+  if (isOffFlowStage(progress.order.status)) {
+    await releaseOffFlowStages(progress.order.id);
+    progress = (await loadOrderProgress(id)) ?? progress;
+  }
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
@@ -170,6 +179,8 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  // Etapas do fluxo (o pagamento ao fornecedor tem card próprio, fora dele).
+  const flowStages = stages.filter((s) => !isOffFlowStage(s.key));
   const sheetHint = sheetState
     ? {
         missing: sheetState.missing
@@ -372,14 +383,6 @@ export default async function OrderPage({
           </span>
         }
       />
-      {typeof paid === "string" &&
-      ["transfer_copied", "finance_email", "finance_whatsapp"].includes(
-        paid,
-      ) ? (
-        <Alert tone="success">
-          {t(`supplierPay.done.${paid}` as DictionaryKey)}
-        </Alert>
-      ) : null}
       <ActionError
         t={t}
         code={error}
@@ -437,7 +440,7 @@ export default async function OrderPage({
         <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:col-span-2">
           <Card title={t("orders.timeline")} className="md:col-span-2">
             <ol className="-mx-2 grid gap-x-4 gap-y-0.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-              {stages.map((s) => (
+              {flowStages.map((s, index) => (
                 <li
                   key={s.id}
                   className={cx(
@@ -446,7 +449,7 @@ export default async function OrderPage({
                     s.status === "blocked" && "bg-amber-50",
                   )}
                 >
-                  <StepDot state={s.status}>{s.sequence + 1}</StepDot>
+                  <StepDot state={s.status}>{index + 1}</StepDot>
                   <a
                     href={`#stage-${s.id}`}
                     className={cx(
@@ -498,7 +501,7 @@ export default async function OrderPage({
             </div>
           ) : null}
 
-          {stages
+          {flowStages
             .filter(
               (s) =>
                 s.key !== "CLOSED" &&
@@ -648,9 +651,6 @@ export default async function OrderPage({
                         </SubmitButton>
                       </form>
                     ) : null}
-                    {stage.key === "SUPPLIER_PAYMENT" && open && wellmix ? (
-                      <SupplierPaymentPanel order={order} t={t} />
-                    ) : null}
                   </Card>
                   {stage.key === "INSPECTION" &&
                   wellmix &&
@@ -669,6 +669,30 @@ export default async function OrderPage({
                 </Fragment>
               );
             })}
+
+          {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
+              fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
+          {wellmix ||
+          (user.role === "supplier" && order.supplierId === user.partyId) ? (
+            <SupplierPaymentCard
+              order={order}
+              t={t}
+              wellmix={wellmix}
+              notice={
+                typeof paid === "string" &&
+                [
+                  "transfer_copied",
+                  "finance_email",
+                  "finance_whatsapp",
+                  "marked",
+                ].includes(paid)
+                  ? t(`supplierPay.done.${paid}` as DictionaryKey)
+                  : termsNotice === "applied"
+                    ? t("supplierTerms.applied")
+                    : null
+              }
+            />
+          ) : null}
         </div>
 
         {/* Coluna lateral: cards pequenos. No iPad em pé (sem a coluna lateral)

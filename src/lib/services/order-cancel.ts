@@ -28,10 +28,17 @@ import { notify, notifyWellmix, requesterTarget } from "./notifications";
 
 export class OrderCancelError extends Error {}
 
+/*
+ * O pagamento ao fornecedor saiu do fluxo (condição do fornecedor, Contas a
+ * pagar): o pedido vai da Preparação direto à Embalagem. A janela continua a
+ * mesma regra de antes: até a produção começar e até haver pagamento ao
+ * fornecedor feito.
+ */
 const OPEN_FOR_REQUEST: StageKey[] = [
   "ORDER_CREATED",
   "PREPARATION",
   "SUPPLIER_PAYMENT",
+  "PACKAGING",
 ];
 
 /** Dia de hoje em Brasília (AAAA-MM-DD). */
@@ -43,18 +50,37 @@ function todayBr(now: Date) {
 
 /**
  * O cliente ainda pode pedir o cancelamento? Até o produto entrar em produção:
- * antes de o pagamento ao fornecedor ser concluído e antes da data de início
- * da produção da ficha de compra.
+ * antes de haver pagamento ao fornecedor feito (confirmado ou recebido, ou o
+ * recebimento confirmado na etapa antiga) e antes da data de início da
+ * produção da ficha de compra.
  */
 export async function customerCanRequestCancel(
   order: Order,
   now = new Date(),
 ): Promise<boolean> {
   if (!OPEN_FOR_REQUEST.includes(order.status as StageKey)) return false;
-  const [sheet] = await getStore().list("purchase_sheets", {
-    filter: { orderId: order.id },
-    limit: 1,
-  });
+  const store = getStore();
+  const [[sheet], paid, receivedInOldFlow] = await Promise.all([
+    store.list("purchase_sheets", {
+      filter: { orderId: order.id },
+      limit: 1,
+    }),
+    store.list("payments", {
+      filter: {
+        orderId: order.id,
+        direction: "supplier_out",
+        status: ["confirmed", "received"],
+      },
+      limit: 1,
+    }),
+    // Pedido antigo: o fornecedor confirmou o recebimento pela etapa de
+    // pagamento (às vezes sem linha de pagamento confirmada).
+    store.list("requirements", {
+      filter: { orderId: order.id, key: "payment_received", status: "done" },
+      limit: 1,
+    }),
+  ]);
+  if (paid.length || receivedInOldFlow.length) return false;
   const start = sheet?.productionStartAt?.slice(0, 10);
   return !start || todayBr(now) < start;
 }

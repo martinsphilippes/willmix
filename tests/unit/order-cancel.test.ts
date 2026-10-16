@@ -52,7 +52,7 @@ async function newOrder(): Promise<Order> {
 /** Conclui as etapas até a indicada (exclusive). */
 async function advanceTo(order: Order, until: string) {
   const store = getStore();
-  for (const key of ["ORDER_CREATED", "PREPARATION", "SUPPLIER_PAYMENT"]) {
+  for (const key of ["ORDER_CREATED", "PREPARATION", "PACKAGING"]) {
     if (key === until) break;
     const [stage] = await store.list("stages", {
       filter: { orderId: order.id, key: key as never },
@@ -86,7 +86,7 @@ beforeAll(async () => {
 describe("cancelamento pelo administrador", () => {
   it("só o admin cancela; etapas abertas viram canceladas e o pedido não avança mais", async () => {
     const store = getStore();
-    const order = await advanceTo(await newOrder(), "SUPPLIER_PAYMENT");
+    const order = await advanceTo(await newOrder(), "PACKAGING");
     for (const who of [operator, joao, supplierA])
       await expect(c.cancelOrder(who, order.id, input)).rejects.toThrow(
         "forbidden",
@@ -95,7 +95,7 @@ describe("cancelamento pelo administrador", () => {
     const cancelled = await c.cancelOrder(admin, order.id, input);
     expect(cancelled?.status).toBe("CANCELLED");
     expect(cancelled?.currentStageId).toBeNull();
-    expect(cancelled?.cancelStageKey).toBe("SUPPLIER_PAYMENT");
+    expect(cancelled?.cancelStageKey).toBe("PACKAGING");
     expect(cancelled?.cancelReason).toBe("customer_withdrew");
     expect(cancelled?.cancelledByUserId).toBe(admin.id);
 
@@ -105,11 +105,13 @@ describe("cancelamento pelo administrador", () => {
     const byKey = Object.fromEntries(stages.map((s) => [s.key, s.status]));
     expect(byKey.ORDER_CREATED).toBe("done");
     expect(byKey.PREPARATION).toBe("done");
-    expect(byKey.SUPPLIER_PAYMENT).toBe("cancelled");
+    // Pagamento ao fornecedor fora do fluxo: concluiu sozinho antes.
+    expect(byKey.SUPPLIER_PAYMENT).toBe("done");
+    expect(byKey.PACKAGING).toBe("cancelled");
     expect(byKey.SHIPPING).toBe("cancelled");
 
     // Nada avança: requisito da etapa cancelada é recusado.
-    const [payStage] = stages.filter((s) => s.key === "SUPPLIER_PAYMENT");
+    const [payStage] = stages.filter((s) => s.key === "PACKAGING");
     const [pending] = await store.list("requirements", {
       filter: { stageId: payStage.id, status: "pending" },
     });
@@ -224,7 +226,7 @@ describe("pedido de cancelamento do cliente", () => {
   it("depois do início da produção (ou do pagamento ao fornecedor), só a Wellmix", async () => {
     const store = getStore();
     // Data de início da produção já passou.
-    const started = await advanceTo(await newOrder(), "SUPPLIER_PAYMENT");
+    const started = await advanceTo(await newOrder(), "PACKAGING");
     const [sheet] = await store.list("purchase_sheets", {
       filter: { orderId: started.id },
     });
@@ -243,14 +245,34 @@ describe("pedido de cancelamento do cliente", () => {
     ).rejects.toThrow("cancel_not_allowed");
 
     // Produção marcada para o futuro: ainda pode.
-    const future = await advanceTo(await newOrder(), "SUPPLIER_PAYMENT");
+    const future = await advanceTo(await newOrder(), "PACKAGING");
     expect(
       await c.customerCanRequestCancel(future, new Date("2000-01-01")),
     ).toBe(true);
 
-    // Pagamento ao fornecedor concluído (embalagem em diante): não pode.
+    // Pagamento ao fornecedor feito: não pode (mesmo na embalagem, antes da produção).
+    await store.create("payments", {
+      orderId: future.id,
+      requestId: null,
+      direction: "supplier_out",
+      amount: 10,
+      currency: "USD",
+      fxRate: null,
+      method: "manual",
+      status: "confirmed",
+      proofDocumentId: null,
+      registeredByUserId: admin.id,
+      confirmedByUserId: null,
+      confirmedAt: null,
+      note: null,
+    } as never);
+    expect(
+      await c.customerCanRequestCancel(future, new Date("2000-01-01")),
+    ).toBe(false);
+
+    // Inspeção em diante: não pode.
     const packing = await newOrder();
-    await store.update("orders", packing.id, { status: "PACKAGING" });
+    await store.update("orders", packing.id, { status: "INSPECTION" });
     const fresh = (await store.get("orders", packing.id))!;
     expect(await c.customerCanRequestCancel(fresh)).toBe(false);
     // O admin continua podendo cancelar.

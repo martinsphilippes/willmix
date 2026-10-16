@@ -111,6 +111,7 @@ Regra desta etapa: **preservar → analisar → reaproveitar → complementar �
 - O fornecedor confirma o recebimento também de pagamentos pendentes, o que fecha a etapa. Pendente não conta como pago na conta corrente.
 - Dados bancários do fornecedor ficam no cadastro do parceiro (`bank*`, só para fornecedores). O e-mail e o WhatsApp do financeiro ficam em Configurações (admin).
 - Aprovação automática na conta exige API de banco ou de pagamentos com credencial. Não há, então não foi simulada.
+- **Fora do fluxo, pela condição do fornecedor** (substitui a etapa): a condição de pagamento é configurada no cadastro de cada fornecedor (parcelas em % do FOB, marco e dias) e copiada no pedido quando ele nasce. A etapa `SUPPLIER_PAYMENT` ficou sem requisitos e conclui sozinha, inclusive nos pedidos antigos (`OFF_FLOW_STAGES` no motor); o pedido vai da Preparação para a Embalagem. O pagamento mora em Gestão → Contas a pagar, no card "Pagamento ao fornecedor" do pedido e na "Previsão de pagamentos" da conta corrente do fornecedor (onde ele confirma o recebimento). As ações rápidas pagam a parcela da vez (referência `WELLMIX PO #N 1/2`) e recusam o clique duplo (`installment_changed`). Detalhes em `docs/WORKFLOW.md`.
 
 ### Nova medição na inspeção
 
@@ -403,6 +404,18 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - A linha 1 marcada em vermelho ("falta preencher") sai do vermelho assim que ganha caixas e intervalo, sem esperar salvar.
 - O intervalo padrão do atalho vem da 2ª linha (entre programações); o da 1ª linha é o prazo de produção e vira a "1ª saída", que fica como está ao trocar o intervalo. Depois de gerar, o foco vai para "Desfazer" e o aviso é anunciado ao leitor de tela; Esc devolve o foco ao botão do atalho.
 - Campo "outro" do intervalo (no atalho e na programação de entregas da Nova solicitação): só passa a valer quando algo é digitado. Antes, só passar pelo campo (Tab ou "próximo" do teclado do celular) trocava o intervalo; na solicitação ele virava 0 dias e o envio era recusado.
+
+## Condição de pagamento ao fornecedor; pagamento fora do fluxo do pedido
+
+- Cadastro do fornecedor: card "Condição de pagamento ao fornecedor" (só Wellmix) com parcelas (% do FOB, marco: pedido gerado, embarque ou entrega ao cliente, dias depois), atalhos prontos, total ao vivo (só salva com 100%), observação. Colunas novas (opcionais): `parties.paymentTerms` (JSON), `parties.paymentTermsNote`, `orders.supplierPaymentTerms` (JSON, cópia no pedido). Sem as colunas publicadas, o pedido nasce normalmente (a cópia é ignorada) e salvar a condição avisa para publicar o esquema.
+- A etapa "Pagamento ao fornecedor" não segura mais o pedido: sem requisitos nos pedidos novos e concluída sozinha nos antigos (ao abrir o pedido, Pendências, Contas a pagar ou no job diário). Some da linha do tempo e dos cards de etapa; a numeração das etapas segue a posição na tela.
+- Contas a pagar (`/app/payables`, Gestão): parcelas de todos os pedidos, vencidas primeiro, cards por situação com total por moeda, filtros por situação e fornecedor (links/GET), total do filtro e lista de fornecedores sem condição com atalho para configurar.
+- Pedido: card "Pagamento ao fornecedor" com a condição (de onde veio), parcelas com vencimento e situação, totais pago/solicitado/a pagar e, para a Wellmix, o pagamento da parcela da vez (aberto quando vence em 7 dias ou já venceu); "Usar a condição atual do cadastro" quando o cadastro mudou. O fornecedor do pedido vê a previsão, sem dados do banco nem ações; o cliente não vê nada.
+- Conta corrente do fornecedor: "Previsão de pagamentos" com a condição combinada e as parcelas ainda não recebidas; o botão "Confirmar recebimento" vale também para pagamentos solicitados (como no pedido).
+- Pendências da Wellmix: parcelas vencidas ou que vencem em 7 dias (tipo "Pagar fornecedor"); a etapa antiga não vira pendência. Job diário (`/api/jobs/reminders`): libera pedidos parados e manda à Wellmix um resumo das parcelas vencidas/da semana.
+- Cancelamento pelo cliente: a janela continua "até a produção ou até haver pagamento ao fornecedor feito", agora contando a Embalagem; nos pedidos antigos, o recebimento confirmado na etapa também fecha.
+- Revisão adversarial (corrigido antes do PR): pagamentos quitam as parcelas pela ordem do vencimento e a condição é salva nessa ordem; pedidos pagos no fluxo antigo não voltam a cobrar; "Marcar como pago" no pedido ao banco/financeiro (sem pagamento em dobro); "Já pagou?" também sem FOB; pendência "Confirmar recebimento" para o fornecedor; liberação da etapa antiga sem duplicar (chamadas simultâneas esperam a mesma passada), sem derrubar a tela e cobrindo etapa bloqueada ou concluída com o pedido parado; o editor recusa na hora parcela fora da regra; o botão de salvar mantém a proteção contra clique duplo; total de "Todas" em Contas a pagar removido e pedido cancelado conta só o que foi pago; observação da condição avisa que o fornecedor vê; erro de "Usar a condição atual" aparece no topo.
+- Corrigido junto: tabelas com coluna de ação (texto só para leitor de tela) alargavam a página no celular (ex.: Cotações); o contêiner da tabela agora segura esse texto.
 
 ## Banco pausado no login
 

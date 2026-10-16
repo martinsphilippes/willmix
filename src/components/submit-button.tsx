@@ -72,9 +72,10 @@ export function SubmitButton({
     <Button
       type="submit"
       form={form}
-      disabled={pending}
       aria-busy={pending}
       {...props}
+      // Depois do spread: um `disabled` de quem chama não tira a proteção do envio.
+      disabled={pending || !!props.disabled}
       onClick={(event) => {
         if (confirmText && !window.confirm(confirmText)) {
           event.preventDefault();

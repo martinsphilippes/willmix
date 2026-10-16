@@ -86,6 +86,26 @@ export const ORDER_CANCEL_REASONS = [
 ] as const;
 export type OrderCancelReason = (typeof ORDER_CANCEL_REASONS)[number];
 
+/**
+ * Condição de pagamento da Wellmix ao fornecedor (negociada com cada um):
+ * parcelas em % do FOB, cada uma N dias depois de um marco do pedido.
+ */
+export const PAYMENT_TERM_BASES = [
+  "order_created",
+  "shipped",
+  "delivered",
+] as const;
+export type PaymentTermBase = (typeof PAYMENT_TERM_BASES)[number];
+
+export interface PaymentTermInstallment {
+  /** Parte do FOB (0 < % ≤ 100); a soma das parcelas é 100. */
+  percent: number;
+  /** Marco que conta o prazo: pedido gerado, embarque ou entrega ao cliente. */
+  base: PaymentTermBase;
+  /** Dias depois do marco (0 = na data do marco). */
+  days: number;
+}
+
 /** Pedido de cancelamento feito pelo cliente: aguardando, recusado ou aceito (pedido cancelado). */
 export const CANCEL_REQUEST_STATUSES = [
   "requested",
@@ -419,6 +439,10 @@ export interface Party extends BaseRow {
   bankAddress: string | null;
   /** Nº da loja no mercado (ex.: Yiwu "A 154678"); vai para a ficha de compra. Nulo nos cadastros antigos. */
   storeNumber?: string | null;
+  /** Condição de pagamento ao fornecedor (parcelas). Nulo = não configurada. */
+  paymentTerms?: PaymentTermInstallment[] | null;
+  /** Observação da condição (ex.: "T/T, banco em Hong Kong"). */
+  paymentTermsNote?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -604,6 +628,12 @@ export interface Order extends BaseRow {
   cancelRequestedByUserId?: string | null;
   cancelRequestReason?: string | null;
   cancelRequestResponse?: string | null;
+  /**
+   * Condição de pagamento ao fornecedor copiada do cadastro ao gerar o pedido
+   * (mudar o cadastro depois não mexe no que já foi combinado). Nulo nos
+   * pedidos antigos: vale a condição atual do fornecedor.
+   */
+  supplierPaymentTerms?: PaymentTermInstallment[] | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -1387,6 +1417,8 @@ export const TABLES: Record<TableName, TableDef> = {
       bankSwift: str(20),
       bankAddress: str(255),
       storeNumber: str(60),
+      paymentTerms: json(),
+      paymentTermsNote: text(),
     },
     indexes: [{ key: "by_type", type: "key", columns: ["type"] }],
   },
@@ -1534,6 +1566,7 @@ export const TABLES: Record<TableName, TableDef> = {
       cancelRequestedByUserId: id(false),
       cancelRequestReason: text(),
       cancelRequestResponse: text(),
+      supplierPaymentTerms: json(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },

@@ -22,7 +22,7 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `ORDER_CREATED`    | Pedido conferido (operador). Opcional: número no Sankhya                                                                           |
 | `PREPARATION`      | Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta                    |
-| `SUPPLIER_PAYMENT` | Pagamento registrado (operador) + recebimento confirmado (fornecedor)                                                              |
+| `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)            |
 | `PACKAGING`        | Arte (fornecedor) + aprovação da arte (agência, quando `agencyValidationEnabled` e há agência designada)                           |
 | `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia        |
 | `SHIPPING`         | Data de embarque, previsão de chegada, BL (companhia marítima; operador se não houver designada). Opcional: navio                  |
@@ -34,6 +34,21 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 ## Regra de avanço
 
 `evaluateStage` roda após cada submissão. Percentual = obrigatórios concluídos / obrigatórios. Quando todos os obrigatórios estão `done`, a etapa vira `done`, a próxima vira `active` (com prazo e responsável), o pedido recebe o novo status e o responsável é notificado. O responsável exibido é sempre o papel do próximo requisito pendente.
+
+## Pagamento ao fornecedor (fora do fluxo)
+
+O pagamento da Wellmix ao fornecedor é negociado com cada um e costuma vencer meses depois da entrega, por isso não segura o pedido:
+
+- **Condição no cadastro do fornecedor** (`parties.paymentTerms`, só a Wellmix edita em Cadastros → fornecedor → "Condição de pagamento ao fornecedor"): até 6 parcelas, cada uma com % do FOB, marco (pedido gerado, embarque, entrega ao cliente) e dias depois do marco; soma 100%. Observação livre em `paymentTermsNote`. Sem condição = "não configurada" (nada é presumido).
+- **Cópia no pedido**: o pedido guarda a condição do dia em que nasceu (`orders.supplierPaymentTerms`); mudar o cadastro depois não mexe nele, até a Wellmix usar "Usar a condição atual do cadastro" no pedido. Pedidos antigos (sem cópia) seguem a condição atual do fornecedor.
+- **Marcos**: pedido gerado = criação do pedido; embarque = "Data de embarque" do embarque (ou a conclusão da etapa); entrega = início da etapa Entregue (entrega registrada). Vencimento = marco + dias; sem o marco, a parcela "aguarda".
+- **Parcelas**: valor = % do FOB (a última fica com o resto dos centavos). A condição é salva na ordem em que vence (marco, depois dias). Pagamento feito para uma parcela ("Parcela 1/2", gravado pelas ações rápidas e pelo registro à mão da parcela da vez) quita aquela parcela; o resto do dinheiro na moeda do FOB quita as parcelas na ordem fixa da condição (marco, dias), não muda quando as datas chegam: recebido, depois pago, depois solicitado. A parcela da vez é a primeira a vencer com valor em aberto. Percentuais valem em centésimos e somam exatamente 100%. Situação: vencida, vence em 7 dias, programada, aguardando o marco, solicitada (dados copiados/pedido ao financeiro), paga (falta o fornecedor confirmar), recebida, cancelada (pedido cancelado).
+- **Onde fica**: Gestão → **Contas a pagar** (`/app/payables`, uma linha por parcela, vencidas primeiro, filtros por situação e fornecedor, fornecedores sem condição listados); card **Pagamento ao fornecedor** no pedido (Wellmix: cronograma e pagamento da parcela da vez; fornecedor do pedido: só a previsão); **Previsão de pagamentos** na conta corrente do fornecedor, onde ele confirma o recebimento. Pendências da Wellmix ganham as parcelas vencidas ou da semana e o job diário manda um resumo.
+- **Pedido ao banco/financeiro → pago**: as ações rápidas registram o pagamento como solicitado; quando ele sai, a Wellmix usa "Marcar como pago" no card (câmbio e comprovante opcionais), sem criar outro pagamento. O "Já pagou?" fica para pagamentos feitos por fora (também em pedido sem FOB). O fornecedor tem a pendência "Confirmar recebimento" até confirmar na conta corrente, e o job diário o lembra de pagamento feito há mais de 3 dias ainda não confirmado (pedidos antigos já confirmados pela etapa ficam de fora).
+- **Pedidos pagos no fluxo antigo** (algum item da etapa antiga concluído) não ganham parcelas: o card diz que foram pagos pela etapa e nada vai para Contas a pagar, Pendências ou o resumo diário.
+- **Observação da condição** (`paymentTermsNote`) aparece para o fornecedor na conta corrente dele; o campo avisa isso.
+- **Pedidos parados na etapa antiga** seguem para a Embalagem sozinhos (ao abrir o pedido, Pendências, Contas a pagar ou no job diário), com auditoria `stage.off_flow`. Também o pedido que ficou com a etapa concluída mas o status nela (a próxima ainda não começou). Cada etapa é liberada uma vez por instância mesmo com chamadas ao mesmo tempo; as telas repetem a passada geral no máximo a cada 10 minutos, o job sempre.
+- **Cancelamento pelo cliente**: continua até a produção começar e até haver pagamento ao fornecedor feito: pagamento confirmado/recebido ou, nos pedidos antigos, o recebimento confirmado na etapa (agora inclui a Embalagem, porque o pedido não para mais no pagamento).
 
 ## Quem preenche
 

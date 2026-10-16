@@ -156,27 +156,16 @@ describe("fluxo completo: solicitação → entrega", () => {
     await saveSheet(supplierA, order.id, { netWeightPcKg: 12 });
     const prep = await fillStage(supplierA, order.id, "PREPARATION");
     expect(prep.status).toBe("done");
-    expect((await store.get("orders", order.id))!.status).toBe(
-      "SUPPLIER_PAYMENT",
-    );
-
-    // pagamento: operador registra, fornecedor confirma
+    // Pagamento ao fornecedor fora do fluxo: a etapa conclui sozinha, sem
+    // itens, e o pedido vai direto para a embalagem.
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
     const [payStage] = await store.list("stages", {
       filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
     });
-    const [registered] = await store.list("requirements", {
-      filter: { stageId: payStage.id, key: "payment_registered" },
-    });
-    const [received] = await store.list("requirements", {
-      filter: { stageId: payStage.id, key: "payment_received" },
-    });
-    await expect(
-      submitRequirement(supplierA, registered.id, { value: "ok" }),
-    ).rejects.toThrow();
-    await submitRequirement(operator, registered.id, { value: "ok" });
-    expect((await store.get("stages", payStage.id))!.percent).toBe(50);
-    await submitRequirement(supplierA, received.id, { value: "ok" });
-    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    expect((await store.get("stages", payStage.id))!.status).toBe("done");
+    expect(
+      await store.list("requirements", { filter: { stageId: payStage.id } }),
+    ).toEqual([]);
 
     // embalagem: arte + aprovação da agência
     await fillStage(supplierA, order.id, "PACKAGING");

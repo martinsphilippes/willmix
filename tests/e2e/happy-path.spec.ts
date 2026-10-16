@@ -275,6 +275,13 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.waitForURL(/\/app\/orders\/[^/]+$/);
   const orderUrl = page.url();
   await expect(page.getByText(/Pedido #\d+/).first()).toBeVisible();
+  const orderNumber = (
+    await page
+      .getByText(/Pedido #\d+/)
+      .first()
+      .textContent()
+  )?.match(/#(\d+)/)?.[1];
+  expect(orderNumber).toBeTruthy();
 
   // 7. ORDER_CREATED: operador confirma (Wellmix pode preencher tudo; limitamos a 1 envio)
   await fillMyRequirements(page, orderUrl, {}, 1);
@@ -282,22 +289,36 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.getByText("Preparação").first()).toBeVisible();
 
   // 8. PREPARATION: a ficha completa (com fotos) veio da cotação, então a etapa
-  // se concluiu sozinha e o pedido já está no pagamento ao fornecedor.
+  // se concluiu sozinha. O pagamento ao fornecedor saiu do fluxo (segue a
+  // condição do cadastro do fornecedor): o pedido já está na embalagem.
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await expect(
     page
       .locator("main h2")
       .filter({
-        hasText: /供应商付款|Supplier payment|Pagamento ao fornecedor/,
+        hasText: /设计与包装|Artwork and packaging|Arte e embalagem/,
       })
       .first(),
   ).toContainText(/进行中|In progress|Em andamento/);
+  // O fornecedor vê a previsão de pagamento no pedido (sem os dados do banco).
+  await expect(page.locator("[data-supplier-payment]")).toBeVisible();
+  await expect(
+    page.getByText(/Copiar dados para o banco|Copy details/),
+  ).toHaveCount(0);
 
-  // 9. SUPPLIER_PAYMENT: Wellmix registra pagamento, fornecedor confirma
+  // 9. Pagamento ao fornecedor (fora do fluxo): condição do cadastro
+  // (30% no pedido + 70% 90 dias após a entrega), parcela 1 vence hoje.
   await login(page, "operador@wellmix.com");
+  await page.goto("/app/payables");
+  await expect(
+    page.locator(`[data-payable-row="${orderNumber}-1"]`),
+  ).toBeVisible();
   await page.goto(orderUrl);
-  // Valor devido já calculado; copiar os dados para o banco registra o pagamento.
+  await expect(page.locator("[data-terms-text]")).toContainText(
+    /30% na data do pedido \+ 70% 90 dias após a entrega/,
+  );
+  // Valor da parcela já calculado; copiar os dados para o banco registra o pedido de pagamento.
   await expect(page.getByText("Valor a pagar ao fornecedor")).toBeVisible();
   await Promise.all([
     page.waitForURL(/paid=transfer_copied/),
@@ -306,8 +327,16 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     page.getByText(/Dados copiados e pagamento registrado/),
   ).toBeVisible();
+  await expect(page.locator('[data-installment="1"]')).toHaveAttribute(
+    "data-status",
+    "requested",
+  );
+  // O fornecedor confirma o recebimento na conta corrente (previsão de pagamentos).
   await login(page, "supplier.a@china.com");
-  await page.goto(orderUrl);
+  await page.goto("/app/account");
+  await expect(
+    page.locator(`[data-forecast-row="${orderNumber}-1"]`),
+  ).toBeVisible();
   await page
     .getByRole("button", {
       name: /确认收款|Confirm receipt|Confirmar recebimento/,
@@ -315,6 +344,11 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .first()
     .click();
   await page.waitForLoadState("networkidle");
+  await page.goto(orderUrl);
+  await expect(page.locator('[data-installment="1"]')).toHaveAttribute(
+    "data-status",
+    "received",
+  );
   await fillMyRequirements(page, orderUrl);
 
   // 10. PACKAGING: fornecedor envia arte, agência aprova

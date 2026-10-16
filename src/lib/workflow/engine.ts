@@ -18,7 +18,12 @@ import {
   notifyWellmix,
 } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
-import { ROLE_PARTY_FIELD, STAGE_TEMPLATES, nextStageKey } from "./stages";
+import {
+  ROLE_PARTY_FIELD,
+  STAGE_TEMPLATES,
+  isOffFlowStage,
+  nextStageKey,
+} from "./stages";
 import {
   compareInspection,
   isInspectionMeasureKey,
@@ -666,7 +671,11 @@ export async function evaluateStage(user: User | null, stageId: string) {
   const requirements = await store.list("requirements", {
     filter: { stageId },
   });
-  const required = requirements.filter((r) => r.required);
+  // Etapa fora do fluxo (pagamento ao fornecedor): nada nela segura o pedido,
+  // nem os itens que os pedidos antigos ainda têm.
+  const required = isOffFlowStage(stage.key)
+    ? []
+    : requirements.filter((r) => r.required);
   const done = required.filter((r) => r.status === "done").length;
   const percent =
     required.length === 0 ? 100 : Math.round((done / required.length) * 100);
@@ -729,7 +738,9 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   const requirements = await store.list("requirements", {
     filter: { stageId: stage.id },
   });
-  const required = requirements.filter((r) => r.required);
+  const required = isOffFlowStage(key)
+    ? []
+    : requirements.filter((r) => r.required);
 
   await store.update("stages", stage.id, {
     status: "active",
@@ -753,7 +764,7 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   }
 
   if (required.length === 0) {
-    // Etapa sem requisitos (CLOSED) conclui na hora.
+    // Etapa sem requisitos (CLOSED) ou fora do fluxo conclui na hora.
     const fresh = await store.get("stages", stage.id);
     if (fresh) await completeStage(user, fresh);
     return;
