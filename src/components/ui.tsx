@@ -234,11 +234,11 @@ export function Field({
  * para as telas ocuparem menos espaço e pedirem menos rolagem.
  */
 export const inputClass =
-  "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500 file:mr-2 file:rounded file:border-0 file:bg-brand-50 file:px-2 file:py-0.5 file:text-xs file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
+  "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-700 file:mr-2 file:rounded file:border-0 file:bg-brand-50 file:px-2 file:py-0.5 file:text-xs file:font-semibold file:text-brand-700 hover:file:bg-brand-100";
 
 /** Campo compacto (formulários densos, ex.: ficha de compra): mais baixo e com letra menor. */
 export const inputDenseClass =
-  "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500";
+  "block min-h-8 w-full min-w-0 max-w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-[13px] leading-5 text-zinc-900 shadow-sm transition placeholder:text-zinc-400 hover:border-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-700";
 
 const LABELABLE = new Set([
   "input",

@@ -14,10 +14,12 @@ import {
 } from "@/lib/services/purchase-sheet";
 import {
   ncmChipsView,
+  ncmRatesText,
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { SheetSafety } from "@/components/sheet-safety";
+import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
 import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
@@ -59,6 +61,15 @@ export default async function PurchaseSheetPage({
     limit: 1,
   });
   const { sheet, access, plan, missing } = view;
+  // Wellmix sem NCM na ficha nem na solicitação: a IA sugere (uma vez).
+  if (
+    isWellmix(user) &&
+    request &&
+    !sheet.ncm &&
+    !request.ncm &&
+    request.ncmSuggestions == null
+  )
+    scheduleNcmSuggestion(request.id);
   const productLines =
     view.saved && isWellmix(user) && !view.sheet.productId
       ? (await getStore().list("product_lines", { orderBy: "name" })).filter(
@@ -192,6 +203,12 @@ export default async function PurchaseSheetPage({
                 : null
             }
             records={view.records}
+            ncmRates={await ncmRatesText(t, view.sheet.ncm)}
+            ncmHelpLink={
+              access.editCustoms && request
+                ? `/app/requests/${request.id}#ncm`
+                : null
+            }
             missing={shownMissing}
             ncmSuggestions={
               access.editCustoms
@@ -199,6 +216,7 @@ export default async function PurchaseSheetPage({
                     t,
                     await ncmSuggestionsFor(
                       view.sheet.productId ?? request?.productId ?? null,
+                      request,
                     ),
                   )
                 : []
