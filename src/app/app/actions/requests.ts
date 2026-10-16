@@ -54,14 +54,17 @@ export async function openBatchRfqAction(form: FormData) {
   await run(back, async () => {
     assertWellmix(user);
     if (!groupId.success || !groupId.data) throw new Error("invalid_input");
-    const supplierIds = z
+    const parsed = z
       .array(z.string().min(1).max(64))
       .max(100)
-      .parse(
+      .safeParse(
         form
           .getAll("supplierIds")
           .filter((v): v is string => typeof v === "string" && !!v),
       );
+    // Código próprio: "invalid_input" na página do lote fala do formulário de produtos.
+    if (!parsed.success) throw new Error("invalid_supplier");
+    const supplierIds = parsed.data;
     const { openBatchRfq } = await import("@/lib/services/requests");
     const result = await openBatchRfq(user, groupId.data, supplierIds);
     return `${back}?rfq=${result.requests}`;

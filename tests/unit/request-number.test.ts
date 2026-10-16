@@ -146,6 +146,65 @@ describe("RFQ do lote inteiro", () => {
     expect((await inbox(supplierA)).length).toBe(before + 1);
   });
 
+  it("falha no meio do lote: o fornecedor é avisado do que já foi criado e a nova tentativa avisa o resto", async () => {
+    const created = await createRequestBatch(joao, BASE, [
+      item("Parcial A"),
+      item("Parcial B"),
+    ]);
+    const groupId = created[0].groupId!;
+    const store = getStore();
+    const before = (await inbox(supplierA)).length;
+    const original = store.create.bind(store);
+    let quotes = 0;
+    // 2ª cotação (produto B) falha: o produto A já tem a dele.
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (table === "quotes" && ++quotes === 2)
+          throw new Error("network down");
+        return original(table, data as never);
+      });
+    try {
+      await expect(
+        openBatchRfq(admin, groupId, ["fornecedor-a"]),
+      ).rejects.toThrow("network down");
+    } finally {
+      spy.mockRestore();
+    }
+    const afterFailure = (await inbox(supplierA)).slice(before);
+    expect(afterFailure).toEqual([
+      `RFQ: Parcial A (solicitação nº ${created[0].number})`,
+    ]);
+    // Nova tentativa: só o produto B é novo e só ele é avisado.
+    expect(await openBatchRfq(admin, groupId, ["fornecedor-a"])).toEqual({
+      requests: 2,
+      quotes: 1,
+    });
+    expect((await inbox(supplierA)).slice(before)).toEqual([
+      ...afterFailure,
+      `RFQ: Parcial B (solicitação nº ${created[0].number})`,
+    ]);
+  });
+
+  it("fornecedor inativo é recusado (a tela só lista os ativos)", async () => {
+    const created = await createRequestBatch(joao, BASE, [
+      item("Inativo A"),
+      item("Inativo B"),
+    ]);
+    const store = getStore();
+    await store.update("parties", "fornecedor-c", { active: false });
+    try {
+      await expect(
+        openBatchRfq(admin, created[0].groupId!, ["fornecedor-c"]),
+      ).rejects.toThrow("invalid_supplier");
+      await expect(
+        openRfq(admin, created[0].id, ["fornecedor-c"]),
+      ).rejects.toThrow("invalid_supplier");
+    } finally {
+      await store.update("parties", "fornecedor-c", { active: true });
+    }
+  });
+
   it("só produtos ainda em cotação; nenhum = invalid_status", async () => {
     const created = await createRequestBatch(joao, BASE, [
       item("Status A"),

@@ -137,7 +137,9 @@ export default async function RequestBatchPage({
     const of = quotes.filter((q) => q.requestId === requestId);
     return {
       invited: of.length,
-      answered: of.filter((q) => q.status !== "invited").length,
+      // Respondida de fato: rejeitada sem resposta (outra escolhida, produto
+      // excluído) não conta.
+      answered: of.filter((q) => !!q.answeredAt).length,
     };
   };
   const count = (v: string | string[] | undefined) =>
@@ -192,7 +194,9 @@ export default async function RequestBatchPage({
       {count(rfq) > 0 ? (
         <div className="mb-3" data-batch-rfq-done>
           <Alert tone="success">
-            {t("reqBatch.rfqDone", { n: count(rfq) })}
+            {count(rfq) === 1
+              ? t("reqBatch.rfqDoneOne")
+              : t("reqBatch.rfqDone", { n: count(rfq) })}
           </Alert>
         </div>
       ) : null}
@@ -303,11 +307,23 @@ export default async function RequestBatchPage({
           <Card title={t("reqBatch.rfqTitle")}>
             <form action={openBatchRfqAction} className="space-y-2.5">
               <input type="hidden" name="groupId" value={groupId} />
-              <p className="text-sm text-zinc-600">
-                {allInvited
-                  ? t("rfq.allInvited")
-                  : t("reqBatch.rfqHint", { n: rfqRows.length })}
-              </p>
+              {!rfqSuppliers.length ? (
+                /* Nenhum fornecedor ativo: diz o que fazer em vez de um cartão vazio. */
+                <p className="text-sm text-zinc-600" data-batch-rfq-empty>
+                  {t("reqBatch.rfqNoSuppliers")}{" "}
+                  <TextLink href="/app/parties?type=supplier">
+                    {t("reqBatch.rfqNoSuppliersLink")}
+                  </TextLink>
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-600">
+                  {allInvited
+                    ? t("rfq.allInvited")
+                    : rfqRows.length === 1
+                      ? t("reqBatch.rfqHintOne")
+                      : t("reqBatch.rfqHint", { n: rfqRows.length })}
+                </p>
+              )}
               <div className="grid gap-1.5 sm:grid-cols-2">
                 {rfqSuppliers.map((s) => {
                   const done = s.invited === rfqRows.length;
@@ -354,7 +370,9 @@ export default async function RequestBatchPage({
               </div>
               {allInvited || !rfqSuppliers.length ? null : (
                 <SubmitButton data-batch-rfq-submit>
-                  {t("reqBatch.rfqSubmit", { n: rfqRows.length })}
+                  {rfqRows.length === 1
+                    ? t("reqBatch.rfqSubmitOne")
+                    : t("reqBatch.rfqSubmit", { n: rfqRows.length })}
                 </SubmitButton>
               )}
             </form>

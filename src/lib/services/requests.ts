@@ -358,7 +358,11 @@ export async function openRfq(
   user: User,
   requestId: string,
   supplierIds: string[],
-  options: { notify?: boolean } = {},
+  options: {
+    notify?: boolean;
+    /** Recebe cada cotação assim que é criada (RFQ do lote: avisos agrupados). */
+    collect?: Quote[];
+  } = {},
 ): Promise<Quote[]> {
   assertWellmix(user);
   const store = getStore();
@@ -388,6 +392,7 @@ export async function openRfq(
       answeredAt: null,
     });
     invited.push(quote);
+    options.collect?.push(quote);
     if (options.notify !== false)
       await notify(
         { role: "supplier", partyId: supplierId },
@@ -418,14 +423,14 @@ export const RFQ_OPEN_STATUSES: RequestStatus[] = [
   "QUOTATION_RECEIVED",
 ];
 
-/** Fornecedores escolhidos: pelo menos um, todos cadastrados como fornecedor. */
+/** Fornecedores escolhidos: pelo menos um, todos fornecedores ativos no cadastro. */
 async function validSuppliers(supplierIds: string[]) {
   const ids = [...new Set(supplierIds.filter(Boolean))];
   if (!ids.length) throw new RequestError("no_suppliers");
   const parties = await getStore().list("parties", { filter: { id: ids } });
   if (
     parties.length !== ids.length ||
-    parties.some((p) => p.type !== "supplier")
+    parties.some((p) => p.type !== "supplier" || !p.active)
   )
     throw new RequestError("invalid_supplier");
   return parties;
@@ -449,30 +454,44 @@ export async function openBatchRfq(
     await store.list("requests", { filter: { groupId }, orderBy: "createdAt" })
   ).filter((r) => RFQ_OPEN_STATUSES.includes(r.status));
   if (!rows.length) throw new RequestError("invalid_status");
-  const bySupplier = new Map<string, Quote[]>();
-  for (const r of rows)
-    for (const q of await openRfq(user, r.id, supplierIds, { notify: false }))
-      bySupplier.set(q.supplierId, [
-        ...(bySupplier.get(q.supplierId) ?? []),
-        q,
-      ]);
-  const number = rows.find((r) => r.number)?.number;
-  for (const supplier of suppliers) {
-    const quotes = bySupplier.get(supplier.id) ?? [];
-    if (!quotes.length) continue;
-    const items = quotes
-      .map((q) => rows.find((r) => r.id === q.requestId))
-      .filter((r): r is Request => !!r);
-    await notify(
-      { role: "supplier", partyId: supplier.id },
-      {
-        subject: `RFQ: ${items.length === 1 ? items[0].productName : `${items.length} produtos`}${number ? ` (solicitação nº ${number})` : ""}`,
-        body: `${items.map((r) => `${r.productName}: ${r.quantity} ${r.unit}`).join("; ")}. Responda cada produto com preço, prazo e condições.`,
-        link: quotes.length === 1 ? `/app/quotes/${quotes[0].id}` : "/app",
-      },
-    );
+  /* Cada cotação entra em `created` assim que nasce. Se um produto falhar no
+     meio, os fornecedores ainda são avisados do que já foi criado (numa nova
+     tentativa a cotação existente é pulada e não seria avisada) e o erro segue. */
+  const created: Quote[] = [];
+  let failure: unknown = null;
+  try {
+    for (const r of rows)
+      await openRfq(user, r.id, supplierIds, {
+        notify: false,
+        collect: created,
+      });
+  } catch (error) {
+    failure = error;
   }
-  const total = [...bySupplier.values()].reduce((n, q) => n + q.length, 0);
+  const number = rows.find((r) => r.number)?.number;
+  try {
+    for (const supplier of suppliers) {
+      const quotes = created.filter((q) => q.supplierId === supplier.id);
+      if (!quotes.length) continue;
+      const items = quotes
+        .map((q) => rows.find((r) => r.id === q.requestId))
+        .filter((r): r is Request => !!r);
+      await notify(
+        { role: "supplier", partyId: supplier.id },
+        {
+          subject: `RFQ: ${items.length === 1 ? items[0].productName : `${items.length} produtos`}${number ? ` (solicitação nº ${number})` : ""}`,
+          body: `${items.map((r) => `${r.productName}: ${r.quantity} ${r.unit}`).join("; ")}. Responda cada produto com preço, prazo e condições.`,
+          link: quotes.length === 1 ? `/app/quotes/${quotes[0].id}` : "/app",
+        },
+      );
+    }
+  } catch (error) {
+    // Com falha anterior, ela é o erro que importa; o aviso perdido fica no log.
+    if (!failure) throw error;
+    console.error("[requests] aviso da RFQ do lote falhou", error);
+  }
+  if (failure) throw failure;
+  const total = created.length;
   await audit(
     user,
     "rfq.open_batch",

@@ -35,6 +35,13 @@ export const pt = {
     "A RFQ sai de uma vez para os {n} produtos do lote ainda em cotação. Cada fornecedor recebe um aviso só, com todos os produtos, e responde produto a produto.",
   "reqBatch.rfqSubmit": "Abrir RFQ para {n} produtos",
   "reqBatch.rfqDone": "RFQ aberta para {n} produtos do lote.",
+  "reqBatch.rfqHintOne":
+    "A RFQ sai para o único produto do lote ainda em cotação. Cada fornecedor recebe um aviso.",
+  "reqBatch.rfqSubmitOne": "Abrir RFQ para 1 produto",
+  "reqBatch.rfqDoneOne": "RFQ aberta para 1 produto do lote.",
+  "reqBatch.rfqNoSuppliers":
+    "Nenhum fornecedor ativo cadastrado. Cadastre ou ative um fornecedor para abrir a RFQ.",
+  "reqBatch.rfqNoSuppliersLink": "Ver fornecedores →",
   "reqBatch.rfqSupplies": "fornece {n} dos produtos",
   "reqBatch.rfqInvited": "já convidado em todos",
   "reqBatch.rfqPartial": "convidado em {n}",
@@ -91,6 +98,13 @@ export const en: Record<keyof typeof pt, string> = {
     "The RFQ goes out at once for the {n} batch products still being quoted. Each supplier gets a single notice with all products and answers product by product.",
   "reqBatch.rfqSubmit": "Open RFQ for {n} products",
   "reqBatch.rfqDone": "RFQ opened for {n} products of the batch.",
+  "reqBatch.rfqHintOne":
+    "The RFQ goes out for the only batch product still being quoted. Each supplier gets a notice.",
+  "reqBatch.rfqSubmitOne": "Open RFQ for 1 product",
+  "reqBatch.rfqDoneOne": "RFQ opened for 1 product of the batch.",
+  "reqBatch.rfqNoSuppliers":
+    "No active supplier registered. Register or activate a supplier to open the RFQ.",
+  "reqBatch.rfqNoSuppliersLink": "See suppliers →",
   "reqBatch.rfqSupplies": "supplies {n} of the products",
   "reqBatch.rfqInvited": "already invited for all",
   "reqBatch.rfqPartial": "invited for {n}",
@@ -148,6 +162,13 @@ export const zh: Record<keyof typeof pt, string> = {
     "一次性向批次中仍在报价阶段的 {n} 个产品发起询价。每个供应商只收到一条包含所有产品的通知，并逐个产品报价。",
   "reqBatch.rfqSubmit": "为 {n} 个产品发起询价",
   "reqBatch.rfqDone": "已为批次中的 {n} 个产品发起询价。",
+  "reqBatch.rfqHintOne":
+    "询价发给批次中唯一仍在报价阶段的产品。每个供应商都会收到通知。",
+  "reqBatch.rfqSubmitOne": "为 1 个产品发起询价",
+  "reqBatch.rfqDoneOne": "已为批次中的 1 个产品发起询价。",
+  "reqBatch.rfqNoSuppliers":
+    "没有已启用的供应商。请先登记或启用供应商再发起询价。",
+  "reqBatch.rfqNoSuppliersLink": "查看供应商 →",
   "reqBatch.rfqSupplies": "供应其中 {n} 个产品",
   "reqBatch.rfqInvited": "已邀请全部产品",
   "reqBatch.rfqPartial": "已邀请 {n} 个",
