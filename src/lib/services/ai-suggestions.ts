@@ -199,6 +199,15 @@ export async function applyProductSuggestion(
     applied.push(...appliedKeys(confirmed, input.attributes && !!attrText));
     if (applied.length) {
       await store.update("products", product.id, patch);
+      // Material/cor confirmados sem texto novo: a especificação automática acompanha.
+      if (patch.specification === undefined) {
+        const { refreshAutoSpecification, getProductSheet } =
+          await import("./product-sheet");
+        await refreshAutoSpecification(product.id, {
+          product,
+          master: await getProductSheet(product.id),
+        });
+      }
       await audit(
         user,
         "ai.apply",

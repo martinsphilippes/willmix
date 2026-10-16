@@ -47,6 +47,7 @@ export interface ProductSpecLabels {
   powerSources: Record<string, string>;
   packaging: string;
   masterBox: string;
+  piece: string;
   pieces: string;
   inner: string;
 }
@@ -77,6 +78,7 @@ export function productSpecLabels(t: Translate): ProductSpecLabels {
     ),
     packaging: t("productSpec.packaging"),
     masterBox: t("productSpec.masterBox"),
+    piece: t("productSpec.piece"),
     pieces: t("productSpec.pieces"),
     inner: t("productSpec.inner"),
   };
@@ -85,46 +87,50 @@ export function productSpecLabels(t: Translate): ProductSpecLabels {
 const positive = (n: number | null | undefined): n is number =>
   typeof n === "number" && Number.isFinite(n) && n > 0;
 
-/** Siglas de material, energia e medida que ficam em maiúsculas. */
+/** Siglas de material, energia e embalagem que ficam em maiúsculas. */
 const ACRONYMS = new Set(
-  "PVC ABS PP PE PET PS PU PC PA EVA TPR TPE TPU PMMA NBR PBT POM HDPE LDPE BPA SS LED USB AC DC AA AAA UV RGB CE FDA PANTONE".split(
+  "PVC ABS PP PE PET PS PU PC PA EVA TPR TPE TPU PMMA NBR PBT POM HDPE LDPE BPA SS LED USB AC DC AA AAA UV RGB CE FDA MDF OPP BOPP EPE EPS TNT AISI HIPS PEVA PPS PVA ECO".split(
     " ",
   ),
 );
+const VOWEL = /[AEIOUYÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÄËÏÖÜ]/;
 
-/** Siglas e códigos que ficam como estão ("PVC", "AA", "304", "18/8"). */
-const keepToken = (word: string) =>
-  /\d/.test(word) || ACRONYMS.has(word.replace(/[^\p{L}]/gu, ""));
+/**
+ * Uma sequência de letras em maiúsculas: sigla (lista, ou curta sem vogal
+ * como "TPR", "MDF") fica; o resto vai para minúsculas.
+ */
+const caseRun = (run: string) =>
+  ACRONYMS.has(run) || (run.length <= 5 && !VOWEL.test(run))
+    ? run
+    : run.toLowerCase();
 
 /**
  * Texto todo em maiúsculas ("AÇO INOX 304", "COLOR BOX") vira frase
- * ("Aço inox 304", "Color box"); siglas, números e "PANTONE <código>" ficam.
- * Texto com minúsculas fica como foi escrito.
+ * ("Aço inox 304", "Color box"); siglas ("PVC", "PP+TPR"), números e
+ * referências Pantone ("PANTONE 11-0601 TCX") ficam. Texto com minúsculas
+ * (ou sem letras latinas, como chinês) fica como foi escrito.
  */
 export function readableText(raw: string): string {
   const text = raw.replace(/\s+/g, " ").trim();
   if (!text || text !== text.toUpperCase() || !/\p{Lu}/u.test(text))
     return text;
-  return text
-    .split(/(\s*\/\s*)/)
-    .map((part) => {
-      if (/^\s*\/\s*$/.test(part) || /^PANTONE\b/.test(part)) return part;
-      let first = true;
-      return part
-        .split(" ")
-        .map((word) => {
-          if (!word) return word;
-          const out = keepToken(word)
-            ? word
-            : first
-              ? word.charAt(0) + word.slice(1).toLowerCase()
-              : word.toLowerCase();
-          first = false;
-          return out;
-        })
-        .join(" ");
-    })
-    .join("");
+  // Referências Pantone ficam intactas (até a próxima barra, vírgula ou parêntese).
+  const kept: string[] = [];
+  const masked = text.replace(/PANTONE\s+[^/(),;]+/g, (m) => {
+    kept.push(m.trim());
+    return `\u0000${kept.length - 1}\u0000${m.endsWith(" ") ? " " : ""}`;
+  });
+  let first = true;
+  const cased = masked.replace(/\p{L}+/gu, (run) => {
+    const out = caseRun(run);
+    if (first && out !== run) {
+      first = false;
+      return out.charAt(0).toUpperCase() + out.slice(1);
+    }
+    first = false;
+    return out;
+  });
+  return cased.replace(/\u0000(\d+)\u0000/g, (_, i: string) => kept[Number(i)]);
 }
 
 /** A especificação, uma linha por informação; vazia quando não há dados. */
@@ -187,18 +193,22 @@ export function buildProductSpec(
   if (d.packageType) line(labels.packaging, readableText(d.packageType));
 
   const box = dims(d.boxLengthCm, d.boxWidthCm, d.boxHeightCm);
-  const cbm = positive(d.cbm)
-    ? d.cbm
-    : positive(d.boxLengthCm) &&
-        positive(d.boxWidthCm) &&
-        positive(d.boxHeightCm)
-      ? (d.boxLengthCm * d.boxWidthCm * d.boxHeightCm) / 1_000_000
-      : null;
+  // CBM das medidas da caixa quando existem (como o cadastro grava); senão o informado.
+  const cbm =
+    positive(d.boxLengthCm) && positive(d.boxWidthCm) && positive(d.boxHeightCm)
+      ? Math.round(
+          ((d.boxLengthCm * d.boxWidthCm * d.boxHeightCm) / 1_000_000) * 10_000,
+        ) / 10_000
+      : positive(d.cbm)
+        ? d.cbm
+        : null;
   line(
     labels.masterBox,
     [
       positive(d.masterBoxQty)
-        ? fill(labels.pieces, { n: n(d.masterBoxQty, 0) })
+        ? fill(d.masterBoxQty === 1 ? labels.piece : labels.pieces, {
+            n: n(d.masterBoxQty, 0),
+          })
         : null,
       // Caixa interna só quando agrupa (mais de 1 peça e menos que a master).
       positive(d.innerBoxQty) &&

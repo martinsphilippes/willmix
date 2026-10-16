@@ -81,7 +81,32 @@ describe("texto da especificação", () => {
     ).toBe("Caixa master: 4 peças");
   });
 
+  it("CBM das medidas da caixa (como o cadastro grava); 1 peça no singular", () => {
+    expect(
+      spec.buildProductSpec(
+        {
+          masterBoxQty: 1,
+          boxLengthCm: 60,
+          boxWidthCm: 40,
+          boxHeightCm: 35,
+          cbm: 0.072,
+        },
+        labels,
+      ),
+    ).toBe("Caixa master: 1 peça · 60 × 40 × 35 cm · 0,084 m³");
+    expect(spec.buildProductSpec({ cbm: 0.05 }, labels)).toBe(
+      "Caixa master: 0,05 m³",
+    );
+  });
+
   it("maiúsculas viram frase; siglas, números e Pantone ficam", () => {
+    expect(spec.readableText("BRANCO (PANTONE 11-0601 TCX)")).toBe(
+      "Branco (PANTONE 11-0601 TCX)",
+    );
+    expect(spec.readableText("PP+TPR")).toBe("PP+TPR");
+    expect(spec.readableText("MDF CRU")).toBe("MDF cru");
+    expect(spec.readableText("TAMPA DE VIDRO")).toBe("Tampa de vidro");
+    expect(spec.readableText("塑料 PP")).toBe("塑料 PP");
     expect(spec.readableText("AÇO INOX 304")).toBe("Aço inox 304");
     expect(spec.readableText("PVC ATÓXICO")).toBe("PVC atóxico");
     expect(spec.readableText("WHITE / PANTONE 185 C")).toBe(
@@ -117,5 +142,22 @@ describe("especificação no cadastro", () => {
     expect((await store.get("products", "prod-piscina"))!.specification).toBe(
       "Piscina infantil redonda, com válvula.",
     );
+  });
+
+  it("outros caminhos que mudam os dados (IA confirmada) também atualizam o automático", async () => {
+    const store = getStore();
+    await store.update("products", "prod-boneca", { specification: null });
+    await pm.saveProductSheet(admin, "prod-boneca", { packageType: "BLISTER" });
+    const before = (await store.get("products", "prod-boneca"))!;
+    expect(before.specification).toContain("Material: PVC atóxico");
+    // Mudança fora da ficha mestre, seguida da atualização do automático.
+    await store.update("products", "prod-boneca", { material: "VINIL" });
+    await pm.refreshAutoSpecification("prod-boneca", {
+      product: before,
+      master: await pm.getProductSheet("prod-boneca"),
+    });
+    expect(
+      (await store.get("products", "prod-boneca"))!.specification,
+    ).toContain("Material: Vinil");
   });
 });

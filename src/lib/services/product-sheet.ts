@@ -191,32 +191,33 @@ export function withProductColumns<T extends Partial<PurchaseSheet>>(
 }
 
 /**
- * Dados da especificação: colunas do produto e, da ficha mestre, embalagem,
- * capacidade e energia (só dados do produto; nada comercial).
+ * Dados da especificação: as colunas do produto (as mesmas do formulário do
+ * cadastro) e, da ficha mestre, só o que o produto não tem em coluna:
+ * embalagem, capacidade e energia. Nada comercial.
  */
 export function productSpecData(
   product: Product,
   master: Partial<PurchaseSheet> | null | undefined,
 ): ProductSpecData {
   return {
-    material: product.material ?? master?.material ?? null,
-    color: product.color ?? master?.colorAssortment ?? null,
-    colorPantones: product.colorPantones ?? master?.colorPantones ?? null,
+    material: product.material,
+    color: product.color,
+    colorPantones: product.colorPantones ?? null,
     capacityMl: master?.capacityMl ?? null,
     lengthCm: product.lengthCm,
     widthCm: product.widthCm,
     heightCm: product.heightCm,
-    netWeightKg: product.netWeightKg ?? master?.netWeightPcKg ?? null,
-    grossWeightKg: product.grossWeightKg ?? master?.grossWeightPcKg ?? null,
+    netWeightKg: product.netWeightKg,
+    grossWeightKg: product.grossWeightKg,
     powerSource: master?.powerSource ?? null,
     powerDetail: master?.powerDetail ?? null,
     packageType: master?.packageType ?? null,
-    masterBoxQty: product.masterBoxQty ?? master?.masterCartonQty ?? null,
-    innerBoxQty: product.innerBoxQty ?? master?.innerQty ?? null,
-    boxLengthCm: product.boxLengthCm ?? master?.lengthCm ?? null,
-    boxWidthCm: product.boxWidthCm ?? master?.widthCm ?? null,
-    boxHeightCm: product.boxHeightCm ?? master?.heightCm ?? null,
-    cbm: product.cbm ?? master?.cbmPerCarton ?? null,
+    masterBoxQty: product.masterBoxQty,
+    innerBoxQty: product.innerBoxQty,
+    boxLengthCm: product.boxLengthCm,
+    boxWidthCm: product.boxWidthCm,
+    boxHeightCm: product.boxHeightCm,
+    cbm: product.cbm,
   };
 }
 

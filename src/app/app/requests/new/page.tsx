@@ -147,26 +147,33 @@ export default async function NewRequestPage({
     })),
     label: `${p.name}${p.sku ? ` (${p.sku})` : ""}`,
     productName: p.name,
-    description:
-      p.specification?.trim() ||
-      `${p.name}${p.category ? ` — ${p.category}` : ""}`,
-    specification: [
-      p.category ? `${t("catalog.category")}: ${p.category}` : null,
-      p.material ? `${t("catalog.material")}: ${p.material}` : null,
-      p.color ? `${t("catalog.color")}: ${p.color}` : null,
-      p.pantone ? `${t("catalog.pantone")}: ${p.pantone}` : null,
-      dims(p.lengthCm, p.widthCm, p.heightCm)
-        ? `${t("catalog.dimensions")}: ${dims(p.lengthCm, p.widthCm, p.heightCm)}`
-        : null,
-      p.netWeightKg !== null
-        ? `${t("catalog.netWeight")}: ${p.netWeightKg}`
-        : null,
-      p.masterBoxQty !== null
-        ? `${t("catalog.masterBoxQty")}: ${p.masterBoxQty}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join("\n"),
+    description: `${p.name}${p.category ? ` — ${p.category}` : ""}`,
+    // A especificação do cadastro (montada com os dados ou escrita à mão)
+    // vale; produto antigo sem ela: os dados das colunas.
+    specification: p.specification?.trim()
+      ? [
+          p.category ? `${t("catalog.category")}: ${p.category}` : null,
+          p.specification.trim(),
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : [
+          p.category ? `${t("catalog.category")}: ${p.category}` : null,
+          p.material ? `${t("catalog.material")}: ${p.material}` : null,
+          p.color ? `${t("catalog.color")}: ${p.color}` : null,
+          p.pantone ? `${t("catalog.pantone")}: ${p.pantone}` : null,
+          dims(p.lengthCm, p.widthCm, p.heightCm)
+            ? `${t("catalog.dimensions")}: ${dims(p.lengthCm, p.widthCm, p.heightCm)}`
+            : null,
+          p.netWeightKg !== null
+            ? `${t("catalog.netWeight")}: ${p.netWeightKg}`
+            : null,
+          p.masterBoxQty !== null
+            ? `${t("catalog.masterBoxQty")}: ${p.masterBoxQty}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join("\n"),
   }));
 
   const renderMatches = (items: typeof matched) => (

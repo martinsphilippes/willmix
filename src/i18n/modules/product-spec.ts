@@ -15,6 +15,7 @@ export const pt = {
   "productSpec.power": "Energia",
   "productSpec.packaging": "Embalagem",
   "productSpec.masterBox": "Caixa master",
+  "productSpec.piece": "{n} peça",
   "productSpec.pieces": "{n} peças",
   "productSpec.inner": "{n} por caixa interna",
   "productSpec.hint.auto":
@@ -37,6 +38,7 @@ export const en: Record<keyof typeof pt, string> = {
   "productSpec.power": "Power",
   "productSpec.packaging": "Packaging",
   "productSpec.masterBox": "Master carton",
+  "productSpec.piece": "{n} piece",
   "productSpec.pieces": "{n} pieces",
   "productSpec.inner": "{n} per inner box",
   "productSpec.hint.auto":
@@ -59,6 +61,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "productSpec.power": "电源",
   "productSpec.packaging": "包装",
   "productSpec.masterBox": "外箱",
+  "productSpec.piece": "{n} 件",
   "productSpec.pieces": "{n} 件",
   "productSpec.inner": "每内盒 {n} 件",
   "productSpec.hint.auto":

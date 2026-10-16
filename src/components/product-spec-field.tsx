@@ -41,6 +41,8 @@ export function ProductSpecField({
   const ref = useRef<HTMLTextAreaElement>(null);
   const [auto, setAuto] = useState(initialAuto);
   const autoRef = useRef(initialAuto);
+  // A leitura mais recente (dados da ficha mestre mudam com a tela).
+  const currentRef = useRef<() => string>(() => "");
 
   // Dados do produto como estão no formulário agora.
   function current(): string {
@@ -82,11 +84,33 @@ export function ProductSpecField({
         boxLengthCm: specNumber(v("boxLengthCm")),
         boxWidthCm: specNumber(v("boxWidthCm")),
         boxHeightCm: specNumber(v("boxHeightCm")),
-        cbm: specNumber(v("cbm")),
+        // CBM calculado (campo desativado) não é enviado: o servidor usa as
+        // medidas da caixa, e a montagem também.
+        cbm: (() => {
+          const el = form.elements.namedItem("cbm");
+          return el instanceof HTMLInputElement && !el.disabled
+            ? specNumber(el.value)
+            : null;
+        })(),
       },
       labels,
     );
   }
+
+  useEffect(() => {
+    currentRef.current = current;
+  });
+
+  // Tela atualizada (ex.: ficha mestre salva): o automático acompanha.
+  useEffect(() => {
+    if (autoRef.current && ref.current)
+      ref.current.value = currentRef.current();
+  }, [
+    extras.capacityMl,
+    extras.packageType,
+    extras.powerSource,
+    extras.powerDetail,
+  ]);
 
   // Outro campo do formulário mudou: a especificação automática acompanha.
   useEffect(() => {
@@ -99,7 +123,7 @@ export function ProductSpecField({
       // Depois do React (cores Pantone e campos controlados já atualizados).
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        if (autoRef.current) el.value = current();
+        if (autoRef.current) el.value = currentRef.current();
       }, 0);
     };
     form.addEventListener("input", onChange);
@@ -109,8 +133,6 @@ export function ProductSpecField({
       form.removeEventListener("input", onChange);
       form.removeEventListener("change", onChange);
     };
-    // `current` lê o formulário na hora; extras e rótulos vêm do servidor.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function setMode(next: boolean) {
@@ -120,6 +142,8 @@ export function ProductSpecField({
 
   return (
     <div className="space-y-1">
+      {/* O servidor monta de novo com os dados salvos enquanto é automática. */}
+      <input type="hidden" name={`${name}Auto`} value={auto ? "1" : ""} />
       <Textarea
         ref={ref}
         id={id}
@@ -141,7 +165,7 @@ export function ProductSpecField({
             type="button"
             className="font-medium text-brand-700 underline underline-offset-2 hover:text-brand-800"
             onClick={() => {
-              if (ref.current) ref.current.value = current();
+              if (ref.current) ref.current.value = currentRef.current();
               setMode(true);
             }}
             data-product-spec-rebuild

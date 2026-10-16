@@ -300,11 +300,22 @@ export async function promoteSourcingItem(
     priceTiers: item.priceTiers,
   };
   let product: Product;
-  if (item.productId && (await store.get("products", item.productId))) {
+  const existing = item.productId
+    ? await store.get("products", item.productId)
+    : null;
+  if (item.productId && existing) {
     product = await store.update("products", item.productId, {
       ...fields,
       lineId: options.lineId,
     });
+    // Dados novos do sourcing: a especificação automática acompanha.
+    const { refreshAutoSpecification, getProductSheet } =
+      await import("./product-sheet");
+    await refreshAutoSpecification(product.id, {
+      product: existing,
+      master: await getProductSheet(product.id),
+    });
+    product = (await store.get("products", product.id)) ?? product;
   } else {
     product = await store.create("products", {
       ...PRODUCT_EXTRA_DEFAULTS,

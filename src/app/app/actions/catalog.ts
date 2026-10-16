@@ -166,9 +166,16 @@ export async function updateProductSheetAction(form: FormData) {
       const { sameSpec } = await import("@/lib/product-spec");
       const master = await getProductSheet(id);
       const typed = parsed.specification;
-      if (!typed || sameSpec(typed, autoProductSpec(product, master)))
-        next.specification =
-          autoProductSpec({ ...product, ...next }, master) || null;
+      const after = autoProductSpec({ ...product, ...next }, master);
+      // Automática (o campo diz, ou o texto é o montado com os dados de
+      // antes ou de agora): monta com o que fica gravado.
+      if (
+        str(form, "specificationAuto") === "1" ||
+        !typed ||
+        sameSpec(typed, autoProductSpec(product, master)) ||
+        sameSpec(typed, after)
+      )
+        next.specification = after || null;
     }
     const ps = await import("@/lib/services/product-suppliers");
     // Troca de fornecedor pelo cadastro: a mesma troca do "Tornar principal"
