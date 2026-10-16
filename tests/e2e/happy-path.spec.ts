@@ -197,6 +197,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
     .click();
   await page.waitForLoadState("networkidle");
+  // Enviada: segue para as Pendências com a confirmação e o próximo passo.
+  await page.waitForURL(/\/app\?sent=/);
+  await expect(page.locator("[data-quote-sent]")).toBeVisible();
   await expect(
     page.getByText(/报价已提交|Quotation sent|Cotação enviada/),
   ).toBeVisible();

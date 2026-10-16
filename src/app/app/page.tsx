@@ -11,7 +11,7 @@ import { TaskList } from "@/components/task-list";
 export default async function AppHome({ searchParams }: PageProps<"/app">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app");
-  const { filter } = await searchParams;
+  const { filter, sent } = await searchParams;
   if (isWellmix(user)) {
     return (
       <ControlTower
@@ -21,5 +21,11 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
     );
   }
   if (user.role === "customer") redirect("/app/requests");
-  return <TaskList user={user} />;
+  // Cotação recém-enviada pelo fornecedor: confirmação e próxima a responder.
+  return (
+    <TaskList
+      user={user}
+      sent={typeof sent === "string" ? sent.slice(0, 64) : null}
+    />
+  );
 }

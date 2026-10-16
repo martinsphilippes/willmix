@@ -10,7 +10,8 @@ import { cx, inputDenseClass } from "./ui";
  * CBM da caixa master pelas medidas da caixa (C × L × A ÷ 1.000.000), ao vivo
  * e com a mesma conta do servidor: com as três medidas o campo mostra o
  * calculado e não se digita; faltando alguma, digita-se o CBM (e, ao apagar
- * uma medida, o último calculado fica no campo para ajustar).
+ * uma medida, o último calculado fica no campo para ajustar). Quem só lê vê o
+ * CBM salvo (é o que vale nas contas até alguém salvar a ficha de novo).
  */
 
 /** CBM pelas medidas do mesmo formulário, ou nulo se faltar alguma. */
@@ -80,16 +81,39 @@ export function BoxCbmInput({
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [manual, setManual] = useState(defaultValue);
-  const cbm = useBoxCbm(ref, initialCbm, (prev) => setManual(String(prev)));
+  // Valor escrito no campo enquanto calculado (só a volta do rascunho faz
+  // isso): vale quando uma medida some e o campo volta a ser digitado.
+  const typed = useRef<string | null>(null);
+  const cbm = useBoxCbm(ref, initialCbm, (prev) => {
+    setManual(typed.current ?? String(prev));
+    typed.current = null;
+  });
   // O valor muda sem tecla neste campo: avisa o formulário (programação,
-  // containers e o vermelho de "Preencha este campo" leem daqui).
-  const announced = useRef(cbm);
+  // containers e o vermelho de "Preencha este campo" leem daqui). Também ao
+  // abrir, se o calculado não é o salvo (ex.: ficha sem CBM com medidas).
+  const announced = useRef<number | null | undefined>(undefined);
   useEffect(() => {
-    if (announced.current === cbm) return;
-    announced.current = cbm;
-    ref.current?.dispatchEvent(new Event("input", { bubbles: true }));
-  }, [cbm]);
-  const auto = cbm !== null;
+    if (disabled) return;
+    const first = announced.current === undefined;
+    if (!first && announced.current === cbm) return;
+    if (first && (cbm === null || defaultValue === String(cbm))) {
+      announced.current = cbm;
+      return;
+    }
+    // Marcado só quando avisa (o efeito roda duas vezes em desenvolvimento).
+    const id = window.setTimeout(() => {
+      announced.current = cbm;
+      ref.current?.dispatchEvent(new Event("input", { bubbles: true }));
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [cbm, defaultValue, disabled]);
+  // Só leitura: o CBM salvo (o calculado aparece na dica, se for outro).
+  const auto = cbm !== null && !disabled;
+  const value = auto
+    ? String(cbm)
+    : disabled
+      ? defaultValue || (cbm !== null ? String(cbm) : "")
+      : manual;
   return (
     <input
       ref={ref}
@@ -97,14 +121,15 @@ export function BoxCbmInput({
       name={name}
       type="text"
       inputMode="decimal"
-      value={auto ? String(cbm) : manual}
+      value={value}
       onChange={(e) => {
-        if (!auto) setManual(e.target.value);
+        if (auto) typed.current = e.target.value;
+        else setManual(e.target.value);
       }}
       readOnly={auto}
       aria-readonly={auto || undefined}
       disabled={disabled}
-      data-box-cbm={auto ? "auto" : "manual"}
+      data-box-cbm={cbm !== null ? "auto" : "manual"}
       className={cx(
         inputDenseClass,
         "tabular-nums",
@@ -114,21 +139,48 @@ export function BoxCbmInput({
   );
 }
 
-/** Dica ao lado: calculado pelas medidas, ou como fazer para calcular. */
+/**
+ * Dica ao lado: calculado pelas medidas (e, se o salvo é outro, o que muda ao
+ * salvar), ou como fazer para calcular. Quem só lê não recebe instrução.
+ */
 export function BoxCbmHint({
   initialCbm,
-  auto,
-  manual,
+  stored,
+  disabled,
+  texts,
 }: {
   initialCbm: number | null;
-  auto: string;
-  manual: string;
+  /** CBM salvo na ficha. */
+  stored: number | null;
+  disabled?: boolean;
+  texts: {
+    auto: string;
+    manual: string;
+    /** "Salvo: {stored} m³; ao salvar, vale o das medidas." */
+    willUpdate: string;
+    /** "Pelas medidas: {cbm} m³" (quem só lê, salvo diferente). */
+    fromSize: string;
+  };
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const cbm = useBoxCbm(ref, initialCbm);
+  const differs =
+    cbm !== null && stored !== null && Math.abs(stored - cbm) > 1e-9;
+  const text =
+    cbm === null
+      ? disabled
+        ? null
+        : texts.manual
+      : disabled
+        ? differs
+          ? texts.fromSize.replace("{cbm}", String(cbm))
+          : texts.auto
+        : differs
+          ? `${texts.auto}. ${texts.willUpdate.replace("{stored}", String(stored))}`
+          : texts.auto;
   return (
     <span ref={ref} data-box-cbm-hint={cbm !== null ? "auto" : "manual"}>
-      {cbm !== null ? auto : manual}
+      {text}
     </span>
   );
 }

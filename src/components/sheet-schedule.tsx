@@ -254,11 +254,14 @@ export function SheetSchedule({
         (el.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "";
       // CBM da caixa pelas medidas quando há as três (o campo mostra o
       // mesmo calculado e o servidor grava assim); senão o digitado.
-      const boxCbm = cbmFromDimensions(
-        parseNum(v("lengthCm")),
-        parseNum(v("widthCm")),
-        parseNum(v("heightCm")),
-      );
+      // Quem só lê vê o salvo (é o que vale nas contas até salvar de novo).
+      const boxCbm = disabled
+        ? null
+        : cbmFromDimensions(
+            parseNum(v("lengthCm")),
+            parseNum(v("widthCm")),
+            parseNum(v("heightCm")),
+          );
       setForm({
         masterCartonQty: parseNum(v("masterCartonQty"), true),
         cbmPerCarton: boxCbm ?? parseNum(v("cbmPerCarton")),
@@ -300,7 +303,7 @@ export function SheetSchedule({
       el.removeEventListener("input", read);
       el.removeEventListener("change", read);
     };
-  }, []);
+  }, [disabled]);
 
   // Volta de um envio que não salvou: a programação digitada volta, inclusive
   // linhas abertas com "+ Programação" e o que os botões mudaram.
@@ -1087,6 +1090,8 @@ function ScheduleGenerator({
         onUseCalc={() => {
           setTotalTouched(false);
           setError(null);
+          // O link some ao voltar ao calculado: o foco fica no total.
+          totalRef.current?.focus();
         }}
       />
       {Number.isFinite(totalNum) &&
