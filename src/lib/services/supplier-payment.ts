@@ -11,8 +11,13 @@ import {
 import { isWellmix } from "@/lib/auth/permissions";
 import { submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
+import type {
+  ScheduleInstallment,
+  SupplierSchedule,
+} from "@/lib/supplier-terms";
 import { audit } from "./audit";
 import { notify } from "./notifications";
+import { orderPayable, type TermsSource } from "./supplier-terms";
 
 export class SupplierPaymentError extends Error {}
 
@@ -33,8 +38,15 @@ export const SUPPLIER_PAYMENT_METHODS = [
 export type SupplierPaymentMethod = (typeof SUPPLIER_PAYMENT_METHODS)[number];
 
 export interface SupplierPaymentView {
-  /** Valor a pagar agora: FOB do pedido menos o que já foi registrado. */
+  /**
+   * Valor a pagar agora: o que falta da próxima parcela da condição do
+   * fornecedor; sem condição configurada, o FOB menos o que já foi registrado.
+   */
   due: number | null;
+  /** Parcela que se paga agora (nula sem condição configurada). */
+  installment: ScheduleInstallment | null;
+  schedule: SupplierSchedule;
+  termsSource: TermsSource | null;
   currency: string;
   fobTotal: number | null;
   alreadyRegistered: number;
@@ -47,7 +59,6 @@ export interface SupplierPaymentView {
   transferText: string;
   emailUrl: string;
   whatsappUrl: string;
-  registered: boolean;
 }
 
 const money = (value: number, currency: string) =>
@@ -61,13 +72,11 @@ export async function supplierPaymentView(
   orderLink: string,
 ): Promise<SupplierPaymentView> {
   const store = getStore();
-  const [supplier, payments, settings, stages] = await Promise.all([
+  const [supplier, payments, settings, payable] = await Promise.all([
     store.get("parties", order.supplierId),
     store.list("payments", { filter: { orderId: order.id } }),
     getSettings(),
-    store.list("stages", {
-      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
-    }),
+    orderPayable(order),
   ]);
   const currency = (order.fobCurrency ?? "USD").toUpperCase();
   const alreadyRegistered = payments
@@ -76,14 +85,20 @@ export async function supplierPaymentView(
         p.direction === "supplier_out" && p.currency.toUpperCase() === currency,
     )
     .reduce((sum, p) => sum + p.amount, 0);
+  const { schedule } = payable;
+  const installment = schedule.next;
   const due =
-    order.fobTotal !== null
-      ? Math.max(
-          0,
-          Math.round((order.fobTotal - alreadyRegistered) * 100) / 100,
-        )
-      : null;
-  const reference = `WELLMIX PO #${order.number}`;
+    order.fobTotal === null
+      ? null
+      : schedule.terms
+        ? (installment?.open ?? 0)
+        : Math.max(
+            0,
+            Math.round((order.fobTotal - alreadyRegistered) * 100) / 100,
+          );
+  // Parcela na referência: o banco e o fornecedor sabem o que está sendo pago.
+  const part = installment ? ` ${installment.index}/${installment.count}` : "";
+  const reference = `WELLMIX PO #${order.number}${part}`;
   const amountText = due !== null ? money(due, currency) : "—";
   const transferText = [
     `Beneficiary: ${supplier?.bankBeneficiary ?? supplier?.name ?? "—"}`,
@@ -99,33 +114,29 @@ export async function supplierPaymentView(
   const message = [
     `Solicitação de pagamento ao fornecedor — Pedido #${order.number}`,
     `Fornecedor: ${supplier?.name ?? "—"}`,
+    installment
+      ? `Parcela: ${installment.index}/${installment.count} (${installment.percent}% do FOB)`
+      : null,
     `Valor: ${amountText}`,
     "",
     "Dados para a transferência:",
     transferText,
     "",
     `Pedido no portal: ${orderLink}`,
-  ].join("\n");
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
   const subject = `Pagamento ao fornecedor — Pedido #${order.number} — ${amountText}`;
   const emailUrl = `mailto:${encodeURIComponent(settings.financeEmail || "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
   const whatsappUrl = `https://wa.me/${settings.financeWhatsapp || ""}?text=${encodeURIComponent(message)}`;
   const missingBank = (
     ["bankBeneficiary", "bankName", "bankAccount", "bankSwift"] as const
   ).filter((k) => !supplier?.[k]);
-  let registered = false;
-  if (stages[0]) {
-    const [req] = await store.list("requirements", {
-      filter: {
-        stageId: stages[0].id,
-        key: "payment_registered",
-        status: "done",
-      },
-      limit: 1,
-    });
-    registered = !!req;
-  }
   return {
     due,
+    installment,
+    schedule,
+    termsSource: payable.source,
     currency,
     fobTotal: order.fobTotal,
     alreadyRegistered,
@@ -134,7 +145,6 @@ export async function supplierPaymentView(
     transferText,
     emailUrl,
     whatsappUrl,
-    registered,
   };
 }
 
@@ -146,6 +156,11 @@ export interface RegisterSupplierPaymentInput {
   fxRate?: number | null;
   note?: string | null;
   proofDocumentId?: string | null;
+  /**
+   * Ações rápidas: a parcela que a tela mostrava. Se outra pessoa (ou um
+   * clique duplo) já cobriu essa parcela, nada é registrado.
+   */
+  installment?: number | null;
 }
 
 /**
@@ -164,12 +179,20 @@ export async function registerSupplierPayment(
   if (!order) throw new SupplierPaymentError("not_found");
   let amount = input.amount ?? null;
   let currency = (input.currency ?? order.fobCurrency ?? "USD").toUpperCase();
+  let note = input.note ?? null;
   if (amount === null) {
     const view = await supplierPaymentView(order, "");
+    if (
+      input.installment != null &&
+      (view.installment?.index ?? null) !== input.installment
+    )
+      throw new SupplierPaymentError("installment_changed");
     if (!view.due || view.due <= 0)
       throw new SupplierPaymentError("nothing_due");
     amount = view.due;
     currency = view.currency;
+    if (view.installment && !note)
+      note = `Parcela ${view.installment.index}/${view.installment.count}`;
   }
   if (!(amount > 0)) throw new SupplierPaymentError("invalid_amount");
   const status = input.method === "manual" ? "confirmed" : "pending";
@@ -193,7 +216,7 @@ export async function registerSupplierPayment(
     registeredByUserId: user.id,
     confirmedByUserId: null,
     confirmedAt: null,
-    note: input.note ?? null,
+    note,
   });
   await audit(
     user,

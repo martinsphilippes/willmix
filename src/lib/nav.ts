@@ -65,6 +65,7 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
         key: "nav.group.management",
         items: [
           { href: "/app/finance", key: "nav.finance" },
+          { href: "/app/payables", key: "nav.payables" },
           { href: "/app/penalties", key: "nav.penalties" },
           { href: "/app/after-sales", key: "nav.afterSales" },
           { href: "/app/marketing", key: "nav.marketing" },

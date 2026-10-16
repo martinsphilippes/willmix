@@ -8,6 +8,7 @@ import {
   LINE_EXTRA_DEFAULTS,
   type LinePrompts,
   type OperationMode,
+  type PaymentTermInstallment,
   type RadarStatus,
   type Product,
   type Role,
@@ -125,6 +126,7 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     wechat?: string | null;
     phone?: string;
     storeNumber?: string;
+    paymentTerms?: PaymentTermInstallment[];
     operationMode?: OperationMode;
     radar?: RadarStatus;
   }> = [
@@ -149,6 +151,11 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       wechat: "liwei_sz",
       phone: "+86 755 1234 5678",
       storeNumber: "A 154678",
+      // Condição de pagamento: 30% no pedido + 70% 90 dias após a entrega.
+      paymentTerms: [
+        { percent: 30, base: "order_created", days: 0 },
+        { percent: 70, base: "delivered", days: 90 },
+      ],
     },
     {
       id: "fornecedor-b",
@@ -169,6 +176,7 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       city: "Ningbo",
       contactName: "Wang Fang",
       wechat: "wangfang_nb",
+      paymentTerms: [{ percent: 100, base: "delivered", days: 60 }],
     },
     {
       id: "agencia",
@@ -213,6 +221,7 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       active: true,
       city: party.city ?? null,
       ...(party.storeNumber ? { storeNumber: party.storeNumber } : {}),
+      ...(party.paymentTerms ? { paymentTerms: party.paymentTerms } : {}),
       contactName: party.contactName ?? null,
       wechat: party.wechat ?? null,
       operationMode: party.operationMode ?? null,

@@ -5,9 +5,14 @@ import {
   getStore,
   LOCALES,
   OPERATION_MODES,
+  PAYMENT_TERM_BASES,
   RADAR_STATUSES,
   ROLES,
 } from "@/lib/db";
+import { parseTerms } from "@/lib/supplier-terms";
+import { PaymentTermsEditor } from "@/components/payment-terms-editor";
+import { paymentTermsTexts } from "@/components/supplier-terms-text";
+import { saveSupplierTermsAction } from "../../actions/supplier-terms";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
@@ -134,7 +139,12 @@ export default async function PartyPage({
         : [];
     }),
   ].sort((a, b) => a.product.name.localeCompare(b.product.name));
-  const errorText = partyError(t, error);
+  /* Erros da condição de pagamento aparecem no card dela (âncora #payment-terms). */
+  const termsError = typeof error === "string" && error.startsWith("terms_");
+  const errorText = termsError ? null : partyError(t, error);
+  const currentTerms = isSupplier
+    ? parseTerms(party.paymentTerms ?? null)
+    : null;
   /* Modalidade de operação do cliente (RADAR): nada presumido; aviso só na importação própria sem RADAR.
      O serviço decide se há problema; o texto vem do dicionário (radar nulo = não informado, "none" = sem habilitação). */
   const radarIssue = isCustomer ? radarProblem(party) : null;
@@ -180,7 +190,7 @@ export default async function PartyPage({
           ) : null
         }
       />
-      {saved ? (
+      {saved && saved !== "terms" ? (
         <Alert tone="success">
           {saved === "operation"
             ? t("operations.mode.saved")
@@ -473,6 +483,55 @@ export default async function PartyPage({
               </SubmitButton>
             </form>
           </Card>
+          {isSupplier ? (
+            /* Condição de pagamento negociada com o fornecedor: os pedidos novos
+               copiam; vira parcelas em Contas a pagar. */
+            <Card
+              title={
+                <span id="payment-terms" className="scroll-mt-24">
+                  {t("payTerms.title")}
+                </span>
+              }
+            >
+              <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                {t("payTerms.hint")}
+              </p>
+              {saved === "terms" ? (
+                <div className="mb-3">
+                  <Alert tone="success">{t("payTerms.saved")}</Alert>
+                </div>
+              ) : null}
+              {termsError ? (
+                <div className="mb-3">
+                  <Alert tone="danger">{partyError(t, error)}</Alert>
+                </div>
+              ) : null}
+              {!currentTerms ? (
+                <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {t("payTerms.empty")}
+                </p>
+              ) : null}
+              <form action={saveSupplierTermsAction}>
+                <input type="hidden" name="id" value={party.id} />
+                <PaymentTermsEditor
+                  initial={currentTerms ?? []}
+                  bases={PAYMENT_TERM_BASES}
+                  texts={paymentTermsTexts(t)}
+                  locale={t.intl}
+                >
+                  <Field label={t("payTerms.note")}>
+                    <Textarea
+                      name="paymentTermsNote"
+                      maxLength={500}
+                      rows={2}
+                      defaultValue={party.paymentTermsNote ?? ""}
+                      placeholder={t("payTerms.notePlaceholder")}
+                    />
+                  </Field>
+                </PaymentTermsEditor>
+              </form>
+            </Card>
+          ) : null}
         </div>
       </div>
 

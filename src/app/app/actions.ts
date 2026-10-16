@@ -685,9 +685,17 @@ export async function quickSupplierPaymentAction(form: FormData) {
     const method = z
       .enum(["transfer_copied", "finance_email", "finance_whatsapp"])
       .parse(str(form, "method"));
+    // Parcela que a tela mostrava: clique duplo não paga a seguinte.
+    const installment = z
+      .number()
+      .int()
+      .min(1)
+      .max(99)
+      .nullable()
+      .parse(num(form, "installment"));
     const { registerSupplierPayment } =
       await import("@/lib/services/supplier-payment");
-    await registerSupplierPayment(user, orderId, { method });
+    await registerSupplierPayment(user, orderId, { method, installment });
     return `/app/orders/${orderId}?paid=${method}#supplier-payment`;
   });
 }

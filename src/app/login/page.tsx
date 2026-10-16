@@ -7,6 +7,7 @@ import { dataMode } from "@/lib/env";
 import { getStore, STAGE_KEYS } from "@/lib/db";
 import { DEMO_PASSWORD, DEMO_USERS, seedDemo } from "@/lib/seed";
 import { getT } from "@/i18n/server";
+import { OFF_FLOW_STAGES } from "@/lib/workflow/stages";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -89,7 +90,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           </ul>
         </details>
         <p className="mt-4 text-xs text-white/75">
-          {t("login.stagesNote", { n: STAGE_KEYS.length })}
+          {t("login.stagesNote", {
+            n: STAGE_KEYS.length - OFF_FLOW_STAGES.length,
+          })}
         </p>
       </section>
 

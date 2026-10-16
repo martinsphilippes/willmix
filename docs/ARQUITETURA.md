@@ -32,6 +32,7 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 4. Pendências e notificações (`services/tasks.ts`, `services/notifications.ts`, `services/reminders.ts`): o que cada um precisa fazer, avisos in-app, e-mail e WhatsApp (mock), lembretes por prazo.
 5. Control Tower (`services/control-tower.ts`): pedidos ativos, onde estão, quem precisa agir, atrasos e exceções.
 6. Conta corrente do fornecedor, multas (jurídico), cadastros com importação CSV, configurações.
+9. Pagamento ao fornecedor (`lib/supplier-terms.ts` para as contas puras, `services/supplier-terms.ts` e `services/supplier-payment.ts`): condição de pagamento por fornecedor (parcelas por marco do pedido), cópia no pedido, Contas a pagar, previsão na conta corrente; fora do fluxo das etapas (`OFF_FLOW_STAGES`).
 7. Auditoria (`services/audit.ts`): usuário, ação, entidade, resumo, antes/depois.
 8. Visão de Produto (`ai/prompts.ts`, `integrations/ai.ts`, `services/ai-suggestions.ts`, `services/marketing.ts`, `services/operations.ts`, `services/product-cycle.ts`): cadastro por foto com confirmação humana, marketing studio e kit (prévia → oferta → compra → liberação), modalidade de operação do cliente (RADAR), ciclo contínuo do produto.
 

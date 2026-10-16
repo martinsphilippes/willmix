@@ -1,8 +1,7 @@
-import { headers } from "next/headers";
 import type { Order } from "@/lib/db";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { supplierPaymentView } from "@/lib/services/supplier-payment";
+import type { SupplierPaymentView } from "@/lib/services/supplier-payment";
 import {
   quickSupplierPaymentAction,
   registerSupplierPaymentAction,
@@ -14,34 +13,30 @@ import { Field, Input, TextLink, formatMoney } from "./ui";
 import { MoneyInput } from "./money-input";
 
 /**
- * Pagar o fornecedor (só Wellmix): valor devido calculado (FOB − já
- * registrado), dados para colar no banco e pedido ao financeiro por e-mail ou
- * WhatsApp. Qualquer ação registra o pagamento e conclui o item da etapa.
+ * Pagar o fornecedor (só Wellmix), dentro do card "Pagamento ao fornecedor":
+ * valor da parcela da vez (ou o saldo, sem condição configurada), dados para
+ * colar no banco e pedido ao financeiro por e-mail ou WhatsApp. Qualquer ação
+ * registra o pagamento da parcela.
  */
-export async function SupplierPaymentPanel({
+export function SupplierPaymentPanel({
   order,
   t,
+  view,
 }: {
   order: Order;
   t: Translate;
+  view: SupplierPaymentView;
 }) {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const view = await supplierPaymentView(
-    order,
-    `${proto}://${host}/app/orders/${order.id}`,
-  );
-  if (view.registered) return null;
   const hasDue = view.due !== null && view.due > 0;
+  // Parcela que a tela mostra: o servidor recusa se outra pessoa já a cobriu.
+  const installment = view.installment ? (
+    <input type="hidden" name="installment" value={view.installment.index} />
+  ) : null;
 
   return (
     /* Valor devido | dados para o banco lado a lado (iPad em diante); botões,
        dica e registro manual ocupam a largura toda. */
-    <div
-      id="supplier-payment"
-      className="mt-3 grid scroll-mt-24 items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]"
-    >
+    <div className="mt-3 grid scroll-mt-24 items-start gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3 md:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -88,6 +83,7 @@ export async function SupplierPaymentPanel({
             <form action={quickSupplierPaymentAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <input type="hidden" name="method" value="transfer_copied" />
+              {installment}
               <PaymentActionButton
                 copyText={view.transferText}
                 variant="primary"
@@ -98,6 +94,7 @@ export async function SupplierPaymentPanel({
             <form action={quickSupplierPaymentAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <input type="hidden" name="method" value="finance_email" />
+              {installment}
               <PaymentActionButton openUrl={view.emailUrl}>
                 ✉️ {t("supplierPay.email")}
               </PaymentActionButton>
@@ -105,6 +102,7 @@ export async function SupplierPaymentPanel({
             <form action={quickSupplierPaymentAction}>
               <input type="hidden" name="orderId" value={order.id} />
               <input type="hidden" name="method" value="finance_whatsapp" />
+              {installment}
               <PaymentActionButton openUrl={view.whatsappUrl}>
                 💬 {t("supplierPay.whatsapp")}
               </PaymentActionButton>

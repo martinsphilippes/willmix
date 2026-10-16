@@ -310,6 +310,20 @@
           "default": null,
           "type": "varchar",
           "size": 60
+        },
+        {
+          "key": "paymentTerms",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "paymentTermsNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -1341,6 +1355,13 @@
         },
         {
           "key": "cancelRequestResponse",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "supplierPaymentTerms",
           "required": false,
           "array": false,
           "default": null,

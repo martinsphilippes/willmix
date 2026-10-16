@@ -14,7 +14,7 @@ export const pt = {
   "supplierPay.email": "Pedir ao financeiro por e-mail",
   "supplierPay.whatsapp": "Pedir ao financeiro por WhatsApp",
   "supplierPay.actionsHint":
-    'Qualquer uma dessas ações registra o pagamento (pendente) e conclui o item "Pagamento ao fornecedor registrado". O valor só conta como pago quando o fornecedor confirma o recebimento.',
+    "Qualquer uma dessas ações registra o pagamento desta parcela como solicitado. Ele conta como pago quando a Wellmix registra o pagamento feito ou o fornecedor confirma o recebimento.",
   "supplierPay.manual": "Já pagou? Registrar com valor, câmbio e comprovante",
   "supplierPay.done.transfer_copied":
     "Dados copiados e pagamento registrado. Cole no banco para fazer a transferência; o fornecedor confirma o recebimento.",
@@ -55,7 +55,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierPay.email": "Ask finance by e-mail",
   "supplierPay.whatsapp": "Ask finance on WhatsApp",
   "supplierPay.actionsHint":
-    'Any of these actions registers the payment (pending) and completes the "Supplier payment registered" item. It only counts as paid once the supplier confirms receipt.',
+    "Any of these actions registers this installment's payment as requested. It counts as paid once Wellmix registers the payment made or the supplier confirms receipt.",
   "supplierPay.manual": "Already paid? Register with amount, rate and receipt",
   "supplierPay.done.transfer_copied":
     "Details copied and payment registered. Paste them at the bank to transfer; the supplier confirms receipt.",
@@ -96,7 +96,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierPay.email": "通过邮件请财务付款",
   "supplierPay.whatsapp": "通过 WhatsApp 请财务付款",
   "supplierPay.actionsHint":
-    "任一操作都会登记付款（待处理）并完成“已登记供应商付款”项。供应商确认收款后才算已付。",
+    "任一操作都会将本期付款登记为已申请。Wellmix 登记已付款或供应商确认收款后才算已付。",
   "supplierPay.manual": "已经付款？登记金额、汇率和凭证",
   "supplierPay.done.transfer_copied":
     "信息已复制，付款已登记。请在银行粘贴并转账；供应商确认收款。",

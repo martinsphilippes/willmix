@@ -29,6 +29,14 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { acknowledgePaymentAction } from "../actions/orders-extra";
 import { listCertifications } from "@/lib/services/compliance";
+import { listPayables, payableRows } from "@/lib/services/supplier-terms";
+import { parseTerms } from "@/lib/supplier-terms";
+import {
+  INSTALLMENT_TONE,
+  describeTerms,
+  formatDay,
+  termWhen,
+} from "@/components/supplier-terms-text";
 import { CertificationsSection } from "../products/_components/certifications-section";
 
 /** Conta corrente do fornecedor: pedidos, valores, pagamentos, saldo. */
@@ -48,7 +56,7 @@ export default async function AccountPage({
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
-  const [orders, payments, party] = await Promise.all([
+  const [orders, payments, party, payables] = await Promise.all([
     store.list("orders", {
       filter: { supplierId },
       orderBy: "number",
@@ -56,7 +64,22 @@ export default async function AccountPage({
     }),
     store.list("payments", { filter: { direction: "supplier_out" } }),
     store.get("parties", supplierId),
+    listPayables({ supplierId }),
   ]);
+  /* Previsão: parcelas ainda não recebidas (inclui as pagas que faltam
+     confirmar), pela data de vencimento. */
+  const forecast = payableRows(payables)
+    .filter(
+      (r) =>
+        r.installment.status !== "received" &&
+        r.installment.status !== "cancelled",
+    )
+    .sort((a, b) =>
+      (a.installment.dueDate ?? "9999").localeCompare(
+        b.installment.dueDate ?? "9999",
+      ),
+    );
+  const terms = parseTerms(party?.paymentTerms ?? null);
   const mine = payments.filter((p) => orders.some((o) => o.id === p.orderId));
   /* Pedido cancelado não soma ao total nem ao saldo (o acerto é livre); os
      pagamentos já feitos continuam listados e no "Recebido". */
@@ -141,6 +164,91 @@ export default async function AccountPage({
           value={formatMoney(totalOrders - livePaid, currency, t)}
         />
       </div>
+      {orders.length > 0 ? (
+        <Card
+          title={
+            <span id="forecast" className="scroll-mt-24">
+              {t("account.forecast.title")}
+            </span>
+          }
+          className="mt-4"
+        >
+          <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+            {t("account.forecast.hint")}
+          </p>
+          <p className="mb-3 text-sm text-zinc-700" data-forecast-terms>
+            {terms
+              ? t("account.forecast.terms", { terms: describeTerms(t, terms) })
+              : t("account.forecast.missing")}
+            {terms && party?.paymentTermsNote ? (
+              <span className="block text-xs text-zinc-500">
+                {party.paymentTermsNote}
+              </span>
+            ) : null}
+          </p>
+          {forecast.length === 0 ? (
+            <Empty>{t("account.forecast.empty")}</Empty>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("account.order")}</Th>
+                  <Th>{t("supplierTerms.col.installment")}</Th>
+                  <Th>{t("supplierTerms.col.due")}</Th>
+                  <Th className="text-right">
+                    {t("supplierTerms.col.amount")}
+                  </Th>
+                  <Th>{t("supplierTerms.col.status")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {forecast.map(({ payable, installment: i }) => (
+                  <tr
+                    key={`${payable.order.id}-${i.index}`}
+                    data-forecast-row={`${payable.order.number}-${i.index}`}
+                  >
+                    <Td>
+                      <TextLink href={`/app/orders/${payable.order.id}`}>
+                        #{payable.order.number}
+                      </TextLink>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {i.index}/{i.count}{" "}
+                      <span className="text-xs text-zinc-500">
+                        {i.percent.toLocaleString(t.intl, {
+                          maximumFractionDigits: 2,
+                        })}
+                        %
+                      </span>
+                    </Td>
+                    <Td>
+                      {i.dueDate ? (
+                        <span className="whitespace-nowrap tabular-nums">
+                          {formatDay(i.dueDate, t)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-zinc-600">
+                          {t("supplierTerms.waiting", {
+                            when: termWhen(t, i.base, i.days),
+                          })}
+                        </span>
+                      )}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {formatMoney(i.amount, payable.schedule.currency, t)}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <Badge tone={INSTALLMENT_TONE[i.status]}>
+                        {t(`supplierTerms.status.${i.status}` as DictionaryKey)}
+                      </Badge>
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Card>
+      ) : null}
       <div className="mt-4">
         {mine.length === 0 && orders.length === 0 ? (
           <Empty>{t("common.none")}</Empty>
@@ -247,7 +355,7 @@ export default async function AccountPage({
                     </Td>
                     <Td>
                       <span className="flex items-center gap-2">
-                        {p.status === "confirmed" ? (
+                        {p.status !== "received" ? (
                           <form action={acknowledgePaymentAction}>
                             <input
                               type="hidden"

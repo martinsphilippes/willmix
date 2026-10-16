@@ -22,7 +22,7 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `ORDER_CREATED`    | Pedido conferido (operador). Opcional: número no Sankhya                                                                           |
 | `PREPARATION`      | Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta                    |
-| `SUPPLIER_PAYMENT` | Pagamento registrado (operador) + recebimento confirmado (fornecedor)                                                              |
+| `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)            |
 | `PACKAGING`        | Arte (fornecedor) + aprovação da arte (agência, quando `agencyValidationEnabled` e há agência designada)                           |
 | `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia        |
 | `SHIPPING`         | Data de embarque, previsão de chegada, BL (companhia marítima; operador se não houver designada). Opcional: navio                  |
@@ -34,6 +34,18 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 ## Regra de avanço
 
 `evaluateStage` roda após cada submissão. Percentual = obrigatórios concluídos / obrigatórios. Quando todos os obrigatórios estão `done`, a etapa vira `done`, a próxima vira `active` (com prazo e responsável), o pedido recebe o novo status e o responsável é notificado. O responsável exibido é sempre o papel do próximo requisito pendente.
+
+## Pagamento ao fornecedor (fora do fluxo)
+
+O pagamento da Wellmix ao fornecedor é negociado com cada um e costuma vencer meses depois da entrega, por isso não segura o pedido:
+
+- **Condição no cadastro do fornecedor** (`parties.paymentTerms`, só a Wellmix edita em Cadastros → fornecedor → "Condição de pagamento ao fornecedor"): até 6 parcelas, cada uma com % do FOB, marco (pedido gerado, embarque, entrega ao cliente) e dias depois do marco; soma 100%. Observação livre em `paymentTermsNote`. Sem condição = "não configurada" (nada é presumido).
+- **Cópia no pedido**: o pedido guarda a condição do dia em que nasceu (`orders.supplierPaymentTerms`); mudar o cadastro depois não mexe nele, até a Wellmix usar "Usar a condição atual do cadastro" no pedido. Pedidos antigos (sem cópia) seguem a condição atual do fornecedor.
+- **Marcos**: pedido gerado = criação do pedido; embarque = "Data de embarque" do embarque (ou a conclusão da etapa); entrega = início da etapa Entregue (entrega registrada). Vencimento = marco + dias; sem o marco, a parcela "aguarda".
+- **Parcelas**: valor = % do FOB (a última fica com o resto dos centavos). Pagamentos na moeda do FOB quitam as parcelas na ordem (recebido, depois pago, depois solicitado). Situação: vencida, vence em 7 dias, programada, aguardando o marco, solicitada (dados copiados/pedido ao financeiro), paga (falta o fornecedor confirmar), recebida, cancelada (pedido cancelado).
+- **Onde fica**: Gestão → **Contas a pagar** (`/app/payables`, uma linha por parcela, vencidas primeiro, filtros por situação e fornecedor, fornecedores sem condição listados); card **Pagamento ao fornecedor** no pedido (Wellmix: cronograma e pagamento da parcela da vez; fornecedor do pedido: só a previsão); **Previsão de pagamentos** na conta corrente do fornecedor, onde ele confirma o recebimento. Pendências da Wellmix ganham as parcelas vencidas ou da semana e o job diário manda um resumo.
+- **Pedidos parados na etapa antiga** seguem para a Embalagem sozinhos (ao abrir o pedido, Pendências, Contas a pagar ou no job diário), com auditoria `stage.off_flow`.
+- **Cancelamento pelo cliente**: continua até a produção começar e até haver pagamento ao fornecedor feito (agora inclui a Embalagem, porque o pedido não para mais no pagamento).
 
 ## Quem preenche
 
