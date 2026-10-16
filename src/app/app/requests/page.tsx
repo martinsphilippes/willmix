@@ -356,6 +356,7 @@ export default async function RequestsPage({
                   />
                 </Th>
               ) : null}
+              <Th className="w-14">{t("requests.numberShort")}</Th>
               <Th>{t("common.product")}</Th>
               {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
               <Th>{t("common.quantity")}</Th>
@@ -367,7 +368,10 @@ export default async function RequestsPage({
           <tbody>
             {entries.map((entry) => {
               if (entry.kind === "batch") {
-                const rows = entry.rows;
+                // Na ordem em que foram pedidos (igual à página do lote).
+                const rows = [...entry.rows].sort((a, b) =>
+                  a.createdAt.localeCompare(b.createdAt),
+                );
                 const deletable = rows.filter((r) => canDeleteRequest(user, r));
                 const names = rows.map((r) => r.productName);
                 return (
@@ -392,6 +396,11 @@ export default async function RequestsPage({
                         )}
                       </Td>
                     ) : null}
+                    <Td className="whitespace-nowrap tabular-nums text-zinc-600">
+                      <span data-request-number>
+                        {rows.find((r) => r.number)?.number ?? "—"}
+                      </span>
+                    </Td>
                     <Td className="min-w-40 font-medium text-zinc-900">
                       <TextLink
                         href={batchHref(entry.groupId)}
@@ -499,6 +508,9 @@ export default async function RequestsPage({
                       )}
                     </Td>
                   ) : null}
+                  <Td className="whitespace-nowrap tabular-nums text-zinc-600">
+                    <span data-request-number>{r.number ?? "—"}</span>
+                  </Td>
                   <Td className="min-w-40 font-medium text-zinc-900">
                     {r.productName}
                     {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (

@@ -87,19 +87,29 @@ export default async function QuotePage({
         t={t}
         title={`${t("quotes.title")}: ${request.productName}`}
         subtitle={
-          <Badge
-            tone={
-              quote.status === "selected"
-                ? "success"
-                : quote.status === "rejected"
-                  ? "neutral"
-                  : quote.status === "invited"
+          <span className="flex flex-wrap items-center gap-2">
+            {request.number ? (
+              <span
+                className="font-medium tabular-nums text-zinc-700"
+                data-request-number
+              >
+                {t("requests.numbered", { n: request.number })}
+              </span>
+            ) : null}
+            <Badge
+              tone={
+                quote.status === "selected"
+                  ? "success"
+                  : quote.status === "rejected"
                     ? "neutral"
-                    : "info"
-            }
-          >
-            {t(`quoteStatus.${quote.status}`)}
-          </Badge>
+                    : quote.status === "invited"
+                      ? "neutral"
+                      : "info"
+              }
+            >
+              {t(`quoteStatus.${quote.status}`)}
+            </Badge>
+          </span>
         }
       />
       <div className="space-y-3">
