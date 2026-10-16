@@ -302,4 +302,21 @@ describe("cadastro do produto acompanha a ficha", () => {
       "9506.69.00",
     );
   });
+
+  it("tirar as cores Pantone da ficha mestre tira do produto (não voltam)", async () => {
+    const store = getStore();
+    const color = { code: "PANTONE 185 C", hex: "#E4002B" };
+    await pm.saveProductSheet(admin, "prod-piscina", {
+      colorPantones: [color],
+    });
+    expect(
+      (await store.get("products", "prod-piscina"))!.colorPantones,
+    ).toEqual([color]);
+    await pm.saveProductSheet(admin, "prod-piscina", { colorPantones: [] });
+    expect(
+      (await store.get("products", "prod-piscina"))!.colorPantones ?? null,
+    ).toBeNull();
+    const input = await pm.masterSheetInput("prod-piscina");
+    expect(input?.colorPantones ?? []).toEqual([]);
+  });
 });

@@ -620,19 +620,23 @@ async function syncOrderQuantity(
     return;
   }
   if (supplierPaid) {
-    // Uma revisão por mudança (de/para): salvar outro campo depois não reabre
-    // o que já foi tratado ou dispensado.
-    const seen = (
-      await store.list("review_items", {
-        filter: {
-          entity: "order",
-          entityId: order.id,
-          rule: "order.quantity_after_payment",
-        },
-      })
-    ).some(
-      (r) => r.expected === String(item.quantity) && r.found === String(pieces),
-    );
+    // Uma revisão por mudança: a mais recente desta regra já é esta (de/para)
+    // → salvar outro campo não reabre o que foi tratado ou dispensado; uma
+    // mudança nova (mesmo que repita uma antiga) abre de novo.
+    const [latest] = await store.list("review_items", {
+      filter: {
+        entity: "order",
+        entityId: order.id,
+        rule: "order.quantity_after_payment",
+      },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 1,
+    });
+    const seen =
+      !!latest &&
+      latest.expected === String(item.quantity) &&
+      latest.found === String(pieces);
     if (!seen)
       await openReview(user, {
         orderId: order.id,

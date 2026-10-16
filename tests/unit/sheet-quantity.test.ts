@@ -373,6 +373,19 @@ describe("quantidade da programação: segurança (revisão)", () => {
     expect((await store.get("orders", order.id))!.fobTotal).toBe(5400);
     // Já igual: nada a aplicar.
     expect(await ps.applySheetQuantity(admin, order.id)).toBeNull();
+
+    // Fecha para cima e de novo para baixo: cada mudança nova abre revisão,
+    // mesmo repetindo uma já tratada.
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 15) });
+    await ps.applySheetQuantity(admin, order.id);
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 14) });
+    const open = (
+      await store.list("review_items", {
+        filter: { entityId: order.id, rule: "order.quantity_after_payment" },
+      })
+    ).filter((r) => r.status === "open");
+    expect(open).toHaveLength(1);
+    expect(open[0]).toMatchObject({ expected: "2750", found: "2700" });
   });
 
   it("cotação respondida: mudar as caixas pede o frete de novo com a carga nova", async () => {

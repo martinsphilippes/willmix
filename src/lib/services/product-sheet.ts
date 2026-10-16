@@ -221,6 +221,10 @@ function productPatchFromSheet(
       40,
     );
     patch.colorPantones = sheet.colorPantones;
+  } else if (has("colorPantones") && sheet.colorPantones !== undefined) {
+    // Cores tiradas na ficha mestre saem do produto também (senão voltariam
+    // das colunas do produto na próxima vez); o texto "pantone" fica.
+    patch.colorPantones = null;
   }
   if (has("material")) patch.material = cut(sheet.material, 120);
   if (has("factoryItemCode"))

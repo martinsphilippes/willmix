@@ -149,7 +149,8 @@ async function prefillQuoteBase(
       currency: sheetCurrency(quote.currency ?? ownCurrency),
       price: quote.price ?? ownPrice,
       moq: ownMoq,
-      lots: requestLots,
+      // Sem caixas pela quantidade por caixa do cadastro (seria a do vencedor).
+      lots: scheduleToLots(request.schedule, null) ?? normalizeLots(null),
     };
   if (master)
     return {
