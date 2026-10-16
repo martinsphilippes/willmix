@@ -66,8 +66,16 @@ export const pt = {
   "pricing.calc.source.line": "da linha",
   "pricing.calc.source.default": "geral",
   "pricing.calc.sell": "Valor ao cliente",
+  "pricing.calc.inCurrency": "Em {currency} (câmbio {rate})",
+  "pricing.calc.noFx":
+    "Sem câmbio de hoje para {currency}: informe o valor ao cliente nessa moeda.",
+  "pricing.calc.cargo": "Carga",
+  "pricing.calc.cargoValue": "{cbm} m³ ≈ {n} × {code}",
+  "pricing.calc.cargoHigh":
+    "Carga muito grande para um pedido (mais de 10 containers): confira o CBM e as medidas da caixa na ficha da cotação antes de fechar o valor.",
   "requests.downPaymentPercent": "Sinal (% do valor ao cliente)",
-  "requests.downPayment.equals": "= {amount} de sinal",
+  "requests.downPayment.equals":
+    "= {amount} de sinal ({percent}% de {total}) · restante {rest}",
   "pricing.calc.carrierFreight": "Frete do transportador (R$)",
   "pricing.calc.carrierFreightHint":
     "Se informado, substitui a estimativa por CBM.",
@@ -154,8 +162,16 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.calc.source.line": "product line",
   "pricing.calc.source.default": "default",
   "pricing.calc.sell": "Customer value",
+  "pricing.calc.inCurrency": "In {currency} (rate {rate})",
+  "pricing.calc.noFx":
+    "No exchange rate today for {currency}: enter the customer price in that currency.",
+  "pricing.calc.cargo": "Cargo",
+  "pricing.calc.cargoValue": "{cbm} m³ ≈ {n} × {code}",
+  "pricing.calc.cargoHigh":
+    "Cargo too large for one order (more than 10 containers): check the CBM and carton size on the quotation sheet before closing the price.",
   "requests.downPaymentPercent": "Down payment (% of the customer price)",
-  "requests.downPayment.equals": "= {amount} down payment",
+  "requests.downPayment.equals":
+    "= {amount} down payment ({percent}% of {total}) · balance {rest}",
   "pricing.calc.carrierFreight": "Carrier freight (R$)",
   "pricing.calc.carrierFreightHint":
     "If provided, it replaces the per-CBM estimate.",
@@ -232,8 +248,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.calc.source.line": "产品线",
   "pricing.calc.source.default": "默认",
   "pricing.calc.sell": "客户价格",
+  "pricing.calc.inCurrency": "折合 {currency}（汇率 {rate}）",
+  "pricing.calc.noFx":
+    "今天没有 {currency} 的汇率：请直接用该币种填写客户价格。",
+  "pricing.calc.cargo": "货量",
+  "pricing.calc.cargoValue": "{cbm} 立方米 ≈ {n} × {code}",
+  "pricing.calc.cargoHigh":
+    "一个订单的货量过大（超过 10 个集装箱）：请先核对报价采购单上的外箱体积和尺寸再确定价格。",
   "requests.downPaymentPercent": "定金（客户价格的 %）",
-  "requests.downPayment.equals": "= 定金 {amount}",
+  "requests.downPayment.equals":
+    "= 定金 {amount}（{total} 的 {percent}%）· 余款 {rest}",
   "pricing.calc.carrierFreight": "承运人运费（R$）",
   "pricing.calc.carrierFreightHint": "填写后将替代按立方米的预估。",
   "pricing.calc.missing.price": "采购单没有价格。",

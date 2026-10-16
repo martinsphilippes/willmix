@@ -29,6 +29,8 @@ export interface OrdersTableRow {
   customer: string;
   supplier: string;
   phase: string;
+  /** Etapa sem tradução ("stage:PREPARATION"): é o que o filtro e o link guardam. */
+  phaseKey: string;
   /** Ordem da etapa no fluxo (para ordenar e para a lista do filtro). */
   phaseRank: number;
   state: RowState;
@@ -88,6 +90,17 @@ const FILTER_KEYS: FilterKey[] = [
   "d",
   "u",
 ];
+const SORT_KEYS: readonly SortKey[] = [
+  "number",
+  "product",
+  "customer",
+  "supplier",
+  "phase",
+  "state",
+  "progress",
+  "due",
+  "updated",
+];
 const STATE_TONE: Record<RowState, Tone> = {
   active: "info",
   blocked: "warning",
@@ -136,9 +149,12 @@ export function OrdersTable({
   );
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(
     () => {
+      // Só colunas conhecidas (link editado ou antigo não quebra a tela).
       const raw = initial.sort ?? "";
-      const key = raw.replace(/^-/, "") as SortKey;
-      return raw ? { key, desc: raw.startsWith("-") } : null;
+      const key = raw.replace(/^-/, "");
+      return (SORT_KEYS as readonly string[]).includes(key)
+        ? { key: key as SortKey, desc: raw.startsWith("-") }
+        : null;
     },
   );
 
@@ -155,7 +171,8 @@ export function OrdersTable({
           `${nextSort.desc ? "-" : ""}${nextSort.key}`,
         );
       else url.searchParams.delete("sort");
-      window.history.replaceState(window.history.state, "", url);
+      // Estado nulo: o Next acompanha a troca de endereço (useSearchParams).
+      window.history.replaceState(null, "", url);
     } catch {
       // Sem histórico (tela embutida): os filtros valem só na tela.
     }
@@ -185,10 +202,13 @@ export function OrdersTable({
   }
 
   const phases = useMemo(() => {
-    const seen = new Map<string, number>();
+    const seen = new Map<string, { label: string; rank: number }>();
     for (const r of rows)
-      if (!seen.has(r.phase)) seen.set(r.phase, r.phaseRank);
-    return [...seen.entries()].sort((a, b) => a[1] - b[1]).map(([p]) => p);
+      if (!seen.has(r.phaseKey))
+        seen.set(r.phaseKey, { label: r.phase, rank: r.phaseRank });
+    return [...seen.entries()]
+      .sort((a, b) => a[1].rank - b[1].rank)
+      .map(([key, v]) => [key, v.label] as [string, string]);
   }, [rows]);
   const states = useMemo(
     () =>
@@ -209,7 +229,7 @@ export function OrdersTable({
       if (!has(r.product, filters.p)) return false;
       if (showCustomer && !has(r.customer, filters.c)) return false;
       if (showSupplier && !has(r.supplier, filters.s)) return false;
-      if (filters.ph && r.phase !== filters.ph) return false;
+      if (filters.ph && r.phaseKey !== filters.ph) return false;
       if (filters.st && r.state !== filters.st) return false;
       if (filters.pr === "none" && r.progress !== 0) return false;
       if (
@@ -242,7 +262,9 @@ export function OrdersTable({
           return r.due || "9999";
         case "updated":
           return r.updated;
-        default:
+        case "product":
+        case "customer":
+        case "supplier":
           return fold(r[sort.key]);
       }
     };
@@ -359,13 +381,7 @@ export function OrdersTable({
               {filterCell(text("p", labels.product))}
               {showCustomer ? filterCell(text("c", labels.customer)) : null}
               {showSupplier ? filterCell(text("s", labels.supplier)) : null}
-              {filterCell(
-                select(
-                  "ph",
-                  labels.phase,
-                  phases.map((p) => [p, p]),
-                ),
-              )}
+              {filterCell(select("ph", labels.phase, phases))}
               {filterCell(
                 select(
                   "st",

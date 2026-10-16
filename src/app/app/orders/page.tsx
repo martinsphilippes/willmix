@@ -14,11 +14,23 @@ import { OrdersTable, type OrdersTableRow } from "@/components/orders-table";
  * solicitações que ainda não viraram pedido. Filtro em todas as colunas.
  */
 
-/** Dia de hoje em Brasília (AAAA-MM-DD). */
-function todayInBrazil() {
+/**
+ * Dia em Brasília (AAAA-MM-DD), como nas Pendências: prazo só com a data
+ * (AAAA-MM-DD ou meia-noite UTC) vale como está; instante (atualização) vira
+ * o dia de Brasília.
+ */
+function brazilDay(value: string | Date | null) {
+  if (!value) return "";
+  if (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z)?$/.test(value)
+  )
+    return value.slice(0, 10);
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
-  }).format(new Date());
+  }).format(date);
 }
 
 export default async function OrdersPage({
@@ -42,7 +54,6 @@ export default async function OrdersPage({
         : REQUEST_STATUSES.indexOf(
             row.phase.key as (typeof REQUEST_STATUSES)[number],
           );
-  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
   const tableRows: OrdersTableRow[] = rows.map((r) => ({
     key: r.key,
     href: r.href,
@@ -60,12 +71,13 @@ export default async function OrdersPage({
       r.phase.kind === "stage"
         ? t(`stage.${r.phase.key}` as DictionaryKey)
         : t(`reqStatusLabel.${r.phase.key}` as DictionaryKey),
+    phaseKey: `${r.phase.kind}:${r.phase.key}`,
     phaseRank: rank(r),
     state: r.state,
     progress: r.progress,
-    due: day(r.dueAt),
+    due: brazilDay(r.dueAt),
     dueLabel: formatDate(r.dueAt, t),
-    updated: day(r.updatedAt),
+    updated: brazilDay(r.updatedAt),
     updatedLabel: formatDate(r.updatedAt, t),
   }));
   const one = (v: string | string[] | undefined) =>
@@ -85,7 +97,7 @@ export default async function OrdersPage({
           rows={tableRows}
           showCustomer={showCustomer}
           showSupplier={showSupplier}
-          today={todayInBrazil()}
+          today={brazilDay(new Date())}
           initial={{
             n: one(params.n),
             p: one(params.p),

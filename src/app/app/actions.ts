@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { parseNumberInput } from "@/lib/number-input";
+import { rateFor } from "@/lib/pricing";
 import { moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
@@ -326,6 +327,7 @@ async function pricingRecordFor(
     fxDay: ctx.fx.day,
     sellPrice,
     sellCurrency,
+    sellFxRate: rateFor(ctx.fx.rates, sellCurrency),
     ncm: q.tax.ncm,
     tax: q.tax,
   };

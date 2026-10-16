@@ -26,7 +26,7 @@ export function DownPaymentInput({
   sellField: string;
   currencyField: string;
   locale: string;
-  /** "= {amount} de sinal" */
+  /** "= {amount} de sinal ({percent}% de {total}) · restante {rest}" */
   equals: string;
   id?: string;
 }) {
@@ -74,17 +74,31 @@ export function DownPaymentInput({
     sell && percent !== null && Number.isFinite(percent)
       ? Math.round(sell.value * percent) / 100
       : null;
-  let money = "";
-  if (amount !== null && sell) {
+  // Mesma moeda do valor ao cliente (o seletor "Moeda" do formulário).
+  const format = (n: number) => {
     try {
-      money = new Intl.NumberFormat(locale, {
+      return new Intl.NumberFormat(locale, {
         style: "currency",
-        currency: sell.currency,
-      }).format(amount);
+        currency: sell?.currency ?? "BRL",
+      }).format(n);
     } catch {
-      money = `${sell.currency} ${amount.toFixed(2)}`;
+      return `${sell?.currency ?? ""} ${n.toFixed(2)}`;
     }
-  }
+  };
+  const money =
+    amount !== null && sell
+      ? equals
+          .replace("{amount}", format(amount))
+          .replace(
+            "{percent}",
+            (percent ?? 0).toLocaleString(locale, { maximumFractionDigits: 2 }),
+          )
+          .replace("{total}", format(sell.value))
+          .replace(
+            "{rest}",
+            format(Math.round((sell.value - amount) * 100) / 100),
+          )
+      : "";
 
   return (
     <div className="space-y-1">
@@ -103,7 +117,9 @@ export function DownPaymentInput({
               .replace(/[^\d.,]/g, "")
               .replace(/([.,].*)[.,]/g, "$1");
             const n = parseNumberInput(clean);
-            setText(n !== null && Number.isFinite(n) && n > 100 ? "100" : clean);
+            setText(
+              n !== null && Number.isFinite(n) && n > 100 ? "100" : clean,
+            );
           }}
           aria-describedby={id ? `${id}-amount` : undefined}
           data-down-payment
@@ -121,7 +137,7 @@ export function DownPaymentInput({
         className={cx("text-xs text-zinc-600", !money && "invisible")}
         data-down-payment-amount
       >
-        {money ? equals.replace("{amount}", money) : "—"}
+        {money || "—"}
       </p>
     </div>
   );
