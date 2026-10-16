@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import {
   getStore,
   type ProductPhoto,
@@ -95,6 +96,17 @@ const sheetCurrency = (c: string | null | undefined) => {
 
 /** Rascunho a partir do produto, do fornecedor e do que a cotação já tem. */
 async function prefillQuote(
+  quote: Quote,
+  request: Request,
+): Promise<SheetInput & { productId: string | null }> {
+  const base = await prefillQuoteBase(quote, request);
+  // NCM confirmado na solicitação (pela Wellmix, com a sugestão da IA) vale
+  // mais que o do cadastro: é o que a conta do valor ao cliente usa.
+  const confirmed = normalizeNcm(request.ncm);
+  return confirmed ? { ...base, ncm: formatNcm(confirmed) } : base;
+}
+
+async function prefillQuoteBase(
   quote: Quote,
   request: Request,
 ): Promise<SheetInput & { productId: string | null }> {

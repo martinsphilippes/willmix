@@ -51,6 +51,8 @@ export function PurchaseSheetFields({
   supplierId = null,
   missing = [],
   orderQuantity = null,
+  ncmRates = null,
+  ncmHelpLink = null,
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -77,6 +79,10 @@ export function PurchaseSheetFields({
   supplierId?: string | null;
   /** Campos obrigatórios ainda vazios: ficam em vermelho e o aviso leva até eles. */
   missing?: readonly string[];
+  /** Alíquotas da tabela pelo NCM da ficha ("II 20% · IPI 0%"): valem com II/IPI vazios. */
+  ncmRates?: string | null;
+  /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
+  ncmHelpLink?: string | null;
   /** Quantidade do pedido hoje e o que acontece com ela quando as caixas mudam. */
   orderQuantity?: {
     current: number;
@@ -641,7 +647,17 @@ export function PurchaseSheetFields({
       {/* Despachante e e-commerce lado a lado (menos rolagem). */}
       <Card title={t("sheet.section.customs")} className="lg:order-5" dense>
         <Rows>
-          <F t={t} m={missing} k="ncm" size="sm">
+          <F
+            t={t}
+            m={missing}
+            k="ncm"
+            size="sm"
+            hint={
+              !access.editCustoms && sheet.ncm
+                ? t("ncm.sheet.readOnly")
+                : undefined
+            }
+          >
             <input
               name="ncm"
               inputMode="decimal"
@@ -664,6 +680,17 @@ export function PurchaseSheetFields({
                 }}
               />
             </div>
+          ) : access.editCustoms && !sheet.ncm && ncmHelpLink ? (
+            <p className="text-xs text-zinc-600 sm:pl-[11.75rem]" data-ncm-help>
+              {t("ncm.sheet.none")}{" "}
+              <Link
+                href={ncmHelpLink}
+                target="_blank"
+                className="font-medium text-brand-700 underline"
+              >
+                {t("ncm.sheet.requestLink")}
+              </Link>
+            </p>
           ) : null}
           <F t={t} m={missing} k="importTaxPercent" size="xs">
             <Num
@@ -679,6 +706,16 @@ export function PurchaseSheetFields({
               disabled={!access.editCustoms}
             />
           </F>
+          {/* II/IPI vazios não são "sem imposto": a conta usa a tabela pelo NCM. */}
+          {ncmRates &&
+          (sheet.importTaxPercent == null || sheet.ipiPercent == null) ? (
+            <p
+              className="text-xs text-zinc-500 sm:pl-[11.75rem]"
+              data-ncm-table-hint
+            >
+              {t("ncm.sheet.tableHint", { rates: ncmRates })}
+            </p>
+          ) : null}
         </Rows>
       </Card>
 

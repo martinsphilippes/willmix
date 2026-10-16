@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import {
   getStore,
   type Order,
@@ -233,6 +234,19 @@ async function earlierSheet(
 }
 
 async function prefill(
+  order: Order,
+): Promise<
+  SheetInput & { productId: string | null; prefillSource: SheetPrefillSource }
+> {
+  const base = await prefillBase(order);
+  // NCM confirmado na solicitação vale quando a ficha não trouxe um.
+  if (base.ncm) return base;
+  const request = await getStore().get("requests", order.requestId);
+  const confirmed = normalizeNcm(request?.ncm);
+  return confirmed ? { ...base, ncm: formatNcm(confirmed) } : base;
+}
+
+async function prefillBase(
   order: Order,
 ): Promise<
   SheetInput & { productId: string | null; prefillSource: SheetPrefillSource }

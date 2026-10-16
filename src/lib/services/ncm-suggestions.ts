@@ -1,5 +1,5 @@
 import "server-only";
-import { getStore } from "@/lib/db";
+import { getStore, type Request } from "@/lib/db";
 import type { Translate } from "@/i18n";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { lookupNcm, ncmsWithPrefix, type NcmRates } from "./fiscal";
@@ -12,7 +12,8 @@ import { listTaxClassifications, suggestNcm } from "./taxes";
  * Nada é gravado: quem edita escolhe com um clique e salva a ficha.
  */
 
-export type NcmChipSource = "product" | "validated" | "suggested" | "table";
+export type NcmChipSource =
+  "request" | "product" | "validated" | "suggested" | "ai" | "table";
 
 export interface NcmChip {
   ncm: string;
@@ -26,20 +27,36 @@ const MAX_CHIPS = 6;
 
 export async function ncmSuggestionsFor(
   productId: string | null | undefined,
+  /** Solicitação da ficha: NCM confirmado nela e sugestões da IA/tabela guardadas. */
+  request?: Pick<Request, "ncm" | "ncmSuggestions"> | null,
 ): Promise<NcmChip[]> {
-  if (!productId) return [];
-  const store = getStore();
-  const product = await store.get("products", productId);
-  if (!product) return [];
   const out: Array<Omit<NcmChip, "rates">> = [];
   const push = (chip: Omit<NcmChip, "rates">) => {
     const ncm = normalizeNcm(chip.ncm);
     if (!ncm || out.some((o) => o.ncm === ncm)) return;
     out.push({ ...chip, ncm });
   };
+  // Confirmado na solicitação vale mais que tudo (a Wellmix já decidiu).
+  if (request?.ncm)
+    push({ ncm: request.ncm, description: null, source: "request" });
+  const store = getStore();
+  const product = productId ? await store.get("products", productId) : null;
+  // Sem produto do catálogo: só o que a solicitação tem (IA/tabela).
+  const fromRequest = () => {
+    for (const sug of request?.ncmSuggestions ?? [])
+      push({
+        ncm: sug.ncm,
+        description: sug.description,
+        source: sug.source === "ai" ? "ai" : "table",
+      });
+  };
+  if (!product) {
+    fromRequest();
+    return withRates(out);
+  }
   if (product.ncm)
     push({ ncm: product.ncm, description: null, source: "product" });
-  const rows = await listTaxClassifications(productId);
+  const rows = await listTaxClassifications(product.id);
   for (const r of rows.filter((r) => r.status === "validated"))
     push({ ncm: r.ncm, description: r.description, source: "validated" });
   for (const r of rows.filter((r) => r.status === "suggested"))
@@ -59,9 +76,15 @@ export async function ncmSuggestionsFor(
         source: "table",
       });
   }
-  const top = out.slice(0, MAX_CHIPS);
+  fromRequest();
+  return withRates(out);
+}
+
+function withRates(chips: Array<Omit<NcmChip, "rates">>): Promise<NcmChip[]> {
   return Promise.all(
-    top.map(async (chip) => ({ ...chip, rates: await lookupNcm(chip.ncm) })),
+    chips
+      .slice(0, MAX_CHIPS)
+      .map(async (chip) => ({ ...chip, rates: await lookupNcm(chip.ncm) })),
   );
 }
 
@@ -74,6 +97,24 @@ export interface NcmChipView {
   rates: string;
   ii: number | null;
   ipi: number | null;
+}
+
+/** "II 20% · IPI 0%" do NCM na tabela (null = NCM vazio ou fora da tabela). */
+export async function ncmRatesText(
+  t: Translate,
+  ncm: string | null | undefined,
+): Promise<string | null> {
+  if (!normalizeNcm(ncm)) return null;
+  const rates = await lookupNcm(ncm);
+  if (!rates) return null;
+  const pct = (n: number | null) =>
+    n === null
+      ? "—"
+      : `${n.toLocaleString(t.intl, { maximumFractionDigits: 2 })}%`;
+  return t("ncm.rates", {
+    ii: pct(rates.ii),
+    ipi: rates.ipiNt ? t("ncm.nt") : pct(rates.ipi),
+  });
 }
 
 export function ncmChipsView(t: Translate, chips: NcmChip[]): NcmChipView[] {

@@ -31,10 +31,12 @@ import { missingFieldsView } from "@/components/missing-fields-view";
 import { getQuoteSheetForUser } from "@/lib/services/quote-sheet";
 import {
   ncmChipsView,
+  ncmRatesText,
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { SheetSafety } from "@/components/sheet-safety";
+import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
 import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -70,6 +72,16 @@ export default async function QuotePage({
   const sheetView = await getQuoteSheetForUser(user, quote.id);
   // Quem preenche vê o que falta em vermelho e o aviso leva até cada campo.
   const sheetMissing = sheetView?.missing ?? [];
+  // Wellmix sem NCM na ficha nem na solicitação: a IA sugere (uma vez, depois
+  // que a página responde); as sugestões aparecem no campo NCM da ficha.
+  if (
+    isWellmix(user) &&
+    sheetView &&
+    !sheetView.sheet.ncm &&
+    !request.ncm &&
+    request.ncmSuggestions == null
+  )
+    scheduleNcmSuggestion(request.id);
   // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
   const canFillSheet = !!sheetView && sheetView.access.editSupplier;
   const errorCode = typeof error === "string" ? error : "";
@@ -287,6 +299,12 @@ export default async function QuotePage({
                   : null
               }
               records={sheetView.records}
+              ncmRates={await ncmRatesText(t, sheetView.sheet.ncm)}
+              ncmHelpLink={
+                sheetView.access.editCustoms
+                  ? `/app/requests/${request.id}#ncm`
+                  : null
+              }
               missing={canFillSheet ? sheetMissing : []}
               ncmSuggestions={
                 sheetView.access.editCustoms
@@ -294,6 +312,7 @@ export default async function QuotePage({
                       t,
                       await ncmSuggestionsFor(
                         sheetView.sheet.productId ?? request.productId ?? null,
+                        request,
                       ),
                     )
                   : []
