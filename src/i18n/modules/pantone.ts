@@ -5,7 +5,7 @@
 export const pt = {
   "pantone.label": "Cores Pantone",
   "pantone.hint":
-    "Escolha as cores do produto pela tabela Pantone, com o RGB de cada uma. Valores aproximados em tela: a referência oficial é o leque físico.",
+    "Escolha as cores do produto pela tabela Pantone, com o RGB de cada uma: cada cor escolhida já entra em Cor / sortimento, logo abaixo. Valores aproximados em tela: a referência oficial é o leque físico.",
   "pantone.search":
     "Buscar por número ou nome (ex.: 185, Reflex Blue, 19-4052)",
   "pantone.scale.all": "Todas as escalas",
@@ -22,7 +22,7 @@ export const pt = {
   "pantone.selected": "{n} cor(es) escolhida(s)",
   "pantone.empty": "Nenhuma cor Pantone escolhida.",
   "pantone.productHint":
-    "Escolha pela tabela Pantone, com o RGB de cada cor. O texto Pantone e, se estiver vazia, a Cor recebem os códigos; a ficha mestre acompanha.",
+    "Escolha pela tabela Pantone, com o RGB de cada cor: cada cor escolhida já entra na Cor, logo abaixo, e no texto Pantone; a ficha mestre acompanha.",
   "sheet.error.pantone_too_many": "No máximo 20 cores Pantone por ficha.",
   "sheet.error.schema_outdated":
     "O banco ainda não tem a coluna ou tabela nova. Publique o esquema Appwrite (GitHub → Publicar esquema Appwrite) e salve de novo.",
@@ -31,7 +31,7 @@ export const pt = {
 export const en: Record<keyof typeof pt, string> = {
   "pantone.label": "Pantone colors",
   "pantone.hint":
-    "Pick the product colors from the Pantone table, with the RGB of each one. On-screen approximations: the physical guide is the official reference.",
+    "Pick the product colors from the Pantone table, with the RGB of each one: each chosen color goes straight into Color / assortment, just below. On-screen approximations: the physical guide is the official reference.",
   "pantone.search": "Search by number or name (e.g. 185, Reflex Blue, 19-4052)",
   "pantone.scale.all": "All scales",
   "pantone.scale.C": "Solid Coated (C)",
@@ -47,7 +47,7 @@ export const en: Record<keyof typeof pt, string> = {
   "pantone.selected": "{n} color(s) selected",
   "pantone.empty": "No Pantone color selected.",
   "pantone.productHint":
-    "Pick from the Pantone table, with each color's RGB. The Pantone text and, when empty, the Color get the codes; the master sheet follows.",
+    "Pick from the Pantone table, with each color's RGB: each chosen color goes straight into Color, just below, and into the Pantone text; the master sheet follows.",
   "sheet.error.pantone_too_many": "At most 20 Pantone colors per sheet.",
   "sheet.error.schema_outdated":
     "The database does not have the new column or table yet. Publish the Appwrite schema (GitHub → Publicar esquema Appwrite) and save again.",
@@ -56,7 +56,7 @@ export const en: Record<keyof typeof pt, string> = {
 export const zh: Record<keyof typeof pt, string> = {
   "pantone.label": "Pantone 颜色",
   "pantone.hint":
-    "从 Pantone 色表中选择产品颜色，并显示每种颜色的 RGB。屏幕显示为近似值，以实体色卡为准。",
+    "从 Pantone 色表中选择产品颜色，并显示每种颜色的 RGB：选中的颜色会直接填入下方的“颜色 / 搭配”。屏幕显示为近似值，以实体色卡为准。",
   "pantone.search": "按编号或名称搜索（例如 185、Reflex Blue、19-4052）",
   "pantone.scale.all": "全部色系",
   "pantone.scale.C": "实色光面 (C)",
@@ -72,7 +72,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "pantone.selected": "已选择 {n} 种颜色",
   "pantone.empty": "尚未选择 Pantone 颜色。",
   "pantone.productHint":
-    "从 Pantone 色表中选择，并显示每种颜色的 RGB。Pantone 文本以及（为空时）颜色字段将填入色号；主采购单同步。",
+    "从 Pantone 色表中选择，并显示每种颜色的 RGB：选中的颜色会直接填入下方的颜色字段和 Pantone 文本；主采购单同步。",
   "sheet.error.pantone_too_many": "每张采购单最多 20 种 Pantone 颜色。",
   "sheet.error.schema_outdated":
     "数据库尚无新的字段或数据表。请先发布 Appwrite 架构（GitHub → Publicar esquema Appwrite）后重新保存。",

@@ -4,13 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { cx, inputDenseClass } from "@/components/ui";
 import type { PantoneColor, PantoneRef, PantoneScale } from "@/lib/pantone";
 import { PANTONE_SCALES } from "@/lib/pantone";
+import { syncColorText } from "@/lib/pantone/color-text";
 
 /*
  * Seletor de cores Pantone (ficha de compra): busca por número/nome, filtro
  * por escala, cada resultado com amostra, código, RGB e hex. As escolhidas
  * viram "chips" e vão no campo oculto `name` como JSON de [{code, hex}]; o
  * servidor confere o código na própria tabela. A tabela (~6 mil cores) só é
- * carregada quando o campo de busca recebe foco.
+ * carregada quando o campo de busca recebe foco. Com `syncName`, o campo de
+ * texto da cor do mesmo formulário (ex.: "Cor / sortimento") acompanha a
+ * seleção: cada cor escolhida entra como "PANTONE <código>".
  */
 export function PantonePicker({
   name,
@@ -19,8 +22,14 @@ export function PantonePicker({
   max = 20,
   labels,
   id,
+  syncName,
+  syncMax = 200,
 }: {
   name: string;
+  /** Nome do campo de texto da cor a preencher com os códigos escolhidos. */
+  syncName?: string;
+  /** Tamanho máximo daquele campo (o servidor recusa acima disso). */
+  syncMax?: number;
   /** Vem do FieldRow: o rótulo aponta para o campo de busca. */
   id?: string;
   initial: PantoneRef[];
@@ -101,14 +110,39 @@ export function PantonePicker({
     }
   }
 
+  /* Texto da cor do mesmo formulário acompanha a seleção (sem apagar o que a
+     pessoa escreveu). O campo é não controlado: basta trocar o valor e avisar. */
+  function syncText(prev: PantoneRef[], next: PantoneRef[]) {
+    if (!syncName) return;
+    const el = box.current?.closest("form")?.elements.namedItem(syncName);
+    if (!(el instanceof HTMLInputElement) || el.disabled || el.readOnly) return;
+    const value = syncColorText(el.value, prev, next, syncMax);
+    if (value !== el.value) {
+      el.value = value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    // Campo obrigatório que estava vazio (vermelho) deixa de aparecer como pendente.
+    const row = el.closest("[data-field-row]");
+    if (value.trim()) row?.setAttribute("data-resolved", "");
+    else row?.removeAttribute("data-resolved");
+  }
+
   function add(c: PantoneColor) {
     if (selected.length >= max) return;
-    setSelected((s) => [...s, { code: c.code, hex: c.hex }]);
+    const next = [...selected, { code: c.code, hex: c.hex }];
+    setSelected(next);
+    syncText(selected, next);
     setDirty(true);
     setQuery("");
+    // Fecha a lista: ela cobriria a Cor logo abaixo, que acabou de mudar.
+    // Outra cor: clicar na busca (ou digitar) abre de novo.
+    setOpen(false);
   }
   function remove(code: string) {
-    setSelected((s) => s.filter((x) => x.code !== code));
+    const next = selected.filter((x) => x.code !== code);
+    setSelected(next);
+    syncText(selected, next);
     setDirty(true);
   }
   const rgb = (hex: string) =>
@@ -182,6 +216,10 @@ export function PantonePicker({
               data-pantone-search
               autoComplete="off"
               onFocus={() => {
+                setOpen(true);
+                void load();
+              }}
+              onClick={() => {
                 setOpen(true);
                 void load();
               }}

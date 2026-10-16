@@ -318,13 +318,18 @@ export function FieldRow({
       ) : null}
     </>
   );
+  // `data-resolved` (posto no navegador quando o campo é preenchido sozinho,
+  // ex.: cor pelo Pantone) tira o vermelho sem esperar salvar.
   const labelClass = cx(
     "block text-xs font-medium leading-5 sm:pt-1.5",
-    missing ? "text-red-700" : "text-zinc-700",
+    missing
+      ? "text-red-700 group-data-[resolved]/field:text-zinc-700"
+      : "text-zinc-700",
   );
   return (
     <div
-      className="grid min-w-0 scroll-mt-24 grid-cols-1 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-3"
+      className="group/field grid min-w-0 scroll-mt-24 grid-cols-1 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-3"
+      data-field-row=""
       data-field-anchor={anchor}
       data-missing={missing ? "true" : undefined}
     >
@@ -342,7 +347,8 @@ export function FieldRow({
           className={cx(
             "w-full min-w-0",
             fieldRowWidth[size],
-            missing && "rounded-md ring-2 ring-red-400 ring-offset-1",
+            missing &&
+              "rounded-md ring-2 ring-red-400 ring-offset-1 group-data-[resolved]/field:ring-0 group-data-[resolved]/field:ring-offset-0",
           )}
           role={single ? undefined : "group"}
           aria-labelledby={single ? undefined : groupLabelId}
@@ -352,7 +358,7 @@ export function FieldRow({
             : children}
         </div>
         {missing && missingText ? (
-          <span className="text-xs font-medium leading-5 text-red-700">
+          <span className="text-xs font-medium leading-5 text-red-700 group-data-[resolved]/field:hidden">
             {missingText}
           </span>
         ) : null}
