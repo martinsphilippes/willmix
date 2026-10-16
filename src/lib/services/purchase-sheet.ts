@@ -30,9 +30,11 @@ import {
   REQUIRED_SHEET_PHOTOS,
   normalizeLots,
   planSheet,
+  sheetTotalPieces,
   type SheetMissing,
   type SheetPlan,
 } from "./purchase-sheet-calc";
+import { notify, requesterTarget } from "./notifications";
 
 export class PurchaseSheetError extends Error {}
 
@@ -489,8 +491,73 @@ export async function saveSheet(
       sheet.productId ?? null,
       sheet,
     );
+  if ("lots" in patch || "masterCartonQty" in patch)
+    await syncOrderQuantity(user, order, sheet);
   const missing = await syncRequirements(user, order, sheet);
   return { sheet, missing };
+}
+
+/** Etapas em que a quantidade ainda acompanha a programação (antes da inspeção). */
+export const QUANTITY_FOLLOWS_SHEET: readonly Order["status"][] = [
+  "ORDER_CREATED",
+  "PREPARATION",
+  "SUPPLIER_PAYMENT",
+  "PACKAGING",
+];
+
+/**
+ * A quantidade do pedido acompanha as caixas da programação (caixas × peças
+ * por caixa master): quem fecha o container tirando ou pondo caixas já ajusta
+ * o pedido. Preço por unidade não muda; FOB e valor ao cliente acompanham.
+ * Só quando a Wellmix salva (valor ao cliente é dela) e antes da inspeção.
+ */
+async function syncOrderQuantity(
+  user: User,
+  order: Order,
+  sheet: PurchaseSheet,
+) {
+  if (!isWellmix(user) || !QUANTITY_FOLLOWS_SHEET.includes(order.status))
+    return;
+  const pieces = sheetTotalPieces(sheet);
+  if (pieces === null) return;
+  const store = getStore();
+  const [item] = await store.list("order_items", {
+    filter: { orderId: order.id },
+    limit: 1,
+  });
+  if (!item || item.quantity === pieces || !(item.quantity > 0)) return;
+  const ratio = pieces / item.quantity;
+  const money = (v: number | null) =>
+    v === null ? null : Math.round(v * ratio * 100) / 100;
+  const fobTotal =
+    item.unitPrice !== null
+      ? Math.round(item.unitPrice * pieces * 100) / 100
+      : money(order.fobTotal);
+  const sellPrice = money(order.sellPrice);
+  await store.update("order_items", item.id, { quantity: pieces });
+  await store.update("orders", order.id, { fobTotal, sellPrice });
+  await audit(
+    user,
+    "order.quantity_from_sheet",
+    "order",
+    order.id,
+    `Quantidade ajustada à programação da ficha: ${item.quantity} → ${pieces} ${item.unit}`,
+    {
+      quantity: item.quantity,
+      fobTotal: order.fobTotal,
+      sellPrice: order.sellPrice,
+    },
+    { quantity: pieces, fobTotal, sellPrice },
+  );
+  await notify(requesterTarget(order.requestedByUserId), {
+    subject: `Pedido #${order.number}: quantidade ajustada`,
+    body: `${item.name}: ${item.quantity} → ${pieces} ${item.unit} para fechar o container.${
+      sellPrice !== null && order.sellCurrency
+        ? ` Novo valor: ${order.sellCurrency} ${sellPrice.toFixed(2)}.`
+        : ""
+    }`,
+    link: `/app/orders/${order.id}`,
+  });
 }
 
 /** Fotos da ficha (várias por tipo). Ficam no pedido, nunca no catálogo do cliente. */

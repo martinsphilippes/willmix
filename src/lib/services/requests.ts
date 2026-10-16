@@ -28,7 +28,8 @@ import { audit } from "./audit";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
-import { copyQuoteSheetToOrder } from "./quote-sheet";
+import { copyQuoteSheetToOrder, getQuoteSheet } from "./quote-sheet";
+import { sheetTotalPieces } from "./purchase-sheet-calc";
 import { cancelFreightForRequest } from "./freight";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
@@ -619,13 +620,32 @@ export async function selectQuote(
   await markSupplierSelected(user, quote.id);
   // NCM, II e IPI usados na proposta vão para a ficha escolhida (e dela para o pedido).
   await stampTaxesOnSheet(quote.id, input.pricing ?? null);
+  // A proposta vale para a quantidade da programação da cotação escolhida
+  // (caixas × peças por caixa, a que fecha o container); sem programação,
+  // continua a pedida. O pedido nasce com ela.
+  const sheetPieces = sheetTotalPieces(await getQuoteSheet(quote.id));
+  const quantity =
+    sheetPieces !== null && sheetPieces !== request.quantity
+      ? sheetPieces
+      : null;
   await store.update("requests", request.id, {
     status: "WAITING_DOWN_PAYMENT",
     selectedQuoteId: quote.id,
     sellPrice: input.sellPrice,
     sellCurrency: input.sellCurrency,
     downPaymentAmount: downPayment,
+    ...(quantity !== null ? { quantity } : {}),
   });
+  if (quantity !== null)
+    await audit(
+      user,
+      "request.quantity_from_sheet",
+      "request",
+      request.id,
+      `Quantidade ajustada à programação da cotação: ${request.quantity} → ${quantity} ${request.unit}`,
+      { quantity: request.quantity },
+      { quantity },
+    );
   await store.create("payments", {
     ...PAYMENT_EXTRA_DEFAULTS,
     orderId: null,
@@ -658,7 +678,7 @@ export async function selectQuote(
   );
   await notify(requesterTarget(request.requestedForUserId), {
     subject: `Proposta disponível: ${request.productName}`,
-    body: `Valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
+    body: `${quantity ?? request.quantity} ${request.unit}: valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
     link: `/app/requests/${request.id}`,
   });
   await notify(

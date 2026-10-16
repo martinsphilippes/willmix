@@ -50,6 +50,7 @@ export function PurchaseSheetFields({
   supplierOptions = null,
   supplierId = null,
   missing = [],
+  orderQuantity = null,
 }: {
   t: Translate;
   sheet: Partial<PurchaseSheet>;
@@ -76,6 +77,12 @@ export function PurchaseSheetFields({
   supplierId?: string | null;
   /** Campos obrigatórios ainda vazios: ficam em vermelho e o aviso leva até eles. */
   missing?: readonly string[];
+  /** Quantidade do pedido hoje e o que acontece com ela quando as caixas mudam. */
+  orderQuantity?: {
+    current: number;
+    unit: string;
+    mode: "order" | "quote" | "readonly";
+  } | null;
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
   const numValue = (v: number | null | undefined) =>
@@ -536,6 +543,7 @@ export function PurchaseSheetFields({
               lot1Missing={missing.includes("lot1")}
               requested={requestSchedule?.items ?? []}
               unit={requestUnit}
+              quantity={orderQuantity}
               labels={{
                 gen: {
                   toggle: t("sheet.gen.toggle"),
@@ -596,6 +604,23 @@ export function PurchaseSheetFields({
                 full: t("sheet.fill.full"),
                 need: t("sheet.fill.need"),
                 applied: t("sheet.fill.applied"),
+                exactNow: t("sheet.fill.exactNow"),
+                up: t("sheet.fill.up"),
+                upNoPieces: t("sheet.fill.upNoPieces"),
+                applyUp: t("sheet.fill.applyUp"),
+                down: t("sheet.fill.down"),
+                downNoPieces: t("sheet.fill.downNoPieces"),
+                applyDown: t("sheet.fill.applyDown"),
+                appliedTotal: t("sheet.fill.appliedTotal"),
+                cbmHigh: t("sheet.fill.cbmHigh"),
+                cbmMismatch: t("sheet.fill.cbmMismatch"),
+                qty: {
+                  title: t("sheet.qty.title"),
+                  same: t("sheet.qty.same"),
+                  order: t("sheet.qty.order"),
+                  quote: t("sheet.qty.quote"),
+                  readonly: t("sheet.qty.readonly"),
+                },
                 addLot: t("sheet.lot.add"),
                 removeLot: t("sheet.lot.remove", { n: "{n}" }),
                 requested: t("sheet.lot.requested", {

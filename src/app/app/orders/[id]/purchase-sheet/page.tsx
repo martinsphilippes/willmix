@@ -8,7 +8,10 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { Alert, Badge, LinkButton, PageHeader } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
-import { getSheetForUser } from "@/lib/services/purchase-sheet";
+import {
+  QUANTITY_FOLLOWS_SHEET,
+  getSheetForUser,
+} from "@/lib/services/purchase-sheet";
 import {
   ncmChipsView,
   ncmSuggestionsFor,
@@ -155,6 +158,17 @@ export default async function PurchaseSheetPage({
             editCustoms={access.editCustoms}
             requestSchedule={request?.schedule ?? null}
             requestUnit={request?.unit ?? "un"}
+            orderQuantity={
+              // Até a embalagem a quantidade do pedido acompanha as caixas
+              // (quando a Wellmix salva); depois disso, só a programação muda.
+              item && QUANTITY_FOLLOWS_SHEET.includes(view.order.status)
+                ? {
+                    current: item.quantity,
+                    unit: item.unit,
+                    mode: isWellmix(user) ? "order" : "readonly",
+                  }
+                : null
+            }
             records={view.records}
             missing={shownMissing}
             ncmSuggestions={

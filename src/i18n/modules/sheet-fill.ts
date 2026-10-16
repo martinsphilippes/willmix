@@ -24,6 +24,31 @@ export const pt = {
   "sheet.fill.need":
     "Para a sugestão, informe o CBM da caixa master e as caixas de cada programação (com peças por caixa, mostra também as peças).",
   "sheet.fill.applied": "Programação {lot} ajustada para {cartons} caixas.",
+  "sheet.fill.exactNow": "{n} container(s) fechado(s).",
+  "sheet.fill.up":
+    "Para cima: +{cartons} caixas ({pieces} peças, {cbm} m³) fecham {n} container(s).",
+  "sheet.fill.upNoPieces":
+    "Para cima: +{cartons} caixas ({cbm} m³) fecham {n} container(s).",
+  "sheet.fill.applyUp": "Aumentar para {n}: +{cartons} caixas",
+  "sheet.fill.down":
+    "Para baixo: −{cartons} caixas ({pieces} peças) fecham {n} container(s).",
+  "sheet.fill.downNoPieces":
+    "Para baixo: −{cartons} caixas fecham {n} container(s).",
+  "sheet.fill.applyDown": "Reduzir para {n}: −{cartons} caixas",
+  "sheet.fill.appliedTotal":
+    "Programações ajustadas: {cartons} caixas no total ({pieces} peças).",
+  "sheet.fill.cbmHigh":
+    "Confira o CBM da caixa master: {cbm} m³ por caixa é muito (um container inteiro tem {capacity} m³). Uma caixa costuma ter de 0,02 a 0,3 m³; ex.: 0,050.",
+  "sheet.fill.cbmMismatch":
+    "Confira o CBM da caixa master: {cbm} m³ não bate com a medida da caixa ({size} m³).",
+  "sheet.qty.title": "Quantidade do pedido",
+  "sheet.qty.same": "{to} {unit}, igual às caixas da programação.",
+  "sheet.qty.order":
+    "{from} → {to} {unit} ({diff}) ao salvar. O preço por unidade fica; FOB e valor ao cliente acompanham, e o cliente é avisado.",
+  "sheet.qty.quote":
+    "esta cotação vale para {to} {unit} ({diff} em relação aos {from} pedidos). A proposta ao cliente usa essa quantidade.",
+  "sheet.qty.readonly":
+    "{from} {unit}. A programação soma {to} {unit} ({diff}); a Wellmix confirma a mudança ao salvar.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -45,6 +70,31 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.fill.need":
     "For the suggestion, enter the master carton CBM and the cartons of each shipment (pieces per carton also shows the pieces).",
   "sheet.fill.applied": "Shipment {lot} set to {cartons} cartons.",
+  "sheet.fill.exactNow": "{n} container(s) exactly filled.",
+  "sheet.fill.up":
+    "Up: +{cartons} cartons ({pieces} pieces, {cbm} m³) fill {n} container(s).",
+  "sheet.fill.upNoPieces":
+    "Up: +{cartons} cartons ({cbm} m³) fill {n} container(s).",
+  "sheet.fill.applyUp": "Increase to {n}: +{cartons} cartons",
+  "sheet.fill.down":
+    "Down: −{cartons} cartons ({pieces} pieces) close at {n} container(s).",
+  "sheet.fill.downNoPieces":
+    "Down: −{cartons} cartons close at {n} container(s).",
+  "sheet.fill.applyDown": "Reduce to {n}: −{cartons} cartons",
+  "sheet.fill.appliedTotal":
+    "Shipments adjusted: {cartons} cartons in total ({pieces} pieces).",
+  "sheet.fill.cbmHigh":
+    "Check the master carton CBM: {cbm} m³ per carton is too much (a whole container holds {capacity} m³). A carton is usually 0.02 to 0.3 m³; e.g. 0.050.",
+  "sheet.fill.cbmMismatch":
+    "Check the master carton CBM: {cbm} m³ does not match the carton size ({size} m³).",
+  "sheet.qty.title": "Order quantity",
+  "sheet.qty.same": "{to} {unit}, same as the scheduled cartons.",
+  "sheet.qty.order":
+    "{from} → {to} {unit} ({diff}) on save. The unit price stays; FOB and customer value follow, and the customer is notified.",
+  "sheet.qty.quote":
+    "this quote is for {to} {unit} ({diff} versus the {from} requested). The customer proposal uses this quantity.",
+  "sheet.qty.readonly":
+    "{from} {unit}. The schedule adds up to {to} {unit} ({diff}); Wellmix confirms the change on save.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -65,4 +115,26 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.fill.need":
     "如需建议，请填写外箱体积和各批次箱数（填写每箱件数后同时显示件数）。",
   "sheet.fill.applied": "第 {lot} 批已调整为 {cartons} 箱。",
+  "sheet.fill.exactNow": "正好装满 {n} 个集装箱。",
+  "sheet.fill.up":
+    "增加：+{cartons} 箱（{pieces} 件，{cbm} 立方米）可装满 {n} 个集装箱。",
+  "sheet.fill.upNoPieces":
+    "增加：+{cartons} 箱（{cbm} 立方米）可装满 {n} 个集装箱。",
+  "sheet.fill.applyUp": "增加到 {n} 个：+{cartons} 箱",
+  "sheet.fill.down": "减少：−{cartons} 箱（{pieces} 件）可凑整 {n} 个集装箱。",
+  "sheet.fill.downNoPieces": "减少：−{cartons} 箱可凑整 {n} 个集装箱。",
+  "sheet.fill.applyDown": "减少到 {n} 个：−{cartons} 箱",
+  "sheet.fill.appliedTotal": "各批次已调整：共 {cartons} 箱（{pieces} 件）。",
+  "sheet.fill.cbmHigh":
+    "请核对外箱体积：每箱 {cbm} 立方米过大（整个集装箱才 {capacity} 立方米）。外箱通常为 0.02–0.3 立方米，例如 0.050。",
+  "sheet.fill.cbmMismatch":
+    "请核对外箱体积：{cbm} 立方米与外箱尺寸（{size} 立方米）不符。",
+  "sheet.qty.title": "订单数量",
+  "sheet.qty.same": "{to} {unit}，与排期箱数一致。",
+  "sheet.qty.order":
+    "保存后 {from} → {to} {unit}（{diff}）。单价不变，FOB 和客户金额随之调整，并通知客户。",
+  "sheet.qty.quote":
+    "本报价数量为 {to} {unit}（与客户需求 {from} 相差 {diff}）。给客户的报价按此数量计算。",
+  "sheet.qty.readonly":
+    "{from} {unit}。排期合计 {to} {unit}（{diff}），由 Wellmix 保存时确认。",
 };

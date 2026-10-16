@@ -259,6 +259,18 @@ export default async function QuotePage({
               editCustoms={sheetView.access.editCustoms}
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
+              orderQuantity={
+                // Antes da escolha: a proposta usa as peças da programação.
+                ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                  request.status,
+                )
+                  ? {
+                      current: request.quantity,
+                      unit: request.unit,
+                      mode: "quote",
+                    }
+                  : null
+              }
               records={sheetView.records}
               missing={canFillSheet ? sheetMissing : []}
               ncmSuggestions={
