@@ -36,6 +36,7 @@ import {
 } from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { SheetSafety } from "@/components/sheet-safety";
+import { ActionError } from "@/components/action-error";
 import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
 import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
@@ -57,6 +58,7 @@ export default async function QuotePage({
     adopted,
     at: saveToken,
     fields: invalidFields,
+    missing: missingParam,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -85,6 +87,18 @@ export default async function QuotePage({
   // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
   const canFillSheet = !!sheetView && sheetView.access.editSupplier;
   const errorCode = typeof error === "string" ? error : "";
+  // Envio recusado: o que falta na ficha e, fora dela, o prazo de produção
+  // (só o envio o lê; vem na volta como ?missing=leadTimeDays).
+  const sendRefused =
+    errorCode === "sheet_incomplete" || errorCode === "lead_time_required";
+  const shownMissing = [
+    ...(sheetView?.missing ?? []),
+    ...(sendRefused &&
+    typeof missingParam === "string" &&
+    missingParam.split(",").includes("leadTimeDays")
+      ? ["leadTimeDays"]
+      : []),
+  ];
   const errorKeys = [
     `quoteSheet.error.${errorCode}`,
     `sheet.error.${errorCode}`,
@@ -128,7 +142,13 @@ export default async function QuotePage({
         }
       />
       <div className="space-y-3">
-        {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+        <ActionError
+          t={t}
+          code={errorCode}
+          text={errorText}
+          fields={invalidFields}
+          token={saveToken}
+        />
         {typeof adopted === "string" && adopted ? (
           <Alert tone="success">{t("productSheet.adopted")}</Alert>
         ) : null}
@@ -246,6 +266,7 @@ export default async function QuotePage({
                   t={t}
                   formId="quote-sheet"
                   storageKey={`quote:${quote.id}`}
+                  userId={user.id}
                   error={error}
                   fields={invalidFields}
                   saved={typeof saved === "string" && !!saved}
@@ -254,19 +275,13 @@ export default async function QuotePage({
               ) : null}
               {!sheetView.access.editSupplier ? (
                 <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
-              ) : sheetView.missing.length ? (
+              ) : shownMissing.length ? (
                 <MissingFields
                   // Cada recusa do envio remonta o aviso e leva de novo ao campo.
                   key={typeof saveToken === "string" ? saveToken : "idle"}
-                  {...missingFieldsView(
-                    t,
-                    "quoteSheet.missing",
-                    sheetView.missing,
-                  )}
-                  tone={errorCode === "sheet_incomplete" ? "danger" : "info"}
-                  autoFocus={
-                    errorCode === "sheet_incomplete" && saved !== "partial"
-                  }
+                  {...missingFieldsView(t, "quoteSheet.missing", shownMissing)}
+                  tone={sendRefused ? "danger" : "info"}
+                  autoFocus={sendRefused && saved !== "partial"}
                 />
               ) : null}
               {sheetView.access.editCustoms ? (
@@ -366,7 +381,11 @@ export default async function QuotePage({
           >
             {/* Prazo (curto) e condições lado a lado em telas grandes. */}
             <div className="grid gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-4">
-              <FieldRow label={t("quoteSheet.leadTime")} size="xs">
+              <FieldRow
+                label={t("quoteSheet.leadTime")}
+                size="xs"
+                anchor="leadTimeDays"
+              >
                 <input
                   form="quote-sheet"
                   name="leadTimeDays"
@@ -376,7 +395,11 @@ export default async function QuotePage({
                   className={inputDenseClass}
                 />
               </FieldRow>
-              <FieldRow label={t("quoteSheet.conditions")} size="full">
+              <FieldRow
+                label={t("quoteSheet.conditions")}
+                size="full"
+                anchor="conditions"
+              >
                 <textarea
                   form="quote-sheet"
                   name="conditions"

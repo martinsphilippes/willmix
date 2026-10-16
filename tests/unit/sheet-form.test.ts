@@ -35,6 +35,19 @@ describe("parseNumberInput", () => {
     // Decimal com um ponto num campo inteiro não vira milhar.
     expect(parseNumberInput("1.5", { int: true })).toBe(1.5);
   });
+
+  it("grandeza ou letra colada no número não é lida (não vira um número menor)", () => {
+    for (const raw of ["2 mil", "10k", "1万", "5千", "5OO", "2O", "3x"])
+      expect(parseNumberInput(raw, { int: true })).toBeNaN();
+    expect(parseNumberInput("12 cx", { int: true })).toBe(12);
+    expect(parseNumberInput("1.000 ml", { int: true })).toBe(1000);
+    expect(parseNumberInput("2,50 USD")).toBe(2.5);
+    expect(parseNumberInput("18%")).toBe(18);
+    expect(parseNumberInput("30 套", { int: true })).toBe(30);
+    // Unidade que mudaria o tamanho do número no campo: apontado.
+    for (const raw of ["50g", "300 mm", "0,3 m", "1 l"])
+      expect(parseNumberInput(raw)).toBeNaN();
+  });
 });
 
 const formOf = (fields: Record<string, string>) => {
@@ -101,6 +114,33 @@ describe("parseSheet", () => {
     expect(ok.input.lots?.[0]).toEqual({
       departureIntervalDays: 45,
       masterCartons: 1000,
+    });
+  });
+
+  it("programação ilegível: as peças por caixa também não mudam (a quantidade do pedido não muda pela metade)", () => {
+    const { input, invalid } = parseSheet(
+      formOf({
+        masterCartonQty: "30",
+        lot1Interval: "45",
+        lot1Cartons: "20",
+        lot2Interval: "45",
+        lot2Cartons: "vinte",
+      }),
+    );
+    expect(invalid.sort()).toEqual(["lots", "masterCartonQty"]);
+    expect(input.lots).toBeUndefined();
+    expect(input.masterCartonQty).toBeUndefined();
+  });
+
+  it("NCM com vírgula vale como com ponto", () => {
+    expect(parseSheet(formOf({ ncm: "9503,00,21" })).input).toEqual({
+      ncm: "9503.00.21",
+    });
+  });
+
+  it("capacidade em ml é inteira: 1.000 ml é mil", () => {
+    expect(parseSheet(formOf({ capacityMl: "1.000 ml" })).input).toEqual({
+      capacityMl: 1000,
     });
   });
 

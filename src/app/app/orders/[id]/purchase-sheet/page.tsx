@@ -11,6 +11,7 @@ import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import {
   QUANTITY_FOLLOWS_SHEET,
   getSheetForUser,
+  supplierPaymentRegistered,
 } from "@/lib/services/purchase-sheet";
 import {
   ncmChipsView,
@@ -19,13 +20,18 @@ import {
 } from "@/lib/services/ncm-suggestions";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { SheetSafety } from "@/components/sheet-safety";
+import { ActionError } from "@/components/action-error";
 import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
-import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
+import {
+  isPiecesUnit,
+  sheetTotalPieces,
+} from "@/lib/services/purchase-sheet-calc";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import {
   addPurchaseSheetPhotosAction,
   adoptSheetIntoProductAction,
+  applySheetQuantityAction,
   registerProductFromSheetAction,
   removePurchaseSheetPhotoAction,
   savePurchaseSheetAction,
@@ -51,6 +57,7 @@ export default async function PurchaseSheetPage({
     adopted,
     at: saveToken,
     fields: invalidFields,
+    quantityApplied,
   } = await searchParams;
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
@@ -61,6 +68,29 @@ export default async function PurchaseSheetPage({
     limit: 1,
   });
   const { sheet, access, plan, missing } = view;
+  // Quantidade acompanha as caixas até a embalagem; com pagamento ao
+  // fornecedor registrado, a Wellmix aplica à mão (botão abaixo).
+  const quantityFollows =
+    !!item &&
+    isPiecesUnit(item.unit) &&
+    QUANTITY_FOLLOWS_SHEET.includes(view.order.status);
+  const supplierPaid =
+    quantityFollows && isWellmix(user)
+      ? await supplierPaymentRegistered(id)
+      : false;
+  const savedPieces = view.saved
+    ? sheetTotalPieces({
+        lots: sheet.lots ?? null,
+        masterCartonQty: sheet.masterCartonQty ?? null,
+      })
+    : null;
+  const applyQuantity =
+    supplierPaid &&
+    item &&
+    savedPieces !== null &&
+    savedPieces !== item.quantity
+      ? { from: item.quantity, to: savedPieces, unit: item.unit }
+      : null;
   // Wellmix sem NCM na ficha nem na solicitação: a IA sugere (uma vez).
   if (
     isWellmix(user) &&
@@ -127,6 +157,28 @@ export default async function PurchaseSheetPage({
             autoFocus={saved === "partial" && canFill}
           />
         ) : null}
+        {quantityApplied === "1" ? (
+          <Alert tone="success">{t("sheet.qty.applied")}</Alert>
+        ) : null}
+        {applyQuantity ? (
+          <form
+            action={applySheetQuantityAction}
+            className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-sm"
+            data-apply-quantity
+          >
+            <input type="hidden" name="orderId" value={id} />
+            <span className="min-w-0 flex-1 text-amber-900">
+              {t("sheet.qty.apply.hint", {
+                from: applyQuantity.from.toLocaleString(t.intl),
+                to: applyQuantity.to.toLocaleString(t.intl),
+                unit: applyQuantity.unit,
+              })}
+            </span>
+            <SubmitButton variant="secondary">
+              {t("sheet.qty.apply.submit")}
+            </SubmitButton>
+          </form>
+        ) : null}
         {photoRemoved === "1" ? (
           <Alert tone="success">{t("sheet.photos.removed")}</Alert>
         ) : null}
@@ -141,7 +193,13 @@ export default async function PurchaseSheetPage({
         {typeof photosSent === "string" ? (
           <Alert tone="success">{t("sheet.photos.sent")}</Alert>
         ) : null}
-        {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+        <ActionError
+          t={t}
+          code={error}
+          text={errorText}
+          fields={invalidFields}
+          token={saveToken}
+        />
         {!view.saved && access.editSupplier ? (
           <Alert tone={view.prefillSource === "catalog" ? "neutral" : "info"}>
             {view.prefillSource === "quote" ||
@@ -158,6 +216,7 @@ export default async function PurchaseSheetPage({
             t={t}
             formId="purchase-sheet"
             storageKey={`order:${id}`}
+            userId={user.id}
             error={error}
             fields={invalidFields}
             saved={typeof saved === "string" && !!saved}
@@ -192,13 +251,15 @@ export default async function PurchaseSheetPage({
             orderQuantity={
               // Até a embalagem a quantidade do pedido acompanha as caixas
               // (quando a Wellmix salva); depois disso, só a programação muda.
-              item &&
-              isPiecesUnit(item.unit) &&
-              QUANTITY_FOLLOWS_SHEET.includes(view.order.status)
+              item && quantityFollows
                 ? {
                     current: item.quantity,
                     unit: item.unit,
-                    mode: isWellmix(user) ? "order" : "readonly",
+                    mode: !isWellmix(user)
+                      ? "readonly"
+                      : supplierPaid
+                        ? "paid"
+                        : "order",
                   }
                 : null
             }

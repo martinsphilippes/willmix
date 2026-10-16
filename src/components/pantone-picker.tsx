@@ -5,6 +5,7 @@ import { cx, inputDenseClass } from "@/components/ui";
 import type { PantoneColor, PantoneRef, PantoneScale } from "@/lib/pantone";
 import { PANTONE_SCALES } from "@/lib/pantone";
 import { syncColorText } from "@/lib/pantone/color-text";
+import { DRAFT_RESTORE_EVENT } from "./form-draft-guard";
 
 /*
  * Seletor de cores Pantone (ficha de compra): busca por número/nome, filtro
@@ -72,6 +73,36 @@ export function PantonePicker({
   useEffect(() => {
     box.current?.setAttribute("data-ready", "1");
   }, []);
+
+  // Volta de um envio que não salvou: as cores escolhidas voltam (o texto da
+  // Cor volta pelo guarda da ficha) e vão no próximo envio.
+  useEffect(() => {
+    const form = box.current?.closest("form");
+    if (!form) return;
+    const onRestore = (e: Event) => {
+      const raw = (e as CustomEvent<Record<string, string>>).detail?.[name];
+      if (typeof raw !== "string") return;
+      try {
+        const list: unknown = JSON.parse(raw);
+        if (!Array.isArray(list)) return;
+        const next = list
+          .filter(
+            (c): c is PantoneRef =>
+              !!c &&
+              typeof (c as PantoneRef).code === "string" &&
+              typeof (c as PantoneRef).hex === "string",
+          )
+          .slice(0, max)
+          .map((c) => ({ code: c.code, hex: c.hex }));
+        setSelected(next);
+        setDirty(true);
+      } catch {
+        // Rascunho ilegível: fica o que o servidor mostrou.
+      }
+    };
+    form.addEventListener(DRAFT_RESTORE_EVENT, onRestore);
+    return () => form.removeEventListener(DRAFT_RESTORE_EVENT, onRestore);
+  }, [name, max]);
 
   // Fecha a lista ao clicar fora.
   useEffect(() => {
@@ -191,7 +222,12 @@ export function PantonePicker({
       }}
     >
       {selected.length > 0 || dirty ? (
-        <input type="hidden" name={name} value={JSON.stringify(selected)} />
+        <input
+          type="hidden"
+          name={name}
+          value={JSON.stringify(selected)}
+          data-draft
+        />
       ) : null}
       {selected.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5">

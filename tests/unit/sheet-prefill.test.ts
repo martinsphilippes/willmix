@@ -141,9 +141,9 @@ describe("ficha da Preparação", () => {
     });
     const order = await r.confirmDownPayment(admin, request.id);
     const view = (await ps.getSheetForUser(supplierB, order.id))!;
-    // A compra anterior já atualizou a ficha mestre do produto (o cadastro
-    // acompanha a ficha do pedido), então a recompra vem dela, com os mesmos dados.
-    expect(view.prefillSource).toBe("master");
+    // Recompra com o mesmo fornecedor: a ficha dele vale (a mestre só
+    // completa o que ela não tem).
+    expect(view.prefillSource).toBe("previous");
     expect(view.sheet).toMatchObject({ material: "PVC", masterCartonQty: 24 });
     // Data e programação são deste pedido.
     expect(view.sheet.productionStartAt ?? null).toBeNull();

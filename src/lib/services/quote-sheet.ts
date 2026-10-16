@@ -111,10 +111,14 @@ async function prefillQuoteBase(
   request: Request,
 ): Promise<SheetInput & { productId: string | null }> {
   const store = getStore();
+  // RFQ decidida (cotação escolhida ou recusada): o cadastro do produto já
+  // pode ter os dados da compra com o vencedor; quem não salvou ficha vê só
+  // os próprios dados (isolamento entre fornecedores).
+  const open = quote.status === "invited" || quote.status === "answered";
   const [product, supplier, master, link] = await Promise.all([
     request.productId ? store.get("products", request.productId) : null,
     store.get("parties", quote.supplierId),
-    masterSheetInput(request.productId),
+    open ? masterSheetInput(request.productId) : null,
     productSupplierLink(request.productId, quote.supplierId),
   ]);
   // Dados comerciais só do próprio fornecedor: o vínculo dele (última
@@ -138,6 +142,15 @@ async function prefillQuoteBase(
     supplier,
     productForSupplier(product, quote.supplierId, link),
   );
+  if (!open)
+    return {
+      productId: product?.id ?? null,
+      ...records,
+      currency: sheetCurrency(quote.currency ?? ownCurrency),
+      price: quote.price ?? ownPrice,
+      moq: ownMoq,
+      lots: requestLots,
+    };
   if (master)
     return {
       ...master,
@@ -314,6 +327,17 @@ export async function saveQuoteSheet(
       sheet.productId ?? request.productId ?? null,
       sheet,
     );
+  // Cotação já respondida e com frete pedido: a carga desta ficha (caixas,
+  // CBM, peso) é a que vale no preço; a companhia marítima revisa o frete
+  // quando ela muda (sem mudança, nada é enviado).
+  if (
+    quote.status === "answered" &&
+    (await store.list("freight_quotes", { filter: { quoteId }, limit: 1 }))
+      .length
+  ) {
+    const { inviteFreightForQuote } = await import("./freight");
+    await inviteFreightForQuote(user, quoteId);
+  }
   const photos = await getSheetPhotos(quoteId);
   return {
     sheet,

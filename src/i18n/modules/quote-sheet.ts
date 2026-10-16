@@ -17,6 +17,8 @@ export const pt = {
     "Rascunho salvo e ficha completa. Confira e clique em Enviar cotação.",
   "quoteSheet.saved.sent": "Cotação enviada à Wellmix com a ficha de compra.",
   "quoteSheet.missing": "Para enviar, falta preencher: {fields}.",
+  "quoteSheet.error.lead_time_required":
+    "A ficha foi salva. Para enviar a cotação, informe o prazo de produção (dias) no fim da página.",
   "quoteSheet.error.sheet_incomplete":
     "A ficha foi salva, mas ainda está incompleta: preencha os campos com *, o 1º lote da programação e todas as fotos para enviar a cotação.",
   "quoteSheet.readOnly": "Cotação encerrada: a ficha fica só para consulta.",
@@ -39,6 +41,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Draft saved and sheet complete. Review it and click Send quotation.",
   "quoteSheet.saved.sent": "Quotation sent to Wellmix with the purchase sheet.",
   "quoteSheet.missing": "To send, still missing: {fields}.",
+  "quoteSheet.error.lead_time_required":
+    "The sheet was saved. To send the quotation, enter the production lead time (days) at the end of the page.",
   "quoteSheet.error.sheet_incomplete":
     "The sheet was saved but is still incomplete: fill in the fields with *, the 1st lot of the schedule and all the photos to send the quotation.",
   "quoteSheet.readOnly": "Quotation closed: the sheet is read-only.",
@@ -61,6 +65,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "草稿已保存，采购单已完整。请检查后点击提交报价。",
   "quoteSheet.saved.sent": "报价已连同采购单提交给 Wellmix。",
   "quoteSheet.missing": "提交前还需填写：{fields}。",
+  "quoteSheet.error.lead_time_required":
+    "采购单已保存。要提交报价，请在页面底部填写生产周期（天）。",
   "quoteSheet.error.sheet_incomplete":
     "采购单已保存，但仍不完整：请填写带 * 的字段、第 1 批计划以及所有照片后再提交报价。",
   "quoteSheet.readOnly": "报价已关闭：采购单仅供查看。",

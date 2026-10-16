@@ -7,7 +7,9 @@ import {
   type PurchaseSheet,
   type User,
 } from "@/lib/db";
+import { createHash } from "node:crypto";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { audit } from "./audit";
 import {
@@ -145,12 +147,40 @@ export async function masterSheetInput(
   productId: string | null | undefined,
 ): Promise<SheetInput | null> {
   if (!productId) return null;
-  const master = await getProductSheet(productId);
-  if (!master) return null;
+  const [stored, product] = await Promise.all([
+    getProductSheet(productId),
+    getStore().get("products", productId),
+  ]);
+  if (!stored) return null;
+  // Ficha mestre gravada com só parte dos campos: o resto vem das colunas.
+  const master = product
+    ? withProductColumns(stored, productSheetDraft(product, null))
+    : stored;
   const out: Record<string, unknown> = {};
   for (const k of MASTER_PRODUCT_FIELDS)
     if (master[k] !== undefined && master[k] !== null) out[k] = master[k];
   return out as SheetInput;
+}
+
+const filled = (v: unknown) =>
+  v !== undefined &&
+  v !== null &&
+  v !== "" &&
+  !(Array.isArray(v) && v.length === 0);
+
+/**
+ * Ficha mestre com os campos em branco completados pelas colunas do produto
+ * (mesmo dado, dois lugares): ficha criada com só parte dos campos não
+ * esconde o que o cadastro já tem.
+ */
+export function withProductColumns<T extends Partial<PurchaseSheet>>(
+  master: T,
+  draft: SheetInput,
+): T {
+  const out: Record<string, unknown> = { ...master };
+  for (const [k, v] of Object.entries(draft))
+    if (k !== "lots" && filled(v) && !filled(out[k])) out[k] = v;
+  return out as T;
 }
 
 /** Colunas do produto espelhadas da ficha (mesmo dado, dois lugares). */
@@ -195,8 +225,10 @@ function productPatchFromSheet(
   if (has("material")) patch.material = cut(sheet.material, 120);
   if (has("factoryItemCode"))
     patch.supplierSku = cut(sheet.factoryItemCode, 60);
-  // NCM validado só entra no produto quando a ficha traz um.
-  if (sheet.ncm) patch.ncm = sheet.ncm;
+  // NCM validado só entra no produto quando a ficha traz um (8 dígitos:
+  // a coluna do produto tem 10 caracteres, "9503.00.21").
+  const ncm = normalizeNcm(sheet.ncm);
+  if (ncm) patch.ncm = formatNcm(ncm);
   return patch;
 }
 
@@ -251,6 +283,19 @@ async function writeProductSheet(
     if (allowed.has(key) && value !== undefined) patch[key] = value;
   if ("lots" in patch) patch.lots = normalizeLots(patch.lots as never);
   const existing = await getProductSheet(productId);
+  // Antes: o que a mestre mostrava (ficha ou colunas do produto).
+  const supplier = product.supplierId
+    ? await store.get("parties", product.supplierId)
+    : null;
+  const draft = productSheetDraft(product, supplier);
+  const shown = (
+    existing ? withProductColumns(existing, draft) : { ...draft }
+  ) as Record<string, unknown>;
+  // Colunas do produto primeiro: se o cadastro recusar (tamanho, formato), a
+  // ficha mestre não fica diferente do produto.
+  const mirror = productPatchFromSheet(patch as Partial<PurchaseSheet>);
+  if (Object.keys(mirror).length)
+    await store.update("products", productId, mirror);
   let sheet: PurchaseSheet;
   if (existing) {
     sheet = await store.update("purchase_sheets", existing.id, {
@@ -261,8 +306,13 @@ async function writeProductSheet(
     const blank = Object.fromEntries(
       [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].map((k) => [k, null]),
     );
+    // A mestre nasce com o que o produto já tem; o que veio agora prevalece.
+    const fromProduct = Object.fromEntries(
+      Object.entries(draft).filter(([k, v]) => k !== "lots" && filled(v)),
+    );
     sheet = await store.create("purchase_sheets", {
       ...blank,
+      ...fromProduct,
       ...patch,
       lots: normalizeLots(patch.lots as never),
       orderId: productId,
@@ -271,24 +321,32 @@ async function writeProductSheet(
       completedAt: null,
     } as Omit<PurchaseSheet, "id" | "createdAt" | "updatedAt">);
   }
-  const mirror = productPatchFromSheet(patch as Partial<PurchaseSheet>);
-  if (Object.keys(mirror).length)
-    await store.update("products", productId, mirror);
+  // Antes e depois de cada campo trocado (preço, MOQ, caixa…): rastreável.
+  const before: Record<string, unknown> = {};
+  const after: Record<string, unknown> = {};
+  const brief = (v: unknown) =>
+    typeof v === "string" && v.length > 200 ? `${v.slice(0, 200)}…` : v;
+  for (const k of MASTER_SHEET_FIELDS) {
+    if (!(k in patch)) continue;
+    if (JSON.stringify(shown[k] ?? null) === JSON.stringify(patch[k] ?? null))
+      continue;
+    before[k] = brief(shown[k] ?? null);
+    after[k] = brief(patch[k] ?? null);
+  }
+  const changed = Object.keys(after);
   await audit(
     user,
     action ?? (existing ? "product.sheet_update" : "product.sheet_create"),
     "product",
     productId,
-    `Ficha mestre: ${Object.keys(patch).length} campo(s)`,
+    changed.length
+      ? `Ficha mestre: ${changed.join(", ")}`
+      : `Ficha mestre: ${Object.keys(patch).length} campo(s)`,
+    changed.length ? before : null,
+    changed.length ? after : null,
   );
   return { sheet, missing: await productSheetMissing(productId, sheet) };
 }
-
-const filled = (v: unknown) =>
-  v !== undefined &&
-  v !== null &&
-  v !== "" &&
-  !(Array.isArray(v) && v.length === 0);
 
 /**
  * O cadastro do produto acompanha a ficha (para a próxima venda já vir
@@ -310,6 +368,8 @@ export async function completeMasterFromSheet(
   sheet: Partial<PurchaseSheet>,
   supplierId: string | null | undefined,
   mode: "fill" | "adopt",
+  /** Falha sobe para quem chamou (cadastro novo: a cópia é o que ele pediu). */
+  options: { strict?: boolean } = {},
 ): Promise<string[]> {
   if (!productId) return [];
   try {
@@ -322,9 +382,12 @@ export async function completeMasterFromSheet(
       : MASTER_PRODUCT_FIELDS;
     const overwrite = mode === "adopt" && (main || !product.supplierId);
     const existing = await getProductSheet(productId);
-    const current: Record<string, unknown> = existing
-      ? { ...existing }
-      : { ...productSheetDraft(product, null) };
+    // O que o cadastro já tem: a ficha mestre e, onde ela está em branco, as
+    // colunas do produto.
+    const draft = productSheetDraft(product, null);
+    const current = (
+      existing ? withProductColumns(existing, draft) : { ...draft }
+    ) as Record<string, unknown>;
     const input: Record<string, unknown> = {};
     for (const k of fields) {
       const v = (sheet as Record<string, unknown>)[k];
@@ -342,6 +405,7 @@ export async function completeMasterFromSheet(
     );
     return Object.keys(input);
   } catch (error) {
+    if (options.strict) throw error;
     console.warn(
       "[product-sheet] completar o cadastro pela ficha falhou",
       error,
@@ -487,41 +551,65 @@ export async function registerProductFromOrderSheet(
   });
   if (!sheet) throw new ProductSheetError("not_found");
   if (sheet.productId) return sheet.productId;
-  const line = await store.get("product_lines", lineId);
-  if (!line) throw new ProductSheetError("invalid_line");
   const [item] = await store.list("order_items", {
     filter: { orderId },
     limit: 1,
   });
   const request = await store.get("requests", order.requestId);
-  const product = await store.create("products", {
-    ...PRODUCT_EXTRA_DEFAULTS,
-    lineId: line.id,
-    name: (item?.name ?? request?.productName ?? "Produto").slice(0, 160),
-    sku: null,
-    specification: request?.specification ?? request?.description ?? null,
-    active: true,
-    source: "manual",
-    supplierId: order.supplierId,
-  });
-  await store.update("purchase_sheets", sheet.id, { productId: product.id });
-  if (item && !item.productId)
-    await store.update("order_items", item.id, { productId: product.id });
-  if (request && !request.productId)
-    await store.update("requests", request.id, { productId: product.id });
-  await audit(
-    user,
-    "product.create_from_order",
-    "product",
-    product.id,
-    `Cadastrado a partir do pedido #${order.number}`,
-  );
+  // Item ou solicitação já ligados a um produto: a ficha passa a apontar
+  // para ele (nada de produto em dobro).
+  const linked = item?.productId ?? request?.productId ?? null;
+  if (linked && (await store.get("products", linked))) {
+    await store.update("purchase_sheets", sheet.id, { productId: linked });
+    return linked;
+  }
+  const line = await store.get("product_lines", lineId);
+  if (!line) throw new ProductSheetError("invalid_line");
+  // Id fixo por pedido: clique duplo, dois usuários ou nova tentativa caem no
+  // mesmo produto (o banco recusa o segundo com o mesmo id).
+  const productId = `p${createHash("sha256").update(orderId).digest("hex").slice(0, 24)}`;
+  let product = await store.get("products", productId);
+  if (!product) {
+    try {
+      product = await store.create("products", {
+        ...PRODUCT_EXTRA_DEFAULTS,
+        id: productId,
+        lineId: line.id,
+        name: (item?.name ?? request?.productName ?? "Produto").slice(0, 160),
+        sku: null,
+        specification: request?.specification ?? request?.description ?? null,
+        active: true,
+        source: "manual",
+        supplierId: order.supplierId,
+      });
+    } catch (error) {
+      // Outro salvamento criou o mesmo produto ao mesmo tempo: vale o dele.
+      product = await store.get("products", productId);
+      if (!product) throw error;
+      return product.id;
+    }
+    await audit(
+      user,
+      "product.create_from_order",
+      "product",
+      product.id,
+      `Cadastrado a partir do pedido #${order.number}`,
+    );
+  }
+  // A ficha do pedido vira a ficha mestre; se falhar, o erro aparece e uma
+  // nova tentativa refaz a cópia (a ficha só aponta para o produto no fim).
   await completeMasterFromSheet(
     user,
     product.id,
     { ...sheet, productId: product.id },
     order.supplierId,
     "adopt",
+    { strict: true },
   );
+  await store.update("purchase_sheets", sheet.id, { productId: product.id });
+  if (item && !item.productId)
+    await store.update("order_items", item.id, { productId: product.id });
+  if (request && !request.productId)
+    await store.update("requests", request.id, { productId: product.id });
   return product.id;
 }

@@ -100,7 +100,10 @@ export function parseSheet(form: FormData): {
     heightCm: safe("heightCm", () => num(form, "heightCm")),
     widthCm: safe("widthCm", () => num(form, "widthCm")),
     lengthCm: safe("lengthCm", () => num(form, "lengthCm")),
-    capacityMl: safe("capacityMl", () => num(form, "capacityMl")),
+    // Mililitros inteiros: "1.000 ml" é mil, não 1.
+    capacityMl: safe("capacityMl", () =>
+      num(form, "capacityMl", { int: true }),
+    ),
     packageType: safe("packageType", () => text(form, "packageType", 120)),
     colorAssortment: safe("colorAssortment", () =>
       text(form, "colorAssortment", 200),
@@ -128,10 +131,11 @@ export function parseSheet(form: FormData): {
     ),
     notes: safe("notes", () => text(form, "notes", 2000)),
     ncm: safe("ncm", () => {
-      // "9503.00.21", "9503 00 21", "9503-00-21" e "95030021" valem o mesmo.
+      // "9503.00.21", "9503 00 21", "9503-00-21", "9503,00,21" e "95030021"
+      // valem o mesmo.
       const raw = text(form, "ncm", 20);
       if (raw === undefined || raw === null) return raw;
-      const v = raw.replace(/[\s-]/g, "");
+      const v = raw.replace(/[\s-]/g, "").replace(/,/g, ".");
       return v
         ? z
             .string()
@@ -161,6 +165,16 @@ export function parseSheet(form: FormData): {
       })),
     );
     if (lots) input.lots = lots;
+  }
+  // Caixas da programação e peças por caixa decidem a quantidade (e o valor)
+  // do pedido: se um dos dois não deu para ler, nenhum dos dois muda (gravar
+  // só um mudaria a quantidade com a programação antiga).
+  if (invalid.includes("lots") || invalid.includes("masterCartonQty")) {
+    delete input.lots;
+    delete input.masterCartonQty;
+    for (const k of ["lots", "masterCartonQty"])
+      if (form.has(k === "lots" ? "lot1Cartons" : k) && !invalid.includes(k))
+        invalid.push(k);
   }
   for (const key of Object.keys(input) as (keyof SheetInput)[])
     if (input[key] === undefined) delete input[key];

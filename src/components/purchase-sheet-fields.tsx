@@ -87,7 +87,7 @@ export function PurchaseSheetFields({
   orderQuantity?: {
     current: number;
     unit: string;
-    mode: "order" | "quote" | "quoteDraft" | "readonly";
+    mode: "order" | "paid" | "quote" | "quoteDraft" | "readonly";
   } | null;
 }) {
   const dateValue = (v: string | null | undefined) => (v ? v.slice(0, 10) : "");
@@ -627,6 +627,7 @@ export function PurchaseSheetFields({
                   quote: t("sheet.qty.quote"),
                   quoteDraft: t("sheet.qty.quoteDraft"),
                   readonly: t("sheet.qty.readonly"),
+                  paid: t("sheet.qty.paid"),
                 },
                 addLot: t("sheet.lot.add"),
                 removeLot: t("sheet.lot.remove", { n: "{n}" }),

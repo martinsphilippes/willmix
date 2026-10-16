@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ZodError } from "zod";
+import { ZodError, type z } from "zod";
 import { getCurrentUser } from "@/lib/auth/session";
 import type { User } from "@/lib/db";
 
@@ -74,9 +74,45 @@ export function errorCode(back: string, error: unknown) {
   return code.slice(0, 60);
 }
 
-function withError(back: string, code: string) {
+/**
+ * Nomes dos campos que a validação recusou, quando se sabe (objeto validado
+ * com zod ou campo lido com `field()`): a tela aponta e leva até cada um, em
+ * vez de só "algum campo tem valor inválido".
+ */
+export function invalidFieldNames(error: unknown): string[] {
+  if (!(error instanceof ZodError)) return [];
+  const names = error.issues
+    .map((issue) => issue.path[0])
+    .filter(
+      (k): k is string =>
+        typeof k === "string" && /^[A-Za-z][A-Za-z0-9_.]{0,59}$/.test(k),
+    );
+  return [...new Set(names)].slice(0, 20);
+}
+
+/**
+ * Um campo do formulário validado com zod; a recusa leva o nome do campo
+ * (a tela diz qual é), como a validação de um objeto.
+ */
+export function field<T>(form: FormData, key: string, schema: z.ZodType<T>): T {
+  const result = schema.safeParse(str(form, key));
+  if (result.success) return result.data;
+  throw new ZodError(
+    result.error.issues.map((issue) => ({
+      ...issue,
+      path: [key, ...issue.path],
+    })),
+  );
+}
+
+function withError(back: string, code: string, fields: string[] = []) {
   const url = new URL(back, "http://x");
   url.searchParams.set("error", code);
+  if (fields.length) {
+    url.searchParams.set("fields", fields.join(","));
+    // Cada recusa remonta o aviso e leva de novo ao campo.
+    url.searchParams.set("at", String(Date.now()));
+  }
   // Mantém a âncora (ex.: #photos): o aviso aparece onde a pessoa está.
   return url.pathname + url.search + url.hash;
 }
@@ -88,7 +124,7 @@ export async function run(back: string, fn: () => Promise<string | void>) {
     const result = await fn();
     if (result) target = result;
   } catch (error) {
-    target = withError(back, errorCode(back, error));
+    target = withError(back, errorCode(back, error), invalidFieldNames(error));
   }
   revalidatePath("/app", "layout");
   redirect(target);
@@ -105,7 +141,7 @@ export async function runInPlace(back: string, fn: () => Promise<void>) {
   try {
     await fn();
   } catch (error) {
-    failed = withError(back, errorCode(back, error));
+    failed = withError(back, errorCode(back, error), invalidFieldNames(error));
   }
   revalidatePath("/app", "layout");
   if (failed) redirect(failed);
