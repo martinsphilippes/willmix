@@ -1,42 +1,75 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import {
-  canSeeSupplier,
-  canViewOrder,
-  isWellmix,
-} from "@/lib/auth/permissions";
-import { getStore } from "@/lib/db";
+import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
-import {
-  Badge,
-  Empty,
-  PageHeader,
-  Progress,
-  Table,
-  Td,
-  TextLink,
-  Th,
-  cx,
-  formatDate,
-  isOverdue,
-  rowClass,
-  stageTone,
-} from "@/components/ui";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { STAGE_KEYS, REQUEST_STATUSES } from "@/lib/db/schema";
+import { pipelineFor } from "@/lib/services/pipeline";
+import { Empty, PageHeader, formatDate } from "@/components/ui";
+import { OrdersTable, type OrdersTableRow } from "@/components/orders-table";
 
-export default async function OrdersPage() {
+/*
+ * Pedidos: todos os pedidos (em andamento, bloqueados, concluídos e
+ * cancelados, este com a etapa em que parou) e, para a Wellmix, também as
+ * solicitações que ainda não viraram pedido. Filtro em todas as colunas.
+ */
+
+/** Dia de hoje em Brasília (AAAA-MM-DD). */
+function todayInBrazil() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date());
+}
+
+export default async function OrdersPage({
+  searchParams,
+}: PageProps<"/app/orders">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const t = await getT();
-  const store = getStore();
-  const [orders, parties, stages, items] = await Promise.all([
-    store.list("orders", { orderBy: "number", direction: "desc" }),
-    store.list("parties"),
-    store.list("stages", { filter: { status: ["active", "blocked"] } }),
-    store.list("order_items"),
-  ]);
-  const visible = orders.filter((o) => canViewOrder(user, o));
-  const name = (id: string | null) =>
-    parties.find((p) => p.id === id)?.name ?? "—";
+  const params = await searchParams;
+  const rows = await pipelineFor(user);
+  const wellmix = isWellmix(user);
+  const showCustomer = wellmix;
+  const showSupplier = canSeeSupplier(user) && user.role !== "supplier";
+
+  // Ordem das etapas no fluxo: solicitação antes do pedido; cancelada por último.
+  const rank = (row: (typeof rows)[number]) =>
+    row.phase.kind === "stage"
+      ? 100 + STAGE_KEYS.indexOf(row.phase.key)
+      : row.phase.key === "CANCELLED"
+        ? 999
+        : REQUEST_STATUSES.indexOf(
+            row.phase.key as (typeof REQUEST_STATUSES)[number],
+          );
+  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
+  const tableRows: OrdersTableRow[] = rows.map((r) => ({
+    key: r.key,
+    href: r.href,
+    number:
+      r.kind === "order"
+        ? `#${r.number ?? "—"}`
+        : r.number
+          ? t("orders.panel.requestNumber", { n: r.number })
+          : "—",
+    isRequest: r.kind === "request",
+    product: r.product,
+    customer: r.customer ?? "",
+    supplier: r.supplier ?? "",
+    phase:
+      r.phase.kind === "stage"
+        ? t(`stage.${r.phase.key}` as DictionaryKey)
+        : t(`reqStatusLabel.${r.phase.key}` as DictionaryKey),
+    phaseRank: rank(r),
+    state: r.state,
+    progress: r.progress,
+    due: day(r.dueAt),
+    dueLabel: formatDate(r.dueAt, t),
+    updated: day(r.updatedAt),
+    updatedLabel: formatDate(r.updatedAt, t),
+  }));
+  const one = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v.slice(0, 120) : undefined;
 
   return (
     <>
@@ -45,88 +78,69 @@ export default async function OrdersPage() {
         t={t}
         title={t("orders.title")}
       />
-      {visible.length === 0 ? (
+      {tableRows.length === 0 ? (
         <Empty>{t("common.none")}</Empty>
       ) : (
-        <Table>
-          <thead>
-            <tr>
-              <Th>#</Th>
-              <Th>{t("common.product")}</Th>
-              {user.role !== "customer" && isWellmix(user) ? (
-                <Th>{t("common.customer")}</Th>
-              ) : null}
-              {canSeeSupplier(user) && user.role !== "supplier" ? (
-                <Th>{t("common.supplier")}</Th>
-              ) : null}
-              <Th>{t("orders.stage")}</Th>
-              <Th>{t("common.progress")}</Th>
-              <Th>{t("common.due")}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((o) => {
-              const stage = stages.find((s) => s.orderId === o.id);
-              const overdue = isOverdue(stage?.dueAt);
-              const percent =
-                o.status === "CLOSED" ? 100 : (stage?.percent ?? 0);
-              return (
-                <tr key={o.id} className={rowClass}>
-                  <Td className="whitespace-nowrap">
-                    <TextLink href={`/app/orders/${o.id}`}>
-                      #{o.number}
-                    </TextLink>
-                  </Td>
-                  <Td className="min-w-40 font-medium text-zinc-900">
-                    {items.find((i) => i.orderId === o.id)?.name ?? "—"}
-                  </Td>
-                  {user.role !== "customer" && isWellmix(user) ? (
-                    <Td className="min-w-32">{name(o.customerId)}</Td>
-                  ) : null}
-                  {canSeeSupplier(user) && user.role !== "supplier" ? (
-                    <Td className="min-w-32">{name(o.supplierId)}</Td>
-                  ) : null}
-                  <Td className="whitespace-nowrap">
-                    <Badge
-                      tone={
-                        o.status === "CANCELLED"
-                          ? "danger"
-                          : stageTone(
-                              o.status === "CLOSED"
-                                ? "done"
-                                : stage?.status === "blocked"
-                                  ? "blocked"
-                                  : "active",
-                            )
-                      }
-                    >
-                      {t(`stage.${o.status}`)}
-                      {stage?.status === "blocked"
-                        ? ` · ${t("stageStatus.blocked")}`
-                        : ""}
-                    </Badge>
-                  </Td>
-                  <Td className="w-40">
-                    <div className="flex h-5 items-center gap-2">
-                      <Progress percent={percent} />
-                      <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
-                        {percent}%
-                      </span>
-                    </div>
-                  </Td>
-                  <Td
-                    className={cx(
-                      "whitespace-nowrap tabular-nums",
-                      overdue && "font-semibold text-red-700",
-                    )}
-                  >
-                    {formatDate(stage?.dueAt, t)}
-                  </Td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
+        <OrdersTable
+          rows={tableRows}
+          showCustomer={showCustomer}
+          showSupplier={showSupplier}
+          today={todayInBrazil()}
+          initial={{
+            n: one(params.n),
+            p: one(params.p),
+            c: one(params.c),
+            s: one(params.s),
+            ph: one(params.ph),
+            st: one(params.st),
+            pr: one(params.pr),
+            d: one(params.d),
+            u: one(params.u),
+            sort: one(params.sort),
+          }}
+          labels={{
+            number: "#",
+            product: t("common.product"),
+            customer: t("common.customer"),
+            supplier: t("common.supplier"),
+            phase: t("orders.stage"),
+            state: t("common.status"),
+            progress: t("common.progress"),
+            due: t("common.due"),
+            updated: t("orders.panel.updated"),
+            all: t("orders.panel.all"),
+            search: t("orders.panel.search"),
+            states: {
+              active: t("orders.panel.state.active"),
+              blocked: t("orders.panel.state.blocked"),
+              done: t("orders.panel.state.done"),
+              cancelled: t("orders.panel.state.cancelled"),
+            },
+            progressOptions: {
+              none: t("orders.panel.progress.none"),
+              partial: t("orders.panel.progress.partial"),
+              full: t("orders.panel.progress.full"),
+            },
+            dueOptions: {
+              overdue: t("orders.panel.due.overdue"),
+              week: t("orders.panel.due.week"),
+              none: t("orders.panel.due.none"),
+            },
+            updatedOptions: {
+              today: t("orders.panel.updated.today"),
+              week: t("orders.panel.updated.week"),
+              month: t("orders.panel.updated.month"),
+            },
+            request: t("orders.panel.request"),
+            count: t("orders.panel.count", {
+              shown: "{shown}",
+              total: "{total}",
+            }),
+            clear: t("orders.panel.clear"),
+            empty: t("orders.panel.empty"),
+            sortBy: t("orders.panel.sortBy"),
+          }}
+        />
       )}
     </>
   );

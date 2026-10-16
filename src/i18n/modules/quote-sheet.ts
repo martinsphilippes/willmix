@@ -40,6 +40,8 @@ export const pt = {
   "quotes.list.sentOn": "Enviada em",
   "quotes.list.answer": "Responder",
   "quotes.list.open": "Abrir",
+  "quotes.list.notAnswered": "Não respondida",
+  "quotes.list.requestCancelled": "Solicitação cancelada",
   "quoteSheet.missing": "Para enviar, falta preencher: {fields}.",
   "quoteSheet.error.lead_time_required":
     "A ficha foi salva. Para enviar a cotação, informe o prazo de produção (dias) no fim da página.",
@@ -88,6 +90,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quotes.list.sentOn": "Sent on",
   "quotes.list.answer": "Answer",
   "quotes.list.open": "Open",
+  "quotes.list.notAnswered": "Not answered",
+  "quotes.list.requestCancelled": "Request cancelled",
   "quoteSheet.missing": "To send, still missing: {fields}.",
   "quoteSheet.error.lead_time_required":
     "The sheet was saved. To send the quotation, enter the production lead time (days) at the end of the page.",
@@ -134,6 +138,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "quotes.list.sentOn": "提交于",
   "quotes.list.answer": "回复",
   "quotes.list.open": "打开",
+  "quotes.list.notAnswered": "未回复",
+  "quotes.list.requestCancelled": "需求已取消",
   "quoteSheet.missing": "提交前还需填写：{fields}。",
   "quoteSheet.error.lead_time_required":
     "采购单已保存。要提交报价，请在页面底部填写生产周期（天）。",

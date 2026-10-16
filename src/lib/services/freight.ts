@@ -248,6 +248,40 @@ export async function getFreightView(
   };
 }
 
+/** Resumo do frete recém-informado, para a confirmação na lista de fretes. */
+export interface SentFreightView {
+  id: string;
+  productName: string;
+  amount: number | null;
+  currency: string | null;
+  transitDays: number | null;
+  validUntil: string | null;
+}
+
+/**
+ * Frete que o usuário acabou de informar (`/app/freight?sent=<id>`): só o da
+ * companhia dele (`canViewFreight`) e já informado; senão nulo. Id que o banco
+ * recusa não derruba a tela (o aviso é opcional).
+ */
+export async function sentFreightView(
+  user: User,
+  freightId: string,
+): Promise<SentFreightView | null> {
+  const store = getStore();
+  const fq = await store.get("freight_quotes", freightId).catch(() => null);
+  if (!fq || !canViewFreight(user, fq) || fq.status !== "answered") return null;
+  const request = await store.get("requests", fq.requestId);
+  if (!request) return null;
+  return {
+    id: fq.id,
+    productName: request.productName,
+    amount: fq.amount,
+    currency: fq.currency,
+    transitDays: fq.transitDays,
+    validUntil: fq.validUntil,
+  };
+}
+
 /** Pedidos de frete da companhia (Wellmix vê todos). */
 export async function listFreightFor(user: User) {
   const store = getStore();
