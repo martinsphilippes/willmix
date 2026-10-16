@@ -248,6 +248,9 @@ export default async function PurchaseSheetPage({
             editCustoms={access.editCustoms}
             requestSchedule={request?.schedule ?? null}
             requestUnit={request?.unit ?? "un"}
+            targetQuantity={
+              item ? { quantity: item.quantity, unit: item.unit } : null
+            }
             orderQuantity={
               // Até a embalagem a quantidade do pedido acompanha as caixas
               // (quando a Wellmix salva); depois disso, só a programação muda.

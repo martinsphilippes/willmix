@@ -300,6 +300,10 @@ export default async function QuotePage({
               editCustoms={sheetView.access.editCustoms}
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
+              targetQuantity={{
+                quantity: request.quantity,
+                unit: request.unit,
+              }}
               orderQuantity={
                 // Antes da escolha, em peças: a proposta usa as peças da
                 // programação salva (rascunho ainda não salvo: "ao salvar").

@@ -6,14 +6,17 @@ import { DRAFT_RESTORE_EVENT } from "./form-draft-guard";
 import type { PurchaseLot } from "@/lib/db/schema";
 import {
   MAX_LOTS,
+  cartonTotalFor,
   generateLots,
   planSheet,
   spreadCartons,
   suggestContainerFill,
+  type CartonTotal,
   type ContainerFill,
   type ContainerStep,
   type GenerateLotsError,
 } from "@/lib/services/purchase-sheet-calc";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import {
   DEFAULT_SCHEDULE_INTERVAL,
   SCHEDULE_INTERVALS,
@@ -66,6 +69,8 @@ export interface ScheduleLabels {
   appliedTotal: string;
   /** CBM da caixa fora do normal (provável erro de digitação). */
   cbmHigh: string;
+  /** O mesmo, quando o CBM vem das medidas (medida provavelmente em mm). */
+  cbmHighSize: string;
   cbmMismatch: string;
   /** Quantidade do pedido acompanhando as caixas. */
   qty: {
@@ -108,6 +113,18 @@ export interface GenerateLabels {
   errorTotal: string;
   errorInterval: string;
   errorFirst: string;
+  /** De onde veio o total: programações de hoje, do cliente ou a quantidade pedida. */
+  fromLots: string;
+  /** "{quantity} {unit} ÷ {perCarton} por caixa … = {cartons} caixas" */
+  fromRequested: string;
+  fromQuantity: string;
+  /** "As caixas fecham {pieces} peças: {extra} a mais que o pedido." */
+  extra: string;
+  /** Falta "Peças por caixa master" para calcular. */
+  needPerCarton: string;
+  goTo: string;
+  /** "Usar o calculado ({cartons})" */
+  useCalc: string;
 }
 
 interface FormValues {
@@ -156,6 +173,7 @@ export function SheetSchedule({
   unit = "un",
   lot1Missing = false,
   quantity = null,
+  target = null,
 }: {
   /** Programação 1 obrigatória e vazia: a linha fica em vermelho (o aviso leva até ela). */
   lot1Missing?: boolean;
@@ -178,6 +196,8 @@ export function SheetSchedule({
     unit: string;
     mode: "order" | "paid" | "quote" | "quoteDraft" | "readonly";
   } | null;
+  /** Quantidade pedida hoje (sempre que houver): total de caixas do atalho. */
+  target?: { quantity: number; unit: string } | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const fmt = (n: number | null | undefined, digits = 2) =>
@@ -232,9 +252,16 @@ export function SheetSchedule({
     const apply = () => {
       const v = (name: string) =>
         (el.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "";
+      // CBM da caixa pelas medidas quando há as três (o campo mostra o
+      // mesmo calculado e o servidor grava assim); senão o digitado.
+      const boxCbm = cbmFromDimensions(
+        parseNum(v("lengthCm")),
+        parseNum(v("widthCm")),
+        parseNum(v("heightCm")),
+      );
       setForm({
         masterCartonQty: parseNum(v("masterCartonQty"), true),
-        cbmPerCarton: parseNum(v("cbmPerCarton")),
+        cbmPerCarton: boxCbm ?? parseNum(v("cbmPerCarton")),
         heightCm: parseNum(v("heightCm")),
         widthCm: parseNum(v("widthCm")),
         lengthCm: parseNum(v("lengthCm")),
@@ -406,7 +433,7 @@ export function SheetSchedule({
     const cbm = form.cbmPerCarton;
     if (cbm === null || cbm <= 0) return null;
     if (cbm >= 1)
-      return fill(labels.cbmHigh, {
+      return fill(cbm === plan.cbmFromSize ? labels.cbmHighSize : labels.cbmHigh, {
         cbm: fmt(cbm, 4),
         capacity: capacity ? fmt(capacity, 0) : "68",
       });
@@ -432,6 +459,25 @@ export function SheetSchedule({
     return { changed: true, text: fill(labels.qty[quantity.mode], vars) };
   })();
 
+  // Total de caixas do atalho, sem digitar: as programações de hoje, a
+  // programação pedida pelo cliente ou a quantidade pedida ÷ peças por caixa.
+  // Ao vivo: acompanha "Peças por caixa master" enquanto o painel está aberto.
+  const autoTotal = cartonTotalFor({
+    lotsCartons: plan.totalCartons,
+    masterCartonQty: form.masterCartonQty,
+    requested,
+    unit,
+    target,
+  });
+
+  // Programação 1 resolvida na tela: o item "Programação 1" do aviso
+  // "Faltam: …" fica riscado até salvar (como os outros campos).
+  useEffect(() => {
+    if (!lot1Missing) return;
+    for (const item of document.querySelectorAll('[data-missing-field="lot1"]'))
+      item.toggleAttribute("data-done", !lot1Open);
+  }, [lot1Missing, lot1Open]);
+
   // Valores iniciais do atalho: o que a ficha já tem (total, linhas,
   // intervalos) ou a programação pedida pelo cliente.
   function generatorDefaults(): GeneratorDefaults {
@@ -439,14 +485,8 @@ export function SheetSchedule({
       const n = parseNum(v);
       return n !== null && Number.isInteger(n) && n >= 1 && n <= 365 ? n : null;
     };
-    const fromRequest =
-      requested.length && form.masterCartonQty
-        ? requested.reduce(
-            (sum, r) => sum + Math.ceil(r.quantity / form.masterCartonQty!),
-            0,
-          )
-        : 0;
-    const total = plan.totalCartons || fromRequest;
+    const total =
+      autoTotal && autoTotal.source !== "missing" ? autoTotal.cartons : 0;
     // Intervalo entre programações vem da 2ª linha; a 1ª linha conta do
     // início da produção (prazo de produção), então vira a "1ª saída" e fica
     // como está ao trocar o intervalo.
@@ -518,6 +558,8 @@ export function SheetSchedule({
           <ScheduleGenerator
             key={genOpen}
             defaults={generatorDefaults()}
+            auto={autoTotal}
+            unit={unit}
             hasData={filled(lots) > 0}
             masterCartonQty={form.masterCartonQty}
             cbmPerCarton={form.cbmPerCarton}
@@ -822,10 +864,13 @@ interface GeneratorDefaults {
  * Painel do atalho: total de caixas, nº de programações (1 a 6), intervalo
  * (30/45/60 ou outro) e 1ª saída. Campos sem `name`: não vão no envio da
  * ficha; só preenchem as linhas, que continuam editáveis. Enter gera (não
- * envia a ficha) e Esc fecha.
+ * envia a ficha) e Esc fecha. O total já vem calculado (`auto`), com a conta
+ * à vista, e acompanha a ficha até a pessoa digitar outro.
  */
 function ScheduleGenerator({
   defaults,
+  auto,
+  unit,
   hasData,
   masterCartonQty,
   cbmPerCarton,
@@ -835,6 +880,8 @@ function ScheduleGenerator({
   onCancel,
 }: {
   defaults: GeneratorDefaults;
+  auto: CartonTotal | null;
+  unit: string;
   hasData: boolean;
   masterCartonQty: number | null;
   cbmPerCarton: number | null;
@@ -852,6 +899,8 @@ function ScheduleGenerator({
     defaults.interval,
   );
   const [total, setTotal] = useState(defaults.total);
+  // Total digitado: deixa de acompanhar o calculado (o link volta a ele).
+  const [totalTouched, setTotalTouched] = useState(false);
   const [count, setCount] = useState(defaults.count);
   const [interval, setInterval] = useState(preset ? defaults.interval : 0);
   const [custom, setCustom] = useState(preset ? "" : String(defaults.interval));
@@ -865,7 +914,13 @@ function ScheduleGenerator({
   useEffect(() => totalRef.current?.focus(), []);
 
   const days = interval > 0 ? interval : parseWhole(custom);
-  const totalNum = parseWhole(total);
+  const autoCartons =
+    auto && auto.source !== "missing" ? String(auto.cartons) : null;
+  // Sem digitar, o total é o calculado; faltando dado para a conta, vazio.
+  const totalText = totalTouched
+    ? total
+    : (autoCartons ?? (auto?.source === "missing" ? "" : total));
+  const totalNum = parseWhole(totalText);
   function pickInterval(n: number, customText = custom) {
     setInterval(n);
     setError(null);
@@ -926,9 +981,10 @@ function ScheduleGenerator({
             ref={totalRef}
             type="text"
             inputMode="numeric"
-            value={total}
+            value={totalText}
             onChange={(e) => {
               setTotal(e.target.value);
+              setTotalTouched(true);
               setError(null);
             }}
             aria-invalid={error === "total" || undefined}
@@ -1022,6 +1078,17 @@ function ScheduleGenerator({
           />
         </label>
       </div>
+      <TotalSource
+        auto={auto}
+        unit={unit}
+        touched={totalTouched && autoCartons !== null && totalText !== autoCartons}
+        labels={labels}
+        fmt={fmt}
+        onUseCalc={() => {
+          setTotalTouched(false);
+          setError(null);
+        }}
+      />
       {Number.isFinite(totalNum) &&
       totalNum > 0 &&
       (masterCartonQty || cbmPerCarton) ? (
@@ -1062,6 +1129,97 @@ function ScheduleGenerator({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * De onde veio o total do atalho, com a conta à vista; ou o que falta para
+ * calcular (com atalho até o campo); ou, se a pessoa digitou outro, o link
+ * para voltar ao calculado.
+ */
+function TotalSource({
+  auto,
+  unit,
+  touched,
+  labels,
+  fmt,
+  onUseCalc,
+}: {
+  auto: CartonTotal | null;
+  unit: string;
+  touched: boolean;
+  labels: GenerateLabels;
+  fmt: (n: number | null | undefined, digits?: number) => string;
+  onUseCalc: () => void;
+}) {
+  if (!auto) return null;
+  if (auto.source === "missing")
+    return (
+      <p
+        className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-amber-800"
+        data-generate-source="missing"
+      >
+        {labels.needPerCarton}
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.querySelector<HTMLInputElement>(
+              'input[name="masterCartonQty"]',
+            );
+            if (!el) return;
+            el.scrollIntoView({ block: "center" });
+            el.focus({ preventScroll: true });
+          }}
+          className="font-semibold underline underline-offset-2"
+          data-generate-goto="masterCartonQty"
+        >
+          {labels.goTo}
+        </button>
+      </p>
+    );
+  if (touched)
+    return (
+      <p className="mt-2 text-xs" data-generate-source="typed">
+        <button
+          type="button"
+          onClick={onUseCalc}
+          className="font-semibold text-brand-700 underline underline-offset-2"
+          data-generate-use-calc
+        >
+          {fill(labels.useCalc, { cartons: fmt(auto.cartons, 0) })}
+        </button>
+      </p>
+    );
+  if (auto.source === "lots")
+    return (
+      <p className="mt-2 text-xs text-zinc-600" data-generate-source="lots">
+        {labels.fromLots}
+      </p>
+    );
+  const extra = auto.pieces - auto.quantity;
+  return (
+    <p
+      className="mt-2 text-xs text-zinc-600"
+      data-generate-source={auto.source}
+    >
+      {fill(
+        auto.source === "requested"
+          ? labels.fromRequested
+          : labels.fromQuantity,
+        {
+          quantity: fmt(auto.quantity, 0),
+          unit,
+          perCarton: fmt(auto.perCarton, 0),
+          cartons: fmt(auto.cartons, 0),
+        },
+      )}
+      {extra > 0
+        ? ` ${fill(labels.extra, {
+            pieces: fmt(auto.pieces, 0),
+            extra: fmt(extra, 0),
+          })}`
+        : null}
+    </p>
   );
 }
 

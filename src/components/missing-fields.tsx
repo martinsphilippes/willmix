@@ -78,7 +78,8 @@ export function MissingFields({
             <button
               type="button"
               onClick={() => goToField(item.key)}
-              className="font-semibold underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:outline-2 focus-visible:outline-offset-1"
+              // `data-done`: já preenchido na tela (riscado até salvar).
+              className="font-semibold underline decoration-dotted underline-offset-2 hover:decoration-solid focus-visible:outline-2 focus-visible:outline-offset-1 data-[done]:line-through data-[done]:opacity-60"
               data-missing-field={item.key}
             >
               {item.label}

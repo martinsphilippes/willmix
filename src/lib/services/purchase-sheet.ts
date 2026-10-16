@@ -38,6 +38,7 @@ import {
   isPiecesUnit,
   planSheet,
   sheetTotalPieces,
+  withBoxCbm,
   type SheetMissing,
   type SheetPlan,
 } from "./purchase-sheet-calc";
@@ -480,6 +481,8 @@ export async function saveSheet(
     filter: { orderId },
     limit: 1,
   });
+  // CBM da caixa: com as três medidas, o calculado (como no cadastro).
+  if (allowed.has("cbmPerCarton")) withBoxCbm(patch, existing);
   let sheet: PurchaseSheet;
   if (existing) {
     sheet = await store.update("purchase_sheets", existing.id, {

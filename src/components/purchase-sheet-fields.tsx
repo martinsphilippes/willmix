@@ -21,6 +21,7 @@ import {
 import { MoneyInput } from "./money-input";
 import { PantonePicker } from "./pantone-picker";
 import { SheetSchedule } from "./sheet-schedule";
+import { BoxCbmHint, BoxCbmInput } from "./box-cbm-field";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import { SupplierPicker, type SupplierOption } from "./supplier-picker";
 
@@ -51,6 +52,7 @@ export function PurchaseSheetFields({
   supplierId = null,
   missing = [],
   orderQuantity = null,
+  targetQuantity = null,
   ncmRates = null,
   ncmHelpLink = null,
 }: {
@@ -83,6 +85,11 @@ export function PurchaseSheetFields({
   ncmRates?: string | null;
   /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
   ncmHelpLink?: string | null;
+  /**
+   * Quantidade pedida hoje (item do pedido ou solicitação), sempre que houver:
+   * dá o total de caixas do atalho "Gerar programação" (÷ peças por caixa).
+   */
+  targetQuantity?: { quantity: number; unit: string } | null;
   /** Quantidade do pedido hoje e o que acontece com ela quando as caixas mudam. */
   orderQuantity?: {
     current: number;
@@ -372,24 +379,6 @@ export function PurchaseSheetFields({
                 int
               />
             </F>
-            <F
-              t={t}
-              m={missing}
-              k="cbmPerCarton"
-              size="xs"
-              req
-              hint={
-                plan.cbmFromSize !== null
-                  ? t("sheet.cbmFromSize", { cbm: String(plan.cbmFromSize) })
-                  : undefined
-              }
-            >
-              <Num
-                name="cbmPerCarton"
-                value={numValue(sheet.cbmPerCarton)}
-                disabled={sup}
-              />
-            </F>
             <F t={t} m={missing} k="packageType" size="md" req>
               <input
                 name="packageType"
@@ -439,6 +428,29 @@ export function PurchaseSheetFields({
                 ))}
               </div>
             </FieldRow>
+            {/* CBM da caixa: calculado pelas medidas acima (C × L × A), como o
+                servidor grava; sem as três medidas, digita-se. */}
+            <F
+              t={t}
+              m={missing}
+              k="cbmPerCarton"
+              size="xs"
+              req
+              hint={
+                <BoxCbmHint
+                  initialCbm={plan.cbmFromSize}
+                  auto={t("sheet.cbmAuto")}
+                  manual={t("sheet.cbmManual")}
+                />
+              }
+            >
+              <BoxCbmInput
+                name="cbmPerCarton"
+                defaultValue={numValue(sheet.cbmPerCarton)}
+                initialCbm={plan.cbmFromSize}
+                disabled={sup}
+              />
+            </F>
           </Rows>
         </Card>
         <Card title={t("sheet.section.price")} dense>
@@ -550,6 +562,7 @@ export function PurchaseSheetFields({
               requested={requestSchedule?.items ?? []}
               unit={requestUnit}
               quantity={orderQuantity}
+              target={targetQuantity}
               labels={{
                 gen: {
                   toggle: t("sheet.gen.toggle"),
@@ -581,6 +594,26 @@ export function PurchaseSheetFields({
                   errorTotal: t("sheet.gen.error.total"),
                   errorInterval: t("sheet.gen.error.interval"),
                   errorFirst: t("sheet.gen.error.first"),
+                  fromLots: t("sheet.gen.fromLots"),
+                  fromRequested: t("sheet.gen.fromRequested", {
+                    quantity: "{quantity}",
+                    unit: "{unit}",
+                    perCarton: "{perCarton}",
+                    cartons: "{cartons}",
+                  }),
+                  fromQuantity: t("sheet.gen.fromQuantity", {
+                    quantity: "{quantity}",
+                    unit: "{unit}",
+                    perCarton: "{perCarton}",
+                    cartons: "{cartons}",
+                  }),
+                  extra: t("sheet.gen.extra", {
+                    pieces: "{pieces}",
+                    extra: "{extra}",
+                  }),
+                  needPerCarton: t("sheet.gen.needPerCarton"),
+                  goTo: t("sheet.gen.goTo"),
+                  useCalc: t("sheet.gen.useCalc", { cartons: "{cartons}" }),
                 },
                 intl: t.intl,
                 lotColumn: t("sheet.lot.column"),
@@ -619,6 +652,7 @@ export function PurchaseSheetFields({
                 applyDown: t("sheet.fill.applyDown"),
                 appliedTotal: t("sheet.fill.appliedTotal"),
                 cbmHigh: t("sheet.fill.cbmHigh"),
+                cbmHighSize: t("sheet.fill.cbmHighSize"),
                 cbmMismatch: t("sheet.fill.cbmMismatch"),
                 qty: {
                   title: t("sheet.qty.title"),
@@ -764,7 +798,7 @@ function SheetField({
   k: string;
   size?: keyof typeof fieldRowWidth;
   req?: boolean;
-  hint?: string;
+  hint?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (

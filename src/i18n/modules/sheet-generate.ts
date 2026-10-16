@@ -26,6 +26,17 @@ export const pt = {
     "Informe o total de caixas em número inteiro (pelo menos 1 por programação).",
   "sheet.gen.error.interval": "Informe o intervalo em dias (de 1 a 365).",
   "sheet.gen.error.first": "Informe a 1ª saída em dias (de 1 a 365).",
+  "sheet.gen.fromLots": "Soma das programações de hoje.",
+  "sheet.gen.fromRequested":
+    "Pela programação do cliente: {quantity} {unit} ÷ {perCarton} por caixa, cada programação arredondada para cima = {cartons} caixas.",
+  "sheet.gen.fromQuantity":
+    "Calculado: {quantity} {unit} ÷ {perCarton} por caixa = {cartons} caixas (arredondado para cima).",
+  "sheet.gen.extra":
+    "As caixas fecham {pieces} peças: {extra} a mais que o pedido.",
+  "sheet.gen.needPerCarton":
+    "Para calcular o total pela quantidade pedida, preencha Peças por caixa master.",
+  "sheet.gen.goTo": "Ir para o campo",
+  "sheet.gen.useCalc": "Usar o calculado ({cartons})",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -51,6 +62,17 @@ export const en: Record<keyof typeof pt, string> = {
     "Enter the total cartons as a whole number (at least 1 per shipment).",
   "sheet.gen.error.interval": "Enter the interval in days (1 to 365).",
   "sheet.gen.error.first": "Enter the 1st departure in days (1 to 365).",
+  "sheet.gen.fromLots": "Sum of the current shipments.",
+  "sheet.gen.fromRequested":
+    "From the customer's schedule: {quantity} {unit} ÷ {perCarton} per carton, each shipment rounded up = {cartons} cartons.",
+  "sheet.gen.fromQuantity":
+    "Calculated: {quantity} {unit} ÷ {perCarton} per carton = {cartons} cartons (rounded up).",
+  "sheet.gen.extra":
+    "The cartons hold {pieces} pieces: {extra} more than ordered.",
+  "sheet.gen.needPerCarton":
+    "To calculate the total from the ordered quantity, fill in Pieces per master carton.",
+  "sheet.gen.goTo": "Go to the field",
+  "sheet.gen.useCalc": "Use the calculated total ({cartons})",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -73,4 +95,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.gen.error.total": "请输入外箱总数（整数，每批至少 1 箱）。",
   "sheet.gen.error.interval": "请输入间隔天数（1 至 365）。",
   "sheet.gen.error.first": "请输入第 1 批出货天数（1 至 365）。",
+  "sheet.gen.fromLots": "当前各批次的合计。",
+  "sheet.gen.fromRequested":
+    "按客户的批次：{quantity} {unit} ÷ 每箱 {perCarton}，每批向上取整 = {cartons} 箱。",
+  "sheet.gen.fromQuantity":
+    "计算：{quantity} {unit} ÷ 每箱 {perCarton} = {cartons} 箱（向上取整）。",
+  "sheet.gen.extra": "这些外箱共 {pieces} 件，比订购数量多 {extra} 件。",
+  "sheet.gen.needPerCarton": "要按订购数量计算总数，请填写每个外箱的件数。",
+  "sheet.gen.goTo": "前往该字段",
+  "sheet.gen.useCalc": "使用计算值（{cartons}）",
 };
