@@ -634,6 +634,7 @@ async function syncOrderQuantity(
       limit: 1,
     });
     const seen =
+      previousPieces === pieces &&
       !!latest &&
       latest.expected === String(item.quantity) &&
       latest.found === String(pieces);

@@ -16,10 +16,19 @@ import { str } from "./helpers";
  * "use server": só ajuda as Server Actions de ./purchase-sheet.ts (e os testes).
  */
 
-/** Campo ausente = não mexe; vazio = limpa; número como as pessoas digitam. */
-function num(form: FormData, key: string, opts: { int?: boolean } = {}) {
+/**
+ * Campo ausente = não mexe; vazio = limpa; número como as pessoas digitam.
+ * `grouped`: "1.000" é milhar (como num inteiro), mas fração vale ("7,5").
+ */
+function num(
+  form: FormData,
+  key: string,
+  opts: { int?: boolean; grouped?: boolean } = {},
+) {
   if (!form.has(key)) return undefined;
-  const value = parseNumberInput(String(form.get(key) ?? ""), opts);
+  const value = parseNumberInput(String(form.get(key) ?? ""), {
+    int: opts.int || opts.grouped,
+  });
   if (value === null) return null;
   const schema = opts.int
     ? z.number().int().min(0).max(100_000_000)
@@ -100,9 +109,9 @@ export function parseSheet(form: FormData): {
     heightCm: safe("heightCm", () => num(form, "heightCm")),
     widthCm: safe("widthCm", () => num(form, "widthCm")),
     lengthCm: safe("lengthCm", () => num(form, "lengthCm")),
-    // Mililitros inteiros: "1.000 ml" é mil, não 1.
+    // Mililitros: "1.000 ml" é mil, não 1; "7,5 ml" continua 7,5.
     capacityMl: safe("capacityMl", () =>
-      num(form, "capacityMl", { int: true }),
+      num(form, "capacityMl", { grouped: true }),
     ),
     packageType: safe("packageType", () => text(form, "packageType", 120)),
     colorAssortment: safe("colorAssortment", () =>

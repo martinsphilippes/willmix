@@ -197,6 +197,25 @@ export function PantonePicker({
     syncText(selected, next);
     setDirty(true);
   }
+  /** Próximo campo do formulário depois do seletor (pula a escala). */
+  function focusAfterPicker(from: HTMLInputElement) {
+    const form = from.form;
+    if (!form) return;
+    const fields = Array.from(form.elements).filter(
+      (f): f is HTMLElement =>
+        f instanceof HTMLElement &&
+        (f instanceof HTMLInputElement ||
+          f instanceof HTMLSelectElement ||
+          f instanceof HTMLTextAreaElement) &&
+        !f.disabled &&
+        !(f instanceof HTMLInputElement && f.type === "hidden") &&
+        f.offsetParent !== null,
+    );
+    const next = fields
+      .slice(fields.indexOf(from) + 1)
+      .find((f) => !box.current?.contains(f));
+    next?.focus();
+  }
   const rgb = (hex: string) =>
     [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ");
 
@@ -287,15 +306,18 @@ export function PantonePicker({
               onKeyDown={(e) => {
                 if (e.key === "Escape") setOpen(false);
                 if (e.key === "Enter") {
+                  // Nunca envia o formulário. Com a lista aberta e busca:
+                  // escolhe a primeira (a que a pessoa está vendo). Senão
+                  // fecha a lista e vai para o campo depois do seletor (como
+                  // o Enter nos outros campos da ficha), sem ficar preso.
                   e.preventDefault();
-                  // Lista fechada (depois de escolher): Enter só a abre; nunca
-                  // escolhe uma cor que a pessoa não está vendo.
-                  if (!open) {
-                    setOpen(true);
-                    void load();
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                  if (open && q && results[0]) {
+                    add(results[0]);
                     return;
                   }
-                  if (q && results[0]) add(results[0]);
+                  setOpen(false);
+                  focusAfterPicker(e.currentTarget);
                 }
               }}
               className={cx(inputDenseClass, "min-w-0 flex-1 sm:max-w-sm")}

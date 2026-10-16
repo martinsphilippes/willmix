@@ -70,7 +70,15 @@ export function FormDraftGuard({
   // só pelos botões.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || e.isComposing || e.defaultPrevented) return;
+      // IME (chinês/japonês): o Enter que confirma o texto não navega (o
+      // Safari manda keyCode 229 sem isComposing).
+      if (
+        e.key !== "Enter" ||
+        e.isComposing ||
+        e.keyCode === 229 ||
+        e.defaultPrevented
+      )
+        return;
       const el = e.target;
       if (!(el instanceof HTMLInputElement || el instanceof HTMLSelectElement))
         return;
@@ -89,8 +97,8 @@ export function FormDraftGuard({
         ].includes(el.type)
       )
         return;
-      // Campos com Enter próprio (ex.: busca de Pantone) tratam antes.
-      if (el.closest("[data-enter-own]")) return;
+      // Campos com Enter próprio (ex.: busca de Pantone) chamam
+      // preventDefault antes e não chegam aqui.
       e.preventDefault();
       const fields = Array.from(form.elements).filter(
         (f): f is Field =>
@@ -119,6 +127,10 @@ export function FormDraftGuard({
       const values: Record<string, string> = {};
       for (const [k, v] of Object.entries(now))
         if ((base[k] ?? "") !== v) values[k] = v;
+      // Campo que sumiu (linha da programação removida com × ou "Gerar" com
+      // menos linhas): vai vazio, senão a linha voltaria na restauração.
+      for (const k of Object.keys(base))
+        if (!(k in now) && base[k] !== "") values[k] = "";
       write(key, { v: 2, at: Date.now(), pending: true, values });
     };
     // Captura: antes de o React tratar o envio (ação do servidor).

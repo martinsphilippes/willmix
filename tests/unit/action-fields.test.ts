@@ -8,9 +8,8 @@ import { withTempStore } from "./setup";
  */
 withTempStore();
 
-const { field, invalidFieldNames, errorCode } = await import(
-  "@/app/app/actions/helpers"
-);
+const { field, invalidFieldNames, errorCode } =
+  await import("@/app/app/actions/helpers");
 const { fieldNamesParam } = await import("@/components/action-error");
 
 const formOf = (fields: Record<string, string>) => {

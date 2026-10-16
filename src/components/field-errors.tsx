@@ -177,19 +177,25 @@ function labelOf(el: Field, name: string): string {
       .replace(/\s*\*\s*$/, "")
       .replace(/\s+/g, " ")
       .trim();
-  const fromLabel = clean(el.labels?.[0]?.innerText);
+  // O texto do rótulo (sem asterisco, ajuda, símbolo de moeda ou opções de
+  // uma lista dentro do <label>).
+  const marked = (root: Element | null | undefined) =>
+    root?.matches?.("[data-field-label]")
+      ? clean((root as HTMLElement).innerText)
+      : clean(
+          root?.querySelector<HTMLElement>("[data-field-label]")?.innerText,
+        );
+  const label = el.labels?.[0];
+  const fromMarker = marked(label) || marked(el.closest("[data-field-row]"));
+  if (fromMarker) return fromMarker;
+  const fromLabel = clean(label?.innerText.split("\n")[0]);
   if (fromLabel) return fromLabel;
-  const row = el.closest("[data-field-row]");
-  const rowLabel = clean(
-    row?.querySelector<HTMLElement>("label, [data-field-label], legend")
-      ?.innerText,
-  );
-  if (rowLabel) return rowLabel;
-  return (
-    clean(el.getAttribute("aria-label")) ||
-    clean(el.getAttribute("placeholder")) ||
-    name
-  );
+  const aria = clean(el.getAttribute("aria-label"));
+  if (aria) return aria;
+  // Placeholder só quando é palavra ("Prazo"), não um exemplo ("0,00").
+  const hint = clean(el.getAttribute("placeholder"));
+  if (hint && !/^[\d\s.,%-]+$/.test(hint)) return hint;
+  return name;
 }
 
 function goTo(name: string) {

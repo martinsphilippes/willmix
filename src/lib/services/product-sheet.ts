@@ -233,6 +233,8 @@ function productPatchFromSheet(
   // a coluna do produto tem 10 caracteres, "9503.00.21").
   const ncm = normalizeNcm(sheet.ncm);
   if (ncm) patch.ncm = formatNcm(ncm);
+  // NCM apagado na ficha mestre sai do produto (senão voltaria das colunas).
+  else if (has("ncm") && !sheet.ncm) patch.ncm = null;
   return patch;
 }
 

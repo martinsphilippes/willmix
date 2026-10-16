@@ -318,5 +318,12 @@ describe("cadastro do produto acompanha a ficha", () => {
     ).toBeNull();
     const input = await pm.masterSheetInput("prod-piscina");
     expect(input?.colorPantones ?? []).toEqual([]);
+    // NCM apagado na mestre também sai do produto (não volta).
+    await pm.saveProductSheet(admin, "prod-piscina", { ncm: "95066900" });
+    await pm.saveProductSheet(admin, "prod-piscina", { ncm: null });
+    expect(
+      (await store.get("products", "prod-piscina"))!.ncm ?? null,
+    ).toBeNull();
+    expect((await pm.masterSheetInput("prod-piscina"))?.ncm ?? null).toBeNull();
   });
 });

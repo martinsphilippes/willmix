@@ -44,6 +44,14 @@ describe("parseNumberInput", () => {
     expect(parseNumberInput("2,50 USD")).toBe(2.5);
     expect(parseNumberInput("18%")).toBe(18);
     expect(parseNumberInput("30 套", { int: true })).toBe(30);
+    // Notação de fornecedor: unidade composta, contadores chineses, 日.
+    expect(parseNumberInput("50 pcs/ctn", { int: true })).toBe(50);
+    expect(parseNumberInput("50件/箱", { int: true })).toBe(50);
+    expect(parseNumberInput("0,4 kg/pc")).toBe(0.4);
+    expect(parseNumberInput("0,06 cbm/ctn")).toBe(0.06);
+    expect(parseNumberInput("1000片", { int: true })).toBe(1000);
+    expect(parseNumberInput("30日", { int: true })).toBe(30);
+    expect(parseNumberInput("50 g/pc")).toBeNaN();
     // Unidade que mudaria o tamanho do número no campo: apontado.
     for (const raw of ["50g", "300 mm", "0,3 m", "1 l"])
       expect(parseNumberInput(raw)).toBeNaN();
@@ -138,9 +146,15 @@ describe("parseSheet", () => {
     });
   });
 
-  it("capacidade em ml é inteira: 1.000 ml é mil", () => {
+  it("capacidade em ml: 1.000 ml é mil; fração continua valendo", () => {
     expect(parseSheet(formOf({ capacityMl: "1.000 ml" })).input).toEqual({
       capacityMl: 1000,
+    });
+    expect(parseSheet(formOf({ capacityMl: "7,5" })).input).toEqual({
+      capacityMl: 7.5,
+    });
+    expect(parseSheet(formOf({ capacityMl: "0.5 ml" })).input).toEqual({
+      capacityMl: 0.5,
     });
   });
 

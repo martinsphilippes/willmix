@@ -103,6 +103,16 @@ const UNITS = new Set([
   "对",
   "台",
   "把",
+  "片",
+  "张",
+  "条",
+  "瓶",
+  "包",
+  "盒",
+  "袋",
+  "卷",
+  "支",
+  "颗",
   // caixas
   "cx",
   "cxs",
@@ -130,6 +140,8 @@ const UNITS = new Set([
   "day",
   "days",
   "天",
+  "日",
+  "工作日",
   // moeda e porcentagem
   "%",
   "usd",
@@ -145,12 +157,15 @@ const UNITS = new Set([
   "€",
 ]);
 
+/** Unidade conhecida, também composta ("pcs/ctn", "件/箱", "kg/pc", "cbm/ctn"). */
 function isKnownUnit(raw: string): boolean {
   const u = raw
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/\(s\)/g, "")
-    .replace(/[.()/]/g, "");
-  return UNITS.has(u);
+    .replace(/[.()]/g, "");
+  if (!u.includes("/")) return UNITS.has(u);
+  const parts = u.split("/");
+  return parts.every((part) => part !== "" && UNITS.has(part));
 }

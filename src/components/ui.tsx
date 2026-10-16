@@ -206,6 +206,7 @@ export function Field({
         <label
           htmlFor={id}
           className="block text-xs font-medium leading-5 text-zinc-700"
+          data-field-label=""
         >
           {label}
         </label>
@@ -218,7 +219,10 @@ export function Field({
   }
   return (
     <label className="block min-w-0 space-y-1">
-      <span className="block text-xs font-medium leading-5 text-zinc-700">
+      <span
+        className="block text-xs font-medium leading-5 text-zinc-700"
+        data-field-label=""
+      >
         {label}
       </span>
       {children}
@@ -304,7 +308,7 @@ export function FieldRow({
   const groupLabelId = `fl-${generatedId}`;
   const text = (
     <>
-      {label}
+      <span data-field-label="">{label}</span>
       {required ? (
         <span
           className="ml-0.5 font-semibold text-brand-600"

@@ -386,6 +386,18 @@ describe("quantidade da programação: segurança (revisão)", () => {
     ).filter((r) => r.status === "open");
     expect(open).toHaveLength(1);
     expect(open[0]).toMatchObject({ expected: "2750", found: "2700" });
+
+    // Dispensada, volta às caixas do pedido e muda de novo: abre outra.
+    await resolveReviewById(admin, open[0].id, "dismissed", "ok");
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 15) });
+    await ps.saveSheet(admin, order.id, { lots: lots(20, 20, 14) });
+    expect(
+      (
+        await store.list("review_items", {
+          filter: { entityId: order.id, rule: "order.quantity_after_payment" },
+        })
+      ).filter((r) => r.status === "open"),
+    ).toHaveLength(1);
   });
 
   it("cotação respondida: mudar as caixas pede o frete de novo com a carga nova", async () => {
