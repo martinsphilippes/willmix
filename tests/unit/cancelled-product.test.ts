@@ -118,6 +118,33 @@ describe("produto com pedido cancelado", () => {
     );
   });
 
+  it("pós-venda respondido e depois encerrado continua contando mesmo com o pedido cancelado", async () => {
+    const order = await newOrder();
+    const sale = await openAfterSale(order);
+    const before = (await pc.loadProductCycle(PRODUCT))!;
+    // Respondido pelo cliente e encerrado pela Wellmix, antes do cancelamento.
+    await getStore().update("after_sales", sale.id, {
+      status: "closed",
+      rating: 5,
+      answeredAt: new Date().toISOString(),
+      answeredByUserId: joao.id,
+      closedAt: new Date().toISOString(),
+    });
+    const answered = (await pc.loadProductCycle(PRODUCT))!;
+    expect(answered.counts.afterSalesAnswered).toBe(
+      before.counts.afterSalesAnswered + 1,
+    );
+    await c.cancelOrder(admin, order.id, {
+      reason: "other",
+      note: null,
+      settlement: null,
+    });
+    const after = (await pc.loadProductCycle(PRODUCT))!;
+    expect(after.counts.afterSalesAnswered).toBe(
+      answered.counts.afterSalesAnswered,
+    );
+  });
+
   it("pedido cancelado antes da regra: pós-venda aberto aparece encerrado e a programação é de pedido cancelado", async () => {
     const store = getStore();
     const order = await newOrder();

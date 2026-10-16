@@ -40,6 +40,8 @@ export interface ProductCycle {
     createdAt: string;
     customerName: string;
     afterSalesStatus: string | null;
+    /** Quando o cliente respondeu o pós-venda (mesmo que depois encerrado). */
+    afterSalesAnsweredAt?: string | null;
     rating: number | null;
     repurchaseInterest: string | null;
   }>;
@@ -103,6 +105,7 @@ export async function loadProductCycle(
         createdAt: o.createdAt,
         customerName: nameOf(o.customerId) ?? "—",
         afterSalesStatus: afterStatus,
+        afterSalesAnsweredAt: after?.answeredAt ?? null,
         rating: after?.rating ?? null,
         repurchaseInterest: after?.repurchaseInterest ?? null,
       };
@@ -151,11 +154,13 @@ export async function loadProductCycle(
       replenishments: requests.filter(
         (r) => r.origin === "replenishment" || r.origin === "proposal",
       ).length,
-      // Pós-venda encerrado pelo cancelamento do pedido não foi respondido.
+      // Pós-venda encerrado pelo cancelamento do pedido não foi respondido
+      // (a não ser que o cliente tenha respondido antes).
       afterSalesAnswered: orderRows.filter(
         (o) =>
           o.afterSalesStatus === "answered" ||
-          (o.afterSalesStatus === "closed" && o.status !== "CANCELLED"),
+          (o.afterSalesStatus === "closed" &&
+            (o.status !== "CANCELLED" || !!o.afterSalesAnsweredAt)),
       ).length,
     },
   };

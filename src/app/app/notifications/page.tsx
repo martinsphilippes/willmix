@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
+import { fallbackError } from "@/i18n/error-text";
 import {
   Alert,
   Badge,
@@ -21,7 +22,7 @@ import {
 export default async function NotificationsPage({
   searchParams,
 }: PageProps<"/app/notifications">) {
-  const { deleted } = await searchParams;
+  const { deleted, error } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const t = await getT();
@@ -67,6 +68,11 @@ export default async function NotificationsPage({
           ) : null
         }
       />
+      {typeof error === "string" && error ? (
+        <div className="mb-3">
+          <Alert tone="danger">{fallbackError(t, error)}</Alert>
+        </div>
+      ) : null}
       {typeof deleted === "string" && /^\d+$/.test(deleted) ? (
         <div className="mb-3">
           <Alert tone="success">
