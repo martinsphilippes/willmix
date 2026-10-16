@@ -35,6 +35,7 @@ import {
 } from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { SheetSafety } from "@/components/sheet-safety";
+import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
@@ -273,14 +274,15 @@ export default async function QuotePage({
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
               orderQuantity={
-                // Antes da escolha: a proposta usa as peças da programação.
+                // Antes da escolha, em peças: a proposta usa as peças da
+                // programação salva (rascunho ainda não salvo: "ao salvar").
                 ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
                   request.status,
-                )
+                ) && isPiecesUnit(request.unit)
                   ? {
                       current: request.quantity,
                       unit: request.unit,
-                      mode: "quote",
+                      mode: sheetView.saved ? "quote" : "quoteDraft",
                     }
                   : null
               }

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { quotedQuantity } from "@/lib/services/purchase-sheet-calc";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getFreightView } from "@/lib/services/freight";
 import { getT } from "@/i18n/server";
@@ -78,7 +79,8 @@ export default async function FreightPage({
             items={[
               [
                 t("freight.cargo.quantity"),
-                `${request.quantity.toLocaleString(t.intl)} ${request.unit}`,
+                // A mesma quantidade do preço e da carga (a da programação).
+                `${quotedQuantity(request, sheet).toLocaleString(t.intl)} ${request.unit}`,
               ],
               [t("freight.cargo.cartons"), num(t.intl, freight.cartons, 0)],
               [

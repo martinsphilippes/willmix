@@ -18,6 +18,10 @@ export const pt = {
   "sheet.error.invalid_line": "Escolha a linha do produto.",
   "productSheet.autoHint":
     "O cadastro do produto acompanha esta ficha: ao salvar, a ficha mestre do produto é atualizada.",
+  "pricing.error.sheet_changed":
+    "A ficha da cotação mudou depois da conta (outra quantidade de caixas). Confira o valor ao cliente na tela atualizada e selecione de novo.",
+  "sheet.qty.quoteDraft":
+    "ao salvar ou enviar a ficha, a cotação passa a valer {to} {unit} ({diff} em relação aos {from} pedidos).",
   "sheet.draftRestored":
     "O envio não deu certo, mas o que você digitou foi mantido nesta tela. Confira e salve de novo.",
 };
@@ -37,6 +41,10 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.error.invalid_line": "Choose the product line.",
   "productSheet.autoHint":
     "The product record follows this sheet: saving updates the product's master sheet.",
+  "pricing.error.sheet_changed":
+    "The quote sheet changed after the calculation (a different number of cartons). Check the customer value on the refreshed screen and select again.",
+  "sheet.qty.quoteDraft":
+    "once the sheet is saved or sent, the quote is for {to} {unit} ({diff} versus the {from} requested).",
   "sheet.draftRestored":
     "Sending did not work, but what you typed was kept on this screen. Check it and save again.",
 };
@@ -56,6 +64,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.error.invalid_line": "请选择产品线。",
   "productSheet.autoHint":
     "产品主档随此采购单更新：保存时会同步产品的主采购单。",
+  "pricing.error.sheet_changed":
+    "计算后报价采购单已更改（箱数不同）。请在刷新后的页面核对客户金额，然后重新选择。",
+  "sheet.qty.quoteDraft":
+    "保存或提交采购单后，本报价数量为 {to} {unit}（与需求 {from} 相差 {diff}）。",
   "sheet.draftRestored":
     "提交未成功，但您填写的内容已保留在此页面。请检查后再次保存。",
 };

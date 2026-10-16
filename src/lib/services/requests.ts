@@ -29,7 +29,7 @@ import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
 import { copyQuoteSheetToOrder, getQuoteSheet } from "./quote-sheet";
-import { sheetTotalPieces } from "./purchase-sheet-calc";
+import { quotedQuantity } from "./purchase-sheet-calc";
 import { cancelFreightForRequest } from "./freight";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
@@ -562,6 +562,11 @@ export interface SelectQuoteInput {
   downPaymentAmount?: number | null;
   /** Memória do cálculo do valor ao cliente (fica na auditoria). */
   pricing?: unknown;
+  /**
+   * Quantidade que a conta da tela usou (a da programação da ficha). Se a
+   * ficha mudou depois, a seleção é recusada (sheet_changed) para refazer.
+   */
+  pricedQuantity?: number | null;
 }
 
 /** Completa a ficha da cotação com o que a conta usou, sem sobrescrever o que já foi digitado. */
@@ -600,6 +605,14 @@ export async function selectQuote(
     throw new RequestError("invalid_quote");
   const request = await store.get("requests", quote.requestId);
   if (!request) throw new RequestError("not_found");
+  // Antes de qualquer gravação: a ficha não pode ter mudado depois da conta.
+  const current = quotedQuantity(request, await getQuoteSheet(quote.id));
+  if (
+    input.pricedQuantity !== undefined &&
+    input.pricedQuantity !== null &&
+    input.pricedQuantity !== current
+  )
+    throw new RequestError("sheet_changed");
   const settings = await getSettings();
   const downPayment =
     input.downPaymentAmount ??
@@ -623,11 +636,7 @@ export async function selectQuote(
   // A proposta vale para a quantidade da programação da cotação escolhida
   // (caixas × peças por caixa, a que fecha o container); sem programação,
   // continua a pedida. O pedido nasce com ela.
-  const sheetPieces = sheetTotalPieces(await getQuoteSheet(quote.id));
-  const quantity =
-    sheetPieces !== null && sheetPieces !== request.quantity
-      ? sheetPieces
-      : null;
+  const quantity = current !== request.quantity ? current : null;
   await store.update("requests", request.id, {
     status: "WAITING_DOWN_PAYMENT",
     selectedQuoteId: quote.id,

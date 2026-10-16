@@ -263,6 +263,55 @@ export function sheetTotalPieces(
 }
 
 /**
+ * A unidade da solicitação conta peças? (un, unid., pç, pcs, peças, pieces,
+ * units, 个, 件…). Só então a quantidade acompanha as caixas da programação
+ * (caixas × peças por caixa): "100 cx" ou "50 kg" ficam como foram pedidos.
+ */
+export function isPiecesUnit(unit: string | null | undefined): boolean {
+  const u = (unit ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[.\s]/g, "");
+  return [
+    "",
+    "u",
+    "un",
+    "und",
+    "unid",
+    "unidade",
+    "unidades",
+    "pc",
+    "pcs",
+    "pca",
+    "pcas",
+    "peca",
+    "pecas",
+    "piece",
+    "pieces",
+    "unit",
+    "units",
+    "个",
+    "件",
+    "只",
+  ].includes(u);
+}
+
+/**
+ * Quantidade que a cotação/compra vale: as peças da programação quando a
+ * unidade é peça e há programação; senão, a pedida. A mesma regra no preço
+ * ao cliente, no frete pedido à companhia marítima e na escolha da cotação.
+ */
+export function quotedQuantity(
+  request: { quantity: number; unit: string },
+  sheet: Pick<PurchaseSheet, "lots" | "masterCartonQty"> | null | undefined,
+): number {
+  return isPiecesUnit(request.unit)
+    ? (sheetTotalPieces(sheet) ?? request.quantity)
+    : request.quantity;
+}
+
+/**
  * Distribui um ajuste de caixas entre as programações: acrescentar vai para a
  * última com caixas (ou a 1ª); tirar começa pela última e sobe, sem deixar
  * nenhuma negativa. Devolve as novas caixas por programação.

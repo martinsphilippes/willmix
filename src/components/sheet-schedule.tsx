@@ -72,6 +72,7 @@ export interface ScheduleLabels {
     same: string;
     order: string;
     quote: string;
+    quoteDraft: string;
     readonly: string;
   };
   /** "+ Programação" (nova linha) e "Pedido do cliente: {quantity} {unit} em {date}". */
@@ -173,7 +174,7 @@ export function SheetSchedule({
   quantity?: {
     current: number;
     unit: string;
-    mode: "order" | "quote" | "readonly";
+    mode: "order" | "quote" | "quoteDraft" | "readonly";
   } | null;
 }) {
   const root = useRef<HTMLDivElement>(null);

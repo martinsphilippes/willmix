@@ -18,6 +18,7 @@ import {
 } from "@/lib/services/ncm-suggestions";
 import { SheetPhotosCard } from "@/components/sheet-photos";
 import { SheetSafety } from "@/components/sheet-safety";
+import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import {
@@ -180,7 +181,9 @@ export default async function PurchaseSheetPage({
             orderQuantity={
               // Até a embalagem a quantidade do pedido acompanha as caixas
               // (quando a Wellmix salva); depois disso, só a programação muda.
-              item && QUANTITY_FOLLOWS_SHEET.includes(view.order.status)
+              item &&
+              isPiecesUnit(item.unit) &&
+              QUANTITY_FOLLOWS_SHEET.includes(view.order.status)
                 ? {
                     current: item.quantity,
                     unit: item.unit,

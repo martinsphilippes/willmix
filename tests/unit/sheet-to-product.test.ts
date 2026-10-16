@@ -48,35 +48,27 @@ async function rfq(productId: string | null, name: string) {
 }
 
 describe("cadastro do produto acompanha a ficha", () => {
-  it("produto do catálogo: a cotação completa o que falta, sem trocar o que existe", async () => {
+  it("produto do catálogo: a cotação não mexe no cadastro; o pedido atualiza", async () => {
     const store = getStore();
-    const before = (await store.get("products", "prod-jarra"))!;
+    const masterBefore = await pm.getProductSheet("prod-jarra");
     const { request, qa, qb } = await rfq("prod-jarra", "Jarra");
     await qs.saveQuoteSheet(supplierA, qa.id, {
       price: 2.5,
       currency: "USD",
       masterCartonQty: 24,
       netWeightPcKg: 0.4,
-      grossWeightPcKg: 0.5,
       packageType: "COLOR BOX",
-      material: before.material ? undefined : "GLASS",
     });
-    const master = (await pm.getProductSheet("prod-jarra"))!;
-    expect(master.netWeightPcKg).toBe(before.netWeightKg ?? 0.4);
-    expect(master.packageType).toBe("COLOR BOX");
-    // Preço é do fornecedor (não é o principal): não vai para a ficha mestre.
-    expect(master.price ?? null).toBe(before.price ?? null);
-    const product = (await store.get("products", "prod-jarra"))!;
-    expect(product.masterBoxQty).toBe(before.masterBoxQty ?? 24);
-
-    // Outro fornecedor com outro dado: a cotação só completa, não troca.
-    await qs.saveQuoteSheet(supplierB, qb.id, { packageType: "BROWN BOX" });
-    expect((await pm.getProductSheet("prod-jarra"))!.packageType).toBe(
-      "COLOR BOX",
+    // Isolamento entre fornecedores: a cotação de A não vai para a ficha mestre,
+    // que preenche a cotação de B na mesma RFQ.
+    expect((await pm.getProductSheet("prod-jarra"))?.packageType ?? null).toBe(
+      masterBefore?.packageType ?? null,
     );
+    const sheetB = await qs.getQuoteSheetForUser(supplierB, qb.id);
+    expect(sheetB?.sheet.packageType ?? null).not.toBe("COLOR BOX");
 
-    // Pedido fechado e a Wellmix ajusta a ficha da compra: o cadastro atualiza
-    // (produto sem fornecedor principal: a compra de verdade vale).
+    // Pedido fechado: a ficha da compra atualiza o cadastro (produto sem
+    // fornecedor principal: a compra de verdade vale).
     await r.answerQuote(supplierA, qa.id, {
       price: 2.5,
       currency: "USD",
@@ -84,6 +76,14 @@ describe("cadastro do produto acompanha a ficha", () => {
     });
     await r.selectQuote(admin, qa.id, { sellPrice: 6000, sellCurrency: "BRL" });
     const order = await r.confirmDownPayment(admin, request.id);
+    const master = (await pm.getProductSheet("prod-jarra"))!;
+    expect(master.packageType).toBe("COLOR BOX");
+    expect(master.netWeightPcKg).toBe(0.4);
+    expect((await store.get("products", "prod-jarra"))!.masterBoxQty).toBe(24);
+    // Preço é do fornecedor (não é o principal): não vai para a ficha mestre.
+    expect(master.price ?? null).toBe(masterBefore?.price ?? null);
+
+    // A Wellmix ajusta a ficha da compra: o cadastro acompanha.
     await ps.saveSheet(admin, order.id, { packageType: "GIFT BOX" });
     expect((await pm.getProductSheet("prod-jarra"))!.packageType).toBe(
       "GIFT BOX",

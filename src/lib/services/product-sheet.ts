@@ -293,12 +293,15 @@ const filled = (v: unknown) =>
 /**
  * O cadastro do produto acompanha a ficha (para a próxima venda já vir
  * preenchida), sem que um fornecedor estrague o que é de outro:
- * - "fill" (cotação salva, ficha do pedido salva pelo fornecedor): só completa
- *   o que a ficha mestre/produto ainda não tem; nunca troca valor.
+ * - "fill" (ficha do pedido salva pelo fornecedor do pedido): só completa o
+ *   que a ficha mestre/produto ainda não tem; nunca troca valor.
  * - "adopt" (pedido criado, ficha do pedido salva pela Wellmix): a compra de
  *   verdade. Do fornecedor principal (ou de produto sem principal) atualiza os
  *   dados do produto; de outro fornecedor, só completa o que falta.
  * Dados comerciais (preço, MOQ, código, loja…) só vêm do fornecedor principal.
+ * A cotação (antes da compra) não mexe no cadastro: a ficha mestre preenche as
+ * cotações de todos os fornecedores, e os dados de um concorrente não podem
+ * aparecer para outro na mesma RFQ.
  * Nunca derruba quem chamou: falha fica no log.
  */
 export async function completeMasterFromSheet(
