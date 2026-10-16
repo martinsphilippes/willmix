@@ -371,7 +371,15 @@ export default async function RequestDetailPage({
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
                 [t("requests.deadline"), formatDate(request.deadline, t)],
                 [t("requests.description"), request.description],
-                [t("requests.specification"), request.specification],
+                [
+                  t("requests.specification"),
+                  // Uma informação por linha (como a especificação é montada).
+                  request.specification ? (
+                    <span className="whitespace-pre-line">
+                      {request.specification}
+                    </span>
+                  ) : null,
+                ],
                 [t("common.note"), request.notes],
               ]}
             />

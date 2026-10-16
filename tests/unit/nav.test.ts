@@ -91,7 +91,10 @@ describe("menu principal", () => {
     };
     expect(view("supplier")).toEqual([
       home,
-      { group: "nav.group.orders", items: ["/app/orders", "/app/account"] },
+      {
+        group: "nav.group.orders",
+        items: ["/app/quotes", "/app/orders", "/app/account"],
+      },
     ]);
     expect(view("shipping_line")).toEqual([
       home,

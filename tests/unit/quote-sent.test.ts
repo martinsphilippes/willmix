@@ -9,6 +9,7 @@ const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
 const qs = await import("@/lib/services/quote-sheet");
 const { pendingTasksFor } = await import("@/lib/services/tasks");
+const { quotesForUser } = await import("@/lib/services/quotes-list");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -78,5 +79,30 @@ describe("cotação enviada", () => {
       .map((t) => t.link);
     expect(links).toContain(`/app/quotes/${second.quote.id}`);
     expect(links).not.toContain(`/app/quotes/${first.quote.id}`);
+  });
+
+  it("tela Cotações: cada fornecedor vê só as dele, para responder primeiro; a Wellmix vê todas", async () => {
+    const mine = await quotesForUser(supplierA);
+    expect(mine.length).toBeGreaterThan(0);
+    const store = getStore();
+    for (const row of mine) {
+      const quote = await store.get("quotes", row.id);
+      expect(quote?.supplierId).toBe("fornecedor-a");
+      expect(row.supplierName).toBeNull();
+    }
+    // Para responder antes das enviadas.
+    const order = mine.map((r) => r.status);
+    expect(order.indexOf("invited")).toBeLessThan(order.indexOf("answered"));
+    expect(mine.find((r) => r.productName === "Jarra enviada")?.status).toBe(
+      "answered",
+    );
+    // O outro fornecedor não vê as cotações de A; o cliente não tem cotações.
+    const theirs = await quotesForUser(supplierB);
+    expect(theirs.some((r) => mine.some((m) => m.id === r.id))).toBe(false);
+    expect(await quotesForUser(joao)).toEqual([]);
+    // A Wellmix vê todas, com o nome do fornecedor.
+    const everyone = await quotesForUser(admin);
+    expect(everyone.length).toBeGreaterThanOrEqual(mine.length + theirs.length);
+    expect(everyone.every((r) => r.supplierName)).toBe(true);
   });
 });

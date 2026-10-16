@@ -176,7 +176,15 @@ export default async function QuotePage({
               [t("requests.deadline"), formatDate(request.deadline, t)],
               [t("quotes.validUntil"), formatDate(quote.validUntil, t)],
               [t("requests.description"), request.description],
-              [t("requests.specification"), request.specification],
+              [
+                t("requests.specification"),
+                // Uma informação por linha (como a especificação é montada).
+                request.specification ? (
+                  <span className="whitespace-pre-line">
+                    {request.specification}
+                  </span>
+                ) : null,
+              ],
             ]}
           />
           <RequestScheduleTable

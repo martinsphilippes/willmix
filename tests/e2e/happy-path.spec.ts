@@ -203,6 +203,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     page.getByText(/报价已提交|Quotation sent|Cotação enviada/),
   ).toBeVisible();
+  // A enviada continua à mão na tela Cotações (menu), entre as enviadas.
+  await page.goto("/app/quotes?status=answered");
+  await expect(page.locator("[data-quote-row]")).toHaveCount(1);
 
   // Fornecedor B responde (inglês)
   await login(page, "supplier.b@china.com");
