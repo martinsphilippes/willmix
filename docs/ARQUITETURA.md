@@ -50,6 +50,8 @@ Nada disso é feito agora; a regra é só não tomar decisões que tornem isso i
 
 - Rotas públicas na raiz; área autenticada em `/app/*`. Proxy faz checagem otimista do cookie; páginas e ações validam a sessão.
 - Toda escrita passa por Server Action em `src/app/app/actions.ts` com zod e `assert*` de papel. Erros voltam por `?error=` na mesma página. Valor recusado volta com o nome do campo (`?error=invalid_input&fields=a,b`): validar um objeto com zod já leva os nomes; um campo só, use `field(form, "nome", schema)` de `actions/helpers.ts`. A tela mostra com `ActionError` (`src/components/action-error.tsx`), que acha o campo pelo nome, mostra o rótulo, destaca e leva até ele. A ficha de compra usa `?error=invalid_fields` (leitura campo a campo em `actions/sheet-form.ts`).
+- Campo obrigatório vazio: `FieldRow` com `missing` (rótulo e caixa em vermelho, "Preencha este campo") e `anchor` com os nomes dos campos da linha. O `MissingLive` do layout tira o vermelho assim que esses campos têm valor (e risca o item no aviso "Faltam: …"); linha com regra própria marca `data-resolve-self` e decide sozinha (`data-resolved`).
+- Valor derivado na ficha (CBM pelas medidas, total de caixas pela quantidade) usa a mesma função pura no navegador e no servidor (`purchase-sheet-calc.ts`, `lib/logistics/cbm.ts`); o servidor recalcula ao gravar, nunca confia no valor enviado.
 - Nunca ler dados no browser: Server Components recebem dados já filtrados por papel.
 - Esquema em `src/lib/db/schema.ts`; `appwrite.config.json` é gerado (`npm run appwrite:config`), nunca editado à mão.
 - Português na interface e docs; inglês em identificadores.

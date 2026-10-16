@@ -39,6 +39,8 @@ export const pt = {
     "Programações ajustadas: {cartons} caixas no total ({pieces} peças).",
   "sheet.fill.cbmHigh":
     "Confira o CBM da caixa master: {cbm} m³ por caixa é muito (um container inteiro tem {capacity} m³). Uma caixa costuma ter de 0,02 a 0,3 m³; ex.: 0,050.",
+  "sheet.fill.cbmHighSize":
+    "Confira as medidas da caixa (em cm): elas dão {cbm} m³ por caixa, muito para uma caixa master (um container inteiro tem {capacity} m³).",
   "sheet.fill.cbmMismatch":
     "Confira o CBM da caixa master: {cbm} m³ não bate com a medida da caixa ({size} m³).",
   "sheet.qty.title": "Quantidade do pedido",
@@ -93,6 +95,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Shipments adjusted: {cartons} cartons in total ({pieces} pieces).",
   "sheet.fill.cbmHigh":
     "Check the master carton CBM: {cbm} m³ per carton is too much (a whole container holds {capacity} m³). A carton is usually 0.02 to 0.3 m³; e.g. 0.050.",
+  "sheet.fill.cbmHighSize":
+    "Check the carton size (in cm): it gives {cbm} m³ per carton, too much for a master carton (a whole container holds {capacity} m³).",
   "sheet.fill.cbmMismatch":
     "Check the master carton CBM: {cbm} m³ does not match the carton size ({size} m³).",
   "sheet.qty.title": "Order quantity",
@@ -143,6 +147,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.fill.appliedTotal": "各批次已调整：共 {cartons} 箱（{pieces} 件）。",
   "sheet.fill.cbmHigh":
     "请核对外箱体积：每箱 {cbm} 立方米过大（整个集装箱才 {capacity} 立方米）。外箱通常为 0.02–0.3 立方米，例如 0.050。",
+  "sheet.fill.cbmHighSize":
+    "请核对外箱尺寸（厘米）：计算得每箱 {cbm} 立方米，对外箱来说过大（整个集装箱才 {capacity} 立方米）。",
   "sheet.fill.cbmMismatch":
     "请核对外箱体积：{cbm} 立方米与外箱尺寸（{size} 立方米）不符。",
   "sheet.qty.title": "订单数量",

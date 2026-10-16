@@ -28,6 +28,7 @@ import {
 import {
   missingForCompletion,
   normalizeLots,
+  withBoxCbm,
   type SheetMissing,
 } from "./purchase-sheet-calc";
 
@@ -369,6 +370,8 @@ async function writeProductSheet(
   const shown = (
     existing ? withProductColumns(existing, draft) : { ...draft }
   ) as Record<string, unknown>;
+  // CBM da caixa: com as três medidas, o calculado (como no cadastro).
+  withBoxCbm(patch, shown as Partial<PurchaseSheet>);
   // Colunas do produto primeiro: se o cadastro recusar (tamanho, formato), a
   // ficha mestre não fica diferente do produto.
   const mirror = productPatchFromSheet(patch as Partial<PurchaseSheet>);

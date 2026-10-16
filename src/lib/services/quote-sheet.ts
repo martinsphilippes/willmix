@@ -38,6 +38,7 @@ import {
   missingForCompletion,
   normalizeLots,
   planSheet,
+  withBoxCbm,
   type SheetMissing,
   type SheetPlan,
 } from "./purchase-sheet-calc";
@@ -316,6 +317,8 @@ export async function saveQuoteSheet(
     if (allowed.has(key) && value !== undefined) patch[key] = value;
   if ("lots" in patch) patch.lots = normalizeLots(patch.lots as never);
   const existing = await getQuoteSheet(quoteId);
+  // CBM da caixa: com as três medidas, o calculado (como no cadastro).
+  if (allowed.has("cbmPerCarton")) withBoxCbm(patch, existing);
   let sheet: PurchaseSheet;
   if (existing) {
     sheet = await store.update("purchase_sheets", existing.id, {

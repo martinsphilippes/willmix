@@ -157,6 +157,8 @@ export function PantonePicker({
   }, [selected]);
   const markResolved = (el: HTMLInputElement, chosen: number) => {
     const row = el.closest("[data-field-row]");
+    // Regra própria (texto ou cores): o aviso geral não mexe nesta linha.
+    row?.setAttribute("data-resolve-self", "");
     if (el.value.trim() || chosen > 0) row?.setAttribute("data-resolved", "");
     else row?.removeAttribute("data-resolved");
   };

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { pantoneLabel, parsePantoneRefs } from "@/lib/pantone";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { parseNumberInput } from "@/lib/number-input";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
 import {
   SHEET_CURRENCIES,
   SHEET_INCOTERMS,
@@ -164,6 +165,14 @@ export function parseSheet(form: FormData): {
       input.colorPantones.map((c) => pantoneLabel(c)).join(" / "),
       200,
     );
+  // CBM da caixa pelas medidas (C × L × A), como o serviço grava: com as três
+  // medidas, um CBM digitado ilegível não impede salvar.
+  const boxCbm = cbmFromDimensions(input.lengthCm, input.widthCm, input.heightCm);
+  if (boxCbm !== null) {
+    input.cbmPerCarton = boxCbm;
+    const at = invalid.indexOf("cbmPerCarton");
+    if (at >= 0) invalid.splice(at, 1);
+  }
   if (form.has("lot1Cartons")) {
     // A programação vai inteira ou não vai (uma linha ilegível não apaga as outras).
     const lots = safe("lots", () =>

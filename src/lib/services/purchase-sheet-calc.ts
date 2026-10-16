@@ -1,4 +1,5 @@
 import type { PurchaseLot, PurchaseSheet } from "@/lib/db/schema";
+import { cbmFromDimensions } from "@/lib/logistics/cbm";
 
 /*
  * Contas da ficha de compra (as mesmas da planilha COMPRAS), sem banco:
@@ -106,12 +107,11 @@ export function planSheet(
           4,
         )
       : null;
-  const cbmFromSize =
-    positive(sheet.heightCm) &&
-    positive(sheet.widthCm) &&
-    positive(sheet.lengthCm)
-      ? round((sheet.heightCm * sheet.widthCm * sheet.lengthCm) / 1_000_000, 4)
-      : null;
+  const cbmFromSize = cbmFromDimensions(
+    sheet.lengthCm,
+    sheet.widthCm,
+    sheet.heightCm,
+  );
   return {
     lots,
     totalCartons,
@@ -245,6 +245,87 @@ export function suggestContainerFill(
     up,
     down,
   };
+}
+
+/**
+ * CBM da caixa master pelas medidas da caixa (C × L × A ÷ 1.000.000), como no
+ * cadastro do produto: com as três medidas, vale o calculado (o digitado é
+ * trocado); faltando alguma, fica o informado. Muda `patch` no lugar. O
+ * salvamento pode trazer só parte dos campos: o que falta vem de `current`.
+ */
+export function withBoxCbm(
+  patch: Record<string, unknown>,
+  current?: Partial<
+    Pick<PurchaseSheet, "heightCm" | "widthCm" | "lengthCm">
+  > | null,
+): void {
+  const keys = ["heightCm", "widthCm", "lengthCm", "cbmPerCarton"];
+  if (!keys.some((k) => k in patch)) return;
+  const pick = (k: "heightCm" | "widthCm" | "lengthCm") =>
+    (k in patch ? patch[k] : current?.[k]) as number | null | undefined;
+  const cbm = cbmFromDimensions(
+    pick("lengthCm"),
+    pick("widthCm"),
+    pick("heightCm"),
+  );
+  if (cbm !== null) patch.cbmPerCarton = cbm;
+}
+
+/** Total de caixas master para gerar a programação, e de onde ele veio. */
+export type CartonTotal =
+  | { source: "lots"; cartons: number }
+  | {
+      source: "requested" | "quantity";
+      cartons: number;
+      /** Peças pedidas (soma das programações do cliente ou do pedido). */
+      quantity: number;
+      perCarton: number;
+      /** Peças que as caixas fecham (caixas × peças por caixa). */
+      pieces: number;
+    }
+  /** Há quantidade, mas falta "Peças por caixa master" para a conta. */
+  | { source: "missing"; need: "masterCartonQty" };
+
+/**
+ * Total de caixas sem digitar: as caixas das programações de hoje; senão a
+ * programação pedida pelo cliente (cada uma arredondada para cima); senão a
+ * quantidade pedida ÷ peças por caixa, para cima. Só quando a unidade conta
+ * peças ("100 cx" ou "50 kg" não viram caixas). Nulo: não há de onde tirar.
+ */
+export function cartonTotalFor(input: {
+  lotsCartons: number;
+  masterCartonQty: number | null | undefined;
+  /** Programação pedida pelo cliente, na unidade da solicitação (`unit`). */
+  requested: ReadonlyArray<{ quantity: number }>;
+  unit: string | null | undefined;
+  /** Quantidade pedida hoje (item do pedido ou solicitação). */
+  target: { quantity: number; unit: string } | null | undefined;
+}): CartonTotal | null {
+  if (positive(input.lotsCartons))
+    return { source: "lots", cartons: input.lotsCartons };
+  const requested = isPiecesUnit(input.unit)
+    ? input.requested.filter((r) => positive(r.quantity))
+    : [];
+  const target =
+    input.target &&
+    positive(input.target.quantity) &&
+    isPiecesUnit(input.target.unit)
+      ? input.target
+      : null;
+  if (!requested.length && !target) return null;
+  const per = input.masterCartonQty;
+  if (!positive(per) || !Number.isInteger(per))
+    return { source: "missing", need: "masterCartonQty" };
+  // Caixa inteira: o que passa de um número exato de caixas abre mais uma.
+  const boxes = (q: number) => Math.ceil(q / per - 1e-9);
+  const [source, cartons, quantity] = requested.length
+    ? ([
+        "requested",
+        requested.reduce((sum, r) => sum + boxes(r.quantity), 0),
+        requested.reduce((sum, r) => sum + r.quantity, 0),
+      ] as const)
+    : (["quantity", boxes(target!.quantity), target!.quantity] as const);
+  return { source, cartons, quantity, perCarton: per, pieces: cartons * per };
 }
 
 /**

@@ -19,6 +19,7 @@ import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { SelectOnFocus } from "@/components/select-on-focus";
 import { SubmitTracker } from "@/components/field-errors";
+import { MissingLive } from "@/components/missing-live";
 
 /** PT / EN / ZH: um toque troca o idioma (Server Action). `dark` para o cabeçalho, claro no painel do celular. */
 function LocaleSwitcher({
@@ -155,6 +156,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         <NavigationProgress />
         <SelectOnFocus />
         <SubmitTracker />
+        <MissingLive />
       </Suspense>
       {/* Cabeçalho em duas faixas: marca e conta em cima; menu embaixo (no
           celular o menu vira um painel aberto pelo botão). */}
