@@ -11,6 +11,13 @@ import { createHash } from "node:crypto";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
+import { translator } from "@/i18n";
+import {
+  buildProductSpec,
+  productSpecLabels,
+  sameSpec,
+  type ProductSpecData,
+} from "@/lib/product-spec";
 import { audit } from "./audit";
 import {
   CUSTOMS_FIELDS,
@@ -183,6 +190,70 @@ export function withProductColumns<T extends Partial<PurchaseSheet>>(
   return out as T;
 }
 
+/**
+ * Dados da especificação: colunas do produto e, da ficha mestre, embalagem,
+ * capacidade e energia (só dados do produto; nada comercial).
+ */
+export function productSpecData(
+  product: Product,
+  master: Partial<PurchaseSheet> | null | undefined,
+): ProductSpecData {
+  return {
+    material: product.material ?? master?.material ?? null,
+    color: product.color ?? master?.colorAssortment ?? null,
+    colorPantones: product.colorPantones ?? master?.colorPantones ?? null,
+    capacityMl: master?.capacityMl ?? null,
+    lengthCm: product.lengthCm,
+    widthCm: product.widthCm,
+    heightCm: product.heightCm,
+    netWeightKg: product.netWeightKg ?? master?.netWeightPcKg ?? null,
+    grossWeightKg: product.grossWeightKg ?? master?.grossWeightPcKg ?? null,
+    powerSource: master?.powerSource ?? null,
+    powerDetail: master?.powerDetail ?? null,
+    packageType: master?.packageType ?? null,
+    masterBoxQty: product.masterBoxQty ?? master?.masterCartonQty ?? null,
+    innerBoxQty: product.innerBoxQty ?? master?.innerQty ?? null,
+    boxLengthCm: product.boxLengthCm ?? master?.lengthCm ?? null,
+    boxWidthCm: product.boxWidthCm ?? master?.widthCm ?? null,
+    boxHeightCm: product.boxHeightCm ?? master?.heightCm ?? null,
+    cbm: product.cbm ?? master?.cbmPerCarton ?? null,
+  };
+}
+
+/** Especificação montada com os dados (em português: é o texto do catálogo). */
+export function autoProductSpec(
+  product: Product,
+  master: Partial<PurchaseSheet> | null | undefined,
+): string {
+  return buildProductSpec(
+    productSpecData(product, master),
+    productSpecLabels(translator("pt")),
+  );
+}
+
+/**
+ * Os dados do produto mudaram (ficha mestre, ficha do pedido, cadastro pela
+ * ficha): a especificação acompanha se ainda é a automática (vazia ou igual
+ * à montada com os dados de antes). Texto escrito à mão não muda.
+ */
+export async function refreshAutoSpecification(
+  productId: string,
+  before: { product: Product; master: Partial<PurchaseSheet> | null },
+): Promise<void> {
+  const store = getStore();
+  const product = await store.get("products", productId);
+  if (!product) return;
+  const stored = product.specification ?? "";
+  if (
+    stored.trim() &&
+    !sameSpec(stored, autoProductSpec(before.product, before.master))
+  )
+    return;
+  const next = autoProductSpec(product, await getProductSheet(productId));
+  if (!next || sameSpec(stored, next)) return;
+  await store.update("products", productId, { specification: next });
+}
+
 /** Colunas do produto espelhadas da ficha (mesmo dado, dois lugares). */
 function productPatchFromSheet(
   sheet: Partial<PurchaseSheet>,
@@ -327,6 +398,11 @@ async function writeProductSheet(
       completedAt: null,
     } as Omit<PurchaseSheet, "id" | "createdAt" | "updatedAt">);
   }
+  // Especificação automática acompanha os dados novos (a escrita à mão fica).
+  await refreshAutoSpecification(productId, {
+    product,
+    master: existing ?? null,
+  });
   // Antes e depois de cada campo trocado (preço, MOQ, caixa…): rastreável.
   const before: Record<string, unknown> = {};
   const after: Record<string, unknown> = {};
