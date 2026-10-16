@@ -82,7 +82,6 @@ import { PhotoInput } from "@/components/photo-input";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import {
   addProductMeasurementAction,
-  addProductPhotosAction,
   savePurchaseScheduleAction,
   saveProductPriceTiersAction,
   setPrimaryPhotoAction,
@@ -937,44 +936,6 @@ export default async function ProductSheetPage({
               ))}
             </div>
           )}
-          <form
-            action={addProductPhotosAction}
-            className="mt-3 space-y-2 rounded-lg border border-zinc-200/80 bg-zinc-50/70 p-3"
-          >
-            <input type="hidden" name="productId" value={product.id} />
-            <PhotoInput
-              name="photos"
-              label={t("catalog.photos.add")}
-              hint={t("catalog.photos.hint")}
-              required
-              direct
-              pendingLabel={t("sheet.photos.sending")}
-              uploadingLabel={t("photo.uploading")}
-              failedLabel={t("photo.failed")}
-            />
-            {/* Tipo (curto), legenda e botão numa linha só. */}
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="w-full sm:w-44">
-                <Field label={t("catalog.photos.kind")}>
-                  <Select name="kind" defaultValue="original" dense>
-                    {PHOTO_KINDS.map((k) => (
-                      <option key={k} value={k}>
-                        {t(`catalog.photoKind.${k}` as DictionaryKey)}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
-              <div className="min-w-40 flex-1">
-                <Field label={t("catalog.photos.caption")}>
-                  <Input name="caption" maxLength={200} dense />
-                </Field>
-              </div>
-              <SubmitButton variant="secondary" className="w-full sm:w-auto">
-                {t("catalog.photos.add")}
-              </SubmitButton>
-            </div>
-          </form>
         </Card>
 
         <Card title={t("catalog.measurements")}>
