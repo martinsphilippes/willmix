@@ -13,8 +13,9 @@ import {
 import { isActiveHref } from "@/lib/nav";
 
 /*
- * Menu principal. No computador: uma linha com as telas do dia a dia e os
- * grupos (Operação, Cadastros, Gestão) abrindo uma lista. No celular: botão
+ * Menu principal. No computador: uma linha com os grupos (Wellmix: Início,
+ * Pedidos, Cadastros, Gestão; demais papéis: Início, Pedidos) abrindo uma
+ * lista; grupo com uma tela só aparece como link. No celular: botão
  * "Menu" que abre um painel com tudo (grupos como títulos) e, no fim, idioma,
  * conta de demonstração e Sair. O item da tela atual fica destacado; um grupo
  * fica destacado quando a tela atual está dentro dele. Listas e painel fecham

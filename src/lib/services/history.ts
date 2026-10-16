@@ -64,6 +64,9 @@ export async function loadCommercialHistory(
   for (const order of sorted) {
     // Cliente: só os pedidos do próprio login.
     if (user.role === "customer" && !canViewOrder(user, order)) continue;
+    // Pedido cancelado não é compra: não conta nem vira o "último pedido"
+    // (Comprar de novo / Nova proposta).
+    if (order.status === "CANCELLED") continue;
     const item = items.find((i) => i.orderId === order.id);
     if (!item) continue;
     const key = `${order.customerId}|${item.productId ?? item.name.toLowerCase()}`;

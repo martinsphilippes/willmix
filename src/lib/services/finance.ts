@@ -32,14 +32,15 @@ export interface OrderFinance {
 
 export interface FinanceSummary {
   currency: string;
+  /** Vendido, sem os pedidos cancelados (recebido e pago contam todos). */
   sell: number;
   received: number;
   receivable: number;
-  /** Custo, margem e percentual só sobre os pedidos com câmbio conhecido. */
+  /** Custo, margem e percentual só sobre os pedidos com câmbio conhecido (e não cancelados). */
   cost: number;
   margin: number;
   marginPct: number | null;
-  /** Pedidos sem câmbio informado, fora da margem consolidada. */
+  /** Pedidos (não cancelados) sem câmbio informado, fora da margem consolidada. */
   missingFx: number;
   payableByCurrency: Record<string, number>;
   paidByCurrency: Record<string, number>;
@@ -134,9 +135,13 @@ export async function loadFinance(): Promise<{
   );
   const currency = rows[0]?.sellCurrency ?? "BRL";
   const same = rows.filter((r) => r.sellCurrency === currency);
-  const sell = same.reduce((s, r) => s + r.sell, 0);
+  // Pedido cancelado não é venda nem custo: fica fora de vendido, custo, margem
+  // e "sem câmbio". Recebido, a receber e pago continuam sobre todos (o
+  // dinheiro que entrou ou saiu mexeu de verdade).
+  const live = same.filter((r) => r.order.status !== "CANCELLED");
+  const sell = live.reduce((s, r) => s + r.sell, 0);
   const received = same.reduce((s, r) => s + r.received, 0);
-  const known = same.filter((r) => r.cost !== null);
+  const known = live.filter((r) => r.cost !== null);
   const cost = known.reduce((s, r) => s + (r.cost as number), 0);
   const knownSell = known.reduce((s, r) => s + r.sell, 0);
   const payableByCurrency: Record<string, number> = {};
@@ -158,7 +163,7 @@ export async function loadFinance(): Promise<{
       cost,
       margin,
       marginPct: knownSell > 0 ? (margin / knownSell) * 100 : null,
-      missingFx: same.length - known.length,
+      missingFx: live.length - known.length,
       payableByCurrency,
       paidByCurrency,
     },

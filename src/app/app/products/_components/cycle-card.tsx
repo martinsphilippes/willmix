@@ -170,7 +170,9 @@ export function CycleCard({
                   <span className="tabular-nums text-zinc-700">
                     {r.quantity} {r.unit}
                   </span>
-                  <Badge>
+                  <Badge
+                    tone={r.status === "ORDER_CANCELLED" ? "danger" : "neutral"}
+                  >
                     {t(`reqStatusLabel.${r.status}` as DictionaryKey)}
                   </Badge>
                   {r.origin && r.origin !== "manual" ? (
@@ -207,9 +209,11 @@ export function CycleCard({
                     </TextLink>
                     <Badge
                       tone={
-                        o.status === "DELIVERED" || o.status === "CLOSED"
-                          ? "success"
-                          : "brand"
+                        o.status === "CANCELLED"
+                          ? "danger"
+                          : o.status === "DELIVERED" || o.status === "CLOSED"
+                            ? "success"
+                            : "brand"
                       }
                     >
                       {t(`stage.${o.status}` as DictionaryKey)}

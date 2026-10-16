@@ -64,9 +64,20 @@ export default async function ReviewsPage({
     store.list("containers"),
     store.list("users"),
   ]);
-  const items = all.filter((r) => r.status === status);
+  // Item aberto de pedido cancelado (antes de o cancelamento descartar a
+  // fila sozinho) aparece como descartado: não é mais trabalho a fazer.
+  const orderOf = (r: (typeof all)[number]) =>
+    orders.find(
+      (o) => o.id === (r.orderId ?? (r.entity === "order" ? r.entityId : "")),
+    ) ?? null;
+  const shown = all.map((r) =>
+    r.status === "open" && orderOf(r)?.status === "CANCELLED"
+      ? { ...r, status: "dismissed" as const }
+      : r,
+  );
+  const items = shown.filter((r) => r.status === status);
   const counts = Object.fromEntries(
-    REVIEW_STATUSES.map((s) => [s, all.filter((r) => r.status === s).length]),
+    REVIEW_STATUSES.map((s) => [s, shown.filter((r) => r.status === s).length]),
   ) as Record<ReviewStatus, number>;
   const entityLabel = (r: (typeof all)[number]) => {
     if (r.entity === "container") {
@@ -157,6 +168,9 @@ export default async function ReviewsPage({
                     <span className="text-sm font-semibold text-zinc-900">
                       {entityLabel(r)}
                     </span>
+                    {orderOf(r)?.status === "CANCELLED" ? (
+                      <Badge tone="danger">{t("stage.CANCELLED")}</Badge>
+                    ) : null}
                   </div>
                   <p className="mt-1.5 text-sm text-zinc-800">{r.problem}</p>
                   <p className="mt-1 text-xs text-zinc-500">

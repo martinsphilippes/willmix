@@ -15,7 +15,11 @@ import { notify, notifyWellmix, requesterTarget } from "./notifications";
  * Cancelamento de pedido.
  * - Só o administrador cancela, em qualquer etapa. Nada é apagado: o pedido
  *   fica CANCELLED, as etapas abertas viram "cancelled", sai dos containers e
- *   dos fretes em aberto, e todos os envolvidos são avisados.
+ *   dos fretes em aberto, e todos os envolvidos são avisados. O que ficaria
+ *   pendurado como "em andamento" também é encerrado: itens de revisão abertos
+ *   (descartados), pós-venda aberto (encerrado), programação de compra ligada
+ *   ao pedido (cancelada) e o cliente do container, quando o pedido era o
+ *   último dele lá.
  * - Acerto financeiro (sinal, pagamentos) é texto livre: a Wellmix resolve com
  *   o cliente e registra quando quiser.
  * - O cliente pode pedir o cancelamento até o produto entrar em produção; a
@@ -108,9 +112,47 @@ export async function cancelOrder(
   if (items.length) {
     const { removeContainerItem } = await import("./containers");
     for (const item of items) await removeContainerItem(user, item.id);
+    // Container que ficou sem pedidos deixa de ser "do cliente" deste pedido
+    // (o próximo pedido incluído define o cliente de novo).
+    for (const containerId of new Set(items.map((i) => i.containerId))) {
+      const container = await store.get("containers", containerId);
+      if (!container || container.customerId !== order.customerId) continue;
+      const left = await store.list("container_items", {
+        filter: { containerId },
+      });
+      if (!left.some((i) => i.orderId))
+        await store.update("containers", containerId, { customerId: null });
+    }
   }
   const { cancelFreightForRequest } = await import("./freight");
   await cancelFreightForRequest(order.requestId);
+  // Itens de revisão abertos do pedido saem da fila (Pendências, Control Tower).
+  const reviews = await store.list("review_items", {
+    filter: { orderId, status: "open" },
+  });
+  for (const r of reviews)
+    await store.update("review_items", r.id, {
+      status: "dismissed",
+      resolvedByUserId: user.id,
+      resolvedAt: now,
+      resolutionNote: "Pedido cancelado",
+    });
+  // Pós-venda aberto ("Avalie a compra") não faz mais sentido.
+  const afterSales = await store.list("after_sales", {
+    filter: { orderId, status: "open" },
+  });
+  for (const a of afterSales)
+    await store.update("after_sales", a.id, {
+      status: "closed",
+      closedAt: now,
+    });
+  // Programação de compra que virou este pedido fica cancelada (o vínculo fica).
+  const schedules = await store.list("purchase_schedules", {
+    filter: { orderId },
+  });
+  for (const ps of schedules)
+    if (ps.status !== "cancelled")
+      await store.update("purchase_schedules", ps.id, { status: "cancelled" });
 
   await store.update("orders", orderId, {
     status: "CANCELLED",

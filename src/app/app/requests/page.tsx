@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { canDeleteRequest } from "@/lib/services/requests";
+import {
+  cancelledOrderIds,
+  requestDisplayStatus,
+  requestStatusTone,
+} from "@/lib/services/order-status";
 import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
@@ -58,6 +63,9 @@ export default async function RequestsPage({
     customer ? customerOrdersInProgress(user) : Promise.resolve([]),
   ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));
+  // Pedido cancelado: a solicitação segue ORDERED e fica na lista (histórico),
+  // mas o selo mostra "Pedido cancelado" em vez de "Pedido criado".
+  const cancelled = await cancelledOrderIds(visible.map((r) => r.orderId));
   // Excluídas (CANCELLED) saem da lista; ficam no filtro "Ver excluídas".
   const deletedCount = visible.filter((r) => r.status === "CANCELLED").length;
   const byStatus = visible.filter((r) =>
@@ -336,86 +344,84 @@ export default async function RequestsPage({
             </tr>
           </thead>
           <tbody>
-            {requests.map((r) => (
-              <tr key={r.id} className={rowClass}>
-                {!showDeleted && anyDeletable ? (
-                  <Td className="w-10">
-                    {canDeleteRequest(user, r) ? (
-                      <input
-                        type="checkbox"
-                        name="ids"
-                        value={r.id}
-                        form={BULK_FORM}
-                        aria-label={`${t("reqDelete.selectOne")}: ${r.productName}`}
-                        className="h-4 w-4 accent-brand-600"
-                      />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        disabled
-                        aria-label={t("reqDelete.ordered")}
-                        title={t("reqDelete.ordered")}
-                        className="h-4 w-4 cursor-not-allowed opacity-40"
-                      />
-                    )}
-                  </Td>
-                ) : null}
-                <Td className="min-w-40 font-medium text-zinc-900">
-                  {r.productName}
-                  {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
-                    <TextLink
-                      href={`/app/requests?group=${encodeURIComponent(r.groupId)}`}
-                      className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 no-underline ring-1 ring-inset ring-brand-200"
-                      data-batch-badge
-                    >
-                      {t("reqBatch.badge", { n: groupSize.get(r.groupId)! })}
-                    </TextLink>
-                  ) : null}
-                </Td>
-                {isWellmix(user) ? (
-                  <Td className="min-w-32">
-                    {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
-                  </Td>
-                ) : null}
-                <Td className="whitespace-nowrap tabular-nums">
-                  {r.quantity} {r.unit}
-                </Td>
-                <Td className="whitespace-nowrap">
-                  <Badge
-                    tone={
-                      r.status === "ORDERED"
-                        ? "success"
-                        : r.status === "CANCELLED"
-                          ? "neutral"
-                          : r.status === "WAITING_DOWN_PAYMENT"
-                            ? "warning"
-                            : "neutral"
-                    }
-                  >
-                    {t(`reqStatusLabel.${r.status}`)}
-                  </Badge>
-                </Td>
-                <Td className="whitespace-nowrap tabular-nums">
-                  {formatDate(r.deadline, t)}
-                </Td>
-                <Td className="text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    <TextLink href={`/app/requests/${r.id}`}>
-                      {t("tasks.open")}
-                    </TextLink>
-                    {!showDeleted && canDeleteRequest(user, r) ? (
-                      <form action={deleteRequestsAction}>
-                        <input type="hidden" name="ids" value={r.id} />
-                        <ConfirmDeleteButton
-                          label={t("reqDelete.delete")}
-                          confirmText={t("reqDelete.confirmOne")}
+            {requests.map((r) => {
+              const status = requestDisplayStatus(r, cancelled);
+              // Pedido cancelado: a dica não diz mais que "o pedido continua".
+              const lockedHint =
+                status === "ORDER_CANCELLED"
+                  ? t("reqStatusLabel.ORDER_CANCELLED")
+                  : t("reqDelete.ordered");
+              return (
+                <tr key={r.id} className={rowClass}>
+                  {!showDeleted && anyDeletable ? (
+                    <Td className="w-10">
+                      {canDeleteRequest(user, r) ? (
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={r.id}
+                          form={BULK_FORM}
+                          aria-label={`${t("reqDelete.selectOne")}: ${r.productName}`}
+                          className="h-4 w-4 accent-brand-600"
                         />
-                      </form>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          disabled
+                          aria-label={lockedHint}
+                          title={lockedHint}
+                          className="h-4 w-4 cursor-not-allowed opacity-40"
+                        />
+                      )}
+                    </Td>
+                  ) : null}
+                  <Td className="min-w-40 font-medium text-zinc-900">
+                    {r.productName}
+                    {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
+                      <TextLink
+                        href={`/app/requests?group=${encodeURIComponent(r.groupId)}`}
+                        className="ml-2 inline-block rounded bg-brand-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-800 no-underline ring-1 ring-inset ring-brand-200"
+                        data-batch-badge
+                      >
+                        {t("reqBatch.badge", { n: groupSize.get(r.groupId)! })}
+                      </TextLink>
                     ) : null}
-                  </div>
-                </Td>
-              </tr>
-            ))}
+                  </Td>
+                  {isWellmix(user) ? (
+                    <Td className="min-w-32">
+                      {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
+                    </Td>
+                  ) : null}
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {r.quantity} {r.unit}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    <Badge tone={requestStatusTone(status)}>
+                      {t(`reqStatusLabel.${status}`)}
+                    </Badge>
+                  </Td>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {formatDate(r.deadline, t)}
+                  </Td>
+                  <Td className="text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      <TextLink href={`/app/requests/${r.id}`}>
+                        {t("tasks.open")}
+                      </TextLink>
+                      {!showDeleted && canDeleteRequest(user, r) ? (
+                        <form action={deleteRequestsAction}>
+                          <input type="hidden" name="ids" value={r.id} />
+                          <ConfirmDeleteButton
+                            label={t("reqDelete.delete")}
+                            confirmText={t("reqDelete.confirmOne")}
+                          />
+                        </form>
+                      ) : null}
+                    </div>
+                  </Td>
+                </tr>
+              );
+            })}
           </tbody>
         </Table>
       )}

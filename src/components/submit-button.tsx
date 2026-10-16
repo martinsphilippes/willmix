@@ -54,9 +54,14 @@ function Spinner() {
 export function SubmitButton({
   children,
   pendingText,
+  confirmText,
   form,
   ...props
-}: ComponentProps<typeof Button> & { pendingText?: string }) {
+}: ComponentProps<typeof Button> & {
+  pendingText?: string;
+  /** Pergunta antes de enviar (ações que não têm volta, ex.: excluir todas). */
+  confirmText?: string;
+}) {
   const status = useFormStatus();
   const external = useExternalFormPending(form);
   // Com `form`, o botão fica fora do formulário (ex.: depois do card de fotos,
@@ -70,6 +75,13 @@ export function SubmitButton({
       disabled={pending}
       aria-busy={pending}
       {...props}
+      onClick={(event) => {
+        if (confirmText && !window.confirm(confirmText)) {
+          event.preventDefault();
+          return;
+        }
+        props.onClick?.(event);
+      }}
     >
       {pending ? <Spinner /> : null}
       {pending && pendingText ? pendingText : children}

@@ -91,14 +91,21 @@ export default async function AfterSalesPage({
     store.list("orders"),
     store.list("parties", { filter: { type: "customer" } }),
   ]);
-  const rows = all.filter((a) => a.status === status);
+  const orderOf = (a: AfterSales) => orders.find((o) => o.id === a.orderId);
+  // Pedido cancelado: pós-venda ainda aberto (cancelado antes de o
+  // cancelamento encerrar o pós-venda) aparece encerrado, como os de agora.
+  const shown = all.map((a) =>
+    a.status === "open" && orderOf(a)?.status === "CANCELLED"
+      ? { ...a, status: "closed" as const }
+      : a,
+  );
+  const rows = shown.filter((a) => a.status === status);
   const counts = Object.fromEntries(
     AFTER_SALES_STATUSES.map((s) => [
       s,
-      all.filter((a) => a.status === s).length,
+      shown.filter((a) => a.status === s).length,
     ]),
   ) as Record<AfterSalesStatus, number>;
-  const orderOf = (a: AfterSales) => orders.find((o) => o.id === a.orderId);
   const customerName = (id: string) =>
     parties.find((p) => p.id === id)?.name ?? "—";
   const interest = (v: AfterSales["repurchaseInterest"]) =>
@@ -164,6 +171,9 @@ export default async function AfterSalesPage({
                       <Badge tone={statusTone(a.status)}>
                         {t(`orders.afterSales.status.${a.status}`)}
                       </Badge>
+                      {order?.status === "CANCELLED" ? (
+                        <Badge tone="danger">{t("stage.CANCELLED")}</Badge>
+                      ) : null}
                       {order && orderHref ? (
                         <TextLink href={orderHref} className="text-sm">
                           {t("orders.number", { number: order.number })}
@@ -222,7 +232,9 @@ export default async function AfterSalesPage({
                       {t("afterSales.problems")}
                     </dt>
                     <dd className="mt-0.5 text-zinc-900">
-                      {a.status === "open" ? (
+                      {/* Sem resposta (aberto, ou encerrado sem o cliente
+                          responder, ex.: pedido cancelado): nada a dizer. */}
+                      {a.status === "open" || !a.answeredAt ? (
                         "—"
                       ) : a.problems ? (
                         <span title={a.problems}>{summary(a.problems)}</span>

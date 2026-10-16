@@ -4,9 +4,14 @@ import {
   getStore,
   type Order,
   type RequestStatus,
+  type ReviewItem,
   type Role,
   type StageKey,
 } from "@/lib/db";
+
+/** Pedido do item de revisão (itens antigos podem ter só entity "order"). */
+const reviewOrderId = (r: ReviewItem) =>
+  r.orderId ?? (r.entity === "order" ? r.entityId : null);
 
 export interface TowerRow {
   id: string;
@@ -236,9 +241,11 @@ export async function loadControlTower(): Promise<TowerData> {
     });
   }
   // Fila "itens para revisão" (gates): cada item aberto é uma exceção com atalho.
+  // Item de pedido cancelado não é pendência (os de antes da regra ficaram abertos).
   const reviews = await reviewsP;
   for (const r of reviews) {
-    const order = orders.find((o) => o.id === r.orderId);
+    const order = orders.find((o) => o.id === reviewOrderId(r));
+    if (order?.status === "CANCELLED") continue;
     exceptions.push({
       kind: "review",
       severity: r.rule.startsWith("inspection.") ? "high" : "medium",
@@ -354,8 +361,14 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
     listContainers(),
     store.list("review_items", { filter: { status: "open" } }),
   ]);
+  // Pedido cancelado não é compra: fica fora do "Comprado (FOB)".
   const purchasedByCurrency: Record<string, number> = {};
+  const cancelled = new Set<string>();
   for (const r of rows) {
+    if (r.order.status === "CANCELLED") {
+      cancelled.add(r.order.id);
+      continue;
+    }
     purchasedByCurrency[r.fobCurrency] =
       (purchasedByCurrency[r.fobCurrency] ?? 0) + r.fob;
   }
@@ -408,7 +421,9 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
     paidByCurrency: summary.paidByCurrency,
     payableByCurrency: summary.payableByCurrency,
     pipeline,
-    reviewsOpen: reviews.length,
+    // Itens de revisão de pedido cancelado não contam (os de antes da regra ficaram abertos).
+    reviewsOpen: reviews.filter((r) => !cancelled.has(reviewOrderId(r) ?? ""))
+      .length,
     containers: {
       total: containers.length,
       open: openContainers.length,

@@ -3,6 +3,8 @@
  * e menu da conta): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "nav.group.home": "Início",
+  "nav.group.orders": "Pedidos",
   "nav.group.operations": "Operação",
   "nav.group.registry": "Cadastros",
   "nav.group.management": "Gestão",
@@ -16,6 +18,8 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "nav.group.home": "Home",
+  "nav.group.orders": "Orders",
   "nav.group.operations": "Operations",
   "nav.group.registry": "Master data",
   "nav.group.management": "Management",
@@ -29,6 +33,8 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "nav.group.home": "首页",
+  "nav.group.orders": "订单",
   "nav.group.operations": "运营",
   "nav.group.registry": "档案",
   "nav.group.management": "管理",

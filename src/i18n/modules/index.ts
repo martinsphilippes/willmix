@@ -8,6 +8,7 @@ import * as productSuppliers from "./product-suppliers";
 import * as sheetMissing from "./sheet-missing";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
+import * as notificationsDelete from "./notifications-delete";
 import * as importing from "./import";
 import * as logistics from "./logistics";
 import * as orders from "./orders";
@@ -95,6 +96,7 @@ export const modulesPt = {
   ...sheetMissing.pt,
   ...productPhotos.pt,
   ...sheetGenerate.pt,
+  ...notificationsDelete.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -142,6 +144,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sheetMissing.en,
   ...productPhotos.en,
   ...sheetGenerate.en,
+  ...notificationsDelete.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -189,4 +192,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sheetMissing.zh,
   ...productPhotos.zh,
   ...sheetGenerate.zh,
+  ...notificationsDelete.zh,
 };

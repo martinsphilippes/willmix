@@ -134,13 +134,27 @@ export default async function FinancePage() {
                     <TextLink href={`/app/orders/${r.order.id}`}>
                       #{r.order.number}
                     </TextLink>
-                    <div className="mt-0.5 text-xs text-zinc-500">
-                      {t(`stage.${r.order.status}`)}
-                    </div>
+                    {/* Cancelado fica no histórico, mas fora de vendido, custo e margem. */}
+                    {r.order.status === "CANCELLED" ? (
+                      <div className="mt-0.5">
+                        <Badge tone="danger">{t("stage.CANCELLED")}</Badge>
+                      </div>
+                    ) : (
+                      <div className="mt-0.5 text-xs text-zinc-500">
+                        {t(`stage.${r.order.status}`)}
+                      </div>
+                    )}
                   </Td>
                   <Td>{r.customerName}</Td>
                   <Td>{r.productName}</Td>
-                  <Td className="whitespace-nowrap font-semibold text-zinc-900">
+                  <Td
+                    className={cx(
+                      "whitespace-nowrap font-semibold",
+                      r.order.status === "CANCELLED"
+                        ? "text-zinc-400 line-through"
+                        : "text-zinc-900",
+                    )}
+                  >
                     {formatMoney(r.sell, r.sellCurrency, t)}
                   </Td>
                   <Td className="whitespace-nowrap">
@@ -181,17 +195,19 @@ export default async function FinancePage() {
                         : "—"}
                   </Td>
                   <Td className="whitespace-nowrap">
-                    {r.cost !== null ? (
+                    {r.order.status === "CANCELLED" ? (
+                      "—"
+                    ) : r.cost !== null ? (
                       formatMoney(r.cost, r.sellCurrency, t)
                     ) : (
                       <Badge tone="warning">{t("finance.fxMissing")}</Badge>
                     )}
-                    {r.estimated ? (
+                    {r.estimated && r.order.status !== "CANCELLED" ? (
                       <span className="ml-1 text-xs text-zinc-500">~</span>
                     ) : null}
                   </Td>
                   <Td className="whitespace-nowrap font-semibold text-zinc-900">
-                    {r.margin !== null ? (
+                    {r.margin !== null && r.order.status !== "CANCELLED" ? (
                       <>
                         <span className={cx(r.margin < 0 && "text-red-700")}>
                           {formatMoney(r.margin, r.sellCurrency, t)}

@@ -43,6 +43,7 @@ import { checkRequiredAttributes } from "@/lib/ai/prompts";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { listSuggestions } from "@/lib/services/ai-suggestions";
 import { loadProductCycle } from "@/lib/services/product-cycle";
+import { cancelledOrderIds } from "@/lib/services/order-status";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -209,6 +210,7 @@ export default async function ProductSheetPage({
     fillOpportunities,
     suggestions,
     cycle,
+    scheduleCancelledOrders,
   ] = await Promise.all([
     listTaxClassifications(id),
     listCertifications("product", id),
@@ -218,6 +220,7 @@ export default async function ProductSheetPage({
     // Visão de Produto: sugestões por foto (IA) e ciclo contínuo do produto.
     listSuggestions("product", id),
     loadProductCycle(id),
+    cancelledOrderIds(schedules.map((s) => s.orderId)),
   ]);
   const aiAdapter = getAiAdapter(settings);
   // Ficha mestre (ou rascunho a partir das colunas do produto) e o que falta nela.
@@ -278,9 +281,15 @@ export default async function ProductSheetPage({
     return fit ? [{ ...c, fit }] : [];
   });
   const tiers = sortTiers(product.priceTiers);
+  // Programação de pedido cancelado antes de o cancelamento marcá-la
+  // "cancelled" aparece cancelada (o vínculo com o pedido fica).
+  const scheduleStatus = (s: (typeof schedules)[number]) =>
+    s.orderId && scheduleCancelledOrders.has(s.orderId)
+      ? "cancelled"
+      : s.status;
   // Quantidade analisada: ?qty= informado; senão a última programação; senão o MOQ.
   const lastSchedule = [...schedules]
-    .filter((s) => s.status !== "cancelled")
+    .filter((s) => scheduleStatus(s) !== "cancelled")
     .sort((a, b) => b.sequence - a.sequence)[0];
   const qtyParam = typeof qty === "string" ? Number(qty) : NaN;
   const analysis =
@@ -1045,8 +1054,10 @@ export default async function ProductSheetPage({
                       : "—"}
                   </Td>
                   <Td>
-                    <Badge tone={scheduleTone[s.status] ?? "neutral"}>
-                      {t(`catalog.scheduleStatus.${s.status}` as DictionaryKey)}
+                    <Badge tone={scheduleTone[scheduleStatus(s)] ?? "neutral"}>
+                      {t(
+                        `catalog.scheduleStatus.${scheduleStatus(s)}` as DictionaryKey,
+                      )}
                     </Badge>
                   </Td>
                   <Td className="max-w-[14rem] text-xs text-zinc-600">

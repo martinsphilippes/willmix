@@ -4,6 +4,9 @@
  */
 export const pt = {
   "stage.CANCELLED": "Cancelado",
+  "reqStatusLabel.ORDER_CANCELLED": "Pedido cancelado",
+  "reqCancelled.banner": "O pedido #{n} desta solicitação foi cancelado.",
+  "reqCancelled.open": "Ver o pedido cancelado",
   "stageStatus.cancelled": "Cancelada",
   "cancel.title": "Cancelar pedido",
   "cancel.hint":
@@ -58,6 +61,9 @@ export const pt = {
 
 export const en: Record<keyof typeof pt, string> = {
   "stage.CANCELLED": "Cancelled",
+  "reqStatusLabel.ORDER_CANCELLED": "Order cancelled",
+  "reqCancelled.banner": "Order #{n} for this request was cancelled.",
+  "reqCancelled.open": "View the cancelled order",
   "stageStatus.cancelled": "Cancelled",
   "cancel.title": "Cancel order",
   "cancel.hint":
@@ -111,6 +117,9 @@ export const en: Record<keyof typeof pt, string> = {
 
 export const zh: Record<keyof typeof pt, string> = {
   "stage.CANCELLED": "已取消",
+  "reqStatusLabel.ORDER_CANCELLED": "订单已取消",
+  "reqCancelled.banner": "此申请的订单 #{n} 已取消。",
+  "reqCancelled.open": "查看已取消的订单",
   "stageStatus.cancelled": "已取消",
   "cancel.title": "取消订单",
   "cancel.hint":

@@ -1,6 +1,11 @@
 import "server-only";
 
 import { getStore, type Product } from "@/lib/db";
+import {
+  cancelledOrderIds,
+  requestDisplayStatus,
+  type RequestDisplayStatus,
+} from "./order-status";
 
 /**
  * Ciclo contínuo do produto (princípio de dados: o produto é o objeto central).
@@ -19,7 +24,8 @@ export interface ProductCycle {
   } | null;
   requests: Array<{
     id: string;
-    status: string;
+    /** ORDER_CANCELLED quando o pedido da solicitação foi cancelado. */
+    status: RequestDisplayStatus;
     origin: string | null;
     quantity: number;
     unit: string;
@@ -34,6 +40,8 @@ export interface ProductCycle {
     createdAt: string;
     customerName: string;
     afterSalesStatus: string | null;
+    /** Quando o cliente respondeu o pós-venda (mesmo que depois encerrado). */
+    afterSalesAnsweredAt?: string | null;
     rating: number | null;
     repurchaseInterest: string | null;
   }>;
@@ -83,6 +91,12 @@ export async function loadProductCycle(
     .map((o) => {
       const item = items.find((i) => i.orderId === o.id);
       const after = afterSales.find((a) => a.orderId === o.id) ?? null;
+      // Pedido cancelado antes de o cancelamento encerrar o pós-venda: o
+      // pós-venda aberto aparece encerrado, como nos cancelamentos de agora.
+      const afterStatus =
+        o.status === "CANCELLED" && after?.status === "open"
+          ? "closed"
+          : (after?.status ?? null);
       return {
         id: o.id,
         number: o.number,
@@ -90,16 +104,19 @@ export async function loadProductCycle(
         quantity: item?.quantity ?? 0,
         createdAt: o.createdAt,
         customerName: nameOf(o.customerId) ?? "—",
-        afterSalesStatus: after?.status ?? null,
+        afterSalesStatus: afterStatus,
+        afterSalesAnsweredAt: after?.answeredAt ?? null,
         rating: after?.rating ?? null,
         repurchaseInterest: after?.repurchaseInterest ?? null,
       };
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // Solicitação de pedido cancelado fica no histórico como "Pedido cancelado".
+  const cancelled = await cancelledOrderIds(requests.map((r) => r.orderId));
   const requestRows = requests
     .map((r) => ({
       id: r.id,
-      status: r.status,
+      status: requestDisplayStatus(r, cancelled),
       origin: r.origin,
       quantity: r.quantity,
       unit: r.unit,
@@ -137,9 +154,13 @@ export async function loadProductCycle(
       replenishments: requests.filter(
         (r) => r.origin === "replenishment" || r.origin === "proposal",
       ).length,
+      // Pós-venda encerrado pelo cancelamento do pedido não foi respondido
+      // (a não ser que o cliente tenha respondido antes).
       afterSalesAnswered: orderRows.filter(
         (o) =>
-          o.afterSalesStatus === "answered" || o.afterSalesStatus === "closed",
+          o.afterSalesStatus === "answered" ||
+          (o.afterSalesStatus === "closed" &&
+            (o.status !== "CANCELLED" || !!o.afterSalesAnsweredAt)),
       ).length,
     },
   };
