@@ -439,8 +439,14 @@ export function PurchaseSheetFields({
               hint={
                 <BoxCbmHint
                   initialCbm={plan.cbmFromSize}
-                  auto={t("sheet.cbmAuto")}
-                  manual={t("sheet.cbmManual")}
+                  stored={sheet.cbmPerCarton ?? null}
+                  disabled={sup}
+                  texts={{
+                    auto: t("sheet.cbmAuto"),
+                    manual: t("sheet.cbmManual"),
+                    willUpdate: t("sheet.cbmWillUpdate"),
+                    fromSize: t("sheet.cbmFromSize"),
+                  }}
                 />
               }
             >

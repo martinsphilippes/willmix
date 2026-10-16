@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { DRAFT_RESTORE_EVENT } from "./form-draft-guard";
 
 /*
@@ -40,6 +41,14 @@ function rowFilled(row: Element): boolean | null {
 }
 
 export function refreshMissingRows(root: ParentNode = document) {
+  // Linha que deixou de faltar (salvou) não guarda a marca daqui: se faltar
+  // de novo, volta ao vermelho.
+  for (const row of root.querySelectorAll(
+    '[data-resolved-live]:not([data-missing="true"])',
+  )) {
+    row.removeAttribute("data-resolved");
+    row.removeAttribute("data-resolved-live");
+  }
   for (const row of root.querySelectorAll(
     '[data-field-row][data-missing="true"]',
   )) {
@@ -66,6 +75,14 @@ export function refreshMissingRows(root: ParentNode = document) {
 
 /** Montado uma vez no layout: escuta o que se digita em qualquer formulário. */
 export function MissingLive() {
+  // Tela nova ou volta de um envio: confere de novo (campo que já abre
+  // preenchido, como o CBM calculado pelas medidas).
+  const pathname = usePathname();
+  const search = useSearchParams().toString();
+  useEffect(() => {
+    const id = window.setTimeout(() => refreshMissingRows(), 0);
+    return () => window.clearTimeout(id);
+  }, [pathname, search]);
   useEffect(() => {
     let timer = 0;
     // Depois do React e dos campos que se preenchem sozinhos (CBM, cor).

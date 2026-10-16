@@ -34,6 +34,23 @@ interface Draft {
   values: Record<string, string>;
 }
 
+/**
+ * Ficha enviada com sucesso numa tela que não é a dela (ex.: cotação enviada
+ * leva às Pendências): o rascunho dela não volta mais.
+ */
+export function ClearDraft({
+  userId,
+  storageKey,
+}: {
+  userId: string;
+  storageKey: string;
+}) {
+  useEffect(() => {
+    remove(`${PREFIX}${userId}:${storageKey}`);
+  }, [userId, storageKey]);
+  return null;
+}
+
 export function FormDraftGuard({
   formId,
   storageKey,

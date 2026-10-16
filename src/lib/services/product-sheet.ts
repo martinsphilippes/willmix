@@ -482,6 +482,12 @@ export async function completeMasterFromSheet(
       if (JSON.stringify(current[k]) === JSON.stringify(v)) continue;
       input[k] = v;
     }
+    // A caixa é um grupo (medidas e o CBM que sai delas): completar só quando
+    // o cadastro não tem nada dela. Senão a ficha de outra caixa trocaria o
+    // CBM que o produto já tem ou misturaria medidas de duas caixas.
+    const box = ["heightCm", "widthCm", "lengthCm", "cbmPerCarton"];
+    if (!overwrite && box.some((k) => filled(current[k])))
+      for (const k of box) delete input[k];
     if (!Object.keys(input).length) return [];
     await writeProductSheet(
       user,

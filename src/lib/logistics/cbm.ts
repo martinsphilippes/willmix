@@ -7,7 +7,11 @@
 const round4 = (n: number) => Math.round(n * 10000) / 10000;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-/** m³ de uma unidade/caixa a partir das dimensões em cm. Nulo se faltar dimensão. */
+/**
+ * m³ de uma unidade/caixa a partir das dimensões em cm. Nulo se faltar
+ * dimensão ou se a conta arredondar para 0 (medida digitada em metros): aí
+ * vale o CBM informado, não um 0 que travaria o campo.
+ */
 export function cbmFromDimensions(
   lengthCm: number | null | undefined,
   widthCm: number | null | undefined,
@@ -15,7 +19,8 @@ export function cbmFromDimensions(
 ): number | null {
   if (!lengthCm || !widthCm || !heightCm) return null;
   if (lengthCm <= 0 || widthCm <= 0 || heightCm <= 0) return null;
-  return round4((lengthCm * widthCm * heightCm) / 1_000_000);
+  const cbm = round4((lengthCm * widthCm * heightCm) / 1_000_000);
+  return cbm > 0 ? cbm : null;
 }
 
 /** CBM informado tem prioridade; senão calcula das dimensões. */

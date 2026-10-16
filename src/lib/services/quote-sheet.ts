@@ -243,6 +243,40 @@ export interface QuoteSheetView {
   containerTypes: Array<{ code: string; capacityCbm: number }>;
 }
 
+/** Resumo da cotação recém-enviada, para a confirmação nas Pendências. */
+export interface SentQuoteView {
+  quoteId: string;
+  productName: string;
+  requestNumber: number | null;
+  price: number | null;
+  currency: string | null;
+  leadTimeDays: number | null;
+}
+
+/**
+ * Cotação que o usuário acabou de enviar (`/app?sent=<id>`): só a dele
+ * (`canViewQuote`) e só respondida; senão nulo, e a tela não mostra nada.
+ */
+export async function sentQuoteView(
+  user: User,
+  quoteId: string,
+): Promise<SentQuoteView | null> {
+  const store = getStore();
+  const quote = await store.get("quotes", quoteId);
+  if (!quote || !canViewQuote(user, quote) || quote.status !== "answered")
+    return null;
+  const request = await store.get("requests", quote.requestId);
+  if (!request) return null;
+  return {
+    quoteId: quote.id,
+    productName: request.productName,
+    requestNumber: request.number ?? null,
+    price: quote.price,
+    currency: quote.currency,
+    leadTimeDays: quote.leadTimeDays,
+  };
+}
+
 export async function getQuoteSheetForUser(
   user: User,
   quoteId: string,

@@ -124,6 +124,10 @@ export async function answerQuoteWithSheetAction(form: FormData) {
     // Companhia marítima recebe o pedido de frete com a carga desta ficha.
     const { inviteFreightForQuote } = await import("@/lib/services/freight");
     await inviteFreightForQuote(user, quoteId);
+    // Fornecedor segue para as Pendências: confirmação do envio e a próxima
+    // cotação a responder. A Wellmix (resposta em nome dele) fica na cotação.
+    if (user.role === "supplier")
+      return `/app?sent=${encodeURIComponent(quoteId)}`;
     return `${back}?saved=sent`;
   });
 }

@@ -20,6 +20,7 @@ import {
   cx,
   formatDate,
 } from "./ui";
+import { QuoteSentNotice } from "./quote-sent-notice";
 
 /*
  * Pendências: a lista vem do serviço já ordenada pelo prazo (atrasadas,
@@ -30,10 +31,13 @@ export async function TaskList({
   user,
   due = null,
   group = null,
+  sent = null,
 }: {
   user: User;
   due?: string | null;
   group?: string | null;
+  /** Cotação que o fornecedor acabou de enviar (confirmação no topo). */
+  sent?: string | null;
 }) {
   const t = await getT();
   const tasks = await pendingTasksFor(user);
@@ -58,6 +62,9 @@ export async function TaskList({
         title={t("tasks.title")}
         subtitle={t("home.welcome", { name: user.name })}
       />
+      {sent ? (
+        <QuoteSentNotice user={user} quoteId={sent} tasks={tasks} t={t} />
+      ) : null}
       {tasks.length === 0 ? (
         <Empty>{t("tasks.empty")}</Empty>
       ) : (

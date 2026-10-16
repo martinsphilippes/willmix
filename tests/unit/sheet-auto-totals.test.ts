@@ -10,6 +10,7 @@ const ps = await import("@/lib/services/product-sheet");
 const { cartonTotalFor, withBoxCbm } =
   await import("@/lib/services/purchase-sheet-calc");
 const { parseSheet } = await import("@/app/app/actions/sheet-form");
+const { cbmFromDimensions } = await import("@/lib/logistics/cbm");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -134,6 +135,55 @@ describe("CBM da caixa master pelas medidas", () => {
     const only = new FormData();
     only.set("cbmPerCarton", "0,06,5");
     expect(parseSheet(only).invalid).toContain("cbmPerCarton");
+  });
+
+  it("medida que arredonda para 0 m³ (digitada em metros) não troca o CBM informado", () => {
+    expect(cbmFromDimensions(0.5, 0.4, 0.3)).toBeNull();
+    const patch: Record<string, unknown> = {
+      heightCm: 0.3,
+      widthCm: 0.4,
+      lengthCm: 0.5,
+      cbmPerCarton: 0.06,
+    };
+    withBoxCbm(patch);
+    expect(patch.cbmPerCarton).toBe(0.06);
+  });
+
+  it("completar o cadastro (fill) não troca o CBM nem mistura caixas", async () => {
+    const store = getStore();
+    // Produto com CBM informado e sem medidas da caixa, sem ficha mestre.
+    await store.update("products", "prod-panela", {
+      cbm: 0.065,
+      boxHeightCm: null,
+      boxWidthCm: null,
+      boxLengthCm: null,
+    });
+    const box = { heightCm: 30, widthCm: 40, lengthCm: 50, cbmPerCarton: 0.06 };
+    for (const supplier of ["fornecedor-a", "fornecedor-b"]) {
+      const filled = await ps.completeMasterFromSheet(
+        admin,
+        "prod-panela",
+        { ...box, material: "AÇO" },
+        supplier,
+        "fill",
+      );
+      expect(filled).not.toContain("heightCm");
+      expect(filled).not.toContain("cbmPerCarton");
+    }
+    const product = await store.get("products", "prod-panela");
+    expect(product?.cbm).toBe(0.065);
+    expect(product?.boxLengthCm ?? null).toBeNull();
+    // Adotar (Wellmix, fornecedor principal) troca a caixa inteira.
+    await ps.completeMasterFromSheet(
+      admin,
+      "prod-panela",
+      box,
+      "fornecedor-a",
+      "adopt",
+    );
+    const adopted = await store.get("products", "prod-panela");
+    expect(adopted?.cbm).toBe(0.06);
+    expect(adopted?.boxLengthCm).toBe(50);
   });
 
   it("ficha mestre: grava o calculado na ficha e no cadastro do produto", async () => {

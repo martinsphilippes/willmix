@@ -16,6 +16,13 @@ export const pt = {
   "quoteSheet.saved.complete":
     "Rascunho salvo e ficha completa. Confira e clique em Enviar cotação.",
   "quoteSheet.saved.sent": "Cotação enviada à Wellmix com a ficha de compra.",
+  "quoteSent.lead": "prazo de {days} dias",
+  "quoteSent.edit":
+    "Até a decisão, dá para corrigir e reenviar pela própria cotação.",
+  "quoteSent.next": "Responder a próxima: {title}",
+  "quoteSent.none": "Nenhuma outra cotação esperando resposta.",
+  "quoteSent.pending": "{n} cotações esperando resposta.",
+  "quoteSent.view": "Ver a cotação enviada",
   "quoteSheet.missing": "Para enviar, falta preencher: {fields}.",
   "quoteSheet.error.lead_time_required":
     "A ficha foi salva. Para enviar a cotação, informe o prazo de produção (dias) no fim da página.",
@@ -40,6 +47,13 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.saved.complete":
     "Draft saved and sheet complete. Review it and click Send quotation.",
   "quoteSheet.saved.sent": "Quotation sent to Wellmix with the purchase sheet.",
+  "quoteSent.lead": "lead time {days} days",
+  "quoteSent.edit":
+    "Until the decision, you can correct and resend it from the quotation.",
+  "quoteSent.next": "Answer the next one: {title}",
+  "quoteSent.none": "No other quotation waiting for an answer.",
+  "quoteSent.pending": "{n} quotations waiting for an answer.",
+  "quoteSent.view": "View the sent quotation",
   "quoteSheet.missing": "To send, still missing: {fields}.",
   "quoteSheet.error.lead_time_required":
     "The sheet was saved. To send the quotation, enter the production lead time (days) at the end of the page.",
@@ -64,6 +78,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSheet.saved.complete":
     "草稿已保存，采购单已完整。请检查后点击提交报价。",
   "quoteSheet.saved.sent": "报价已连同采购单提交给 Wellmix。",
+  "quoteSent.lead": "交期 {days} 天",
+  "quoteSent.edit": "在 Wellmix 决定之前，可以在该报价中修改并重新提交。",
+  "quoteSent.next": "回复下一个：{title}",
+  "quoteSent.none": "没有其他待回复的报价。",
+  "quoteSent.pending": "还有 {n} 个报价待回复。",
+  "quoteSent.view": "查看已提交的报价",
   "quoteSheet.missing": "提交前还需填写：{fields}。",
   "quoteSheet.error.lead_time_required":
     "采购单已保存。要提交报价，请在页面底部填写生产周期（天）。",
