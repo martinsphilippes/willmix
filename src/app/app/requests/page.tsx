@@ -63,13 +63,17 @@ export default async function RequestsPage({
     customer ? customerOrdersInProgress(user) : Promise.resolve([]),
   ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));
-  // Pedido cancelado: a solicitação segue ORDERED e fica na lista (histórico),
-  // mas o selo mostra "Pedido cancelado" em vez de "Pedido criado".
+  // Pedido cancelado: a solicitação segue ORDERED no banco, mas o selo mostra
+  // "Pedido cancelado" em vez de "Pedido criado".
   const cancelled = await cancelledOrderIds(visible.map((r) => r.orderId));
-  // Excluídas (CANCELLED) saem da lista; ficam no filtro "Ver excluídas".
-  const deletedCount = visible.filter((r) => r.status === "CANCELLED").length;
+  // Encerradas num lugar só: excluídas (CANCELLED) e com pedido cancelado saem
+  // da lista principal e ficam juntas em "Ver canceladas e excluídas".
+  const closed = (r: (typeof visible)[number]) =>
+    r.status === "CANCELLED" ||
+    requestDisplayStatus(r, cancelled) === "ORDER_CANCELLED";
+  const deletedCount = visible.filter(closed).length;
   const byStatus = visible.filter((r) =>
-    showDeleted ? r.status === "CANCELLED" : r.status !== "CANCELLED",
+    showDeleted ? closed(r) : !closed(r),
   );
   const requests = byStatus.filter((r) => !groupId || r.groupId === groupId);
   // Tamanho de cada lote (selo na lista): só o que este usuário vê nesta

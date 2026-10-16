@@ -18,10 +18,10 @@ export const pt = {
   "reqDelete.done": "{n} solicitação(ões) excluída(s).",
   "reqDelete.skipped":
     "{n} não foi(ram) excluída(s): já viraram pedido ou não estavam mais disponíveis.",
-  "reqDelete.showDeleted": "Ver excluídas ({n})",
+  "reqDelete.showDeleted": "Ver canceladas e excluídas ({n})",
   "reqDelete.backToList": "Voltar às solicitações",
   "reqDelete.deletedTitle":
-    "Solicitações excluídas: ficam guardadas para consulta e auditoria.",
+    "Canceladas e excluídas: solicitações excluídas e as que tiveram o pedido cancelado. Ficam guardadas para consulta e auditoria.",
   "reqDelete.error.nothing_deleted":
     "Nada foi excluído: as solicitações escolhidas já viraram pedido ou já estavam excluídas.",
 };
@@ -42,9 +42,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reqDelete.done": "{n} request(s) deleted.",
   "reqDelete.skipped":
     "{n} not deleted: already became an order or no longer available.",
-  "reqDelete.showDeleted": "See deleted ({n})",
+  "reqDelete.showDeleted": "See cancelled and deleted ({n})",
   "reqDelete.backToList": "Back to requests",
-  "reqDelete.deletedTitle": "Deleted requests: kept for reference and audit.",
+  "reqDelete.deletedTitle":
+    "Cancelled and deleted: deleted requests and requests whose order was cancelled. Kept for reference and audit.",
   "reqDelete.error.nothing_deleted":
     "Nothing was deleted: the chosen requests already became orders or were already deleted.",
 };
@@ -63,9 +64,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqDelete.ordered": "已生成订单：不能在此删除（订单继续）。",
   "reqDelete.done": "已删除 {n} 个需求。",
   "reqDelete.skipped": "{n} 个未删除：已生成订单或已不可用。",
-  "reqDelete.showDeleted": "查看已删除（{n}）",
+  "reqDelete.showDeleted": "查看已取消和已删除（{n}）",
   "reqDelete.backToList": "返回需求列表",
-  "reqDelete.deletedTitle": "已删除的需求：保留以供查询和审计。",
+  "reqDelete.deletedTitle":
+    "已取消和已删除：已删除的需求，以及订单已取消的需求。保留以供查询和审计。",
   "reqDelete.error.nothing_deleted":
     "未删除任何内容：所选需求已生成订单或已被删除。",
 };
