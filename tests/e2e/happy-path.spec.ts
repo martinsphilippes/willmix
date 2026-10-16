@@ -382,10 +382,10 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await expect(page.locator("[data-batch-item]")).toHaveCount(2);
   // Na lista, o lote é uma linha só, que leva à página do lote.
   await page.goto("/app/requests");
-  const batchRow = page.locator("[data-batch-row]", {
-    hasText: "Copo de vidro",
-  });
+  const batchPath = new URL(batchUrl).pathname;
+  const batchRow = page.locator(`[data-batch-row]:has(a[href="${batchPath}"])`);
   await expect(batchRow).toHaveCount(1);
+  await expect(batchRow).toContainText("Copo de vidro");
   await expect(batchRow).toContainText("Jarra de vidro");
   await batchRow.getByRole("link", { name: /Abrir|Open|打开/ }).click();
   await page.waitForURL(batchUrl);

@@ -27,6 +27,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { SubmitButton } from "@/components/submit-button";
 import { deleteRequestsAction } from "../../../actions/requests";
+import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /*
  * Lote de solicitações: os produtos pedidos juntos (mesmo groupId) numa
@@ -39,7 +40,7 @@ export default async function RequestBatchPage({
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created } = await searchParams;
+  const { created, deleted, skipped, error } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
@@ -66,8 +67,17 @@ export default async function RequestBatchPage({
       : Promise.resolve(null),
   ]);
   const deletable = rows.filter((r) => canDeleteRequest(user, r));
-  const createdCount =
-    typeof created === "string" && /^\d+$/.test(created) ? Number(created) : 0;
+  const count = (v: string | string[] | undefined) =>
+    typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
+  const createdCount = count(created);
+  // Mesmas mensagens de erro da lista (lote criado com falha depois, exclusão).
+  const errorText = (code: string) => {
+    for (const prefix of ["reqBatch.error.", "reqDelete.error."]) {
+      const key = `${prefix}${code}` as DictionaryKey;
+      if (t(key) !== key) return t(key);
+    }
+    return t("common.error");
+  };
 
   return (
     <>
@@ -87,6 +97,21 @@ export default async function RequestBatchPage({
           <TextLink href="/app/requests">{t("reqDelete.backToList")}</TextLink>
         }
       />
+      {typeof error === "string" && error ? (
+        <div className="mb-3">
+          <Alert tone="danger">{errorText(error)}</Alert>
+        </div>
+      ) : null}
+      {count(deleted) > 0 ? (
+        <div className="mb-3">
+          <Alert tone="success">
+            {t("reqDelete.done", { n: count(deleted) })}
+            {count(skipped) > 0
+              ? ` ${t("reqDelete.skipped", { n: count(skipped) })}`
+              : ""}
+          </Alert>
+        </div>
+      ) : null}
       {createdCount > 1 ? (
         <div className="mb-3" data-batch-created>
           <Alert tone="success">
@@ -150,6 +175,7 @@ export default async function RequestBatchPage({
                     {canDeleteRequest(user, r) ? (
                       <form action={deleteRequestsAction}>
                         <input type="hidden" name="ids" value={r.id} />
+                        <input type="hidden" name="groupId" value={groupId} />
                         <ConfirmDeleteButton
                           label={t("reqDelete.delete")}
                           confirmText={t("reqDelete.confirmOne")}

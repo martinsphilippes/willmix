@@ -379,7 +379,7 @@ export default async function RequestsPage({
                             formId={BULK_FORM}
                             groupKey={entry.groupId}
                             ids={deletable.map((r) => r.id)}
-                            label={t("reqBatch.selectBatch")}
+                            label={`${t("reqBatch.selectBatch")}: ${names.slice(0, 2).join(", ")}${names.length > 2 ? ` +${names.length - 2}` : ""}`}
                           />
                         ) : (
                           <input
@@ -414,7 +414,18 @@ export default async function RequestsPage({
                       </Td>
                     ) : null}
                     <Td className="tabular-nums">
-                      {rows.map((r) => `${r.quantity} ${r.unit}`).join(" · ")}
+                      {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
+                      {rows.slice(0, 2).map((r, i) => (
+                        <span key={r.id} className="whitespace-nowrap">
+                          {i > 0 ? " · " : ""}
+                          {r.quantity} {r.unit}
+                        </span>
+                      ))}
+                      {rows.length > 2 ? (
+                        <span className="whitespace-nowrap">
+                          {` +${rows.length - 2}`}
+                        </span>
+                      ) : null}
                     </Td>
                     <Td>
                       <span className="flex flex-wrap gap-1">
