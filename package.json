@@ -20,6 +20,7 @@
     "appwrite:reset": "node scripts/appwrite-reset.ts",
     "appwrite:rename-brand": "node scripts/appwrite-rename-brand.ts",
     "appwrite:backfill-requesters": "node scripts/appwrite-backfill-requesters.ts",
+    "appwrite:backfill-request-numbers": "node scripts/appwrite-backfill-request-numbers.ts",
     "appwrite:purchase-sheet": "node scripts/appwrite-purchase-sheet.ts"
   },
   "dependencies": {

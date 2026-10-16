@@ -38,3 +38,7 @@ jobs:
           fi
       - name: Publicar (só adiciona)
         run: node scripts/appwrite-push.ts
+      # Solicitações antigas sem número ganham um, na ordem de criação (o lote
+      # divide um número). Só preenche número vazio; rodar de novo não muda nada.
+      - name: Numerar solicitações antigas
+        run: node scripts/appwrite-backfill-request-numbers.ts
