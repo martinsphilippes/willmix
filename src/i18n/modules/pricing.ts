@@ -66,6 +66,8 @@ export const pt = {
   "pricing.calc.source.line": "da linha",
   "pricing.calc.source.default": "geral",
   "pricing.calc.sell": "Valor ao cliente",
+  "requests.downPaymentPercent": "Sinal (% do valor ao cliente)",
+  "requests.downPayment.equals": "= {amount} de sinal",
   "pricing.calc.carrierFreight": "Frete do transportador (R$)",
   "pricing.calc.carrierFreightHint":
     "Se informado, substitui a estimativa por CBM.",
@@ -152,6 +154,8 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.calc.source.line": "product line",
   "pricing.calc.source.default": "default",
   "pricing.calc.sell": "Customer value",
+  "requests.downPaymentPercent": "Down payment (% of the customer price)",
+  "requests.downPayment.equals": "= {amount} down payment",
   "pricing.calc.carrierFreight": "Carrier freight (R$)",
   "pricing.calc.carrierFreightHint":
     "If provided, it replaces the per-CBM estimate.",
@@ -228,6 +232,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.calc.source.line": "产品线",
   "pricing.calc.source.default": "默认",
   "pricing.calc.sell": "客户价格",
+  "requests.downPaymentPercent": "定金（客户价格的 %）",
+  "requests.downPayment.equals": "= 定金 {amount}",
   "pricing.calc.carrierFreight": "承运人运费（R$）",
   "pricing.calc.carrierFreightHint": "填写后将替代按立方米的预估。",
   "pricing.calc.missing.price": "采购单没有价格。",

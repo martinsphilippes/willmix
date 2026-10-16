@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { parseNumberInput } from "@/lib/number-input";
 import { moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
@@ -262,12 +263,15 @@ export async function selectQuoteAction(form: FormData) {
         sellPrice: z.number().positive(),
         sellCurrency: z.enum(CURRENCIES),
         downPaymentAmount: z.number().nonnegative().optional().nullable(),
+        // Sinal em % do valor ao cliente (0 a 100); o valor sai da conta.
+        downPaymentPercent: z.number().min(0).max(100).nullable(),
       })
       .parse({
         quoteId: str(form, "quoteId"),
         sellPrice: num(form, "sellPrice"),
         sellCurrency: (str(form, "sellCurrency") || "BRL").toUpperCase(),
         downPaymentAmount: num(form, "downPaymentAmount"),
+        downPaymentPercent: parseNumberInput(str(form, "downPaymentPercent")),
       });
     const carrierBrl = z
       .number()
