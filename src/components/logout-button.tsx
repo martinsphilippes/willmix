@@ -19,7 +19,11 @@ export function LogoutButton({
     // Rascunhos de ficha desta aba não ficam para a próxima pessoa.
     try {
       for (const key of Object.keys(sessionStorage))
-        if (key.startsWith("wellmix-draft:") || key === "wellmix:last-submit")
+        if (
+          key.startsWith("wellmix-draft:") ||
+          key.startsWith("wellmix:draft-cleared:") ||
+          key === "wellmix:last-submit"
+        )
           sessionStorage.removeItem(key);
     } catch {
       // Sem armazenamento: nada a limpar.

@@ -25,7 +25,11 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
   return (
     <TaskList
       user={user}
-      sent={typeof sent === "string" ? sent.slice(0, 64) : null}
+      sent={
+        typeof sent === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/.test(sent)
+          ? sent
+          : null
+      }
     />
   );
 }
