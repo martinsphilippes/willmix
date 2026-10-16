@@ -7,6 +7,7 @@ import {
   type User,
 } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { audit } from "./audit";
 import {
   CUSTOMS_FIELDS,
@@ -175,11 +176,19 @@ function productPatchFromSheet(
   // Colunas de texto do produto têm tamanho fixo no Appwrite: corta no limite.
   const cut = (v: string | null | undefined, max: number) =>
     v ? v.slice(0, max) : null;
-  if (has("colorAssortment")) patch.color = cut(sheet.colorAssortment, 60);
+  // Cor da ficha (até 200) no produto (até 60): corta entre trechos, sem partir
+  // um "PANTONE <código>" ao meio (o seletor não o acharia para tirar depois).
+  if (has("colorAssortment"))
+    patch.color = sheet.colorAssortment
+      ? cutAtSeparator(sheet.colorAssortment, 60)
+      : null;
   // Texto livre "pantone" só é trocado quando há cores escolhidas (nunca apagado por falta delas);
   // as cores escolhidas vão para o produto (coluna nova: só quando há alguma).
   if (has("colorPantones") && sheet.colorPantones?.length) {
-    patch.pantone = cut(sheet.colorPantones.map((c) => c.code).join(" / "), 40);
+    patch.pantone = cutAtSeparator(
+      sheet.colorPantones.map((c) => c.code).join(" / "),
+      40,
+    );
     patch.colorPantones = sheet.colorPantones;
   }
   if (has("material")) patch.material = cut(sheet.material, 120);

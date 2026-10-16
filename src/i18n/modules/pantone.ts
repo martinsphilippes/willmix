@@ -22,7 +22,7 @@ export const pt = {
   "pantone.selected": "{n} cor(es) escolhida(s)",
   "pantone.empty": "Nenhuma cor Pantone escolhida.",
   "pantone.productHint":
-    "Escolha pela tabela Pantone, com o RGB de cada cor: cada cor escolhida já entra na Cor, logo abaixo, e no texto Pantone; a ficha mestre acompanha.",
+    "Escolha pela tabela Pantone, com o RGB de cada cor: cada cor escolhida já entra na Cor, logo abaixo, enquanto couber (60 caracteres), e no texto Pantone; a ficha mestre acompanha.",
   "sheet.error.pantone_too_many": "No máximo 20 cores Pantone por ficha.",
   "sheet.error.schema_outdated":
     "O banco ainda não tem a coluna ou tabela nova. Publique o esquema Appwrite (GitHub → Publicar esquema Appwrite) e salve de novo.",
@@ -47,7 +47,7 @@ export const en: Record<keyof typeof pt, string> = {
   "pantone.selected": "{n} color(s) selected",
   "pantone.empty": "No Pantone color selected.",
   "pantone.productHint":
-    "Pick from the Pantone table, with each color's RGB: each chosen color goes straight into Color, just below, and into the Pantone text; the master sheet follows.",
+    "Pick from the Pantone table, with each color's RGB: each chosen color goes straight into Color, just below, while it fits (60 characters), and into the Pantone text; the master sheet follows.",
   "sheet.error.pantone_too_many": "At most 20 Pantone colors per sheet.",
   "sheet.error.schema_outdated":
     "The database does not have the new column or table yet. Publish the Appwrite schema (GitHub → Publicar esquema Appwrite) and save again.",
@@ -72,7 +72,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "pantone.selected": "已选择 {n} 种颜色",
   "pantone.empty": "尚未选择 Pantone 颜色。",
   "pantone.productHint":
-    "从 Pantone 色表中选择，并显示每种颜色的 RGB：选中的颜色会直接填入下方的颜色字段和 Pantone 文本；主采购单同步。",
+    "从 Pantone 色表中选择，并显示每种颜色的 RGB：选中的颜色会直接填入下方的颜色字段（最多 60 个字符）和 Pantone 文本；主采购单同步。",
   "sheet.error.pantone_too_many": "每张采购单最多 20 种 Pantone 颜色。",
   "sheet.error.schema_outdated":
     "数据库尚无新的字段或数据表。请先发布 Appwrite 架构（GitHub → Publicar esquema Appwrite）后重新保存。",
