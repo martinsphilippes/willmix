@@ -102,7 +102,7 @@ export default async function RequestBatchPage({
             <Th>{t("common.quantity")}</Th>
             <Th>{t("common.status")}</Th>
             <Th>{t("requests.deadline")}</Th>
-            <Th>{t("nav.orders")}</Th>
+            <Th>{t("requests.order")}</Th>
             <Th />
           </tr>
         </thead>
