@@ -11,6 +11,7 @@ import {
   canSeeSellPrice,
   canSeeSupplier,
   canViewOrder,
+  canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
 import {
@@ -337,6 +338,21 @@ export default async function OrderPage({
             </Badge>
             {overdue ? (
               <Badge tone="danger">{t("common.overdue")}</Badge>
+            ) : null}
+            {sourceRequest?.number ? (
+              canViewRequest(user, sourceRequest) ? (
+                <TextLink
+                  href={`/app/requests/${sourceRequest.id}`}
+                  className="text-xs"
+                  data-request-number
+                >
+                  {t("requests.numbered", { n: sourceRequest.number })}
+                </TextLink>
+              ) : (
+                <span className="text-xs" data-request-number>
+                  {t("requests.numbered", { n: sourceRequest.number })}
+                </span>
+              )
             ) : null}
             {origin ? (
               <Badge tone="brand">{t(`orders.origin.${origin}`)}</Badge>

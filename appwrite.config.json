@@ -888,6 +888,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "number",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
         }
       ],
       "indexes": [
@@ -916,6 +923,16 @@
           "type": "key",
           "columns": [
             "groupId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_number",
+          "type": "key",
+          "columns": [
+            "number"
           ],
           "orders": [
             "ASC"

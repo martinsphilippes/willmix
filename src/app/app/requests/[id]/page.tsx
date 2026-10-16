@@ -240,6 +240,14 @@ export default async function RequestDetailPage({
         title={request.productName}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
+            {request.number ? (
+              <span
+                className="font-medium tabular-nums text-zinc-700"
+                data-request-number
+              >
+                {t("requests.numbered", { n: request.number })}
+              </span>
+            ) : null}
             <Badge tone={requestStatusTone(displayStatus)}>
               {t(`reqStatusLabel.${displayStatus}`)}
             </Badge>
@@ -444,6 +452,18 @@ export default async function RequestDetailPage({
                   {supplying.size ? (
                     <p className="text-xs text-zinc-500">
                       {t("productSuppliers.rfqHint")}
+                    </p>
+                  ) : null}
+                  {request.groupId && siblings.length > 0 ? (
+                    <p className="text-sm">
+                      <TextLink
+                        href={`/app/requests/batch/${encodeURIComponent(request.groupId)}#rfq`}
+                        data-rfq-whole-batch
+                      >
+                        {t("reqBatch.rfqWholeBatch", {
+                          n: siblings.length + 1,
+                        })}
+                      </TextLink>
                     </p>
                   ) : null}
                   <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-1">

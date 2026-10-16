@@ -544,6 +544,11 @@ export interface Request extends BaseRow {
   groupId?: string | null;
   /** Programação de entregas pedida pelo cliente (N entregas, intervalo, datas). */
   schedule?: RequestSchedule | null;
+  /**
+   * Número da solicitação (sequencial, desde o envio). Os produtos do mesmo
+   * lote têm o mesmo número. Nulo nas antigas e antes do esquema publicado.
+   */
+  number?: number | null;
 }
 
 export interface Quote extends BaseRow {
@@ -1467,11 +1472,13 @@ export const TABLES: Record<TableName, TableDef> = {
       ncmSuggestions: json(),
       groupId: id(false),
       schedule: json(),
+      number: int(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_group", type: "key", columns: ["groupId"] },
+      { key: "by_number", type: "key", columns: ["number"] },
     ],
   },
   quotes: {

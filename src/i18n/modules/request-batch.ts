@@ -24,6 +24,25 @@ export const pt = {
   "reqBatch.deleteAllConfirm":
     "Excluir os produtos deste lote que ainda não viraram pedido? Os que já viraram pedido continuam.",
   "reqBatch.order": "Pedido #{n}",
+  "requests.numberShort": "Nº",
+  "requests.numbered": "Solicitação nº {n}",
+  "reqBatch.titleNumbered": "Solicitação nº {number} · {n} produtos",
+  "reqBatch.quotes": "Cotações",
+  "reqBatch.quotesCount": "{answered} de {invited} responderam",
+  "reqBatch.rfqTitle": "Abrir RFQ do lote",
+  "reqBatch.rfqWholeBatch": "Abrir a RFQ do lote inteiro ({n} produtos) →",
+  "reqBatch.rfqHint":
+    "A RFQ sai de uma vez para os {n} produtos do lote ainda em cotação. Cada fornecedor recebe um aviso só, com todos os produtos, e responde produto a produto.",
+  "reqBatch.rfqSubmit": "Abrir RFQ para {n} produtos",
+  "reqBatch.rfqDone": "RFQ aberta para {n} produtos do lote.",
+  "reqBatch.rfqSupplies": "fornece {n} dos produtos",
+  "reqBatch.rfqInvited": "já convidado em todos",
+  "reqBatch.rfqPartial": "convidado em {n}",
+  "reqBatch.error.no_suppliers": "Escolha pelo menos um fornecedor.",
+  "reqBatch.error.invalid_supplier":
+    "Um dos fornecedores escolhidos não está cadastrado como fornecedor.",
+  "reqBatch.error.invalid_status":
+    "Nenhum produto deste lote está mais em cotação.",
   "reqBatch.error.no_products": "Informe ao menos um produto.",
   "reqBatch.error.invalid_input":
     "Confira os produtos: nome, descrição e quantidade são obrigatórios.",
@@ -61,6 +80,25 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.deleteAllConfirm":
     "Delete the products of this batch that have not become orders yet? Those already ordered stay.",
   "reqBatch.order": "Order #{n}",
+  "requests.numberShort": "No.",
+  "requests.numbered": "Request no. {n}",
+  "reqBatch.titleNumbered": "Request no. {number} · {n} products",
+  "reqBatch.quotes": "Quotes",
+  "reqBatch.quotesCount": "{answered} of {invited} answered",
+  "reqBatch.rfqTitle": "Open RFQ for the batch",
+  "reqBatch.rfqWholeBatch": "Open the RFQ for the whole batch ({n} products) →",
+  "reqBatch.rfqHint":
+    "The RFQ goes out at once for the {n} batch products still being quoted. Each supplier gets a single notice with all products and answers product by product.",
+  "reqBatch.rfqSubmit": "Open RFQ for {n} products",
+  "reqBatch.rfqDone": "RFQ opened for {n} products of the batch.",
+  "reqBatch.rfqSupplies": "supplies {n} of the products",
+  "reqBatch.rfqInvited": "already invited for all",
+  "reqBatch.rfqPartial": "invited for {n}",
+  "reqBatch.error.no_suppliers": "Choose at least one supplier.",
+  "reqBatch.error.invalid_supplier":
+    "One of the chosen suppliers is not registered as a supplier.",
+  "reqBatch.error.invalid_status":
+    "No product of this batch is still being quoted.",
   "reqBatch.error.no_products": "Enter at least one product.",
   "reqBatch.error.invalid_input":
     "Check the products: name, description and quantity are required.",
@@ -99,6 +137,23 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.deleteAllConfirm":
     "删除此批次中尚未生成订单的产品？已生成订单的产品保留。",
   "reqBatch.order": "订单 #{n}",
+  "requests.numberShort": "编号",
+  "requests.numbered": "需求编号 {n}",
+  "reqBatch.titleNumbered": "需求编号 {number} · {n} 个产品",
+  "reqBatch.quotes": "报价",
+  "reqBatch.quotesCount": "{invited} 个中 {answered} 个已回复",
+  "reqBatch.rfqTitle": "为整个批次发起询价",
+  "reqBatch.rfqWholeBatch": "为整个批次（{n} 个产品）发起询价 →",
+  "reqBatch.rfqHint":
+    "一次性向批次中仍在报价阶段的 {n} 个产品发起询价。每个供应商只收到一条包含所有产品的通知，并逐个产品报价。",
+  "reqBatch.rfqSubmit": "为 {n} 个产品发起询价",
+  "reqBatch.rfqDone": "已为批次中的 {n} 个产品发起询价。",
+  "reqBatch.rfqSupplies": "供应其中 {n} 个产品",
+  "reqBatch.rfqInvited": "已邀请全部产品",
+  "reqBatch.rfqPartial": "已邀请 {n} 个",
+  "reqBatch.error.no_suppliers": "请至少选择一个供应商。",
+  "reqBatch.error.invalid_supplier": "所选供应商中有未登记为供应商的。",
+  "reqBatch.error.invalid_status": "此批次中已没有处于报价阶段的产品。",
   "reqBatch.error.no_products": "请至少填写一个产品。",
   "reqBatch.error.invalid_input": "请检查产品：名称、描述和数量为必填项。",
   "reqBatch.error.too_many_products":

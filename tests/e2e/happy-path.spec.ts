@@ -380,11 +380,14 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   const batchUrl = page.url().replace(/\?.*$/, "");
   await expect(page.locator("[data-batch-created]")).toBeVisible();
   await expect(page.locator("[data-batch-item]")).toHaveCount(2);
+  // O lote nasce com um número (o mesmo para os dois produtos).
+  await expect(page.locator("h1")).toContainText(/nº \d+ · 2 produtos/);
   // Na lista, o lote é uma linha só, que leva à página do lote.
   await page.goto("/app/requests");
   const batchPath = new URL(batchUrl).pathname;
   const batchRow = page.locator(`[data-batch-row]:has(a[href="${batchPath}"])`);
   await expect(batchRow).toHaveCount(1);
+  await expect(batchRow.locator("[data-request-number]")).toHaveText(/^\d+$/);
   await expect(batchRow).toContainText("Copo de vidro");
   await expect(batchRow).toContainText("Jarra de vidro");
   await batchRow.getByRole("link", { name: /Abrir|Open|打开/ }).click();
@@ -406,4 +409,18 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await expect(page.locator("[data-request-schedule-table]")).toContainText(
     "107",
   );
+  // A Wellmix abre a RFQ do lote inteiro de uma vez: uma cotação por produto.
+  await login(page, "admin@wellmix.com");
+  await page.goto(batchUrl);
+  const rfq = page.locator("[data-batch-rfq]");
+  await expect(rfq).toBeVisible();
+  await rfq.getByRole("checkbox", { name: /Shenzhen Supplier A/ }).check();
+  await rfq.getByRole("checkbox", { name: /Guangzhou Supplier B/ }).check();
+  await rfq.locator("[data-batch-rfq-submit]").click();
+  await page.waitForURL(/\/app\/requests\/batch\/[^?]+\?rfq=2$/);
+  await expect(page.locator("[data-batch-rfq-done]")).toBeVisible();
+  await expect(page.locator("[data-batch-quotes]")).toHaveText([
+    /0 de 2/,
+    /0 de 2/,
+  ]);
 });

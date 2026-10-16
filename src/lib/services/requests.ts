@@ -8,8 +8,10 @@ import {
   ORDER_EXTRA_DEFAULTS,
   PAYMENT_EXTRA_DEFAULTS,
   type Order,
+  type Quote,
   type Request,
   type RequestOrigin,
+  type RequestStatus,
   type User,
   type RequestSchedule,
 } from "@/lib/db";
@@ -58,6 +60,8 @@ export interface CreateRequestInput {
   groupId?: string | null;
   /** Programação de entregas pedida pelo cliente. */
   schedule?: RequestSchedule | null;
+  /** Número já reservado (lote: o mesmo para todos os produtos). */
+  number?: number | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
@@ -91,25 +95,28 @@ export async function createRequestBatch(
   const groupId = items.length > 1 ? randomUUID() : null;
   const created: Request[] = [];
   const store = getStore();
+  /* Um número para a solicitação inteira: o 1º produto o reserva (depois das
+     checagens de permissão, para não gastar número à toa) e os demais o
+     repetem. Sem a coluna no banco ainda, fica sem número. */
+  let number: number | undefined;
   for (const item of items) {
     try {
-      created.push(
-        await createRequest(user, {
-          ...base,
-          productId: item.productId,
-          productName: item.productName,
-          description: item.description,
-          specification: item.specification,
-          quantity: item.quantity,
-          unit: item.unit,
-          origin:
-            item.sourcingDemand && !item.productId
-              ? "sourcing_demand"
-              : "manual",
-          groupId,
-          schedule: item.schedule ?? null,
-        }),
-      );
+      const request = await createRequest(user, {
+        ...base,
+        productId: item.productId,
+        productName: item.productName,
+        description: item.description,
+        specification: item.specification,
+        quantity: item.quantity,
+        unit: item.unit,
+        origin:
+          item.sourcingDemand && !item.productId ? "sourcing_demand" : "manual",
+        groupId,
+        schedule: item.schedule ?? null,
+        number,
+      });
+      created.push(request);
+      number ??= request.number ?? undefined;
     } catch (error) {
       // Banco ainda sem a coluna do lote (esquema não publicado): nada foi criado.
       if (
@@ -239,7 +246,8 @@ export async function createRequest(
   const deadline =
     (isWellmix(user) ? input.deadline : null) ||
     quoteSlaDeadline(settings.quoteSlaBusinessDays);
-  const request = await store.create("requests", {
+  const number = input.number ?? (await nextRequestNumber());
+  const data = {
     requestedForUserId,
     customerId: input.customerId,
     createdByUserId: user.id,
@@ -263,7 +271,19 @@ export async function createRequest(
     ...(input.groupId ? { groupId: input.groupId } : {}),
     // Idem para a programação de entregas (coluna opcional).
     ...(input.schedule ? { schedule: input.schedule } : {}),
-  });
+  } as const;
+  let request: Request;
+  try {
+    request = await store.create("requests", { ...data, number });
+  } catch (error) {
+    // Esquema ainda sem a coluna do número (não publicado): grava sem ele, para
+    // a solicitação não deixar de nascer por isso.
+    if (!(
+      error instanceof Error && /unknown attribute.*number/i.test(error.message)
+    ))
+      throw error;
+    request = await store.create("requests", data);
+  }
   await audit(
     user,
     "request.create",
@@ -321,11 +341,16 @@ export async function createRequest(
     });
   }
   await notifyWellmix({
-    subject: `Nova solicitação: ${request.productName}`,
+    subject: `Nova solicitação${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
     body: `${request.quantity} ${request.unit}. Abra a RFQ para os fornecedores.`,
     link: `/app/requests/${request.id}`,
   });
   return request;
+}
+
+/** Próximo número de solicitação (contador próprio, como o dos pedidos). */
+export function nextRequestNumber(): Promise<number> {
+  return getStore().nextNumber("request_number");
 }
 
 /** Wellmix seleciona fornecedores e abre a RFQ. Fornecedores recebem o link. */
@@ -333,23 +358,23 @@ export async function openRfq(
   user: User,
   requestId: string,
   supplierIds: string[],
-) {
+  options: { notify?: boolean } = {},
+): Promise<Quote[]> {
   assertWellmix(user);
   const store = getStore();
   const request = await store.get("requests", requestId);
   if (!request) throw new RequestError("not_found");
-  if (
-    !["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status)
-  ) {
+  if (!RFQ_OPEN_STATUSES.includes(request.status)) {
     throw new RequestError("invalid_status");
   }
-  if (supplierIds.length === 0) throw new RequestError("no_suppliers");
+  await validSuppliers(supplierIds);
   const settings = await getSettings();
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + settings.quotationExpirationDays);
 
   const existing = await store.list("quotes", { filter: { requestId } });
-  for (const supplierId of supplierIds) {
+  const invited: Quote[] = [];
+  for (const supplierId of new Set(supplierIds)) {
     if (existing.some((q) => q.supplierId === supplierId)) continue;
     const quote = await store.create("quotes", {
       requestId,
@@ -362,14 +387,16 @@ export async function openRfq(
       validUntil: validUntil.toISOString(),
       answeredAt: null,
     });
-    await notify(
-      { role: "supplier", partyId: supplierId },
-      {
-        subject: `RFQ: ${request.productName}`,
-        body: `Quantidade ${request.quantity} ${request.unit}. Responda com preço, prazo e condições.`,
-        link: `/app/quotes/${quote.id}`,
-      },
-    );
+    invited.push(quote);
+    if (options.notify !== false)
+      await notify(
+        { role: "supplier", partyId: supplierId },
+        {
+          subject: `RFQ: ${request.productName}`,
+          body: `Quantidade ${request.quantity} ${request.unit}. Responda com preço, prazo e condições.`,
+          link: `/app/quotes/${quote.id}`,
+        },
+      );
   }
   if (request.status === "REQUESTED") {
     await store.update("requests", requestId, { status: "RFQ_OPEN" });
@@ -381,6 +408,79 @@ export async function openRfq(
     requestId,
     `RFQ para ${supplierIds.length} fornecedor(es)`,
   );
+  return invited;
+}
+
+/** Situações em que a RFQ pode ser aberta ou receber mais fornecedores. */
+export const RFQ_OPEN_STATUSES: RequestStatus[] = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+];
+
+/** Fornecedores escolhidos: pelo menos um, todos cadastrados como fornecedor. */
+async function validSuppliers(supplierIds: string[]) {
+  const ids = [...new Set(supplierIds.filter(Boolean))];
+  if (!ids.length) throw new RequestError("no_suppliers");
+  const parties = await getStore().list("parties", { filter: { id: ids } });
+  if (
+    parties.length !== ids.length ||
+    parties.some((p) => p.type !== "supplier")
+  )
+    throw new RequestError("invalid_supplier");
+  return parties;
+}
+
+/**
+ * RFQ do lote inteiro: os mesmos fornecedores para todos os produtos do lote
+ * que ainda estão em cotação. Cada produto ganha a sua cotação (o fornecedor
+ * responde produto a produto), mas cada fornecedor recebe um aviso só, com a
+ * lista dos produtos.
+ */
+export async function openBatchRfq(
+  user: User,
+  groupId: string,
+  supplierIds: string[],
+): Promise<{ requests: number; quotes: number }> {
+  assertWellmix(user);
+  const store = getStore();
+  const suppliers = await validSuppliers(supplierIds);
+  const rows = (
+    await store.list("requests", { filter: { groupId }, orderBy: "createdAt" })
+  ).filter((r) => RFQ_OPEN_STATUSES.includes(r.status));
+  if (!rows.length) throw new RequestError("invalid_status");
+  const bySupplier = new Map<string, Quote[]>();
+  for (const r of rows)
+    for (const q of await openRfq(user, r.id, supplierIds, { notify: false }))
+      bySupplier.set(q.supplierId, [
+        ...(bySupplier.get(q.supplierId) ?? []),
+        q,
+      ]);
+  const number = rows.find((r) => r.number)?.number;
+  for (const supplier of suppliers) {
+    const quotes = bySupplier.get(supplier.id) ?? [];
+    if (!quotes.length) continue;
+    const items = quotes
+      .map((q) => rows.find((r) => r.id === q.requestId))
+      .filter((r): r is Request => !!r);
+    await notify(
+      { role: "supplier", partyId: supplier.id },
+      {
+        subject: `RFQ: ${items.length === 1 ? items[0].productName : `${items.length} produtos`}${number ? ` (solicitação nº ${number})` : ""}`,
+        body: `${items.map((r) => `${r.productName}: ${r.quantity} ${r.unit}`).join("; ")}. Responda cada produto com preço, prazo e condições.`,
+        link: quotes.length === 1 ? `/app/quotes/${quotes[0].id}` : "/app",
+      },
+    );
+  }
+  const total = [...bySupplier.values()].reduce((n, q) => n + q.length, 0);
+  await audit(
+    user,
+    "rfq.open_batch",
+    "request",
+    groupId,
+    `RFQ do lote: ${rows.length} produto(s), ${suppliers.length} fornecedor(es), ${total} cotação(ões) nova(s)`,
+  );
+  return { requests: rows.length, quotes: total };
 }
 
 export interface AnswerQuoteInput {
