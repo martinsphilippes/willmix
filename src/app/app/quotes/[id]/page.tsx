@@ -391,6 +391,7 @@ export default async function QuotePage({
                   name="leadTimeDays"
                   type="number"
                   min="1"
+                  max="3650"
                   defaultValue={quote.leadTimeDays ?? ""}
                   className={inputDenseClass}
                 />

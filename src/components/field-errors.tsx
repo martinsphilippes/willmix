@@ -46,6 +46,13 @@ export function FieldErrors({
       for (const name of key.split(",").filter(Boolean)) {
         const el = findField(name);
         if (!el) continue;
+        // Formulário dentro de um <details> fechado (ex.: "Nova multa"): abre.
+        for (
+          let d = el.closest("details");
+          d;
+          d = d.parentElement?.closest("details") ?? null
+        )
+          d.open = true;
         el.setAttribute("aria-invalid", "true");
         el.classList.add("ring-2", "ring-red-400");
         const clear = () => {
@@ -89,19 +96,76 @@ export function FieldErrors({
   );
 }
 
+const LAST_SUBMIT = "wellmix:last-submit";
+
+/**
+ * Lembra qual formulário da página foi enviado (posição na página): a volta
+ * com erro procura o campo nele primeiro (a mesma tela pode ter "price" em
+ * dois formulários). Um ouvinte para o app inteiro.
+ */
+export function SubmitTracker() {
+  useEffect(() => {
+    const onSubmit = (e: SubmitEvent) => {
+      const form = e.target;
+      if (!(form instanceof HTMLFormElement)) return;
+      try {
+        sessionStorage.setItem(
+          LAST_SUBMIT,
+          JSON.stringify({
+            path: location.pathname,
+            index: Array.from(document.forms).indexOf(form),
+            at: Date.now(),
+          }),
+        );
+      } catch {
+        // Sem armazenamento: procura na página inteira.
+      }
+    };
+    document.addEventListener("submit", onSubmit, true);
+    return () => document.removeEventListener("submit", onSubmit, true);
+  }, []);
+  return null;
+}
+
+/** Formulário enviado há pouco nesta mesma tela, se se sabe. */
+function submittedForm(): HTMLFormElement | null {
+  try {
+    const raw = sessionStorage.getItem(LAST_SUBMIT);
+    if (!raw) return null;
+    const last = JSON.parse(raw) as {
+      path?: string;
+      index?: number;
+      at?: number;
+    };
+    if (last.path !== location.pathname) return null;
+    if (!last.at || Date.now() - last.at > 5 * 60 * 1000) return null;
+    return typeof last.index === "number"
+      ? (document.forms[last.index] ?? null)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** O campo visível com esse nome (o dinheiro visível usa data-money). */
 function findField(name: string): Field | null {
-  const sel = (q: string) =>
-    Array.from(document.querySelectorAll<Field>(q)).filter(
-      (el) =>
-        !(el instanceof HTMLInputElement && el.type === "hidden") &&
-        !el.disabled,
-    );
+  const usable = (el: Element): el is Field =>
+    (el instanceof HTMLInputElement ||
+      el instanceof HTMLSelectElement ||
+      el instanceof HTMLTextAreaElement) &&
+    !(el instanceof HTMLInputElement && el.type === "hidden") &&
+    !el.disabled;
   const esc = CSS.escape(name);
+  const matches = (el: Element) =>
+    el.getAttribute("name") === name || el.getAttribute("data-money") === name;
+  const form = submittedForm();
+  const inForm = form ? Array.from(form.elements).filter(matches) : [];
   const candidates = [
-    ...sel(`[name="${esc}"]`),
-    ...sel(`[data-money="${esc}"]`),
-  ];
+    ...inForm,
+    ...Array.from(
+      document.querySelectorAll(`[name="${esc}"], [data-money="${esc}"]`),
+    ),
+  ].filter(usable);
   return (
     candidates.find((el) => el.offsetParent !== null) ?? candidates[0] ?? null
   );

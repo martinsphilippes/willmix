@@ -238,8 +238,9 @@ export async function answerQuoteAction(form: FormData) {
       .object({
         price: z.number().positive(),
         currency: z.enum(CURRENCIES),
-        leadTimeDays: z.number().int().positive(),
-        conditions: z.string().optional().nullable(),
+        // Mesmos limites da resposta pela ficha (a cotação reabre com eles).
+        leadTimeDays: z.number().int().positive().max(3650),
+        conditions: z.string().max(2000).optional().nullable(),
       })
       .parse({
         price: num(form, "price"),

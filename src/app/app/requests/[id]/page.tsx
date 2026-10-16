@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { ActionError } from "@/components/action-error";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
@@ -82,7 +83,12 @@ export default async function RequestDetailPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const {
+    error,
+    saved,
+    fields: invalidFields,
+    at: errorToken,
+  } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
   const t = await getT();
@@ -322,27 +328,33 @@ export default async function RequestDetailPage({
           </Alert>
         </div>
       ) : null}
-      {error ? (
-        <Alert tone="danger">
-          {typeof error === "string" &&
-          t(`pricing.error.${error}` as DictionaryKey) !==
-            `pricing.error.${error}`
-            ? t(`pricing.error.${error}` as DictionaryKey)
+      <ActionError
+        t={t}
+        code={error}
+        fields={invalidFields}
+        token={errorToken}
+        text={
+          !error
+            ? null
             : typeof error === "string" &&
-                t(`payments.error.${error}` as DictionaryKey) !==
-                  `payments.error.${error}`
-              ? t(`payments.error.${error}` as DictionaryKey)
+                t(`pricing.error.${error}` as DictionaryKey) !==
+                  `pricing.error.${error}`
+              ? t(`pricing.error.${error}` as DictionaryKey)
               : typeof error === "string" &&
-                  t(`access.error.${error}` as DictionaryKey) !==
-                    `access.error.${error}`
-                ? t(`access.error.${error}` as DictionaryKey)
+                  t(`payments.error.${error}` as DictionaryKey) !==
+                    `payments.error.${error}`
+                ? t(`payments.error.${error}` as DictionaryKey)
                 : typeof error === "string" &&
-                    t(`reqBatch.error.${error}` as DictionaryKey) !==
-                      `reqBatch.error.${error}`
-                  ? t(`reqBatch.error.${error}` as DictionaryKey)
-                  : fallbackError(t, String(error))}
-        </Alert>
-      ) : null}
+                    t(`access.error.${error}` as DictionaryKey) !==
+                      `access.error.${error}`
+                  ? t(`access.error.${error}` as DictionaryKey)
+                  : typeof error === "string" &&
+                      t(`reqBatch.error.${error}` as DictionaryKey) !==
+                        `reqBatch.error.${error}`
+                    ? t(`reqBatch.error.${error}` as DictionaryKey)
+                    : fallbackError(t, String(error))
+        }
+      />
       {saved === "requester" ? (
         <Alert tone="success">{t("access.requesterSaved")}</Alert>
       ) : null}
@@ -640,12 +652,14 @@ export default async function RequestDetailPage({
                             name="leadTimeDays"
                             type="number"
                             min="1"
+                            max="3650"
                             required
                             placeholder={t("common.leadTime")}
                             className="w-28"
                           />
                           <Input
                             name="conditions"
+                            maxLength={2000}
                             placeholder={t("common.conditions")}
                             className="w-44"
                           />

@@ -384,6 +384,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("common.name")} size="full" required>
                 <Input
                   name="name"
+                  maxLength={160}
                   required
                   minLength={2}
                   defaultValue={product.name}
@@ -391,7 +392,12 @@ export default async function ProductSheetPage({
                 />
               </FieldRow>
               <FieldRow label="SKU" size="sm">
-                <Input name="sku" defaultValue={product.sku ?? ""} dense />
+                <Input
+                  name="sku"
+                  maxLength={60}
+                  defaultValue={product.sku ?? ""}
+                  dense
+                />
               </FieldRow>
               <FieldRow label={t("catalog.line")} size="md" required>
                 <Select
@@ -410,6 +416,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.category")} size="md">
                 <Input
                   name="category"
+                  maxLength={80}
                   defaultValue={product.category ?? ""}
                   dense
                 />
@@ -467,6 +474,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.supplierSku")} size="md">
                 <Input
                   name="supplierSku"
+                  maxLength={60}
                   defaultValue={product.supplierSku ?? ""}
                   dense
                 />
@@ -544,6 +552,7 @@ export default async function ProductSheetPage({
               <FieldRow label={t("catalog.material")} size="md">
                 <Input
                   name="material"
+                  maxLength={120}
                   defaultValue={product.material ?? ""}
                   dense
                 />
@@ -582,7 +591,12 @@ export default async function ProductSheetPage({
               </FieldRow>
               {/* Cor depois do Pantone: as cores escolhidas já entram no texto. */}
               <FieldRow label={t("catalog.color")} size="md">
-                <Input name="color" defaultValue={product.color ?? ""} dense />
+                <Input
+                  name="color"
+                  maxLength={60}
+                  defaultValue={product.color ?? ""}
+                  dense
+                />
               </FieldRow>
               <FieldRow label={t("catalog.dimensions")} size="full">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { assertRole, assertWellmix } from "@/lib/auth/permissions";
 import { REQUEST_NCM_SOURCES } from "@/lib/db/schema";
-import { files, requireUser, run, str } from "./helpers";
+import { field, files, requireUser, run, str } from "./helpers";
 
 /*
  * Tributos da importação: tabela fiscal (TEC/TIPI) em Configurações (admin) e
@@ -72,10 +72,11 @@ export async function confirmRequestNcmAction(form: FormData) {
   await run(back, async () => {
     ID.parse(requestId);
     assertWellmix(user);
-    const ncm = z
-      .string()
-      .regex(/^[\d.\s-]{8,14}$/)
-      .parse(str(form, "ncm"));
+    const ncm = field(
+      form,
+      "ncm",
+      z.string().regex(/^[\d.\s,-]{8,14}$/),
+    ).replace(/,/g, ".");
     const source = z
       .enum(REQUEST_NCM_SOURCES)
       .parse(str(form, "source") || "manual");

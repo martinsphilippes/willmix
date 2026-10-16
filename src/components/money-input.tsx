@@ -268,7 +268,10 @@ export function normalizeMoneyText(
   if (decimalSeparator(locale) === ",") {
     if (lastComma >= 0) return s.replace(",", ".");
     const dots = s.split(".").length - 1;
-    return dots > 1 || (dots === 1 && decimals === 0)
+    // Ponto sozinho com 3 dígitos depois ("1.000", "12.500") num valor de até
+    // 2 casas só pode ser milhar (antes "1.000" virava 1); "2.35" fica 2,35.
+    const grouped = /^[1-9]\d{0,2}\.\d{3}$/.test(s) && decimals < 3;
+    return dots > 1 || (dots === 1 && (decimals === 0 || grouped))
       ? s.replace(/\./g, "")
       : s;
   }

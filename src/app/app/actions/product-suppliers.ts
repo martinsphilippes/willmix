@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
-import { requireUser, run, str } from "./helpers";
+import { field, requireUser, run, str } from "./helpers";
 
 /*
  * Fornecedores do produto (vários por produto). Tudo só Wellmix; quem
@@ -29,7 +29,7 @@ export async function addProductSupplierAction(form: FormData) {
   await run(back(productId), async () => {
     assertWellmix(user);
     const { supplierId } = ids(form);
-    const code = CODE.parse(str(form, "supplierSku"));
+    const code = field(form, "supplierSku", CODE);
     const { addProductSupplier } =
       await import("@/lib/services/product-suppliers");
     await addProductSupplier(user, productId, supplierId, code || null);
@@ -44,7 +44,7 @@ export async function setProductSupplierCodeAction(form: FormData) {
   await run(back(productId), async () => {
     assertWellmix(user);
     const { supplierId } = ids(form);
-    const code = CODE.parse(str(form, "supplierSku"));
+    const code = field(form, "supplierSku", CODE);
     const { setProductSupplierCode } =
       await import("@/lib/services/product-suppliers");
     await setProductSupplierCode(user, productId, supplierId, code || null);

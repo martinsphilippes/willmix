@@ -15,7 +15,7 @@ import {
   suggestTaxCandidates,
   validateTaxClassification,
 } from "@/lib/services/taxes";
-import { files, num, requireUser, run, str } from "./helpers";
+import { field, files, num, requireUser, run, str } from "./helpers";
 
 /*
  * Segunda Onda, catálogo: classificação fiscal (NCM) com validação humana,
@@ -254,7 +254,7 @@ export async function setLineCertificationsAction(form: FormData) {
     const store = getStore();
     const line = await store.get("product_lines", lineId);
     if (!line) throw new Error("line_not_found");
-    const text = z.string().max(500).parse(str(form, "certifications"));
+    const text = field(form, "certifications", z.string().max(500));
     const seen = new Set<string>();
     const list = text
       .split(/[,;\n]/)
