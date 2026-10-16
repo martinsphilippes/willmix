@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  PRODUCT_EXTRA_DEFAULTS,
   getStore,
   type Product,
   type PurchaseSheet,
@@ -231,6 +232,16 @@ export async function saveProductSheet(
   input: SheetInput,
 ): Promise<{ sheet: PurchaseSheet; missing: SheetMissing[] }> {
   assertWellmix(user);
+  return writeProductSheet(user, productId, input);
+}
+
+/** Grava a ficha mestre (sem checar papel: quem chama já decidiu o que pode). */
+async function writeProductSheet(
+  user: User,
+  productId: string,
+  input: SheetInput,
+  action?: string,
+): Promise<{ sheet: PurchaseSheet; missing: SheetMissing[] }> {
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product) throw new ProductSheetError("not_found");
@@ -265,12 +276,78 @@ export async function saveProductSheet(
     await store.update("products", productId, mirror);
   await audit(
     user,
-    existing ? "product.sheet_update" : "product.sheet_create",
+    action ?? (existing ? "product.sheet_update" : "product.sheet_create"),
     "product",
     productId,
     `Ficha mestre: ${Object.keys(patch).length} campo(s)`,
   );
   return { sheet, missing: await productSheetMissing(productId, sheet) };
+}
+
+const filled = (v: unknown) =>
+  v !== undefined &&
+  v !== null &&
+  v !== "" &&
+  !(Array.isArray(v) && v.length === 0);
+
+/**
+ * O cadastro do produto acompanha a ficha (para a próxima venda já vir
+ * preenchida), sem que um fornecedor estrague o que é de outro:
+ * - "fill" (ficha do pedido salva pelo fornecedor do pedido): só completa o
+ *   que a ficha mestre/produto ainda não tem; nunca troca valor.
+ * - "adopt" (pedido criado, ficha do pedido salva pela Wellmix): a compra de
+ *   verdade. Do fornecedor principal (ou de produto sem principal) atualiza os
+ *   dados do produto; de outro fornecedor, só completa o que falta.
+ * Dados comerciais (preço, MOQ, código, loja…) só vêm do fornecedor principal.
+ * A cotação (antes da compra) não mexe no cadastro: a ficha mestre preenche as
+ * cotações de todos os fornecedores, e os dados de um concorrente não podem
+ * aparecer para outro na mesma RFQ.
+ * Nunca derruba quem chamou: falha fica no log.
+ */
+export async function completeMasterFromSheet(
+  user: User,
+  productId: string | null | undefined,
+  sheet: Partial<PurchaseSheet>,
+  supplierId: string | null | undefined,
+  mode: "fill" | "adopt",
+): Promise<string[]> {
+  if (!productId) return [];
+  try {
+    const store = getStore();
+    const product = await store.get("products", productId);
+    if (!product) return [];
+    const main = !!product.supplierId && product.supplierId === supplierId;
+    const fields: readonly string[] = main
+      ? MASTER_SHEET_FIELDS
+      : MASTER_PRODUCT_FIELDS;
+    const overwrite = mode === "adopt" && (main || !product.supplierId);
+    const existing = await getProductSheet(productId);
+    const current: Record<string, unknown> = existing
+      ? { ...existing }
+      : { ...productSheetDraft(product, null) };
+    const input: Record<string, unknown> = {};
+    for (const k of fields) {
+      const v = (sheet as Record<string, unknown>)[k];
+      if (!filled(v)) continue;
+      if (!overwrite && filled(current[k])) continue;
+      if (JSON.stringify(current[k]) === JSON.stringify(v)) continue;
+      input[k] = v;
+    }
+    if (!Object.keys(input).length) return [];
+    await writeProductSheet(
+      user,
+      productId,
+      input as SheetInput,
+      mode === "adopt" ? "product.sheet_from_order" : "product.sheet_fill",
+    );
+    return Object.keys(input);
+  } catch (error) {
+    console.warn(
+      "[product-sheet] completar o cadastro pela ficha falhou",
+      error,
+    );
+    return [];
+  }
 }
 
 /** Produto salvo pelo formulário: a ficha mestre (se existir) acompanha. */
@@ -386,4 +463,65 @@ export async function adoptSheetIntoProduct(
     `Ficha mestre atualizada a partir da ficha ${ownerId}`,
   );
   return { productId, copiedPhotos };
+}
+
+/**
+ * Produto fora do catálogo (pedido de um item digitado pelo nome): a Wellmix
+ * cadastra com um clique na ficha do pedido, na linha escolhida. O produto
+ * nasce com o fornecedor do pedido como principal e a ficha do pedido como
+ * ficha mestre; solicitação, item e ficha passam a apontar para ele (a
+ * próxima venda já vem preenchida). Já cadastrado: devolve o mesmo.
+ */
+export async function registerProductFromOrderSheet(
+  user: User,
+  orderId: string,
+  lineId: string,
+): Promise<string> {
+  assertWellmix(user);
+  const store = getStore();
+  const order = await store.get("orders", orderId);
+  if (!order) throw new ProductSheetError("not_found");
+  const [sheet] = await store.list("purchase_sheets", {
+    filter: { orderId },
+    limit: 1,
+  });
+  if (!sheet) throw new ProductSheetError("not_found");
+  if (sheet.productId) return sheet.productId;
+  const line = await store.get("product_lines", lineId);
+  if (!line) throw new ProductSheetError("invalid_line");
+  const [item] = await store.list("order_items", {
+    filter: { orderId },
+    limit: 1,
+  });
+  const request = await store.get("requests", order.requestId);
+  const product = await store.create("products", {
+    ...PRODUCT_EXTRA_DEFAULTS,
+    lineId: line.id,
+    name: (item?.name ?? request?.productName ?? "Produto").slice(0, 160),
+    sku: null,
+    specification: request?.specification ?? request?.description ?? null,
+    active: true,
+    source: "manual",
+    supplierId: order.supplierId,
+  });
+  await store.update("purchase_sheets", sheet.id, { productId: product.id });
+  if (item && !item.productId)
+    await store.update("order_items", item.id, { productId: product.id });
+  if (request && !request.productId)
+    await store.update("requests", request.id, { productId: product.id });
+  await audit(
+    user,
+    "product.create_from_order",
+    "product",
+    product.id,
+    `Cadastrado a partir do pedido #${order.number}`,
+  );
+  await completeMasterFromSheet(
+    user,
+    product.id,
+    { ...sheet, productId: product.id },
+    order.supplierId,
+    "adopt",
+  );
+  return product.id;
 }

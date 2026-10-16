@@ -5,20 +5,26 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { Alert, Badge, LinkButton, PageHeader } from "@/components/ui";
+import { Alert, Badge, LinkButton, PageHeader, Select } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
-import { getSheetForUser } from "@/lib/services/purchase-sheet";
+import {
+  QUANTITY_FOLLOWS_SHEET,
+  getSheetForUser,
+} from "@/lib/services/purchase-sheet";
 import {
   ncmChipsView,
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { SheetPhotosCard } from "@/components/sheet-photos";
+import { SheetSafety } from "@/components/sheet-safety";
+import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
 import {
   addPurchaseSheetPhotosAction,
   adoptSheetIntoProductAction,
+  registerProductFromSheetAction,
   removePurchaseSheetPhotoAction,
   savePurchaseSheetAction,
 } from "../../../actions/purchase-sheet";
@@ -42,6 +48,7 @@ export default async function PurchaseSheetPage({
     photoRemoved,
     adopted,
     at: saveToken,
+    fields: invalidFields,
   } = await searchParams;
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
@@ -52,6 +59,12 @@ export default async function PurchaseSheetPage({
     limit: 1,
   });
   const { sheet, access, plan, missing } = view;
+  const productLines =
+    view.saved && isWellmix(user) && !view.sheet.productId
+      ? (await getStore().list("product_lines", { orderBy: "name" })).filter(
+          (l) => l.active !== false,
+        )
+      : [];
   // Quem pode editar vê o que falta em vermelho e o aviso leva até cada campo.
   // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
   const canFill = access.editSupplier;
@@ -129,7 +142,17 @@ export default async function PurchaseSheetPage({
         ) : null}
         {!access.editSupplier && !access.editCustoms ? (
           <Alert tone="neutral">{t("sheet.readOnly")}</Alert>
-        ) : null}
+        ) : (
+          <SheetSafety
+            t={t}
+            formId="purchase-sheet"
+            storageKey={`order:${id}`}
+            error={error}
+            fields={invalidFields}
+            saved={typeof saved === "string" && !!saved}
+            token={saveToken}
+          />
+        )}
       </div>
 
       {/* Ordem da ficha: campos, fotos e, por último, Salvar. O card de fotos tem
@@ -155,6 +178,19 @@ export default async function PurchaseSheetPage({
             editCustoms={access.editCustoms}
             requestSchedule={request?.schedule ?? null}
             requestUnit={request?.unit ?? "un"}
+            orderQuantity={
+              // Até a embalagem a quantidade do pedido acompanha as caixas
+              // (quando a Wellmix salva); depois disso, só a programação muda.
+              item &&
+              isPiecesUnit(item.unit) &&
+              QUANTITY_FOLLOWS_SHEET.includes(view.order.status)
+                ? {
+                    current: item.quantity,
+                    unit: item.unit,
+                    mode: isWellmix(user) ? "order" : "readonly",
+                  }
+                : null
+            }
             records={view.records}
             missing={shownMissing}
             ncmSuggestions={
@@ -202,6 +238,40 @@ export default async function PurchaseSheetPage({
             <SubmitButton variant="secondary">
               {t("productSheet.adopt")}
             </SubmitButton>
+          </form>
+        ) : null}
+
+        {/* Wellmix: produto digitado pelo nome (fora do catálogo) vira cadastro
+            com esta ficha, para a próxima venda já vir preenchida. */}
+        {view.saved && isWellmix(user) && !view.sheet.productId ? (
+          <form
+            action={registerProductFromSheetAction}
+            className="flex flex-wrap items-end gap-3 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm lg:order-7 lg:col-span-2"
+            data-register-product
+          >
+            <input type="hidden" name="orderId" value={id} />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-zinc-900">
+                {t("productSheet.register.title")}
+              </p>
+              <p className="text-xs text-zinc-600">
+                {t("productSheet.register.hint")}
+              </p>
+            </div>
+            <label className="text-xs font-medium text-zinc-700">
+              {t("productSheet.register.line")}
+              <Select name="lineId" required defaultValue="" dense>
+                <option value="" disabled>
+                  —
+                </option>
+                {productLines.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <SubmitButton>{t("productSheet.register.submit")}</SubmitButton>
           </form>
         ) : null}
 

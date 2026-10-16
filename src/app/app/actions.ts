@@ -282,7 +282,17 @@ export async function selectQuoteAction(form: FormData) {
       parsed.sellPrice,
       parsed.sellCurrency,
     );
-    await selectQuote(user, parsed.quoteId, { ...parsed, pricing });
+    const pricedQuantity = z
+      .number()
+      .positive()
+      .max(1_000_000_000)
+      .nullable()
+      .parse(num(form, "pricedQuantity"));
+    await selectQuote(user, parsed.quoteId, {
+      ...parsed,
+      pricing,
+      pricedQuantity,
+    });
   });
 }
 

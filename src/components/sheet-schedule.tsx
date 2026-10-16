@@ -1,13 +1,16 @@
 "use client";
 
+import { parseNumberInput } from "@/lib/number-input";
 import { useEffect, useRef, useState } from "react";
 import type { PurchaseLot } from "@/lib/db/schema";
 import {
   MAX_LOTS,
   generateLots,
   planSheet,
+  spreadCartons,
   suggestContainerFill,
   type ContainerFill,
+  type ContainerStep,
   type GenerateLotsError,
 } from "@/lib/services/purchase-sheet-calc";
 import {
@@ -51,6 +54,27 @@ export interface ScheduleLabels {
   full: string;
   need: string;
   applied: string;
+  /** Duas direções, sempre que der (também quando já fecha exato). */
+  exactNow: string;
+  up: string;
+  upNoPieces: string;
+  applyUp: string;
+  down: string;
+  downNoPieces: string;
+  applyDown: string;
+  appliedTotal: string;
+  /** CBM da caixa fora do normal (provável erro de digitação). */
+  cbmHigh: string;
+  cbmMismatch: string;
+  /** Quantidade do pedido acompanhando as caixas. */
+  qty: {
+    title: string;
+    same: string;
+    order: string;
+    quote: string;
+    quoteDraft: string;
+    readonly: string;
+  };
   /** "+ Programação" (nova linha) e "Pedido do cliente: {quantity} {unit} em {date}". */
   addLot: string;
   removeLot: string;
@@ -113,10 +137,10 @@ function parseWhole(raw: string): number {
   return NaN;
 }
 
-function parseNum(raw: string | null | undefined): number | null {
-  if (!raw) return null;
-  const n = Number(raw.trim().replace(",", "."));
-  return Number.isFinite(n) && n >= 0 ? n : null;
+/** Mesma leitura do servidor ("1.000" caixas = 1000; "0,050" m³ = 0,05). */
+function parseNum(raw: string | null | undefined, int = false): number | null {
+  const n = parseNumberInput(raw, { int });
+  return n !== null && Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 export function SheetSchedule({
@@ -129,6 +153,7 @@ export function SheetSchedule({
   requested = [],
   unit = "un",
   lot1Missing = false,
+  quantity = null,
 }: {
   /** Programação 1 obrigatória e vazia: a linha fica em vermelho (o aviso leva até ela). */
   lot1Missing?: boolean;
@@ -141,6 +166,16 @@ export function SheetSchedule({
   /** Programação pedida pelo cliente na solicitação (por programação). */
   requested?: { quantity: number; expectedAt: string }[];
   unit?: string;
+  /**
+   * Quantidade do pedido hoje (item do pedido ou solicitação) e o que acontece
+   * com ela: "order" = a Wellmix salva e o pedido acompanha; "quote" = a
+   * proposta usa a da programação; "readonly" = só mostra (fornecedor).
+   */
+  quantity?: {
+    current: number;
+    unit: string;
+    mode: "order" | "quote" | "quoteDraft" | "readonly";
+  } | null;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const fmt = (n: number | null | undefined, digits = 2) =>
@@ -196,7 +231,7 @@ export function SheetSchedule({
       const v = (name: string) =>
         (el.elements.namedItem(name) as HTMLInputElement | null)?.value ?? "";
       setForm({
-        masterCartonQty: parseNum(v("masterCartonQty")),
+        masterCartonQty: parseNum(v("masterCartonQty"), true),
         cbmPerCarton: parseNum(v("cbmPerCarton")),
         heightCm: parseNum(v("heightCm")),
         widthCm: parseNum(v("widthCm")),
@@ -244,8 +279,9 @@ export function SheetSchedule({
   const plan = planSheet(
     {
       lots: lots.map((l) => ({
-        departureIntervalDays: l.interval === "" ? null : parseNum(l.interval),
-        masterCartons: l.cartons === "" ? null : parseNum(l.cartons),
+        departureIntervalDays:
+          l.interval === "" ? null : parseNum(l.interval, true),
+        masterCartons: l.cartons === "" ? null : parseNum(l.cartons, true),
       })),
       masterCartonQty: form.masterCartonQty,
       cbmPerCarton: form.cbmPerCarton,
@@ -268,14 +304,9 @@ export function SheetSchedule({
   const lot1Open =
     lot1Missing &&
     !(
-      (parseNum(lots[0].cartons) ?? 0) > 0 &&
-      parseNum(lots[0].interval) !== null
+      (parseNum(lots[0].cartons, true) ?? 0) > 0 &&
+      parseNum(lots[0].interval, true) !== null
     );
-  // Lote que recebe o ajuste: o último com caixas (ou o 1º).
-  const lastIdx = Math.max(
-    0,
-    lots.map((l) => (parseNum(l.cartons) ?? 0) > 0).lastIndexOf(true),
-  );
 
   function setLot(i: number, key: "interval" | "cartons", value: string) {
     setApplied(null);
@@ -291,15 +322,87 @@ export function SheetSchedule({
     ]);
     setVisible((v) => Math.max(1, Math.min(v, shown) - 1));
   }
+  /* Ajuste para fechar o container: pôr vai para a última programação com
+     caixas; tirar começa pela última e sobe (nenhuma fica negativa). */
   function adjust(delta: number) {
     setGenerated(null);
-    const current = parseNum(lots[lastIdx].cartons) ?? 0;
-    const next = Math.max(0, current + delta);
+    const before = lots.map((l) => parseNum(l.cartons, true) ?? 0);
+    const after = spreadCartons(before, delta);
     setLots((ls) =>
-      ls.map((l, j) => (j === lastIdx ? { ...l, cartons: String(next) } : l)),
+      ls.map((l, j) =>
+        after[j] === before[j]
+          ? l
+          : { ...l, cartons: after[j] > 0 ? String(after[j]) : "" },
+      ),
     );
-    setApplied(fill(labels.applied, { lot: lastIdx + 1, cartons: next }));
+    const changed = after
+      .map((c, j) => (c !== before[j] ? j : -1))
+      .filter((j) => j >= 0);
+    const total = after.reduce((a, b) => a + b, 0);
+    setApplied(
+      changed.length === 1
+        ? fill(labels.applied, {
+            lot: changed[0] + 1,
+            cartons: fmt(after[changed[0]], 0),
+          })
+        : fill(labels.appliedTotal, {
+            cartons: fmt(total, 0),
+            pieces:
+              form.masterCartonQty !== null
+                ? fmt(total * form.masterCartonQty, 0)
+                : "—",
+          }),
+    );
   }
+  const stepText = (
+    step: ContainerStep,
+    withPieces: string,
+    noPieces: string,
+  ) =>
+    step.pieces !== null
+      ? fill(withPieces, {
+          cartons: fmt(step.cartons, 0),
+          pieces: fmt(step.pieces, 0),
+          cbm: fmt(step.cbm, 4),
+          n: step.containers,
+        })
+      : fill(noPieces, {
+          cartons: fmt(step.cartons, 0),
+          cbm: fmt(step.cbm, 4),
+          n: step.containers,
+        });
+  /* CBM da caixa master improvável: maior que 1 m³ (uma caixa master costuma
+     ter 0,02–0,3 m³) ou muito diferente da medida da caixa. Avisa na hora,
+     antes de a conta de containers enganar ("0,050" digitado como "50"). */
+  const cbmWarning = (() => {
+    const cbm = form.cbmPerCarton;
+    if (cbm === null || cbm <= 0) return null;
+    if (cbm >= 1)
+      return fill(labels.cbmHigh, {
+        cbm: fmt(cbm, 4),
+        capacity: capacity ? fmt(capacity, 0) : "68",
+      });
+    const size = plan.cbmFromSize;
+    if (size && (cbm / size > 2 || size / cbm > 2))
+      return fill(labels.cbmMismatch, { cbm: fmt(cbm, 4), size: fmt(size, 4) });
+    return null;
+  })();
+  // Quantidade do pedido x peças da programação (a que vai valer).
+  const qtyNote = (() => {
+    if (!quantity || plan.totalPieces === null) return null;
+    const vars = {
+      from: fmt(quantity.current, 0),
+      to: fmt(plan.totalPieces, 0),
+      unit: quantity.unit,
+      diff: `${plan.totalPieces > quantity.current ? "+" : "−"}${fmt(
+        Math.abs(plan.totalPieces - quantity.current),
+        0,
+      )}`,
+    };
+    if (plan.totalPieces === quantity.current)
+      return { changed: false, text: fill(labels.qty.same, vars) };
+    return { changed: true, text: fill(labels.qty[quantity.mode], vars) };
+  })();
 
   // Valores iniciais do atalho: o que a ficha já tem (total, linhas,
   // intervalos) ou a programação pedida pelo cliente.
@@ -476,7 +579,6 @@ export function SheetSchedule({
                     name={`lot${lot.index}Interval`}
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     value={lots[i].interval}
                     onChange={(e) => setLot(i, "interval", e.target.value)}
                     disabled={disabled}
@@ -489,7 +591,6 @@ export function SheetSchedule({
                     name={`lot${lot.index}Cartons`}
                     type="text"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     value={lots[i].cartons}
                     onChange={(e) => setLot(i, "cartons", e.target.value)}
                     disabled={disabled}
@@ -569,6 +670,30 @@ export function SheetSchedule({
         />
       </dl>
       <p className="mt-1.5 text-xs text-zinc-500">{labels.live}</p>
+      {cbmWarning ? (
+        <p
+          className="mt-1.5 rounded-md bg-red-50 px-2.5 py-1.5 text-[13px] font-medium text-red-800 ring-1 ring-inset ring-red-200"
+          data-cbm-warning
+          role="alert"
+        >
+          {cbmWarning}
+        </p>
+      ) : null}
+      {qtyNote ? (
+        <p
+          className={cx(
+            "mt-1.5 rounded-md px-2.5 py-1.5 text-[13px]",
+            qtyNote.changed
+              ? "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200"
+              : "text-zinc-600",
+          )}
+          data-sheet-quantity={qtyNote.changed ? "changed" : "same"}
+          aria-live="polite"
+        >
+          <span className="font-semibold">{labels.qty.title}:</span>{" "}
+          {qtyNote.text}
+        </p>
+      ) : null}
 
       {/* Sugestão para fechar o container. */}
       <div
@@ -586,76 +711,56 @@ export function SheetSchedule({
         <p className="font-semibold">{labels.fillTitle}</p>
         {!fillInfo ? (
           <p className="mt-0.5 text-zinc-600">{labels.need}</p>
-        ) : fillInfo.exact ? (
-          <p className="mt-0.5">{fill(labels.exact, { n: fillInfo.lower })}</p>
         ) : (
           <div className="mt-0.5 space-y-1.5">
             <p>
-              {fill(labels.partial, {
-                containers: fmt(fillInfo.containers, 2),
-                capacity: fmt(fillInfo.capacityCbm, 2),
-                pct: fillInfo.lastPct,
-              })}
+              {fillInfo.exact
+                ? fill(labels.exactNow, { n: fillInfo.lower })
+                : fill(labels.partial, {
+                    containers: fmt(fillInfo.containers, 2),
+                    capacity: fmt(fillInfo.capacityCbm, 2),
+                    pct: fillInfo.lastPct,
+                  })}
             </p>
-            {fillInfo.addCartons > 0 ? (
-              <p>
-                {fillInfo.addPieces !== null
-                  ? fill(labels.add, {
-                      cartons: fmt(fillInfo.addCartons, 0),
-                      pieces: fmt(fillInfo.addPieces, 0),
-                      cbm: fmt(fillInfo.addCbm, 4),
-                      n: fillInfo.target,
-                    })
-                  : fill(labels.addNoPieces, {
-                      cartons: fmt(fillInfo.addCartons, 0),
-                      cbm: fmt(fillInfo.addCbm, 4),
-                      n: fillInfo.target,
-                    })}
-              </p>
-            ) : (
-              <p>{labels.full}</p>
-            )}
-            {fillInfo.removeCartons !== null && fillInfo.removeCartons > 0 ? (
-              <p className="text-zinc-700">
-                {fillInfo.removePieces !== null
-                  ? fill(labels.remove, {
-                      cartons: fmt(fillInfo.removeCartons, 0),
-                      pieces: fmt(fillInfo.removePieces, 0),
-                      n: fillInfo.lower,
-                    })
-                  : fill(labels.removeNoPieces, {
-                      cartons: fmt(fillInfo.removeCartons, 0),
-                      n: fillInfo.lower,
-                    })}
+            {/* Para cima e para baixo, sempre que der. */}
+            {fillInfo.up ? (
+              <p data-fill-up={fillInfo.up.containers}>
+                {stepText(fillInfo.up, labels.up, labels.upNoPieces)}
               </p>
             ) : null}
-            {!disabled ? (
+            {fillInfo.down ? (
+              <p
+                className="text-zinc-700"
+                data-fill-down={fillInfo.down.containers}
+              >
+                {stepText(fillInfo.down, labels.down, labels.downNoPieces)}
+              </p>
+            ) : null}
+            {!disabled && (fillInfo.up || fillInfo.down) ? (
               <div className="flex flex-wrap gap-2 pt-0.5">
-                {fillInfo.addCartons > 0 ? (
+                {fillInfo.up ? (
                   <button
                     type="button"
-                    onClick={() => adjust(fillInfo.addCartons)}
+                    onClick={() => adjust(fillInfo.up!.cartons)}
                     data-fill-apply="add"
                     className="rounded-md bg-brand-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-brand-800"
                   >
-                    {fill(labels.apply, {
-                      n: fillInfo.target,
-                      cartons: fmt(fillInfo.addCartons, 0),
-                      lot: lastIdx + 1,
+                    {fill(labels.applyUp, {
+                      n: fillInfo.up.containers,
+                      cartons: fmt(fillInfo.up.cartons, 0),
                     })}
                   </button>
                 ) : null}
-                {fillInfo.removeCartons !== null &&
-                fillInfo.removeCartons > 0 ? (
+                {fillInfo.down ? (
                   <button
                     type="button"
-                    onClick={() => adjust(-fillInfo.removeCartons!)}
+                    onClick={() => adjust(-fillInfo.down!.cartons)}
                     data-fill-apply="remove"
                     className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
                   >
-                    {fill(labels.applyRemove, {
-                      n: fillInfo.lower,
-                      cartons: fmt(fillInfo.removeCartons, 0),
+                    {fill(labels.applyDown, {
+                      n: fillInfo.down.containers,
+                      cartons: fmt(fillInfo.down.cartons, 0),
                     })}
                   </button>
                 ) : null}

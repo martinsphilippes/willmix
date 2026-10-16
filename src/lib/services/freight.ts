@@ -1,5 +1,6 @@
 import "server-only";
 
+import { quotedQuantity } from "./purchase-sheet-calc";
 import {
   getStore,
   type FreightQuote,
@@ -40,10 +41,11 @@ export interface Cargo {
 
 /** Carga da cotação: caixas master (para cima), CBM total e peso bruto total. */
 export function cargoFor(
-  request: Pick<Request, "quantity">,
+  request: Pick<Request, "quantity" | "unit">,
   sheet: Partial<PurchaseSheet> | null,
 ): Cargo {
-  const qty = request.quantity;
+  // A mesma quantidade do preço ao cliente: a da programação (se em peças).
+  const qty = quotedQuantity(request, sheet as PurchaseSheet | null);
   const perCarton = sheet?.masterCartonQty ?? null;
   const cartons =
     perCarton && perCarton > 0 ? Math.ceil(qty / perCarton) : null;

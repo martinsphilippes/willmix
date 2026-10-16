@@ -34,6 +34,8 @@ import {
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import { SheetSafety } from "@/components/sheet-safety";
+import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
@@ -52,6 +54,7 @@ export default async function QuotePage({
     photoRemoved,
     adopted,
     at: saveToken,
+    fields: invalidFields,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -226,6 +229,17 @@ export default async function QuotePage({
               <h2 className="text-lg font-semibold text-zinc-900">
                 {t("quoteSheet.title")}
               </h2>
+              {sheetView.access.editSupplier || sheetView.access.editCustoms ? (
+                <SheetSafety
+                  t={t}
+                  formId="quote-sheet"
+                  storageKey={`quote:${quote.id}`}
+                  error={error}
+                  fields={invalidFields}
+                  saved={typeof saved === "string" && !!saved}
+                  token={saveToken}
+                />
+              ) : null}
               {!sheetView.access.editSupplier ? (
                 <Alert tone="neutral">{t("quoteSheet.readOnly")}</Alert>
               ) : sheetView.missing.length ? (
@@ -259,6 +273,19 @@ export default async function QuotePage({
               editCustoms={sheetView.access.editCustoms}
               requestSchedule={request.schedule ?? null}
               requestUnit={request.unit}
+              orderQuantity={
+                // Antes da escolha, em peças: a proposta usa as peças da
+                // programação salva (rascunho ainda não salvo: "ao salvar").
+                ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                  request.status,
+                ) && isPiecesUnit(request.unit)
+                  ? {
+                      current: request.quantity,
+                      unit: request.unit,
+                      mode: sheetView.saved ? "quote" : "quoteDraft",
+                    }
+                  : null
+              }
               records={sheetView.records}
               missing={canFillSheet ? sheetMissing : []}
               ncmSuggestions={

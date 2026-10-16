@@ -17,6 +17,7 @@ import { getFxRates, type FxView } from "./fx";
 import { getQuoteSheet } from "./quote-sheet";
 import { freightByQuote } from "./freight";
 import { requestNcm, type RequestNcm } from "./request-ncm";
+import { quotedQuantity } from "./purchase-sheet-calc";
 
 /*
  * Valor ao cliente de uma cotação: ficha da cotação (ou o preço da cotação,
@@ -149,12 +150,15 @@ export async function quotePricing(
       taxes.ii,
     );
     const [ipi, ipiSource] = pick(sheet?.ipiPercent, tableIpi, taxes.ipi);
+    // Quantidade que a cotação compra: a programação da ficha (caixas × peças
+    // por caixa), que fecha o container; sem programação, a pedida pelo cliente.
+    const quantity = quotedQuantity(request, sheet);
     const input: PricingInput = {
       unitPrice: sheet?.price ?? quote.price,
       currency: sheet?.currency ?? quote.currency,
-      quantity: request.quantity,
+      quantity,
       totalCbm: totalCbmFor(
-        request.quantity,
+        quantity,
         sheet?.masterCartonQty ?? null,
         sheet?.cbmPerCarton ?? null,
       ),

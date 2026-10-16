@@ -12,7 +12,11 @@ import { canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
-import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import {
+  catalogPhotoKinds,
+  completeMasterFromSheet,
+  masterSheetInput,
+} from "./product-sheet";
 import {
   fillRecordsFromSheet,
   productForSupplier,
@@ -29,10 +33,14 @@ import {
   missingForCompletion,
   REQUIRED_SHEET_PHOTOS,
   normalizeLots,
+  isPiecesUnit,
   planSheet,
+  sheetTotalPieces,
   type SheetMissing,
   type SheetPlan,
 } from "./purchase-sheet-calc";
+import { notify, notifyWellmix, requesterTarget } from "./notifications";
+import { openReview } from "./reviews";
 
 export class PurchaseSheetError extends Error {}
 
@@ -489,8 +497,151 @@ export async function saveSheet(
       sheet.productId ?? null,
       sheet,
     );
+  if ("lots" in patch || "masterCartonQty" in patch)
+    await syncOrderQuantity(
+      user,
+      order,
+      sheet,
+      existing ? sheetTotalPieces(existing) : null,
+    );
+  // O cadastro do produto acompanha a ficha do pedido: a Wellmix atualiza com
+  // a compra de verdade; o fornecedor só completa o que falta.
+  if (access.editSupplier)
+    await completeMasterFromSheet(
+      user,
+      sheet.productId ?? null,
+      sheet,
+      order.supplierId,
+      isWellmix(user) ? "adopt" : "fill",
+    );
   const missing = await syncRequirements(user, order, sheet);
   return { sheet, missing };
+}
+
+/** Etapas em que a quantidade ainda acompanha a programação (antes da inspeção). */
+export const QUANTITY_FOLLOWS_SHEET: readonly Order["status"][] = [
+  "ORDER_CREATED",
+  "PREPARATION",
+  "SUPPLIER_PAYMENT",
+  "PACKAGING",
+];
+
+/**
+ * A quantidade do pedido acompanha as caixas da programação (caixas × peças
+ * por caixa master), quando a unidade é peça: quem fecha o container tirando
+ * ou pondo caixas já ajusta o pedido. Preço por unidade não muda; FOB e valor
+ * ao cliente acompanham. Regras de segurança:
+ * - só a Wellmix muda o pedido (valor ao cliente é dela); fornecedor que muda
+ *   as caixas avisa a Wellmix, que confirma salvando a ficha;
+ * - antes da inspeção, e só antes de pagar o fornecedor: depois do pagamento
+ *   abre um item de revisão (acerto à mão), sem mexer em valores sozinho;
+ * - pedido já no Sankhya ou com caixas alocadas em container: a Wellmix é
+ *   avisada para atualizar lá.
+ */
+async function syncOrderQuantity(
+  user: User,
+  orderAtStart: Order,
+  sheet: PurchaseSheet,
+  previousPieces: number | null,
+) {
+  if (!QUANTITY_FOLLOWS_SHEET.includes(orderAtStart.status)) return;
+  const pieces = sheetTotalPieces(sheet);
+  if (pieces === null) return;
+  const store = getStore();
+  // Leitura fresca do pedido e do item, juntas (outro salvamento pode ter mudado).
+  const [order, items] = await Promise.all([
+    store.get("orders", orderAtStart.id),
+    store.list("order_items", {
+      filter: { orderId: orderAtStart.id },
+      limit: 1,
+    }),
+  ]);
+  const item = items[0];
+  if (!order || !item || !(item.quantity > 0) || item.quantity === pieces)
+    return;
+  if (!isPiecesUnit(item.unit)) return;
+  const link = `/app/orders/${order.id}/purchase-sheet`;
+  if (!isWellmix(user)) {
+    // Só quando a programação mudou neste salvamento (sem repetir o aviso).
+    if (previousPieces !== pieces)
+      await notifyWellmix({
+        subject: `Pedido #${order.number}: o fornecedor mudou a programação`,
+        body: `${item.name}: a programação soma ${pieces} ${item.unit}; o pedido tem ${item.quantity}. Abra a ficha e salve para ajustar a quantidade e os valores.`,
+        link,
+      });
+    return;
+  }
+  const supplierPaid = (
+    await store.list("payments", {
+      filter: { orderId: order.id, direction: "supplier_out" },
+    })
+  ).length;
+  if (supplierPaid) {
+    await openReview(user, {
+      orderId: order.id,
+      entity: "order",
+      entityId: order.id,
+      rule: "order.quantity_after_payment",
+      problem: `A programação passou a ${pieces} ${item.unit} (pedido: ${item.quantity}), mas o fornecedor já recebeu pagamento. Ajuste à mão a quantidade, o FOB, o valor ao cliente e o acerto com o fornecedor.`,
+      expected: item.quantity,
+      found: pieces,
+      responsibleRole: "operator",
+      link,
+    });
+    return;
+  }
+  const ratio = pieces / item.quantity;
+  const money = (v: number | null) =>
+    v === null ? null : Math.round(v * ratio * 100) / 100;
+  const fobTotal =
+    item.unitPrice !== null
+      ? Math.round(item.unitPrice * pieces * 100) / 100
+      : money(order.fobTotal);
+  const sellPrice = money(order.sellPrice);
+  await store.update("order_items", item.id, { quantity: pieces });
+  await store.update("orders", order.id, { fobTotal, sellPrice });
+  await audit(
+    user,
+    "order.quantity_from_sheet",
+    "order",
+    order.id,
+    `Quantidade ajustada à programação da ficha: ${item.quantity} → ${pieces} ${item.unit}`,
+    {
+      quantity: item.quantity,
+      fobTotal: order.fobTotal,
+      sellPrice: order.sellPrice,
+    },
+    { quantity: pieces, fobTotal, sellPrice },
+  );
+  await notify(requesterTarget(order.requestedByUserId), {
+    subject: `Pedido #${order.number}: quantidade ajustada`,
+    body: `${item.name}: ${item.quantity} → ${pieces} ${item.unit} para fechar o container.${
+      sellPrice !== null && order.sellCurrency
+        ? ` Novo valor: ${order.sellCurrency} ${sellPrice.toFixed(2)}.`
+        : ""
+    }`,
+    link: `/app/orders/${order.id}`,
+  });
+  // Fora do portal: Sankhya e containers já montados não mudam sozinhos.
+  const allocated = await store.list("container_items", {
+    filter: { orderItemId: item.id },
+  });
+  if (order.erpNumber || allocated.length)
+    await notifyWellmix({
+      subject: `Pedido #${order.number}: atualize a quantidade fora do portal`,
+      body: [
+        `${item.name}: ${item.quantity} → ${pieces} ${item.unit}.`,
+        order.erpNumber
+          ? `Atualize o pedido ${order.erpNumber} no Sankhya.`
+          : null,
+        allocated.length
+          ? `Confira as caixas alocadas em container (${allocated.length} item(ns)).`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      link: `/app/orders/${order.id}`,
+    });
 }
 
 /** Fotos da ficha (várias por tipo). Ficam no pedido, nunca no catálogo do cliente. */

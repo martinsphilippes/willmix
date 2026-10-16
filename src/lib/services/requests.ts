@@ -28,7 +28,8 @@ import { audit } from "./audit";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
-import { copyQuoteSheetToOrder } from "./quote-sheet";
+import { copyQuoteSheetToOrder, getQuoteSheet } from "./quote-sheet";
+import { quotedQuantity } from "./purchase-sheet-calc";
 import { cancelFreightForRequest } from "./freight";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
@@ -561,6 +562,11 @@ export interface SelectQuoteInput {
   downPaymentAmount?: number | null;
   /** Memória do cálculo do valor ao cliente (fica na auditoria). */
   pricing?: unknown;
+  /**
+   * Quantidade que a conta da tela usou (a da programação da ficha). Se a
+   * ficha mudou depois, a seleção é recusada (sheet_changed) para refazer.
+   */
+  pricedQuantity?: number | null;
 }
 
 /** Completa a ficha da cotação com o que a conta usou, sem sobrescrever o que já foi digitado. */
@@ -599,6 +605,14 @@ export async function selectQuote(
     throw new RequestError("invalid_quote");
   const request = await store.get("requests", quote.requestId);
   if (!request) throw new RequestError("not_found");
+  // Antes de qualquer gravação: a ficha não pode ter mudado depois da conta.
+  const current = quotedQuantity(request, await getQuoteSheet(quote.id));
+  if (
+    input.pricedQuantity !== undefined &&
+    input.pricedQuantity !== null &&
+    input.pricedQuantity !== current
+  )
+    throw new RequestError("sheet_changed");
   const settings = await getSettings();
   const downPayment =
     input.downPaymentAmount ??
@@ -619,13 +633,28 @@ export async function selectQuote(
   await markSupplierSelected(user, quote.id);
   // NCM, II e IPI usados na proposta vão para a ficha escolhida (e dela para o pedido).
   await stampTaxesOnSheet(quote.id, input.pricing ?? null);
+  // A proposta vale para a quantidade da programação da cotação escolhida
+  // (caixas × peças por caixa, a que fecha o container); sem programação,
+  // continua a pedida. O pedido nasce com ela.
+  const quantity = current !== request.quantity ? current : null;
   await store.update("requests", request.id, {
     status: "WAITING_DOWN_PAYMENT",
     selectedQuoteId: quote.id,
     sellPrice: input.sellPrice,
     sellCurrency: input.sellCurrency,
     downPaymentAmount: downPayment,
+    ...(quantity !== null ? { quantity } : {}),
   });
+  if (quantity !== null)
+    await audit(
+      user,
+      "request.quantity_from_sheet",
+      "request",
+      request.id,
+      `Quantidade ajustada à programação da cotação: ${request.quantity} → ${quantity} ${request.unit}`,
+      { quantity: request.quantity },
+      { quantity },
+    );
   await store.create("payments", {
     ...PAYMENT_EXTRA_DEFAULTS,
     orderId: null,
@@ -658,7 +687,7 @@ export async function selectQuote(
   );
   await notify(requesterTarget(request.requestedForUserId), {
     subject: `Proposta disponível: ${request.productName}`,
-    body: `Valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
+    body: `${quantity ?? request.quantity} ${request.unit}: valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
     link: `/app/requests/${request.id}`,
   });
   await notify(
@@ -762,6 +791,25 @@ async function createOrderFromRequest(
   await createPurchaseSnapshot(user, order, item, quote, product);
   // A ficha preenchida na cotação vira a ficha do pedido (Preparação já preenchida).
   await copyQuoteSheetToOrder(quote.id, order.id);
+  // Pedido fechado: a ficha da compra atualiza o cadastro do produto (a próxima
+  // venda já vem preenchida). Produto fora do catálogo: a ficha do pedido
+  // oferece cadastrar.
+  if (request.productId) {
+    const [orderSheet] = await store.list("purchase_sheets", {
+      filter: { orderId: order.id },
+      limit: 1,
+    });
+    if (orderSheet) {
+      const { completeMasterFromSheet } = await import("./product-sheet");
+      await completeMasterFromSheet(
+        user,
+        request.productId,
+        orderSheet,
+        quote.supplierId,
+        "adopt",
+      );
+    }
+  }
   // Gate de conformidade: linha com certificação obrigatória sem certificação válida.
   await runComplianceGate(user, order, product);
   // Modalidade da operação (RADAR): copia do cliente e revisa importação própria sem RADAR.

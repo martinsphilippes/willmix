@@ -151,6 +151,23 @@ export interface ContainerFill {
   /** Para fechar no inteiro de baixo: caixas e peças a tirar (null quando lower = 0). */
   removeCartons: number | null;
   removePieces: number | null;
+  /**
+   * Sempre que der, as duas direções (também quando já fecha exato):
+   * `up` = acrescentar caixas até o próximo container que ganha pelo menos uma
+   * caixa inteira; `down` = tirar caixas até o container inteiro de baixo
+   * (nunca zera a programação).
+   */
+  up: ContainerStep | null;
+  down: ContainerStep | null;
+}
+
+/** Um ajuste para fechar o container: alvo e quanto mexer. */
+export interface ContainerStep {
+  /** Containers depois do ajuste (inteiro de referência: 5, 4…). */
+  containers: number;
+  cartons: number;
+  pieces: number | null;
+  cbm: number;
 }
 
 export function suggestContainerFill(
@@ -181,6 +198,38 @@ export function suggestContainerFill(
     cartons !== null && positive(masterCartonQty)
       ? cartons * masterCartonQty
       : null;
+  // Para cima: o primeiro container acima do atual em que cabe ao menos uma
+  // caixa inteira (caixa maior que a sobra do último pula para o seguinte).
+  let up: ContainerStep | null = null;
+  for (let k = exact ? lower + 1 : target, i = 0; i < 50; k++, i++) {
+    const cartons = Math.floor((k * cap - plan.totalCbm) / cbmPerCarton + EPS);
+    if (cartons >= 1) {
+      up = {
+        containers: k,
+        cartons,
+        pieces: pieces(cartons),
+        cbm: round(cartons * cbmPerCarton, 4),
+      };
+      break;
+    }
+  }
+  // Para baixo: o container inteiro abaixo do atual (exato em 5 → 4), sem
+  // tirar todas as caixas.
+  const floorTarget = exact ? lower - 1 : lower;
+  const totalCartons = plan.totalCbm / cbmPerCarton;
+  let down: ContainerStep | null = null;
+  if (floorTarget >= 1) {
+    const cartons = Math.ceil(
+      (plan.totalCbm - floorTarget * cap) / cbmPerCarton - EPS,
+    );
+    if (cartons >= 1 && cartons < Math.round(totalCartons))
+      down = {
+        containers: floorTarget,
+        cartons,
+        pieces: pieces(cartons),
+        cbm: round(cartons * cbmPerCarton, 4),
+      };
+  }
   return {
     containers: round(containers, 4),
     capacityCbm: cap,
@@ -193,7 +242,95 @@ export function suggestContainerFill(
     addCbm: round(addCartons * cbmPerCarton, 4),
     removeCartons,
     removePieces: pieces(removeCartons),
+    up,
+    down,
   };
+}
+
+/**
+ * Quantidade de peças que a programação compra (caixas × peças por caixa
+ * master). Nulo sem caixas ou sem peças por caixa: aí vale a quantidade pedida.
+ */
+export function sheetTotalPieces(
+  sheet: Pick<PurchaseSheet, "lots" | "masterCartonQty"> | null | undefined,
+): number | null {
+  if (!sheet || !positive(sheet.masterCartonQty)) return null;
+  const cartons = normalizeLots(sheet.lots).reduce(
+    (sum, l) => sum + (positive(l.masterCartons) ? l.masterCartons : 0),
+    0,
+  );
+  return cartons > 0 ? cartons * sheet.masterCartonQty : null;
+}
+
+/**
+ * A unidade da solicitação conta peças? (un, unid., pç, pcs, peças, pieces,
+ * units, 个, 件…). Só então a quantidade acompanha as caixas da programação
+ * (caixas × peças por caixa): "100 cx" ou "50 kg" ficam como foram pedidos.
+ */
+export function isPiecesUnit(unit: string | null | undefined): boolean {
+  const u = (unit ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[.\s]/g, "");
+  return [
+    "",
+    "u",
+    "un",
+    "und",
+    "unid",
+    "unidade",
+    "unidades",
+    "pc",
+    "pcs",
+    "pca",
+    "pcas",
+    "peca",
+    "pecas",
+    "piece",
+    "pieces",
+    "unit",
+    "units",
+    "个",
+    "件",
+    "只",
+  ].includes(u);
+}
+
+/**
+ * Quantidade que a cotação/compra vale: as peças da programação quando a
+ * unidade é peça e há programação; senão, a pedida. A mesma regra no preço
+ * ao cliente, no frete pedido à companhia marítima e na escolha da cotação.
+ */
+export function quotedQuantity(
+  request: { quantity: number; unit: string },
+  sheet: Pick<PurchaseSheet, "lots" | "masterCartonQty"> | null | undefined,
+): number {
+  return isPiecesUnit(request.unit)
+    ? (sheetTotalPieces(sheet) ?? request.quantity)
+    : request.quantity;
+}
+
+/**
+ * Distribui um ajuste de caixas entre as programações: acrescentar vai para a
+ * última com caixas (ou a 1ª); tirar começa pela última e sobe, sem deixar
+ * nenhuma negativa. Devolve as novas caixas por programação.
+ */
+export function spreadCartons(cartons: number[], delta: number): number[] {
+  const out = cartons.map((c) => (Number.isFinite(c) && c > 0 ? c : 0));
+  if (!delta) return out;
+  const last = Math.max(0, out.map((c) => c > 0).lastIndexOf(true));
+  if (delta > 0) {
+    out[last] += delta;
+    return out;
+  }
+  let left = -delta;
+  for (let i = out.length - 1; i >= 0 && left > 0; i--) {
+    const take = Math.min(out[i], left);
+    out[i] -= take;
+    left -= take;
+  }
+  return out;
 }
 
 /** Campos que a ficha precisa ter para a Preparação considerar a ficha completa. */

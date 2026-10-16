@@ -134,6 +134,15 @@ export function SellPriceCalculator({
         >
           {labels.supplier}
         </label>
+        {/* Quantidade que esta conta usou: a seleção confere no servidor que a
+            ficha do fornecedor não mudou depois (senão pede para refazer). */}
+        {input ? (
+          <input
+            type="hidden"
+            name="pricedQuantity"
+            value={String(input.quantity)}
+          />
+        ) : null}
         <select
           id="sp-quote"
           name="quoteId"
