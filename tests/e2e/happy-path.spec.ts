@@ -89,6 +89,20 @@ async function fillQuoteSheet(page: Page, price: string) {
   ]) {
     // A foto sobe no lugar, sem navegar: a linha ganha a miniatura.
     const row = page.locator(`li:has(input[name=kind][value=${kind}])`);
+    if (kind === "weight_scale") {
+      // O toque no botão da foto cai no próprio campo de arquivo (iPad/iPhone).
+      const button = row.locator("[data-photo-button]").first();
+      await button.scrollIntoViewIfNeeded();
+      const box = await button.boundingBox();
+      const hit = await page.evaluate(
+        ({ x, y }) => {
+          const el = document.elementFromPoint(x, y);
+          return el instanceof HTMLInputElement ? el.type : el?.tagName;
+        },
+        { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 },
+      );
+      expect(hit).toBe("file");
+    }
     await row.locator("input[name=photos]").setInputFiles(png);
     await row.locator("img").first().waitFor();
   }
@@ -375,7 +389,33 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     page.getByRole("button", { name: /批准|Approve|Aprovar/ }),
   ).toHaveCount(0);
   await login(page, "agencia@design.com");
-  await fillMyRequirements(page, orderUrl);
+  await page.goto(orderUrl);
+  // Toque de verdade no botão "Escolher arquivo": o ponto tocado é o próprio
+  // campo de arquivo (no iPad/iPhone, o rótulo com o campo escondido dentro
+  // não abria o seletor).
+  const fileButton = page.locator("[data-file-button]").first();
+  await fileButton.scrollIntoViewIfNeeded();
+  const box = await fileButton.boundingBox();
+  const hit = await page.evaluate(
+    ({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      return el instanceof HTMLInputElement ? el.type : el?.tagName;
+    },
+    { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 },
+  );
+  expect(hit).toBe("file");
+  const [chooser] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    fileButton.click(),
+  ]);
+  await Promise.all([
+    page.waitForResponse((r) => r.request().method() === "POST"),
+    chooser.setFiles(pdf),
+  ]);
+  await page.waitForLoadState("networkidle");
+  await expect(
+    page.locator("li", { hasText: /Arte da embalagem/ }).first(),
+  ).toContainText(/doc\.pdf/);
   await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
   await page.getByRole("button", { name: /批准|Approve|Aprovar/ }).click();
