@@ -15,7 +15,7 @@ export const pt = {
   "carton.inner.bigger":
     "A caixa inner ({inner}) tem mais peças que a master ({master}). Confira.",
   "carton.inner.rest":
-    "{master} peças não dividem em caixas inner de {inner} (sobram {rest}). Confira.",
+    "{master} peças não dividem em caixas inner de {inner} (resto {rest}). Confira.",
   "carton.size.size":
     "Confira as medidas: {size} cm dá {cbm} m³ por caixa. Uma caixa master costuma ter até ~60 cm por lado e até 0,3 m³.",
   "carton.size.side":
@@ -23,6 +23,8 @@ export const pt = {
   "carton.size.cbm":
     "Confira o CBM: {cbm} m³ por caixa é muito para uma caixa master (costuma ter até 0,3 m³).",
   "carton.size.fit": "Num {type} ({capacity} m³) cabem só ~{n} caixas.",
+  "carton.size.fitOne": "Num {type} ({capacity} m³) cabe só 1 caixa.",
+  "carton.size.noFit": "Não cabe nem uma caixa num {type} ({capacity} m³).",
   "carton.package.options": "Tipos comuns de embalagem",
   "carton.package.colorLike":
     "“{value}” parece uma cor. Aqui vai o tipo de embalagem (ex.: COLOR BOX); a cor vai em “Cor / sortimento”.",
@@ -56,6 +58,8 @@ export const en: Record<keyof typeof pt, string> = {
   "carton.size.cbm":
     "Check the CBM: {cbm} m³ per carton is a lot for a master carton (usually up to 0.3 m³).",
   "carton.size.fit": "A {type} ({capacity} m³) holds only ~{n} cartons.",
+  "carton.size.fitOne": "A {type} ({capacity} m³) holds only 1 carton.",
+  "carton.size.noFit": "Not even one carton fits in a {type} ({capacity} m³).",
   "carton.package.options": "Common package types",
   "carton.package.colorLike":
     "“{value}” looks like a color. This field is the package type (e.g. COLOR BOX); the color goes in “Color / assortment”.",
@@ -88,6 +92,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "carton.size.cbm":
     "请核对体积：每箱 {cbm} 立方米对外箱来说过大（通常不超过 0.3 立方米）。",
   "carton.size.fit": "一个 {type}（{capacity} 立方米）只能装约 {n} 箱。",
+  "carton.size.fitOne": "一个 {type}（{capacity} 立方米）只能装 1 箱。",
+  "carton.size.noFit": "一个 {type}（{capacity} 立方米）连一箱都装不下。",
   "carton.package.options": "常用包装类型",
   "carton.package.colorLike":
     "“{value}”看起来是颜色。此处填写包装类型（例如 COLOR BOX）；颜色请填在“颜色 / 搭配”。",

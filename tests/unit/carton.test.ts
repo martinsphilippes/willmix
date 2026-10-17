@@ -9,8 +9,13 @@ import { withTempStore } from "./setup";
 withTempStore();
 
 const carton = await import("@/lib/carton");
-const { compareWithSnapshot, summarizeResult, expectedText } =
-  await import("@/lib/services/inspection");
+const {
+  compareWithSnapshot,
+  compareReferenceMeasure,
+  summarizeResult,
+  expectedText,
+  INSPECTION_MEASURES,
+} = await import("@/lib/services/inspection");
 const { translator } = await import("@/i18n");
 const { innerQtyTexts, cartonSizeTexts, packageTypeTexts } =
   await import("@/components/carton-texts");
@@ -176,6 +181,48 @@ describe("inspeção com referência 0 (sem caixa inner)", () => {
     expect(real[0].ok).toBe(false);
     expect(expectedText(real[0])).toBe("24");
   });
+
+  it("do lado encontrado vale a master encontrada", () => {
+    // Comprado sem inner (24 na master); achou master de 48 com inners de 24.
+    const twoInners = compareWithSnapshot(
+      { innerBoxQty: 0, masterBoxQty: 24 } as never,
+      [
+        { key: "master_box_measured", status: "done", value: "48" },
+        { key: "inner_box_measured", status: "done", value: "24" },
+      ],
+      tol,
+    );
+    expect(twoInners.find((c) => c.attribute === "innerBoxQty")?.ok).toBe(
+      false,
+    );
+    // Comprado 24/24; achou master de 48 com uma inner só (48): sem inner.
+    const oneInner = compareWithSnapshot(
+      { innerBoxQty: 24, masterBoxQty: 24 } as never,
+      [
+        { key: "master_box_measured", status: "done", value: "48" },
+        { key: "inner_box_measured", status: "done", value: "48" },
+      ],
+      tol,
+    );
+    expect(oneInner.find((c) => c.attribute === "innerBoxQty")?.ok).toBe(true);
+  });
+
+  it("o relatório da inspeção usa a mesma conta do portão", () => {
+    const inner = INSPECTION_MEASURES.find(
+      (m) => m.key === "inner_box_measured",
+    )!;
+    const ref = { innerBoxQty: 24, masterBoxQty: 24 } as never;
+    expect(compareReferenceMeasure(inner, ref, "0", tol)?.ok).toBe(true);
+    expect(
+      compareReferenceMeasure(
+        inner,
+        { innerBoxQty: 0, masterBoxQty: 24 } as never,
+        "24",
+        tol,
+      )?.ok,
+    ).toBe(true);
+    expect(compareReferenceMeasure(inner, ref, "6", tol)?.ok).toBe(false);
+  });
 });
 
 describe("textos", () => {
@@ -195,6 +242,8 @@ describe("textos", () => {
       }
       expect(innerQtyTexts(t).rest).toContain("{rest}");
       expect(cartonSizeTexts(t).fit).toContain("{n}");
+      expect(cartonSizeTexts(t).fitOne).toContain("{type}");
+      expect(cartonSizeTexts(t).noFit).toContain("{capacity}");
     }
   });
 });

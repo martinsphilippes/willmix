@@ -10,7 +10,7 @@ import {
 } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import {
-  compareMeasure,
+  compareReferenceMeasure,
   INSPECTION_MEASURES,
   inspectionReference,
 } from "./inspection";
@@ -85,18 +85,24 @@ export async function inspectionReport(
   };
 
   const rows: InspectionReportRow[] = [];
+  const measured = (key: string) => {
+    const r = requirements.find((x) => x.key === key);
+    return r?.value && r.status !== "pending" ? r.value : null;
+  };
   for (const m of INSPECTION_MEASURES) {
     const requirement = requirements.find((r) => r.key === m.key);
     if (!requirement?.value || requirement.status === "pending") continue;
     rows.push({
       requirement,
       attribute: String(m.attribute),
+      // Mesma conta do portão da inspeção (inner igual à master = sem inner).
       comparison: reference
-        ? compareMeasure(
+        ? compareReferenceMeasure(
             m,
-            reference[m.attribute],
+            reference,
             requirement.value,
             tolerances,
+            measured("master_box_measured"),
           )
         : null,
       awaitingRemeasure: requirement.status === "rejected",

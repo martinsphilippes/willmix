@@ -267,6 +267,10 @@ export interface CartonSizeTexts {
   cbm: string;
   /** "{type}", "{capacity}", "{n}" */
   fit: string;
+  /** Cabe só uma caixa: "{type}", "{capacity}" */
+  fitOne: string;
+  /** Não cabe nenhuma (medida em mm): "{type}", "{capacity}" */
+  noFit: string;
 }
 
 /**
@@ -278,6 +282,7 @@ export function CartonSizeWarning({
   cbmName,
   initialSides,
   initialCbm,
+  cbmIgnoreDisabled = false,
   containerName,
   initialContainer = null,
   containers = [],
@@ -290,6 +295,8 @@ export function CartonSizeWarning({
   cbmName?: string;
   initialSides: ReadonlyArray<number | null | undefined>;
   initialCbm: number | null;
+  /** CBM desabilitado = calculado e não enviado: não conta no aviso. */
+  cbmIgnoreDisabled?: boolean;
   /** Tipo de container escolhido no formulário (para "cabem só ~N caixas"). */
   containerName?: string;
   initialContainer?: string | null;
@@ -313,8 +320,9 @@ export function CartonSizeWarning({
       ...(cbmName ? { [cbmName]: text(initialCbm) } : {}),
       ...(containerName ? { [containerName]: initialContainer ?? "" } : {}),
     },
-    // CBM desabilitado (calculado pelas medidas salvas) não vai no envio.
-    cbmName ? [cbmName] : [],
+    // CBM desabilitado só porque é calculado (cadastro do produto) não vai no
+    // envio; na ficha, desabilitado é só leitura e vale o salvo.
+    cbmName && cbmIgnoreDisabled ? [cbmName] : [],
   );
   const check = oversizedCarton(
     sideNames.map((n) => numberOf(values[n])),
@@ -336,14 +344,20 @@ export function CartonSizeWarning({
     const cbm =
       check.kind !== "side" && check.cbm >= CARTON_CBM_WARN ? check.cbm : null;
     const n = cartonsPerContainer(container?.capacityCbm, cbm);
+    const fitVars = container
+      ? {
+          type: container.code,
+          capacity: fmt(container.capacityCbm, 0),
+          n: n !== null ? fmt(n, 0) : "",
+        }
+      : null;
     const fit =
-      container && n !== null
+      fitVars && n !== null
         ? " " +
-          fill(texts.fit, {
-            type: container.code,
-            capacity: fmt(container.capacityCbm, 0),
-            n: fmt(n, 0),
-          })
+          fill(
+            n < 1 ? texts.noFit : n === 1 ? texts.fitOne : texts.fit,
+            fitVars,
+          )
         : "";
     message =
       check.kind === "size"

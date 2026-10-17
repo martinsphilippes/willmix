@@ -171,6 +171,36 @@ export function compareMeasure(
   };
 }
 
+/**
+ * Compara uma medida com a referência do pedido. Inner igual à master é o
+ * mesmo que "Sem caixa inner" (0): comprado 24/24 e nenhuma inner encontrada
+ * (0) bate, e o inverso. Do lado encontrado, a master é a encontrada (se o
+ * inspetor mediu); senão, a comprada.
+ */
+export function compareReferenceMeasure(
+  m: (typeof INSPECTION_MEASURES)[number],
+  reference: InspectionReference,
+  raw: string | null | undefined,
+  tolerances: InspectionTolerances,
+  foundMasterRaw?: string | null,
+): InspectionComparison | null {
+  const c = compareMeasure(m, reference[m.attribute], raw, tolerances);
+  if (!c || c.ok || m.attribute !== "innerBoxQty") return c;
+  const bought = Number(reference.masterBoxQty);
+  const measured =
+    foundMasterRaw !== null &&
+    foundMasterRaw !== undefined &&
+    foundMasterRaw !== "" &&
+    Number.isFinite(Number(foundMasterRaw))
+      ? Number(foundMasterRaw)
+      : bought;
+  const none = (v: unknown, master: number) =>
+    Number(v) === 0 || (master > 0 && Number(v) === master);
+  return none(c.expected, bought) && none(c.found, measured)
+    ? { ...c, ok: true }
+    : c;
+}
+
 export function compareWithSnapshot(
   snapshot: InspectionReference,
   requirements: Pick<Requirement, "key" | "status" | "value">[],
@@ -181,20 +211,13 @@ export function compareWithSnapshot(
     requirements.find((r) => r.key === key && r.status === "done")?.value ??
     null;
   for (const m of INSPECTION_MEASURES) {
-    const c = compareMeasure(
+    const c = compareReferenceMeasure(
       m,
-      snapshot[m.attribute],
+      snapshot,
       valueOf(m.key),
       tolerances,
+      valueOf("master_box_measured"),
     );
-    if (c && m.attribute === "innerBoxQty" && !c.ok) {
-      // Inner igual à master é o mesmo que "Sem caixa inner" (0), dos dois
-      // lados: comprado 24/24 e nenhuma inner encontrada (0) bate, e o inverso.
-      const master = Number(snapshot.masterBoxQty);
-      const none = (v: unknown) =>
-        Number(v) === 0 || (master > 0 && Number(v) === master);
-      if (none(c.expected) && none(c.found)) c.ok = true;
-    }
     if (c) out.push(c);
   }
   return out;

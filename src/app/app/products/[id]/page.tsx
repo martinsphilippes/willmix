@@ -713,6 +713,7 @@ export default async function ProductSheetPage({
                       initialCbm={
                         cbmComputed !== null ? null : (product.cbm ?? null)
                       }
+                      cbmIgnoreDisabled
                       intl={t.intl}
                       texts={cartonSizeTexts(t)}
                     />
