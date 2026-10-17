@@ -106,13 +106,17 @@ export function FileAutoInput({
 
   return (
     <span className="inline-flex flex-col gap-1">
-      <label
+      {/* O campo de arquivo (invisível) cobre o botão inteiro: o toque cai
+          direto nele. No iPad/iPhone, tocar num rótulo com o campo escondido
+          dentro não abria o seletor. */}
+      <span
         aria-busy={busy || undefined}
-        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition ${
+        className={`relative inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition focus-within:ring-2 focus-within:ring-brand-200 ${
           busy
-            ? "pointer-events-none cursor-wait border-zinc-200 bg-zinc-50 text-zinc-500"
+            ? "cursor-wait border-zinc-200 bg-zinc-50 text-zinc-500"
             : "cursor-pointer border-brand-300 bg-white text-brand-700 hover:bg-brand-50 active:bg-brand-100"
         }`}
+        data-file-button=""
       >
         {busy ? (
           <span
@@ -122,16 +126,18 @@ export function FileAutoInput({
         ) : (
           <span aria-hidden>📎</span>
         )}
-        <span>{text}</span>
+        <span aria-hidden>{text}</span>
         <input
           name={name}
           type="file"
           accept={accept}
           disabled={busy}
           onChange={onChange}
-          className="sr-only"
+          aria-label={text}
+          title={text}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-wait"
         />
-      </label>
+      </span>
       {error ? (
         <span role="alert" className="text-xs font-medium text-red-700">
           {error}

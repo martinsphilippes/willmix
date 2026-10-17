@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createUploadTokenAction } from "@/app/app/actions/uploads";
 import { useFormDoneSignal } from "./submit-button";
@@ -67,6 +67,8 @@ export function PhotoInput({
   pendingLabel?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  // A dica do botão grande (ex.: "a busca começa ao escolher") também é lida.
+  const hintId = useId();
   const [previews, setPreviews] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
@@ -173,6 +175,9 @@ export function PhotoInput({
       {error}
     </span>
   ) : null;
+  /* O campo de arquivo (invisível) cobre o botão inteiro: o toque cai direto
+     nele. No iPad/iPhone, tocar num rótulo com o campo escondido dentro não
+     abria o seletor. */
   const input = (
     <input
       ref={inputRef}
@@ -184,16 +189,20 @@ export function PhotoInput({
       required={required}
       disabled={disabled}
       onChange={onChange}
-      className="sr-only"
+      aria-label={working && workingText ? workingText : label}
+      aria-describedby={hint && !compact ? hintId : undefined}
+      title={label}
+      className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
     />
   );
 
   if (compact) {
     const button = (
-      <label
+      <span
         aria-disabled={disabled || working || undefined}
         aria-busy={working || undefined}
-        className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-semibold shadow-sm transition ${
+        data-photo-button=""
+        className={`relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-semibold shadow-sm transition focus-within:ring-2 focus-within:ring-brand-200 ${
           dense
             ? "min-h-7 px-2.5 py-0.5 text-xs"
             : "min-h-11 gap-2 rounded-lg px-4 py-2 text-sm"
@@ -211,9 +220,9 @@ export function PhotoInput({
         ) : (
           <span aria-hidden>📷</span>
         )}
-        <span>{working && workingText ? workingText : label}</span>
+        <span aria-hidden>{working && workingText ? workingText : label}</span>
         {input}
-      </label>
+      </span>
     );
     return errorLine ? (
       <span className="inline-flex max-w-full flex-col items-end gap-1">
@@ -227,25 +236,28 @@ export function PhotoInput({
 
   return (
     <div className={className}>
-      <label
+      <div
         aria-disabled={disabled || undefined}
+        data-photo-button=""
         className={
           disabled
-            ? "flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 px-3 py-2.5 text-center text-[13px] text-zinc-400 opacity-70"
-            : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-brand-300 bg-brand-50/60 px-3 py-2.5 text-center text-[13px] text-brand-800 transition hover:bg-brand-50 active:bg-brand-100"
+            ? "relative flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 px-3 py-2.5 text-center text-[13px] text-zinc-400 opacity-70"
+            : "relative flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-brand-300 bg-brand-50/60 px-3 py-2.5 text-center text-[13px] text-brand-800 transition focus-within:ring-2 focus-within:ring-brand-200 hover:bg-brand-50 active:bg-brand-100"
         }
       >
         <span aria-hidden className="text-lg leading-none">
           📷
         </span>
-        <span className="font-semibold">
+        <span aria-hidden className="font-semibold">
           {working ? (workingText ?? "…") : label}
         </span>
         {hint ? (
-          <span className="text-xs text-brand-700/80">{hint}</span>
+          <span id={hintId} className="text-xs text-brand-700/80">
+            {hint}
+          </span>
         ) : null}
         {input}
-      </label>
+      </div>
       {errorLine ? <div className="mt-1.5">{errorLine}</div> : null}
       {previews.length > 0 ? (
         <ul className="mt-2 flex flex-wrap gap-2">
