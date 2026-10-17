@@ -357,7 +357,8 @@ export async function loadTowerTotals(): Promise<TowerTotals> {
   const { listContainers } = await import("./containers");
   const store = getStore();
   const [{ rows, summary }, containers, reviews] = await Promise.all([
-    loadFinance(),
+    // Só o que foi lançado (sem estimar pelo câmbio do dia).
+    loadFinance({ estimate: false }),
     listContainers(),
     store.list("review_items", { filter: { status: "open" } }),
   ]);

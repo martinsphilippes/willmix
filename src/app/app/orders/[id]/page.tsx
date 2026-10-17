@@ -41,6 +41,11 @@ import { normalizePackaging } from "@/lib/services/packaging";
 import { SupplierPaymentCard } from "@/components/supplier-payment-card";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
+  costEstimateNote,
+  fxEffectText,
+  fxRateLines,
+} from "@/components/finance-fx-text";
+import {
   ackedByUser,
   ackTrails,
   recordAck,
@@ -926,10 +931,43 @@ export default async function OrderPage({
                         ],
                         [
                           t("finance.cost"),
-                          finance.cost !== null
-                            ? `${formatMoney(finance.cost, finance.sellCurrency, t)}${finance.estimated ? " ~" : ""}`
-                            : t("finance.fxMissing"),
+                          finance.cost !== null ? (
+                            <span key="c" data-finance-cost="">
+                              {finance.estimated ? "~" : ""}
+                              {formatMoney(
+                                finance.cost,
+                                finance.sellCurrency,
+                                t,
+                              )}
+                              {costEstimateNote(t, finance) ? (
+                                <span className="block text-xs text-zinc-500">
+                                  {costEstimateNote(t, finance)}
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            t("finance.fxMissing")
+                          ),
                         ],
+                        ...(fxRateLines(t, finance) &&
+                        finance.fxBasis !== "same"
+                          ? ([
+                              [
+                                t("finance.fx"),
+                                <span key="fx" data-finance-fx="">
+                                  {fxRateLines(t, finance)!.main}
+                                  {fxRateLines(t, finance)!.notes.map((n) => (
+                                    <span
+                                      key={n}
+                                      className="block text-xs text-zinc-500"
+                                    >
+                                      {n}
+                                    </span>
+                                  ))}
+                                </span>,
+                              ],
+                            ] as [string, ReactNode][])
+                          : []),
                         [
                           t("finance.margin"),
                           finance.margin !== null ? (
@@ -941,6 +979,7 @@ export default async function OrderPage({
                                   : "font-medium text-emerald-700"
                               }
                             >
+                              {finance.estimated ? "~" : ""}
                               {formatMoney(
                                 finance.margin,
                                 finance.sellCurrency,
@@ -949,6 +988,20 @@ export default async function OrderPage({
                               {finance.marginPct !== null
                                 ? ` (${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
                                 : ""}
+                              {fxEffectText(t, finance) ? (
+                                <span
+                                  title={fxEffectText(t, finance)!.title}
+                                  className={cx(
+                                    "block text-xs",
+                                    fxEffectText(t, finance)!.negative
+                                      ? "text-red-700"
+                                      : "text-emerald-700",
+                                  )}
+                                  data-fx-effect=""
+                                >
+                                  {fxEffectText(t, finance)!.text}
+                                </span>
+                              ) : null}
                             </span>
                           ) : (
                             "—"
