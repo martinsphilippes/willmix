@@ -28,6 +28,12 @@ import { openReview, resolveReviews } from "./reviews";
  */
 export class ContainerError extends Error {}
 
+/** Chegada prevista (ETA) nunca antes da saída prevista (ETD). */
+function assertContainerDates(etd: string | null, eta: string | null) {
+  if (etd && eta && eta.slice(0, 10) < etd.slice(0, 10))
+    throw new ContainerError("eta_before_etd");
+}
+
 export async function createContainer(
   user: User,
   input: {
@@ -42,6 +48,7 @@ export async function createContainer(
   },
 ): Promise<Container> {
   assertWellmix(user);
+  assertContainerDates(input.etd ?? null, input.eta ?? null);
   const settings = await getSettings();
   const type = settings.containerTypes.find((t) => t.code === input.type);
   if (!type && !input.capacityCbm) throw new ContainerError("container_type");
@@ -86,6 +93,13 @@ export async function updateContainer(
   >,
 ) {
   assertWellmix(user);
+  if ("etd" in patch || "eta" in patch) {
+    const current = await getStore().get("containers", id);
+    assertContainerDates(
+      "etd" in patch ? (patch.etd ?? null) : (current?.etd ?? null),
+      "eta" in patch ? (patch.eta ?? null) : (current?.eta ?? null),
+    );
+  }
   const container = await getStore().update("containers", id, patch);
   await audit(user, "container.update", "container", id, container.code);
   await checkContainerGates(user, id);

@@ -263,7 +263,17 @@ describe("fluxo completo: solicitação → entrega", () => {
       await expect(
         submitRequirement(armador, eta.id, { value: "2026-10-20" }),
       ).rejects.toThrow("ship_date_first");
+      // Pedido de antes da regra: chegada (10/10) já enviada sem o embarque.
+      // O embarque real (13/10) vale e a chegada volta a ser pedida.
+      await store.update("requirements", eta.id, {
+        status: "done",
+        value: "2026-10-10",
+      });
       await submitRequirement(armador, shipDate.id, { value: "2026-10-13" });
+      const reopened = (await store.get("requirements", eta.id))!;
+      expect(reopened.status).toBe("pending");
+      expect(reopened.value).toBeNull();
+      expect(reopened.note).toMatch(/Refazer/);
       await expect(
         submitRequirement(armador, eta.id, { value: "2026-10-05" }),
       ).rejects.toThrow("eta_before_ship_date");
