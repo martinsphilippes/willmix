@@ -40,8 +40,16 @@ export function translator(locale: Locale): Translate {
 /** Rótulo de requisito traduzido quando a chave é conhecida; senão o rótulo salvo. */
 export function requirementLabel(
   t: Translate,
-  requirement: { key: string; label: string },
+  requirement: { key: string; label: string; role?: string },
 ) {
+  // Rótulo por papel quando o mesmo item mudou de dono (ex.: aprovação da
+  // arte, que era da agência nos pedidos antigos e hoje é do fornecedor).
+  if (requirement.role) {
+    const byRole =
+      `req.${requirement.key}.${requirement.role}` as DictionaryKey;
+    const text = t(byRole);
+    if (text !== byRole) return text;
+  }
   const key = `req.${requirement.key}` as DictionaryKey;
   const translated = t(key);
   return translated === key ? requirement.label : translated;

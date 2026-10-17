@@ -412,6 +412,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - O fornecedor é avisado quando a arte chega; a pendência dele só aparece então.
 - Designar a agência no pedido passa a arte pendente para ela; pedidos em andamento passam para o fluxo novo sozinhos (`services/packaging.ts`), sem mexer no que já foi enviado.
 - Configuração `agencyValidationEnabled` agora quer dizer "Arte da embalagem feita pela agência" (desligada: a Wellmix envia a arte); a aprovação pelo fornecedor vale sempre.
+- Revisão adversarial (corrigido antes do PR): aviso a parceiro sem empresa no pedido (ex.: agência retirada) não vai mais para todas as empresas daquele papel, vai para a Wellmix (e `notify` deixa de fora parceiros com empresa nula); reprovada, a arte vai para quem a faz hoje; decisão só com a etapa aberta e uma vez só (o fornecedor não desfaz a aprovação depois); aprovação duplicada por passadas simultâneas vira uma; histórico dos pedidos antigos continua "Aprovação da arte pela agência"; mudar a configuração não tira a arte de quem já a tem (só designar a agência no pedido move, com aviso); textos do login e das configurações atualizados.
 
 ## Condição de pagamento ao fornecedor; pagamento fora do fluxo do pedido
 

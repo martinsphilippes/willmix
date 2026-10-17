@@ -13,7 +13,7 @@ export const helpPt = {
   "help.login.body":
     "O Portal Wellmix organiza a importação do pedido do cliente até a entrega. Cada participante (cliente, Wellmix, fornecedor, agência, despachante, companhia marítima, transportador, jurídico) entra com a própria conta e vê apenas o que lhe cabe.",
   "help.login.roles":
-    "Cliente: cria solicitações, vê a proposta, paga o sinal, acompanha a timeline e confirma o recebimento.\nWellmix (admin e operador): abre RFQs, compara cotações, escolhe fornecedor, confirma pagamentos, designa parceiros e acompanha tudo na Control Tower.\nFornecedor: responde cotações, cumpre checklists, envia fotos e peso, confirma pagamentos e vê a conta corrente.\nAgência: aprova a arte da embalagem.\nDespachante, companhia marítima e transportador: registram cada um a sua etapa.\nJurídico: acompanha multas.",
+    "Cliente: cria solicitações, vê a proposta, paga o sinal, acompanha a timeline e confirma o recebimento.\nWellmix (admin e operador): abre RFQs, compara cotações, escolhe fornecedor, confirma pagamentos, designa parceiros e acompanha tudo na Control Tower.\nFornecedor: responde cotações, cumpre checklists, aprova a arte da embalagem, envia fotos e peso, confirma pagamentos e vê a conta corrente.\nAgência: faz e envia a arte da embalagem (refaz quando o fornecedor reprova).\nDespachante, companhia marítima e transportador: registram cada um a sua etapa.\nJurídico: acompanha multas.",
   "help.login.demo": "Contas de demonstração",
   "help.login.demoHint":
     "Toque em uma conta para preencher o formulário. Senha de todas: {password}.",
@@ -85,7 +85,7 @@ export const helpPt = {
   "help.import.body":
     "Importe cadastros em lote por CSV com cabeçalho. Separador vírgula ou ponto e vírgula. Linhas inválidas são ignoradas e contadas.",
   "help.settings.body":
-    'Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, validação da agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos. Seção "IA, marketing e operação": modo da IA (AUTO/MOCK/MANUAL) e modelo, kit de marketing (preço padrão e moeda), gate de RADAR e nome da importadora.',
+    'Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, arte da embalagem feita pela agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos. Seção "IA, marketing e operação": modo da IA (AUTO/MOCK/MANUAL) e modelo, kit de marketing (preço padrão e moeda), gate de RADAR e nome da importadora.',
   "help.finance.body":
     "Consolida o que já foi lançado: valor vendido ao cliente e recebimentos; custo FOB e pagamentos ao fornecedor. O custo em reais usa o câmbio informado em cada pagamento; quando falta câmbio ou há saldo a pagar, a margem aparece como estimativa (~).",
   "help.finance.steps":
@@ -107,7 +107,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.login.body":
     "The Wellmix Portal organizes the import from the customer's request to delivery. Each participant (customer, Wellmix, supplier, agency, customs broker, shipping line, carrier, legal) signs in with their own account and sees only what concerns them.",
   "help.login.roles":
-    "Customer: creates requests, sees the proposal, pays the down payment, follows the timeline and confirms receipt.\nWellmix (admin and operator): opens RFQs, compares quotations, picks suppliers, confirms payments, assigns partners and follows everything on the Control Tower.\nSupplier: answers quotations, completes checklists, sends photos and weight, confirms payments and sees the account statement.\nAgency: approves the packaging artwork.\nCustoms broker, shipping line and carrier: each registers their own stage.\nLegal: follows penalties.",
+    "Customer: creates requests, sees the proposal, pays the down payment, follows the timeline and confirms receipt.\nWellmix (admin and operator): opens RFQs, compares quotations, picks suppliers, confirms payments, assigns partners and follows everything on the Control Tower.\nSupplier: answers quotations, completes checklists, approves the packaging artwork, sends photos and weight, confirms payments and sees the account statement.\nAgency: makes and uploads the packaging artwork (redoes it when the supplier rejects it).\nCustoms broker, shipping line and carrier: each registers their own stage.\nLegal: follows penalties.",
   "help.login.demo": "Demo accounts",
   "help.login.demoHint":
     "Tap an account to fill the form. Password for all: {password}.",
@@ -179,7 +179,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.import.body":
     "Bulk import from CSV with header. Comma or semicolon separator. Invalid rows are skipped and counted.",
   "help.settings.body":
-    'Parameterized business decisions: who creates requests, who confirms delivery, agency validation, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders. Section "AI, marketing and operation": AI mode (AUTO/MOCK/MANUAL) and model, marketing kit (default price and currency), RADAR gate and importer name.',
+    'Parameterized business decisions: who creates requests, who confirms delivery, packaging artwork made by the agency, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders. Section "AI, marketing and operation": AI mode (AUTO/MOCK/MANUAL) and model, marketing kit (default price and currency), RADAR gate and importer name.',
   "help.finance.body":
     "Consolidates what is already recorded: customer sale and receipts; FOB cost and supplier payments. Cost in the sale currency uses the FX rate entered on each payment; when a rate is missing or a balance is still payable, the margin is shown as an estimate (~).",
   "help.finance.steps":
@@ -199,7 +199,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.login.body":
     "Wellmix 门户负责从客户需求到交付的整个进口流程。每位参与方（客户、Wellmix、供应商、设计公司、报关行、船公司、承运商、法务）使用各自账号登录，只看到与自己相关的内容。",
   "help.login.roles":
-    "客户：创建需求、查看方案、支付定金、跟踪时间线并确认收货。\nWellmix（管理员和操作员）：发起询价、对比报价、选定供应商、确认付款、指定合作方，并在控制塔跟踪一切。\n供应商：回复报价、完成清单、上传照片和重量、确认收款、查看往来账。\n设计公司：审核包装设计稿。\n报关行、船公司和承运商：各自登记自己的阶段。\n法务：跟进罚款。",
+    "客户：创建需求、查看方案、支付定金、跟踪时间线并确认收货。\nWellmix（管理员和操作员）：发起询价、对比报价、选定供应商、确认付款、指定合作方，并在控制塔跟踪一切。\n供应商：回复报价、完成清单、审核批准包装设计稿、上传照片和重量、确认收款、查看往来账。\n设计公司：制作并上传包装设计稿（供应商驳回时修改后重新提交）。\n报关行、船公司和承运商：各自登记自己的阶段。\n法务：跟进罚款。",
   "help.login.demo": "演示账号",
   "help.login.demoHint": "点击账号自动填写表单。所有账号密码：{password}。",
   "help.tasks.body":
@@ -269,7 +269,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.import.body":
     "通过带表头的 CSV 批量导入。分隔符为逗号或分号。无效行会被跳过并计数。",
   "help.settings.body":
-    "参数化的业务决策：谁可创建需求、谁确认交付、设计公司审核、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。 “AI、营销与运营”部分：AI 模式（AUTO/MOCK/MANUAL）与模型、营销套件（默认价格与币种）、RADAR 门槛和进口商名称。",
+    "参数化的业务决策：谁可创建需求、谁确认交付、包装设计稿由设计公司制作、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。 “AI、营销与运营”部分：AI 模式（AUTO/MOCK/MANUAL）与模型、营销套件（默认价格与币种）、RADAR 门槛和进口商名称。",
   "help.finance.body":
     "汇总已登记的数据：客户销售额与收款；FOB 成本与供应商付款。销售币种成本按每笔付款填写的汇率折算；缺少汇率或仍有应付余额时，毛利显示为估算值（~）。",
   "help.finance.steps":

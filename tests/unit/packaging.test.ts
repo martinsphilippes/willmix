@@ -182,8 +182,13 @@ describe("arte e embalagem", () => {
     // Idempotente.
     expect(await normalizePackagingStage(pack.id)).toBe(false);
 
+    // Mudar a configuração ou passar a passada automática não tira a arte de
+    // quem a tem; designar a agência no pedido (reassign) passa para ela.
     await store.update("orders", order.id, { agencyId: "agencia" });
-    expect(await normalizePackagingStage(pack.id)).toBe(true);
+    expect(await normalizePackagingStage(pack.id)).toBe(false);
+    expect(await normalizePackagingStage(pack.id, { reassign: true })).toBe(
+      true,
+    );
     expect((await store.get("requirements", art.id))!.role).toBe("agency");
   });
 
@@ -220,5 +225,146 @@ describe("arte e embalagem", () => {
     expect(created.status).toBe("pending");
     // Nada mais a ajustar.
     expect(await normalizePackaging(undefined, { force: true })).toBe(0);
+  });
+});
+
+describe("arte e embalagem: correções da revisão", () => {
+  it("agência retirada depois de enviar a arte: a reprovação avisa a Wellmix, não outras agências, e a arte volta para a Wellmix", async () => {
+    const store = getStore();
+    const order = await inPackaging();
+    const { art, approval } = await packagingReqs(order.id);
+    await uploadArt(agency, order.id, art.id);
+    // Outra agência, de outra empresa.
+    await store.create("parties", {
+      id: "agencia-2",
+      type: "agency",
+      name: "Outra agência",
+      country: "BR",
+      email: "outra@agencia.com",
+      phone: null,
+      taxId: null,
+      notes: null,
+      active: true,
+      city: null,
+      address: null,
+      contactName: null,
+      wechat: null,
+      operationMode: null,
+      radar: null,
+      radarNotes: null,
+      importerId: null,
+      bankBeneficiary: null,
+      bankName: null,
+      bankAccount: null,
+      bankSwift: null,
+      bankAddress: null,
+    } as never);
+    const other = await store.create("users", {
+      email: "x@outra.com",
+      name: "Outra",
+      role: "agency",
+      partyId: "agencia-2",
+      locale: "pt",
+      passwordHash: "x",
+      active: true,
+      importerId: null,
+    } as never);
+    await store.update("orders", order.id, { agencyId: null });
+    await decideRequirement(supplierA, approval.id, "reject", "SEGREDO");
+    const leaked = await store.list("notifications", {
+      filter: { userId: other.id },
+    });
+    expect(leaked.some((n) => n.body === "SEGREDO")).toBe(false);
+    const wellmixNotes = await store.list("notifications", {
+      filter: { userId: admin.id, channel: "inapp" },
+    });
+    expect(wellmixNotes.some((n) => n.body === "SEGREDO")).toBe(true);
+    const redo = (await store.get("requirements", art.id))!;
+    expect(redo.status).toBe("rejected");
+    expect(redo.role).toBe("operator");
+    // Volta a ter uma agência só (pedidos novos recebem a padrão).
+    await store.update("parties", "agencia-2", { active: false });
+  });
+
+  it("decisão só com a etapa aberta e uma vez só (o fornecedor não desfaz a aprovação)", async () => {
+    const store = getStore();
+    const order = await inPackaging();
+    const { art, approval } = await packagingReqs(order.id);
+    await uploadArt(agency, order.id, art.id);
+    await decideRequirement(supplierA, approval.id, "approve");
+    expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
+    await expect(
+      decideRequirement(supplierA, approval.id, "reject", "desisto"),
+    ).rejects.toThrow("stage_not_active");
+    const kept = (await store.get("requirements", approval.id))!;
+    expect(kept.status).toBe("done");
+    expect(kept.value).toBe("approved");
+  });
+
+  it("aprovação duplicada (duas passadas ao mesmo tempo) fica uma só", async () => {
+    const store = getStore();
+    const order = await inPackaging();
+    const { pack, approval } = await packagingReqs(order.id);
+    await store.create("requirements", {
+      ...approval,
+      id: undefined,
+    } as never);
+    expect(
+      (
+        await store.list("requirements", {
+          filter: { stageId: pack.id, key: "art_approval" },
+        })
+      ).length,
+    ).toBe(2);
+    expect(await normalizePackagingStage(pack.id)).toBe(true);
+    expect(
+      (
+        await store.list("requirements", {
+          filter: { stageId: pack.id, key: "art_approval" },
+        })
+      ).length,
+    ).toBe(1);
+  });
+
+  it("pedido antigo mostra 'aprovação pela agência' no histórico; o novo, 'pelo fornecedor'", async () => {
+    const { requirementLabel } = await import("@/i18n");
+    const { dictionaries } = await import("@/i18n/dictionaries");
+    const dict = dictionaries.pt as Record<string, string>;
+    const t = ((k: string) => dict[k] ?? k) as never;
+    expect(
+      requirementLabel(t, {
+        key: "art_approval",
+        label: "x",
+        role: "agency",
+      }),
+    ).toBe("Aprovação da arte pela agência");
+    expect(
+      requirementLabel(t, {
+        key: "art_approval",
+        label: "x",
+        role: "supplier",
+      }),
+    ).toBe("Aprovação da arte pelo fornecedor");
+  });
+
+  it("designar a agência com a etapa aberta avisa a agência", async () => {
+    const store = getStore();
+    const order = await inPackaging();
+    await store.update("orders", order.id, { agencyId: null });
+    const { pack } = await packagingReqs(order.id);
+    await normalizePackagingStage(pack.id); // arte vai para a Wellmix
+    await store.update("orders", order.id, { agencyId: "agencia" });
+    const before = (
+      await store.list("notifications", {
+        filter: { userId: agency.id, channel: "inapp" },
+      })
+    ).length;
+    expect(await normalizePackagingStage(pack.id, { reassign: true })).toBe(
+      true,
+    );
+    const after = await store.list("notifications", {
+      filter: { userId: agency.id, channel: "inapp" },
+    });
+    expect(after.length).toBe(before + 1);
   });
 });

@@ -530,7 +530,7 @@ export async function assignPartnerAction(form: FormData) {
       const { normalizePackagingStage } =
         await import("@/lib/services/packaging");
       const [pack] = stages.filter((s) => s.key === "PACKAGING");
-      if (pack) await normalizePackagingStage(pack.id);
+      if (pack) await normalizePackagingStage(pack.id, { reassign: true });
     }
     await audit(
       user,

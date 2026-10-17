@@ -1,10 +1,11 @@
 import "server-only";
 
-import { getStore, type Requirement, type Stage } from "@/lib/db";
+import { getStore, type Order, type Requirement, type Stage } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { evaluateStage } from "@/lib/workflow/engine";
 import { ART_APPROVAL_LABEL, artRole } from "@/lib/workflow/stages";
 import { audit } from "./audit";
+import { notify } from "./notifications";
 
 /*
  * Arte e embalagem: a agência (ou a Wellmix, sem agência) faz e envia a arte;
@@ -15,19 +16,43 @@ import { audit } from "./audit";
 
 const OPEN_STATUSES: Stage["status"][] = ["pending", "active", "blocked"];
 
+interface PlanInput {
+  /** Quem faz a arte hoje (agência do pedido ou Wellmix). */
+  wantArtRole: Requirement["role"];
+  hasAgency: boolean;
+  /**
+   * Designar/trocar a agência no pedido: a arte ainda não enviada vai para
+   * quem faz a arte agora. Sem isso (passadas automáticas), só o formato
+   * antigo muda: mudar a configuração não tira a arte de quem já a tem.
+   */
+  reassign: boolean;
+}
+
 /** O que precisa mudar nos itens da etapa (vazio = já está no fluxo novo). */
-function planFor(
-  requirements: Requirement[],
-  wantArtRole: Requirement["role"],
-) {
+function planFor(requirements: Requirement[], input: PlanInput) {
   const art = requirements.find((r) => r.key === "art");
-  const approval = requirements.find((r) => r.key === "art_approval");
+  const approvals = requirements.filter((r) => r.key === "art_approval");
+  // Mais de uma aprovação (duas passadas ao mesmo tempo): fica a decidida ou
+  // a primeira; as outras saem.
+  const approval =
+    approvals.find((r) => r.status === "done") ??
+    [...approvals].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+  const extraApprovals = approvals.filter((r) => r !== approval);
   const artDone = art?.status === "done";
+  const legacyArt =
+    !!art &&
+    (!["agency", "operator"].includes(art.role) ||
+      (art.role === "agency" && !input.hasAgency));
   return {
     art,
     approval,
+    extraApprovals,
     // Arte ainda não enviada vai para quem faz a arte agora.
-    moveArt: !!art && !artDone && art.role !== wantArtRole,
+    moveArt:
+      !!art &&
+      !artDone &&
+      art.role !== input.wantArtRole &&
+      (legacyArt || input.reassign),
     createApproval: !approval,
     moveApproval: !!approval && approval.role !== "supplier",
     // Aprovação "concluída" sem arte enviada não vale (aprovou nada).
@@ -40,29 +65,43 @@ const needsChange = (plan: ReturnType<typeof planFor>) =>
   plan.moveArt ||
   plan.createApproval ||
   plan.moveApproval ||
-  plan.resetApproval;
+  plan.resetApproval ||
+  plan.extraApprovals.length > 0;
+
+async function planInput(order: Order, reassign: boolean): Promise<PlanInput> {
+  const settings = await getSettings();
+  return {
+    wantArtRole: artRole(order, settings.agencyValidationEnabled),
+    hasAgency: !!order.agencyId,
+    reassign,
+  };
+}
 
 /** Ajusta uma etapa de arte e embalagem ao fluxo novo. Devolve se mudou algo. */
 export async function normalizePackagingStage(
   stageId: string,
+  opts: { reassign?: boolean } = {},
 ): Promise<boolean> {
   const store = getStore();
   const stage = await store.get("stages", stageId);
   if (!stage || stage.key !== "PACKAGING") return false;
   if (!OPEN_STATUSES.includes(stage.status)) return false;
-  const [order, settings, requirements] = await Promise.all([
+  const [order, requirements] = await Promise.all([
     store.get("orders", stage.orderId),
-    getSettings(),
     store.list("requirements", { filter: { stageId } }),
   ]);
   if (!order || order.status === "CANCELLED") return false;
-  const wantArtRole = artRole(order, settings.agencyValidationEnabled);
-  const plan = planFor(requirements, wantArtRole);
+  const input = await planInput(order, !!opts.reassign);
+  const plan = planFor(requirements, input);
   if (!needsChange(plan)) return false;
 
   if (plan.moveArt && plan.art)
-    await store.update("requirements", plan.art.id, { role: wantArtRole });
-  if (plan.createApproval)
+    await store.update("requirements", plan.art.id, {
+      role: input.wantArtRole,
+    });
+  for (const extra of plan.extraApprovals)
+    await store.remove("requirements", extra.id);
+  if (plan.createApproval) {
     await store.create("requirements", {
       orderId: order.id,
       stageId,
@@ -78,6 +117,17 @@ export async function normalizePackagingStage(
       submittedAt: null,
       note: null,
     });
+    // Outra passada pode ter criado ao mesmo tempo: fica uma só.
+    const created = await store.list("requirements", {
+      filter: { stageId, key: "art_approval" },
+    });
+    const keep =
+      created.find((r) => r.status === "done") ??
+      [...created].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    for (const extra of created)
+      if (extra !== keep && extra.status !== "done")
+        await store.remove("requirements", extra.id);
+  }
   if (plan.approval && (plan.moveApproval || plan.resetApproval))
     await store.update("requirements", plan.approval.id, {
       role: "supplier",
@@ -97,11 +147,23 @@ export async function normalizePackagingStage(
     "stage.packaging_flow",
     "stage",
     stageId,
-    `Pedido #${order.number}: arte por ${wantArtRole === "agency" ? "agência" : "Wellmix"}, aprovação pelo fornecedor`,
+    `Pedido #${order.number}: arte por ${input.wantArtRole === "agency" ? "agência" : "Wellmix"}, aprovação pelo fornecedor`,
   );
+  const open = stage.status === "active" || stage.status === "blocked";
+  // A arte mudou de dono com a etapa aberta: o novo dono é avisado.
+  if (plan.moveArt && open)
+    await notify(
+      input.wantArtRole === "agency" && order.agencyId
+        ? { role: "agency", partyId: order.agencyId }
+        : { role: ["admin", "operator"] },
+      {
+        subject: `Pedido #${order.number}: etapa PACKAGING aguarda sua ação`,
+        body: "Pendências: Arte da embalagem (o fornecedor confere e aprova).",
+        link: `/app/orders/${order.id}`,
+      },
+    );
   // Percentual e responsável da etapa aberta acompanham os itens novos.
-  if (stage.status === "active" || stage.status === "blocked")
-    await evaluateStage(null, stageId);
+  if (open) await evaluateStage(null, stageId);
   return true;
 }
 
@@ -121,20 +183,17 @@ export async function normalizePackaging(
   if (!orderId && !opts.force && Date.now() - quietSince < QUIET_MS) return 0;
   try {
     const store = getStore();
-    const [stages, settings] = await Promise.all([
-      store.list("stages", {
-        filter: orderId
-          ? { orderId, key: "PACKAGING" }
-          : { key: "PACKAGING", status: OPEN_STATUSES },
-      }),
-      getSettings(),
-    ]);
+    const stages = await store.list("stages", {
+      filter: orderId
+        ? { orderId, key: "PACKAGING" }
+        : { key: "PACKAGING", status: OPEN_STATUSES },
+    });
     const open = stages.filter((s) => OPEN_STATUSES.includes(s.status));
     if (!open.length) {
       if (!orderId) quietSince = Date.now();
       return 0;
     }
-    const [requirements, orders] = await Promise.all([
+    const [requirements, orders, settings] = await Promise.all([
       store.list("requirements", {
         filter: {
           stageId: open.map((s) => s.id),
@@ -144,23 +203,30 @@ export async function normalizePackaging(
       store.list("orders", {
         filter: { id: [...new Set(open.map((s) => s.orderId))] },
       }),
+      getSettings(),
     ]);
     let changed = 0;
+    let failed = false;
     for (const stage of open) {
       const order = orders.find((o) => o.id === stage.orderId);
       if (!order || order.status === "CANCELLED") continue;
       const plan = planFor(
         requirements.filter((r) => r.stageId === stage.id),
-        artRole(order, settings.agencyValidationEnabled),
+        {
+          wantArtRole: artRole(order, settings.agencyValidationEnabled),
+          hasAgency: !!order.agencyId,
+          reassign: false,
+        },
       );
       if (!needsChange(plan)) continue;
       try {
         if (await normalizePackagingStage(stage.id)) changed++;
       } catch (error) {
+        failed = true;
         console.error("[packaging] etapa não ajustada", stage.id, error);
       }
     }
-    if (!orderId) quietSince = changed === 0 ? Date.now() : 0;
+    if (!orderId) quietSince = changed === 0 && !failed ? Date.now() : 0;
     return changed;
   } catch (error) {
     console.error("[packaging] ajuste falhou", error);

@@ -42,7 +42,9 @@ A agência de marketing faz a arte da embalagem e envia no pedido; o fornecedor 
 - **Quem envia a arte**: a agência do pedido. Sem agência designada (ou com "Arte da embalagem feita pela agência" desligado nas configurações, `agencyValidationEnabled`), a Wellmix envia.
 - **Aprovação do fornecedor** só depois de a arte chegar: antes disso o item mostra "Aguardando a arte", não vira pendência e o servidor recusa (`art_missing`). Quando a arte chega, o fornecedor é avisado.
 - **Reprovada**: a arte volta para quem a fez (agência ou Wellmix), com a observação e um aviso; reenviar a arte põe a aprovação de novo como pendente.
-- **Designar ou trocar a agência** no pedido passa a arte ainda não enviada para ela (ou de volta à Wellmix, sem agência).
+- **Designar ou trocar a agência** no pedido passa a arte ainda não enviada para ela (ou de volta à Wellmix, sem agência), com aviso ao novo dono. Mudar a configuração não tira a arte de quem já a tem nos pedidos em andamento (vale para os novos).
+- **Aprovação decidida** só a Wellmix refaz, e só com a etapa aberta (`already_decided`, `stage_not_active`).
+- **Avisos** a parceiro sem empresa definida no pedido (ex.: agência retirada) vão para a Wellmix, nunca para todas as empresas daquele papel.
 - **Pedidos de antes da inversão** (arte do fornecedor, aprovação da agência) passam sozinhos para o fluxo novo ao abrir o pedido, em Pendências ou no job diário, sem mexer no que já foi enviado; aprovação marcada como concluída sem arte enviada volta a pendente. Auditoria `stage.packaging_flow`.
 
 ## Pagamento ao fornecedor (fora do fluxo)
@@ -75,7 +77,7 @@ Wellmix (admin e operador) pode preencher qualquer requisito. Os demais só pree
 ## Bloqueio e revisão
 
 - **Peso divergente** (inspeção vs. preparação, tolerância `weightTolerancePercent`): etapa `blocked`, motivo em `blockReason`, requisito extra `inspection_review` (aprovação da Wellmix). Aprovar libera; nova medição dentro da tolerância libera automaticamente. Também abre o item `inspection.weightDeclared` na fila de revisão.
-- **Arte reprovada** pela agência: o requisito `art` volta para `rejected`; o fornecedor reenvia (nova versão do documento) e a aprovação volta a pendente.
+- **Arte reprovada** pelo fornecedor: o requisito `art` volta para `rejected`; quem faz a arte (agência ou Wellmix) reenvia (nova versão do documento) e a aprovação volta a pendente.
 
 ## Documentos
 

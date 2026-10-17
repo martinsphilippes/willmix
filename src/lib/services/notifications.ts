@@ -77,6 +77,16 @@ export async function notify(target: NotifyTarget, message: NotifyMessage) {
 export const notifyWellmix = (message: NotifyMessage) =>
   notify({ role: WELLMIX_ROLES }, message);
 
+/** Papéis de empresas parceiras: só recebem com a empresa (partyId) definida. */
+const PARTNER_ROLES: Role[] = [
+  "customer",
+  "supplier",
+  "agency",
+  "broker",
+  "shipping_line",
+  "carrier",
+];
+
 async function resolveUsers(target: NotifyTarget): Promise<User[]> {
   const store = getStore();
   const found = new Map<string, User>();
@@ -87,7 +97,12 @@ async function resolveUsers(target: NotifyTarget): Promise<User[]> {
     }
   }
   if (target.role) {
-    const roles = Array.isArray(target.role) ? target.role : [target.role];
+    let roles = Array.isArray(target.role) ? target.role : [target.role];
+    // Parceiro sem empresa definida (ex.: pedido sem agência): ninguém de
+    // fora recebe, em vez de todos os usuários daquele papel (isolamento).
+    if ("partyId" in target && !target.partyId)
+      roles = roles.filter((r) => !PARTNER_ROLES.includes(r));
+    if (!roles.length) return [...found.values()];
     const filter: Record<string, unknown> = { role: roles, active: true };
     if (target.partyId) filter.partyId = target.partyId;
     const users = await store.list("users", { filter });
