@@ -40,17 +40,22 @@ export class WorkflowError extends Error {}
  * Datas que precisam vir em ordem: a previsão de chegada não pode ser antes
  * da data de embarque, nem a previsão de entrega antes da chegada. Vale nos
  * dois sentidos (mudar o embarque para depois da chegada também é recusado).
+ * Na mesma etapa, a primeira data vem antes (`first`): a chegada só é aceita
+ * com o embarque informado, para sempre ser conferida com ele.
  */
 const DATE_ORDER: Array<{
   before: { stage: string; key: string };
   after: { stage: string; key: string };
   /** Código do erro quando "after" < "before", e quando "before" > "after". */
   errors: [string, string];
+  /** "after" só depois de "before" informado (código do erro e do aviso). */
+  first?: string;
 }> = [
   {
     before: { stage: "SHIPPING", key: "ship_date" },
     after: { stage: "SHIPPING", key: "eta" },
     errors: ["eta_before_ship_date", "ship_date_after_eta"],
+    first: "ship_date_first",
   },
   {
     before: { stage: "SHIPPING", key: "eta" },
@@ -61,24 +66,56 @@ const DATE_ORDER: Array<{
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
 
+export interface DateBounds {
+  min?: string;
+  max?: string;
+  /** Código do erro quando a data fica antes de `min` / depois de `max`. */
+  minError?: string;
+  maxError?: string;
+}
+
 /** Limites (min/max) de um requisito de data a partir dos outros já informados. */
 export function dateBoundsFor(
   stageKey: string,
   requirementKey: string,
   valueOf: (stageKey: string, key: string) => string | null | undefined,
-): { min?: string; max?: string } {
-  const out: { min?: string; max?: string } = {};
+): DateBounds {
+  const out: DateBounds = {};
   for (const rule of DATE_ORDER) {
     if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
       const v = valueOf(rule.before.stage, rule.before.key);
-      if (v && ISO_DAY.test(v)) out.min = v.slice(0, 10);
+      if (v && ISO_DAY.test(v)) {
+        out.min = v.slice(0, 10);
+        out.minError = rule.errors[0];
+      }
     }
     if (rule.before.stage === stageKey && rule.before.key === requirementKey) {
       const v = valueOf(rule.after.stage, rule.after.key);
-      if (v && ISO_DAY.test(v)) out.max = v.slice(0, 10);
+      if (v && ISO_DAY.test(v)) {
+        out.max = v.slice(0, 10);
+        out.maxError = rule.errors[1];
+      }
     }
   }
   return out;
+}
+
+/**
+ * Data da mesma etapa que precisa ser informada antes desta (ex.: a previsão
+ * de chegada espera a data de embarque): a chave dela e o código do aviso.
+ */
+export function datePrerequisite(
+  stageKey: string,
+  requirementKey: string,
+): { key: string; code: string } | null {
+  const rule = DATE_ORDER.find(
+    (r) =>
+      r.first &&
+      r.after.stage === stageKey &&
+      r.after.key === requirementKey &&
+      r.before.stage === stageKey,
+  );
+  return rule?.first ? { key: rule.before.key, code: rule.first } : null;
 }
 
 async function assertDateOrder(
@@ -102,10 +139,15 @@ async function assertDateOrder(
         r.status === "done" &&
         stageKeyOf.get(r.stageId) === sk,
     )?.value ?? null;
+  const exists = (sk: string, key: string) =>
+    reqs.some((r) => r.key === key && stageKeyOf.get(r.stageId) === sk);
   const day = value.slice(0, 10);
   for (const rule of DATE_ORDER) {
     if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
       const before = valueOf(rule.before.stage, rule.before.key);
+      // Sem a primeira data (que existe neste pedido), não há com o que conferir.
+      if (!before && rule.first && exists(rule.before.stage, rule.before.key))
+        throw new WorkflowError(rule.first);
       if (before && day < before.slice(0, 10))
         throw new WorkflowError(rule.errors[0]);
     }

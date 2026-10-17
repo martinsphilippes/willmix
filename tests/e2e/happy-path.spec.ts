@@ -441,6 +441,27 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 12. SHIPPING, CUSTOMS, TRANSPORT pelos parceiros
   await login(page, "armador@maritima.com");
+  await page.goto(orderUrl);
+  // A previsão de chegada espera a data de embarque e nunca fica antes dela.
+  await expect(
+    page.locator("[data-requirement-waiting]", {
+      hasText:
+        /Aguardando a data de embarque|Waiting for the shipping date|等待装船日期/,
+    }),
+  ).toBeVisible();
+  const shipDate = page.locator("input[type=date]").first();
+  await shipDate.fill("2026-10-15");
+  await page
+    .locator("form", { has: shipDate })
+    .locator("button[type=submit]")
+    .click();
+  await page.waitForLoadState("networkidle");
+  await page.goto(orderUrl);
+  const eta = page.locator('input[type=date][min="2026-10-15"][data-ready]');
+  await eta.fill("2026-10-14");
+  await expect(page.locator("[data-date-error]")).toBeVisible();
+  await eta.fill("2026-10-15");
+  await expect(page.locator("[data-date-error]")).toHaveCount(0);
   await fillMyRequirements(page, orderUrl);
   await login(page, "despachante@comex.com");
   await fillMyRequirements(page, orderUrl);

@@ -31,6 +31,8 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 | `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                 |
 | `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                         |
 
+Datas em ordem: a previsão de chegada só abre depois de a data de embarque ser enviada e nunca fica antes dela (o calendário não oferece os dias anteriores e o envio é recusado, na tela e no servidor); a data de embarque não pode passar da chegada já informada; a previsão de entrega (transporte) não fica antes da chegada do navio.
+
 ## Regra de avanço
 
 `evaluateStage` roda após cada submissão. Percentual = obrigatórios concluídos / obrigatórios. Quando todos os obrigatórios estão `done`, a etapa vira `done`, a próxima vira `active` (com prazo e responsável), o pedido recebe o novo status e o responsável é notificado. O responsável exibido é sempre o papel do próximo requisito pendente.

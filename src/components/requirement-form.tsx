@@ -9,6 +9,8 @@ import { Input, Textarea } from "./ui";
 import { SubmitButton } from "./submit-button";
 import { PhotoInput } from "./photo-input";
 import { FileAutoInput } from "./file-auto-input";
+import { DateRangeInput } from "./date-range-input";
+import type { DateBounds } from "@/lib/workflow/engine";
 import { MoneyInput } from "./money-input";
 import { CURRENCIES } from "@/lib/currencies";
 import { isMoneyRequirement, parseMoneyValue } from "@/lib/workflow/money";
@@ -32,7 +34,7 @@ export function RequirementForm({
   action?: (form: FormData) => Promise<void>;
   defaultValue?: string | null;
   /** Data: limites vindos das outras datas do pedido (chegada ≥ embarque…). */
-  dateBounds?: { min?: string; max?: string };
+  dateBounds?: DateBounds;
 }) {
   if (requirement.type === "approval") {
     return (
@@ -121,6 +123,11 @@ export function RequirementForm({
     );
   }
 
+  const submit = (
+    <SubmitButton pendingText="...">
+      {requirement.type === "confirm" ? t("common.confirm") : t("common.send")}
+    </SubmitButton>
+  );
   return (
     <form
       action={action ?? submitRequirementAction}
@@ -154,17 +161,7 @@ export function RequirementForm({
           className="max-w-32 sm:w-32"
         />
       ) : null}
-      {requirement.type === "date" ? (
-        <Input
-          name="value"
-          type="date"
-          required
-          min={dateBounds?.min}
-          max={dateBounds?.max}
-          defaultValue={defaultValue ?? undefined}
-          className="max-w-40 sm:w-40"
-        />
-      ) : null}
+
       {requirement.type === "text" ? (
         <Textarea
           name="value"
@@ -177,11 +174,37 @@ export function RequirementForm({
       {requirement.type === "confirm" ? (
         <input type="hidden" name="value" value="confirmed" />
       ) : null}
-      <SubmitButton pendingText="...">
-        {requirement.type === "confirm"
-          ? t("common.confirm")
-          : t("common.send")}
-      </SubmitButton>
+      {requirement.type === "date" ? (
+        // Limites das outras datas do pedido (chegada nunca antes do embarque):
+        // o calendário bloqueia os dias de fora e o aviso aparece na hora.
+        <DateRangeInput
+          name="value"
+          min={dateBounds?.min}
+          max={dateBounds?.max}
+          minMessage={boundMessage(t, dateBounds?.minError, dateBounds?.min)}
+          maxMessage={boundMessage(t, dateBounds?.maxError, dateBounds?.max)}
+          defaultValue={defaultValue ?? undefined}
+          className="max-w-40 sm:w-40"
+        >
+          {submit}
+        </DateRangeInput>
+      ) : (
+        submit
+      )}
     </form>
   );
+}
+
+/** "A previsão de chegada não pode ser antes da data de embarque (21/10/2026)." */
+function boundMessage(
+  t: Translate,
+  code: string | undefined,
+  day: string | undefined,
+): string | undefined {
+  if (!code || !day) return undefined;
+  const text = t(`orders.error.${code}` as DictionaryKey);
+  const date = new Date(`${day}T00:00:00Z`).toLocaleDateString(t.intl, {
+    timeZone: "UTC",
+  });
+  return `${text.replace(/\.$/, "")} (${date}).`;
 }
