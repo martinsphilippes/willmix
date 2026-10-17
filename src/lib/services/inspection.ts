@@ -157,7 +157,8 @@ export function compareMeasure(
       attribute: String(m.attribute),
       expected: Number(expected),
       found,
-      tolerancePercent: tol,
+      // Com referência 0 a tolerância não se aplica (tem que ser 0).
+      tolerancePercent: Number(expected) === 0 ? null : tol,
       ok: div !== null && div <= tol + 1e-9,
     };
   }
@@ -170,6 +171,36 @@ export function compareMeasure(
   };
 }
 
+/**
+ * Compara uma medida com a referência do pedido. Inner igual à master é o
+ * mesmo que "Sem caixa inner" (0): comprado 24/24 e nenhuma inner encontrada
+ * (0) bate, e o inverso. Do lado encontrado, a master é a encontrada (se o
+ * inspetor mediu); senão, a comprada.
+ */
+export function compareReferenceMeasure(
+  m: (typeof INSPECTION_MEASURES)[number],
+  reference: InspectionReference,
+  raw: string | null | undefined,
+  tolerances: InspectionTolerances,
+  foundMasterRaw?: string | null,
+): InspectionComparison | null {
+  const c = compareMeasure(m, reference[m.attribute], raw, tolerances);
+  if (!c || c.ok || m.attribute !== "innerBoxQty") return c;
+  const bought = Number(reference.masterBoxQty);
+  const measured =
+    foundMasterRaw !== null &&
+    foundMasterRaw !== undefined &&
+    foundMasterRaw !== "" &&
+    Number.isFinite(Number(foundMasterRaw))
+      ? Number(foundMasterRaw)
+      : bought;
+  const none = (v: unknown, master: number) =>
+    Number(v) === 0 || (master > 0 && Number(v) === master);
+  return none(c.expected, bought) && none(c.found, measured)
+    ? { ...c, ok: true }
+    : c;
+}
+
 export function compareWithSnapshot(
   snapshot: InspectionReference,
   requirements: Pick<Requirement, "key" | "status" | "value">[],
@@ -180,15 +211,23 @@ export function compareWithSnapshot(
     requirements.find((r) => r.key === key && r.status === "done")?.value ??
     null;
   for (const m of INSPECTION_MEASURES) {
-    const c = compareMeasure(
+    const c = compareReferenceMeasure(
       m,
-      snapshot[m.attribute],
+      snapshot,
       valueOf(m.key),
       tolerances,
+      valueOf("master_box_measured"),
     );
     if (c) out.push(c);
   }
   return out;
+}
+
+/** Valor esperado para os textos da revisão (0 de inner = "sem caixa inner"). */
+export function expectedText(c: InspectionComparison): string {
+  return c.attribute === "innerBoxQty" && c.expected === 0
+    ? "0 (sem caixa inner)"
+    : String(c.expected ?? "—");
 }
 
 export function summarizeResult(
@@ -271,7 +310,7 @@ export async function compareInspection(
             ? ` (tolerância ${c.tolerancePercent}%)`
             : ""
         }`,
-        expected: c.expected,
+        expected: expectedText(c),
         found: c.found,
         responsibleRole: "operator",
         action:
@@ -285,7 +324,7 @@ export async function compareInspection(
     const reason = `Divergência comprado × inspecionado: ${divergent
       .map(
         (c) =>
-          `${ATTRIBUTE_LABEL[c.attribute] ?? c.attribute} esperado ${c.expected}, encontrado ${c.found}`,
+          `${ATTRIBUTE_LABEL[c.attribute] ?? c.attribute} esperado ${expectedText(c)}, encontrado ${c.found}`,
       )
       .join("; ")}. REVISÃO NECESSÁRIA.`;
     await store.update("stages", stage.id, {

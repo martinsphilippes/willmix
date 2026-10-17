@@ -44,6 +44,8 @@ export const cartonSizeTexts = (t: Translate): CartonSizeTexts => ({
     capacity: "{capacity}",
     n: "{n}",
   }),
+  fitOne: t("carton.size.fitOne", { type: "{type}", capacity: "{capacity}" }),
+  noFit: t("carton.size.noFit", { type: "{type}", capacity: "{capacity}" }),
 });
 
 export const packageTypeTexts = (t: Translate): PackageTypeTexts => ({
