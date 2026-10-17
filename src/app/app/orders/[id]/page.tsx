@@ -35,6 +35,7 @@ import {
 import { formatMoneyValue } from "@/lib/workflow/money";
 import { isOffFlowStage } from "@/lib/workflow/stages";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
+import { normalizePackaging } from "@/lib/services/packaging";
 import { SupplierPaymentCard } from "@/components/supplier-payment-card";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
@@ -139,6 +140,8 @@ export default async function OrderPage({
     fields: invalidFields,
     at: errorToken,
   } = await searchParams;
+  // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
+  await normalizePackaging(id);
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
   /* Pedido parado na etapa de pagamento ao fornecedor (de antes de ela sair do
@@ -619,6 +622,14 @@ export default async function OrderPage({
                             order={order}
                             user={user}
                             t={t}
+                            waiting={
+                              r.key === "art_approval" &&
+                              reqs.some(
+                                (x) => x.key === "art" && x.status !== "done",
+                              )
+                                ? t("packaging.waitingArt")
+                                : null
+                            }
                             dateBounds={
                               r.type === "date"
                                 ? dateBoundsFor(stage.key, r.key, dateValueOf)
@@ -1261,8 +1272,11 @@ function RequirementRow({
   sheetEditable,
   sheetHint,
   dateBounds,
+  waiting,
 }: {
   requirement: Requirement;
+  /** Ainda não dá para agir: aguarda outro item (ex.: aprovar a arte antes de ela chegar). */
+  waiting?: string | null;
   /** Data: limites vindos das outras datas do pedido. */
   dateBounds?: { min?: string; max?: string };
   order: {
@@ -1296,6 +1310,7 @@ function RequirementRow({
   const isSheet = r.key === "purchase_sheet";
   const canAct =
     open &&
+    !waiting &&
     r.status !== "done" &&
     canSubmitRequirement(user, order as never, r);
   /* Foto/arquivo enviado: dá para excluir e mandar outro enquanto a etapa está aberta. */
@@ -1435,6 +1450,13 @@ function RequirementRow({
             defaultValue={r.value}
           />
         </div>
+      ) : open && waiting && r.status !== "done" ? (
+        <p
+          className="shrink-0 text-xs text-zinc-500 sm:max-w-56 sm:text-right"
+          data-requirement-waiting
+        >
+          {waiting}
+        </p>
       ) : null}
     </li>
   );

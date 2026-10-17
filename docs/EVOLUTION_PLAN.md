@@ -405,6 +405,14 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - O intervalo padrão do atalho vem da 2ª linha (entre programações); o da 1ª linha é o prazo de produção e vira a "1ª saída", que fica como está ao trocar o intervalo. Depois de gerar, o foco vai para "Desfazer" e o aviso é anunciado ao leitor de tela; Esc devolve o foco ao botão do atalho.
 - Campo "outro" do intervalo (no atalho e na programação de entregas da Nova solicitação): só passa a valer quando algo é digitado. Antes, só passar pelo campo (Tab ou "próximo" do teclado do celular) trocava o intervalo; na solicitação ele virava 0 dias e o envio era recusado.
 
+## Arte e embalagem invertida
+
+- A agência faz e envia a arte (sem agência no pedido, a Wellmix); o fornecedor confere e aprova para produzir, ou reprova com observação e a arte volta para quem a fez (com aviso).
+- A aprovação só aparece e só vale depois de a arte chegar ("Aguardando a arte"; o servidor recusa com `art_missing`). Corrige o caso em que a aprovação ficava "Concluída" com a arte pendente.
+- O fornecedor é avisado quando a arte chega; a pendência dele só aparece então.
+- Designar a agência no pedido passa a arte pendente para ela; pedidos em andamento passam para o fluxo novo sozinhos (`services/packaging.ts`), sem mexer no que já foi enviado.
+- Configuração `agencyValidationEnabled` agora quer dizer "Arte da embalagem feita pela agência" (desligada: a Wellmix envia a arte); a aprovação pelo fornecedor vale sempre.
+
 ## Condição de pagamento ao fornecedor; pagamento fora do fluxo do pedido
 
 - Cadastro do fornecedor: card "Condição de pagamento ao fornecedor" (só Wellmix) com parcelas (% do FOB, marco: pedido gerado, embarque ou entrega ao cliente, dias depois), atalhos prontos, total ao vivo (só salva com 100%), observação. Colunas novas (opcionais): `parties.paymentTerms` (JSON), `parties.paymentTermsNote`, `orders.supplierPaymentTerms` (JSON, cópia no pedido). Sem as colunas publicadas, o pedido nasce normalmente (a cópia é ignorada) e salvar a condição avisa para publicar o esquema.

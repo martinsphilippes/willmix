@@ -306,6 +306,16 @@ export async function submitRequirement(
         });
       }
     }
+    // A arte chegou: o fornecedor confere e aprova para produzir.
+    if (approvals.length)
+      await notify(
+        { role: "supplier", partyId: order.supplierId },
+        {
+          subject: `Order #${order.number}: packaging artwork to review`,
+          body: "The artwork was uploaded. Check it and approve it for production, or reject it with a note.",
+          link: `/app/orders/${order.id}`,
+        },
+      );
   }
 
   // Regra específica: o fornecedor confirmar o recebimento é a prova do
@@ -427,6 +437,16 @@ export async function decideRequirement(
     throw new ForbiddenError();
   if (order.status === "CANCELLED" || stage.status === "cancelled")
     throw new WorkflowError("stage_not_active");
+  // Aprovação da arte: só depois de a arte ser enviada (nada a aprovar antes).
+  const sourceKey = requirement.key === "art_approval" ? "art" : null;
+  const [source] = sourceKey
+    ? await store.list("requirements", {
+        filter: { stageId: stage.id, key: sourceKey },
+        limit: 1,
+      })
+    : [];
+  if (sourceKey && (!source || source.status !== "done"))
+    throw new WorkflowError("art_missing");
 
   const now = new Date().toISOString();
   if (decision === "approve") {
@@ -467,18 +487,12 @@ export async function decideRequirement(
     // Inspeção reprovada: as medidas voltam para o fornecedor medir de novo.
     if (requirement.key === "inspection_review")
       await reopenInspectionMeasures(user, stage, note ?? null);
-    // O requisito que originou a aprovação volta a pendente para reenvio.
-    const sourceKey = requirement.key === "art_approval" ? "art" : null;
-    if (sourceKey) {
-      const [source] = await store.list("requirements", {
-        filter: { stageId: stage.id, key: sourceKey },
+    // O requisito que originou a aprovação volta para quem o enviou refazer.
+    if (source)
+      await store.update("requirements", source.id, {
+        status: "rejected",
+        note: note ?? null,
       });
-      if (source)
-        await store.update("requirements", source.id, {
-          status: "rejected",
-          note: note ?? null,
-        });
-    }
     await audit(
       user,
       "requirement.reject",
@@ -486,8 +500,14 @@ export async function decideRequirement(
       requirement.id,
       `${stage.key}: ${requirement.label}`,
     );
+    // Avisa quem refaz: o papel do requisito de origem (arte: agência ou
+    // Wellmix); sem origem, o fornecedor (como antes).
+    const redoRole: Role = source?.role ?? "supplier";
+    const redoField = ROLE_PARTY_FIELD[redoRole];
     await notify(
-      { role: "supplier", partyId: order.supplierId },
+      redoRole === "operator" || redoRole === "admin"
+        ? { role: ["admin", "operator"] }
+        : { role: redoRole, partyId: redoField ? order[redoField] : null },
       {
         subject: `Pedido #${order.number}: ${requirement.label} reprovado`,
         body: note ?? "Revise e reenvie.",

@@ -7,7 +7,7 @@ export const helpPt = {
   "help.todo": "O que fazer aqui",
   "help.flow.title": "O fluxo de importação",
   "help.flow.steps":
-    "Solicitação: o cliente (ou a Wellmix por ele) descreve o produto, quantidade e prazo.\nRFQ: a Wellmix escolhe fornecedores; cada um recebe um link e responde preço, prazo e condições.\nSeleção: a Wellmix compara as cotações, escolhe o fornecedor e define o valor ao cliente e o sinal.\nSinal: o cliente paga; a Wellmix confirma e o pedido nasce com todas as etapas e requisitos.\nPreparação: o fornecedor preenche a ficha de compra (preço, caixa, pesos, medidas, programação e fotos).\nPagamento ao fornecedor: a Wellmix registra; o fornecedor confirma o recebimento.\nArte e embalagem: o fornecedor envia a arte; a agência aprova ou reprova.\nInspeção: fotos e peso medido; divergência acima da tolerância bloqueia até revisão da Wellmix.\nEmbarque: companhia marítima informa data, previsão e BL.\nDesembaraço: despachante registra processo, documentos, custos e liberação.\nTransporte: transportador informa placa, previsão e entrega.\nEntrega: o cliente confirma o recebimento e o pedido é encerrado.",
+    "Solicitação: o cliente (ou a Wellmix por ele) descreve o produto, quantidade e prazo.\nRFQ: a Wellmix escolhe fornecedores; cada um recebe um link e responde preço, prazo e condições.\nSeleção: a Wellmix compara as cotações, escolhe o fornecedor e define o valor ao cliente e o sinal.\nSinal: o cliente paga; a Wellmix confirma e o pedido nasce com todas as etapas e requisitos.\nPreparação: o fornecedor preenche a ficha de compra (preço, caixa, pesos, medidas, programação e fotos).\nArte e embalagem: a agência faz e envia a arte; o fornecedor confere e aprova ou reprova.\nPagamento ao fornecedor: fora das etapas, pela condição do cadastro do fornecedor (Gestão → Contas a pagar); o fornecedor confirma o recebimento na conta corrente.\nInspeção: fotos e peso medido; divergência acima da tolerância bloqueia até revisão da Wellmix.\nEmbarque: companhia marítima informa data, previsão e BL.\nDesembaraço: despachante registra processo, documentos, custos e liberação.\nTransporte: transportador informa placa, previsão e entrega.\nEntrega: o cliente confirma o recebimento e o pedido é encerrado.",
   "help.rule":
     "Cada etapa tem requisitos com um responsável. Quando todos os obrigatórios estão concluídos, a etapa fecha sozinha, a próxima abre e o próximo responsável recebe um aviso. Ninguém precisa cobrar ninguém.",
   "help.login.body":
@@ -56,7 +56,7 @@ export const helpPt = {
   "help.stage.SUPPLIER_PAYMENT":
     "Não segura mais o pedido: conclui sozinha. O pagamento segue a condição combinada com o fornecedor (cadastro do fornecedor) e fica em Contas a pagar, no card Pagamento ao fornecedor do pedido e na conta corrente do fornecedor, onde ele confirma o recebimento.",
   "help.stage.PACKAGING":
-    "Fornecedor envia a arte da embalagem; a agência aprova ou reprova com observação. Reprovada, a arte volta ao fornecedor para reenvio.",
+    "A agência de marketing faz a arte da embalagem e envia (sem agência no pedido, a Wellmix envia). O fornecedor confere e aprova para produzir, ou reprova com observação: a arte volta para quem a fez refazer e reenviar.",
   "help.stage.INSPECTION":
     "Fornecedor envia foto sem embalagem, com embalagem, na balança e o peso medido. Divergência acima da tolerância bloqueia a etapa até a Wellmix revisar.",
   "help.stage.SHIPPING":
@@ -101,7 +101,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.todo": "What to do here",
   "help.flow.title": "The import flow",
   "help.flow.steps":
-    "Request: the customer (or Wellmix on their behalf) describes product, quantity and deadline.\nRFQ: Wellmix picks suppliers; each gets a link and answers price, lead time and terms.\nSelection: Wellmix compares quotations, picks the supplier and sets the customer price and down payment.\nDown payment: the customer pays; Wellmix confirms and the order is created with all stages and requirements.\nPreparation: the supplier fills in the purchase sheet (price, carton, weights, sizes, schedule and photos).\nSupplier payment: Wellmix registers it; the supplier confirms receipt.\nArtwork and packaging: the supplier sends the artwork; the agency approves or rejects.\nInspection: photos and measured weight; divergence above tolerance blocks until Wellmix reviews.\nShipping: the shipping line informs date, ETA and BL.\nCustoms: the broker registers process, documents, costs and release.\nTransport: the carrier informs plate, ETA and delivery.\nDelivery: the customer confirms receipt and the order is closed.",
+    "Request: the customer (or Wellmix on their behalf) describes product, quantity and deadline.\nRFQ: Wellmix picks suppliers; each gets a link and answers price, lead time and terms.\nSelection: Wellmix compares quotations, picks the supplier and sets the customer price and down payment.\nDown payment: the customer pays; Wellmix confirms and the order is created with all stages and requirements.\nPreparation: the supplier fills in the purchase sheet (price, carton, weights, sizes, schedule and photos).\nArtwork and packaging: the agency makes and uploads the artwork; the supplier checks it and approves or rejects.\nSupplier payment: outside the stages, under the terms in the supplier record (Management → Payables); the supplier confirms receipt in their account.\nInspection: photos and measured weight; divergence above tolerance blocks until Wellmix reviews.\nShipping: the shipping line informs date, ETA and BL.\nCustoms: the broker registers process, documents, costs and release.\nTransport: the carrier informs plate, ETA and delivery.\nDelivery: the customer confirms receipt and the order is closed.",
   "help.rule":
     "Every stage has requirements with an owner. When all mandatory ones are done, the stage closes by itself, the next one opens and the next owner is notified. Nobody has to chase anybody.",
   "help.login.body":
@@ -150,7 +150,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.SUPPLIER_PAYMENT":
     "No longer holds the order: it completes on its own. Payment follows the terms agreed with the supplier (supplier record) and lives in Payables, on the order's Supplier payment card and in the supplier's account, where they confirm receipt.",
   "help.stage.PACKAGING":
-    "Supplier sends the packaging artwork; the agency approves or rejects with a note. If rejected, the artwork goes back to the supplier.",
+    "The marketing agency makes and uploads the packaging artwork (with no agency on the order, Wellmix uploads it). The supplier checks it and approves it for production, or rejects it with a note: the artwork goes back to whoever made it to redo and resend.",
   "help.stage.INSPECTION":
     "Supplier sends photos without packaging, with packaging, on the scale and the measured weight. Divergence above tolerance blocks the stage until Wellmix reviews.",
   "help.stage.SHIPPING":
@@ -193,7 +193,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.todo": "在此需要做什么",
   "help.flow.title": "进口流程",
   "help.flow.steps":
-    "需求：客户（或 Wellmix 代为）说明产品、数量和期望交期。\n询价：Wellmix 选择供应商；每家收到链接并回复价格、交期和条款。\n选定：Wellmix 对比报价，选定供应商，确定客户价格和定金。\n定金：客户付款；Wellmix 确认后创建订单，生成全部阶段和要求。\n备货准备：供应商填写采购单（价格、外箱、重量、尺寸、计划和照片）。\n供应商付款：Wellmix 登记；供应商确认收款。\n设计与包装：供应商提交设计稿；设计公司审核通过或驳回。\n验货：照片和实测重量；超出容差会阻塞，直到 Wellmix 复核。\n装运：船公司填写日期、预计到达和提单。\n清关：报关行登记流程、文件、费用和放行。\n运输：承运商填写车牌、预计到达和交付。\n交付：客户确认收货，订单结案。",
+    "需求：客户（或 Wellmix 代为）说明产品、数量和期望交期。\n询价：Wellmix 选择供应商；每家收到链接并回复价格、交期和条款。\n选定：Wellmix 对比报价，选定供应商，确定客户价格和定金。\n定金：客户付款；Wellmix 确认后创建订单，生成全部阶段和要求。\n备货准备：供应商填写采购单（价格、外箱、重量、尺寸、计划和照片）。\n设计与包装：设计公司制作并上传设计稿；供应商审核后批准或驳回。\n供应商付款：不在阶段中，按供应商资料中的付款条件执行（管理 → 应付账款）；供应商在往来账中确认收款。\n验货：照片和实测重量；超出容差会阻塞，直到 Wellmix 复核。\n装运：船公司填写日期、预计到达和提单。\n清关：报关行登记流程、文件、费用和放行。\n运输：承运商填写车牌、预计到达和交付。\n交付：客户确认收货，订单结案。",
   "help.rule":
     "每个阶段都有带负责人的要求。所有必填项完成后，阶段自动关闭，下一阶段开启，并通知下一位负责人。无需任何人催促。",
   "help.login.body":
@@ -241,7 +241,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.SUPPLIER_PAYMENT":
     "不再影响订单进度：此阶段自动完成。付款按与供应商约定的条件（供应商资料）执行，显示在应付账款、订单的“供应商付款”卡片以及供应商的往来账中，供应商在往来账中确认收款。",
   "help.stage.PACKAGING":
-    "供应商提交包装设计稿；设计公司审核通过或附备注驳回。被驳回后设计稿退回供应商重新提交。",
+    "设计公司制作并上传包装设计稿（订单没有设计公司时由 Wellmix 上传）。供应商审核后批准生产，或附备注驳回：设计稿退回制作方修改后重新提交。",
   "help.stage.INSPECTION":
     "供应商提交无包装照片、带包装照片、称重照片和实测重量。超出容差将阻塞阶段，直到 Wellmix 复核。",
   "help.stage.SHIPPING":

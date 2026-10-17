@@ -349,13 +349,17 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     "data-status",
     "received",
   );
-  await fillMyRequirements(page, orderUrl);
-
-  // 10. PACKAGING: fornecedor envia arte, agência aprova
-  await fillMyRequirements(page, orderUrl);
+  // 10. PACKAGING: a agência faz e envia a arte; o fornecedor confere e aprova.
+  // Antes da arte, o fornecedor não tem o que aprovar.
+  await expect(page.locator("[data-requirement-waiting]")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /批准|Approve|Aprovar/ }),
+  ).toHaveCount(0);
   await login(page, "agencia@design.com");
+  await fillMyRequirements(page, orderUrl);
+  await login(page, "supplier.a@china.com");
   await page.goto(orderUrl);
-  await page.getByRole("button", { name: /Aprovar/ }).click();
+  await page.getByRole("button", { name: /批准|Approve|Aprovar/ }).click();
   await page.waitForLoadState("networkidle");
 
   // 11. INSPECTION: peso divergente bloqueia; Wellmix revisa

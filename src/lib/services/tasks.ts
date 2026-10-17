@@ -203,6 +203,8 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   // Pedidos antigos parados na etapa de pagamento ao fornecedor seguem o
   // fluxo (uma consulta por instância do servidor depois que não sobra nenhum).
   await (await import("./supplier-terms")).releaseOffFlowStages();
+  // Arte e embalagem dos pedidos antigos: arte da agência, aprovação do fornecedor.
+  await (await import("./packaging")).normalizePackaging();
   const customer = user.role === "customer" && !!user.partyId;
   const none = Promise.resolve([] as never[]);
 
@@ -294,7 +296,16 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     if (!order) continue;
     if (!isInvolved(user, order)) continue;
     const mine = openRequirements.filter(
-      (r) => r.stageId === stage.id && (wellmix || r.role === user.role),
+      (r) =>
+        r.stageId === stage.id &&
+        (wellmix || r.role === user.role) &&
+        // Aprovar a arte só vira pendência depois que a arte chega.
+        !(
+          r.key === "art_approval" &&
+          openRequirements.some(
+            (x) => x.stageId === stage.id && x.key === "art",
+          )
+        ),
     );
     if (mine.length === 0) continue;
     tasks.push(

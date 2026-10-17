@@ -167,8 +167,8 @@ describe("fluxo completo: solicitação → entrega", () => {
       await store.list("requirements", { filter: { stageId: payStage.id } }),
     ).toEqual([]);
 
-    // embalagem: arte + aprovação da agência
-    await fillStage(supplierA, order.id, "PACKAGING");
+    // embalagem: a agência faz e envia a arte; o fornecedor confere e aprova
+    const agency = by("agency", "agencia");
     const [pack] = await store.list("stages", {
       filter: { orderId: order.id, key: "PACKAGING" },
     });
@@ -176,18 +176,23 @@ describe("fluxo completo: solicitação → entrega", () => {
     const [approval] = await store.list("requirements", {
       filter: { stageId: pack.id, key: "art_approval" },
     });
-    await decideRequirement(
-      by("agency", "agencia"),
-      approval.id,
-      "reject",
-      "Logo errado",
-    );
     const [art] = await store.list("requirements", {
       filter: { stageId: pack.id, key: "art" },
     });
+    expect(art.role).toBe("agency");
+    expect(approval.role).toBe("supplier");
+    // Nada a aprovar antes de a arte chegar; o fornecedor não envia a arte.
+    await expect(
+      decideRequirement(supplierA, approval.id, "approve"),
+    ).rejects.toThrow("art_missing");
+    await expect(
+      submitRequirement(supplierA, art.id, { documentId: "x" }),
+    ).rejects.toThrow();
+    await fillStage(agency, order.id, "PACKAGING");
+    await decideRequirement(supplierA, approval.id, "reject", "Logo errado");
     expect((await store.get("requirements", art.id))!.status).toBe("rejected");
-    await fillStage(supplierA, order.id, "PACKAGING");
-    await decideRequirement(by("agency", "agencia"), approval.id, "approve");
+    await fillStage(agency, order.id, "PACKAGING");
+    await decideRequirement(supplierA, approval.id, "approve");
     expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
 
     // inspeção com peso divergente bloqueia

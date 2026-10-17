@@ -524,30 +524,13 @@ export async function assignPartnerAction(form: FormData) {
         await store.update("stages", stage.id, { responsiblePartyId: partyId });
       }
     }
-    if (field === "agencyId" && partyId) {
+    if (field === "agencyId") {
+      // Arte e embalagem: a arte ainda não enviada passa a ser da agência
+      // (ou volta à Wellmix sem agência); a aprovação é sempre do fornecedor.
+      const { normalizePackagingStage } =
+        await import("@/lib/services/packaging");
       const [pack] = stages.filter((s) => s.key === "PACKAGING");
-      if (pack) {
-        const reqs = await store.list("requirements", {
-          filter: { stageId: pack.id, key: "art_approval" },
-        });
-        if (reqs.length === 0) {
-          await store.create("requirements", {
-            orderId,
-            stageId: pack.id,
-            key: "art_approval",
-            label: "Aprovação da arte pela agência",
-            type: "approval",
-            required: true,
-            role: "agency",
-            status: "pending",
-            value: null,
-            documentId: null,
-            submittedByUserId: null,
-            submittedAt: null,
-            note: null,
-          });
-        }
-      }
+      if (pack) await normalizePackagingStage(pack.id);
     }
     await audit(
       user,
