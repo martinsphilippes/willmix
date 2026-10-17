@@ -40,6 +40,7 @@ import {
 import {
   assertUploadable,
   registerUploadedDocument,
+  registerUploadedPhoto,
   uploadDocument,
 } from "@/lib/services/documents";
 import {
@@ -382,6 +383,9 @@ export async function submitRequirementAction(form: FormData) {
     let documentId: string | null = null;
     const file = form.get("file");
     const uploadedFileId = str(form, "uploadedFileId");
+    // Foto grande (reduzida no aparelho e ainda acima do teto da requisição):
+    // já subiu direto ao armazenamento; só imagem vira documento.
+    const uploadedPhotoId = str(form, "uploadedPhotoId");
     const type: DocumentType =
       requirement.type === "photo"
         ? "photo"
@@ -399,6 +403,16 @@ export async function submitRequirementAction(form: FormData) {
         .regex(/^[A-Za-z0-9_.-]{1,64}$/)
         .parse(uploadedFileId);
       const doc = await registerUploadedDocument(user, uploadedFileId, {
+        orderId,
+        requirementId,
+        type,
+      });
+      documentId = doc.id;
+    } else if (uploadedPhotoId) {
+      z.string()
+        .regex(/^[A-Za-z0-9_.-]{1,64}$/)
+        .parse(uploadedPhotoId);
+      const doc = await registerUploadedPhoto(user, uploadedPhotoId, {
         orderId,
         requirementId,
         type,

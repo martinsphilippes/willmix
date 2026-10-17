@@ -393,7 +393,10 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Toque de verdade no botão "Escolher arquivo": o ponto tocado é o próprio
   // campo de arquivo (no iPad/iPhone, o rótulo com o campo escondido dentro
   // não abria o seletor).
-  const fileButton = page.locator("[data-file-button]").first();
+  // A arte aceita foto (câmera/galeria, como a foto do produto) ou arquivo.
+  const artUpload = page.locator("[data-requirement-upload]").first();
+  await expect(artUpload.locator("[data-photo-button]")).toBeVisible();
+  const fileButton = artUpload.locator("[data-file-button]");
   await fileButton.scrollIntoViewIfNeeded();
   const box = await fileButton.boundingBox();
   const hit = await page.evaluate(

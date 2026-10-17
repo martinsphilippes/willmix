@@ -23,6 +23,7 @@ export function FileAutoInput({
   serverOnlyLabel,
   failedLabel,
   accept,
+  className,
 }: {
   name: string;
   label: string;
@@ -34,6 +35,8 @@ export function FileAutoInput({
   serverOnlyLabel: string;
   failedLabel: string;
   accept?: string;
+  /** Largura do botão (ex.: "w-full sm:w-auto" ao lado do botão de foto). */
+  className?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -105,13 +108,13 @@ export function FileAutoInput({
         : label;
 
   return (
-    <span className="inline-flex flex-col gap-1">
+    <span className={`inline-flex flex-col gap-1 ${className ?? ""}`}>
       {/* O campo de arquivo (invisível) cobre o botão inteiro: o toque cai
           direto nele. No iPad/iPhone, tocar num rótulo com o campo escondido
           dentro não abria o seletor. */}
       <span
         aria-busy={busy || undefined}
-        className={`relative inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition focus-within:ring-2 focus-within:ring-brand-200 ${
+        className={`relative inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition focus-within:ring-2 focus-within:ring-brand-200 ${
           busy
             ? "cursor-wait border-zinc-200 bg-zinc-50 text-zinc-500"
             : "cursor-pointer border-brand-300 bg-white text-brand-700 hover:bg-brand-50 active:bg-brand-100"
