@@ -31,6 +31,7 @@ import * as packaging from "./packaging";
 import * as carton from "./carton";
 import * as dateOrder from "./date-order";
 import * as financeFx from "./finance-fx";
+import * as pageHelp from "./page-help";
 import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as requestProduct from "./request-product";
@@ -79,6 +80,7 @@ export const modulesPt = {
   ...carton.pt,
   ...dateOrder.pt,
   ...financeFx.pt,
+  ...pageHelp.pt,
   ...inspectionReport.pt,
   ...sla.pt,
   ...requestProduct.pt,
@@ -134,6 +136,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...carton.en,
   ...dateOrder.en,
   ...financeFx.en,
+  ...pageHelp.en,
   ...inspectionReport.en,
   ...sla.en,
   ...requestProduct.en,
@@ -189,6 +192,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...carton.zh,
   ...dateOrder.zh,
   ...financeFx.zh,
+  ...pageHelp.zh,
   ...inspectionReport.zh,
   ...sla.zh,
   ...requestProduct.zh,
