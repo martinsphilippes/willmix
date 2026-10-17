@@ -136,9 +136,18 @@ export async function applySupplierTermsToOrder(
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order) throw new SupplierTermsError("not_found");
-  const supplier = await store.get("parties", order.supplierId);
+  const [supplier, paid] = await Promise.all([
+    store.get("parties", order.supplierId),
+    store.list("payments", {
+      filter: { orderId, direction: "supplier_out" },
+      limit: 1,
+    }),
+  ]);
   const terms = parseTerms(supplier?.paymentTerms ?? null);
   if (!terms) throw new SupplierTermsError("terms_missing");
+  // Com dinheiro já lançado pela condição do pedido, trocar a condição
+  // mudaria a parcela que esse dinheiro pagou.
+  if (paid.length) throw new SupplierTermsError("terms_has_payments");
   const before = parseTerms(order.supplierPaymentTerms ?? null);
   await store.update("orders", orderId, { supplierPaymentTerms: terms });
   await audit(
@@ -159,10 +168,11 @@ export interface OrderPayable {
   schedule: SupplierSchedule;
   source: TermsSource | null;
   /**
-   * Pedido antigo em que o fornecedor confirmou o recebimento pela etapa de
-   * pagamento: pagamentos ainda "pendentes" dele já foram recebidos.
+   * Pedido antigo: quando o fornecedor confirmou o recebimento pela etapa de
+   * pagamento. Pagamentos registrados até ali já foram recebidos; os
+   * registrados depois seguem pedindo a confirmação dele.
    */
-  legacyReceived: boolean;
+  legacyReceivedAt: string | null;
 }
 
 /** Itens da etapa antiga de pagamento: quem marcou, pagou no fluxo antigo. */
@@ -176,6 +186,30 @@ export const LEGACY_PAYMENT_KEYS = ["payment_registered", "payment_received"];
 function paidInOldFlow(requirements: Requirement[]) {
   return requirements.some(
     (r) => LEGACY_PAYMENT_KEYS.includes(r.key) && r.status === "done",
+  );
+}
+
+/** Quando o fornecedor confirmou o recebimento pela etapa antiga (o mais recente). */
+export function legacyReceivedAt(
+  requirements: Array<
+    Pick<Requirement, "key" | "status" | "submittedAt" | "updatedAt">
+  >,
+): string | null {
+  const times = requirements
+    .filter((r) => r.key === "payment_received" && r.status === "done")
+    .map((r) => r.submittedAt ?? r.updatedAt)
+    .filter((t): t is string => !!t)
+    .sort();
+  return times.at(-1) ?? null;
+}
+
+/** Pagamento que já existia quando o fornecedor confirmou pela etapa antiga. */
+export function receivedInOldFlow(
+  payment: Pick<Payment, "createdAt">,
+  receivedAt: string | null,
+): boolean {
+  return (
+    !!receivedAt && Date.parse(payment.createdAt) <= Date.parse(receivedAt)
   );
 }
 
@@ -219,9 +253,7 @@ function payableFor(
     productName: items[0]?.name ?? "—",
     schedule,
     source,
-    legacyReceived: requirements.some(
-      (r) => r.key === "payment_received" && r.status === "done",
-    ),
+    legacyReceivedAt: legacyReceivedAt(requirements),
   };
 }
 
@@ -421,15 +453,19 @@ async function runRelease(orderId?: string): Promise<number> {
     ];
   }
   let released = 0;
+  let failed = false;
   for (const stage of stages) {
     try {
       if (await releaseStage(stage)) released++;
     } catch (error) {
+      failed = true;
       // Um pedido com problema não segura os outros nem a tela.
       console.error("[supplier-terms] etapa não liberada", stage.id, error);
     }
   }
-  if (!orderId) quietSince = stages.length === 0 ? Date.now() : 0;
+  // Nada liberado e nada falhou (inclusive pedido que não há o que refazer):
+  // as telas esperam 10 minutos para olhar de novo.
+  if (!orderId) quietSince = released === 0 && !failed ? Date.now() : 0;
   return released;
 }
 
@@ -458,11 +494,41 @@ export async function releaseOffFlowStages(
   return job;
 }
 
+const PAYABLES_DIGEST_SUBJECT = "Pagamento a fornecedores:";
+const CONFIRM_REMINDER_SUBJECT = "Wellmix: please confirm receipt of";
+
+/**
+ * Já mandou este aviso nas últimas 20 horas? Olha o histórico de e-mail
+ * (o in-app pode ser apagado pelo usuário; o e-mail fica como registro).
+ */
+async function sentRecently(
+  target: { partyId: string } | { role: Array<"admin" | "operator"> },
+  subjectPrefix: string,
+): Promise<boolean> {
+  // Relógio real: o que conta é quando o aviso saiu de fato.
+  const since = Date.now() - 20 * 3_600_000;
+  const rows = await getStore().list("notifications", {
+    filter: { channel: "email", ...target },
+    orderBy: "createdAt",
+    direction: "desc",
+    limit: 200,
+  });
+  return rows.some(
+    (n) =>
+      n.subject.startsWith(subjectPrefix) && Date.parse(n.createdAt) > since,
+  );
+}
+
 /**
  * Aviso diário à Wellmix (job de lembretes): parcelas vencidas e as que vencem
  * nos próximos dias, num resumo só, com link para Contas a pagar.
  */
 export async function notifyPayablesDue(): Promise<number> {
+  // Job chamado duas vezes no mesmo dia: um resumo só.
+  if (
+    await sentRecently({ role: ["admin", "operator"] }, PAYABLES_DIGEST_SUBJECT)
+  )
+    return 0;
   const rows = payableRows(await listPayables()).filter(
     (r) =>
       (r.installment.status === "overdue" ||
@@ -483,8 +549,8 @@ export async function notifyPayablesDue(): Promise<number> {
     { role: ["admin", "operator"] },
     {
       subject: overdue.length
-        ? `Pagamento a fornecedores: ${overdue.length} parcela(s) vencida(s)`
-        : `Pagamento a fornecedores: ${rows.length} parcela(s) vencem nos próximos dias`,
+        ? `${PAYABLES_DIGEST_SUBJECT} ${overdue.length} parcela(s) vencida(s)`
+        : `${PAYABLES_DIGEST_SUBJECT} ${rows.length} parcela(s) vencem nos próximos dias`,
       body: lines.join("\n"),
       link: overdue.length ? "/app/payables?status=overdue" : "/app/payables",
     },
@@ -516,24 +582,34 @@ export async function notifySuppliersToConfirm(
       filter: { orderId: orderIds, key: "payment_received", status: "done" },
     }),
   ]);
-  const skip = new Set(oldConfirmed.map((r) => r.orderId));
   const bySupplier = new Map<string, string[]>();
   for (const p of paid) {
     const order = orders.find((o) => o.id === p.orderId);
-    if (!order || order.status === "CANCELLED" || skip.has(order.id)) continue;
+    if (!order || order.status === "CANCELLED") continue;
+    // Já recebido pela etapa antiga (pagamento anterior à confirmação dela).
+    const receivedAt = legacyReceivedAt(
+      oldConfirmed.filter((r) => r.orderId === order.id),
+    );
+    if (receivedInOldFlow(p, receivedAt)) continue;
     bySupplier.set(order.supplierId, [
       ...(bySupplier.get(order.supplierId) ?? []),
       `#${order.number} ${p.currency} ${p.amount.toFixed(2)}`,
     ]);
   }
-  for (const [supplierId, lines] of bySupplier)
+  let sent = 0;
+  for (const [supplierId, lines] of bySupplier) {
+    // Job chamado duas vezes no mesmo dia: um lembrete só.
+    if (await sentRecently({ partyId: supplierId }, CONFIRM_REMINDER_SUBJECT))
+      continue;
     await notify(
       { role: "supplier", partyId: supplierId },
       {
-        subject: `Wellmix: please confirm receipt of ${lines.length} payment(s)`,
+        subject: `${CONFIRM_REMINDER_SUBJECT} ${lines.length} payment(s)`,
         body: lines.slice(0, 6).join("\n"),
         link: "/app/account",
       },
     );
-  return bySupplier.size;
+    sent++;
+  }
+  return sent;
 }

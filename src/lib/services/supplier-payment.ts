@@ -6,6 +6,7 @@ import {
   type Order,
   type Party,
   type Payment,
+  type PaymentTermInstallment,
   type User,
 } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
@@ -18,7 +19,11 @@ import type {
 import { audit } from "./audit";
 import { uploadDocument } from "./documents";
 import { notify } from "./notifications";
-import { orderPayable, type TermsSource } from "./supplier-terms";
+import {
+  orderPayable,
+  receivedInOldFlow,
+  type TermsSource,
+} from "./supplier-terms";
 
 export class SupplierPaymentError extends Error {}
 
@@ -150,12 +155,14 @@ export async function supplierPaymentView(
     transferText,
     emailUrl,
     whatsappUrl,
-    // Pedido antigo com o recebimento confirmado na etapa: nada a marcar.
-    pending: payable.legacyReceived
-      ? []
-      : payments.filter(
-          (p) => p.direction === "supplier_out" && p.status === "pending",
-        ),
+    // Pedido antigo: o que já existia quando o fornecedor confirmou o
+    // recebimento pela etapa foi recebido; nada a marcar nesses.
+    pending: payments.filter(
+      (p) =>
+        p.direction === "supplier_out" &&
+        p.status === "pending" &&
+        !receivedInOldFlow(p, payable.legacyReceivedAt),
+    ),
   };
 }
 
@@ -191,6 +198,8 @@ export async function registerSupplierPayment(
   let amount = input.amount ?? null;
   let currency = (input.currency ?? order.fobCurrency ?? "USD").toUpperCase();
   let note = input.note ?? null;
+  /** Condição que valia quando o pagamento foi ligado a uma parcela. */
+  let linkedTerms: PaymentTermInstallment[] | null = null;
   if (amount === null) {
     const view = await supplierPaymentView(order, "");
     if (
@@ -202,14 +211,18 @@ export async function registerSupplierPayment(
       throw new SupplierPaymentError("nothing_due");
     amount = view.due;
     currency = view.currency;
-    if (view.installment && !note)
+    if (view.installment && !note) {
       note = `Parcela ${view.installment.index}/${view.installment.count}`;
+      linkedTerms = view.schedule.terms;
+    }
   } else if (input.installment != null && !note) {
     // Registro à mão da parcela da vez: liga o pagamento à parcela.
     const { schedule } = await orderPayable(order);
     const count = schedule.terms?.length ?? 0;
-    if (input.installment >= 1 && input.installment <= count)
+    if (input.installment >= 1 && input.installment <= count) {
       note = `Parcela ${input.installment}/${count}`;
+      linkedTerms = schedule.terms;
+    }
   }
   if (!(amount > 0)) throw new SupplierPaymentError("invalid_amount");
   const status = input.method === "manual" ? "confirmed" : "pending";
@@ -242,6 +255,17 @@ export async function registerSupplierPayment(
     payment.id,
     `${currency} ${amount} · ${methodLabel[input.method]}`,
   );
+  // Pedido sem cópia da condição: fixa a que valia agora, para que mudar o
+  // cadastro do fornecedor depois não mude a parcela que este dinheiro pagou.
+  if (linkedTerms && !order.supplierPaymentTerms) {
+    try {
+      await store.update("orders", orderId, {
+        supplierPaymentTerms: linkedTerms,
+      });
+    } catch (error) {
+      console.warn("[supplier-payment] condição não fixada no pedido", error);
+    }
+  }
   // Conclui "pagamento registrado" da etapa, se estiver ativa.
   const [stage] = await store.list("stages", {
     filter: { orderId, key: "SUPPLIER_PAYMENT" },

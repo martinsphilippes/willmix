@@ -103,6 +103,9 @@ export function PaymentTermsEditor({
   };
   // Mesmas regras do servidor: 0 < % ≤ 100 (em centésimos) e 0 a 720 dias.
   const rowValid = (r: Row) => {
+    // Teto no valor digitado (como o servidor); o mínimo, no gravado.
+    const raw = parseNumberInput(r.percent);
+    if (raw === null || !Number.isFinite(raw) || raw > 100) return false;
     const percent = pct(r);
     const days = r.days === "" ? 0 : parseNumberInput(r.days, { int: true });
     return (

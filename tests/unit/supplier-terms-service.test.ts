@@ -478,7 +478,8 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
       value: "ok",
       documentId: null,
       submittedByUserId: admin.id,
-      submittedAt: new Date().toISOString(),
+      // Confirmado depois dos pagamentos já lançados (como no fluxo antigo).
+      submittedAt: new Date(Date.now() + 1000).toISOString(),
       note: null,
     });
   }
@@ -507,9 +508,9 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
     const store = getStore();
     const received = await inPackaging();
     await store.update("orders", received.id, { supplierPaymentTerms: null });
+    await pendingRow(received, 1000);
     await oldItem(received, "payment_registered");
     await oldItem(received, "payment_received");
-    await pendingRow(received, 1000);
     const fresh = (await store.get("orders", received.id))!;
     const view = await supplierPaymentView(fresh, "");
     expect(view.pending).toEqual([]);
@@ -604,5 +605,132 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
     ).toBe(true);
     // Ainda dentro dos 3 dias: nada.
     expect(await terms.notifySuppliersToConfirm(new Date())).toBe(0);
+  });
+});
+
+describe("revisão final: condição fixa depois do pagamento, legado por pagamento, avisos sem repetir", () => {
+  async function inPackagingWith(user: User, partyId: string) {
+    const store = getStore();
+    const order = await newOrder(user, partyId);
+    for (const key of ["ORDER_CREATED", "PREPARATION"]) {
+      const [stage] = await store.list("stages", {
+        filter: { orderId: order.id, key: key as never },
+      });
+      for (const req of await store.list("requirements", {
+        filter: { stageId: stage.id, status: "pending" },
+      }))
+        if ((await store.get("stages", stage.id))?.status === "active")
+          await submitRequirement(admin, req.id, { value: "1" });
+    }
+    return (await store.get("orders", order.id))!;
+  }
+
+  it("com pagamento lançado, a condição do pedido não muda; pagar parcela fixa a condição no pedido", async () => {
+    const store = getStore();
+    const { registerSupplierPayment } =
+      await import("@/lib/services/supplier-payment");
+    const supplierB = (
+      await store.list("users", { filter: { email: "supplier.b@china.com" } })
+    )[0];
+    // Pedido nasce sem condição (fornecedor B sem condição).
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-b", {
+      terms: [],
+      note: null,
+    });
+    const order = await inPackagingWith(supplierB, "fornecedor-b");
+    expect(order.supplierPaymentTerms ?? null).toBeNull();
+    const first = [
+      { percent: 50, base: "order_created" as const, days: 0 },
+      { percent: 50, base: "shipped" as const, days: 0 },
+    ];
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-b", {
+      terms: first,
+      note: null,
+    });
+    // Paga a parcela 1 pela condição atual do fornecedor: ela fica no pedido.
+    await registerSupplierPayment(admin, order.id, {
+      method: "transfer_copied",
+      installment: 1,
+    });
+    expect((await store.get("orders", order.id))!.supplierPaymentTerms).toEqual(
+      first,
+    );
+    // Cadastro muda depois: o pedido continua com a condição do pagamento.
+    await terms.saveSupplierPaymentTerms(admin, "fornecedor-b", {
+      terms: [
+        { percent: 50, base: "shipped" as const, days: 0 },
+        { percent: 50, base: "delivered" as const, days: 30 },
+      ],
+      note: null,
+    });
+    const payable = await terms.orderPayable(
+      (await store.get("orders", order.id))!,
+    );
+    expect(payable.source).toBe("order");
+    expect(payable.schedule.installments[0].status).toBe("requested");
+    // E "Usar a condição atual" é recusado com pagamento lançado.
+    await expect(
+      terms.applySupplierTermsToOrder(admin, order.id),
+    ).rejects.toThrow("terms_has_payments");
+  });
+
+  it("pagamento lançado depois da confirmação antiga pede a confirmação do fornecedor", async () => {
+    const store = getStore();
+    // Fornecedor C: ainda sem lembrete neste arquivo de teste.
+    const order = await inPackagingWith(supplierC, "fornecedor-c");
+    const [pay] = await store.list("stages", {
+      filter: { orderId: order.id, key: "SUPPLIER_PAYMENT" },
+    });
+    // Fluxo antigo: sinal confirmado pela etapa há 10 dias.
+    const old = new Date(Date.now() - 10 * 86_400_000).toISOString();
+    await store.create("requirements", {
+      orderId: order.id,
+      stageId: pay.id,
+      key: "payment_received",
+      label: "payment_received",
+      type: "confirm",
+      required: true,
+      role: "supplier",
+      status: "done",
+      value: "ok",
+      documentId: null,
+      submittedByUserId: supplierC.id,
+      submittedAt: old,
+      note: null,
+    });
+    // Saldo pago agora pela Wellmix (registro à mão): o fornecedor confirma.
+    const later = await store.create("payments", {
+      orderId: order.id,
+      requestId: null,
+      direction: "supplier_out",
+      amount: 700,
+      currency: "USD",
+      fxRate: null,
+      method: "manual",
+      status: "confirmed",
+      proofDocumentId: null,
+      registeredByUserId: admin.id,
+      confirmedByUserId: null,
+      confirmedAt: null,
+      note: null,
+    } as never);
+    const tasks = await pendingTasksFor(supplierC);
+    expect(
+      tasks.some(
+        (x) => x.kind === "confirm_receipt" && x.orderNumber === order.number,
+      ),
+    ).toBe(true);
+    const inFourDays = new Date(Date.now() + 4 * 86_400_000);
+    const firstRun = await terms.notifySuppliersToConfirm(inFourDays);
+    expect(firstRun).toBeGreaterThanOrEqual(1);
+    // O job rodando de novo no mesmo dia não repete o lembrete.
+    expect(await terms.notifySuppliersToConfirm(inFourDays)).toBe(0);
+    expect(later.status).toBe("confirmed");
+  });
+
+  it("o resumo diário da Wellmix não repete no mesmo dia", async () => {
+    // Já houve um resumo neste arquivo de teste (parcelas vencidas/da semana).
+    const again = await terms.notifyPayablesDue();
+    expect(again).toBe(0);
   });
 });
