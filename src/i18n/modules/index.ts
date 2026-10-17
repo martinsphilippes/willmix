@@ -30,6 +30,7 @@ import * as supplierTerms from "./supplier-terms";
 import * as packaging from "./packaging";
 import * as carton from "./carton";
 import * as dateOrder from "./date-order";
+import * as financeFx from "./finance-fx";
 import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as requestProduct from "./request-product";
@@ -77,6 +78,7 @@ export const modulesPt = {
   ...packaging.pt,
   ...carton.pt,
   ...dateOrder.pt,
+  ...financeFx.pt,
   ...inspectionReport.pt,
   ...sla.pt,
   ...requestProduct.pt,
@@ -131,6 +133,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...packaging.en,
   ...carton.en,
   ...dateOrder.en,
+  ...financeFx.en,
   ...inspectionReport.en,
   ...sla.en,
   ...requestProduct.en,
@@ -185,6 +188,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...packaging.zh,
   ...carton.zh,
   ...dateOrder.zh,
+  ...financeFx.zh,
   ...inspectionReport.zh,
   ...sla.zh,
   ...requestProduct.zh,

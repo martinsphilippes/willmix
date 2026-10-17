@@ -87,9 +87,9 @@ export const helpPt = {
   "help.settings.body":
     'Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, arte da embalagem feita pela agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos. Seção "IA, marketing e operação": modo da IA (AUTO/MOCK/MANUAL) e modelo, kit de marketing (preço padrão e moeda), gate de RADAR e nome da importadora.',
   "help.finance.body":
-    "Consolida o que já foi lançado: valor vendido ao cliente e recebimentos; custo FOB e pagamentos ao fornecedor. O custo em reais usa o câmbio informado em cada pagamento; quando falta câmbio ou há saldo a pagar, a margem aparece como estimativa (~).",
+    'Consolida o que já foi lançado: valor vendido ao cliente e recebimentos; custo FOB e pagamentos ao fornecedor. O custo em reais usa o câmbio real informado em cada pagamento; o que ainda falta pagar ao fornecedor é estimado pelo câmbio do dia, e a margem aparece com "~" (estimativa), com o câmbio usado à vista. Com o câmbio da venda (gravado na proposta), a margem mostra também quanto o câmbio já mudou o resultado desde a venda.',
   "help.finance.steps":
-    "Recebimento do cliente: registre no pedido (card Financeiro) o sinal e as parcelas seguintes, com comprovante.\nPagamento ao fornecedor: segue a condição do cadastro do fornecedor; as parcelas ficam em Gestão → Contas a pagar. Registre no card Pagamento ao fornecedor do pedido, com valor, moeda e câmbio; o fornecedor confirma na conta corrente.\nMargem: venda menos custo convertido. Informe o câmbio nos pagamentos para a margem deixar de ser estimativa.\nA receber e A pagar em destaque indicam pendência de caixa.",
+    "Recebimento do cliente: registre no pedido (card Financeiro) o sinal e as parcelas seguintes, com comprovante.\nPagamento ao fornecedor: segue a condição do cadastro do fornecedor; as parcelas ficam em Gestão → Contas a pagar. Registre no card Pagamento ao fornecedor do pedido, com valor, moeda e câmbio; o fornecedor confirma na conta corrente.\nMargem: venda menos custo convertido. Pago = câmbio real; a pagar = câmbio do dia (~). Informe o câmbio nos pagamentos para a margem deixar de ser estimativa.\nA receber e A pagar em destaque indicam pendência de caixa.",
   "help.notifications.body":
     "Avisos gerados pelo portal quando algo depende de você ou mudou em um pedido seu. E-mail e WhatsApp ainda estão em modo simulado; a lista aqui é a fonte confiável.",
 };
@@ -181,9 +181,9 @@ export const helpEn: Record<HelpKey, string> = {
   "help.settings.body":
     'Parameterized business decisions: who creates requests, who confirms delivery, packaging artwork made by the agency, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders. Section "AI, marketing and operation": AI mode (AUTO/MOCK/MANUAL) and model, marketing kit (default price and currency), RADAR gate and importer name.',
   "help.finance.body":
-    "Consolidates what is already recorded: customer sale and receipts; FOB cost and supplier payments. Cost in the sale currency uses the FX rate entered on each payment; when a rate is missing or a balance is still payable, the margin is shown as an estimate (~).",
+    'Consolidates what is already recorded: customer sale and receipts; FOB cost and supplier payments. Cost in the sale currency uses the actual FX rate entered on each payment; what is still payable to the supplier is estimated at today\'s rate, and the margin shows "~" (estimate) with the rate used. With the sale rate (saved on the proposal), the margin also shows how much the exchange rate changed the result since the sale.',
   "help.finance.steps":
-    "Customer receipt: register on the order (Finance card) the down payment and the following installments, with proof.\nSupplier payment: follows the terms in the supplier record; installments are in Management → Payables. Register it on the order's Supplier payment card with amount, currency and FX rate; the supplier confirms in their account.\nMargin: sale minus converted cost. Enter the FX rate on payments so the margin stops being an estimate.\nHighlighted Receivable and Payable indicate pending cash.",
+    "Customer receipt: register on the order (Finance card) the down payment and the following installments, with proof.\nSupplier payment: follows the terms in the supplier record; installments are in Management → Payables. Register it on the order's Supplier payment card with amount, currency and FX rate; the supplier confirms in their account.\nMargin: sale minus converted cost. Paid = actual rate; payable = today's rate (~). Enter the FX rate on payments so the margin stops being an estimate.\nHighlighted Receivable and Payable indicate pending cash.",
   "help.notifications.body":
     "Notices generated by the portal when something depends on you or changed in one of your orders. Email and WhatsApp are still simulated; this list is the reliable source.",
 };
@@ -271,9 +271,9 @@ export const helpZh: Record<HelpKey, string> = {
   "help.settings.body":
     "参数化的业务决策：谁可创建需求、谁确认交付、包装设计稿由设计公司制作、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。 “AI、营销与运营”部分：AI 模式（AUTO/MOCK/MANUAL）与模型、营销套件（默认价格与币种）、RADAR 门槛和进口商名称。",
   "help.finance.body":
-    "汇总已登记的数据：客户销售额与收款；FOB 成本与供应商付款。销售币种成本按每笔付款填写的汇率折算；缺少汇率或仍有应付余额时，毛利显示为估算值（~）。",
+    "汇总已登记的数据：客户销售额与收款；FOB 成本与供应商付款。销售币种成本中已支付部分按每笔付款填写的实际汇率折算；尚未支付给供应商的部分按当日汇率估算，毛利显示“~”（估算）并注明所用汇率。有销售时汇率（保存在报价中）时，毛利还会显示自销售以来汇率对结果的影响。",
   "help.finance.steps":
-    "客户收款：在订单的“财务”卡片登记定金及后续款项，并附凭证。\n供应商付款：按供应商资料中的付款条件执行；分期款项在“管理 → 应付账款”。在订单的“供应商付款”卡片登记金额、币种和汇率；供应商在往来账中确认。\n毛利：销售额减去折算成本。为付款填写汇率后毛利不再是估算。\n高亮的应收和应付表示待处理的现金。",
+    "客户收款：在订单的“财务”卡片登记定金及后续款项，并附凭证。\n供应商付款：按供应商资料中的付款条件执行；分期款项在“管理 → 应付账款”。在订单的“供应商付款”卡片登记金额、币种和汇率；供应商在往来账中确认。\n毛利：销售额减去折算成本。已付 = 实际汇率；应付 = 当日汇率（~）。为付款填写汇率后毛利不再是估算。\n高亮的应收和应付表示待处理的现金。",
   "help.notifications.body":
     "当有事项需要您处理或您的订单发生变化时，门户生成的通知。邮件和 WhatsApp 仍为模拟模式；此列表是可靠来源。",
 };
