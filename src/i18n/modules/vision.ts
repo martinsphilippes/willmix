@@ -81,6 +81,8 @@ export const pt = {
     'Marque uma das opções sugeridas ou digite outro valor; escolher já marca o "Aplicar". Para deixar em branco, toque de novo na opção marcada ou em Limpar. Nada é escolhido por padrão.',
   "vision.ai.apply.other": "Outro",
   "vision.ai.apply.clear": "Limpar",
+  "vision.ai.appliedNotice":
+    "Sugestão aplicada: os campos marcados foram gravados e já aparecem no cadastro, no alto da página (no produto, material e cor também na ficha mestre).",
   "vision.ai.apply.suggested": "Sugeridos",
   "vision.ai.apply.attributes": "Anexar atributos à especificação",
   "vision.ai.apply.attributesHint":
@@ -208,6 +210,8 @@ export const en: Record<keyof typeof pt, string> = {
     'Tick one of the suggested options or type another value; choosing ticks "Apply". To leave it blank, tap the ticked option again or Clear. Nothing is chosen by default.',
   "vision.ai.apply.other": "Other",
   "vision.ai.apply.clear": "Clear",
+  "vision.ai.appliedNotice":
+    "Suggestion applied: the ticked fields were saved and already show in the record at the top of the page (for a product, material and color also on the master sheet).",
   "vision.ai.apply.suggested": "Suggested",
   "vision.ai.apply.attributes": "Append attributes to the specification",
   "vision.ai.apply.attributesHint":
@@ -328,6 +332,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "勾选一个建议选项或输入其他值；选择后会自动勾选“应用”。如需留空，再点一次已选选项或点“清除”。默认不选任何值。",
   "vision.ai.apply.other": "其他",
   "vision.ai.apply.clear": "清除",
+  "vision.ai.appliedNotice":
+    "建议已应用：所勾选的字段已保存，并已显示在页面上方的资料中（产品的材质和颜色也同步到主采购单）。",
   "vision.ai.apply.suggested": "建议值",
   "vision.ai.apply.attributes": "将属性追加到规格",
   "vision.ai.apply.attributesHint": "上方的“键: 值”将追加到规格末尾。",

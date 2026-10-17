@@ -169,6 +169,7 @@ export default async function ProductSheetPage({
     at: saveToken,
     from: errorFrom,
     fields: invalidFields,
+    ai: aiNotice,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -377,7 +378,8 @@ export default async function ProductSheetPage({
       {saved ? <Alert tone="success">{t("catalog.saved")}</Alert> : null}
       <ActionError
         t={t}
-        code={error}
+        // Erro da sugestão da IA aparece na própria seção (lá embaixo).
+        code={errorFrom === "ai" ? undefined : error}
         text={errorText}
         fields={invalidFields}
         token={saveToken}
@@ -1637,6 +1639,8 @@ export default async function ProductSheetPage({
             }}
             t={t}
             back={`/app/products/${product.id}`}
+            notice={aiNotice === "applied" ? "applied" : null}
+            error={errorFrom === "ai" ? errorText : null}
           />
         </Card>
       </div>

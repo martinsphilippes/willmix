@@ -103,6 +103,9 @@ function entityBack(entity: "product" | "sourcing_item", entityId: string) {
     : `/app/sourcing/items/${entityId}`;
 }
 
+/** Volta do erro na seção da IA (from=ai#ai): o aviso aparece onde a pessoa está. */
+const aiErrorBack = (back: string) => `${back}?from=ai#ai`;
+
 /** Pede a sugestão de campos pela foto (principal ou a escolhida). Nada é aplicado. */
 export async function requestProductSuggestionAction(form: FormData) {
   const user = await requireUser();
@@ -110,7 +113,7 @@ export async function requestProductSuggestionAction(form: FormData) {
     str(form, "entity") === "sourcing_item" ? "sourcing_item" : "product";
   const entityId = str(form, "entityId");
   const back = entityBack(entity, entityId);
-  await run(back, async () => {
+  await run(aiErrorBack(back), async () => {
     assertWellmix(user);
     const parsed = z
       .object({
@@ -133,7 +136,7 @@ export async function applyProductSuggestionAction(form: FormData) {
     str(form, "entity") === "sourcing_item" ? "sourcing_item" : "product";
   const entityId = str(form, "entityId");
   const back = entityBack(entity, entityId);
-  await run(back, async () => {
+  await run(aiErrorBack(back), async () => {
     assertWellmix(user);
     const id = z.string().min(1).parse(str(form, "id"));
     const apply = new Set(form.getAll("apply").map(String));
@@ -164,14 +167,15 @@ export async function applyProductSuggestionAction(form: FormData) {
     )
       throw new Error("not_found");
     await applyProductSuggestion(user, id, parsed);
-    return `${back}#ai`;
+    // Aviso "Sugestão aplicada" na própria seção (antes parecia que nada acontecia).
+    return `${back}?ai=applied#ai`;
   });
 }
 
 export async function discardSuggestionAction(form: FormData) {
   const user = await requireUser();
   const back = safeBack(str(form, "back"), "/app/products");
-  await run(back, async () => {
+  await run(aiErrorBack(back), async () => {
     assertWellmix(user);
     const parsed = z
       .object({ id: z.string().min(1), note: z.string().max(2000).nullable() })

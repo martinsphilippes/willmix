@@ -143,6 +143,8 @@ export function AiSection({
   current,
   t,
   back,
+  notice,
+  error,
 }: {
   entity: "product" | "sourcing_item";
   entityId: string;
@@ -156,6 +158,10 @@ export function AiSection({
   t: Translate;
   /** Caminho da própria página (o descarte volta para cá, âncora #ai). */
   back: string;
+  /** Sugestão acabou de ser aplicada (?ai=applied): aviso na própria seção. */
+  notice?: "applied" | null;
+  /** Erro de uma ação desta seção (?from=ai): mostrado aqui, onde a pessoa está. */
+  error?: string | null;
 }) {
   const userName = userNameFor(users);
   const defaultPhoto = photos[0] ?? null;
@@ -170,6 +176,15 @@ export function AiSection({
   return (
     <div className="@container space-y-3">
       <div id="ai" className="scroll-mt-4" />
+      {error ? (
+        <Alert tone="danger">
+          <span data-ai-error="">{error}</span>
+        </Alert>
+      ) : notice === "applied" ? (
+        <Alert tone="success">
+          <span data-ai-applied="">{t("vision.ai.appliedNotice")}</span>
+        </Alert>
+      ) : null}
       <p className="text-sm text-zinc-600">{t("vision.ai.hint")}</p>
 
       {mode === "manual" ? (
@@ -337,7 +352,7 @@ export function AiSection({
                       {t("vision.ai.decidedBy")} {userName(s.decidedByUserId)}
                       {s.decidedAt ? ` · ${when(s.decidedAt, t.intl)}` : ""}
                       {s.note
-                        ? ` · ${s.status === "applied" ? t("vision.ai.applied") : t("common.note")}: ${s.note}`
+                        ? ` · ${s.status === "applied" ? `${t("vision.ai.applied")}: ${appliedLabels(s.note, t)}` : `${t("common.note")}: ${s.note}`}`
                         : ""}
                     </p>
                   ) : null}
@@ -397,6 +412,21 @@ export function AiSection({
       </div>
     </div>
   );
+}
+
+/** "category, material" (gravado na sugestão) → nomes dos campos no idioma da tela. */
+function appliedLabels(note: string, t: Translate): string {
+  const label: Record<string, string> = {
+    category: t("catalog.category"),
+    description: t("vision.ai.apply.description"),
+    material: t("catalog.material"),
+    color: t("catalog.color"),
+    attributes: t("vision.lines.requiredAttributes"),
+  };
+  return note
+    .split(",")
+    .map((k) => label[k.trim()] ?? k.trim())
+    .join(", ");
 }
 
 /** Resumo do que foi sugerido (histórico de sugestões já decididas). */
