@@ -103,3 +103,21 @@ export async function markSupplierPaymentPaidAction(form: FormData) {
     return `/app/orders/${orderId}?paid=marked#supplier-payment`;
   });
 }
+
+/**
+ * Informa (ou corrige) o câmbio de um pagamento ao fornecedor já feito: o
+ * custo desse pagamento deixa de ser estimado no financeiro.
+ */
+export async function setSupplierPaymentFxAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const paymentId = str(form, "paymentId");
+  await run(`/app/orders/${orderId}`, async () => {
+    assertWellmix(user);
+    const fxRate = z.number().positive().parse(num(form, "fxRate"));
+    const { setSupplierPaymentFx } =
+      await import("@/lib/services/supplier-payment");
+    await setSupplierPaymentFx(user, orderId, paymentId, fxRate);
+    return `/app/orders/${orderId}?fx=saved#payments`;
+  });
+}

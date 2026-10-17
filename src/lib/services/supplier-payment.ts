@@ -297,6 +297,44 @@ export async function registerSupplierPayment(
  * em vez de registrar outro pagamento (que contaria em dobro). O fornecedor é
  * avisado para confirmar o recebimento.
  */
+/**
+ * Câmbio informado depois, num pagamento ao fornecedor já feito (o "pago sem
+ * câmbio" do financeiro): R$ por 1 unidade da moeda do pagamento. Só Wellmix;
+ * pagamento em reais não tem câmbio. Corrige também um câmbio errado (auditado).
+ */
+export async function setSupplierPaymentFx(
+  user: User,
+  orderId: string,
+  paymentId: string,
+  fxRate: number,
+): Promise<Payment> {
+  if (!isWellmix(user)) throw new SupplierPaymentError("forbidden");
+  if (!(fxRate > 0)) throw new SupplierPaymentError("invalid_fx");
+  const store = getStore();
+  const payment = await store.get("payments", paymentId);
+  if (
+    !payment ||
+    payment.direction !== "supplier_out" ||
+    payment.orderId !== orderId
+  )
+    throw new SupplierPaymentError("not_found");
+  if (payment.status !== "confirmed" && payment.status !== "received")
+    throw new SupplierPaymentError("payment_not_settled");
+  if (payment.currency.toUpperCase() === "BRL")
+    throw new SupplierPaymentError("payment_brl");
+  const updated = await store.update("payments", paymentId, { fxRate });
+  await audit(
+    user,
+    "payment.fx",
+    "payment",
+    paymentId,
+    `${payment.currency} ${payment.amount}: câmbio ${fxRate} (R$ por 1 ${payment.currency})`,
+    { fxRate: payment.fxRate ?? null },
+    { fxRate },
+  );
+  return updated;
+}
+
 export async function markSupplierPaymentPaid(
   user: User,
   orderId: string,

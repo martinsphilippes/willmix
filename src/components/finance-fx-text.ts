@@ -76,12 +76,20 @@ export function fxRateLines(
       main = rate(t, f.avgFx);
       notes.push(t("finance.fx.paid"));
       break;
-    case "partial":
+    case "partial": {
       if (f.avgFx !== null) {
-        main = rate(t, f.avgFx);
-        notes.push(t("finance.fx.paid"));
-      } else if (est !== null) main = `~${rate(t, est)}`;
-      else return null;
+        // Real (pagamentos na moeda do FOB com câmbio); venda fora de reais
+        // depende do câmbio do dia para chegar à moeda da venda: estimado.
+        main = approx(rate(t, f.avgFx), f.sellRate !== null);
+        if (f.sellRate === null) notes.push(t("finance.fx.paid"));
+      } else {
+        // Nada pago na moeda do FOB com câmbio (pago em reais, em outra moeda
+        // ou sem câmbio): câmbio médio do custo, estimado.
+        const effective =
+          f.cost !== null && f.costedFob > 0 ? f.cost / f.costedFob : est;
+        if (effective === null) return null;
+        main = `~${rate(t, effective)}`;
+      }
       if (est !== null && f.unpaid > 0.005)
         notes.push(
           withSource(
@@ -91,6 +99,7 @@ export function fxRateLines(
           ),
         );
       break;
+    }
     case "estimate":
       if (est === null) return null;
       main = `~${rate(t, est)}`;

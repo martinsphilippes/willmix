@@ -121,6 +121,7 @@ import {
   ensureSnapshotAction,
   remeasureAction,
 } from "../../actions/orders-extra";
+import { setSupplierPaymentFxAction } from "../../actions/supplier-terms";
 import {
   answerAfterSalesAction,
   closeAfterSalesAction,
@@ -140,6 +141,7 @@ export default async function OrderPage({
     error,
     remeasure,
     paid,
+    fx: fxSaved,
     cancelled,
     cancelRequested,
     cancelRejected,
@@ -1082,6 +1084,12 @@ export default async function OrderPage({
 
           {visiblePayments.length > 0 ? (
             <Card title={t("orders.payments")}>
+              <div id="payments" className="scroll-mt-24" />
+              {wellmix && fxSaved === "saved" ? (
+                <p className="mb-2 text-xs font-medium text-emerald-700">
+                  {t("finance.fx.savedNotice")}
+                </p>
+              ) : null}
               <ul className="space-y-1.5 text-sm">
                 {visiblePayments.map((p) => (
                   <li
@@ -1115,6 +1123,60 @@ export default async function OrderPage({
                       >
                         {t("requests.payment.proof")}
                       </a>
+                    ) : null}
+                    {/* Câmbio do pagamento ao fornecedor (custo real no
+                        financeiro): só a Wellmix vê e informa depois de pago. */}
+                    {wellmix &&
+                    p.direction === "supplier_out" &&
+                    p.currency.toUpperCase() !== "BRL" &&
+                    (p.status === "confirmed" || p.status === "received") ? (
+                      p.fxRate ? (
+                        <p
+                          className="mt-0.5 text-xs text-zinc-500"
+                          data-payment-fx={p.id}
+                        >
+                          {t("finance.fx.paymentRate", {
+                            rate: p.fxRate.toLocaleString(t.intl, {
+                              minimumFractionDigits: 4,
+                              maximumFractionDigits: 4,
+                            }),
+                            currency: p.currency,
+                          })}
+                        </p>
+                      ) : (
+                        <form
+                          action={setSupplierPaymentFxAction}
+                          className="mt-1.5 flex flex-wrap items-end gap-2"
+                          data-payment-fx-form={p.id}
+                        >
+                          <input
+                            type="hidden"
+                            name="orderId"
+                            value={order.id}
+                          />
+                          <input type="hidden" name="paymentId" value={p.id} />
+                          <div className="w-36 min-w-0">
+                            <Field
+                              label={t("finance.fx.setTitle")}
+                              hint={t("finance.fx.paymentMissing")}
+                            >
+                              <Input
+                                name="fxRate"
+                                type="number"
+                                step="any"
+                                min="0"
+                                required
+                                placeholder={t("finance.fx.unitHint", {
+                                  currency: p.currency,
+                                })}
+                              />
+                            </Field>
+                          </div>
+                          <SubmitButton variant="secondary">
+                            {t("finance.fx.setSave")}
+                          </SubmitButton>
+                        </form>
+                      )
                     ) : null}
                     {showTrail && paymentTrails[p.id] ? (
                       <AckTrail

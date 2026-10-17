@@ -322,9 +322,24 @@ describe("achados da revisão", () => {
     // 2.700 reais pagos + US$ 500 a 5,4
     expect(x.cost).toBeCloseTo(5400, 6);
     expect(x.fxEffect).toBe(0);
-    expect(text.fxRateLines(pt, x)!.notes).toContain(
+    const crossLines = text.fxRateLines(pt, x)!;
+    expect(crossLines.notes).toContain(
       "pagamento em outra moeda convertido pelo câmbio do dia",
     );
+    // Nada pago na moeda do FOB com câmbio: o número principal é estimado,
+    // sem "real (pagamentos)" (depende do câmbio do dia).
+    expect(x.avgFx).toBeNull();
+    expect(crossLines.main.startsWith("~")).toBe(true);
+    expect(crossLines.notes).not.toContain("real (pagamentos)");
+    // Misto: o real é só o pago em dólar com câmbio (5,2), não o do dia.
+    const mixed = f.computeOrderFinance(
+      order(),
+      [out(500, 5.2), out(2700, null, "BRL")],
+      names,
+      { today: today(5.4) },
+    );
+    expect(mixed.avgFx).toBeCloseTo(5.2, 6);
+    expect(text.fxRateLines(pt, mixed)!.main).toBe("5,2000");
     // FOB em yuan pago em dólar (R$ 5,40 por US$).
     const rmb = f.computeOrderFinance(
       order({ fobCurrency: "RMB", fobTotal: 7200 }),
@@ -352,6 +367,18 @@ describe("achados da revisão", () => {
     );
     expect(brl.cost).toBeCloseTo(5400, 6);
     expect(brl.unpaid).toBeCloseTo(0, 6);
+  });
+
+  it("cancelado na mesma moeda: custo é só o que foi pago", () => {
+    const same = order({
+      status: "CANCELLED",
+      fobCurrency: "BRL",
+      fobTotal: 7000,
+    });
+    expect(f.computeOrderFinance(same, [], names).cost).toBeNull();
+    expect(
+      f.computeOrderFinance(same, [out(2000, null, "BRL")], names).cost,
+    ).toBe(2000);
   });
 
   it("cancelado só conta o que foi pago", () => {
@@ -390,7 +417,7 @@ describe("achados da revisão", () => {
     // (Intl separa moeda e valor com espaço não separável.)
     expect(lines.notes.map((n) => n.replace(/\s/g, " "))).toEqual([
       "real (pagamentos)",
-      "pago sem câmbio: US$ 700,00 a ~5,4000 — informe o câmbio",
+      "pago sem câmbio: US$ 700,00 a ~5,4000 — informe o câmbio no pagamento",
     ]);
     expect(lines.notes.join(" ")).not.toContain("saldo");
   });
