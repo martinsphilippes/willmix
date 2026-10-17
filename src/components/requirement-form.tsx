@@ -57,28 +57,55 @@ export function RequirementForm({
     );
   }
 
-  // Foto e arquivo enviam sozinhos ao escolher (cancelar a escolha não trava nada);
-  // a foto é reduzida no aparelho antes de subir.
+  // Foto e arquivo enviam sozinhos ao escolher (cancelar a escolha não trava nada).
+  // A foto usa a mesma lógica da foto do produto: câmera ou galeria, reduzida no
+  // aparelho e, se ainda for grande, sobe direto ao armazenamento. Requisito de
+  // arquivo (arte, documentos) aceita as duas coisas: foto ou arquivo (PDF, AI…).
   if (requirement.type === "photo" || requirement.type === "file") {
-    return (
-      <form
-        action={action ?? submitRequirementAction}
-        className="flex flex-wrap items-center gap-1.5"
-      >
+    const target = (
+      <>
         <input type="hidden" name="orderId" value={orderId} />
         <input type="hidden" name="requirementId" value={requirement.id} />
-        {requirement.type === "photo" ? (
-          <PhotoInput
-            name="file"
-            multiple={false}
-            capture={false}
-            maxDimension={1600}
-            autoSubmit
-            compact
-            label={t("requirement.photo.add")}
-            pendingLabel={t("requirement.sending")}
-          />
-        ) : (
+      </>
+    );
+    // Requisito de arquivo: os dois botões ocupam a largura no celular.
+    const wide = requirement.type === "file" ? "w-full sm:w-auto" : undefined;
+    const photo = (
+      <form
+        action={action ?? submitRequirementAction}
+        className={`flex flex-wrap items-center gap-1.5 ${wide ?? ""}`}
+      >
+        {target}
+        <PhotoInput
+          name="file"
+          multiple={false}
+          capture={false}
+          // Documento ou arte fotografados precisam continuar legíveis.
+          maxDimension={requirement.type === "file" ? 2400 : 1600}
+          quality={requirement.type === "file" ? 0.88 : 0.82}
+          autoSubmit
+          compact
+          direct
+          label={t("requirement.photo.add")}
+          pendingLabel={t("requirement.sending")}
+          uploadingLabel={t("photo.uploading")}
+          failedLabel={t("photo.failed")}
+          className={wide}
+        />
+      </form>
+    );
+    if (requirement.type === "photo") return photo;
+    return (
+      <div
+        className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start sm:justify-end"
+        data-requirement-upload=""
+      >
+        {photo}
+        <form
+          action={action ?? submitRequirementAction}
+          className={`flex flex-wrap items-center gap-1.5 ${wide}`}
+        >
+          {target}
           <FileAutoInput
             name="file"
             label={t("requirement.file.add")}
@@ -87,9 +114,10 @@ export function RequirementForm({
             tooBigLabel={t("requirement.file.tooBig")}
             serverOnlyLabel={t("requirement.file.serverOnly")}
             failedLabel={t("requirement.file.failed")}
+            className={wide}
           />
-        )}
-      </form>
+        </form>
+      </div>
     );
   }
 
