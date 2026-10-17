@@ -206,5 +206,8 @@ function boundMessage(
   const date = new Date(`${day}T00:00:00Z`).toLocaleDateString(t.intl, {
     timeZone: "UTC",
   });
-  return `${text.replace(/\.$/, "")} (${date}).`;
+  return t("orders.error.boundWithDate", {
+    text: text.replace(/[.。]$/, ""),
+    date,
+  });
 }

@@ -89,7 +89,14 @@ export function dateBoundsFor(
         out.minError = rule.errors[0];
       }
     }
-    if (rule.before.stage === stageKey && rule.before.key === requirementKey) {
+    // Com a regra `first`, a chegada só existe antes do embarque em pedidos de
+    // antes da regra: aí o embarque real vale e a chegada volta a ser pedida
+    // (sem limite máximo, para não travar a etapa).
+    if (
+      !rule.first &&
+      rule.before.stage === stageKey &&
+      rule.before.key === requirementKey
+    ) {
       const v = valueOf(rule.after.stage, rule.after.key);
       if (v && ISO_DAY.test(v)) {
         out.max = v.slice(0, 10);
@@ -118,12 +125,17 @@ export function datePrerequisite(
   return rule?.first ? { key: rule.before.key, code: rule.first } : null;
 }
 
+/**
+ * Confere a ordem das datas. Devolve as datas que voltam a ser pedidas: a
+ * chegada enviada antes do embarque (pedido de antes da regra) quando o
+ * embarque real vem depois dela — em vez de recusar o embarque e travar a etapa.
+ */
 async function assertDateOrder(
   orderId: string,
   stageKey: string,
   requirementKey: string,
   value: string,
-) {
+): Promise<Requirement[]> {
   if (!ISO_DAY.test(value) || Number.isNaN(Date.parse(value)))
     throw new WorkflowError("date_invalid");
   const store = getStore();
@@ -142,6 +154,7 @@ async function assertDateOrder(
   const exists = (sk: string, key: string) =>
     reqs.some((r) => r.key === key && stageKeyOf.get(r.stageId) === sk);
   const day = value.slice(0, 10);
+  const reopen: Requirement[] = [];
   for (const rule of DATE_ORDER) {
     if (rule.after.stage === stageKey && rule.after.key === requirementKey) {
       const before = valueOf(rule.before.stage, rule.before.key);
@@ -153,10 +166,26 @@ async function assertDateOrder(
     }
     if (rule.before.stage === stageKey && rule.before.key === requirementKey) {
       const after = valueOf(rule.after.stage, rule.after.key);
-      if (after && day > after.slice(0, 10))
+      if (after && day > after.slice(0, 10)) {
+        const self = reqs.find(
+          (r) =>
+            r.key === requirementKey && stageKeyOf.get(r.stageId) === stageKey,
+        );
+        const afterReq = reqs.find(
+          (r) =>
+            r.key === rule.after.key &&
+            r.status === "done" &&
+            stageKeyOf.get(r.stageId) === rule.after.stage,
+        );
+        if (rule.first && self && self.status !== "done" && afterReq) {
+          reopen.push(afterReq);
+          continue;
+        }
         throw new WorkflowError(rule.errors[1]);
+      }
     }
   }
+  return reopen;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -282,14 +311,17 @@ export async function submitRequirement(
     }
   } else if (requirement.type === "text" || requirement.type === "date") {
     if (!input.value) throw new WorkflowError("value_required");
-    if (requirement.type === "date")
-      await assertDateOrder(
-        order.id,
-        stage.key,
-        requirement.key,
-        String(input.value),
-      );
   }
+  // Datas em ordem; uma chegada antiga, antes do embarque real, volta a ser pedida.
+  const reopen =
+    requirement.type === "date"
+      ? await assertDateOrder(
+          order.id,
+          stage.key,
+          requirement.key,
+          String(input.value),
+        )
+      : [];
 
   const before = { status: requirement.status, value: requirement.value };
   const updated = await store.update("requirements", requirement.id, {
@@ -312,6 +344,24 @@ export async function submitRequirement(
       value: updated.value,
     },
   );
+  for (const r of reopen) {
+    await store.update("requirements", r.id, {
+      status: "pending",
+      value: null,
+      submittedByUserId: null,
+      submittedAt: null,
+      note: `Refazer: a data informada antes (${String(r.value ?? "").slice(0, 10)}) era anterior à ${requirement.label.toLowerCase()} (${String(input.value).slice(0, 10)}).`,
+    });
+    await audit(
+      user,
+      "requirement.reopen",
+      "requirement",
+      r.id,
+      `${stage.key}: ${r.label} antes de ${requirement.label}`,
+      { status: r.status, value: r.value },
+      { status: "pending", value: null },
+    );
+  }
 
   // Regra específica: número do ERP informado manualmente.
   if (
