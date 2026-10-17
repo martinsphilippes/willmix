@@ -12,13 +12,14 @@ export interface HelpSpec {
 
 /**
  * Painel de ajuda contextual. Toda tela explica a lógica e o próximo passo,
- * no idioma do usuário. Recolhível para quem já conhece o fluxo.
+ * no idioma do usuário. Começa sempre recolhido (a tela abre direto no
+ * trabalho); quem quer entender toca em "Como funciona" para abrir.
  */
 export function PageHelp({ t, help }: { t: Translate; help: HelpSpec }) {
   const steps = help.steps ? t(help.steps).split("\n").filter(Boolean) : [];
   return (
     <details
-      open
+      data-page-help=""
       className="group mb-6 overflow-hidden rounded-2xl border border-zinc-200/80 border-l-4 border-l-brand-600 bg-white text-sm text-zinc-700 shadow-sm"
     >
       <summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 font-semibold text-zinc-900 [&::-webkit-details-marker]:hidden">
@@ -31,7 +32,19 @@ export function PageHelp({ t, help }: { t: Translate; help: HelpSpec }) {
         {t("help.how")}
         <span
           aria-hidden
-          className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-base font-normal text-zinc-500 transition group-open:rotate-45 group-hover:bg-zinc-100"
+          className="ml-auto text-xs font-medium text-brand-700 group-open:hidden"
+        >
+          {t("help.show")}
+        </span>
+        <span
+          aria-hidden
+          className="ml-auto hidden text-xs font-medium text-zinc-500 group-open:inline"
+        >
+          {t("help.hide")}
+        </span>
+        <span
+          aria-hidden
+          className="flex h-6 w-6 items-center justify-center rounded-full text-base font-normal text-zinc-500 transition group-open:rotate-45 group-hover:bg-zinc-100"
         >
           +
         </span>
