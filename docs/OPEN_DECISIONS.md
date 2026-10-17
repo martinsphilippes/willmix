@@ -7,7 +7,7 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | `customerCanCreateRequest` | `true`     | Cliente cria solicitação diretamente                                        |
 | `wellmixCanCreateRequest`  | `true`     | Wellmix cria em nome do cliente (mesmo formulário)                          |
 | `deliveryConfirmationMode` | `BOTH`     | Cliente confirma; Wellmix pode confirmar por ele. `WELLMIX` tira do cliente |
-| `agencyValidationEnabled`  | `true`     | Exige aprovação da arte pela agência quando há agência designada            |
+| `agencyValidationEnabled`  | `true`     | Arte da embalagem feita pela agência designada; desligado, a Wellmix envia  |
 | `weightTolerancePercent`   | `3`        | Divergência acima disso bloqueia a inspeção                                 |
 | `paymentMode`              | `MANUAL`   | Operador confirma o sinal e anexa comprovante                               |
 | `sankhyaMode`              | `MOCK`     | Pedido nasce com `erpSyncStatus = pending`; operador informa o número       |

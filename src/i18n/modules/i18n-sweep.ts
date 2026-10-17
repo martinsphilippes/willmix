@@ -5,7 +5,7 @@
  */
 const settingsPt = {
   customerCanCreateRequest: "Cliente pode criar solicitação",
-  agencyValidationEnabled: "Validação pela agência",
+  agencyValidationEnabled: "Arte da embalagem feita pela agência",
   deliveryConfirmationMode: "Quem confirma a entrega",
   weightTolerancePercent: "Tolerância de peso (%)",
   downPaymentPercent: "Sinal (%)",
@@ -34,7 +34,7 @@ const settingsPt = {
 };
 const settingsEn: Record<keyof typeof settingsPt, string> = {
   customerCanCreateRequest: "Customer can create requests",
-  agencyValidationEnabled: "Agency validation",
+  agencyValidationEnabled: "Packaging artwork made by the agency",
   deliveryConfirmationMode: "Who confirms delivery",
   weightTolerancePercent: "Weight tolerance (%)",
   downPaymentPercent: "Down payment (%)",
@@ -63,7 +63,7 @@ const settingsEn: Record<keyof typeof settingsPt, string> = {
 };
 const settingsZh: Record<keyof typeof settingsPt, string> = {
   customerCanCreateRequest: "客户可创建需求",
-  agencyValidationEnabled: "代理审核",
+  agencyValidationEnabled: "包装设计稿由设计公司制作",
   deliveryConfirmationMode: "由谁确认交付",
   weightTolerancePercent: "重量允差（%）",
   downPaymentPercent: "定金比例（%）",

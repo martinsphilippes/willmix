@@ -111,6 +111,16 @@ export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
   },
 ];
 
+/** Quem envia a arte da embalagem: a agência do pedido ou, sem ela, a Wellmix. */
+export function artRole(
+  order: Pick<Order, "agencyId">,
+  agencyValidationEnabled: boolean,
+): Role {
+  return agencyValidationEnabled && order.agencyId ? "agency" : "operator";
+}
+
+export const ART_APPROVAL_LABEL = "Aprovação da arte pelo fornecedor";
+
 /**
  * Etapas que não seguram o pedido: concluem na hora em que começam (mesmo nos
  * pedidos antigos, que ainda têm itens nelas) e não aparecem no fluxo.
@@ -165,28 +175,30 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     requirements: () => [],
   },
   {
+    /*
+     * Arte e embalagem: a agência de marketing faz a arte e envia; o
+     * fornecedor confere e aprova para produzir (ou reprova com observação, e
+     * a arte volta para quem a fez). Sem agência no pedido (ou com "Arte feita
+     * pela agência" desligado nas configurações), quem envia a arte é a Wellmix.
+     */
     key: "PACKAGING",
-    responsibleRole: "supplier",
-    partyField: "supplierId",
+    responsibleRole: "agency",
+    partyField: "agencyId",
     requirements: ({ order, agencyValidationEnabled }) => [
       {
         key: "art",
         label: "Arte da embalagem",
         type: "file",
         required: true,
+        role: artRole(order, agencyValidationEnabled),
+      },
+      {
+        key: "art_approval",
+        label: ART_APPROVAL_LABEL,
+        type: "approval",
+        required: true,
         role: "supplier",
       },
-      ...(agencyValidationEnabled && order.agencyId
-        ? [
-            {
-              key: "art_approval",
-              label: "Aprovação da arte pela agência",
-              type: "approval" as const,
-              required: true,
-              role: "agency" as const,
-            },
-          ]
-        : []),
     ],
   },
   {

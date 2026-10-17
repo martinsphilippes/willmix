@@ -7,13 +7,13 @@ export const helpPt = {
   "help.todo": "O que fazer aqui",
   "help.flow.title": "O fluxo de importação",
   "help.flow.steps":
-    "Solicitação: o cliente (ou a Wellmix por ele) descreve o produto, quantidade e prazo.\nRFQ: a Wellmix escolhe fornecedores; cada um recebe um link e responde preço, prazo e condições.\nSeleção: a Wellmix compara as cotações, escolhe o fornecedor e define o valor ao cliente e o sinal.\nSinal: o cliente paga; a Wellmix confirma e o pedido nasce com todas as etapas e requisitos.\nPreparação: o fornecedor preenche a ficha de compra (preço, caixa, pesos, medidas, programação e fotos).\nPagamento ao fornecedor: a Wellmix registra; o fornecedor confirma o recebimento.\nArte e embalagem: o fornecedor envia a arte; a agência aprova ou reprova.\nInspeção: fotos e peso medido; divergência acima da tolerância bloqueia até revisão da Wellmix.\nEmbarque: companhia marítima informa data, previsão e BL.\nDesembaraço: despachante registra processo, documentos, custos e liberação.\nTransporte: transportador informa placa, previsão e entrega.\nEntrega: o cliente confirma o recebimento e o pedido é encerrado.",
+    "Solicitação: o cliente (ou a Wellmix por ele) descreve o produto, quantidade e prazo.\nRFQ: a Wellmix escolhe fornecedores; cada um recebe um link e responde preço, prazo e condições.\nSeleção: a Wellmix compara as cotações, escolhe o fornecedor e define o valor ao cliente e o sinal.\nSinal: o cliente paga; a Wellmix confirma e o pedido nasce com todas as etapas e requisitos.\nPreparação: o fornecedor preenche a ficha de compra (preço, caixa, pesos, medidas, programação e fotos).\nArte e embalagem: a agência faz e envia a arte; o fornecedor confere e aprova ou reprova.\nPagamento ao fornecedor: fora das etapas, pela condição do cadastro do fornecedor (Gestão → Contas a pagar); o fornecedor confirma o recebimento na conta corrente.\nInspeção: fotos e peso medido; divergência acima da tolerância bloqueia até revisão da Wellmix.\nEmbarque: companhia marítima informa data, previsão e BL.\nDesembaraço: despachante registra processo, documentos, custos e liberação.\nTransporte: transportador informa placa, previsão e entrega.\nEntrega: o cliente confirma o recebimento e o pedido é encerrado.",
   "help.rule":
     "Cada etapa tem requisitos com um responsável. Quando todos os obrigatórios estão concluídos, a etapa fecha sozinha, a próxima abre e o próximo responsável recebe um aviso. Ninguém precisa cobrar ninguém.",
   "help.login.body":
     "O Portal Wellmix organiza a importação do pedido do cliente até a entrega. Cada participante (cliente, Wellmix, fornecedor, agência, despachante, companhia marítima, transportador, jurídico) entra com a própria conta e vê apenas o que lhe cabe.",
   "help.login.roles":
-    "Cliente: cria solicitações, vê a proposta, paga o sinal, acompanha a timeline e confirma o recebimento.\nWellmix (admin e operador): abre RFQs, compara cotações, escolhe fornecedor, confirma pagamentos, designa parceiros e acompanha tudo na Control Tower.\nFornecedor: responde cotações, cumpre checklists, envia fotos e peso, confirma pagamentos e vê a conta corrente.\nAgência: aprova a arte da embalagem.\nDespachante, companhia marítima e transportador: registram cada um a sua etapa.\nJurídico: acompanha multas.",
+    "Cliente: cria solicitações, vê a proposta, paga o sinal, acompanha a timeline e confirma o recebimento.\nWellmix (admin e operador): abre RFQs, compara cotações, escolhe fornecedor, confirma pagamentos, designa parceiros e acompanha tudo na Control Tower.\nFornecedor: responde cotações, cumpre checklists, aprova a arte da embalagem, envia fotos e peso, confirma pagamentos e vê a conta corrente.\nAgência: faz e envia a arte da embalagem (refaz quando o fornecedor reprova).\nDespachante, companhia marítima e transportador: registram cada um a sua etapa.\nJurídico: acompanha multas.",
   "help.login.demo": "Contas de demonstração",
   "help.login.demoHint":
     "Toque em uma conta para preencher o formulário. Senha de todas: {password}.",
@@ -56,7 +56,7 @@ export const helpPt = {
   "help.stage.SUPPLIER_PAYMENT":
     "Não segura mais o pedido: conclui sozinha. O pagamento segue a condição combinada com o fornecedor (cadastro do fornecedor) e fica em Contas a pagar, no card Pagamento ao fornecedor do pedido e na conta corrente do fornecedor, onde ele confirma o recebimento.",
   "help.stage.PACKAGING":
-    "Fornecedor envia a arte da embalagem; a agência aprova ou reprova com observação. Reprovada, a arte volta ao fornecedor para reenvio.",
+    "A agência de marketing faz a arte da embalagem e envia (sem agência no pedido, a Wellmix envia). O fornecedor confere e aprova para produzir, ou reprova com observação: a arte volta para quem a fez refazer e reenviar.",
   "help.stage.INSPECTION":
     "Fornecedor envia foto sem embalagem, com embalagem, na balança e o peso medido. Divergência acima da tolerância bloqueia a etapa até a Wellmix revisar.",
   "help.stage.SHIPPING":
@@ -85,7 +85,7 @@ export const helpPt = {
   "help.import.body":
     "Importe cadastros em lote por CSV com cabeçalho. Separador vírgula ou ponto e vírgula. Linhas inválidas são ignoradas e contadas.",
   "help.settings.body":
-    'Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, validação da agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos. Seção "IA, marketing e operação": modo da IA (AUTO/MOCK/MANUAL) e modelo, kit de marketing (preço padrão e moeda), gate de RADAR e nome da importadora.',
+    'Decisões de negócio parametrizadas: quem cria solicitação, quem confirma entrega, arte da embalagem feita pela agência, tolerância de peso, percentual do sinal, validade da RFQ, prazos por etapa e lembretes. Também: tolerâncias de dimensão, CBM e quantidade da inspeção, checagens estendidas, revisão por preço zerado, tipos de container e regra de consolidação. Mudanças valem para pedidos novos. Seção "IA, marketing e operação": modo da IA (AUTO/MOCK/MANUAL) e modelo, kit de marketing (preço padrão e moeda), gate de RADAR e nome da importadora.',
   "help.finance.body":
     "Consolida o que já foi lançado: valor vendido ao cliente e recebimentos; custo FOB e pagamentos ao fornecedor. O custo em reais usa o câmbio informado em cada pagamento; quando falta câmbio ou há saldo a pagar, a margem aparece como estimativa (~).",
   "help.finance.steps":
@@ -101,13 +101,13 @@ export const helpEn: Record<HelpKey, string> = {
   "help.todo": "What to do here",
   "help.flow.title": "The import flow",
   "help.flow.steps":
-    "Request: the customer (or Wellmix on their behalf) describes product, quantity and deadline.\nRFQ: Wellmix picks suppliers; each gets a link and answers price, lead time and terms.\nSelection: Wellmix compares quotations, picks the supplier and sets the customer price and down payment.\nDown payment: the customer pays; Wellmix confirms and the order is created with all stages and requirements.\nPreparation: the supplier fills in the purchase sheet (price, carton, weights, sizes, schedule and photos).\nSupplier payment: Wellmix registers it; the supplier confirms receipt.\nArtwork and packaging: the supplier sends the artwork; the agency approves or rejects.\nInspection: photos and measured weight; divergence above tolerance blocks until Wellmix reviews.\nShipping: the shipping line informs date, ETA and BL.\nCustoms: the broker registers process, documents, costs and release.\nTransport: the carrier informs plate, ETA and delivery.\nDelivery: the customer confirms receipt and the order is closed.",
+    "Request: the customer (or Wellmix on their behalf) describes product, quantity and deadline.\nRFQ: Wellmix picks suppliers; each gets a link and answers price, lead time and terms.\nSelection: Wellmix compares quotations, picks the supplier and sets the customer price and down payment.\nDown payment: the customer pays; Wellmix confirms and the order is created with all stages and requirements.\nPreparation: the supplier fills in the purchase sheet (price, carton, weights, sizes, schedule and photos).\nArtwork and packaging: the agency makes and uploads the artwork; the supplier checks it and approves or rejects.\nSupplier payment: outside the stages, under the terms in the supplier record (Management → Payables); the supplier confirms receipt in their account.\nInspection: photos and measured weight; divergence above tolerance blocks until Wellmix reviews.\nShipping: the shipping line informs date, ETA and BL.\nCustoms: the broker registers process, documents, costs and release.\nTransport: the carrier informs plate, ETA and delivery.\nDelivery: the customer confirms receipt and the order is closed.",
   "help.rule":
     "Every stage has requirements with an owner. When all mandatory ones are done, the stage closes by itself, the next one opens and the next owner is notified. Nobody has to chase anybody.",
   "help.login.body":
     "The Wellmix Portal organizes the import from the customer's request to delivery. Each participant (customer, Wellmix, supplier, agency, customs broker, shipping line, carrier, legal) signs in with their own account and sees only what concerns them.",
   "help.login.roles":
-    "Customer: creates requests, sees the proposal, pays the down payment, follows the timeline and confirms receipt.\nWellmix (admin and operator): opens RFQs, compares quotations, picks suppliers, confirms payments, assigns partners and follows everything on the Control Tower.\nSupplier: answers quotations, completes checklists, sends photos and weight, confirms payments and sees the account statement.\nAgency: approves the packaging artwork.\nCustoms broker, shipping line and carrier: each registers their own stage.\nLegal: follows penalties.",
+    "Customer: creates requests, sees the proposal, pays the down payment, follows the timeline and confirms receipt.\nWellmix (admin and operator): opens RFQs, compares quotations, picks suppliers, confirms payments, assigns partners and follows everything on the Control Tower.\nSupplier: answers quotations, completes checklists, approves the packaging artwork, sends photos and weight, confirms payments and sees the account statement.\nAgency: makes and uploads the packaging artwork (redoes it when the supplier rejects it).\nCustoms broker, shipping line and carrier: each registers their own stage.\nLegal: follows penalties.",
   "help.login.demo": "Demo accounts",
   "help.login.demoHint":
     "Tap an account to fill the form. Password for all: {password}.",
@@ -150,7 +150,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.SUPPLIER_PAYMENT":
     "No longer holds the order: it completes on its own. Payment follows the terms agreed with the supplier (supplier record) and lives in Payables, on the order's Supplier payment card and in the supplier's account, where they confirm receipt.",
   "help.stage.PACKAGING":
-    "Supplier sends the packaging artwork; the agency approves or rejects with a note. If rejected, the artwork goes back to the supplier.",
+    "The marketing agency makes and uploads the packaging artwork (with no agency on the order, Wellmix uploads it). The supplier checks it and approves it for production, or rejects it with a note: the artwork goes back to whoever made it to redo and resend.",
   "help.stage.INSPECTION":
     "Supplier sends photos without packaging, with packaging, on the scale and the measured weight. Divergence above tolerance blocks the stage until Wellmix reviews.",
   "help.stage.SHIPPING":
@@ -179,7 +179,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.import.body":
     "Bulk import from CSV with header. Comma or semicolon separator. Invalid rows are skipped and counted.",
   "help.settings.body":
-    'Parameterized business decisions: who creates requests, who confirms delivery, agency validation, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders. Section "AI, marketing and operation": AI mode (AUTO/MOCK/MANUAL) and model, marketing kit (default price and currency), RADAR gate and importer name.',
+    'Parameterized business decisions: who creates requests, who confirms delivery, packaging artwork made by the agency, weight tolerance, down payment percentage, RFQ validity, stage due days and reminders. Also: inspection tolerances for dimensions, CBM and quantity, extended checks, review on zero price, container types and the consolidation rule. Changes apply to new orders. Section "AI, marketing and operation": AI mode (AUTO/MOCK/MANUAL) and model, marketing kit (default price and currency), RADAR gate and importer name.',
   "help.finance.body":
     "Consolidates what is already recorded: customer sale and receipts; FOB cost and supplier payments. Cost in the sale currency uses the FX rate entered on each payment; when a rate is missing or a balance is still payable, the margin is shown as an estimate (~).",
   "help.finance.steps":
@@ -193,13 +193,13 @@ export const helpZh: Record<HelpKey, string> = {
   "help.todo": "在此需要做什么",
   "help.flow.title": "进口流程",
   "help.flow.steps":
-    "需求：客户（或 Wellmix 代为）说明产品、数量和期望交期。\n询价：Wellmix 选择供应商；每家收到链接并回复价格、交期和条款。\n选定：Wellmix 对比报价，选定供应商，确定客户价格和定金。\n定金：客户付款；Wellmix 确认后创建订单，生成全部阶段和要求。\n备货准备：供应商填写采购单（价格、外箱、重量、尺寸、计划和照片）。\n供应商付款：Wellmix 登记；供应商确认收款。\n设计与包装：供应商提交设计稿；设计公司审核通过或驳回。\n验货：照片和实测重量；超出容差会阻塞，直到 Wellmix 复核。\n装运：船公司填写日期、预计到达和提单。\n清关：报关行登记流程、文件、费用和放行。\n运输：承运商填写车牌、预计到达和交付。\n交付：客户确认收货，订单结案。",
+    "需求：客户（或 Wellmix 代为）说明产品、数量和期望交期。\n询价：Wellmix 选择供应商；每家收到链接并回复价格、交期和条款。\n选定：Wellmix 对比报价，选定供应商，确定客户价格和定金。\n定金：客户付款；Wellmix 确认后创建订单，生成全部阶段和要求。\n备货准备：供应商填写采购单（价格、外箱、重量、尺寸、计划和照片）。\n设计与包装：设计公司制作并上传设计稿；供应商审核后批准或驳回。\n供应商付款：不在阶段中，按供应商资料中的付款条件执行（管理 → 应付账款）；供应商在往来账中确认收款。\n验货：照片和实测重量；超出容差会阻塞，直到 Wellmix 复核。\n装运：船公司填写日期、预计到达和提单。\n清关：报关行登记流程、文件、费用和放行。\n运输：承运商填写车牌、预计到达和交付。\n交付：客户确认收货，订单结案。",
   "help.rule":
     "每个阶段都有带负责人的要求。所有必填项完成后，阶段自动关闭，下一阶段开启，并通知下一位负责人。无需任何人催促。",
   "help.login.body":
     "Wellmix 门户负责从客户需求到交付的整个进口流程。每位参与方（客户、Wellmix、供应商、设计公司、报关行、船公司、承运商、法务）使用各自账号登录，只看到与自己相关的内容。",
   "help.login.roles":
-    "客户：创建需求、查看方案、支付定金、跟踪时间线并确认收货。\nWellmix（管理员和操作员）：发起询价、对比报价、选定供应商、确认付款、指定合作方，并在控制塔跟踪一切。\n供应商：回复报价、完成清单、上传照片和重量、确认收款、查看往来账。\n设计公司：审核包装设计稿。\n报关行、船公司和承运商：各自登记自己的阶段。\n法务：跟进罚款。",
+    "客户：创建需求、查看方案、支付定金、跟踪时间线并确认收货。\nWellmix（管理员和操作员）：发起询价、对比报价、选定供应商、确认付款、指定合作方，并在控制塔跟踪一切。\n供应商：回复报价、完成清单、审核批准包装设计稿、上传照片和重量、确认收款、查看往来账。\n设计公司：制作并上传包装设计稿（供应商驳回时修改后重新提交）。\n报关行、船公司和承运商：各自登记自己的阶段。\n法务：跟进罚款。",
   "help.login.demo": "演示账号",
   "help.login.demoHint": "点击账号自动填写表单。所有账号密码：{password}。",
   "help.tasks.body":
@@ -241,7 +241,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.SUPPLIER_PAYMENT":
     "不再影响订单进度：此阶段自动完成。付款按与供应商约定的条件（供应商资料）执行，显示在应付账款、订单的“供应商付款”卡片以及供应商的往来账中，供应商在往来账中确认收款。",
   "help.stage.PACKAGING":
-    "供应商提交包装设计稿；设计公司审核通过或附备注驳回。被驳回后设计稿退回供应商重新提交。",
+    "设计公司制作并上传包装设计稿（订单没有设计公司时由 Wellmix 上传）。供应商审核后批准生产，或附备注驳回：设计稿退回制作方修改后重新提交。",
   "help.stage.INSPECTION":
     "供应商提交无包装照片、带包装照片、称重照片和实测重量。超出容差将阻塞阶段，直到 Wellmix 复核。",
   "help.stage.SHIPPING":
@@ -269,7 +269,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.import.body":
     "通过带表头的 CSV 批量导入。分隔符为逗号或分号。无效行会被跳过并计数。",
   "help.settings.body":
-    "参数化的业务决策：谁可创建需求、谁确认交付、设计公司审核、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。 “AI、营销与运营”部分：AI 模式（AUTO/MOCK/MANUAL）与模型、营销套件（默认价格与币种）、RADAR 门槛和进口商名称。",
+    "参数化的业务决策：谁可创建需求、谁确认交付、包装设计稿由设计公司制作、重量容差、定金比例、询价有效期、各阶段期限和提醒。另有：验货的尺寸、体积和数量容差、扩展检查、零价复核、集装箱类型和拼箱规则。更改适用于新订单。 “AI、营销与运营”部分：AI 模式（AUTO/MOCK/MANUAL）与模型、营销套件（默认价格与币种）、RADAR 门槛和进口商名称。",
   "help.finance.body":
     "汇总已登记的数据：客户销售额与收款；FOB 成本与供应商付款。销售币种成本按每笔付款填写的汇率折算；缺少汇率或仍有应付余额时，毛利显示为估算值（~）。",
   "help.finance.steps":

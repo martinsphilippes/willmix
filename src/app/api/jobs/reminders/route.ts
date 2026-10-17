@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runReminders } from "@/lib/services/reminders";
+import { normalizePackaging } from "@/lib/services/packaging";
 import {
   notifyPayablesDue,
   notifySuppliersToConfirm,
@@ -20,10 +21,18 @@ export async function GET(request: Request) {
   }
   // Pedidos parados na etapa de pagamento ao fornecedor seguem o fluxo.
   const released = await releaseOffFlowStages(undefined, { force: true });
+  // Arte e embalagem dos pedidos antigos passa para o fluxo novo.
+  const packaging = await normalizePackaging(undefined, { force: true });
   const result = await runReminders();
   // Resumo diário das parcelas a fornecedores vencidas ou vencendo.
   const payablesDue = await notifyPayablesDue();
   // Fornecedor que ainda não confirmou o recebimento de pagamento feito.
   const toConfirm = await notifySuppliersToConfirm();
-  return NextResponse.json({ ...result, released, payablesDue, toConfirm });
+  return NextResponse.json({
+    ...result,
+    released,
+    packaging,
+    payablesDue,
+    toConfirm,
+  });
 }

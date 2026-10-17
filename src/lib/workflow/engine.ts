@@ -21,6 +21,7 @@ import { STAGE_KEYS } from "@/lib/db/schema";
 import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
+  artRole,
   isOffFlowStage,
   nextStageKey,
 } from "./stages";
@@ -306,6 +307,16 @@ export async function submitRequirement(
         });
       }
     }
+    // A arte chegou: o fornecedor confere e aprova para produzir.
+    if (approvals.length)
+      await notify(
+        { role: "supplier", partyId: order.supplierId },
+        {
+          subject: `Order #${order.number}: packaging artwork to review`,
+          body: "The artwork was uploaded. Check it and approve it for production, or reject it with a note.",
+          link: `/app/orders/${order.id}`,
+        },
+      );
   }
 
   // Regra específica: o fornecedor confirmar o recebimento é a prova do
@@ -386,7 +397,7 @@ export async function clearRequirementDocument(
       });
     }
   }
-  // Arte excluída: a aprovação da agência volta a pendente (como no reenvio).
+  // Arte excluída: a aprovação do fornecedor volta a pendente (como no reenvio).
   if (requirement.key === "art") {
     const approvals = await store.list("requirements", {
       filter: { stageId: stage.id, key: "art_approval" },
@@ -427,6 +438,22 @@ export async function decideRequirement(
     throw new ForbiddenError();
   if (order.status === "CANCELLED" || stage.status === "cancelled")
     throw new WorkflowError("stage_not_active");
+  // Como no envio: só na etapa aberta. Decisão já tomada só a Wellmix refaz
+  // (a aprovação do fornecedor é a prova de que a arte foi aceita).
+  if (stage.status !== "active" && stage.status !== "blocked")
+    throw new WorkflowError("stage_not_active");
+  if (requirement.status === "done" && !isWellmix(user))
+    throw new WorkflowError("already_decided");
+  // Aprovação da arte: só depois de a arte ser enviada (nada a aprovar antes).
+  const sourceKey = requirement.key === "art_approval" ? "art" : null;
+  const [source] = sourceKey
+    ? await store.list("requirements", {
+        filter: { stageId: stage.id, key: sourceKey },
+        limit: 1,
+      })
+    : [];
+  if (sourceKey && (!source || source.status !== "done"))
+    throw new WorkflowError("art_missing");
 
   const now = new Date().toISOString();
   if (decision === "approve") {
@@ -467,18 +494,20 @@ export async function decideRequirement(
     // Inspeção reprovada: as medidas voltam para o fornecedor medir de novo.
     if (requirement.key === "inspection_review")
       await reopenInspectionMeasures(user, stage, note ?? null);
-    // O requisito que originou a aprovação volta a pendente para reenvio.
-    const sourceKey = requirement.key === "art_approval" ? "art" : null;
-    if (sourceKey) {
-      const [source] = await store.list("requirements", {
-        filter: { stageId: stage.id, key: sourceKey },
+    // O requisito que originou a aprovação volta para quem o refaz: a arte,
+    // para quem faz a arte hoje (a agência do pedido ou, sem ela, a Wellmix).
+    const redoRoleNow: Role | null =
+      source?.key === "art"
+        ? artRole(order, (await getSettings()).agencyValidationEnabled)
+        : (source?.role ?? null);
+    if (source)
+      await store.update("requirements", source.id, {
+        status: "rejected",
+        note: note ?? null,
+        ...(redoRoleNow && redoRoleNow !== source.role
+          ? { role: redoRoleNow }
+          : {}),
       });
-      if (source)
-        await store.update("requirements", source.id, {
-          status: "rejected",
-          note: note ?? null,
-        });
-    }
     await audit(
       user,
       "requirement.reject",
@@ -486,8 +515,16 @@ export async function decideRequirement(
       requirement.id,
       `${stage.key}: ${requirement.label}`,
     );
+    // Avisa quem refaz (arte: agência ou Wellmix); sem origem, o fornecedor
+    // (como antes). Parceiro sem empresa no pedido: avisa a Wellmix, nunca
+    // todas as empresas daquele papel.
+    const redoRole: Role = redoRoleNow ?? "supplier";
+    const redoField = ROLE_PARTY_FIELD[redoRole];
+    const redoParty = redoField ? order[redoField] : null;
     await notify(
-      { role: "supplier", partyId: order.supplierId },
+      redoRole === "operator" || redoRole === "admin" || !redoParty
+        ? { role: ["admin", "operator"] }
+        : { role: redoRole, partyId: redoParty },
       {
         subject: `Pedido #${order.number}: ${requirement.label} reprovado`,
         body: note ?? "Revise e reenvie.",

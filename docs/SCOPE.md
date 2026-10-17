@@ -23,8 +23,8 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 | Admin Wellmix      | Tudo, inclusive configurações e usuários internos                                        |                                   |
 | Operador           | Cadastros, RFQ, seleção, pagamentos, designação de parceiros, exceções, multas           | Configurações                     |
 | Cliente            | Cria e acompanha solicitação, vê proposta e sinal, timeline, confirma recebimento        | Fornecedor, FOB, margem, cotações |
-| Fornecedor         | Responde RFQ, cumpre checklists, envia fotos e peso, confirma pagamentos, conta corrente | Cliente final, valor de venda     |
-| Agência            | Aprova ou reprova a arte                                                                 | Valores                           |
+| Fornecedor         | Responde RFQ, cumpre checklists, aprova a arte, envia fotos e peso, confirma pagamentos  | Cliente final, valor de venda     |
+| Agência            | Faz e envia a arte da embalagem (refaz quando o fornecedor reprova)                      | Valores                           |
 | Despachante        | Número do processo, documentos, custos, liberação                                        | Valores comerciais                |
 | Companhia marítima | Data de embarque, previsão, navio, BL                                                    | Valores comerciais                |
 | Transportador      | Placa, previsão, situação, entrega                                                       | Valores comerciais                |
@@ -32,7 +32,7 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 
 ## Vertical slice 1 (entregue)
 
-Login → solicitação (cliente ou Wellmix) → RFQ para fornecedores → resposta → comparação e seleção com preço ao cliente → sinal em modo manual → pedido com etapas e requisitos → checklist de preparação → arte com aprovação da agência → inspeção com comparação de peso e bloqueio por divergência → embarque → desembaraço → transporte → confirmação de recebimento → encerramento. Control Tower, pendências por papel, notificações in-app, conta corrente do fornecedor com previsão de pagamentos, condição de pagamento por fornecedor e Contas a pagar (pagamento ao fornecedor fora do fluxo do pedido), multas, cadastros com importação CSV, configurações e lembretes por prazo.
+Login → solicitação (cliente ou Wellmix) → RFQ para fornecedores → resposta → comparação e seleção com preço ao cliente → sinal em modo manual → pedido com etapas e requisitos → checklist de preparação → arte feita pela agência e aprovada pelo fornecedor → inspeção com comparação de peso e bloqueio por divergência → embarque → desembaraço → transporte → confirmação de recebimento → encerramento. Control Tower, pendências por papel, notificações in-app, conta corrente do fornecedor com previsão de pagamentos, condição de pagamento por fornecedor e Contas a pagar (pagamento ao fornecedor fora do fluxo do pedido), multas, cadastros com importação CSV, configurações e lembretes por prazo.
 
 ## Fora do escopo agora
 
