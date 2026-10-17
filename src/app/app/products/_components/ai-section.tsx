@@ -33,6 +33,7 @@ import {
   requestProductSuggestionAction,
 } from "../../actions/vision";
 import { catalogError, userNameFor } from "./shared";
+import { AiChoiceInput } from "./ai-choice-input";
 
 /*
  * Seção "Sugestão por foto (IA)" da ficha do produto e do item de sourcing.
@@ -448,7 +449,10 @@ function ApplyRow({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-2.5">
+    <div
+      className="rounded-lg border border-zinc-200 bg-white p-2.5"
+      data-apply-row={name}
+    >
       <label className="flex cursor-pointer items-center gap-2 text-[13px] font-semibold text-zinc-900">
         <input
           type="checkbox"
@@ -472,10 +476,9 @@ function ApplyRow({
 }
 
 /**
- * Escolha explícita entre as opções sugeridas (rádio) ou outro valor (texto),
- * sem JavaScript: os rádios e o texto compartilham o `name`; o formulário só
- * envia o rádio marcado e a action lê a primeira entrada, então um rádio
- * marcado prevalece e, sem rádio, vale o texto "Outro". Nada vem escolhido.
+ * Escolha explícita entre as opções sugeridas (rádio) ou outro valor (texto).
+ * Nada vem escolhido; a opção marcada desmarca com outro toque (ou "Limpar"),
+ * e escolher já marca o "Aplicar" do campo (componente de cliente).
  */
 function ChoiceInput({
   name,
@@ -489,30 +492,19 @@ function ChoiceInput({
   t: Translate;
 }) {
   return (
-    <fieldset aria-label={label} className="space-y-1.5">
-      <p className="text-xs text-zinc-500">{t("vision.ai.apply.suggested")}:</p>
-      {options.map((o) => (
-        <label
-          key={o}
-          className="flex cursor-pointer items-center gap-2 text-sm text-zinc-800"
-        >
-          <input type="radio" name={name} value={o} className={checkboxClass} />
-          <span className="break-words">{o}</span>
-        </label>
-      ))}
-      <label className="flex items-center gap-2 text-sm text-zinc-800">
-        <span className="shrink-0 text-zinc-500">
-          {t("vision.ai.apply.other")}:
-        </span>
-        <Input
-          name={name}
-          aria-label={`${label} · ${t("vision.ai.apply.other")}`}
-          maxLength={name === "material" ? 120 : 60}
-          className="min-w-0 flex-1"
-        />
-      </label>
-      <p className="text-xs text-zinc-500">{t("vision.ai.apply.choiceHint")}</p>
-    </fieldset>
+    <AiChoiceInput
+      name={name}
+      options={options}
+      label={label}
+      // Tamanho das colunas no banco (material 120, cor 60).
+      maxLength={name === "material" ? 120 : 60}
+      labels={{
+        suggested: t("vision.ai.apply.suggested"),
+        other: t("vision.ai.apply.other"),
+        clear: t("vision.ai.apply.clear"),
+        hint: t("vision.ai.apply.choiceHint"),
+      }}
+    />
   );
 }
 
@@ -588,8 +580,9 @@ function PendingForms({
               >
                 <Input
                   name="category"
-                  defaultValue={fields.category}
-                  maxLength={120}
+                  // Coluna de 80 caracteres no banco.
+                  defaultValue={fields.category.slice(0, 80)}
+                  maxLength={80}
                   aria-label={t("catalog.category")}
                 />
               </ApplyRow>

@@ -574,3 +574,48 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
     /0 de 2/,
   ]);
 });
+
+test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar", async ({
+  page,
+}) => {
+  await login(page, "admin@wellmix.com");
+  // IA em modo de exemplo (mock): a sugestão sai sem chave e sem foto.
+  await page.goto("/app/settings");
+  const mode = page.locator('select[name="aiMode"]');
+  await mode.selectOption("MOCK");
+  await mode.evaluate((el) => (el as HTMLSelectElement).form!.requestSubmit());
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+  await page.goto("/app/products/prod-panela");
+  await page
+    .locator('form:has(textarea[name="context"]) button[type="submit"]')
+    .click();
+  const row = page.locator('[data-apply-row="material"]');
+  await expect(row).toBeVisible();
+  await expect(row.locator("[data-ai-choice][data-ready]")).toBeAttached();
+  const apply = row.locator('input[name="apply"]');
+  const option = row.locator('input[type="radio"]').first();
+  const value = await option.inputValue();
+  // Escolher marca o "Aplicar"; tocar de novo desmarca os dois.
+  await option.click();
+  await expect(option).toBeChecked();
+  await expect(apply).toBeChecked();
+  await option.click();
+  await expect(option).not.toBeChecked();
+  await expect(apply).not.toBeChecked();
+  // Outro valor também marca; "Limpar" deixa em branco.
+  const other = row.getByRole("textbox");
+  await other.fill("Inox 304");
+  await expect(apply).toBeChecked();
+  await row.locator("[data-ai-choice-clear]").click();
+  await expect(other).toHaveValue("");
+  await expect(apply).not.toBeChecked();
+  // Escolhe de novo e aplica: o material entra no produto.
+  await option.click();
+  await page
+    .getByRole("button", { name: /Aplicar selecionados|Apply selected|应用/ })
+    .click();
+  await expect(page.locator("[data-apply-row]")).toHaveCount(0);
+  await expect(page.locator('input[name="material"]').first()).toHaveValue(
+    value,
+  );
+});

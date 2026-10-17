@@ -163,6 +163,41 @@ describe("IA de cadastro por foto (humano confirma)", () => {
   });
 });
 
+describe("aplicar sugestão: ficha mestre e tamanho das colunas", () => {
+  it("material e cor aplicados vão para a ficha mestre; opção longa cabe no banco", async () => {
+    await setSetting("aiMode", "MOCK");
+    const store = getStore();
+    const { getProductSheet, saveProductSheet } =
+      await import("@/lib/services/product-sheet");
+    // Ficha mestre com o material antigo.
+    await saveProductSheet(admin, "prod-jarra", { material: "GLASS" });
+    expect((await getProductSheet("prod-jarra"))?.material).toBe("GLASS");
+    const suggestion = await requestProductSuggestion(
+      admin,
+      "product",
+      "prod-jarra",
+    );
+    const longMaterial = `Policarbonato (PC) rígido provável na parte traseira / ${"TPU ".repeat(40)}`;
+    await applyProductSuggestion(admin, suggestion.id, {
+      material: longMaterial,
+      color: "Azul-marinho/acinzentado fosco",
+      category: "C".repeat(150),
+    });
+    const jarra = (await store.get("products", "prod-jarra"))!;
+    // Cortado no tamanho das colunas, sem partir o trecho "A / B" ao meio.
+    expect(jarra.material).toBe(
+      "Policarbonato (PC) rígido provável na parte traseira",
+    );
+    expect(jarra.category).toHaveLength(80);
+    expect(jarra.color).toBe("Azul-marinho/acinzentado fosco");
+    // A ficha mestre acompanha (antes ficava com o material antigo e o
+    // desfazia no produto ao ser salva).
+    const sheet = (await getProductSheet("prod-jarra"))!;
+    expect(sheet.material).toBe(jarra.material);
+    expect(sheet.colorAssortment).toBe(jarra.color);
+  });
+});
+
 describe("marketing studio e kit", () => {
   it("prévia → oferta → compra → pagamento → liberação, com preço das configurações", async () => {
     await setSetting("marketingKitDefaultPrice", 350);

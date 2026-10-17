@@ -141,10 +141,12 @@ export async function applyProductSuggestionAction(form: FormData) {
       apply.has(key) ? str(form, key) || null : null;
     const parsed = z
       .object({
-        category: z.string().max(120).nullable(),
+        // Opção sugerida pela IA pode ser maior que a coluna: o serviço corta
+        // no tamanho do banco (categoria 80, material 120, cor 60).
+        category: z.string().max(500).nullable(),
         description: z.string().max(2000).nullable(),
-        material: z.string().max(120).nullable(),
-        color: z.string().max(60).nullable(),
+        material: z.string().max(500).nullable(),
+        color: z.string().max(500).nullable(),
         attributes: z.boolean(),
       })
       .parse({

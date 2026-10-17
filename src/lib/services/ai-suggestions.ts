@@ -15,6 +15,7 @@ import { getSettings } from "@/lib/settings";
 import { getAiAdapter, type AiImage } from "@/lib/integrations/ai";
 import { buildPrompt } from "@/lib/ai/prompts";
 import { audit } from "./audit";
+import { cutAtSeparator } from "@/lib/pantone/color-text";
 
 /**
  * FOTO → ANÁLISE → SUGESTÃO DE CAMPOS → HUMANO CONFIRMA → CADASTRO.
@@ -175,15 +176,23 @@ export async function applyProductSuggestion(
     .map(([k, v]) => `${k}: ${String(v)}`)
     .join("\n");
 
+  // Tamanho das colunas no banco (categoria 80, material 120, cor 60): a
+  // opção sugerida pela IA pode passar disso e não pode derrubar a aplicação.
+  const fit = (v: string | null, max: number) =>
+    v ? cutAtSeparator(v, max).trim() || null : null;
   const confirmed = {
-    category: clean(input.category),
+    category: fit(clean(input.category), 80),
     description: clean(input.description),
-    material: clean(input.material),
-    color: clean(input.color),
+    material: fit(clean(input.material), 120),
+    color: fit(clean(input.color), 60),
   };
   if (suggestion.entity === "product") {
     const product = await store.get("products", suggestion.entityId);
     if (!product) throw new Error("not_found");
+    const { refreshAutoSpecification, getProductSheet, syncMasterFromProduct } =
+      await import("./product-sheet");
+    // Ficha mestre antes da mudança (base da especificação automática).
+    const masterBefore = await getProductSheet(product.id);
     const patch: Partial<Product> = {};
     if (confirmed.category) patch.category = confirmed.category;
     if (confirmed.description) patch.specification = confirmed.description;
@@ -199,15 +208,16 @@ export async function applyProductSuggestion(
     applied.push(...appliedKeys(confirmed, input.attributes && !!attrText));
     if (applied.length) {
       await store.update("products", product.id, patch);
+      // Material e cor também estão na ficha mestre (mesmo dado, dois lugares):
+      // sem isto a ficha ficava com o antigo e o desfazia ao ser salva.
+      if (patch.material !== undefined || patch.color !== undefined)
+        await syncMasterFromProduct(product.id);
       // Material/cor confirmados sem texto novo: a especificação automática acompanha.
-      if (patch.specification === undefined) {
-        const { refreshAutoSpecification, getProductSheet } =
-          await import("./product-sheet");
+      if (patch.specification === undefined)
         await refreshAutoSpecification(product.id, {
           product,
-          master: await getProductSheet(product.id),
+          master: masterBefore,
         });
-      }
       await audit(
         user,
         "ai.apply",

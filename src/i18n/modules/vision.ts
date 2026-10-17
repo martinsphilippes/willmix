@@ -78,8 +78,9 @@ export const pt = {
   "vision.ai.apply.check": "Aplicar",
   "vision.ai.apply.description": "Descrição / especificação",
   "vision.ai.apply.choiceHint":
-    "Marque uma das opções sugeridas ou, sem marcar nenhuma, digite outro valor. Nada é escolhido por padrão.",
+    'Marque uma das opções sugeridas ou digite outro valor; escolher já marca o "Aplicar". Para deixar em branco, toque de novo na opção marcada ou em Limpar. Nada é escolhido por padrão.',
   "vision.ai.apply.other": "Outro",
+  "vision.ai.apply.clear": "Limpar",
   "vision.ai.apply.suggested": "Sugeridos",
   "vision.ai.apply.attributes": "Anexar atributos à especificação",
   "vision.ai.apply.attributesHint":
@@ -204,8 +205,9 @@ export const en: Record<keyof typeof pt, string> = {
   "vision.ai.apply.check": "Apply",
   "vision.ai.apply.description": "Description / specification",
   "vision.ai.apply.choiceHint":
-    "Tick one of the suggested options or, leaving them unticked, type another value. Nothing is chosen by default.",
+    'Tick one of the suggested options or type another value; choosing ticks "Apply". To leave it blank, tap the ticked option again or Clear. Nothing is chosen by default.',
   "vision.ai.apply.other": "Other",
+  "vision.ai.apply.clear": "Clear",
   "vision.ai.apply.suggested": "Suggested",
   "vision.ai.apply.attributes": "Append attributes to the specification",
   "vision.ai.apply.attributesHint":
@@ -323,8 +325,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "vision.ai.apply.check": "应用",
   "vision.ai.apply.description": "描述 / 规格",
   "vision.ai.apply.choiceHint":
-    "勾选一个建议选项；或不勾选任何选项，直接输入其他值。默认不选任何值。",
+    "勾选一个建议选项或输入其他值；选择后会自动勾选“应用”。如需留空，再点一次已选选项或点“清除”。默认不选任何值。",
   "vision.ai.apply.other": "其他",
+  "vision.ai.apply.clear": "清除",
   "vision.ai.apply.suggested": "建议值",
   "vision.ai.apply.attributes": "将属性追加到规格",
   "vision.ai.apply.attributesHint": "上方的“键: 值”将追加到规格末尾。",
