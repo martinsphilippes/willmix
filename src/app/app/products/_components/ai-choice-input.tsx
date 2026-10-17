@@ -142,3 +142,26 @@ export function AiChoiceInput({
     </fieldset>
   );
 }
+
+/**
+ * Categoria e descrição sugeridas: editar o texto já marca o "Aplicar" do
+ * campo (como escolher material e cor). Antes o texto editado ficava de fora
+ * se a caixa não fosse marcada, e a sugestão fechava sem ele.
+ */
+export function ApplyAutoTick() {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const row = ref.current?.closest("[data-apply-row]");
+    const box = row?.querySelector<HTMLInputElement>('input[name="apply"]');
+    if (!row || !box) return;
+    const onInput = (e: Event) => {
+      const el = e.target;
+      if (el === box) return;
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)
+        box.checked = true;
+    };
+    row.addEventListener("input", onInput);
+    return () => row.removeEventListener("input", onInput);
+  }, []);
+  return <span ref={ref} hidden />;
+}

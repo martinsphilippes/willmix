@@ -379,6 +379,25 @@ describe("achados da revisão", () => {
     expect(
       f.computeOrderFinance(same, [out(2000, null, "BRL")], names).cost,
     ).toBe(2000);
+    // Mesma moeda (US$) com pagamento em reais: entra convertido (estimado).
+    const usd = order({
+      status: "CANCELLED",
+      sellCurrency: "USD",
+      sellPrice: 1500,
+      fobCurrency: "USD",
+    });
+    const mixed = f.computeOrderFinance(
+      usd,
+      [out(500, 5), out(2700, null, "BRL")],
+      names,
+      { today: today(5.4) },
+    );
+    expect(mixed.cost).toBeCloseTo(1000, 6);
+    expect(mixed.estimated).toBe(true);
+    // Sem câmbio para converter o pagamento em reais: sem custo.
+    expect(
+      f.computeOrderFinance(usd, [out(2700, null, "BRL")], names).cost,
+    ).toBeNull();
   });
 
   it("cancelado só conta o que foi pago", () => {

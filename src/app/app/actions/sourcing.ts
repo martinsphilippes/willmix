@@ -227,7 +227,8 @@ export async function saveSourcingItemAction(form: FormData) {
         `original: ${photos.length} foto(s)`,
       );
     }
-    return `/app/sourcing/items/${item.id}`;
+    // Salvo: o rascunho do formulário é apagado (não volta como "devolvido").
+    return `/app/sourcing/items/${item.id}?saved=1`;
   });
 }
 

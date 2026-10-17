@@ -33,7 +33,7 @@ import {
   requestProductSuggestionAction,
 } from "../../actions/vision";
 import { catalogError, userNameFor } from "./shared";
-import { AiChoiceInput } from "./ai-choice-input";
+import { AiChoiceInput, ApplyAutoTick } from "./ai-choice-input";
 
 /*
  * Seção "Sugestão por foto (IA)" da ficha do produto e do item de sourcing.
@@ -470,12 +470,15 @@ function ApplyRow({
   label,
   current,
   t,
+  autoTick = false,
   children,
 }: {
   name: "category" | "description" | "material" | "color";
   label: string;
   current: string | null | undefined;
   t: Translate;
+  /** Editar o texto marca o "Aplicar" (categoria e descrição). */
+  autoTick?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -493,6 +496,7 @@ function ApplyRow({
         {t("vision.ai.apply.check")}: {label}
       </label>
       <div className="mt-1.5">{children}</div>
+      {autoTick ? <ApplyAutoTick /> : null}
       <p className="mt-1 text-xs text-zinc-500">
         {t("vision.ai.apply.current")}:{" "}
         {current?.trim() ? (
@@ -607,6 +611,7 @@ function PendingForms({
                 label={t("catalog.category")}
                 current={current?.category}
                 t={t}
+                autoTick
               >
                 <Input
                   name="category"
@@ -654,6 +659,7 @@ function PendingForms({
                   label={t("vision.ai.apply.description")}
                   current={current?.description}
                   t={t}
+                  autoTick
                 >
                   <Textarea
                     name="description"

@@ -240,10 +240,13 @@ function collect(form: HTMLFormElement): Record<string, string> {
   const out: Record<string, string> = {};
   for (const el of Array.from(form.elements)) {
     if (!eligible(el)) continue;
-    out[fieldKey(el)] = el.value;
+    out[fieldKey(el)] = isCheckbox(el) ? (el.checked ? "1" : "") : el.value;
   }
   return out;
 }
+
+const isCheckbox = (el: Field): el is HTMLInputElement =>
+  el instanceof HTMLInputElement && el.type === "checkbox";
 
 function eligible(el: Element): el is Field {
   if (!(
@@ -253,6 +256,9 @@ function eligible(el: Element): el is Field {
   ))
     return false;
   if (!fieldKey(el) || el.disabled) return false;
+  // Valor calculado pela tela (ex.: especificação automática): não é digitado,
+  // e devolvê-lo como se fosse a trocaria para "manual" com texto velho.
+  if (el.hasAttribute("data-draft-skip")) return false;
   if (el instanceof HTMLInputElement) {
     // Oculto só quando marcado (ex.: cores Pantone escolhidas).
     if (el.type === "hidden") return el.hasAttribute("data-draft");
@@ -263,15 +269,18 @@ function eligible(el: Element): el is Field {
       "button",
       "image",
       "reset",
-      "checkbox",
       "radio",
     ].includes(el.type);
   }
   return true;
 }
 
-/** Nome do campo; o valor em dinheiro visível (sem nome) usa o do campo oculto. */
+/**
+ * Nome do campo; o valor em dinheiro visível (sem nome) usa o do campo oculto.
+ * Caixa de marcar: nome + valor (marcada "1", desmarcada "").
+ */
 function fieldKey(el: Field): string {
+  if (isCheckbox(el)) return el.name ? `check:${el.name}=${el.value}` : "";
   if (el.name) return el.name;
   const money = el.getAttribute("data-money");
   return money ? `money:${money}` : "";
@@ -296,6 +305,14 @@ function apply(form: HTMLFormElement, values: Record<string, string>) {
   let changed = 0;
   for (const el of fields) {
     const value = values[fieldKey(el)];
+    if (isCheckbox(el)) {
+      // O clique de verdade: o React e o que depende da caixa acompanham.
+      if (el.checked !== (value === "1")) {
+        el.click();
+        changed++;
+      }
+      continue;
+    }
     if (el.value === value) continue;
     setNativeValue(el, value);
     el.dispatchEvent(new Event("input", { bubbles: true }));

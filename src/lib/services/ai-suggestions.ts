@@ -189,7 +189,7 @@ export async function applyProductSuggestion(
   if (suggestion.entity === "product") {
     const product = await store.get("products", suggestion.entityId);
     if (!product) throw new Error("not_found");
-    const { refreshAutoSpecification, getProductSheet, syncMasterFromProduct } =
+    const { refreshAutoSpecification, getProductSheet } =
       await import("./product-sheet");
     // Ficha mestre antes da mudança (base da especificação automática).
     const masterBefore = await getProductSheet(product.id);
@@ -209,9 +209,19 @@ export async function applyProductSuggestion(
     if (applied.length) {
       await store.update("products", product.id, patch);
       // Material e cor também estão na ficha mestre (mesmo dado, dois lugares):
-      // sem isto a ficha ficava com o antigo e o desfazia ao ser salva.
-      if (patch.material !== undefined || patch.color !== undefined)
-        await syncMasterFromProduct(product.id);
+      // sem isto a ficha ficava com o antigo e o desfazia ao ser salva. Só os
+      // dois campos aplicados: copiar o produto inteiro cortava cores, material
+      // e NCM da ficha (as colunas do produto são versões mais curtas).
+      if (
+        masterBefore &&
+        (patch.material !== undefined || patch.color !== undefined)
+      )
+        await store.update("purchase_sheets", masterBefore.id, {
+          ...(patch.material !== undefined ? { material: patch.material } : {}),
+          ...(patch.color !== undefined
+            ? { colorAssortment: patch.color }
+            : {}),
+        });
       // Material/cor confirmados sem texto novo: a especificação automática acompanha.
       if (patch.specification === undefined)
         await refreshAutoSpecification(product.id, {
