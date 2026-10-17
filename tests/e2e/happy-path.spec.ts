@@ -615,6 +615,8 @@ test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar
     .getByRole("button", { name: /Aplicar selecionados|Apply selected|应用/ })
     .click();
   await expect(page.locator("[data-apply-row]")).toHaveCount(0);
+  // O resultado aparece na própria seção (antes parecia que nada acontecia).
+  await expect(page.locator("[data-ai-applied]")).toBeVisible();
   await expect(page.locator('input[name="material"]').first()).toHaveValue(
     value,
   );

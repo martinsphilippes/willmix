@@ -67,7 +67,7 @@ export default async function SourcingItemPage({
   if (!user) redirect("/login");
   assertWellmix(user);
   const { id } = await params;
-  const { error } = await searchParams;
+  const { error, from: errorFrom, ai: aiNotice } = await searchParams;
   const data = await loadSourcingItem(id);
   if (!data) notFound();
   const { item, photos, measurements, visit, supplier, documents } = data;
@@ -174,7 +174,8 @@ export default async function SourcingItemPage({
           </>
         }
       />
-      {errorText ? (
+      {/* Erro da sugestão da IA aparece na própria seção (lá embaixo). */}
+      {errorText && errorFrom !== "ai" ? (
         <div className="mb-3">
           <Alert tone="danger">{errorText}</Alert>
         </div>
@@ -719,6 +720,8 @@ export default async function SourcingItemPage({
           }}
           t={t}
           back={`/app/sourcing/items/${item.id}`}
+          notice={aiNotice === "applied" ? "applied" : null}
+          error={errorFrom === "ai" ? (errorText ?? null) : null}
         />
       </Card>
     </>
