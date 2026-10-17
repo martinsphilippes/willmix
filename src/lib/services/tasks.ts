@@ -463,8 +463,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           },
         })
       : [];
-    const skip = new Set(confirmedInOldFlow.map((r) => r.orderId));
-    const live = open.filter((o) => !skip.has(o.id));
+    const { legacyReceivedAt, receivedInOldFlow } =
+      await import("./supplier-terms");
+    const live = open;
     const toConfirm = live.length
       ? await store.list("payments", {
           filter: {
@@ -477,6 +478,11 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     for (const p of toConfirm) {
       const order = live.find((o) => o.id === p.orderId);
       if (!order) continue;
+      // Já recebido pela etapa antiga (registrado antes da confirmação dela).
+      const receivedAt = legacyReceivedAt(
+        confirmedInOldFlow.filter((r) => r.orderId === order.id),
+      );
+      if (receivedInOldFlow(p, receivedAt)) continue;
       tasks.push(
         finish(
           {

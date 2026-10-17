@@ -51,6 +51,8 @@ export const pt = {
     "Esta parcela já foi registrada (por outra pessoa ou por um clique duplo). Confira o cronograma.",
   "orders.error.terms_missing":
     "O fornecedor não tem condição de pagamento no cadastro.",
+  "orders.error.terms_has_payments":
+    "Este pedido já tem pagamento ao fornecedor lançado pela condição dele; a condição não muda mais.",
   "supplierTerms.card": "Pagamento ao fornecedor",
   "supplierTerms.offFlow":
     "Não segura o pedido: segue a condição combinada com o fornecedor e aparece em Contas a pagar.",
@@ -182,6 +184,8 @@ export const en: Record<keyof typeof pt, string> = {
     "This installment was already registered (by someone else or a double click). Check the schedule.",
   "orders.error.terms_missing":
     "The supplier has no payment terms in its record.",
+  "orders.error.terms_has_payments":
+    "This order already has supplier payments under its terms; the terms can no longer change.",
   "supplierTerms.card": "Supplier payment",
   "supplierTerms.offFlow":
     "Does not hold the order: follows the terms agreed with the supplier and shows in Payables.",
@@ -307,6 +311,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.error.installment_changed":
     "该期款项已被登记（他人操作或重复点击）。请查看付款计划。",
   "orders.error.terms_missing": "供应商资料中没有付款条件。",
+  "orders.error.terms_has_payments":
+    "本订单已按其条件登记了供应商付款，条件不能再更改。",
   "supplierTerms.card": "供应商付款",
   "supplierTerms.offFlow":
     "不影响订单进度：按与供应商约定的条件执行，并显示在应付账款中。",

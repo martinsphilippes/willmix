@@ -70,9 +70,11 @@ export async function SupplierPaymentCard({
   const { schedule, source, supplier } = payable;
   const cancelled = order.status === "CANCELLED";
   const supplierTerms = parseTerms(supplier?.paymentTerms ?? null);
+  // Com dinheiro já lançado, a condição do pedido não muda (o servidor recusa).
   const differs =
     wellmix &&
     !schedule.legacySettled &&
+    schedule.paid + schedule.requested === 0 &&
     source === "order" &&
     !!supplierTerms &&
     !sameTerms(schedule.terms, supplierTerms);
