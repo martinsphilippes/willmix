@@ -9,12 +9,16 @@ import type { PricingRecord } from "./quote-pricing";
  * Visão financeira por pedido, derivada dos lançamentos já existentes:
  * - venda ao cliente (sellPrice/sellCurrency) e recebimentos (payments customer_in);
  * - custo FOB (fobTotal/fobCurrency) e pagamentos ao fornecedor (payments supplier_out).
- * Custo na moeda da venda: o que já foi pago vale o câmbio real informado em
- * cada pagamento; o que falta pagar (ou tudo, antes do primeiro pagamento) é
- * estimado pelo câmbio do dia e sinalizado (`estimated`, "~"). Sem câmbio do
- * dia, o saldo usa a média do que já foi pago; sem nada disso, "câmbio pendente".
- * Com o câmbio da venda (gravado na proposta), mostra o efeito do câmbio na
- * margem desde a venda.
+ *
+ * Custo: conta feita em reais e levada à moeda da venda no fim. O câmbio de um
+ * pagamento ao fornecedor é R$ por 1 unidade da moeda do pagamento (como a
+ * PTAX). O que já foi pago com câmbio informado (ou pago em reais) é real; o
+ * que foi pago sem câmbio e o que falta pagar são estimados pelo câmbio do dia
+ * (sem ele, pela média do que já foi pago) e sinalizados (`estimated`, "~").
+ * Pagamento em outra moeda que não a do FOB abate o FOB pelo câmbio do dia
+ * (estimado). Pedido cancelado só conta o que de fato foi pago. Sem câmbio
+ * nenhum: "câmbio pendente". Com o câmbio da venda (gravado na proposta),
+ * mostra o efeito do câmbio na margem desde a venda.
  */
 /** Arredonda para centavos (resto de conta em ponto flutuante não conta). */
 const cents = (n: number) => Math.round(n * 100) / 100;
@@ -32,9 +36,14 @@ export interface OrderFinance {
   fob: number;
   paid: number;
   payable: number;
+  /**
+   * Pago em outras moedas que não a do FOB (fora de "pago" e "a pagar", como
+   * na conta corrente do fornecedor), por moeda.
+   */
+  paidOther: Record<string, number>;
   /** Custo do fornecedor convertido para a moeda de venda (normalmente BRL). */
   cost: number | null;
-  /** Câmbio médio real dos pagamentos que informaram câmbio. */
+  /** Câmbio médio real (moeda da venda por unidade do FOB) do que foi pago com câmbio. */
   avgFx: number | null;
   estimated: boolean;
   /**
@@ -46,6 +55,16 @@ export interface OrderFinance {
   estimateRate: number | null;
   estimateFrom: "today" | "stale" | "manual" | "paid" | null;
   estimateDay: string | null;
+  /** Unidades do FOB pagas sem câmbio informado (estimadas pelo câmbio do dia). */
+  paidNoFx: number;
+  /** Unidades do FOB ainda não pagas (estimadas pelo câmbio do dia). */
+  unpaid: number;
+  /** Pagamento em outra moeda convertido em unidades do FOB pelo câmbio do dia. */
+  crossConverted: boolean;
+  /** Venda fora de reais: R$ por 1 unidade da moeda da venda usado na conversão. */
+  sellRate: number | null;
+  /** Unidades do FOB que entraram no custo (pago + saldo), base do efeito do câmbio. */
+  costedFob: number;
   /** Câmbio da venda (moeda do FOB → moeda da venda), gravado na proposta. */
   saleFx: number | null;
   /** Margem se o custo fosse todo ao câmbio da venda. */
@@ -118,6 +137,8 @@ export interface FinanceSummary {
   estimated: number;
   /** Efeito do câmbio na margem desde a venda (pedidos com o câmbio da venda). */
   fxEffect: number | null;
+  /** Algum pedido do efeito tem custo estimado ("~" no total). */
+  fxEffectEstimated: boolean;
   payableByCurrency: Record<string, number>;
   paidByCurrency: Record<string, number>;
 }
@@ -143,25 +164,70 @@ export function computeOrderFinance(
     (p) => p.direction === "supplier_out" && settled(p),
   );
   const received = inbound.reduce((s, p) => s + p.amount, 0);
-  const paid = outbound.reduce((s, p) => s + p.amount, 0);
+  // Pago e a pagar na moeda do FOB, como na conta corrente do fornecedor; o
+  // pago em outra moeda aparece à parte, na moeda dele.
+  // (Pagamento sem moeda, de antes de a moeda ser obrigatória: a do FOB.)
+  const inFob = (p: Payment) =>
+    !p.currency || sameCurrency(p.currency, fobCurrency);
+  const paid = outbound.filter(inFob).reduce((s, p) => s + p.amount, 0);
+  const paidOther: Record<string, number> = {};
+  for (const p of outbound.filter((x) => !inFob(x))) {
+    const c = p.currency.toUpperCase();
+    paidOther[c] = cents((paidOther[c] ?? 0) + p.amount);
+  }
 
-  const withFx = outbound.filter((p) => p.fxRate && p.fxRate > 0);
-  const knownCost = withFx.reduce(
-    (s, p) => s + p.amount * (p.fxRate as number),
-    0,
-  );
-  const knownAmount = withFx.reduce((s, p) => s + p.amount, 0);
-  const avgFx = knownAmount > 0 ? knownCost / knownAmount : null;
-  const remaining = Math.max(0, fob - knownAmount); // pago sem câmbio + saldo a pagar
-  const todayRate = fx.today
-    ? crossRate(fx.today.rates, fobCurrency, sellCurrency)
-    : null;
+  const rates = fx.today?.rates ?? null;
+  // Cada pagamento em reais (real com câmbio informado ou pago em reais) e em
+  // unidades do FOB (outra moeda: pelo câmbio do dia, estimado).
+  let realBrl = 0;
+  let realUnits = 0;
+  let noFxUnits = 0;
+  let crossConverted = false;
+  let unconvertible = false;
+  for (const p of outbound) {
+    let units: number | null = p.amount;
+    if (!inFob(p)) {
+      const r = rates ? crossRate(rates, p.currency, fobCurrency) : null;
+      units = r !== null ? p.amount * r : null;
+      crossConverted = true;
+    }
+    if (units === null) {
+      unconvertible = true;
+      continue;
+    }
+    const brl =
+      fxKey(p.currency) === "BRL"
+        ? p.amount
+        : p.fxRate && p.fxRate > 0
+          ? p.amount * p.fxRate
+          : null;
+    if (brl === null) noFxUnits += units;
+    else {
+      realBrl += brl;
+      realUnits += units;
+    }
+  }
+  // Cancelado: o que não foi pago não vai ser; só conta o que saiu.
+  const unpaid = cancelled ? 0 : Math.max(0, fob - realUnits - noFxUnits);
+  const estUnits = noFxUnits + unpaid;
+  const needEstimate = estUnits > 0.005;
+  const avgBrl = realUnits > 0 ? realBrl / realUnits : null;
+  const todayBrl = rates ? rateFor(rates, fobCurrency) : null;
   const todayFrom =
-    fx.today && todayRate !== null
+    fx.today && todayBrl !== null
       ? fx.today.status === "stale" || fx.today.status === "manual"
         ? fx.today.status
         : "today"
       : null;
+  const estBrl = todayBrl ?? avgBrl;
+  // Venda fora de reais: o custo em reais vai à moeda da venda pelo câmbio do dia.
+  const sellBrl =
+    fxKey(sellCurrency) === "BRL"
+      ? 1
+      : rates
+        ? rateFor(rates, sellCurrency)
+        : null;
+
   let cost: number | null = null;
   let estimated = false;
   let fxBasis: OrderFinance["fxBasis"] = null;
@@ -170,32 +236,40 @@ export function computeOrderFinance(
   if (sameCurrency(fobCurrency, sellCurrency)) {
     cost = fob;
     fxBasis = "same";
-  } else if (remaining <= 0.005 && avgFx !== null) {
-    // Tudo pago com câmbio informado: custo real.
-    cost = knownCost;
-    fxBasis = "paid";
-  } else if (fob > 0) {
-    // Saldo (ou tudo) pelo câmbio do dia; sem ele, pela média já paga.
-    // (FOB zerado: preço ainda não informado, sem margem estimada.)
-    const rate = todayRate ?? avgFx;
-    if (rate !== null) {
-      cost = knownCost + remaining * rate;
-      estimated = true;
-      fxBasis = knownAmount > 0 ? "partial" : "estimate";
-      estimateRate = rate;
-      estimateFrom = todayRate !== null ? todayFrom : "paid";
+  } else if (
+    !unconvertible &&
+    (realUnits + noFxUnits > 0.005 || (fob > 0 && !cancelled)) &&
+    (!needEstimate || estBrl !== null) &&
+    sellBrl !== null &&
+    sellBrl > 0
+  ) {
+    // (FOB zerado e nada pago: preço ainda não informado, sem margem estimada.)
+    cost =
+      (realBrl + (needEstimate ? estUnits * (estBrl as number) : 0)) / sellBrl;
+    estimated = needEstimate || crossConverted || sellBrl !== 1;
+    fxBasis = !estimated ? "paid" : realUnits > 0 ? "partial" : "estimate";
+    if (needEstimate) {
+      estimateRate = (estBrl as number) / sellBrl;
+      estimateFrom = todayBrl !== null ? todayFrom : "paid";
     }
   }
+  const avgFx =
+    avgBrl !== null && sellBrl !== null && sellBrl > 0 && fxBasis !== "same"
+      ? avgBrl / sellBrl
+      : null;
   const margin = cost !== null ? sell - cost : null;
   const marginPct = margin !== null && sell > 0 ? (margin / sell) * 100 : null;
-  // Efeito do câmbio desde a venda: custo ao câmbio da venda × custo de agora.
+  // Efeito do câmbio desde a venda: as mesmas unidades do FOB que entraram no
+  // custo, ao câmbio da venda × custo de agora (pagamento a mais ou FOB
+  // reduzido depois de pago não viram "perda de câmbio").
+  const costedFob = fxBasis === "same" ? fob : realUnits + estUnits;
   const saleFx =
     fxBasis !== "same" && fx.saleFx && fx.saleFx > 0 ? fx.saleFx : null;
-  const saleCost = saleFx !== null ? fob * saleFx : null;
+  const saleCost = saleFx !== null ? costedFob * saleFx : null;
   const marginAtSale = saleCost !== null ? sell - saleCost : null;
   const fxEffect =
     saleCost !== null && cost !== null && !cancelled
-      ? cents(saleCost - cost)
+      ? cents(saleCost - cost) || 0
       : null;
 
   return {
@@ -214,6 +288,7 @@ export function computeOrderFinance(
     fob,
     paid,
     payable: cancelled ? 0 : Math.max(0, cents(fob - paid)),
+    paidOther,
     cost,
     avgFx,
     estimated,
@@ -222,6 +297,11 @@ export function computeOrderFinance(
     estimateFrom,
     estimateDay:
       estimateFrom && estimateFrom !== "paid" ? (fx.today?.day ?? null) : null,
+    paidNoFx: noFxUnits,
+    unpaid,
+    crossConverted,
+    sellRate: sellBrl !== null && sellBrl !== 1 ? sellBrl : null,
+    costedFob,
     saleFx,
     marginAtSale,
     fxEffect,
@@ -335,6 +415,9 @@ export async function loadFinance(
       (payableByCurrency[r.fobCurrency] ?? 0) + r.payable;
     paidByCurrency[r.fobCurrency] =
       (paidByCurrency[r.fobCurrency] ?? 0) + r.paid;
+    // Pago em outra moeda conta na moeda dele (não soma como se fosse a do FOB).
+    for (const [c, v] of Object.entries(r.paidOther))
+      paidByCurrency[c] = (paidByCurrency[c] ?? 0) + v;
   }
   const margin = knownSell - cost;
   const effects = live.filter((r) => r.fxEffect !== null);
@@ -351,15 +434,26 @@ export async function loadFinance(
       missingFx: live.length - known.length,
       estimated: known.filter((r) => r.estimated).length,
       fxEffect: effects.length
-        ? cents(effects.reduce((s, r) => s + (r.fxEffect as number), 0))
+        ? cents(effects.reduce((s, r) => s + (r.fxEffect as number), 0)) || 0
         : null,
+      fxEffectEstimated: effects.some((r) => r.estimated),
       payableByCurrency,
       paidByCurrency,
     },
   };
 }
 
-export async function loadOrderFinance(order: Order): Promise<OrderFinance> {
+export async function loadOrderFinance(
+  order: Order,
+  options: {
+    /**
+     * Câmbio do dia e da venda (custo, margem e efeito do câmbio). Só a Wellmix
+     * vê; para o cliente a tela não busca câmbio nem lê a auditoria.
+     */
+    estimate?: boolean;
+  } = {},
+): Promise<OrderFinance> {
+  const estimate = options.estimate !== false;
   const store = getStore();
   const [payments, customer, supplier, items, today, sales] = await Promise.all(
     [
@@ -367,8 +461,10 @@ export async function loadOrderFinance(order: Order): Promise<OrderFinance> {
       store.get("parties", order.customerId),
       store.get("parties", order.supplierId),
       store.list("order_items", { filter: { orderId: order.id } }),
-      todayFx(),
-      saleRecords([order.requestId]),
+      estimate ? todayFx() : Promise.resolve(null),
+      estimate
+        ? saleRecords([order.requestId])
+        : Promise.resolve(new Map<string, PricingRecord>()),
     ] as const,
   );
   return computeOrderFinance(

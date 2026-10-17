@@ -32,9 +32,10 @@ const order = (patch: Partial<Order> = {}) =>
     fobCurrency: "USD",
     ...patch,
   }) as unknown as Order;
-const out = (amount: number, fxRate: number | null) =>
+const out = (amount: number, fxRate: number | null, currency = "USD") =>
   ({
     amount,
+    currency,
     direction: "supplier_out",
     status: "confirmed",
     fxRate,
@@ -220,14 +221,22 @@ describe("textos do câmbio", () => {
       "saldo a ~5,4000 (câmbio de 17/10)",
       "venda 5,0000",
     ]);
+    // Pago em parte: diz o que é real e o que foi estimado.
     expect(text.costEstimateNote(pt, partial)).toBe(
-      "estimado a 5,4000 (câmbio de 17/10)",
+      "pago no câmbio real; o resto estimado a 5,4000 (câmbio de 17/10)",
     );
+    expect(
+      text.costEstimateNote(
+        pt,
+        f.computeOrderFinance(order(), [], names, { today: today(5.4) }),
+      ),
+    ).toBe("estimado a 5,4000 (câmbio de 17/10)");
     const effect = text.fxEffectText(pt, partial)!;
     expect(effect.negative).toBe(true);
     expect(effect.text).toContain("câmbio desde a venda:");
     expect(effect.title).toContain("5,0000");
-    expect(effect.title).toContain("5,4000");
+    // Câmbio médio do custo: 300 a 5,1 + 700 a 5,4.
+    expect(effect.title).toContain("~5,3100");
 
     const estimate = f.computeOrderFinance(order(), [], names, {
       today: today(5.4, "manual"),
@@ -255,6 +264,209 @@ describe("textos do câmbio", () => {
         expect(s, s).not.toMatch(/\{\w+\}/);
       }
     }
+  });
+});
+
+describe("achados da revisão", () => {
+  const pt = translator("pt");
+
+  it("pagamento a mais ou FOB reduzido depois de pago não vira perda de câmbio", () => {
+    // Comprou 1000 e pagou a 5; a quantidade caiu 10% depois (FOB 900, venda 9000).
+    const cut = f.computeOrderFinance(
+      order({ fobTotal: 900, sellPrice: 9000 }),
+      [out(1000, 5)],
+      names,
+      { today: today(5), saleFx: 5 },
+    );
+    expect(cut.cost).toBeCloseTo(5000, 6);
+    expect(cut.fxEffect).toBe(0);
+    expect(text.fxEffectText(pt, cut)).toBeNull();
+    // Taxa do banco: pagou 1020 ao câmbio da venda.
+    const fee = f.computeOrderFinance(order(), [out(1020, 5)], names, {
+      today: today(5),
+      saleFx: 5,
+    });
+    expect(fee.fxEffect).toBe(0);
+    // FOB ainda zerado, 500 pagos ao câmbio da venda.
+    const zero = f.computeOrderFinance(
+      order({ fobTotal: 0 }),
+      [out(500, 5)],
+      names,
+      { today: today(5), saleFx: 5 },
+    );
+    expect(zero.cost).toBeCloseTo(2500, 6);
+    expect(zero.fxEffect).toBe(0);
+    // Câmbio mudou de verdade: o efeito é só a diferença de câmbio.
+    const moved = f.computeOrderFinance(
+      order({ fobTotal: 900, sellPrice: 9000 }),
+      [out(1000, 5.2)],
+      names,
+      { today: today(5.4), saleFx: 5 },
+    );
+    expect(moved.fxEffect).toBe(-200);
+  });
+
+  it("pagamento em outra moeda: em reais pelo câmbio dele, abatendo o FOB pelo câmbio do dia", () => {
+    // FOB US$ 1000; pagou ¥ 3600 a R$ 0,75 (≈ US$ 500 hoje).
+    const x = f.computeOrderFinance(order(), [out(3600, 0.75, "CNY")], names, {
+      today: today(5.4),
+      saleFx: 5.4,
+    });
+    expect(x.paid).toBe(0); // "Pago" na moeda do FOB, como a conta corrente
+    expect(x.paidOther).toEqual({ CNY: 3600 });
+    expect(x.payable).toBe(1000);
+    expect(x.crossConverted).toBe(true);
+    expect(x.estimated).toBe(true);
+    expect(x.fxBasis).toBe("partial");
+    expect(x.unpaid).toBeCloseTo(500, 6);
+    // 2.700 reais pagos + US$ 500 a 5,4
+    expect(x.cost).toBeCloseTo(5400, 6);
+    expect(x.fxEffect).toBe(0);
+    expect(text.fxRateLines(pt, x)!.notes).toContain(
+      "pagamento em outra moeda convertido pelo câmbio do dia",
+    );
+    // FOB em yuan pago em dólar (R$ 5,40 por US$).
+    const rmb = f.computeOrderFinance(
+      order({ fobCurrency: "RMB", fobTotal: 7200 }),
+      [out(1000, 5.4, "USD")],
+      names,
+      { today: today(5.4) },
+    );
+    expect(rmb.cost).toBeCloseTo(5400, 6);
+    expect(rmb.unpaid).toBeCloseTo(0, 6);
+    // Sem câmbio do dia não dá para saber quanto do FOB foi pago: pendente.
+    const none = f.computeOrderFinance(
+      order(),
+      [out(3600, 0.75, "CNY")],
+      names,
+    );
+    expect(none.cost).toBeNull();
+    // Pagamento em reais: custo real, sem câmbio informado.
+    const brl = f.computeOrderFinance(
+      order(),
+      [out(5400, null, "BRL")],
+      names,
+      {
+        today: today(5.4),
+      },
+    );
+    expect(brl.cost).toBeCloseTo(5400, 6);
+    expect(brl.unpaid).toBeCloseTo(0, 6);
+  });
+
+  it("cancelado só conta o que foi pago", () => {
+    const nothing = f.computeOrderFinance(
+      order({ status: "CANCELLED" }),
+      [],
+      names,
+      { today: today(5.4), saleFx: 5 },
+    );
+    expect(nothing.cost).toBeNull();
+    expect(nothing.fxBasis).toBeNull();
+    expect(nothing.fxEffect).toBeNull();
+    const some = f.computeOrderFinance(
+      order({ status: "CANCELLED" }),
+      [out(300, 5)],
+      names,
+      { today: today(5.4), saleFx: 5 },
+    );
+    expect(some.cost).toBeCloseTo(1500, 6);
+    expect(some.fxBasis).toBe("paid");
+    expect(some.estimated).toBe(false);
+    expect(some.fxEffect).toBeNull();
+  });
+
+  it("pago sem câmbio aparece como tal, pedindo o câmbio", () => {
+    const x = f.computeOrderFinance(
+      order(),
+      [out(300, 5), out(700, null)],
+      names,
+      { today: today(5.4) },
+    );
+    expect(x.fxBasis).toBe("partial");
+    expect(x.paidNoFx).toBe(700);
+    expect(x.unpaid).toBe(0);
+    const lines = text.fxRateLines(pt, x)!;
+    // (Intl separa moeda e valor com espaço não separável.)
+    expect(lines.notes.map((n) => n.replace(/\s/g, " "))).toEqual([
+      "real (pagamentos)",
+      "pago sem câmbio: US$ 700,00 a ~5,4000 — informe o câmbio",
+    ]);
+    expect(lines.notes.join(" ")).not.toContain("saldo");
+  });
+
+  it("efeito estimado leva ~; zero não aparece; -0 vira 0", () => {
+    const est = f.computeOrderFinance(order(), [], names, {
+      today: today(5.4),
+      saleFx: 5.2,
+    });
+    expect(text.fxEffectText(pt, est)!.text).toMatch(
+      /^câmbio desde a venda: ~ -R\$\s?200,00$/,
+    );
+    // Câmbio médio do custo no título, não o do dia.
+    const partial = f.computeOrderFinance(order(), [out(500, 5)], names, {
+      today: today(5.4),
+      saleFx: 5.2,
+    });
+    expect(partial.fxEffect).toBe(0);
+    expect(text.fxEffectText(pt, partial)).toBeNull();
+    const half = f.computeOrderFinance(order(), [out(500, 5)], names, {
+      today: today(5.6),
+      saleFx: 5.2,
+    });
+    expect(text.fxEffectText(pt, half)!.title).toContain("~5,3000");
+    // Resto de ponto flutuante não vira "-R$ 0,00".
+    const fp = f.computeOrderFinance(
+      order({ fobTotal: 12345.67 }),
+      [out(3703.7, 5.3871)],
+      names,
+      { today: today(5.3871), saleFx: 5.3871 },
+    );
+    expect(Object.is(fp.fxEffect, -0)).toBe(false);
+    expect(text.fxEffectText(pt, fp)).toBeNull();
+  });
+
+  it("negativo estimado: '~ -R$' (legível)", () => {
+    expect(text.approx("-R$ 5,00", true)).toBe("~ -R$ 5,00");
+    expect(text.approx("R$ 5,00", true)).toBe("~R$ 5,00");
+    expect(text.approx("R$ 5,00", false)).toBe("R$ 5,00");
+  });
+
+  it("último câmbio sem parênteses dentro de parênteses; zh com os de lá", () => {
+    const x = f.computeOrderFinance(order(), [out(500, 5)], names, {
+      today: today(5.4, "stale"),
+    });
+    expect(text.fxRateLines(pt, x)!.notes).toContain(
+      "saldo a ~5,4000 (último câmbio, 17/10)",
+    );
+    const zh = text.fxRateLines(translator("zh"), x)!.notes.join(" ");
+    expect(zh).toContain("（");
+    expect(zh).not.toMatch(/ \(/);
+    expect(
+      text.fxRateLines(
+        pt,
+        f.computeOrderFinance(order(), [out(500, 5)], names),
+      )!.notes,
+    ).toContain("saldo a ~5,0000 (média do câmbio pago)");
+  });
+
+  it("venda em outra moeda: custo em reais levado à moeda da venda, estimado", () => {
+    const x = f.computeOrderFinance(
+      order({
+        sellCurrency: "USD",
+        sellPrice: 1500,
+        fobCurrency: "RMB",
+        fobTotal: 7200,
+      }),
+      [out(3600, 0.75, "RMB")],
+      names,
+      { today: today(5.4) },
+    );
+    // 3600 × 0,75 (real) + 3600 × 0,75 (dia) = R$ 5.400 → US$ 1.000
+    expect(x.cost).toBeCloseTo(1000, 6);
+    expect(x.estimated).toBe(true);
+    expect(x.sellRate).toBe(5.4);
+    expect(text.fxRateLines(pt, x)!.notes).toContain("reais → USD a ~5,4000");
   });
 });
 
@@ -334,6 +546,13 @@ describe("pedido de verdade", () => {
     expect(row.fxEffect).toBe(-100);
     expect(all.summary.estimated).toBeGreaterThanOrEqual(1);
     expect(all.summary.fxEffect).not.toBeNull();
+
+    expect(all.summary.fxEffectEstimated).toBe(true);
+    // Para o cliente a tela do pedido não busca câmbio nem lê a auditoria.
+    const forCustomer = await f.loadOrderFinance(placed, { estimate: false });
+    expect(forCustomer.fxBasis).toBeNull();
+    expect(forCustomer.saleFx).toBeNull();
+    expect(forCustomer.receivable).toBe(finance.receivable);
 
     // A Control Tower não busca câmbio (só totais): sem estimativa.
     const tower = await f.loadFinance({ estimate: false });
