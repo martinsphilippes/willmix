@@ -709,7 +709,10 @@ export default async function ProductSheetPage({
                         product.boxWidthCm,
                         product.boxHeightCm,
                       ]}
-                      initialCbm={product.cbm ?? null}
+                      // CBM desabilitado (vem das medidas salvas) não vai no envio.
+                      initialCbm={
+                        cbmComputed !== null ? null : (product.cbm ?? null)
+                      }
                       intl={t.intl}
                       texts={cartonSizeTexts(t)}
                     />

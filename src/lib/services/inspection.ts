@@ -157,7 +157,8 @@ export function compareMeasure(
       attribute: String(m.attribute),
       expected: Number(expected),
       found,
-      tolerancePercent: tol,
+      // Com referência 0 a tolerância não se aplica (tem que ser 0).
+      tolerancePercent: Number(expected) === 0 ? null : tol,
       ok: div !== null && div <= tol + 1e-9,
     };
   }
@@ -186,9 +187,24 @@ export function compareWithSnapshot(
       valueOf(m.key),
       tolerances,
     );
+    if (c && m.attribute === "innerBoxQty" && !c.ok) {
+      // Inner igual à master é o mesmo que "Sem caixa inner" (0), dos dois
+      // lados: comprado 24/24 e nenhuma inner encontrada (0) bate, e o inverso.
+      const master = Number(snapshot.masterBoxQty);
+      const none = (v: unknown) =>
+        Number(v) === 0 || (master > 0 && Number(v) === master);
+      if (none(c.expected) && none(c.found)) c.ok = true;
+    }
     if (c) out.push(c);
   }
   return out;
+}
+
+/** Valor esperado para os textos da revisão (0 de inner = "sem caixa inner"). */
+export function expectedText(c: InspectionComparison): string {
+  return c.attribute === "innerBoxQty" && c.expected === 0
+    ? "0 (sem caixa inner)"
+    : String(c.expected ?? "—");
 }
 
 export function summarizeResult(
@@ -271,7 +287,7 @@ export async function compareInspection(
             ? ` (tolerância ${c.tolerancePercent}%)`
             : ""
         }`,
-        expected: c.expected,
+        expected: expectedText(c),
         found: c.found,
         responsibleRole: "operator",
         action:
@@ -285,7 +301,7 @@ export async function compareInspection(
     const reason = `Divergência comprado × inspecionado: ${divergent
       .map(
         (c) =>
-          `${ATTRIBUTE_LABEL[c.attribute] ?? c.attribute} esperado ${c.expected}, encontrado ${c.found}`,
+          `${ATTRIBUTE_LABEL[c.attribute] ?? c.attribute} esperado ${expectedText(c)}, encontrado ${c.found}`,
       )
       .join("; ")}. REVISÃO NECESSÁRIA.`;
     await store.update("stages", stage.id, {

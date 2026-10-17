@@ -9,7 +9,8 @@ export const pt = {
   "carton.inner.options": "Opções que fecham a caixa master",
   "carton.inner.optionTitle": "{boxes} caixas inner de {inner} na master",
   "carton.inner.isNone": "Sem caixa inner: as peças vão direto na master.",
-  "carton.inner.fits": "{boxes} caixas inner × {inner} = {master} peças por master.",
+  "carton.inner.fits":
+    "{boxes} caixas inner × {inner} = {master} peças por master.",
   "carton.inner.same": "Igual à master: é o mesmo que sem caixa inner.",
   "carton.inner.bigger":
     "A caixa inner ({inner}) tem mais peças que a master ({master}). Confira.",
@@ -41,7 +42,8 @@ export const en: Record<keyof typeof pt, string> = {
   "carton.inner.options": "Options that fill the master carton",
   "carton.inner.optionTitle": "{boxes} inner boxes of {inner} per master",
   "carton.inner.isNone": "No inner box: pieces go straight into the master.",
-  "carton.inner.fits": "{boxes} inner boxes × {inner} = {master} pieces per master.",
+  "carton.inner.fits":
+    "{boxes} inner boxes × {inner} = {master} pieces per master.",
   "carton.inner.same": "Same as the master: this means no inner box.",
   "carton.inner.bigger":
     "The inner box ({inner}) holds more pieces than the master ({master}). Please check.",
@@ -75,7 +77,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "carton.inner.isNone": "无内盒：产品直接装入外箱。",
   "carton.inner.fits": "{boxes} 个内盒 × {inner} = 每外箱 {master} 件。",
   "carton.inner.same": "与外箱相同：即无内盒。",
-  "carton.inner.bigger": "内盒件数（{inner}）多于外箱件数（{master}），请核对。",
+  "carton.inner.bigger":
+    "内盒件数（{inner}）多于外箱件数（{master}），请核对。",
   "carton.inner.rest":
     "{master} 件不能平均分装为每盒 {inner} 件的内盒（余 {rest} 件），请核对。",
   "carton.size.size":

@@ -315,7 +315,8 @@ export function ItemForm({
                 item?.boxWidthCm,
                 item?.boxHeightCm,
               ]}
-              initialCbm={item?.cbm ?? null}
+              // Sem campo de CBM: o servidor calcula pelas medidas.
+              initialCbm={null}
               intl={t.intl}
               texts={cartonSizeTexts(t)}
             />

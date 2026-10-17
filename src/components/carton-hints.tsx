@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import {
+  CARTON_CBM_WARN,
   NO_INNER,
   PACKAGE_TYPES,
   cartonsPerContainer,
@@ -78,12 +79,19 @@ function useFormFields(
   ref: RefObject<HTMLElement | null>,
   names: readonly string[],
   initial: Record<string, string>,
+  /** Campos que valem vazios quando desabilitados (não vão no envio). */
+  ignoreDisabled: readonly string[] = [],
 ) {
   const [values, setValues] = useState(initial);
   const key = names.join(" ");
+  const skip = ignoreDisabled.join(" ");
+  // A tela pode voltar do servidor sem remontar (ex.: ?saved=): com valores
+  // novos nos campos, lê de novo.
+  const served = JSON.stringify(initial);
   useEffect(() => {
     const form = ref.current?.closest("form");
     if (!form) return;
+    const skipped = new Set(skip.split(" ").filter(Boolean));
     let timer = 0;
     // Depois do React tratar o evento (campos controlados já atualizados).
     const read = () => {
@@ -92,7 +100,7 @@ function useFormFields(
         const next: Record<string, string> = {};
         for (const name of key.split(" ")) {
           const el = fieldOf(form, name);
-          if (el) next[name] = el.value;
+          if (el) next[name] = el.disabled && skipped.has(name) ? "" : el.value;
         }
         setValues((prev) =>
           Object.keys(next).every((k) => prev[k] === next[k])
@@ -104,7 +112,7 @@ function useFormFields(
     form.addEventListener("input", read);
     form.addEventListener("change", read);
     form.addEventListener(DRAFT_RESTORE_EVENT, read);
-    // Digitado antes da hidratação.
+    // Digitado antes da hidratação (ou valores novos do servidor).
     read();
     // Hidratado: a tela (e o E2E) pode usar os atalhos com segurança.
     ref.current?.setAttribute("data-ready", "1");
@@ -114,7 +122,7 @@ function useFormFields(
       form.removeEventListener("change", read);
       form.removeEventListener(DRAFT_RESTORE_EVENT, read);
     };
-  }, [ref, key]);
+  }, [ref, key, skip, served]);
   return values;
 }
 
@@ -295,13 +303,19 @@ export function CartonSizeWarning({
     ...(cbmName ? [cbmName] : []),
     ...(containerName ? [containerName] : []),
   ];
-  const values = useFormFields(ref, names, {
-    [sideNames[0]]: text(initialSides[0]),
-    [sideNames[1]]: text(initialSides[1]),
-    [sideNames[2]]: text(initialSides[2]),
-    ...(cbmName ? { [cbmName]: text(initialCbm) } : {}),
-    ...(containerName ? { [containerName]: initialContainer ?? "" } : {}),
-  });
+  const values = useFormFields(
+    ref,
+    names,
+    {
+      [sideNames[0]]: text(initialSides[0]),
+      [sideNames[1]]: text(initialSides[1]),
+      [sideNames[2]]: text(initialSides[2]),
+      ...(cbmName ? { [cbmName]: text(initialCbm) } : {}),
+      ...(containerName ? { [containerName]: initialContainer ?? "" } : {}),
+    },
+    // CBM desabilitado (calculado pelas medidas salvas) não vai no envio.
+    cbmName ? [cbmName] : [],
+  );
   const check = oversizedCarton(
     sideNames.map((n) => numberOf(values[n])),
     cbmName ? numberOf(values[cbmName]) : initialCbm,
@@ -311,11 +325,16 @@ export function CartonSizeWarning({
   let message: string | null = null;
   if (check) {
     const container =
-      containers.find((c) => containerName && c.code === values[containerName]) ??
+      containers.find(
+        (c) => containerName && c.code === values[containerName],
+      ) ??
       containers.find((c) => c.code === "40HC") ??
       [...containers].sort((a, b) => b.capacityCbm - a.capacityCbm)[0] ??
       null;
-    const cbm = check.kind === "side" ? null : check.cbm;
+    // "Cabem só ~N caixas" só quando o volume é o problema: caixa comprida e
+    // fina (150 × 10 × 10) avisa pelo lado, sem um número que a contradiga.
+    const cbm =
+      check.kind !== "side" && check.cbm >= CARTON_CBM_WARN ? check.cbm : null;
     const n = cartonsPerContainer(container?.capacityCbm, cbm);
     const fit =
       container && n !== null
@@ -381,7 +400,11 @@ export function PackageTypeHints({
   const pick = (type: PackageType) =>
     writeField(ref.current?.closest("form") ?? null, name, type);
   return (
-    <span ref={ref} className="flex min-w-0 flex-col gap-1" data-package-hints="">
+    <span
+      ref={ref}
+      className="flex min-w-0 flex-col gap-1"
+      data-package-hints=""
+    >
       {!disabled ? (
         <span
           role="group"

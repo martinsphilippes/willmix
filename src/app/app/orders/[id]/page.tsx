@@ -1762,11 +1762,13 @@ function InspectionResultCard({
                       {attrLabel(t, row.attribute)}
                     </Td>
                     <Td className="text-right tabular-nums">
-                      {typeof c?.expected === "number"
-                        ? c.expected.toLocaleString(t.intl, {
-                            maximumFractionDigits: 4,
-                          })
-                        : (c?.expected ?? "—")}
+                      {row.attribute === "innerBoxQty" && c?.expected === 0
+                        ? t("carton.inner.none")
+                        : typeof c?.expected === "number"
+                          ? c.expected.toLocaleString(t.intl, {
+                              maximumFractionDigits: 4,
+                            })
+                          : (c?.expected ?? "—")}
                     </Td>
                     <Td
                       className={cx(
