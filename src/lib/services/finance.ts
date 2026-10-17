@@ -241,8 +241,15 @@ export function computeOrderFinance(
   let estimateRate: number | null = null;
   let estimateFrom: OrderFinance["estimateFrom"] = null;
   if (sameCurrency(fobCurrency, sellCurrency)) {
-    // Cancelado: só o que foi pago (nada pago, sem custo).
-    cost = cancelled ? (paid > 0.005 ? paid : null) : fob;
+    // Cancelado: só o que foi pago, inclusive em outra moeda (convertida pelo
+    // câmbio do dia, estimado). Nada pago, ou sem câmbio para converter: sem custo.
+    const settledUnits = realUnits + noFxUnits;
+    cost = cancelled
+      ? !unconvertible && settledUnits > 0.005
+        ? settledUnits
+        : null
+      : fob;
+    estimated = cancelled && cost !== null && crossConverted;
     fxBasis = "same";
   } else if (
     !unconvertible &&

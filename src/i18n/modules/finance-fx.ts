@@ -31,6 +31,8 @@ export const pt = {
   "finance.fx.unitHintShort": "R$ por 1 un.",
   "finance.fx.setTitle": "Informar câmbio",
   "finance.fx.setSave": "Salvar câmbio",
+  "finance.fx.correct": "Corrigir câmbio",
+  "orders.account.action.payment.fx": "Câmbio informado",
   "finance.fx.paymentRate": "câmbio {rate} (R$ por 1 {currency})",
   "finance.fx.paymentMissing":
     "sem câmbio: o custo deste pagamento fica estimado",
@@ -70,6 +72,8 @@ export const en: Record<keyof typeof pt, string> = {
   "finance.fx.unitHintShort": "BRL per 1 unit",
   "finance.fx.setTitle": "Enter rate",
   "finance.fx.setSave": "Save rate",
+  "finance.fx.correct": "Correct rate",
+  "orders.account.action.payment.fx": "Rate entered",
   "finance.fx.paymentRate": "rate {rate} (BRL per 1 {currency})",
   "finance.fx.paymentMissing": "no rate: this payment's cost is estimated",
   "finance.fx.savedNotice":
@@ -106,6 +110,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "finance.fx.unitHintShort": "每1单位兑雷亚尔",
   "finance.fx.setTitle": "填写汇率",
   "finance.fx.setSave": "保存汇率",
+  "finance.fx.correct": "更正汇率",
+  "orders.account.action.payment.fx": "已填写汇率",
   "finance.fx.paymentRate": "汇率 {rate}（每 1 {currency} 兑雷亚尔）",
   "finance.fx.paymentMissing": "未填汇率：该付款成本为估算",
   "finance.fx.savedNotice": "付款汇率已保存：其成本不再是估算。",

@@ -114,7 +114,10 @@ export async function setSupplierPaymentFxAction(form: FormData) {
   const paymentId = str(form, "paymentId");
   await run(`/app/orders/${orderId}`, async () => {
     assertWellmix(user);
-    const fxRate = z.number().positive().parse(num(form, "fxRate"));
+    // Câmbio vazio, zero ou negativo: mensagem própria (não a genérica).
+    const parsed = z.number().positive().safeParse(num(form, "fxRate"));
+    if (!parsed.success) throw new Error("invalid_fx");
+    const fxRate = parsed.data;
     const { setSupplierPaymentFx } =
       await import("@/lib/services/supplier-payment");
     await setSupplierPaymentFx(user, orderId, paymentId, fxRate);

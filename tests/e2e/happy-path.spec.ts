@@ -609,6 +609,14 @@ test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar
   await row.locator("[data-ai-choice-clear]").click();
   await expect(other).toHaveValue("");
   await expect(apply).not.toBeChecked();
+  // Mexido no cadastro e ainda não salvo: continua depois de aplicar (o
+  // formulário é refeito com os dados novos e o rascunho devolve o resto).
+  const active = page.locator(
+    '#product-form input[type="checkbox"][name="active"]',
+  );
+  await active.uncheck();
+  const spec = page.locator("#product-form [data-product-spec]");
+  const specMode = (await spec.getAttribute("data-product-spec")) ?? "";
   // Escolhe de novo e aplica: o material entra no produto.
   await option.click();
   await page
@@ -620,4 +628,7 @@ test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar
   await expect(page.locator('input[name="material"]').first()).toHaveValue(
     value,
   );
+  await expect(active).not.toBeChecked();
+  // A especificação automática não vira "manual" com texto velho.
+  await expect(spec).toHaveAttribute("data-product-spec", specMode);
 });

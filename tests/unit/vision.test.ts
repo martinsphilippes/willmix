@@ -198,6 +198,52 @@ describe("aplicar sugestão: ficha mestre e tamanho das colunas", () => {
   });
 });
 
+describe("aplicar sugestão: só material e cor mudam na ficha mestre", () => {
+  it("não corta cores, material nem NCM que a ficha tem e o produto não", async () => {
+    await setSetting("aiMode", "MOCK");
+    const store = getStore();
+    const { getProductSheet, saveProductSheet } =
+      await import("@/lib/services/product-sheet");
+    const colors =
+      "PANTONE 2925 C / PANTONE 1905 C / PANTONE 7541 C / PANTONE 375 C / PANTONE 109 C";
+    const longMaterial =
+      `Vidro borossilicato ${"resistente ".repeat(14)}`.trim();
+    await saveProductSheet(admin, "prod-panela", {
+      colorAssortment: colors,
+      material: longMaterial,
+      ncm: "9503.00.21",
+    });
+    // NCM parcial na ficha: o produto fica com o antigo (precisa de 8 dígitos).
+    await saveProductSheet(admin, "prod-panela", { ncm: "8516.79" });
+    expect((await store.get("products", "prod-panela"))!.ncm).toBe(
+      "9503.00.21",
+    );
+    // Só material: as cores da ficha ficam todas.
+    const first = await requestProductSuggestion(
+      admin,
+      "product",
+      "prod-panela",
+    );
+    await applyProductSuggestion(admin, first.id, { material: "Inox 304" });
+    let sheet = (await getProductSheet("prod-panela"))!;
+    expect(sheet.material).toBe("Inox 304");
+    expect(sheet.colorAssortment).toBe(colors);
+    expect(sheet.ncm).toBe("8516.79");
+    // Só cor: material e NCM da ficha não voltam do produto.
+    await saveProductSheet(admin, "prod-panela", { material: longMaterial });
+    const second = await requestProductSuggestion(
+      admin,
+      "product",
+      "prod-panela",
+    );
+    await applyProductSuggestion(admin, second.id, { color: "Azul" });
+    sheet = (await getProductSheet("prod-panela"))!;
+    expect(sheet.colorAssortment).toBe("Azul");
+    expect(sheet.material).toBe(longMaterial);
+    expect(sheet.ncm).toBe("8516.79");
+  });
+});
+
 describe("marketing studio e kit", () => {
   it("prévia → oferta → compra → pagamento → liberação, com preço das configurações", async () => {
     await setSetting("marketingKitDefaultPrice", 350);

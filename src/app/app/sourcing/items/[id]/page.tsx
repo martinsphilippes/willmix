@@ -67,7 +67,7 @@ export default async function SourcingItemPage({
   if (!user) redirect("/login");
   assertWellmix(user);
   const { id } = await params;
-  const { error, from: errorFrom, ai: aiNotice } = await searchParams;
+  const { error, from: errorFrom, ai: aiNotice, saved } = await searchParams;
   const data = await loadSourcingItem(id);
   if (!data) notFound();
   const { item, photos, measurements, visit, supplier, documents } = data;
@@ -325,7 +325,7 @@ export default async function SourcingItemPage({
             storageKey={`sourcing-item:${item.id}`}
             userId={user.id}
             failed={typeof error === "string" && !!error}
-            saved={false}
+            saved={saved === "1"}
             token={item.updatedAt}
             message={t("sheet.draftRestored")}
             discardLabel={t("sheet.draftDiscard")}

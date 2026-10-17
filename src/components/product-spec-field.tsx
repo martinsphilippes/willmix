@@ -157,6 +157,8 @@ export function ProductSpecField({
         className="leading-6"
         dense
         data-product-spec={auto ? "auto" : "manual"}
+        // Automática não entra no rascunho (é recalculada dos outros campos).
+        data-draft-skip={auto ? "" : undefined}
       />
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
         <span>{auto ? texts.auto : texts.manual}</span>

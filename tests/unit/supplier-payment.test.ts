@@ -228,6 +228,9 @@ describe("pagamento ao fornecedor fora do fluxo", () => {
       filter: { entity: "payment", entityId: payment.id, action: "payment.fx" },
     });
     expect(log?.after).toMatchObject({ fxRate: 5.2 });
+    // Câmbio digitado errado é corrigido (auditado de novo).
+    await setSupplierPaymentFx(admin, order.id, payment.id, 5.25);
+    expect((await store.get("payments", payment.id))!.fxRate).toBe(5.25);
     // Pagamento em reais não tem câmbio.
     const brl = await store.create("payments", {
       ...payment,
