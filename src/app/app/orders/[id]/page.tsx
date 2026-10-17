@@ -30,7 +30,9 @@ import {
 import {
   canSubmitRequirement,
   dateBoundsFor,
+  datePrerequisite,
   loadOrderProgress,
+  type DateBounds,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue } from "@/lib/workflow/money";
 import { isOffFlowStage } from "@/lib/workflow/stages";
@@ -628,7 +630,7 @@ export default async function OrderPage({
                                 (x) => x.key === "art" && x.status !== "done",
                               )
                                 ? t("packaging.waitingArt")
-                                : null
+                                : dateWaiting(t, stage.key, r, reqs)
                             }
                             dateBounds={
                               r.type === "date"
@@ -1278,7 +1280,7 @@ function RequirementRow({
   /** Ainda não dá para agir: aguarda outro item (ex.: aprovar a arte antes de ela chegar). */
   waiting?: string | null;
   /** Data: limites vindos das outras datas do pedido. */
-  dateBounds?: { min?: string; max?: string };
+  dateBounds?: DateBounds;
   order: {
     id: string;
     customerId: string;
@@ -1465,6 +1467,24 @@ function RequirementRow({
 /* ------------------------------------------------------------------------ */
 /* Evolução incremental: trilha, snapshot, resultado da inspeção, containers  */
 /* ------------------------------------------------------------------------ */
+
+/**
+ * Data que espera outra da mesma etapa (ex.: a previsão de chegada só depois
+ * da data de embarque, para nunca ficar antes dela): o aviso no lugar do campo.
+ */
+function dateWaiting(
+  t: Translate,
+  stageKey: string,
+  r: Requirement,
+  reqs: Requirement[],
+): string | null {
+  if (r.type !== "date") return null;
+  const pre = datePrerequisite(stageKey, r.key);
+  if (!pre) return null;
+  return reqs.some((x) => x.key === pre.key && x.status !== "done")
+    ? t(`orders.waiting.${pre.code}` as DictionaryKey)
+    : null;
+}
 
 function formatDateTime(value: string | null | undefined, intl = "pt-BR") {
   if (!value) return "—";

@@ -259,6 +259,10 @@ describe("fluxo completo: solicitação → entrega", () => {
       });
       const shipDate = reqs.find((r) => r.key === "ship_date")!;
       const eta = reqs.find((r) => r.key === "eta")!;
+      // A chegada só depois do embarque informado (para ser conferida com ele).
+      await expect(
+        submitRequirement(armador, eta.id, { value: "2026-10-20" }),
+      ).rejects.toThrow("ship_date_first");
       await submitRequirement(armador, shipDate.id, { value: "2026-10-13" });
       await expect(
         submitRequirement(armador, eta.id, { value: "2026-10-05" }),
