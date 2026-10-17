@@ -28,6 +28,8 @@ import {
   todayValue,
 } from "./shared";
 import { MoneyInput } from "@/components/money-input";
+import { CartonSizeWarning, InnerQtyHints } from "@/components/carton-hints";
+import { cartonSizeTexts, innerQtyTexts } from "@/components/carton-texts";
 
 /** Valores herdados da visita quando o item nasce a partir dela. */
 export interface ItemPreset {
@@ -243,17 +245,30 @@ export function ItemForm({
               className={bigField}
             />
           </Field>
-          <Field label={t("sourcing.item.innerBoxQty")}>
-            <Input
-              name="innerBoxQty"
-              type="number"
-              inputMode="numeric"
-              step="1"
-              min="0"
-              defaultValue={item?.innerBoxQty ?? ""}
-              className={bigField}
-            />
-          </Field>
+          {/* Atalhos fora do <label> (botão dentro do rótulo confunde o toque). */}
+          <div className="min-w-0 space-y-1">
+            <Field label={t("sourcing.item.innerBoxQty")}>
+              <Input
+                name="innerBoxQty"
+                type="number"
+                inputMode="numeric"
+                step="1"
+                min="0"
+                defaultValue={item?.innerBoxQty ?? ""}
+                className={bigField}
+              />
+            </Field>
+            <span className="block text-xs text-zinc-500">
+              <InnerQtyHints
+                masterName="masterBoxQty"
+                innerName="innerBoxQty"
+                initialMaster={item?.masterBoxQty ?? null}
+                initialInner={item?.innerBoxQty ?? null}
+                intl={t.intl}
+                texts={innerQtyTexts(t)}
+              />
+            </span>
+          </div>
           <div className="@md:col-span-2">
             <span className="block text-xs font-medium leading-5 text-zinc-700">
               {t("sourcing.item.boxDims")}
@@ -293,6 +308,17 @@ export function ItemForm({
                 />
               </Field>
             </div>
+            <CartonSizeWarning
+              sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
+              initialSides={[
+                item?.boxLengthCm,
+                item?.boxWidthCm,
+                item?.boxHeightCm,
+              ]}
+              initialCbm={item?.cbm ?? null}
+              intl={t.intl}
+              texts={cartonSizeTexts(t)}
+            />
           </div>
           <div className="rounded-lg bg-zinc-50 px-3 py-1.5 text-[13px] text-zinc-700 @md:col-span-2 @2xl:col-span-4">
             <span className="font-medium">{t("sourcing.item.cbm")}:</span>{" "}

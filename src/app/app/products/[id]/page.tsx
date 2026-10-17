@@ -104,6 +104,8 @@ import { missingFieldsView } from "@/components/missing-fields-view";
 import { productSuppliersView } from "@/lib/services/product-suppliers";
 import type { SupplierOption } from "@/components/supplier-picker";
 import { MoneyInput } from "@/components/money-input";
+import { CartonSizeWarning, InnerQtyHints } from "@/components/carton-hints";
+import { cartonSizeTexts, innerQtyTexts } from "@/components/carton-texts";
 
 /* Campos maiores para uso no celular (fábrica/feira): py-2.5 em vez de py-2. */
 const sourceTone = {
@@ -675,14 +677,44 @@ export default async function ProductSheetPage({
                     defaultValue={product.masterBoxQty ?? ""}
                   />
                 </FieldRow>
-                <FieldRow label={t("catalog.innerBoxQty")} size="xs">
+                <FieldRow
+                  label={t("catalog.innerBoxQty")}
+                  size="xs"
+                  hint={
+                    <InnerQtyHints
+                      masterName="masterBoxQty"
+                      innerName="innerBoxQty"
+                      initialMaster={product.masterBoxQty ?? null}
+                      initialInner={product.innerBoxQty ?? null}
+                      intl={t.intl}
+                      texts={innerQtyTexts(t)}
+                    />
+                  }
+                >
                   <NumberInput
                     name="innerBoxQty"
                     integer
                     defaultValue={product.innerBoxQty ?? ""}
                   />
                 </FieldRow>
-                <FieldRow label={t("catalog.boxDimensions")} size="full">
+                <FieldRow
+                  label={t("catalog.boxDimensions")}
+                  size="full"
+                  hint={
+                    <CartonSizeWarning
+                      sideNames={["boxLengthCm", "boxWidthCm", "boxHeightCm"]}
+                      cbmName="cbm"
+                      initialSides={[
+                        product.boxLengthCm,
+                        product.boxWidthCm,
+                        product.boxHeightCm,
+                      ]}
+                      initialCbm={product.cbm ?? null}
+                      intl={t.intl}
+                      texts={cartonSizeTexts(t)}
+                    />
+                  }
+                >
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
                     <span>{t("catalog.length")}</span>
                     <NumberInput
