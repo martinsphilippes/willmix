@@ -6,6 +6,8 @@ export default defineConfig({
     include: ["tests/unit/**/*.test.ts"],
     environment: "node",
     env: { DATA_MODE: "memory", NODE_ENV: "test" },
+    // Sem internet nos testes unitários (câmbio, IA e prévia de link falham na hora).
+    setupFiles: ["tests/unit/no-network.ts"],
   },
   resolve: {
     alias: {
