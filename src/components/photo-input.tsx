@@ -324,6 +324,8 @@ async function decodeImage(file: File): Promise<{
  */
 async function shrink(file: File, maxDimension: number, quality: number) {
   if (file.type && !file.type.startsWith("image/")) return file;
+  // Vetor (SVG) não vira foto: vai como está (arte da embalagem).
+  if (file.type === "image/svg+xml") return file;
   let image: Awaited<ReturnType<typeof decodeImage>>;
   try {
     image = await decodeImage(file);
@@ -351,6 +353,10 @@ async function shrink(file: File, maxDimension: number, quality: number) {
       canvas.height = Math.max(1, Math.round(image.height * scale));
       const ctx = canvas.getContext("2d");
       if (!ctx) break;
+      // JPEG não tem transparência: fundo branco (sem isso, o transparente
+      // de um PNG, como uma arte, vira preto).
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image.source, 0, 0, canvas.width, canvas.height);
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, "image/jpeg", q),
