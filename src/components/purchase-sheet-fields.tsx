@@ -22,6 +22,16 @@ import { MoneyInput } from "./money-input";
 import { PantonePicker } from "./pantone-picker";
 import { SheetSchedule } from "./sheet-schedule";
 import { BoxCbmHint, BoxCbmInput } from "./box-cbm-field";
+import {
+  CartonSizeWarning,
+  InnerQtyHints,
+  PackageTypeHints,
+} from "./carton-hints";
+import {
+  cartonSizeTexts,
+  innerQtyTexts,
+  packageTypeTexts,
+} from "./carton-texts";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import { SupplierPicker, type SupplierOption } from "./supplier-picker";
 
@@ -371,7 +381,24 @@ export function PurchaseSheetFields({
                 int
               />
             </F>
-            <F t={t} m={missing} k="innerQty" size="xs">
+            {/* Opções que fecham a master, "Sem caixa inner" (0) e a conferência. */}
+            <F
+              t={t}
+              m={missing}
+              k="innerQty"
+              size="xs"
+              hint={
+                <InnerQtyHints
+                  masterName="masterCartonQty"
+                  innerName="innerQty"
+                  initialMaster={sheet.masterCartonQty ?? null}
+                  initialInner={sheet.innerQty ?? null}
+                  disabled={sup}
+                  intl={t.intl}
+                  texts={innerQtyTexts(t)}
+                />
+              }
+            >
               <Num
                 name="innerQty"
                 value={numValue(sheet.innerQty)}
@@ -379,7 +406,22 @@ export function PurchaseSheetFields({
                 int
               />
             </F>
-            <F t={t} m={missing} k="packageType" size="md" req>
+            {/* Tipos comuns em um toque; aviso se o texto for uma cor. */}
+            <F
+              t={t}
+              m={missing}
+              k="packageType"
+              size="md"
+              req
+              hint={
+                <PackageTypeHints
+                  name="packageType"
+                  initial={sheet.packageType ?? null}
+                  disabled={sup}
+                  texts={packageTypeTexts(t)}
+                />
+              }
+            >
               <input
                 name="packageType"
                 maxLength={120}
@@ -395,6 +437,19 @@ export function PurchaseSheetFields({
               required
               requiredTitle={required}
               size="full"
+              hint={
+                <CartonSizeWarning
+                  sideNames={["heightCm", "widthCm", "lengthCm"]}
+                  cbmName="cbmPerCarton"
+                  initialSides={[sheet.heightCm, sheet.widthCm, sheet.lengthCm]}
+                  initialCbm={sheet.cbmPerCarton ?? null}
+                  containerName="containerType"
+                  initialContainer={view.containerType}
+                  containers={view.containerTypes}
+                  intl={t.intl}
+                  texts={cartonSizeTexts(t)}
+                />
+              }
               anchor="heightCm widthCm lengthCm"
               missing={["heightCm", "widthCm", "lengthCm"].some((k) =>
                 missing.includes(k),

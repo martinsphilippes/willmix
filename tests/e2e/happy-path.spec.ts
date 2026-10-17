@@ -23,11 +23,30 @@ async function fillQuoteSheet(page: Page, price: string) {
   await page.fill("[data-money=price]", price);
   await page.fill("input[name=moq]", "500");
   await page.fill("input[name=masterCartonQty]", "24");
+  // Caixa inner: aviso quando não fecha a master e opções em um toque.
+  await page.locator("[data-inner-hints][data-ready]").waitFor();
+  await page.fill("input[name=innerQty]", "5");
+  await expect(page.locator("[data-inner-check=rest]")).toBeVisible();
+  await page.locator('[data-inner-option="6"]').click();
+  await expect(page.locator("input[name=innerQty]")).toHaveValue("6");
+  await expect(page.locator("[data-inner-check=fits]")).toBeVisible();
   await page.fill("input[name=cbmPerCarton]", "0.06");
-  await page.fill("input[name=packageType]", "COLOR BOX");
+  // Embalagem: cor digitada no lugar do tipo avisa; o atalho corrige.
+  await page.locator("[data-package-hints][data-ready]").waitFor();
+  await page.fill("input[name=packageType]", "preto");
+  await expect(page.locator("[data-package-color]")).toBeVisible();
+  await page.locator('[data-package-option="COLOR BOX"]').click();
+  await expect(page.locator("input[name=packageType]")).toHaveValue(
+    "COLOR BOX",
+  );
+  await expect(page.locator("[data-package-color]")).toHaveCount(0);
+  // Medida em mm por engano avisa na hora; em cm, o aviso some.
+  await page.fill("input[name=heightCm]", "300");
+  await expect(page.locator("[data-carton-size-warning]")).toBeVisible();
   await page.fill("input[name=heightCm]", "30");
   await page.fill("input[name=widthCm]", "40");
   await page.fill("input[name=lengthCm]", "50");
+  await expect(page.locator("[data-carton-size-warning]")).toHaveCount(0);
   await page.fill("input[name=netWeightPcKg]", "0.4");
   await page.fill("input[name=grossWeightPcKg]", "0.5");
   // Cor Pantone pela tabela (busca por número → RGB), acima da Cor / sortimento,

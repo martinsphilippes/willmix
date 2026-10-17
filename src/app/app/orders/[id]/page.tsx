@@ -1619,7 +1619,10 @@ function SnapshotCard({
           ],
           [
             t("orders.snapshot.innerBox"),
-            numOrDash(snapshot.innerBoxQty, t.intl),
+            // 0 = "Sem caixa inner" (escolhido na ficha).
+            snapshot.innerBoxQty === 0
+              ? t("carton.inner.none")
+              : numOrDash(snapshot.innerBoxQty, t.intl),
           ],
           [
             t("orders.snapshot.boxDimensions"),

@@ -146,7 +146,13 @@ export function compareMeasure(
     const found = Number(raw);
     if (!Number.isFinite(found)) return null;
     const tol = m.tolerance ? tolerances[m.tolerance] : 0;
-    const div = divergencePercent(Number(expected), found);
+    // Referência 0 (ex.: "Sem caixa inner"): bate só com 0; não há percentual.
+    const div =
+      Number(expected) === 0
+        ? found === 0
+          ? 0
+          : null
+        : divergencePercent(Number(expected), found);
     return {
       attribute: String(m.attribute),
       expected: Number(expected),
