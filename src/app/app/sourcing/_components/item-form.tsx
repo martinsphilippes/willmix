@@ -75,7 +75,12 @@ export function ItemForm({
   const promoted = item?.status === "promoted";
 
   return (
-    <form action={saveSourcingItemAction} className="space-y-3 @container">
+    <form
+      // Id para o guarda de rascunho da tela do item (digitado e não salvo volta).
+      id={item ? "sourcing-item-form" : undefined}
+      action={saveSourcingItemAction}
+      className="space-y-3 @container"
+    >
       {item ? <input type="hidden" name="id" value={item.id} /> : null}
       {!item && preset?.visitId ? (
         <input type="hidden" name="visitId" value={preset.visitId} />

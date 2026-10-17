@@ -51,6 +51,7 @@ import {
   visionError,
 } from "../../../products/_components/ai-section";
 import { ItemForm } from "../../_components/item-form";
+import { FormDraftGuard } from "@/components/form-draft-guard";
 import {
   bigField,
   errorMessage,
@@ -314,7 +315,27 @@ export default async function SourcingItemPage({
         </Card>
 
         <div className="min-w-0 md:col-span-2 lg:col-start-1 lg:row-span-5 lg:row-start-1">
-          <ItemForm t={t} item={item} suppliers={suppliers} lines={lines} />
+          {/* Refeito quando o item muda no servidor (ex.: sugestão da IA
+              aplicada): sem isto os campos ficavam com o valor antigo. O que
+              foi digitado e não salvo volta pelo rascunho. */}
+          <FormDraftGuard
+            key={`guard|${item.updatedAt}`}
+            formId="sourcing-item-form"
+            storageKey={`sourcing-item:${item.id}`}
+            userId={user.id}
+            failed={typeof error === "string" && !!error}
+            saved={false}
+            token={item.updatedAt}
+            message={t("sheet.draftRestored")}
+            discardLabel={t("sheet.draftDiscard")}
+          />
+          <ItemForm
+            key={item.updatedAt}
+            t={t}
+            item={item}
+            suppliers={suppliers}
+            lines={lines}
+          />
         </div>
 
         <Card

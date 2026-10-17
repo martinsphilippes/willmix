@@ -26,6 +26,7 @@ import { planSheet } from "@/lib/services/purchase-sheet-calc";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { PantonePicker } from "@/components/pantone-picker";
 import { SheetSafety } from "@/components/sheet-safety";
+import { FormDraftGuard } from "@/components/form-draft-guard";
 import { ActionError } from "@/components/action-error";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import {
@@ -240,6 +241,9 @@ export default async function ProductSheetPage({
   const masterDraft = productSheetDraft(product, masterSupplier);
   // Campo em branco na ficha mestre mostra o que as colunas do produto têm
   // (ficha criada só com parte dos campos não esconde o cadastro).
+  // Versão dos dados no servidor: os formulários são refeitos quando muda.
+  const productFormKey = `${product.updatedAt}|${masterSheet?.updatedAt ?? ""}`;
+  const masterFormKey = `sheet|${masterSheet?.updatedAt ?? ""}|${product.updatedAt}`;
   const masterView = masterSheet
     ? withProductColumns(masterSheet, masterDraft)
     : masterDraft;
@@ -381,7 +385,27 @@ export default async function ProductSheetPage({
 
       {/* ---- Ficha (um formulário, seções em cards) ---- */}
       <div id="sheet" className="scroll-mt-4" />
-      <form action={updateProductSheetAction} className="mt-4 space-y-4">
+      {/* Refeito quando o produto ou a ficha mudam no servidor (ex.: sugestão
+          da IA aplicada, ficha mestre salva): sem isto os campos continuavam
+          com o valor antigo até recarregar, e salvar desfazia o que mudou. O
+          que foi digitado e não salvo volta pelo rascunho (guarda abaixo). */}
+      <FormDraftGuard
+        key={`guard|${productFormKey}`}
+        formId="product-form"
+        storageKey={`product-form:${id}`}
+        userId={user.id}
+        failed={typeof error === "string" && !!error}
+        saved={saved === "1"}
+        token={productFormKey}
+        message={t("sheet.draftRestored")}
+        discardLabel={t("sheet.draftDiscard")}
+      />
+      <form
+        key={productFormKey}
+        id="product-form"
+        action={updateProductSheetAction}
+        className="mt-4 space-y-4"
+      >
         <input type="hidden" name="id" value={product.id} />
         {/* Cadastro denso, no padrão da ficha de compra: rótulo à esquerda,
             caixa do tamanho do que se digita, um campo abaixo do outro. */}
@@ -840,6 +864,8 @@ export default async function ProductSheetPage({
           />
         ) : null}
         <SheetSafety
+          // Refeito junto com a ficha (abaixo): devolve o digitado e não salvo.
+          key={`guard|${masterFormKey}`}
           t={t}
           formId="product-sheet-form"
           storageKey={`product:${id}`}
@@ -867,6 +893,9 @@ export default async function ProductSheetPage({
           ) : null}
         </p>
         <form
+          // Refeita quando a ficha ou o produto mudam no servidor (ex.: material
+          // e cor da sugestão da IA): sem isto mostrava o valor antigo.
+          key={masterFormKey}
           id="product-sheet-form"
           action={saveProductSheetAction}
           // Mesma grade de 2 colunas da ficha do pedido: cards pequenos lado a lado.
