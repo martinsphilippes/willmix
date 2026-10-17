@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createUploadTokenAction } from "@/app/app/actions/uploads";
 import { useFormDoneSignal } from "./submit-button";
@@ -67,6 +67,8 @@ export function PhotoInput({
   pendingLabel?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  // A dica do botão grande (ex.: "a busca começa ao escolher") também é lida.
+  const hintId = useId();
   const [previews, setPreviews] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
@@ -188,6 +190,7 @@ export function PhotoInput({
       disabled={disabled}
       onChange={onChange}
       aria-label={working && workingText ? workingText : label}
+      aria-describedby={hint && !compact ? hintId : undefined}
       title={label}
       className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
     />
@@ -245,11 +248,13 @@ export function PhotoInput({
         <span aria-hidden className="text-lg leading-none">
           📷
         </span>
-        <span className="font-semibold">
+        <span aria-hidden className="font-semibold">
           {working ? (workingText ?? "…") : label}
         </span>
         {hint ? (
-          <span className="text-xs text-brand-700/80">{hint}</span>
+          <span id={hintId} className="text-xs text-brand-700/80">
+            {hint}
+          </span>
         ) : null}
         {input}
       </div>
