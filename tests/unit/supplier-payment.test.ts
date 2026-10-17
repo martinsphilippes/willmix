@@ -12,7 +12,7 @@ const { seedDemo } = await import("@/lib/seed");
 const { setSetting } = await import("@/lib/settings");
 const r = await import("@/lib/services/requests");
 const { submitRequirement } = await import("@/lib/workflow/engine");
-const { supplierPaymentView, registerSupplierPayment } =
+const { supplierPaymentView, registerSupplierPayment, setSupplierPaymentFx } =
   await import("@/lib/services/supplier-payment");
 const { confirmSupplierPaymentReceipt } =
   await import("@/lib/services/acknowledgements");
@@ -178,6 +178,67 @@ describe("pagamento ao fornecedor fora do fluxo", () => {
     expect(confirmed.schedule.installments[0].status).toBe("received");
     expect(confirmed.schedule.paid).toBe(60);
     expect(confirmed.schedule.open).toBe(140);
+  });
+
+  it("câmbio informado depois num pagamento já feito: o custo deixa de ser estimado", async () => {
+    const store = getStore();
+    const order = await orderAfterPreparation("fornecedor-b");
+    // Pedido ao financeiro (sem câmbio), pago e confirmado pelo fornecedor.
+    const payment = await registerSupplierPayment(admin, order.id, {
+      method: "transfer_copied",
+    });
+    // Ainda pendente: o câmbio vai no "Marcar como pago", não aqui.
+    await expect(
+      setSupplierPaymentFx(admin, order.id, payment.id, 5.2),
+    ).rejects.toThrow("payment_not_settled");
+    await confirmSupplierPaymentReceipt(supplierB, payment.id);
+    const names = { customer: "c", supplier: "s", product: "p" };
+    const today = {
+      rates: { USD: 5.4 },
+      status: "today" as const,
+      day: "2026-10-17",
+    };
+    const before = computeOrderFinance(
+      order,
+      await store.list("payments", { filter: { orderId: order.id } }),
+      names,
+      { today },
+    );
+    expect(before.estimated).toBe(true);
+    expect(before.paidNoFx).toBe(200);
+    // Só a Wellmix informa; fornecedor não.
+    await expect(
+      setSupplierPaymentFx(supplierB, order.id, payment.id, 5.2),
+    ).rejects.toThrow("forbidden");
+    // Pagamento de outro pedido não passa por este.
+    await expect(
+      setSupplierPaymentFx(admin, "outro-pedido", payment.id, 5.2),
+    ).rejects.toThrow("not_found");
+    await setSupplierPaymentFx(admin, order.id, payment.id, 5.2);
+    const after = computeOrderFinance(
+      order,
+      await store.list("payments", { filter: { orderId: order.id } }),
+      names,
+      { today },
+    );
+    expect(after.estimated).toBe(false);
+    expect(after.fxBasis).toBe("paid");
+    expect(after.cost).toBeCloseTo(1040, 6);
+    const [log] = await store.list("audit_log", {
+      filter: { entity: "payment", entityId: payment.id, action: "payment.fx" },
+    });
+    expect(log?.after).toMatchObject({ fxRate: 5.2 });
+    // Pagamento em reais não tem câmbio.
+    const brl = await store.create("payments", {
+      ...payment,
+      id: undefined as never,
+      currency: "BRL",
+      status: "confirmed",
+      fxRate: null,
+    } as never);
+    await expect(
+      setSupplierPaymentFx(admin, order.id, (brl as { id: string }).id, 1),
+    ).rejects.toThrow("payment_brl");
   });
 
   it("fornecedor sem condição: o valor a pagar é o saldo, sem parcelas", async () => {

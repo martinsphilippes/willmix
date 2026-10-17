@@ -70,8 +70,14 @@ export function SupplierPaymentPanel({
         </div>
         <div className="w-full min-w-0 sm:w-36">
           {/* Câmbio = R$ por 1 unidade da moeda do pagamento (como a PTAX). */}
-          <Field label={t("finance.fx")} hint={t("finance.fx.unitHintAny")}>
-            <Input name="fxRate" type="number" step="any" />
+          <Field label={t("finance.fx")}>
+            <Input
+              name="fxRate"
+              type="number"
+              step="any"
+              placeholder={t("finance.fx.unitHintShort")}
+              title={t("finance.fx.unitHintAny")}
+            />
           </Field>
         </div>
         <div className="w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-1">

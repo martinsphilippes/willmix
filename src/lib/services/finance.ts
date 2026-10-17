@@ -181,6 +181,9 @@ export function computeOrderFinance(
   // unidades do FOB (outra moeda: pelo câmbio do dia, estimado).
   let realBrl = 0;
   let realUnits = 0;
+  // Só pagamentos na moeda do FOB com câmbio próprio: o câmbio médio "real".
+  let fobRealBrl = 0;
+  let fobRealUnits = 0;
   let noFxUnits = 0;
   let crossConverted = false;
   let unconvertible = false;
@@ -205,6 +208,10 @@ export function computeOrderFinance(
     else {
       realBrl += brl;
       realUnits += units;
+      if (inFob(p)) {
+        fobRealBrl += brl;
+        fobRealUnits += units;
+      }
     }
   }
   // Cancelado: o que não foi pago não vai ser; só conta o que saiu.
@@ -234,7 +241,8 @@ export function computeOrderFinance(
   let estimateRate: number | null = null;
   let estimateFrom: OrderFinance["estimateFrom"] = null;
   if (sameCurrency(fobCurrency, sellCurrency)) {
-    cost = fob;
+    // Cancelado: só o que foi pago (nada pago, sem custo).
+    cost = cancelled ? (paid > 0.005 ? paid : null) : fob;
     fxBasis = "same";
   } else if (
     !unconvertible &&
@@ -253,9 +261,11 @@ export function computeOrderFinance(
       estimateFrom = todayBrl !== null ? todayFrom : "paid";
     }
   }
+  // Câmbio médio real: só o que foi pago na moeda do FOB com câmbio
+  // informado (pagamento em reais ou em outra moeda depende do câmbio do dia).
   const avgFx =
-    avgBrl !== null && sellBrl !== null && sellBrl > 0 && fxBasis !== "same"
-      ? avgBrl / sellBrl
+    fobRealUnits > 0 && sellBrl !== null && sellBrl > 0 && fxBasis !== "same"
+      ? fobRealBrl / fobRealUnits / sellBrl
       : null;
   const margin = cost !== null ? sell - cost : null;
   const marginPct = margin !== null && sell > 0 ? (margin / sell) * 100 : null;
