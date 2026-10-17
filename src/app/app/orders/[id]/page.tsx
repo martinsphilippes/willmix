@@ -41,6 +41,7 @@ import { normalizePackaging } from "@/lib/services/packaging";
 import { SupplierPaymentCard } from "@/components/supplier-payment-card";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
+  approx,
   costEstimateNote,
   fxEffectText,
   fxRateLines,
@@ -231,7 +232,8 @@ export default async function OrderPage({
     store.list("penalties", { filter: { orderId: order.id } }),
     store.list("users"),
     wellmix || user.role === "customer"
-      ? loadOrderFinance(order)
+      ? // Custo, câmbio e margem só para a Wellmix: o cliente não busca câmbio.
+        loadOrderFinance(order, { estimate: wellmix })
       : Promise.resolve(null),
     /* Evolução incremental: snapshot da compra, resultado da inspeção e fila (só Wellmix),
        containers do pedido (todos, filtrado) e trilha visualizado/confirmado. */
@@ -910,7 +912,19 @@ export default async function OrderPage({
                         ],
                         [
                           t("finance.paid"),
-                          formatMoney(finance.paid, finance.fobCurrency, t),
+                          <span key="pd">
+                            {formatMoney(finance.paid, finance.fobCurrency, t)}
+                            {/* Pago em outra moeda: à parte, na moeda dele. */}
+                            {Object.entries(finance.paidOther).map(([c, v]) => (
+                              <span
+                                key={c}
+                                className="block text-xs text-zinc-500"
+                                data-paid-other={c}
+                              >
+                                + {formatMoney(v, c, t)}
+                              </span>
+                            ))}
+                          </span>,
                         ],
                         [
                           t("finance.payable"),
@@ -933,11 +947,13 @@ export default async function OrderPage({
                           t("finance.cost"),
                           finance.cost !== null ? (
                             <span key="c" data-finance-cost="">
-                              {finance.estimated ? "~" : ""}
-                              {formatMoney(
-                                finance.cost,
-                                finance.sellCurrency,
-                                t,
+                              {approx(
+                                formatMoney(
+                                  finance.cost,
+                                  finance.sellCurrency,
+                                  t,
+                                ),
+                                finance.estimated,
                               )}
                               {costEstimateNote(t, finance) ? (
                                 <span className="block text-xs text-zinc-500">
@@ -945,32 +961,39 @@ export default async function OrderPage({
                                 </span>
                               ) : null}
                             </span>
+                          ) : isCancelled ? (
+                            // Cancelado sem nada pago: não há custo a mostrar.
+                            "—"
                           ) : (
                             t("finance.fxMissing")
                           ),
                         ],
-                        ...(fxRateLines(t, finance) &&
+                        ...(!isCancelled &&
+                        fxRateLines(t, finance) &&
                         finance.fxBasis !== "same"
                           ? ([
                               [
                                 t("finance.fx"),
                                 <span key="fx" data-finance-fx="">
                                   {fxRateLines(t, finance)!.main}
-                                  {fxRateLines(t, finance)!.notes.map((n) => (
-                                    <span
-                                      key={n}
-                                      className="block text-xs text-zinc-500"
-                                    >
-                                      {n}
-                                    </span>
-                                  ))}
+                                  {fxRateLines(t, finance)!.notes.map(
+                                    (n, i) => (
+                                      <span
+                                        key={i}
+                                        className="block text-xs text-zinc-500"
+                                      >
+                                        {n}
+                                      </span>
+                                    ),
+                                  )}
                                 </span>,
                               ],
                             ] as [string, ReactNode][])
                           : []),
                         [
                           t("finance.margin"),
-                          finance.margin !== null ? (
+                          // Cancelado não é venda: sem margem (como na tela Financeiro).
+                          finance.margin !== null && !isCancelled ? (
                             <span
                               key="m"
                               className={
@@ -979,11 +1002,13 @@ export default async function OrderPage({
                                   : "font-medium text-emerald-700"
                               }
                             >
-                              {finance.estimated ? "~" : ""}
-                              {formatMoney(
-                                finance.margin,
-                                finance.sellCurrency,
-                                t,
+                              {approx(
+                                formatMoney(
+                                  finance.margin,
+                                  finance.sellCurrency,
+                                  t,
+                                ),
+                                finance.estimated,
                               )}
                               {finance.marginPct !== null
                                 ? ` (${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`

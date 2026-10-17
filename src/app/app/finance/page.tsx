@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { loadFinance } from "@/lib/services/finance";
 import {
+  approx,
   costEstimateNote,
   fxEffectText,
   fxRateLines,
@@ -104,13 +105,19 @@ export default async function FinancePage() {
             <>
               <Money>
                 {summary.marginPct !== null
-                  ? `${summary.estimated > 0 ? "~" : ""}${formatMoney(summary.margin, summary.currency, t)}`
+                  ? approx(
+                      formatMoney(summary.margin, summary.currency, t),
+                      summary.estimated > 0,
+                    )
                   : "—"}
               </Money>
               {/* Percentual embaixo: com o "~" o valor e o % não cabem numa linha do card. */}
               {summary.marginPct !== null ? (
                 <span className="mt-0.5 block text-xs font-medium text-zinc-600 tabular-nums">
-                  {`${summary.estimated > 0 ? "~" : ""}${summary.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%`}
+                  {approx(
+                    `${summary.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%`,
+                    summary.estimated > 0,
+                  )}
                 </span>
               ) : null}
               {summary.fxEffect !== null &&
@@ -123,7 +130,10 @@ export default async function FinancePage() {
                   data-fx-effect-total=""
                 >
                   {t("finance.fx.effect", {
-                    value: `${summary.fxEffect > 0 ? "+" : ""}${formatMoney(summary.fxEffect, summary.currency, t)}`,
+                    value: approx(
+                      `${summary.fxEffect > 0 ? "+" : ""}${formatMoney(summary.fxEffect, summary.currency, t)}`,
+                      summary.fxEffectEstimated,
+                    ),
                   })}
                 </span>
               ) : null}
@@ -207,6 +217,16 @@ export default async function FinancePage() {
                   </Td>
                   <Td className="whitespace-nowrap">
                     {formatMoney(r.paid, r.fobCurrency, t)}
+                    {/* Pago em outra moeda: à parte, na moeda dele. */}
+                    {Object.entries(r.paidOther).map(([c, v]) => (
+                      <div
+                        key={c}
+                        className="text-xs font-normal text-zinc-500"
+                        data-paid-other={c}
+                      >
+                        + {formatMoney(v, c, t)}
+                      </div>
+                    ))}
                   </Td>
                   <Td className="whitespace-nowrap font-medium">
                     <span
@@ -217,20 +237,27 @@ export default async function FinancePage() {
                       {formatMoney(r.payable, r.fobCurrency, t)}
                     </span>
                   </Td>
-                  <Td
-                    className="whitespace-nowrap"
-                    data-fx-basis={r.fxBasis ?? "none"}
-                  >
+                  <Td className="whitespace-nowrap">
                     {(() => {
-                      const fx = fxRateLines(t, r);
+                      // Cancelado: fora de custo e margem, sem câmbio a mostrar.
+                      const fx =
+                        r.order.status === "CANCELLED"
+                          ? null
+                          : fxRateLines(t, r);
                       if (!fx) return "—";
                       return (
                         <>
-                          <span className="tabular-nums">{fx.main}</span>
-                          {fx.notes.map((note) => (
+                          <span
+                            className="tabular-nums"
+                            data-fx-basis={r.fxBasis ?? "none"}
+                          >
+                            {fx.main}
+                          </span>
+                          {/* Notas quebram linha: não empurram custo e margem para fora. */}
+                          {fx.notes.map((note, i) => (
                             <div
-                              key={note}
-                              className="text-xs font-normal text-zinc-500"
+                              key={i}
+                              className="max-w-44 whitespace-normal text-xs font-normal text-zinc-500"
                             >
                               {note}
                             </div>
@@ -244,8 +271,10 @@ export default async function FinancePage() {
                       "—"
                     ) : r.cost !== null ? (
                       <span title={costEstimateNote(t, r) ?? undefined}>
-                        {r.estimated ? "~" : ""}
-                        {formatMoney(r.cost, r.sellCurrency, t)}
+                        {approx(
+                          formatMoney(r.cost, r.sellCurrency, t),
+                          r.estimated,
+                        )}
                       </span>
                     ) : (
                       <Badge tone="warning">{t("finance.fxMissing")}</Badge>
@@ -255,15 +284,19 @@ export default async function FinancePage() {
                     {r.margin !== null && r.order.status !== "CANCELLED" ? (
                       <>
                         <span className={cx(r.margin < 0 && "text-red-700")}>
-                          {r.estimated ? "~" : ""}
-                          {formatMoney(r.margin, r.sellCurrency, t)}
+                          {approx(
+                            formatMoney(r.margin, r.sellCurrency, t),
+                            r.estimated,
+                          )}
                         </span>
-                        <div className="text-xs font-normal text-zinc-500">
-                          {r.marginPct?.toLocaleString(t.intl, {
-                            maximumFractionDigits: 1,
-                          })}
-                          %
-                        </div>
+                        {r.marginPct !== null ? (
+                          <div className="text-xs font-normal text-zinc-500">
+                            {approx(
+                              `${r.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%`,
+                              r.estimated,
+                            )}
+                          </div>
+                        ) : null}
                         {(() => {
                           const effect = fxEffectText(t, r);
                           return effect ? (
@@ -291,7 +324,9 @@ export default async function FinancePage() {
             </tbody>
           </Table>
         )}
-        {summary.estimated > 0 ? (
+        {/* Legenda do "~" sempre que alguma linha mostra estimativa (inclusive
+            pedidos vendidos em outra moeda, fora do total). */}
+        {rows.some((r) => r.estimated && r.order.status !== "CANCELLED") ? (
           <p className="mt-2 text-xs text-zinc-500">
             {t("finance.fx.estimateNote")}
           </p>

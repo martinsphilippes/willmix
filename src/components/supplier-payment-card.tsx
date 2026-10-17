@@ -294,9 +294,17 @@ export async function SupplierPaymentCard({
                     >
                       <input type="hidden" name="orderId" value={order.id} />
                       <input type="hidden" name="paymentId" value={p.id} />
-                      <div className="w-28 min-w-0">
+                      <div className="w-32 min-w-0">
+                        {/* Câmbio = R$ por 1 unidade da moeda do pagamento (como a PTAX). */}
                         <Field label={t("finance.fx")}>
-                          <Input name="fxRate" type="number" step="any" />
+                          <Input
+                            name="fxRate"
+                            type="number"
+                            step="any"
+                            placeholder={t("finance.fx.unitHint", {
+                              currency: p.currency,
+                            })}
+                          />
                         </Field>
                       </div>
                       <div className="min-w-48 flex-1">
