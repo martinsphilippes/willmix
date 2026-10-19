@@ -41,9 +41,12 @@ export default async function ResetPage({
   const errorText =
     error === "reset_confirm"
       ? t("reset.error.confirm")
-      : typeof error === "string" && error
-        ? t("reset.error.failed", { code: error })
-        : null;
+      : // Barrado antes de apagar qualquer coisa.
+        error === "forbidden" || error === "invalid_input"
+        ? t("reset.error.blocked", { code: error })
+        : typeof error === "string" && error
+          ? t("reset.error.failed", { code: error })
+          : null;
 
   return (
     <>
@@ -56,9 +59,18 @@ export default async function ResetPage({
         }
       />
       {done === "1" && !errorText ? (
-        <Alert tone="success">
-          <span data-reset-done="">{t("reset.done")}</span>
-        </Alert>
+        plan.total > 0 ? (
+          // Parou no limite de uma rodada: tocar de novo termina.
+          <Alert tone="warning">
+            <span data-reset-remaining="">
+              {t("reset.remaining", { n: plan.total })}
+            </span>
+          </Alert>
+        ) : (
+          <Alert tone="success">
+            <span data-reset-done="">{t("reset.done")}</span>
+          </Alert>
+        )
       ) : null}
       {errorText ? (
         <Alert tone="danger">

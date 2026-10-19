@@ -11,8 +11,9 @@ import { audit } from "./audit";
  * recomeça a numeração de solicitações e pedidos do #1.
  *
  * Fica: catálogo de produtos (fichas mestres, fotos, fornecedores do
- * produto, certificações, NCM), sourcing, programações de compra, clientes,
- * fornecedores, usuários, linhas de produto, configurações e tabela fiscal.
+ * produto, certificações, NCM), sourcing (menos os itens que as solicitações
+ * de teste criaram), programações de compra, clientes, fornecedores,
+ * usuários, linhas de produto, configurações e tabela fiscal.
  * O que fica e apontava para uma venda apagada perde só a ligação (ex.: item
  * de sourcing pedido por uma solicitação, programação que virou pedido).
  *
@@ -78,6 +79,8 @@ export interface ResetPlan {
     notifications: number;
     aiSuggestions: number;
     kits: number;
+    /** Itens de sourcing que as solicitações de teste criaram (sob demanda). */
+    sourcing: number;
     /** Etapas, itens, fichas do pedido, medições, revisões, histórico… */
     other: number;
   };
@@ -95,7 +98,8 @@ interface Work {
     id: string;
     patch: Record<string, unknown>;
   }>;
-  files: string[];
+  /** Arquivo de cada documento apagado (sai junto com o documento). */
+  files: Map<string, string>;
   counterIds: string[];
 }
 
@@ -163,10 +167,39 @@ async function buildWork(): Promise<Work> {
   const isSale = (id: string | null | undefined) =>
     !!id && (requestIds.has(id) || quoteIds.has(id) || orderIds.has(id));
 
-  // Fichas de compra: só as de pedido e cotação (a mestre é do produto).
+  // Fichas de compra: só existem as do produto (mestre, orderId = id do
+  // produto), da cotação e do pedido. Tudo que não é mestre sai (mesmo que a
+  // cotação ou o pedido já tenham sido apagados numa rodada anterior).
   for (const s of sheets)
-    if (!productIds.has(s.orderId) && (isSale(s.orderId) || !s.productId))
-      drop("purchase_sheets", s.id);
+    if (!productIds.has(s.orderId)) drop("purchase_sheets", s.id);
+
+  // Sourcing sob demanda: item que uma solicitação de teste CRIOU (origem
+  // "sourcing_demand", nascido junto com ela) e que não virou produto sai
+  // junto, com fotos e documentos. Item cadastrado pela equipe e só ligado
+  // depois a uma solicitação fica (perde a ligação).
+  const requestById = new Map(
+    (
+      byTable.requests as Array<{
+        id: string;
+        origin?: string | null;
+        createdAt: string;
+      }>
+    ).map((rq) => [rq.id, rq]),
+  );
+  const createdByRequest = (s: (typeof sourcing)[number]) => {
+    const rq = s.requestId ? requestById.get(s.requestId) : undefined;
+    if (!rq || rq.origin !== "sourcing_demand") return false;
+    const gap = Math.abs(Date.parse(s.createdAt) - Date.parse(rq.createdAt));
+    return Number.isFinite(gap) && gap < 60_000;
+  };
+  const sourcingGone = new Set(
+    sourcing
+      .filter(
+        (s) => createdByRequest(s) && !s.productId && s.status !== "promoted",
+      )
+      .map((s) => s.id),
+  );
+  for (const id of sourcingGone) drop("sourcing_items", id);
 
   // Medições e revisões de venda.
   for (const m of measurements)
@@ -179,10 +212,15 @@ async function buildWork(): Promise<Work> {
   // Fotos: só as do pedido (sem produto nem item de sourcing); as do catálogo
   // tiradas num pedido ficam e perdem a ligação com ele.
   const keptPhotos = [];
+  const droppedPhotoDocs = new Set<string>();
   for (const p of photos) {
-    if (p.orderId && !p.productId && !p.sourcingItemId)
+    const fromSale = p.orderId && !p.productId && !p.sourcingItemId;
+    const fromGoneSourcing =
+      !!p.sourcingItemId && sourcingGone.has(p.sourcingItemId) && !p.productId;
+    if (fromSale || fromGoneSourcing) {
       drop("product_photos", p.id);
-    else {
+      if (p.documentId) droppedPhotoDocs.add(p.documentId);
+    } else {
       keptPhotos.push(p);
       if (p.orderId)
         updates.push({
@@ -200,21 +238,34 @@ async function buildWork(): Promise<Work> {
       ...keptPhotos.map((p) => p.documentId),
       ...products.map((p) => p.primaryPhotoDocumentId),
       ...certifications.map((c) => c.documentId),
-      ...sourcing.map((s) => s.primaryPhotoDocumentId),
+      ...sourcing
+        .filter((s) => !sourcingGone.has(s.id))
+        .map((s) => s.primaryPhotoDocumentId),
       ...keptMeasurements.map((m) => m.photoDocumentId),
       ...importBatches.map((b) => b.fileDocumentId),
       ...lookups.map((l) => l.imageDocumentId),
     ].filter((id): id is string => !!id),
   );
-  const files: string[] = [];
+  const files = new Map<string, string>();
   const keptDocs = [];
   for (const d of documents) {
-    const sale = !!(d.orderId || d.requestId || d.requirementId || d.kitId);
+    // De venda: ligado a pedido/solicitação/requisito/kit, foto de cotação
+    // (o documento fica sem ligação, só a foto aponta para ele) ou de item de
+    // sourcing que sai.
+    const sale =
+      !!(d.orderId || d.requestId || d.requirementId || d.kitId) ||
+      droppedPhotoDocs.has(d.id) ||
+      (!!d.sourcingItemId && sourcingGone.has(d.sourcingItemId));
+    // Do catálogo: usado por algo que fica, ou do produto/sourcing que fica
+    // (arte de kit também tem o produto, mas é da venda do kit).
     const catalog =
-      !!(d.productId || d.sourcingItemId) || catalogDocs.has(d.id);
+      catalogDocs.has(d.id) ||
+      (!d.kitId &&
+        (!!d.productId ||
+          (!!d.sourcingItemId && !sourcingGone.has(d.sourcingItemId))));
     if (sale && !catalog) {
       drop("documents", d.id);
-      if (d.storageKey) files.push(d.storageKey);
+      if (d.storageKey) files.set(d.id, d.storageKey);
     } else keptDocs.push(d);
   }
   for (const d of keptDocs) {
@@ -239,7 +290,7 @@ async function buildWork(): Promise<Work> {
 
   // O que fica e apontava para uma venda: só perde a ligação.
   for (const s of sourcing)
-    if (s.requestId)
+    if (s.requestId && !sourcingGone.has(s.id))
       updates.push({
         table: "sourcing_items",
         id: s.id,
@@ -257,11 +308,13 @@ async function buildWork(): Promise<Work> {
       updates.push({
         table: "purchase_schedules",
         id: ps.id,
-        // Volta a planejada (o "pedido"/"cancelada" vinha da venda de teste).
+        // "ordered" e "cancelled" com pedido vieram da venda de teste (pedido
+        // criado ou cancelado): voltam a planejada. Status posto à mão fica.
         patch: {
           requestId: null,
           orderId: null,
-          ...(ps.status === "ordered" || ps.status === "cancelled"
+          ...(ps.orderId &&
+          (ps.status === "ordered" || ps.status === "cancelled")
             ? { status: "planned" }
             : {}),
         },
@@ -302,6 +355,7 @@ async function buildWork(): Promise<Work> {
     notifications: count("notifications"),
     aiSuggestions: count("ai_suggestions"),
     kits: count("marketing_kits"),
+    sourcing: count("sourcing_items"),
     other: 0,
   };
   const named = Object.values(remove).reduce((s, n) => s + n, 0);
@@ -344,14 +398,36 @@ export async function resetSalesData(
     throw new Error("reset_confirm");
   const store = getStore();
   const work = await buildWork();
+  // Registro que já sumiu (outra limpeza rodando junto, ou uma rodada
+  // anterior que parou no meio) não é erro: só segue.
+  const tolerant = async (
+    table: TableName,
+    id: string,
+    fn: () => Promise<unknown>,
+  ) => {
+    try {
+      await fn();
+    } catch (error) {
+      if (await store.get(table, id)) throw error;
+    }
+  };
   // Primeiro desliga o que fica, depois apaga (nada aponta para o que sumiu),
   // por fim os arquivos e a numeração.
   await inBatches(work.updates, 10, (u) =>
-    store.update(u.table, u.id, u.patch as never),
+    tolerant(u.table, u.id, () =>
+      store.update(u.table, u.id, u.patch as never),
+    ),
   );
-  await inBatches(work.deletes, 10, (d) => store.remove(d.table, d.id));
-  await inBatches(work.files, 10, (key) => store.removeFile(key));
-  await inBatches(work.counterIds, 10, (id) => store.remove("counters", id));
+  // O arquivo sai junto com o documento (antes da linha): se parar no meio,
+  // a próxima rodada ainda acha o documento e termina.
+  await inBatches(work.deletes, 10, async (d) => {
+    const key = d.table === "documents" ? work.files.get(d.id) : undefined;
+    if (key) await store.removeFile(key);
+    await tolerant(d.table, d.id, () => store.remove(d.table, d.id));
+  });
+  await inBatches(work.counterIds, 10, (id) =>
+    tolerant("counters", id, () => store.remove("counters", id)),
+  );
   await audit(
     user,
     "data.reset",

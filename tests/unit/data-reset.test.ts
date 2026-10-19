@@ -21,6 +21,7 @@ const { requestProductSuggestion } =
 const { registerSupplierPayment } =
   await import("@/lib/services/supplier-payment");
 const reset = await import("@/lib/services/data-reset");
+const { SHEET_PHOTO_KINDS } = await import("@/lib/services/purchase-sheet");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -146,12 +147,83 @@ describe("limpar dados de teste (vendas)", () => {
       notes: null,
       createdByUserId: admin.id,
     } as never);
+    // Programação cancelada à mão (ligada só à solicitação): continua cancelada.
+    const handCancelled = await store.create("purchase_schedules", {
+      productId: "prod-jarra",
+      sourcingItemId: null,
+      customerId: "cliente-joao",
+      supplierId: null,
+      requestId: request.id,
+      orderId: null,
+      sequence: 2,
+      quantity: 50,
+      unit: "un",
+      scheduledFor: null,
+      periodLabel: null,
+      price: null,
+      currency: null,
+      status: "cancelled",
+      notes: null,
+      createdByUserId: admin.id,
+    } as never);
     await registerSupplierPayment(admin, order.id, {
       method: "transfer_copied",
     });
     await requestProductSuggestion(admin, "product", "prod-jarra");
+    // Foto que o fornecedor mandou na cotação (documento sem pedido).
+    const [quoteOfSale] = await store.list("quotes", {
+      filter: { requestId: request.id },
+    });
+    // (Mesmo formato que addQuoteSheetPhotos grava: documento sem pedido,
+    // foto ligada à cotação.)
+    const quoteFile = await uploadDocument(
+      supplierA,
+      new File([new Uint8Array([7, 8, 9])], "q.png", { type: "image/png" }),
+      { type: "photo", visibility: "internal" } as never,
+    );
+    const quotePhoto = await store.create("product_photos", {
+      productId: null,
+      sourcingItemId: null,
+      orderId: quoteOfSale.id,
+      documentId: quoteFile.id,
+      kind: SHEET_PHOTO_KINDS[0],
+      caption: null,
+      takenByUserId: supplierA.id,
+      derivedFromPhotoId: null,
+      isPrimary: false,
+    } as never);
+    const quoteDoc = (await store.get("documents", quotePhoto.documentId))!;
+    // Sourcing sob demanda criado pela solicitação de teste.
+    const demand = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Boia nova",
+      description: "Fora do catálogo",
+      specification: null,
+      quantity: 50,
+      unit: "un",
+      deadline: null,
+      notes: null,
+      origin: "sourcing_demand",
+    });
+    const [demandItem] = await store.list("sourcing_items", {
+      filter: { requestId: demand.id },
+    });
+    expect(demandItem).toBeTruthy();
+    // Arte de kit (tem o produto, mas é da venda do kit).
+    const kitDoc = await uploadDocument(
+      admin,
+      new File([new Uint8Array([1])], "arte.png", { type: "image/png" }),
+      { kitId: "kit-x", productId: "prod-jarra", type: "photo" } as never,
+    );
+    // Ficha de cotação que sobrou de uma rodada que parou no meio.
+    const leftover = await store.create("purchase_sheets", {
+      orderId: "cotacao-apagada",
+      productId: "prod-jarra",
+    } as never);
 
     const plan = await reset.planSalesReset(admin);
+    expect(plan.remove.sourcing).toBe(1);
     expect(plan.remove.requests).toBeGreaterThanOrEqual(2);
     expect(plan.remove.orders).toBeGreaterThanOrEqual(2);
     expect(plan.remove.payments).toBeGreaterThanOrEqual(1);
@@ -185,6 +257,13 @@ describe("limpar dados de teste (vendas)", () => {
     expect(await store.get("documents", orderDoc.id)).toBeNull();
     expect(await store.statFile(orderDoc.storageKey)).toBeNull();
     expect(await store.get("product_photos", orderPhoto.id)).toBeNull();
+    // Foto da cotação, item de sourcing sob demanda, arte do kit e ficha que
+    // sobrou: também saem.
+    expect(await store.get("documents", quoteDoc.id)).toBeNull();
+    expect(await store.statFile(quoteDoc.storageKey)).toBeNull();
+    expect(await store.get("sourcing_items", demandItem.id)).toBeNull();
+    expect(await store.get("documents", kitDoc.id)).toBeNull();
+    expect(await store.get("purchase_sheets", leftover.id)).toBeNull();
 
     // Catálogo e cadastros ficam.
     expect((await store.list("products")).length).toBe(productsBefore);
@@ -207,6 +286,9 @@ describe("limpar dados de teste (vendas)", () => {
       orderId: null,
       status: "planned",
     });
+    expect(
+      await store.get("purchase_schedules", handCancelled.id),
+    ).toMatchObject({ requestId: null, status: "cancelled" });
     const links = await store.list("product_suppliers", {
       filter: { productId: "prod-jarra" },
     });
