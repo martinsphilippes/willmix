@@ -19,8 +19,10 @@ import {
 } from "@/lib/services/data-reset";
 import { resetSalesDataAction } from "../../actions/data-reset";
 
-// A limpeza apaga linha por linha no Appwrite: mais tempo que uma página comum.
-export const maxDuration = 120;
+// A limpeza apaga linha por linha no Appwrite: mais tempo que uma página
+// comum. A rodada para sozinha bem antes (RESET_BUDGET_MS) e a tela mostra
+// "ainda restam N" para continuar.
+export const maxDuration = 300;
 
 /**
  * Configurações → Limpar dados de teste: mostra quanto de cada venda vai ser

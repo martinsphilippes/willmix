@@ -166,6 +166,51 @@ describe("limpar dados de teste (vendas)", () => {
       notes: null,
       createdByUserId: admin.id,
     } as never);
+    // Programação que virou solicitação (confirmada) sem pedido.
+    const confirmed = await store.create("purchase_schedules", {
+      productId: "prod-jarra",
+      sourcingItemId: null,
+      customerId: "cliente-joao",
+      supplierId: null,
+      requestId: request.id,
+      orderId: null,
+      sequence: 3,
+      quantity: 30,
+      unit: "un",
+      scheduledFor: null,
+      periodLabel: null,
+      price: null,
+      currency: null,
+      status: "confirmed",
+      notes: null,
+      createdByUserId: admin.id,
+    } as never);
+    // Busca por foto que virou a solicitação de teste (a foto é anexo dela) e
+    // busca que não virou solicitação (fica).
+    const lookupFile = await uploadDocument(
+      joao,
+      new File([new Uint8Array([3, 3])], "busca.png", { type: "image/png" }),
+      { requestId: request.id, type: "photo" } as never,
+    );
+    const lookup = await store.create("product_lookups", {
+      userId: joao.id,
+      customerId: "cliente-joao",
+      imageDocumentId: lookupFile.id,
+      url: null,
+      requestId: request.id,
+    } as never);
+    const freeFile = await uploadDocument(
+      joao,
+      new File([new Uint8Array([4, 4])], "livre.png", { type: "image/png" }),
+      { type: "photo" } as never,
+    );
+    const freeLookup = await store.create("product_lookups", {
+      userId: joao.id,
+      customerId: "cliente-joao",
+      imageDocumentId: freeFile.id,
+      url: null,
+      requestId: null,
+    } as never);
     await registerSupplierPayment(admin, order.id, {
       method: "transfer_copied",
     });
@@ -289,6 +334,16 @@ describe("limpar dados de teste (vendas)", () => {
     expect(
       await store.get("purchase_schedules", handCancelled.id),
     ).toMatchObject({ requestId: null, status: "cancelled" });
+    expect(await store.get("purchase_schedules", confirmed.id)).toMatchObject({
+      requestId: null,
+      status: "planned",
+    });
+    // Busca da solicitação sai com a foto; a outra fica.
+    expect(await store.get("product_lookups", lookup.id)).toBeNull();
+    expect(await store.get("documents", lookupFile.id)).toBeNull();
+    expect(await store.statFile(lookupFile.storageKey)).toBeNull();
+    expect(await store.get("product_lookups", freeLookup.id)).not.toBeNull();
+    expect(await store.get("documents", freeFile.id)).not.toBeNull();
     const links = await store.list("product_suppliers", {
       filter: { productId: "prod-jarra" },
     });
@@ -308,6 +363,78 @@ describe("limpar dados de teste (vendas)", () => {
     const { request: next, order: nextOrder } = await sale();
     expect(next.number).toBe(1);
     expect(nextOrder.number).toBe(1);
+  });
+
+  it("se parar no meio, a próxima rodada termina (foto da cotação inclusive)", async () => {
+    const store = getStore();
+    const { request } = await sale();
+    const [quote] = await store.list("quotes", {
+      filter: { requestId: request.id },
+    });
+    const quoteFile = await uploadDocument(
+      supplierA,
+      new File([new Uint8Array([5])], "q2.png", { type: "image/png" }),
+      { type: "photo", visibility: "internal" } as never,
+    );
+    const quotePhoto = await store.create("product_photos", {
+      productId: null,
+      sourcingItemId: null,
+      orderId: quote.id,
+      documentId: quoteFile.id,
+      kind: SHEET_PHOTO_KINDS[0],
+      caption: null,
+      takenByUserId: supplierA.id,
+      derivedFromPhotoId: null,
+      isPrimary: false,
+    } as never);
+    const realRemove = store.remove.bind(store);
+    try {
+      // Falha ao apagar o primeiro documento (o arquivo já saiu).
+      let failed = false;
+      store.remove = (async (table: string, id: string) => {
+        if (!failed && table === "documents") {
+          failed = true;
+          throw new Error("falha simulada");
+        }
+        return realRemove(table as never, id);
+      }) as typeof store.remove;
+      await expect(reset.resetSalesData(admin, "APAGAR")).rejects.toThrow(
+        "falha simulada",
+      );
+      // A foto da cotação ainda aponta para o documento: nada se perdeu.
+      expect(await store.get("product_photos", quotePhoto.id)).not.toBeNull();
+      expect((await store.list("requests")).length).toBeGreaterThan(0);
+    } finally {
+      store.remove = realRemove;
+    }
+    const done = await reset.resetSalesData(admin, "APAGAR");
+    expect(done.finished).toBe(true);
+    expect(await store.get("product_photos", quotePhoto.id)).toBeNull();
+    expect(await store.get("documents", quoteFile.id)).toBeNull();
+    expect(await store.statFile(quoteFile.storageKey)).toBeNull();
+    expect(await store.list("requests")).toHaveLength(0);
+    expect((await reset.planSalesReset(admin)).total).toBe(0);
+  });
+
+  it("para no limite de tempo e continua na próxima rodada", async () => {
+    const store = getStore();
+    await sale();
+    const before = await reset.planSalesReset(admin);
+    expect(before.total).toBeGreaterThan(0);
+    const partial = await reset.resetSalesData(admin, "APAGAR", {
+      budgetMs: 0,
+    });
+    expect(partial.finished).toBe(false);
+    // Nada apagado e a numeração continua (vendas ainda existem).
+    expect((await reset.planSalesReset(admin)).total).toBe(before.total);
+    const next = await store.list("counters");
+    expect(next.some((c) => c.key === "order_number")).toBe(true);
+    const done = await reset.resetSalesData(admin, "APAGAR");
+    expect(done.finished).toBe(true);
+    expect((await reset.planSalesReset(admin)).total).toBe(0);
+    expect(
+      (await store.list("counters")).some((c) => c.key === "order_number"),
+    ).toBe(false);
   });
 
   it("rodar de novo só apaga o que sobrou (continua se parou no meio)", async () => {

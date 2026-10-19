@@ -11,7 +11,7 @@ export const pt = {
   "reset.removeTitle": "Vai ser apagado",
   "reset.keepTitle": "Fica como está",
   "reset.keepList":
-    "Catálogo de produtos (fichas mestres, fotos, fornecedores do produto, certificações e NCM), sourcing cadastrado pela equipe, programações de compra, clientes, fornecedores, usuários, linhas de produto, configurações e tabela fiscal.",
+    "Catálogo de produtos (fichas mestres, fotos, fornecedores do produto, certificações e NCM), sourcing cadastrado pela equipe, programações de compra, clientes, fornecedores, usuários, linhas de produto, configurações e tabela fiscal. Também ficam os produtos cadastrados a partir de pedidos de teste e os preços de fornecedor vindos de cotações de teste: revise no catálogo se precisar.",
   "reset.row.requests": "Solicitações",
   "reset.row.quotes": "Cotações",
   "reset.row.orders": "Pedidos",
@@ -25,7 +25,7 @@ export const pt = {
   "reset.remaining":
     "Ainda restam {n} registros (há um limite por vez). Toque em Apagar de novo para terminar.",
   "reset.row.other":
-    "Etapas, itens, fichas de pedido e cotação, inspeções, revisões e histórico",
+    "Etapas, itens, fichas de pedido e cotação, buscas por foto ou link, inspeções, revisões e histórico",
   "reset.row.total": "Total",
   "reset.unlink":
     "{n} registros que ficam só perdem a ligação com vendas apagadas (ex.: programação de compra que virou pedido volta a planejada).",
@@ -52,7 +52,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reset.removeTitle": "Will be deleted",
   "reset.keepTitle": "Stays as it is",
   "reset.keepList":
-    "Product catalog (master sheets, photos, product suppliers, certifications and NCM), sourcing entered by the team, purchase schedules, customers, suppliers, users, product lines, settings and tax table.",
+    "Product catalog (master sheets, photos, product suppliers, certifications and NCM), sourcing entered by the team, purchase schedules, customers, suppliers, users, product lines, settings and tax table. Products registered from test orders and supplier prices from test quotes also stay: review them in the catalog if needed.",
   "reset.row.requests": "Requests",
   "reset.row.quotes": "Quotes",
   "reset.row.orders": "Orders",
@@ -66,7 +66,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reset.remaining":
     "{n} records are still left (there is a limit per run). Tap Delete again to finish.",
   "reset.row.other":
-    "Stages, items, order and quote sheets, inspections, reviews and history",
+    "Stages, items, order and quote sheets, photo or link searches, inspections, reviews and history",
   "reset.row.total": "Total",
   "reset.unlink":
     "{n} records that stay only lose their link to deleted sales (e.g. a purchase schedule that became an order goes back to planned).",
@@ -92,7 +92,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reset.removeTitle": "将被删除",
   "reset.keepTitle": "保持不变",
   "reset.keepList":
-    "产品目录（主采购单、照片、产品供应商、认证和 NCM）、团队录入的寻源、采购计划、客户、供应商、用户、产品线、设置和税率表。",
+    "产品目录（主采购单、照片、产品供应商、认证和 NCM）、团队录入的寻源、采购计划、客户、供应商、用户、产品线、设置和税率表。由测试订单创建的产品和来自测试报价的供应商价格也会保留：如有需要，请在产品目录中检查。",
   "reset.row.requests": "需求",
   "reset.row.quotes": "报价",
   "reset.row.orders": "订单",
@@ -105,7 +105,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reset.row.sourcing": "由需求创建的寻源项目",
   "reset.remaining":
     "仍剩余 {n} 条记录（每次有数量上限）。请再次点击删除以完成。",
-  "reset.row.other": "阶段、明细、订单和报价采购单、验货、复核及历史记录",
+  "reset.row.other":
+    "阶段、明细、订单和报价采购单、图片或链接搜索、验货、复核及历史记录",
   "reset.row.total": "合计",
   "reset.unlink":
     "{n} 条保留的记录仅解除与已删除销售的关联（例如已转为订单的采购计划恢复为计划中）。",

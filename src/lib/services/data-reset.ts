@@ -18,7 +18,11 @@ import { audit } from "./audit";
  * de sourcing pedido por uma solicitação, programação que virou pedido).
  *
  * Só o administrador, com confirmação digitada. Pode ser rodado de novo: se
- * parar no meio (tempo da requisição), a próxima vez continua de onde parou.
+ * parar no meio (limite de tempo ou falha), a próxima vez continua de onde
+ * parou. Para isso apaga sempre o que depende antes do que é dependido
+ * (documento antes da foto que aponta para ele, item de sourcing antes da
+ * solicitação que o criou, pedido antes da solicitação), e cada regra de
+ * "é de venda" não depende de o pai ainda existir.
  */
 
 /** Palavra que o administrador digita para confirmar. */
@@ -63,6 +67,45 @@ const SALES_ENTITIES = new Set([
   "ai_suggestion",
   "purchase_snapshot",
 ]);
+
+/**
+ * Ordem de apagar (menor primeiro): histórico e confirmações; documentos (com
+ * o arquivo); fotos e buscas; fichas, medições e revisões; sourcing criado
+ * pela solicitação; o que é do pedido; e por último pedidos, cotações e
+ * solicitações. Se parar no meio, a próxima rodada ainda acha tudo.
+ */
+const DELETE_ORDER: Partial<Record<TableName, number>> = {
+  audit_log: 0,
+  acknowledgements: 0,
+  documents: 1,
+  product_photos: 2,
+  product_lookups: 2,
+  purchase_sheets: 3,
+  measurements: 3,
+  review_items: 3,
+  sourcing_items: 4,
+  containers: 6,
+  orders: 7,
+  quotes: 8,
+  requests: 9,
+};
+/** Demais tabelas de venda (itens, etapas, pagamentos…): antes dos pais. */
+const DEFAULT_ORDER = 5;
+
+const deleteRank = (t: TableName) => DELETE_ORDER[t] ?? DEFAULT_ORDER;
+
+/** Separa os apagamentos (já ordenados) em grupos da mesma ordem. */
+function deleteGroups(deletes: Work["deletes"]) {
+  const groups: Array<Work["deletes"]> = [];
+  let last: number | null = null;
+  for (const d of deletes) {
+    const r = deleteRank(d.table);
+    if (r !== last) groups.push([]);
+    groups[groups.length - 1].push(d);
+    last = r;
+  }
+  return groups;
+}
 
 /** Contadores da numeração (#1 de novo). */
 const COUNTERS = ["request_number", "order_number"];
@@ -201,6 +244,9 @@ async function buildWork(): Promise<Work> {
   );
   for (const id of sourcingGone) drop("sourcing_items", id);
 
+  // Busca por foto/link que virou solicitação de teste (a foto é anexo dela).
+  for (const l of lookups) if (l.requestId) drop("product_lookups", l.id);
+
   // Medições e revisões de venda.
   for (const m of measurements)
     if (SALES_ENTITIES.has(m.entity) || isSale(m.entityId))
@@ -243,7 +289,9 @@ async function buildWork(): Promise<Work> {
         .map((s) => s.primaryPhotoDocumentId),
       ...keptMeasurements.map((m) => m.photoDocumentId),
       ...importBatches.map((b) => b.fileDocumentId),
-      ...lookups.map((l) => l.imageDocumentId),
+      // Busca por foto/link que virou solicitação de teste sai com ela; a que
+      // não virou solicitação fica.
+      ...lookups.filter((l) => !l.requestId).map((l) => l.imageDocumentId),
     ].filter((id): id is string => !!id),
   );
   const files = new Map<string, string>();
@@ -296,25 +344,19 @@ async function buildWork(): Promise<Work> {
         id: s.id,
         patch: { requestId: null },
       });
-  for (const l of lookups)
-    if (l.requestId)
-      updates.push({
-        table: "product_lookups",
-        id: l.id,
-        patch: { requestId: null },
-      });
   for (const ps of schedules)
     if (ps.requestId || ps.orderId)
       updates.push({
         table: "purchase_schedules",
         id: ps.id,
-        // "ordered" e "cancelled" com pedido vieram da venda de teste (pedido
-        // criado ou cancelado): voltam a planejada. Status posto à mão fica.
+        // Status que veio da venda de teste volta a planejada: "confirmed"
+        // (virou solicitação), "ordered" e "cancelled" com pedido (pedido
+        // criado ou cancelado). Cancelada à mão, sem pedido, fica.
         patch: {
           requestId: null,
           orderId: null,
-          ...(ps.orderId &&
-          (ps.status === "ordered" || ps.status === "cancelled")
+          ...((ps.requestId && ps.status === "confirmed") ||
+          (ps.orderId && (ps.status === "ordered" || ps.status === "cancelled"))
             ? { status: "planned" }
             : {}),
         },
@@ -338,6 +380,9 @@ async function buildWork(): Promise<Work> {
           lastSelectedAt: null,
         },
       });
+
+  // Dependente antes do que é dependido (ver DELETE_ORDER).
+  deletes.sort((a, b) => deleteRank(a.table) - deleteRank(b.table));
 
   const counterIds = counters
     .filter((c) => COUNTERS.includes(c.key))
@@ -375,15 +420,31 @@ export async function planSalesReset(user: User): Promise<ResetPlan> {
   return (await buildWork()).plan;
 }
 
-/** Roda em lotes (o Appwrite apaga uma linha por vez). */
+/**
+ * Roda em lotes (o Appwrite apaga uma linha por vez). Para antes do lote
+ * seguinte se o tempo acabou; devolve se terminou tudo.
+ */
 async function inBatches<T>(
   items: T[],
   size: number,
   fn: (item: T) => Promise<unknown>,
+  deadline = Infinity,
 ) {
-  for (let i = 0; i < items.length; i += size)
-    await Promise.all(items.slice(i, i + size).map(fn));
+  for (let i = 0; i < items.length; i += size) {
+    if (Date.now() >= deadline) return false;
+    // Espera o lote inteiro antes de acusar a falha: nada fica rodando depois.
+    const results = await Promise.allSettled(items.slice(i, i + size).map(fn));
+    const failed = results.find((r) => r.status === "rejected");
+    if (failed) throw failed.reason;
+  }
+  return true;
 }
+
+/**
+ * Tempo de uma rodada. A página dá 300 s à ação (maxDuration); a rodada para
+ * bem antes, para sobrar tempo de mostrar a tela com "ainda restam N".
+ */
+export const RESET_BUDGET_MS = 120_000;
 
 /**
  * Apaga as vendas de teste. Só admin, com a palavra de confirmação.
@@ -392,10 +453,12 @@ async function inBatches<T>(
 export async function resetSalesData(
   user: User,
   confirm: string,
-): Promise<ResetPlan> {
+  { budgetMs = RESET_BUDGET_MS }: { budgetMs?: number } = {},
+): Promise<ResetPlan & { finished: boolean }> {
   if (!isAdmin(user)) throw new Error("forbidden");
   if (confirm.trim().toUpperCase() !== RESET_CONFIRM_WORD)
     throw new Error("reset_confirm");
+  const deadline = Date.now() + budgetMs;
   const store = getStore();
   const work = await buildWork();
   // Registro que já sumiu (outra limpeza rodando junto, ou uma rodada
@@ -413,29 +476,55 @@ export async function resetSalesData(
   };
   // Primeiro desliga o que fica, depois apaga (nada aponta para o que sumiu),
   // por fim os arquivos e a numeração.
-  await inBatches(work.updates, 10, (u) =>
-    tolerant(u.table, u.id, () =>
-      store.update(u.table, u.id, u.patch as never),
-    ),
+  const unlinked = await inBatches(
+    work.updates,
+    10,
+    (u) =>
+      tolerant(u.table, u.id, () =>
+        store.update(u.table, u.id, u.patch as never),
+      ),
+    deadline,
   );
   // O arquivo sai junto com o documento (antes da linha): se parar no meio,
   // a próxima rodada ainda acha o documento e termina.
-  await inBatches(work.deletes, 10, async (d) => {
-    const key = d.table === "documents" ? work.files.get(d.id) : undefined;
-    if (key) await store.removeFile(key);
-    await tolerant(d.table, d.id, () => store.remove(d.table, d.id));
-  });
-  await inBatches(work.counterIds, 10, (id) =>
-    tolerant("counters", id, () => store.remove("counters", id)),
-  );
+  // Um grupo da ordem (DELETE_ORDER) termina antes do próximo começar: um
+  // lote nunca mistura o documento com a foto que aponta para ele.
+  let finished = unlinked;
+  for (const group of deleteGroups(work.deletes)) {
+    if (!finished) break;
+    finished = await inBatches(
+      group,
+      10,
+      async (d) => {
+        const key = d.table === "documents" ? work.files.get(d.id) : undefined;
+        if (key) await store.removeFile(key);
+        await tolerant(d.table, d.id, () => store.remove(d.table, d.id));
+      },
+      deadline,
+    );
+  }
+  // A numeração só recomeça com tudo apagado e nenhuma venda nova criada
+  // durante a limpeza (senão o próximo pedido repetiria um número).
+  if (finished) {
+    const [leftOrders, leftRequests] = await Promise.all([
+      store.list("orders", { limit: 1 }),
+      store.list("requests", { limit: 1 }),
+    ]);
+    if (!leftOrders.length && !leftRequests.length)
+      await inBatches(work.counterIds, 10, (id) =>
+        tolerant("counters", id, () => store.remove("counters", id)),
+      );
+  }
   await audit(
     user,
     "data.reset",
     "system",
     "sales",
-    `Limpeza dos dados de teste (vendas): ${work.plan.total} registros apagados, ${work.plan.unlink} desligados`,
+    finished
+      ? `Limpeza dos dados de teste (vendas): ${work.plan.total} registros apagados, ${work.plan.unlink} desligados`
+      : `Limpeza dos dados de teste (vendas) parou no limite de tempo: continua na próxima rodada`,
     null,
-    { ...work.plan },
+    { ...work.plan, finished },
   );
-  return work.plan;
+  return { ...work.plan, finished };
 }
