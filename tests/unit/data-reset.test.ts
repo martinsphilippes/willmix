@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -21,6 +21,7 @@ const { requestProductSuggestion } =
 const { registerSupplierPayment } =
   await import("@/lib/services/supplier-payment");
 const reset = await import("@/lib/services/data-reset");
+const { addMeasurement } = await import("@/lib/services/sourcing");
 const { SHEET_PHOTO_KINDS } = await import("@/lib/services/purchase-sheet");
 type User = import("@/lib/db").User;
 
@@ -202,7 +203,9 @@ describe("limpar dados de teste (vendas)", () => {
     const freeFile = await uploadDocument(
       joao,
       new File([new Uint8Array([4, 4])], "livre.png", { type: "image/png" }),
-      { type: "photo" } as never,
+      // Anexo que ficou pela metade: o documento aponta para a solicitação,
+      // mas a busca não. A busca fica, então a foto dela também.
+      { type: "photo", requestId: request.id } as never,
     );
     const freeLookup = await store.create("product_lookups", {
       userId: joao.id,
@@ -255,6 +258,21 @@ describe("limpar dados de teste (vendas)", () => {
       filter: { requestId: demand.id },
     });
     expect(demandItem).toBeTruthy();
+    // Medição (com foto) do item sob demanda: sai junto com ele.
+    const demandMeasurement = await addMeasurement(
+      admin,
+      "sourcing_item",
+      demandItem.id,
+      {
+        kind: "weight_net",
+        declaredValue: null,
+        measuredValue: 1.2,
+        unit: "kg",
+        photo: new File([new Uint8Array([6, 6])], "peso.png", {
+          type: "image/png",
+        }),
+      },
+    );
     // Arte de kit (tem o produto, mas é da venda do kit).
     const kitDoc = await uploadDocument(
       admin,
@@ -307,6 +325,9 @@ describe("limpar dados de teste (vendas)", () => {
     expect(await store.get("documents", quoteDoc.id)).toBeNull();
     expect(await store.statFile(quoteDoc.storageKey)).toBeNull();
     expect(await store.get("sourcing_items", demandItem.id)).toBeNull();
+    expect(await store.get("measurements", demandMeasurement.id)).toBeNull();
+    const measurementDoc = demandMeasurement.photoDocumentId!;
+    expect(await store.get("documents", measurementDoc)).toBeNull();
     expect(await store.get("documents", kitDoc.id)).toBeNull();
     expect(await store.get("purchase_sheets", leftover.id)).toBeNull();
 
@@ -343,7 +364,10 @@ describe("limpar dados de teste (vendas)", () => {
     expect(await store.get("documents", lookupFile.id)).toBeNull();
     expect(await store.statFile(lookupFile.storageKey)).toBeNull();
     expect(await store.get("product_lookups", freeLookup.id)).not.toBeNull();
-    expect(await store.get("documents", freeFile.id)).not.toBeNull();
+    expect(await store.get("documents", freeFile.id)).toMatchObject({
+      requestId: null,
+    });
+    expect(await store.statFile(freeFile.storageKey)).not.toBeNull();
     const links = await store.list("product_suppliers", {
       filter: { productId: "prod-jarra" },
     });
@@ -435,6 +459,82 @@ describe("limpar dados de teste (vendas)", () => {
     expect(
       (await store.list("counters")).some((c) => c.key === "order_number"),
     ).toBe(false);
+  });
+
+  it("tempo acabando no meio de apagar: para, mantém a numeração e continua depois", async () => {
+    const store = getStore();
+    await sale();
+    await sale();
+    const before = await reset.planSalesReset(admin);
+    // Cada conferência do relógio avança 300 ms; a rodada tem 1 s.
+    const base = Date.now();
+    let calls = 0;
+    const clock = vi
+      .spyOn(Date, "now")
+      .mockImplementation(() => base + 300 * calls++);
+    let partial;
+    try {
+      partial = await reset.resetSalesData(admin, "APAGAR", {
+        budgetMs: 1000,
+      });
+    } finally {
+      clock.mockRestore();
+    }
+    expect(partial.finished).toBe(false);
+    expect(partial.countersReset).toBe(false);
+    const left = (await reset.planSalesReset(admin)).total;
+    expect(left).toBeGreaterThan(0);
+    expect(left).toBeLessThan(before.total);
+    expect(
+      (await store.list("counters")).some((c) => c.key === "order_number"),
+    ).toBe(true);
+    const history = await store.list("audit_log");
+    expect(
+      history.some(
+        (a) =>
+          a.action === "data.reset" && /limite de tempo/.test(a.summary ?? ""),
+      ),
+    ).toBe(true);
+    const done = await reset.resetSalesData(admin, "APAGAR");
+    expect(done).toMatchObject({ finished: true, countersReset: true });
+    expect((await reset.planSalesReset(admin)).total).toBe(0);
+  });
+
+  it("venda criada durante a limpeza fica e a numeração não recomeça", async () => {
+    const store = getStore();
+    await sale();
+    const realRemove = store.remove.bind(store);
+    let created: { id: string } | null = null;
+    try {
+      store.remove = (async (table: string, id: string) => {
+        // Um cliente cria uma solicitação enquanto a limpeza apaga.
+        if (!created && table === "requests")
+          created = await r.createRequest(joao, {
+            customerId: "cliente-joao",
+            productId: "prod-jarra",
+            productName: "Jarra",
+            description: "Venda de verdade",
+            specification: null,
+            quantity: 10,
+            unit: "un",
+            deadline: null,
+            notes: null,
+          });
+        return realRemove(table as never, id);
+      }) as typeof store.remove;
+      const result = await reset.resetSalesData(admin, "APAGAR");
+      expect(result).toMatchObject({ finished: true, countersReset: false });
+    } finally {
+      store.remove = realRemove;
+    }
+    expect(created).not.toBeNull();
+    expect(await store.get("requests", created!.id)).not.toBeNull();
+    expect(
+      (await store.list("counters")).some((c) => c.key === "request_number"),
+    ).toBe(true);
+    // Próxima rodada (o admin decide): apaga e aí sim recomeça.
+    const next = await reset.resetSalesData(admin, "APAGAR");
+    expect(next).toMatchObject({ finished: true, countersReset: true });
   });
 
   it("rodar de novo só apaga o que sobrou (continua se parou no meio)", async () => {

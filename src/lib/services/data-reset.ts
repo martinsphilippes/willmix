@@ -110,6 +110,14 @@ function deleteGroups(deletes: Work["deletes"]) {
 /** Contadores da numeração (#1 de novo). */
 const COUNTERS = ["request_number", "order_number"];
 
+/** Resultado de uma rodada da limpeza. */
+export interface ResetResult extends ResetPlan {
+  /** Apagou tudo o que estava previsto (false: parou no limite de tempo). */
+  finished: boolean;
+  /** A numeração recomeçou do #1 (não recomeça se surgiu venda nova). */
+  countersReset: boolean;
+}
+
 export interface ResetPlan {
   /** Quantos registros de cada tipo vão ser apagados. */
   remove: {
@@ -248,8 +256,14 @@ async function buildWork(): Promise<Work> {
   for (const l of lookups) if (l.requestId) drop("product_lookups", l.id);
 
   // Medições e revisões de venda.
+  // (Também a medição do item de sourcing que sai: medições vêm antes do
+  // sourcing na ordem de apagar, então a regra vale na rodada seguinte.)
   for (const m of measurements)
-    if (SALES_ENTITIES.has(m.entity) || isSale(m.entityId))
+    if (
+      SALES_ENTITIES.has(m.entity) ||
+      isSale(m.entityId) ||
+      (m.entity === "sourcing_item" && sourcingGone.has(m.entityId))
+    )
       drop("measurements", m.id);
   for (const r of reviews)
     if (r.orderId || SALES_ENTITIES.has(r.entity) || isSale(r.entityId))
@@ -454,7 +468,7 @@ export async function resetSalesData(
   user: User,
   confirm: string,
   { budgetMs = RESET_BUDGET_MS }: { budgetMs?: number } = {},
-): Promise<ResetPlan & { finished: boolean }> {
+): Promise<ResetResult> {
   if (!isAdmin(user)) throw new Error("forbidden");
   if (confirm.trim().toUpperCase() !== RESET_CONFIRM_WORD)
     throw new Error("reset_confirm");
@@ -474,57 +488,79 @@ export async function resetSalesData(
       if (await store.get(table, id)) throw error;
     }
   };
-  // Primeiro desliga o que fica, depois apaga (nada aponta para o que sumiu),
-  // por fim os arquivos e a numeração.
-  const unlinked = await inBatches(
-    work.updates,
-    10,
-    (u) =>
-      tolerant(u.table, u.id, () =>
-        store.update(u.table, u.id, u.patch as never),
-      ),
-    deadline,
-  );
-  // O arquivo sai junto com o documento (antes da linha): se parar no meio,
-  // a próxima rodada ainda acha o documento e termina.
-  // Um grupo da ordem (DELETE_ORDER) termina antes do próximo começar: um
-  // lote nunca mistura o documento com a foto que aponta para ele.
-  let finished = unlinked;
-  for (const group of deleteGroups(work.deletes)) {
-    if (!finished) break;
+  // O que de fato foi feito (para o histórico, mesmo se parar no meio).
+  const done = { unlinked: 0, deleted: 0 };
+  let finished = false;
+  let countersReset = false;
+  let failure: unknown = null;
+  try {
+    // Primeiro desliga o que fica, depois apaga (nada aponta para o que
+    // sumiu), por fim a numeração.
     finished = await inBatches(
-      group,
+      work.updates,
       10,
-      async (d) => {
-        const key = d.table === "documents" ? work.files.get(d.id) : undefined;
-        if (key) await store.removeFile(key);
-        await tolerant(d.table, d.id, () => store.remove(d.table, d.id));
+      async (u) => {
+        await tolerant(u.table, u.id, () =>
+          store.update(u.table, u.id, u.patch as never),
+        );
+        done.unlinked++;
       },
       deadline,
     );
-  }
-  // A numeração só recomeça com tudo apagado e nenhuma venda nova criada
-  // durante a limpeza (senão o próximo pedido repetiria um número).
-  if (finished) {
-    const [leftOrders, leftRequests] = await Promise.all([
-      store.list("orders", { limit: 1 }),
-      store.list("requests", { limit: 1 }),
-    ]);
-    if (!leftOrders.length && !leftRequests.length)
-      await inBatches(work.counterIds, 10, (id) =>
-        tolerant("counters", id, () => store.remove("counters", id)),
+    // O arquivo sai junto com o documento (antes da linha): se parar no
+    // meio, a próxima rodada ainda acha o documento e termina. Um grupo da
+    // ordem (DELETE_ORDER) termina antes do próximo começar: um lote nunca
+    // mistura o documento com a foto que aponta para ele.
+    for (const group of deleteGroups(work.deletes)) {
+      if (!finished) break;
+      finished = await inBatches(
+        group,
+        10,
+        async (d) => {
+          const key =
+            d.table === "documents" ? work.files.get(d.id) : undefined;
+          if (key) await store.removeFile(key);
+          await tolerant(d.table, d.id, () => store.remove(d.table, d.id));
+          done.deleted++;
+        },
+        deadline,
       );
+    }
+    // A numeração só recomeça com tudo apagado e nenhuma venda nova criada
+    // durante a limpeza (senão o próximo pedido repetiria um número).
+    if (finished) {
+      const [leftOrders, leftRequests] = await Promise.all([
+        store.list("orders", { limit: 1 }),
+        store.list("requests", { limit: 1 }),
+      ]);
+      if (!leftOrders.length && !leftRequests.length) {
+        await inBatches(work.counterIds, 10, (id) =>
+          tolerant("counters", id, () => store.remove("counters", id)),
+        );
+        countersReset = true;
+      }
+    }
+  } catch (error) {
+    failure = error;
   }
-  await audit(
-    user,
-    "data.reset",
-    "system",
-    "sales",
-    finished
-      ? `Limpeza dos dados de teste (vendas): ${work.plan.total} registros apagados, ${work.plan.unlink} desligados`
-      : `Limpeza dos dados de teste (vendas) parou no limite de tempo: continua na próxima rodada`,
-    null,
-    { ...work.plan, finished },
-  );
-  return { ...work.plan, finished };
+  // Histórico sempre, inclusive quando parou no meio ou falhou.
+  const summary = failure
+    ? `Limpeza dos dados de teste (vendas) falhou no meio: ${done.deleted} de ${work.plan.total} registros apagados; rode de novo para terminar`
+    : finished
+      ? `Limpeza dos dados de teste (vendas): ${done.deleted} registros apagados, ${done.unlinked} desligados${countersReset ? "" : "; numeração mantida (vendas novas durante a limpeza)"}`
+      : `Limpeza dos dados de teste (vendas) parou no limite de tempo: ${done.deleted} de ${work.plan.total} registros apagados; continua na próxima rodada`;
+  try {
+    await audit(user, "data.reset", "system", "sales", summary, null, {
+      planned: work.plan,
+      ...done,
+      finished,
+      countersReset,
+      error: failure ? String((failure as Error)?.message ?? failure) : null,
+    });
+  } catch (auditError) {
+    // A falha da limpeza é a que importa; a do histórico não a esconde.
+    if (!failure) throw auditError;
+  }
+  if (failure) throw failure;
+  return { ...work.plan, finished, countersReset };
 }

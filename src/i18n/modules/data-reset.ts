@@ -22,6 +22,10 @@ export const pt = {
   "reset.row.aiSuggestions": "Sugestões da IA",
   "reset.row.kits": "Kits de marketing",
   "reset.row.sourcing": "Itens de sourcing criados por solicitações",
+  "reset.newData":
+    "Existem {n} registros de venda criados depois da limpeza. Podem ser vendas reais: confira antes de apagar de novo.",
+  "reset.countersKept":
+    "A numeração não recomeçou porque surgiram vendas novas durante a limpeza.",
   "reset.remaining":
     "Ainda restam {n} registros (há um limite por vez). Toque em Apagar de novo para terminar.",
   "reset.row.other":
@@ -63,6 +67,10 @@ export const en: Record<keyof typeof pt, string> = {
   "reset.row.aiSuggestions": "AI suggestions",
   "reset.row.kits": "Marketing kits",
   "reset.row.sourcing": "Sourcing items created by requests",
+  "reset.newData":
+    "There are {n} sales records created after the cleanup. They may be real sales: check before deleting again.",
+  "reset.countersKept":
+    "Numbering did not restart because new sales appeared during the cleanup.",
   "reset.remaining":
     "{n} records are still left (there is a limit per run). Tap Delete again to finish.",
   "reset.row.other":
@@ -103,6 +111,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "reset.row.aiSuggestions": "AI 建议",
   "reset.row.kits": "营销素材包",
   "reset.row.sourcing": "由需求创建的寻源项目",
+  "reset.newData":
+    "清理之后又新建了 {n} 条销售记录，可能是真实销售：再次删除前请先核对。",
+  "reset.countersKept": "清理期间出现了新的销售，因此编号没有重新开始。",
   "reset.remaining":
     "仍剩余 {n} 条记录（每次有数量上限）。请再次点击删除以完成。",
   "reset.row.other":
