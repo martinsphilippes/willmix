@@ -122,7 +122,7 @@ export function SuppliersCard({
                           <span className="font-medium text-zinc-900 tabular-nums">
                             {formatMoney(link.price, link.currency, t)}
                           </span>
-                          {link.leadTimeDays
+                          {link.leadTimeDays != null
                             ? ` · ${t("productSuppliers.leadTime", { days: link.leadTimeDays })}`
                             : ""}
                           {link.moq

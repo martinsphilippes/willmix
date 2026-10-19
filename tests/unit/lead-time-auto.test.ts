@@ -15,8 +15,11 @@ describe("prazo de produção pela programação 1", () => {
     expect(leadTimeFromLots([lot(45), lot(30), lot(30)])).toBe(45);
   });
 
-  it("zero vale (mercadoria pronta no início da produção)", () => {
+  it("zero vale (mercadoria pronta no início da produção); sem teto além do da ficha", () => {
     expect(leadTimeFromLots([lot(0)])).toBe(0);
+    // Mesma regra da ficha: o que ela aceita como programação 1 completa
+    // também é prazo (nada de envio recusado sem campo apontado).
+    expect(leadTimeFromLots([lot(4500)])).toBe(4500);
   });
 
   it("sem programação 1 (ou inválida) não há prazo", () => {
@@ -25,6 +28,5 @@ describe("prazo de produção pela programação 1", () => {
     expect(leadTimeFromLots([lot(null)])).toBeNull();
     expect(leadTimeFromLots([lot(-3)])).toBeNull();
     expect(leadTimeFromLots([lot(4.5)])).toBeNull();
-    expect(leadTimeFromLots([lot(9999)])).toBeNull();
   });
 });

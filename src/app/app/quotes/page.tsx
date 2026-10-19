@@ -173,7 +173,7 @@ export default async function QuotesPage({
                         {q.price !== null && sent
                           ? formatMoney(q.price, q.currency, t)
                           : "—"}
-                        {q.leadTimeDays && sent ? (
+                        {q.leadTimeDays != null && sent ? (
                           <span className="block text-xs text-zinc-500">
                             {t("quoteSent.lead", { days: q.leadTimeDays })}
                           </span>
