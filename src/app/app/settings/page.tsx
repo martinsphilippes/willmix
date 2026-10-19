@@ -18,6 +18,7 @@ import {
   Card,
   Field,
   Input,
+  LinkButton,
   PageHeader,
   Select,
   Textarea,
@@ -148,6 +149,12 @@ export default async function SettingsPage({
         help={{ body: "help.settings.body" }}
         t={t}
         title={t("settings.title")}
+        actions={
+          // Só admin chega aqui: apagar as vendas de teste e recomeçar.
+          <LinkButton href="/app/settings/reset" variant="danger">
+            {t("reset.link")}
+          </LinkButton>
+        }
       />
       {ok ? <Alert tone="success">{t("settings.saved")}</Alert> : null}
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
