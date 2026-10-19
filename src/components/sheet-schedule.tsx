@@ -436,10 +436,13 @@ export function SheetSchedule({
     const cbm = form.cbmPerCarton;
     if (cbm === null || cbm <= 0) return null;
     if (cbm >= 1)
-      return fill(cbm === plan.cbmFromSize ? labels.cbmHighSize : labels.cbmHigh, {
-        cbm: fmt(cbm, 4),
-        capacity: capacity ? fmt(capacity, 0) : "68",
-      });
+      return fill(
+        cbm === plan.cbmFromSize ? labels.cbmHighSize : labels.cbmHigh,
+        {
+          cbm: fmt(cbm, 4),
+          capacity: capacity ? fmt(capacity, 0) : "68",
+        },
+      );
     const size = plan.cbmFromSize;
     if (size && (cbm / size > 2 || size / cbm > 2))
       return fill(labels.cbmMismatch, { cbm: fmt(cbm, 4), size: fmt(size, 4) });
@@ -606,10 +609,12 @@ export function SheetSchedule({
         )
       ) : null}
       <div className="-mx-3 mt-2 overflow-x-auto px-3 sm:mx-0 sm:px-0">
-        <table className="min-w-[34rem] text-[13px]">
+        {/* Bordas nas células (não na linha): a linha que falta ganha uma
+            moldura vermelha com cantos arredondados, como as fotos da ficha. */}
+        <table className="min-w-[34rem] border-separate border-spacing-0 text-[13px]">
           <thead>
-            <tr className="text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              <th className={cx(th, "w-12 pr-3")}>{labels.lotColumn}</th>
+            <tr className="whitespace-nowrap text-left text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+              <th className={cx(th, "w-12 pl-3 pr-3")}>{labels.lotColumn}</th>
               <th className={cx(th, "w-28 pr-3")}>{labels.interval}</th>
               <th className={cx(th, "w-32 pr-3")}>{labels.cartons}</th>
               <th className={cx(th, "w-24 pr-3 text-right")}>
@@ -627,15 +632,15 @@ export function SheetSchedule({
               <tr
                 key={lot.index}
                 className={cx(
-                  "scroll-mt-24 border-t border-zinc-100",
-                  lot.index === 1 &&
-                    lot1Open &&
-                    "bg-red-50 outline-2 -outline-offset-2 outline-red-400",
+                  "scroll-mt-24",
+                  lot.index === 1 && lot1Open
+                    ? "[&>td]:border-y [&>td]:border-red-400 [&>td]:bg-red-50 [&>td:first-child]:rounded-l-lg [&>td:first-child]:border-l [&>td:last-child]:rounded-r-lg [&>td:last-child]:border-r"
+                    : "[&>td]:border-t [&>td]:border-zinc-100",
                 )}
                 data-field-anchor={lot.index === 1 ? "lot1" : undefined}
                 data-missing={lot.index === 1 && lot1Open ? "true" : undefined}
               >
-                <td className="relative py-1.5 pr-3 font-semibold text-zinc-800">
+                <td className="relative py-1.5 pl-3 pr-3 font-semibold text-zinc-800">
                   {lot.index}
                   {lot.index === 1 && lotRequired ? (
                     <span
@@ -694,7 +699,7 @@ export function SheetSchedule({
                     </span>
                   ) : null}
                 </td>
-                <td className="py-1.5 pl-1 text-right">
+                <td className="py-1.5 pl-1 pr-1.5 text-right">
                   {!disabled && shown > 1 ? (
                     <button
                       type="button"
@@ -1084,7 +1089,9 @@ function ScheduleGenerator({
       <TotalSource
         auto={auto}
         unit={unit}
-        touched={totalTouched && autoCartons !== null && totalText !== autoCartons}
+        touched={
+          totalTouched && autoCartons !== null && totalText !== autoCartons
+        }
         labels={labels}
         fmt={fmt}
         onUseCalc={() => {
