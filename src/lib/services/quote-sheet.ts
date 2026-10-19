@@ -4,6 +4,7 @@ import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import {
   getStore,
   type ProductPhoto,
+  type PurchaseLot,
   type PurchaseSheet,
   type Quote,
   type Request,
@@ -131,11 +132,12 @@ async function prefillQuoteBase(
     link?.currency ?? (own ? (product?.currency ?? null) : null);
   const ownMoq = link?.moq ?? (own ? (product?.moq ?? null) : null);
   // Programação de entregas pedida pelo cliente vira as programações da ficha.
-  const requestLots =
+  const requestLots = supplierLot1(
     scheduleToLots(
       request.schedule,
       master?.masterCartonQty ?? product?.masterBoxQty ?? null,
-    ) ?? normalizeLots(null);
+    ) ?? normalizeLots(null),
+  );
   // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
   // desta cotação prevalecem.
   // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
@@ -151,7 +153,9 @@ async function prefillQuoteBase(
       price: quote.price ?? ownPrice,
       moq: ownMoq,
       // Sem caixas pela quantidade por caixa do cadastro (seria a do vencedor).
-      lots: scheduleToLots(request.schedule, null) ?? normalizeLots(null),
+      lots: supplierLot1(
+        scheduleToLots(request.schedule, null) ?? normalizeLots(null),
+      ),
     };
   if (master)
     return {
@@ -186,6 +190,17 @@ async function prefillQuoteBase(
     ncm: product?.ncm ?? null,
     lots: requestLots,
   };
+}
+
+/**
+ * A 1ª programação começa sem o "Saída em (dias)": é o prazo de produção da
+ * cotação, e só o fornecedor pode dizer. O intervalo do cliente vale para as
+ * programações seguintes (entre uma entrega e outra), não para produzir.
+ */
+function supplierLot1(lots: PurchaseLot[]): PurchaseLot[] {
+  return lots.map((lot, i) =>
+    i === 0 ? { ...lot, departureIntervalDays: null } : lot,
+  );
 }
 
 /**

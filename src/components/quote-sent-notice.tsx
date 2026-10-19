@@ -32,7 +32,9 @@ export async function QuoteSentNotice({
       ? t("requests.numbered", { n: view.requestNumber })
       : null,
     view.price !== null ? formatMoney(view.price, view.currency, t) : null,
-    view.leadTimeDays ? t("quoteSent.lead", { days: view.leadTimeDays }) : null,
+    view.leadTimeDays != null
+      ? t("quoteSent.lead", { days: view.leadTimeDays })
+      : null,
   ].filter(Boolean);
   return (
     <section

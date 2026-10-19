@@ -20,10 +20,9 @@ export function leadTimeFromLots(
   lots: readonly PurchaseLot[] | null | undefined,
 ): number | null {
   const days = lots?.[0]?.departureIntervalDays;
-  return typeof days === "number" &&
-    Number.isInteger(days) &&
-    days >= 0 &&
-    days <= 3650
+  // Mesma regra da ficha (inteiro a partir de 0): o que a ficha aceita como
+  // programação 1 completa também vale como prazo.
+  return typeof days === "number" && Number.isInteger(days) && days >= 0
     ? days
     : null;
 }

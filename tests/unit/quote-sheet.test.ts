@@ -172,4 +172,40 @@ describe("ficha de compra na cotação", () => {
       qs.saveQuoteSheet(supplierA, quote.id, { price: 3 }),
     ).rejects.toThrow();
   });
+
+  it("programação do cliente preenche a ficha, menos o prazo de produção (programação 1)", async () => {
+    const store = getStore();
+    const { leadTimeFromLots } =
+      await import("@/lib/services/purchase-sheet-calc");
+    const request = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: "prod-panela",
+      productName: "Panela",
+      description: "Duas entregas",
+      specification: null,
+      quantity: 1000,
+      unit: "un",
+      deadline: null,
+      schedule: {
+        intervalDays: 60,
+        firstDate: "2027-01-10",
+        items: [
+          { index: 1, quantity: 500, expectedAt: "2027-01-10" },
+          { index: 2, quantity: 500, expectedAt: "2027-03-11" },
+        ],
+      },
+    } as never);
+    await r.openRfq(admin, request.id, ["fornecedor-a"]);
+    const [quote] = await store.list("quotes", {
+      filter: { requestId: request.id, supplierId: "fornecedor-a" },
+    });
+    const view = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
+    // Caixas das duas entregas e o intervalo entre elas vêm do cliente; o
+    // "Saída em (dias)" da 1ª é o prazo de produção: só o fornecedor diz.
+    expect(view.sheet.lots![0].departureIntervalDays).toBeNull();
+    expect(view.sheet.lots![0].masterCartons).toBeGreaterThan(0);
+    expect(view.sheet.lots![1]).toMatchObject({ departureIntervalDays: 60 });
+    expect(view.missing).toContain("lot1");
+    expect(leadTimeFromLots(view.sheet.lots)).toBeNull();
+  });
 });
