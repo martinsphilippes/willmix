@@ -11,6 +11,26 @@ import { cbmFromDimensions } from "@/lib/logistics/cbm";
 
 export const MAX_LOTS = 6;
 
+/**
+ * Prazo de produção da cotação: o "Saída em (dias)" da programação 1, ou seja,
+ * os dias entre o início da produção e a saída da 1ª remessa. O fornecedor
+ * já informa isso na ficha; não digita o prazo de novo.
+ */
+export function leadTimeFromLots(
+  lots: readonly PurchaseLot[] | null | undefined,
+): number | null {
+  const days = lots?.[0]?.departureIntervalDays;
+  return typeof days === "number" &&
+    Number.isInteger(days) &&
+    days >= 0 &&
+    days <= 3650
+    ? days
+    : null;
+}
+
+/** Aviso (no navegador) de que o "Saída em (dias)" da programação 1 mudou. */
+export const LOT1_INTERVAL_EVENT = "sheet:lot1-interval";
+
 export interface LotPlan {
   index: number;
   departureIntervalDays: number | null;

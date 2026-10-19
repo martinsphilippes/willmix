@@ -38,7 +38,11 @@ import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import { SheetSafety } from "@/components/sheet-safety";
 import { ActionError } from "@/components/action-error";
 import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
-import { isPiecesUnit } from "@/lib/services/purchase-sheet-calc";
+import {
+  isPiecesUnit,
+  leadTimeFromLots,
+} from "@/lib/services/purchase-sheet-calc";
+import { LeadTimeAuto } from "@/components/lead-time-auto";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
@@ -58,7 +62,6 @@ export default async function QuotePage({
     adopted,
     at: saveToken,
     fields: invalidFields,
-    missing: missingParam,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -87,18 +90,11 @@ export default async function QuotePage({
   // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
   const canFillSheet = !!sheetView && sheetView.access.editSupplier;
   const errorCode = typeof error === "string" ? error : "";
-  // Envio recusado: o que falta na ficha e, fora dela, o prazo de produção
-  // (só o envio o lê; vem na volta como ?missing=leadTimeDays).
+  // Envio recusado: o que falta na ficha. O prazo de produção não é mais
+  // digitado (vem da programação 1, que já está na lista do que falta).
   const sendRefused =
     errorCode === "sheet_incomplete" || errorCode === "lead_time_required";
-  const shownMissing = [
-    ...(sheetView?.missing ?? []),
-    ...(sendRefused &&
-    typeof missingParam === "string" &&
-    missingParam.split(",").includes("leadTimeDays")
-      ? ["leadTimeDays"]
-      : []),
-  ];
+  const shownMissing = sheetView?.missing ?? [];
   const errorKeys = [
     `quoteSheet.error.${errorCode}`,
     `sheet.error.${errorCode}`,
@@ -393,19 +389,19 @@ export default async function QuotePage({
           >
             {/* Prazo (curto) e condições lado a lado em telas grandes. */}
             <div className="grid gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-4">
+              {/* Prazo de produção: vem da programação 1 (não é digitado). */}
               <FieldRow
-                label={t("quoteSheet.leadTime")}
-                size="xs"
+                label={t("quoteSheet.leadTimeLabel")}
+                size="full"
                 anchor="leadTimeDays"
               >
-                <input
-                  form="quote-sheet"
-                  name="leadTimeDays"
-                  type="number"
-                  min="1"
-                  max="3650"
-                  defaultValue={quote.leadTimeDays ?? ""}
-                  className={inputDenseClass}
+                <LeadTimeAuto
+                  initial={leadTimeFromLots(sheetView.sheet.lots)}
+                  labels={{
+                    days: t("quoteSheet.leadTimeAuto", { days: "{days}" }),
+                    pending: t("quoteSheet.leadTimePending"),
+                    hint: t("quoteSheet.leadTimeHint"),
+                  }}
                 />
               </FieldRow>
               <FieldRow
