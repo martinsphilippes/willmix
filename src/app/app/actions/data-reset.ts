@@ -14,7 +14,14 @@ export async function resetSalesDataAction(form: FormData) {
     assertRole(user, ["admin"]);
     const confirm = z.string().max(20).parse(str(form, "confirm"));
     const { resetSalesData } = await import("@/lib/services/data-reset");
-    await resetSalesData(user, confirm);
-    return "/app/settings/reset?done=1";
+    const result = await resetSalesData(user, confirm);
+    // partial: parou no limite de tempo (tocar de novo continua);
+    // new: terminou, mas surgiram vendas durante a limpeza (numeração mantida).
+    const done = !result.finished
+      ? "partial"
+      : result.countersReset
+        ? "1"
+        : "new";
+    return `/app/settings/reset?done=${done}`;
   });
 }

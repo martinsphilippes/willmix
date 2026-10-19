@@ -60,17 +60,26 @@ export default async function ResetPage({
           </TextLink>
         }
       />
-      {done === "1" && !errorText ? (
-        plan.total > 0 ? (
-          // Parou no limite de uma rodada: tocar de novo termina.
+      {typeof done === "string" && done && !errorText ? (
+        plan.total === 0 ? (
+          <Alert tone="success">
+            <span data-reset-done="">{t("reset.done")}</span>
+          </Alert>
+        ) : done === "partial" ? (
+          // Parou no limite de uma rodada: tocar de novo continua.
           <Alert tone="warning">
             <span data-reset-remaining="">
               {t("reset.remaining", { n: plan.total })}
             </span>
           </Alert>
         ) : (
-          <Alert tone="success">
-            <span data-reset-done="">{t("reset.done")}</span>
+          // Terminou, mas há vendas criadas depois (ou durante): podem ser
+          // reais, então não pede para apagar de novo.
+          <Alert tone="warning">
+            <span data-reset-new="">
+              {t("reset.newData", { n: plan.total })}
+              {done === "new" ? ` ${t("reset.countersKept")}` : ""}
+            </span>
           </Alert>
         )
       ) : null}
