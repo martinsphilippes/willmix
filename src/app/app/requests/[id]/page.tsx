@@ -695,7 +695,9 @@ export default async function RequestDetailPage({
                             : t("requests.quotes.waiting")}
                         </Td>
                         <Td className="tabular-nums">
-                          {q.leadTimeDays ?? "—"}
+                          <span data-quote-lead={q.leadTimeDays ?? ""}>
+                            {q.leadTimeDays ?? "—"}
+                          </span>
                         </Td>
                         <Td>{q.conditions ?? "—"}</Td>
                       </>

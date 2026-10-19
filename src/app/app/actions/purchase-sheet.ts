@@ -8,7 +8,7 @@ import {
   SHEET_PHOTO_KINDS,
 } from "@/lib/services/purchase-sheet";
 import { invalidTarget, parseSheet } from "./sheet-form";
-import { parseNumberInput } from "@/lib/number-input";
+import { leadTimeFromLots } from "@/lib/services/purchase-sheet-calc";
 import {
   files,
   requireUser,
@@ -82,38 +82,30 @@ export async function answerQuoteWithSheetAction(form: FormData) {
       await import("@/lib/services/quote-sheet");
     const { input, invalid } = parseSheet(form);
     const { sheet, missing } = await saveQuoteSheet(user, quoteId, input);
-    // Prazo como na ficha ("30", "30 dias") e condições (quebra de linha
-    // conta como no navegador); ilegível é apontado, vazio entra no "falta".
-    const leadTimeDays = parseNumberInput(str(form, "leadTimeDays"), {
-      int: true,
-    });
+    // Prazo de produção: o "Saída em (dias)" da programação 1 da ficha
+    // gravada (dias entre o início da produção e a 1ª saída). Não é mais
+    // digitado; um valor que chegue no formulário é ignorado.
+    const leadTimeDays = leadTimeFromLots(sheet.lots);
+    // Condições (quebra de linha conta como no navegador).
     const conditions = str(form, "conditions").replace(/\r\n/g, "\n");
-    const leadOk =
-      leadTimeDays === null ||
-      (Number.isInteger(leadTimeDays) &&
-        leadTimeDays > 0 &&
-        leadTimeDays <= 3650);
     const unreadable = [
       ...invalid,
-      ...(leadOk ? [] : ["leadTimeDays"]),
       ...(conditions.length > 2000 ? ["conditions"] : []),
     ];
     // Rascunho: prazo e condições ficam guardados na cotação não enviada.
-    if (form.has("leadTimeDays") || form.has("conditions"))
+    if (form.has("conditions"))
       await saveQuoteTermsDraft(user, quoteId, {
-        leadTimeDays: leadOk ? leadTimeDays : null,
+        leadTimeDays,
         conditions: conditions.slice(0, 2000) || null,
       });
     // Campo ilegível: o resto ficou salvo; não envia e aponta o campo.
     if (unreadable.length) return invalidTarget(back, unreadable);
     if (str(form, "intent") !== "send")
       return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
-    const noLead = leadTimeDays === null ? "&missing=leadTimeDays" : "";
-    // Cada recusa leva de novo até o primeiro campo vazio (token novo).
-    if (missing.length)
-      return `${back}?error=sheet_incomplete${noLead}&at=${Date.now()}`;
-    if (leadTimeDays === null)
-      return `${back}?error=lead_time_required${noLead}&at=${Date.now()}`;
+    // Cada recusa leva de novo até o primeiro campo vazio (token novo). Sem a
+    // programação 1 a ficha já está incompleta ("lot1" no que falta).
+    if (missing.length || leadTimeDays === null)
+      return `${back}?error=sheet_incomplete&at=${Date.now()}`;
     const { answerQuote } = await import("@/lib/services/requests");
     await answerQuote(user, quoteId, {
       price: sheet.price!,

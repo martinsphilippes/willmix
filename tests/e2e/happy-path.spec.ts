@@ -231,7 +231,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.35");
-  await page.fill("input[name=leadTimeDays]", "30");
+  // Prazo de produção não é digitado: vem da programação 1 (30 dias).
+  await expect(page.locator('[data-lead-time-auto="30"]')).toBeVisible();
+  await expect(page.locator("input[name=leadTimeDays]")).toHaveCount(0);
   await page.fill("textarea[name=conditions]", "FOB Shenzhen, 30/70");
   await page
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
@@ -258,7 +260,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.6");
-  await page.fill("input[name=leadTimeDays]", "25");
+  await expect(page.locator('[data-lead-time-auto="30"]')).toBeVisible();
   await page
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
     .click();
@@ -282,6 +284,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(requestUrl);
   await expect(page.getByText("Shenzhen Supplier A").first()).toBeVisible();
   await expect(page.getByText("Guangzhou Supplier B").first()).toBeVisible();
+  // Prazo de produção chega pela programação 1 da ficha (30 dias), sem digitar.
+  await expect(
+    page
+      .locator("tr", { hasText: "Shenzhen Supplier A" })
+      .locator("[data-quote-lead]"),
+  ).toHaveAttribute("data-quote-lead", "30");
   const quoteValue = await page
     .locator("select[name=quoteId] option", { hasText: "Shenzhen" })
     .getAttribute("value");

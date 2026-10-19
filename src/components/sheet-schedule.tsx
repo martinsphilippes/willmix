@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { DRAFT_RESTORE_EVENT } from "./form-draft-guard";
 import type { PurchaseLot } from "@/lib/db/schema";
 import {
+  LOT1_INTERVAL_EVENT,
   MAX_LOTS,
   cartonTotalFor,
   generateLots,
@@ -359,6 +360,14 @@ export function SheetSchedule({
   );
   // Programação 1 marcada como faltando pelo servidor: o vermelho sai assim
   // que a linha ganha caixas e intervalo (digitados ou gerados).
+  // Prazo de produção da cotação acompanha a programação 1 (digitada ou
+  // gerada), sem esperar salvar.
+  const lot1Interval = lots[0]?.interval ?? "";
+  useEffect(() => {
+    document.dispatchEvent(
+      new CustomEvent(LOT1_INTERVAL_EVENT, { detail: lot1Interval }),
+    );
+  }, [lot1Interval]);
   const lot1Open =
     lot1Missing &&
     !(
