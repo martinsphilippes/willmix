@@ -1252,6 +1252,46 @@ export interface FreightQuote extends BaseRow {
   answeredAt: string | null;
 }
 
+/** Onde a ficha lida pela foto do quadro mora. */
+export const SHEET_READING_SCOPES = ["quote", "order", "product"] as const;
+export type SheetReadingScope = (typeof SHEET_READING_SCOPES)[number];
+
+/**
+ * Foto do quadro (a placa que o fornecedor preenche à mão na loja, com o
+ * produto, a balança, a régua e o cartão) lida pela IA. Os valores lidos
+ * preenchem a ficha onde ela está vazia; onde a ficha já tem outro valor,
+ * fica a divergência até a Wellmix dizer qual vale (`resolutions`). A foto
+ * fica guardada como prova do que o fornecedor escreveu.
+ */
+export interface SheetReading extends BaseRow {
+  scope: SheetReadingScope;
+  /** Ficha: purchase_sheets.orderId (id da cotação, do pedido ou do produto). */
+  sheetKey: string;
+  /** Foto do quadro (documento interno). */
+  documentId: string;
+  source: AiSource;
+  model: string | null;
+  /** Valores lidos, com o nome dos campos da ficha (SheetReadingFields). */
+  fields: Record<string, unknown>;
+  /** O que a IA não conseguiu ler e observações. */
+  notes: string | null;
+  rawText: string | null;
+  /**
+   * Decisão da Wellmix em cada divergência: campo → valor que vale e se veio
+   * da foto ou da ficha. Vale enquanto a ficha tiver esse valor.
+   */
+  resolutions: Record<string, SheetReadingResolution> | null;
+  createdByUserId: string;
+}
+
+export interface SheetReadingResolution {
+  /** "photo": a foto estava certa (a ficha passou a ter o valor dela). */
+  choice: "photo" | "sheet";
+  value: string | number | null;
+  byUserId: string;
+  at: string;
+}
+
 /** Busca de produto por foto ou link (tela de nova solicitação). Guarda o que foi achado e sugerido. */
 export interface ProductLookup extends BaseRow {
   userId: string;
@@ -1313,6 +1353,7 @@ export interface Tables {
   purchase_sheets: PurchaseSheet;
   freight_quotes: FreightQuote;
   product_suppliers: ProductSupplier;
+  sheet_readings: SheetReading;
 }
 export type TableName = keyof Tables;
 
@@ -2254,6 +2295,22 @@ export const TABLES: Record<TableName, TableDef> = {
       },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
     ],
+  },
+  sheet_readings: {
+    label: "Fichas lidas pela foto do quadro",
+    columns: {
+      scope: enumOf(SHEET_READING_SCOPES),
+      sheetKey: id(),
+      documentId: id(),
+      source: enumOf(AI_SOURCES),
+      model: str(80),
+      fields: json(),
+      notes: text(),
+      rawText: text(),
+      resolutions: json(),
+      createdByUserId: id(),
+    },
+    indexes: [{ key: "by_sheet", type: "key", columns: ["sheetKey"] }],
   },
 };
 

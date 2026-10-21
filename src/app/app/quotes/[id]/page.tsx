@@ -43,6 +43,8 @@ import {
   leadTimeFromLots,
 } from "@/lib/services/purchase-sheet-calc";
 import { LeadTimeAuto } from "@/components/lead-time-auto";
+import { SheetBoardReader } from "@/components/sheet-board-reader";
+import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
@@ -62,6 +64,7 @@ export default async function QuotePage({
     adopted,
     at: saveToken,
     fields: invalidFields,
+    board,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -254,6 +257,21 @@ export default async function QuotePage({
       {/* Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
           o <form> é display: contents para os cards entrarem na grade. */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        {sheetView && (canFillSheet || isWellmix(user)) ? (
+          // Foto do quadro preenchido à mão: a IA preenche a ficha e aponta
+          // o que diverge (a Wellmix decide qual vale).
+          <SheetBoardReader
+            t={t}
+            scope="quote"
+            sheetKey={quote.id}
+            view={await sheetReadingView(quote.id, sheetView.sheet)}
+            canRead={canFillSheet}
+            canResolve={isWellmix(user)}
+            error={error}
+            board={board}
+            className="lg:col-span-2"
+          />
+        ) : null}
         {sheetView ? (
           <form
             id="quote-sheet"

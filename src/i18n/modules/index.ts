@@ -33,6 +33,7 @@ import * as dateOrder from "./date-order";
 import * as financeFx from "./finance-fx";
 import * as pageHelp from "./page-help";
 import * as dataReset from "./data-reset";
+import * as sheetReading from "./sheet-reading";
 import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as requestProduct from "./request-product";
@@ -83,6 +84,7 @@ export const modulesPt = {
   ...financeFx.pt,
   ...pageHelp.pt,
   ...dataReset.pt,
+  ...sheetReading.pt,
   ...inspectionReport.pt,
   ...sla.pt,
   ...requestProduct.pt,
@@ -140,6 +142,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...financeFx.en,
   ...pageHelp.en,
   ...dataReset.en,
+  ...sheetReading.en,
   ...inspectionReport.en,
   ...sla.en,
   ...requestProduct.en,
@@ -197,6 +200,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...financeFx.zh,
   ...pageHelp.zh,
   ...dataReset.zh,
+  ...sheetReading.zh,
   ...inspectionReport.zh,
   ...sla.zh,
   ...requestProduct.zh,

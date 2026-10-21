@@ -5,6 +5,8 @@ import { translator } from "@/i18n";
 import type { ComponentProps } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { SheetBoardReader } from "@/components/sheet-board-reader";
+import { sheetReadingView } from "@/lib/services/sheet-reading";
 import {
   getStore,
   MEASUREMENT_KINDS,
@@ -170,6 +172,7 @@ export default async function ProductSheetPage({
     from: errorFrom,
     fields: invalidFields,
     ai: aiNotice,
+    board,
   } = await searchParams;
   const sheet = await loadProductSheet(id);
   if (!sheet) notFound();
@@ -846,6 +849,17 @@ export default async function ProductSheetPage({
         <p className="max-w-3xl text-sm leading-relaxed text-zinc-600">
           {t("productSheet.hint")}
         </p>
+        {/* Foto do quadro: preenche a ficha mestre e aponta divergências. */}
+        <SheetBoardReader
+          t={t}
+          scope="product"
+          sheetKey={product.id}
+          view={await sheetReadingView(product.id, masterView)}
+          canRead
+          canResolve
+          error={error}
+          board={board}
+        />
         {sheetSaved === "complete" ? (
           <Alert tone="success">{t("productSheet.saved")}</Alert>
         ) : masterMissing.length ? (

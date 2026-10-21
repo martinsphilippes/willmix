@@ -80,6 +80,7 @@ const DELETE_ORDER: Partial<Record<TableName, number>> = {
   documents: 1,
   product_photos: 2,
   product_lookups: 2,
+  sheet_readings: 2,
   purchase_sheets: 3,
   measurements: 3,
   review_items: 3,
@@ -175,6 +176,7 @@ async function buildWork(): Promise<Work> {
     productSuppliers,
     importBatches,
     counters,
+    readings,
   ] = await Promise.all([
     Promise.all(SALES_TABLES.map((t) => list(t))),
     list("documents"),
@@ -192,6 +194,7 @@ async function buildWork(): Promise<Work> {
     list("product_suppliers"),
     list("import_batches"),
     list("counters"),
+    list("sheet_readings"),
   ]);
 
   const deletes: Work["deletes"] = [];
@@ -291,6 +294,17 @@ async function buildWork(): Promise<Work> {
     }
   }
 
+  // Fotos do quadro: as da ficha de cotação ou de pedido saem (com a foto);
+  // as da ficha mestre do produto ficam (catálogo).
+  const keptReadings = [];
+  for (const r of readings) {
+    if (productIds.has(r.sheetKey)) keptReadings.push(r);
+    else {
+      drop("sheet_readings", r.id);
+      droppedPhotoDocs.add(r.documentId);
+    }
+  }
+
   // Documentos: os de venda saem (com o arquivo), menos os que o catálogo usa.
   const keptMeasurements = measurements.filter((m) => !deleted.has(m.id));
   const catalogDocs = new Set<string>(
@@ -303,6 +317,7 @@ async function buildWork(): Promise<Work> {
         .map((s) => s.primaryPhotoDocumentId),
       ...keptMeasurements.map((m) => m.photoDocumentId),
       ...importBatches.map((b) => b.fileDocumentId),
+      ...keptReadings.map((r) => r.documentId),
       // Busca por foto/link que virou solicitação de teste sai com ela; a que
       // não virou solicitação fica.
       ...lookups.filter((l) => !l.requestId).map((l) => l.imageDocumentId),

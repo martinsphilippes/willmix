@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
+import { SheetBoardReader } from "@/components/sheet-board-reader";
+import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -58,6 +60,7 @@ export default async function PurchaseSheetPage({
     at: saveToken,
     fields: invalidFields,
     quantityApplied,
+    board,
   } = await searchParams;
   const view = await getSheetForUser(user, id);
   if (!view) notFound();
@@ -231,6 +234,19 @@ export default async function PurchaseSheetPage({
           Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
           o <form> é display: contents para os cards entrarem na grade. */}
       <div className="grid gap-4 lg:grid-cols-2">
+        {view.access.editSupplier ? (
+          <SheetBoardReader
+            t={t}
+            scope="order"
+            sheetKey={id}
+            view={await sheetReadingView(id, view.sheet)}
+            canRead
+            canResolve={isWellmix(user)}
+            error={error}
+            board={board}
+            className="lg:col-span-2"
+          />
+        ) : null}
         <form
           id="purchase-sheet"
           action={savePurchaseSheetAction}
