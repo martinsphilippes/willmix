@@ -34,6 +34,7 @@ import * as financeFx from "./finance-fx";
 import * as pageHelp from "./page-help";
 import * as dataReset from "./data-reset";
 import * as sheetReading from "./sheet-reading";
+import * as manufacturerCards from "./manufacturer-cards";
 import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as requestProduct from "./request-product";
@@ -85,6 +86,7 @@ export const modulesPt = {
   ...pageHelp.pt,
   ...dataReset.pt,
   ...sheetReading.pt,
+  ...manufacturerCards.pt,
   ...inspectionReport.pt,
   ...sla.pt,
   ...requestProduct.pt,
@@ -143,6 +145,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...pageHelp.en,
   ...dataReset.en,
   ...sheetReading.en,
+  ...manufacturerCards.en,
   ...inspectionReport.en,
   ...sla.en,
   ...requestProduct.en,
@@ -201,6 +204,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...pageHelp.zh,
   ...dataReset.zh,
   ...sheetReading.zh,
+  ...manufacturerCards.zh,
   ...inspectionReport.zh,
   ...sla.zh,
   ...requestProduct.zh,

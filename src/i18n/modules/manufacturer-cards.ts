@@ -1,0 +1,122 @@
+/**
+ * Dicionário do módulo "manufacturer-cards" (cartão do fabricante por
+ * produto, confirmado a cada negociação): mesmas chaves em pt, en e zh.
+ */
+export const pt = {
+  "card.title": "Cartão do fabricante",
+  "card.hint":
+    "Obrigatório para enviar a cotação: mostra quem fabrica o produto. Só a Wellmix vê; o cliente nunca.",
+  "card.missing":
+    "Envie o cartão do fabricante (ou escolha um já enviado) para poder enviar a cotação.",
+  "card.add": "Enviar cartão do fabricante",
+  "card.adding": "Enviando o cartão…",
+  "card.added": "Cartão enviado e confirmado nesta cotação.",
+  "card.confirmed": "Cartão confirmado nesta cotação.",
+  "card.saved": "Dados do cartão salvos.",
+  "card.use": "Usar este cartão nesta cotação",
+  "card.current": "Confirmado nesta cotação",
+  "card.factory": "Fábrica",
+  "card.middleman": "Possível intermediário (sem endereço de fábrica)",
+  "card.unread": "Não lido: confira os dados",
+  "card.mock": "Exemplo (mock): o cartão não foi lido",
+  "card.view": "Ver o cartão",
+  "card.company": "Empresa",
+  "card.contact": "Contato",
+  "card.phone": "Telefone",
+  "card.email": "E-mail",
+  "card.store": "Loja",
+  "card.factoryAddress": "Endereço da fábrica",
+  "card.isFactory": "É a fábrica?",
+  "card.isFactory.yes": "Sim, é a fábrica",
+  "card.isFactory.no": "Não (loja ou intermediário)",
+  "card.isFactory.unknown": "Não sei",
+  "card.edit": "Corrigir dados do cartão",
+  "card.save": "Salvar dados do cartão",
+  "card.supplier": "Fornecedor",
+  "card.quotes": "Confirmado em {n} cotação(ões)",
+  "card.productTitle": "Cartões do fabricante",
+  "card.productHint":
+    "Quem fabrica este produto, por fornecedor. A cada cotação o fornecedor confirma qual cartão vale.",
+  "card.productNone": "Nenhum cartão enviado ainda.",
+  "quoteSheet.error.manufacturer_card_required":
+    "Falta o cartão do fabricante: envie ou escolha um no quadro “Cartão do fabricante” para enviar a cotação.",
+};
+
+export const en: Record<keyof typeof pt, string> = {
+  "card.title": "Manufacturer's card",
+  "card.hint":
+    "Required to send the quotation: it shows who makes the product. Only Wellmix sees it; never the customer.",
+  "card.missing":
+    "Send the manufacturer's card (or choose one already sent) to be able to send the quotation.",
+  "card.add": "Send manufacturer's card",
+  "card.adding": "Sending the card…",
+  "card.added": "Card sent and confirmed for this quotation.",
+  "card.confirmed": "Card confirmed for this quotation.",
+  "card.saved": "Card details saved.",
+  "card.use": "Use this card for this quotation",
+  "card.current": "Confirmed for this quotation",
+  "card.factory": "Factory",
+  "card.middleman": "Possible middleman (no factory address)",
+  "card.unread": "Not read: check the details",
+  "card.mock": "Example (mock): the card was not read",
+  "card.view": "See the card",
+  "card.company": "Company",
+  "card.contact": "Contact",
+  "card.phone": "Phone",
+  "card.email": "E-mail",
+  "card.store": "Store",
+  "card.factoryAddress": "Factory address",
+  "card.isFactory": "Is it the factory?",
+  "card.isFactory.yes": "Yes, it is the factory",
+  "card.isFactory.no": "No (store or middleman)",
+  "card.isFactory.unknown": "Don't know",
+  "card.edit": "Correct the card details",
+  "card.save": "Save card details",
+  "card.supplier": "Supplier",
+  "card.quotes": "Confirmed in {n} quotation(s)",
+  "card.productTitle": "Manufacturer's cards",
+  "card.productHint":
+    "Who makes this product, per supplier. In each quotation the supplier confirms which card applies.",
+  "card.productNone": "No card sent yet.",
+  "quoteSheet.error.manufacturer_card_required":
+    "The manufacturer's card is missing: send or choose one in the “Manufacturer's card” box to send the quotation.",
+};
+
+export const zh: Record<keyof typeof pt, string> = {
+  "card.title": "工厂名片",
+  "card.hint":
+    "提交报价前必须提供：用于确认产品由谁生产。仅 Wellmix 可见，客户永远看不到。",
+  "card.missing": "请上传工厂名片（或选择已上传的名片）后才能提交报价。",
+  "card.add": "上传工厂名片",
+  "card.adding": "正在上传名片…",
+  "card.added": "名片已上传，并在本次报价中确认。",
+  "card.confirmed": "已在本次报价中确认该名片。",
+  "card.saved": "名片信息已保存。",
+  "card.use": "本次报价使用此名片",
+  "card.current": "本次报价已确认",
+  "card.factory": "工厂",
+  "card.middleman": "可能是中间商（无工厂地址）",
+  "card.unread": "未读取：请核对信息",
+  "card.mock": "示例（mock）：并未读取名片",
+  "card.view": "查看名片",
+  "card.company": "公司",
+  "card.contact": "联系人",
+  "card.phone": "电话",
+  "card.email": "邮箱",
+  "card.store": "店铺",
+  "card.factoryAddress": "工厂地址",
+  "card.isFactory": "是工厂吗？",
+  "card.isFactory.yes": "是，是工厂",
+  "card.isFactory.no": "否（店铺或中间商）",
+  "card.isFactory.unknown": "不确定",
+  "card.edit": "更正名片信息",
+  "card.save": "保存名片信息",
+  "card.supplier": "供应商",
+  "card.quotes": "已在 {n} 次报价中确认",
+  "card.productTitle": "工厂名片",
+  "card.productHint":
+    "按供应商列出生产该产品的工厂。每次报价时由供应商确认使用哪张名片。",
+  "card.productNone": "尚未上传名片。",
+  "quoteSheet.error.manufacturer_card_required":
+    "缺少工厂名片：请在“工厂名片”中上传或选择一张后再提交报价。",
+};

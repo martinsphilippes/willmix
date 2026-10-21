@@ -13,7 +13,8 @@ export type PromptKind =
   | "image"
   | "ncm"
   | "lookup"
-  | "board";
+  | "board"
+  | "card";
 
 export const BASE_PROMPTS: Record<PromptKind, string> = {
   registration: [
@@ -63,6 +64,15 @@ export const BASE_PROMPTS: Record<PromptKind, string> = {
     'Números como número (12000, 0.225). Mantenha o texto como escrito (inglês). SIZE do quadro não é a caixa: coloque em notes ("SIZE: 21x29.7").',
     "unreadable: rótulos que têm algo escrito mas você não conseguiu ler com certeza.",
     "notes: o que mais estiver escrito (SIZE, programação de compra, observações) e qualquer dúvida de leitura.",
+  ].join("\n"),
+  card: [
+    "A foto mostra o CARTÃO DE VISITA de um fornecedor chinês (frente; pode ter chinês e inglês).",
+    "Transcreva só o que está escrito. Não invente: o que não estiver no cartão é null.",
+    'Responda SOMENTE um JSON {"cardFields": {"companyName": string|null, "contactName": string|null, "phone": string|null, "email": string|null, "storeAddress": string|null, "factoryAddress": string|null, "isFactory": boolean|null}, "notes": string|null}.',
+    "companyName: nome da empresa como no cartão (inglês e chinês, se houver). contactName: pessoa. phone: telefone/celular principal.",
+    "storeAddress: endereço(s) de loja/showroom (店址, 展厅). factoryAddress: endereço da FÁBRICA (厂址, 工厂, factory). Traduza os endereços para o português ou inglês, mantendo números de loja, porta, andar e bloco.",
+    "isFactory: true se o cartão mostra endereço de fábrica ou diz que é fabricante (厂家, 工厂, factory, manufacturer); false se só tem loja/trading; null se não der para saber.",
+    "notes: produtos que o cartão diz fabricar e qualquer dúvida de leitura.",
   ].join("\n"),
   image: [
     "Escreva um prompt de imagem comercial (fundo neutro, iluminação de estúdio, produto em destaque)",
