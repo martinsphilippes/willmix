@@ -85,38 +85,32 @@ export async function requestNowAction(form: FormData) {
  */
 export type CartLineState = { error: string | null };
 
-export async function updateCartItemAction(
+/**
+ * Atualizar ou remover um item (campo `op`): uma ação só por item, para o
+ * aviso refletir sempre o último resultado. Sempre recarrega os dados (com
+ * erro também: um item já enviado em outra aba some da tela).
+ */
+export async function cartLineAction(
   _prev: CartLineState,
   form: FormData,
 ): Promise<CartLineState> {
   const user = await requireUser();
+  let error: string | null = null;
   try {
     const itemId = ID.parse(str(form, "itemId"));
-    const quantity = quantitySchema.parse(num(form, "quantity"));
-    const notes = notesSchema.parse(optionalText(form, "notes"));
-    const { updateCartItem } = await import("@/lib/services/cart");
-    await updateCartItem(user, itemId, quantity, notes);
-  } catch (error) {
-    return { error: errorCode("/app/explore/cart", error) };
+    const service = await import("@/lib/services/cart");
+    if (str(form, "op") === "remove") {
+      await service.removeCartItem(user, itemId);
+    } else {
+      const quantity = quantitySchema.parse(num(form, "quantity"));
+      const notes = notesSchema.parse(optionalText(form, "notes"));
+      await service.updateCartItem(user, itemId, quantity, notes);
+    }
+  } catch (e) {
+    error = errorCode("/app/explore/cart", e);
   }
   revalidatePath("/app", "layout");
-  return { error: null };
-}
-
-export async function removeCartItemAction(
-  _prev: CartLineState,
-  form: FormData,
-): Promise<CartLineState> {
-  const user = await requireUser();
-  try {
-    const itemId = ID.parse(str(form, "itemId"));
-    const { removeCartItem } = await import("@/lib/services/cart");
-    await removeCartItem(user, itemId);
-  } catch (error) {
-    return { error: errorCode("/app/explore/cart", error) };
-  }
-  revalidatePath("/app", "layout");
-  return { error: null };
+  return { error };
 }
 
 /** Data do "quando você precisa": dia válido, de hoje em diante. */

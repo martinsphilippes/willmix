@@ -8,11 +8,7 @@ import { quoteSlaDeadline } from "@/lib/sla";
 import { brazilDay } from "@/lib/supplier-terms";
 import { canBuyOnStorefront } from "@/lib/services/catalog-explore";
 import { cartView, type CartView } from "@/lib/services/cart";
-import {
-  checkoutCartAction,
-  removeCartItemAction,
-  updateCartItemAction,
-} from "@/app/app/actions/cart";
+import { checkoutCartAction, cartLineAction } from "@/app/app/actions/cart";
 import { brl, CartIcon, PhotoPlaceholder } from "@/components/explore-ui";
 import { CartLineForm } from "@/components/cart-line-form";
 import { SubmitButton } from "@/components/submit-button";
@@ -190,8 +186,7 @@ export default async function CartPage({
                       ) : null}
                       <CartLineForm
                         key={line.id}
-                        update={updateCartItemAction}
-                        remove={removeCartItemAction}
+                        action={cartLineAction}
                         itemId={line.id}
                         productId={line.productId}
                         quantity={line.quantity}
