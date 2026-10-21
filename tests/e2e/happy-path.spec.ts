@@ -17,6 +17,13 @@ const pdf = {
 
 /** Resposta da RFQ: ficha de compra completa (campos obrigatórios), sem fotos. */
 async function fillQuoteSheet(page: Page, price: string) {
+  // Cartão do fabricante (obrigatório para enviar): vem antes da ficha,
+  // porque enviar a foto recarrega a página.
+  const card = page.locator("[data-manufacturer-card]");
+  await expect(card).toHaveAttribute("data-manufacturer-card", "missing");
+  await page.locator("[data-card-upload] input[name=photo]").setInputFiles(png);
+  await page.waitForURL(/[?&]card=added/);
+  await expect(card).toHaveAttribute("data-manufacturer-card", "confirmed");
   await page.fill("input[name=supplierName]", "Supplier Ltd");
   await page.selectOption("select[name=incoterm]", "FOB");
   await page.selectOption("select[name=currency]", "USD");

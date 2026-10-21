@@ -1034,6 +1034,29 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "manufacturerCardId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "manufacturerCardConfirmedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "manufacturerCardConfirmedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -5922,6 +5945,146 @@
           "type": "key",
           "columns": [
             "sheetKey"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "manufacturer_cards",
+      "databaseId": "willmix",
+      "name": "Cartões do fabricante",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "supplierId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "documentId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "companyName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "contactName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "phone",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "email",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "storeAddress",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "factoryAddress",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "isFactory",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "source",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "quoteId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_product",
+          "type": "key",
+          "columns": [
+            "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_supplier",
+          "type": "key",
+          "columns": [
+            "supplierId"
           ],
           "orders": [
             "ASC"

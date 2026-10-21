@@ -44,6 +44,8 @@ import {
 } from "@/lib/services/purchase-sheet-calc";
 import { LeadTimeAuto } from "@/components/lead-time-auto";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
+import { QuoteManufacturerCard } from "@/components/manufacturer-cards";
+import { quoteCardsView } from "@/lib/services/manufacturer-cards";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -65,6 +67,7 @@ export default async function QuotePage({
     at: saveToken,
     fields: invalidFields,
     board,
+    card: cardNotice,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -92,6 +95,7 @@ export default async function QuotePage({
     scheduleNcmSuggestion(request.id);
   // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
   const canFillSheet = !!sheetView && sheetView.access.editSupplier;
+  const cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
   const errorCode = typeof error === "string" ? error : "";
   // Envio recusado: o que falta na ficha. O prazo de produção não é mais
   // digitado (vem da programação 1, que já está na lista do que falta).
@@ -398,6 +402,16 @@ export default async function QuotePage({
               {t("productSheet.adopt")}
             </SubmitButton>
           </form>
+        ) : null}
+        {cardsView ? (
+          // Cartão do fabricante: obrigatório para enviar a cotação.
+          <QuoteManufacturerCard
+            t={t}
+            quoteId={quote.id}
+            view={cardsView}
+            notice={cardNotice}
+            className="lg:order-8 lg:col-span-2"
+          />
         ) : null}
         {sheetView && canAnswer && sheetView.access.editSupplier ? (
           <Card

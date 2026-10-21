@@ -6,6 +6,8 @@ import type { ComponentProps } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
+import { ProductManufacturerCards } from "@/components/manufacturer-cards";
+import { productCards } from "@/lib/services/manufacturer-cards";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import {
   getStore,
@@ -859,6 +861,12 @@ export default async function ProductSheetPage({
           canResolve
           error={error}
           board={board}
+        />
+        {/* Quem fabrica este produto (cartões por fornecedor). */}
+        <ProductManufacturerCards
+          t={t}
+          productId={product.id}
+          rows={await productCards(user, product.id)}
         />
         {sheetSaved === "complete" ? (
           <Alert tone="success">{t("productSheet.saved")}</Alert>

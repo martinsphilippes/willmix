@@ -106,6 +106,11 @@ export async function answerQuoteWithSheetAction(form: FormData) {
     // programação 1 a ficha já está incompleta ("lot1" no que falta).
     if (missing.length || leadTimeDays === null)
       return `${back}?error=sheet_incomplete&at=${Date.now()}`;
+    // Cartão do fabricante confirmado nesta negociação: sem ele não envia.
+    const { getStore } = await import("@/lib/db");
+    const quoteRow = await getStore().get("quotes", quoteId);
+    if (!quoteRow?.manufacturerCardId)
+      return `${back}?error=manufacturer_card_required&at=${Date.now()}#manufacturer-card`;
     const { answerQuote } = await import("@/lib/services/requests");
     await answerQuote(user, quoteId, {
       price: sheet.price!,

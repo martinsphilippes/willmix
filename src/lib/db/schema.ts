@@ -585,6 +585,10 @@ export interface Quote extends BaseRow {
   conditions: string | null;
   validUntil: string | null;
   answeredAt: string | null;
+  /** Cartão do fabricante confirmado nesta negociação (manufacturer_cards). */
+  manufacturerCardId?: string | null;
+  manufacturerCardConfirmedAt?: string | null;
+  manufacturerCardConfirmedByUserId?: string | null;
 }
 
 export interface Order extends BaseRow {
@@ -1252,6 +1256,35 @@ export interface FreightQuote extends BaseRow {
   answeredAt: string | null;
 }
 
+/**
+ * Cartão do fabricante (foto ou PDF) de um produto: diz quem fabrica. Um
+ * produto pode ter vários (por fornecedor e ao longo do tempo); a cada
+ * negociação o fornecedor confirma qual vale (quotes.manufacturerCardId).
+ * Só a Wellmix e o próprio fornecedor veem; o cliente nunca (não pode ir
+ * direto à fábrica) e outro fornecedor também não.
+ */
+export interface ManufacturerCard extends BaseRow {
+  /** Produto do catálogo (nulo quando a solicitação ainda não tem produto). */
+  productId: string | null;
+  /** Fornecedor que apresentou o cartão. */
+  supplierId: string;
+  documentId: string;
+  /** Lido do cartão (pela IA, conferido por quem envia) ou digitado. */
+  companyName: string | null;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+  storeAddress: string | null;
+  factoryAddress: string | null;
+  /** O cartão diz que é fábrica (endereço de fábrica, "厂家直销"). */
+  isFactory: boolean | null;
+  notes: string | null;
+  source: string | null;
+  /** Cotação em que o cartão foi apresentado (produto ainda sem cadastro). */
+  quoteId: string | null;
+  createdByUserId: string;
+}
+
 /** Onde a ficha lida pela foto do quadro mora. */
 export const SHEET_READING_SCOPES = ["quote", "order", "product"] as const;
 export type SheetReadingScope = (typeof SHEET_READING_SCOPES)[number];
@@ -1354,6 +1387,7 @@ export interface Tables {
   freight_quotes: FreightQuote;
   product_suppliers: ProductSupplier;
   sheet_readings: SheetReading;
+  manufacturer_cards: ManufacturerCard;
 }
 export type TableName = keyof Tables;
 
@@ -1566,6 +1600,9 @@ export const TABLES: Record<TableName, TableDef> = {
       conditions: text(),
       validUntil: datetime(),
       answeredAt: datetime(),
+      manufacturerCardId: id(false),
+      manufacturerCardConfirmedAt: datetime(),
+      manufacturerCardConfirmedByUserId: id(false),
     },
     indexes: [
       { key: "by_request", type: "key", columns: ["requestId"] },
@@ -2311,6 +2348,29 @@ export const TABLES: Record<TableName, TableDef> = {
       createdByUserId: id(),
     },
     indexes: [{ key: "by_sheet", type: "key", columns: ["sheetKey"] }],
+  },
+  manufacturer_cards: {
+    label: "Cartões do fabricante",
+    columns: {
+      productId: id(false),
+      supplierId: id(),
+      documentId: id(),
+      companyName: str(160),
+      contactName: str(120),
+      phone: str(60),
+      email: str(160),
+      storeAddress: text(),
+      factoryAddress: text(),
+      isFactory: bool(),
+      notes: text(),
+      source: str(10),
+      quoteId: id(false),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
   },
 };
 
