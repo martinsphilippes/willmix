@@ -63,7 +63,7 @@ describe("menu principal", () => {
     expect(operator).toEqual(hrefs.filter((h) => h !== "/app/settings"));
   });
 
-  it("cliente: Explorar (vitrine) no início e o resto em \"Meus pedidos\"; nenhuma tela some", () => {
+  it('cliente: Explorar (vitrine) no início e o resto em "Meus pedidos"; nenhuma tela some', () => {
     const entries = navFor("customer", false);
     expect(entries[0]).toEqual({ href: "/app/explore", key: "nav.explore" });
     expect(entries.filter(isNavGroup).map((g) => g.key)).toEqual([
