@@ -709,6 +709,14 @@ test("vitrine: busca, página do produto, carrinho e pedido de orçamento", asyn
   page,
 }) => {
   await login(page, "joao@lojista.com");
+  // Carrinho vazio para começar (o banco do E2E pode vir de outra rodada).
+  await page.goto("/app/explore/cart");
+  const leftovers = page.locator("[data-cart-remove]");
+  while ((await leftovers.count()) > 0) {
+    const before = await leftovers.count();
+    await leftovers.first().click();
+    await expect(leftovers).toHaveCount(before - 1);
+  }
   await page.goto("/app");
   await page.waitForURL(/\/app\/explore$/);
   await expect(
@@ -742,10 +750,17 @@ test("vitrine: busca, página do produto, carrinho e pedido de orçamento", asyn
     "1",
   );
 
-  // Direto do card da vitrine: entra com o pedido mínimo.
+  // Direto do card da vitrine: o botão diz a quantidade (pedido mínimo) e o
+  // card mostra "No carrinho" no lugar (a tela volta para ele).
   await page.goto("/app/explore");
+  await expect(page.locator('[data-explore-add="prod-boneca"]')).toContainText(
+    "2.000 un",
+  );
   await page.locator('[data-explore-add="prod-boneca"]').click();
   await page.waitForURL(/[?&]added=prod-boneca/);
+  await expect(
+    page.locator('[data-explore-in-cart="prod-boneca"]'),
+  ).toBeVisible();
   await expect(page.locator("[data-explore-cart-link]")).toHaveAttribute(
     "data-explore-cart-link",
     "2",
@@ -754,13 +769,25 @@ test("vitrine: busca, página do produto, carrinho e pedido de orçamento", asyn
   // Carrinho: muda a quantidade e envia para orçamento.
   await page.goto("/app/explore/cart");
   await expect(page.locator("[data-cart-line]")).toHaveCount(2);
+  // As observações do envio, já digitadas, ficam ao mudar um item.
+  await page.fill("[data-cart-notes]", "Entrega em Curitiba");
   await page.fill('[data-cart-quantity="prod-boneca"]', "2500");
   await page.locator('[data-cart-update="prod-boneca"]').click();
-  await page.waitForURL(/[?&]updated=1/);
-  await expect(page.locator('[data-cart-quantity="prod-boneca"]')).toHaveValue(
+  await expect(page.locator('[data-cart-line="prod-boneca"]')).toHaveAttribute(
+    "data-cart-qty",
     "2500",
   );
-  await page.fill("[data-cart-notes]", "Entrega em Curitiba");
+  // Sair do campo já grava (sem precisar de "Atualizar").
+  await page.fill('[data-cart-quantity="prod-panela"]', "800");
+  await page.locator("[data-cart-notes]").click();
+  await expect(page.locator('[data-cart-line="prod-panela"]')).toHaveAttribute(
+    "data-cart-qty",
+    "800",
+  );
+  await expect(page.locator("[data-cart-notes]")).toHaveValue(
+    "Entrega em Curitiba",
+  );
+  await page.fill("[data-cart-deadline]", "2099-12-20");
   await page.locator("[data-cart-checkout]").click();
   await page.waitForURL(/\/app\/requests\/batch\/.+fromCart=1/);
   await expect(page.locator("[data-batch-created]")).toContainText(
@@ -770,6 +797,14 @@ test("vitrine: busca, página do produto, carrinho e pedido de orçamento", asyn
   await expect(page.locator("main")).toContainText("Boneca articulada");
   await page.goto("/app/explore/cart");
   await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+
+  // "Solicitar orçamento agora": só aquele produto, sem passar pelo carrinho.
+  await page.goto("/app/explore/prod-piscina");
+  await page.fill("[data-quantity-input]", "400");
+  await page.locator("[data-explore-buy-now]").click();
+  await page.waitForURL(/\/app\/requests\/[^/]+\?fromCart=1/);
+  await expect(page.locator("[data-cart-sent]")).toBeVisible();
+  await expect(page.locator("h1")).toContainText("Piscina");
 
   // Wellmix vê a vitrine como o cliente, sem carrinho, e o que falta no preço.
   await login(page, "admin@wellmix.com");

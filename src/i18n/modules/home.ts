@@ -25,7 +25,7 @@ export const pt = {
   "help.tasks.customer.body":
     "Esta lista mostra o que depende de você: pagar o sinal, confirmar o recebimento ou avaliar uma compra. O resto do processo fica com a Wellmix.",
   "help.tasks.customer.steps":
-    "Toque em Abrir para ir direto à solicitação ou ao pedido.\nSe a lista estiver vazia, não há nada pendente com você; acompanhe o andamento em Solicitações ou Pedidos.",
+    "Toque em Abrir para ir direto à solicitação ou ao pedido.\nSe a lista estiver vazia, não há nada pendente com você; acompanhe o andamento em Meus pedidos (Orçamentos e Pedidos).",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -51,7 +51,7 @@ export const en: Record<keyof typeof pt, string> = {
   "help.tasks.customer.body":
     "This list shows what depends on you: paying the down payment, confirming receipt or rating a purchase. The rest of the process is with Wellmix.",
   "help.tasks.customer.steps":
-    "Tap Open to go straight to the request or order.\nIf the list is empty, nothing is pending with you; follow progress in Requests or Orders.",
+    "Tap Open to go straight to the request or order.\nIf the list is empty, nothing is pending with you; follow progress in My orders (Quotations and Orders).",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -76,5 +76,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "help.tasks.customer.body":
     "此列表显示需要您处理的事项：支付定金、确认收货或评价采购。其余流程由 Wellmix 负责。",
   "help.tasks.customer.steps":
-    "点击“打开”直接进入申请或订单。\n如果列表为空，说明没有待您处理的事项；可在“申请”或“订单”中查看进度。",
+    "点击“打开”直接进入申请或订单。\n如果列表为空，说明没有待您处理的事项；可在“我的订单”（报价和订单）中查看进度。",
 };

@@ -44,8 +44,10 @@ export type CatalogPriceMissing = PricingMissing;
 export type CatalogEstimate =
   | {
       ok: true;
-      /** Preço por unidade ao cliente, em R$. */
+      /** Preço por unidade ao cliente, em R$ (arredondado para cima no centavo). */
       unitBrl: number;
+      /** Valor ao cliente da quantidade inteira (a conta da proposta, sem multiplicar arredondamento). */
+      totalBrl: number;
       /** Quantidade usada na conta (o pedido mínimo, ou a pedida). */
       quantity: number;
     }
@@ -59,19 +61,39 @@ export function referenceQuantity(input: CatalogPriceInput): number {
   return 1;
 }
 
-/** Preço do fornecedor para a quantidade: a maior faixa alcançada, ou o preço base. */
+/**
+ * Faixas que valem: só descontos acima da quantidade de referência, e só se a
+ * faixa que cobre a referência bate com o preço base. Faixa de outro preço
+ * (renegociado, outro fornecedor, outra moeda) está velha e é ignorada: usá-la
+ * mostraria preço menor que o da proposta, que não usa faixas.
+ */
+export function usableTiers(
+  input: CatalogPriceInput,
+): { minQty: number; price: number }[] {
+  const base = referenceQuantity(input);
+  const valid = (input.tiers ?? []).filter(
+    (t) =>
+      Number.isFinite(t.minQty) &&
+      t.minQty > 0 &&
+      Number.isFinite(t.price) &&
+      t.price > 0,
+  );
+  const atBase = valid
+    .filter((t) => t.minQty <= base)
+    .sort((a, b) => b.minQty - a.minQty)[0];
+  if (atBase && atBase.price !== input.unitPrice) return [];
+  return valid.filter(
+    (t) => t.minQty > base && t.price < (input.unitPrice ?? 0),
+  );
+}
+
+/** Preço do fornecedor para a quantidade: a maior faixa válida alcançada, ou o preço base. */
 export function tierPrice(
-  input: Pick<CatalogPriceInput, "unitPrice" | "tiers">,
+  input: CatalogPriceInput,
   quantity: number,
 ): number | null {
-  const reached = (input.tiers ?? [])
-    .filter(
-      (t) =>
-        Number.isFinite(t.minQty) &&
-        Number.isFinite(t.price) &&
-        t.price > 0 &&
-        t.minQty <= quantity,
-    )
+  const reached = usableTiers(input)
+    .filter((t) => t.minQty <= quantity)
     .sort((a, b) => b.minQty - a.minQty)[0];
   return reached?.price ?? input.unitPrice;
 }
@@ -120,9 +142,11 @@ export function estimateCatalogPrice(
       ok: false,
       missing: missing.length ? missing : (["price"] as CatalogPriceMissing[]),
     };
+  // Para cima no centavo: a unidade mostrada nunca fica abaixo da proposta.
   return {
     ok: true,
-    unitBrl: Math.round((result.sellBrl / qty) * 100) / 100,
+    unitBrl: Math.ceil(Math.round((result.sellBrl / qty) * 1e6) / 1e4) / 100,
+    totalBrl: result.sellBrl,
     quantity: qty,
   };
 }
@@ -133,12 +157,7 @@ export function tierEstimates(
   ctx: CatalogPriceContext,
 ): { minQty: number; unitBrl: number }[] {
   const base = referenceQuantity(input);
-  const starts = [
-    base,
-    ...(input.tiers ?? [])
-      .map((t) => t.minQty)
-      .filter((q) => Number.isFinite(q) && q > base),
-  ];
+  const starts = [base, ...usableTiers(input).map((t) => t.minQty)];
   const out: { minQty: number; unitBrl: number }[] = [];
   for (const minQty of [...new Set(starts)].sort((a, b) => a - b)) {
     const e = estimateCatalogPrice(input, ctx, minQty);

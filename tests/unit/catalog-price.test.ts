@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { priceToCustomer, totalCbmFor } from "@/lib/pricing";
 import {
   estimateCatalogPrice,
   referenceQuantity,
@@ -40,7 +41,12 @@ describe("preço estimado da vitrine", () => {
   it("conta completa: FOB + frete por CBM + margem, por unidade, no pedido mínimo", () => {
     // 500 un × US$ 10 × 5 = R$ 25.000; 10 caixas × 0,1 m³ × US$ 100 × 5 = R$ 500.
     const e = estimateCatalogPrice(input(), ctx());
-    expect(e).toEqual({ ok: true, unitBrl: 51, quantity: 500 });
+    expect(e).toEqual({
+      ok: true,
+      unitBrl: 51,
+      totalBrl: 25500,
+      quantity: 500,
+    });
     // Margem de 20% sobre o custo importado.
     const m = estimateCatalogPrice(input(), ctx({ marginPercent: 20 }));
     expect(m.ok && m.unitBrl).toBeCloseTo(61.2);
@@ -76,10 +82,10 @@ describe("preço estimado da vitrine", () => {
       { minQty: 1000, price: 9 },
       { minQty: 2000, price: 8 },
     ];
-    expect(tierPrice({ unitPrice: 10, tiers }, 999)).toBe(10);
-    expect(tierPrice({ unitPrice: 10, tiers }, 1000)).toBe(9);
-    expect(tierPrice({ unitPrice: 10, tiers }, 5000)).toBe(8);
-    expect(tierPrice({ unitPrice: 10, tiers: null }, 5000)).toBe(10);
+    expect(tierPrice(input({ tiers }), 999)).toBe(10);
+    expect(tierPrice(input({ tiers }), 1000)).toBe(9);
+    expect(tierPrice(input({ tiers }), 5000)).toBe(8);
+    expect(tierPrice(input({ tiers: null }), 5000)).toBe(10);
     const rows = tierEstimates(input({ tiers }), ctx());
     expect(rows.map((r) => r.minQty)).toEqual([500, 1000, 2000]);
     expect(rows[0].unitBrl).toBeGreaterThan(rows[1].unitBrl);
@@ -94,5 +100,57 @@ describe("preço estimado da vitrine", () => {
     expect(referenceQuantity(input({ moq: null, masterCartonQty: null }))).toBe(
       1,
     );
+  });
+
+  it("faixa velha (preço renegociado ou outro fornecedor) é ignorada: nada abaixo da proposta", () => {
+    // Ficha renegociada para 10,5; faixas antigas a partir de 9,5.
+    const stale = input({
+      unitPrice: 10.5,
+      tiers: [
+        { minQty: 500, price: 9.5 },
+        { minQty: 1000, price: 9 },
+      ],
+    });
+    expect(tierPrice(stale, 500)).toBe(10.5);
+    expect(tierPrice(stale, 5000)).toBe(10.5);
+    expect(tierEstimates(stale, ctx())).toEqual([]);
+    const fresh = estimateCatalogPrice(input({ unitPrice: 10.5 }), ctx());
+    expect(estimateCatalogPrice(stale, ctx())).toEqual(fresh);
+    // Faixa "mais cara" que o preço base também não vale.
+    expect(
+      tierPrice(input({ tiers: [{ minQty: 1000, price: 12 }] }), 2000),
+    ).toBe(10);
+  });
+
+  it("item barato em grande volume: total igual à proposta e unidade nunca abaixo dela", () => {
+    const cheap = input({
+      unitPrice: 0.0224,
+      moq: 100_000,
+      masterCartonQty: 1000,
+      cbmPerCarton: 0.05,
+      importTaxPercent: 18,
+      ipiPercent: 5,
+    });
+    const c = ctx({ marginPercent: 30, icmsPercent: 18 });
+    const e = estimateCatalogPrice(cheap, c);
+    const proposal = priceToCustomer({
+      unitPrice: 0.0224,
+      currency: "USD",
+      quantity: 100_000,
+      totalCbm: totalCbmFor(100_000, 1000, 0.05),
+      importTaxPercent: 18,
+      ipiPercent: 5,
+      insurancePercent: 0,
+      pisPercent: 0,
+      cofinsPercent: 0,
+      icmsPercent: 18,
+      marginPercent: 30,
+      fx: { USD: 5 },
+      freight: { carrierBrl: null, perCbm: 100, perCbmCurrency: "USD" },
+    });
+    expect(e.ok).toBe(true);
+    if (!e.ok) return;
+    expect(e.totalBrl).toBe(proposal.sellBrl);
+    expect(e.unitBrl * e.quantity).toBeGreaterThanOrEqual(proposal.sellBrl!);
   });
 });

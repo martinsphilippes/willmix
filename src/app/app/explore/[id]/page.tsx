@@ -4,9 +4,13 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { canExplore, exploreProduct } from "@/lib/services/catalog-explore";
+import {
+  canBuyOnStorefront,
+  canExplore,
+  exploreProduct,
+} from "@/lib/services/catalog-explore";
 import { cartCount } from "@/lib/services/cart";
-import { addToCartAction } from "@/app/app/actions/cart";
+import { addToCartAction, requestNowAction } from "@/app/app/actions/cart";
 import {
   brl,
   CartIcon,
@@ -31,13 +35,17 @@ export default async function ExploreProductPage({
   const { id } = await params;
   if (!user)
     redirect(`/login?next=${encodeURIComponent(`/app/explore/${id}`)}`);
-  if (!canExplore(user)) redirect("/app");
+  if (!canExplore(user))
+    redirect(user.role === "customer" ? "/app/requests" : "/app");
   const sp = await searchParams;
   const t = await getT();
   const product = await exploreProduct(user, id, t);
   if (!product) notFound();
   const wellmix = isWellmix(user);
-  const count = await cartCount(user);
+  const [count, canBuy] = await Promise.all([
+    cartCount(user),
+    canBuyOnStorefront(user),
+  ]);
   const added = typeof sp.added === "string";
   const error = typeof sp.error === "string" ? sp.error : null;
   const errorKey = `explore.error.${error ?? ""}` as DictionaryKey;
@@ -72,7 +80,7 @@ export default async function ExploreProductPage({
             </>
           ) : null}
         </nav>
-        {!wellmix ? (
+        {canBuy ? (
           <Link
             href="/app/explore/cart"
             className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-800 shadow-sm hover:border-zinc-300"
@@ -108,9 +116,9 @@ export default async function ExploreProductPage({
       ) : null}
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         {/* Celular: fotos, depois preço e botões, depois as características. */}
-        <div className="lg:col-start-1 lg:row-start-1">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           <ExploreGallery
             photos={product.photos}
             noPhotoLabel={t("explore.noPhoto")}
@@ -121,12 +129,16 @@ export default async function ExploreProductPage({
           />
         </div>
 
-        <div className="space-y-4 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+        <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-6">
             <div className="flex flex-wrap gap-1.5">
               {product.inStock ? (
                 <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
                   {t("explore.badge.inStock")}
+                </span>
+              ) : product.onTheWay ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900 ring-1 ring-inset ring-amber-200">
+                  {t("explore.badge.onTheWay")}
                 </span>
               ) : null}
               {product.boughtBefore ? (
@@ -201,7 +213,12 @@ export default async function ExploreProductPage({
               </div>
             ) : null}
 
-            {!wellmix ? (
+            {!wellmix && !canBuy ? (
+              <div className="mt-5">
+                <Alert tone="warning">{t("explore.disabled")}</Alert>
+              </div>
+            ) : null}
+            {canBuy ? (
               <form action={addToCartAction} className="mt-5 space-y-3">
                 <input type="hidden" name="productId" value={product.id} />
                 <input type="hidden" name="back" value={back} />
@@ -240,10 +257,10 @@ export default async function ExploreProductPage({
                     <CartIcon className="h-4 w-4" />
                     {t("explore.product.addToCart")}
                   </SubmitButton>
+                  {/* Só este produto, direto para orçamento (o carrinho fica como está). */}
                   <SubmitButton
                     variant="secondary"
-                    name="intent"
-                    value="buy"
+                    formAction={requestNowAction}
                     className="h-11 rounded-xl border-brand-200 text-[15px] text-brand-700 hover:bg-brand-50"
                     data-explore-buy-now=""
                   >
@@ -282,7 +299,7 @@ export default async function ExploreProductPage({
           </section>
         </div>
 
-        <div className="lg:col-start-1 lg:row-start-2">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
           <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5">
             <h2 className="text-base font-semibold text-zinc-900">
               {t("explore.product.spec")}

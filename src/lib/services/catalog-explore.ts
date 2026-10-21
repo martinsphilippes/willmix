@@ -4,7 +4,7 @@ import type { Translate } from "@/i18n";
 import { getStore, type Product, type User } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
 import { boxCbm } from "@/lib/logistics/cbm";
-import { resolveMargin } from "@/lib/pricing";
+import { fxKey, resolveMargin } from "@/lib/pricing";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import {
@@ -48,9 +48,24 @@ export interface ExploreProduct {
   /** Preço estimado; sem preço, o que falta só aparece para a Wellmix. */
   estimate: CatalogEstimate;
   moq: number | null;
+  /** Estoque já no Brasil (container chegado), sem pedido: pronta entrega. */
   inStock: boolean;
+  /** Estoque ainda em trânsito (planejado, carregando ou no mar). */
+  onTheWay: boolean;
   boughtBefore: boolean;
   createdAt: string;
+}
+
+type StockMap = Awaited<ReturnType<typeof availableStockByProduct>>;
+
+/** Pronta entrega só com o que já chegou; o resto está a caminho. */
+function stockBadges(stock: StockMap, productId: string) {
+  const st = stock.get(productId);
+  const arrived = st ? st.quantity - st.inTransit : 0;
+  return {
+    inStock: arrived > 0,
+    onTheWay: !!st && st.inTransit > 0 && arrived <= 0,
+  };
 }
 
 export interface ExploreLine {
@@ -113,10 +128,14 @@ async function pricingData(
       (table?.ipiNt ? 0 : null) ??
       taxOf(p.id, "IPI") ??
       null;
+    const currency = sheet?.currency ?? p.currency;
+    // Faixas do cadastro só valem na moeda delas (outra moeda = outra negociação).
+    const sameCurrency =
+      !!fxKey(currency) && fxKey(currency) === fxKey(p.currency);
     inputs.set(p.id, {
       unitPrice: sheet?.price ?? p.price,
-      currency: sheet?.currency ?? p.currency,
-      tiers: p.priceTiers,
+      currency,
+      tiers: sameCurrency ? p.priceTiers : null,
       moq: sheet?.moq ?? p.moq,
       masterCartonQty: sheet?.masterCartonQty ?? p.masterBoxQty,
       // CBM da caixa master: da ficha; senão o do cadastro ou das medidas da caixa.
@@ -211,7 +230,7 @@ export async function exploreCatalog(
         }),
       ),
       moq: input.moq,
-      inStock: stock.has(p.id),
+      ...stockBadges(stock, p.id),
       boughtBefore: bought.has(p.id),
       createdAt: p.createdAt,
     };
@@ -329,7 +348,7 @@ export async function exploreProduct(
     })),
     estimate: forViewer(user, estimateCatalogPrice(input, ctx)),
     moq: input.moq,
-    inStock: stock.has(product.id),
+    ...stockBadges(stock, product.id),
     boughtBefore: bought.has(product.id),
     createdAt: product.createdAt,
     tiers: tierEstimates(input, ctx),
@@ -340,12 +359,13 @@ export async function exploreProduct(
 
 /**
  * Preço estimado de vários produtos para quantidades específicas (carrinho):
- * a faixa de preço vale pela quantidade de cada linha.
+ * a faixa de preço vale pela quantidade de cada linha. Junto, o pedido mínimo
+ * da mesma fonte da vitrine (ficha mestre ou cadastro).
  */
 export async function estimateForQuantities(
   user: User,
   lines: { productId: string; quantity: number }[],
-): Promise<Map<string, CatalogEstimate>> {
+): Promise<Map<string, { estimate: CatalogEstimate; moq: number | null }>> {
   const store = getStore();
   const ids = [...new Set(lines.map((l) => l.productId))];
   const products = ids.length
@@ -353,17 +373,22 @@ export async function estimateForQuantities(
     : [];
   const customerId = user.role === "customer" ? user.partyId : null;
   const pricing = await pricingData(products, customerId);
-  const out = new Map<string, CatalogEstimate>();
+  const out = new Map<
+    string,
+    { estimate: CatalogEstimate; moq: number | null }
+  >();
   for (const line of lines) {
     const product = products.find((p) => p.id === line.productId);
     const input = product ? pricing.inputs.get(product.id) : undefined;
     if (!product || !input) {
-      out.set(line.productId, { ok: false, missing: [] });
+      out.set(line.productId, {
+        estimate: { ok: false, missing: [] },
+        moq: null,
+      });
       continue;
     }
-    out.set(
-      line.productId,
-      forViewer(
+    out.set(line.productId, {
+      estimate: forViewer(
         user,
         estimateCatalogPrice(
           input,
@@ -371,9 +396,19 @@ export async function estimateForQuantities(
           line.quantity,
         ),
       ),
-    );
+      moq: input.moq,
+    });
   }
   return out;
+}
+
+/**
+ * Quem compra na vitrine: o cliente com empresa, com "Cliente pode criar
+ * solicitação" ligado nas Configurações (desligado, ele só vê o catálogo).
+ */
+export async function canBuyOnStorefront(user: User): Promise<boolean> {
+  if (user.role !== "customer" || !user.partyId) return false;
+  return (await getSettings()).customerCanCreateRequest;
 }
 
 export { referenceQuantity };

@@ -6,6 +6,7 @@ import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { getSettings } from "@/lib/settings";
 import {
+  canBuyOnStorefront,
   canExplore,
   EXPLORE_SORTS,
   exploreCatalog,
@@ -25,7 +26,9 @@ export default async function ExplorePage({
 }: PageProps<"/app/explore">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/explore");
-  if (!canExplore(user)) redirect("/app");
+  // Cliente sem empresa vai às solicitações (o início, /app, o mandaria de volta).
+  if (!canExplore(user))
+    redirect(user.role === "customer" ? "/app/requests" : "/app");
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q.slice(0, 120) : "";
   const lineId =
@@ -36,14 +39,20 @@ export default async function ExplorePage({
     ? (params.sort as ExploreSort)
     : null;
   const added = typeof params.added === "string" ? params.added : null;
+  const addedQty =
+    typeof params.qty === "string" && /^\d{1,9}$/.test(params.qty)
+      ? Number(params.qty)
+      : null;
   const error = typeof params.error === "string" ? params.error : null;
   const t = await getT();
   const wellmix = isWellmix(user);
-  const [{ items, lines, total }, count, settings] = await Promise.all([
+  const [{ items, lines, total }, count, settings, canBuy] = await Promise.all([
     exploreCatalog(user, { q, lineId, sort }),
     cartCount(user),
     getSettings(),
+    canBuyOnStorefront(user),
   ]);
+  const addedProduct = added ? items.find((p) => p.id === added) : null;
 
   /** Link da vitrine mantendo a busca e mudando só o que for passado. */
   const hrefWith = (change: {
@@ -78,18 +87,27 @@ export default async function ExplorePage({
       <ExploreHero
         t={t}
         q={q}
-        lineId={lineId}
         sort={sort}
         cartCount={count}
-        showCart={!wellmix}
+        showCart={canBuy}
       />
+      {!wellmix && !canBuy ? (
+        <Alert tone="warning">{t("explore.disabled")}</Alert>
+      ) : null}
       {added ? (
         <div
           className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-inset ring-emerald-200"
           role="status"
           data-explore-added={added}
         >
-          <span className="font-semibold">{t("explore.added")}</span>
+          <span className="font-semibold">
+            {addedProduct && addedQty
+              ? t("explore.addedQty", {
+                  name: addedProduct.name,
+                  n: addedQty.toLocaleString(t.intl),
+                })
+              : t("explore.added")}
+          </span>
           <Link
             href="/app/explore/cart"
             className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-800"
@@ -126,7 +144,9 @@ export default async function ExplorePage({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-zinc-600" data-explore-count={items.length}>
           {q
-            ? t("explore.results.for", { n: items.length, q })
+            ? items.length === 1
+              ? t("explore.results.forOne", { q })
+              : t("explore.results.for", { n: items.length, q })
             : items.length === 1
               ? t("explore.results.one")
               : t("explore.results", { n: items.length })}
@@ -143,7 +163,7 @@ export default async function ExplorePage({
           ) : null}
         </p>
         <div
-          className="flex items-center gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1 text-xs"
+          className="flex flex-wrap items-center gap-1 rounded-2xl bg-zinc-100 p-1 text-xs"
           role="group"
           aria-label={t("explore.sort.label")}
         >
@@ -178,8 +198,9 @@ export default async function ExplorePage({
               key={product.id}
               t={t}
               product={product}
-              canBuy={!wellmix}
+              canBuy={canBuy}
               back={back}
+              addedQty={added === product.id ? addedQty : null}
             />
           ))}
           <RequestOtherCard t={t} />
@@ -193,6 +214,14 @@ export default async function ExplorePage({
             <p className="mt-1 text-sm text-zinc-600">
               {t("explore.empty.hint")}
             </p>
+            {q || lineId ? (
+              <Link
+                href="/app/explore"
+                className="mt-3 inline-flex rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+              >
+                {t("explore.clearFilters")}
+              </Link>
+            ) : null}
           </div>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             <RequestOtherCard t={t} />

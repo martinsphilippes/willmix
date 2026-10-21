@@ -26,9 +26,9 @@ export function ExploreGallery({
       </div>
     );
   return (
-    <div className="flex flex-col-reverse gap-3 sm:flex-row">
+    <div className="flex w-full min-w-0 flex-col-reverse gap-3 sm:flex-row">
       {photos.length > 1 ? (
-        <ul className="flex gap-2 overflow-x-auto sm:max-h-[32rem] sm:flex-col sm:overflow-y-auto sm:overflow-x-visible">
+        <ul className="flex min-w-0 gap-2 overflow-x-auto sm:max-h-[32rem] sm:shrink-0 sm:flex-col sm:overflow-y-auto sm:overflow-x-visible">
           {photos.map((photo, i) => (
             <li key={photo.documentId} className="shrink-0">
               <button

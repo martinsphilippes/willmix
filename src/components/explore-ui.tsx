@@ -118,11 +118,20 @@ export function PriceTag({
       className="inline-flex items-start font-semibold tracking-tight text-zinc-900"
       data-explore-price={value}
     >
-      <span className={size === "lg" ? "text-4xl" : "text-xl"}>
+      <span className="sr-only">
+        {t("explore.price.sr", {
+          price: new Intl.NumberFormat(t.intl, {
+            style: "currency",
+            currency: "BRL",
+          }).format(value),
+        })}
+      </span>
+      <span aria-hidden className={size === "lg" ? "text-4xl" : "text-xl"}>
         {main.trim()}
       </span>
       {fraction ? (
         <span
+          aria-hidden
           className={cx(
             "ml-0.5 font-semibold",
             size === "lg" ? "mt-1 text-lg" : "mt-0.5 text-xs",
@@ -132,6 +141,7 @@ export function PriceTag({
         </span>
       ) : null}
       <span
+        aria-hidden
         className={cx(
           "ml-1 self-end font-normal text-zinc-500",
           size === "lg" ? "mb-1 text-base" : "mb-0.5 text-xs",
@@ -169,7 +179,6 @@ export function MissingReasons({
 export function ExploreHero({
   t,
   q,
-  lineId,
   sort,
   cartCount,
   showCart,
@@ -177,7 +186,6 @@ export function ExploreHero({
 }: {
   t: Translate;
   q: string;
-  lineId: string | null;
   sort: string | null;
   cartCount: number;
   showCart: boolean;
@@ -223,7 +231,6 @@ export function ExploreHero({
         role="search"
         className="relative mt-4 flex gap-2"
       >
-        {lineId ? <input type="hidden" name="line" value={lineId} /> : null}
         {sort ? <input type="hidden" name="sort" value={sort} /> : null}
         <label className="sr-only" htmlFor="explore-q">
           {t("explore.search.label")}
@@ -236,13 +243,13 @@ export function ExploreHero({
             type="search"
             defaultValue={q}
             placeholder={t("explore.search.placeholder")}
-            className="h-11 w-full rounded-xl border-0 bg-white pl-10 pr-3 text-[15px] text-zinc-900 shadow-sm outline-none ring-2 ring-transparent placeholder:text-zinc-400 focus:ring-white/60"
+            className="h-11 w-full rounded-xl border-0 bg-white pl-10 pr-3 text-[15px] text-zinc-900 shadow-sm outline-none ring-2 ring-transparent placeholder:text-zinc-500 focus:ring-4 focus:ring-zinc-900/40"
             data-explore-search=""
           />
         </div>
         <button
           type="submit"
-          className="h-11 shrink-0 rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800"
+          className="h-11 shrink-0 rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           {t("explore.search.button")}
         </button>
@@ -272,7 +279,7 @@ export function TrustStrip({ t, slaDays }: { t: Translate; slaDays: number }) {
     },
   ];
   return (
-    <ul className="grid gap-2 sm:grid-cols-3">
+    <ul className="hidden gap-2 sm:grid sm:grid-cols-3">
       {items.map((item) => (
         <li
           key={item.title}
@@ -300,13 +307,16 @@ export function ProductCard({
   product,
   canBuy,
   back,
+  addedQty,
 }: {
   t: Translate;
   product: ExploreProduct;
-  /** Só o cliente adiciona ao carrinho (a Wellmix só vê). */
+  /** Só o cliente (com pedidos pela vitrine ligados) adiciona ao carrinho. */
   canBuy: boolean;
   /** Tela atual (com a busca), para voltar a ela depois de adicionar. */
   back: string;
+  /** Acabou de entrar no carrinho (quantidade adicionada). */
+  addedQty: number | null;
 }) {
   const href = `/app/explore/${encodeURIComponent(product.id)}`;
   const photo = product.photos[0];
@@ -317,7 +327,13 @@ export function ProductCard({
       : 1;
   return (
     <li
-      className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm shadow-zinc-900/[0.03] transition hover:-translate-y-0.5 hover:border-zinc-300 hover:shadow-md"
+      id={`p-${product.id}`}
+      className={cx(
+        "group flex min-w-0 scroll-mt-24 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm shadow-zinc-900/[0.03] transition hover:-translate-y-0.5 hover:shadow-md",
+        addedQty
+          ? "border-emerald-400 ring-2 ring-emerald-100"
+          : "border-zinc-200/80 hover:border-zinc-300",
+      )}
       data-explore-product={product.id}
     >
       <Link href={href} className="flex flex-1 flex-col">
@@ -338,6 +354,10 @@ export function ProductCard({
               <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
                 {t("explore.badge.inStock")}
               </span>
+            ) : product.onTheWay ? (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 shadow-sm ring-1 ring-amber-200">
+                {t("explore.badge.onTheWay")}
+              </span>
             ) : null}
             {product.boughtBefore ? (
               <span className="rounded-full bg-white/95 px-2 py-0.5 text-[11px] font-semibold text-brand-700 shadow-sm ring-1 ring-brand-200">
@@ -348,18 +368,18 @@ export function ProductCard({
         </div>
         <div className="flex flex-1 flex-col gap-1 border-t border-zinc-100 px-3 pb-2 pt-2.5">
           {product.lineName ? (
-            <span className="truncate text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+            <span className="truncate text-[11px] font-medium uppercase tracking-wide text-zinc-500">
               {product.lineName}
             </span>
           ) : null}
-          <h3 className="line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-zinc-800 group-hover:text-zinc-950">
+          <h3 className="line-clamp-2 min-h-[2.5rem] break-words text-sm leading-5 text-zinc-800 group-hover:text-zinc-950">
             {product.name}
           </h3>
           <div className="mt-auto pt-1">
             {product.estimate.ok ? (
               <>
                 <PriceTag t={t} value={product.estimate.unitBrl} />
-                <span className="block text-[11px] text-emerald-700">
+                <span className="block text-[11px] text-emerald-800">
                   {t("explore.price.estimated")}
                 </span>
               </>
@@ -369,7 +389,7 @@ export function ProductCard({
               </span>
             )}
             {product.moq ? (
-              <span className="mt-0.5 block text-xs text-zinc-500">
+              <span className="mt-0.5 block text-xs text-zinc-600">
                 {t("explore.moq", {
                   n: product.moq.toLocaleString(t.intl),
                 })}
@@ -380,19 +400,32 @@ export function ProductCard({
         </div>
       </Link>
       {canBuy ? (
-        <form action={addToCartAction} className="px-3 pb-3">
-          <input type="hidden" name="productId" value={product.id} />
-          <input type="hidden" name="quantity" value={quantity} />
-          <input type="hidden" name="back" value={back} />
-          <SubmitButton
-            variant="secondary"
-            className="w-full rounded-xl border-brand-200 text-brand-700 hover:border-brand-300 hover:bg-brand-50"
-            data-explore-add={product.id}
-          >
-            <CartIcon className="h-4 w-4" />
-            {t("explore.add")}
-          </SubmitButton>
-        </form>
+        <div className="px-3 pb-3">
+          {addedQty ? (
+            <Link
+              href="/app/explore/cart"
+              className="mb-2 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 hover:bg-emerald-100"
+              data-explore-in-cart={product.id}
+            >
+              ✓ {t("explore.inCart")} · {t("explore.viewCart")}
+            </Link>
+          ) : null}
+          <form action={addToCartAction}>
+            <input type="hidden" name="productId" value={product.id} />
+            <input type="hidden" name="quantity" value={quantity} />
+            <input type="hidden" name="back" value={back} />
+            <SubmitButton
+              variant="secondary"
+              className="w-full rounded-xl border-brand-200 px-2 text-brand-700 hover:border-brand-300 hover:bg-brand-50"
+              data-explore-add={product.id}
+            >
+              <CartIcon className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                {t("explore.addQty", { n: quantity.toLocaleString(t.intl) })}
+              </span>
+            </SubmitButton>
+          </form>
+        </div>
       ) : null}
     </li>
   );

@@ -16,6 +16,7 @@ const { translator } = await import("@/i18n");
 const cart = await import("@/lib/services/cart");
 const explore = await import("@/lib/services/catalog-explore");
 const { canViewRequest } = await import("@/lib/auth/permissions");
+const { canAccessDocument } = await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
 
 const t = translator("pt");
@@ -194,8 +195,11 @@ describe("carrinho", () => {
       customerId: "cliente-joao",
       quantity: 1000,
       unit: "un",
-      notes: "Entrega em Curitiba",
     });
+    // A data em que o cliente precisa vai para as observações (a Wellmix vê).
+    expect(panela.notes).toBe(
+      "Prazo desejado pelo cliente: 20/12/2026\nEntrega em Curitiba",
+    );
     expect(panela.description).toContain("Logo azul");
     // Só o login que enviou vê (como toda solicitação do cliente).
     expect(canViewRequest(joao, panela)).toBe(true);
@@ -226,5 +230,81 @@ describe("carrinho", () => {
     await cart.removeCartItem(joao, left.lines[0].id);
     expect(await cart.cartCount(joao)).toBe(0);
     await getStore().update("products", "prod-piscina", { active: true });
+  });
+
+  it("solicitar agora: só aquele produto, sem mexer no carrinho", async () => {
+    await cart.addToCart(joao, "prod-boneca", 2000);
+    const request = await cart.requestProductNow(
+      joao,
+      "prod-panela",
+      700,
+      "Cor vermelha",
+      t,
+    );
+    expect(request).toMatchObject({ productId: "prod-panela", quantity: 700 });
+    // Uma solicitação só (fora de lote).
+    expect(request.groupId ?? null).toBeNull();
+    expect(request.description).toContain("Cor vermelha");
+    const view = await cart.cartView(joao);
+    expect(view.lines.map((l) => [l.productId, l.quantity])).toEqual([
+      ["prod-boneca", 2000],
+    ]);
+    await cart.removeCartItem(joao, view.lines[0].id);
+  });
+
+  it("pedidos pela vitrine desligados nas Configurações: só o catálogo", async () => {
+    await setSetting("customerCanCreateRequest", false);
+    expect(await explore.canBuyOnStorefront(joao)).toBe(false);
+    await expect(cart.addToCart(joao, "prod-panela", 500)).rejects.toThrow(
+      "cart_disabled",
+    );
+    await expect(
+      cart.requestProductNow(joao, "prod-panela", 500, null, t),
+    ).rejects.toThrow("cart_disabled");
+    // O catálogo continua aberto.
+    expect(
+      (await explore.exploreCatalog(joao, {})).items.length,
+    ).toBeGreaterThan(0);
+    await setSetting("customerCanCreateRequest", true);
+    expect(await explore.canBuyOnStorefront(joao)).toBe(true);
+  });
+
+  it("cartão do fornecedor nunca aparece nem abre para o cliente", async () => {
+    const store = getStore();
+    const doc = await store.create("documents", {
+      orderId: null,
+      requestId: null,
+      requirementId: null,
+      type: "photo",
+      name: "cartao.png",
+      mime: "image/png",
+      size: 10,
+      storageKey: "cartao-teste",
+      version: 1,
+      previousDocumentId: null,
+      uploadedByUserId: admin.id,
+      visibility: "internal",
+      productId: "prod-panela",
+      sourcingItemId: null,
+      kitId: null,
+      imageHash: null,
+    });
+    await store.create("product_photos", {
+      productId: "prod-panela",
+      sourcingItemId: null,
+      orderId: null,
+      documentId: doc.id,
+      kind: "business_card",
+      caption: null,
+      takenAt: new Date().toISOString(),
+      takenByUserId: admin.id,
+      derivedFromPhotoId: null,
+      isPrimary: true,
+    });
+    const { items } = await explore.exploreCatalog(joao, {});
+    const panela = items.find((p) => p.id === "prod-panela")!;
+    expect(panela.photos.map((p) => p.documentId)).not.toContain(doc.id);
+    expect(await canAccessDocument(joao, doc)).toBe(false);
+    expect(await canAccessDocument(admin, doc)).toBe(true);
   });
 });

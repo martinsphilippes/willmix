@@ -23,6 +23,29 @@ export const pt = {
   "explore.sort.newest": "Novidades",
   "explore.results": "{n} produtos",
   "explore.results.one": "1 produto",
+  "explore.results.forOne": "1 resultado para “{q}”",
+  "explore.clearFilters": "Ver todos os produtos",
+  "explore.addQty": "Adicionar {n} un",
+  "explore.inCart": "No carrinho",
+  "explore.addedQty": "{name}: {n} un no carrinho.",
+  "explore.badge.onTheWay": "A caminho",
+  "explore.price.sr": "{price} por unidade, preço estimado",
+  "explore.disabled":
+    "Para pedir orçamento, fale com a Wellmix: os pedidos pela vitrine estão desligados no momento.",
+  "explore.cart.needBy": "Prazo desejado pelo cliente",
+  "explore.cart.noTotal": "Sob consulta",
+  "explore.cart.noTotalHint":
+    "Os itens ainda não têm preço estimado: a Wellmix informa na proposta.",
+  "explore.cart.autosave":
+    "As quantidades e a personalização são salvas ao sair do campo.",
+  "explore.error.cart_disabled":
+    "Os pedidos pela vitrine estão desligados no momento: fale com a Wellmix.",
+  "explore.error.cart_deadline_invalid":
+    "Data inválida: escolha uma data a partir de hoje.",
+  "explore.error.schema_outdated":
+    "O carrinho ainda está sendo preparado no sistema. Tente de novo em alguns minutos.",
+  "explore.error.unexpected":
+    "Não deu certo agora. Tente de novo; se continuar, fale com a Wellmix.",
   "explore.results.for": "{n} resultados para “{q}”",
   "explore.clear": "Limpar busca",
   "explore.empty": "Nenhum produto encontrado.",
@@ -145,6 +168,29 @@ export const en: Record<keyof typeof pt, string> = {
   "explore.sort.newest": "Newest",
   "explore.results": "{n} products",
   "explore.results.one": "1 product",
+  "explore.results.forOne": "1 result for “{q}”",
+  "explore.clearFilters": "See all products",
+  "explore.addQty": "Add {n} pcs",
+  "explore.inCart": "In the cart",
+  "explore.addedQty": "{name}: {n} pcs in the cart.",
+  "explore.badge.onTheWay": "On the way",
+  "explore.price.sr": "{price} per piece, estimated price",
+  "explore.disabled":
+    "To request a quotation, contact Wellmix: storefront orders are turned off at the moment.",
+  "explore.cart.needBy": "Date the customer needs it",
+  "explore.cart.noTotal": "On request",
+  "explore.cart.noTotalHint":
+    "The items have no estimated price yet: Wellmix gives it in the proposal.",
+  "explore.cart.autosave":
+    "Quantities and customization are saved when you leave the field.",
+  "explore.error.cart_disabled":
+    "Storefront orders are turned off at the moment: contact Wellmix.",
+  "explore.error.cart_deadline_invalid":
+    "Invalid date: choose a date from today on.",
+  "explore.error.schema_outdated":
+    "The cart is still being set up in the system. Try again in a few minutes.",
+  "explore.error.unexpected":
+    "That did not work. Try again; if it persists, contact Wellmix.",
   "explore.results.for": "{n} results for “{q}”",
   "explore.clear": "Clear search",
   "explore.empty": "No products found.",
@@ -266,6 +312,23 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.sort.newest": "最新",
   "explore.results": "{n} 件商品",
   "explore.results.one": "1 件商品",
+  "explore.results.forOne": "“{q}”共 1 个结果",
+  "explore.clearFilters": "查看全部商品",
+  "explore.addQty": "加入 {n} 件",
+  "explore.inCart": "已在购物车",
+  "explore.addedQty": "{name}：购物车中 {n} 件。",
+  "explore.badge.onTheWay": "在途",
+  "explore.price.sr": "每件 {price}，预估价格",
+  "explore.disabled": "如需报价请联系 Wellmix：商品橱窗下单目前已关闭。",
+  "explore.cart.needBy": "客户需要的日期",
+  "explore.cart.noTotal": "价格面议",
+  "explore.cart.noTotalHint":
+    "这些商品还没有预估价格：Wellmix 会在报价方案中提供。",
+  "explore.cart.autosave": "数量和定制要求在离开输入框时自动保存。",
+  "explore.error.cart_disabled": "商品橱窗下单目前已关闭：请联系 Wellmix。",
+  "explore.error.cart_deadline_invalid": "日期无效：请选择今天或之后的日期。",
+  "explore.error.schema_outdated": "购物车仍在系统中准备，请几分钟后再试。",
+  "explore.error.unexpected": "操作未成功。请重试；如仍有问题请联系 Wellmix。",
   "explore.results.for": "“{q}”共 {n} 个结果",
   "explore.clear": "清除搜索",
   "explore.empty": "未找到商品。",
