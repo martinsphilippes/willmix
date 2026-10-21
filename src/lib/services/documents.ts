@@ -281,6 +281,9 @@ async function canViewCertificationDocument(
   return !!product && product.supplierId === user.partyId;
 }
 
+/** Tipos de foto do cadastro que o cliente nunca vê no catálogo. */
+const CATALOG_HIDDEN_KINDS: ProductPhoto["kind"][] = ["business_card", "prompt"];
+
 /** Máximo de fotos do cadastro mostradas por produto na solicitação. */
 export const CATALOG_SHOWCASE_LIMIT = 8;
 const SHOWCASE_ORDER: ProductPhoto["kind"][] = [
@@ -303,8 +306,13 @@ export async function catalogShowcasePhotos(
   const wanted = new Set(productIds);
   const result = new Map<string, ProductPhoto[]>();
   if (!wanted.size) return result;
+  // Cartão do fornecedor/fabricante e foto de referência (prompt) nunca vão
+  // ao cliente: o cartão diz quem fabrica (o cliente iria direto à fábrica).
   const photos = (await getStore().list("product_photos")).filter(
-    (p) => p.productId && wanted.has(p.productId),
+    (p) =>
+      p.productId &&
+      wanted.has(p.productId) &&
+      !CATALOG_HIDDEN_KINDS.includes(p.kind),
   );
   const replaced = new Set(
     photos

@@ -117,7 +117,8 @@ export default async function RequestsPage({
             : { body: "help.requests.body", steps: "help.requests.steps" }
         }
         t={t}
-        title={t("requests.title")}
+        // Cliente: "Orçamentos", como no menu "Meus pedidos" (a vitrine é o início).
+        title={customer ? t("nav.myQuotes") : t("requests.title")}
         subtitle={customer ? t("home.welcome", { name: user.name }) : undefined}
         actions={
           customer ? undefined : (

@@ -74,6 +74,15 @@ export default async function NewRequestPage({
   const found =
     typeof lookup === "string" ? await getLookup(user, lookup) : null;
   const settings = await getSettings();
+  // Cliente com "Cliente pode criar solicitação" desligado: explica em vez de
+  // mostrar um formulário que seria recusado só no envio.
+  if (user.role === "customer" && !settings.customerCanCreateRequest)
+    return (
+      <>
+        <PageHeader t={t} title={t("requests.new")} />
+        <Alert tone="warning">{t("explore.disabled")}</Alert>
+      </>
+    );
   const slaDate = quoteSlaDeadline(settings.quoteSlaBusinessDays);
   const aiMode = found ? getAiAdapter(settings).mode : null;
   /* Busca por foto/link pausada até a IA externa ter cartão (Configurações → lookupPaused). */

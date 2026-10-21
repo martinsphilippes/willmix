@@ -195,9 +195,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 }) => {
   // 1. Cliente cria solicitação
   await login(page, "joao@lojista.com");
-  // O início do cliente é Solicitações, com o atalho para nova solicitação.
+  // O início do cliente é a vitrine (Explorar); Solicitações ("Orçamentos")
+  // fica em "Meus pedidos", com o atalho para nova solicitação.
   await page.goto("/app");
-  await page.waitForURL(/\/app\/requests$/);
+  await page.waitForURL(/\/app\/explore$/);
+  await expect(page.locator("[data-explore]")).toBeVisible();
+  await page.goto("/app/requests");
   await expect(page.getByText("Precisa importar um produto?")).toBeVisible();
   // "Como funciona" chega recolhido; um toque abre e mostra a explicação.
   const help = page.locator("[data-page-help]").first();
@@ -700,4 +703,115 @@ test("ficha pela foto do quadro: preenche e a Wellmix decide a divergência", as
       String(before - 1),
     );
   else await expect(page.locator("[data-board-ok]")).toBeVisible();
+});
+
+test("vitrine: busca, página do produto, carrinho e pedido de orçamento", async ({
+  page,
+}) => {
+  await login(page, "joao@lojista.com");
+  // Carrinho vazio para começar (o banco do E2E pode vir de outra rodada).
+  await page.goto("/app/explore/cart");
+  const leftovers = page.locator("[data-cart-remove]");
+  while ((await leftovers.count()) > 0) {
+    const before = await leftovers.count();
+    await leftovers.first().click();
+    await expect(leftovers).toHaveCount(before - 1);
+  }
+  await page.goto("/app");
+  await page.waitForURL(/\/app\/explore$/);
+  await expect(
+    page.locator('[data-explore-product="prod-panela"]'),
+  ).toBeVisible();
+  // Nada do fornecedor nem do preço de compra na vitrine do cliente.
+  await expect(page.locator("[data-explore]")).not.toContainText("Shenzhen");
+  await expect(page.locator("[data-explore-missing]")).toHaveCount(0);
+
+  // Busca sem acento e sem maiúscula.
+  await page.fill("[data-explore-search]", "PANELAS");
+  await page.keyboard.press("Enter");
+  await page.waitForURL(/[?&]q=PANELAS/);
+  await expect(page.locator("[data-explore-product]")).toHaveCount(1);
+
+  // Página do produto: quantidade e personalização, depois o carrinho.
+  await page.locator('[data-explore-product="prod-panela"] a').first().click();
+  await page.waitForURL(/\/app\/explore\/prod-panela/);
+  await expect(page.locator("h1")).toContainText("Jogo de panelas");
+  await page.fill("[data-quantity-input]", "300");
+  // Abaixo do pedido mínimo (500): avisa, sem bloquear.
+  await expect(page.locator("[data-below-moq]")).toBeVisible();
+  await page.fill("[data-quantity-input]", "600");
+  await expect(page.locator("[data-below-moq]")).toHaveCount(0);
+  await page.fill("#explore-notes", "Logo da loja na caixa");
+  await page.locator("[data-explore-add-detail]").click();
+  await page.waitForURL(/[?&]added=prod-panela/);
+  await expect(page.locator("[data-explore-added]")).toBeVisible();
+  await expect(page.locator("[data-explore-cart-link]")).toHaveAttribute(
+    "data-explore-cart-link",
+    "1",
+  );
+
+  // Direto do card da vitrine: o botão diz a quantidade (pedido mínimo) e o
+  // card mostra "No carrinho" no lugar (a tela volta para ele).
+  await page.goto("/app/explore");
+  await expect(page.locator('[data-explore-add="prod-boneca"]')).toContainText(
+    "2.000 un",
+  );
+  await page.locator('[data-explore-add="prod-boneca"]').click();
+  await page.waitForURL(/[?&]added=prod-boneca/);
+  await expect(
+    page.locator('[data-explore-in-cart="prod-boneca"]'),
+  ).toBeVisible();
+  await expect(page.locator("[data-explore-cart-link]")).toHaveAttribute(
+    "data-explore-cart-link",
+    "2",
+  );
+
+  // Carrinho: muda a quantidade e envia para orçamento.
+  await page.goto("/app/explore/cart");
+  await expect(page.locator("[data-cart-line]")).toHaveCount(2);
+  // As observações do envio, já digitadas, ficam ao mudar um item.
+  await page.fill("[data-cart-notes]", "Entrega em Curitiba");
+  await page.fill('[data-cart-quantity="prod-boneca"]', "2500");
+  await page.locator('[data-cart-update="prod-boneca"]').click();
+  await expect(page.locator('[data-cart-line="prod-boneca"]')).toHaveAttribute(
+    "data-cart-qty",
+    "2500",
+  );
+  // Sair do campo já grava (sem precisar de "Atualizar").
+  await page.fill('[data-cart-quantity="prod-panela"]', "800");
+  await page.locator("[data-cart-notes]").click();
+  await expect(page.locator('[data-cart-line="prod-panela"]')).toHaveAttribute(
+    "data-cart-qty",
+    "800",
+  );
+  await expect(page.locator("[data-cart-notes]")).toHaveValue(
+    "Entrega em Curitiba",
+  );
+  await page.fill("[data-cart-deadline]", "2099-12-20");
+  await page.locator("[data-cart-checkout]").click();
+  await page.waitForURL(/\/app\/requests\/batch\/.+fromCart=1/);
+  await expect(page.locator("[data-batch-created]")).toContainText(
+    "Pedido de orçamento enviado",
+  );
+  await expect(page.locator("main")).toContainText("Jogo de panelas");
+  await expect(page.locator("main")).toContainText("Boneca articulada");
+  await page.goto("/app/explore/cart");
+  await expect(page.getByText("Seu carrinho está vazio.")).toBeVisible();
+
+  // "Solicitar orçamento agora": só aquele produto, sem passar pelo carrinho.
+  await page.goto("/app/explore/prod-piscina");
+  await page.fill("[data-quantity-input]", "400");
+  await page.locator("[data-explore-buy-now]").click();
+  await page.waitForURL(/\/app\/requests\/[^/]+\?fromCart=1/);
+  await expect(page.locator("[data-cart-sent]")).toBeVisible();
+  await expect(page.locator("h1")).toContainText("Piscina");
+
+  // Wellmix vê a vitrine como o cliente, sem carrinho, e o que falta no preço.
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/explore");
+  await expect(page.getByText(/vitrine como o cliente vê/)).toBeVisible();
+  await expect(page.locator("[data-explore-add]")).toHaveCount(0);
+  await expect(
+    page.locator('[data-explore-product="prod-jarra"] [data-explore-missing]'),
+  ).toBeVisible();
 });
