@@ -640,3 +640,40 @@ test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar
   // A especificação automática não vira "manual" com texto velho.
   await expect(spec).toHaveAttribute("data-product-spec", specMode);
 });
+
+test("ficha pela foto do quadro: preenche e a Wellmix decide a divergência", async ({
+  page,
+}) => {
+  await login(page, "admin@wellmix.com");
+  // IA em modo de exemplo (mock): o quadro de exemplo tem MOQ, caixa e material.
+  await page.goto("/app/settings");
+  const mode = page.locator('select[name="aiMode"]');
+  await mode.selectOption("MOCK");
+  await mode.evaluate((el) => (el as HTMLSelectElement).form!.requestSubmit());
+  await page.waitForURL(/\/app\/settings\?ok=1/);
+  await page.goto("/app/products/prod-jarra");
+  const board = page.locator('[data-sheet-board="product"]');
+  // Um toque: escolhida a foto, a leitura começa sozinha.
+  await board.locator('input[name="photo"]').setInputFiles(png);
+  await page.waitForURL(/[?&]board=\d+-\d+/);
+  await expect(page.locator("[data-board-done]")).toBeVisible();
+  await expect(page.locator("[data-board-photo]")).toBeVisible();
+  const list = page.locator("[data-board-divergences]");
+  // O quadro de exemplo diverge da ficha mestre (fornecedor e material).
+  await expect(list).toBeVisible();
+  const before = Number(await list.getAttribute("data-board-divergences"));
+  const first = list.locator("[data-board-divergence]").first();
+  await first
+    .getByRole("button", {
+      name: /Vale o da ficha|Sheet is right|以采购单为准/,
+    })
+    .click();
+  await page.waitForURL(/[?&]board=resolved/);
+  await expect(page.locator("[data-board-resolved]")).toBeVisible();
+  if (before > 1)
+    await expect(page.locator("[data-board-divergences]")).toHaveAttribute(
+      "data-board-divergences",
+      String(before - 1),
+    );
+  else await expect(page.locator("[data-board-ok]")).toBeVisible();
+});

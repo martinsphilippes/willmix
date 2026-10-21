@@ -7,7 +7,13 @@ import type { LinePrompts, Product, ProductLine, SourcingItem } from "@/lib/db";
  * nenhum valor sugerido vira cadastro sem confirmação humana.
  */
 export type PromptKind =
-  "registration" | "description" | "marketing" | "image" | "ncm" | "lookup";
+  | "registration"
+  | "description"
+  | "marketing"
+  | "image"
+  | "ncm"
+  | "lookup"
+  | "board";
 
 export const BASE_PROMPTS: Record<PromptKind, string> = {
   registration: [
@@ -45,6 +51,18 @@ export const BASE_PROMPTS: Record<PromptKind, string> = {
     'Responda SOMENTE um JSON: {"candidates": [{"ncm": "0000.00.00", "description": string, "reason": string}]}',
     "Use o formato 0000.00 ou 0000.00.00. Na dúvida, prefira a posição de 4 ou 6 dígitos.",
     "É uma sugestão: a validação é sempre do despachante.",
+  ].join("\n"),
+  board: [
+    "A foto mostra o QUADRO de cotação de um fornecedor chinês (mercado de Yiwu): uma placa impressa com rótulos em inglês, preenchida À MÃO, ao lado do produto, de uma balança, de uma régua e do cartão do fornecedor.",
+    "Transcreva SÓ o que está escrito no quadro, campo por campo. Não invente, não calcule e não complete: campo vazio ou ilegível é null.",
+    'Responda SOMENTE um JSON {"boardFields": {...}, "unreadable": string[], "notes": string|null}, com estas chaves em boardFields:',
+    '"sheetDate" (DATE, como escrito, ex.: "2026.10.13"), "location" (LOCAL), "supplierName" (SUPPLIER NAME), "supplierStore" (SUPPLIER STORE NO), "supplierPhone" (SUPPLIER PHONE NO), "factoryItemCode" (SKU/FACTORY ITEM CODE),',
+    '"incoterm" (FOB/EXW: "FOB" ou "EXW"), "currency" ("RMB" ou "USD", pela moeda escrita junto do preço; null se não estiver escrita), "price" (PRICE, só o número),',
+    '"masterCartonQty" (QTY/BOX), "innerQty" (QTY/INNER), "netWeightPcKg" (N.W/PC, em kg; se estiver em gramas, converta para kg), "grossWeightPcKg" (G.W/PC, em kg), "cbmPerCarton" (CBM),',
+    '"capacityMl" (CAPACITY, só se for em ml), "packageType" (PACKAGE), "colorAssortment" (COLOUR ASSORTMENT, como escrito), "material" (MATERIAL), "powerDetail" (FUNCTION/BATTERY/110/220), "moq" (MOQ).',
+    'Números como número (12000, 0.225). Mantenha o texto como escrito (inglês). SIZE do quadro não é a caixa: coloque em notes ("SIZE: 21x29.7").',
+    "unreadable: rótulos que têm algo escrito mas você não conseguiu ler com certeza.",
+    "notes: o que mais estiver escrito (SIZE, programação de compra, observações) e qualquer dúvida de leitura.",
   ].join("\n"),
   image: [
     "Escreva um prompt de imagem comercial (fundo neutro, iluminação de estúdio, produto em destaque)",
