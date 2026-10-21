@@ -12,8 +12,8 @@ import { MoneyInput } from "./money-input";
 
 /*
  * Escolha do fornecedor com o valor ao cliente calculado (custo importado +
- * margem), atualizado ao trocar o fornecedor ou informar o frete do
- * transportador. O valor segue editável; editar à mão para de atualizar até
+ * margem), atualizado ao trocar o fornecedor ou informar o frete da
+ * companhia marítima. O valor segue editável; editar à mão para de atualizar até
  * clicar em "Usar valor calculado". O servidor refaz a conta ao gravar.
  */
 

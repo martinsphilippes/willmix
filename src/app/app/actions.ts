@@ -1015,6 +1015,26 @@ export async function saveSettingsAction(form: FormData) {
         key === "fiscalLastError"
       )
         continue;
+      if (key === "supplierRankingWeights") {
+        // Um campo por critério ("supplierRankingWeights.price"…), 0 a 100.
+        if (!form.has(`${key}.__form`)) continue;
+        const { RANKING_CRITERIA } =
+          await import("@/lib/services/supplier-ranking-calc");
+        const out: Record<string, number> = {};
+        for (const c of RANKING_CRITERIA) {
+          const text = String(form.get(`${key}.${c}`) ?? "")
+            .trim()
+            .replace(",", ".");
+          const n = text === "" ? 0 : Number(text);
+          if (!(Number.isFinite(n) && n >= 0 && n <= 100))
+            throw new Error("ranking_weight_invalid");
+          out[c] = Math.round(n);
+        }
+        if (!Object.values(out).some((n) => n > 0))
+          throw new Error("ranking_weight_invalid");
+        pairs.push([key, out]);
+        continue;
+      }
       if (
         key === "marginByLine" ||
         key === "marginByCustomer" ||

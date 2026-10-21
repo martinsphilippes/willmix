@@ -297,6 +297,23 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
       .locator("tr", { hasText: "Shenzhen Supplier A" })
       .locator("[data-quote-lead]"),
   ).toHaveAttribute("data-quote-lead", "30");
+  // Disputa: A é mais barato (o resto empata) e vence, com o motivo.
+  const ranking = page.locator("[data-supplier-ranking]");
+  await expect(ranking).toBeVisible();
+  await expect(ranking.locator("[data-ranking-winner]")).toContainText(
+    "Shenzhen Supplier A",
+  );
+  await expect(ranking.locator("[data-ranking-winner]")).toContainText(
+    /menor preço/,
+  );
+  // O que empatou não conta como motivo da vitória.
+  await expect(ranking.locator("[data-ranking-winner]")).not.toContainText(
+    /chega antes/,
+  );
+  await expect(ranking.locator("[data-ranking-tied-on]")).toContainText(
+    /entrega/,
+  );
+
   const quoteValue = await page
     .locator("select[name=quoteId] option", { hasText: "Shenzhen" })
     .getAttribute("value");

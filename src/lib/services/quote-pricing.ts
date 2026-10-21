@@ -30,7 +30,7 @@ import { quotedQuantity } from "./purchase-sheet-calc";
 export interface QuotePricing {
   quoteId: string;
   hasSheet: boolean;
-  /** Entrada sem o frete do transportador (a tela soma quando informado). */
+  /** Entrada sem o frete da companhia marítima (a tela soma quando informado). */
   input: PricingInput;
   result: PricingResult;
   marginSource: "customer" | "line" | "default";

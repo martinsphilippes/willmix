@@ -3,6 +3,8 @@ import { ActionError } from "@/components/action-error";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
+import { SupplierRankingCard } from "@/components/supplier-ranking-card";
+import { supplierRanking } from "@/lib/services/supplier-ranking";
 import {
   fxVariance,
   latestPricingRecord,
@@ -203,6 +205,19 @@ export default async function RequestDetailPage({
   const pricing = selectable.length
     ? await quotePricing(request, selectable)
     : null;
+  /* Disputa: com duas ou mais cotações, nota por critério e vencedor. */
+  const ranking =
+    pricing && selectable.length >= 2
+      ? await supplierRanking(request, selectable, pricing)
+      : null;
+  // O vencedor vem primeiro (já selecionado no formulário de seleção).
+  const rankedPricing = pricing
+    ? [...pricing.quotes].sort(
+        (a, b) =>
+          (ranking?.rows.findIndex((r) => r.quoteId === a.quoteId) ?? 0) -
+          (ranking?.rows.findIndex((r) => r.quoteId === b.quoteId) ?? 0),
+      )
+    : [];
   /* Proposta aguardando sinal: o câmbio mudou desde a proposta? */
   const pricingRecord =
     wellmix && waitingPayment ? await latestPricingRecord(request.id) : null;
@@ -732,6 +747,20 @@ export default async function RequestDetailPage({
                 ))}
               </tbody>
             </Table>
+            {ranking ? (
+              <div className="mt-3">
+                <SupplierRankingCard
+                  t={t}
+                  ranking={ranking}
+                  supplierOf={(quoteId) =>
+                    supplierName(
+                      quotes.find((q) => q.id === quoteId)?.supplierId ?? "",
+                    )
+                  }
+                  canEditWeights={user.role === "admin"}
+                />
+              </div>
+            ) : null}
             {["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
             quotes.some((q) => q.status === "answered") ? (
               /* Telas médias e grandes: memória de cálculo à esquerda;
@@ -752,7 +781,7 @@ export default async function RequestDetailPage({
                       ? { code: big.code, capacityCbm: big.capacityCbm }
                       : null;
                   })()}
-                  quotes={(pricing?.quotes ?? []).map((p) => {
+                  quotes={rankedPricing.map((p) => {
                     const q = selectable.find((x) => x.id === p.quoteId)!;
                     return {
                       quoteId: p.quoteId,
