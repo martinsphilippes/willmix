@@ -1,3 +1,5 @@
+import { fxKey } from "@/lib/pricing";
+
 /*
  * Disputa entre fornecedores (sem banco): cada cotação ganha pontos de 0 a
  * 100 em cada critério, comparada com a melhor; a nota final é a média
@@ -157,7 +159,9 @@ export function comparablePrices(
   rate: (currency: string | null) => number | null,
 ): { currency: string | null; prices: Map<string, number | null> } {
   const priced = items.filter((i) => i.unitPrice !== null && i.unitPrice > 0);
-  const currencies = new Set(priced.map((i) => i.currency ?? ""));
+  // CNY e RMB são a mesma moeda (a ficha usa RMB; a cotação manual, CNY).
+  const norm = (c: string | null) => fxKey(c) ?? (c ?? "").toUpperCase();
+  const currencies = new Set(priced.map((i) => norm(i.currency)));
   const prices = new Map<string, number | null>(
     items.map((i) => [i.quoteId, null]),
   );
@@ -172,6 +176,108 @@ export function comparablePrices(
   if (converted.some((c) => c.brl === null)) return { currency: null, prices };
   for (const c of converted) prices.set(c.id, c.brl);
   return { currency: "BRL", prices };
+}
+
+/** Dias civis de um dia AAAA-MM-DD a outro (positivo = depois). */
+export function daysBetween(from: string, to: string): number {
+  const utc = (d: string) =>
+    Date.UTC(
+      Number(d.slice(0, 4)),
+      Number(d.slice(5, 7)) - 1,
+      Number(d.slice(8, 10)),
+    );
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}
+
+/**
+ * Entrega comparável: espera até o início da produção + produção da 1ª
+ * remessa e, só quando todas as cotações com prazo têm o trânsito da
+ * companhia marítima, mais o trânsito. Se faltar o de alguma, todas contam
+ * até a saída (senão quem já tem o frete respondido levaria o trânsito a mais
+ * e perderia para quem ainda não tem).
+ */
+export function comparableDelivery(
+  items: {
+    quoteId: string;
+    /** Dias até o início da produção (negativo = já começou). */
+    wait: number | null;
+    lot1: number | null;
+    transit: number | null;
+  }[],
+): { includesTransit: boolean; days: Map<string, number | null> } {
+  const base = items.map((i) => ({
+    id: i.quoteId,
+    transit: i.transit,
+    days:
+      i.wait !== null && i.lot1 !== null ? Math.max(0, i.wait) + i.lot1 : null,
+  }));
+  const dated = base.filter((b) => b.days !== null);
+  const includesTransit =
+    dated.length > 0 && dated.every((b) => b.transit !== null);
+  return {
+    includesTransit,
+    days: new Map(
+      base.map((b) => [
+        b.id,
+        b.days === null ? null : b.days + (includesTransit ? b.transit! : 0),
+      ]),
+    ),
+  };
+}
+
+/**
+ * Frete marítimo por peça só entra quando todas as cotações têm o valor
+ * (informado pela companhia marítima ou estimado por CBM): faltar o frete não
+ * é culpa do fornecedor, então ninguém leva zero por isso.
+ */
+export function comparableFreight(
+  freights: Map<string, number | null>,
+): Map<string, number | null> {
+  const all = [...freights.values()].every((f) => f !== null);
+  return new Map(
+    [...freights.keys()].map((id) => [id, all ? freights.get(id)! : null]),
+  );
+}
+
+export interface WinnerExplanation {
+  /** Onde o vencedor foi melhor que todas as outras com dado. */
+  wins: RankingCriterion[];
+  /** Onde empatou com a melhor das outras. */
+  tied: RankingCriterion[];
+  /** Onde alguma outra foi melhor (ou só ele ficou sem dado). */
+  losses: RankingCriterion[];
+  /** Só ele tem o dado: não é vitória, é informação. */
+  onlyData: RankingCriterion[];
+}
+
+/** Por que o vencedor ganhou, critério a critério, em ordem de peso. */
+export function explainWinner(result: RankingResult): WinnerExplanation | null {
+  const winner = result.rows.find((r) => r.quoteId === result.winnerId);
+  if (!winner || result.tie) return null;
+  const out: WinnerExplanation = {
+    wins: [],
+    tied: [],
+    losses: [],
+    onlyData: [],
+  };
+  const byWeight = [...result.used].sort(
+    (a, b) =>
+      (winner.criteria.find((x) => x.criterion === b)?.weight ?? 0) -
+      (winner.criteria.find((x) => x.criterion === a)?.weight ?? 0),
+  );
+  for (const c of byWeight) {
+    const of = (r: RankingRow) => r.criteria.find((x) => x.criterion === c)!;
+    const w = of(winner);
+    const others = result.rows
+      .filter((r) => r !== winner && of(r).hasValue)
+      .map((r) => of(r).score);
+    if (!w.hasValue) out.losses.push(c);
+    else if (!others.length) out.onlyData.push(c);
+    else if (others.every((s) => s < w.score)) out.wins.push(c);
+    else if (others.every((s) => s <= w.score)) out.tied.push(c);
+    else out.losses.push(c);
+  }
+  return out;
 }
 
 /** Pesos gravados (vazio ou inválido → padrão), cada um de 0 a 100. */

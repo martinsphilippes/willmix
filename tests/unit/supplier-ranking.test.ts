@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  comparableDelivery,
+  comparableFreight,
   comparablePrices,
+  daysBetween,
   DEFAULT_RANKING_WEIGHTS,
+  explainWinner,
   normalizeWeights,
   rankQuotes,
   type RankingValues,
@@ -145,5 +149,119 @@ describe("disputa de fornecedores", () => {
     expect(both.currency).toBe("BRL");
     expect(both.prices.get("a")).toBe(10);
     expect(both.prices.get("b")).toBeCloseTo(9.8);
+  });
+
+  it("CNY e RMB são a mesma moeda: compara direto, sem câmbio", () => {
+    const r = comparablePrices(
+      [
+        { quoteId: "a", unitPrice: 2, currency: "RMB" },
+        { quoteId: "b", unitPrice: 2.1, currency: "CNY" },
+      ],
+      () => null,
+    );
+    expect(r.currency).toBe("RMB");
+    expect([...r.prices.values()]).toEqual([2, 2.1]);
+  });
+
+  it("entrega: trânsito só entra quando todas têm (quem já tem frete não é punido)", () => {
+    // A: frete respondido com 35 dias de trânsito; B: aguardando a companhia.
+    const partial = comparableDelivery([
+      { quoteId: "a", wait: 5, lot1: 30, transit: 35 },
+      { quoteId: "b", wait: 5, lot1: 45, transit: null },
+    ]);
+    expect(partial.includesTransit).toBe(false);
+    expect([...partial.days.values()]).toEqual([35, 50]);
+    const full = comparableDelivery([
+      { quoteId: "a", wait: 5, lot1: 30, transit: 35 },
+      { quoteId: "b", wait: -3, lot1: 45, transit: 30 },
+    ]);
+    expect(full.includesTransit).toBe(true);
+    // Produção já começou (espera negativa) conta como zero.
+    expect([...full.days.values()]).toEqual([70, 75]);
+    // Sem programação: sem dado, e não impede o trânsito das demais.
+    const noLot = comparableDelivery([
+      { quoteId: "a", wait: 5, lot1: null, transit: null },
+      { quoteId: "b", wait: 5, lot1: 10, transit: 20 },
+    ]);
+    expect(noLot.includesTransit).toBe(true);
+    expect([...noLot.days.values()]).toEqual([null, 35]);
+  });
+
+  it("frete marítimo só entra quando todas têm o valor", () => {
+    expect([
+      ...comparableFreight(
+        new Map([
+          ["a", 0.5],
+          ["b", null],
+        ]),
+      ).values(),
+    ]).toEqual([null, null]);
+    expect([
+      ...comparableFreight(
+        new Map([
+          ["a", 0.5],
+          ["b", 0.4],
+        ]),
+      ).values(),
+    ]).toEqual([0.5, 0.4]);
+  });
+
+  it("dias civis entre dois dias (início amanhã = 1, mesmo à tarde)", () => {
+    expect(daysBetween("2026-10-21", "2026-10-22")).toBe(1);
+    expect(daysBetween("2026-10-21", "2026-10-21")).toBe(0);
+    expect(daysBetween("2026-10-21", "2026-10-18")).toBe(-3);
+    expect(daysBetween("2026-12-31", "2027-01-02")).toBe(2);
+  });
+
+  it("explicação: ganhou só onde foi melhor que todas; empate e 'só ele' à parte", () => {
+    const weights = {
+      ...DEFAULT_RANKING_WEIGHTS,
+      price: 50,
+      delivery: 20,
+      freight: 10,
+    };
+    // A e B com o mesmo preço; C mais caro. A chega antes. Só A tem produção.
+    const r = rankQuotes(
+      [
+        {
+          quoteId: "a",
+          values: v({ price: 10, delivery: 40, production: 20 }),
+        },
+        { quoteId: "b", values: v({ price: 10, delivery: 50 }) },
+        { quoteId: "c", values: v({ price: 20, delivery: 60 }) },
+      ],
+      weights,
+    );
+    expect(r.winnerId).toBe("a");
+    expect(explainWinner(r)).toEqual({
+      wins: ["delivery"],
+      tied: ["price"],
+      losses: [],
+      onlyData: ["production"],
+    });
+    // Perdeu onde outra foi melhor; sem dado no vencedor também é perda.
+    const r2 = rankQuotes(
+      [
+        { quoteId: "a", values: v({ price: 10, delivery: 90 }) },
+        { quoteId: "b", values: v({ price: 15, delivery: 30, freight: 1 }) },
+      ],
+      { ...weights, price: 80 },
+    );
+    expect(r2.winnerId).toBe("a");
+    expect(explainWinner(r2)).toEqual({
+      wins: ["price"],
+      tied: [],
+      losses: ["delivery", "freight"],
+      onlyData: [],
+    });
+    // Empate na nota: sem explicação de vencedor.
+    const tie = rankQuotes(
+      [
+        { quoteId: "a", values: v({ price: 5 }) },
+        { quoteId: "b", values: v({ price: 5 }) },
+      ],
+      weights,
+    );
+    expect(explainWinner(tie)).toBeNull();
   });
 });

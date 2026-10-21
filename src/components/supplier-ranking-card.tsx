@@ -1,8 +1,9 @@
 import type { Translate } from "@/i18n";
 import type { SupplierRanking } from "@/lib/services/supplier-ranking";
-import type {
-  RankingCriterion,
-  RankingValues,
+import {
+  explainWinner,
+  type RankingCriterion,
+  type RankingValues,
 } from "@/lib/services/supplier-ranking-calc";
 import { Badge, Card, cx, TextLink } from "@/components/ui";
 
@@ -55,15 +56,27 @@ export function SupplierRankingCard({
       ? fmt(c, n)
       : t("ranking.days", { n: String(n) });
   };
-  const reasonFor = (c: RankingCriterion, v: RankingValues) =>
-    t(`ranking.reason.${c}`, {
-      value:
-        c === "price" || c === "freight"
-          ? fmt(c, (v[c] as number) ?? 0)
-          : c === "moq"
-            ? ""
-            : t("ranking.days", { n: String(v[c] ?? "") }),
-    });
+  const num = (n: number) =>
+    n.toLocaleString(t.intl, { maximumFractionDigits: 1 });
+  const reasonFor = (c: RankingCriterion, v: RankingValues): string => {
+    if (c === "moq") {
+      // "Atende" só quando atende; senão, só é o menor MOQ entre elas.
+      return v.moq && v.moq.moq > v.moq.quantity
+        ? t("ranking.reason.moqLower", {
+            value: v.moq.moq.toLocaleString(t.intl),
+          })
+        : t("ranking.reason.moq");
+    }
+    if (c === "price" || c === "freight")
+      return t(`ranking.reason.${c}`, { value: fmt(c, (v[c] as number) ?? 0) });
+    const days = t("ranking.days", { n: String(v[c] ?? "") });
+    return c === "delivery" && !ranking.deliveryIncludesTransit
+      ? t("ranking.reason.deliveryDeparture", { value: days })
+      : t(`ranking.reason.${c}`, { value: days });
+  };
+  // Nome do critério no meio da frase (minúsculo, mas "MOQ" fica "MOQ").
+  const criteriaList = (list: RankingCriterion[]) =>
+    list.map((c) => t(`ranking.inline.${c}`)).join(", ");
 
   if (!ranking.used.length)
     return (
@@ -74,31 +87,8 @@ export function SupplierRankingCard({
 
   const winner = ranking.rows.find((r) => r.quoteId === ranking.winnerId);
   const winnerValues = winner ? ranking.values.get(winner.quoteId)! : null;
-  // Motivos em ordem de peso: onde o vencedor foi o melhor; e onde perdeu.
-  const byWeight = [...ranking.used].sort(
-    (a, b) => ranking.weights[b] - ranking.weights[a],
-  );
-  const scoresOf = (c: RankingCriterion) =>
-    ranking.rows.map((r) => r.criteria.find((x) => x.criterion === c)!.score);
-  // Critério em que todas as cotações ficaram iguais não decide nada.
-  const allEqual = (c: RankingCriterion) => new Set(scoresOf(c)).size === 1;
-  const wins = winner
-    ? byWeight.filter(
-        (c) =>
-          !allEqual(c) && winner.criteria.find((x) => x.criterion === c)?.best,
-      )
-    : [];
-  const tiedOn = winner ? byWeight.filter(allEqual) : [];
-  const losses = winner
-    ? byWeight.filter(
-        (c) =>
-          !allEqual(c) && !winner.criteria.find((x) => x.criterion === c)?.best,
-      )
-    : [];
-  const num = (n: number) =>
-    n.toLocaleString(t.intl, { maximumFractionDigits: 1 });
-  const criteriaList = (list: RankingCriterion[]) =>
-    list.map((c) => t(`ranking.criterion.${c}`).toLowerCase()).join(", ");
+  // Onde ganhou, empatou, perdeu ou só ele informou (em ordem de peso).
+  const why = explainWinner(ranking);
   const tied = ranking.tie
     ? ranking.rows.filter((r) => r.total === ranking.rows[0].total)
     : [];
@@ -117,6 +107,12 @@ export function SupplierRankingCard({
     >
       <div className="space-y-3" data-supplier-ranking={ranking.rows.length}>
         <p className="text-xs text-zinc-600">{t("ranking.intro")}</p>
+        {ranking.used.includes("delivery") &&
+        !ranking.deliveryIncludesTransit ? (
+          <p className="text-xs text-zinc-600" data-ranking-departure="">
+            {t("ranking.deliveryToDeparture")}
+          </p>
+        ) : null}
         {ranking.tie ? (
           <p
             className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 ring-1 ring-inset ring-amber-200"
@@ -138,23 +134,30 @@ export function SupplierRankingCard({
                 points: num(winner.total),
               })}
             </p>
-            {wins.length ? (
+            {why?.wins.length ? (
               <p>
                 {t("ranking.why", {
-                  reasons: wins
+                  reasons: why.wins
                     .map((c) => reasonFor(c, winnerValues))
                     .join("; "),
                 })}
               </p>
             ) : null}
-            {losses.length ? (
+            {why?.losses.length ? (
               <p className="text-emerald-800">
-                {t("ranking.lostIn", { criteria: criteriaList(losses) })}
+                {t("ranking.lostIn", { criteria: criteriaList(why.losses) })}
               </p>
             ) : null}
-            {tiedOn.length ? (
+            {why?.tied.length ? (
               <p className="text-emerald-800" data-ranking-tied-on="">
-                {t("ranking.tiedIn", { criteria: criteriaList(tiedOn) })}
+                {t("ranking.tiedIn", { criteria: criteriaList(why.tied) })}
+              </p>
+            ) : null}
+            {why?.onlyData.length ? (
+              <p className="text-emerald-800">
+                {t("ranking.onlyData", {
+                  criteria: criteriaList(why.onlyData),
+                })}
               </p>
             ) : null}
           </div>
@@ -194,7 +197,7 @@ export function SupplierRankingCard({
                     data-ranking-total={row.total}
                   >
                     <td className="py-2 pr-3 font-semibold tabular-nums">
-                      {row.rank}º
+                      {t("ranking.rank", { n: String(row.rank) })}
                     </td>
                     <td className="py-2 pr-3 font-medium text-zinc-900">
                       {supplierOf(row.quoteId)}

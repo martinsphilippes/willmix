@@ -771,6 +771,9 @@ export default async function RequestDetailPage({
               >
                 <input type="hidden" name="requestId" value={request.id} />
                 <SellPriceCalculator
+                  // Nova ordem (ex.: cotação registrada aqui) remonta com o
+                  // vencedor já selecionado, em vez de manter a escolha antiga.
+                  key={rankedPricing.map((p) => p.quoteId).join(",")}
                   container={(() => {
                     // Referência para "≈ N containers": o maior das configurações (40HC).
                     const types = settings.containerTypes ?? [];
