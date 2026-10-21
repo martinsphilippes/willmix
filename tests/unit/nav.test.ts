@@ -54,6 +54,8 @@ describe("menu principal", () => {
       "/app/penalties",
       "/app/notifications",
       "/app/settings",
+      // Vitrine como o cliente vê.
+      "/app/explore",
     ])
       expect(hrefs).toContain(href);
     // Operador: tudo igual, menos Configurações.
@@ -61,19 +63,19 @@ describe("menu principal", () => {
     expect(operator).toEqual(hrefs.filter((h) => h !== "/app/settings"));
   });
 
-  it("cliente: dois grupos (Início, Pedidos), sem links soltos, começando pelas solicitações", () => {
+  it("cliente: Explorar (vitrine) no início e o resto em \"Meus pedidos\"; nenhuma tela some", () => {
     const entries = navFor("customer", false);
-    expect(entries.every(isNavGroup)).toBe(true);
+    expect(entries[0]).toEqual({ href: "/app/explore", key: "nav.explore" });
     expect(entries.filter(isNavGroup).map((g) => g.key)).toEqual([
-      "nav.group.home",
-      "nav.group.orders",
+      "nav.group.myOrders",
     ]);
     const hrefs = flattenNav(entries).map((l) => l.href);
     expect(hrefs).toEqual([
+      "/app/explore",
       "/app/requests",
+      "/app/orders",
       "/app/tasks",
       "/app/notifications",
-      "/app/orders",
       "/app/history",
       "/app/marketing",
     ]);

@@ -47,7 +47,8 @@ export default async function RequestBatchPage({
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created, deleted, skipped, error, rfq } = await searchParams;
+  const { created, deleted, skipped, error, rfq, fromCart } =
+    await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
@@ -203,7 +204,9 @@ export default async function RequestBatchPage({
       {createdCount > 1 ? (
         <div className="mb-3" data-batch-created>
           <Alert tone="success">
-            {t("reqBatch.created", { n: createdCount })}
+            {fromCart === "1"
+              ? `${t("explore.sent")} ${t("reqBatch.created", { n: createdCount })}`
+              : t("reqBatch.created", { n: createdCount })}
           </Alert>
         </div>
       ) : null}

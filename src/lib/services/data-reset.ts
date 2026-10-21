@@ -47,6 +47,7 @@ const SALES_TABLES = [
   "freight_quotes",
   "marketing_kits",
   "ai_suggestions",
+  "cart_items",
 ] as const satisfies readonly TableName[];
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */

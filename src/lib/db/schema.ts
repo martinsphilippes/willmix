@@ -1285,6 +1285,22 @@ export interface ManufacturerCard extends BaseRow {
   createdByUserId: string;
 }
 
+/**
+ * Carrinho do cliente na vitrine (Explorar): um item por produto, por login
+ * (como as solicitações, que cada login vê só as suas). Ao enviar, cada item
+ * vira uma solicitação de orçamento (lote) e sai do carrinho. Guardado no
+ * banco para valer em qualquer aparelho e para a Wellmix ver o interesse.
+ */
+export interface CartItem extends BaseRow {
+  userId: string;
+  customerId: string;
+  productId: string;
+  /** Quantidade em unidades (peças). */
+  quantity: number;
+  /** Personalização pedida pelo cliente (cor, logo, embalagem...). */
+  notes: string | null;
+}
+
 /** Onde a ficha lida pela foto do quadro mora. */
 export const SHEET_READING_SCOPES = ["quote", "order", "product"] as const;
 export type SheetReadingScope = (typeof SHEET_READING_SCOPES)[number];
@@ -1388,6 +1404,7 @@ export interface Tables {
   product_suppliers: ProductSupplier;
   sheet_readings: SheetReading;
   manufacturer_cards: ManufacturerCard;
+  cart_items: CartItem;
 }
 export type TableName = keyof Tables;
 
@@ -2370,6 +2387,23 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  cart_items: {
+    label: "Carrinho da vitrine",
+    columns: {
+      userId: id(),
+      customerId: id(),
+      productId: id(),
+      quantity: int(true),
+      notes: str(500),
+    },
+    indexes: [
+      {
+        key: "user_product_unique",
+        type: "unique",
+        columns: ["userId", "productId"],
+      },
     ],
   },
 };

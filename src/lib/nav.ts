@@ -5,8 +5,9 @@ import type { Role } from "@/lib/db/schema";
  * Menu principal do portal. A Wellmix tem muitas telas: tudo fica em quatro
  * grupos (Início, Pedidos, Cadastros, Gestão), sem links soltos na barra; a
  * logo continua levando ao Control Tower. Cliente, fornecedores e parceiros
- * também veem dois grupos (Início, Pedidos); a logo leva ao início de cada
- * um. Grupo com uma tela só vira link direto (sem lista de um item).
+ * também veem dois grupos (Início, Pedidos); o cliente vê a vitrine
+ * (Explorar) e "Meus pedidos". A logo leva ao início de cada um. Grupo com
+ * uma tela só vira link direto (sem lista de um item).
  */
 
 export interface NavLink {
@@ -59,6 +60,8 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
           { href: "/app/parties", key: "nav.parties" },
           { href: "/app/products", key: "nav.products" },
           { href: "/app/lines", key: "nav.lines" },
+          // A vitrine como o cliente vê (preço estimado, o que falta no cadastro).
+          { href: "/app/explore", key: "nav.explorePreview" },
         ],
       },
       {
@@ -78,20 +81,17 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
     ];
   }
   if (role === "customer")
-    // Início do cliente é Solicitações; Pendências segue disponível em /app/tasks.
+    // Início do cliente é a vitrine (Explorar); o resto (orçamentos, pedidos,
+    // pendências) fica num grupo só, "Meus pedidos".
     return [
+      { href: "/app/explore", key: "nav.explore" },
       {
-        key: "nav.group.home",
+        key: "nav.group.myOrders",
         items: [
-          { href: "/app/requests", key: "nav.requests" },
+          { href: "/app/requests", key: "nav.myQuotes" },
+          { href: "/app/orders", key: "nav.orders" },
           { href: "/app/tasks", key: "nav.tasks" },
           { href: "/app/notifications", key: "nav.notifications" },
-        ],
-      },
-      {
-        key: "nav.group.orders",
-        items: [
-          { href: "/app/orders", key: "nav.orders" },
           { href: "/app/history", key: "nav.history" },
           { href: "/app/marketing", key: "nav.marketing" },
         ],

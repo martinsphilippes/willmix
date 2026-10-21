@@ -20,7 +20,7 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       />
     );
   }
-  if (user.role === "customer") redirect("/app/requests");
+  if (user.role === "customer") redirect("/app/explore");
   // Cotação recém-enviada pelo fornecedor: confirmação e próxima a responder.
   return (
     <TaskList
