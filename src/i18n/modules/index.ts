@@ -35,6 +35,7 @@ import * as pageHelp from "./page-help";
 import * as dataReset from "./data-reset";
 import * as sheetReading from "./sheet-reading";
 import * as manufacturerCards from "./manufacturer-cards";
+import * as supplierRanking from "./supplier-ranking";
 import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as requestProduct from "./request-product";
@@ -87,6 +88,7 @@ export const modulesPt = {
   ...dataReset.pt,
   ...sheetReading.pt,
   ...manufacturerCards.pt,
+  ...supplierRanking.pt,
   ...inspectionReport.pt,
   ...sla.pt,
   ...requestProduct.pt,
@@ -146,6 +148,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...dataReset.en,
   ...sheetReading.en,
   ...manufacturerCards.en,
+  ...supplierRanking.en,
   ...inspectionReport.en,
   ...sla.en,
   ...requestProduct.en,
@@ -205,6 +208,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...dataReset.zh,
   ...sheetReading.zh,
   ...manufacturerCards.zh,
+  ...supplierRanking.zh,
   ...inspectionReport.zh,
   ...sla.zh,
   ...requestProduct.zh,

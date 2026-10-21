@@ -6,6 +6,10 @@ import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
 import { PricingSettings } from "@/components/pricing-settings";
+import {
+  RANKING_CRITERIA,
+  normalizeWeights,
+} from "@/lib/services/supplier-ranking-calc";
 import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
 import { fiscalStatus } from "@/lib/services/fiscal";
 import { formatContainerTypes } from "@/lib/services/containers";
@@ -546,6 +550,45 @@ export default async function SettingsPage({
               />
               {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}
               <TaxRateFields t={t} s={s} />
+              {/* Disputa de fornecedores: peso de cada critério na nota. */}
+              <div
+                id="ranking"
+                className="scroll-mt-24 space-y-2 rounded-xl border border-zinc-200 p-3"
+              >
+                <h3 className="text-sm font-semibold text-zinc-900">
+                  {t("ranking.settings.title")}
+                </h3>
+                <p className="text-xs text-zinc-600">
+                  {t("ranking.settings.hint")}
+                </p>
+                <input
+                  type="hidden"
+                  name="supplierRankingWeights.__form"
+                  value="1"
+                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {RANKING_CRITERIA.map((c) => (
+                    <label
+                      key={c}
+                      className="flex items-center justify-between gap-3 text-sm text-zinc-700"
+                    >
+                      <span>{t(`ranking.settings.${c}`)}</span>
+                      <input
+                        name={`supplierRankingWeights.${c}`}
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        defaultValue={
+                          normalizeWeights(s.supplierRankingWeights)[c]
+                        }
+                        className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-right tabular-nums"
+                        data-ranking-weight={c}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
           <p className="rounded-lg bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-600 ring-1 ring-inset ring-zinc-200">

@@ -3,7 +3,7 @@
  * estimado + margem). Funções puras: servem no servidor e na tela.
  *
  *   FOB (R$)        = preço da ficha × quantidade × câmbio da moeda da ficha
- *   Frete (R$)      = valor do transportador, ou CBM total × frete por CBM × câmbio
+ *   Frete (R$)      = valor da companhia marítima, ou CBM total × frete por CBM × câmbio
  *   Seguro (R$)     = FOB × seguro %
  *   Valor aduaneiro = FOB + frete + seguro (o "CIF")
  *   II (R$)         = valor aduaneiro × II % (TEC pelo NCM)
@@ -23,7 +23,7 @@
 export type FxRates = Partial<Record<"USD" | "RMB" | "EUR" | "BRL", number>>;
 
 export interface FreightInput {
-  /** Valor informado pelo transportador, já em reais. Tem prioridade. */
+  /** Valor informado pela companhia marítima, já em reais. Tem prioridade. */
   carrierBrl?: number | null;
   /** Frete estimado por CBM (Configurações). */
   perCbm?: number | null;

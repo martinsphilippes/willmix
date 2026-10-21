@@ -1,4 +1,5 @@
 import "server-only";
+import { DEFAULT_RANKING_WEIGHTS } from "@/lib/services/supplier-ranking-calc";
 
 import { getStore } from "@/lib/db";
 
@@ -113,7 +114,15 @@ export const DEFAULT_SETTINGS = {
   marginByLine: {} as Record<string, number>,
   /** Margem por cliente (%), por id do parceiro. Facultativa; vence a da linha. */
   marginByCustomer: {} as Record<string, number>,
-  /** Frete estimado por CBM (null = sem estimativa; o operador informa o do transportador). */
+  /**
+   * Disputa de fornecedores: peso (0 a 100) de cada critério na nota das
+   * cotações (preço, entrega, produção, frete marítimo, MOQ).
+   */
+  supplierRankingWeights: { ...DEFAULT_RANKING_WEIGHTS } as Record<
+    string,
+    number
+  >,
+  /** Frete marítimo estimado por CBM (null = sem estimativa; o operador informa o da companhia marítima). */
   freightPerCbm: null as number | null,
   freightCurrency: "USD",
   /** Câmbio manual (R$ por unidade), usado se a PTAX nunca foi obtida. */

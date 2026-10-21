@@ -29,10 +29,10 @@ export const pt = {
   "pricing.settings.margin": "Margem geral (%)",
   "pricing.settings.marginHint":
     "Vale quando o cliente e a linha do produto não têm margem própria.",
-  "pricing.settings.freight": "Frete estimado por CBM",
+  "pricing.settings.freight": "Frete marítimo estimado por CBM",
   "pricing.settings.freightHint":
-    "Vazio: sem estimativa (o operador informa o frete do transportador).",
-  "pricing.settings.freightCurrency": "Moeda do frete",
+    "Vazio: sem estimativa (o operador informa o frete da companhia marítima).",
+  "pricing.settings.freightCurrency": "Moeda do frete marítimo",
   "pricing.settings.fx": "Câmbio do dia",
   "pricing.settings.fxManualHint":
     'Câmbio manual de reserva: só é usado se nenhuma cotação tiver sido obtida. "Buscar cotações" consulta a do dia e preenche os três campos.',
@@ -55,9 +55,9 @@ export const pt = {
   "pricing.calc.title": "Valor ao cliente calculado",
   "pricing.calc.fob": "Produto (FOB): {qty} × {price}",
   "pricing.calc.fx": "Câmbio {currency}: R$ {rate}",
-  "pricing.calc.freightCarrier": "Frete informado pelo transportador",
-  "pricing.calc.freightCbm": "Frete estimado: {cbm} m³ × {rate}",
-  "pricing.calc.freightNone": "Frete: não informado",
+  "pricing.calc.freightCarrier": "Frete informado pela companhia marítima",
+  "pricing.calc.freightCbm": "Frete marítimo estimado: {cbm} m³ × {rate}",
+  "pricing.calc.freightNone": "Frete marítimo: não informado",
   "pricing.calc.importTax": "Imposto de importação ({pct}%)",
   "pricing.calc.ipi": "IPI ({pct}%)",
   "pricing.calc.landed": "Custo importado",
@@ -76,15 +76,15 @@ export const pt = {
   "requests.downPaymentPercent": "Sinal (% do valor ao cliente)",
   "requests.downPayment.equals":
     "= {amount} de sinal ({percent}% de {total}) · restante {rest}",
-  "pricing.calc.carrierFreight": "Frete do transportador (R$)",
+  "pricing.calc.carrierFreight": "Frete marítimo da companhia marítima (R$)",
   "pricing.calc.carrierFreightHint":
     "Se informado, substitui a estimativa por CBM.",
   "pricing.calc.missing.price": "A ficha não tem preço.",
   "pricing.calc.missing.fx": "Sem câmbio para a moeda da ficha.",
   "pricing.calc.missing.freight":
-    "Sem frete: informe o do transportador ou configure o frete por CBM.",
+    "Sem frete marítimo: informe o da companhia marítima ou configure o frete por CBM.",
   "pricing.calc.missing.cbm":
-    "Sem CBM na ficha (caixa master e CBM da caixa): frete não estimado.",
+    "Sem CBM na ficha (caixa master e CBM da caixa): frete marítimo não estimado.",
   "pricing.calc.missing.importTax":
     "Imposto de importação não informado na ficha (0%).",
   "pricing.calc.missing.ipi": "IPI não informado na ficha (0%).",
@@ -127,7 +127,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Used when neither the customer nor the product line has its own margin.",
   "pricing.settings.freight": "Estimated freight per CBM",
   "pricing.settings.freightHint":
-    "Empty: no estimate (the operator enters the carrier's freight).",
+    "Empty: no estimate (the operator enters the shipping line's freight).",
   "pricing.settings.freightCurrency": "Freight currency",
   "pricing.settings.fx": "Today's exchange rate",
   "pricing.settings.fxManualHint":
@@ -151,9 +151,9 @@ export const en: Record<keyof typeof pt, string> = {
   "pricing.calc.title": "Calculated customer value",
   "pricing.calc.fob": "Product (FOB): {qty} × {price}",
   "pricing.calc.fx": "Rate {currency}: R$ {rate}",
-  "pricing.calc.freightCarrier": "Freight quoted by the carrier",
-  "pricing.calc.freightCbm": "Estimated freight: {cbm} m³ × {rate}",
-  "pricing.calc.freightNone": "Freight: not provided",
+  "pricing.calc.freightCarrier": "Freight quoted by the shipping line",
+  "pricing.calc.freightCbm": "Estimated ocean freight: {cbm} m³ × {rate}",
+  "pricing.calc.freightNone": "Ocean freight: not provided",
   "pricing.calc.importTax": "Import duty ({pct}%)",
   "pricing.calc.ipi": "IPI ({pct}%)",
   "pricing.calc.landed": "Landed cost",
@@ -172,13 +172,13 @@ export const en: Record<keyof typeof pt, string> = {
   "requests.downPaymentPercent": "Down payment (% of the customer price)",
   "requests.downPayment.equals":
     "= {amount} down payment ({percent}% of {total}) · balance {rest}",
-  "pricing.calc.carrierFreight": "Carrier freight (R$)",
+  "pricing.calc.carrierFreight": "Ocean freight from the shipping line (R$)",
   "pricing.calc.carrierFreightHint":
     "If provided, it replaces the per-CBM estimate.",
   "pricing.calc.missing.price": "The sheet has no price.",
   "pricing.calc.missing.fx": "No exchange rate for the sheet currency.",
   "pricing.calc.missing.freight":
-    "No freight: enter the carrier's or set the freight per CBM.",
+    "No ocean freight: enter the shipping line's or set the freight per CBM.",
   "pricing.calc.missing.cbm":
     "No CBM on the sheet (master carton and CBM per carton): freight not estimated.",
   "pricing.calc.missing.importTax": "Import duty not on the sheet (0%).",
@@ -215,7 +215,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.settings.margin": "默认利润率（%）",
   "pricing.settings.marginHint": "客户和产品线都没有单独利润率时使用。",
   "pricing.settings.freight": "每立方米预估运费",
-  "pricing.settings.freightHint": "留空：不预估（由操作员填写承运人运费）。",
+  "pricing.settings.freightHint": "留空：不预估（由操作员填写船公司运费）。",
   "pricing.settings.freightCurrency": "运费币种",
   "pricing.settings.fx": "当日汇率",
   "pricing.settings.fxManualHint":
@@ -237,9 +237,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "pricing.calc.title": "计算的客户价格",
   "pricing.calc.fob": "产品（FOB）：{qty} × {price}",
   "pricing.calc.fx": "{currency} 汇率：R$ {rate}",
-  "pricing.calc.freightCarrier": "承运人报价运费",
-  "pricing.calc.freightCbm": "预估运费：{cbm} m³ × {rate}",
-  "pricing.calc.freightNone": "运费：未提供",
+  "pricing.calc.freightCarrier": "船公司报价运费",
+  "pricing.calc.freightCbm": "预估海运费：{cbm} m³ × {rate}",
+  "pricing.calc.freightNone": "海运费：未提供",
   "pricing.calc.importTax": "进口税（{pct}%）",
   "pricing.calc.ipi": "IPI（{pct}%）",
   "pricing.calc.landed": "到岸成本",
@@ -258,12 +258,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "requests.downPaymentPercent": "定金（客户价格的 %）",
   "requests.downPayment.equals":
     "= 定金 {amount}（{total} 的 {percent}%）· 余款 {rest}",
-  "pricing.calc.carrierFreight": "承运人运费（R$）",
+  "pricing.calc.carrierFreight": "船公司海运费（R$）",
   "pricing.calc.carrierFreightHint": "填写后将替代按立方米的预估。",
   "pricing.calc.missing.price": "采购单没有价格。",
   "pricing.calc.missing.fx": "没有采购单币种的汇率。",
   "pricing.calc.missing.freight":
-    "没有运费：请填写承运人运费或设置每立方米运费。",
+    "没有海运费：请填写船公司运费或设置每立方米运费。",
   "pricing.calc.missing.cbm":
     "采购单没有体积（外箱数量和每箱体积）：未预估运费。",
   "pricing.calc.missing.importTax": "采购单未填写进口税（0%）。",
