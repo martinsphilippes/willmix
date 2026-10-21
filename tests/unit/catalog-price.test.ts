@@ -116,6 +116,21 @@ describe("preço estimado da vitrine", () => {
     expect(tierEstimates(stale, ctx())).toEqual([]);
     const fresh = estimateCatalogPrice(input({ unitPrice: 10.5 }), ctx());
     expect(estimateCatalogPrice(stale, ctx())).toEqual(fresh);
+    // Faixas só de desconto (sem a da quantidade mínima), vindas de outra
+    // moeda: não há como ligá-las ao preço atual, ficam de fora.
+    const otherCurrency = input({
+      unitPrice: 65,
+      currency: "RMB",
+      moq: 300,
+      tiers: [
+        { minQty: 500, price: 9.5 },
+        { minQty: 1000, price: 8.9 },
+      ],
+    });
+    expect(tierPrice(otherCurrency, 1000)).toBe(65);
+    expect(tierEstimates(otherCurrency, ctx({ fx: { RMB: 0.75 } }))).toEqual(
+      [],
+    );
     // Faixa "mais cara" que o preço base também não vale.
     expect(
       tierPrice(input({ tiers: [{ minQty: 1000, price: 12 }] }), 2000),

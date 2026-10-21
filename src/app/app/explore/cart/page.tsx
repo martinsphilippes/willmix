@@ -58,6 +58,15 @@ export default async function CartPage({
   const input =
     "rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
   const lines = cart?.lines ?? [];
+  // Erros do item (mostrados no próprio item, sem trocar de tela).
+  const lineErrors: Record<string, string> = {
+    cart_quantity_invalid: t("explore.error.cart_quantity_invalid"),
+    cart_item_not_found: t("explore.error.cart_item_not_found"),
+    invalid_input: t("explore.error.cart_quantity_invalid"),
+    forbidden: t("explore.error.forbidden"),
+    schema_outdated: t("explore.error.schema_outdated"),
+    unexpected: t("explore.error.unexpected"),
+  };
 
   return (
     <div className="space-y-4" data-explore-cart={lines.length}>
@@ -179,10 +188,10 @@ export default async function CartPage({
                           })}
                         </p>
                       ) : null}
-                      {/* key: depois de gravar, o formulário recomeça do valor salvo. */}
                       <CartLineForm
-                        key={`${line.id}:${line.quantity}:${line.notes ?? ""}`}
-                        action={updateCartItemAction}
+                        key={line.id}
+                        update={updateCartItemAction}
+                        remove={removeCartItemAction}
                         itemId={line.id}
                         productId={line.productId}
                         quantity={line.quantity}
@@ -194,18 +203,10 @@ export default async function CartPage({
                             "explore.product.notesPlaceholder",
                           ),
                           update: t("explore.cart.update"),
+                          remove: t("explore.cart.remove"),
+                          errors: lineErrors,
                         }}
                       />
-                      <form action={removeCartItemAction} className="mt-1">
-                        <input type="hidden" name="itemId" value={line.id} />
-                        <SubmitButton
-                          variant="ghost"
-                          className="-ml-2 px-2 py-2 text-xs font-semibold text-zinc-500 hover:text-red-700"
-                          data-cart-remove={line.productId}
-                        >
-                          {t("explore.cart.remove")}
-                        </SubmitButton>
-                      </form>
                     </div>
                   </div>
                 </li>

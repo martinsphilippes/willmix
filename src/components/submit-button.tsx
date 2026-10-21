@@ -12,6 +12,14 @@ export function useFormDoneSignal(pending: boolean) {
       window.dispatchEvent(new Event("wellmix:form-done"));
     was.current = pending;
   }, [pending]);
+  // Botão que some junto com o fim do envio (linha removida, formulário
+  // remontado): avisa mesmo assim, para a barra do topo não ficar presa.
+  useEffect(
+    () => () => {
+      if (was.current) window.dispatchEvent(new Event("wellmix:form-done"));
+    },
+    [],
+  );
 }
 
 /**

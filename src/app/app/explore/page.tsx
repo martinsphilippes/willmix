@@ -203,7 +203,7 @@ export default async function ExplorePage({
               addedQty={added === product.id ? addedQty : null}
             />
           ))}
-          <RequestOtherCard t={t} />
+          {canBuy || wellmix ? <RequestOtherCard t={t} /> : null}
         </ul>
       ) : (
         <div className="space-y-3">
@@ -223,9 +223,11 @@ export default async function ExplorePage({
               </Link>
             ) : null}
           </div>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            <RequestOtherCard t={t} />
-          </ul>
+          {canBuy || wellmix ? (
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <RequestOtherCard t={t} />
+            </ul>
+          ) : null}
         </div>
       )}
     </div>

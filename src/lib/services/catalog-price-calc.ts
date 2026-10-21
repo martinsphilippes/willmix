@@ -62,8 +62,8 @@ export function referenceQuantity(input: CatalogPriceInput): number {
 }
 
 /**
- * Faixas que valem: só descontos acima da quantidade de referência, e só se a
- * faixa que cobre a referência bate com o preço base. Faixa de outro preço
+ * Faixas que valem: só descontos acima da quantidade de referência, e só se
+ * existe a faixa que cobre a referência e ela bate com o preço base. Faixa de outro preço
  * (renegociado, outro fornecedor, outra moeda) está velha e é ignorada: usá-la
  * mostraria preço menor que o da proposta, que não usa faixas.
  */
@@ -81,7 +81,9 @@ export function usableTiers(
   const atBase = valid
     .filter((t) => t.minQty <= base)
     .sort((a, b) => b.minQty - a.minQty)[0];
-  if (atBase && atBase.price !== input.unitPrice) return [];
+  // Sem faixa na quantidade de referência não há como saber se as faixas são
+  // do preço atual (ex.: outra moeda ou preço renegociado): ficam de fora.
+  if (!atBase || atBase.price !== input.unitPrice) return [];
   return valid.filter(
     (t) => t.minQty > base && t.price < (input.unitPrice ?? 0),
   );

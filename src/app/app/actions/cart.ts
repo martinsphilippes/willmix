@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { getT } from "@/i18n/server";
 import { brazilDay } from "@/lib/supplier-terms";
-import { num, requireUser, run, runInPlace, str } from "./helpers";
+import { revalidatePath } from "next/cache";
+import { errorCode, num, requireUser, run, str } from "./helpers";
 
 /*
  * Carrinho da vitrine (Explorar). O serviço confere o papel (só o cliente, no
@@ -18,7 +19,7 @@ const notesSchema = z.string().max(500).nullable();
 /** Volta só para telas da vitrine (o formulário diz de onde veio). */
 function exploreBack(form: FormData, fallback: string) {
   const back = str(form, "back");
-  return /^\/app\/explore(\/[A-Za-z0-9_-]{1,64}|\/cart)?(\?[A-Za-z0-9_=&%.+~-]{0,300})?$/.test(
+  return /^\/app\/explore(\/[A-Za-z0-9_-]{1,64}|\/cart)?(\?[A-Za-z0-9_=&%.+~*-]{0,1500})?$/.test(
     back,
   )
     ? back
@@ -79,26 +80,43 @@ export async function requestNowAction(form: FormData) {
 
 /*
  * Atualizar e remover itens não mudam de tela: o que o cliente já digitou no
- * resumo (data e observações) continua lá, e os valores recalculam no lugar.
+ * resumo (data e observações) continua lá, os valores recalculam no lugar e
+ * o erro aparece no próprio item (some no próximo acerto).
  */
-export async function updateCartItemAction(form: FormData) {
+export type CartLineState = { error: string | null };
+
+export async function updateCartItemAction(
+  _prev: CartLineState,
+  form: FormData,
+): Promise<CartLineState> {
   const user = await requireUser();
-  await runInPlace("/app/explore/cart", async () => {
+  try {
     const itemId = ID.parse(str(form, "itemId"));
     const quantity = quantitySchema.parse(num(form, "quantity"));
     const notes = notesSchema.parse(optionalText(form, "notes"));
     const { updateCartItem } = await import("@/lib/services/cart");
     await updateCartItem(user, itemId, quantity, notes);
-  });
+  } catch (error) {
+    return { error: errorCode("/app/explore/cart", error) };
+  }
+  revalidatePath("/app", "layout");
+  return { error: null };
 }
 
-export async function removeCartItemAction(form: FormData) {
+export async function removeCartItemAction(
+  _prev: CartLineState,
+  form: FormData,
+): Promise<CartLineState> {
   const user = await requireUser();
-  await runInPlace("/app/explore/cart", async () => {
+  try {
     const itemId = ID.parse(str(form, "itemId"));
     const { removeCartItem } = await import("@/lib/services/cart");
     await removeCartItem(user, itemId);
-  });
+  } catch (error) {
+    return { error: errorCode("/app/explore/cart", error) };
+  }
+  revalidatePath("/app", "layout");
+  return { error: null };
 }
 
 /** Data do "quando você precisa": dia válido, de hoje em diante. */
