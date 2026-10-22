@@ -137,6 +137,9 @@ function* tags(xml: string, name: string): Generator<[string, string]> {
   const open = `<${name}`;
   const close = `</${name}>`;
   let i = 0;
+  // Depois de aspas sem fechamento, o resto do texto é lido sem tratar aspas
+  // (como antes): uma aspa solta não esvazia a planilha.
+  let plain = false;
   while (i < xml.length) {
     const start = xml.indexOf(open, i);
     if (start < 0) return;
@@ -153,7 +156,11 @@ function* tags(xml: string, name: string): Generator<[string, string]> {
       i = start + open.length;
       continue;
     }
-    const gt = tagEnd(xml, start + open.length);
+    let gt = plain ? xml.indexOf(">", start) : tagEnd(xml, start + open.length);
+    if (gt === -2) {
+      plain = true;
+      gt = xml.indexOf(">", start);
+    }
     if (gt < 0) return;
     if (xml.charCodeAt(gt - 1) === 47) {
       yield [xml.slice(start + open.length, gt - 1), ""];
@@ -169,7 +176,8 @@ function* tags(xml: string, name: string): Generator<[string, string]> {
 
 /**
  * Fim da tag de abertura (o ">"), pulando valores de atributo entre aspas,
- * que podem conter ">" (XML válido). Tempo linear; -1 se não houver.
+ * que podem conter ">" (XML válido). Tempo linear; -1 se não houver ">" e
+ * -2 se o texto acabou dentro de aspas.
  */
 function tagEnd(xml: string, from: number): number {
   // Só os caracteres da própria tag são lidos (tempo linear no total).
@@ -181,7 +189,8 @@ function tagEnd(xml: string, from: number): number {
     } else if (ch === 34 || ch === 39) quote = ch;
     else if (ch === 62) return i;
   }
-  return -1;
+  // Aspas sem fechamento (XML malformado): quem chamou procura o ">" sem aspas.
+  return quote ? -2 : -1;
 }
 
 /** Texto de um <si> ou <is>: concatena todos os <t> (texto rico vira texto simples). */

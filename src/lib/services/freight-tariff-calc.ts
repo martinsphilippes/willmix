@@ -1123,8 +1123,8 @@ const CHINESE_PORTS: Array<[string, string]> = [
   ["大连", "dalian"],
 ];
 
-/** Palavras que, logo depois do nome, indicam rua (ex.: "Shanghai Road, Ningbo"). */
-const STREET_WORDS = new Set([
+/** Palavras que, logo depois do nome, dizem que não é a cidade: rua ou prédio. */
+const NOT_CITY_WORDS = new Set([
   "road",
   "rd",
   "street",
@@ -1135,6 +1135,19 @@ const STREET_WORDS = new Set([
   "av",
   "rua",
   "jie",
+  "dao",
+  "plaza",
+  "building",
+  "bldg",
+  "center",
+  "centre",
+  "tower",
+  "hotel",
+  "garden",
+  "gardens",
+  "mansion",
+  "square",
+  "mall",
 ]);
 /** Direção entre o nome e "rua" ("Nanjing Dong Lu", "Zhongshan Road East"). */
 const DIRECTION_WORDS = new Set([
@@ -1150,11 +1163,6 @@ const DIRECTION_WORDS = new Set([
   "middle",
   "central",
 ]);
-/**
- * Caractere que, antes do nome, forma outro lugar com ele (浙江门 é 浙江 +
- * 门, não 江门; 河南通许 é 河南, não 南通): aí o nome não é o porto.
- */
-const CJK_GLUED = /^(浙|湖|龙|晋|湛|吴|镇|九|河|云|海|济)$/;
 /** Final colado ao nome em grafia latina ("NingboCity", "Xiamenshi"). */
 const LATIN_SUFFIXES = new Set([
   "shi",
@@ -1166,34 +1174,72 @@ const LATIN_SUFFIXES = new Set([
   "zhen",
   "beilun",
 ]);
+/** Depois do nome chinês: rua (南京西路, 重庆道, 上海大街, 东一路) ou prédio (香港广场). */
+const CJK_NOT_CITY =
+  /^(?:[东西南北中]?[一二三四五六七八九十]?(?:路|大街|街|大道|道|巷|弄)|广场|大厦|大楼|中心|花园|宾馆|大酒店|酒店|商会|商城|城)/;
+/** Antes do nome: outro lugar que termina no 1º caractere (长江门窗, 河南通许). */
+const CJK_GLUED_BEFORE: Record<string, RegExp> = {
+  江门: /[浙湖龙晋湛吴镇九长珠阳内丽]$/,
+  南通: /[河云海湖济]$/,
+  南京: /[河云海湖济]$/,
+  南沙: /[河云海湖济]$/,
+};
+/** Depois do nome: palavra com o último caractere (江 + 门窗, 门业, 门诊). */
+const CJK_GLUED_AFTER: Record<string, RegExp> = {
+  江门: /^[窗业诊票店面口户锁扇框]/,
+};
+const CJK_PORT_RE = new RegExp(
+  CHINESE_PORTS.map(([zh]) => zh)
+    .sort((a, b) => b.length - a.length)
+    .join("|"),
+  "g",
+);
+const CJK_PORT_NAME = new Map(CHINESE_PORTS);
+/** Portos que são distritos de outra cidade-porto (广州市南沙区 → NANSHA). */
+const SUB_PORTS: Record<string, string[]> = {
+  guangzhou: ["nansha", "huangpu"],
+  shenzhen: ["yantian", "shekou"],
+  tianjin: ["xingang"],
+};
+
+interface OriginHit {
+  name: string;
+  at: number;
+  len: number;
+}
 
 /**
  * Porto de origem do tarifário citado no texto (ex.: "Ningbo, Zhejiang",
- * "浙江宁波", "Ning Bo" → NINGBO). Nome de rua não conta ("南京西路",
- * "Nanjing Dong Lu", "Qingdao Rd"). Com vários portos no texto, vale o
- * último que não é rua: no endereço chinês, o distrito do porto vem depois
- * da cidade (广州市南沙区 → NANSHA, 深圳盐田港 → YANTIAN); no ocidental, a
- * cidade vem depois da rua.
+ * "浙江宁波", "Ning Bo" → NINGBO). Nome de rua ou de prédio não conta
+ * ("南京西路", "Nanjing Dong Lu", "香港广场", "Shanghai Hotel").
+ * Em texto latino vale o último porto citado (a cidade vem depois da rua);
+ * em chinês, o primeiro (a cidade vem antes do bairro e da rua), a não ser
+ * que um porto citado depois seja distrito dele (广州市南沙区 → NANSHA).
  */
 export function matchOrigin(
   data: FreightTariffData,
   text: string | null,
 ): string | null {
   if (!text) return null;
-  let raw = text.slice(0, 300);
-  for (const [zh, en] of CHINESE_PORTS)
-    raw = raw.replace(
-      new RegExp(`(.?)${zh}([东西南北中]?(?:路|街|大道))?`, "g"),
-      (whole, before: string, street: string | undefined) =>
-        CJK_GLUED.test(before)
-          ? whole
-          : `${before} ${en}${street ? " road" : ""} `,
-    );
+  // Uma passada só no texto original: um nome não atrapalha a leitura do outro.
+  const raw = text
+    .slice(0, 300)
+    .replace(CJK_PORT_RE, (zh, offset: number, whole: string) => {
+      const before = whole.slice(Math.max(0, offset - 2), offset);
+      const after = whole.slice(offset + zh.length, offset + zh.length + 4);
+      if (
+        CJK_GLUED_BEFORE[zh]?.test(before) ||
+        CJK_GLUED_AFTER[zh]?.test(after)
+      )
+        return zh;
+      const en = CJK_PORT_NAME.get(zh) ?? "";
+      // "cjkx" marca o nome que veio do chinês (a regra de ordem é outra).
+      return CJK_NOT_CITY.test(after) ? ` ${en} road ` : ` cjkx ${en} `;
+    });
   const hay = ` ${foldName(raw)} `;
   if (!hay.trim()) return null;
-  const tokens = hay.trim().split(" ");
-  let best: { name: string; at: number; len: number } | null = null;
-  let loose: { name: string; len: number } | null = null;
+  const latin: OriginHit[] = [];
+  const cjk: OriginHit[] = [];
   for (const d of data.destinations)
     for (const o of d.origins) {
       const key = foldName(o.name);
@@ -1204,20 +1250,41 @@ export function matchOrigin(
         if (at < 0) break;
         from = at + 1;
         const after = hay.slice(at + key.length + 2).split(" ");
-        const street =
-          STREET_WORDS.has(after[0]) ||
-          (DIRECTION_WORDS.has(after[0]) && STREET_WORDS.has(after[1]));
-        if (street) continue;
-        if (!best || at > best.at || (at === best.at && key.length > best.len))
-          best = { name: o.name, at, len: key.length };
+        const notCity =
+          NOT_CITY_WORDS.has(after[0]) ||
+          (DIRECTION_WORDS.has(after[0]) && NOT_CITY_WORDS.has(after[1]));
+        if (notCity) continue;
+        const hit = { name: o.name, at, len: key.length };
+        (hay.slice(Math.max(0, at - 5), at) === " cjkx" ? cjk : latin).push(
+          hit,
+        );
       }
-      // Com espaço a mais ou a menos ("Ning Bo", "HongKong"): só palavras
-      // inteiras ("Nanshan" não é "Nansha").
-      if (best || hay.includes(` ${key} `)) continue;
+    }
+  if (latin.length)
+    return latin.reduce((a, b) =>
+      b.at > a.at || (b.at === a.at && b.len > a.len) ? b : a,
+    ).name;
+  if (cjk.length) {
+    const first = cjk.reduce((a, b) =>
+      b.at < a.at || (b.at === a.at && b.len > a.len) ? b : a,
+    );
+    const subs = SUB_PORTS[foldName(first.name)] ?? [];
+    const sub = cjk
+      .filter((h) => h.at > first.at && subs.includes(foldName(h.name)))
+      .sort((a, b) => b.at - a.at)[0];
+    return (sub ?? first).name;
+  }
+  // Com espaço a mais ou a menos ("Ning Bo", "HongKong", "NingboCity"): só
+  // palavras inteiras ("Nanshan" não é "Nansha").
+  const tokens = hay.trim().split(" ");
+  let loose: { name: string; len: number } | null = null;
+  for (const d of data.destinations)
+    for (const o of d.origins) {
+      const key = foldName(o.name);
+      // Nome que aparece inteiro já foi julgado acima (era rua ou prédio).
+      if (hay.includes(` ${key} `)) continue;
       const k = key.replace(/ /g, "");
       if (k.length < 5 || (loose && k.length <= loose.len)) continue;
-      // Até 3 palavras seguidas formando o nome, sozinho ou com um final
-      // conhecido colado ("NingboCity"); "Nanshan" não é "Nansha".
       found: for (let i = 0; i < tokens.length; i++) {
         let joined = "";
         for (let n = i; n < Math.min(tokens.length, i + 3); n++) {
@@ -1233,7 +1300,7 @@ export function matchOrigin(
         }
       }
     }
-  return best?.name ?? loose?.name ?? null;
+  return loose?.name ?? null;
 }
 
 /** Portos de origem com tarifa (para escolher à mão quando o local não bate). */

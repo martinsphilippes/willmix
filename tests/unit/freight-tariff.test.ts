@@ -1371,3 +1371,77 @@ describe("revisão 3: porto do distrito, nomes colados, aspas e container", () =
     expect(html).toMatch(/R\$\s20\.000,00 por container/);
   });
 });
+
+describe("revisão 4: endereços com prédio, ruas de Tianjin e aspa solta", () => {
+  const ports = (names: string[]) => {
+    const c = nvt().cells;
+    names.forEach((n, i) => {
+      c[4 + i] = [...(c[4 + i] ?? [])];
+      c[4 + i][2] = n;
+      c[4 + i][3] = String(3000 + i);
+    });
+    for (let r = 4 + names.length; r < 8; r++) c[r] = [];
+    return calc.parseFreightTariff([{ name: "COMPARATIVO - NVT", cells: c }]);
+  };
+  const data = ports(["SHANGHAI", "HONG KONG", "SHENZHEN", "TIANJIN"]);
+  const all = ports(["GUANGZHOU", "NANSHA", "QINGDAO", "CHONGQING"]);
+
+  it("chinês: vale a cidade (1ª); prédio ou rua com nome de porto não conta", () => {
+    expect(calc.matchOrigin(data, "上海市黄浦区淮海中路282号香港广场")).toBe(
+      "SHANGHAI",
+    );
+    expect(calc.matchOrigin(data, "深圳市福田区深南中路3002号上海宾馆")).toBe(
+      "SHENZHEN",
+    );
+    expect(calc.matchOrigin(data, "天津市和平区上海道")).toBe("TIANJIN");
+    expect(calc.matchOrigin(data, "上海市南京东一路")).toBe("SHANGHAI");
+    expect(calc.matchOrigin(all, "广州市南沙区")).toBe("NANSHA");
+    expect(calc.matchOrigin(all, "天津市和平区重庆道28号")).toBeNull();
+    expect(calc.matchOrigin(all, "青岛市市南区香港中路10号香港花园")).toBe(
+      "QINGDAO",
+    );
+  });
+
+  it("latino e bilíngue: vale o último; prédio e rua não contam", () => {
+    expect(
+      calc.matchOrigin(data, "Hong Kong Plaza, 283 Huaihai Rd, Shanghai 上海"),
+    ).toBe("SHANGHAI");
+    expect(calc.matchOrigin(data, "Shenzhen, Shanghai Hotel")).toBe("SHENZHEN");
+    expect(calc.matchOrigin(data, "Room 1, Shanghai Road East, Tianjin")).toBe(
+      "TIANJIN",
+    );
+  });
+
+  it("江门 colado em outra palavra (长江门窗, 内江门诊) não é JIANGMEN", () => {
+    const j = ports(["JIANGMEN"]);
+    expect(calc.matchOrigin(j, "长江门窗厂, 义乌")).toBeNull();
+    expect(calc.matchOrigin(j, "内江门诊部")).toBeNull();
+    expect(calc.matchOrigin(j, "广东省江门市新会区")).toBe("JIANGMEN");
+  });
+
+  it("aspa solta numa célula não esvazia o resto da aba", () => {
+    const rows = Array.from(
+      { length: 50 },
+      (_, r) =>
+        `<row r="${r + 1}"><c r="A${r + 1}"${r === 0 ? ' t="n' : ""}><v>${r + 1}</v></c></row>`,
+    ).join("");
+    const zip = zipWithDeflated([
+      [
+        "xl/workbook.xml",
+        '<workbook><sheets><sheet name="X" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        false,
+      ],
+      [
+        "xl/_rels/workbook.xml.rels",
+        '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+        false,
+      ],
+      [
+        "xl/worksheets/sheet1.xml",
+        `<worksheet><sheetData>${rows}</sheetData></worksheet>`,
+        false,
+      ],
+    ]);
+    expect(readCells(zip, "X").cells.length).toBeGreaterThanOrEqual(49);
+  });
+});
