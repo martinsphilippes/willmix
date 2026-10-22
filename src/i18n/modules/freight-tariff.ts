@@ -153,6 +153,7 @@ export const pt = {
     "{sheet}: {n} container(s) na estimativa, e a aba {first} tem {firstN}. Os totais são do embarque inteiro; no pedido, as opções são comparadas por container.",
   "tariff.warning.destination_fixed_id":
     "{port} não está na aba PORTOS; o CSV do Sankhya usa o ID {id}, o mesmo da macro.",
+  "tariff.order.perContainer": "{value} por container",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -304,6 +305,7 @@ export const en: Record<keyof typeof pt, string> = {
     "{sheet}: {n} container(s) in the estimate, while the {first} tab has {firstN}. Totals are for the whole shipment; on the order, options are compared per container.",
   "tariff.warning.destination_fixed_id":
     "{port} is not in the PORTOS tab; the Sankhya CSV uses ID {id}, the same as the macro.",
+  "tariff.order.perContainer": "{value} per container",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -446,4 +448,5 @@ export const zh: Record<keyof typeof pt, string> = {
     "{sheet}：估算为 {n} 个柜，而 {first} 工作表为 {firstN} 个。总额为整票运输；订单中按每柜比较各选项。",
   "tariff.warning.destination_fixed_id":
     "{port} 不在 PORTOS 工作表中；Sankhya CSV 使用 ID {id}，与宏相同。",
+  "tariff.order.perContainer": "每柜 {value}",
 };

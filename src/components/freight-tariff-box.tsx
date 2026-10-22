@@ -104,13 +104,27 @@ export function FreightTariffBox({
                       {o.assigned ? (
                         <Badge tone="brand">{t("tariff.order.assigned")}</Badge>
                       ) : null}
-                      <span
-                        className={cx(
-                          "font-semibold tabular-nums",
-                          best ? "text-emerald-800" : "text-zinc-900",
-                        )}
-                      >
-                        {formatMoney(o.totalBrl, "BRL", t)}
+                      <span className="text-right">
+                        <span
+                          className={cx(
+                            "block font-semibold tabular-nums",
+                            best ? "text-emerald-800" : "text-zinc-900",
+                          )}
+                        >
+                          {formatMoney(o.totalBrl, "BRL", t)}
+                        </span>
+                        {/* Ordem e destaque são por container: com mais de um, mostra o valor que comparou. */}
+                        {o.containerQty > 1 ? (
+                          <span className="block text-[11px] tabular-nums text-zinc-500">
+                            {t("tariff.order.perContainer", {
+                              value: formatMoney(
+                                o.totalBrl / o.containerQty,
+                                "BRL",
+                                t,
+                              ),
+                            })}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                   </li>

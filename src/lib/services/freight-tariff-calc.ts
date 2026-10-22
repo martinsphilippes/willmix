@@ -1150,21 +1150,36 @@ const DIRECTION_WORDS = new Set([
   "middle",
   "central",
 ]);
-/** Província cujo nome termina com o 1º caractere de um porto (浙江 + 门 ≠ 江门). */
-const CJK_GLUED = /^(浙|湖|黑龙)$/;
+/**
+ * Caractere que, antes do nome, forma outro lugar com ele (浙江门 é 浙江 +
+ * 门, não 江门; 河南通许 é 河南, não 南通): aí o nome não é o porto.
+ */
+const CJK_GLUED = /^(浙|湖|龙|晋|湛|吴|镇|九|河|云|海|济)$/;
+/** Final colado ao nome em grafia latina ("NingboCity", "Xiamenshi"). */
+const LATIN_SUFFIXES = new Set([
+  "shi",
+  "city",
+  "port",
+  "qu",
+  "xian",
+  "gang",
+  "zhen",
+  "beilun",
+]);
 
 /**
  * Porto de origem do tarifário citado no texto (ex.: "Ningbo, Zhejiang",
  * "浙江宁波", "Ning Bo" → NINGBO). Nome de rua não conta ("南京西路",
- * "Nanjing Dong Lu", "Qingdao Rd"). No endereço chinês a cidade vem antes
- * da rua, então vale o 1º porto citado; no ocidental, o último.
+ * "Nanjing Dong Lu", "Qingdao Rd"). Com vários portos no texto, vale o
+ * último que não é rua: no endereço chinês, o distrito do porto vem depois
+ * da cidade (广州市南沙区 → NANSHA, 深圳盐田港 → YANTIAN); no ocidental, a
+ * cidade vem depois da rua.
  */
 export function matchOrigin(
   data: FreightTariffData,
   text: string | null,
 ): string | null {
   if (!text) return null;
-  const cjk = /[\u4e00-\u9fff]/.test(text);
   let raw = text.slice(0, 300);
   for (const [zh, en] of CHINESE_PORTS)
     raw = raw.replace(
@@ -1193,26 +1208,28 @@ export function matchOrigin(
           STREET_WORDS.has(after[0]) ||
           (DIRECTION_WORDS.has(after[0]) && STREET_WORDS.has(after[1]));
         if (street) continue;
-        const better = cjk
-          ? !best || at < best.at || (at === best.at && key.length > best.len)
-          : !best || at > best.at || (at === best.at && key.length > best.len);
-        if (better) best = { name: o.name, at, len: key.length };
+        if (!best || at > best.at || (at === best.at && key.length > best.len))
+          best = { name: o.name, at, len: key.length };
       }
       // Com espaço a mais ou a menos ("Ning Bo", "HongKong"): só palavras
       // inteiras ("Nanshan" não é "Nansha").
       if (best || hay.includes(` ${key} `)) continue;
       const k = key.replace(/ /g, "");
       if (k.length < 5 || (loose && k.length <= loose.len)) continue;
-      // Até 3 palavras seguidas formando exatamente o nome.
+      // Até 3 palavras seguidas formando o nome, sozinho ou com um final
+      // conhecido colado ("NingboCity"); "Nanshan" não é "Nansha".
       found: for (let i = 0; i < tokens.length; i++) {
         let joined = "";
         for (let n = i; n < Math.min(tokens.length, i + 3); n++) {
           joined += tokens[n];
-          if (joined === k) {
+          if (
+            joined === k ||
+            (joined.startsWith(k) && LATIN_SUFFIXES.has(joined.slice(k.length)))
+          ) {
             loose = { name: o.name, len: k.length };
             break found;
           }
-          if (joined.length >= k.length) break;
+          if (joined.length >= k.length + 6) break;
         }
       }
     }

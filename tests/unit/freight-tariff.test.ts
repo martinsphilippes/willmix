@@ -1237,3 +1237,137 @@ describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereç
     expect(html).toContain('name="remeasure" value="1"');
   });
 });
+
+describe("revisão 3: porto do distrito, nomes colados, aspas e container", () => {
+  const ports = (names: string[]) => {
+    const c = nvt().cells;
+    names.forEach((n, i) => {
+      c[4 + i] = [...(c[4 + i] ?? [])];
+      c[4 + i][2] = n;
+      c[4 + i][3] = String(3000 + i);
+    });
+    return calc.parseFreightTariff([{ name: "COMPARATIVO - NVT", cells: c }]);
+  };
+
+  it("vale o último porto que não é rua (distrito do porto, endereço bilíngue)", () => {
+    const data = ports(["GUANGZHOU", "NANSHA", "SHENZHEN", "YANTIAN"]);
+    expect(calc.matchOrigin(data, "广州市南沙区")).toBe("NANSHA");
+    expect(calc.matchOrigin(data, "深圳盐田港")).toBe("YANTIAN");
+    expect(calc.matchOrigin(data, "Guangzhou 广州, port Nansha")).toBe(
+      "NANSHA",
+    );
+    expect(calc.matchOrigin(data, "广州市海珠区新港西路135号")).toBe(
+      "GUANGZHOU",
+    );
+  });
+
+  it("nome colado a outro lugar não é o porto (黑龙江门, 河南通许)", () => {
+    const data = ports(["JIANGMEN", "NANTONG", "XIAMEN", "NINGBO"]);
+    expect(calc.matchOrigin(data, "黑龙江门业有限公司")).toBeNull();
+    expect(calc.matchOrigin(data, "福建晋江门业, 厦门港")).toBe("XIAMEN");
+    expect(calc.matchOrigin(data, "河南通许 宁波港")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "江门市蓬江区")).toBe("JIANGMEN");
+  });
+
+  it("grafia latina com final colado (NingboCity, Xiamenshi)", () => {
+    const data = ports(["NINGBO", "XIAMEN", "NANSHA"]);
+    expect(calc.matchOrigin(data, "NINGBOCITY")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "Xiamenshi")).toBe("XIAMEN");
+    expect(calc.matchOrigin(data, "Nanshan District")).toBeNull();
+  });
+
+  it("aba com '>' no nome (XML válido) não esconde as outras", () => {
+    const zip = zipWithDeflated([
+      [
+        "xl/workbook.xml",
+        '<workbook><sheets><sheet name="A>B" sheetId="1" r:id="rId1"/><sheet name="C" sheetId="2" r:id="rId2"/></sheets></workbook>',
+        false,
+      ],
+      [
+        "xl/_rels/workbook.xml.rels",
+        '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="worksheets/sheet2.xml"/></Relationships>',
+        false,
+      ],
+      ["xl/worksheets/sheet1.xml", "<worksheet/>", false],
+      [
+        "xl/worksheets/sheet2.xml",
+        `<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t xml:space="preserve">It's ok</t></is></c></row></sheetData></worksheet>`,
+        false,
+      ],
+    ]);
+    expect(readGrid(zip, "C").grid).toEqual([["It's ok"]]);
+  });
+
+  it("planilha grande e normal continua rápida (importações e tabela fiscal)", () => {
+    const rows = Array.from(
+      { length: 20000 },
+      (_, r) =>
+        `<row r="${r + 1}">${Array.from(
+          { length: 6 },
+          (_, c) =>
+            `<c r="${String.fromCharCode(65 + c)}${r + 1}" t="inlineStr"><is><t>v${r}-${c}</t></is></c>`,
+        ).join("")}</row>`,
+    ).join("");
+    const zip = zipWithDeflated([
+      [
+        "xl/workbook.xml",
+        '<workbook><sheets><sheet name="TIPI" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        false,
+      ],
+      [
+        "xl/_rels/workbook.xml.rels",
+        '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+        false,
+      ],
+      [
+        "xl/worksheets/sheet1.xml",
+        `<worksheet><sheetData>${rows}</sheetData></worksheet>`,
+        false,
+      ],
+    ]);
+    const started = performance.now();
+    const { grid } = readGrid(zip, "TIPI", 30000);
+    expect(grid.length).toBe(20000);
+    expect(grid[19999][5]).toBe("v19999-5");
+    expect(performance.now() - started).toBeLessThan(3000);
+  });
+
+  it("cartão Embarque: com mais de um container, mostra o valor por container", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { FreightTariffBox } =
+      await import("@/components/freight-tariff-box");
+    const { translator } = await import("@/i18n");
+    const html = renderToStaticMarkup(
+      createElement(FreightTariffBox, {
+        t: translator("pt"),
+        orderId: "o1",
+        stageId: "s1",
+        view: {
+          tariffId: "t1",
+          referenceDate: "2026-10-14",
+          location: "Ningbo",
+          matchedOrigin: "NINGBO",
+          origin: "NINGBO",
+          origins: ["NINGBO"],
+          selectedOrigin: "NINGBO",
+          options: [
+            {
+              destination: "ITAJAÍ",
+              destinationCode: "ITJ",
+              origin: "NINGBO",
+              forwarder: "CIA",
+              route: "direct",
+              oceanUsd: 2000,
+              totalBrl: 40000,
+              paymentTermDays: 90,
+              containerQty: 2,
+              assigned: false,
+            },
+          ],
+        },
+      }),
+    );
+    expect(html).toMatch(/R\$\s20\.000,00 por container/);
+  });
+});

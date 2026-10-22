@@ -153,7 +153,7 @@ function* tags(xml: string, name: string): Generator<[string, string]> {
       i = start + open.length;
       continue;
     }
-    const gt = xml.indexOf(">", start);
+    const gt = tagEnd(xml, start + open.length);
     if (gt < 0) return;
     if (xml.charCodeAt(gt - 1) === 47) {
       yield [xml.slice(start + open.length, gt - 1), ""];
@@ -165,6 +165,23 @@ function* tags(xml: string, name: string): Generator<[string, string]> {
     yield [xml.slice(start + open.length, gt), xml.slice(gt + 1, end)];
     i = end + close.length;
   }
+}
+
+/**
+ * Fim da tag de abertura (o ">"), pulando valores de atributo entre aspas,
+ * que podem conter ">" (XML válido). Tempo linear; -1 se não houver.
+ */
+function tagEnd(xml: string, from: number): number {
+  // Só os caracteres da própria tag são lidos (tempo linear no total).
+  let quote = 0;
+  for (let i = from; i < xml.length; i++) {
+    const ch = xml.charCodeAt(i);
+    if (quote) {
+      if (ch === quote) quote = 0;
+    } else if (ch === 34 || ch === 39) quote = ch;
+    else if (ch === 62) return i;
+  }
+  return -1;
 }
 
 /** Texto de um <si> ou <is>: concatena todos os <t> (texto rico vira texto simples). */
