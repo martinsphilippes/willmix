@@ -1445,3 +1445,39 @@ describe("revisão 4: endereços com prédio, ruas de Tianjin e aspa solta", () 
     expect(readCells(zip, "X").cells.length).toBeGreaterThanOrEqual(49);
   });
 });
+
+describe("revisão 5: distrito-porto em qualquer escrita, 港 e bairros", () => {
+  const ports = (names: string[]) => {
+    const c = nvt().cells;
+    names.forEach((n, i) => {
+      c[4 + i] = [...(c[4 + i] ?? [])];
+      c[4 + i][2] = n;
+      c[4 + i][3] = String(3000 + i);
+    });
+    for (let r = 4 + names.length; r < 8; r++) c[r] = [];
+    return calc.parseFreightTariff([{ name: "COMPARATIVO - NVT", cells: c }]);
+  };
+
+  it("distrito-porto da cidade ganha dela, em inglês, chinês ou misturado", () => {
+    const data = ports(["GUANGZHOU", "NANSHA", "SHENZHEN", "YANTIAN"]);
+    expect(calc.matchOrigin(data, "Guangzhou 广州市南沙区")).toBe("NANSHA");
+    expect(calc.matchOrigin(data, "Nansha District, Guangzhou")).toBe("NANSHA");
+    expect(calc.matchOrigin(data, "Yantian, Shenzhen")).toBe("YANTIAN");
+    expect(calc.matchOrigin(data, "Shenzhen, Shanghai Hotel")).toBe("SHENZHEN");
+  });
+
+  it("porto dito com 港 vale mais que a cidade da fábrica", () => {
+    const data = ports(["SHANGHAI", "NINGBO"]);
+    expect(calc.matchOrigin(data, "上海, 宁波港")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "工厂在上海, 走宁波港")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "上海宁波")).toBe("SHANGHAI");
+  });
+
+  it("bairro e posto da cidade continuam sendo a cidade (城区, 中心区, 口岸)", () => {
+    const data = ports(["NINGBO", "SHENZHEN", "JIANGMEN", "GUANGZHOU"]);
+    expect(calc.matchOrigin(data, "宁波城区")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "深圳中心区")).toBe("SHENZHEN");
+    expect(calc.matchOrigin(data, "江门口岸")).toBe("JIANGMEN");
+    expect(calc.matchOrigin(data, "广州市天河区香港城")).toBe("GUANGZHOU");
+  });
+});

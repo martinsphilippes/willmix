@@ -1176,7 +1176,7 @@ const LATIN_SUFFIXES = new Set([
 ]);
 /** Depois do nome chinês: rua (南京西路, 重庆道, 上海大街, 东一路) ou prédio (香港广场). */
 const CJK_NOT_CITY =
-  /^(?:[东西南北中]?[一二三四五六七八九十]?(?:路|大街|街|大道|道|巷|弄)|广场|大厦|大楼|中心|花园|宾馆|大酒店|酒店|商会|商城|城)/;
+  /^(?:[东西南北中]?[一二三四五六七八九十]?(?:路|大街|街|大道|道|巷|弄)|广场|大厦|大楼|中心(?![区城])|花园|宾馆|大酒店|酒店|商会|商城|城(?![区口市隍墙]))/;
 /** Antes do nome: outro lugar que termina no 1º caractere (长江门窗, 河南通许). */
 const CJK_GLUED_BEFORE: Record<string, RegExp> = {
   江门: /[浙湖龙晋湛吴镇九长珠阳内丽]$/,
@@ -1186,7 +1186,7 @@ const CJK_GLUED_BEFORE: Record<string, RegExp> = {
 };
 /** Depois do nome: palavra com o último caractere (江 + 门窗, 门业, 门诊). */
 const CJK_GLUED_AFTER: Record<string, RegExp> = {
-  江门: /^[窗业诊票店面口户锁扇框]/,
+  江门: /^(?:[窗业诊票店面户锁扇框]|口(?!岸))/,
 };
 const CJK_PORT_RE = new RegExp(
   CHINESE_PORTS.map(([zh]) => zh)
@@ -1213,8 +1213,9 @@ interface OriginHit {
  * "浙江宁波", "Ning Bo" → NINGBO). Nome de rua ou de prédio não conta
  * ("南京西路", "Nanjing Dong Lu", "香港广场", "Shanghai Hotel").
  * Em texto latino vale o último porto citado (a cidade vem depois da rua);
- * em chinês, o primeiro (a cidade vem antes do bairro e da rua), a não ser
- * que um porto citado depois seja distrito dele (广州市南沙区 → NANSHA).
+ * em chinês, o porto dito com 港 ou, sem ele, o primeiro (a cidade vem antes
+ * do bairro e da rua). Distrito-porto da cidade citado no texto ganha dela
+ * (广州市南沙区 e "Nansha District, Guangzhou" → NANSHA).
  */
 export function matchOrigin(
   data: FreightTariffData,
@@ -1233,8 +1234,10 @@ export function matchOrigin(
       )
         return zh;
       const en = CJK_PORT_NAME.get(zh) ?? "";
-      // "cjkx" marca o nome que veio do chinês (a regra de ordem é outra).
-      return CJK_NOT_CITY.test(after) ? ` ${en} road ` : ` cjkx ${en} `;
+      // "cjkx" marca o nome que veio do chinês (a regra de ordem é outra);
+      // "cjkport", o nome seguido de 港 (porto dito com todas as letras).
+      if (CJK_NOT_CITY.test(after)) return ` ${en} road `;
+      return ` cjkx ${en} ${after.startsWith("港") ? "cjkport " : ""}`;
     });
   const hay = ` ${foldName(raw)} `;
   if (!hay.trim()) return null;
@@ -1260,19 +1263,28 @@ export function matchOrigin(
         );
       }
     }
-  if (latin.length)
-    return latin.reduce((a, b) =>
-      b.at > a.at || (b.at === a.at && b.len > a.len) ? b : a,
-    ).name;
-  if (cjk.length) {
-    const first = cjk.reduce((a, b) =>
-      b.at < a.at || (b.at === a.at && b.len > a.len) ? b : a,
+  if (latin.length || cjk.length) {
+    // Cidade: em texto latino, a última; em chinês, o porto dito com 港 (o
+    // último) ou a primeira cidade.
+    const ported = cjk.filter((h) =>
+      hay.startsWith(" cjkport ", h.at + h.len + 1),
     );
-    const subs = SUB_PORTS[foldName(first.name)] ?? [];
-    const sub = cjk
-      .filter((h) => h.at > first.at && subs.includes(foldName(h.name)))
+    const city = latin.length
+      ? latin.reduce((a, b) =>
+          b.at > a.at || (b.at === a.at && b.len > a.len) ? b : a,
+        )
+      : ported.length
+        ? ported.reduce((a, b) => (b.at > a.at ? b : a))
+        : cjk.reduce((a, b) =>
+            b.at < a.at || (b.at === a.at && b.len > a.len) ? b : a,
+          );
+    // Distrito-porto da cidade citado em qualquer lugar e escrita
+    // ("Nansha District, Guangzhou", "Guangzhou 广州市南沙区").
+    const subs = SUB_PORTS[foldName(city.name)] ?? [];
+    const sub = [...latin, ...cjk]
+      .filter((h) => subs.includes(foldName(h.name)))
       .sort((a, b) => b.at - a.at)[0];
-    return (sub ?? first).name;
+    return (sub ?? city).name;
   }
   // Com espaço a mais ou a menos ("Ning Bo", "HongKong", "NingboCity"): só
   // palavras inteiras ("Nanshan" não é "Nansha").
