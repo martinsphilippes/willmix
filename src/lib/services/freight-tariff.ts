@@ -13,6 +13,7 @@ import {
   destinationCode,
   foldName,
   matchOrigin,
+  normalizeTariffData,
   optionsForOrigin,
   originsWithRates,
   parseFreightTariff,
@@ -172,6 +173,12 @@ export async function importFreightTariff(
   return row;
 }
 
+/** Linha lida do banco com os dados completos (tarifários gravados antes também). */
+function normalized(row: FreightTariff | null): FreightTariff | null {
+  if (row?.data) normalizeTariffData(row.data);
+  return row;
+}
+
 /** Tarifário vigente (o último importado). */
 export async function currentFreightTariff(
   user: User,
@@ -183,7 +190,7 @@ export async function currentFreightTariff(
     direction: "desc",
     limit: 1,
   });
-  return row ?? null;
+  return normalized(row ?? null);
 }
 
 export async function getFreightTariff(
@@ -191,7 +198,7 @@ export async function getFreightTariff(
   id: string,
 ): Promise<FreightTariff | null> {
   assertWellmix(user);
-  return getStore().get("freight_tariffs", id);
+  return normalized(await getStore().get("freight_tariffs", id));
 }
 
 /** Histórico de importações (o vigente primeiro). */
@@ -224,13 +231,18 @@ export async function applyTariffPerCbm(
   destination: string,
 ): Promise<number> {
   assertRole(user, ["admin"]);
-  const tariff = await getStore().get("freight_tariffs", tariffId);
+  const tariff = normalized(await getStore().get("freight_tariffs", tariffId));
   if (!tariff) throw new TariffError("tariff_not_found");
   const capacity = await tariffContainerCapacity();
   const suggestion = capacity
     ? perCbmSuggestion(tariff.data, destination, capacity)
     : null;
-  if (!suggestion) throw new TariffError("tariff_no_suggestion");
+  if (
+    !suggestion ||
+    !Number.isFinite(suggestion.perCbm) ||
+    !(suggestion.perCbm > 0)
+  )
+    throw new TariffError("tariff_no_suggestion");
   const before = await getSettings();
   await setSetting("freightPerCbm", suggestion.perCbm);
   await setSetting("freightCurrency", "BRL");
@@ -260,6 +272,8 @@ export interface OrderTariffView {
   origin: string | null;
   /** Portos com tarifa, para escolher quando o local não bate. */
   origins: string[];
+  /** O porto mostrado, como está na lista (null se ele não tem tarifa). */
+  selectedOrigin: string | null;
   options: (TariffOption & { assigned: boolean })[];
 }
 
@@ -290,6 +304,9 @@ export async function orderTariffView(
     ? (origins.find((o) => foldName(o) === foldName(chosenOrigin)) ?? null)
     : null;
   const origin = chosen ?? matchedOrigin;
+  const selectedOrigin = origin
+    ? (origins.find((o) => foldName(o) === foldName(origin)) ?? null)
+    : null;
   const assignedKey = line?.name ? foldName(line.name) : null;
   const options = origin
     ? optionsForOrigin(tariff.data, origin).map((o) => ({
@@ -302,8 +319,9 @@ export async function orderTariffView(
     referenceDate: tariff.referenceDate,
     location,
     matchedOrigin,
-    origin,
+    origin: selectedOrigin ?? origin,
     origins,
+    selectedOrigin,
     options,
   };
 }

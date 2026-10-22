@@ -3,7 +3,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { audit } from "@/lib/services/audit";
-import { sankhyaCsv } from "@/lib/services/freight-tariff-calc";
+import {
+  normalizeTariffData,
+  sankhyaCsv,
+} from "@/lib/services/freight-tariff-calc";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +28,10 @@ export async function GET(
   const tariff = await getStore().get("freight_tariffs", id);
   if (!tariff)
     return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const csv = sankhyaCsv(tariff.data, tariff.referenceDate);
+  const csv = sankhyaCsv(
+    normalizeTariffData(tariff.data),
+    tariff.referenceDate,
+  );
   await audit(
     user,
     "freight_tariff.export",

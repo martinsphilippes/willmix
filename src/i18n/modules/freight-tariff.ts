@@ -147,6 +147,12 @@ export const pt = {
     '{sheet}: sem "FRETE (CD)"; os totais usam R$ {value} de frete até o CD.',
   "tariff.warning.port_no_id_similar":
     'Porto {port} sem ID na aba PORTOS. Lá existe "{similar}" (ID {id}): se for o mesmo porto, corrija o nome para ele entrar no CSV do Sankhya.',
+  "tariff.warning.fx_missing":
+    "{sheet}: câmbio vazio ou com erro; os totais usam R$ {fx} (de outra aba). Confira a célula do dólar.",
+  "tariff.warning.containers_differ":
+    "{sheet}: {n} container(s) na estimativa, e a aba {first} tem {firstN}. Os totais são do embarque inteiro; no pedido, as opções são comparadas por container.",
+  "tariff.warning.destination_fixed_id":
+    "{port} não está na aba PORTOS; o CSV do Sankhya usa o ID {id}, o mesmo da macro.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -292,6 +298,12 @@ export const en: Record<keyof typeof pt, string> = {
     '{sheet}: no "FRETE (CD)"; totals use BRL {value} for freight to the DC.',
   "tariff.warning.port_no_id_similar":
     'Port {port} has no ID in the PORTOS tab. It lists "{similar}" (ID {id}): if it is the same port, fix the name so it goes into the Sankhya CSV.',
+  "tariff.warning.fx_missing":
+    "{sheet}: FX empty or with an error; totals use BRL {fx} (from another tab). Check the dollar cell.",
+  "tariff.warning.containers_differ":
+    "{sheet}: {n} container(s) in the estimate, while the {first} tab has {firstN}. Totals are for the whole shipment; on the order, options are compared per container.",
+  "tariff.warning.destination_fixed_id":
+    "{port} is not in the PORTOS tab; the Sankhya CSV uses ID {id}, the same as the macro.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -428,4 +440,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.table.captionShipment":
     "整票运输总成本（{type}，雷亚尔）：运费 × 汇率 + 陆运 + 船公司附加费。绿色为每个港口的最低成本。",
   "tariff.notes.title": "提示（{n}）",
+  "tariff.warning.fx_missing":
+    "{sheet}：汇率为空或有错误；总额使用 {fx} 雷亚尔（来自其他工作表）。请检查美元单元格。",
+  "tariff.warning.containers_differ":
+    "{sheet}：估算为 {n} 个柜，而 {first} 工作表为 {firstN} 个。总额为整票运输；订单中按每柜比较各选项。",
+  "tariff.warning.destination_fixed_id":
+    "{port} 不在 PORTOS 工作表中；Sankhya CSV 使用 ID {id}，与宏相同。",
 };

@@ -614,6 +614,7 @@ export default async function OrderPage({
                         orderId={order.id}
                         stageId={stage.id}
                         view={tariffView}
+                        keepParams={remeasureMode ? { remeasure: "1" } : {}}
                       />
                     ) : null}
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (

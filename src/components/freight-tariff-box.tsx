@@ -17,10 +17,13 @@ export function FreightTariffBox({
   orderId,
   stageId,
   view,
+  keepParams = {},
 }: {
   t: Translate;
   orderId: string;
   stageId: string;
+  /** Parâmetros da tela que o "Ver frete" mantém (ex.: remeasure=1). */
+  keepParams?: Record<string, string>;
   /** null = nenhum tarifário importado; "failed" = não deu para ler agora. */
   view: OrderTariffView | "failed" | null;
 }) {
@@ -125,14 +128,17 @@ export function FreightTariffBox({
           className="mt-2 flex flex-wrap items-end gap-2"
           data-tariff-origin-form=""
         >
+          {Object.entries(keepParams).map(([k, v]) => (
+            <input key={k} type="hidden" name={k} value={v} />
+          ))}
           <label className="text-xs font-medium text-zinc-700">
             <span className="mb-1 block">{t("tariff.order.pickOrigin")}</span>
             <select
               name="tariffOrigin"
-              defaultValue={data.origin ?? ""}
+              defaultValue={data.selectedOrigin ?? ""}
               className="rounded-xl border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 shadow-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
             >
-              {!data.origin ? <option value="">—</option> : null}
+              {!data.selectedOrigin ? <option value="">—</option> : null}
               {data.origins.map((o) => (
                 <option key={o} value={o}>
                   {o}

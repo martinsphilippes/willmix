@@ -134,6 +134,9 @@ export type TariffWarningCode =
   | "destination_unknown"
   | "road_freight_missing"
   | "params_differ"
+  | "fx_missing"
+  | "containers_differ"
+  | "destination_fixed_id"
   | "sankhya_tab_outdated"
   | "sankhya_duplicate_ids"
   | "cell_error";
@@ -177,7 +180,13 @@ export function foldName(s: string): string {
     .trim();
 }
 
-const cleanName = (s: string) => s.replace(/\s+/g, " ").trim();
+/** Nome limpo e curto (nomes de companhia, porto e taxa nunca passam disto). */
+const cleanName = (s: string) =>
+  s.slice(0, 400).replace(/\s+/g, " ").trim().slice(0, 120);
+
+/** Só textos curtos podem ser rótulos ("USD POR 40HQ…"): evita trabalho à toa em textos enormes. */
+const isLabel = (s: string | undefined, needle: string) =>
+  !!s && s.length <= 200 && foldName(s).includes(needle);
 
 const isErrorValue = (s: string) => /^#[A-Z/0]+[!?]?$/.test(s.trim());
 
@@ -282,7 +291,7 @@ function parseDestinationSheet(
     cellNumber(at(cells, r, c), text.has(`${r}:${c}`));
   // Linha dos títulos: a que tem "USD POR 40HQ".
   const hr = cells.findIndex((row) =>
-    (row ?? []).some((v) => foldName(v ?? "").includes("usd por 40hq")),
+    (row ?? []).some((v) => isLabel(v, "usd por 40hq")),
   );
   if (hr < 1) return null;
   const head = cells[hr];
@@ -290,8 +299,9 @@ function parseDestinationSheet(
   if (portCol < 1) return null;
   const groups: Group[] = [];
   head.forEach((v, c) => {
+    if (!isLabel(v, "usd por 40hq")) return;
     const f = foldName(v ?? "");
-    if (!f.includes("usd por 40hq") || !f.includes("direta")) return;
+    if (!f.includes("direta")) return;
     // Rótulos das 4 colunas do bloco (na ordem da planilha, mas achados pelo texto).
     const pick = (test: (s: string) => boolean, fallback: number) => {
       for (let k = c; k < c + 4; k++)
@@ -575,6 +585,12 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
           ? Math.round(firstQty)
           : 1;
     d.roadFreightBrl = p.roadFreightBrl ?? firstRoad ?? 0;
+    // Câmbio vazio ou com erro na aba: usa o de outra aba, mas avisa.
+    if (validFx(p.fx) === null)
+      warnings.push({
+        code: "fx_missing",
+        params: { sheet: d.sheet, fx: d.fx },
+      });
     if (p.roadFreightBrl === null)
       warnings.push({
         code: "road_freight_missing",
@@ -592,6 +608,18 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
         },
       });
   }
+  // Containers diferentes entre abas: os totais não são comparáveis direto.
+  for (const p of parsed.slice(1))
+    if (p.dest.containerQty !== first.dest.containerQty)
+      warnings.push({
+        code: "containers_differ",
+        params: {
+          sheet: p.dest.sheet,
+          first: first.dest.sheet,
+          n: p.dest.containerQty,
+          firstN: first.dest.containerQty,
+        },
+      });
   const containerQty = first.dest.containerQty;
   const roadFreightBrl = first.dest.roadFreightBrl;
 
@@ -637,7 +665,14 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
       });
     const destKey = foldName(dest.name);
     // Sem o nome na aba PORTOS, o ID fixo que a macro usa (60, 44, 5).
-    dest.portId = portId.get(destKey) ?? DESTINATION_IDS[dest.code] ?? null;
+    dest.portId = portId.get(destKey) ?? null;
+    if (dest.portId === null && DESTINATION_IDS[dest.code] !== undefined) {
+      dest.portId = DESTINATION_IDS[dest.code];
+      warnings.push({
+        code: "destination_fixed_id",
+        params: { port: dest.name, id: dest.portId },
+      });
+    }
     dest.name = portDisplay.get(destKey) ?? dest.name;
     for (const o of dest.origins)
       o.portId = portId.get(foldName(o.name)) ?? null;
@@ -880,6 +915,26 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
   return data;
 }
 
+/**
+ * Tarifário gravado antes dos parâmetros por aba (câmbio, frete até o CD e
+ * containers): completa com os gerais, para nenhuma conta dar NaN.
+ */
+export function normalizeTariffData(
+  data: FreightTariffData,
+): FreightTariffData {
+  const ok = (v: unknown): v is number =>
+    typeof v === "number" && Number.isFinite(v);
+  for (const d of data.destinations ?? []) {
+    if (!ok(d.fx) || !(d.fx > 0)) d.fx = data.fx;
+    if (!ok(d.roadFreightBrl)) d.roadFreightBrl = data.roadFreightBrl ?? 0;
+    if (!ok(d.containerQty) || !(d.containerQty > 0))
+      d.containerQty =
+        ok(data.containerQty) && data.containerQty > 0 ? data.containerQty : 1;
+  }
+  data.warnings ??= [];
+  return data;
+}
+
 /* ------------------------------------------------------------------------ */
 /* Sankhya: AD_FREINT.CSV (o que a macro "ModFretesCSV" gerava)              */
 /* ------------------------------------------------------------------------ */
@@ -1034,7 +1089,7 @@ export function perCbmSuggestion(
     .filter((r): r is TariffRate => r !== null)
     .map((r) => r.totalBrl / Math.max(1, dest.containerQty))
     .sort((a, b) => a - b);
-  if (!totals.length) return null;
+  if (!totals.length || !totals.every(Number.isFinite)) return null;
   const mid = Math.floor(totals.length / 2);
   const median =
     totals.length % 2 ? totals[mid] : (totals[mid - 1] + totals[mid]) / 2;
@@ -1081,27 +1136,47 @@ const STREET_WORDS = new Set([
   "rua",
   "jie",
 ]);
+/** Direção entre o nome e "rua" ("Nanjing Dong Lu", "Zhongshan Road East"). */
+const DIRECTION_WORDS = new Set([
+  "dong",
+  "xi",
+  "nan",
+  "bei",
+  "zhong",
+  "east",
+  "west",
+  "north",
+  "south",
+  "middle",
+  "central",
+]);
+/** Província cujo nome termina com o 1º caractere de um porto (浙江 + 门 ≠ 江门). */
+const CJK_GLUED = /^(浙|湖|黑龙)$/;
 
 /**
  * Porto de origem do tarifário citado no texto (ex.: "Ningbo, Zhejiang",
- * "浙江宁波", "Ning Bo" → NINGBO). Nome seguido de "Road"/"路" é rua, não
- * cidade; com vários portos no texto, vale o último citado (a cidade vem
- * depois da rua).
+ * "浙江宁波", "Ning Bo" → NINGBO). Nome de rua não conta ("南京西路",
+ * "Nanjing Dong Lu", "Qingdao Rd"). No endereço chinês a cidade vem antes
+ * da rua, então vale o 1º porto citado; no ocidental, o último.
  */
 export function matchOrigin(
   data: FreightTariffData,
   text: string | null,
 ): string | null {
   if (!text) return null;
-  let raw = text;
+  const cjk = /[\u4e00-\u9fff]/.test(text);
+  let raw = text.slice(0, 300);
   for (const [zh, en] of CHINESE_PORTS)
     raw = raw.replace(
-      new RegExp(`${zh}(路|街|大道)?`, "g"),
-      (_, street) => ` ${en}${street ? " road" : ""} `,
+      new RegExp(`(.?)${zh}([东西南北中]?(?:路|街|大道))?`, "g"),
+      (whole, before: string, street: string | undefined) =>
+        CJK_GLUED.test(before)
+          ? whole
+          : `${before} ${en}${street ? " road" : ""} `,
     );
   const hay = ` ${foldName(raw)} `;
   if (!hay.trim()) return null;
-  const compact = hay.replace(/ /g, "");
+  const tokens = hay.trim().split(" ");
   let best: { name: string; at: number; len: number } | null = null;
   let loose: { name: string; len: number } | null = null;
   for (const d of data.destinations)
@@ -1113,21 +1188,33 @@ export function matchOrigin(
         const at = hay.indexOf(` ${key} `, from);
         if (at < 0) break;
         from = at + 1;
-        const next = hay.slice(at + key.length + 2).split(" ")[0];
-        if (STREET_WORDS.has(next)) continue;
-        if (!best || at > best.at || (at === best.at && key.length > best.len))
-          best = { name: o.name, at, len: key.length };
+        const after = hay.slice(at + key.length + 2).split(" ");
+        const street =
+          STREET_WORDS.has(after[0]) ||
+          (DIRECTION_WORDS.has(after[0]) && STREET_WORDS.has(after[1]));
+        if (street) continue;
+        const better = cjk
+          ? !best || at < best.at || (at === best.at && key.length > best.len)
+          : !best || at > best.at || (at === best.at && key.length > best.len);
+        if (better) best = { name: o.name, at, len: key.length };
       }
-      // Sem espaço ou com espaço a mais ("Ning Bo", "HongKong"); só quando o
-      // nome não aparece separado (aí já foi visto acima, como cidade ou rua).
+      // Com espaço a mais ou a menos ("Ning Bo", "HongKong"): só palavras
+      // inteiras ("Nanshan" não é "Nansha").
+      if (best || hay.includes(` ${key} `)) continue;
       const k = key.replace(/ /g, "");
-      if (
-        k.length >= 5 &&
-        !hay.includes(` ${key} `) &&
-        compact.includes(k) &&
-        (!loose || k.length > loose.len)
-      )
-        loose = { name: o.name, len: k.length };
+      if (k.length < 5 || (loose && k.length <= loose.len)) continue;
+      // Até 3 palavras seguidas formando exatamente o nome.
+      found: for (let i = 0; i < tokens.length; i++) {
+        let joined = "";
+        for (let n = i; n < Math.min(tokens.length, i + 3); n++) {
+          joined += tokens[n];
+          if (joined === k) {
+            loose = { name: o.name, len: k.length };
+            break found;
+          }
+          if (joined.length >= k.length) break;
+        }
+      }
     }
   return best?.name ?? loose?.name ?? null;
 }
@@ -1168,7 +1255,12 @@ export function optionsForOrigin(
         });
       }
     });
-  return out.sort((a, b) => a.totalBrl - b.totalBrl);
+  // Mais barato por container (abas podem ter quantidades diferentes).
+  return out.sort(
+    (a, b) =>
+      a.totalBrl / Math.max(1, a.containerQty) -
+      b.totalBrl / Math.max(1, b.containerQty),
+  );
 }
 
 /** Quantas tarifas e agentes o tarifário tem. */

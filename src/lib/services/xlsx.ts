@@ -18,6 +18,9 @@ export interface SheetData {
   rows: Record<string, string>[];
 }
 
+/** Colunas lidas por linha nas importações (planilhas reais usam poucas dezenas). */
+const MAX_GRID_COLUMNS = 256;
+
 /** Teto padrão do que se descompacta de um arquivo (planilhas fiscais grandes cabem com folga). */
 const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
 
@@ -191,8 +194,7 @@ function workbookSheets(zip: Zip) {
   if (!wb) throw new Error("xlsx_invalid");
   const relMap = new Map<string, string>();
   if (rels) {
-    for (const m of decode(rels).matchAll(/<Relationship\b([^>]*)\/?>/g)) {
-      const attrs = m[1];
+    for (const [attrs] of tags(decode(rels), "Relationship")) {
       const id = /\bId="([^"]+)"/.exec(attrs)?.[1];
       const target = /\bTarget="([^"]+)"/.exec(attrs)?.[1];
       if (id && target)
@@ -203,12 +205,15 @@ function workbookSheets(zip: Zip) {
     }
   }
   const sheets: Array<{ name: string; path: string }> = [];
-  for (const m of decode(wb).matchAll(/<sheet\b([^>]*)\/?>/g)) {
-    const attrs = m[1];
+  const paths = new Set<string>();
+  for (const [attrs] of tags(decode(wb), "sheet")) {
     const name = unescapeXml(/\bname="([^"]*)"/.exec(attrs)?.[1] ?? "");
     const rid = /\br:id="([^"]+)"/.exec(attrs)?.[1] ?? "";
     const path =
       relMap.get(rid) ?? `xl/worksheets/sheet${sheets.length + 1}.xml`;
+    // Duas abas apontando para a mesma parte (arquivo forjado): só a primeira.
+    if (paths.has(path)) continue;
+    paths.add(path);
     sheets.push({ name, path });
   }
   return sheets;
@@ -241,19 +246,27 @@ function formatNumber(raw: string): string {
 
 const cellType = (attrs: string) => /\bt="([^"]+)"/.exec(attrs)?.[1];
 
+/** Conteúdo do `<v>` da célula (indexOf: tempo linear mesmo com XML malformado). */
+function valueOf(inner: string): string | undefined {
+  const a = inner.indexOf("<v>");
+  if (a < 0) return undefined;
+  const b = inner.indexOf("</v>", a + 3);
+  return b < 0 ? undefined : inner.slice(a + 3, b);
+}
+
 /** Valor de uma célula como texto (o último valor calculado, se for fórmula). */
 function cellValue(attrs: string, inner: string, strings: string[]): string {
   const type = cellType(attrs);
   let value = "";
   if (type === "s") {
-    const idx = Number(/<v>([\s\S]*?)<\/v>/.exec(inner)?.[1] ?? "-1");
+    const idx = Number(valueOf(inner) ?? "-1");
     value = strings[idx] ?? "";
   } else if (type === "inlineStr") {
     value = textRuns(inner);
   } else if (type === "b") {
-    value = /<v>1<\/v>/.test(inner) ? "true" : "false";
+    value = valueOf(inner) === "1" ? "true" : "false";
   } else {
-    const v = /<v>([\s\S]*?)<\/v>/.exec(inner)?.[1];
+    const v = valueOf(inner);
     value =
       v === undefined
         ? ""
@@ -272,6 +285,7 @@ export function readGrid(
   bytes: Uint8Array,
   sheet?: string | number,
   maxRows = 2000,
+  maxCols = MAX_GRID_COLUMNS,
 ): { name: string; grid: string[][] } {
   const zip = openZip(bytes);
   const sheets = workbookSheets(zip);
@@ -293,7 +307,11 @@ export function readGrid(
     const cells: string[] = [];
     for (const [attrs, inner] of tags(rowXml, "c")) {
       const ref = /\br="([A-Z]+)\d+"/.exec(attrs)?.[1];
+      // Referência além da última coluna do Excel (XFD): arquivo forjado.
+      if (ref && ref.length > 3) continue;
       const col = ref ? columnIndex(ref) : cells.length;
+      // Coluna além do limite (arquivo forjado com "ZZZZ1"): ignorada.
+      if (col >= maxCols) continue;
       const value = cellValue(attrs, inner, strings);
       while (cells.length < col) cells.push("");
       cells[col] = value;
@@ -345,6 +363,8 @@ export interface CellSheet {
 export interface CellLimits {
   maxRows?: number;
   maxCols?: number;
+  /** Texto mais longo guardado por célula (o resto é cortado). */
+  maxCellChars?: number;
   /** Maior XML aceito por aba (e para o texto compartilhado). */
   maxXmlBytes?: number;
 }
@@ -368,6 +388,7 @@ export function openWorkbook(
       const maxRows = limits.maxRows ?? 500;
       const maxCols = limits.maxCols ?? 60;
       const maxXml = limits.maxXmlBytes ?? Infinity;
+      const maxChars = limits.maxCellChars ?? 1000;
       const target = sheets.find((s) => s.name === sheet);
       if (!target) throw new Error("xlsx_sheet_missing");
       const entry = zip.get(target.path);
@@ -377,13 +398,14 @@ export function openWorkbook(
       const cells: string[][] = [];
       const text = new Set<string>();
       for (const [attrs, inner] of tags(decode(entry), "c")) {
-        const ref = /\br="([A-Z]+)(\d+)"/.exec(attrs);
+        const ref = /\br="([A-Z]{1,3})(\d{1,7})"/.exec(attrs);
         if (!ref) continue;
         const row = Number(ref[2]) - 1;
         const col = columnIndex(ref[1]);
         if (row < 0 || row >= maxRows || col < 0 || col >= maxCols) continue;
-        const value = cellValue(attrs, inner, strings);
-        if (value === "") continue;
+        const full = cellValue(attrs, inner, strings);
+        if (full === "") continue;
+        const value = full.length > maxChars ? full.slice(0, maxChars) : full;
         while (cells.length <= row) cells.push([]);
         const line = cells[row];
         while (line.length < col) line.push("");

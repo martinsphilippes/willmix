@@ -52,7 +52,11 @@ import {
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
 /** Avisos só para saber (aparecem em toda planilha do modelo; nada a corrigir nela). */
-const INFO_WARNINGS = new Set(["sankhya_duplicate_ids", "ptax_iof_unused"]);
+const INFO_WARNINGS = new Set([
+  "sankhya_duplicate_ids",
+  "ptax_iof_unused",
+  "destination_fixed_id",
+]);
 const FROM_ORDER = /^\/app\/orders\/[A-Za-z0-9_-]{1,64}$/;
 
 /** Dia AAAA-MM-DD na tela (meio-dia UTC: o fuso não muda o dia). */
@@ -72,9 +76,15 @@ function warningText(t: Translate, w: TariffWarning) {
       k,
       k === "sheet" || k === "otherSheet" || k === "first"
         ? String(v).replace(/^COMPARATIVO\s*-\s*/i, "")
-        : typeof v === "number" && k !== "id"
-          ? v.toLocaleString(t.intl)
-          : String(v),
+        : typeof v === "number" &&
+            (k === "fx" || k === "firstFx" || k === "value")
+          ? v.toLocaleString(t.intl, {
+              minimumFractionDigits: k === "value" ? 2 : 4,
+              maximumFractionDigits: k === "value" ? 2 : 6,
+            })
+          : typeof v === "number" && k !== "id"
+            ? v.toLocaleString(t.intl)
+            : String(v),
     ]),
   );
   return t(key, params);

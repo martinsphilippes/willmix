@@ -803,6 +803,7 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
       matchedOrigin: null,
       origin: null,
       origins: ["NINGBO", "SHENZHEN"],
+      selectedOrigin: null,
       options: [],
     };
     const noLocation = render(base);
@@ -906,6 +907,10 @@ describe("revisão: parâmetros por aba, linhas de total, destinos e locais", ()
     );
     const data = calc.parseFreightTariff([nvt(), itj(), semDestinos]);
     expect(data.destinations.map((d) => d.portId)).toEqual([60, 5]);
+    expect(data.warnings).toContainEqual({
+      code: "destination_fixed_id",
+      params: { port: "NAVEGANTES", id: 60 },
+    });
     const ssa = { ...itj(), name: "COMPARATIVO - SSA" };
     const other = calc.parseFreightTariff([nvt(), ssa, portos()]);
     expect(other.warnings).toContainEqual({
@@ -1076,3 +1081,159 @@ function zipWithDeflated(
   }
   return out;
 }
+
+describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereços", () => {
+  const zipOf = (parts: Array<[string, string]>) =>
+    zipWithDeflated(parts.map(([n, c]) => [n, c, false]));
+  const rels =
+    '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>';
+  const wb =
+    '<workbook><sheets><sheet name="COMPARATIVO - NVT" sheetId="1" r:id="rId1"/></sheets></workbook>';
+
+  it("milhares de <sheet / <Relationship / <v> sem fechar não travam", () => {
+    const started = performance.now();
+    const many = zipOf([
+      ["xl/workbook.xml", `<workbook><sheets>${"<sheet ".repeat(20000)}`],
+      [
+        "xl/_rels/workbook.xml.rels",
+        `<Relationships>${"<Relationship ".repeat(20000)}`,
+      ],
+      ["xl/worksheets/sheet1.xml", "<worksheet/>"],
+    ]);
+    expect(() => readGrid(many)).toThrow();
+    const cell = zipOf([
+      ["xl/workbook.xml", wb],
+      ["xl/_rels/workbook.xml.rels", rels],
+      [
+        "xl/worksheets/sheet1.xml",
+        `<worksheet><sheetData><row r="1"><c r="A1">${"<v>".repeat(40000)}</c></row></sheetData></worksheet>`,
+      ],
+    ]);
+    expect(readCells(cell, "COMPARATIVO - NVT").cells).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(800);
+  });
+
+  it("texto enorme repetido em muitas células é cortado e lido rápido", () => {
+    const huge = "a".repeat(1_000_000);
+    const cells = Array.from(
+      { length: 400 },
+      (_, i) => `<c r="${"D"}${i + 5}" t="s"><v>0</v></c>`,
+    ).join("");
+    const zip = zipOf([
+      ["xl/workbook.xml", wb],
+      ["xl/_rels/workbook.xml.rels", rels],
+      ["xl/sharedStrings.xml", `<sst><si><t>${huge}</t></si></sst>`],
+      [
+        "xl/worksheets/sheet1.xml",
+        `<worksheet><sheetData><row r="5">${cells}</row></sheetData></worksheet>`,
+      ],
+    ]);
+    const started = performance.now();
+    const sheet = readCells(zip, "COMPARATIVO - NVT");
+    expect(sheet.cells[4][3].length).toBe(1000);
+    expect(() => calc.parseFreightTariff([sheet])).toThrow("tariff_no_sheets");
+    expect(performance.now() - started).toBeLessThan(1500);
+  });
+
+  it("importação comum: coluna além do limite é ignorada (sem estourar a memória)", () => {
+    const zip = zipOf([
+      ["xl/workbook.xml", wb],
+      ["xl/_rels/workbook.xml.rels", rels],
+      [
+        "xl/worksheets/sheet1.xml",
+        '<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>SKU</t></is></c><c r="ZZZZ1" t="inlineStr"><is><t>x</t></is></c><c r="ZZ1" t="inlineStr"><is><t>y</t></is></c></row></sheetData></worksheet>',
+      ],
+    ]);
+    const { grid } = readGrid(zip);
+    expect(grid[0]).toEqual(["SKU"]);
+  });
+
+  it("tarifário gravado sem os parâmetros por aba: nada de NaN", () => {
+    const data = calc.parseFreightTariff(workbook());
+    const legacy = JSON.parse(JSON.stringify(data));
+    for (const d of legacy.destinations) {
+      delete d.fx;
+      delete d.roadFreightBrl;
+      delete d.containerQty;
+    }
+    calc.normalizeTariffData(legacy);
+    expect(calc.perCbmSuggestion(legacy, "NVT", 68)?.perCbm).toBe(283.58);
+    expect(calc.optionsForOrigin(legacy, "NINGBO")[0].containerQty).toBe(1);
+  });
+
+  it("câmbio com erro numa aba e containers diferentes: avisos", () => {
+    const fx = itj();
+    fx.cells[9][2] = "#REF!";
+    fx.cells[10][2] = "#REF!";
+    fx.cells[12][2] = "2";
+    const data = calc.parseFreightTariff([nvt(), fx, portos()]);
+    expect(data.warnings).toContainEqual({
+      code: "fx_missing",
+      params: { sheet: "COMPARATIVO - ITJ", fx: 5.1 },
+    });
+    expect(data.warnings).toContainEqual({
+      code: "containers_differ",
+      params: {
+        sheet: "COMPARATIVO - ITJ",
+        first: "COMPARATIVO - NVT",
+        n: 2,
+        firstN: 1,
+      },
+    });
+    // Comparação por container: 2 × 40HQ não parece "mais caro" só pela quantidade.
+    const options = calc.optionsForOrigin(data, "NINGBO");
+    const perContainer = options.map((o) => o.totalBrl / o.containerQty);
+    expect([...perContainer].sort((a, b) => a - b)).toEqual(perContainer);
+  });
+
+  it("endereço chinês: cidade antes da rua; rua com direção não conta", () => {
+    const data = calc.parseFreightTariff([
+      {
+        ...nvt(),
+        cells: (() => {
+          const c = nvt().cells;
+          c[5][2] = "SHANGHAI";
+          c[6][2] = "NANJING";
+          return c;
+        })(),
+      },
+    ]);
+    expect(calc.matchOrigin(data, "上海市静安区南京西路1266号")).toBe(
+      "SHANGHAI",
+    );
+    expect(
+      calc.matchOrigin(data, "Shanghai Shi Huangpu Qu Nanjing Dong Lu 100"),
+    ).toBe("SHANGHAI");
+    expect(calc.matchOrigin(data, "南京市玄武区")).toBe("NANJING");
+    expect(calc.matchOrigin(data, "Nanshan District, Shenzhen")).toBeNull();
+  });
+
+  it("porto achado sem tarifa: a lista não escolhe outro sozinha", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { FreightTariffBox } =
+      await import("@/components/freight-tariff-box");
+    const { translator } = await import("@/i18n");
+    const html = renderToStaticMarkup(
+      createElement(FreightTariffBox, {
+        t: translator("pt"),
+        orderId: "o1",
+        stageId: "s1",
+        keepParams: { remeasure: "1" },
+        view: {
+          tariffId: "t1",
+          referenceDate: "2026-10-14",
+          location: "Mumbai, India",
+          matchedOrigin: "MUMBAI",
+          origin: "MUMBAI",
+          origins: ["ALEXANDRIA", "NINGBO"],
+          selectedOrigin: null,
+          options: [],
+        },
+      }),
+    );
+    expect(html).toContain("Sem tarifas para MUMBAI");
+    expect(html).toContain('<option value="" selected="">—</option>');
+    expect(html).toContain('name="remeasure" value="1"');
+  });
+});
