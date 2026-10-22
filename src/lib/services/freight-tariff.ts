@@ -1,0 +1,262 @@
+import "server-only";
+
+import { getStore, type FreightTariff, type User } from "@/lib/db";
+import { assertRole, assertWellmix } from "@/lib/auth/permissions";
+import { getSettings, setSetting } from "@/lib/settings";
+import { brazilDay } from "@/lib/supplier-terms";
+import { audit } from "./audit";
+import { uploadDocument } from "./documents";
+import { listSheets, readCells } from "./xlsx";
+import {
+  TARIFF_CONTAINER_TYPE,
+  TariffError,
+  destinationCode,
+  foldName,
+  matchOrigin,
+  optionsForOrigin,
+  parseFreightTariff,
+  perCbmSuggestion,
+  tariffCounts,
+  type TariffOption,
+  type TariffSheet,
+} from "./freight-tariff-calc";
+
+/*
+ * Tarifário de frete marítimo: a Wellmix importa a planilha "ESTIMATIVA DE
+ * FRETE" (tarifas das companhias marítimas por porto de origem e destino) e
+ * o portal guarda tudo, mostra o menor custo de cada rota, gera o
+ * AD_FREINT.CSV do Sankhya (o que a macro da planilha fazia) e sugere o frete
+ * por m³ usado no preço quando a companhia ainda não informou o frete.
+ * Tem as tarifas de todas as companhias: só a Wellmix vê; nenhuma companhia,
+ * fornecedor ou cliente.
+ */
+
+/** Teto do arquivo (a planilha modelo tem ~130 KB). */
+export const MAX_TARIFF_BYTES = 4_000_000;
+
+const XLSX_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const XLSM_MIME = "application/vnd.ms-excel.sheet.macroenabled.12";
+
+/** Abas lidas: os comparativos por destino e as tabelas de códigos do Sankhya. */
+const SUPPORT_SHEETS = ["FORNECEDORES", "PORTOS", "AD_FREINT"];
+
+function assertSpreadsheet(bytes: Uint8Array) {
+  // .xls antigo (formato binário): pedir para salvar como .xlsx/.xlsm.
+  if (
+    bytes[0] === 0xd0 &&
+    bytes[1] === 0xcf &&
+    bytes[2] === 0x11 &&
+    bytes[3] === 0xe0
+  )
+    throw new TariffError("tariff_xls");
+  if (!(bytes[0] === 0x50 && bytes[1] === 0x4b))
+    throw new TariffError("tariff_invalid");
+}
+
+/** Lê as abas que interessam da planilha (o resto, como macros, é ignorado). */
+export function readTariffWorkbook(bytes: Uint8Array) {
+  assertSpreadsheet(bytes);
+  let names: string[];
+  try {
+    names = listSheets(bytes);
+  } catch {
+    throw new TariffError("tariff_invalid");
+  }
+  const wanted = names.filter(
+    (n) =>
+      destinationCode(n) !== null ||
+      SUPPORT_SHEETS.includes(n.trim().toUpperCase()),
+  );
+  const sheets: TariffSheet[] = [];
+  for (const name of wanted) {
+    try {
+      sheets.push({ name, cells: readCells(bytes, name).cells });
+    } catch {
+      throw new TariffError("tariff_invalid");
+    }
+  }
+  return parseFreightTariff(sheets);
+}
+
+/**
+ * Importa a planilha: lê, confere, guarda o original (documento interno) e
+ * passa a ser o tarifário vigente; o anterior fica no histórico.
+ */
+export async function importFreightTariff(
+  user: User,
+  file: File,
+  referenceDate: string | null,
+): Promise<FreightTariff> {
+  assertWellmix(user);
+  if (!file || file.size === 0) throw new TariffError("tariff_file_required");
+  if (file.size > MAX_TARIFF_BYTES) throw new TariffError("tariff_too_large");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const data = readTariffWorkbook(bytes);
+  const day = referenceDate ?? brazilDay(new Date());
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day))
+    throw new TariffError("tariff_date_invalid");
+  const counts = tariffCounts(data);
+  const store = getStore();
+
+  // Original guardado para conferência (tipo do arquivo normalizado: o
+  // navegador manda "macroEnabled" com maiúscula no .xlsm).
+  const name = (file.name || "tarifario.xlsx").slice(0, 200);
+  const mime = /\.xlsm$/i.test(name) ? XLSM_MIME : XLSX_MIME;
+  const doc = await uploadDocument(
+    user,
+    new File([bytes], name, { type: mime }),
+    {
+      type: "attachment",
+      visibility: "internal",
+    },
+  ).catch(() => null);
+
+  const previous = await store.list("freight_tariffs", {
+    filter: { status: "active" },
+  });
+  const row = await store.create("freight_tariffs", {
+    referenceDate: day,
+    fileName: name,
+    fileDocumentId: doc?.id ?? null,
+    status: "active",
+    fx: data.fx,
+    roadFreightBrl: data.roadFreightBrl,
+    rateCount: counts.rates,
+    forwarderCount: counts.forwarders,
+    warningCount: data.warnings.length,
+    data,
+    uploadedByUserId: user.id,
+  });
+  for (const p of previous)
+    await store.update("freight_tariffs", p.id, { status: "replaced" });
+  await audit(
+    user,
+    "freight_tariff.import",
+    "freight_tariff",
+    row.id,
+    `Tarifário de frete importado (${name}): ${counts.rates} tarifa(s) de ${counts.forwarders} companhia(s), ${data.warnings.length} aviso(s)`,
+  );
+  return row;
+}
+
+/** Tarifário vigente (o último importado). */
+export async function currentFreightTariff(
+  user: User,
+): Promise<FreightTariff | null> {
+  assertWellmix(user);
+  const [row] = await getStore().list("freight_tariffs", {
+    filter: { status: "active" },
+    orderBy: "createdAt",
+    direction: "desc",
+    limit: 1,
+  });
+  return row ?? null;
+}
+
+export async function getFreightTariff(
+  user: User,
+  id: string,
+): Promise<FreightTariff | null> {
+  assertWellmix(user);
+  return getStore().get("freight_tariffs", id);
+}
+
+/** Histórico de importações (o vigente primeiro). */
+export async function listFreightTariffs(user: User, limit = 20) {
+  assertWellmix(user);
+  return getStore().list("freight_tariffs", {
+    orderBy: "createdAt",
+    direction: "desc",
+    limit,
+  });
+}
+
+/** Capacidade útil do container das tarifas (40HC nas Configurações). */
+export async function tariffContainerCapacity(): Promise<number | null> {
+  const { containerTypes } = await getSettings();
+  return (
+    containerTypes.find((c) => c.code === TARIFF_CONTAINER_TYPE)?.capacityCbm ??
+    null
+  );
+}
+
+/**
+ * Usa o tarifário no frete por m³ das Configurações (o que entra no preço
+ * quando a companhia ainda não informou o frete do produto). Só o admin,
+ * como as demais Configurações.
+ */
+export async function applyTariffPerCbm(
+  user: User,
+  tariffId: string,
+  destination: string,
+): Promise<number> {
+  assertRole(user, ["admin"]);
+  const tariff = await getStore().get("freight_tariffs", tariffId);
+  if (!tariff) throw new TariffError("tariff_not_found");
+  const capacity = await tariffContainerCapacity();
+  const suggestion = capacity
+    ? perCbmSuggestion(tariff.data, destination, capacity)
+    : null;
+  if (!suggestion) throw new TariffError("tariff_no_suggestion");
+  const before = await getSettings();
+  await setSetting("freightPerCbm", suggestion.perCbm);
+  await setSetting("freightCurrency", "BRL");
+  await audit(
+    user,
+    "settings.update",
+    "settings",
+    "freightPerCbm",
+    `Frete por m³ pelo tarifário de ${tariff.referenceDate} (${destination}): R$ ${suggestion.perCbm}`,
+    {
+      freightPerCbm: before.freightPerCbm,
+      freightCurrency: before.freightCurrency,
+    },
+    { freightPerCbm: suggestion.perCbm, freightCurrency: "BRL" },
+  );
+  return suggestion.perCbm;
+}
+
+export interface OrderTariffView {
+  tariffId: string;
+  referenceDate: string;
+  /** Local do fornecedor na ficha (de onde se tentou achar o porto). */
+  location: string | null;
+  origin: string | null;
+  options: (TariffOption & { assigned: boolean })[];
+}
+
+/**
+ * Frete pelo tarifário vigente para um pedido (cartão Embarque, só Wellmix):
+ * o porto de origem vem do local do fornecedor na ficha de compra; a
+ * companhia já escolhida no pedido aparece marcada.
+ */
+export async function orderTariffView(
+  user: User,
+  orderId: string,
+  shippingLineName: string | null,
+): Promise<OrderTariffView | null> {
+  assertWellmix(user);
+  const tariff = await currentFreightTariff(user);
+  if (!tariff) return null;
+  const [sheet] = await getStore().list("purchase_sheets", {
+    filter: { orderId },
+    limit: 1,
+  });
+  const location = sheet?.location?.trim() || null;
+  const origin = matchOrigin(tariff.data, location);
+  const assignedKey = shippingLineName ? foldName(shippingLineName) : null;
+  const options = origin
+    ? optionsForOrigin(tariff.data, origin).map((o) => ({
+        ...o,
+        assigned: !!assignedKey && foldName(o.forwarder) === assignedKey,
+      }))
+    : [];
+  return {
+    tariffId: tariff.id,
+    referenceDate: tariff.referenceDate,
+    location,
+    origin,
+    options,
+  };
+}

@@ -62,6 +62,7 @@ import * as placeholders from "./placeholders";
 import * as ncmSheet from "./ncm-sheet";
 import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
+import * as freightTariff from "./freight-tariff";
 
 export const modulesPt = {
   ...sourcing.pt,
@@ -123,6 +124,7 @@ export const modulesPt = {
   ...notificationsDelete.pt,
   ...sheetSafety.pt,
   ...productSpec.pt,
+  ...freightTariff.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcing.en,
@@ -184,6 +186,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...notificationsDelete.en,
   ...sheetSafety.en,
   ...productSpec.en,
+  ...freightTariff.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcing.zh,
@@ -245,4 +248,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...notificationsDelete.zh,
   ...sheetSafety.zh,
   ...productSpec.zh,
+  ...freightTariff.zh,
 };

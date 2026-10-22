@@ -66,7 +66,8 @@ export interface UploadInput {
 export function assertUploadable(file: File): void {
   if (file.size === 0) throw new DocumentError("empty");
   if (file.size > MAX_BYTES) throw new DocumentError("too_large");
-  const mime = file.type || "application/octet-stream";
+  // Sem diferenciar maiúsculas: o navegador manda "macroEnabled" no .xlsm.
+  const mime = (file.type || "application/octet-stream").toLowerCase();
   if (!ALLOWED_MIME.includes(mime)) throw new DocumentError("mime");
 }
 

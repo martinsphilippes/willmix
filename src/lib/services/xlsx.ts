@@ -14,6 +14,9 @@ export interface SheetData {
   rows: Record<string, string>[];
 }
 
+/** Maior parte descompactada aceita (planilhas fiscais grandes cabem com folga). */
+const MAX_ENTRY_BYTES = 200 * 1024 * 1024;
+
 interface ZipEntry {
   name: string;
   data: Uint8Array;
@@ -50,9 +53,14 @@ function readZip(bytes: Uint8Array): Map<string, ZipEntry> {
     const localExtraLen = view.getUint16(localOffset + 28, true);
     const start = localOffset + 30 + localNameLen + localExtraLen;
     const raw = bytes.subarray(start, start + compressedSize);
+    // Teto de descompressão: arquivo enviado por terceiros (proteção contra "zip bomb").
     const data =
       method === 8
-        ? new Uint8Array(inflateRawSync(Buffer.from(raw)))
+        ? new Uint8Array(
+            inflateRawSync(Buffer.from(raw), {
+              maxOutputLength: MAX_ENTRY_BYTES,
+            }),
+          )
         : method === 0
           ? raw
           : null;
@@ -155,6 +163,29 @@ function formatNumber(raw: string): string {
   return String(Math.round(n * 1e10) / 1e10);
 }
 
+/** Valor de uma célula como texto (o último valor calculado, se for fórmula). */
+function cellValue(attrs: string, inner: string, strings: string[]): string {
+  const type = /\bt="([^"]+)"/.exec(attrs)?.[1];
+  let value = "";
+  if (type === "s") {
+    const idx = Number(/<v>([\s\S]*?)<\/v>/.exec(inner)?.[1] ?? "-1");
+    value = strings[idx] ?? "";
+  } else if (type === "inlineStr") {
+    value = textRuns(inner);
+  } else if (type === "b") {
+    value = /<v>1<\/v>/.test(inner) ? "true" : "false";
+  } else {
+    const v = /<v>([\s\S]*?)<\/v>/.exec(inner)?.[1];
+    value =
+      v === undefined
+        ? ""
+        : type === "str" || type === "e"
+          ? unescapeXml(v)
+          : formatNumber(v);
+  }
+  return value.trim();
+}
+
 /**
  * Linhas cruas da planilha (sem cabeçalho), para arquivos com títulos acima do
  * cabeçalho (ex.: TEC e TIPI). Linhas totalmente vazias são ignoradas.
@@ -186,29 +217,11 @@ export function readGrid(
       /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g,
     )) {
       const attrs = cell[1];
-      const inner = cell[2] ?? "";
       const ref = /\br="([A-Z]+)\d+"/.exec(attrs)?.[1];
-      const type = /\bt="([^"]+)"/.exec(attrs)?.[1];
       const col = ref ? columnIndex(ref) : cells.length;
-      let value = "";
-      if (type === "s") {
-        const idx = Number(/<v>([\s\S]*?)<\/v>/.exec(inner)?.[1] ?? "-1");
-        value = strings[idx] ?? "";
-      } else if (type === "inlineStr") {
-        value = textRuns(inner);
-      } else if (type === "b") {
-        value = /<v>1<\/v>/.test(inner) ? "true" : "false";
-      } else {
-        const v = /<v>([\s\S]*?)<\/v>/.exec(inner)?.[1];
-        value =
-          v === undefined
-            ? ""
-            : type === "str" || type === "e"
-              ? unescapeXml(v)
-              : formatNumber(v);
-      }
+      const value = cellValue(attrs, cell[2] ?? "", strings);
       while (cells.length < col) cells.push("");
-      cells[col] = value.trim();
+      cells[col] = value;
     }
     if (cells.some((c) => c !== "")) grid.push(cells);
     if (grid.length > maxRows + 1) break;
@@ -245,4 +258,43 @@ export function readSheet(
       Object.fromEntries(headers.map((h, i) => [h, cells[i] ?? ""])),
     );
   return { name: name, headers, rows };
+}
+
+/**
+ * Células na posição exata da planilha: `cells[linha][coluna]`, contando do
+ * zero (A1 = [0][0]). Linhas e colunas vazias continuam no lugar, para
+ * planilhas de formulário em que o significado vem da posição (ex.: o
+ * comparativo de fretes, com blocos por agente). Lê pela referência de cada
+ * célula, então linhas vazias gravadas como `<row/>` não deslocam nada.
+ */
+export function readCells(
+  bytes: Uint8Array,
+  sheet: string,
+  limits: { maxRows?: number; maxCols?: number } = {},
+): { name: string; cells: string[][] } {
+  const maxRows = limits.maxRows ?? 500;
+  const maxCols = limits.maxCols ?? 60;
+  const entries = readZip(bytes);
+  const target = workbookSheets(entries).find((s) => s.name === sheet);
+  if (!target) throw new Error("xlsx_sheet_missing");
+  const entry = entries.get(target.path);
+  if (!entry) throw new Error("xlsx_sheet_missing");
+  const strings = sharedStrings(entries);
+  const xml = decode(entry.data);
+  const cells: string[][] = [];
+  for (const cell of xml.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    const attrs = cell[1];
+    const ref = /\br="([A-Z]+)(\d+)"/.exec(attrs);
+    if (!ref) continue;
+    const row = Number(ref[2]) - 1;
+    const col = columnIndex(ref[1]);
+    if (row < 0 || row >= maxRows || col < 0 || col >= maxCols) continue;
+    const value = cellValue(attrs, cell[2] ?? "", strings);
+    if (value === "") continue;
+    while (cells.length <= row) cells.push([]);
+    const line = cells[row];
+    while (line.length < col) line.push("");
+    line[col] = value;
+  }
+  return { name: target.name, cells };
 }

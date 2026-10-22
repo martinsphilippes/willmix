@@ -127,5 +127,20 @@ describe("menu principal", () => {
     expect(isActiveHref("/app", "/app/orders")).toBe(false);
     expect(isActiveHref("/app/orders", "/app/orders/123")).toBe(true);
     expect(isActiveHref("/app/orders", "/app/orders-x")).toBe(false);
+    // Tarifário tem link próprio: "Fretes" não acende junto.
+    expect(isActiveHref("/app/freight", "/app/freight/abc123")).toBe(true);
+    expect(isActiveHref("/app/freight", "/app/freight/tariff")).toBe(false);
+    expect(isActiveHref("/app/freight/tariff", "/app/freight/tariff")).toBe(
+      true,
+    );
+  });
+
+  it("Wellmix tem o tarifário de frete no menu; a companhia marítima não", () => {
+    const wellmix = flattenNav(navFor("operator", false)).map((l) => l.href);
+    expect(wellmix).toContain("/app/freight/tariff");
+    const shipping = flattenNav(navFor("shipping_line", false)).map(
+      (l) => l.href,
+    );
+    expect(shipping).not.toContain("/app/freight/tariff");
   });
 });

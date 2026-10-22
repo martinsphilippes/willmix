@@ -129,6 +129,11 @@ import {
   openAfterSalesAction,
 } from "../../actions/after-sales";
 import { MoneyInput } from "@/components/money-input";
+import { FreightTariffBox } from "@/components/freight-tariff-box";
+import {
+  orderTariffView,
+  type OrderTariffView,
+} from "@/lib/services/freight-tariff";
 
 export default async function OrderPage({
   params,
@@ -258,6 +263,26 @@ export default async function OrderPage({
     parties.find((p) => p.id === pid)?.name ?? "—";
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
+  /* Embarque (só Wellmix): frete do tarifário vigente para a rota do pedido e
+     o botão de importar a planilha da companhia marítima. */
+  const shippingStage = stages.find((s) => s.key === "SHIPPING");
+  let tariffView: OrderTariffView | null = null;
+  if (
+    wellmix &&
+    shippingStage &&
+    ["pending", "active", "blocked"].includes(shippingStage.status)
+  ) {
+    try {
+      tariffView = await orderTariffView(
+        user,
+        order.id,
+        order.shippingLineId ? partyName(order.shippingLineId) : null,
+      );
+    } catch (error) {
+      // Tarifário fora do ar (ex.: tabela ainda não publicada): o pedido abre igual.
+      console.error("orderTariffView failed", error);
+    }
+  }
   const docById = (did: string | null) =>
     documents.find((d) => d.id === did) ?? null;
   const visibleDocs = documents.filter((d) => canSeeDoc(user, d));
@@ -586,6 +611,16 @@ export default async function OrderPage({
                     <p className="mb-2 text-xs leading-relaxed text-zinc-500">
                       {t(`help.stage.${stage.key}`)}
                     </p>
+                    {stage.key === "SHIPPING" &&
+                    wellmix &&
+                    stage === shippingStage &&
+                    ["pending", "active", "blocked"].includes(stage.status) ? (
+                      <FreightTariffBox
+                        t={t}
+                        orderId={order.id}
+                        view={tariffView}
+                      />
+                    ) : null}
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (
                       <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
                         {t("orders.inspection.blindHint")}

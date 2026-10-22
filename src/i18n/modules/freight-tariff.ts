@@ -1,0 +1,402 @@
+/**
+ * Dicionário do módulo "freight-tariff" (tarifário de frete marítimo
+ * importado da planilha das companhias marítimas, CSV do Sankhya e frete por
+ * m³): mesmas chaves em pt, en e zh.
+ */
+export const pt = {
+  "nav.freightTariff": "Tarifário de frete",
+  "tariff.title": "Tarifário de frete",
+  "tariff.subtitle":
+    "Planilha das companhias marítimas: frete por rota, taxas e prazo de pagamento. Só a Wellmix vê.",
+  "tariff.help.body":
+    "A planilha de estimativa de frete (abas COMPARATIVO - NVT, ITJ e IOA) entra aqui inteira: companhia, porto de origem, destino, frete por container 40HQ, rota direta ou longa, taxas em US$ e R$ e prazo de pagamento. O portal refaz cada total em R$ com as taxas da própria companhia (frete × câmbio + frete até o CD + taxas), mostra o menor custo de cada porto, avisa o que estiver estranho na planilha e gera o CSV do Sankhya (AD_FREINT) sem macro.",
+  "tariff.help.steps":
+    "Importe a planilha nova a cada cotação de fretes (a anterior fica no histórico).\nLeia a conferência: ela aponta fórmulas e taxas que não batem.\nBaixe o CSV do Sankhya e importe no ERP.\nSe quiser, use o frete por m³ do tarifário no preço ao cliente (admin).",
+  "tariff.import.title": "Importar planilha da companhia marítima",
+  "tariff.import.hint":
+    "Planilha de estimativa de frete (.xlsx ou .xlsm) no modelo com as abas COMPARATIVO - NVT, ITJ e IOA, FORNECEDORES e PORTOS. Macros não são executadas.",
+  "tariff.import.file": "Planilha (.xlsx ou .xlsm)",
+  "tariff.import.date": "Data de referência",
+  "tariff.import.dateHint": "Vai para a DTREFERENCIA do Sankhya.",
+  "tariff.import.submit": "Importar planilha",
+  "tariff.imported":
+    "Planilha importada: {rates} tarifas de {forwarders} companhias. Este é o tarifário vigente agora.",
+  "tariff.backToOrder": "← Voltar ao pedido",
+  "tariff.empty": "Nenhum tarifário importado ainda. Importe a planilha acima.",
+  "tariff.status.active": "Vigente",
+  "tariff.status.replaced": "Substituído",
+  "tariff.viewingOld":
+    "Você está vendo um tarifário antigo (referência {date}).",
+  "tariff.viewCurrent": "Ver o vigente",
+  "tariff.stat.date": "Data de referência",
+  "tariff.stat.fx": "Câmbio da planilha",
+  "tariff.stat.fxDetail": "US$ 1 = R$ {base} + spread {spread}",
+  "tariff.stat.road": "Frete até o CD",
+  "tariff.stat.roadDetail": "por container",
+  "tariff.stat.rates": "Tarifas",
+  "tariff.stat.ratesDetail":
+    "{forwarders} companhias · {destinations} destinos",
+  "tariff.download": "Baixar CSV do Sankhya (AD_FREINT)",
+  "tariff.downloadHint":
+    "O mesmo arquivo que a macro da planilha gerava: uma tarifa por companhia, porto e destino (rota direta; sem ela, a longa).",
+  "tariff.original": "Planilha original",
+  "tariff.warnings.title": "Conferência da planilha ({n})",
+  "tariff.warnings.ok":
+    "Conferência sem avisos: os totais da planilha batem com a conta.",
+  "tariff.warning.fees_other_agent":
+    "{sheet}: na planilha, o total em R$ de {forwarder} soma as taxas de {other} ({n} rotas). O portal recalculou com as taxas da própria {forwarder}.",
+  "tariff.warning.total_mismatch":
+    "{sheet}: {n} totais em R$ de {forwarder} na planilha não batem com a conta (frete × câmbio + frete até o CD + taxas). O portal usa a conta.",
+  "tariff.warning.fees_copied":
+    "{sheet}: as taxas são iguais, coluna por coluna, às da aba {otherSheet}, mas as companhias mudaram de lugar ({pairs}). Confira se foram copiadas sem ajustar.",
+  "tariff.warning.ptax_iof_unused":
+    "PTAX ({ptax}%) e IOF ({iof}%) estão na planilha, mas não entram em nenhum total (nem lá, nem aqui).",
+  "tariff.warning.forwarder_no_code":
+    "{forwarder} não tem código (CODPARC) na aba FORNECEDORES: fica fora do CSV do Sankhya.",
+  "tariff.warning.port_no_id":
+    "Porto {port} sem ID na aba PORTOS: fica fora do CSV do Sankhya.",
+  "tariff.warning.port_no_id_similar":
+    'Porto {port} sem ID na aba PORTOS (lá existe "{similar}", ID {id}): corrija o nome para ele entrar no CSV do Sankhya.',
+  "tariff.warning.destination_unknown":
+    '{sheet}: destino "{code}" desconhecido; usado como está.',
+  "tariff.warning.road_freight_missing":
+    '{sheet}: sem "FRETE (CD)"; o frete rodoviário até o CD ficou fora dos totais.',
+  "tariff.warning.params_differ":
+    "{sheet}: câmbio, frete até o CD ou quantidade de containers diferente da aba {first}. O portal usou os da {first}.",
+  "tariff.warning.sankhya_tab_outdated":
+    "A aba AD_FREINT da planilha está diferente dos comparativos ({n} linhas). Use o CSV gerado aqui.",
+  "tariff.warning.sankhya_duplicate_ids":
+    "CSV do Sankhya: {n} códigos AD_IDEXTERNO se repetem entre destinos (o código é CODPARC + data + porto de origem, sem o destino, igual à macro). Se o Sankhya usa esse código como chave, uma tarifa substitui a outra: confira antes de importar.",
+  "tariff.warning.cell_error":
+    "{sheet}: erro na célula {cell} (#REF!/#VALUE!); esse valor ficou de fora.",
+  "tariff.dest.label": "Destino",
+  "tariff.table.caption":
+    "Custo total por container {type} em R$: frete × câmbio + frete até o CD + taxas da companhia. Em verde, o menor custo de cada porto.",
+  "tariff.table.origin": "Porto de origem",
+  "tariff.table.best": "Menor custo",
+  "tariff.table.term": "prazo {n} dias",
+  "tariff.table.noTerm": "sem prazo",
+  "tariff.table.noRates": "Sem tarifas para este destino.",
+  "tariff.route.direct": "direta",
+  "tariff.route.long": "longa",
+  "tariff.fees.title": "Taxas por companhia",
+  "tariff.fees.fee": "Taxa",
+  "tariff.fees.total": "Total das taxas (planilha)",
+  "tariff.fees.totalBrl": "Taxas em R$ no embarque",
+  "tariff.fees.perShipment": "por embarque",
+  "tariff.perCbm.title": "Frete por m³",
+  "tariff.perCbm.body":
+    "Mediana do menor custo de {ports} portos até {dest}: R$ {container} por container ÷ {capacity} m³ ({type}) = R$ {perCbm} por m³.",
+  "tariff.perCbm.current": "Hoje nas Configurações: {value}.",
+  "tariff.perCbm.none": "não informado",
+  "tariff.perCbm.apply": "Usar R$ {perCbm}/m³ no preço",
+  "tariff.perCbm.applyHint":
+    "Vale quando a companhia ainda não informou o frete do produto (vitrine e valor ao cliente). Só o admin muda.",
+  "tariff.perCbm.applied": "Frete por m³ atualizado nas Configurações.",
+  "tariff.perCbm.noCapacity":
+    "Cadastre o container 40HC nas Configurações para calcular o frete por m³.",
+  "tariff.history.title": "Importações",
+  "tariff.history.date": "Referência",
+  "tariff.history.file": "Arquivo",
+  "tariff.history.by": "Por",
+  "tariff.history.when": "Importado em",
+  "tariff.history.rates": "Tarifas",
+  "tariff.history.status": "Situação",
+  "tariff.history.view": "Ver",
+  "tariff.error.tariff_file_required": "Escolha a planilha.",
+  "tariff.error.tariff_too_large": "Planilha grande demais (máximo 4 MB).",
+  "tariff.error.tariff_xls":
+    "Formato .xls antigo: abra no Excel e salve como .xlsx ou .xlsm.",
+  "tariff.error.tariff_invalid":
+    "Não consegui ler o arquivo. Envie a planilha em .xlsx ou .xlsm.",
+  "tariff.error.tariff_no_sheets":
+    'Não achei as abas "COMPARATIVO - NVT/ITJ/IOA" com a linha "USD POR 40HQ". Use a planilha modelo.',
+  "tariff.error.tariff_fx_missing":
+    "Não achei o câmbio (fica abaixo da lista de portos, na coluna dos portos).",
+  "tariff.error.tariff_empty": "A planilha não tem nenhum frete preenchido.",
+  "tariff.error.tariff_date_invalid": "Data de referência inválida.",
+  "tariff.error.tariff_not_found": "Tarifário não encontrado.",
+  "tariff.error.tariff_no_suggestion":
+    "Sem tarifas para calcular o frete por m³ deste destino.",
+  "tariff.error.forbidden":
+    "Sem permissão. Mudar o frete por m³ das Configurações é só do admin.",
+  "tariff.error.schema_outdated":
+    "A tabela do tarifário ainda não foi publicada no banco. Publique o esquema do Appwrite e tente de novo.",
+  "tariff.error.invalid_input": "Dados inválidos.",
+  "tariff.order.title": "Frete pelo tarifário",
+  "tariff.order.import": "Importar planilha da companhia marítima",
+  "tariff.order.viewAll": "Ver tarifário completo",
+  "tariff.order.none":
+    "Nenhum tarifário importado ainda. Importe a planilha da companhia marítima para ver o frete de cada rota.",
+  "tariff.order.from": "Tarifário de {date} · origem {origin}",
+  "tariff.order.noLocation":
+    "A ficha de compra ainda não tem o local do fornecedor; sem ele não dá para achar o porto de origem.",
+  "tariff.order.noOrigin":
+    'O local do fornecedor na ficha ("{location}") não bate com nenhum porto do tarifário.',
+  "tariff.order.noRates": "Sem tarifas para {origin} no tarifário vigente.",
+  "tariff.order.assigned": "companhia do pedido",
+  "tariff.order.hint":
+    "Só a Wellmix vê. Data de embarque, chegada, navio e BL continuam abaixo: são do embarque, não do tarifário.",
+};
+
+export const en: Record<keyof typeof pt, string> = {
+  "nav.freightTariff": "Freight tariff",
+  "tariff.title": "Freight tariff",
+  "tariff.subtitle":
+    "Shipping lines' spreadsheet: freight per route, fees and payment terms. Wellmix only.",
+  "tariff.help.body":
+    "The freight estimate spreadsheet (COMPARATIVO - NVT, ITJ and IOA tabs) comes in whole: shipping line, origin port, destination, freight per 40HQ container, direct or long route, fees in USD and BRL and payment terms. The portal recomputes each BRL total with the line's own fees (freight × FX + road freight to the DC + fees), shows the cheapest cost per port, flags anything odd in the spreadsheet and builds the Sankhya CSV (AD_FREINT) without a macro.",
+  "tariff.help.steps":
+    "Import the new spreadsheet at each freight quotation round (the previous one stays in the history).\nRead the check: it points out formulas and fees that do not add up.\nDownload the Sankhya CSV and import it into the ERP.\nOptionally use the tariff's freight per m³ in the customer price (admin).",
+  "tariff.import.title": "Import the shipping line spreadsheet",
+  "tariff.import.hint":
+    "Freight estimate spreadsheet (.xlsx or .xlsm) in the template with the COMPARATIVO - NVT, ITJ and IOA, FORNECEDORES and PORTOS tabs. Macros are never run.",
+  "tariff.import.file": "Spreadsheet (.xlsx or .xlsm)",
+  "tariff.import.date": "Reference date",
+  "tariff.import.dateHint": "Goes to Sankhya's DTREFERENCIA.",
+  "tariff.import.submit": "Import spreadsheet",
+  "tariff.imported":
+    "Spreadsheet imported: {rates} rates from {forwarders} shipping lines. This is now the current tariff.",
+  "tariff.backToOrder": "← Back to the order",
+  "tariff.empty": "No tariff imported yet. Import the spreadsheet above.",
+  "tariff.status.active": "Current",
+  "tariff.status.replaced": "Replaced",
+  "tariff.viewingOld": "You are viewing an old tariff (reference {date}).",
+  "tariff.viewCurrent": "View the current one",
+  "tariff.stat.date": "Reference date",
+  "tariff.stat.fx": "Spreadsheet FX",
+  "tariff.stat.fxDetail": "USD 1 = BRL {base} + spread {spread}",
+  "tariff.stat.road": "Freight to the DC",
+  "tariff.stat.roadDetail": "per container",
+  "tariff.stat.rates": "Rates",
+  "tariff.stat.ratesDetail":
+    "{forwarders} shipping lines · {destinations} destinations",
+  "tariff.download": "Download Sankhya CSV (AD_FREINT)",
+  "tariff.downloadHint":
+    "The same file the spreadsheet macro produced: one rate per shipping line, port and destination (direct route; without it, the long one).",
+  "tariff.original": "Original spreadsheet",
+  "tariff.warnings.title": "Spreadsheet check ({n})",
+  "tariff.warnings.ok":
+    "Check passed: the spreadsheet totals match the calculation.",
+  "tariff.warning.fees_other_agent":
+    "{sheet}: in the spreadsheet, the BRL total for {forwarder} adds {other}'s fees ({n} routes). The portal recomputed it with {forwarder}'s own fees.",
+  "tariff.warning.total_mismatch":
+    "{sheet}: {n} BRL totals for {forwarder} in the spreadsheet do not match the calculation (freight × FX + freight to the DC + fees). The portal uses the calculation.",
+  "tariff.warning.fees_copied":
+    "{sheet}: the fees are identical, column by column, to the {otherSheet} tab, but the shipping lines changed places ({pairs}). Check whether they were copied without adjusting.",
+  "tariff.warning.ptax_iof_unused":
+    "PTAX ({ptax}%) and IOF ({iof}%) are in the spreadsheet but are not part of any total (neither there nor here).",
+  "tariff.warning.forwarder_no_code":
+    "{forwarder} has no code (CODPARC) in the FORNECEDORES tab: left out of the Sankhya CSV.",
+  "tariff.warning.port_no_id":
+    "Port {port} has no ID in the PORTOS tab: left out of the Sankhya CSV.",
+  "tariff.warning.port_no_id_similar":
+    'Port {port} has no ID in the PORTOS tab (it lists "{similar}", ID {id}): fix the name so it goes into the Sankhya CSV.',
+  "tariff.warning.destination_unknown":
+    '{sheet}: unknown destination "{code}"; used as is.',
+  "tariff.warning.road_freight_missing":
+    '{sheet}: no "FRETE (CD)"; road freight to the DC was left out of the totals.',
+  "tariff.warning.params_differ":
+    "{sheet}: FX, freight to the DC or container quantity differs from the {first} tab. The portal used {first}'s.",
+  "tariff.warning.sankhya_tab_outdated":
+    "The spreadsheet's AD_FREINT tab differs from the comparison tabs ({n} rows). Use the CSV built here.",
+  "tariff.warning.sankhya_duplicate_ids":
+    "Sankhya CSV: {n} AD_IDEXTERNO codes repeat across destinations (the code is CODPARC + date + origin port, without the destination, like the macro). If Sankhya uses it as a key, one rate replaces another: check before importing.",
+  "tariff.warning.cell_error":
+    "{sheet}: error in cell {cell} (#REF!/#VALUE!); that value was left out.",
+  "tariff.dest.label": "Destination",
+  "tariff.table.caption":
+    "Total cost per {type} container in BRL: freight × FX + freight to the DC + the line's fees. Green marks the cheapest cost per port.",
+  "tariff.table.origin": "Origin port",
+  "tariff.table.best": "Cheapest",
+  "tariff.table.term": "{n}-day terms",
+  "tariff.table.noTerm": "no terms",
+  "tariff.table.noRates": "No rates for this destination.",
+  "tariff.route.direct": "direct",
+  "tariff.route.long": "long",
+  "tariff.fees.title": "Fees per shipping line",
+  "tariff.fees.fee": "Fee",
+  "tariff.fees.total": "Fees total (spreadsheet)",
+  "tariff.fees.totalBrl": "Fees in BRL per shipment",
+  "tariff.fees.perShipment": "per shipment",
+  "tariff.perCbm.title": "Freight per m³",
+  "tariff.perCbm.body":
+    "Median of the cheapest cost from {ports} ports to {dest}: BRL {container} per container ÷ {capacity} m³ ({type}) = BRL {perCbm} per m³.",
+  "tariff.perCbm.current": "Currently in Settings: {value}.",
+  "tariff.perCbm.none": "not set",
+  "tariff.perCbm.apply": "Use BRL {perCbm}/m³ in prices",
+  "tariff.perCbm.applyHint":
+    "Applies while the shipping line has not quoted the product's freight (storefront and customer price). Admin only.",
+  "tariff.perCbm.applied": "Freight per m³ updated in Settings.",
+  "tariff.perCbm.noCapacity":
+    "Add the 40HC container in Settings to compute the freight per m³.",
+  "tariff.history.title": "Imports",
+  "tariff.history.date": "Reference",
+  "tariff.history.file": "File",
+  "tariff.history.by": "By",
+  "tariff.history.when": "Imported on",
+  "tariff.history.rates": "Rates",
+  "tariff.history.status": "Status",
+  "tariff.history.view": "View",
+  "tariff.error.tariff_file_required": "Choose the spreadsheet.",
+  "tariff.error.tariff_too_large": "Spreadsheet too large (max 4 MB).",
+  "tariff.error.tariff_xls":
+    "Old .xls format: open it in Excel and save as .xlsx or .xlsm.",
+  "tariff.error.tariff_invalid":
+    "Could not read the file. Send the spreadsheet as .xlsx or .xlsm.",
+  "tariff.error.tariff_no_sheets":
+    'Could not find the "COMPARATIVO - NVT/ITJ/IOA" tabs with the "USD POR 40HQ" row. Use the template spreadsheet.',
+  "tariff.error.tariff_fx_missing":
+    "Could not find the FX rate (below the port list, in the ports column).",
+  "tariff.error.tariff_empty": "The spreadsheet has no freight filled in.",
+  "tariff.error.tariff_date_invalid": "Invalid reference date.",
+  "tariff.error.tariff_not_found": "Tariff not found.",
+  "tariff.error.tariff_no_suggestion":
+    "No rates to compute the freight per m³ for this destination.",
+  "tariff.error.forbidden":
+    "Not allowed. Only the admin can change the freight per m³ in Settings.",
+  "tariff.error.schema_outdated":
+    "The tariff table is not published in the database yet. Publish the Appwrite schema and try again.",
+  "tariff.error.invalid_input": "Invalid data.",
+  "tariff.order.title": "Freight from the tariff",
+  "tariff.order.import": "Import the shipping line spreadsheet",
+  "tariff.order.viewAll": "View the full tariff",
+  "tariff.order.none":
+    "No tariff imported yet. Import the shipping line spreadsheet to see the freight for each route.",
+  "tariff.order.from": "Tariff from {date} · origin {origin}",
+  "tariff.order.noLocation":
+    "The purchase sheet has no supplier location yet; without it the origin port cannot be found.",
+  "tariff.order.noOrigin":
+    'The supplier location on the sheet ("{location}") matches no port in the tariff.',
+  "tariff.order.noRates": "No rates for {origin} in the current tariff.",
+  "tariff.order.assigned": "order's shipping line",
+  "tariff.order.hint":
+    "Wellmix only. Ship date, arrival, vessel and BL stay below: they come from the shipment, not from the tariff.",
+};
+
+export const zh: Record<keyof typeof pt, string> = {
+  "nav.freightTariff": "运价表",
+  "tariff.title": "海运运价表",
+  "tariff.subtitle":
+    "船公司表格：各航线运费、附加费和付款期限。仅 Wellmix 可见。",
+  "tariff.help.body":
+    "运费估算表（COMPARATIVO - NVT、ITJ、IOA 工作表）整体导入：船公司、起运港、目的港、40HQ 柜运费、直航或中转、美元和雷亚尔附加费及付款期限。系统用各船公司自己的附加费重新计算每个雷亚尔总额（运费 × 汇率 + 到配送中心的陆运 + 附加费），显示每个港口的最低成本，提示表格中的异常，并无需宏即可生成 Sankhya 的 CSV（AD_FREINT）。",
+  "tariff.help.steps":
+    "每轮运费询价后导入新表格（旧表格保留在历史中）。\n查看核对结果：会指出不一致的公式和附加费。\n下载 Sankhya CSV 并导入 ERP。\n如需要，可将运价表的每立方米运费用于客户价格（仅管理员）。",
+  "tariff.import.title": "导入船公司表格",
+  "tariff.import.hint":
+    "运费估算表（.xlsx 或 .xlsm），模板包含 COMPARATIVO - NVT、ITJ、IOA、FORNECEDORES 和 PORTOS 工作表。不会运行宏。",
+  "tariff.import.file": "表格（.xlsx 或 .xlsm）",
+  "tariff.import.date": "参考日期",
+  "tariff.import.dateHint": "写入 Sankhya 的 DTREFERENCIA。",
+  "tariff.import.submit": "导入表格",
+  "tariff.imported":
+    "表格已导入：{forwarders} 家船公司的 {rates} 条运价。现为当前运价表。",
+  "tariff.backToOrder": "← 返回订单",
+  "tariff.empty": "尚未导入运价表。请在上方导入表格。",
+  "tariff.status.active": "当前",
+  "tariff.status.replaced": "已替换",
+  "tariff.viewingOld": "您正在查看旧运价表（参考日期 {date}）。",
+  "tariff.viewCurrent": "查看当前运价表",
+  "tariff.stat.date": "参考日期",
+  "tariff.stat.fx": "表格汇率",
+  "tariff.stat.fxDetail": "1 美元 = {base} 雷亚尔 + 点差 {spread}",
+  "tariff.stat.road": "到配送中心的陆运",
+  "tariff.stat.roadDetail": "每柜",
+  "tariff.stat.rates": "运价",
+  "tariff.stat.ratesDetail": "{forwarders} 家船公司 · {destinations} 个目的港",
+  "tariff.download": "下载 Sankhya CSV（AD_FREINT）",
+  "tariff.downloadHint":
+    "与表格宏生成的文件相同：每个船公司、港口和目的港一条运价（优先直航，没有则用中转）。",
+  "tariff.original": "原始表格",
+  "tariff.warnings.title": "表格核对（{n}）",
+  "tariff.warnings.ok": "核对无提示：表格总额与计算一致。",
+  "tariff.warning.fees_other_agent":
+    "{sheet}：表格中 {forwarder} 的雷亚尔总额加的是 {other} 的附加费（{n} 条航线）。系统已用 {forwarder} 自己的附加费重新计算。",
+  "tariff.warning.total_mismatch":
+    "{sheet}：表格中 {forwarder} 有 {n} 个雷亚尔总额与计算不符（运费 × 汇率 + 陆运 + 附加费）。系统采用计算结果。",
+  "tariff.warning.fees_copied":
+    "{sheet}：附加费与 {otherSheet} 工作表逐列相同，但船公司位置不同（{pairs}）。请确认是否复制后未调整。",
+  "tariff.warning.ptax_iof_unused":
+    "表格中有 PTAX（{ptax}%）和 IOF（{iof}%），但未计入任何总额（表格和系统都没有）。",
+  "tariff.warning.forwarder_no_code":
+    "{forwarder} 在 FORNECEDORES 工作表中没有代码（CODPARC）：不会写入 Sankhya CSV。",
+  "tariff.warning.port_no_id":
+    "港口 {port} 在 PORTOS 工作表中没有 ID：不会写入 Sankhya CSV。",
+  "tariff.warning.port_no_id_similar":
+    "港口 {port} 在 PORTOS 工作表中没有 ID（表中有“{similar}”，ID {id}）：请修正名称以写入 Sankhya CSV。",
+  "tariff.warning.destination_unknown":
+    "{sheet}：未知目的港“{code}”，按原样使用。",
+  "tariff.warning.road_freight_missing":
+    "{sheet}：没有“FRETE (CD)”，到配送中心的陆运未计入总额。",
+  "tariff.warning.params_differ":
+    "{sheet}：汇率、陆运或柜数与 {first} 工作表不同。系统使用 {first} 的数值。",
+  "tariff.warning.sankhya_tab_outdated":
+    "表格的 AD_FREINT 工作表与比较表不一致（{n} 行）。请使用此处生成的 CSV。",
+  "tariff.warning.sankhya_duplicate_ids":
+    "Sankhya CSV：有 {n} 个 AD_IDEXTERNO 代码在不同目的港之间重复（代码为 CODPARC + 日期 + 起运港，不含目的港，与宏相同）。如果 Sankhya 将其作为主键，一条运价会覆盖另一条：导入前请核对。",
+  "tariff.warning.cell_error":
+    "{sheet}：单元格 {cell} 有错误（#REF!/#VALUE!），该值已忽略。",
+  "tariff.dest.label": "目的港",
+  "tariff.table.caption":
+    "每个 {type} 柜的雷亚尔总成本：运费 × 汇率 + 陆运 + 船公司附加费。绿色为每个港口的最低成本。",
+  "tariff.table.origin": "起运港",
+  "tariff.table.best": "最低成本",
+  "tariff.table.term": "账期 {n} 天",
+  "tariff.table.noTerm": "无账期",
+  "tariff.table.noRates": "该目的港没有运价。",
+  "tariff.route.direct": "直航",
+  "tariff.route.long": "中转",
+  "tariff.fees.title": "各船公司附加费",
+  "tariff.fees.fee": "费用",
+  "tariff.fees.total": "附加费合计（表格）",
+  "tariff.fees.totalBrl": "每票附加费（雷亚尔）",
+  "tariff.fees.perShipment": "每票",
+  "tariff.perCbm.title": "每立方米运费",
+  "tariff.perCbm.body":
+    "{ports} 个港口到 {dest} 的最低成本中位数：每柜 {container} 雷亚尔 ÷ {capacity} 立方米（{type}）= 每立方米 {perCbm} 雷亚尔。",
+  "tariff.perCbm.current": "当前设置：{value}。",
+  "tariff.perCbm.none": "未设置",
+  "tariff.perCbm.apply": "在价格中使用 {perCbm} 雷亚尔/立方米",
+  "tariff.perCbm.applyHint":
+    "在船公司尚未报该产品运费时使用（商品展示和客户价格）。仅管理员可修改。",
+  "tariff.perCbm.applied": "已在设置中更新每立方米运费。",
+  "tariff.perCbm.noCapacity": "请在设置中添加 40HC 柜型以计算每立方米运费。",
+  "tariff.history.title": "导入记录",
+  "tariff.history.date": "参考日期",
+  "tariff.history.file": "文件",
+  "tariff.history.by": "导入人",
+  "tariff.history.when": "导入时间",
+  "tariff.history.rates": "运价",
+  "tariff.history.status": "状态",
+  "tariff.history.view": "查看",
+  "tariff.error.tariff_file_required": "请选择表格。",
+  "tariff.error.tariff_too_large": "表格过大（最大 4 MB）。",
+  "tariff.error.tariff_xls":
+    "旧版 .xls 格式：请在 Excel 中另存为 .xlsx 或 .xlsm。",
+  "tariff.error.tariff_invalid": "无法读取文件。请发送 .xlsx 或 .xlsm 表格。",
+  "tariff.error.tariff_no_sheets":
+    "未找到包含“USD POR 40HQ”行的“COMPARATIVO - NVT/ITJ/IOA”工作表。请使用模板表格。",
+  "tariff.error.tariff_fx_missing": "未找到汇率（在港口列表下方的港口列中）。",
+  "tariff.error.tariff_empty": "表格中没有填写任何运费。",
+  "tariff.error.tariff_date_invalid": "参考日期无效。",
+  "tariff.error.tariff_not_found": "未找到运价表。",
+  "tariff.error.tariff_no_suggestion":
+    "该目的港没有可用于计算每立方米运费的运价。",
+  "tariff.error.forbidden": "无权限。只有管理员可以修改设置中的每立方米运费。",
+  "tariff.error.schema_outdated":
+    "运价表数据表尚未发布到数据库。请发布 Appwrite 架构后重试。",
+  "tariff.error.invalid_input": "数据无效。",
+  "tariff.order.title": "运价表运费",
+  "tariff.order.import": "导入船公司表格",
+  "tariff.order.viewAll": "查看完整运价表",
+  "tariff.order.none": "尚未导入运价表。导入船公司表格即可查看各航线运费。",
+  "tariff.order.from": "{date} 运价表 · 起运港 {origin}",
+  "tariff.order.noLocation": "采购单尚未填写供应商所在地，无法确定起运港。",
+  "tariff.order.noOrigin":
+    "采购单上的供应商所在地（“{location}”）与运价表中的港口不匹配。",
+  "tariff.order.noRates": "当前运价表中没有 {origin} 的运价。",
+  "tariff.order.assigned": "本订单的船公司",
+  "tariff.order.hint":
+    "仅 Wellmix 可见。装船日期、到港、船名和提单仍在下方：它们来自装运，而非运价表。",
+};

@@ -31,6 +31,8 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 | `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                 |
 | `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                         |
 
+No cartão Embarque, só a Wellmix vê o **frete pelo tarifário** (rota do pedido pelo local do fornecedor na ficha, da opção mais barata para a mais cara, com a companhia do pedido marcada) e o botão **Importar planilha da companhia marítima**, que leva a Fretes → Tarifário de frete. O tarifário é preço por rota (não traz data de embarque, navio nem BL), por isso os requisitos da etapa continuam como estão.
+
 Datas em ordem: a previsão de chegada só abre depois de a data de embarque ser enviada e nunca fica antes dela (o calendário não oferece os dias anteriores e o envio é recusado, na tela e no servidor); a data de embarque não pode passar da chegada já informada; a previsão de entrega (transporte) não fica antes da chegada do navio.
 
 ## Regra de avanço

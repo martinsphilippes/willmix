@@ -51,6 +51,7 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
           { href: "/app/sourcing", key: "nav.sourcing" },
           { href: "/app/reviews", key: "nav.reviews" },
           { href: "/app/freight", key: "nav.freight" },
+          { href: "/app/freight/tariff", key: "nav.freightTariff" },
           { href: "/app/containers", key: "nav.containers" },
         ],
       },
@@ -123,9 +124,18 @@ export function flattenNav(entries: NavEntry[]): NavLink[] {
   return entries.flatMap((e) => (isNavGroup(e) ? e.items : [e]));
 }
 
+/** Subpáginas que têm link próprio no menu (o link "pai" não acende nelas). */
+const OWN_LINK_SUBPAGES = ["/app/freight/tariff"];
+
 /** O link vale para a tela atual? "/app" só na própria página; os demais também nas subpáginas. */
 export function isActiveHref(href: string, pathname: string): boolean {
-  return href === "/app"
-    ? pathname === "/app"
-    : pathname === href || pathname.startsWith(`${href}/`);
+  if (href === "/app") return pathname === "/app";
+  if (pathname === href) return true;
+  if (!pathname.startsWith(`${href}/`)) return false;
+  return !OWN_LINK_SUBPAGES.some(
+    (own) =>
+      own !== href &&
+      own.startsWith(`${href}/`) &&
+      (pathname === own || pathname.startsWith(`${own}/`)),
+  );
 }
