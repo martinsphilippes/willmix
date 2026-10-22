@@ -43,12 +43,16 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { errorCode } from "@/app/app/actions/helpers";
 import {
   applyTariffPerCbmAction,
   importFreightTariffAction,
 } from "../../actions/freight-tariff";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+
+/** Avisos só para saber (aparecem em toda planilha do modelo; nada a corrigir nela). */
+const INFO_WARNINGS = new Set(["sankhya_duplicate_ids", "ptax_iof_unused"]);
 const FROM_ORDER = /^\/app\/orders\/[A-Za-z0-9_-]{1,64}$/;
 
 /** Dia AAAA-MM-DD na tela (meio-dia UTC: o fuso não muda o dia). */
@@ -110,9 +114,9 @@ export default async function FreightTariffPage({
     viewing =
       (id ?? imported) ? await getFreightTariff(user, (id ?? imported)!) : null;
     viewing ??= current;
-  } catch {
-    // Ex.: tabela ainda não publicada no Appwrite: explica em vez de quebrar.
-    loadError = "schema_outdated";
+  } catch (e) {
+    // Tabela ainda não publicada vira "schema_outdated"; o resto, "unexpected".
+    loadError = errorCode("/app/freight/tariff", e);
   }
   const [settings, capacity, users] = await Promise.all([
     getSettings(),
@@ -133,6 +137,12 @@ export default async function FreightTariffPage({
     data?.destinations[0] ??
     null;
   const counts = data ? tariffCounts(data) : null;
+  const fixWarnings = (data?.warnings ?? []).filter(
+    (w) => !INFO_WARNINGS.has(w.code),
+  );
+  const infoWarnings = (data?.warnings ?? []).filter((w) =>
+    INFO_WARNINGS.has(w.code),
+  );
   const suggestion =
     data && dest && capacity
       ? perCbmSuggestion(data, dest.code, capacity)
@@ -168,7 +178,7 @@ export default async function FreightTariffPage({
           <span data-tariff-error={error}>{errorText(t, error)}</span>
         </Alert>
       ) : null}
-      {loadError ? (
+      {loadError && loadError !== error ? (
         <Alert tone="danger">{errorText(t, loadError)}</Alert>
       ) : null}
       {imported && viewing?.id === imported && counts ? (
@@ -262,11 +272,11 @@ export default async function FreightTariffPage({
                   <span>
                     {/* Câmbio com 4 casas, como na planilha (R$ 5,0569). */}
                     R${" "}
-                    {data.fx.toLocaleString(t.intl, {
+                    {(dest?.fx ?? data.fx).toLocaleString(t.intl, {
                       minimumFractionDigits: 4,
                       maximumFractionDigits: 4,
                     })}
-                    {data.fxBase !== null ? (
+                    {data.fxBase !== null && (!dest || dest.fx === data.fx) ? (
                       <span className="block text-xs font-normal text-zinc-500">
                         {t("tariff.stat.fxDetail", {
                           base: data.fxBase.toLocaleString(t.intl, {
@@ -275,6 +285,7 @@ export default async function FreightTariffPage({
                           spread: (data.fxSpread ?? 0).toLocaleString(t.intl, {
                             maximumFractionDigits: 4,
                           }),
+                          dest: dest?.name ?? "",
                         })}
                       </span>
                     ) : null}
@@ -285,9 +296,13 @@ export default async function FreightTariffPage({
                 label={t("tariff.stat.road")}
                 value={
                   <span>
-                    {formatMoney(data.roadFreightBrl, "BRL", t)}
+                    {formatMoney(
+                      dest?.roadFreightBrl ?? data.roadFreightBrl,
+                      "BRL",
+                      t,
+                    )}
                     <span className="block text-xs font-normal text-zinc-500">
-                      {t("tariff.stat.roadDetail")}
+                      {t("tariff.stat.roadDetail", { dest: dest?.name ?? "" })}
                     </span>
                   </span>
                 }
@@ -329,15 +344,15 @@ export default async function FreightTariffPage({
               </p>
             </div>
 
-            {data.warnings.length ? (
+            {fixWarnings.length ? (
               <Alert tone="warning">
                 <p className="font-semibold">
                   {t("tariff.warnings.title", {
-                    n: String(data.warnings.length),
+                    n: String(fixWarnings.length),
                   })}
                 </p>
                 <ul className="mt-1 list-disc space-y-1 pl-5">
-                  {data.warnings.map((w, i) => (
+                  {fixWarnings.map((w, i) => (
                     <li key={i} data-tariff-warning={w.code}>
                       {warningText(t, w)}
                     </li>
@@ -347,41 +362,47 @@ export default async function FreightTariffPage({
             ) : (
               <Alert tone="success">{t("tariff.warnings.ok")}</Alert>
             )}
+            {infoWarnings.length ? (
+              <Alert tone="info">
+                <p className="font-semibold">
+                  {t("tariff.notes.title", {
+                    n: String(infoWarnings.length),
+                  })}
+                </p>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  {infoWarnings.map((w, i) => (
+                    <li key={i} data-tariff-warning={w.code}>
+                      {warningText(t, w)}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            ) : null}
 
             {dest ? (
-              <Card
-                title={
-                  <span className="flex flex-wrap items-center gap-2">
-                    {t("tariff.dest.label")}
-                    <span className="flex flex-wrap gap-1.5" role="list">
-                      {data.destinations.map((d) => (
-                        <Link
-                          key={d.code}
-                          role="listitem"
-                          href={qs({ dest: d.code })}
-                          aria-current={
-                            d.code === dest.code ? "page" : undefined
-                          }
-                          className={cx(
-                            "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                            d.code === dest.code
-                              ? "border-brand-600 bg-brand-600 text-white"
-                              : "border-zinc-300 bg-white text-zinc-700 hover:border-brand-400",
-                          )}
-                          data-tariff-dest={d.code}
-                        >
-                          {d.name}
-                        </Link>
-                      ))}
-                    </span>
-                  </span>
-                }
-              >
-                <RatesTable
-                  t={t}
-                  dest={dest}
-                  containerQty={data.containerQty}
-                />
+              <Card title={t("tariff.dest.label")}>
+                <nav
+                  aria-label={t("tariff.dest.label")}
+                  className="-mt-1 mb-3 flex flex-wrap gap-1.5"
+                >
+                  {data.destinations.map((d) => (
+                    <Link
+                      key={d.code}
+                      href={qs({ dest: d.code })}
+                      aria-current={d.code === dest.code ? "page" : undefined}
+                      className={cx(
+                        "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                        d.code === dest.code
+                          ? "border-brand-600 bg-brand-600 text-white"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:border-brand-400",
+                      )}
+                      data-tariff-dest={d.code}
+                    >
+                      {d.name}
+                    </Link>
+                  ))}
+                </nav>
+                <RatesTable t={t} dest={dest} />
               </Card>
             ) : null}
 
@@ -435,6 +456,9 @@ export default async function FreightTariffPage({
                           name="destination"
                           value={dest.code}
                         />
+                        {from ? (
+                          <input type="hidden" name="from" value={from} />
+                        ) : null}
                         <SubmitButton
                           variant="secondary"
                           data-tariff-apply-cbm=""
@@ -522,15 +546,8 @@ export default async function FreightTariffPage({
 }
 
 /** Portos × companhias de um destino, com o menor custo de cada porto em verde. */
-function RatesTable({
-  t,
-  dest,
-  containerQty,
-}: {
-  t: Translate;
-  dest: TariffDestination;
-  containerQty: number;
-}) {
+function RatesTable({ t, dest }: { t: Translate; dest: TariffDestination }) {
+  const containerQty = dest.containerQty;
   const withRates = dest.forwarders
     .map((f, i) => ({ f, i }))
     .filter(({ i }) => dest.rates.some((r) => r.forwarder === i));
@@ -544,9 +561,11 @@ function RatesTable({
   return (
     <>
       <p className="mb-3 text-xs text-zinc-500">
-        {t("tariff.table.caption", {
-          type: containerQty > 1 ? `${containerQty} × 40HQ` : "40HQ",
-        })}
+        {containerQty > 1
+          ? t("tariff.table.captionShipment", {
+              type: `${containerQty} × 40HQ`,
+            })
+          : t("tariff.table.caption", { type: "40HQ" })}
       </p>
       <Table>
         <thead>

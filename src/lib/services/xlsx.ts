@@ -6,6 +6,10 @@ import { inflateRawSync } from "node:zlib";
  * sistema chinês trazem: texto (shared strings, inline) e números.
  * Limitações conhecidas: datas chegam como número serial do Excel; fórmulas
  * trazem o último valor calculado; células mescladas valem só na 1ª célula.
+ *
+ * Arquivo vindo de fora: só as partes usadas são descompactadas, com teto de
+ * tamanho no total (proteção contra "zip bomb"), e o XML é percorrido em
+ * tempo linear (sem expressão regular que volta atrás em XML malformado).
  */
 
 export interface SheetData {
@@ -14,15 +18,24 @@ export interface SheetData {
   rows: Record<string, string>[];
 }
 
-/** Maior parte descompactada aceita (planilhas fiscais grandes cabem com folga). */
-const MAX_ENTRY_BYTES = 200 * 1024 * 1024;
+/** Teto padrão do que se descompacta de um arquivo (planilhas fiscais grandes cabem com folga). */
+const MAX_TOTAL_BYTES = 200 * 1024 * 1024;
 
-interface ZipEntry {
-  name: string;
-  data: Uint8Array;
+interface ZipRecord {
+  method: number;
+  compressedSize: number;
+  localOffset: number;
 }
 
-function readZip(bytes: Uint8Array): Map<string, ZipEntry> {
+interface Zip {
+  get(name: string): Uint8Array | null;
+}
+
+/**
+ * Índice do ZIP (diretório central); cada parte só é descompactada quando
+ * pedida, uma vez, e a soma do que foi descompactado não passa de `budget`.
+ */
+function openZip(bytes: Uint8Array, budget = MAX_TOTAL_BYTES): Zip {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   // Fim do diretório central (assinatura 0x06054b50), procurado do fim para o início.
   let eocd = -1;
@@ -35,9 +48,11 @@ function readZip(bytes: Uint8Array): Map<string, ZipEntry> {
   if (eocd < 0) throw new Error("xlsx_invalid");
   const count = view.getUint16(eocd + 10, true);
   let offset = view.getUint32(eocd + 16, true);
-  const entries = new Map<string, ZipEntry>();
+  const records = new Map<string, ZipRecord>();
+  const offsets = new Set<number>();
   const decoder = new TextDecoder();
   for (let n = 0; n < count; n++) {
+    if (offset + 46 > bytes.length) break;
     if (view.getUint32(offset, true) !== 0x02014b50) break;
     const method = view.getUint16(offset + 10, true);
     const compressedSize = view.getUint32(offset + 20, true);
@@ -48,26 +63,51 @@ function readZip(bytes: Uint8Array): Map<string, ZipEntry> {
     const name = decoder.decode(
       bytes.subarray(offset + 46, offset + 46 + nameLen),
     );
-    // Cabeçalho local: tamanhos de nome e extra podem diferir do diretório central.
-    const localNameLen = view.getUint16(localOffset + 26, true);
-    const localExtraLen = view.getUint16(localOffset + 28, true);
-    const start = localOffset + 30 + localNameLen + localExtraLen;
-    const raw = bytes.subarray(start, start + compressedSize);
-    // Teto de descompressão: arquivo enviado por terceiros (proteção contra "zip bomb").
-    const data =
-      method === 8
-        ? new Uint8Array(
-            inflateRawSync(Buffer.from(raw), {
-              maxOutputLength: MAX_ENTRY_BYTES,
-            }),
-          )
-        : method === 0
-          ? raw
-          : null;
-    if (data) entries.set(name, { name, data });
+    // Duas entradas apontando para os mesmos bytes: só a primeira vale.
+    if (!records.has(name) && !offsets.has(localOffset)) {
+      records.set(name, { method, compressedSize, localOffset });
+      offsets.add(localOffset);
+    }
     offset += 46 + nameLen + extraLen + commentLen;
   }
-  return entries;
+  const cache = new Map<string, Uint8Array>();
+  let used = 0;
+  return {
+    get(name) {
+      const cached = cache.get(name);
+      if (cached) return cached;
+      const rec = records.get(name);
+      if (!rec || rec.localOffset + 30 > bytes.length) return null;
+      // Cabeçalho local: tamanhos de nome e extra podem diferir do diretório central.
+      const localNameLen = view.getUint16(rec.localOffset + 26, true);
+      const localExtraLen = view.getUint16(rec.localOffset + 28, true);
+      const start = rec.localOffset + 30 + localNameLen + localExtraLen;
+      const raw = bytes.subarray(start, start + rec.compressedSize);
+      const remaining = budget - used;
+      if (remaining <= 0) throw new Error("xlsx_too_large");
+      let data: Uint8Array;
+      if (rec.method === 0) {
+        if (raw.length > remaining) throw new Error("xlsx_too_large");
+        data = raw;
+      } else if (rec.method === 8) {
+        try {
+          data = new Uint8Array(
+            inflateRawSync(Buffer.from(raw), { maxOutputLength: remaining }),
+          );
+        } catch (error) {
+          throw new Error(
+            (error as { code?: string }).code === "ERR_BUFFER_TOO_LARGE" ||
+              error instanceof RangeError
+              ? "xlsx_too_large"
+              : "xlsx_invalid",
+          );
+        }
+      } else return null;
+      used += data.length;
+      cache.set(name, data);
+      return data;
+    },
+  };
 }
 
 const decode = (u: Uint8Array) => new TextDecoder("utf-8").decode(u);
@@ -85,37 +125,73 @@ function unescapeXml(s: string) {
     .replace(/&amp;/g, "&");
 }
 
-/** Texto de um <si> ou <is>: concatena todos os <t> (texto rico vira texto simples). */
-function textRuns(xml: string) {
-  return unescapeXml(
-    Array.from(xml.matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g))
-      .map((m) => m[1])
-      .join(""),
-  );
+/**
+ * Tags `<nome ...>conteúdo</nome>` (ou `<nome .../>`) em tempo linear:
+ * devolve [atributos, conteúdo]. Tag sem fechamento encerra a leitura (XML
+ * truncado ou malicioso), em vez de varrer o resto do texto a cada tag.
+ */
+function* tags(xml: string, name: string): Generator<[string, string]> {
+  const open = `<${name}`;
+  const close = `</${name}>`;
+  let i = 0;
+  while (i < xml.length) {
+    const start = xml.indexOf(open, i);
+    if (start < 0) return;
+    const next = xml.charCodeAt(start + open.length);
+    // "<c" também começa "<cols>": só vale com espaço, ">" ou "/" depois do nome.
+    if (
+      next !== 32 &&
+      next !== 9 &&
+      next !== 10 &&
+      next !== 13 &&
+      next !== 62 &&
+      next !== 47
+    ) {
+      i = start + open.length;
+      continue;
+    }
+    const gt = xml.indexOf(">", start);
+    if (gt < 0) return;
+    if (xml.charCodeAt(gt - 1) === 47) {
+      yield [xml.slice(start + open.length, gt - 1), ""];
+      i = gt + 1;
+      continue;
+    }
+    const end = xml.indexOf(close, gt + 1);
+    if (end < 0) return;
+    yield [xml.slice(start + open.length, gt), xml.slice(gt + 1, end)];
+    i = end + close.length;
+  }
 }
 
-function sharedStrings(entries: Map<string, ZipEntry>): string[] {
-  const entry = entries.get("xl/sharedStrings.xml");
+/** Texto de um <si> ou <is>: concatena todos os <t> (texto rico vira texto simples). */
+function textRuns(xml: string) {
+  let out = "";
+  for (const [, inner] of tags(xml, "t")) out += inner;
+  return unescapeXml(out);
+}
+
+function sharedStrings(zip: Zip, maxBytes = Infinity): string[] {
+  const entry = zip.get("xl/sharedStrings.xml");
   if (!entry) return [];
-  const xml = decode(entry.data);
-  return Array.from(xml.matchAll(/<si>([\s\S]*?)<\/si>/g)).map((m) =>
-    textRuns(m[1]),
-  );
+  if (entry.length > maxBytes) throw new Error("xlsx_too_large");
+  const out: string[] = [];
+  for (const [, inner] of tags(decode(entry), "si")) out.push(textRuns(inner));
+  return out;
 }
 
 /** Lista as planilhas do arquivo na ordem do workbook. */
 export function listSheets(bytes: Uint8Array): string[] {
-  const entries = readZip(bytes);
-  return workbookSheets(entries).map((s) => s.name);
+  return workbookSheets(openZip(bytes)).map((s) => s.name);
 }
 
-function workbookSheets(entries: Map<string, ZipEntry>) {
-  const wb = entries.get("xl/workbook.xml");
-  const rels = entries.get("xl/_rels/workbook.xml.rels");
+function workbookSheets(zip: Zip) {
+  const wb = zip.get("xl/workbook.xml");
+  const rels = zip.get("xl/_rels/workbook.xml.rels");
   if (!wb) throw new Error("xlsx_invalid");
   const relMap = new Map<string, string>();
   if (rels) {
-    for (const m of decode(rels.data).matchAll(/<Relationship\b([^>]*)\/?>/g)) {
+    for (const m of decode(rels).matchAll(/<Relationship\b([^>]*)\/?>/g)) {
       const attrs = m[1];
       const id = /\bId="([^"]+)"/.exec(attrs)?.[1];
       const target = /\bTarget="([^"]+)"/.exec(attrs)?.[1];
@@ -127,7 +203,7 @@ function workbookSheets(entries: Map<string, ZipEntry>) {
     }
   }
   const sheets: Array<{ name: string; path: string }> = [];
-  for (const m of decode(wb.data).matchAll(/<sheet\b([^>]*)\/?>/g)) {
+  for (const m of decode(wb).matchAll(/<sheet\b([^>]*)\/?>/g)) {
     const attrs = m[1];
     const name = unescapeXml(/\bname="([^"]*)"/.exec(attrs)?.[1] ?? "");
     const rid = /\br:id="([^"]+)"/.exec(attrs)?.[1] ?? "";
@@ -163,9 +239,11 @@ function formatNumber(raw: string): string {
   return String(Math.round(n * 1e10) / 1e10);
 }
 
+const cellType = (attrs: string) => /\bt="([^"]+)"/.exec(attrs)?.[1];
+
 /** Valor de uma célula como texto (o último valor calculado, se for fórmula). */
 function cellValue(attrs: string, inner: string, strings: string[]): string {
-  const type = /\bt="([^"]+)"/.exec(attrs)?.[1];
+  const type = cellType(attrs);
   let value = "";
   if (type === "s") {
     const idx = Number(/<v>([\s\S]*?)<\/v>/.exec(inner)?.[1] ?? "-1");
@@ -195,8 +273,8 @@ export function readGrid(
   sheet?: string | number,
   maxRows = 2000,
 ): { name: string; grid: string[][] } {
-  const entries = readZip(bytes);
-  const sheets = workbookSheets(entries);
+  const zip = openZip(bytes);
+  const sheets = workbookSheets(zip);
   if (sheets.length === 0) throw new Error("xlsx_no_sheets");
   const chosen =
     typeof sheet === "number"
@@ -205,21 +283,18 @@ export function readGrid(
         ? sheets.find((s) => s.name === sheet)
         : sheets[0];
   const target = chosen ?? sheets[0];
-  const entry = entries.get(target.path);
+  const entry = zip.get(target.path);
   if (!entry) throw new Error("xlsx_sheet_missing");
-  const strings = sharedStrings(entries);
-  const xml = decode(entry.data);
+  const strings = sharedStrings(zip);
+  const xml = decode(entry);
 
   const grid: string[][] = [];
-  for (const rowMatch of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)) {
+  for (const [, rowXml] of tags(xml, "row")) {
     const cells: string[] = [];
-    for (const cell of rowMatch[1].matchAll(
-      /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g,
-    )) {
-      const attrs = cell[1];
+    for (const [attrs, inner] of tags(rowXml, "c")) {
       const ref = /\br="([A-Z]+)\d+"/.exec(attrs)?.[1];
       const col = ref ? columnIndex(ref) : cells.length;
-      const value = cellValue(attrs, cell[2] ?? "", strings);
+      const value = cellValue(attrs, inner, strings);
       while (cells.length < col) cells.push("");
       cells[col] = value;
     }
@@ -260,6 +335,68 @@ export function readSheet(
   return { name: name, headers, rows };
 }
 
+/** Aba lida na posição exata; `text` marca as células de texto ("linha:coluna"). */
+export interface CellSheet {
+  name: string;
+  cells: string[][];
+  text: Set<string>;
+}
+
+export interface CellLimits {
+  maxRows?: number;
+  maxCols?: number;
+  /** Maior XML aceito por aba (e para o texto compartilhado). */
+  maxXmlBytes?: number;
+}
+
+/** Planilha aberta uma vez para ler várias abas (cada parte descompactada uma vez). */
+export interface Workbook {
+  sheetNames(): string[];
+  readCells(sheet: string, limits?: CellLimits): CellSheet;
+}
+
+export function openWorkbook(
+  bytes: Uint8Array,
+  options: { maxTotalBytes?: number } = {},
+): Workbook {
+  const zip = openZip(bytes, options.maxTotalBytes ?? MAX_TOTAL_BYTES);
+  const sheets = workbookSheets(zip);
+  let strings: string[] | null = null;
+  return {
+    sheetNames: () => sheets.map((s) => s.name),
+    readCells(sheet, limits = {}) {
+      const maxRows = limits.maxRows ?? 500;
+      const maxCols = limits.maxCols ?? 60;
+      const maxXml = limits.maxXmlBytes ?? Infinity;
+      const target = sheets.find((s) => s.name === sheet);
+      if (!target) throw new Error("xlsx_sheet_missing");
+      const entry = zip.get(target.path);
+      if (!entry) throw new Error("xlsx_sheet_missing");
+      if (entry.length > maxXml) throw new Error("xlsx_too_large");
+      strings ??= sharedStrings(zip, maxXml);
+      const cells: string[][] = [];
+      const text = new Set<string>();
+      for (const [attrs, inner] of tags(decode(entry), "c")) {
+        const ref = /\br="([A-Z]+)(\d+)"/.exec(attrs);
+        if (!ref) continue;
+        const row = Number(ref[2]) - 1;
+        const col = columnIndex(ref[1]);
+        if (row < 0 || row >= maxRows || col < 0 || col >= maxCols) continue;
+        const value = cellValue(attrs, inner, strings);
+        if (value === "") continue;
+        while (cells.length <= row) cells.push([]);
+        const line = cells[row];
+        while (line.length < col) line.push("");
+        line[col] = value;
+        const type = cellType(attrs);
+        if (type === "s" || type === "inlineStr" || type === "str")
+          text.add(`${row}:${col}`);
+      }
+      return { name: target.name, cells, text };
+    },
+  };
+}
+
 /**
  * Células na posição exata da planilha: `cells[linha][coluna]`, contando do
  * zero (A1 = [0][0]). Linhas e colunas vazias continuam no lugar, para
@@ -270,31 +407,7 @@ export function readSheet(
 export function readCells(
   bytes: Uint8Array,
   sheet: string,
-  limits: { maxRows?: number; maxCols?: number } = {},
-): { name: string; cells: string[][] } {
-  const maxRows = limits.maxRows ?? 500;
-  const maxCols = limits.maxCols ?? 60;
-  const entries = readZip(bytes);
-  const target = workbookSheets(entries).find((s) => s.name === sheet);
-  if (!target) throw new Error("xlsx_sheet_missing");
-  const entry = entries.get(target.path);
-  if (!entry) throw new Error("xlsx_sheet_missing");
-  const strings = sharedStrings(entries);
-  const xml = decode(entry.data);
-  const cells: string[][] = [];
-  for (const cell of xml.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
-    const attrs = cell[1];
-    const ref = /\br="([A-Z]+)(\d+)"/.exec(attrs);
-    if (!ref) continue;
-    const row = Number(ref[2]) - 1;
-    const col = columnIndex(ref[1]);
-    if (row < 0 || row >= maxRows || col < 0 || col >= maxCols) continue;
-    const value = cellValue(attrs, cell[2] ?? "", strings);
-    if (value === "") continue;
-    while (cells.length <= row) cells.push([]);
-    const line = cells[row];
-    while (line.length < col) line.push("");
-    line[col] = value;
-  }
-  return { name: target.name, cells };
+  limits: CellLimits = {},
+): CellSheet {
+  return openWorkbook(bytes).readCells(sheet, limits);
 }

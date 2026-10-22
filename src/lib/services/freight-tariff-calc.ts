@@ -51,6 +51,12 @@ const DESTINATION_NAMES: Record<string, string> = {
   IBB: "IMBITUBA",
 };
 
+/** IDs fixos que a macro usa para os destinos (se a aba PORTOS não tiver o nome). */
+const DESTINATION_IDS: Record<string, number> = { NVT: 60, IOA: 44, ITJ: 5 };
+
+/** Ordem dos destinos no CSV do Sankhya: a da macro, depois os demais. */
+const SANKHYA_ORDER = ["NVT", "IOA", "ITJ"];
+
 /** Taxas cobradas uma vez por embarque (as demais, por container), como na planilha. */
 const PER_SHIPMENT_FEES = ["courier", "bl fee", "trs"];
 
@@ -108,6 +114,10 @@ export interface TariffDestination {
   code: string;
   name: string;
   portId: number | null;
+  /** Parâmetros da própria aba: câmbio, frete até o CD e containers. */
+  fx: number;
+  roadFreightBrl: number;
+  containerQty: number;
   forwarders: TariffForwarder[];
   origins: TariffOrigin[];
   rates: TariffRate[];
@@ -153,13 +163,15 @@ export class TariffError extends Error {}
 export interface TariffSheet {
   name: string;
   cells: string[][];
+  /** Células de texto ("linha:coluna"): número digitado como texto segue o formato brasileiro. */
+  text?: Set<string>;
 }
 
 /** Texto comparável: sem acento, minúsculo, só letras/números e espaço simples. */
 export function foldName(s: string): string {
   return s
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
@@ -170,13 +182,21 @@ const cleanName = (s: string) => s.replace(/\s+/g, " ").trim();
 const isErrorValue = (s: string) => /^#[A-Z/0]+[!?]?$/.test(s.trim());
 
 /** Número de uma célula ("3618", "5.0569", "1.200,50", "R$ 1.270"); vazio/erro = null. */
-export function cellNumber(raw: string | undefined): number | null {
+export function cellNumber(
+  raw: string | undefined,
+  isText = false,
+): number | null {
   if (raw === undefined) return null;
   let s = raw.trim();
   if (!s || isErrorValue(s)) return null;
   // Texto com "R$" ou vírgula foi digitado no formato brasileiro ("R$ 1.270",
-  // "1.200,50"); célula numérica chega no formato do Excel ("1270", "5.0569").
-  const brazilian = /^R\$/i.test(s) || s.includes(",");
+  // "1.200,50"), e também célula de texto com ponto de milhar ("3.618", como
+  // o Excel em português lê); célula numérica chega no formato do Excel
+  // ("1270", "5.0569").
+  const brazilian =
+    /^R\$/i.test(s) ||
+    s.includes(",") ||
+    (isText && /^-?\d{1,3}(\.\d{3})+$/.test(s));
   s = s.replace(/^(R\$|US\$|\$|USD|BRL)\s*/i, "").replace(/\s/g, "");
   if (brazilian) {
     if (!/^-?\d{1,3}(\.\d{3})*(,\d+)?$/.test(s) && !/^-?\d+(,\d+)?$/.test(s))
@@ -199,8 +219,13 @@ const at = (cells: string[][], r: number, c: number) =>
 
 /** Sigla da aba de destino ("COMPARATIVO - NVT" → "NVT"); outras abas: null. */
 export function destinationCode(sheetName: string): string | null {
-  const m = /^\s*COMPARATIVO\s*-\s*([A-Za-z]{2,5})\s*$/.exec(sheetName);
-  return m ? m[1].toUpperCase() : null;
+  // Como a macro: maiúsculas, travessões (– —) e espaço fixo valem como hífen/espaço.
+  const name = sheetName
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/\u00a0/g, " ")
+    .toUpperCase();
+  const m = /^\s*COMPARATIVO\s*-\s*([A-Z]{2,5})\s*$/.exec(name);
+  return m ? m[1] : null;
 }
 
 /** Tabela simples com cabeçalho (FORNECEDORES, PORTOS, AD_FREINT). */
@@ -243,6 +268,7 @@ interface ParsedSheet {
   /** Linha de cada porto de origem (mesma ordem de `dest.origins`). */
   originRows: number[];
   cells: string[][];
+  text: Set<string>;
 }
 
 function parseDestinationSheet(
@@ -251,6 +277,9 @@ function parseDestinationSheet(
   warnings: TariffWarning[],
 ): ParsedSheet | null {
   const { cells } = sheet;
+  const text = sheet.text ?? new Set<string>();
+  const n = (r: number, c: number) =>
+    cellNumber(at(cells, r, c), text.has(`${r}:${c}`));
   // Linha dos títulos: a que tem "USD POR 40HQ".
   const hr = cells.findIndex((row) =>
     (row ?? []).some((v) => foldName(v ?? "").includes("usd por 40hq")),
@@ -308,15 +337,14 @@ function parseDestinationSheet(
   let roadFreightBrl: number | null = null;
   let containerQty: number | null = null;
   if (feeRow > 0) {
-    fxBase = cellNumber(at(cells, feeRow, portCol));
-    fxSpread = cellNumber(at(cells, feeRow + 1, portCol - 1));
-    fx = cellNumber(at(cells, feeRow + 1, portCol));
+    fxBase = n(feeRow, portCol);
+    fxSpread = n(feeRow + 1, portCol - 1);
+    fx = n(feeRow + 1, portCol);
     for (let r = feeRow; r < Math.min(cells.length, feeRow + 20); r++) {
       const label = foldName(at(cells, r, portCol - 1));
-      if (label.startsWith("frete"))
-        roadFreightBrl = cellNumber(at(cells, r, portCol));
+      if (label.startsWith("frete")) roadFreightBrl = n(r, portCol);
       if (label.startsWith("qtd cntr") || label.startsWith("qtd container"))
-        containerQty = cellNumber(at(cells, r, portCol));
+        containerQty = n(r, portCol);
     }
   }
   if (!(fx && fx > 0))
@@ -329,9 +357,7 @@ function parseDestinationSheet(
   for (const g of groups.slice(0, LIMITS.forwarders)) {
     const name = cleanName(at(cells, hr - 1, g.start));
     const hasRates = originRows.some(
-      (r) =>
-        (cellNumber(at(cells, r, g.usdDirect)) ?? 0) > 0 ||
-        (cellNumber(at(cells, r, g.usdLong)) ?? 0) > 0,
+      (r) => (n(r, g.usdDirect) ?? 0) > 0 || (n(r, g.usdLong) ?? 0) > 0,
     );
     if (!name || isErrorValue(name)) {
       if (hasRates)
@@ -345,9 +371,9 @@ function parseDestinationSheet(
     for (let k = g.start + 1; k <= g.start + 4; k++)
       if (foldName(at(cells, hr - 1, k)).startsWith("prazo")) {
         for (let j = k + 1; j <= g.start + 4; j++) {
-          const n = cellNumber(at(cells, hr - 1, j));
-          if (n !== null) {
-            paymentTermDays = Math.round(n);
+          const days = n(hr - 1, j);
+          if (days !== null) {
+            paymentTermDays = Math.round(days);
             break;
           }
         }
@@ -360,35 +386,44 @@ function parseDestinationSheet(
     let ptaxPercent: number | null = null;
     let iofPercent: number | null = null;
     let side: string | null = null;
+    // Só a 1ª linha "TOTAIS" (a de US$/R$) vale; a "TOTAIS TAXAS (BRL)" de baixo não.
+    let totalsSeen = false;
     if (feeRow > 0) {
       for (let r = feeRow + 1; r < Math.min(cells.length, feeRow + 40); r++) {
         const tag = at(cells, r, g.start);
         const label = cleanName(at(cells, r, g.start + 1));
         const fTag = foldName(tag);
         if (fTag.startsWith("totais")) {
-          if (feesUsd === null) {
-            feesUsd = cellNumber(at(cells, r, g.start + 2));
-            feesBrl = cellNumber(at(cells, r, g.start + 3));
+          if (!totalsSeen) {
+            totalsSeen = true;
+            feesUsd = n(r, g.start + 2);
+            feesBrl = n(r, g.start + 3);
+            for (const c of [g.start + 2, g.start + 3])
+              if (isErrorValue(at(cells, r, c)))
+                warnings.push({
+                  code: "cell_error",
+                  params: { sheet: sheet.name, cell: `${colName(c)}${r + 1}` },
+                });
           }
           continue;
         }
         const fLabel = foldName(label);
         if (fLabel === "ptax") {
-          ptaxPercent = cellNumber(at(cells, r, g.start + 2));
+          ptaxPercent = n(r, g.start + 2);
           continue;
         }
         if (fLabel === "iof") {
-          iofPercent = cellNumber(at(cells, r, g.start + 2));
+          iofPercent = n(r, g.start + 2);
           continue;
         }
-        if (feesUsd !== null) continue;
+        if (totalsSeen) continue;
         if (fTag === "origem" || fTag === "destino") side = cleanName(tag);
         if (!label || fees.length >= LIMITS.fees) continue;
         fees.push({
           label,
           side,
-          usd: cellNumber(at(cells, r, g.start + 2)),
-          brl: cellNumber(at(cells, r, g.start + 3)),
+          usd: n(r, g.start + 2),
+          brl: n(r, g.start + 3),
           perShipment: PER_SHIPMENT_FEES.some((p) => fLabel.startsWith(p)),
         });
       }
@@ -420,6 +455,9 @@ function parseDestinationSheet(
       code,
       name: DESTINATION_NAMES[code] ?? code,
       portId: null,
+      fx: 0,
+      roadFreightBrl: 0,
+      containerQty: 1,
       forwarders,
       origins,
       rates: [],
@@ -433,6 +471,7 @@ function parseDestinationSheet(
     feeVectors,
     originRows,
     cells,
+    text,
   };
 }
 
@@ -514,31 +553,47 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
   }
   if (!parsed.length) throw new TariffError("tariff_no_sheets");
 
-  // Parâmetros: os da 1ª aba (as outras deveriam repetir; se não, aviso).
+  // Parâmetros de cada aba (como as fórmulas da planilha: cada aba usa o
+  // próprio câmbio, frete até o CD e containers). Aba sem algum deles usa o
+  // da 1ª aba que tem.
+  const validFx = (v: number | null) => (v && v > 0 && v <= 100 ? v : null);
   const first = parsed[0];
-  const fx = first.fx;
-  if (!fx || !(fx > 0) || fx > 100) throw new TariffError("tariff_fx_missing");
-  const containerQty =
-    first.containerQty && first.containerQty > 0
-      ? Math.round(first.containerQty)
-      : 1;
-  if (first.roadFreightBrl === null)
-    warnings.push({
-      code: "road_freight_missing",
-      params: { sheet: first.dest.sheet },
-    });
-  const roadFreightBrl = first.roadFreightBrl ?? 0;
-  for (const p of parsed.slice(1)) {
-    if (
-      (p.fx !== null && round(p.fx, 6) !== round(fx, 6)) ||
-      (p.roadFreightBrl !== null && p.roadFreightBrl !== roadFreightBrl) ||
-      (p.containerQty !== null && Math.round(p.containerQty) !== containerQty)
-    )
+  const fx =
+    validFx(first.fx) ?? parsed.map((p) => validFx(p.fx)).find(Boolean);
+  if (!fx) throw new TariffError("tariff_fx_missing");
+  const firstRoad = parsed.find(
+    (p) => p.roadFreightBrl !== null,
+  )?.roadFreightBrl;
+  const firstQty = parsed.find((p) => (p.containerQty ?? 0) > 0)?.containerQty;
+  for (const p of parsed) {
+    const d = p.dest;
+    d.fx = round(validFx(p.fx) ?? fx, 6);
+    d.containerQty =
+      p.containerQty && p.containerQty > 0
+        ? Math.round(p.containerQty)
+        : firstQty
+          ? Math.round(firstQty)
+          : 1;
+    d.roadFreightBrl = p.roadFreightBrl ?? firstRoad ?? 0;
+    if (p.roadFreightBrl === null)
+      warnings.push({
+        code: "road_freight_missing",
+        params: { sheet: d.sheet, value: d.roadFreightBrl },
+      });
+    // Câmbio é o do dia: aba com câmbio diferente da 1ª merece conferência.
+    if (p !== first && d.fx !== round(fx, 6))
       warnings.push({
         code: "params_differ",
-        params: { sheet: p.dest.sheet, first: first.dest.sheet },
+        params: {
+          sheet: d.sheet,
+          first: first.dest.sheet,
+          fx: d.fx,
+          firstFx: round(fx, 6),
+        },
       });
   }
+  const containerQty = first.dest.containerQty;
+  const roadFreightBrl = first.dest.roadFreightBrl;
 
   // Códigos do Sankhya.
   const suppliers = headerTable(byName("FORNECEDORES"), [
@@ -581,13 +636,14 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
         params: { sheet: dest.sheet, code: dest.code },
       });
     const destKey = foldName(dest.name);
-    dest.portId = portId.get(destKey) ?? null;
+    // Sem o nome na aba PORTOS, o ID fixo que a macro usa (60, 44, 5).
+    dest.portId = portId.get(destKey) ?? DESTINATION_IDS[dest.code] ?? null;
     dest.name = portDisplay.get(destKey) ?? dest.name;
     for (const o of dest.origins)
       o.portId = portId.get(foldName(o.name)) ?? null;
     for (const f of dest.forwarders) {
       f.code = supplierCode.get(foldName(f.name)) ?? null;
-      f.feesTotalBrl = feesTotalBrl(f.fees, fx, containerQty);
+      f.feesTotalBrl = feesTotalBrl(f.fees, dest.fx, dest.containerQty);
     }
 
     // Tarifas: uma por porto × agente × rota preenchida.
@@ -609,16 +665,19 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
             });
             continue;
           }
-          const oceanUsd = cellNumber(rawUsd);
+          const oceanUsd = cellNumber(rawUsd, p.text.has(`${r}:${usdCell}`));
           if (oceanUsd === null || !(oceanUsd > 0)) continue;
           const totalBrl = rateTotalBrl({
             oceanUsd,
-            fx,
-            containerQty,
-            roadFreightBrl,
+            fx: dest.fx,
+            containerQty: dest.containerQty,
+            roadFreightBrl: dest.roadFreightBrl,
             feesTotalBrl: f.feesTotalBrl,
           });
-          const sheetTotalBrl = cellNumber(at(p.cells, r, brlCell));
+          const sheetTotalBrl = cellNumber(
+            at(p.cells, r, brlCell),
+            p.text.has(`${r}:${brlCell}`),
+          );
           dest.rates.push({
             origin: oi,
             forwarder: fi,
@@ -638,9 +697,9 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
                 Math.abs(
                   rateTotalBrl({
                     oceanUsd,
-                    fx,
-                    containerQty,
-                    roadFreightBrl,
+                    fx: dest.fx,
+                    containerQty: dest.containerQty,
+                    roadFreightBrl: dest.roadFreightBrl,
                     feesTotalBrl: o.feesTotalBrl,
                   }) - sheetTotalBrl,
                 ) <= 0.05,
@@ -676,6 +735,7 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
             },
       );
 
+    if (dest.portId === null && dest.rates.length) noId.add(dest.name);
     for (const r of dest.rates) {
       const f = dest.forwarders[r.forwarder];
       if (!f.code) noCode.add(f.name);
@@ -688,8 +748,10 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
   for (const name of noId) {
     // Nome parecido na aba PORTOS (ex.: SHENZEN): só uma dica, nunca usado sozinho.
     const key = foldName(name);
+    // Nomes curtos (NANTONG × NANJING) só com 1 letra de diferença.
+    const max = key.replace(/ /g, "").length >= 8 ? 2 : 1;
     const near = [...portDisplay.entries()].find(
-      ([k]) => k !== key && editDistance(k, key) <= 2,
+      ([k]) => k !== key && editDistance(k, key) <= max,
     );
     warnings.push({
       code: near ? "port_no_id_similar" : "port_no_id",
@@ -855,7 +917,17 @@ export function sankhyaRows(
   const [y, m, d] = referenceDate.split("-");
   const date = `${d}/${m}/${y}`;
   const out: SankhyaRow[] = [];
-  for (const dest of data.destinations) {
+  // Ordem da macro (NVT, IOA, ITJ), depois os demais: com AD_IDEXTERNO
+  // repetido entre destinos, a última linha de cada código é a mesma da macro.
+  const rank = (code: string) => {
+    const i = SANKHYA_ORDER.indexOf(code);
+    return i < 0 ? SANKHYA_ORDER.length : i;
+  };
+  const destinations = data.destinations
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => rank(a.d.code) - rank(b.d.code) || a.i - b.i)
+    .map(({ d }) => d);
+  for (const dest of destinations) {
     if (dest.portId === null) continue;
     dest.origins.forEach((o, oi) => {
       if (o.portId === null) return;
@@ -913,7 +985,8 @@ export function sankhyaCsv(
         .map(csvCell)
         .join(";"),
     );
-  return `${lines.join("\r\n")}\r\n`;
+  // Como a macro: linhas separadas por CRLF, sem quebra depois da última.
+  return lines.join("\r\n");
 }
 
 /* ------------------------------------------------------------------------ */
@@ -929,6 +1002,8 @@ export interface TariffOption {
   oceanUsd: number;
   totalBrl: number;
   paymentTermDays: number | null;
+  /** Containers da estimativa (o total é do embarque inteiro). */
+  containerQty: number;
 }
 
 /** Menor custo de cada porto de origem num destino (índice da tarifa, ou null). */
@@ -957,7 +1032,7 @@ export function perCbmSuggestion(
   if (!dest || !(capacityCbm > 0)) return null;
   const totals = cheapestByOrigin(dest)
     .filter((r): r is TariffRate => r !== null)
-    .map((r) => r.totalBrl / Math.max(1, data.containerQty))
+    .map((r) => r.totalBrl / Math.max(1, dest.containerQty))
     .sort((a, b) => a - b);
   if (!totals.length) return null;
   const mid = Math.floor(totals.length / 2);
@@ -970,26 +1045,102 @@ export function perCbmSuggestion(
   };
 }
 
-/** Porto de origem do tarifário citado no texto (ex.: "Ningbo, Zhejiang" → NINGBO). */
+/** Nomes chineses dos portos (o fornecedor costuma escrever o local em chinês). */
+const CHINESE_PORTS: Array<[string, string]> = [
+  ["连云港", "lianyungang"],
+  ["宁波", "ningbo"],
+  ["上海", "shanghai"],
+  ["深圳", "shenzhen"],
+  ["青岛", "qingdao"],
+  ["广州", "guangzhou"],
+  ["厦门", "xiamen"],
+  ["天津", "tianjin"],
+  ["香港", "hong kong"],
+  ["汕头", "shantou"],
+  ["南京", "nanjing"],
+  ["南通", "nantong"],
+  ["重庆", "chongqing"],
+  ["江门", "jiangmen"],
+  ["南沙", "nansha"],
+  ["蛇口", "shekou"],
+  ["盐田", "yantian"],
+  ["新港", "xingang"],
+  ["大连", "dalian"],
+];
+
+/** Palavras que, logo depois do nome, indicam rua (ex.: "Shanghai Road, Ningbo"). */
+const STREET_WORDS = new Set([
+  "road",
+  "rd",
+  "street",
+  "st",
+  "lu",
+  "avenue",
+  "ave",
+  "av",
+  "rua",
+  "jie",
+]);
+
+/**
+ * Porto de origem do tarifário citado no texto (ex.: "Ningbo, Zhejiang",
+ * "浙江宁波", "Ning Bo" → NINGBO). Nome seguido de "Road"/"路" é rua, não
+ * cidade; com vários portos no texto, vale o último citado (a cidade vem
+ * depois da rua).
+ */
 export function matchOrigin(
   data: FreightTariffData,
   text: string | null,
 ): string | null {
   if (!text) return null;
-  const hay = ` ${foldName(text)} `;
+  let raw = text;
+  for (const [zh, en] of CHINESE_PORTS)
+    raw = raw.replace(
+      new RegExp(`${zh}(路|街|大道)?`, "g"),
+      (_, street) => ` ${en}${street ? " road" : ""} `,
+    );
+  const hay = ` ${foldName(raw)} `;
   if (!hay.trim()) return null;
-  let best: string | null = null;
+  const compact = hay.replace(/ /g, "");
+  let best: { name: string; at: number; len: number } | null = null;
+  let loose: { name: string; len: number } | null = null;
   for (const d of data.destinations)
     for (const o of d.origins) {
       const key = foldName(o.name);
       if (!key) continue;
+      let from = 0;
+      for (;;) {
+        const at = hay.indexOf(` ${key} `, from);
+        if (at < 0) break;
+        from = at + 1;
+        const next = hay.slice(at + key.length + 2).split(" ")[0];
+        if (STREET_WORDS.has(next)) continue;
+        if (!best || at > best.at || (at === best.at && key.length > best.len))
+          best = { name: o.name, at, len: key.length };
+      }
+      // Sem espaço ou com espaço a mais ("Ning Bo", "HongKong"); só quando o
+      // nome não aparece separado (aí já foi visto acima, como cidade ou rua).
+      const k = key.replace(/ /g, "");
       if (
-        hay.includes(` ${key} `) &&
-        (!best || key.length > foldName(best).length)
+        k.length >= 5 &&
+        !hay.includes(` ${key} `) &&
+        compact.includes(k) &&
+        (!loose || k.length > loose.len)
       )
-        best = o.name;
+        loose = { name: o.name, len: k.length };
     }
-  return best;
+  return best?.name ?? loose?.name ?? null;
+}
+
+/** Portos de origem com tarifa (para escolher à mão quando o local não bate). */
+export function originsWithRates(data: FreightTariffData): string[] {
+  const out = new Map<string, string>();
+  for (const d of data.destinations)
+    for (const r of d.rates) {
+      const name = d.origins[r.origin].name;
+      out.set(foldName(name), name);
+    }
+  return [...out.values()].sort((a, b) => a.localeCompare(b));
 }
 
 /** Opções de frete de uma origem para todos os destinos, da mais barata para a mais cara. */
@@ -1013,6 +1164,7 @@ export function optionsForOrigin(
           oceanUsd: r.oceanUsd,
           totalBrl: r.totalBrl,
           paymentTermDays: f.paymentTermDays,
+          containerQty: d.containerQty,
         });
       }
     });

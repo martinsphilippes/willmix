@@ -30,9 +30,9 @@ export const pt = {
   "tariff.viewCurrent": "Ver o vigente",
   "tariff.stat.date": "Data de referência",
   "tariff.stat.fx": "Câmbio da planilha",
-  "tariff.stat.fxDetail": "US$ 1 = R$ {base} + spread {spread}",
+  "tariff.stat.fxDetail": "US$ 1 = R$ {base} + spread {spread} · {dest}",
   "tariff.stat.road": "Frete até o CD",
-  "tariff.stat.roadDetail": "por container",
+  "tariff.stat.roadDetail": "por container · {dest}",
   "tariff.stat.rates": "Tarifas",
   "tariff.stat.ratesDetail":
     "{forwarders} companhias · {destinations} destinos",
@@ -55,18 +55,14 @@ export const pt = {
     "{forwarder} não tem código (CODPARC) na aba FORNECEDORES: fica fora do CSV do Sankhya.",
   "tariff.warning.port_no_id":
     "Porto {port} sem ID na aba PORTOS: fica fora do CSV do Sankhya.",
-  "tariff.warning.port_no_id_similar":
-    'Porto {port} sem ID na aba PORTOS (lá existe "{similar}", ID {id}): corrija o nome para ele entrar no CSV do Sankhya.',
   "tariff.warning.destination_unknown":
     '{sheet}: destino "{code}" desconhecido; usado como está.',
-  "tariff.warning.road_freight_missing":
-    '{sheet}: sem "FRETE (CD)"; o frete rodoviário até o CD ficou fora dos totais.',
   "tariff.warning.params_differ":
-    "{sheet}: câmbio, frete até o CD ou quantidade de containers diferente da aba {first}. O portal usou os da {first}.",
+    "{sheet}: câmbio de R$ {fx}, diferente da aba {first} (R$ {firstFx}). Cada aba usa o próprio câmbio; confira se é o do mesmo dia.",
   "tariff.warning.sankhya_tab_outdated":
     "A aba AD_FREINT da planilha está diferente dos comparativos ({n} linhas). Use o CSV gerado aqui.",
   "tariff.warning.sankhya_duplicate_ids":
-    "CSV do Sankhya: {n} códigos AD_IDEXTERNO se repetem entre destinos (o código é CODPARC + data + porto de origem, sem o destino, igual à macro). Se o Sankhya usa esse código como chave, uma tarifa substitui a outra: confira antes de importar.",
+    "No CSV do Sankhya, {n} códigos AD_IDEXTERNO aparecem em mais de um destino (o código é companhia + data + porto de origem, sem o destino, como na macro). Se o Sankhya não aceitar código repetido, uma rota substitui a outra: vale confirmar com quem cuida do Sankhya.",
   "tariff.warning.cell_error":
     "{sheet}: erro na célula {cell} (#REF!/#VALUE!); esse valor ficou de fora.",
   "tariff.dest.label": "Destino",
@@ -130,13 +126,27 @@ export const pt = {
     "Nenhum tarifário importado ainda. Importe a planilha da companhia marítima para ver o frete de cada rota.",
   "tariff.order.from": "Tarifário de {date} · origem {origin}",
   "tariff.order.noLocation":
-    "A ficha de compra ainda não tem o local do fornecedor; sem ele não dá para achar o porto de origem.",
-  "tariff.order.noOrigin":
-    'O local do fornecedor na ficha ("{location}") não bate com nenhum porto do tarifário.',
+    "A ficha de compra ainda não tem o local do fornecedor. Escolha abaixo o porto de embarque.",
   "tariff.order.noRates": "Sem tarifas para {origin} no tarifário vigente.",
   "tariff.order.assigned": "companhia do pedido",
   "tariff.order.hint":
     "Só a Wellmix vê. Data de embarque, chegada, navio e BL continuam abaixo: são do embarque, não do tarifário.",
+  "tariff.order.unavailable":
+    "O tarifário não pôde ser lido agora. Abra de novo daqui a pouco.",
+  "tariff.order.containers": "{n} × 40HQ",
+  "tariff.order.pickOrigin": "Porto de embarque",
+  "tariff.order.pickSubmit": "Ver frete",
+  "tariff.order.noOrigin":
+    'O local do fornecedor na ficha ("{location}") não é um porto do tarifário. Escolha abaixo o porto de embarque.',
+  "tariff.error.tariff_encrypted":
+    "A planilha está protegida por senha. Abra no Excel, tire a senha de abertura (Arquivo → Informações → Proteger pasta de trabalho) e envie de novo.",
+  "tariff.table.captionShipment":
+    "Custo total do embarque ({type}) em R$: frete × câmbio + frete até o CD + taxas da companhia. Em verde, o menor custo de cada porto.",
+  "tariff.notes.title": "Para saber ({n})",
+  "tariff.warning.road_freight_missing":
+    '{sheet}: sem "FRETE (CD)"; os totais usam R$ {value} de frete até o CD.',
+  "tariff.warning.port_no_id_similar":
+    'Porto {port} sem ID na aba PORTOS. Lá existe "{similar}" (ID {id}): se for o mesmo porto, corrija o nome para ele entrar no CSV do Sankhya.',
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -165,9 +175,9 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.viewCurrent": "View the current one",
   "tariff.stat.date": "Reference date",
   "tariff.stat.fx": "Spreadsheet FX",
-  "tariff.stat.fxDetail": "USD 1 = BRL {base} + spread {spread}",
+  "tariff.stat.fxDetail": "USD 1 = BRL {base} + spread {spread} · {dest}",
   "tariff.stat.road": "Freight to the DC",
-  "tariff.stat.roadDetail": "per container",
+  "tariff.stat.roadDetail": "per container · {dest}",
   "tariff.stat.rates": "Rates",
   "tariff.stat.ratesDetail":
     "{forwarders} shipping lines · {destinations} destinations",
@@ -190,18 +200,14 @@ export const en: Record<keyof typeof pt, string> = {
     "{forwarder} has no code (CODPARC) in the FORNECEDORES tab: left out of the Sankhya CSV.",
   "tariff.warning.port_no_id":
     "Port {port} has no ID in the PORTOS tab: left out of the Sankhya CSV.",
-  "tariff.warning.port_no_id_similar":
-    'Port {port} has no ID in the PORTOS tab (it lists "{similar}", ID {id}): fix the name so it goes into the Sankhya CSV.',
   "tariff.warning.destination_unknown":
     '{sheet}: unknown destination "{code}"; used as is.',
-  "tariff.warning.road_freight_missing":
-    '{sheet}: no "FRETE (CD)"; road freight to the DC was left out of the totals.',
   "tariff.warning.params_differ":
-    "{sheet}: FX, freight to the DC or container quantity differs from the {first} tab. The portal used {first}'s.",
+    "{sheet}: FX of BRL {fx}, different from the {first} tab (BRL {firstFx}). Each tab uses its own FX; check that it is the same day's rate.",
   "tariff.warning.sankhya_tab_outdated":
     "The spreadsheet's AD_FREINT tab differs from the comparison tabs ({n} rows). Use the CSV built here.",
   "tariff.warning.sankhya_duplicate_ids":
-    "Sankhya CSV: {n} AD_IDEXTERNO codes repeat across destinations (the code is CODPARC + date + origin port, without the destination, like the macro). If Sankhya uses it as a key, one rate replaces another: check before importing.",
+    "In the Sankhya CSV, {n} AD_IDEXTERNO codes appear in more than one destination (the code is line + date + origin port, without the destination, as in the macro). If Sankhya does not accept repeated codes, one route replaces another: worth checking with whoever runs Sankhya.",
   "tariff.warning.cell_error":
     "{sheet}: error in cell {cell} (#REF!/#VALUE!); that value was left out.",
   "tariff.dest.label": "Destination",
@@ -265,13 +271,27 @@ export const en: Record<keyof typeof pt, string> = {
     "No tariff imported yet. Import the shipping line spreadsheet to see the freight for each route.",
   "tariff.order.from": "Tariff from {date} · origin {origin}",
   "tariff.order.noLocation":
-    "The purchase sheet has no supplier location yet; without it the origin port cannot be found.",
-  "tariff.order.noOrigin":
-    'The supplier location on the sheet ("{location}") matches no port in the tariff.',
+    "The purchase sheet has no supplier location yet. Choose the loading port below.",
   "tariff.order.noRates": "No rates for {origin} in the current tariff.",
   "tariff.order.assigned": "order's shipping line",
   "tariff.order.hint":
     "Wellmix only. Ship date, arrival, vessel and BL stay below: they come from the shipment, not from the tariff.",
+  "tariff.order.unavailable":
+    "The tariff could not be read right now. Open the order again in a moment.",
+  "tariff.order.containers": "{n} × 40HQ",
+  "tariff.order.pickOrigin": "Loading port",
+  "tariff.order.pickSubmit": "Show freight",
+  "tariff.order.noOrigin":
+    'The supplier location on the sheet ("{location}") is not a port in the tariff. Choose the loading port below.',
+  "tariff.error.tariff_encrypted":
+    "The spreadsheet is password-protected. Open it in Excel, remove the opening password (File → Info → Protect Workbook) and send it again.",
+  "tariff.table.captionShipment":
+    "Total shipment cost ({type}) in BRL: freight × FX + freight to the DC + the line's fees. Green marks the cheapest cost per port.",
+  "tariff.notes.title": "Good to know ({n})",
+  "tariff.warning.road_freight_missing":
+    '{sheet}: no "FRETE (CD)"; totals use BRL {value} for freight to the DC.',
+  "tariff.warning.port_no_id_similar":
+    'Port {port} has no ID in the PORTOS tab. It lists "{similar}" (ID {id}): if it is the same port, fix the name so it goes into the Sankhya CSV.',
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -300,9 +320,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.viewCurrent": "查看当前运价表",
   "tariff.stat.date": "参考日期",
   "tariff.stat.fx": "表格汇率",
-  "tariff.stat.fxDetail": "1 美元 = {base} 雷亚尔 + 点差 {spread}",
+  "tariff.stat.fxDetail": "1 美元 = {base} 雷亚尔 + 点差 {spread} · {dest}",
   "tariff.stat.road": "到配送中心的陆运",
-  "tariff.stat.roadDetail": "每柜",
+  "tariff.stat.roadDetail": "每柜 · {dest}",
   "tariff.stat.rates": "运价",
   "tariff.stat.ratesDetail": "{forwarders} 家船公司 · {destinations} 个目的港",
   "tariff.download": "下载 Sankhya CSV（AD_FREINT）",
@@ -324,17 +344,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.warning.port_no_id":
     "港口 {port} 在 PORTOS 工作表中没有 ID：不会写入 Sankhya CSV。",
   "tariff.warning.port_no_id_similar":
-    "港口 {port} 在 PORTOS 工作表中没有 ID（表中有“{similar}”，ID {id}）：请修正名称以写入 Sankhya CSV。",
+    "港口 {port} 在 PORTOS 工作表中没有 ID。表中有“{similar}”（ID {id}）：如果是同一港口，请修正名称以写入 Sankhya CSV。",
   "tariff.warning.destination_unknown":
     "{sheet}：未知目的港“{code}”，按原样使用。",
   "tariff.warning.road_freight_missing":
-    "{sheet}：没有“FRETE (CD)”，到配送中心的陆运未计入总额。",
+    "{sheet}：没有“FRETE (CD)”；总额按 {value} 雷亚尔的陆运计算。",
   "tariff.warning.params_differ":
-    "{sheet}：汇率、陆运或柜数与 {first} 工作表不同。系统使用 {first} 的数值。",
+    "{sheet}：汇率为 {fx} 雷亚尔，与 {first} 工作表（{firstFx} 雷亚尔）不同。每个工作表使用自己的汇率；请确认是否为同一天的汇率。",
   "tariff.warning.sankhya_tab_outdated":
     "表格的 AD_FREINT 工作表与比较表不一致（{n} 行）。请使用此处生成的 CSV。",
   "tariff.warning.sankhya_duplicate_ids":
-    "Sankhya CSV：有 {n} 个 AD_IDEXTERNO 代码在不同目的港之间重复（代码为 CODPARC + 日期 + 起运港，不含目的港，与宏相同）。如果 Sankhya 将其作为主键，一条运价会覆盖另一条：导入前请核对。",
+    "Sankhya CSV 中有 {n} 个 AD_IDEXTERNO 代码出现在多个目的港（代码为船公司 + 日期 + 起运港，不含目的港，与宏相同）。如果 Sankhya 不接受重复代码，一条航线会覆盖另一条：请与负责 Sankhya 的同事确认。",
   "tariff.warning.cell_error":
     "{sheet}：单元格 {cell} 有错误（#REF!/#VALUE!），该值已忽略。",
   "tariff.dest.label": "目的港",
@@ -392,11 +412,20 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.order.viewAll": "查看完整运价表",
   "tariff.order.none": "尚未导入运价表。导入船公司表格即可查看各航线运费。",
   "tariff.order.from": "{date} 运价表 · 起运港 {origin}",
-  "tariff.order.noLocation": "采购单尚未填写供应商所在地，无法确定起运港。",
+  "tariff.order.noLocation": "采购单尚未填写供应商所在地。请在下方选择起运港。",
   "tariff.order.noOrigin":
-    "采购单上的供应商所在地（“{location}”）与运价表中的港口不匹配。",
+    "采购单上的供应商所在地（“{location}”）不是运价表中的港口。请在下方选择起运港。",
   "tariff.order.noRates": "当前运价表中没有 {origin} 的运价。",
   "tariff.order.assigned": "本订单的船公司",
   "tariff.order.hint":
     "仅 Wellmix 可见。装船日期、到港、船名和提单仍在下方：它们来自装运，而非运价表。",
+  "tariff.order.unavailable": "暂时无法读取运价表，请稍后重新打开。",
+  "tariff.order.containers": "{n} × 40HQ",
+  "tariff.order.pickOrigin": "起运港",
+  "tariff.order.pickSubmit": "查看运费",
+  "tariff.error.tariff_encrypted":
+    "表格设有打开密码。请在 Excel 中取消打开密码（文件 → 信息 → 保护工作簿）后重新上传。",
+  "tariff.table.captionShipment":
+    "整票运输总成本（{type}，雷亚尔）：运费 × 汇率 + 陆运 + 船公司附加费。绿色为每个港口的最低成本。",
+  "tariff.notes.title": "提示（{n}）",
 };

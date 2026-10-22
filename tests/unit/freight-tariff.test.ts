@@ -553,8 +553,9 @@ describe("CSV do Sankhya (AD_FREINT)", () => {
       // MUNDRA (99); SHENZHEN e QINGDAO sem ID e GAMA sem código ficam de fora.
       "2224630999;222;14/10/2026;60;99;3;5000;10;900",
       "2224630945;222;14/10/2026;5;45;3;3900;60,5;1400",
-      "",
     ]);
+    // Como a macro: sem quebra de linha depois da última.
+    expect(csv.endsWith("\r\n")).toBe(false);
   });
 });
 
@@ -658,6 +659,7 @@ describe("importar e usar o tarifário", () => {
 
   it("companhia marítima, cliente e fornecedor não importam nem veem (tarifas de todas as companhias)", async () => {
     const bytes = xlsxFile(workbook());
+    const orderRef = { id: "qualquer", shippingLineId: null };
     for (const u of [shippingLine, customer]) {
       await expect(
         service.importFreightTariff(u, file(bytes), null),
@@ -666,9 +668,9 @@ describe("importar e usar o tarifário", () => {
         "forbidden",
       );
       await expect(service.listFreightTariffs(u)).rejects.toThrow("forbidden");
-      await expect(
-        service.orderTariffView(u, "qualquer", null),
-      ).rejects.toThrow("forbidden");
+      await expect(service.orderTariffView(u, orderRef)).rejects.toThrow(
+        "forbidden",
+      );
     }
   });
 
@@ -714,17 +716,25 @@ describe("importar e usar o tarifário", () => {
 
   it("pedido: rota pelo local do fornecedor na ficha; companhia do pedido marcada", async () => {
     const store = getStore();
+    const order = (id: string, shippingLineId: string | null = null) => ({
+      id,
+      shippingLineId,
+    });
     expect(
-      await service.orderTariffView(admin, "pedido-sem-ficha", null),
+      await service.orderTariffView(admin, order("pedido-sem-ficha")),
     ).toMatchObject({ location: null, origin: null, options: [] });
     await store.create("purchase_sheets", {
       orderId: "pedido-ningbo",
       location: "Ningbo, Zhejiang",
     } as never);
+    const beta = await store.create("parties", {
+      type: "shipping_line",
+      name: "Beta Cargo",
+      active: true,
+    } as never);
     const view = await service.orderTariffView(
       admin,
-      "pedido-ningbo",
-      "Beta Cargo",
+      order("pedido-ningbo", beta.id),
     );
     expect(view?.origin).toBe("NINGBO");
     expect(
@@ -738,9 +748,27 @@ describe("importar e usar o tarifário", () => {
       orderId: "pedido-yiwu",
       location: "Yiwu",
     } as never);
+    const yiwu = await service.orderTariffView(admin, order("pedido-yiwu"));
+    expect(yiwu).toMatchObject({
+      location: "Yiwu",
+      matchedOrigin: null,
+      origin: null,
+      options: [],
+    });
+    // Fornecedor em Yiwu embarca por Ningbo: a Wellmix escolhe o porto.
+    expect(yiwu?.origins).toEqual(["MUNDRA", "NINGBO", "QINGDAO", "SHENZHEN"]);
+    const picked = await service.orderTariffView(
+      admin,
+      order("pedido-yiwu"),
+      "ningbo",
+    );
+    expect(picked?.origin).toBe("NINGBO");
+    expect(picked?.options[0].totalBrl).toBe(18008.55);
+    // Porto que não está no tarifário: ignorado.
     expect(
-      await service.orderTariffView(admin, "pedido-yiwu", null),
-    ).toMatchObject({ location: "Yiwu", origin: null, options: [] });
+      (await service.orderTariffView(admin, order("pedido-yiwu"), "XPTO"))
+        ?.origin,
+    ).toBeNull();
   });
 });
 
@@ -754,7 +782,12 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
     const t = translator("pt");
     const render = (view: Parameters<typeof FreightTariffBox>[0]["view"]) =>
       renderToStaticMarkup(
-        createElement(FreightTariffBox, { t, orderId: "o1", view }),
+        createElement(FreightTariffBox, {
+          t,
+          orderId: "o1",
+          stageId: "s1",
+          view,
+        }),
       );
     const none = render(null);
     expect(none).toContain("Importar planilha da companhia marítima");
@@ -762,16 +795,23 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
       'href="/app/freight/tariff?from=%2Fapp%2Forders%2Fo1"',
     );
     expect(none).toContain("Nenhum tarifário importado ainda");
+    expect(render("failed")).toContain("não pôde ser lido agora");
     const base = {
       tariffId: "t1",
       referenceDate: "2026-10-14",
       location: null,
+      matchedOrigin: null,
       origin: null,
+      origins: ["NINGBO", "SHENZHEN"],
       options: [],
     };
-    expect(render(base)).toContain("não tem o local do fornecedor");
+    const noLocation = render(base);
+    expect(noLocation).toContain("não tem o local do fornecedor");
+    // Escolher o porto à mão: formulário GET no próprio pedido.
+    expect(noLocation).toContain('action="/app/orders/o1#stage-s1"');
+    expect(noLocation).toContain('name="tariffOrigin"');
     expect(render({ ...base, location: "Yiwu" })).toContain(
-      "(&quot;Yiwu&quot;) não bate com nenhum porto",
+      "(&quot;Yiwu&quot;) não é um porto do tarifário",
     );
     const data = calc.parseFreightTariff(workbook());
     const html = render({
@@ -787,7 +827,252 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
     expect(html).toMatch(/R\$\s18\.008,55/);
     expect(html).toContain("companhia do pedido");
     expect(html).toContain("prazo 120 dias");
+    // A companhia do pedido aparece mesmo fora das 4 mais baratas.
+    const many = Array.from({ length: 6 }, (_, i) => ({
+      destination: "NAVEGANTES",
+      destinationCode: "NVT",
+      origin: "NINGBO",
+      forwarder: `CIA ${i + 1}`,
+      route: "direct" as const,
+      oceanUsd: 1000 + i,
+      totalBrl: 10000 + i,
+      paymentTermDays: null,
+      containerQty: 2,
+      assigned: i === 5,
+    }));
+    const longList = render({ ...base, origin: "NINGBO", options: many });
+    expect(longList).toContain("CIA 4 → NAVEGANTES");
+    expect(longList).not.toContain("CIA 5 → NAVEGANTES");
+    expect(longList).toContain("CIA 6 → NAVEGANTES");
+    expect(longList).toContain("2 × 40HQ");
     // Os campos do embarque continuam: o tarifário não traz data, navio nem BL.
     expect(html).toContain("continuam abaixo");
   });
 });
+
+describe("revisão: parâmetros por aba, linhas de total, destinos e locais", () => {
+  it("cada aba usa o próprio frete até o CD (e câmbio), como as fórmulas", () => {
+    const other = itj();
+    other.cells[11][2] = "1500"; // ITJ!C12 (FRETE (CD))
+    const data = calc.parseFreightTariff([
+      nvt(),
+      other,
+      fornecedores(),
+      portos(),
+    ]);
+    const [nav, ita] = data.destinations;
+    expect(nav.roadFreightBrl).toBe(1000);
+    expect(ita.roadFreightBrl).toBe(1500);
+    // 3900 × 5,1 + 1500 + taxas copiadas (1708,55).
+    expect(ita.rates[0].totalBrl).toBe(23098.55);
+    expect(data.warnings.map((w) => w.code)).not.toContain("params_differ");
+    // Câmbio diferente entre abas: aviso para conferir.
+    const fx = itj();
+    fx.cells[10][2] = "5.3";
+    const withFx = calc.parseFreightTariff([nvt(), fx, portos()]);
+    expect(withFx.destinations[1].fx).toBe(5.3);
+    expect(withFx.warnings).toContainEqual({
+      code: "params_differ",
+      params: {
+        sheet: "COMPARATIVO - ITJ",
+        first: "COMPARATIVO - NVT",
+        fx: 5.3,
+        firstFx: 5.1,
+      },
+    });
+  });
+
+  it("linha de totais com erro: não lê a linha de baixo; usa a soma e avisa", () => {
+    const sheet = nvt();
+    sheet.cells[14][5] = "#REF!"; // F15
+    sheet.cells[14][6] = "";
+    // Linha "TOTAIS TAXAS (BRL)" abaixo, como na planilha modelo.
+    sheet.cells.push([]);
+    sheet.cells[18] = ["", "", "", "TOTAIS TAXAS (BRL)", "", "2949.79"];
+    const data = calc.parseFreightTariff([sheet, portos(), fornecedores()]);
+    const alfa = data.destinations[0].forwarders[0];
+    expect(alfa.feesUsd).toBe(60.5);
+    expect(alfa.feesBrl).toBe(1400);
+    expect(data.warnings).toContainEqual({
+      code: "cell_error",
+      params: { sheet: "COMPARATIVO - NVT", cell: "F15" },
+    });
+  });
+
+  it("destino fora da aba PORTOS usa o ID fixo da macro; destino desconhecido avisa", () => {
+    const semDestinos = portos();
+    semDestinos.cells = semDestinos.cells.filter(
+      (r) => r[1] !== "NAVEGANTES" && r[1] !== "ITAJAÍ",
+    );
+    const data = calc.parseFreightTariff([nvt(), itj(), semDestinos]);
+    expect(data.destinations.map((d) => d.portId)).toEqual([60, 5]);
+    const ssa = { ...itj(), name: "COMPARATIVO - SSA" };
+    const other = calc.parseFreightTariff([nvt(), ssa, portos()]);
+    expect(other.warnings).toContainEqual({
+      code: "port_no_id",
+      params: { port: "SSA" },
+    });
+  });
+
+  it("nome da aba com travessão ou minúsculas, como a macro aceita", () => {
+    expect(calc.destinationCode("Comparativo – nvt")).toBe("NVT");
+    expect(calc.destinationCode("COMPARATIVO — IOA")).toBe("IOA");
+    expect(calc.destinationCode("COMPARATIVO - NVT X IOA")).toBeNull();
+  });
+
+  it("CSV na ordem da macro: NVT, IOA, ITJ", () => {
+    const ioa = { ...itj(), name: "COMPARATIVO - IOA" };
+    const ports = portos();
+    ports.cells.push(["44", "ITAPOÁ"]);
+    const data = calc.parseFreightTariff([
+      nvt(),
+      itj(),
+      ioa,
+      ports,
+      fornecedores(),
+    ]);
+    const dests = calc.sankhyaRows(data, "2026-10-14").map((r) => r.destId);
+    expect([...new Set(dests)]).toEqual([60, 44, 5]);
+  });
+
+  it("dica de nome parecido só quando é mesmo parecido (NANTONG ≠ NANJING)", () => {
+    const sheet = nvt();
+    sheet.cells[5][2] = "NANTONG"; // no lugar de SHENZHEN
+    const ports = portos();
+    ports.cells.push(["66", "NANJING"]);
+    const data = calc.parseFreightTariff([sheet, ports]);
+    expect(data.warnings).toContainEqual({
+      code: "port_no_id",
+      params: { port: "NANTONG" },
+    });
+  });
+
+  it("local em chinês, com espaço a mais ou nome de rua", () => {
+    const data = calc.parseFreightTariff(workbook());
+    expect(calc.matchOrigin(data, "浙江宁波北仑")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "深圳")).toBe("SHENZHEN");
+    expect(calc.matchOrigin(data, "Ning Bo")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "Qingdao Road 18, Ningbo")).toBe("NINGBO");
+    expect(calc.matchOrigin(data, "No. 18 Qingdao Rd, Yiwu")).toBeNull();
+    expect(calc.matchOrigin(data, "宁波路 18号, 义乌")).toBeNull();
+  });
+
+  it('número digitado como texto com ponto de milhar ("3.618")', () => {
+    expect(calc.cellNumber("3.618", true)).toBe(3618);
+    expect(calc.cellNumber("3.618")).toBe(3.618);
+    expect(calc.cellNumber("5.0569", true)).toBe(5.0569);
+  });
+});
+
+describe("revisão: arquivo malicioso ou protegido", () => {
+  it("planilha que descompacta demais é recusada", async () => {
+    const { deflateRawSync } = await import("node:zlib");
+    const big = new Uint8Array(60 * 1024 * 1024);
+    // Parte que vira 60 MB descompactada (teto da planilha de frete: 50 MB).
+    const deflated = deflateRawSync(big);
+    expect(deflated.length).toBeLessThan(200_000);
+    const { openWorkbook } = await import("@/lib/services/xlsx");
+    const zip = zipWithDeflated([
+      [
+        "xl/workbook.xml",
+        '<workbook><sheets><sheet name="COMPARATIVO - NVT" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        false,
+      ],
+      [
+        "xl/_rels/workbook.xml.rels",
+        '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+        false,
+      ],
+      ["xl/worksheets/sheet1.xml", deflated, true],
+    ]);
+    const wb = openWorkbook(zip, { maxTotalBytes: 50 * 1024 * 1024 });
+    expect(() => wb.readCells("COMPARATIVO - NVT")).toThrow("xlsx_too_large");
+    expect(() => service.readTariffWorkbook(zip, "frete.xlsx")).toThrow(
+      "tariff_too_large",
+    );
+  });
+
+  it("XML com milhares de tags sem fechar é lido rápido (sem travar o servidor)", () => {
+    const xml = `<?xml version="1.0"?><worksheet><sheetData><row r="1">${'<c r="A1">'.repeat(40000)}</row></sheetData></worksheet>`;
+    const zip = zipWithDeflated([
+      [
+        "xl/workbook.xml",
+        '<workbook><sheets><sheet name="X" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        false,
+      ],
+      [
+        "xl/_rels/workbook.xml.rels",
+        '<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
+        false,
+      ],
+      ["xl/worksheets/sheet1.xml", xml, false],
+    ]);
+    const started = performance.now();
+    expect(readCells(zip, "X").cells).toEqual([]);
+    expect(readGrid(zip, "X").grid).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it(".xlsx protegido por senha tem mensagem própria", () => {
+    const ole = new Uint8Array([
+      0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1,
+    ]);
+    expect(() => service.readTariffWorkbook(ole, "frete.xlsm")).toThrow(
+      "tariff_encrypted",
+    );
+    expect(() => service.readTariffWorkbook(ole, "frete.xls")).toThrow(
+      "tariff_xls",
+    );
+  });
+});
+
+/** ZIP com partes guardadas (texto) ou já comprimidas (deflate). */
+function zipWithDeflated(
+  files: Array<[string, string | Uint8Array, boolean]>,
+): Uint8Array<ArrayBuffer> {
+  const enc = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  const central: Uint8Array[] = [];
+  let offset = 0;
+  for (const [name, content, deflated] of files) {
+    const nameBytes = enc.encode(name);
+    const data = typeof content === "string" ? enc.encode(content) : content;
+    const method = deflated ? 8 : 0;
+    const local = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(local.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(8, method, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    local.set(nameBytes, 30);
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(10, method, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    chunks.push(local, data);
+    central.push(cd);
+    offset += local.length + data.length;
+  }
+  const cdSize = central.reduce((n, c) => n + c.length, 0);
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  const all = [...chunks, ...central, end];
+  const out = new Uint8Array(all.reduce((n, c) => n + c.length, 0));
+  let p = 0;
+  for (const c of all) {
+    out.set(c, p);
+    p += c.length;
+  }
+  return out;
+}

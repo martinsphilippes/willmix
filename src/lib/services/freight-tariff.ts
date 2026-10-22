@@ -1,12 +1,12 @@
 import "server-only";
 
-import { getStore, type FreightTariff, type User } from "@/lib/db";
+import { getStore, type FreightTariff, type Order, type User } from "@/lib/db";
 import { assertRole, assertWellmix } from "@/lib/auth/permissions";
 import { getSettings, setSetting } from "@/lib/settings";
 import { brazilDay } from "@/lib/supplier-terms";
 import { audit } from "./audit";
 import { uploadDocument } from "./documents";
-import { listSheets, readCells } from "./xlsx";
+import { openWorkbook } from "./xlsx";
 import {
   TARIFF_CONTAINER_TYPE,
   TariffError,
@@ -14,6 +14,7 @@ import {
   foldName,
   matchOrigin,
   optionsForOrigin,
+  originsWithRates,
   parseFreightTariff,
   perCbmSuggestion,
   tariffCounts,
@@ -40,42 +41,72 @@ const XLSM_MIME = "application/vnd.ms-excel.sheet.macroenabled.12";
 
 /** Abas lidas: os comparativos por destino e as tabelas de códigos do Sankhya. */
 const SUPPORT_SHEETS = ["FORNECEDORES", "PORTOS", "AD_FREINT"];
+/** Tetos da leitura (a planilha modelo usa uma fração disto). */
+const MAX_DESTINATION_SHEETS = 12;
+const MAX_UNZIPPED_BYTES = 50 * 1024 * 1024;
+const MAX_SHEET_XML_BYTES = 8 * 1024 * 1024;
+/** Colunas lidas: o bloco de 4 colunas de até 20 companhias e as taxas ao lado. */
+const MAX_COLUMNS = 100;
 
-function assertSpreadsheet(bytes: Uint8Array) {
-  // .xls antigo (formato binário): pedir para salvar como .xlsx/.xlsm.
+function assertSpreadsheet(bytes: Uint8Array, fileName: string) {
+  // Formato binário (OLE): .xls antigo ou .xlsx/.xlsm protegido por senha.
   if (
     bytes[0] === 0xd0 &&
     bytes[1] === 0xcf &&
     bytes[2] === 0x11 &&
     bytes[3] === 0xe0
   )
-    throw new TariffError("tariff_xls");
+    throw new TariffError(
+      /\.xls[xm]$/i.test(fileName) ? "tariff_encrypted" : "tariff_xls",
+    );
   if (!(bytes[0] === 0x50 && bytes[1] === 0x4b))
     throw new TariffError("tariff_invalid");
 }
 
-/** Lê as abas que interessam da planilha (o resto, como macros, é ignorado). */
-export function readTariffWorkbook(bytes: Uint8Array) {
-  assertSpreadsheet(bytes);
-  let names: string[];
+/**
+ * Lê as abas que interessam da planilha (o resto, como macros, é ignorado):
+ * o arquivo é aberto uma vez e só as partes usadas são descompactadas.
+ */
+export function readTariffWorkbook(bytes: Uint8Array, fileName = "") {
+  assertSpreadsheet(bytes, fileName);
+  const fail = (error: unknown): never => {
+    throw new TariffError(
+      error instanceof Error && error.message === "xlsx_too_large"
+        ? "tariff_too_large"
+        : "tariff_invalid",
+    );
+  };
+  let workbook: ReturnType<typeof openWorkbook>;
+  let names: string[] = [];
   try {
-    names = listSheets(bytes);
-  } catch {
-    throw new TariffError("tariff_invalid");
+    workbook = openWorkbook(bytes, { maxTotalBytes: MAX_UNZIPPED_BYTES });
+    names = workbook.sheetNames();
+  } catch (error) {
+    return fail(error);
   }
-  const wanted = names.filter(
-    (n) =>
-      destinationCode(n) !== null ||
-      SUPPORT_SHEETS.includes(n.trim().toUpperCase()),
-  );
+  const destinations = [
+    ...new Set(names.filter((n) => destinationCode(n) !== null)),
+  ].slice(0, MAX_DESTINATION_SHEETS);
+  const support = [
+    ...new Set(
+      names.filter((n) => SUPPORT_SHEETS.includes(n.trim().toUpperCase())),
+    ),
+  ].slice(0, SUPPORT_SHEETS.length);
   const sheets: TariffSheet[] = [];
-  for (const name of wanted) {
+  for (const name of [...destinations, ...support]) {
     try {
-      sheets.push({ name, cells: readCells(bytes, name).cells });
-    } catch {
-      throw new TariffError("tariff_invalid");
+      sheets.push(
+        workbook!.readCells(name, {
+          maxCols: MAX_COLUMNS,
+          maxXmlBytes: MAX_SHEET_XML_BYTES,
+        }),
+      );
+    } catch (error) {
+      fail(error);
     }
   }
+  // Mesma ordem do arquivo (a 1ª aba de destino dá o câmbio de referência).
+  sheets.sort((a, b) => names.indexOf(a.name) - names.indexOf(b.name));
   return parseFreightTariff(sheets);
 }
 
@@ -92,33 +123,23 @@ export async function importFreightTariff(
   if (!file || file.size === 0) throw new TariffError("tariff_file_required");
   if (file.size > MAX_TARIFF_BYTES) throw new TariffError("tariff_too_large");
   const bytes = new Uint8Array(await file.arrayBuffer());
-  const data = readTariffWorkbook(bytes);
+  const name = (file.name || "tarifario.xlsx").slice(0, 200);
+  const data = readTariffWorkbook(bytes, name);
   const day = referenceDate ?? brazilDay(new Date());
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day))
     throw new TariffError("tariff_date_invalid");
   const counts = tariffCounts(data);
   const store = getStore();
 
-  // Original guardado para conferência (tipo do arquivo normalizado: o
-  // navegador manda "macroEnabled" com maiúscula no .xlsm).
-  const name = (file.name || "tarifario.xlsx").slice(0, 200);
-  const mime = /\.xlsm$/i.test(name) ? XLSM_MIME : XLSX_MIME;
-  const doc = await uploadDocument(
-    user,
-    new File([bytes], name, { type: mime }),
-    {
-      type: "attachment",
-      visibility: "internal",
-    },
-  ).catch(() => null);
-
+  // Primeiro o banco (se a tabela falhar, nenhum arquivo fica órfão); depois
+  // o original, guardado para conferência.
   const previous = await store.list("freight_tariffs", {
     filter: { status: "active" },
   });
-  const row = await store.create("freight_tariffs", {
+  let row = await store.create("freight_tariffs", {
     referenceDate: day,
     fileName: name,
-    fileDocumentId: doc?.id ?? null,
+    fileDocumentId: null,
     status: "active",
     fx: data.fx,
     roadFreightBrl: data.roadFreightBrl,
@@ -128,6 +149,17 @@ export async function importFreightTariff(
     data,
     uploadedByUserId: user.id,
   });
+  // Tipo do arquivo normalizado: o navegador manda "macroEnabled" com maiúscula.
+  const mime = /\.xlsm$/i.test(name) ? XLSM_MIME : XLSX_MIME;
+  const doc = await uploadDocument(
+    user,
+    new File([bytes], name, { type: mime }),
+    { type: "attachment", visibility: "internal" },
+  ).catch(() => null);
+  if (doc)
+    row = await store.update("freight_tariffs", row.id, {
+      fileDocumentId: doc.id,
+    });
   for (const p of previous)
     await store.update("freight_tariffs", p.id, { status: "replaced" });
   await audit(
@@ -220,32 +252,45 @@ export async function applyTariffPerCbm(
 export interface OrderTariffView {
   tariffId: string;
   referenceDate: string;
-  /** Local do fornecedor na ficha (de onde se tentou achar o porto). */
+  /** Local do fornecedor na ficha (de onde se tenta achar o porto). */
   location: string | null;
+  /** Porto achado no local (ou null). */
+  matchedOrigin: string | null;
+  /** Porto mostrado: o escolhido na tela ou o achado. */
   origin: string | null;
+  /** Portos com tarifa, para escolher quando o local não bate. */
+  origins: string[];
   options: (TariffOption & { assigned: boolean })[];
 }
 
 /**
  * Frete pelo tarifário vigente para um pedido (cartão Embarque, só Wellmix):
- * o porto de origem vem do local do fornecedor na ficha de compra; a
- * companhia já escolhida no pedido aparece marcada.
+ * o porto de origem vem do local do fornecedor na ficha de compra, ou do
+ * escolhido na tela; a companhia já escolhida no pedido aparece marcada.
  */
 export async function orderTariffView(
   user: User,
-  orderId: string,
-  shippingLineName: string | null,
+  order: Pick<Order, "id" | "shippingLineId">,
+  chosenOrigin: string | null = null,
 ): Promise<OrderTariffView | null> {
   assertWellmix(user);
   const tariff = await currentFreightTariff(user);
   if (!tariff) return null;
-  const [sheet] = await getStore().list("purchase_sheets", {
-    filter: { orderId },
-    limit: 1,
-  });
+  const store = getStore();
+  const [[sheet], line] = await Promise.all([
+    store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
+    order.shippingLineId
+      ? store.get("parties", order.shippingLineId)
+      : Promise.resolve(null),
+  ]);
   const location = sheet?.location?.trim() || null;
-  const origin = matchOrigin(tariff.data, location);
-  const assignedKey = shippingLineName ? foldName(shippingLineName) : null;
+  const matchedOrigin = matchOrigin(tariff.data, location);
+  const origins = originsWithRates(tariff.data);
+  const chosen = chosenOrigin
+    ? (origins.find((o) => foldName(o) === foldName(chosenOrigin)) ?? null)
+    : null;
+  const origin = chosen ?? matchedOrigin;
+  const assignedKey = line?.name ? foldName(line.name) : null;
   const options = origin
     ? optionsForOrigin(tariff.data, origin).map((o) => ({
         ...o,
@@ -256,7 +301,9 @@ export async function orderTariffView(
     tariffId: tariff.id,
     referenceDate: tariff.referenceDate,
     location,
+    matchedOrigin,
     origin,
+    origins,
     options,
   };
 }

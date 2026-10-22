@@ -53,14 +53,20 @@ export async function applyTariffPerCbmAction(form: FormData) {
   const user = await requireUser();
   const tariffId = str(form, "tariffId");
   const destination = str(form, "destination");
-  const back = ID.safeParse(tariffId).success
-    ? `${BACK}?id=${encodeURIComponent(tariffId)}`
-    : BACK;
+  const from = backFrom(form);
+  // Volta para o mesmo tarifário e destino (e o link do pedido, se veio de lá).
+  const params = new URLSearchParams();
+  if (ID.safeParse(tariffId).success) params.set("id", tariffId);
+  if (DESTINATION.safeParse(destination).success)
+    params.set("dest", destination);
+  if (from) params.set("from", from);
+  const back = params.size ? `${BACK}?${params.toString()}` : BACK;
   await run(back, async () => {
     const id = ID.parse(tariffId);
     const dest = DESTINATION.parse(destination);
     const { applyTariffPerCbm } = await import("@/lib/services/freight-tariff");
     await applyTariffPerCbm(user, id, dest);
-    return `${BACK}?id=${encodeURIComponent(id)}&dest=${dest}&perCbm=1`;
+    params.set("perCbm", "1");
+    return `${BACK}?${params.toString()}`;
   });
 }
