@@ -480,10 +480,20 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.waitForLoadState("networkidle");
   await page.goto(orderUrl);
   await expect(page.getByText(/Embarque/).first()).toBeVisible();
+  // Embarque (Wellmix): botão de importar a planilha da companhia marítima
+  // (tarifário de frete), que leva ao tarifário e volta ao pedido.
+  const tariffBox = page.locator("[data-tariff-box]");
+  await expect(tariffBox).toBeVisible();
+  await expect(tariffBox.locator("[data-tariff-import-link]")).toHaveAttribute(
+    "href",
+    /\/app\/freight\/tariff\?from=%2Fapp%2Forders%2F/,
+  );
 
   // 12. SHIPPING, CUSTOMS, TRANSPORT pelos parceiros
   await login(page, "armador@maritima.com");
   await page.goto(orderUrl);
+  // A companhia marítima não vê o tarifário (tem as tarifas das outras).
+  await expect(page.locator("[data-tariff-box]")).toHaveCount(0);
   // A previsão de chegada espera a data de embarque e nunca fica antes dela.
   await expect(
     page.locator("[data-requirement-waiting]", {

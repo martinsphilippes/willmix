@@ -10,6 +10,8 @@
  * mapeados para `$id`, `$createdAt` e `$updatedAt` no Appwrite.
  */
 
+import type { FreightTariffData } from "@/lib/services/freight-tariff-calc";
+
 export const ROLES = [
   "admin",
   "operator",
@@ -388,6 +390,10 @@ export const IMPORT_BATCH_STATUSES = [
   "cancelled",
 ] as const;
 export type ImportBatchStatus = (typeof IMPORT_BATCH_STATUSES)[number];
+
+/** Tarifário de frete: o vigente e os substituídos (histórico). */
+export const FREIGHT_TARIFF_STATUSES = ["active", "replaced"] as const;
+export type FreightTariffStatus = (typeof FREIGHT_TARIFF_STATUSES)[number];
 
 /* ------------------------------------------------------------------------ */
 /* Tipos das linhas                                                          */
@@ -1301,6 +1307,32 @@ export interface CartItem extends BaseRow {
   notes: string | null;
 }
 
+/**
+ * Tarifário de frete marítimo importado da planilha das companhias marítimas
+ * ("ESTIMATIVA DE FRETE"): por agente de cargas, porto de origem e porto de
+ * destino, o frete por container 40HQ, as taxas, o prazo de pagamento e o
+ * custo total em R$. Um vigente por vez; os anteriores ficam no histórico.
+ * Só a Wellmix vê (tem as tarifas de todas as companhias).
+ */
+export interface FreightTariff extends BaseRow {
+  /** Dia de referência (AAAA-MM-DD): vai para a DTREFERENCIA do Sankhya. */
+  referenceDate: string;
+  fileName: string;
+  /** Planilha original (documento interno), para conferência. */
+  fileDocumentId: string | null;
+  status: FreightTariffStatus;
+  /** Câmbio da planilha (dólar + spread), R$ por US$. */
+  fx: number;
+  /** Frete rodoviário do porto até o CD, R$ por container. */
+  roadFreightBrl: number | null;
+  rateCount: number;
+  forwarderCount: number | null;
+  warningCount: number | null;
+  /** Tudo o que foi lido (agentes, portos, taxas, tarifas e avisos). */
+  data: FreightTariffData;
+  uploadedByUserId: string;
+}
+
 /** Onde a ficha lida pela foto do quadro mora. */
 export const SHEET_READING_SCOPES = ["quote", "order", "product"] as const;
 export type SheetReadingScope = (typeof SHEET_READING_SCOPES)[number];
@@ -1405,6 +1437,7 @@ export interface Tables {
   sheet_readings: SheetReading;
   manufacturer_cards: ManufacturerCard;
   cart_items: CartItem;
+  freight_tariffs: FreightTariff;
 }
 export type TableName = keyof Tables;
 
@@ -2405,6 +2438,23 @@ export const TABLES: Record<TableName, TableDef> = {
         columns: ["userId", "productId"],
       },
     ],
+  },
+  freight_tariffs: {
+    label: "Tarifários de frete marítimo",
+    columns: {
+      referenceDate: str(10, true),
+      fileName: str(255, true),
+      fileDocumentId: id(false),
+      status: enumOf(FREIGHT_TARIFF_STATUSES),
+      fx: float(true),
+      roadFreightBrl: float(),
+      rateCount: int(true),
+      forwarderCount: int(),
+      warningCount: int(),
+      data: jsonLarge(),
+      uploadedByUserId: id(),
+    },
+    indexes: [{ key: "by_status", type: "key", columns: ["status"] }],
   },
 };
 

@@ -129,6 +129,8 @@ import {
   openAfterSalesAction,
 } from "../../actions/after-sales";
 import { MoneyInput } from "@/components/money-input";
+import { FreightTariffBox } from "@/components/freight-tariff-box";
+import { orderTariffView } from "@/lib/services/freight-tariff";
 
 export default async function OrderPage({
   params,
@@ -149,6 +151,7 @@ export default async function OrderPage({
     terms: termsNotice,
     fields: invalidFields,
     at: errorToken,
+    tariffOrigin,
   } = await searchParams;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
@@ -208,6 +211,13 @@ export default async function OrderPage({
   /* Leituras independentes numa rodada só (cada ida ao banco é uma viagem de rede). */
   const customerSide = wellmix || user.role === "customer";
   const delivered = order.status === "CLOSED" || order.status === "DELIVERED";
+  /* Embarque (só Wellmix): frete do tarifário vigente para a rota do pedido e
+     o botão de importar a planilha da companhia marítima. */
+  const shippingStage = stages.find((s) => s.key === "SHIPPING");
+  const showTariff =
+    wellmix &&
+    !!shippingStage &&
+    ["pending", "active", "blocked"].includes(shippingStage.status);
   const [
     parties,
     items,
@@ -222,6 +232,7 @@ export default async function OrderPage({
     afterSales,
     sourceRequest,
     derivedRequests,
+    tariffView,
   ] = await Promise.all([
     store.list("parties"),
     store.list("order_items", { filter: { orderId: order.id } }),
@@ -253,6 +264,17 @@ export default async function OrderPage({
           direction: "desc",
         })
       : Promise.resolve([] as RequestRow[]),
+    showTariff
+      ? orderTariffView(
+          user,
+          order,
+          typeof tariffOrigin === "string" ? tariffOrigin.slice(0, 80) : null,
+        ).catch((error: unknown): "failed" => {
+          // Tarifário fora do ar: o pedido abre igual, com o aviso no cartão.
+          console.error("orderTariffView failed", error);
+          return "failed";
+        })
+      : Promise.resolve(null),
   ]);
   const partyName = (pid: string | null) =>
     parties.find((p) => p.id === pid)?.name ?? "—";
@@ -586,6 +608,15 @@ export default async function OrderPage({
                     <p className="mb-2 text-xs leading-relaxed text-zinc-500">
                       {t(`help.stage.${stage.key}`)}
                     </p>
+                    {stage.key === "SHIPPING" && showTariff ? (
+                      <FreightTariffBox
+                        t={t}
+                        orderId={order.id}
+                        stageId={stage.id}
+                        view={tariffView}
+                        keepParams={remeasureMode ? { remeasure: "1" } : {}}
+                      />
+                    ) : null}
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (
                       <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
                         {t("orders.inspection.blindHint")}

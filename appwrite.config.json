@@ -6154,6 +6154,114 @@
           ]
         }
       ]
+    },
+    {
+      "$id": "freight_tariffs",
+      "databaseId": "willmix",
+      "name": "Tarifários de frete marítimo",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "referenceDate",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "fileName",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 255
+        },
+        {
+          "key": "fileDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "active",
+            "replaced"
+          ]
+        },
+        {
+          "key": "fx",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "roadFreightBrl",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "rateCount",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "forwarderCount",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "warningCount",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "data",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "longtext"
+        },
+        {
+          "key": "uploadedByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
     }
   ],
   "buckets": [
