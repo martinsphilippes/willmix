@@ -1331,6 +1331,12 @@ export interface FreightTariff extends BaseRow {
   /** Tudo o que foi lido (agentes, portos, taxas, tarifas e avisos). */
   data: FreightTariffData;
   uploadedByUserId: string;
+  /**
+   * Companhia marítima dona das tarifas (enviou a própria planilha, ou a
+   * Wellmix importou em nome dela). null = planilha consolidada da Wellmix
+   * (várias companhias); os registros de antes deste campo também.
+   */
+  shippingLineId?: string | null;
 }
 
 /** Onde a ficha lida pela foto do quadro mora. */
@@ -2453,8 +2459,12 @@ export const TABLES: Record<TableName, TableDef> = {
       warningCount: int(),
       data: jsonLarge(),
       uploadedByUserId: id(),
+      shippingLineId: id(false),
     },
-    indexes: [{ key: "by_status", type: "key", columns: ["status"] }],
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_line", type: "key", columns: ["shippingLineId", "status"] },
+    ],
   },
 };
 

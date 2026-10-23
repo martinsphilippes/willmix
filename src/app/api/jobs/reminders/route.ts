@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runReminders } from "@/lib/services/reminders";
 import { normalizePackaging } from "@/lib/services/packaging";
+import { normalizeShipping } from "@/lib/services/shipping-stage";
 import {
   notifyPayablesDue,
   notifySuppliersToConfirm,
@@ -23,6 +24,8 @@ export async function GET(request: Request) {
   const released = await releaseOffFlowStages(undefined, { force: true });
   // Arte e embalagem dos pedidos antigos passa para o fluxo novo.
   const packaging = await normalizePackaging(undefined, { force: true });
+  // Embarque dos pedidos antigos: dados opcionais, "Embarque confirmado" conclui.
+  const shipping = await normalizeShipping();
   const result = await runReminders();
   // Resumo diário das parcelas a fornecedores vencidas ou vencendo.
   const payablesDue = await notifyPayablesDue();
@@ -32,6 +35,7 @@ export async function GET(request: Request) {
     ...result,
     released,
     packaging,
+    shipping,
     payablesDue,
     toConfirm,
   });

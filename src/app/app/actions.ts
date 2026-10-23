@@ -1012,7 +1012,10 @@ export async function saveSettingsAction(form: FormData) {
         key === "fxPtaxFailedAt" ||
         key === "fxLastError" ||
         key === "fiscalTable" ||
-        key === "fiscalLastError"
+        key === "fiscalLastError" ||
+        // Gravados pelo tarifário de frete (destino escolhido e atualização automática).
+        key === "freightTariffDestination" ||
+        key === "freightPerCbmAuto"
       )
         continue;
       if (key === "supplierRankingWeights") {

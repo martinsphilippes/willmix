@@ -1,12 +1,14 @@
 "use server";
 
 import { z } from "zod";
+import { isWellmix } from "@/lib/auth/permissions";
 import { files, requireUser, run, str } from "./helpers";
 
 /*
  * Tarifário de frete (planilha das companhias marítimas). O serviço confere o
- * papel (Wellmix importa; só o admin muda o frete por m³ das Configurações);
- * aqui, formato e limites.
+ * papel (a companhia importa a própria planilha; a Wellmix importa em nome de
+ * uma companhia ou a consolidada; só o admin muda o frete por m³ das
+ * Configurações à mão); aqui, formato e limites.
  */
 
 const BACK = "/app/freight/tariff";
@@ -40,9 +42,22 @@ export async function importFreightTariffAction(form: FormData) {
       if (!parsed.success) throw new Error("tariff_date_invalid");
       referenceDate = parsed.data;
     }
+    // Wellmix escolhe de quem é a planilha (sem padrão: evita trocar a
+    // consolidada pela tabela de uma companhia só); a companhia, nunca.
+    let shippingLineId: string | null = null;
+    if (isWellmix(user)) {
+      const company = str(form, "shippingLineId");
+      if (!company) throw new Error("tariff_company_required");
+      shippingLineId = company === "consolidated" ? null : ID.parse(company);
+    }
     const { importFreightTariff } =
       await import("@/lib/services/freight-tariff");
-    const row = await importFreightTariff(user, file, referenceDate);
+    const row = await importFreightTariff(
+      user,
+      file,
+      referenceDate,
+      shippingLineId,
+    );
     const params = new URLSearchParams({ imported: row.id });
     if (from) params.set("from", from);
     return `${BACK}?${params.toString()}`;

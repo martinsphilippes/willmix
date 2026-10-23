@@ -107,7 +107,11 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
     orders.push({ href: "/app/account", key: "nav.account" });
   }
   if (role === "shipping_line")
-    orders.unshift({ href: "/app/freight", key: "nav.freight" });
+    orders.unshift(
+      { href: "/app/freight", key: "nav.freight" },
+      // A companhia envia a própria tabela de fretes (só vê as dela).
+      { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
+    );
   if (role === "legal")
     orders.push({ href: "/app/penalties", key: "nav.penalties" });
   return [

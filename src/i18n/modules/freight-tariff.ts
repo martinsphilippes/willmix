@@ -7,20 +7,20 @@ export const pt = {
   "nav.freightTariff": "Tarifário de frete",
   "tariff.title": "Tarifário de frete",
   "tariff.subtitle":
-    "Planilha das companhias marítimas: frete por rota, taxas e prazo de pagamento. Só a Wellmix vê.",
+    "Tabelas de frete das companhias marítimas lado a lado: frete por rota, taxas, PTAX/IOF e prazo de pagamento. Só a Wellmix vê o comparativo.",
   "tariff.help.body":
-    "A planilha de estimativa de frete (abas COMPARATIVO - NVT, ITJ e IOA) entra aqui inteira: companhia, porto de origem, destino, frete por container 40HQ, rota direta ou longa, taxas em US$ e R$ e prazo de pagamento. O portal refaz cada total em R$ com as taxas da própria companhia (frete × câmbio + frete até o CD + taxas), mostra o menor custo de cada porto, avisa o que estiver estranho na planilha e gera o CSV do Sankhya (AD_FREINT) sem macro.",
+    "Cada companhia marítima envia a própria planilha de estimativa de frete (abas COMPARATIVO - NVT, ITJ e IOA) pelo portal; a Wellmix também pode importar em nome de uma companhia ou a planilha consolidada. O portal junta as tabelas vigentes num comparativo com o mesmo câmbio para todas (dólar do dia), refaz cada total em R$ com as taxas, o PTAX e o IOF da própria companhia (frete e taxas em US$ × câmbio × (1 + PTAX) × (1 + IOF) + frete até o CD + taxas em R$), mostra o menor custo de cada porto, avisa o que estiver estranho nas planilhas, gera o CSV do Sankhya (AD_FREINT) sem macro e atualiza o frete por m³ do preço.",
   "tariff.help.steps":
-    "Importe a planilha nova a cada cotação de fretes (a anterior fica no histórico).\nLeia a conferência: ela aponta fórmulas e taxas que não batem.\nBaixe o CSV do Sankhya e importe no ERP.\nSe quiser, use o frete por m³ do tarifário no preço ao cliente (admin).",
+    "Peça a cada companhia para enviar a tabela dela pelo portal (menu Minha tabela de frete ou o botão no Embarque do pedido).\nSe a tabela chegou por e-mail, importe aqui escolhendo a companhia; a planilha consolidada vale para quem ainda não mandou a própria.\nLeia a conferência: ela aponta fórmulas e taxas que não batem.\nBaixe o CSV do Sankhya e importe no ERP.\nO frete por m³ atualiza sozinho a cada tabela; variação grande espera o admin conferir.",
   "tariff.import.title": "Importar planilha da companhia marítima",
   "tariff.import.hint":
-    "Planilha de estimativa de frete (.xlsx ou .xlsm) no modelo com as abas COMPARATIVO - NVT, ITJ e IOA, FORNECEDORES e PORTOS. Macros não são executadas.",
+    "Planilha de estimativa de frete (.xlsx ou .xlsm) no modelo com as abas COMPARATIVO - NVT, ITJ e IOA (e FORNECEDORES e PORTOS, se tiver). A planilha de uma companhia substitui só a anterior dela. Macros não são executadas.",
   "tariff.import.file": "Planilha (.xlsx ou .xlsm)",
   "tariff.import.date": "Data de referência",
   "tariff.import.dateHint": "Vai para a DTREFERENCIA do Sankhya.",
   "tariff.import.submit": "Importar planilha",
   "tariff.imported":
-    "Planilha importada: {rates} tarifas de {forwarders} companhias. Este é o tarifário vigente agora.",
+    "Planilha importada ({source}): {rates} tarifas de {forwarders} companhias. O comparativo já usa ela.",
   "tariff.backToOrder": "← Voltar ao pedido",
   "tariff.empty": "Nenhum tarifário importado ainda. Importe a planilha acima.",
   "tariff.status.active": "Vigente",
@@ -67,7 +67,7 @@ export const pt = {
     "{sheet}: erro na célula {cell} (#REF!/#VALUE!); esse valor ficou de fora.",
   "tariff.dest.label": "Destino",
   "tariff.table.caption":
-    "Custo total por container {type} em R$: frete × câmbio + frete até o CD + taxas da companhia. Em verde, o menor custo de cada porto.",
+    "Custo total por container {type} em R$: frete e taxas em US$ × câmbio × (1 + PTAX) × (1 + IOF) da companhia + frete até o CD + taxas em R$. Em verde, o menor custo de cada porto.",
   "tariff.table.origin": "Porto de origem",
   "tariff.table.best": "Menor custo",
   "tariff.table.term": "prazo {n} dias",
@@ -85,9 +85,9 @@ export const pt = {
     "Mediana do menor custo de {ports} portos até {dest}: R$ {container} por container ÷ {capacity} m³ ({type}) = R$ {perCbm} por m³.",
   "tariff.perCbm.current": "Hoje nas Configurações: {value}.",
   "tariff.perCbm.none": "não informado",
-  "tariff.perCbm.apply": "Usar R$ {perCbm}/m³ no preço",
+  "tariff.perCbm.apply": "Usar R$ {perCbm}/m³ ({dest}) no preço",
   "tariff.perCbm.applyHint":
-    "Vale quando a companhia ainda não informou o frete do produto (vitrine e valor ao cliente). Só o admin muda.",
+    "Vale quando a companhia ainda não informou o frete do produto (vitrine e valor ao cliente). Aplicar à mão é do admin; o destino escolhido passa a valer nas próximas atualizações automáticas.",
   "tariff.perCbm.applied": "Frete por m³ atualizado nas Configurações.",
   "tariff.perCbm.noCapacity":
     "Cadastre o container 40HC nas Configurações para calcular o frete por m³.",
@@ -123,14 +123,14 @@ export const pt = {
   "tariff.order.import": "Importar planilha da companhia marítima",
   "tariff.order.viewAll": "Ver tarifário completo",
   "tariff.order.none":
-    "Nenhum tarifário importado ainda. Importe a planilha da companhia marítima para ver o frete de cada rota.",
-  "tariff.order.from": "Tarifário de {date} · origem {origin}",
+    "Nenhuma tabela de frete ainda. Cada companhia envia a dela pelo portal; você também pode importar.",
+  "tariff.order.from": "Tabelas até {date} · origem {origin}",
   "tariff.order.noLocation":
     "A ficha de compra ainda não tem o local do fornecedor. Escolha abaixo o porto de embarque.",
-  "tariff.order.noRates": "Sem tarifas para {origin} no tarifário vigente.",
+  "tariff.order.noRates": "Sem tarifas para {origin} nas tabelas vigentes.",
   "tariff.order.assigned": "companhia do pedido",
   "tariff.order.hint":
-    "Só a Wellmix vê. Data de embarque, chegada, navio e BL continuam abaixo: são do embarque, não do tarifário.",
+    "Só a Wellmix vê. Data de embarque, chegada, navio e BL abaixo são opcionais: confirme o embarque para avançar.",
   "tariff.order.unavailable":
     "O tarifário não pôde ser lido agora. Abra de novo daqui a pouco.",
   "tariff.order.containers": "{n} × 40HQ",
@@ -141,7 +141,7 @@ export const pt = {
   "tariff.error.tariff_encrypted":
     "A planilha está protegida por senha. Abra no Excel, tire a senha de abertura (Arquivo → Informações → Proteger pasta de trabalho) e envie de novo.",
   "tariff.table.captionShipment":
-    "Custo total do embarque ({type}) em R$: frete × câmbio + frete até o CD + taxas da companhia. Em verde, o menor custo de cada porto.",
+    "Custo total do embarque ({type}) em R$: frete e taxas em US$ × câmbio × (1 + PTAX) × (1 + IOF) da companhia + frete até o CD + taxas em R$. Em verde, o menor custo de cada porto.",
   "tariff.notes.title": "Para saber ({n})",
   "tariff.warning.road_freight_missing":
     '{sheet}: sem "FRETE (CD)"; os totais usam R$ {value} de frete até o CD.',
@@ -154,26 +154,94 @@ export const pt = {
   "tariff.warning.destination_fixed_id":
     "{port} não está na aba PORTOS; o CSV do Sankhya usa o ID {id}, o mesmo da macro.",
   "tariff.order.perContainer": "{value} por container",
+  "nav.myFreightTariff": "Minha tabela de frete",
+  "tariff.range": "{min} a {max}",
+  "tariff.mine.title": "Minha tabela de frete",
+  "tariff.mine.subtitle":
+    "Envie sua planilha de fretes para a Wellmix. Só você e a Wellmix veem; as outras companhias, não.",
+  "tariff.mine.help.body":
+    "Use a planilha de estimativa de frete da Wellmix (abas COMPARATIVO - NVT, ITJ e IOA) com os seus preços: frete por container 40HQ de cada porto de origem, rota direta ou longa, taxas em US$ e R$, PTAX, IOF e prazo de pagamento. O portal confere a planilha e mostra o que estiver estranho.",
+  "tariff.mine.help.steps":
+    "Preencha a planilha com os seus preços.\nEnvie aqui (a nova substitui a anterior).\nLeia a conferência e, se apontar algo, corrija e envie de novo.",
+  "tariff.mine.importTitle": "Enviar minha planilha de fretes",
+  "tariff.mine.importHint":
+    "Planilha de estimativa de frete (.xlsx ou .xlsm) no modelo da Wellmix, só com os seus preços. A nova substitui a anterior. Macros não são executadas.",
+  "tariff.mine.dateHint": "Data da sua cotação.",
+  "tariff.mine.submit": "Enviar planilha",
+  "tariff.mine.empty":
+    "Você ainda não enviou sua tabela de frete. Envie a planilha acima.",
+  "tariff.mine.imported":
+    "Planilha enviada: {rates} tarifas. A Wellmix já recebeu.",
+  "tariff.import.company": "De quem é a planilha",
+  "tariff.import.companyPick": "Escolha…",
+  "tariff.import.consolidated": "Várias companhias (planilha consolidada)",
+  "tariff.import.companyHint":
+    "A de uma companhia substitui só a anterior dela.",
+  "tariff.error.tariff_company_required":
+    "Escolha de quem é a planilha: a companhia ou a consolidada.",
+  "tariff.error.tariff_company_invalid":
+    "Companhia marítima não encontrada no cadastro.",
+  "tariff.backToCompare": "← Voltar ao comparativo",
+  "tariff.viewingSource":
+    "Você está vendo só a planilha de {source} (referência {date}), com o câmbio dela.",
+  "tariff.compare.consolidated": "Planilha consolidada",
+  "tariff.compare.viewOne": "Ver só esta planilha",
+  "tariff.compare.sources": "Tabelas no comparativo",
+  "tariff.compare.warnings": "Avisos",
+  "tariff.compare.missing": "Ainda não enviaram a própria tabela: {names}.",
+  "tariff.compare.sourceHeading": "{source} · {date}",
+  "tariff.compare.downloadHint":
+    "Uma tarifa por companhia, porto e destino (rota direta; sem ela, a longa), cada companhia com a data da tabela dela. O mesmo formato da macro.",
+  "tariff.stat.updated": "Tabela mais nova",
+  "tariff.stat.fxCompare": "Câmbio do comparativo",
+  "tariff.stat.fxPortalDetail":
+    "dólar do dia (PTAX de {date}), o mesmo para todas",
+  "tariff.stat.fxSheetDetail": "da planilha (sem o dólar do dia no portal)",
+  "tariff.history.company": "Companhia",
+  "tariff.warning.ptax_iof_added":
+    "PTAX ({ptax}%) e IOF ({iof}%) de cada companhia entram nos totais: o que é pago em US$ (frete e taxas) vale US$ × câmbio × (1 + PTAX) × (1 + IOF). A planilha não soma os dois, por isso os totais daqui ficam maiores que os dela.",
+  "tariff.warning.ptax_iof_missing":
+    "{sheet}: {forwarder} sem {missing} na planilha; o total dele fica sem esse acréscimo.",
+  "tariff.fees.ptaxIof": "PTAX / IOF",
+  "tariff.perCbm.auto":
+    "Atualiza sozinho a cada tabela importada, pelo destino {dest}. Se a variação passar de {max}%, o valor antigo continua até o admin conferir.",
+  "tariff.perCbm.autoApplied":
+    "Última atualização automática ({date}): R$ {perCbm}/m³ aplicado.",
+  "tariff.perCbm.autoHeld":
+    "Última atualização automática ({date}): R$ {perCbm}/m³ não aplicado (antes {previous}; variação grande). Confira as tabelas e, se estiver certo, aplique.",
+  "tariff.perCbm.autoSkipped.no_capacity":
+    "Última atualização automática ({date}): sem cálculo (cadastre o container 40HC nas Configurações).",
+  "tariff.perCbm.autoSkipped.no_rates":
+    "Última atualização automática ({date}): sem cálculo (nenhuma tarifa no destino).",
+  "tariff.perCbm.applyHintOperator":
+    "Vale quando a companhia ainda não informou o frete do produto (vitrine e valor ao cliente). Aplicar à mão é só do admin.",
+  "tariff.upload.title": "Sua tabela de frete",
+  "tariff.upload.button": "Importar planilha",
+  "tariff.upload.last": "Última enviada: referência {date}, {rates} tarifas.",
+  "tariff.upload.none":
+    "Você ainda não enviou sua tabela de frete para a Wellmix.",
+  "tariff.upload.hint":
+    "Data de embarque, chegada, navio e BL abaixo são opcionais: confirme o embarque para avançar.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
   "nav.freightTariff": "Freight tariff",
   "tariff.title": "Freight tariff",
   "tariff.subtitle":
-    "Shipping lines' spreadsheet: freight per route, fees and payment terms. Wellmix only.",
+    "Shipping lines' freight tables side by side: freight per route, fees, PTAX/IOF and payment terms. Only Wellmix sees the comparison.",
   "tariff.help.body":
-    "The freight estimate spreadsheet (COMPARATIVO - NVT, ITJ and IOA tabs) comes in whole: shipping line, origin port, destination, freight per 40HQ container, direct or long route, fees in USD and BRL and payment terms. The portal recomputes each BRL total with the line's own fees (freight × FX + road freight to the DC + fees), shows the cheapest cost per port, flags anything odd in the spreadsheet and builds the Sankhya CSV (AD_FREINT) without a macro.",
+    "Each shipping line sends its own freight estimate spreadsheet (COMPARATIVO - NVT, ITJ and IOA tabs) through the portal; Wellmix can also import one on a line's behalf, or the consolidated spreadsheet. The portal joins the current tables into one comparison with the same FX for all (today's dollar), recomputes each BRL total with the line's own fees, PTAX and IOF (USD freight and fees × FX × (1 + PTAX) × (1 + IOF) + road freight to the DC + BRL fees), shows the cheapest cost per port, flags anything odd in the spreadsheets, builds the Sankhya CSV (AD_FREINT) without a macro and updates the freight per m³ used in prices.",
   "tariff.help.steps":
-    "Import the new spreadsheet at each freight quotation round (the previous one stays in the history).\nRead the check: it points out formulas and fees that do not add up.\nDownload the Sankhya CSV and import it into the ERP.\nOptionally use the tariff's freight per m³ in the customer price (admin).",
+    "Ask each shipping line to send its table through the portal (My freight table menu or the button in the order's Shipping stage).\nIf a table came by e-mail, import it here choosing the line; the consolidated spreadsheet covers lines that have not sent their own yet.\nRead the check: it points out formulas and fees that do not add up.\nDownload the Sankhya CSV and import it into the ERP.\nThe freight per m³ updates by itself with each table; a big change waits for the admin to check.",
   "tariff.import.title": "Import the shipping line spreadsheet",
   "tariff.import.hint":
-    "Freight estimate spreadsheet (.xlsx or .xlsm) in the template with the COMPARATIVO - NVT, ITJ and IOA, FORNECEDORES and PORTOS tabs. Macros are never run.",
+    "Freight estimate spreadsheet (.xlsx or .xlsm) in the template with the COMPARATIVO - NVT, ITJ and IOA tabs (and FORNECEDORES and PORTOS, if present). A line's spreadsheet only replaces that line's previous one. Macros are never run.",
   "tariff.import.file": "Spreadsheet (.xlsx or .xlsm)",
   "tariff.import.date": "Reference date",
   "tariff.import.dateHint": "Goes to Sankhya's DTREFERENCIA.",
   "tariff.import.submit": "Import spreadsheet",
   "tariff.imported":
-    "Spreadsheet imported: {rates} rates from {forwarders} shipping lines. This is now the current tariff.",
+    "Spreadsheet imported ({source}): {rates} rates from {forwarders} lines. The comparison already uses it.",
   "tariff.backToOrder": "← Back to the order",
   "tariff.empty": "No tariff imported yet. Import the spreadsheet above.",
   "tariff.status.active": "Current",
@@ -219,7 +287,7 @@ export const en: Record<keyof typeof pt, string> = {
     "{sheet}: error in cell {cell} (#REF!/#VALUE!); that value was left out.",
   "tariff.dest.label": "Destination",
   "tariff.table.caption":
-    "Total cost per {type} container in BRL: freight × FX + freight to the DC + the line's fees. Green marks the cheapest cost per port.",
+    "Total cost per {type} container in BRL: USD freight and fees × FX × (1 + PTAX) × (1 + IOF) of the line + road freight to the DC + BRL fees. In green, the cheapest cost per port.",
   "tariff.table.origin": "Origin port",
   "tariff.table.best": "Cheapest",
   "tariff.table.term": "{n}-day terms",
@@ -237,9 +305,9 @@ export const en: Record<keyof typeof pt, string> = {
     "Median of the cheapest cost from {ports} ports to {dest}: BRL {container} per container ÷ {capacity} m³ ({type}) = BRL {perCbm} per m³.",
   "tariff.perCbm.current": "Currently in Settings: {value}.",
   "tariff.perCbm.none": "not set",
-  "tariff.perCbm.apply": "Use BRL {perCbm}/m³ in prices",
+  "tariff.perCbm.apply": "Use BRL {perCbm}/m³ ({dest}) in prices",
   "tariff.perCbm.applyHint":
-    "Applies while the shipping line has not quoted the product's freight (storefront and customer price). Admin only.",
+    "Used when the line has not quoted the product freight yet (storefront and customer price). Applying by hand is for the admin; the chosen destination is used in the next automatic updates.",
   "tariff.perCbm.applied": "Freight per m³ updated in Settings.",
   "tariff.perCbm.noCapacity":
     "Add the 40HC container in Settings to compute the freight per m³.",
@@ -275,14 +343,14 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.order.import": "Import the shipping line spreadsheet",
   "tariff.order.viewAll": "View the full tariff",
   "tariff.order.none":
-    "No tariff imported yet. Import the shipping line spreadsheet to see the freight for each route.",
-  "tariff.order.from": "Tariff from {date} · origin {origin}",
+    "No freight table yet. Each line sends its own through the portal; you can also import one.",
+  "tariff.order.from": "Tables up to {date} · origin {origin}",
   "tariff.order.noLocation":
     "The purchase sheet has no supplier location yet. Choose the loading port below.",
-  "tariff.order.noRates": "No rates for {origin} in the current tariff.",
+  "tariff.order.noRates": "No rates for {origin} in the current tables.",
   "tariff.order.assigned": "order's shipping line",
   "tariff.order.hint":
-    "Wellmix only. Ship date, arrival, vessel and BL stay below: they come from the shipment, not from the tariff.",
+    "Only Wellmix sees this. Shipping date, arrival, vessel and BL below are optional: confirm the shipment to move on.",
   "tariff.order.unavailable":
     "The tariff could not be read right now. Open the order again in a moment.",
   "tariff.order.containers": "{n} × 40HQ",
@@ -293,7 +361,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.error.tariff_encrypted":
     "The spreadsheet is password-protected. Open it in Excel, remove the opening password (File → Info → Protect Workbook) and send it again.",
   "tariff.table.captionShipment":
-    "Total shipment cost ({type}) in BRL: freight × FX + freight to the DC + the line's fees. Green marks the cheapest cost per port.",
+    "Total shipment cost ({type}) in BRL: USD freight and fees × FX × (1 + PTAX) × (1 + IOF) of the line + road freight to the DC + BRL fees. In green, the cheapest cost per port.",
   "tariff.notes.title": "Good to know ({n})",
   "tariff.warning.road_freight_missing":
     '{sheet}: no "FRETE (CD)"; totals use BRL {value} for freight to the DC.',
@@ -306,26 +374,94 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.warning.destination_fixed_id":
     "{port} is not in the PORTOS tab; the Sankhya CSV uses ID {id}, the same as the macro.",
   "tariff.order.perContainer": "{value} per container",
+  "nav.myFreightTariff": "My freight table",
+  "tariff.range": "{min} to {max}",
+  "tariff.mine.title": "My freight table",
+  "tariff.mine.subtitle":
+    "Send your freight spreadsheet to Wellmix. Only you and Wellmix see it; other lines do not.",
+  "tariff.mine.help.body":
+    "Use Wellmix's freight estimate spreadsheet (COMPARATIVO - NVT, ITJ and IOA tabs) with your prices: freight per 40HQ container from each origin port, direct or long route, fees in USD and BRL, PTAX, IOF and payment terms. The portal checks the spreadsheet and shows anything odd.",
+  "tariff.mine.help.steps":
+    "Fill in the spreadsheet with your prices.\nSend it here (the new one replaces the previous one).\nRead the check and, if it points something out, fix it and send again.",
+  "tariff.mine.importTitle": "Send my freight spreadsheet",
+  "tariff.mine.importHint":
+    "Freight estimate spreadsheet (.xlsx or .xlsm) in Wellmix's template, with your prices only. The new one replaces the previous one. Macros are never run.",
+  "tariff.mine.dateHint": "Date of your quotation.",
+  "tariff.mine.submit": "Send spreadsheet",
+  "tariff.mine.empty":
+    "You have not sent your freight table yet. Send the spreadsheet above.",
+  "tariff.mine.imported":
+    "Spreadsheet sent: {rates} rates. Wellmix has received it.",
+  "tariff.import.company": "Whose spreadsheet",
+  "tariff.import.companyPick": "Choose…",
+  "tariff.import.consolidated": "Several lines (consolidated spreadsheet)",
+  "tariff.import.companyHint":
+    "A line's spreadsheet only replaces that line's previous one.",
+  "tariff.error.tariff_company_required":
+    "Choose whose spreadsheet it is: the line or the consolidated one.",
+  "tariff.error.tariff_company_invalid":
+    "Shipping line not found in the registry.",
+  "tariff.backToCompare": "← Back to the comparison",
+  "tariff.viewingSource":
+    "You are viewing only {source}'s spreadsheet (reference {date}), with its own FX.",
+  "tariff.compare.consolidated": "Consolidated spreadsheet",
+  "tariff.compare.viewOne": "View this spreadsheet only",
+  "tariff.compare.sources": "Tables in the comparison",
+  "tariff.compare.warnings": "Warnings",
+  "tariff.compare.missing": "Not sent their own table yet: {names}.",
+  "tariff.compare.sourceHeading": "{source} · {date}",
+  "tariff.compare.downloadHint":
+    "One rate per line, port and destination (direct route; without it, the long one), each line with its own table's date. Same format as the macro.",
+  "tariff.stat.updated": "Newest table",
+  "tariff.stat.fxCompare": "Comparison FX",
+  "tariff.stat.fxPortalDetail":
+    "today's dollar (PTAX of {date}), the same for all",
+  "tariff.stat.fxSheetDetail":
+    "from the spreadsheet (no daily dollar in the portal)",
+  "tariff.history.company": "Line",
+  "tariff.warning.ptax_iof_added":
+    "Each line's PTAX ({ptax}%) and IOF ({iof}%) are in the totals: what is paid in USD (freight and fees) counts as USD × FX × (1 + PTAX) × (1 + IOF). The spreadsheet does not add them, so the totals here are higher than its own.",
+  "tariff.warning.ptax_iof_missing":
+    "{sheet}: {forwarder} has no {missing} in the spreadsheet; its total goes without that surcharge.",
+  "tariff.fees.ptaxIof": "PTAX / IOF",
+  "tariff.perCbm.auto":
+    "Updates by itself with each imported table, using the {dest} destination. If the change is above {max}%, the old value stays until the admin checks.",
+  "tariff.perCbm.autoApplied":
+    "Last automatic update ({date}): BRL {perCbm}/m³ applied.",
+  "tariff.perCbm.autoHeld":
+    "Last automatic update ({date}): BRL {perCbm}/m³ not applied (before {previous}; big change). Check the tables and, if it is right, apply it.",
+  "tariff.perCbm.autoSkipped.no_capacity":
+    "Last automatic update ({date}): not computed (register the 40HC container in Settings).",
+  "tariff.perCbm.autoSkipped.no_rates":
+    "Last automatic update ({date}): not computed (no rates for the destination).",
+  "tariff.perCbm.applyHintOperator":
+    "Used when the line has not quoted the product freight yet (storefront and customer price). Only the admin applies it by hand.",
+  "tariff.upload.title": "Your freight table",
+  "tariff.upload.button": "Import spreadsheet",
+  "tariff.upload.last": "Last sent: reference {date}, {rates} rates.",
+  "tariff.upload.none": "You have not sent your freight table to Wellmix yet.",
+  "tariff.upload.hint":
+    "Shipping date, arrival, vessel and BL below are optional: confirm the shipment to move on.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
   "nav.freightTariff": "运价表",
   "tariff.title": "海运运价表",
   "tariff.subtitle":
-    "船公司表格：各航线运费、附加费和付款期限。仅 Wellmix 可见。",
+    "各船公司的运价表并排对比：各航线运费、费用、PTAX/IOF 和付款期限。只有 Wellmix 能看到对比。",
   "tariff.help.body":
-    "运费估算表（COMPARATIVO - NVT、ITJ、IOA 工作表）整体导入：船公司、起运港、目的港、40HQ 柜运费、直航或中转、美元和雷亚尔附加费及付款期限。系统用各船公司自己的附加费重新计算每个雷亚尔总额（运费 × 汇率 + 到配送中心的陆运 + 附加费），显示每个港口的最低成本，提示表格中的异常，并无需宏即可生成 Sankhya 的 CSV（AD_FREINT）。",
+    "每家船公司通过门户上传自己的运费估算表（COMPARATIVO - NVT、ITJ、IOA 工作表）；Wellmix 也可以代某家船公司导入，或导入汇总表。门户把现行的表合并成一个对比，所有船公司使用同一汇率（当日美元），用船公司自己的费用、PTAX 和 IOF 重新计算每个雷亚尔总额（美元运费和费用 × 汇率 × (1 + PTAX) × (1 + IOF) + 到配送中心的陆运费 + 雷亚尔费用），显示每个港口的最低成本，提示表中的异常，无需宏即可生成 Sankhya CSV（AD_FREINT），并更新报价用的每立方米运费。",
   "tariff.help.steps":
-    "每轮运费询价后导入新表格（旧表格保留在历史中）。\n查看核对结果：会指出不一致的公式和附加费。\n下载 Sankhya CSV 并导入 ERP。\n如需要，可将运价表的每立方米运费用于客户价格（仅管理员）。",
+    "请每家船公司通过门户上传自己的运价表（“我的运价表”菜单或订单装运阶段的按钮）。\n如果运价表是通过邮件收到的，在这里选择船公司后导入；汇总表用于还没上传自己运价表的船公司。\n查看核对结果：它会指出对不上的公式和费用。\n下载 Sankhya CSV 并导入 ERP。\n每立方米运费随每张表自动更新；变化太大时等管理员核对。",
   "tariff.import.title": "导入船公司表格",
   "tariff.import.hint":
-    "运费估算表（.xlsx 或 .xlsm），模板包含 COMPARATIVO - NVT、ITJ、IOA、FORNECEDORES 和 PORTOS 工作表。不会运行宏。",
+    "模板格式的运费估算表（.xlsx 或 .xlsm），含 COMPARATIVO - NVT、ITJ、IOA 工作表（如有，还有 FORNECEDORES 和 PORTOS）。某家船公司的表只替换它自己的上一张。不会运行宏。",
   "tariff.import.file": "表格（.xlsx 或 .xlsm）",
   "tariff.import.date": "参考日期",
   "tariff.import.dateHint": "写入 Sankhya 的 DTREFERENCIA。",
   "tariff.import.submit": "导入表格",
   "tariff.imported":
-    "表格已导入：{forwarders} 家船公司的 {rates} 条运价。现为当前运价表。",
+    "已导入（{source}）：{forwarders} 家船公司的 {rates} 条运价。对比已使用这张表。",
   "tariff.backToOrder": "← 返回订单",
   "tariff.empty": "尚未导入运价表。请在上方导入表格。",
   "tariff.status.active": "当前",
@@ -373,7 +509,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "{sheet}：单元格 {cell} 有错误（#REF!/#VALUE!），该值已忽略。",
   "tariff.dest.label": "目的港",
   "tariff.table.caption":
-    "每个 {type} 柜的雷亚尔总成本：运费 × 汇率 + 陆运 + 船公司附加费。绿色为每个港口的最低成本。",
+    "每个 {type} 集装箱的雷亚尔总成本：美元运费和费用 × 汇率 × (1 + 船公司的 PTAX) × (1 + IOF) + 到配送中心的陆运费 + 雷亚尔费用。绿色为每个港口的最低成本。",
   "tariff.table.origin": "起运港",
   "tariff.table.best": "最低成本",
   "tariff.table.term": "账期 {n} 天",
@@ -391,9 +527,9 @@ export const zh: Record<keyof typeof pt, string> = {
     "{ports} 个港口到 {dest} 的最低成本中位数：每柜 {container} 雷亚尔 ÷ {capacity} 立方米（{type}）= 每立方米 {perCbm} 雷亚尔。",
   "tariff.perCbm.current": "当前设置：{value}。",
   "tariff.perCbm.none": "未设置",
-  "tariff.perCbm.apply": "在价格中使用 {perCbm} 雷亚尔/立方米",
+  "tariff.perCbm.apply": "在报价中使用 R$ {perCbm}/m³（{dest}）",
   "tariff.perCbm.applyHint":
-    "在船公司尚未报该产品运费时使用（商品展示和客户价格）。仅管理员可修改。",
+    "船公司还没报该产品运费时使用（商品展示和客户报价）。手动应用仅限管理员；所选目的港用于之后的自动更新。",
   "tariff.perCbm.applied": "已在设置中更新每立方米运费。",
   "tariff.perCbm.noCapacity": "请在设置中添加 40HC 柜型以计算每立方米运费。",
   "tariff.history.title": "导入记录",
@@ -424,15 +560,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.order.title": "运价表运费",
   "tariff.order.import": "导入船公司表格",
   "tariff.order.viewAll": "查看完整运价表",
-  "tariff.order.none": "尚未导入运价表。导入船公司表格即可查看各航线运费。",
-  "tariff.order.from": "{date} 运价表 · 起运港 {origin}",
+  "tariff.order.none":
+    "还没有运价表。每家船公司通过门户上传自己的表；你也可以导入。",
+  "tariff.order.from": "截至 {date} 的运价表 · 起运港 {origin}",
   "tariff.order.noLocation": "采购单尚未填写供应商所在地。请在下方选择起运港。",
   "tariff.order.noOrigin":
     "采购单上的供应商所在地（“{location}”）不是运价表中的港口。请在下方选择起运港。",
-  "tariff.order.noRates": "当前运价表中没有 {origin} 的运价。",
+  "tariff.order.noRates": "现行运价表中没有 {origin} 的运价。",
   "tariff.order.assigned": "本订单的船公司",
   "tariff.order.hint":
-    "仅 Wellmix 可见。装船日期、到港、船名和提单仍在下方：它们来自装运，而非运价表。",
+    "仅 Wellmix 可见。下面的装运日期、到达、船名和提单都是可选的：确认已装运即可继续。",
   "tariff.order.unavailable": "暂时无法读取运价表，请稍后重新打开。",
   "tariff.order.containers": "{n} × 40HQ",
   "tariff.order.pickOrigin": "起运港",
@@ -440,7 +577,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.error.tariff_encrypted":
     "表格设有打开密码。请在 Excel 中取消打开密码（文件 → 信息 → 保护工作簿）后重新上传。",
   "tariff.table.captionShipment":
-    "整票运输总成本（{type}，雷亚尔）：运费 × 汇率 + 陆运 + 船公司附加费。绿色为每个港口的最低成本。",
+    "整批货（{type}）的雷亚尔总成本：美元运费和费用 × 汇率 × (1 + 船公司的 PTAX) × (1 + IOF) + 到配送中心的陆运费 + 雷亚尔费用。绿色为每个港口的最低成本。",
   "tariff.notes.title": "提示（{n}）",
   "tariff.warning.fx_missing":
     "{sheet}：汇率为空或有错误；总额使用 {fx} 雷亚尔（来自其他工作表）。请检查美元单元格。",
@@ -449,4 +586,66 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.warning.destination_fixed_id":
     "{port} 不在 PORTOS 工作表中；Sankhya CSV 使用 ID {id}，与宏相同。",
   "tariff.order.perContainer": "每柜 {value}",
+  "nav.myFreightTariff": "我的运价表",
+  "tariff.range": "{min} 至 {max}",
+  "tariff.mine.title": "我的运价表",
+  "tariff.mine.subtitle":
+    "把你的运费表发给 Wellmix。只有你和 Wellmix 能看到，其他船公司看不到。",
+  "tariff.mine.help.body":
+    "使用 Wellmix 的运费估算表（COMPARATIVO - NVT、ITJ、IOA 工作表）填写你的价格：各起运港每个 40HQ 集装箱的运费、直达或长航线、美元和雷亚尔费用、PTAX、IOF 和付款期限。门户会核对表格并显示异常。",
+  "tariff.mine.help.steps":
+    "在表中填写你的价格。\n在这里上传（新表替换旧表）。\n查看核对结果，如有问题，修改后重新上传。",
+  "tariff.mine.importTitle": "上传我的运费表",
+  "tariff.mine.importHint":
+    "Wellmix 模板格式的运费估算表（.xlsx 或 .xlsm），只填你的价格。新表替换旧表。不会运行宏。",
+  "tariff.mine.dateHint": "你的报价日期。",
+  "tariff.mine.submit": "上传表格",
+  "tariff.mine.empty": "你还没有上传运价表。请在上方上传表格。",
+  "tariff.mine.imported": "已上传：{rates} 条运价。Wellmix 已收到。",
+  "tariff.import.company": "这张表属于",
+  "tariff.import.companyPick": "请选择…",
+  "tariff.import.consolidated": "多家船公司（汇总表）",
+  "tariff.import.companyHint": "某家船公司的表只替换它自己的上一张。",
+  "tariff.error.tariff_company_required":
+    "请选择这张表属于哪家船公司，或选择汇总表。",
+  "tariff.error.tariff_company_invalid": "登记中找不到该船公司。",
+  "tariff.backToCompare": "← 返回对比",
+  "tariff.viewingSource":
+    "你正在查看 {source} 的单张表（参考日期 {date}），使用该表自己的汇率。",
+  "tariff.compare.consolidated": "汇总表",
+  "tariff.compare.viewOne": "只看这张表",
+  "tariff.compare.sources": "对比中的运价表",
+  "tariff.compare.warnings": "提示",
+  "tariff.compare.missing": "还没上传自己运价表的：{names}。",
+  "tariff.compare.sourceHeading": "{source} · {date}",
+  "tariff.compare.downloadHint":
+    "每家船公司、每个港口和目的港一条运价（直达航线；没有时用长航线），每家船公司使用自己表的日期。格式与宏相同。",
+  "tariff.stat.updated": "最新的表",
+  "tariff.stat.fxCompare": "对比汇率",
+  "tariff.stat.fxPortalDetail": "当日美元（{date} 的 PTAX），所有船公司相同",
+  "tariff.stat.fxSheetDetail": "来自表格（门户没有当日美元）",
+  "tariff.history.company": "船公司",
+  "tariff.warning.ptax_iof_added":
+    "各船公司的 PTAX（{ptax}%）和 IOF（{iof}%）计入总额：以美元支付的部分（运费和费用）按 美元 × 汇率 × (1 + PTAX) × (1 + IOF) 计算。表格本身不加这两项，所以这里的总额比表中的高。",
+  "tariff.warning.ptax_iof_missing":
+    "{sheet}：{forwarder} 在表中没有 {missing}；其总额不含这项加价。",
+  "tariff.fees.ptaxIof": "PTAX / IOF",
+  "tariff.perCbm.auto":
+    "每导入一张表就按目的港 {dest} 自动更新。变化超过 {max}% 时保留原值，等管理员核对。",
+  "tariff.perCbm.autoApplied":
+    "最近一次自动更新（{date}）：已应用 R$ {perCbm}/m³。",
+  "tariff.perCbm.autoHeld":
+    "最近一次自动更新（{date}）：R$ {perCbm}/m³ 未应用（原为 {previous}；变化太大）。请核对运价表，确认无误后再应用。",
+  "tariff.perCbm.autoSkipped.no_capacity":
+    "最近一次自动更新（{date}）：未计算（请在设置中登记 40HC 集装箱）。",
+  "tariff.perCbm.autoSkipped.no_rates":
+    "最近一次自动更新（{date}）：未计算（该目的港没有运价）。",
+  "tariff.perCbm.applyHintOperator":
+    "船公司还没报该产品运费时使用（商品展示和客户报价）。只有管理员能手动应用。",
+  "tariff.upload.title": "你的运价表",
+  "tariff.upload.button": "导入表格",
+  "tariff.upload.last": "最近上传：参考日期 {date}，{rates} 条运价。",
+  "tariff.upload.none": "你还没有把运价表发给 Wellmix。",
+  "tariff.upload.hint":
+    "下面的装运日期、到达、船名和提单都是可选的：确认已装运即可继续。",
 };

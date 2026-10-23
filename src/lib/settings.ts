@@ -125,6 +125,14 @@ export const DEFAULT_SETTINGS = {
   /** Frete marítimo estimado por CBM (null = sem estimativa; o operador informa o da companhia marítima). */
   freightPerCbm: null as number | null,
   freightCurrency: "USD",
+  /**
+   * Destino do tarifário que dá o frete por m³ (NVT, ITJ...): o último que o
+   * admin usou no tarifário. Vazio = Navegantes (ou o 1º destino). Gravado
+   * pelo tarifário, não pelo formulário das Configurações.
+   */
+  freightTariffDestination: "",
+  /** Última atualização automática do frete por m³ pelo tarifário. Gravada pelo sistema. */
+  freightPerCbmAuto: null as FreightPerCbmAuto | null,
   /** Câmbio manual (R$ por unidade), usado se a PTAX nunca foi obtida. */
   fxManualRates: { USD: null, RMB: null, EUR: null } as Record<
     "USD" | "RMB" | "EUR",
@@ -154,6 +162,24 @@ export const DEFAULT_SETTINGS = {
   /** Importadora dona da plataforma (preparação multi-importador; um só valor hoje). */
   importerName: "Wellmix",
 };
+
+/**
+ * Frete por m³ refeito a cada planilha de frete importada: aplicado, ou
+ * segurado (variação grande demais) / sem cálculo, com o motivo.
+ */
+export interface FreightPerCbmAuto {
+  at: string;
+  status: "applied" | "held" | "skipped";
+  /** Por que não aplicou: "jump" (variação acima do limite), "no_capacity", "no_rates". */
+  reason: string | null;
+  destination: string | null;
+  /** Valor calculado (R$ por m³) e o que estava antes. */
+  perCbm: number | null;
+  previous: number | null;
+  previousCurrency: string | null;
+  /** Planilha que disparou a conta. */
+  tariffId: string;
+}
 
 /** Uma parte da tabela fiscal (TEC ou TIPI): quando, quantos NCMs e de onde veio. */
 export interface FiscalPartMeta {

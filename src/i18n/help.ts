@@ -60,7 +60,7 @@ export const helpPt = {
   "help.stage.INSPECTION":
     "Fornecedor envia foto sem embalagem, com embalagem, na balança e o peso medido. Divergência acima da tolerância bloqueia a etapa até a Wellmix revisar.",
   "help.stage.SHIPPING":
-    "Companhia marítima (ou a Wellmix, se não houver uma designada) informa data de embarque, previsão de chegada, navio e o BL.",
+    "Companhia marítima (ou a Wellmix, se não houver uma designada) confirma o embarque. Data de embarque, previsão de chegada, navio e BL são opcionais: preencha o que já tiver.",
   "help.stage.CUSTOMS":
     "Despachante registra o número do processo, documentos aduaneiros, custos previstos e realizados e a liberação.",
   "help.stage.TRANSPORT":
@@ -154,7 +154,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.INSPECTION":
     "Supplier sends photos without packaging, with packaging, on the scale and the measured weight. Divergence above tolerance blocks the stage until Wellmix reviews.",
   "help.stage.SHIPPING":
-    "Shipping line (or Wellmix if none is assigned) informs shipping date, ETA, vessel and the BL.",
+    "Shipping line (or Wellmix if none is assigned) confirms the shipment. Shipping date, ETA, vessel and BL are optional: fill in what you already have.",
   "help.stage.CUSTOMS":
     "Customs broker registers the process number, customs documents, estimated and actual costs and the release.",
   "help.stage.TRANSPORT":
@@ -245,7 +245,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.INSPECTION":
     "供应商提交无包装照片、带包装照片、称重照片和实测重量。超出容差将阻塞阶段，直到 Wellmix 复核。",
   "help.stage.SHIPPING":
-    "船公司（未指定时由 Wellmix）填写装运日期、预计到达、船名和提单。",
+    "船公司（未指定时由 Wellmix）确认已装运。装运日期、预计到达、船名和提单都是可选的：有就填写。",
   "help.stage.CUSTOMS":
     "报关行登记流程编号、清关文件、预计和实际费用以及放行。",
   "help.stage.TRANSPORT": "承运商填写车牌、预计送达、状态并确认送达。",

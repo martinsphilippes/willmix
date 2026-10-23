@@ -1,6 +1,9 @@
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import type { OrderTariffView } from "@/lib/services/freight-tariff";
+import type {
+  MyTariffStatus,
+  OrderTariffView,
+} from "@/lib/services/freight-tariff";
 import { Badge, LinkButton, TextLink, cx, formatDate, formatMoney } from "./ui";
 
 /** Opções mostradas no cartão (as mais baratas; a companhia do pedido sempre aparece). */
@@ -176,6 +179,57 @@ export function FreightTariffBox({
           </TextLink>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Cartão Embarque da companhia marítima do pedido: só o botão de enviar a
+ * planilha de fretes dela (e quando mandou a última). Os dados do embarque
+ * abaixo são opcionais.
+ */
+export function FreightTariffUploadBox({
+  t,
+  orderId,
+  status,
+}: {
+  t: Translate;
+  orderId: string;
+  /** null = ainda não mandou; "failed" = não deu para ler agora. */
+  status: MyTariffStatus | "failed" | null;
+}) {
+  const href = `/app/freight/tariff?from=${encodeURIComponent(`/app/orders/${orderId}`)}`;
+  return (
+    <div
+      className="mb-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-3"
+      data-tariff-upload-box=""
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-zinc-900">
+          {t("tariff.upload.title")}
+        </p>
+        <LinkButton
+          href={href}
+          variant="primary"
+          className="text-xs"
+          data-tariff-import-link=""
+        >
+          {t("tariff.upload.button")}
+        </LinkButton>
+      </div>
+      <p className="mt-2 text-sm text-zinc-700">
+        {status === "failed"
+          ? t("tariff.order.unavailable")
+          : status
+            ? t("tariff.upload.last", {
+                date: formatDate(`${status.referenceDate}T12:00:00Z`, t),
+                rates: String(status.rateCount),
+              })
+            : t("tariff.upload.none")}
+      </p>
+      <p className="mt-1 text-[11px] text-zinc-500">
+        {t("tariff.upload.hint")}
+      </p>
     </div>
   );
 }
