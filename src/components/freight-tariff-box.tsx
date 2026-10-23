@@ -87,7 +87,7 @@ export function FreightTariffBox({
                 const best = o === cheapest;
                 return (
                   <li
-                    key={`${o.destinationCode}-${o.forwarder}-${o.route}`}
+                    key={`${o.destinationCode}-${o.shippingLineId ?? ""}-${o.forwarder}-${o.route}`}
                     className={cx(
                       "flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-xl border bg-white px-3 py-2",
                       best ? "border-emerald-300" : "border-zinc-200",

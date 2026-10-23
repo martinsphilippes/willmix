@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
-import { getStore } from "@/lib/db";
 import { audit } from "@/lib/services/audit";
-import { comparativeTariff } from "@/lib/services/freight-tariff";
 import {
-  normalizeTariffData,
-  sankhyaCsv,
-} from "@/lib/services/freight-tariff-calc";
+  comparativeTariff,
+  getFreightTariff,
+} from "@/lib/services/freight-tariff";
+import { sankhyaCsv } from "@/lib/services/freight-tariff-calc";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +14,8 @@ export const dynamic = "force-dynamic";
  * AD_FREINT.CSV do tarifário (o arquivo que a macro da planilha gerava para o
  * Sankhya): ponto e vírgula, datas DD/MM/AAAA, vírgula decimal, UTF-8 sem
  * BOM. `current` = o comparativo (cada companhia com a data da planilha
- * dela); um id = aquela planilha. Só a Wellmix (tem as tarifas de todas as
- * companhias).
+ * dela); um id = aquela planilha (a de uma companhia com o código dela, como
+ * no comparativo). Só a Wellmix (tem as tarifas de todas as companhias).
  */
 export async function GET(
   _request: Request,
@@ -37,10 +36,10 @@ export async function GET(
     csv = sankhyaCsv(comparative.data, comparative.referenceDate);
     summary = `AD_FREINT.CSV baixado (comparativo de ${comparative.sources.length} planilha(s), até ${comparative.referenceDate})`;
   } else {
-    const tariff = await getStore().get("freight_tariffs", id);
+    const tariff = await getFreightTariff(user, id);
     if (!tariff)
       return NextResponse.json({ error: "not_found" }, { status: 404 });
-    csv = sankhyaCsv(normalizeTariffData(tariff.data), tariff.referenceDate);
+    csv = sankhyaCsv(tariff.data, tariff.referenceDate);
     summary = `AD_FREINT.CSV baixado (tarifário de ${tariff.referenceDate})`;
   }
   await audit(

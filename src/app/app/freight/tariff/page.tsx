@@ -75,6 +75,7 @@ const FROM_ORDER = /^\/app\/orders\/[A-Za-z0-9_-]{1,64}$/;
 /** Avisos do CSV do Sankhya (códigos internos da Wellmix): a companhia não vê. */
 const SANKHYA_WARNINGS = new Set([
   "forwarder_no_code",
+  "line_no_code",
   "port_no_id",
   "port_no_id_similar",
   "sankhya_tab_outdated",

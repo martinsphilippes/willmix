@@ -273,6 +273,8 @@ export const pt = {
   "tariff.mine.goesTo": "Esta planilha vai para",
   "tariff.mine.goesToHint":
     "Sua companhia; o nome dos blocos na planilha não importa.",
+  "tariff.warning.line_no_code":
+    "{company} não tem código do Sankhya: nenhum bloco das planilhas da Wellmix é dela (cadastre a companhia com o nome do bloco dela na planilha consolidada). Os preços dela ficam fora do CSV.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -544,6 +546,8 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.mine.goesTo": "This spreadsheet goes to",
   "tariff.mine.goesToHint":
     "Your line; block names in the spreadsheet do not matter.",
+  "tariff.warning.line_no_code":
+    "{company} has no Sankhya code: no block in Wellmix's spreadsheets belongs to it (register the line with its block name from the consolidated spreadsheet). Its prices stay out of the CSV.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -802,4 +806,6 @@ export const zh: Record<keyof typeof pt, string> = {
     "表中有 {n} 个区块（{blocks}），全部作为 {company} 的价格导入。如有不属于该公司的区块，请从表中删除后重新上传。",
   "tariff.mine.goesTo": "此表上传至",
   "tariff.mine.goesToHint": "你的船公司；表中区块的名称无关紧要。",
+  "tariff.warning.line_no_code":
+    "{company} 没有 Sankhya 代码：Wellmix 的表中没有属于它的区块（请按汇总表中的区块名称登记该船公司）。它的价格不会进入 CSV。",
 };

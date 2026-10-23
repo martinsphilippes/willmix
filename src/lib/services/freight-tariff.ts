@@ -26,7 +26,6 @@ import { openWorkbook } from "./xlsx";
 import {
   TARIFF_CONTAINER_TYPE,
   TariffError,
-  blockOfCompany,
   blocksWithRates,
   destinationCode,
   foldName,
@@ -35,13 +34,18 @@ import {
   normalizeTariffData,
   optionsForOrigin,
   originsWithRates,
+  ownerOfBlock,
   parseFreightTariff,
   perCbmSuggestion,
   tariffCounts,
+  wellmixCodes,
+  withCompanyCodes,
   type FreightTariffData,
+  type RegisteredLine,
   type TariffOption,
   type TariffParseOptions,
   type TariffSheet,
+  type TariffSource,
 } from "./freight-tariff-calc";
 
 /*
@@ -192,7 +196,10 @@ export async function importFreightTariff(
   if (file.size > MAX_TARIFF_BYTES) throw new TariffError("tariff_too_large");
   const bytes = new Uint8Array(await file.arrayBuffer());
   const name = (file.name || "tarifario.xlsx").slice(0, 200);
-  const data = readTariffWorkbook(bytes, name);
+  // Bloco sem nome na planilha de uma companhia é dela.
+  const data = readTariffWorkbook(bytes, name, {
+    fallbackName: company?.name ?? null,
+  });
   const store = getStore();
   // Só a planilha anterior da mesma companhia (ou a consolidada anterior)
   // sai de vigência.
@@ -303,7 +310,10 @@ export async function getFreightTariff(
   if (!isWellmix(user) && user.role !== "shipping_line")
     throw new ForbiddenError();
   const row = await getStore().get("freight_tariffs", id);
-  return row && canViewTariff(user, row) ? normalized(row) : null;
+  if (!row || !canViewTariff(user, row)) return null;
+  const tariff = normalized(row)!;
+  // Wellmix vê os códigos do Sankhya da companhia (os do comparativo).
+  return isWellmix(user) ? withSankhyaCodes(tariff) : tariff;
 }
 
 /** Histórico de importações (mais novas primeiro): todas (Wellmix) ou as da companhia. */
@@ -367,54 +377,73 @@ async function rateToBrl(currency: string): Promise<number | null> {
   }
 }
 
-/** Comparativo das planilhas vigentes (sem checar papel: uso interno). */
-async function buildComparative(): Promise<ComparativeTariff | null> {
+/** Todas as companhias marítimas do cadastro (dono de bloco pelo nome). */
+async function registeredLines(): Promise<RegisteredLine[]> {
+  const parties = await getStore().list("parties", {
+    filter: { type: "shipping_line" },
+  });
+  return parties.map((p) => ({ id: p.id, name: p.name }));
+}
+
+/** Importada pela Wellmix (o código escrito nela vale para o Sankhya)? */
+function byWellmixOf(row: FreightTariff, users: User[]): boolean {
+  return isWellmix(
+    users.find((u) => u.id === row.uploadedByUserId) ?? { role: "customer" },
+  );
+}
+
+/** Planilhas vigentes como fontes do comparativo, com as companhias do cadastro. */
+async function activeSources(): Promise<{
+  rows: FreightTariff[];
+  lines: RegisteredLine[];
+  users: User[];
+  sources: TariffSource[];
+}> {
   const store = getStore();
   const rows = (
     await store.list("freight_tariffs", { filter: { status: "active" } })
   ).map((r) => normalized(r)!);
-  if (!rows.length) return null;
-  const lineIds = [
-    ...new Set(rows.map(lineOf).filter((x): x is string => !!x)),
-  ];
-  const [parties, users, fx] = await Promise.all([
-    lineIds.length
-      ? store.list("parties", { filter: { id: lineIds } })
-      : Promise.resolve([] as Party[]),
-    store.list("users", {
-      filter: { id: [...new Set(rows.map((r) => r.uploadedByUserId))] },
-    }),
-    portalUsd(),
+  const [lines, users] = await Promise.all([
+    registeredLines(),
+    rows.length
+      ? store.list("users", {
+          filter: { id: [...new Set(rows.map((r) => r.uploadedByUserId))] },
+        })
+      : Promise.resolve([] as User[]),
   ]);
   const company = (id: string | null) =>
-    id ? (parties.find((p) => p.id === id)?.name ?? null) : null;
+    id ? (lines.find((p) => p.id === id)?.name ?? null) : null;
   const sources = rows.map((row) => ({
-    row,
+    id: row.id,
+    referenceDate: row.referenceDate,
+    createdAt: row.createdAt,
+    shippingLineId: lineOf(row),
     company: company(lineOf(row)),
+    byWellmix: byWellmixOf(row, users),
+    data: row.data,
   }));
-  const data = mergeTariffs(
-    sources.map(({ row, company: name }) => ({
-      id: row.id,
-      referenceDate: row.referenceDate,
-      createdAt: row.createdAt,
-      shippingLineId: lineOf(row),
-      company: name,
-      byWellmix: isWellmix(
-        users.find((u) => u.id === row.uploadedByUserId) ?? {
-          role: "customer",
-        },
-      ),
-      data: row.data,
-    })),
-    { fx: fx?.rate ?? null },
-  );
+  return { rows, lines, users, sources };
+}
+
+/** Comparativo das planilhas vigentes (sem checar papel: uso interno). */
+async function buildComparative(): Promise<ComparativeTariff | null> {
+  const [{ rows, lines, sources }, fx] = await Promise.all([
+    activeSources(),
+    portalUsd(),
+  ]);
+  if (!rows.length) return null;
+  const data = mergeTariffs(sources, { fx: fx?.rate ?? null, lines });
   if (!data) return null;
   // Só as planilhas que entraram no comparativo (a mais nova de cada companhia).
   const used = new Set<string>();
   for (const d of data.destinations)
     for (const f of d.forwarders) if (f.tariffId) used.add(f.tariffId);
-  const inUse = sources
-    .filter((s) => used.has(s.row.id))
+  const inUse = rows
+    .filter((row) => used.has(row.id))
+    .map((row) => ({
+      row,
+      company: sources.find((s) => s.id === row.id)?.company ?? null,
+    }))
     .sort((a, b) => b.row.createdAt.localeCompare(a.row.createdAt));
   return {
     data,
@@ -424,6 +453,33 @@ async function buildComparative(): Promise<ComparativeTariff | null> {
       .sort()
       .at(-1)!,
     fxDay: data.fxSource === "portal" ? (fx?.day ?? null) : null,
+  };
+}
+
+/**
+ * Planilha de uma companhia com os códigos do Sankhya dela (os mesmos do
+ * comparativo): para a Wellmix ver a planilha e baixar o CSV dela. A
+ * consolidada fica como está.
+ */
+async function withSankhyaCodes(row: FreightTariff): Promise<FreightTariff> {
+  if (!lineOf(row)) return row;
+  const { lines, sources } = await activeSources();
+  const users = await getStore().list("users", {
+    filter: { id: [row.uploadedByUserId] },
+  });
+  const lineId = lineOf(row);
+  return {
+    ...row,
+    data: withCompanyCodes(
+      row.data,
+      {
+        shippingLineId: lineId,
+        byWellmix: byWellmixOf(row, users),
+        company: lines.find((l) => l.id === lineId)?.name ?? null,
+      },
+      lines,
+      wellmixCodes(sources, lines),
+    ),
   };
 }
 
@@ -657,11 +713,11 @@ export async function orderTariffView(
   const comparative = await buildComparative();
   if (!comparative) return null;
   const store = getStore();
-  const [[sheet], line] = await Promise.all([
+  const [[sheet], lines] = await Promise.all([
     store.list("purchase_sheets", { filter: { orderId: order.id }, limit: 1 }),
     order.shippingLineId
-      ? store.get("parties", order.shippingLineId)
-      : Promise.resolve(null),
+      ? registeredLines()
+      : Promise.resolve([] as RegisteredLine[]),
   ]);
   const data = comparative.data;
   const location = sheet?.location?.trim() || null;
@@ -674,12 +730,13 @@ export async function orderTariffView(
   const selectedOrigin = origin
     ? (origins.find((o) => foldName(o) === foldName(origin)) ?? null)
     : null;
-  // Da companhia do pedido: a planilha dela, ou o bloco com o nome dela na consolidada.
+  // Da companhia do pedido: a planilha dela, ou o bloco da consolidada que
+  // é dela (dono pelo nome, entre todas as companhias do cadastro).
   const assigned = (o: TariffOption) =>
     !!order.shippingLineId &&
     (o.shippingLineId
       ? o.shippingLineId === order.shippingLineId
-      : !!line && blockOfCompany(o.forwarder, line.name));
+      : ownerOfBlock(o.forwarder, lines) === order.shippingLineId);
   const options = origin
     ? optionsForOrigin(data, origin).map((o) => ({
         ...o,
