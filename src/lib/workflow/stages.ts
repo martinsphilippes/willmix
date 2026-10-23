@@ -12,6 +12,27 @@ export const SHIPPED_KEY = "shipped";
 export const SHIPPED_LABEL = "Embarque confirmado";
 /** Dados do embarque que eram obrigatórios antes do "Embarque confirmado". */
 export const SHIPPING_OPTIONAL_KEYS = ["ship_date", "eta", "bl"] as const;
+/** Dados do embarque que ainda dá para completar depois de confirmado. */
+export const SHIPPING_LATE_KEYS = ["ship_date", "eta", "vessel", "bl"] as const;
+
+/**
+ * Dado opcional do Embarque já confirmado (BL que chegou depois, data real,
+ * navio): ainda pode ser enviado ou trocado até o pedido encerrar.
+ */
+export function canCompleteLater(
+  stage: { key: string; status: string },
+  requirement: { key: string; required: boolean },
+  order: { status: string },
+): boolean {
+  return (
+    stage.key === "SHIPPING" &&
+    stage.status === "done" &&
+    !requirement.required &&
+    (SHIPPING_LATE_KEYS as readonly string[]).includes(requirement.key) &&
+    order.status !== "CANCELLED" &&
+    order.status !== "CLOSED"
+  );
+}
 
 export interface StageTemplate {
   key: StageKey;

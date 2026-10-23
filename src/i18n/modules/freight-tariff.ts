@@ -195,7 +195,7 @@ export const pt = {
   "tariff.stat.updated": "Tabela mais nova",
   "tariff.stat.fxCompare": "Câmbio do comparativo",
   "tariff.stat.fxPortalDetail":
-    "dólar do dia (PTAX de {date}), o mesmo para todas",
+    "dólar do dia (PTAX de {date}) + spread da planilha da Wellmix, o mesmo para todas",
   "tariff.stat.fxSheetDetail": "da planilha (sem o dólar do dia no portal)",
   "tariff.history.company": "Companhia",
   "tariff.warning.ptax_iof_added":
@@ -222,6 +222,8 @@ export const pt = {
     "Você ainda não enviou sua tabela de frete para a Wellmix.",
   "tariff.upload.hint":
     "Data de embarque, chegada, navio e BL abaixo são opcionais: confirme o embarque para avançar.",
+  "tariff.error.tariff_other_companies":
+    "A planilha tem preços de outras companhias. Deixe só os blocos da companhia (com o nome dela, como no cadastro) e envie de novo; a Wellmix pode importar a planilha com várias companhias como consolidada.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -415,7 +417,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.stat.updated": "Newest table",
   "tariff.stat.fxCompare": "Comparison FX",
   "tariff.stat.fxPortalDetail":
-    "today's dollar (PTAX of {date}), the same for all",
+    "today's dollar (PTAX of {date}) + spread from Wellmix's spreadsheet, the same for all",
   "tariff.stat.fxSheetDetail":
     "from the spreadsheet (no daily dollar in the portal)",
   "tariff.history.company": "Line",
@@ -442,6 +444,8 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.upload.none": "You have not sent your freight table to Wellmix yet.",
   "tariff.upload.hint":
     "Shipping date, arrival, vessel and BL below are optional: confirm the shipment to move on.",
+  "tariff.error.tariff_other_companies":
+    "The spreadsheet has prices from other shipping lines. Keep only the line's own blocks (named as in the registry) and send it again; Wellmix can import a multi-line spreadsheet as consolidated.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -622,7 +626,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "每家船公司、每个港口和目的港一条运价（直达航线；没有时用长航线），每家船公司使用自己表的日期。格式与宏相同。",
   "tariff.stat.updated": "最新的表",
   "tariff.stat.fxCompare": "对比汇率",
-  "tariff.stat.fxPortalDetail": "当日美元（{date} 的 PTAX），所有船公司相同",
+  "tariff.stat.fxPortalDetail":
+    "当日美元（{date} 的 PTAX）+ Wellmix 表中的点差，所有船公司相同",
   "tariff.stat.fxSheetDetail": "来自表格（门户没有当日美元）",
   "tariff.history.company": "船公司",
   "tariff.warning.ptax_iof_added":
@@ -648,4 +653,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.upload.none": "你还没有把运价表发给 Wellmix。",
   "tariff.upload.hint":
     "下面的装运日期、到达、船名和提单都是可选的：确认已装运即可继续。",
+  "tariff.error.tariff_other_companies":
+    "表格里有其他船公司的价格。只保留本公司的区块（名称与登记一致）后重新上传；多家船公司的表可由 Wellmix 作为汇总表导入。",
 };

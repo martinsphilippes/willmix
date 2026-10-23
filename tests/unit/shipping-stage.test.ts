@@ -74,6 +74,16 @@ async function orderAtShipping(shippingLineId: string | null = "armador") {
 const reqsOf = (stageId: string) =>
   getStore().list("requirements", { filter: { stageId } });
 
+/** Como era antes: data, chegada e BL obrigatórios, sem "Embarque confirmado". */
+async function makeLegacy(stageId: string) {
+  const store = getStore();
+  for (const r of await reqsOf(stageId)) {
+    if (r.key === "shipped") await store.remove("requirements", r.id);
+    else if (["ship_date", "eta", "bl"].includes(r.key))
+      await store.update("requirements", r.id, { required: true });
+  }
+}
+
 describe("Embarque: dados opcionais, confirmar avança", () => {
   it("pedido novo: data, chegada, navio e BL opcionais; 'Embarque confirmado' obrigatório", async () => {
     const { shipping } = await orderAtShipping();
@@ -124,12 +134,7 @@ describe("Embarque: dados opcionais, confirmar avança", () => {
   it("pedido antigo: os três ficam opcionais e ganha 'Embarque confirmado' (uma vez só)", async () => {
     const store = getStore();
     const { order, shipping } = await orderAtShipping();
-    // Como era antes: data, chegada e BL obrigatórios, sem a confirmação.
-    for (const r of await reqsOf(shipping.id)) {
-      if (r.key === "shipped") await store.remove("requirements", r.id);
-      else if (["ship_date", "eta", "bl"].includes(r.key))
-        await store.update("requirements", r.id, { required: true });
-    }
+    await makeLegacy(shipping.id);
     // A data de embarque já tinha sido enviada.
     const shipDate = (await reqsOf(shipping.id)).find(
       (r) => r.key === "ship_date",
@@ -172,8 +177,7 @@ describe("Embarque: dados opcionais, confirmar avança", () => {
   it("pedido antigo sem companhia: a Wellmix confirma; etapa concluída ou pedido cancelado não mudam", async () => {
     const store = getStore();
     const { order, shipping } = await orderAtShipping(null);
-    for (const r of await reqsOf(shipping.id))
-      if (r.key === "shipped") await store.remove("requirements", r.id);
+    await makeLegacy(shipping.id);
     // O job diário pega todos os abertos.
     expect(await normalizeShipping()).toBeGreaterThanOrEqual(1);
     const shipped = (await reqsOf(shipping.id)).find(
@@ -184,17 +188,89 @@ describe("Embarque: dados opcionais, confirmar avança", () => {
     expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
 
     const closed = await orderAtShipping();
-    for (const r of await reqsOf(closed.shipping.id))
-      if (r.key === "shipped") await store.remove("requirements", r.id);
+    await makeLegacy(closed.shipping.id);
     await store.update("stages", closed.shipping.id, { status: "done" });
     const cancelled = await orderAtShipping();
-    for (const r of await reqsOf(cancelled.shipping.id))
-      if (r.key === "shipped") await store.remove("requirements", r.id);
+    await makeLegacy(cancelled.shipping.id);
     await store.update("orders", cancelled.order.id, { status: "CANCELLED" });
     expect(await normalizeShipping(closed.order.id)).toBe(0);
     expect(await normalizeShipping(cancelled.order.id)).toBe(0);
     expect(
       (await reqsOf(closed.shipping.id)).some((r) => r.key === "shipped"),
     ).toBe(false);
+  });
+
+  it("pedido novo nunca é tratado como antigo (nem sem o item, durante a criação)", async () => {
+    const store = getStore();
+    const { order, shipping } = await orderAtShipping();
+    for (const r of await reqsOf(shipping.id))
+      if (r.key === "shipped") await store.remove("requirements", r.id);
+    // Itens opcionais e sem "Embarque confirmado": é a criação em andamento.
+    expect(await normalizeShipping(order.id)).toBe(0);
+  });
+
+  it("pedido antigo: o item novo vai para a companhia de hoje, mesmo com a data feita pela Wellmix antes", async () => {
+    const store = getStore();
+    const { order, shipping } = await orderAtShipping(null);
+    await makeLegacy(shipping.id);
+    const shipDate = (await reqsOf(shipping.id)).find(
+      (r) => r.key === "ship_date",
+    )!;
+    await submitRequirement(operator, shipDate.id, { value: "2026-10-15" });
+    // Depois a Wellmix designa a companhia.
+    await store.update("orders", order.id, { shippingLineId: "armador" });
+    expect(await normalizeShipping(order.id)).toBe(1);
+    const shipped = (await reqsOf(shipping.id)).find(
+      (r) => r.key === "shipped",
+    )!;
+    expect(shipped.role).toBe("shipping_line");
+  });
+
+  it("depois de confirmado, BL, datas e navio ainda podem chegar (até o pedido encerrar)", async () => {
+    const store = getStore();
+    const { order, shipping } = await orderAtShipping();
+    const reqs = await reqsOf(shipping.id);
+    const shipped = reqs.find((r) => r.key === "shipped")!;
+    await submitRequirement(armador, shipped.id, { value: "confirmed" });
+    expect((await store.get("stages", shipping.id))!.status).toBe("done");
+    // O BL chega dias depois: a companhia envia; a data real também.
+    const bl = reqs.find((r) => r.key === "bl")!;
+    const doc = await store.create("documents", {
+      orderId: order.id,
+      requestId: null,
+      requirementId: bl.id,
+      type: "bl",
+      name: "bl.pdf",
+      mime: "application/pdf",
+      size: 10,
+      storageKey: "x",
+      version: 1,
+      previousDocumentId: null,
+      uploadedByUserId: armador.id,
+      visibility: "all",
+    } as never);
+    await submitRequirement(armador, bl.id, { documentId: doc.id });
+    const shipDate = reqs.find((r) => r.key === "ship_date")!;
+    await submitRequirement(armador, shipDate.id, { value: "2026-10-16" });
+    expect((await store.get("requirements", bl.id))!.status).toBe("done");
+    // A etapa continua concluída e o pedido segue onde estava.
+    expect((await store.get("stages", shipping.id))!.status).toBe("done");
+    expect((await store.get("orders", order.id))!.status).toBe("CUSTOMS");
+    // O marco do pagamento passa a ser a data real do embarque.
+    const stages = await store.list("stages", {
+      filter: { orderId: order.id },
+    });
+    expect(
+      paymentEventsFor(order, stages, await reqsOf(shipping.id)).shipped,
+    ).toBe("2026-10-16");
+    // Item obrigatório de etapa concluída, ou pedido encerrado: não.
+    await expect(
+      submitRequirement(armador, shipped.id, { value: "confirmed" }),
+    ).rejects.toThrow("stage_not_active");
+    await store.update("orders", order.id, { status: "CLOSED" });
+    const vessel = reqs.find((r) => r.key === "vessel")!;
+    await expect(
+      submitRequirement(armador, vessel.id, { value: "MSC X" }),
+    ).rejects.toThrow("stage_not_active");
   });
 });

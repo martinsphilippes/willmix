@@ -18,6 +18,21 @@ import { audit } from "./audit";
 
 const OPEN_STATUSES: Stage["status"][] = ["pending", "active", "blocked"];
 
+const isOptionalKey = (key: string) =>
+  (SHIPPING_OPTIONAL_KEYS as readonly string[]).includes(key);
+
+/**
+ * Embarque de antes: ainda tem data, chegada ou BL obrigatórios. (Os pedidos
+ * novos já nascem com eles opcionais: nunca entram aqui, nem enquanto as
+ * etapas estão sendo criadas.)
+ */
+function needsUpgrade(requirements: Requirement[]): boolean {
+  return (
+    !requirements.some((r) => r.key === SHIPPED_KEY) &&
+    requirements.some((r) => isOptionalKey(r.key) && r.required)
+  );
+}
+
 /** Ajusta o Embarque de um pedido antigo. Devolve se mudou algo. */
 export async function normalizeShippingStage(stage: Stage): Promise<boolean> {
   if (stage.key !== "SHIPPING" || !OPEN_STATUSES.includes(stage.status))
@@ -26,19 +41,14 @@ export async function normalizeShippingStage(stage: Stage): Promise<boolean> {
   const requirements = await store.list("requirements", {
     filter: { stageId: stage.id },
   });
-  if (requirements.some((r) => r.key === SHIPPED_KEY)) return false;
+  if (!needsUpgrade(requirements)) return false;
   const order = await store.get("orders", stage.orderId);
   if (!order || order.status === "CANCELLED") return false;
 
-  const optional = (r: Requirement) =>
-    (SHIPPING_OPTIONAL_KEYS as readonly string[]).includes(r.key);
-  for (const r of requirements)
-    if (optional(r) && r.required)
-      await store.update("requirements", r.id, { required: false });
-  // Mesmo papel dos outros itens (a companhia do pedido, ou a Wellmix).
-  const role: Role =
-    requirements.find(optional)?.role ??
-    (order.shippingLineId ? "shipping_line" : "operator");
+  // Primeiro o item que conclui a etapa (com o papel de hoje: a companhia do
+  // pedido, ou a Wellmix); só depois os outros ficam opcionais. Assim a etapa
+  // nunca fica sem nada obrigatório no meio do caminho.
+  const role: Role = order.shippingLineId ? "shipping_line" : "operator";
   await store.create("requirements", {
     orderId: order.id,
     stageId: stage.id,
@@ -67,6 +77,9 @@ export async function normalizeShippingStage(stage: Stage): Promise<boolean> {
   for (const extra of created)
     if (extra !== keep && extra.status !== "done")
       await store.remove("requirements", extra.id);
+  for (const r of requirements)
+    if (isOptionalKey(r.key) && r.required)
+      await store.update("requirements", r.id, { required: false });
   await audit(
     null,
     "stage.shipping_optional",
@@ -82,17 +95,30 @@ export async function normalizeShippingStage(stage: Stage): Promise<boolean> {
 
 /**
  * Pedidos de antes passam para o Embarque novo: um pedido (página do pedido)
- * ou todos os abertos (job diário). Nunca derruba a tela: falha vai para o log.
+ * ou todos os abertos (job diário, com uma leitura só dos itens). Nunca
+ * derruba a tela: falha vai para o log.
  */
 export async function normalizeShipping(orderId?: string): Promise<number> {
   try {
-    const stages = await getStore().list("stages", {
-      filter: orderId
-        ? { orderId, key: "SHIPPING" }
-        : { key: "SHIPPING", status: OPEN_STATUSES },
+    const store = getStore();
+    const stages = (
+      await store.list("stages", {
+        filter: orderId
+          ? { orderId, key: "SHIPPING" }
+          : { key: "SHIPPING", status: OPEN_STATUSES },
+      })
+    ).filter((s) => OPEN_STATUSES.includes(s.status));
+    if (!stages.length) return 0;
+    const requirements = await store.list("requirements", {
+      filter: {
+        stageId: stages.map((s) => s.id),
+        key: [SHIPPED_KEY, ...SHIPPING_OPTIONAL_KEYS],
+      },
     });
     let changed = 0;
     for (const stage of stages) {
+      if (!needsUpgrade(requirements.filter((r) => r.stageId === stage.id)))
+        continue;
       try {
         if (await normalizeShippingStage(stage)) changed++;
       } catch (error) {

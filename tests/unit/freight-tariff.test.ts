@@ -874,6 +874,23 @@ describe("importar e usar o tarifário", () => {
     );
     expect((await service.comparativeTariff(admin))!.sources.length).toBe(3);
     expect(again.shippingLineId).toBe("armador");
+    // A planilha com os preços das outras companhias (a consolidada devolvida):
+    // recusada para a companhia, e para a Wellmix em nome de uma companhia.
+    await expect(
+      service.importFreightTariff(
+        shippingLine,
+        file(xlsxFile(workbook())),
+        null,
+      ),
+    ).rejects.toThrow("tariff_other_companies");
+    await expect(
+      service.importFreightTariff(
+        operator,
+        file(xlsxFile(workbook())),
+        null,
+        betaId,
+      ),
+    ).rejects.toThrow("tariff_other_companies");
     // Companhia que não existe (ou parceiro de outro tipo): recusado.
     await expect(
       service.importFreightTariff(
@@ -953,8 +970,16 @@ describe("importar e usar o tarifário", () => {
     expect(settings.freightPerCbm).toBe(value);
     expect(settings.freightCurrency).toBe("BRL");
     expect(settings.freightTariffDestination).toBe("ITJ");
+    // Aplicar à mão encerra o "esperando conferência" da atualização automática.
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("freightPerCbmAuto", {
+      ...(await getSettings()).freightPerCbmAuto!,
+      status: "held",
+      reason: "jump",
+    });
     // O comparativo inteiro.
     const current = await service.applyTariffPerCbm(admin, "current", "NVT");
+    expect((await getSettings()).freightPerCbmAuto).toBeNull();
     settings = await getSettings();
     expect(settings.freightPerCbm).toBe(current);
     expect(settings.freightTariffDestination).toBe("NVT");
@@ -994,7 +1019,7 @@ describe("importar e usar o tarifário", () => {
       ["BETA CARGO", "NVT", true],
     ]);
     // Bloco da consolidada com o nome da companhia do pedido também conta
-    // ("ALFA LINES" é da "Alfa"); nome diferente, não.
+    // ("ALFA LINES" é da "Alfa").
     const assignedFor = async (name: string) => {
       const party = await store.create("parties", {
         type: "shipping_line",
@@ -1009,7 +1034,9 @@ describe("importar e usar o tarifário", () => {
     };
     expect(await assignedFor("Alfa")).toEqual(["ALFA LINES"]);
     expect(await assignedFor("Alfa Lines")).toEqual(["ALFA LINES"]);
-    expect(await assignedFor("Alfa Lines Ltda")).toEqual([]);
+    // Razão social não atrapalha; nome diferente não conta.
+    expect(await assignedFor("Alfa Lines Ltda")).toEqual(["ALFA LINES"]);
+    expect(await assignedFor("Alfa Linhas")).toEqual([]);
     await store.create("purchase_sheets", {
       orderId: "pedido-yiwu",
       location: "Yiwu",
@@ -1036,6 +1063,32 @@ describe("importar e usar o tarifário", () => {
       (await service.orderTariffView(admin, order("pedido-yiwu"), "XPTO"))
         ?.origin,
     ).toBeNull();
+  });
+});
+
+describe("frete por m³ automático com valor em outra moeda", () => {
+  it("compara em R$ pelo câmbio do dia: perto aplica, longe espera o admin", async () => {
+    const { setSetting } = await import("@/lib/settings");
+    const [row] = await getStore().list("freight_tariffs", {
+      filter: { status: "active" },
+      limit: 1,
+    });
+    await setSetting("fxManualRates", { USD: 5, RMB: null, EUR: null });
+    const suggestion = (await service.refreshPerCbm(row.id)).perCbm!;
+    // US$ com o mesmo valor em R$ (÷ 5): dentro dos 30%, aplica e passa para R$.
+    await setSetting("freightCurrency", "USD");
+    await setSetting("freightPerCbm", Math.round((suggestion / 5) * 100) / 100);
+    expect((await service.refreshPerCbm(row.id)).status).toBe("applied");
+    expect((await getSettings()).freightCurrency).toBe("BRL");
+    // US$ 10/m³ (= R$ 50): longe demais, espera.
+    await setSetting("freightCurrency", "USD");
+    await setSetting("freightPerCbm", 10);
+    expect(await service.refreshPerCbm(row.id)).toMatchObject({
+      status: "held",
+      previous: 10,
+      previousCurrency: "USD",
+    });
+    expect((await getSettings()).freightPerCbm).toBe(10);
   });
 });
 
@@ -1453,7 +1506,11 @@ describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereç
     expect(calc.cellPercent("2%")).toBe(0.02);
     expect(calc.cellPercent("2,5%")).toBe(0.025);
     expect(calc.cellPercent("3.5")).toBe(0.035);
+    // IOF de 0,38% digitado sem "%": ponto percentual, não 38%.
+    expect(calc.cellPercent("0.38")).toBe(0.0038);
+    expect(calc.cellPercent("1")).toBe(0.01);
     expect(calc.cellPercent("80%")).toBeNull();
+    expect(calc.cellPercent("0.15")).toBeNull();
     expect(calc.cellPercent("-1")).toBeNull();
     expect(calc.cellPercent("")).toBeNull();
     expect(
@@ -1864,15 +1921,55 @@ describe("comparativo: as planilhas de todas as companhias juntas", () => {
     // "ALFA LINES" começa com "Alfa Lines": é dela; a planilha dela vale.
     expect(names).toEqual(["BETA CARGO", "GAMA", "ALFA - MSC"]);
     expect(calc.blockOfCompany("ROYAL CARGO - MSC", "Royal Cargo")).toBe(true);
+    // Razão social no cadastro não atrapalha.
+    expect(calc.blockOfCompany("BETA CARGO - MSC", "Beta Cargo Ltda")).toBe(
+      true,
+    );
+    expect(calc.blockOfCompany("ROYAL CARGO", "Royal Cargo S.A.")).toBe(true);
     expect(calc.blockOfCompany("SCAN GLOBAL -MSC", "MSC")).toBe(false);
     expect(calc.blockOfCompany("MS", "MS")).toBe(false);
   });
 
+  it("a planilha de uma companhia não tira nem imita o bloco de outra", () => {
+    // A Marítima manda um bloco com o nome de outra companhia (MAERSK).
+    const sheet = nvt();
+    sheet.cells[2][3] = "ALFA LINES";
+    sheet.cells[2][7] = "";
+    sheet.cells[2][11] = "";
+    sheet.cells[4][3] = "500";
+    for (const r of [4, 5, 6, 7])
+      for (let c = 5; c <= 14; c++) if (sheet.cells[r]) sheet.cells[r][c] = "";
+    const fake = calc.parseFreightTariff([sheet, fornecedores()]);
+    const merged = calc.mergeTariffs([
+      source("c", consolidated),
+      source("m", fake, {
+        createdAt: "2026-10-20T10:00:00Z",
+        shippingLineId: "maritima",
+        company: "Marítima SA",
+        byWellmix: false,
+      }),
+    ])!;
+    const nav = merged.destinations.find((d) => d.code === "NVT")!;
+    const alfas = nav.forwarders.filter((f) => f.name === "ALFA LINES");
+    // A ALFA da consolidada continua; a cópia da Marítima entra como dela, sem o código da ALFA.
+    expect(alfas.map((f) => [f.shippingLineId ?? null, f.code])).toEqual([
+      [null, "111"],
+      ["maritima", null],
+    ]);
+    // E o CSV do Sankhya não leva o preço da Marítima com o código da ALFA.
+    expect(calc.sankhyaCsv(merged, "2026-10-20")).not.toContain(
+      ";111;14/10/2026;60;45;3;500;",
+    );
+    expect(calc.sankhyaCsv(merged, "2026-10-20")).not.toContain(";500;");
+  });
+
   it("mesmo câmbio para todas: o dólar do dia do portal refaz os totais", () => {
     const merged = calc.mergeTariffs([source("c", consolidated)], {
-      fx: 5.5,
+      fx: 5.4,
     })!;
     expect(merged.fxSource).toBe("portal");
+    // Dólar do dia (5,4) + o spread da planilha da Wellmix (0,1).
+    expect(merged.destinations[0].fx).toBeCloseTo(5.5, 10);
     const nav = merged.destinations[0];
     const alfa = nav.rates.find(
       (r) =>

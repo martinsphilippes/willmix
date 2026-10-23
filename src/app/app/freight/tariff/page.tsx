@@ -152,7 +152,11 @@ export default async function FreightTariffPage({
   const sp = await searchParams;
   const t = await getT();
   const param = (k: string) => (typeof sp[k] === "string" ? sp[k] : null);
-  const id = param("id") && ID.test(param("id")!) ? param("id") : null;
+  // "current" (o comparativo) não é um id de planilha.
+  const id =
+    param("id") && ID.test(param("id")!) && param("id") !== "current"
+      ? param("id")
+      : null;
   const imported =
     param("imported") && ID.test(param("imported")!) ? param("imported") : null;
   const from =
@@ -658,6 +662,21 @@ function ComparativeView({
     .map((p) => p.name)
     .sort((a, b) => a.localeCompare(b));
   const autoDest = perCbmDestination(data, settings.freightTariffDestination);
+  // Código ou ID que faltava numa planilha e o comparativo achou em outra:
+  // o aviso dela não vale mais aqui.
+  const noCode = new Set<string>();
+  const noId = new Set<string>();
+  for (const d of data.destinations) {
+    if (d.portId === null) noId.add(d.name);
+    for (const f of d.forwarders) if (!f.code) noCode.add(f.name);
+    for (const o of d.origins) if (o.portId === null) noId.add(o.name);
+  }
+  const stillMissing = (w: TariffWarning) =>
+    w.code === "forwarder_no_code"
+      ? noCode.has(String(w.params.forwarder))
+      : w.code === "port_no_id" || w.code === "port_no_id_similar"
+        ? noId.has(String(w.params.port))
+        : true;
   const suggestion =
     dest && capacity ? perCbmSuggestion(data, dest.code, capacity) : null;
   return (
@@ -752,7 +771,7 @@ function ComparativeView({
                 <Td className="tabular-nums">
                   {
                     (row.data.warnings ?? []).filter(
-                      (w) => !INFO_WARNINGS.has(w.code),
+                      (w) => !INFO_WARNINGS.has(w.code) && stillMissing(w),
                     ).length
                   }
                 </Td>
@@ -781,7 +800,7 @@ function ComparativeView({
               source: sourceName(t, company),
               date: day(row.referenceDate, t),
             }),
-            warnings: row.data.warnings ?? [],
+            warnings: (row.data.warnings ?? []).filter(stillMissing),
           })),
         ]}
       />

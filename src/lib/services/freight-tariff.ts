@@ -27,6 +27,7 @@ import {
   TARIFF_CONTAINER_TYPE,
   TariffError,
   blockOfCompany,
+  blocksWithRates,
   destinationCode,
   foldName,
   matchOrigin,
@@ -186,6 +187,17 @@ export async function importFreightTariff(
   const bytes = new Uint8Array(await file.arrayBuffer());
   const name = (file.name || "tarifario.xlsx").slice(0, 200);
   const data = readTariffWorkbook(bytes, name);
+  // Planilha de uma companhia: só os preços dela. Com mais de um bloco, todos
+  // precisam ter o nome dela (ex.: a planilha consolidada devolvida com os
+  // preços das outras ainda preenchidos é recusada).
+  if (company) {
+    const blocks = blocksWithRates(data);
+    if (
+      blocks.length > 1 &&
+      blocks.some((b) => !blockOfCompany(b, company.name))
+    )
+      throw new TariffError("tariff_other_companies");
+  }
   const day = referenceDate ?? brazilDay(new Date());
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day))
     throw new TariffError("tariff_date_invalid");
@@ -329,6 +341,20 @@ async function portalUsd(): Promise<{
   }
 }
 
+/** R$ por unidade da moeda pelo câmbio do portal (null se não houver). */
+async function rateToBrl(currency: string): Promise<number | null> {
+  try {
+    const { getFxRates } = await import("./fx");
+    const view = await getFxRates();
+    const rate = (view.rates as Record<string, number | undefined>)[currency];
+    return view.status !== "none" && typeof rate === "number" && rate > 0
+      ? rate
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Comparativo das planilhas vigentes (sem checar papel: uso interno). */
 async function buildComparative(): Promise<ComparativeTariff | null> {
   const store = getStore();
@@ -458,6 +484,9 @@ export async function applyTariffPerCbm(
   await setSetting("freightPerCbm", suggestion.perCbm);
   await setSetting("freightCurrency", "BRL");
   await setSetting("freightTariffDestination", destination);
+  // Aplicado à mão: o "esperando conferência" da atualização automática acabou.
+  if (before.freightPerCbmAuto?.status === "held")
+    await setSetting("freightPerCbmAuto", null);
   await audit(
     user,
     "settings.update",
@@ -517,11 +546,18 @@ export async function refreshPerCbm(
   )
     result = { ...base, status: "skipped", reason: "no_rates" };
   else {
-    // Só compara com valor em R$ (em outra moeda, ou sem valor, aplica).
-    const comparable =
-      previous !== null && previous > 0 && settings.freightCurrency === "BRL";
-    const jump = comparable
-      ? Math.abs(suggestion.perCbm - previous!) / previous!
+    // Compara em R$: valor em outra moeda vira R$ pelo câmbio do dia (sem
+    // câmbio, ou sem valor antes, aplica).
+    const previousBrl =
+      previous !== null && previous > 0
+        ? settings.freightCurrency === "BRL"
+          ? previous
+          : await rateToBrl(settings.freightCurrency).then((rate) =>
+              rate ? previous * rate : null,
+            )
+        : null;
+    const jump = previousBrl
+      ? Math.abs(suggestion.perCbm - previousBrl) / previousBrl
       : 0;
     result =
       jump > PER_CBM_MAX_JUMP

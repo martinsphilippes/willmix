@@ -71,7 +71,9 @@ export async function applyTariffPerCbmAction(form: FormData) {
   const from = backFrom(form);
   // Volta para o mesmo tarifário e destino (e o link do pedido, se veio de lá).
   const params = new URLSearchParams();
-  if (ID.safeParse(tariffId).success) params.set("id", tariffId);
+  // "current" é o comparativo (a tela sem ?id=).
+  if (tariffId !== "current" && ID.safeParse(tariffId).success)
+    params.set("id", tariffId);
   if (DESTINATION.safeParse(destination).success)
     params.set("dest", destination);
   if (from) params.set("from", from);

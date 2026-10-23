@@ -35,7 +35,7 @@ import {
   type DateBounds,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue } from "@/lib/workflow/money";
-import { isOffFlowStage } from "@/lib/workflow/stages";
+import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
 import { normalizeShipping } from "@/lib/services/shipping-stage";
@@ -703,7 +703,11 @@ export default async function OrderPage({
                             }
                             doc={docById(r.documentId)}
                             submittedBy={userName(r.submittedByUserId)}
-                            open={open}
+                            open={
+                              open ||
+                              // Embarque confirmado: BL, datas e navio ainda podem vir.
+                              canCompleteLater(stage, r, order)
+                            }
                             wellmix={wellmix}
                             remeasure={
                               remeasureMode &&

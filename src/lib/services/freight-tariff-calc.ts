@@ -241,8 +241,10 @@ export function cellNumber(
 }
 
 /**
- * Percentual de uma célula ("0.02", "2%", "2" ou "2,5%" → 0,02 / 0,025).
- * Acima de 50% não é PTAX nem IOF: fica de fora (null).
+ * Percentual de uma célula ("0.02", "2%", "2", "0,38" ou "2,5%" → 0,02 /
+ * 0,0038 / 0,025). PTAX e IOF de verdade ficam abaixo de 10%: número a
+ * partir de 0,2 sem "%" é ponto percentual ("0,38" = 0,38%); acima de 10%
+ * fica de fora (null).
  */
 export function cellPercent(
   raw: string | undefined,
@@ -253,9 +255,9 @@ export function cellPercent(
   const percent = s.endsWith("%");
   const n = cellNumber(percent ? s.slice(0, -1) : s, isText || percent);
   if (n === null || n < 0) return null;
-  // "2" digitado numa célula sem formato de % quer dizer 2%.
-  const v = percent || n > 1 ? n / 100 : n;
-  return v <= 0.5 ? Math.round(v * 1e6) / 1e6 : null;
+  // "2" (ou "0,38") digitado numa célula sem formato de % quer dizer 2% (0,38%).
+  const v = percent || n >= 0.2 ? n / 100 : n;
+  return v <= 0.1 ? Math.round(v * 1e6) / 1e6 : null;
 }
 
 const round = (n: number, digits = 2) => {
@@ -563,7 +565,7 @@ export function usdFactor(
   f: Pick<TariffForwarder, "ptaxPercent" | "iofPercent">,
 ): number {
   const pct = (v: number | null | undefined) =>
-    typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 0.5 ? v : 0;
+    typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 0.1 ? v : 0;
   return (1 + pct(f.ptaxPercent)) * (1 + pct(f.iofPercent));
 }
 
@@ -1542,10 +1544,32 @@ export function tariffCounts(data: FreightTariffData) {
  * demais (menos de 3 letras) não vale.
  */
 export function blockOfCompany(block: string, company: string | null): boolean {
-  const c = foldName(company ?? "");
+  const c = companyKey(company);
   if (c.length < 3) return false;
   const k = foldName(block);
   return k === c || k.startsWith(`${c} `);
+}
+
+/** Final de razão social que não faz parte do nome ("Beta Cargo Ltda" → "beta cargo"). */
+const LEGAL_SUFFIX =
+  /(?:\s+(?:ltda|limitada|s\s?a|sa|eireli|me|epp|inc|llc|ltd|co|corp|gmbh|do brasil|brasil))+$/;
+
+/** Nome da companhia do cadastro, sem a razão social, para comparar com o bloco. */
+function companyKey(company: string | null): string {
+  return foldName(company ?? "")
+    .replace(LEGAL_SUFFIX, "")
+    .trim();
+}
+
+/** Nomes dos blocos (companhias) com tarifa na planilha, sem repetir. */
+export function blocksWithRates(data: FreightTariffData): string[] {
+  const out = new Map<string, string>();
+  for (const d of data.destinations)
+    for (const r of d.rates) {
+      const name = d.forwarders[r.forwarder]?.name;
+      if (name) out.set(foldName(name), name);
+    }
+  return [...out.values()];
 }
 
 /** Uma planilha vigente: de uma companhia (enviada por ela ou pela Wellmix) ou a consolidada. */
@@ -1588,11 +1612,15 @@ export function mergeTariffs(
   const companies = [...own.values()];
 
   // Blocos da consolidada que a própria companhia já substituiu.
+  // Só blocos com o nome da própria companhia substituem os da consolidada:
+  // a planilha de uma companhia nunca tira (nem imita) o preço de outra.
   const ownBlocks = new Set<string>();
   for (const s of companies)
     for (const d of s.data.destinations)
-      for (const r of d.rates)
-        ownBlocks.add(foldName(d.forwarders[r.forwarder].name));
+      for (const r of d.rates) {
+        const name = d.forwarders[r.forwarder].name;
+        if (blockOfCompany(name, s.company)) ownBlocks.add(foldName(name));
+      }
   const replaced = (name: string) =>
     ownBlocks.has(foldName(name)) ||
     companies.some((s) => blockOfCompany(name, s.company));
@@ -1608,10 +1636,11 @@ export function mergeTariffs(
   ];
   if (!ordered.length) return null;
 
-  // Códigos conhecidos em qualquer planilha (pelo nome).
+  // Códigos do Sankhya (pelo nome) só das planilhas importadas pela Wellmix:
+  // a abas FORNECEDORES/PORTOS de uma companhia não valem para o CSV.
   const forwarderCode = new Map<string, string>();
   const portIdByName = new Map<string, number>();
-  for (const s of ordered)
+  for (const s of ordered.filter((x) => x.byWellmix))
     for (const d of s.data.destinations) {
       for (const f of d.forwarders)
         if (f.code && !forwarderCode.has(foldName(f.name)))
@@ -1630,6 +1659,10 @@ export function mergeTariffs(
   const validFx = (v: number | null | undefined) =>
     typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 100 ? v : null;
   const portalFx = validFx(options.fx);
+  // Spread da planilha mais nova da Wellmix (o da companhia não vale).
+  const spreadOf = (v: number | null | undefined) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v < 1 ? v : 0;
+  const spread = spreadOf(byParams.find((x) => x.byWellmix)?.data.fxSpread);
 
   const merged = new Map<string, TariffDestination>();
   const originIndex = new Map<string, Map<string, number>>();
@@ -1645,8 +1678,13 @@ export function mergeTariffs(
           sheet: d.sheet,
           code: d.code,
           name: d.name,
-          portId: d.portId ?? portIdByName.get(`dest:${d.code}`) ?? null,
-          fx: portalFx ?? params.fx,
+          portId:
+            (s.byWellmix ? d.portId : null) ??
+            portIdByName.get(`dest:${d.code}`) ??
+            DESTINATION_IDS[d.code] ??
+            null,
+          // Dólar do dia + o spread da planilha da Wellmix (sem o dólar, o câmbio dela).
+          fx: portalFx !== null ? portalFx + spread : params.fx,
           roadFreightBrl: params.roadFreightBrl,
           containerQty: params.containerQty,
           forwarders: [],
@@ -1670,10 +1708,17 @@ export function mergeTariffs(
       const keptIndex = new Map<number, number>();
       for (const { f, fi } of kept) {
         keptIndex.set(fi, target.forwarders.length);
+        // Código: o da própria planilha só se a Wellmix importou; pelo nome,
+        // só para bloco que é da companhia (nunca o código de outra).
+        const mine =
+          s.byWellmix || !s.shippingLineId || blockOfCompany(f.name, s.company);
         target.forwarders.push({
           ...f,
           fees: f.fees.map((x) => ({ ...x })),
-          code: f.code ?? forwarderCode.get(foldName(f.name)) ?? null,
+          code:
+            (s.byWellmix ? f.code : null) ??
+            (mine ? forwarderCode.get(foldName(f.name)) : undefined) ??
+            null,
           shippingLineId: s.shippingLineId,
           company: s.company,
           tariffId: s.id,
@@ -1693,13 +1738,15 @@ export function mergeTariffs(
           target.origins.push({
             country: o.country,
             name: o.name,
-            portId: o.portId ?? portIdByName.get(key) ?? null,
+            portId:
+              (s.byWellmix ? o.portId : null) ?? portIdByName.get(key) ?? null,
           });
         } else {
           const known = target.origins[at];
           known.country ??= o.country;
           if (known.portId === null)
-            known.portId = o.portId ?? portIdByName.get(key) ?? null;
+            known.portId =
+              (s.byWellmix ? o.portId : null) ?? portIdByName.get(key) ?? null;
         }
         originMap.set(oi, at);
       });
