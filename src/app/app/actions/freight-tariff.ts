@@ -21,8 +21,6 @@ const DAY = z
     "date",
   );
 const DESTINATION = z.string().regex(/^[A-Z]{2,5}$/);
-/** Nome de um bloco da planilha (a companhia diz qual é o dela). */
-const BLOCK = z.string().trim().min(1).max(120);
 
 /** Volta para o tarifário ou para o pedido de onde veio o botão. */
 function backFrom(form: FormData) {
@@ -45,50 +43,22 @@ export async function importFreightTariffAction(form: FormData) {
       referenceDate = parsed.data;
     }
     // Wellmix escolhe de quem é a planilha (sem padrão: evita trocar a
-    // consolidada pela tabela de uma companhia só); a companhia, nunca.
+    // consolidada pela tabela de uma companhia só); a companhia, nunca (vai
+    // sempre para a dela). A planilha é toda da companhia escolhida.
     let shippingLineId: string | null = null;
     if (isWellmix(user)) {
       const company = str(form, "shippingLineId");
       if (!company) throw new Error("tariff_company_required");
       shippingLineId = company === "consolidated" ? null : ID.parse(company);
     }
-    // Bloco que é da companhia (quando nenhum tem o nome dela).
-    const rawBlock = str(form, "block");
-    const block = rawBlock ? BLOCK.parse(rawBlock) : null;
     const { importFreightTariff } =
       await import("@/lib/services/freight-tariff");
-    const { TariffError } = await import("@/lib/services/freight-tariff-calc");
-    let row;
-    try {
-      row = await importFreightTariff(
-        user,
-        file,
-        referenceDate,
-        shippingLineId,
-        { block },
-      );
-    } catch (error) {
-      // Planilha sem o bloco da companhia: a tela mostra os blocos achados
-      // para escolher qual é o dela (com a mesma companhia e data).
-      if (
-        error instanceof TariffError &&
-        error.message === "tariff_other_companies" &&
-        error.detail.length
-      ) {
-        const params = new URLSearchParams({
-          error: error.message,
-          blocks: error.detail
-            .map((b) => b.replace(/\|/g, " "))
-            .join("|")
-            .slice(0, 2600),
-        });
-        if (shippingLineId) params.set("company", shippingLineId);
-        if (referenceDate) params.set("date", referenceDate);
-        if (from) params.set("from", from);
-        return `${BACK}?${params.toString()}`;
-      }
-      throw error;
-    }
+    const row = await importFreightTariff(
+      user,
+      file,
+      referenceDate,
+      shippingLineId,
+    );
     const params = new URLSearchParams({ imported: row.id });
     if (from) params.set("from", from);
     return `${BACK}?${params.toString()}`;

@@ -19,18 +19,24 @@ export function FreightTariffBox({
   t,
   orderId,
   stageId,
+  shippingLineId = null,
   view,
   keepParams = {},
 }: {
   t: Translate;
   orderId: string;
   stageId: string;
+  /** Companhia marítima do pedido: já vem marcada na importação. */
+  shippingLineId?: string | null;
   /** Parâmetros da tela que o "Ver frete" mantém (ex.: remeasure=1). */
   keepParams?: Record<string, string>;
   /** null = nenhum tarifário importado; "failed" = não deu para ler agora. */
   view: OrderTariffView | "failed" | null;
 }) {
   const tariffHref = `/app/freight/tariff?from=${encodeURIComponent(`/app/orders/${orderId}`)}`;
+  const importHref = shippingLineId
+    ? `${tariffHref}&company=${encodeURIComponent(shippingLineId)}`
+    : tariffHref;
   const data = view && view !== "failed" ? view : null;
   const top = data?.options.slice(0, TOP) ?? [];
   const options = data
@@ -47,7 +53,7 @@ export function FreightTariffBox({
           {t("tariff.order.title")}
         </p>
         <LinkButton
-          href={tariffHref}
+          href={importHref}
           variant="primary"
           className="text-xs"
           data-tariff-import-link=""

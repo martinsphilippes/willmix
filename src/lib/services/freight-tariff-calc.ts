@@ -146,7 +146,7 @@ export type TariffWarningCode =
   | "ptax_iof_added"
   | "ptax_iof_missing"
   | "other_blocks_ignored"
-  | "block_chosen"
+  | "several_blocks"
   | "forwarder_no_code"
   | "port_no_id"
   | "port_no_id_similar"
@@ -182,11 +182,6 @@ export interface FreightTariffData {
   warnings: TariffWarning[];
   /** Só no comparativo: de onde veio o câmbio (sem o campo: da planilha). */
   fxSource?: TariffFxSource;
-  /**
-   * Planilha de uma companhia com um bloco de nome diferente do cadastro
-   * (indicado por ela): a próxima planilha dela usa o mesmo bloco sozinha.
-   */
-  chosenBlock?: string;
 }
 
 export class TariffError extends Error {
@@ -1711,18 +1706,26 @@ export function mergeTariffs(
   // Códigos do Sankhya (pelo nome) só das planilhas importadas pela Wellmix:
   // a abas FORNECEDORES/PORTOS de uma companhia não valem para o CSV.
   const forwarderCode = new Map<string, string>();
+  const codedBlocks: { name: string; code: string }[] = [];
   const portIdByName = new Map<string, number>();
   for (const s of ordered.filter((x) => x.byWellmix))
     for (const d of s.data.destinations) {
       for (const f of d.forwarders)
-        if (f.code && !forwarderCode.has(foldName(f.name)))
+        if (f.code && !forwarderCode.has(foldName(f.name))) {
           forwarderCode.set(foldName(f.name), f.code);
+          codedBlocks.push({ name: f.name, code: f.code });
+        }
       for (const o of d.origins)
         if (o.portId !== null && !portIdByName.has(foldName(o.name)))
           portIdByName.set(foldName(o.name), o.portId);
       if (d.portId !== null && !portIdByName.has(`dest:${d.code}`))
         portIdByName.set(`dest:${d.code}`, d.portId);
     }
+
+  // Código da companhia do cadastro: o do bloco com o nome dela numa
+  // planilha da Wellmix (nunca o de outra companhia).
+  const companyCode = (company: string | null) =>
+    codedBlocks.find((b) => blockOfCompany(b.name, company))?.code;
 
   // Parâmetros de cada destino: da planilha mais nova da Wellmix que o tem.
   const byParams = [...ordered].sort(
@@ -1780,17 +1783,20 @@ export function mergeTariffs(
       const keptIndex = new Map<number, number>();
       for (const { f, fi } of kept) {
         keptIndex.set(fi, target.forwarders.length);
-        // Código: o da própria planilha só se a Wellmix importou; pelo nome,
-        // só para bloco que é da companhia (nunca o código de outra).
-        const mine =
-          s.byWellmix || !s.shippingLineId || blockOfCompany(f.name, s.company);
+        // Código: o da própria planilha só se a Wellmix importou. A planilha
+        // de uma companhia é toda dela (qualquer nome no bloco): bloco com o
+        // nome dela usa o código desse nome; os outros, o da companhia
+        // (nunca o código de outra pelo nome do bloco).
+        const named = !s.shippingLineId || blockOfCompany(f.name, s.company);
+        const code = named
+          ? ((s.byWellmix ? f.code : null) ??
+            forwarderCode.get(foldName(f.name)) ??
+            (s.shippingLineId ? companyCode(s.company) : undefined))
+          : (companyCode(s.company) ?? (s.byWellmix ? f.code : null));
         target.forwarders.push({
           ...f,
           fees: f.fees.map((x) => ({ ...x })),
-          code:
-            (s.byWellmix ? f.code : null) ??
-            (mine ? forwarderCode.get(foldName(f.name)) : undefined) ??
-            null,
+          code: code ?? null,
           shippingLineId: s.shippingLineId,
           company: s.company,
           tariffId: s.id,
