@@ -38,7 +38,7 @@ export const pt = {
     "{forwarders} companhias · {destinations} destinos",
   "tariff.download": "Baixar CSV do Sankhya (AD_FREINT)",
   "tariff.downloadHint":
-    "O mesmo arquivo que a macro da planilha gerava: uma tarifa por companhia, porto e destino (rota direta; sem ela, a longa).",
+    "Uma tarifa por companhia, porto e destino (rota direta; sem ela, a longa), no formato da macro, com o destino no AD_IDEXTERNO para o Sankhya guardar todos os destinos da mesma rota.",
   "tariff.original": "Planilha original",
   "tariff.warnings.title": "Conferência da planilha ({n})",
   "tariff.warnings.ok":
@@ -62,7 +62,7 @@ export const pt = {
   "tariff.warning.sankhya_tab_outdated":
     "A aba AD_FREINT da planilha está diferente dos comparativos ({n} linhas). Use o CSV gerado aqui.",
   "tariff.warning.sankhya_duplicate_ids":
-    "No CSV do Sankhya, {n} códigos AD_IDEXTERNO aparecem em mais de um destino (o código é companhia + data + porto de origem, sem o destino, como na macro). Se o Sankhya não aceitar código repetido, uma rota substitui a outra: vale confirmar com quem cuida do Sankhya.",
+    "No CSV do Sankhya, {n} códigos AD_IDEXTERNO se repetem (mesma companhia, porto e destino duas vezes). Confira os códigos (CODPARC) e os IDs de porto.",
   "tariff.warning.cell_error":
     "{sheet}: erro na célula {cell} (#REF!/#VALUE!); esse valor ficou de fora.",
   "tariff.dest.label": "Destino",
@@ -191,7 +191,7 @@ export const pt = {
   "tariff.compare.missing": "Ainda não enviaram a própria tabela: {names}.",
   "tariff.compare.sourceHeading": "{source} · {date}",
   "tariff.compare.downloadHint":
-    "Uma tarifa por companhia, porto e destino (rota direta; sem ela, a longa), cada companhia com a data da tabela dela. O mesmo formato da macro.",
+    "Uma tarifa por companhia, porto e destino (rota direta; sem ela, a longa), cada companhia com a data da tabela dela, com o destino no AD_IDEXTERNO para o Sankhya guardar todos os destinos da mesma rota.",
   "tariff.stat.updated": "Tabela mais nova",
   "tariff.stat.fxCompare": "Câmbio do comparativo",
   "tariff.stat.fxPortalDetail":
@@ -223,7 +223,53 @@ export const pt = {
   "tariff.upload.hint":
     "Data de embarque, chegada, navio e BL abaixo são opcionais: confirme o embarque para avançar.",
   "tariff.error.tariff_other_companies":
-    "A planilha tem preços de outras companhias. Deixe só os blocos da companhia (com o nome dela, como no cadastro) e envie de novo; a Wellmix pode importar a planilha com várias companhias como consolidada.",
+    "Nenhum bloco da planilha tem o nome da companhia. Deixe só o bloco dela (ou dê a ele o nome da companhia, como no cadastro) e envie de novo; a Wellmix pode importar a planilha com várias companhias como consolidada.",
+  "tariff.error.blocksFound":
+    "Blocos com preço na planilha: {blocks}. Nome da companhia no cadastro: {company}.",
+  "tariff.warning.other_blocks_ignored":
+    "Entraram só os preços de {kept}; os blocos de outras companhias ({ignored}) ficaram de fora.",
+  "tariff.sheet.fxDetail": "dólar {base} + spread {spread}",
+  "tariff.sheet.formulaTitle": "Pela conta da planilha: {value}",
+  "tariff.sheet.formulaShort": "conta: {value}",
+  "tariff.sheet.country": "País",
+  "tariff.sheet.usdDirect": "US$ 40HQ direta",
+  "tariff.sheet.usdLong": "US$ 40HQ longa",
+  "tariff.sheet.brlDirect": "Total R$ direta",
+  "tariff.sheet.brlLong": "Total R$ longa",
+  "tariff.sheet.side": "Lado",
+  "tariff.sheet.feesTotals": "Totais das taxas (US$ · R$)",
+  "tariff.sheet.feesSheet": "Taxas em R$ (conta da planilha)",
+  "tariff.sheet.feesPortal": "Taxas em R$ com PTAX e IOF (portal)",
+  "tariff.sheet.paramsTitle": "Parâmetros da aba {dest}",
+  "tariff.sheet.fx": "Câmbio (dólar + spread)",
+  "tariff.sheet.road": "Frete (CD), por container",
+  "tariff.sheet.containers": "Qtd. de containers",
+  "tariff.sheet.date": "Data de referência",
+  "tariff.sheet.ratesTitle": "Comparativo {dest} (como na planilha)",
+  "tariff.sheet.ratesHint":
+    "Valores como estão na planilha, com todos os portos e companhias. Os totais em R$ são os da planilha (sem PTAX e IOF); o Resumo mostra os totais do portal, com PTAX e IOF.",
+  "tariff.sheet.legendBestDirect": "Menor custo: rota direta",
+  "tariff.sheet.legendBestLong": "Menor custo: rota longa",
+  "tariff.sheet.legendWorst": "Maior custo: ambas as rotas",
+  "tariff.sheet.legendMismatch": "Total diferente da conta da planilha",
+  "tariff.sheet.mismatches":
+    "{n} totais da planilha não batem com a conta dela (frete × câmbio + frete até o CD + taxas): o valor pela conta aparece embaixo, em amarelo.",
+  "tariff.sheet.feesTitle": "Taxas {dest} (como na planilha)",
+  "tariff.sheet.codesTitle": "Códigos do Sankhya (abas FORNECEDORES e PORTOS)",
+  "tariff.sheet.company": "Companhia",
+  "tariff.sheet.noCode": "sem código",
+  "tariff.sheet.port": "Porto",
+  "tariff.sheet.destination": "destino",
+  "tariff.sheet.noId": "sem ID",
+  "tariff.sheet.sankhyaTitle": "Arquivo do Sankhya: {n} linhas de {dest}",
+  "tariff.sheet.sankhyaHint":
+    "As linhas que vão no AD_FREINT.CSV para este destino. O AD_IDEXTERNO leva o destino, para o Sankhya guardar todos os destinos da mesma rota.",
+  "tariff.sheet.sankhyaShow": "Ver as {n} linhas",
+  "tariff.sheet.sankhyaNone":
+    "Nenhuma linha: falta código (CODPARC) ou ID de porto. Veja os códigos acima.",
+  "tariff.view.sheet": "Como na planilha",
+  "tariff.view.summary": "Resumo (com PTAX e IOF)",
+  "tariff.compare.viewSheet": "Ver planilha",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -260,7 +306,7 @@ export const en: Record<keyof typeof pt, string> = {
     "{forwarders} shipping lines · {destinations} destinations",
   "tariff.download": "Download Sankhya CSV (AD_FREINT)",
   "tariff.downloadHint":
-    "The same file the spreadsheet macro produced: one rate per shipping line, port and destination (direct route; without it, the long one).",
+    "One rate per line, port and destination (direct route; without it, the long one), in the macro's format, with the destination in AD_IDEXTERNO so Sankhya keeps every destination of the same route.",
   "tariff.original": "Original spreadsheet",
   "tariff.warnings.title": "Spreadsheet check ({n})",
   "tariff.warnings.ok":
@@ -284,7 +330,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.warning.sankhya_tab_outdated":
     "The spreadsheet's AD_FREINT tab differs from the comparison tabs ({n} rows). Use the CSV built here.",
   "tariff.warning.sankhya_duplicate_ids":
-    "In the Sankhya CSV, {n} AD_IDEXTERNO codes appear in more than one destination (the code is line + date + origin port, without the destination, as in the macro). If Sankhya does not accept repeated codes, one route replaces another: worth checking with whoever runs Sankhya.",
+    "In the Sankhya CSV, {n} AD_IDEXTERNO codes repeat (same line, port and destination twice). Check the codes (CODPARC) and port IDs.",
   "tariff.warning.cell_error":
     "{sheet}: error in cell {cell} (#REF!/#VALUE!); that value was left out.",
   "tariff.dest.label": "Destination",
@@ -413,7 +459,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.compare.missing": "Not sent their own table yet: {names}.",
   "tariff.compare.sourceHeading": "{source} · {date}",
   "tariff.compare.downloadHint":
-    "One rate per line, port and destination (direct route; without it, the long one), each line with its own table's date. Same format as the macro.",
+    "One rate per line, port and destination (direct route; without it, the long one), each line with its own table's date, with the destination in AD_IDEXTERNO so Sankhya keeps every destination of the same route.",
   "tariff.stat.updated": "Newest table",
   "tariff.stat.fxCompare": "Comparison FX",
   "tariff.stat.fxPortalDetail":
@@ -445,7 +491,53 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.upload.hint":
     "Shipping date, arrival, vessel and BL below are optional: confirm the shipment to move on.",
   "tariff.error.tariff_other_companies":
-    "The spreadsheet has prices from other shipping lines. Keep only the line's own blocks (named as in the registry) and send it again; Wellmix can import a multi-line spreadsheet as consolidated.",
+    "No block in the spreadsheet has the shipping line's name. Keep only its block (or give it the line's name, as in the registry) and send it again; Wellmix can import a multi-line spreadsheet as consolidated.",
+  "tariff.error.blocksFound":
+    "Blocks with prices in the spreadsheet: {blocks}. Line name in the registry: {company}.",
+  "tariff.warning.other_blocks_ignored":
+    "Only {kept}'s prices came in; other lines' blocks ({ignored}) were left out.",
+  "tariff.sheet.fxDetail": "dollar {base} + spread {spread}",
+  "tariff.sheet.formulaTitle": "By the spreadsheet's own formula: {value}",
+  "tariff.sheet.formulaShort": "formula: {value}",
+  "tariff.sheet.country": "Country",
+  "tariff.sheet.usdDirect": "USD 40HQ direct",
+  "tariff.sheet.usdLong": "USD 40HQ long",
+  "tariff.sheet.brlDirect": "Total BRL direct",
+  "tariff.sheet.brlLong": "Total BRL long",
+  "tariff.sheet.side": "Side",
+  "tariff.sheet.feesTotals": "Fee totals (USD · BRL)",
+  "tariff.sheet.feesSheet": "Fees in BRL (spreadsheet formula)",
+  "tariff.sheet.feesPortal": "Fees in BRL with PTAX and IOF (portal)",
+  "tariff.sheet.paramsTitle": "{dest} tab parameters",
+  "tariff.sheet.fx": "FX (dollar + spread)",
+  "tariff.sheet.road": "Road freight (DC), per container",
+  "tariff.sheet.containers": "Containers",
+  "tariff.sheet.date": "Reference date",
+  "tariff.sheet.ratesTitle": "{dest} comparison (as in the spreadsheet)",
+  "tariff.sheet.ratesHint":
+    "Values as they are in the spreadsheet, with every port and line. BRL totals are the spreadsheet's (without PTAX and IOF); the Summary shows the portal's totals, with PTAX and IOF.",
+  "tariff.sheet.legendBestDirect": "Lowest cost: direct route",
+  "tariff.sheet.legendBestLong": "Lowest cost: long route",
+  "tariff.sheet.legendWorst": "Highest cost: both routes",
+  "tariff.sheet.legendMismatch": "Total differs from the spreadsheet's formula",
+  "tariff.sheet.mismatches":
+    "{n} spreadsheet totals don't match its own formula (freight × FX + road freight to the DC + fees): the formula value is shown below, in yellow.",
+  "tariff.sheet.feesTitle": "{dest} fees (as in the spreadsheet)",
+  "tariff.sheet.codesTitle": "Sankhya codes (FORNECEDORES and PORTOS tabs)",
+  "tariff.sheet.company": "Line",
+  "tariff.sheet.noCode": "no code",
+  "tariff.sheet.port": "Port",
+  "tariff.sheet.destination": "destination",
+  "tariff.sheet.noId": "no ID",
+  "tariff.sheet.sankhyaTitle": "Sankhya file: {n} rows for {dest}",
+  "tariff.sheet.sankhyaHint":
+    "The rows that go into AD_FREINT.CSV for this destination. AD_IDEXTERNO carries the destination, so Sankhya keeps every destination of the same route.",
+  "tariff.sheet.sankhyaShow": "Show the {n} rows",
+  "tariff.sheet.sankhyaNone":
+    "No rows: a code (CODPARC) or port ID is missing. See the codes above.",
+  "tariff.view.sheet": "As in the spreadsheet",
+  "tariff.view.summary": "Summary (with PTAX and IOF)",
+  "tariff.compare.viewSheet": "View spreadsheet",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -481,7 +573,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.stat.ratesDetail": "{forwarders} 家船公司 · {destinations} 个目的港",
   "tariff.download": "下载 Sankhya CSV（AD_FREINT）",
   "tariff.downloadHint":
-    "与表格宏生成的文件相同：每个船公司、港口和目的港一条运价（优先直航，没有则用中转）。",
+    "每家船公司、每个港口和目的港一条运价（直达航线；没有时用长航线），格式与宏相同，AD_IDEXTERNO 包含目的港，Sankhya 会保留同一航线的所有目的港。",
   "tariff.original": "原始表格",
   "tariff.warnings.title": "表格核对（{n}）",
   "tariff.warnings.ok": "核对无提示：表格总额与计算一致。",
@@ -508,7 +600,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.warning.sankhya_tab_outdated":
     "表格的 AD_FREINT 工作表与比较表不一致（{n} 行）。请使用此处生成的 CSV。",
   "tariff.warning.sankhya_duplicate_ids":
-    "Sankhya CSV 中有 {n} 个 AD_IDEXTERNO 代码出现在多个目的港（代码为船公司 + 日期 + 起运港，不含目的港，与宏相同）。如果 Sankhya 不接受重复代码，一条航线会覆盖另一条：请与负责 Sankhya 的同事确认。",
+    "Sankhya CSV 中有 {n} 个 AD_IDEXTERNO 重复（同一船公司、港口和目的港出现两次）。请核对代码（CODPARC）和港口 ID。",
   "tariff.warning.cell_error":
     "{sheet}：单元格 {cell} 有错误（#REF!/#VALUE!），该值已忽略。",
   "tariff.dest.label": "目的港",
@@ -623,7 +715,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.compare.missing": "还没上传自己运价表的：{names}。",
   "tariff.compare.sourceHeading": "{source} · {date}",
   "tariff.compare.downloadHint":
-    "每家船公司、每个港口和目的港一条运价（直达航线；没有时用长航线），每家船公司使用自己表的日期。格式与宏相同。",
+    "每家船公司、每个港口和目的港一条运价（直达航线；没有时用长航线），每家船公司使用自己表的日期，AD_IDEXTERNO 包含目的港，Sankhya 会保留同一航线的所有目的港。",
   "tariff.stat.updated": "最新的表",
   "tariff.stat.fxCompare": "对比汇率",
   "tariff.stat.fxPortalDetail":
@@ -654,5 +746,51 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.upload.hint":
     "下面的装运日期、到达、船名和提单都是可选的：确认已装运即可继续。",
   "tariff.error.tariff_other_companies":
-    "表格里有其他船公司的价格。只保留本公司的区块（名称与登记一致）后重新上传；多家船公司的表可由 Wellmix 作为汇总表导入。",
+    "表格中没有任何区块使用该船公司的名称。只保留本公司的区块（或把区块名称改成登记中的公司名称）后重新上传；多家船公司的表可由 Wellmix 作为汇总表导入。",
+  "tariff.error.blocksFound":
+    "表中有价格的区块：{blocks}。登记中的船公司名称：{company}。",
+  "tariff.warning.other_blocks_ignored":
+    "只导入了 {kept} 的价格；其他船公司的区块（{ignored}）未导入。",
+  "tariff.sheet.fxDetail": "美元 {base} + 点差 {spread}",
+  "tariff.sheet.formulaTitle": "按表格自己的公式：{value}",
+  "tariff.sheet.formulaShort": "公式：{value}",
+  "tariff.sheet.country": "国家",
+  "tariff.sheet.usdDirect": "美元 40HQ 直达",
+  "tariff.sheet.usdLong": "美元 40HQ 长航线",
+  "tariff.sheet.brlDirect": "雷亚尔总额 直达",
+  "tariff.sheet.brlLong": "雷亚尔总额 长航线",
+  "tariff.sheet.side": "端",
+  "tariff.sheet.feesTotals": "费用合计（美元 · 雷亚尔）",
+  "tariff.sheet.feesSheet": "雷亚尔费用（表格公式）",
+  "tariff.sheet.feesPortal": "含 PTAX 和 IOF 的雷亚尔费用（门户）",
+  "tariff.sheet.paramsTitle": "{dest} 工作表参数",
+  "tariff.sheet.fx": "汇率（美元 + 点差）",
+  "tariff.sheet.road": "陆运费（配送中心），每箱",
+  "tariff.sheet.containers": "集装箱数量",
+  "tariff.sheet.date": "参考日期",
+  "tariff.sheet.ratesTitle": "{dest} 对比（与表格相同）",
+  "tariff.sheet.ratesHint":
+    "数值与表格中一致，包含所有港口和船公司。雷亚尔总额为表格中的数值（不含 PTAX 和 IOF）；“摘要”显示门户计算的含 PTAX 和 IOF 的总额。",
+  "tariff.sheet.legendBestDirect": "最低成本：直达航线",
+  "tariff.sheet.legendBestLong": "最低成本：长航线",
+  "tariff.sheet.legendWorst": "最高成本：两种航线",
+  "tariff.sheet.legendMismatch": "总额与表格公式不符",
+  "tariff.sheet.mismatches":
+    "表格中有 {n} 个总额与其公式不符（运费 × 汇率 + 到配送中心的陆运费 + 费用）：公式计算的值以黄色显示在下方。",
+  "tariff.sheet.feesTitle": "{dest} 费用（与表格相同）",
+  "tariff.sheet.codesTitle": "Sankhya 代码（FORNECEDORES 和 PORTOS 工作表）",
+  "tariff.sheet.company": "船公司",
+  "tariff.sheet.noCode": "无代码",
+  "tariff.sheet.port": "港口",
+  "tariff.sheet.destination": "目的港",
+  "tariff.sheet.noId": "无 ID",
+  "tariff.sheet.sankhyaTitle": "Sankhya 文件：{dest} 的 {n} 行",
+  "tariff.sheet.sankhyaHint":
+    "此目的港写入 AD_FREINT.CSV 的行。AD_IDEXTERNO 包含目的港，Sankhya 会保留同一航线的所有目的港。",
+  "tariff.sheet.sankhyaShow": "查看 {n} 行",
+  "tariff.sheet.sankhyaNone":
+    "没有行：缺少代码（CODPARC）或港口 ID。请查看上方代码。",
+  "tariff.view.sheet": "与表格相同",
+  "tariff.view.summary": "摘要（含 PTAX 和 IOF）",
+  "tariff.compare.viewSheet": "查看表格",
 };

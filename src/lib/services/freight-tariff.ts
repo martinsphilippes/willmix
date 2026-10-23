@@ -40,6 +40,7 @@ import {
   tariffCounts,
   type FreightTariffData,
   type TariffOption,
+  type TariffParseOptions,
   type TariffSheet,
 } from "./freight-tariff-calc";
 
@@ -97,7 +98,11 @@ function assertSpreadsheet(bytes: Uint8Array, fileName: string) {
  * Lê as abas que interessam da planilha (o resto, como macros, é ignorado):
  * o arquivo é aberto uma vez e só as partes usadas são descompactadas.
  */
-export function readTariffWorkbook(bytes: Uint8Array, fileName = "") {
+export function readTariffWorkbook(
+  bytes: Uint8Array,
+  fileName = "",
+  options: TariffParseOptions = {},
+) {
   assertSpreadsheet(bytes, fileName);
   const fail = (error: unknown): never => {
     throw new TariffError(
@@ -137,7 +142,7 @@ export function readTariffWorkbook(bytes: Uint8Array, fileName = "") {
   }
   // Mesma ordem do arquivo (a 1ª aba de destino dá o câmbio de referência).
   sheets.sort((a, b) => names.indexOf(a.name) - names.indexOf(b.name));
-  return parseFreightTariff(sheets);
+  return parseFreightTariff(sheets, options);
 }
 
 /** Companhia do registro (os gravados antes do campo são da planilha consolidada). */
@@ -186,17 +191,28 @@ export async function importFreightTariff(
   if (file.size > MAX_TARIFF_BYTES) throw new TariffError("tariff_too_large");
   const bytes = new Uint8Array(await file.arrayBuffer());
   const name = (file.name || "tarifario.xlsx").slice(0, 200);
-  const data = readTariffWorkbook(bytes, name);
-  // Planilha de uma companhia: só os preços dela. Com mais de um bloco, todos
-  // precisam ter o nome dela (ex.: a planilha consolidada devolvida com os
-  // preços das outras ainda preenchidos é recusada).
+  let data = readTariffWorkbook(bytes, name);
+  // Planilha de uma companhia: só os preços dela. Um bloco só é dela. Com
+  // vários (ex.: o modelo com os preços das outras ainda preenchidos), entram
+  // só os blocos com o nome dela e os outros ficam de fora (com uma nota);
+  // sem nenhum com o nome dela, recusa dizendo os nomes achados.
   if (company) {
     const blocks = blocksWithRates(data);
-    if (
-      blocks.length > 1 &&
-      blocks.some((b) => !blockOfCompany(b, company.name))
-    )
-      throw new TariffError("tariff_other_companies");
+    const mine = blocks.filter((b) => blockOfCompany(b, company.name));
+    if (blocks.length > 1 && mine.length === 0)
+      throw new TariffError("tariff_other_companies", blocks.slice(0, 20));
+    if (blocks.length > 1 && mine.length < blocks.length) {
+      data = readTariffWorkbook(bytes, name, {
+        keepBlock: (b) => blockOfCompany(b, company.name),
+      });
+      data.warnings.push({
+        code: "other_blocks_ignored",
+        params: {
+          kept: mine.join(", "),
+          ignored: blocks.filter((b) => !mine.includes(b)).join(", "),
+        },
+      });
+    }
   }
   const day = referenceDate ?? brazilDay(new Date());
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day))

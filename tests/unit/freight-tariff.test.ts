@@ -510,11 +510,8 @@ describe("leitura da planilha de frete", () => {
       },
     });
     expect(codes).not.toContain("ptax_iof_unused");
-    // Mesmo AD_IDEXTERNO em Navegantes e Itajaí (o código não leva o destino).
-    expect(data.warnings).toContainEqual({
-      code: "sankhya_duplicate_ids",
-      params: { n: 1 },
-    });
+    // O AD_IDEXTERNO leva o destino: NINGBO da BETA em Navegantes e Itajaí não repete.
+    expect(codes).not.toContain("sankhya_duplicate_ids");
     // A aba AD_FREINT bate com os comparativos: sem aviso.
     expect(codes).not.toContain("sankhya_tab_outdated");
     expect(itajai.forwarders[0]).toMatchObject({
@@ -573,11 +570,13 @@ describe("CSV do Sankhya (AD_FREINT)", () => {
     expect(csv.charCodeAt(0)).toBe("A".charCodeAt(0)); // sem BOM
     expect(csv.split("\r\n")).toEqual([
       "AD_IDEXTERNO;CODPARC;DTREFERENCIA;IDDEST;IDORIG;SEQCONTAI;VALOR;TAXA_USD;TAXA_BRL",
-      "1114630945;111;14/10/2026;60;45;3;3000;60,5;1400",
-      "2224630945;222;14/10/2026;60;45;3;4000;10;900",
+      // AD_IDEXTERNO = CODPARC + data (46309) + destino (3 dígitos) + origem.
+      "1114630906045;111;14/10/2026;60;45;3;3000;60,5;1400",
+      "2224630906045;222;14/10/2026;60;45;3;4000;10;900",
       // MUNDRA (99); SHENZHEN e QINGDAO sem ID e GAMA sem código ficam de fora.
-      "2224630999;222;14/10/2026;60;99;3;5000;10;900",
-      "2224630945;222;14/10/2026;5;45;3;3900;60,5;1400",
+      "2224630906099;222;14/10/2026;60;99;3;5000;10;900",
+      // A mesma rota em Itajaí (5) tem outro código: o Sankhya guarda as duas.
+      "2224630900545;222;14/10/2026;5;45;3;3900;60,5;1400",
     ]);
     // Como a macro: sem quebra de linha depois da última.
     expect(csv.endsWith("\r\n")).toBe(false);
@@ -874,23 +873,36 @@ describe("importar e usar o tarifário", () => {
     );
     expect((await service.comparativeTariff(admin))!.sources.length).toBe(3);
     expect(again.shippingLineId).toBe("armador");
-    // A planilha com os preços das outras companhias (a consolidada devolvida):
-    // recusada para a companhia, e para a Wellmix em nome de uma companhia.
+    // A planilha com os preços das outras companhias (a consolidada devolvida)
+    // e sem nenhum bloco com o nome da Marítima: recusada, com os nomes achados.
     await expect(
       service.importFreightTariff(
         shippingLine,
         file(xlsxFile(workbook())),
         null,
       ),
-    ).rejects.toThrow("tariff_other_companies");
-    await expect(
-      service.importFreightTariff(
-        operator,
-        file(xlsxFile(workbook())),
-        null,
-        betaId,
-      ),
-    ).rejects.toThrow("tariff_other_companies");
+    ).rejects.toMatchObject({
+      message: "tariff_other_companies",
+      detail: ["ALFA LINES", "BETA CARGO", "GAMA"],
+    });
+    // Com o bloco da companhia no meio dos outros: entra só o dela, com uma nota.
+    const gama = await store.create("parties", {
+      type: "shipping_line",
+      name: "Gama",
+      active: true,
+    } as never);
+    const onlyGama = await service.importFreightTariff(
+      operator,
+      file(xlsxFile(workbook())),
+      null,
+      gama.id,
+    );
+    expect(calc.blocksWithRates(onlyGama.data)).toEqual(["GAMA"]);
+    expect(onlyGama.rateCount).toBe(1);
+    expect(onlyGama.data.warnings).toContainEqual({
+      code: "other_blocks_ignored",
+      params: { kept: "GAMA", ignored: "ALFA LINES, BETA CARGO" },
+    });
     // Companhia que não existe (ou parceiro de outro tipo): recusado.
     await expect(
       service.importFreightTariff(
@@ -1501,6 +1513,19 @@ describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereç
     });
   });
 
+  it("lendo só os blocos de uma companhia: os outros ficam de fora", () => {
+    const only = calc.parseFreightTariff(workbook(), {
+      keepBlock: (n) => n === "BETA CARGO",
+    });
+    expect(calc.blocksWithRates(only)).toEqual(["BETA CARGO"]);
+    for (const d of only.destinations)
+      expect(d.forwarders.map((f) => f.name)).toEqual(["BETA CARGO"]);
+    // A aba AD_FREINT tem as outras companhias: não é comparada.
+    expect(only.warnings.map((w) => w.code)).not.toContain(
+      "sankhya_tab_outdated",
+    );
+  });
+
   it("PTAX e IOF em vários formatos; acima de 50% fica de fora", () => {
     expect(calc.cellPercent("0.02")).toBe(0.02);
     expect(calc.cellPercent("2%")).toBe(0.02);
@@ -1897,8 +1922,12 @@ describe("comparativo: as planilhas de todas as companhias juntas", () => {
     expect(nav.origins.find((o) => o.name === "NINGBO")?.portId).toBe(45);
     // CSV: cada companhia com a data da própria planilha.
     const lines = calc.sankhyaCsv(merged, "2026-10-20").split("\r\n");
-    expect(lines).toContain("1114630945;111;14/10/2026;60;45;3;3000;60,5;1400");
-    expect(lines).toContain("2224631545;222;20/10/2026;60;45;3;3700;60,5;1400");
+    expect(lines).toContain(
+      "1114630906045;111;14/10/2026;60;45;3;3000;60,5;1400",
+    );
+    expect(lines).toContain(
+      "2224631506045;222;20/10/2026;60;45;3;3700;60,5;1400",
+    );
     // Parâmetros da planilha da Wellmix (câmbio 5,1, frete até o CD 1000).
     expect(nav.fx).toBe(5.1);
     expect(nav.roadFreightBrl).toBe(1000);
@@ -2042,5 +2071,74 @@ describe("cartão Embarque da companhia marítima", () => {
       }),
     ).toContain("referência 20/10/2026, 12 tarifas");
     expect(render("failed")).toContain("não pôde ser lido agora");
+  });
+});
+
+describe("tarifário como na planilha", () => {
+  it("todas as colunas da aba, totais da planilha, destaques e a conta que não bate", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { TariffSheetView } =
+      await import("@/components/freight-tariff-sheet");
+    const { translator } = await import("@/i18n");
+    const t = translator("pt");
+    const data = calc.parseFreightTariff(workbook());
+    const nav = data.destinations[0];
+    const render = (wellmix: boolean) =>
+      renderToStaticMarkup(
+        createElement(TariffSheetView, {
+          t,
+          data,
+          dest: nav,
+          referenceDate: "2026-10-14",
+          wellmix,
+        }),
+      );
+    const html = render(true);
+    // As 4 colunas de cada companhia, como na aba.
+    for (const h of [
+      "US$ 40HQ direta",
+      "US$ 40HQ longa",
+      "Total R$ direta",
+      "Total R$ longa",
+    ])
+      expect(html).toContain(h);
+    // Todos os portos e companhias (GAMA só tem QINGDAO), com o país.
+    for (const name of [
+      "NINGBO",
+      "SHENZHEN",
+      "QINGDAO",
+      "MUNDRA",
+      "ALFA LINES",
+      "BETA CARGO",
+      "GAMA",
+      "INDIA",
+    ])
+      expect(html).toContain(name);
+    // Total da planilha (sem PTAX/IOF) e a BETA com a conta que não bate.
+    expect(html).toMatch(/R\$\s18\.008,55/);
+    expect(html).toMatch(/R\$\s23\.108,55/);
+    expect(html).toContain("data-sheet-mismatch");
+    expect(html).toMatch(/conta: R\$\s22\.351,00/);
+    expect(html).toContain('data-sheet-mismatches="1"');
+    // Taxas com o lado, PTAX/IOF e as duas contas das taxas.
+    expect(html).toContain("ORIGEM");
+    expect(html).toContain("DESTINO");
+    expect(html).toContain("1,5%");
+    expect(html).toContain("3,5%");
+    expect(html).toMatch(/R\$\s1\.708,55/);
+    expect(html).toMatch(/R\$\s1\.725,74/);
+    // Parâmetros da aba: câmbio, frete (CD), containers.
+    expect(html).toContain("5,1000");
+    expect(html).toMatch(/R\$\s1\.000,00/);
+    // Wellmix: códigos e as linhas do Sankhya deste destino (3 de NVT).
+    expect(html).toContain("CODPARC");
+    expect(html).toContain('data-sankhya-lines="3"');
+    expect(html).toContain("1114630906045");
+    // Companhia: sem os códigos e as linhas do Sankhya.
+    const mine = render(false);
+    expect(mine).not.toContain("CODPARC");
+    expect(mine).not.toContain("data-sankhya-lines");
+    expect(mine).toContain("Total R$ direta");
   });
 });
