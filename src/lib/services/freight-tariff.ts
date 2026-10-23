@@ -174,13 +174,15 @@ async function shippingLine(id: string): Promise<Party> {
  * Importa a planilha: lê, confere, guarda o original (documento interno) e
  * passa a ser a vigente daquela companhia (a anterior dela fica no
  * histórico). A companhia marítima importa a própria; a Wellmix escolhe a
- * companhia ou a planilha consolidada (`shippingLineId` vazio).
+ * companhia ou a planilha consolidada (`shippingLineId` vazio). `block`: o
+ * bloco que é da companhia, quando nenhum tem o nome dela.
  */
 export async function importFreightTariff(
   user: User,
   file: File,
   referenceDate: string | null,
   shippingLineId: string | null = null,
+  options: { block?: string | null } = {},
 ): Promise<FreightTariff> {
   let lineId: string | null;
   if (isWellmix(user)) lineId = shippingLineId || null;
@@ -192,40 +194,62 @@ export async function importFreightTariff(
   const bytes = new Uint8Array(await file.arrayBuffer());
   const name = (file.name || "tarifario.xlsx").slice(0, 200);
   let data = readTariffWorkbook(bytes, name);
+  const store = getStore();
+  // Só a planilha anterior da mesma companhia (ou a consolidada anterior)
+  // sai de vigência.
+  const previous = (
+    await store.list("freight_tariffs", { filter: { status: "active" } })
+  ).filter((p) => lineOf(p) === lineId);
   // Planilha de uma companhia: só os preços dela. Um bloco só é dela. Com
   // vários (ex.: o modelo com os preços das outras ainda preenchidos), entram
-  // só os blocos com o nome dela e os outros ficam de fora (com uma nota);
-  // sem nenhum com o nome dela, recusa dizendo os nomes achados.
+  // só os blocos com o nome dela e os outros ficam de fora (com uma nota).
+  // Sem nenhum com o nome dela: o bloco que ela indicar (agora ou da última
+  // vez); sem indicação, recusa dizendo os nomes achados para ela escolher.
+  // O bloco indicado entra em nome dela: não tira nem imita o de outra
+  // companhia no comparativo (só o nome do cadastro faz isso).
   if (company) {
     const blocks = blocksWithRates(data);
-    const mine = blocks.filter((b) => blockOfCompany(b, company.name));
-    if (blocks.length > 1 && mine.length === 0)
-      throw new TariffError("tariff_other_companies", blocks.slice(0, 20));
-    if (blocks.length > 1 && mine.length < blocks.length) {
+    const named = blocks.filter((b) => blockOfCompany(b, company.name));
+    let chosen: string | null = null;
+    if (blocks.length > 1 && !named.length) {
+      const remembered = previous
+        .map((p) => p.data?.chosenBlock)
+        .find((b): b is string => typeof b === "string" && !!b);
+      chosen =
+        [options.block, remembered]
+          .filter((b): b is string => !!b)
+          .map((b) => blocks.find((x) => foldName(x) === foldName(b)))
+          .find((b): b is string => !!b) ?? null;
+      if (!chosen)
+        throw new TariffError("tariff_other_companies", blocks.slice(0, 20));
+    }
+    const kept = chosen ? [chosen] : named;
+    if (blocks.length > 1 && kept.length < blocks.length) {
       data = readTariffWorkbook(bytes, name, {
-        keepBlock: (b) => blockOfCompany(b, company.name),
+        keepBlock: chosen
+          ? (b) => foldName(b) === foldName(chosen)
+          : (b) => blockOfCompany(b, company.name),
       });
       data.warnings.push({
-        code: "other_blocks_ignored",
+        code: chosen ? "block_chosen" : "other_blocks_ignored",
         params: {
-          kept: mine.join(", "),
-          ignored: blocks.filter((b) => !mine.includes(b)).join(", "),
+          kept: kept.join(", "),
+          ignored: blocks.filter((b) => !kept.includes(b)).join(", "),
         },
       });
     }
+    // Um bloco só, com nome diferente do cadastro: é o dela daqui em diante.
+    const own = blocksWithRates(data);
+    if (own.length === 1 && !blockOfCompany(own[0], company.name))
+      data.chosenBlock = own[0];
   }
   const day = referenceDate ?? brazilDay(new Date());
   if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day))
     throw new TariffError("tariff_date_invalid");
   const counts = tariffCounts(data);
-  const store = getStore();
 
   // Primeiro o banco (se a tabela falhar, nenhum arquivo fica órfão); depois
-  // o original, guardado para conferência. Só a planilha anterior da mesma
-  // companhia (ou a consolidada anterior) sai de vigência.
-  const previous = (
-    await store.list("freight_tariffs", { filter: { status: "active" } })
-  ).filter((p) => lineOf(p) === lineId);
+  // o original, guardado para conferência.
   let row = await store.create("freight_tariffs", {
     referenceDate: day,
     fileName: name,
@@ -253,7 +277,8 @@ export async function importFreightTariff(
     });
   for (const p of previous)
     await store.update("freight_tariffs", p.id, { status: "replaced" });
-  const who = company ? company.name : "planilha consolidada";
+  const block = data.chosenBlock ? `, bloco ${data.chosenBlock}` : "";
+  const who = company ? `${company.name}${block}` : "planilha consolidada";
   await audit(
     user,
     "freight_tariff.import",
@@ -265,7 +290,7 @@ export async function importFreightTariff(
   if (!isWellmix(user) && company)
     await notifyWellmix({
       subject: `Tabela de frete nova: ${company.name}`,
-      body: `${counts.rates} tarifa(s) com referência de ${day}${data.warnings.length ? `; ${data.warnings.length} aviso(s) na conferência` : ""}. O comparativo e o frete por m³ já usam a tabela nova.`,
+      body: `${counts.rates} tarifa(s) com referência de ${day}${data.warnings.length ? `; ${data.warnings.length} aviso(s) na conferência` : ""}.${data.chosenBlock ? ` Bloco da planilha: ${data.chosenBlock} (indicado pela companhia; o nome é diferente do cadastro).` : ""} O comparativo e o frete por m³ já usam a tabela nova.`,
       link: `/app/freight/tariff?id=${encodeURIComponent(row.id)}`,
     }).catch(() => null);
   // Frete por m³ do preço refeito com a tabela nova (nunca derruba a importação).

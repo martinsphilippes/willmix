@@ -146,6 +146,7 @@ export type TariffWarningCode =
   | "ptax_iof_added"
   | "ptax_iof_missing"
   | "other_blocks_ignored"
+  | "block_chosen"
   | "forwarder_no_code"
   | "port_no_id"
   | "port_no_id_similar"
@@ -181,6 +182,11 @@ export interface FreightTariffData {
   warnings: TariffWarning[];
   /** Só no comparativo: de onde veio o câmbio (sem o campo: da planilha). */
   fxSource?: TariffFxSource;
+  /**
+   * Planilha de uma companhia com um bloco de nome diferente do cadastro
+   * (indicado por ela): a próxima planilha dela usa o mesmo bloco sozinha.
+   */
+  chosenBlock?: string;
 }
 
 export class TariffError extends Error {
@@ -1596,16 +1602,25 @@ export function tariffCounts(data: FreightTariffData) {
 /* ------------------------------------------------------------------------ */
 
 /**
- * O bloco da planilha é da companhia do cadastro? Mesmo nome, ou o bloco
- * começa com ele ("ROYAL CARGO - MSC" é da "Royal Cargo"). Nome curto
- * demais (menos de 3 letras) não vale.
+ * O bloco da planilha é da companhia do cadastro? Mesmo nome, o bloco começa
+ * com ele ("ROYAL CARGO - MSC" é da "Royal Cargo"), ou o nome do cadastro
+ * começa com o do agente no bloco (antes do armador): "SCAN GLOBAL -MSC" é
+ * da "Scan Global Logística"; "NEXT SHIPPING", da "Next Shipping Agência
+ * Marítima". Nome curto demais (menos de 3 letras) não vale; o armador
+ * depois do traço não conta ("SCAN GLOBAL -MSC" não é da "MSC").
  */
 export function blockOfCompany(block: string, company: string | null): boolean {
   const c = companyKey(company);
   if (c.length < 3) return false;
   const k = foldName(block);
-  return k === c || k.startsWith(`${c} `);
+  if (k === c || k.startsWith(`${c} `)) return true;
+  // Separador com espaço de um dos lados: "SINO-TRANS" é um nome só.
+  const agent = companyKey(block.split(BLOCK_CARRIER)[0] ?? "");
+  return agent.length >= 3 && (agent === c || c.startsWith(`${agent} `));
 }
+
+/** Traço (ou "+", "/", "|") entre o agente e o armador no nome do bloco. */
+const BLOCK_CARRIER = /\s+[-\u2013\u2014+/|]\s*|\s*[-\u2013\u2014+/|]\s+/;
 
 /** Final de razão social que não faz parte do nome ("Beta Cargo Ltda" → "beta cargo"). */
 const LEGAL_SUFFIX =

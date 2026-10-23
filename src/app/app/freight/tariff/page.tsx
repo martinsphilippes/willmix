@@ -70,6 +70,7 @@ const INFO_WARNINGS = new Set([
   "ptax_iof_added",
   "destination_fixed_id",
   "other_blocks_ignored",
+  "block_chosen",
 ]);
 const FROM_ORDER = /^\/app\/orders\/[A-Za-z0-9_-]{1,64}$/;
 /** Avisos do CSV do Sankhya (códigos internos da Wellmix): a companhia não vê. */
@@ -181,6 +182,13 @@ export default async function FreightTariffPage({
           .filter(Boolean)
           .slice(0, 20)
       : [];
+  // Companhia e data do envio recusado: o formulário volta com elas.
+  const companyParam =
+    param("company") && ID.test(param("company")!) ? param("company") : null;
+  const dateParam =
+    param("date") && /^\d{4}-\d{2}-\d{2}$/.test(param("date")!)
+      ? param("date")
+      : null;
 
   let comparative: ComparativeTariff | null = null;
   let mine: FreightTariff | null = null;
@@ -218,7 +226,7 @@ export default async function FreightTariffPage({
   // Nome da companhia que a planilha precisava ter (a do usuário, ou a escolhida pela Wellmix).
   const expectedCompany = blocksFound.length
     ? wellmix
-      ? (lines.find((p) => p.id === param("company"))?.name ?? null)
+      ? (lines.find((p) => p.id === companyParam)?.name ?? null)
       : ((await store.get("parties", user.partyId!))?.name ?? null)
     : null;
   const companyName = (lineId: string | null | undefined) =>
@@ -277,17 +285,19 @@ export default async function FreightTariffPage({
             : { body: "tariff.mine.help.body", steps: "tariff.mine.help.steps" }
         }
       />
-      {error ? (
+      {error && blocksFound.length ? (
+        /* Nenhum bloco com o nome da companhia: ela diz qual é o dela (abaixo). */
+        <Alert tone="warning">
+          <span data-tariff-error={error}>
+            {t("tariff.error.pickBlock", {
+              company: expectedCompany ?? "—",
+              n: String(blocksFound.length),
+            })}
+          </span>
+        </Alert>
+      ) : error ? (
         <Alert tone="danger">
           <span data-tariff-error={error}>{errorText(t, error)}</span>
-          {blocksFound.length ? (
-            <span className="mt-1 block" data-tariff-blocks-found="">
-              {t("tariff.error.blocksFound", {
-                blocks: blocksFound.join(", "),
-                company: expectedCompany ?? "—",
-              })}
-            </span>
-          ) : null}
         </Alert>
       ) : null}
       {loadError && loadError !== error ? (
@@ -329,7 +339,9 @@ export default async function FreightTariffPage({
           from={from}
           wellmix={wellmix}
           lines={lines}
-          today={today}
+          today={dateParam ?? today}
+          blocks={blocksFound}
+          company={companyParam}
         />
 
         {loadError ? null : showComparative ? (
@@ -427,23 +439,33 @@ export default async function FreightTariffPage({
   );
 }
 
-/** Importar: a companhia manda a dela; a Wellmix diz de quem é a planilha. */
+/**
+ * Importar: a companhia manda a dela; a Wellmix diz de quem é a planilha.
+ * Depois de uma planilha sem bloco com o nome da companhia, pergunta qual
+ * dos blocos achados é o dela (`blocks`) e volta com a companhia escolhida.
+ */
 function ImportCard({
   t,
   from,
   wellmix,
   lines,
   today,
+  blocks,
+  company,
 }: {
   t: Translate;
   from: string | null;
   wellmix: boolean;
   lines: Party[];
   today: string | undefined;
+  blocks: string[];
+  company: string | null;
 }) {
   const options = [...lines]
     .filter((p) => p.active !== false)
     .sort((a, b) => a.name.localeCompare(b.name));
+  const picked =
+    company && options.some((p) => p.id === company) ? company : "";
   return (
     <Card
       title={t(wellmix ? "tariff.import.title" : "tariff.mine.importTitle")}
@@ -457,6 +479,45 @@ function ImportCard({
         data-tariff-import=""
       >
         {from ? <input type="hidden" name="from" value={from} /> : null}
+        {blocks.length ? (
+          <div
+            role="radiogroup"
+            aria-labelledby="tariff-pick-block"
+            className="mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3"
+            data-tariff-pick-block=""
+          >
+            <p
+              id="tariff-pick-block"
+              className="text-sm font-semibold text-zinc-900"
+            >
+              {t(wellmix ? "tariff.import.pickBlock" : "tariff.mine.pickBlock")}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {blocks.map((b) => (
+                <label key={b} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="block"
+                    value={b}
+                    required={!wellmix}
+                    className="peer sr-only"
+                    data-tariff-block-option={b}
+                  />
+                  <span className="flex min-h-10 items-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand-600">
+                    {b}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-zinc-600">
+              {t(
+                wellmix
+                  ? "tariff.import.pickBlockHint"
+                  : "tariff.mine.pickBlockHint",
+              )}
+            </p>
+          </div>
+        ) : null}
         <div
           className={cx(
             "grid items-end gap-3",
@@ -473,7 +534,7 @@ function ImportCard({
               <Select
                 name="shippingLineId"
                 required
-                defaultValue=""
+                defaultValue={picked}
                 data-tariff-company=""
               >
                 <option value="" disabled>

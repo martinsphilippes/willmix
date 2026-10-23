@@ -2142,3 +2142,136 @@ describe("tarifário como na planilha", () => {
     expect(mine).toContain("Total R$ direta");
   });
 });
+
+describe("a companhia diz qual bloco da planilha é o dela", () => {
+  it("nome parecido com o do cadastro é reconhecido; o armador depois do traço, não", () => {
+    expect(
+      calc.blockOfCompany("SCAN GLOBAL -MSC", "Scan Global Logística Ltda"),
+    ).toBe(true);
+    expect(
+      calc.blockOfCompany("NEXT SHIPPING", "Next Shipping Agência Marítima"),
+    ).toBe(true);
+    expect(
+      calc.blockOfCompany("ROYAL CARGO – MSC", "Royal Cargo do Brasil"),
+    ).toBe(true);
+    expect(calc.blockOfCompany("ROYAL CARGO - MSC", "Royal Logística")).toBe(
+      false,
+    );
+    expect(calc.blockOfCompany("SCAN GLOBAL -MSC", "MSC Mediterranean")).toBe(
+      false,
+    );
+    // Traço sem espaço faz parte do nome; nome curto não vale.
+    expect(calc.blockOfCompany("SINO-TRANS", "Sino Pacific")).toBe(false);
+    expect(calc.blockOfCompany("AB - MSC", "Ab Cargo")).toBe(false);
+  });
+
+  it("sem bloco com o nome: ela escolhe; entra só ele, em nome dela, e fica lembrado", async () => {
+    const store = getStore();
+    const [operator] = await store.list("users", {
+      filter: { email: "operador@wellmix.com" },
+    });
+    const [maritima] = await store.list("users", {
+      filter: { email: "armador@maritima.com" },
+    });
+    const delta = await store.create("parties", {
+      type: "shipping_line",
+      name: "Delta Mar",
+      active: true,
+    } as never);
+    const deltaUser = (await store.create("users", {
+      email: "delta@mar.com",
+      name: "Delta Mar",
+      role: "shipping_line",
+      partyId: delta.id,
+      active: true,
+    } as never)) as User;
+    const sheet = () => file(xlsxFile(workbook()));
+
+    // Sem dizer qual é (ou com um bloco que não está na planilha): recusa
+    // com os blocos achados, para ela escolher.
+    await expect(
+      service.importFreightTariff(deltaUser, sheet(), null),
+    ).rejects.toMatchObject({
+      message: "tariff_other_companies",
+      detail: ["ALFA LINES", "BETA CARGO", "GAMA"],
+    });
+    await expect(
+      service.importFreightTariff(deltaUser, sheet(), null, null, {
+        block: "ZETA",
+      }),
+    ).rejects.toThrow("tariff_other_companies");
+
+    // Ela diz que é o GAMA (maiúscula e espaço não importam).
+    const first = await service.importFreightTariff(
+      deltaUser,
+      sheet(),
+      "2026-10-21",
+      null,
+      { block: " gama " },
+    );
+    expect(first.shippingLineId).toBe(delta.id);
+    expect(calc.blocksWithRates(first.data)).toEqual(["GAMA"]);
+    expect(first.rateCount).toBe(1);
+    expect(first.data.chosenBlock).toBe("GAMA");
+    expect(first.data.warnings).toContainEqual({
+      code: "block_chosen",
+      params: { kept: "GAMA", ignored: "ALFA LINES, BETA CARGO" },
+    });
+    // A auditoria diz o bloco escolhido.
+    const audits = await store.list("audit_log", {
+      filter: { action: "freight_tariff.import", entityId: first.id },
+    });
+    expect(JSON.stringify(audits)).toContain("Delta Mar, bloco GAMA");
+
+    // Na próxima, sem escolher: o portal usa o mesmo bloco.
+    const second = await service.importFreightTariff(
+      deltaUser,
+      sheet(),
+      "2026-10-22",
+    );
+    expect(calc.blocksWithRates(second.data)).toEqual(["GAMA"]);
+    expect(second.data.chosenBlock).toBe("GAMA");
+    expect((await store.get("freight_tariffs", first.id))?.status).toBe(
+      "replaced",
+    );
+    // A planilha é só dela e da Wellmix.
+    expect(await service.getFreightTariff(maritima, second.id)).toBeNull();
+    // No comparativo, o bloco entra em nome dela (sem tirar o GAMA de quem é).
+    const cmp = (await service.comparativeTariff(operator))!;
+    const gamas = cmp.data.destinations
+      .find((d) => d.code === "NVT")!
+      .forwarders.filter((f) => f.name === "GAMA");
+    expect(gamas.some((f) => f.shippingLineId === delta.id)).toBe(true);
+    expect(gamas.some((f) => f.shippingLineId !== delta.id)).toBe(true);
+
+    // A Wellmix também diz o bloco ao importar em nome da companhia.
+    const byWellmix = await service.importFreightTariff(
+      operator,
+      sheet(),
+      null,
+      delta.id,
+      { block: "BETA CARGO" },
+    );
+    expect(calc.blocksWithRates(byWellmix.data)).toEqual(["BETA CARGO"]);
+    expect(byWellmix.data.chosenBlock).toBe("BETA CARGO");
+
+    // Com um bloco de nome parecido com o do cadastro, ele vale (a escolha, não).
+    const alfa = await store.create("parties", {
+      type: "shipping_line",
+      name: "Alfa Lines Logística Ltda",
+      active: true,
+    } as never);
+    const named = await service.importFreightTariff(
+      operator,
+      sheet(),
+      null,
+      alfa.id,
+      { block: "GAMA" },
+    );
+    expect(calc.blocksWithRates(named.data)).toEqual(["ALFA LINES"]);
+    expect(named.data.chosenBlock).toBeUndefined();
+    expect(named.data.warnings.map((w) => w.code)).toContain(
+      "other_blocks_ignored",
+    );
+  });
+});
