@@ -101,7 +101,10 @@ describe("menu principal", () => {
     ]);
     expect(view("shipping_line")).toEqual([
       home,
-      { group: "nav.group.orders", items: ["/app/freight", "/app/orders"] },
+      {
+        group: "nav.group.orders",
+        items: ["/app/freight", "/app/freight/tariff", "/app/orders"],
+      },
     ]);
     expect(view("legal")).toEqual([
       home,
@@ -135,12 +138,23 @@ describe("menu principal", () => {
     );
   });
 
-  it("Wellmix tem o tarifário de frete no menu; a companhia marítima não", () => {
+  it("tarifário de frete no menu da Wellmix e da companhia marítima (a dela); dos outros parceiros, não", () => {
     const wellmix = flattenNav(navFor("operator", false)).map((l) => l.href);
     expect(wellmix).toContain("/app/freight/tariff");
-    const shipping = flattenNav(navFor("shipping_line", false)).map(
-      (l) => l.href,
+    const shipping = flattenNav(navFor("shipping_line", false));
+    expect(shipping.map((l) => l.href)).toContain("/app/freight/tariff");
+    expect(shipping.find((l) => l.href === "/app/freight/tariff")?.key).toBe(
+      "nav.myFreightTariff",
     );
-    expect(shipping).not.toContain("/app/freight/tariff");
+    for (const role of [
+      "supplier",
+      "customer",
+      "broker",
+      "carrier",
+      "agency",
+    ] as const)
+      expect(flattenNav(navFor(role, false)).map((l) => l.href)).not.toContain(
+        "/app/freight/tariff",
+      );
   });
 });

@@ -19,8 +19,11 @@
  *
  * O total em R$ de cada tarifa é recalculado aqui com as taxas do próprio
  * agente: frete (US$) × containers × câmbio + frete rodoviário até o CD ×
- * containers + taxas do agente em R$. Quando o total da planilha difere, um
- * aviso diz por quê (ex.: fórmula somando as taxas de outro agente).
+ * containers + taxas do agente em R$. Tudo o que é pago em US$ (frete e taxas
+ * em US$) entra com o PTAX e o IOF do agente: US$ × câmbio × (1 + PTAX) ×
+ * (1 + IOF). A planilha não soma PTAX e IOF; a conferência compara os totais
+ * dela com a conta dela (sem os dois) e avisa quando difere (ex.: fórmula
+ * somando as taxas de outro agente).
  */
 
 /** Container das tarifas (40HQ na planilha = 40HC nas Configurações). */
@@ -84,8 +87,20 @@ export interface TariffForwarder {
   feesBrl: number;
   /** Taxas do agente em R$ por embarque (US$ convertidos + R$), como o "TOTAIS TAXAS (BRL)". */
   feesTotalBrl: number;
+  /** Acréscimo sobre o câmbio (0,02 = 2%) e IOF (0,035 = 3,5%) do agente. */
   ptaxPercent: number | null;
   iofPercent: number | null;
+  /*
+   * Só no comparativo (várias planilhas juntas): de quem são as tarifas e de
+   * que planilha vieram.
+   */
+  /** Companhia marítima dona das tarifas (null = planilha consolidada). */
+  shippingLineId?: string | null;
+  /** Nome da companhia no cadastro. */
+  company?: string | null;
+  tariffId?: string;
+  /** Data de referência da planilha de origem (DTREFERENCIA do Sankhya). */
+  referenceDate?: string;
 }
 
 export interface TariffOrigin {
@@ -128,6 +143,8 @@ export type TariffWarningCode =
   | "total_mismatch"
   | "fees_copied"
   | "ptax_iof_unused"
+  | "ptax_iof_added"
+  | "ptax_iof_missing"
   | "forwarder_no_code"
   | "port_no_id"
   | "port_no_id_similar"
@@ -146,6 +163,9 @@ export interface TariffWarning {
   params: Record<string, string | number>;
 }
 
+/** Câmbio do comparativo: o da planilha ou o dólar do dia do portal. */
+export type TariffFxSource = "sheet" | "portal";
+
 export interface FreightTariffData {
   version: 1;
   /** Câmbio usado (dólar + spread), em R$ por US$. */
@@ -158,6 +178,8 @@ export interface FreightTariffData {
   containerQty: number;
   destinations: TariffDestination[];
   warnings: TariffWarning[];
+  /** Só no comparativo: de onde veio o câmbio (sem o campo: da planilha). */
+  fxSource?: TariffFxSource;
 }
 
 export class TariffError extends Error {}
@@ -216,6 +238,26 @@ export function cellNumber(
   if (!/^-?\d+(\.\d+)?(e[-+]?\d+)?$/i.test(s)) return null;
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Percentual de uma célula ("0.02", "2%", "2", "0,38" ou "2,5%" → 0,02 /
+ * 0,0038 / 0,025). PTAX e IOF de verdade ficam abaixo de 10%: número a
+ * partir de 0,2 sem "%" é ponto percentual ("0,38" = 0,38%); acima de 10%
+ * fica de fora (null).
+ */
+export function cellPercent(
+  raw: string | undefined,
+  isText = false,
+): number | null {
+  if (raw === undefined) return null;
+  const s = raw.trim();
+  const percent = s.endsWith("%");
+  const n = cellNumber(percent ? s.slice(0, -1) : s, isText || percent);
+  if (n === null || n < 0) return null;
+  // "2" (ou "0,38") digitado numa célula sem formato de % quer dizer 2% (0,38%).
+  const v = percent || n >= 0.2 ? n / 100 : n;
+  return v <= 0.1 ? Math.round(v * 1e6) / 1e6 : null;
 }
 
 const round = (n: number, digits = 2) => {
@@ -418,12 +460,11 @@ function parseDestinationSheet(
           continue;
         }
         const fLabel = foldName(label);
-        if (fLabel === "ptax") {
-          ptaxPercent = n(r, g.start + 2);
-          continue;
-        }
-        if (fLabel === "iof") {
-          iofPercent = n(r, g.start + 2);
+        if (fLabel === "ptax" || fLabel === "iof") {
+          const c = g.start + 2;
+          const v = cellPercent(at(cells, r, c), text.has(`${r}:${c}`));
+          if (fLabel === "ptax") ptaxPercent = v;
+          else iofPercent = v;
           continue;
         }
         if (totalsSeen) continue;
@@ -516,16 +557,32 @@ function colName(index: number): string {
   return s;
 }
 
-/** Taxas do agente em R$ por embarque: por container × containers, por embarque uma vez. */
+/**
+ * Quanto cada US$ custa a mais pelo PTAX e pelo IOF do agente:
+ * (1 + PTAX) × (1 + IOF). Sem os dois na planilha, 1.
+ */
+export function usdFactor(
+  f: Pick<TariffForwarder, "ptaxPercent" | "iofPercent">,
+): number {
+  const pct = (v: number | null | undefined) =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 0.1 ? v : 0;
+  return (1 + pct(f.ptaxPercent)) * (1 + pct(f.iofPercent));
+}
+
+/**
+ * Taxas do agente em R$ por embarque: por container × containers, por
+ * embarque uma vez. As em US$ entram com o PTAX e o IOF (`factor`).
+ */
 export function feesTotalBrl(
   fees: TariffFee[],
   fx: number,
   containerQty: number,
+  factor = 1,
 ): number {
   let total = 0;
   for (const f of fees) {
     const mult = f.perShipment ? 1 : containerQty;
-    total += ((f.usd ?? 0) * fx + (f.brl ?? 0)) * mult;
+    total += ((f.usd ?? 0) * fx * factor + (f.brl ?? 0)) * mult;
   }
   return round(total, 4);
 }
@@ -537,12 +594,42 @@ export function rateTotalBrl(input: {
   containerQty: number;
   roadFreightBrl: number;
   feesTotalBrl: number;
+  /** PTAX e IOF do agente sobre o frete em US$ (sem eles, 1). */
+  factor?: number;
 }): number {
   return round(
-    input.oceanUsd * input.containerQty * input.fx +
+    input.oceanUsd * input.containerQty * input.fx * (input.factor ?? 1) +
       input.containerQty * input.roadFreightBrl +
       input.feesTotalBrl,
   );
+}
+
+/**
+ * Refaz os totais em R$ de um destino com os parâmetros dele (câmbio, frete
+ * até o CD, containers) e o PTAX e o IOF de cada agente. Vale para os
+ * tarifários gravados antes (sem PTAX e IOF na conta) e para o comparativo,
+ * que troca os parâmetros.
+ */
+export function recomputeTotals(dest: TariffDestination): void {
+  for (const f of dest.forwarders)
+    f.feesTotalBrl = feesTotalBrl(
+      f.fees ?? [],
+      dest.fx,
+      dest.containerQty,
+      usdFactor(f),
+    );
+  for (const r of dest.rates) {
+    const f = dest.forwarders[r.forwarder];
+    if (!f) continue;
+    r.totalBrl = rateTotalBrl({
+      oceanUsd: r.oceanUsd,
+      fx: dest.fx,
+      containerQty: dest.containerQty,
+      roadFreightBrl: dest.roadFreightBrl,
+      feesTotalBrl: f.feesTotalBrl,
+      factor: usdFactor(f),
+    });
+  }
 }
 
 /**
@@ -676,10 +763,26 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
     dest.name = portDisplay.get(destKey) ?? dest.name;
     for (const o of dest.origins)
       o.portId = portId.get(foldName(o.name)) ?? null;
+    // Taxas em R$ como a planilha soma (sem PTAX e IOF), para a conferência.
+    const sheetFees: number[] = [];
     for (const f of dest.forwarders) {
       f.code = supplierCode.get(foldName(f.name)) ?? null;
-      f.feesTotalBrl = feesTotalBrl(f.fees, dest.fx, dest.containerQty);
+      f.feesTotalBrl = feesTotalBrl(
+        f.fees,
+        dest.fx,
+        dest.containerQty,
+        usdFactor(f),
+      );
+      sheetFees.push(feesTotalBrl(f.fees, dest.fx, dest.containerQty));
     }
+    const sheetMethod = (oceanUsd: number, fi: number) =>
+      rateTotalBrl({
+        oceanUsd,
+        fx: dest.fx,
+        containerQty: dest.containerQty,
+        roadFreightBrl: dest.roadFreightBrl,
+        feesTotalBrl: sheetFees[fi],
+      });
 
     // Tarifas: uma por porto × agente × rota preenchida.
     const mismatch = new Map<number, { other: number | null; n: number }>();
@@ -708,6 +811,7 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
             containerQty: dest.containerQty,
             roadFreightBrl: dest.roadFreightBrl,
             feesTotalBrl: f.feesTotalBrl,
+            factor: usdFactor(f),
           });
           const sheetTotalBrl = cellNumber(
             at(p.cells, r, brlCell),
@@ -721,23 +825,16 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
             totalBrl,
             sheetTotalBrl,
           });
+          // Conferência com a conta da planilha (sem PTAX e IOF).
           if (
             sheetTotalBrl !== null &&
-            Math.abs(sheetTotalBrl - totalBrl) > 0.05
+            Math.abs(sheetTotalBrl - sheetMethod(oceanUsd, fi)) > 0.05
           ) {
             // Explica a diferença: a fórmula somou as taxas de outro agente?
             const other = dest.forwarders.findIndex(
-              (o, k) =>
+              (_, k) =>
                 k !== fi &&
-                Math.abs(
-                  rateTotalBrl({
-                    oceanUsd,
-                    fx: dest.fx,
-                    containerQty: dest.containerQty,
-                    roadFreightBrl: dest.roadFreightBrl,
-                    feesTotalBrl: o.feesTotalBrl,
-                  }) - sheetTotalBrl,
-                ) <= 0.05,
+                Math.abs(sheetMethod(oceanUsd, k) - sheetTotalBrl) <= 0.05,
             );
             const cur = mismatch.get(fi) ?? { other: null, n: 0 };
             mismatch.set(fi, {
@@ -827,18 +924,47 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
       });
   }
 
-  // PTAX e IOF informados, mas fora da conta (como na planilha).
-  const ptax = parsed
-    .flatMap((p) => p.dest.forwarders)
-    .find((f) => (f.ptaxPercent ?? 0) > 0 || (f.iofPercent ?? 0) > 0);
-  if (ptax)
-    warnings.push({
-      code: "ptax_iof_unused",
-      params: {
-        ptax: round((ptax.ptaxPercent ?? 0) * 100, 2),
-        iof: round((ptax.iofPercent ?? 0) * 100, 2),
-      },
-    });
+  // PTAX e IOF entram nos totais daqui (a planilha não soma).
+  {
+    const pct = (v: number | null) => round((v ?? 0) * 100, 3);
+    const priced = parsed.flatMap((p) =>
+      p.dest.forwarders
+        .map((f, fi) => ({ p, f, fi }))
+        .filter(({ p: q, fi }) => q.dest.rates.some((r) => r.forwarder === fi)),
+    );
+    const added = priced.filter(
+      ({ f }) => (f.ptaxPercent ?? 0) > 0 || (f.iofPercent ?? 0) > 0,
+    );
+    if (added.length) {
+      const ptax = added.map(({ f }) => pct(f.ptaxPercent));
+      const iof = added.map(({ f }) => pct(f.iofPercent));
+      warnings.push({
+        code: "ptax_iof_added",
+        params: {
+          ptax: Math.min(...ptax),
+          ptaxMax: Math.max(...ptax),
+          iof: Math.min(...iof),
+          iofMax: Math.max(...iof),
+        },
+      });
+    }
+    // Agente com tarifa e sem PTAX ou IOF: o total dele fica sem o acréscimo.
+    for (const { p, f } of priced)
+      if (f.ptaxPercent === null || f.iofPercent === null)
+        warnings.push({
+          code: "ptax_iof_missing",
+          params: {
+            sheet: p.dest.sheet,
+            forwarder: f.name,
+            missing:
+              f.ptaxPercent === null && f.iofPercent === null
+                ? "PTAX/IOF"
+                : f.ptaxPercent === null
+                  ? "PTAX"
+                  : "IOF",
+          },
+        });
+  }
 
   const data: FreightTariffData = {
     version: 1,
@@ -916,22 +1042,41 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
 }
 
 /**
- * Tarifário gravado antes dos parâmetros por aba (câmbio, frete até o CD e
- * containers): completa com os gerais, para nenhuma conta dar NaN.
+ * Tarifário lido do banco: completa os parâmetros por aba dos gravados antes
+ * deles (câmbio, frete até o CD e containers), para nenhuma conta dar NaN, e
+ * refaz os totais com o PTAX e o IOF (os gravados antes não somavam).
  */
 export function normalizeTariffData(
   data: FreightTariffData,
 ): FreightTariffData {
   const ok = (v: unknown): v is number =>
     typeof v === "number" && Number.isFinite(v);
-  for (const d of data.destinations ?? []) {
+  data.destinations ??= [];
+  for (const d of data.destinations) {
     if (!ok(d.fx) || !(d.fx > 0)) d.fx = data.fx;
     if (!ok(d.roadFreightBrl)) d.roadFreightBrl = data.roadFreightBrl ?? 0;
     if (!ok(d.containerQty) || !(d.containerQty > 0))
       d.containerQty =
         ok(data.containerQty) && data.containerQty > 0 ? data.containerQty : 1;
+    d.forwarders ??= [];
+    d.origins ??= [];
+    d.rates ??= [];
+    recomputeTotals(d);
   }
-  data.warnings ??= [];
+  // Aviso antigo ("PTAX e IOF fora da conta"): agora eles entram.
+  data.warnings = (data.warnings ?? []).map((w) =>
+    w.code === "ptax_iof_unused"
+      ? {
+          code: "ptax_iof_added",
+          params: {
+            ptax: w.params.ptax ?? 0,
+            ptaxMax: w.params.ptax ?? 0,
+            iof: w.params.iof ?? 0,
+            iofMax: w.params.iof ?? 0,
+          },
+        }
+      : w,
+  );
   return data;
 }
 
@@ -968,9 +1113,12 @@ export function sankhyaRows(
   data: FreightTariffData,
   referenceDate: string,
 ): SankhyaRow[] {
-  const serial = excelSerial(referenceDate);
-  const [y, m, d] = referenceDate.split("-");
-  const date = `${d}/${m}/${y}`;
+  // No comparativo, cada companhia vai com a data da própria planilha.
+  const dated = (day: string) => {
+    const [y, m, d] = day.split("-");
+    return { serial: excelSerial(day), date: `${d}/${m}/${y}` };
+  };
+  const base = dated(referenceDate);
   const out: SankhyaRow[] = [];
   // Ordem da macro (NVT, IOA, ITJ), depois os demais: com AD_IDEXTERNO
   // repetido entre destinos, a última linha de cada código é a mesma da macro.
@@ -995,6 +1143,10 @@ export function sankhyaRows(
           rates.find((r) => r.route === "direct") ??
           rates.find((r) => r.route === "long");
         if (!pick) return;
+        const { serial, date } =
+          f.referenceDate && /^\d{4}-\d{2}-\d{2}$/.test(f.referenceDate)
+            ? dated(f.referenceDate)
+            : base;
         out.push({
           externalId: `${f.code}${serial}${o.portId}`,
           code: f.code,
@@ -1059,6 +1211,9 @@ export interface TariffOption {
   paymentTermDays: number | null;
   /** Containers da estimativa (o total é do embarque inteiro). */
   containerQty: number;
+  /** Companhia marítima dona da tarifa (comparativo), quando se sabe. */
+  shippingLineId: string | null;
+  company: string | null;
 }
 
 /** Menor custo de cada porto de origem num destino (índice da tarifa, ou null). */
@@ -1348,6 +1503,8 @@ export function optionsForOrigin(
           totalBrl: r.totalBrl,
           paymentTermDays: f.paymentTermDays,
           containerQty: d.containerQty,
+          shippingLineId: f.shippingLineId ?? null,
+          company: f.company ?? null,
         });
       }
     });
@@ -1365,12 +1522,291 @@ export function tariffCounts(data: FreightTariffData) {
   let rates = 0;
   for (const d of data.destinations) {
     rates += d.rates.length;
-    for (const r of d.rates)
-      names.add(foldName(d.forwarders[r.forwarder].name));
+    for (const r of d.rates) {
+      const f = d.forwarders[r.forwarder];
+      names.add(`${f.shippingLineId ?? ""}|${foldName(f.name)}`);
+    }
   }
   return {
     rates,
     forwarders: names.size,
     destinations: data.destinations.length,
   };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Comparativo: as planilhas de todas as companhias juntas                   */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * O bloco da planilha é da companhia do cadastro? Mesmo nome, ou o bloco
+ * começa com ele ("ROYAL CARGO - MSC" é da "Royal Cargo"). Nome curto
+ * demais (menos de 3 letras) não vale.
+ */
+export function blockOfCompany(block: string, company: string | null): boolean {
+  const c = companyKey(company);
+  if (c.length < 3) return false;
+  const k = foldName(block);
+  return k === c || k.startsWith(`${c} `);
+}
+
+/** Final de razão social que não faz parte do nome ("Beta Cargo Ltda" → "beta cargo"). */
+const LEGAL_SUFFIX =
+  /(?:\s+(?:ltda|limitada|s\s?a|sa|eireli|me|epp|inc|llc|ltd|co|corp|gmbh|do brasil|brasil))+$/;
+
+/** Nome da companhia do cadastro, sem a razão social, para comparar com o bloco. */
+function companyKey(company: string | null): string {
+  return foldName(company ?? "")
+    .replace(LEGAL_SUFFIX, "")
+    .trim();
+}
+
+/** Nomes dos blocos (companhias) com tarifa na planilha, sem repetir. */
+export function blocksWithRates(data: FreightTariffData): string[] {
+  const out = new Map<string, string>();
+  for (const d of data.destinations)
+    for (const r of d.rates) {
+      const name = d.forwarders[r.forwarder]?.name;
+      if (name) out.set(foldName(name), name);
+    }
+  return [...out.values()];
+}
+
+/** Uma planilha vigente: de uma companhia (enviada por ela ou pela Wellmix) ou a consolidada. */
+export interface TariffSource {
+  id: string;
+  referenceDate: string;
+  createdAt: string;
+  /** Companhia dona das tarifas; null = planilha consolidada (várias companhias). */
+  shippingLineId: string | null;
+  /** Nome da companhia no cadastro (null na consolidada). */
+  company: string | null;
+  /** Importada pela Wellmix (dá os parâmetros do comparativo). */
+  byWellmix: boolean;
+  data: FreightTariffData;
+}
+
+/**
+ * Junta as planilhas vigentes num tarifário só (o comparativo da Wellmix):
+ * - a planilha de cada companhia entra inteira (só a mais nova de cada uma);
+ * - da consolidada, só as companhias que ainda não mandaram a própria (mesmo
+ *   nome de bloco, ou o bloco começa com o nome da companhia no cadastro);
+ * - um câmbio, um frete até o CD e uma quantidade de containers por destino
+ *   para todos (senão os totais não se comparam): o câmbio é o dólar do dia
+ *   do portal (`fx`), se houver; o resto vem da planilha mais nova importada
+ *   pela Wellmix (sem ela, da mais nova).
+ * Códigos do Sankhya que faltam numa planilha (CODPARC, ID do porto) vêm de
+ * outra que tenha o mesmo nome. Sem planilha com tarifa: null.
+ */
+export function mergeTariffs(
+  sources: TariffSource[],
+  options: { fx?: number | null } = {},
+): FreightTariffData | null {
+  const newest = (a: TariffSource, b: TariffSource) =>
+    b.createdAt.localeCompare(a.createdAt);
+  const own = new Map<string, TariffSource>();
+  for (const s of [...sources].sort(newest))
+    if (s.shippingLineId && !own.has(s.shippingLineId))
+      own.set(s.shippingLineId, s);
+  const consolidated = [...sources].sort(newest).find((s) => !s.shippingLineId);
+  const companies = [...own.values()];
+
+  // Blocos da consolidada que a própria companhia já substituiu.
+  // Só blocos com o nome da própria companhia substituem os da consolidada:
+  // a planilha de uma companhia nunca tira (nem imita) o preço de outra.
+  const ownBlocks = new Set<string>();
+  for (const s of companies)
+    for (const d of s.data.destinations)
+      for (const r of d.rates) {
+        const name = d.forwarders[r.forwarder].name;
+        if (blockOfCompany(name, s.company)) ownBlocks.add(foldName(name));
+      }
+  const replaced = (name: string) =>
+    ownBlocks.has(foldName(name)) ||
+    companies.some((s) => blockOfCompany(name, s.company));
+
+  // Ordem: a consolidada (ordem das abas do modelo), depois as companhias.
+  const ordered = [
+    ...(consolidated ? [consolidated] : []),
+    ...companies.sort(
+      (a, b) =>
+        (a.company ?? "").localeCompare(b.company ?? "") ||
+        a.id.localeCompare(b.id),
+    ),
+  ];
+  if (!ordered.length) return null;
+
+  // Códigos do Sankhya (pelo nome) só das planilhas importadas pela Wellmix:
+  // a abas FORNECEDORES/PORTOS de uma companhia não valem para o CSV.
+  const forwarderCode = new Map<string, string>();
+  const portIdByName = new Map<string, number>();
+  for (const s of ordered.filter((x) => x.byWellmix))
+    for (const d of s.data.destinations) {
+      for (const f of d.forwarders)
+        if (f.code && !forwarderCode.has(foldName(f.name)))
+          forwarderCode.set(foldName(f.name), f.code);
+      for (const o of d.origins)
+        if (o.portId !== null && !portIdByName.has(foldName(o.name)))
+          portIdByName.set(foldName(o.name), o.portId);
+      if (d.portId !== null && !portIdByName.has(`dest:${d.code}`))
+        portIdByName.set(`dest:${d.code}`, d.portId);
+    }
+
+  // Parâmetros de cada destino: da planilha mais nova da Wellmix que o tem.
+  const byParams = [...ordered].sort(
+    (a, b) => Number(b.byWellmix) - Number(a.byWellmix) || newest(a, b),
+  );
+  const validFx = (v: number | null | undefined) =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 100 ? v : null;
+  const portalFx = validFx(options.fx);
+  // Spread da planilha mais nova da Wellmix (o da companhia não vale).
+  const spreadOf = (v: number | null | undefined) =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v < 1 ? v : 0;
+  const spread = spreadOf(byParams.find((x) => x.byWellmix)?.data.fxSpread);
+
+  const merged = new Map<string, TariffDestination>();
+  const originIndex = new Map<string, Map<string, number>>();
+  for (const s of ordered) {
+    for (const d of s.data.destinations) {
+      let dest = merged.get(d.code);
+      if (!dest) {
+        const params =
+          byParams
+            .map((x) => x.data.destinations.find((y) => y.code === d.code))
+            .find(Boolean) ?? d;
+        dest = {
+          sheet: d.sheet,
+          code: d.code,
+          name: d.name,
+          portId:
+            (s.byWellmix ? d.portId : null) ??
+            portIdByName.get(`dest:${d.code}`) ??
+            DESTINATION_IDS[d.code] ??
+            null,
+          // Dólar do dia + o spread da planilha da Wellmix (sem o dólar, o câmbio dela).
+          fx: portalFx !== null ? portalFx + spread : params.fx,
+          roadFreightBrl: params.roadFreightBrl,
+          containerQty: params.containerQty,
+          forwarders: [],
+          origins: [],
+          rates: [],
+        };
+        merged.set(d.code, dest);
+        originIndex.set(d.code, new Map());
+      }
+      const origins = originIndex.get(d.code)!;
+      const target = dest;
+      // Companhias desta planilha que entram (com tarifa e não substituídas).
+      const kept = d.forwarders
+        .map((f, fi) => ({ f, fi }))
+        .filter(
+          ({ f, fi }) =>
+            d.rates.some((r) => r.forwarder === fi) &&
+            !(!s.shippingLineId && replaced(f.name)),
+        );
+      if (!kept.length) continue;
+      const keptIndex = new Map<number, number>();
+      for (const { f, fi } of kept) {
+        keptIndex.set(fi, target.forwarders.length);
+        // Código: o da própria planilha só se a Wellmix importou; pelo nome,
+        // só para bloco que é da companhia (nunca o código de outra).
+        const mine =
+          s.byWellmix || !s.shippingLineId || blockOfCompany(f.name, s.company);
+        target.forwarders.push({
+          ...f,
+          fees: f.fees.map((x) => ({ ...x })),
+          code:
+            (s.byWellmix ? f.code : null) ??
+            (mine ? forwarderCode.get(foldName(f.name)) : undefined) ??
+            null,
+          shippingLineId: s.shippingLineId,
+          company: s.company,
+          tariffId: s.id,
+          referenceDate: s.referenceDate,
+        });
+      }
+      // Portos na ordem da planilha (o CSV do Sankhya sai na mesma ordem da macro).
+      const originMap = new Map<number, number>();
+      d.origins.forEach((o, oi) => {
+        if (!d.rates.some((r) => r.origin === oi && keptIndex.has(r.forwarder)))
+          return;
+        const key = foldName(o.name);
+        let at = origins.get(key);
+        if (at === undefined) {
+          at = target.origins.length;
+          origins.set(key, at);
+          target.origins.push({
+            country: o.country,
+            name: o.name,
+            portId:
+              (s.byWellmix ? o.portId : null) ?? portIdByName.get(key) ?? null,
+          });
+        } else {
+          const known = target.origins[at];
+          known.country ??= o.country;
+          if (known.portId === null)
+            known.portId =
+              (s.byWellmix ? o.portId : null) ?? portIdByName.get(key) ?? null;
+        }
+        originMap.set(oi, at);
+      });
+      for (const r of d.rates) {
+        const fi = keptIndex.get(r.forwarder);
+        const oi = originMap.get(r.origin);
+        if (fi === undefined || oi === undefined) continue;
+        target.rates.push({ ...r, origin: oi, forwarder: fi });
+      }
+    }
+  }
+  const destinations = [...merged.values()].filter((d) => d.rates.length);
+  if (!destinations.length) return null;
+  for (const d of destinations) recomputeTotals(d);
+
+  // Conferência do comparativo: o que fica fora do CSV do Sankhya.
+  const warnings: TariffWarning[] = [];
+  const noCode = new Set<string>();
+  const noId = new Set<string>();
+  for (const d of destinations) {
+    if (d.portId === null) noId.add(d.name);
+    for (const r of d.rates) {
+      const f = d.forwarders[r.forwarder];
+      if (!f.code) noCode.add(f.name);
+      if (d.origins[r.origin].portId === null)
+        noId.add(d.origins[r.origin].name);
+    }
+  }
+  // O que a conferência da própria planilha já aponta não se repete aqui.
+  const already = new Set<string>();
+  for (const s of ordered)
+    for (const w of s.data.warnings ?? []) {
+      if (w.code === "forwarder_no_code")
+        already.add(`f:${String(w.params.forwarder)}`);
+      if (w.code === "port_no_id" || w.code === "port_no_id_similar")
+        already.add(`p:${String(w.params.port)}`);
+    }
+  for (const name of noCode)
+    if (!already.has(`f:${name}`))
+      warnings.push({ code: "forwarder_no_code", params: { forwarder: name } });
+  for (const name of noId)
+    if (!already.has(`p:${name}`))
+      warnings.push({ code: "port_no_id", params: { port: name } });
+  const first = destinations[0];
+  const data: FreightTariffData = {
+    version: 1,
+    fx: first.fx,
+    fxBase: null,
+    fxSpread: null,
+    roadFreightBrl: first.roadFreightBrl,
+    containerQty: first.containerQty,
+    destinations,
+    warnings,
+    fxSource: portalFx ? "portal" : "sheet",
+  };
+  const seen = new Map<string, number>();
+  for (const r of sankhyaRows(data, "2000-01-01"))
+    seen.set(r.externalId, (seen.get(r.externalId) ?? 0) + 1);
+  const repeated = [...seen.values()].filter((n) => n > 1).length;
+  if (repeated)
+    warnings.push({ code: "sankhya_duplicate_ids", params: { n: repeated } });
+  return data;
 }

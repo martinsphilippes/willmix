@@ -6248,6 +6248,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "shippingLineId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -6258,6 +6266,18 @@
             "status"
           ],
           "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_line",
+          "type": "key",
+          "columns": [
+            "shippingLineId",
+            "status"
+          ],
+          "orders": [
+            "ASC",
             "ASC"
           ]
         }

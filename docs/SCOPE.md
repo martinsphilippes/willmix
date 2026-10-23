@@ -26,7 +26,7 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 | Fornecedor         | Responde RFQ, cumpre checklists, aprova a arte, envia fotos e peso, confirma pagamentos  | Cliente final, valor de venda     |
 | Agência            | Faz e envia a arte da embalagem (refaz quando o fornecedor reprova)                      | Valores                           |
 | Despachante        | Número do processo, documentos, custos, liberação                                        | Valores comerciais                |
-| Companhia marítima | Data de embarque, previsão, navio, BL                                                    | Valores comerciais                |
+| Companhia marítima | Confirma o embarque (data, previsão, navio e BL opcionais); envia a própria tabela de frete | Valores comerciais; tabelas das outras companhias |
 | Transportador      | Placa, previsão, situação, entrega                                                       | Valores comerciais                |
 | Jurídico           | Visualiza e muda status de multas                                                        |                                   |
 

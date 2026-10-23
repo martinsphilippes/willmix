@@ -35,9 +35,10 @@ import {
   type DateBounds,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue } from "@/lib/workflow/money";
-import { isOffFlowStage } from "@/lib/workflow/stages";
+import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
+import { normalizeShipping } from "@/lib/services/shipping-stage";
 import { SupplierPaymentCard } from "@/components/supplier-payment-card";
 import { loadOrderFinance } from "@/lib/services/finance";
 import {
@@ -129,8 +130,11 @@ import {
   openAfterSalesAction,
 } from "../../actions/after-sales";
 import { MoneyInput } from "@/components/money-input";
-import { FreightTariffBox } from "@/components/freight-tariff-box";
-import { orderTariffView } from "@/lib/services/freight-tariff";
+import {
+  FreightTariffBox,
+  FreightTariffUploadBox,
+} from "@/components/freight-tariff-box";
+import { myTariffStatus, orderTariffView } from "@/lib/services/freight-tariff";
 
 export default async function OrderPage({
   params,
@@ -155,6 +159,7 @@ export default async function OrderPage({
   } = await searchParams;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
+  await normalizeShipping(id);
   let progress = await loadOrderProgress(id);
   if (!progress || !canViewOrder(user, progress.order)) notFound();
   /* Pedido parado na etapa de pagamento ao fornecedor (de antes de ela sair do
@@ -211,13 +216,18 @@ export default async function OrderPage({
   /* Leituras independentes numa rodada só (cada ida ao banco é uma viagem de rede). */
   const customerSide = wellmix || user.role === "customer";
   const delivered = order.status === "CLOSED" || order.status === "DELIVERED";
-  /* Embarque (só Wellmix): frete do tarifário vigente para a rota do pedido e
-     o botão de importar a planilha da companhia marítima. */
+  /* Embarque: a Wellmix vê o frete do comparativo para a rota do pedido e o
+     botão de importar; a companhia do pedido, o botão de enviar a tabela dela. */
   const shippingStage = stages.find((s) => s.key === "SHIPPING");
-  const showTariff =
-    wellmix &&
+  const shippingOpen =
     !!shippingStage &&
     ["pending", "active", "blocked"].includes(shippingStage.status);
+  const showTariff = wellmix && shippingOpen;
+  const showMyTariff =
+    shippingOpen &&
+    user.role === "shipping_line" &&
+    !!user.partyId &&
+    order.shippingLineId === user.partyId;
   const [
     parties,
     items,
@@ -233,6 +243,7 @@ export default async function OrderPage({
     sourceRequest,
     derivedRequests,
     tariffView,
+    myTariff,
   ] = await Promise.all([
     store.list("parties"),
     store.list("order_items", { filter: { orderId: order.id } }),
@@ -272,6 +283,12 @@ export default async function OrderPage({
         ).catch((error: unknown): "failed" => {
           // Tarifário fora do ar: o pedido abre igual, com o aviso no cartão.
           console.error("orderTariffView failed", error);
+          return "failed";
+        })
+      : Promise.resolve(null),
+    showMyTariff
+      ? myTariffStatus(user).catch((error: unknown): "failed" => {
+          console.error("myTariffStatus failed", error);
           return "failed";
         })
       : Promise.resolve(null),
@@ -617,6 +634,13 @@ export default async function OrderPage({
                         keepParams={remeasureMode ? { remeasure: "1" } : {}}
                       />
                     ) : null}
+                    {stage.key === "SHIPPING" && showMyTariff ? (
+                      <FreightTariffUploadBox
+                        t={t}
+                        orderId={order.id}
+                        status={myTariff}
+                      />
+                    ) : null}
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (
                       <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
                         {t("orders.inspection.blindHint")}
@@ -679,7 +703,11 @@ export default async function OrderPage({
                             }
                             doc={docById(r.documentId)}
                             submittedBy={userName(r.submittedByUserId)}
-                            open={open}
+                            open={
+                              open ||
+                              // Embarque confirmado: BL, datas e navio ainda podem vir.
+                              canCompleteLater(stage, r, order)
+                            }
                             wellmix={wellmix}
                             remeasure={
                               remeasureMode &&

@@ -112,8 +112,14 @@ const PARAMS_AND_FEES = {
   I16: "PTAX",
   F17: 0.035,
 };
-// Linha do IOF (rótulo na coluna do nome da taxa).
-Object.assign(PARAMS_AND_FEES, { E17: "IOF" });
+// Linha do IOF (rótulo na coluna do nome da taxa). Bloco 2: PTAX 1,5% e IOF
+// 3,5%; bloco 3 (GAMA) sem os dois.
+Object.assign(PARAMS_AND_FEES, {
+  E17: "IOF",
+  J16: 0.015,
+  I17: "IOF",
+  J17: 0.035,
+});
 
 /** Navegantes: o total da BETA na planilha soma as taxas da ALFA (erro de fórmula). */
 function nvt(): Sheet {
@@ -412,11 +418,16 @@ describe("leitura da planilha de frete", () => {
     ]);
     expect(alfa.feesUsd).toBe(60.5);
     expect(alfa.feesBrl).toBe(1400);
-    // (40 + 20,5) × 5,1 + 600 + 800.
-    expect(alfa.feesTotalBrl).toBe(1708.55);
+    // (40 + 20,5) × 5,1 × 1,02 (PTAX) × 1,035 (IOF) + 600 + 800.
+    expect(alfa.feesTotalBrl).toBe(1725.7362);
     expect(alfa.ptaxPercent).toBe(0.02);
     expect(alfa.iofPercent).toBe(0.035);
-    expect(navegantes.forwarders[1].feesTotalBrl).toBe(951);
+    // 10 × 5,1 × 1,015 × 1,035 + 900.
+    expect(navegantes.forwarders[1].feesTotalBrl).toBe(953.5768);
+    expect(navegantes.forwarders[2]).toMatchObject({
+      ptaxPercent: null,
+      iofPercent: null,
+    });
   });
 
   it("total de cada rota refeito com as taxas da própria companhia", () => {
@@ -426,20 +437,24 @@ describe("leitura da planilha de frete", () => {
           navegantes.origins[r.origin].name === origin &&
           navegantes.forwarders[r.forwarder].name === forwarder,
       )!;
+    // 3000 × 5,1 × 1,02 × 1,035 + 1000 + 1725,7362 (a planilha, sem PTAX e IOF: 18.008,55).
     expect(rate("NINGBO", "ALFA LINES")).toMatchObject({
       route: "direct",
       oceanUsd: 3000,
-      totalBrl: 18008.55,
+      totalBrl: 18877.95,
+      sheetTotalBrl: 18008.55,
     });
-    // A planilha somou as taxas da ALFA; o portal usa as da BETA.
+    // A planilha somou as taxas da ALFA; o portal usa as da BETA (e o PTAX e IOF dela).
     expect(rate("NINGBO", "BETA CARGO")).toMatchObject({
-      totalBrl: 22351,
+      totalBrl: 23384.29,
       sheetTotalBrl: 23108.55,
     });
     expect(rate("SHENZHEN", "ALFA LINES")).toMatchObject({
       route: "long",
-      totalBrl: 20558.55,
+      totalBrl: 21569.98,
     });
+    // GAMA sem PTAX e IOF: total sem o acréscimo.
+    expect(rate("QINGDAO", "GAMA").totalBrl).toBe(11200);
     expect(navegantes.origins.map((o) => [o.country, o.name])).toEqual([
       ["CHINA", "NINGBO"],
       ["CHINA", "SHENZHEN"],
@@ -481,10 +496,20 @@ describe("leitura da planilha de frete", () => {
         pairs: "BETA CARGO = ALFA LINES; ALFA LINES = BETA CARGO",
       },
     });
+    // PTAX e IOF entram nos totais (faixa entre as companhias); GAMA não tem.
     expect(data.warnings).toContainEqual({
-      code: "ptax_iof_unused",
-      params: { ptax: 2, iof: 3.5 },
+      code: "ptax_iof_added",
+      params: { ptax: 1.5, ptaxMax: 2, iof: 3.5, iofMax: 3.5 },
     });
+    expect(data.warnings).toContainEqual({
+      code: "ptax_iof_missing",
+      params: {
+        sheet: "COMPARATIVO - NVT",
+        forwarder: "GAMA",
+        missing: "PTAX/IOF",
+      },
+    });
+    expect(codes).not.toContain("ptax_iof_unused");
     // Mesmo AD_IDEXTERNO em Navegantes e Itajaí (o código não leva o destino).
     expect(data.warnings).toContainEqual({
       code: "sankhya_duplicate_ids",
@@ -494,7 +519,7 @@ describe("leitura da planilha de frete", () => {
     expect(codes).not.toContain("sankhya_tab_outdated");
     expect(itajai.forwarders[0]).toMatchObject({
       name: "BETA CARGO",
-      feesTotalBrl: 1708.55,
+      feesTotalBrl: 1725.7362,
     });
   });
 
@@ -563,11 +588,11 @@ describe("frete por m³ e opções do pedido", () => {
   const data = calc.parseFreightTariff(workbook());
 
   it("mediana do menor custo por porto ÷ capacidade do container", () => {
-    // Menores: QINGDAO 11.200, NINGBO 18.008,55, SHENZHEN 20.558,55, MUNDRA 27.451.
+    // Menores: QINGDAO 11.200, NINGBO 18.877,95, SHENZHEN 21.569,98, MUNDRA 28.741,96.
     expect(calc.perCbmSuggestion(data, "NVT", 68)).toEqual({
-      perCbm: 283.58,
+      perCbm: 297.41,
       ports: 4,
-      containerBrl: 19283.55,
+      containerBrl: 20223.97,
     });
     expect(calc.perCbmSuggestion(data, "XXX", 68)).toBeNull();
   });
@@ -581,9 +606,10 @@ describe("frete por m³ e opções do pedido", () => {
     expect(
       options.map((o) => [o.forwarder, o.destinationCode, o.totalBrl]),
     ).toEqual([
-      ["ALFA LINES", "NVT", 18008.55],
-      ["BETA CARGO", "NVT", 22351],
-      ["BETA CARGO", "ITJ", 3900 * 5.1 + 1000 + 1708.55],
+      ["ALFA LINES", "NVT", 18877.95],
+      ["BETA CARGO", "NVT", 23384.29],
+      // 3900 × 5,1 × 1,02 × 1,035 + 1000 + 1725,7362 (taxas copiadas na ITJ).
+      ["BETA CARGO", "ITJ", 23723.61],
     ]);
   });
 });
@@ -605,21 +631,56 @@ describe("leitor de planilha: posição exata", () => {
   });
 });
 
+/** Planilha de uma companhia só: o 1º bloco com o nome dela, os outros vazios. */
+function ownSheet(name: string, ningbo: number, shenzhen = 3500): Sheet {
+  const sheet = nvt();
+  const cells = sheet.cells;
+  cells[2][3] = name; // D3
+  cells[2][7] = ""; // H3 (BETA)
+  cells[2][11] = ""; // L3 (GAMA)
+  cells[4][3] = String(ningbo); // D5: NINGBO, rota direta
+  cells[5][4] = String(shenzhen); // E6: SHENZHEN, rota longa
+  for (const r of [4, 5, 6, 7])
+    for (const c of [5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+      if (cells[r]) cells[r][c] = "";
+  return sheet;
+}
+
 describe("importar e usar o tarifário", () => {
   let admin: User;
   let operator: User;
   let customer: User;
+  let supplier: User;
   let shippingLine: User;
+  let betaUser: User;
+  let betaId: string;
+  let consolidatedId: string;
 
   beforeAll(async () => {
     const { users } = await seedDemo();
     admin = users.find((u) => u.email === "admin@wellmix.com")!;
     operator = users.find((u) => u.email === "operador@wellmix.com")!;
     customer = users.find((u) => u.email === "joao@lojista.com")!;
+    supplier = users.find((u) => u.role === "supplier")!;
     shippingLine = users.find((u) => u.email === "armador@maritima.com")!;
+    // Segunda companhia marítima, com login próprio.
+    const store = getStore();
+    const beta = await store.create("parties", {
+      type: "shipping_line",
+      name: "Beta Cargo",
+      active: true,
+    } as never);
+    betaId = beta.id;
+    betaUser = await store.create("users", {
+      email: "beta@cargo.com",
+      name: "Beta Cargo",
+      role: "shipping_line",
+      partyId: beta.id,
+      active: true,
+    } as never);
   });
 
-  it("Wellmix importa; o novo vira o vigente e o anterior vai para o histórico", async () => {
+  it("Wellmix importa a consolidada; a nova vira a vigente e a anterior vai para o histórico", async () => {
     const bytes = xlsxFile(workbook(), [
       // Macro da planilha: ignorada (nunca executada).
       ["xl/vbaProject.bin", 'Attribute VB_Name = "ModFretesCSV_V4"'],
@@ -636,6 +697,7 @@ describe("importar e usar o tarifário", () => {
       forwarderCount: 3,
       fx: 5.1,
       roadFreightBrl: 1000,
+      shippingLineId: null,
     });
     // Planilha original guardada como documento interno.
     const doc = await getStore().get("documents", first.fileDocumentId!);
@@ -644,6 +706,7 @@ describe("importar e usar o tarifário", () => {
     expect(await canAccessDocument(shippingLine, doc!)).toBe(false);
 
     const second = await service.importFreightTariff(admin, file(bytes), null);
+    consolidatedId = second.id;
     expect((await service.currentFreightTariff(admin))?.id).toBe(second.id);
     expect((await getStore().get("freight_tariffs", first.id))?.status).toBe(
       "replaced",
@@ -657,10 +720,27 @@ describe("importar e usar o tarifário", () => {
     expect(audits.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("companhia marítima, cliente e fornecedor não importam nem veem (tarifas de todas as companhias)", async () => {
+  it("frete por m³ atualiza sozinho a cada importação", async () => {
+    // Sem valor antes: aplicado (Navegantes, 40HC com 68 m³).
+    const settings = await getSettings();
+    expect(settings.freightPerCbm).toBe(297.41);
+    expect(settings.freightCurrency).toBe("BRL");
+    expect(settings.freightPerCbmAuto).toMatchObject({
+      status: "applied",
+      destination: "NVT",
+      perCbm: 297.41,
+      tariffId: consolidatedId,
+    });
+    const audits = await getStore().list("audit_log", {
+      filter: { entity: "settings", entityId: "freightPerCbm" },
+    });
+    expect(audits.some((a) => a.userId === null)).toBe(true);
+  });
+
+  it("cliente e fornecedor não importam nem veem; a companhia não vê a consolidada nem o comparativo", async () => {
     const bytes = xlsxFile(workbook());
     const orderRef = { id: "qualquer", shippingLineId: null };
-    for (const u of [shippingLine, customer]) {
+    for (const u of [customer, supplier]) {
       await expect(
         service.importFreightTariff(u, file(bytes), null),
       ).rejects.toThrow("forbidden");
@@ -668,10 +748,190 @@ describe("importar e usar o tarifário", () => {
         "forbidden",
       );
       await expect(service.listFreightTariffs(u)).rejects.toThrow("forbidden");
+      await expect(service.getFreightTariff(u, consolidatedId)).rejects.toThrow(
+        "forbidden",
+      );
+    }
+    for (const u of [customer, supplier, shippingLine]) {
+      await expect(service.comparativeTariff(u)).rejects.toThrow("forbidden");
       await expect(service.orderTariffView(u, orderRef)).rejects.toThrow(
         "forbidden",
       );
     }
+    expect(await service.currentFreightTariff(shippingLine)).toBeNull();
+    expect(await service.listFreightTariffs(shippingLine)).toEqual([]);
+    expect(
+      await service.getFreightTariff(shippingLine, consolidatedId),
+    ).toBeNull();
+    expect(await service.myTariffStatus(shippingLine)).toBeNull();
+  });
+
+  it("cada companhia envia a própria: só ela e a Wellmix veem; o comparativo junta todas", async () => {
+    const store = getStore();
+    // A companhia não escolhe de quem é: vale a dela, mesmo mandando outra.
+    const own = await service.importFreightTariff(
+      shippingLine,
+      file(xlsxFile([ownSheet("MARÍTIMA SA", 2500)])),
+      "2026-10-20",
+      betaId,
+    );
+    expect(own).toMatchObject({
+      shippingLineId: "armador",
+      status: "active",
+      rateCount: 2,
+    });
+    // A consolidada continua vigente (só a anterior da mesma companhia sai).
+    expect((await store.get("freight_tariffs", consolidatedId))?.status).toBe(
+      "active",
+    );
+    // A Wellmix fica sabendo.
+    const notes = await store.list("notifications", {
+      filter: { channel: "inapp" },
+    });
+    expect(
+      notes.some((n) => n.subject === "Tabela de frete nova: Marítima SA"),
+    ).toBe(true);
+    // A companhia vê a dela; a outra companhia, nada.
+    expect((await service.currentFreightTariff(shippingLine))?.id).toBe(own.id);
+    expect(
+      (await service.listFreightTariffs(shippingLine)).map((h) => h.id),
+    ).toEqual([own.id]);
+    expect(await service.myTariffStatus(shippingLine)).toMatchObject({
+      referenceDate: "2026-10-20",
+      rateCount: 2,
+    });
+    expect(await service.getFreightTariff(betaUser, own.id)).toBeNull();
+    expect(await service.listFreightTariffs(betaUser)).toEqual([]);
+    expect(await service.currentFreightTariff(betaUser)).toBeNull();
+    const doc = await store.get("documents", own.fileDocumentId!);
+    expect(await canAccessDocument(shippingLine, doc!)).toBe(true);
+    expect(await canAccessDocument(betaUser, doc!)).toBe(false);
+    expect(await canAccessDocument(customer, doc!)).toBe(false);
+
+    // Comparativo: as companhias da consolidada + a planilha da Marítima.
+    const cmp = (await service.comparativeTariff(admin))!;
+    expect(cmp.sources.map((s) => s.company)).toEqual(["Marítima SA", null]);
+    // A data mais nova entre as planilhas (a consolidada foi importada hoje).
+    const consolidatedDay = (await store.get(
+      "freight_tariffs",
+      consolidatedId,
+    ))!.referenceDate;
+    expect(cmp.referenceDate).toBe(
+      [consolidatedDay, "2026-10-20"].sort().at(-1),
+    );
+    const nvtDest = cmp.data.destinations.find((d) => d.code === "NVT")!;
+    expect(
+      nvtDest.forwarders.map((f) => [f.name, f.shippingLineId ?? null]),
+    ).toEqual([
+      ["ALFA LINES", null],
+      ["BETA CARGO", null],
+      ["GAMA", null],
+      ["MARÍTIMA SA", "armador"],
+    ]);
+    const options = calc.optionsForOrigin(cmp.data, "NINGBO");
+    expect(options[0]).toMatchObject({
+      forwarder: "MARÍTIMA SA",
+      company: "Marítima SA",
+      shippingLineId: "armador",
+      // 2500 × 5,1 × 1,02 × 1,035 + 1000 + 1725,7362.
+      totalBrl: 16185.91,
+    });
+    // A Wellmix importa em nome da Beta: o bloco BETA da consolidada sai do comparativo.
+    const byWellmix = await service.importFreightTariff(
+      operator,
+      file(xlsxFile([ownSheet("BETA CARGO", 3800)])),
+      "2026-10-21",
+      betaId,
+    );
+    expect(byWellmix.shippingLineId).toBe(betaId);
+    expect(
+      await service.getFreightTariff(betaUser, byWellmix.id),
+    ).not.toBeNull();
+    expect(
+      await service.getFreightTariff(shippingLine, byWellmix.id),
+    ).toBeNull();
+    const cmp2 = (await service.comparativeTariff(admin))!;
+    const names = cmp2.data.destinations
+      .find((d) => d.code === "NVT")!
+      .forwarders.map((f) => [f.name, f.shippingLineId ?? null]);
+    expect(names).toEqual([
+      ["ALFA LINES", null],
+      ["GAMA", null],
+      ["BETA CARGO", betaId],
+      ["MARÍTIMA SA", "armador"],
+    ]);
+    // Nova planilha da Marítima substitui só a anterior dela.
+    const again = await service.importFreightTariff(
+      shippingLine,
+      file(xlsxFile([ownSheet("MARÍTIMA SA", 2600)])),
+      "2026-10-22",
+    );
+    expect((await store.get("freight_tariffs", own.id))?.status).toBe(
+      "replaced",
+    );
+    expect((await store.get("freight_tariffs", byWellmix.id))?.status).toBe(
+      "active",
+    );
+    expect((await service.comparativeTariff(admin))!.sources.length).toBe(3);
+    expect(again.shippingLineId).toBe("armador");
+    // A planilha com os preços das outras companhias (a consolidada devolvida):
+    // recusada para a companhia, e para a Wellmix em nome de uma companhia.
+    await expect(
+      service.importFreightTariff(
+        shippingLine,
+        file(xlsxFile(workbook())),
+        null,
+      ),
+    ).rejects.toThrow("tariff_other_companies");
+    await expect(
+      service.importFreightTariff(
+        operator,
+        file(xlsxFile(workbook())),
+        null,
+        betaId,
+      ),
+    ).rejects.toThrow("tariff_other_companies");
+    // Companhia que não existe (ou parceiro de outro tipo): recusado.
+    await expect(
+      service.importFreightTariff(
+        operator,
+        file(xlsxFile([ownSheet("X", 3000)])),
+        null,
+        "fornecedor-a",
+      ),
+    ).rejects.toThrow("tariff_company_invalid");
+  });
+
+  it("frete por m³: variação acima de 30% fica esperando o admin", async () => {
+    const before = (await getSettings()).freightPerCbm!;
+    // Tabela com frete 100 vezes menor (erro de digitação): não aplica.
+    // (Um porto errado só não muda a mediana; aqui são dois de três.)
+    const typo = await service.importFreightTariff(
+      shippingLine,
+      file(xlsxFile([ownSheet("MARÍTIMA SA", 25, 35)])),
+      "2026-10-23",
+    );
+    const settings = await getSettings();
+    expect(settings.freightPerCbm).toBe(before);
+    expect(settings.freightPerCbmAuto).toMatchObject({
+      status: "held",
+      reason: "jump",
+      tariffId: typo.id,
+      previous: before,
+    });
+    const notes = await getStore().list("notifications", {
+      filter: { channel: "inapp" },
+    });
+    expect(
+      notes.some((n) => n.subject === "Frete por m³ esperando conferência"),
+    ).toBe(true);
+    // A planilha certa volta ao normal.
+    await service.importFreightTariff(
+      shippingLine,
+      file(xlsxFile([ownSheet("MARÍTIMA SA", 2600)])),
+      "2026-10-23",
+    );
+    expect((await getSettings()).freightPerCbmAuto?.status).toBe("applied");
   });
 
   it("arquivo errado: .xls antigo, não planilha, grande demais", async () => {
@@ -697,21 +957,38 @@ describe("importar e usar o tarifário", () => {
     ).rejects.toThrow("tariff_no_sheets");
   });
 
-  it("frete por m³ do tarifário nas Configurações: só o admin", async () => {
-    const tariff = (await service.currentFreightTariff(admin))!;
+  it("frete por m³ à mão: só o admin; o destino escolhido vale para as próximas", async () => {
     await expect(
-      service.applyTariffPerCbm(operator, tariff.id, "NVT"),
+      service.applyTariffPerCbm(operator, consolidatedId, "NVT"),
     ).rejects.toThrow("forbidden");
     const capacity = await service.tariffContainerCapacity();
     expect(capacity).toBe(68);
-    const value = await service.applyTariffPerCbm(admin, tariff.id, "NVT");
-    expect(value).toBe(283.58);
-    const settings = await getSettings();
-    expect(settings.freightPerCbm).toBe(283.58);
+    // Só a consolidada (com o câmbio dela): como antes, com PTAX e IOF.
+    const value = await service.applyTariffPerCbm(admin, consolidatedId, "ITJ");
+    expect(value).toBe(Math.round((23723.61 / 68) * 100) / 100);
+    let settings = await getSettings();
+    expect(settings.freightPerCbm).toBe(value);
     expect(settings.freightCurrency).toBe("BRL");
+    expect(settings.freightTariffDestination).toBe("ITJ");
+    // Aplicar à mão encerra o "esperando conferência" da atualização automática.
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("freightPerCbmAuto", {
+      ...(await getSettings()).freightPerCbmAuto!,
+      status: "held",
+      reason: "jump",
+    });
+    // O comparativo inteiro.
+    const current = await service.applyTariffPerCbm(admin, "current", "NVT");
+    expect((await getSettings()).freightPerCbmAuto).toBeNull();
+    settings = await getSettings();
+    expect(settings.freightPerCbm).toBe(current);
+    expect(settings.freightTariffDestination).toBe("NVT");
     await expect(
-      service.applyTariffPerCbm(admin, tariff.id, "XYZ"),
+      service.applyTariffPerCbm(admin, consolidatedId, "XYZ"),
     ).rejects.toThrow("tariff_no_suggestion");
+    await expect(
+      service.applyTariffPerCbm(admin, "nao-existe", "NVT"),
+    ).rejects.toThrow("tariff_not_found");
   });
 
   it("pedido: rota pelo local do fornecedor na ficha; companhia do pedido marcada", async () => {
@@ -727,23 +1004,39 @@ describe("importar e usar o tarifário", () => {
       orderId: "pedido-ningbo",
       location: "Ningbo, Zhejiang",
     } as never);
-    const beta = await store.create("parties", {
-      type: "shipping_line",
-      name: "Beta Cargo",
-      active: true,
-    } as never);
     const view = await service.orderTariffView(
       admin,
-      order("pedido-ningbo", beta.id),
+      order("pedido-ningbo", betaId),
     );
     expect(view?.origin).toBe("NINGBO");
+    expect(view?.tariffId).toBe("current");
+    // Ordem por custo; a Beta (planilha dela) marcada como companhia do pedido.
     expect(
       view?.options.map((o) => [o.forwarder, o.destinationCode, o.assigned]),
     ).toEqual([
+      ["MARÍTIMA SA", "NVT", false],
       ["ALFA LINES", "NVT", false],
       ["BETA CARGO", "NVT", true],
-      ["BETA CARGO", "ITJ", true],
     ]);
+    // Bloco da consolidada com o nome da companhia do pedido também conta
+    // ("ALFA LINES" é da "Alfa").
+    const assignedFor = async (name: string) => {
+      const party = await store.create("parties", {
+        type: "shipping_line",
+        name,
+        active: true,
+      } as never);
+      const v = await service.orderTariffView(
+        admin,
+        order("pedido-ningbo", party.id),
+      );
+      return v?.options.filter((o) => o.assigned).map((o) => o.forwarder);
+    };
+    expect(await assignedFor("Alfa")).toEqual(["ALFA LINES"]);
+    expect(await assignedFor("Alfa Lines")).toEqual(["ALFA LINES"]);
+    // Razão social não atrapalha; nome diferente não conta.
+    expect(await assignedFor("Alfa Lines Ltda")).toEqual(["ALFA LINES"]);
+    expect(await assignedFor("Alfa Linhas")).toEqual([]);
     await store.create("purchase_sheets", {
       orderId: "pedido-yiwu",
       location: "Yiwu",
@@ -755,20 +1048,47 @@ describe("importar e usar o tarifário", () => {
       origin: null,
       options: [],
     });
-    // Fornecedor em Yiwu embarca por Ningbo: a Wellmix escolhe o porto.
-    expect(yiwu?.origins).toEqual(["MUNDRA", "NINGBO", "QINGDAO", "SHENZHEN"]);
+    // Fornecedor em Yiwu embarca por Ningbo: a Wellmix escolhe o porto
+    // (MUNDRA saiu: só a BETA da consolidada tinha, e a Beta mandou a própria).
+    expect(yiwu?.origins).toEqual(["NINGBO", "QINGDAO", "SHENZHEN"]);
     const picked = await service.orderTariffView(
       admin,
       order("pedido-yiwu"),
       "ningbo",
     );
     expect(picked?.origin).toBe("NINGBO");
-    expect(picked?.options[0].totalBrl).toBe(18008.55);
+    expect(picked?.options[0].forwarder).toBe("MARÍTIMA SA");
     // Porto que não está no tarifário: ignorado.
     expect(
       (await service.orderTariffView(admin, order("pedido-yiwu"), "XPTO"))
         ?.origin,
     ).toBeNull();
+  });
+});
+
+describe("frete por m³ automático com valor em outra moeda", () => {
+  it("compara em R$ pelo câmbio do dia: perto aplica, longe espera o admin", async () => {
+    const { setSetting } = await import("@/lib/settings");
+    const [row] = await getStore().list("freight_tariffs", {
+      filter: { status: "active" },
+      limit: 1,
+    });
+    await setSetting("fxManualRates", { USD: 5, RMB: null, EUR: null });
+    const suggestion = (await service.refreshPerCbm(row.id)).perCbm!;
+    // US$ com o mesmo valor em R$ (÷ 5): dentro dos 30%, aplica e passa para R$.
+    await setSetting("freightCurrency", "USD");
+    await setSetting("freightPerCbm", Math.round((suggestion / 5) * 100) / 100);
+    expect((await service.refreshPerCbm(row.id)).status).toBe("applied");
+    expect((await getSettings()).freightCurrency).toBe("BRL");
+    // US$ 10/m³ (= R$ 50): longe demais, espera.
+    await setSetting("freightCurrency", "USD");
+    await setSetting("freightPerCbm", 10);
+    expect(await service.refreshPerCbm(row.id)).toMatchObject({
+      status: "held",
+      previous: 10,
+      previousCurrency: "USD",
+    });
+    expect((await getSettings()).freightPerCbm).toBe(10);
   });
 });
 
@@ -794,7 +1114,7 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
     expect(none).toContain(
       'href="/app/freight/tariff?from=%2Fapp%2Forders%2Fo1"',
     );
-    expect(none).toContain("Nenhum tarifário importado ainda");
+    expect(none).toContain("Nenhuma tabela de frete ainda");
     expect(render("failed")).toContain("não pôde ser lido agora");
     const base = {
       tariffId: "t1",
@@ -823,9 +1143,9 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
         .optionsForOrigin(data, "NINGBO")
         .map((o) => ({ ...o, assigned: o.forwarder === "BETA CARGO" })),
     });
-    expect(html).toContain("Tarifário de 14/10/2026 · origem NINGBO");
+    expect(html).toContain("Tabelas até 14/10/2026 · origem NINGBO");
     expect(html).toContain("ALFA LINES → NAVEGANTES");
-    expect(html).toMatch(/R\$\s18\.008,55/);
+    expect(html).toMatch(/R\$\s18\.877,95/);
     expect(html).toContain("companhia do pedido");
     expect(html).toContain("prazo 120 dias");
     // A companhia do pedido aparece mesmo fora das 4 mais baratas.
@@ -839,6 +1159,8 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
       totalBrl: 10000 + i,
       paymentTermDays: null,
       containerQty: 2,
+      shippingLineId: null,
+      company: null,
       assigned: i === 5,
     }));
     const longList = render({ ...base, origin: "NINGBO", options: many });
@@ -846,8 +1168,8 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
     expect(longList).not.toContain("CIA 5 → NAVEGANTES");
     expect(longList).toContain("CIA 6 → NAVEGANTES");
     expect(longList).toContain("2 × 40HQ");
-    // Os campos do embarque continuam: o tarifário não traz data, navio nem BL.
-    expect(html).toContain("continuam abaixo");
+    // Os campos do embarque continuam, opcionais: dá para avançar sem eles.
+    expect(html).toContain("são opcionais");
   });
 });
 
@@ -864,8 +1186,8 @@ describe("revisão: parâmetros por aba, linhas de total, destinos e locais", ()
     const [nav, ita] = data.destinations;
     expect(nav.roadFreightBrl).toBe(1000);
     expect(ita.roadFreightBrl).toBe(1500);
-    // 3900 × 5,1 + 1500 + taxas copiadas (1708,55).
-    expect(ita.rates[0].totalBrl).toBe(23098.55);
+    // 3900 × 5,1 × 1,02 × 1,035 + 1500 + taxas copiadas (1725,7362).
+    expect(ita.rates[0].totalBrl).toBe(24223.61);
     expect(data.warnings.map((w) => w.code)).not.toContain("params_differ");
     // Câmbio diferente entre abas: aviso para conferir.
     const fx = itj();
@@ -1157,8 +1479,44 @@ describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereç
       delete d.containerQty;
     }
     calc.normalizeTariffData(legacy);
-    expect(calc.perCbmSuggestion(legacy, "NVT", 68)?.perCbm).toBe(283.58);
+    expect(calc.perCbmSuggestion(legacy, "NVT", 68)?.perCbm).toBe(297.41);
     expect(calc.optionsForOrigin(legacy, "NINGBO")[0].containerQty).toBe(1);
+  });
+
+  it("tarifário gravado antes do PTAX/IOF na conta: totais refeitos e aviso novo", () => {
+    const data = calc.parseFreightTariff(workbook());
+    const old = JSON.parse(JSON.stringify(data));
+    // Como era gravado: totais sem PTAX e IOF e o aviso "fora da conta".
+    old.destinations[0].rates[0].totalBrl = 18008.55;
+    old.destinations[0].forwarders[0].feesTotalBrl = 1708.55;
+    old.warnings = old.warnings
+      .filter((w: { code: string }) => !w.code.startsWith("ptax_iof"))
+      .concat({ code: "ptax_iof_unused", params: { ptax: 2, iof: 3.5 } });
+    calc.normalizeTariffData(old);
+    expect(old.destinations[0].rates[0].totalBrl).toBe(18877.95);
+    expect(old.destinations[0].forwarders[0].feesTotalBrl).toBe(1725.7362);
+    expect(old.warnings).toContainEqual({
+      code: "ptax_iof_added",
+      params: { ptax: 2, ptaxMax: 2, iof: 3.5, iofMax: 3.5 },
+    });
+  });
+
+  it("PTAX e IOF em vários formatos; acima de 50% fica de fora", () => {
+    expect(calc.cellPercent("0.02")).toBe(0.02);
+    expect(calc.cellPercent("2%")).toBe(0.02);
+    expect(calc.cellPercent("2,5%")).toBe(0.025);
+    expect(calc.cellPercent("3.5")).toBe(0.035);
+    // IOF de 0,38% digitado sem "%": ponto percentual, não 38%.
+    expect(calc.cellPercent("0.38")).toBe(0.0038);
+    expect(calc.cellPercent("1")).toBe(0.01);
+    expect(calc.cellPercent("80%")).toBeNull();
+    expect(calc.cellPercent("0.15")).toBeNull();
+    expect(calc.cellPercent("-1")).toBeNull();
+    expect(calc.cellPercent("")).toBeNull();
+    expect(
+      calc.usdFactor({ ptaxPercent: 0.02, iofPercent: 0.035 }),
+    ).toBeCloseTo(1.0557, 10);
+    expect(calc.usdFactor({ ptaxPercent: null, iofPercent: 0.9 })).toBe(1);
   });
 
   it("câmbio com erro numa aba e containers diferentes: avisos", () => {
@@ -1362,6 +1720,8 @@ describe("revisão 3: porto do distrito, nomes colados, aspas e container", () =
               totalBrl: 40000,
               paymentTermDays: 90,
               containerQty: 2,
+              shippingLineId: null,
+              company: null,
               assigned: false,
             },
           ],
@@ -1479,5 +1839,208 @@ describe("revisão 5: distrito-porto em qualquer escrita, 港 e bairros", () => 
     expect(calc.matchOrigin(data, "深圳中心区")).toBe("SHENZHEN");
     expect(calc.matchOrigin(data, "江门口岸")).toBe("JIANGMEN");
     expect(calc.matchOrigin(data, "广州市天河区香港城")).toBe("GUANGZHOU");
+  });
+});
+
+describe("comparativo: as planilhas de todas as companhias juntas", () => {
+  const consolidated = calc.parseFreightTariff(workbook());
+  /** Planilha só da companhia (sem FORNECEDORES e PORTOS: os códigos vêm da consolidada). */
+  const own = (name: string, ningbo: number) => {
+    const sheet = nvt();
+    sheet.cells[2][3] = name;
+    sheet.cells[2][7] = "";
+    sheet.cells[2][11] = "";
+    sheet.cells[4][3] = String(ningbo);
+    for (const r of [4, 5, 6, 7])
+      for (let c = 5; c <= 14; c++) if (sheet.cells[r]) sheet.cells[r][c] = "";
+    return calc.parseFreightTariff([sheet]);
+  };
+  const source = (
+    id: string,
+    data: ReturnType<typeof calc.parseFreightTariff>,
+    extra: Partial<
+      import("@/lib/services/freight-tariff-calc").TariffSource
+    > = {},
+  ) => ({
+    id,
+    referenceDate: "2026-10-14",
+    createdAt: "2026-10-14T10:00:00Z",
+    shippingLineId: null,
+    company: null,
+    byWellmix: true,
+    data,
+    ...extra,
+  });
+
+  it("a planilha da companhia substitui o bloco dela na consolidada; códigos vêm de onde houver", () => {
+    const merged = calc.mergeTariffs([
+      source("c", consolidated),
+      source("b", own("BETA CARGO", 3700), {
+        referenceDate: "2026-10-20",
+        createdAt: "2026-10-20T10:00:00Z",
+        shippingLineId: "beta",
+        company: "Beta Cargo",
+        byWellmix: false,
+      }),
+    ])!;
+    const nav = merged.destinations.find((d) => d.code === "NVT")!;
+    expect(
+      nav.forwarders.map((f) => [f.name, f.shippingLineId, f.code]),
+    ).toEqual([
+      ["ALFA LINES", null, "111"],
+      ["GAMA", null, null],
+      ["BETA CARGO", "beta", "222"],
+    ]);
+    // ITJ só tinha a BETA da consolidada: saiu (a Beta mandou a própria, sem ITJ).
+    expect(merged.destinations.map((d) => d.code)).toEqual(["NVT"]);
+    // Porto sem ID na planilha da companhia: o da consolidada.
+    expect(nav.origins.find((o) => o.name === "NINGBO")?.portId).toBe(45);
+    // CSV: cada companhia com a data da própria planilha.
+    const lines = calc.sankhyaCsv(merged, "2026-10-20").split("\r\n");
+    expect(lines).toContain("1114630945;111;14/10/2026;60;45;3;3000;60,5;1400");
+    expect(lines).toContain("2224631545;222;20/10/2026;60;45;3;3700;60,5;1400");
+    // Parâmetros da planilha da Wellmix (câmbio 5,1, frete até o CD 1000).
+    expect(nav.fx).toBe(5.1);
+    expect(nav.roadFreightBrl).toBe(1000);
+    expect(merged.fxSource).toBe("sheet");
+  });
+
+  it("bloco com o nome da companhia do cadastro também sai da consolidada", () => {
+    const merged = calc.mergeTariffs([
+      source("c", consolidated),
+      source("a", own("ALFA - MSC", 2000), {
+        createdAt: "2026-10-20T10:00:00Z",
+        shippingLineId: "alfa",
+        company: "Alfa Lines",
+        byWellmix: false,
+      }),
+    ])!;
+    const names = merged.destinations
+      .find((d) => d.code === "NVT")!
+      .forwarders.map((f) => f.name);
+    // "ALFA LINES" começa com "Alfa Lines": é dela; a planilha dela vale.
+    expect(names).toEqual(["BETA CARGO", "GAMA", "ALFA - MSC"]);
+    expect(calc.blockOfCompany("ROYAL CARGO - MSC", "Royal Cargo")).toBe(true);
+    // Razão social no cadastro não atrapalha.
+    expect(calc.blockOfCompany("BETA CARGO - MSC", "Beta Cargo Ltda")).toBe(
+      true,
+    );
+    expect(calc.blockOfCompany("ROYAL CARGO", "Royal Cargo S.A.")).toBe(true);
+    expect(calc.blockOfCompany("SCAN GLOBAL -MSC", "MSC")).toBe(false);
+    expect(calc.blockOfCompany("MS", "MS")).toBe(false);
+  });
+
+  it("a planilha de uma companhia não tira nem imita o bloco de outra", () => {
+    // A Marítima manda um bloco com o nome de outra companhia (MAERSK).
+    const sheet = nvt();
+    sheet.cells[2][3] = "ALFA LINES";
+    sheet.cells[2][7] = "";
+    sheet.cells[2][11] = "";
+    sheet.cells[4][3] = "500";
+    for (const r of [4, 5, 6, 7])
+      for (let c = 5; c <= 14; c++) if (sheet.cells[r]) sheet.cells[r][c] = "";
+    const fake = calc.parseFreightTariff([sheet, fornecedores()]);
+    const merged = calc.mergeTariffs([
+      source("c", consolidated),
+      source("m", fake, {
+        createdAt: "2026-10-20T10:00:00Z",
+        shippingLineId: "maritima",
+        company: "Marítima SA",
+        byWellmix: false,
+      }),
+    ])!;
+    const nav = merged.destinations.find((d) => d.code === "NVT")!;
+    const alfas = nav.forwarders.filter((f) => f.name === "ALFA LINES");
+    // A ALFA da consolidada continua; a cópia da Marítima entra como dela, sem o código da ALFA.
+    expect(alfas.map((f) => [f.shippingLineId ?? null, f.code])).toEqual([
+      [null, "111"],
+      ["maritima", null],
+    ]);
+    // E o CSV do Sankhya não leva o preço da Marítima com o código da ALFA.
+    expect(calc.sankhyaCsv(merged, "2026-10-20")).not.toContain(
+      ";111;14/10/2026;60;45;3;500;",
+    );
+    expect(calc.sankhyaCsv(merged, "2026-10-20")).not.toContain(";500;");
+  });
+
+  it("mesmo câmbio para todas: o dólar do dia do portal refaz os totais", () => {
+    const merged = calc.mergeTariffs([source("c", consolidated)], {
+      fx: 5.4,
+    })!;
+    expect(merged.fxSource).toBe("portal");
+    // Dólar do dia (5,4) + o spread da planilha da Wellmix (0,1).
+    expect(merged.destinations[0].fx).toBeCloseTo(5.5, 10);
+    const nav = merged.destinations[0];
+    const alfa = nav.rates.find(
+      (r) =>
+        nav.forwarders[r.forwarder].name === "ALFA LINES" &&
+        nav.origins[r.origin].name === "NINGBO",
+    )!;
+    // 3000 × 5,5 × 1,02 × 1,035 + 1000 + (60,5 × 5,5 × 1,02 × 1,035 + 1400).
+    const factor = 1.02 * 1.035;
+    expect(alfa.totalBrl).toBeCloseTo(
+      3000 * 5.5 * factor + 1000 + 60.5 * 5.5 * factor + 1400,
+      1,
+    );
+    // A planilha guardada não muda.
+    expect(consolidated.destinations[0].fx).toBe(5.1);
+    // Câmbio inválido do portal: fica o da planilha.
+    expect(
+      calc.mergeTariffs([source("c", consolidated)], { fx: 0 })?.fxSource,
+    ).toBe("sheet");
+  });
+
+  it("de cada companhia, só a planilha mais nova; sem tarifa nenhuma, nada", () => {
+    const merged = calc.mergeTariffs([
+      source("old", own("MARÍTIMA", 2000), {
+        shippingLineId: "m",
+        company: "Marítima",
+        createdAt: "2026-10-01T10:00:00Z",
+      }),
+      source("new", own("MARÍTIMA", 2100), {
+        shippingLineId: "m",
+        company: "Marítima",
+        createdAt: "2026-10-10T10:00:00Z",
+      }),
+    ])!;
+    expect(merged.destinations[0].rates.map((r) => r.oceanUsd)).toContain(2100);
+    expect(merged.destinations[0].rates.map((r) => r.oceanUsd)).not.toContain(
+      2000,
+    );
+    expect(calc.mergeTariffs([])).toBeNull();
+  });
+});
+
+describe("cartão Embarque da companhia marítima", () => {
+  it("só o botão de enviar a planilha dela e quando mandou a última", async () => {
+    const { createElement } = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { FreightTariffUploadBox } =
+      await import("@/components/freight-tariff-box");
+    const { translator } = await import("@/i18n");
+    const t = translator("pt");
+    const render = (
+      status: Parameters<typeof FreightTariffUploadBox>[0]["status"],
+    ) =>
+      renderToStaticMarkup(
+        createElement(FreightTariffUploadBox, { t, orderId: "o1", status }),
+      );
+    const none = render(null);
+    expect(none).toContain("Importar planilha");
+    expect(none).toContain(
+      'href="/app/freight/tariff?from=%2Fapp%2Forders%2Fo1"',
+    );
+    expect(none).toContain("ainda não enviou");
+    expect(none).toContain("são opcionais");
+    // Nada das tarifas das outras companhias.
+    expect(none).not.toContain("data-tariff-box");
+    expect(
+      render({
+        referenceDate: "2026-10-20",
+        rateCount: 12,
+        createdAt: "2026-10-20T10:00:00Z",
+      }),
+    ).toContain("referência 20/10/2026, 12 tarifas");
+    expect(render("failed")).toContain("não pôde ser lido agora");
   });
 });

@@ -22,6 +22,7 @@ import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
   artRole,
+  canCompleteLater,
   isOffFlowStage,
   nextStageKey,
 } from "./stages";
@@ -291,7 +292,12 @@ export async function submitRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
-  if (stage.status !== "active" && stage.status !== "blocked") {
+  if (
+    stage.status !== "active" &&
+    stage.status !== "blocked" &&
+    // Embarque confirmado: BL, datas e navio ainda podem chegar depois.
+    !canCompleteLater(stage, requirement, order)
+  ) {
     throw new WorkflowError("stage_not_active");
   }
 
@@ -468,7 +474,11 @@ export async function clearRequirementDocument(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
-  if (stage.status !== "active" && stage.status !== "blocked")
+  if (
+    stage.status !== "active" &&
+    stage.status !== "blocked" &&
+    !canCompleteLater(stage, requirement, order)
+  )
     throw new WorkflowError("stage_not_active");
   if (requirement.type !== "photo" && requirement.type !== "file")
     throw new WorkflowError("not_a_file");

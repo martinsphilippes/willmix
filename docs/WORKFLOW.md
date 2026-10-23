@@ -25,13 +25,15 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 | `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)            |
 | `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor)       |
 | `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia        |
-| `SHIPPING`         | Data de embarque, previsão de chegada, BL (companhia marítima; operador se não houver designada). Opcional: navio                  |
+| `SHIPPING`         | Embarque confirmado (companhia marítima; operador se não houver designada). Opcionais: data de embarque, previsão de chegada, navio, BL |
 | `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos |
 | `TRANSPORT`        | Placa, previsão de entrega, entrega realizada (transportador; operador se não houver). Opcional: situação                          |
 | `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                 |
 | `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                         |
 
-No cartão Embarque, só a Wellmix vê o **frete pelo tarifário** (rota do pedido pelo local do fornecedor na ficha, da opção mais barata para a mais cara, com a companhia do pedido marcada) e o botão **Importar planilha da companhia marítima**, que leva a Fretes → Tarifário de frete. O tarifário é preço por rota (não traz data de embarque, navio nem BL), por isso os requisitos da etapa continuam como estão.
+No Embarque, data de embarque, previsão de chegada, navio e BL são opcionais (dá para avançar sem eles); o item **Embarque confirmado** conclui a etapa. Com a data preenchida, as regras de ordem continuam (chegada depois do embarque); sem ela, o marco de pagamento ao fornecedor é o dia em que o Embarque foi concluído. Pedidos criados antes (com os três obrigatórios) passam para o modelo novo ao abrir a página do pedido ou no job diário (`normalizeShipping`, em `src/lib/services/shipping-stage.ts`).
+
+No cartão Embarque, a Wellmix vê o **frete pelo comparativo** das tabelas de todas as companhias (rota do pedido pelo local do fornecedor na ficha, da opção mais barata para a mais cara, com a companhia do pedido marcada) e o botão **Importar planilha da companhia marítima**; a companhia marítima do pedido vê só o botão de enviar a tabela dela (e quando mandou a última). Os dois levam a Fretes → Tarifário de frete (para a companhia, "Minha tabela de frete").
 
 Datas em ordem: a previsão de chegada só abre depois de a data de embarque ser enviada e nunca fica antes dela (o calendário não oferece os dias anteriores e o envio é recusado, na tela e no servidor); a data de embarque não pode passar da chegada já informada; a previsão de entrega (transporte) não fica antes da chegada do navio.
 

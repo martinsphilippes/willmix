@@ -7,6 +7,33 @@ import type {
 } from "@/lib/db/schema";
 import { STAGE_KEYS } from "@/lib/db/schema";
 
+/** Item que conclui o Embarque (os dados do embarque são opcionais). */
+export const SHIPPED_KEY = "shipped";
+export const SHIPPED_LABEL = "Embarque confirmado";
+/** Dados do embarque que eram obrigatórios antes do "Embarque confirmado". */
+export const SHIPPING_OPTIONAL_KEYS = ["ship_date", "eta", "bl"] as const;
+/** Dados do embarque que ainda dá para completar depois de confirmado. */
+export const SHIPPING_LATE_KEYS = ["ship_date", "eta", "vessel", "bl"] as const;
+
+/**
+ * Dado opcional do Embarque já confirmado (BL que chegou depois, data real,
+ * navio): ainda pode ser enviado ou trocado até o pedido encerrar.
+ */
+export function canCompleteLater(
+  stage: { key: string; status: string },
+  requirement: { key: string; required: boolean },
+  order: { status: string },
+): boolean {
+  return (
+    stage.key === "SHIPPING" &&
+    stage.status === "done" &&
+    !requirement.required &&
+    (SHIPPING_LATE_KEYS as readonly string[]).includes(requirement.key) &&
+    order.status !== "CANCELLED" &&
+    order.status !== "CLOSED"
+  );
+}
+
 export interface StageTemplate {
   key: StageKey;
   /** Papel responsável padrão (o real é recalculado pelo próximo requisito pendente). */
@@ -241,6 +268,8 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     key: "SHIPPING",
     responsibleRole: "shipping_line",
     partyField: "shippingLineId",
+    // Data, chegada, navio e BL são opcionais (dá para avançar sem eles); o
+    // "Embarque confirmado" é o que conclui a etapa.
     requirements: ({ order }) => {
       const role: Role = order.shippingLineId ? "shipping_line" : "operator";
       return [
@@ -248,14 +277,14 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
           key: "ship_date",
           label: "Data de embarque",
           type: "date",
-          required: true,
+          required: false,
           role,
         },
         {
           key: "eta",
           label: "Previsão de chegada",
           type: "date",
-          required: true,
+          required: false,
           role,
         },
         {
@@ -269,6 +298,13 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
           key: "bl",
           label: "Bill of Lading (BL)",
           type: "file",
+          required: false,
+          role,
+        },
+        {
+          key: SHIPPED_KEY,
+          label: SHIPPED_LABEL,
+          type: "confirm",
           required: true,
           role,
         },

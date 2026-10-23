@@ -492,8 +492,19 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // 12. SHIPPING, CUSTOMS, TRANSPORT pelos parceiros
   await login(page, "armador@maritima.com");
   await page.goto(orderUrl);
-  // A companhia marítima não vê o tarifário (tem as tarifas das outras).
+  // A companhia marítima não vê o comparativo (tem as tarifas das outras);
+  // vê só o botão de enviar a tabela de frete dela.
   await expect(page.locator("[data-tariff-box]")).toHaveCount(0);
+  const uploadBox = page.locator("[data-tariff-upload-box]");
+  await expect(uploadBox).toBeVisible();
+  await expect(uploadBox.locator("[data-tariff-import-link]")).toHaveAttribute(
+    "href",
+    /\/app\/freight\/tariff\?from=%2Fapp%2Forders%2F/,
+  );
+  // Data, chegada, navio e BL opcionais; "Embarque confirmado" avança.
+  await expect(
+    page.getByText(/Embarque confirmado|Shipment confirmed|确认已装运/).first(),
+  ).toBeVisible();
   // A previsão de chegada espera a data de embarque e nunca fica antes dela.
   await expect(
     page.locator("[data-requirement-waiting]", {

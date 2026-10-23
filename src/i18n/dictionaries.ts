@@ -184,6 +184,8 @@ const ptBase = {
   "req.eta": "Previsão de chegada",
   "req.vessel": "Navio / viagem",
   "req.bl": "Bill of Lading (BL)",
+  "req.shipped":
+    "Embarque confirmado (data, chegada, navio e BL são opcionais)",
   "req.process_number": "Número do processo",
   "req.customs_docs": "Documentos aduaneiros",
   "req.estimated_costs": "Custos previstos",
@@ -485,6 +487,8 @@ const enBase = {
   "req.eta": "Estimated arrival",
   "req.vessel": "Vessel / voyage",
   "req.bl": "Bill of Lading (BL)",
+  "req.shipped":
+    "Shipment confirmed (date, arrival, vessel and BL are optional)",
   "req.process_number": "Process number",
   "req.customs_docs": "Customs documents",
   "req.estimated_costs": "Estimated costs",
@@ -780,6 +784,7 @@ const zhBase = {
   "req.eta": "预计到达",
   "req.vessel": "船名 / 航次",
   "req.bl": "提单（BL）",
+  "req.shipped": "确认已装运（日期、到达、船名和提单可选）",
   "req.process_number": "流程编号",
   "req.customs_docs": "清关文件",
   "req.estimated_costs": "预计费用",
