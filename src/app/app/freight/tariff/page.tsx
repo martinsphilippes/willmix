@@ -24,6 +24,7 @@ import {
   blockOfCompany,
   cheapestByOrigin,
   perCbmSuggestion,
+  sankhyaRows,
   tariffCounts,
   type FreightTariffData,
   type TariffDestination,
@@ -50,6 +51,10 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import {
+  SankhyaLines,
+  TariffSheetView,
+} from "@/components/freight-tariff-sheet";
 import { errorCode } from "@/app/app/actions/helpers";
 import {
   applyTariffPerCbmAction,
@@ -164,6 +169,9 @@ export default async function FreightTariffPage({
     param("from") && FROM_ORDER.test(param("from")!) ? param("from") : null;
   const error = param("error");
   const destParam = param("dest");
+  // Uma planilha: "como na planilha" (padrão) ou o resumo com PTAX e IOF.
+  const view: "sheet" | "summary" =
+    param("view") === "summary" ? "summary" : "sheet";
   // Planilha recusada por não ter o bloco da companhia: os nomes achados nela.
   const blocksFound =
     error === "tariff_other_companies" && param("blocks")
@@ -219,6 +227,7 @@ export default async function FreightTariffPage({
     const p = new URLSearchParams();
     if (id) p.set("id", id);
     if (from) p.set("from", from);
+    if (view === "summary") p.set("view", view);
     for (const [k, v] of Object.entries(extra)) p.set(k, v);
     const s = p.toString();
     return s ? `?${s}` : "";
@@ -350,6 +359,7 @@ export default async function FreightTariffPage({
             current={wellmix ? null : mine}
             from={from}
             qs={qs}
+            view={view}
           />
         ) : id ? (
           <Empty>{t("tariff.error.tariff_not_found")}</Empty>
@@ -612,6 +622,43 @@ function WarningBoxes({
   );
 }
 
+/** Botões dos destinos (NVT, ITJ, IOA), como as abas da planilha. */
+function DestinationNav({
+  t,
+  data,
+  dest,
+  qs,
+}: {
+  t: Translate;
+  data: FreightTariffData;
+  dest: TariffDestination;
+  qs: (extra: Record<string, string>) => string;
+}) {
+  return (
+    <nav
+      aria-label={t("tariff.dest.label")}
+      className="-mt-1 mb-3 flex flex-wrap gap-1.5"
+    >
+      {data.destinations.map((d) => (
+        <Link
+          key={d.code}
+          href={qs({ dest: d.code })}
+          aria-current={d.code === dest.code ? "page" : undefined}
+          className={cx(
+            "rounded-full border px-3 py-1 text-xs font-semibold transition",
+            d.code === dest.code
+              ? "border-brand-600 bg-brand-600 text-white"
+              : "border-zinc-300 bg-white text-zinc-700 hover:border-brand-400",
+          )}
+          data-tariff-dest={d.code}
+        >
+          {d.name}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 /** Destinos (NVT, ITJ, IOA) e a tabela de portos × companhias. */
 function DestinationCard({
   t,
@@ -626,27 +673,7 @@ function DestinationCard({
 }) {
   return (
     <Card title={t("tariff.dest.label")}>
-      <nav
-        aria-label={t("tariff.dest.label")}
-        className="-mt-1 mb-3 flex flex-wrap gap-1.5"
-      >
-        {data.destinations.map((d) => (
-          <Link
-            key={d.code}
-            href={qs({ dest: d.code })}
-            aria-current={d.code === dest.code ? "page" : undefined}
-            className={cx(
-              "rounded-full border px-3 py-1 text-xs font-semibold transition",
-              d.code === dest.code
-                ? "border-brand-600 bg-brand-600 text-white"
-                : "border-zinc-300 bg-white text-zinc-700 hover:border-brand-400",
-            )}
-            data-tariff-dest={d.code}
-          >
-            {d.name}
-          </Link>
-        ))}
-      </nav>
+      <DestinationNav t={t} data={data} dest={dest} qs={qs} />
       <RatesTable t={t} dest={dest} />
     </Card>
   );
@@ -801,7 +828,7 @@ function ComparativeView({
                 </Td>
                 <Td>
                   <TextLink href={`?id=${encodeURIComponent(row.id)}${fromQs}`}>
-                    {t("tariff.history.view")}
+                    {t("tariff.compare.viewSheet")}
                   </TextLink>
                 </Td>
               </tr>
@@ -831,6 +858,15 @@ function ComparativeView({
 
       {dest ? <DestinationCard t={t} data={data} dest={dest} qs={qs} /> : null}
       {dest ? <FeesTable t={t} dest={dest} /> : null}
+      {dest ? (
+        <SankhyaLines
+          t={t}
+          rows={sankhyaRows(data, comparative.referenceDate).filter(
+            (r) => r.destinationCode === dest.code,
+          )}
+          dest={dest.name}
+        />
+      ) : null}
 
       {dest ? (
         <Card title={t("tariff.perCbm.title")}>
@@ -955,6 +991,7 @@ function SourceView({
   current,
   from,
   qs,
+  view,
 }: {
   t: Translate;
   row: FreightTariff;
@@ -966,6 +1003,7 @@ function SourceView({
   current: FreightTariff | null;
   from: string | null;
   qs: (extra: Record<string, string>) => string;
+  view: "sheet" | "summary";
 }) {
   const counts = tariffCounts(data);
   return (
@@ -1092,8 +1130,47 @@ function SourceView({
         ]}
       />
 
-      {dest ? <DestinationCard t={t} data={data} dest={dest} qs={qs} /> : null}
-      {dest ? <FeesTable t={t} dest={dest} /> : null}
+      {dest ? (
+        <nav
+          aria-label={t("tariff.view.sheet")}
+          className="flex flex-wrap gap-1.5"
+          data-tariff-view={view}
+        >
+          {(["sheet", "summary"] as const).map((v) => (
+            <Link
+              key={v}
+              href={qs({ dest: dest.code, view: v })}
+              aria-current={v === view ? "page" : undefined}
+              className={cx(
+                "rounded-xl border px-3 py-1.5 text-sm font-semibold transition",
+                v === view
+                  ? "border-brand-600 bg-brand-600 text-white"
+                  : "border-zinc-300 bg-white text-zinc-700 hover:border-brand-400",
+              )}
+            >
+              {t(`tariff.view.${v}`)}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
+      {dest && view === "sheet" ? (
+        <>
+          <Card title={t("tariff.dest.label")}>
+            <DestinationNav t={t} data={data} dest={dest} qs={qs} />
+          </Card>
+          <TariffSheetView
+            t={t}
+            data={data}
+            dest={dest}
+            referenceDate={row.referenceDate}
+            wellmix={wellmix}
+          />
+        </>
+      ) : null}
+      {dest && view === "summary" ? (
+        <DestinationCard t={t} data={data} dest={dest} qs={qs} />
+      ) : null}
+      {dest && view === "summary" ? <FeesTable t={t} dest={dest} /> : null}
     </>
   );
 }

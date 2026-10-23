@@ -185,11 +185,10 @@ export interface FreightTariffData {
 
 export class TariffError extends Error {
   /** Detalhe para a tela (ex.: nomes dos blocos achados na planilha). */
-  constructor(
-    message: string,
-    readonly detail: string[] = [],
-  ) {
+  readonly detail: string[];
+  constructor(message: string, detail: string[] = []) {
     super(message);
+    this.detail = detail;
   }
 }
 
@@ -621,6 +620,29 @@ export function rateTotalBrl(input: {
   );
 }
 
+/** Taxas em R$ do agente pela conta da planilha (sem PTAX e IOF). */
+export function sheetFeesTotalBrl(
+  f: Pick<TariffForwarder, "fees">,
+  dest: Pick<TariffDestination, "fx" | "containerQty">,
+): number {
+  return feesTotalBrl(f.fees ?? [], dest.fx, dest.containerQty);
+}
+
+/** Total em R$ de uma tarifa pela conta da planilha (sem PTAX e IOF). */
+export function sheetFormulaTotal(
+  rate: Pick<TariffRate, "oceanUsd" | "forwarder">,
+  dest: TariffDestination,
+): number {
+  const f = dest.forwarders[rate.forwarder];
+  return rateTotalBrl({
+    oceanUsd: rate.oceanUsd,
+    fx: dest.fx,
+    containerQty: dest.containerQty,
+    roadFreightBrl: dest.roadFreightBrl,
+    feesTotalBrl: f ? sheetFeesTotalBrl(f, dest) : 0,
+  });
+}
+
 /**
  * Refaz os totais em R$ de um destino com os parâmetros dele (câmbio, frete
  * até o CD, containers) e o PTAX e o IOF de cada agente. Vale para os
@@ -999,9 +1021,8 @@ export function parseFreightTariff(
   if (!data.destinations.some((d) => d.rates.length))
     throw new TariffError("tariff_empty");
 
-  // AD_IDEXTERNO (CODPARC + data + IDORIG) não leva o destino: a mesma
-  // companhia e origem em dois destinos repete o ID. O CSV segue o formato
-  // da macro (o Sankhya espera assim); a conferência avisa.
+  // AD_IDEXTERNO leva o destino (a macro não levava e um destino apagava o
+  // outro no Sankhya); a conferência ainda avisa se algum código repetir.
   {
     const seen = new Map<string, number>();
     for (const r of sankhyaRows(data, "2000-01-01"))
@@ -1117,6 +1138,11 @@ export interface SankhyaRow {
   value: number;
   feesUsd: number;
   feesBrl: number;
+  /** Nomes para a tela (não vão para o CSV). */
+  forwarder: string;
+  origin: string;
+  destination: string;
+  destinationCode: string;
 }
 
 /** Número serial do Excel (dias desde 30/12/1899) de um dia AAAA-MM-DD. */
@@ -1130,7 +1156,9 @@ export function excelSerial(day: string): number {
 /**
  * Linhas da tabela AD_FREINT: uma cotação por agente/porto/destino, com a
  * rota direta e, sem ela, a longa. AD_IDEXTERNO = CODPARC + serial da data +
- * IDORIG (como a macro). Agente sem CODPARC ou porto sem ID fica de fora.
+ * IDDEST (3 dígitos) + IDORIG: a macro não punha o destino e a mesma rota em
+ * dois destinos repetia o código (no Sankhya, um apagava o outro). Agente sem
+ * CODPARC ou porto sem ID fica de fora.
  */
 export function sankhyaRows(
   data: FreightTariffData,
@@ -1171,7 +1199,9 @@ export function sankhyaRows(
             ? dated(f.referenceDate)
             : base;
         out.push({
-          externalId: `${f.code}${serial}${o.portId}`,
+          // Com o destino (3 dígitos): a mesma companhia e origem em dois
+          // destinos não repete o código, e o Sankhya fica com todos.
+          externalId: `${f.code}${serial}${String(dest.portId).padStart(3, "0")}${o.portId}`,
           code: f.code,
           date,
           destId: dest.portId!,
@@ -1180,6 +1210,10 @@ export function sankhyaRows(
           value: pick.oceanUsd,
           feesUsd: f.feesUsd,
           feesBrl: f.feesBrl,
+          forwarder: f.name,
+          origin: o.name,
+          destination: dest.name,
+          destinationCode: dest.code,
         });
       });
     });
