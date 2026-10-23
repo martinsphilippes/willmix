@@ -738,6 +738,14 @@ function ComparativeView({
       : w.code === "port_no_id" || w.code === "port_no_id_similar"
         ? noId.has(String(w.params.port))
         : true;
+  // Avisos de cada planilha no comparativo. Na de uma companhia, o código
+  // que falta é o dela (aviso do comparativo), não o da aba FORNECEDORES.
+  const sourceWarnings = (row: FreightTariff) =>
+    (row.data.warnings ?? []).filter(
+      (w) =>
+        stillMissing(w) &&
+        !(row.shippingLineId && w.code === "forwarder_no_code"),
+    );
   const suggestion =
     dest && capacity ? perCbmSuggestion(data, dest.code, capacity) : null;
   return (
@@ -831,8 +839,8 @@ function ComparativeView({
                 <Td className="tabular-nums">{row.rateCount}</Td>
                 <Td className="tabular-nums">
                   {
-                    (row.data.warnings ?? []).filter(
-                      (w) => !INFO_WARNINGS.has(w.code) && stillMissing(w),
+                    sourceWarnings(row).filter(
+                      (w) => !INFO_WARNINGS.has(w.code),
                     ).length
                   }
                 </Td>
@@ -861,7 +869,7 @@ function ComparativeView({
               source: sourceName(t, company),
               date: day(row.referenceDate, t),
             }),
-            warnings: (row.data.warnings ?? []).filter(stillMissing),
+            warnings: sourceWarnings(row),
           })),
         ]}
       />

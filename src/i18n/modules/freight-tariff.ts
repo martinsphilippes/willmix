@@ -275,6 +275,8 @@ export const pt = {
     "Sua companhia; o nome dos blocos na planilha não importa.",
   "tariff.warning.line_no_code":
     "{company} não tem código do Sankhya: nenhum bloco das planilhas da Wellmix é dela (cadastre a companhia com o nome do bloco dela na planilha consolidada). Os preços dela ficam fora do CSV.",
+  "tariff.warning.block_owner_ambiguous":
+    "O bloco {block} da planilha consolidada bate com mais de uma companhia do cadastro ({companies}): continua no comparativo e no CSV como da consolidada, sem ir para nenhuma delas. Deixe só um cadastro ativo com esse nome.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -548,6 +550,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Your line; block names in the spreadsheet do not matter.",
   "tariff.warning.line_no_code":
     "{company} has no Sankhya code: no block in Wellmix's spreadsheets belongs to it (register the line with its block name from the consolidated spreadsheet). Its prices stay out of the CSV.",
+  "tariff.warning.block_owner_ambiguous":
+    "Block {block} of the consolidated spreadsheet matches more than one registered line ({companies}): it stays in the comparison and the CSV as consolidated and goes to none of them. Keep only one active registration with that name.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -808,4 +812,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.mine.goesToHint": "你的船公司；表中区块的名称无关紧要。",
   "tariff.warning.line_no_code":
     "{company} 没有 Sankhya 代码：Wellmix 的表中没有属于它的区块（请按汇总表中的区块名称登记该船公司）。它的价格不会进入 CSV。",
+  "tariff.warning.block_owner_ambiguous":
+    "汇总表中的区块 {block} 与多家登记的船公司匹配（{companies}）：它作为汇总表数据保留在比较和 CSV 中，不归属任何一家。请只保留一个使用该名称的有效登记。",
 };

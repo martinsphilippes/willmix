@@ -2181,6 +2181,127 @@ describe("a planilha vai inteira para a companhia escolhida", () => {
     expect(owner("ROYAL CARGO - MSC", "Royal Logística")).toBeNull();
   });
 
+  it("nome de bloco enorme e estranho não trava; razão social sai do nome", () => {
+    const lines = [{ id: "x", name: "Xpto Cargo" }];
+    const evil = `X${" SA".repeat(40)} Z`.slice(0, 120);
+    const started = performance.now();
+    expect(calc.ownerOfBlock(evil, lines)).toBeNull();
+    expect(calc.ownerOfBlock(`AB${" S A".repeat(30)} Q`, lines)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(200);
+    const owner = (block: string, name: string) =>
+      calc.ownerOfBlock(block, [{ id: "a", name }]) === "a";
+    expect(owner("BETA CARGO - MSC", "Beta Cargo S.A.")).toBe(true);
+    expect(owner("BETA CARGO - MSC", "Beta Cargo SA")).toBe(true);
+    expect(owner("ROYAL CARGO - MSC", "Royal Cargo do Brasil Ltda")).toBe(true);
+    expect(owner("ROYAL CARGO - MSC", "Royal Cargo Brasil")).toBe(true);
+    // A primeira palavra nunca sai ("Brasil" sozinho continua "brasil").
+    expect(owner("BRASIL LINES", "Brasil")).toBe(true);
+  });
+
+  it("cadastro antigo desativado com o mesmo nome não tira o bloco da companhia de hoje", () => {
+    const consolidated = calc.parseFreightTariff(workbook());
+    const sheet = nvt();
+    sheet.cells[2][7] = "";
+    sheet.cells[2][11] = "";
+    const own = calc.parseFreightTariff([sheet]); // bloco ALFA LINES
+    const sources = [
+      {
+        id: "cons",
+        referenceDate: "2026-10-14",
+        createdAt: "2026-10-14T10:00:00Z",
+        shippingLineId: null,
+        company: null,
+        byWellmix: true,
+        data: consolidated,
+      },
+      {
+        id: "new",
+        referenceDate: "2026-10-20",
+        createdAt: "2026-10-20T10:00:00Z",
+        shippingLineId: "new",
+        company: "Alfa Lines",
+        byWellmix: false,
+        data: own,
+      },
+    ];
+    const nvtOf = (lines: { id: string; name: string; active?: boolean }[]) =>
+      calc
+        .mergeTariffs(sources, { lines })!
+        .destinations.find((d) => d.code === "NVT")!;
+    // Antigo desativado: a de hoje é a dona (tira o bloco e fica com o código).
+    const ok = nvtOf([
+      { id: "old", name: "Alfa Lines", active: false },
+      { id: "new", name: "Alfa Lines", active: true },
+    ]);
+    expect(
+      ok.forwarders.map((f) => [f.name, f.shippingLineId ?? null, f.code]),
+    ).toContainEqual(["ALFA LINES", "new", "111"]);
+    expect(
+      ok.forwarders.some((f) => f.name === "ALFA LINES" && !f.shippingLineId),
+    ).toBe(false);
+    // Dois ativos com o mesmo nome: de ninguém, com aviso para a Wellmix.
+    const merged = calc.mergeTariffs(sources, {
+      lines: [
+        { id: "old", name: "Alfa Lines Ltda", active: true },
+        { id: "new", name: "Alfa Lines", active: true },
+      ],
+    })!;
+    expect(merged.warnings).toContainEqual({
+      code: "block_owner_ambiguous",
+      params: { block: "ALFA LINES", companies: "Alfa Lines Ltda, Alfa Lines" },
+    });
+  });
+
+  it("a planilha de uma companhia vista sozinha usa os mesmos códigos do comparativo", () => {
+    const delta = { id: "delta", name: "Delta Mar" };
+    const withCode = (name: string, code: string) => {
+      const data = calc.parseFreightTariff(workbook());
+      for (const d of data.destinations)
+        for (const f of d.forwarders)
+          if (f.name === "ALFA LINES") {
+            f.name = name;
+            f.code = code;
+          }
+      return data;
+    };
+    const sources = [
+      // Planilha antiga da Wellmix em nome da Delta (bloco dela com 556).
+      {
+        id: "old-delta",
+        referenceDate: "2026-10-10",
+        createdAt: "2026-10-10T10:00:00Z",
+        shippingLineId: "delta",
+        company: "Delta Mar",
+        byWellmix: true,
+        data: withCode("DELTA MAR - CMA", "556"),
+      },
+      // Consolidada mais nova, com a Delta 555.
+      {
+        id: "cons",
+        referenceDate: "2026-10-19",
+        createdAt: "2026-10-19T10:00:00Z",
+        shippingLineId: null,
+        company: null,
+        byWellmix: true,
+        data: withCode("DELTA MAR - MSC", "555"),
+      },
+    ];
+    const merged = calc.mergeTariffs(sources, { lines: [delta] })!;
+    const other = merged.destinations
+      .flatMap((d) => d.forwarders)
+      .find((f) => f.name === "Delta Mar (BETA CARGO)")!;
+    const alone = calc.withCompanyCodes(
+      sources[0].data,
+      sources[0],
+      [delta],
+      calc.wellmixCodes(calc.comparativeSources(sources), [delta]),
+    );
+    const aloneOther = alone.destinations
+      .flatMap((d) => d.forwarders)
+      .find((f) => f.name === "BETA CARGO")!;
+    expect(aloneOther.code).toBe(other.code);
+  });
+
   it("nome de bloco na planilha de uma companhia nunca tira o bloco nem o código de outra", () => {
     const lines = [
       { id: "alfa", name: "Alfa Lines" },

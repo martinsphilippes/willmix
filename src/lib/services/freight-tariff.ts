@@ -27,6 +27,7 @@ import {
   TARIFF_CONTAINER_TYPE,
   TariffError,
   blocksWithRates,
+  comparativeSources,
   destinationCode,
   foldName,
   matchOrigin,
@@ -382,7 +383,11 @@ async function registeredLines(): Promise<RegisteredLine[]> {
   const parties = await getStore().list("parties", {
     filter: { type: "shipping_line" },
   });
-  return parties.map((p) => ({ id: p.id, name: p.name }));
+  return parties.map((p) => ({
+    id: p.id,
+    name: p.name,
+    active: p.active !== false,
+  }));
 }
 
 /** Importada pela Wellmix (o código escrito nela vale para o Sankhya)? */
@@ -478,7 +483,8 @@ async function withSankhyaCodes(row: FreightTariff): Promise<FreightTariff> {
         company: lines.find((l) => l.id === lineId)?.name ?? null,
       },
       lines,
-      wellmixCodes(sources, lines),
+      // Mesma ordem do comparativo (os mesmos códigos nas duas telas).
+      wellmixCodes(comparativeSources(sources), lines),
     ),
   };
 }
