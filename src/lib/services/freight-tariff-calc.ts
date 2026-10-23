@@ -2093,7 +2093,9 @@ export function mergeTariffs(
   const ambiguous = new Set<string>();
   for (const s of ordered.filter((x) => !x.shippingLineId))
     for (const d of s.data.destinations)
-      for (const f of d.forwarders) {
+      for (const [fi, f] of d.forwarders.entries()) {
+        // Só bloco com preço (o que entra no comparativo e no CSV).
+        if (!d.rates.some((r) => r.forwarder === fi)) continue;
         const { tied } = resolved(f.name);
         if (!tied.some((id) => withOwn.has(id)) || ambiguous.has(f.name))
           continue;

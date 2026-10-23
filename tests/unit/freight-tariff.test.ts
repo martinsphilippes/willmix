@@ -2250,6 +2250,24 @@ describe("a planilha vai inteira para a companhia escolhida", () => {
       code: "block_owner_ambiguous",
       params: { block: "ALFA LINES", companies: "Alfa Lines Ltda, Alfa Lines" },
     });
+    // Bloco sem preço na consolidada não entra no aviso.
+    const noRates = calc.parseFreightTariff(workbook());
+    for (const d of noRates.destinations) {
+      const fi = d.forwarders.findIndex((f) => f.name === "ALFA LINES");
+      d.rates = d.rates.filter((r) => r.forwarder !== fi);
+    }
+    const quiet = calc.mergeTariffs(
+      [{ ...sources[0], data: noRates }, sources[1]],
+      {
+        lines: [
+          { id: "old", name: "Alfa Lines Ltda", active: true },
+          { id: "new", name: "Alfa Lines", active: true },
+        ],
+      },
+    )!;
+    expect(quiet.warnings.map((w) => w.code)).not.toContain(
+      "block_owner_ambiguous",
+    );
   });
 
   it("a planilha de uma companhia vista sozinha usa os mesmos códigos do comparativo", () => {
