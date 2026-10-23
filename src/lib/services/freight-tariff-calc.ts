@@ -145,6 +145,7 @@ export type TariffWarningCode =
   | "ptax_iof_unused"
   | "ptax_iof_added"
   | "ptax_iof_missing"
+  | "other_blocks_ignored"
   | "forwarder_no_code"
   | "port_no_id"
   | "port_no_id_similar"
@@ -182,7 +183,21 @@ export interface FreightTariffData {
   fxSource?: TariffFxSource;
 }
 
-export class TariffError extends Error {}
+export class TariffError extends Error {
+  /** Detalhe para a tela (ex.: nomes dos blocos achados na planilha). */
+  constructor(
+    message: string,
+    readonly detail: string[] = [],
+  ) {
+    super(message);
+  }
+}
+
+/** Leitura só de alguns blocos (a planilha de uma companhia com os das outras). */
+export interface TariffParseOptions {
+  /** Bloco (companhia) que entra; os outros ficam de fora. */
+  keepBlock?: (name: string) => boolean;
+}
 
 /** Uma aba da planilha: células na posição exata (`cells[linha][coluna]`). */
 export interface TariffSheet {
@@ -326,6 +341,7 @@ function parseDestinationSheet(
   sheet: TariffSheet,
   code: string,
   warnings: TariffWarning[],
+  options: TariffParseOptions = {},
 ): ParsedSheet | null {
   const { cells } = sheet;
   const text = sheet.text ?? new Set<string>();
@@ -412,13 +428,14 @@ function parseDestinationSheet(
       (r) => (n(r, g.usdDirect) ?? 0) > 0 || (n(r, g.usdLong) ?? 0) > 0,
     );
     if (!name || isErrorValue(name)) {
-      if (hasRates)
+      if (hasRates && !options.keepBlock)
         warnings.push({
           code: "cell_error",
           params: { sheet: sheet.name, cell: `${colName(g.start)}${hr}` },
         });
       continue;
     }
+    if (options.keepBlock && !options.keepBlock(name)) continue;
     let paymentTermDays: number | null = null;
     for (let k = g.start + 1; k <= g.start + 4; k++)
       if (foldName(at(cells, hr - 1, k)).startsWith("prazo")) {
@@ -636,7 +653,10 @@ export function recomputeTotals(dest: TariffDestination): void {
  * Lê o tarifário a partir das abas da planilha. Erros que impedem o uso
  * lançam `TariffError` (código para a tela traduzir); o resto vira aviso.
  */
-export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
+export function parseFreightTariff(
+  sheets: TariffSheet[],
+  options: TariffParseOptions = {},
+): FreightTariffData {
   const warnings: TariffWarning[] = [];
   const byName = (n: string) =>
     sheets.find((s) => s.name.trim().toUpperCase() === n);
@@ -645,7 +665,7 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
     const code = destinationCode(sheet.name);
     if (!code) continue;
     if (parsed.length >= LIMITS.sheets) break;
-    const p = parseDestinationSheet(sheet, code, warnings);
+    const p = parseDestinationSheet(sheet, code, warnings, options);
     if (p) parsed.push(p);
   }
   if (!parsed.length) throw new TariffError("tariff_no_sheets");
@@ -994,8 +1014,11 @@ export function parseFreightTariff(sheets: TariffSheet[]): FreightTariffData {
       });
   }
 
-  // A aba AD_FREINT (gerada pela macro) bate com os comparativos?
-  const tab = headerTable(byName("AD_FREINT"), [...SANKHYA_HEADER]);
+  // A aba AD_FREINT (gerada pela macro) bate com os comparativos? (Lendo só
+  // alguns blocos, ela tem os das outras companhias: não dá para comparar.)
+  const tab = options.keepBlock
+    ? null
+    : headerTable(byName("AD_FREINT"), [...SANKHYA_HEADER]);
   if (tab) {
     const key = (v: (string | number)[]) => v.join("|");
     const theirs = tab.rows.map((row) =>

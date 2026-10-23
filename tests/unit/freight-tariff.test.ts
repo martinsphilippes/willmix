@@ -874,23 +874,36 @@ describe("importar e usar o tarifário", () => {
     );
     expect((await service.comparativeTariff(admin))!.sources.length).toBe(3);
     expect(again.shippingLineId).toBe("armador");
-    // A planilha com os preços das outras companhias (a consolidada devolvida):
-    // recusada para a companhia, e para a Wellmix em nome de uma companhia.
+    // A planilha com os preços das outras companhias (a consolidada devolvida)
+    // e sem nenhum bloco com o nome da Marítima: recusada, com os nomes achados.
     await expect(
       service.importFreightTariff(
         shippingLine,
         file(xlsxFile(workbook())),
         null,
       ),
-    ).rejects.toThrow("tariff_other_companies");
-    await expect(
-      service.importFreightTariff(
-        operator,
-        file(xlsxFile(workbook())),
-        null,
-        betaId,
-      ),
-    ).rejects.toThrow("tariff_other_companies");
+    ).rejects.toMatchObject({
+      message: "tariff_other_companies",
+      detail: ["ALFA LINES", "BETA CARGO", "GAMA"],
+    });
+    // Com o bloco da companhia no meio dos outros: entra só o dela, com uma nota.
+    const gama = await store.create("parties", {
+      type: "shipping_line",
+      name: "Gama",
+      active: true,
+    } as never);
+    const onlyGama = await service.importFreightTariff(
+      operator,
+      file(xlsxFile(workbook())),
+      null,
+      gama.id,
+    );
+    expect(calc.blocksWithRates(onlyGama.data)).toEqual(["GAMA"]);
+    expect(onlyGama.rateCount).toBe(1);
+    expect(onlyGama.data.warnings).toContainEqual({
+      code: "other_blocks_ignored",
+      params: { kept: "GAMA", ignored: "ALFA LINES, BETA CARGO" },
+    });
     // Companhia que não existe (ou parceiro de outro tipo): recusado.
     await expect(
       service.importFreightTariff(
@@ -1499,6 +1512,19 @@ describe("revisão 2: leitura em tempo linear, textos enormes, legado e endereç
       code: "ptax_iof_added",
       params: { ptax: 2, ptaxMax: 2, iof: 3.5, iofMax: 3.5 },
     });
+  });
+
+  it("lendo só os blocos de uma companhia: os outros ficam de fora", () => {
+    const only = calc.parseFreightTariff(workbook(), {
+      keepBlock: (n) => n === "BETA CARGO",
+    });
+    expect(calc.blocksWithRates(only)).toEqual(["BETA CARGO"]);
+    for (const d of only.destinations)
+      expect(d.forwarders.map((f) => f.name)).toEqual(["BETA CARGO"]);
+    // A aba AD_FREINT tem as outras companhias: não é comparada.
+    expect(only.warnings.map((w) => w.code)).not.toContain(
+      "sankhya_tab_outdated",
+    );
   });
 
   it("PTAX e IOF em vários formatos; acima de 50% fica de fora", () => {

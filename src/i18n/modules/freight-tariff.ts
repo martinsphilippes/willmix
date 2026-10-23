@@ -223,7 +223,11 @@ export const pt = {
   "tariff.upload.hint":
     "Data de embarque, chegada, navio e BL abaixo são opcionais: confirme o embarque para avançar.",
   "tariff.error.tariff_other_companies":
-    "A planilha tem preços de outras companhias. Deixe só os blocos da companhia (com o nome dela, como no cadastro) e envie de novo; a Wellmix pode importar a planilha com várias companhias como consolidada.",
+    "Nenhum bloco da planilha tem o nome da companhia. Deixe só o bloco dela (ou dê a ele o nome da companhia, como no cadastro) e envie de novo; a Wellmix pode importar a planilha com várias companhias como consolidada.",
+  "tariff.error.blocksFound":
+    "Blocos com preço na planilha: {blocks}. Nome da companhia no cadastro: {company}.",
+  "tariff.warning.other_blocks_ignored":
+    "Entraram só os preços de {kept}; os blocos de outras companhias ({ignored}) ficaram de fora.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -445,7 +449,11 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.upload.hint":
     "Shipping date, arrival, vessel and BL below are optional: confirm the shipment to move on.",
   "tariff.error.tariff_other_companies":
-    "The spreadsheet has prices from other shipping lines. Keep only the line's own blocks (named as in the registry) and send it again; Wellmix can import a multi-line spreadsheet as consolidated.",
+    "No block in the spreadsheet has the shipping line's name. Keep only its block (or give it the line's name, as in the registry) and send it again; Wellmix can import a multi-line spreadsheet as consolidated.",
+  "tariff.error.blocksFound":
+    "Blocks with prices in the spreadsheet: {blocks}. Line name in the registry: {company}.",
+  "tariff.warning.other_blocks_ignored":
+    "Only {kept}'s prices came in; other lines' blocks ({ignored}) were left out.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -654,5 +662,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.upload.hint":
     "下面的装运日期、到达、船名和提单都是可选的：确认已装运即可继续。",
   "tariff.error.tariff_other_companies":
-    "表格里有其他船公司的价格。只保留本公司的区块（名称与登记一致）后重新上传；多家船公司的表可由 Wellmix 作为汇总表导入。",
+    "表格中没有任何区块使用该船公司的名称。只保留本公司的区块（或把区块名称改成登记中的公司名称）后重新上传；多家船公司的表可由 Wellmix 作为汇总表导入。",
+  "tariff.error.blocksFound":
+    "表中有价格的区块：{blocks}。登记中的船公司名称：{company}。",
+  "tariff.warning.other_blocks_ignored":
+    "只导入了 {kept} 的价格；其他船公司的区块（{ignored}）未导入。",
 };

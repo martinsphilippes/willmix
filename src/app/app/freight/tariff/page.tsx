@@ -64,6 +64,7 @@ const INFO_WARNINGS = new Set([
   "ptax_iof_unused",
   "ptax_iof_added",
   "destination_fixed_id",
+  "other_blocks_ignored",
 ]);
 const FROM_ORDER = /^\/app\/orders\/[A-Za-z0-9_-]{1,64}$/;
 /** Avisos do CSV do Sankhya (códigos internos da Wellmix): a companhia não vê. */
@@ -163,6 +164,15 @@ export default async function FreightTariffPage({
     param("from") && FROM_ORDER.test(param("from")!) ? param("from") : null;
   const error = param("error");
   const destParam = param("dest");
+  // Planilha recusada por não ter o bloco da companhia: os nomes achados nela.
+  const blocksFound =
+    error === "tariff_other_companies" && param("blocks")
+      ? param("blocks")!
+          .split("|")
+          .map((b) => b.trim().slice(0, 120))
+          .filter(Boolean)
+          .slice(0, 20)
+      : [];
 
   let comparative: ComparativeTariff | null = null;
   let mine: FreightTariff | null = null;
@@ -197,6 +207,12 @@ export default async function FreightTariffPage({
   ]);
   const userName = (uid: string) =>
     users.find((u) => u.id === uid)?.name ?? "—";
+  // Nome da companhia que a planilha precisava ter (a do usuário, ou a escolhida pela Wellmix).
+  const expectedCompany = blocksFound.length
+    ? wellmix
+      ? (lines.find((p) => p.id === param("company"))?.name ?? null)
+      : ((await store.get("parties", user.partyId!))?.name ?? null)
+    : null;
   const companyName = (lineId: string | null | undefined) =>
     lineId ? (lines.find((p) => p.id === lineId)?.name ?? null) : null;
   const qs = (extra: Record<string, string>) => {
@@ -255,6 +271,14 @@ export default async function FreightTariffPage({
       {error ? (
         <Alert tone="danger">
           <span data-tariff-error={error}>{errorText(t, error)}</span>
+          {blocksFound.length ? (
+            <span className="mt-1 block" data-tariff-blocks-found="">
+              {t("tariff.error.blocksFound", {
+                blocks: blocksFound.join(", "),
+                company: expectedCompany ?? "—",
+              })}
+            </span>
+          ) : null}
         </Alert>
       ) : null}
       {loadError && loadError !== error ? (
