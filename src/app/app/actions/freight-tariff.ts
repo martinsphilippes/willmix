@@ -43,7 +43,8 @@ export async function importFreightTariffAction(form: FormData) {
       referenceDate = parsed.data;
     }
     // Wellmix escolhe de quem é a planilha (sem padrão: evita trocar a
-    // consolidada pela tabela de uma companhia só); a companhia, nunca.
+    // consolidada pela tabela de uma companhia só); a companhia, nunca (vai
+    // sempre para a dela). A planilha é toda da companhia escolhida.
     let shippingLineId: string | null = null;
     if (isWellmix(user)) {
       const company = str(form, "shippingLineId");
@@ -52,32 +53,12 @@ export async function importFreightTariffAction(form: FormData) {
     }
     const { importFreightTariff } =
       await import("@/lib/services/freight-tariff");
-    const { TariffError } = await import("@/lib/services/freight-tariff-calc");
-    let row;
-    try {
-      row = await importFreightTariff(
-        user,
-        file,
-        referenceDate,
-        shippingLineId,
-      );
-    } catch (error) {
-      // Planilha sem o bloco da companhia: a tela mostra os nomes achados.
-      if (
-        error instanceof TariffError &&
-        error.message === "tariff_other_companies" &&
-        error.detail.length
-      ) {
-        const params = new URLSearchParams({
-          error: error.message,
-          blocks: error.detail.join("|").slice(0, 600),
-        });
-        if (shippingLineId) params.set("company", shippingLineId);
-        if (from) params.set("from", from);
-        return `${BACK}?${params.toString()}`;
-      }
-      throw error;
-    }
+    const row = await importFreightTariff(
+      user,
+      file,
+      referenceDate,
+      shippingLineId,
+    );
     const params = new URLSearchParams({ imported: row.id });
     if (from) params.set("from", from);
     return `${BACK}?${params.toString()}`;

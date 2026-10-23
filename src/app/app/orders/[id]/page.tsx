@@ -630,6 +630,7 @@ export default async function OrderPage({
                         t={t}
                         orderId={order.id}
                         stageId={stage.id}
+                        shippingLineId={order.shippingLineId}
                         view={tariffView}
                         keepParams={remeasureMode ? { remeasure: "1" } : {}}
                       />

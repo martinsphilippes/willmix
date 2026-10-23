@@ -146,7 +146,10 @@ export type TariffWarningCode =
   | "ptax_iof_added"
   | "ptax_iof_missing"
   | "other_blocks_ignored"
+  | "several_blocks"
   | "forwarder_no_code"
+  | "line_no_code"
+  | "block_owner_ambiguous"
   | "port_no_id"
   | "port_no_id_similar"
   | "destination_unknown"
@@ -196,6 +199,11 @@ export class TariffError extends Error {
 export interface TariffParseOptions {
   /** Bloco (companhia) que entra; os outros ficam de fora. */
   keepBlock?: (name: string) => boolean;
+  /**
+   * Planilha de uma companhia: bloco com preço e sem nome (ou com erro no
+   * nome) entra com o nome dela, em vez de ficar de fora.
+   */
+  fallbackName?: string | null;
 }
 
 /** Uma aba da planilha: células na posição exata (`cells[linha][coluna]`). */
@@ -421,11 +429,16 @@ function parseDestinationSheet(
   const forwarders: TariffForwarder[] = [];
   const keptGroups: Group[] = [];
   const feeVectors: string[] = [];
+  let unnamed = 0;
   for (const g of groups.slice(0, LIMITS.forwarders)) {
-    const name = cleanName(at(cells, hr - 1, g.start));
+    let name = cleanName(at(cells, hr - 1, g.start));
     const hasRates = originRows.some(
       (r) => (n(r, g.usdDirect) ?? 0) > 0 || (n(r, g.usdLong) ?? 0) > 0,
     );
+    // Sem nome na planilha de uma companhia: é dela ("Delta Mar", "Delta Mar 2").
+    const fallback = cleanName(options.fallbackName ?? "");
+    if ((!name || isErrorValue(name)) && hasRates && fallback)
+      name = ++unnamed > 1 ? `${fallback} ${unnamed}` : fallback;
     if (!name || isErrorValue(name)) {
       if (hasRates && !options.keepBlock)
         warnings.push({
@@ -1171,6 +1184,10 @@ export function sankhyaRows(
   };
   const base = dated(referenceDate);
   const out: SankhyaRow[] = [];
+  // Planilha de uma companhia com vários blocos (todos com o código dela):
+  // uma linha por rota, a mais barata (o Sankhya guarda um preço por código).
+  const companyBest = new Map<string, { at: number; total: number }>();
+  const drop = new Set<number>();
   // Ordem da macro (NVT, IOA, ITJ), depois os demais: com AD_IDEXTERNO
   // repetido entre destinos, a última linha de cada código é a mesma da macro.
   const rank = (code: string) => {
@@ -1198,10 +1215,18 @@ export function sankhyaRows(
           f.referenceDate && /^\d{4}-\d{2}-\d{2}$/.test(f.referenceDate)
             ? dated(f.referenceDate)
             : base;
+        // Com o destino (3 dígitos): a mesma companhia e origem em dois
+        // destinos não repete o código, e o Sankhya fica com todos.
+        const externalId = `${f.code}${serial}${String(dest.portId).padStart(3, "0")}${o.portId}`;
+        if (f.shippingLineId) {
+          const key = `${f.shippingLineId}|${externalId}`;
+          const best = companyBest.get(key);
+          if (best && best.total <= pick.totalBrl) return;
+          if (best) drop.add(best.at);
+          companyBest.set(key, { at: out.length, total: pick.totalBrl });
+        }
         out.push({
-          // Com o destino (3 dígitos): a mesma companhia e origem em dois
-          // destinos não repete o código, e o Sankhya fica com todos.
-          externalId: `${f.code}${serial}${String(dest.portId).padStart(3, "0")}${o.portId}`,
+          externalId,
           code: f.code,
           date,
           destId: dest.portId!,
@@ -1218,7 +1243,7 @@ export function sankhyaRows(
       });
     });
   }
-  return out;
+  return drop.size ? out.filter((_, i) => !drop.has(i)) : out;
 }
 
 /** Número com vírgula decimal, sem milhar (configuração regional do Brasil). */
@@ -1596,9 +1621,10 @@ export function tariffCounts(data: FreightTariffData) {
 /* ------------------------------------------------------------------------ */
 
 /**
- * O bloco da planilha é da companhia do cadastro? Mesmo nome, ou o bloco
- * começa com ele ("ROYAL CARGO - MSC" é da "Royal Cargo"). Nome curto
- * demais (menos de 3 letras) não vale.
+ * O bloco tem o nome da companhia do cadastro? Mesmo nome, ou o bloco começa
+ * com ele ("ROYAL CARGO - MSC" tem o nome da "Royal Cargo"). Nome curto
+ * demais (menos de 3 letras) não vale. Só para mostrar: quem é dono de um
+ * bloco no comparativo é `ownerOfBlock` (com todas as companhias).
  */
 export function blockOfCompany(block: string, company: string | null): boolean {
   const c = companyKey(company);
@@ -1607,15 +1633,117 @@ export function blockOfCompany(block: string, company: string | null): boolean {
   return k === c || k.startsWith(`${c} `);
 }
 
-/** Final de razão social que não faz parte do nome ("Beta Cargo Ltda" → "beta cargo"). */
-const LEGAL_SUFFIX =
-  /(?:\s+(?:ltda|limitada|s\s?a|sa|eireli|me|epp|inc|llc|ltd|co|corp|gmbh|do brasil|brasil))+$/;
+/** Companhia marítima do cadastro (id, nome e se está ativa). */
+export interface RegisteredLine {
+  id: string;
+  name: string;
+  active?: boolean;
+}
 
-/** Nome da companhia do cadastro, sem a razão social, para comparar com o bloco. */
+/**
+ * Companhia do cadastro dona de um bloco de planilha da Wellmix (a
+ * consolidada), pelo nome, entre todas as companhias cadastradas:
+ * 1. nome igual;
+ * 2. o bloco começa com o nome dela (vale o nome mais longo: "BETA CARGO
+ *    EXPRESS" é da "Beta Cargo Express", não da "Beta Cargo");
+ * 3. sem nenhum desses, o nome dela começa com o do agente no bloco (antes
+ *    do armador, com duas palavras ou mais): "SCAN GLOBAL -MSC" é da "Scan
+ *    Global Logística".
+ * Empate (duas companhias) ou nenhuma: null. Nome de bloco da planilha de
+ * uma companhia não passa por aqui: ela é toda da companhia escolhida.
+ */
+export function ownerOfBlock(
+  block: string,
+  lines: readonly RegisteredLine[],
+): string | null {
+  return resolveOwner(block, lines).id;
+}
+
+/**
+ * Dono do bloco e, quando ninguém é dono por empate, as companhias que
+ * empataram. No empate, vale a única ativa (cadastro antigo desativado com
+ * o mesmo nome não tira o bloco da companhia de hoje).
+ */
+export function resolveOwner(
+  block: string,
+  lines: readonly RegisteredLine[],
+): { id: string | null; tied: string[] } {
+  const k = foldName(block);
+  const none = { id: null, tied: [] as string[] };
+  if (!k) return none;
+  const keyed = lines
+    .map((l) => ({ id: l.id, key: companyKey(l.name), active: l.active }))
+    .filter((l) => l.key.length >= 3);
+  const only = (list: typeof keyed) => {
+    const ids = [...new Set(list.map((l) => l.id))];
+    if (ids.length === 1) return { id: ids[0], tied: [] };
+    const active = [
+      ...new Set(list.filter((l) => l.active !== false).map((l) => l.id)),
+    ];
+    if (active.length === 1) return { id: active[0], tied: [] };
+    return { id: null, tied: ids };
+  };
+  const exact = keyed.filter((l) => l.key === k);
+  if (exact.length) return only(exact);
+  const prefix = keyed.filter((l) => k.startsWith(`${l.key} `));
+  if (prefix.length) {
+    const longest = Math.max(...prefix.map((l) => l.key.length));
+    return only(prefix.filter((l) => l.key.length === longest));
+  }
+  // Separador com espaço de um dos lados: "SINO-TRANS" é um nome só.
+  const agent = companyKey(block.split(BLOCK_CARRIER)[0] ?? "");
+  if (agent.length < 3 || !agent.includes(" ")) return none;
+  const loose = keyed.filter(
+    (l) => l.key === agent || l.key.startsWith(`${agent} `),
+  );
+  return loose.length ? only(loose) : none;
+}
+
+/** Traço (ou "+", "/", "|") entre o agente e o armador no nome do bloco. */
+const BLOCK_CARRIER = /\s+[-\u2013\u2014+/|]\s*|\s*[-\u2013\u2014+/|]\s+/;
+
+/** Final de razão social que não faz parte do nome ("Beta Cargo Ltda" → "beta cargo"). */
+const LEGAL_WORDS = new Set([
+  "ltda",
+  "limitada",
+  "sa",
+  "eireli",
+  "me",
+  "epp",
+  "inc",
+  "llc",
+  "ltd",
+  "co",
+  "corp",
+  "gmbh",
+  "brasil",
+]);
+
+/**
+ * Nome sem a razão social, para comparar o bloco com o cadastro. Palavra
+ * por palavra do fim (sem expressão regular: o nome do bloco vem da
+ * planilha e não pode travar o servidor); a primeira palavra nunca sai.
+ */
 function companyKey(company: string | null): string {
-  return foldName(company ?? "")
-    .replace(LEGAL_SUFFIX, "")
-    .trim();
+  const words = foldName(company ?? "")
+    .split(" ")
+    .filter(Boolean);
+  for (;;) {
+    const last = words[words.length - 1];
+    if (words.length > 1 && LEGAL_WORDS.has(last)) {
+      words.pop();
+      // "do brasil" sai inteiro.
+      if (last === "brasil" && words.length > 1 && words.at(-1) === "do")
+        words.pop();
+      continue;
+    }
+    // "S.A." vira "s a".
+    if (words.length > 2 && last === "a" && words.at(-2) === "s") {
+      words.splice(-2);
+      continue;
+    }
+    return words.join(" ");
+  }
 }
 
 /** Nomes dos blocos (companhias) com tarifa na planilha, sem repetir. */
@@ -1644,21 +1772,112 @@ export interface TariffSource {
 }
 
 /**
+ * Códigos do Sankhya (CODPARC) dos blocos das planilhas da Wellmix, com o
+ * nome do bloco. Da planilha de uma companhia, só os blocos que são dela
+ * (`ownerOfBlock`); da consolidada, todos.
+ */
+export function wellmixCodes(
+  sources: readonly TariffSource[],
+  lines: readonly RegisteredLine[],
+): { name: string; code: string }[] {
+  const out: { name: string; code: string }[] = [];
+  const seen = new Set<string>();
+  for (const s of sources) {
+    if (!s.byWellmix) continue;
+    for (const d of s.data.destinations)
+      for (const f of d.forwarders) {
+        if (!f.code || seen.has(foldName(f.name))) continue;
+        if (
+          s.shippingLineId &&
+          ownerOfBlock(f.name, lines) !== s.shippingLineId
+        )
+          continue;
+        seen.add(foldName(f.name));
+        out.push({ name: f.name, code: f.code });
+      }
+  }
+  return out;
+}
+
+/**
+ * Código do Sankhya de um bloco da planilha de uma companhia: a planilha é
+ * toda dela (qualquer nome no bloco), então vale o código dela, o do bloco
+ * de planilha da Wellmix que é dela (`ownerOfBlock`). O código escrito na
+ * própria planilha só vale se a Wellmix importou e o bloco é dela. Nunca o
+ * código de outra companhia pelo nome do bloco.
+ */
+export function companyBlockCode(
+  f: Pick<TariffForwarder, "name" | "code">,
+  source: Pick<TariffSource, "shippingLineId" | "byWellmix">,
+  lines: readonly RegisteredLine[],
+  codes: readonly { name: string; code: string }[],
+): string | null {
+  const id = source.shippingLineId;
+  if (!id) return f.code ?? null;
+  if (source.byWellmix && f.code && ownerOfBlock(f.name, lines) === id)
+    return f.code;
+  return codes.find((c) => ownerOfBlock(c.name, lines) === id)?.code ?? null;
+}
+
+/**
+ * Planilha de uma companhia com os códigos do Sankhya dela (para ver a
+ * planilha e baixar o CSV dela): os mesmos do comparativo.
+ */
+export function withCompanyCodes(
+  data: FreightTariffData,
+  source: Pick<TariffSource, "shippingLineId" | "byWellmix" | "company">,
+  lines: readonly RegisteredLine[],
+  codes: readonly { name: string; code: string }[],
+): FreightTariffData {
+  if (!source.shippingLineId) return data;
+  const destinations = data.destinations.map((d) => ({
+    ...d,
+    forwarders: d.forwarders.map((f) => ({
+      ...f,
+      code: companyBlockCode(f, source, lines, codes),
+      shippingLineId: source.shippingLineId,
+    })),
+  }));
+  // O aviso de código que falta é o da companhia (não o da aba FORNECEDORES).
+  const missing = destinations.some((d) =>
+    d.rates.some((r) => !d.forwarders[r.forwarder]?.code),
+  );
+  const warnings = data.warnings.filter((w) => w.code !== "forwarder_no_code");
+  if (missing)
+    warnings.push({
+      code: "line_no_code",
+      params: { company: source.company ?? "—" },
+    });
+  return { ...data, destinations, warnings };
+}
+
+/**
  * Junta as planilhas vigentes num tarifário só (o comparativo da Wellmix):
- * - a planilha de cada companhia entra inteira (só a mais nova de cada uma);
- * - da consolidada, só as companhias que ainda não mandaram a própria (mesmo
- *   nome de bloco, ou o bloco começa com o nome da companhia no cadastro);
+ * - a planilha de cada companhia entra inteira (só a mais nova de cada uma),
+ *   em nome dela, com qualquer nome nos blocos (bloco sem o nome dela vira
+ *   "Companhia (BLOCO)");
+ * - da consolidada, só os blocos de companhias que ainda não mandaram a
+ *   própria (dono do bloco pelo nome, entre todas as companhias do cadastro:
+ *   `ownerOfBlock`); nome de bloco da planilha de uma companhia nunca tira
+ *   nem imita outra;
  * - um câmbio, um frete até o CD e uma quantidade de containers por destino
  *   para todos (senão os totais não se comparam): o câmbio é o dólar do dia
  *   do portal (`fx`), se houver; o resto vem da planilha mais nova importada
  *   pela Wellmix (sem ela, da mais nova).
- * Códigos do Sankhya que faltam numa planilha (CODPARC, ID do porto) vêm de
- * outra que tenha o mesmo nome. Sem planilha com tarifa: null.
+ * Códigos do Sankhya: os da consolidada pelo nome do bloco; os de uma
+ * companhia, o dela (`companyBlockCode`). IDs de porto que faltam vêm de
+ * outra planilha da Wellmix com o mesmo porto. `lines`: todas as companhias
+ * do cadastro (sem elas, só as das planilhas). Sem planilha com tarifa: null.
  */
-export function mergeTariffs(
-  sources: TariffSource[],
-  options: { fx?: number | null } = {},
-): FreightTariffData | null {
+/**
+ * Planilhas que entram no comparativo, na ordem dele: a consolidada mais
+ * nova (ordem das abas do modelo), depois a mais nova de cada companhia
+ * (pelo nome). A mesma ordem escolhe os códigos do Sankhya na planilha de
+ * uma companhia vista sozinha.
+ */
+export function comparativeSources(
+  sources: readonly TariffSource[],
+): TariffSource[] {
   const newest = (a: TariffSource, b: TariffSource) =>
     b.createdAt.localeCompare(a.createdAt);
   const own = new Map<string, TariffSource>();
@@ -1666,42 +1885,55 @@ export function mergeTariffs(
     if (s.shippingLineId && !own.has(s.shippingLineId))
       own.set(s.shippingLineId, s);
   const consolidated = [...sources].sort(newest).find((s) => !s.shippingLineId);
-  const companies = [...own.values()];
-
-  // Blocos da consolidada que a própria companhia já substituiu.
-  // Só blocos com o nome da própria companhia substituem os da consolidada:
-  // a planilha de uma companhia nunca tira (nem imita) o preço de outra.
-  const ownBlocks = new Set<string>();
-  for (const s of companies)
-    for (const d of s.data.destinations)
-      for (const r of d.rates) {
-        const name = d.forwarders[r.forwarder].name;
-        if (blockOfCompany(name, s.company)) ownBlocks.add(foldName(name));
-      }
-  const replaced = (name: string) =>
-    ownBlocks.has(foldName(name)) ||
-    companies.some((s) => blockOfCompany(name, s.company));
-
-  // Ordem: a consolidada (ordem das abas do modelo), depois as companhias.
-  const ordered = [
+  return [
     ...(consolidated ? [consolidated] : []),
-    ...companies.sort(
+    ...[...own.values()].sort(
       (a, b) =>
         (a.company ?? "").localeCompare(b.company ?? "") ||
         a.id.localeCompare(b.id),
     ),
   ];
-  if (!ordered.length) return null;
+}
 
-  // Códigos do Sankhya (pelo nome) só das planilhas importadas pela Wellmix:
-  // a abas FORNECEDORES/PORTOS de uma companhia não valem para o CSV.
-  const forwarderCode = new Map<string, string>();
+export function mergeTariffs(
+  sources: TariffSource[],
+  options: { fx?: number | null; lines?: readonly RegisteredLine[] } = {},
+): FreightTariffData | null {
+  const newest = (a: TariffSource, b: TariffSource) =>
+    b.createdAt.localeCompare(a.createdAt);
+  const ordered = comparativeSources(sources);
+  if (!ordered.length) return null;
+  const companies = ordered.filter((s) => s.shippingLineId);
+
+  // Companhias do cadastro (sem a lista, as das planilhas).
+  const lines: RegisteredLine[] = options.lines
+    ? [...options.lines]
+    : companies
+        .filter((s) => s.company)
+        .map((s) => ({ id: s.shippingLineId!, name: s.company! }));
+  const ownerCache = new Map<string, { id: string | null; tied: string[] }>();
+  const resolved = (name: string) => {
+    if (!ownerCache.has(name)) ownerCache.set(name, resolveOwner(name, lines));
+    return ownerCache.get(name)!;
+  };
+  const owner = (name: string) => resolved(name).id;
+  // Bloco da consolidada que a companhia dona já substituiu com a própria
+  // planilha (dono pelo nome do bloco da consolidada, nunca pelos nomes que
+  // a companhia escreveu na planilha dela).
+  const withOwn = new Set(companies.map((s) => s.shippingLineId!));
+  const replaced = (name: string) => {
+    const id = owner(name);
+    return !!id && withOwn.has(id);
+  };
+
+  // Códigos do Sankhya (pelo nome) só das planilhas importadas pela Wellmix
+  // (as abas FORNECEDORES/PORTOS de uma companhia não valem para o CSV); de
+  // uma planilha da Wellmix em nome de uma companhia, só os blocos dela.
+  const codes = wellmixCodes(ordered, lines);
+  const forwarderCode = new Map(codes.map((c) => [foldName(c.name), c.code]));
   const portIdByName = new Map<string, number>();
   for (const s of ordered.filter((x) => x.byWellmix))
     for (const d of s.data.destinations) {
-      for (const f of d.forwarders)
-        if (f.code && !forwarderCode.has(foldName(f.name)))
-          forwarderCode.set(foldName(f.name), f.code);
       for (const o of d.origins)
         if (o.portId !== null && !portIdByName.has(foldName(o.name)))
           portIdByName.set(foldName(o.name), o.portId);
@@ -1765,17 +1997,23 @@ export function mergeTariffs(
       const keptIndex = new Map<number, number>();
       for (const { f, fi } of kept) {
         keptIndex.set(fi, target.forwarders.length);
-        // Código: o da própria planilha só se a Wellmix importou; pelo nome,
-        // só para bloco que é da companhia (nunca o código de outra).
-        const mine =
-          s.byWellmix || !s.shippingLineId || blockOfCompany(f.name, s.company);
+        // Consolidada: o código da planilha (ou de outra da Wellmix com o
+        // mesmo nome). Companhia: o dela, com qualquer nome no bloco; bloco
+        // sem o nome dela aparece como "Companhia (BLOCO)".
+        const code = s.shippingLineId
+          ? companyBlockCode(f, s, lines, codes)
+          : ((s.byWellmix ? f.code : null) ??
+            forwarderCode.get(foldName(f.name)) ??
+            null);
+        const name =
+          s.shippingLineId && s.company && owner(f.name) !== s.shippingLineId
+            ? `${s.company} (${f.name})`
+            : f.name;
         target.forwarders.push({
           ...f,
+          name,
           fees: f.fees.map((x) => ({ ...x })),
-          code:
-            (s.byWellmix ? f.code : null) ??
-            (mine ? forwarderCode.get(foldName(f.name)) : undefined) ??
-            null,
+          code,
           shippingLineId: s.shippingLineId,
           company: s.company,
           tariffId: s.id,
@@ -1822,21 +2060,25 @@ export function mergeTariffs(
   // Conferência do comparativo: o que fica fora do CSV do Sankhya.
   const warnings: TariffWarning[] = [];
   const noCode = new Set<string>();
+  const noCodeLine = new Set<string>();
   const noId = new Set<string>();
   for (const d of destinations) {
     if (d.portId === null) noId.add(d.name);
     for (const r of d.rates) {
       const f = d.forwarders[r.forwarder];
-      if (!f.code) noCode.add(f.name);
+      // Companhia sem código: um aviso com o nome dela (não um por bloco).
+      if (!f.code && f.shippingLineId && f.company) noCodeLine.add(f.company);
+      else if (!f.code) noCode.add(f.name);
       if (d.origins[r.origin].portId === null)
         noId.add(d.origins[r.origin].name);
     }
   }
   // O que a conferência da própria planilha já aponta não se repete aqui.
+  // (Código que falta só pela consolidada: o de uma companhia é line_no_code.)
   const already = new Set<string>();
   for (const s of ordered)
     for (const w of s.data.warnings ?? []) {
-      if (w.code === "forwarder_no_code")
+      if (w.code === "forwarder_no_code" && !s.shippingLineId)
         already.add(`f:${String(w.params.forwarder)}`);
       if (w.code === "port_no_id" || w.code === "port_no_id_similar")
         already.add(`p:${String(w.params.port)}`);
@@ -1844,6 +2086,30 @@ export function mergeTariffs(
   for (const name of noCode)
     if (!already.has(`f:${name}`))
       warnings.push({ code: "forwarder_no_code", params: { forwarder: name } });
+  for (const company of noCodeLine)
+    warnings.push({ code: "line_no_code", params: { company } });
+  // Bloco da consolidada que bate com mais de uma companhia (ativa) que
+  // mandou a própria planilha: fica de ninguém até a Wellmix acertar o nome.
+  const ambiguous = new Set<string>();
+  for (const s of ordered.filter((x) => !x.shippingLineId))
+    for (const d of s.data.destinations)
+      for (const [fi, f] of d.forwarders.entries()) {
+        // Só bloco com preço (o que entra no comparativo e no CSV).
+        if (!d.rates.some((r) => r.forwarder === fi)) continue;
+        const { tied } = resolved(f.name);
+        if (!tied.some((id) => withOwn.has(id)) || ambiguous.has(f.name))
+          continue;
+        ambiguous.add(f.name);
+        warnings.push({
+          code: "block_owner_ambiguous",
+          params: {
+            block: f.name,
+            companies: tied
+              .map((id) => lines.find((l) => l.id === id)?.name ?? id)
+              .join(", "),
+          },
+        });
+      }
   for (const name of noId)
     if (!already.has(`p:${name}`))
       warnings.push({ code: "port_no_id", params: { port: name } });

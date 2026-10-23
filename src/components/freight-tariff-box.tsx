@@ -19,18 +19,24 @@ export function FreightTariffBox({
   t,
   orderId,
   stageId,
+  shippingLineId = null,
   view,
   keepParams = {},
 }: {
   t: Translate;
   orderId: string;
   stageId: string;
+  /** Companhia marítima do pedido: já vem marcada na importação. */
+  shippingLineId?: string | null;
   /** Parâmetros da tela que o "Ver frete" mantém (ex.: remeasure=1). */
   keepParams?: Record<string, string>;
   /** null = nenhum tarifário importado; "failed" = não deu para ler agora. */
   view: OrderTariffView | "failed" | null;
 }) {
   const tariffHref = `/app/freight/tariff?from=${encodeURIComponent(`/app/orders/${orderId}`)}`;
+  const importHref = shippingLineId
+    ? `${tariffHref}&company=${encodeURIComponent(shippingLineId)}`
+    : tariffHref;
   const data = view && view !== "failed" ? view : null;
   const top = data?.options.slice(0, TOP) ?? [];
   const options = data
@@ -47,7 +53,7 @@ export function FreightTariffBox({
           {t("tariff.order.title")}
         </p>
         <LinkButton
-          href={tariffHref}
+          href={importHref}
           variant="primary"
           className="text-xs"
           data-tariff-import-link=""
@@ -81,7 +87,7 @@ export function FreightTariffBox({
                 const best = o === cheapest;
                 return (
                   <li
-                    key={`${o.destinationCode}-${o.forwarder}-${o.route}`}
+                    key={`${o.destinationCode}-${o.shippingLineId ?? ""}-${o.forwarder}-${o.route}`}
                     className={cx(
                       "flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-xl border bg-white px-3 py-2",
                       best ? "border-emerald-300" : "border-zinc-200",

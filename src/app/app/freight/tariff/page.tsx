@@ -75,6 +75,7 @@ const FROM_ORDER = /^\/app\/orders\/[A-Za-z0-9_-]{1,64}$/;
 /** Avisos do CSV do Sankhya (códigos internos da Wellmix): a companhia não vê. */
 const SANKHYA_WARNINGS = new Set([
   "forwarder_no_code",
+  "line_no_code",
   "port_no_id",
   "port_no_id_similar",
   "sankhya_tab_outdated",
@@ -172,15 +173,9 @@ export default async function FreightTariffPage({
   // Uma planilha: "como na planilha" (padrão) ou o resumo com PTAX e IOF.
   const view: "sheet" | "summary" =
     param("view") === "summary" ? "summary" : "sheet";
-  // Planilha recusada por não ter o bloco da companhia: os nomes achados nela.
-  const blocksFound =
-    error === "tariff_other_companies" && param("blocks")
-      ? param("blocks")!
-          .split("|")
-          .map((b) => b.trim().slice(0, 120))
-          .filter(Boolean)
-          .slice(0, 20)
-      : [];
+  // Companhia já marcada no formulário da Wellmix (ex.: a do pedido).
+  const companyParam =
+    param("company") && ID.test(param("company")!) ? param("company") : null;
 
   let comparative: ComparativeTariff | null = null;
   let mine: FreightTariff | null = null;
@@ -215,12 +210,10 @@ export default async function FreightTariffPage({
   ]);
   const userName = (uid: string) =>
     users.find((u) => u.id === uid)?.name ?? "—";
-  // Nome da companhia que a planilha precisava ter (a do usuário, ou a escolhida pela Wellmix).
-  const expectedCompany = blocksFound.length
-    ? wellmix
-      ? (lines.find((p) => p.id === param("company"))?.name ?? null)
-      : ((await store.get("parties", user.partyId!))?.name ?? null)
-    : null;
+  // Companhia marítima: a planilha vai sempre para a dela (o formulário diz qual).
+  const ownLine = wellmix
+    ? null
+    : ((await store.get("parties", user.partyId!))?.name ?? null);
   const companyName = (lineId: string | null | undefined) =>
     lineId ? (lines.find((p) => p.id === lineId)?.name ?? null) : null;
   const qs = (extra: Record<string, string>) => {
@@ -280,14 +273,6 @@ export default async function FreightTariffPage({
       {error ? (
         <Alert tone="danger">
           <span data-tariff-error={error}>{errorText(t, error)}</span>
-          {blocksFound.length ? (
-            <span className="mt-1 block" data-tariff-blocks-found="">
-              {t("tariff.error.blocksFound", {
-                blocks: blocksFound.join(", "),
-                company: expectedCompany ?? "—",
-              })}
-            </span>
-          ) : null}
         </Alert>
       ) : null}
       {loadError && loadError !== error ? (
@@ -330,6 +315,8 @@ export default async function FreightTariffPage({
           wellmix={wellmix}
           lines={lines}
           today={today}
+          company={companyParam}
+          ownLine={ownLine}
         />
 
         {loadError ? null : showComparative ? (
@@ -427,23 +414,35 @@ export default async function FreightTariffPage({
   );
 }
 
-/** Importar: a companhia manda a dela; a Wellmix diz de quem é a planilha. */
+/**
+ * Importar: a planilha vai inteira para a companhia marcada, com qualquer
+ * nome no arquivo. A Wellmix escolhe a companhia (já marcada quando vem do
+ * pedido); a companhia marítima vê para qual vai (sempre a dela).
+ */
 function ImportCard({
   t,
   from,
   wellmix,
   lines,
   today,
+  company,
+  ownLine,
 }: {
   t: Translate;
   from: string | null;
   wellmix: boolean;
   lines: Party[];
   today: string | undefined;
+  /** Companhia já marcada (Wellmix). */
+  company: string | null;
+  /** Nome da companhia do usuário (companhia marítima). */
+  ownLine: string | null;
 }) {
   const options = [...lines]
     .filter((p) => p.active !== false)
     .sort((a, b) => a.name.localeCompare(b.name));
+  const picked =
+    company && options.some((p) => p.id === company) ? company : "";
   return (
     <Card
       title={t(wellmix ? "tariff.import.title" : "tariff.mine.importTitle")}
@@ -460,11 +459,22 @@ function ImportCard({
         <div
           className={cx(
             "grid items-end gap-3",
-            wellmix
-              ? "@lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto]"
-              : "@lg:grid-cols-[minmax(0,1fr)_12rem_auto]",
+            "@lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto]",
           )}
         >
+          {!wellmix ? (
+            <Field
+              label={t("tariff.mine.goesTo")}
+              hint={t("tariff.mine.goesToHint")}
+            >
+              <p
+                className="flex min-h-10 items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900"
+                data-tariff-goes-to=""
+              >
+                {ownLine ?? "—"}
+              </p>
+            </Field>
+          ) : null}
           {wellmix ? (
             <Field
               label={t("tariff.import.company")}
@@ -473,7 +483,7 @@ function ImportCard({
               <Select
                 name="shippingLineId"
                 required
-                defaultValue=""
+                defaultValue={picked}
                 data-tariff-company=""
               >
                 <option value="" disabled>
@@ -728,6 +738,14 @@ function ComparativeView({
       : w.code === "port_no_id" || w.code === "port_no_id_similar"
         ? noId.has(String(w.params.port))
         : true;
+  // Avisos de cada planilha no comparativo. Na de uma companhia, o código
+  // que falta é o dela (aviso do comparativo), não o da aba FORNECEDORES.
+  const sourceWarnings = (row: FreightTariff) =>
+    (row.data.warnings ?? []).filter(
+      (w) =>
+        stillMissing(w) &&
+        !(row.shippingLineId && w.code === "forwarder_no_code"),
+    );
   const suggestion =
     dest && capacity ? perCbmSuggestion(data, dest.code, capacity) : null;
   return (
@@ -821,8 +839,8 @@ function ComparativeView({
                 <Td className="tabular-nums">{row.rateCount}</Td>
                 <Td className="tabular-nums">
                   {
-                    (row.data.warnings ?? []).filter(
-                      (w) => !INFO_WARNINGS.has(w.code) && stillMissing(w),
+                    sourceWarnings(row).filter(
+                      (w) => !INFO_WARNINGS.has(w.code),
                     ).length
                   }
                 </Td>
@@ -851,7 +869,7 @@ function ComparativeView({
               source: sourceName(t, company),
               date: day(row.referenceDate, t),
             }),
-            warnings: (row.data.warnings ?? []).filter(stillMissing),
+            warnings: sourceWarnings(row),
           })),
         ]}
       />

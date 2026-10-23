@@ -873,36 +873,6 @@ describe("importar e usar o tarifário", () => {
     );
     expect((await service.comparativeTariff(admin))!.sources.length).toBe(3);
     expect(again.shippingLineId).toBe("armador");
-    // A planilha com os preços das outras companhias (a consolidada devolvida)
-    // e sem nenhum bloco com o nome da Marítima: recusada, com os nomes achados.
-    await expect(
-      service.importFreightTariff(
-        shippingLine,
-        file(xlsxFile(workbook())),
-        null,
-      ),
-    ).rejects.toMatchObject({
-      message: "tariff_other_companies",
-      detail: ["ALFA LINES", "BETA CARGO", "GAMA"],
-    });
-    // Com o bloco da companhia no meio dos outros: entra só o dela, com uma nota.
-    const gama = await store.create("parties", {
-      type: "shipping_line",
-      name: "Gama",
-      active: true,
-    } as never);
-    const onlyGama = await service.importFreightTariff(
-      operator,
-      file(xlsxFile(workbook())),
-      null,
-      gama.id,
-    );
-    expect(calc.blocksWithRates(onlyGama.data)).toEqual(["GAMA"]);
-    expect(onlyGama.rateCount).toBe(1);
-    expect(onlyGama.data.warnings).toContainEqual({
-      code: "other_blocks_ignored",
-      params: { kept: "GAMA", ignored: "ALFA LINES, BETA CARGO" },
-    });
     // Companhia que não existe (ou parceiro de outro tipo): recusado.
     await expect(
       service.importFreightTariff(
@@ -1046,8 +1016,9 @@ describe("importar e usar o tarifário", () => {
     };
     expect(await assignedFor("Alfa")).toEqual(["ALFA LINES"]);
     expect(await assignedFor("Alfa Lines")).toEqual(["ALFA LINES"]);
-    // Razão social não atrapalha; nome diferente não conta.
-    expect(await assignedFor("Alfa Lines Ltda")).toEqual(["ALFA LINES"]);
+    // Razão social não atrapalha, mas o mesmo nome em duas companhias do
+    // cadastro deixa o bloco sem dono; nome diferente não conta.
+    expect(await assignedFor("Alfa Lines Ltda")).toEqual([]);
     expect(await assignedFor("Alfa Linhas")).toEqual([]);
     await store.create("purchase_sheets", {
       orderId: "pedido-yiwu",
@@ -1127,6 +1098,20 @@ describe("cartão Embarque: botão de importar e frete da rota", () => {
       'href="/app/freight/tariff?from=%2Fapp%2Forders%2Fo1"',
     );
     expect(none).toContain("Nenhuma tabela de frete ainda");
+    // Pedido com companhia marítima: a importação já vem com ela marcada.
+    expect(
+      renderToStaticMarkup(
+        createElement(FreightTariffBox, {
+          t,
+          orderId: "o1",
+          stageId: "s1",
+          shippingLineId: "armador",
+          view: null,
+        }),
+      ),
+    ).toContain(
+      'href="/app/freight/tariff?from=%2Fapp%2Forders%2Fo1&amp;company=armador"',
+    );
     expect(render("failed")).toContain("não pôde ser lido agora");
     const base = {
       tariffId: "t1",
@@ -1947,8 +1932,9 @@ describe("comparativo: as planilhas de todas as companhias juntas", () => {
     const names = merged.destinations
       .find((d) => d.code === "NVT")!
       .forwarders.map((f) => f.name);
-    // "ALFA LINES" começa com "Alfa Lines": é dela; a planilha dela vale.
-    expect(names).toEqual(["BETA CARGO", "GAMA", "ALFA - MSC"]);
+    // "ALFA LINES" é da "Alfa Lines": sai da consolidada; a planilha dela
+    // vale (bloco sem o nome dela aparece com o nome dela antes).
+    expect(names).toEqual(["BETA CARGO", "GAMA", "Alfa Lines (ALFA - MSC)"]);
     expect(calc.blockOfCompany("ROYAL CARGO - MSC", "Royal Cargo")).toBe(true);
     // Razão social no cadastro não atrapalha.
     expect(calc.blockOfCompany("BETA CARGO - MSC", "Beta Cargo Ltda")).toBe(
@@ -1979,11 +1965,14 @@ describe("comparativo: as planilhas de todas as companhias juntas", () => {
       }),
     ])!;
     const nav = merged.destinations.find((d) => d.code === "NVT")!;
-    const alfas = nav.forwarders.filter((f) => f.name === "ALFA LINES");
-    // A ALFA da consolidada continua; a cópia da Marítima entra como dela, sem o código da ALFA.
-    expect(alfas.map((f) => [f.shippingLineId ?? null, f.code])).toEqual([
-      [null, "111"],
-      ["maritima", null],
+    const alfas = nav.forwarders.filter((f) => f.name.includes("ALFA LINES"));
+    // A ALFA da consolidada continua; a cópia da Marítima entra como dela
+    // (com o nome dela), sem o código da ALFA.
+    expect(
+      alfas.map((f) => [f.name, f.shippingLineId ?? null, f.code]),
+    ).toEqual([
+      ["ALFA LINES", null, "111"],
+      ["Marítima SA (ALFA LINES)", "maritima", null],
     ]);
     // E o CSV do Sankhya não leva o preço da Marítima com o código da ALFA.
     expect(calc.sankhyaCsv(merged, "2026-10-20")).not.toContain(
@@ -2140,5 +2129,581 @@ describe("tarifário como na planilha", () => {
     expect(mine).not.toContain("CODPARC");
     expect(mine).not.toContain("data-sankhya-lines");
     expect(mine).toContain("Total R$ direta");
+  });
+});
+
+describe("a planilha vai inteira para a companhia escolhida", () => {
+  it("dono do bloco da consolidada: um só, entre todas as companhias do cadastro", () => {
+    const lines = (...names: string[]) =>
+      names.map((name, i) => ({ id: `l${i}`, name }));
+    const owner = (block: string, ...names: string[]) => {
+      const id = calc.ownerOfBlock(block, lines(...names));
+      return id === null ? null : names[Number(id.slice(1))];
+    };
+    // Nome igual, ou o bloco começa com o nome (razão social não atrapalha).
+    expect(owner("ROYAL CARGO - MSC", "Royal Cargo Ltda")).toBe(
+      "Royal Cargo Ltda",
+    );
+    expect(owner("MARÍTIMA SA", "Marítima SA")).toBe("Marítima SA");
+    // Nome do cadastro mais longo que o agente no bloco (duas palavras ou mais).
+    expect(owner("SCAN GLOBAL -MSC", "Scan Global Logística Ltda")).toBe(
+      "Scan Global Logística Ltda",
+    );
+    expect(owner("NEXT SHIPPING", "Next Shipping Agência Marítima")).toBe(
+      "Next Shipping Agência Marítima",
+    );
+    // O nome exato ganha do parecido; o mais longo ganha do curto.
+    expect(owner("BETA CARGO", "Beta Cargo", "Beta Cargo Express")).toBe(
+      "Beta Cargo",
+    );
+    expect(
+      owner("ROYAL CARGO - MSC", "Royal Cargo", "Royal Cargo Express"),
+    ).toBe("Royal Cargo");
+    expect(
+      owner("BETA CARGO EXPRESS", "Beta Cargo", "Beta Cargo Express"),
+    ).toBe("Beta Cargo Express");
+    // Duas companhias parecidas, ou o mesmo nome duas vezes: de ninguém.
+    expect(
+      owner(
+        "GLOBAL CARGO - MSC",
+        "Global Cargo Logística",
+        "Global Cargo Express",
+      ),
+    ).toBeNull();
+    expect(owner("ALFA LINES", "Alfa Lines", "Alfa Lines Ltda")).toBeNull();
+    // Uma palavra só no agente, armador depois do traço, traço sem espaço,
+    // nome curto, nome diferente: de ninguém.
+    expect(owner("ALFA - LINES", "Alfa Mar Logística")).toBeNull();
+    expect(owner("GLOBAL - MSC", "Global Logistics Brasil")).toBeNull();
+    expect(owner("SCAN GLOBAL -MSC", "MSC Mediterranean")).toBeNull();
+    expect(owner("SINO-TRANS", "Sino Pacific")).toBeNull();
+    expect(owner("AB - MSC", "Ab")).toBeNull();
+    expect(owner("ROYAL CARGO - MSC", "Royal Logística")).toBeNull();
+  });
+
+  it("nome de bloco enorme e estranho não trava; razão social sai do nome", () => {
+    const lines = [{ id: "x", name: "Xpto Cargo" }];
+    const evil = `X${" SA".repeat(40)} Z`.slice(0, 120);
+    const started = performance.now();
+    expect(calc.ownerOfBlock(evil, lines)).toBeNull();
+    expect(calc.ownerOfBlock(`AB${" S A".repeat(30)} Q`, lines)).toBeNull();
+    expect(performance.now() - started).toBeLessThan(200);
+    const owner = (block: string, name: string) =>
+      calc.ownerOfBlock(block, [{ id: "a", name }]) === "a";
+    expect(owner("BETA CARGO - MSC", "Beta Cargo S.A.")).toBe(true);
+    expect(owner("BETA CARGO - MSC", "Beta Cargo SA")).toBe(true);
+    expect(owner("ROYAL CARGO - MSC", "Royal Cargo do Brasil Ltda")).toBe(true);
+    expect(owner("ROYAL CARGO - MSC", "Royal Cargo Brasil")).toBe(true);
+    // A primeira palavra nunca sai ("Brasil" sozinho continua "brasil").
+    expect(owner("BRASIL LINES", "Brasil")).toBe(true);
+  });
+
+  it("cadastro antigo desativado com o mesmo nome não tira o bloco da companhia de hoje", () => {
+    const consolidated = calc.parseFreightTariff(workbook());
+    const sheet = nvt();
+    sheet.cells[2][7] = "";
+    sheet.cells[2][11] = "";
+    const own = calc.parseFreightTariff([sheet]); // bloco ALFA LINES
+    const sources = [
+      {
+        id: "cons",
+        referenceDate: "2026-10-14",
+        createdAt: "2026-10-14T10:00:00Z",
+        shippingLineId: null,
+        company: null,
+        byWellmix: true,
+        data: consolidated,
+      },
+      {
+        id: "new",
+        referenceDate: "2026-10-20",
+        createdAt: "2026-10-20T10:00:00Z",
+        shippingLineId: "new",
+        company: "Alfa Lines",
+        byWellmix: false,
+        data: own,
+      },
+    ];
+    const nvtOf = (lines: { id: string; name: string; active?: boolean }[]) =>
+      calc
+        .mergeTariffs(sources, { lines })!
+        .destinations.find((d) => d.code === "NVT")!;
+    // Antigo desativado: a de hoje é a dona (tira o bloco e fica com o código).
+    const ok = nvtOf([
+      { id: "old", name: "Alfa Lines", active: false },
+      { id: "new", name: "Alfa Lines", active: true },
+    ]);
+    expect(
+      ok.forwarders.map((f) => [f.name, f.shippingLineId ?? null, f.code]),
+    ).toContainEqual(["ALFA LINES", "new", "111"]);
+    expect(
+      ok.forwarders.some((f) => f.name === "ALFA LINES" && !f.shippingLineId),
+    ).toBe(false);
+    // Dois ativos com o mesmo nome: de ninguém, com aviso para a Wellmix.
+    const merged = calc.mergeTariffs(sources, {
+      lines: [
+        { id: "old", name: "Alfa Lines Ltda", active: true },
+        { id: "new", name: "Alfa Lines", active: true },
+      ],
+    })!;
+    expect(merged.warnings).toContainEqual({
+      code: "block_owner_ambiguous",
+      params: { block: "ALFA LINES", companies: "Alfa Lines Ltda, Alfa Lines" },
+    });
+    // Bloco sem preço na consolidada não entra no aviso.
+    const noRates = calc.parseFreightTariff(workbook());
+    for (const d of noRates.destinations) {
+      const fi = d.forwarders.findIndex((f) => f.name === "ALFA LINES");
+      d.rates = d.rates.filter((r) => r.forwarder !== fi);
+    }
+    const quiet = calc.mergeTariffs(
+      [{ ...sources[0], data: noRates }, sources[1]],
+      {
+        lines: [
+          { id: "old", name: "Alfa Lines Ltda", active: true },
+          { id: "new", name: "Alfa Lines", active: true },
+        ],
+      },
+    )!;
+    expect(quiet.warnings.map((w) => w.code)).not.toContain(
+      "block_owner_ambiguous",
+    );
+  });
+
+  it("a planilha de uma companhia vista sozinha usa os mesmos códigos do comparativo", () => {
+    const delta = { id: "delta", name: "Delta Mar" };
+    const withCode = (name: string, code: string) => {
+      const data = calc.parseFreightTariff(workbook());
+      for (const d of data.destinations)
+        for (const f of d.forwarders)
+          if (f.name === "ALFA LINES") {
+            f.name = name;
+            f.code = code;
+          }
+      return data;
+    };
+    const sources = [
+      // Planilha antiga da Wellmix em nome da Delta (bloco dela com 556).
+      {
+        id: "old-delta",
+        referenceDate: "2026-10-10",
+        createdAt: "2026-10-10T10:00:00Z",
+        shippingLineId: "delta",
+        company: "Delta Mar",
+        byWellmix: true,
+        data: withCode("DELTA MAR - CMA", "556"),
+      },
+      // Consolidada mais nova, com a Delta 555.
+      {
+        id: "cons",
+        referenceDate: "2026-10-19",
+        createdAt: "2026-10-19T10:00:00Z",
+        shippingLineId: null,
+        company: null,
+        byWellmix: true,
+        data: withCode("DELTA MAR - MSC", "555"),
+      },
+    ];
+    const merged = calc.mergeTariffs(sources, { lines: [delta] })!;
+    const other = merged.destinations
+      .flatMap((d) => d.forwarders)
+      .find((f) => f.name === "Delta Mar (BETA CARGO)")!;
+    const alone = calc.withCompanyCodes(
+      sources[0].data,
+      sources[0],
+      [delta],
+      calc.wellmixCodes(calc.comparativeSources(sources), [delta]),
+    );
+    const aloneOther = alone.destinations
+      .flatMap((d) => d.forwarders)
+      .find((f) => f.name === "BETA CARGO")!;
+    expect(aloneOther.code).toBe(other.code);
+  });
+
+  it("nome de bloco na planilha de uma companhia nunca tira o bloco nem o código de outra", () => {
+    const lines = [
+      { id: "alfa", name: "Alfa Lines" },
+      { id: "alfamar", name: "Alfa Mar Logística" },
+      { id: "beta", name: "Beta Cargo" },
+      { id: "express", name: "Beta Cargo Express" },
+    ];
+    const sheetNamed = (name: string, usd: number) => {
+      const sheet = nvt();
+      sheet.cells[2][3] = name;
+      sheet.cells[2][7] = "";
+      sheet.cells[2][11] = "";
+      sheet.cells[4][3] = String(usd);
+      for (const r of [4, 5, 6, 7])
+        for (let c = 5; c <= 14; c++)
+          if (sheet.cells[r]) sheet.cells[r][c] = "";
+      return calc.parseFreightTariff([sheet]);
+    };
+    const consolidated = calc.parseFreightTariff(workbook());
+    const base = {
+      referenceDate: "2026-10-20",
+      createdAt: "2026-10-20T10:00:00Z",
+      byWellmix: false,
+    };
+    const merged = calc.mergeTariffs(
+      [
+        {
+          ...base,
+          id: "cons",
+          createdAt: "2026-10-19T10:00:00Z",
+          shippingLineId: null,
+          company: null,
+          byWellmix: true,
+          data: consolidated,
+        },
+        // A Alfa Mar chama o bloco dela de "ALFA - LINES".
+        {
+          ...base,
+          id: "am",
+          shippingLineId: "alfamar",
+          company: "Alfa Mar Logística",
+          data: sheetNamed("ALFA - LINES", 100),
+        },
+        // A Beta Cargo Express manda qualquer nome.
+        {
+          ...base,
+          id: "bx",
+          shippingLineId: "express",
+          company: "Beta Cargo Express",
+          data: sheetNamed("EXPRESS NVT", 200),
+        },
+      ],
+      { lines },
+    )!;
+    const nav = merged.destinations.find((d) => d.code === "NVT")!;
+    const rows = nav.forwarders.map((f) => [
+      f.name,
+      f.shippingLineId ?? null,
+      f.code,
+    ]);
+    // Alfa e Beta da consolidada continuam, com os códigos delas.
+    expect(rows).toContainEqual(["ALFA LINES", null, "111"]);
+    expect(rows).toContainEqual(["BETA CARGO", null, "222"]);
+    // As outras entram com o nome delas e sem o código de ninguém.
+    expect(rows).toContainEqual([
+      "Alfa Mar Logística (ALFA - LINES)",
+      "alfamar",
+      null,
+    ]);
+    expect(rows).toContainEqual([
+      "Beta Cargo Express (EXPRESS NVT)",
+      "express",
+      null,
+    ]);
+    // O CSV não leva preço delas com o código da Alfa ou da Beta.
+    const csv = calc.sankhyaCsv(merged, "2026-10-20");
+    expect(csv).not.toMatch(/;111;[^;]*;60;45;3;100;/);
+    expect(csv).not.toMatch(/;222;[^;]*;60;45;3;200;/);
+    // E um aviso por companhia sem código.
+    expect(merged.warnings).toContainEqual({
+      code: "line_no_code",
+      params: { company: "Alfa Mar Logística" },
+    });
+  });
+
+  it("qualquer nome nos blocos: tudo entra como dela, com aviso quando há vários", async () => {
+    const store = getStore();
+    const [operator] = await store.list("users", {
+      filter: { email: "operador@wellmix.com" },
+    });
+    const [maritima] = await store.list("users", {
+      filter: { email: "armador@maritima.com" },
+    });
+    const delta = await store.create("parties", {
+      type: "shipping_line",
+      name: "Delta Mar",
+      active: true,
+    } as never);
+    const deltaUser = (await store.create("users", {
+      email: "delta@mar.com",
+      name: "Delta Mar",
+      role: "shipping_line",
+      partyId: delta.id,
+      active: true,
+    } as never)) as User;
+
+    // Um bloco com outro nome: entra como dela, sem aviso de blocos.
+    const one = await service.importFreightTariff(
+      deltaUser,
+      file(xlsxFile([ownSheet("ROYAL CARGO - MSC", 2400)])),
+      "2026-10-21",
+    );
+    expect(one.shippingLineId).toBe(delta.id);
+    expect(one.data.warnings.map((w) => w.code)).not.toContain(
+      "several_blocks",
+    );
+
+    // A planilha com três blocos, nenhum com o nome dela: tudo entra como dela.
+    const all = await service.importFreightTariff(
+      deltaUser,
+      file(xlsxFile(workbook())),
+      "2026-10-22",
+    );
+    expect(all.shippingLineId).toBe(delta.id);
+    expect(calc.blocksWithRates(all.data)).toEqual([
+      "ALFA LINES",
+      "BETA CARGO",
+      "GAMA",
+    ]);
+    expect(all.data.warnings).toContainEqual({
+      code: "several_blocks",
+      params: {
+        company: "Delta Mar",
+        n: 3,
+        blocks: "ALFA LINES, BETA CARGO, GAMA",
+      },
+    });
+    expect((await store.get("freight_tariffs", one.id))?.status).toBe(
+      "replaced",
+    );
+    // Só ela e a Wellmix veem.
+    expect(await service.getFreightTariff(maritima, all.id)).toBeNull();
+    expect(await service.getFreightTariff(deltaUser, all.id)).not.toBeNull();
+
+    // No comparativo, os blocos entram em nome dela, sem tirar os de quem
+    // são na consolidada.
+    const cmp = (await service.comparativeTariff(operator))!;
+    const nvt = cmp.data.destinations.find((d) => d.code === "NVT")!;
+    const deltas = nvt.forwarders.filter((f) => f.shippingLineId === delta.id);
+    expect(deltas.map((f) => [f.name, f.company, f.code])).toEqual([
+      ["Delta Mar (ALFA LINES)", "Delta Mar", null],
+      ["Delta Mar (BETA CARGO)", "Delta Mar", null],
+      ["Delta Mar (GAMA)", "Delta Mar", null],
+    ]);
+    expect(
+      nvt.forwarders.some((f) => f.name === "ALFA LINES" && !f.shippingLineId),
+    ).toBe(true);
+
+    // A Wellmix escolhe a companhia: o mesmo vale.
+    const byWellmix = await service.importFreightTariff(
+      operator,
+      file(xlsxFile(workbook())),
+      null,
+      delta.id,
+    );
+    expect(byWellmix.shippingLineId).toBe(delta.id);
+    expect(calc.blocksWithRates(byWellmix.data)).toHaveLength(3);
+  });
+
+  it("bloco sem nome na planilha de uma companhia entra com o nome dela", async () => {
+    const sheet = nvt();
+    sheet.cells[2][3] = ""; // ALFA sem nome
+    sheet.cells[2][7] = ""; // BETA sem nome
+    // Consolidada: bloco sem nome fica de fora (não se sabe de quem é).
+    const plain = calc.parseFreightTariff([sheet]);
+    expect(calc.blocksWithRates(plain)).toEqual(["GAMA"]);
+    // Planilha de uma companhia: é dela.
+    const own = calc.parseFreightTariff([sheet], { fallbackName: "Delta Mar" });
+    expect(calc.blocksWithRates(own)).toEqual([
+      "Delta Mar",
+      "Delta Mar 2",
+      "GAMA",
+    ]);
+    // Pelo serviço: a companhia envia a planilha com o bloco sem nome.
+    const store = getStore();
+    const [delta] = await store.list("parties", {
+      filter: { name: "Delta Mar" },
+    });
+    const [deltaUser] = await store.list("users", {
+      filter: { email: "delta@mar.com" },
+    });
+    const one = nvt();
+    one.cells[2][3] = "";
+    one.cells[2][7] = "";
+    one.cells[2][11] = "";
+    const row = await service.importFreightTariff(
+      deltaUser as User,
+      file(xlsxFile([one])),
+      "2026-10-24",
+    );
+    expect(row.shippingLineId).toBe(delta.id);
+    expect(calc.blocksWithRates(row.data)).toEqual([
+      "Delta Mar",
+      "Delta Mar 2",
+      "Delta Mar 3",
+    ]);
+  });
+
+  it("Wellmix importa a planilha com vários blocos para uma companhia: nenhum código de outra", () => {
+    const consolidated = calc.parseFreightTariff(workbook());
+    const merged = calc.mergeTariffs(
+      [
+        {
+          id: "cons",
+          referenceDate: "2026-10-14",
+          createdAt: "2026-10-14T10:00:00Z",
+          shippingLineId: null,
+          company: null,
+          byWellmix: true,
+          data: consolidated,
+        },
+        {
+          id: "delta",
+          referenceDate: "2026-10-20",
+          createdAt: "2026-10-20T10:00:00Z",
+          shippingLineId: "delta",
+          company: "Delta Mar",
+          byWellmix: true,
+          // O modelo com FORNECEDORES (ALFA 111, BETA 222).
+          data: calc.parseFreightTariff(workbook()),
+        },
+      ],
+      {
+        lines: [
+          { id: "delta", name: "Delta Mar" },
+          { id: "alfa", name: "Alfa Lines" },
+          { id: "beta", name: "Beta Cargo" },
+        ],
+      },
+    )!;
+    const deltaRows = merged.destinations.flatMap((d) =>
+      d.forwarders.filter((f) => f.shippingLineId === "delta"),
+    );
+    expect(deltaRows.length).toBeGreaterThan(0);
+    expect(deltaRows.every((f) => f.code === null)).toBe(true);
+    // Os códigos 111 e 222 no CSV são só os da consolidada (data 14/10).
+    const lines = calc.sankhyaCsv(merged, "2026-10-14").split("\r\n");
+    expect(
+      lines
+        .filter((l) => /;(111|222);/.test(l))
+        .every((l) => l.includes(";14/10/2026;")),
+    ).toBe(true);
+    // A planilha da Delta vista sozinha (e o CSV dela): sem código de outra.
+    const view = calc.withCompanyCodes(
+      calc.parseFreightTariff(workbook()),
+      { shippingLineId: "delta", byWellmix: true, company: "Delta Mar" },
+      [
+        { id: "delta", name: "Delta Mar" },
+        { id: "alfa", name: "Alfa Lines" },
+      ],
+      calc.wellmixCodes(
+        [
+          {
+            id: "cons",
+            referenceDate: "2026-10-14",
+            createdAt: "2026-10-14T10:00:00Z",
+            shippingLineId: null,
+            company: null,
+            byWellmix: true,
+            data: consolidated,
+          },
+        ],
+        [{ id: "alfa", name: "Alfa Lines" }],
+      ),
+    );
+    expect(
+      view.destinations.every((d) => d.forwarders.every((f) => !f.code)),
+    ).toBe(true);
+    expect(calc.sankhyaCsv(view, "2026-10-20").split("\r\n")).toHaveLength(1);
+    expect(view.warnings).toContainEqual({
+      code: "line_no_code",
+      params: { company: "Delta Mar" },
+    });
+  });
+
+  it("companhia com vários blocos e o código dela: uma linha por rota no Sankhya (a mais barata)", () => {
+    const merged = calc.mergeTariffs(
+      [
+        {
+          id: "cons",
+          referenceDate: "2026-10-14",
+          createdAt: "2026-10-14T10:00:00Z",
+          shippingLineId: null,
+          company: null,
+          byWellmix: true,
+          data: calc.parseFreightTariff(workbook()),
+        },
+        {
+          id: "beta",
+          referenceDate: "2026-10-20",
+          createdAt: "2026-10-20T10:00:00Z",
+          shippingLineId: "beta",
+          company: "Beta Cargo",
+          byWellmix: false,
+          data: calc.parseFreightTariff([nvt()]),
+        },
+      ],
+      { lines: [{ id: "beta", name: "Beta Cargo" }] },
+    )!;
+    const nav = merged.destinations.find((d) => d.code === "NVT")!;
+    // Os três blocos da planilha dela, todos com o código dela (222).
+    const betas = nav.forwarders.filter((f) => f.shippingLineId === "beta");
+    expect(betas).toHaveLength(3);
+    expect(betas.every((f) => f.code === "222")).toBe(true);
+    const rows = calc
+      .sankhyaRows(merged, "2026-10-14")
+      .filter((r) => r.code === "222");
+    const ids = rows.map((r) => r.externalId);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Por rota, o menor custo entre os blocos dela.
+    const cheapest = (oi: number) =>
+      Math.min(
+        ...nav.rates
+          .filter(
+            (r) =>
+              r.origin === oi &&
+              nav.forwarders[r.forwarder].shippingLineId === "beta",
+          )
+          .map((r) => r.totalBrl),
+      );
+    const ningbo = nav.origins.findIndex((o) => o.name === "NINGBO");
+    const picked = rows.find((r) => r.origin === "NINGBO")!;
+    const pickedRate = nav.rates.find(
+      (r) =>
+        r.origin === ningbo &&
+        nav.forwarders[r.forwarder].shippingLineId === "beta" &&
+        r.oceanUsd === picked.value,
+    )!;
+    expect(pickedRate.totalBrl).toBe(cheapest(ningbo));
+  });
+
+  it("código do Sankhya: o da companhia do cadastro, nunca o de outra pelo nome do bloco", () => {
+    const sheet = nvt();
+    sheet.cells[2][3] = "ALFA LINES";
+    sheet.cells[2][7] = "";
+    sheet.cells[2][11] = "";
+    const consolidated = calc.parseFreightTariff(workbook());
+    const codes = Object.fromEntries(
+      consolidated.destinations[0].forwarders.map((f) => [f.name, f.code]),
+    );
+    expect(codes["ALFA LINES"]).toBeTruthy();
+    expect(codes["BETA CARGO"]).toBeTruthy();
+    const source = (
+      id: string,
+      data: import("@/lib/services/freight-tariff-calc").FreightTariffData,
+      extra: Partial<import("@/lib/services/freight-tariff-calc").TariffSource>,
+    ) => ({
+      id,
+      referenceDate: "2026-10-20",
+      createdAt: "2026-10-20T10:00:00Z",
+      shippingLineId: null,
+      company: null,
+      byWellmix: true,
+      data,
+      ...extra,
+    });
+    const merged = calc.mergeTariffs([
+      source("cons", consolidated, { createdAt: "2026-10-19T10:00:00Z" }),
+      // A Beta (cadastro "Beta Cargo Logística") manda um bloco chamado "ALFA LINES".
+      source("beta", calc.parseFreightTariff([sheet]), {
+        shippingLineId: "beta",
+        company: "Beta Cargo Logística",
+        byWellmix: false,
+      }),
+    ])!;
+    const dest = merged.destinations.find((d) => d.code === "NVT")!;
+    const fromBeta = dest.forwarders.filter((f) => f.shippingLineId === "beta");
+    expect(fromBeta).toHaveLength(1);
+    // O código é o da Beta (do bloco BETA CARGO da Wellmix), não o da Alfa.
+    expect(fromBeta[0].code).toBe(codes["BETA CARGO"]);
+    // A Alfa da consolidada continua, com o código dela.
+    const alfa = dest.forwarders.find(
+      (f) => f.name === "ALFA LINES" && !f.shippingLineId,
+    );
+    expect(alfa?.code).toBe(codes["ALFA LINES"]);
   });
 });

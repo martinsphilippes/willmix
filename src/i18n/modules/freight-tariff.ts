@@ -165,7 +165,7 @@ export const pt = {
     "Preencha a planilha com os seus preços.\nEnvie aqui (a nova substitui a anterior).\nLeia a conferência e, se apontar algo, corrija e envie de novo.",
   "tariff.mine.importTitle": "Enviar minha planilha de fretes",
   "tariff.mine.importHint":
-    "Planilha de estimativa de frete (.xlsx ou .xlsm) no modelo da Wellmix, só com os seus preços. A nova substitui a anterior. Macros não são executadas.",
+    "Planilha de estimativa de frete (.xlsx ou .xlsm) no modelo da Wellmix, com os seus preços. Tudo o que estiver nela entra como seu; a nova substitui a anterior. Macros não são executadas.",
   "tariff.mine.dateHint": "Data da sua cotação.",
   "tariff.mine.submit": "Enviar planilha",
   "tariff.mine.empty":
@@ -176,7 +176,7 @@ export const pt = {
   "tariff.import.companyPick": "Escolha…",
   "tariff.import.consolidated": "Várias companhias (planilha consolidada)",
   "tariff.import.companyHint":
-    "A de uma companhia substitui só a anterior dela.",
+    "A planilha inteira entra como preços da companhia escolhida (o nome no arquivo não importa) e substitui só a anterior dela.",
   "tariff.error.tariff_company_required":
     "Escolha de quem é a planilha: a companhia ou a consolidada.",
   "tariff.error.tariff_company_invalid":
@@ -223,9 +223,7 @@ export const pt = {
   "tariff.upload.hint":
     "Data de embarque, chegada, navio e BL abaixo são opcionais: confirme o embarque para avançar.",
   "tariff.error.tariff_other_companies":
-    "Nenhum bloco da planilha tem o nome da companhia. Deixe só o bloco dela (ou dê a ele o nome da companhia, como no cadastro) e envie de novo; a Wellmix pode importar a planilha com várias companhias como consolidada.",
-  "tariff.error.blocksFound":
-    "Blocos com preço na planilha: {blocks}. Nome da companhia no cadastro: {company}.",
+    "Envie a planilha de novo: ela entra inteira para a companhia escolhida, com qualquer nome no arquivo.",
   "tariff.warning.other_blocks_ignored":
     "Entraram só os preços de {kept}; os blocos de outras companhias ({ignored}) ficaram de fora.",
   "tariff.sheet.fxDetail": "dólar {base} + spread {spread}",
@@ -270,6 +268,15 @@ export const pt = {
   "tariff.view.sheet": "Como na planilha",
   "tariff.view.summary": "Resumo (com PTAX e IOF)",
   "tariff.compare.viewSheet": "Ver planilha",
+  "tariff.warning.several_blocks":
+    "A planilha tem {n} blocos ({blocks}) e todos entraram como preços de {company}. Se algum não for dela, apague-o da planilha e envie de novo.",
+  "tariff.mine.goesTo": "Esta planilha vai para",
+  "tariff.mine.goesToHint":
+    "Sua companhia; o nome dos blocos na planilha não importa.",
+  "tariff.warning.line_no_code":
+    "{company} não tem código do Sankhya: nenhum bloco das planilhas da Wellmix é dela (cadastre a companhia com o nome do bloco dela na planilha consolidada). Os preços dela ficam fora do CSV.",
+  "tariff.warning.block_owner_ambiguous":
+    "O bloco {block} da planilha consolidada bate com mais de uma companhia do cadastro ({companies}): continua no comparativo e no CSV como da consolidada, sem ir para nenhuma delas. Deixe só um cadastro ativo com esse nome.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -433,7 +440,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Fill in the spreadsheet with your prices.\nSend it here (the new one replaces the previous one).\nRead the check and, if it points something out, fix it and send again.",
   "tariff.mine.importTitle": "Send my freight spreadsheet",
   "tariff.mine.importHint":
-    "Freight estimate spreadsheet (.xlsx or .xlsm) in Wellmix's template, with your prices only. The new one replaces the previous one. Macros are never run.",
+    "Freight estimate spreadsheet (.xlsx or .xlsm) in the Wellmix template, with your prices. Everything in it comes in as yours; the new one replaces the previous one. Macros are not run.",
   "tariff.mine.dateHint": "Date of your quotation.",
   "tariff.mine.submit": "Send spreadsheet",
   "tariff.mine.empty":
@@ -444,7 +451,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.import.companyPick": "Choose…",
   "tariff.import.consolidated": "Several lines (consolidated spreadsheet)",
   "tariff.import.companyHint":
-    "A line's spreadsheet only replaces that line's previous one.",
+    "The whole spreadsheet comes in as the chosen line's prices (names in the file do not matter) and only replaces that line's previous one.",
   "tariff.error.tariff_company_required":
     "Choose whose spreadsheet it is: the line or the consolidated one.",
   "tariff.error.tariff_company_invalid":
@@ -491,9 +498,7 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.upload.hint":
     "Shipping date, arrival, vessel and BL below are optional: confirm the shipment to move on.",
   "tariff.error.tariff_other_companies":
-    "No block in the spreadsheet has the shipping line's name. Keep only its block (or give it the line's name, as in the registry) and send it again; Wellmix can import a multi-line spreadsheet as consolidated.",
-  "tariff.error.blocksFound":
-    "Blocks with prices in the spreadsheet: {blocks}. Line name in the registry: {company}.",
+    "Send the spreadsheet again: it comes in whole for the chosen line, whatever the names in the file.",
   "tariff.warning.other_blocks_ignored":
     "Only {kept}'s prices came in; other lines' blocks ({ignored}) were left out.",
   "tariff.sheet.fxDetail": "dollar {base} + spread {spread}",
@@ -538,6 +543,15 @@ export const en: Record<keyof typeof pt, string> = {
   "tariff.view.sheet": "As in the spreadsheet",
   "tariff.view.summary": "Summary (with PTAX and IOF)",
   "tariff.compare.viewSheet": "View spreadsheet",
+  "tariff.warning.several_blocks":
+    "The spreadsheet has {n} blocks ({blocks}) and all came in as {company}'s prices. If any is not theirs, delete it from the spreadsheet and send it again.",
+  "tariff.mine.goesTo": "This spreadsheet goes to",
+  "tariff.mine.goesToHint":
+    "Your line; block names in the spreadsheet do not matter.",
+  "tariff.warning.line_no_code":
+    "{company} has no Sankhya code: no block in Wellmix's spreadsheets belongs to it (register the line with its block name from the consolidated spreadsheet). Its prices stay out of the CSV.",
+  "tariff.warning.block_owner_ambiguous":
+    "Block {block} of the consolidated spreadsheet matches more than one registered line ({companies}): it stays in the comparison and the CSV as consolidated and goes to none of them. Keep only one active registration with that name.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -693,7 +707,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "在表中填写你的价格。\n在这里上传（新表替换旧表）。\n查看核对结果，如有问题，修改后重新上传。",
   "tariff.mine.importTitle": "上传我的运费表",
   "tariff.mine.importHint":
-    "Wellmix 模板格式的运费估算表（.xlsx 或 .xlsm），只填你的价格。新表替换旧表。不会运行宏。",
+    "Wellmix 模板的运费估算表（.xlsx 或 .xlsm），填入你的价格。表中所有内容都作为你的价格导入；新表替换旧表。不会执行宏。",
   "tariff.mine.dateHint": "你的报价日期。",
   "tariff.mine.submit": "上传表格",
   "tariff.mine.empty": "你还没有上传运价表。请在上方上传表格。",
@@ -701,7 +715,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.import.company": "这张表属于",
   "tariff.import.companyPick": "请选择…",
   "tariff.import.consolidated": "多家船公司（汇总表）",
-  "tariff.import.companyHint": "某家船公司的表只替换它自己的上一张。",
+  "tariff.import.companyHint":
+    "整张表作为所选船公司的价格导入（文件中的名称无关紧要），只替换该公司的上一张。",
   "tariff.error.tariff_company_required":
     "请选择这张表属于哪家船公司，或选择汇总表。",
   "tariff.error.tariff_company_invalid": "登记中找不到该船公司。",
@@ -746,9 +761,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.upload.hint":
     "下面的装运日期、到达、船名和提单都是可选的：确认已装运即可继续。",
   "tariff.error.tariff_other_companies":
-    "表格中没有任何区块使用该船公司的名称。只保留本公司的区块（或把区块名称改成登记中的公司名称）后重新上传；多家船公司的表可由 Wellmix 作为汇总表导入。",
-  "tariff.error.blocksFound":
-    "表中有价格的区块：{blocks}。登记中的船公司名称：{company}。",
+    "请重新上传表格：整张表会导入所选船公司，文件中的名称无关紧要。",
   "tariff.warning.other_blocks_ignored":
     "只导入了 {kept} 的价格；其他船公司的区块（{ignored}）未导入。",
   "tariff.sheet.fxDetail": "美元 {base} + 点差 {spread}",
@@ -793,4 +806,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "tariff.view.sheet": "与表格相同",
   "tariff.view.summary": "摘要（含 PTAX 和 IOF）",
   "tariff.compare.viewSheet": "查看表格",
+  "tariff.warning.several_blocks":
+    "表中有 {n} 个区块（{blocks}），全部作为 {company} 的价格导入。如有不属于该公司的区块，请从表中删除后重新上传。",
+  "tariff.mine.goesTo": "此表上传至",
+  "tariff.mine.goesToHint": "你的船公司；表中区块的名称无关紧要。",
+  "tariff.warning.line_no_code":
+    "{company} 没有 Sankhya 代码：Wellmix 的表中没有属于它的区块（请按汇总表中的区块名称登记该船公司）。它的价格不会进入 CSV。",
+  "tariff.warning.block_owner_ambiguous":
+    "汇总表中的区块 {block} 与多家登记的船公司匹配（{companies}）：它作为汇总表数据保留在比较和 CSV 中，不归属任何一家。请只保留一个使用该名称的有效登记。",
 };
