@@ -548,6 +548,8 @@ export async function notifyPayablesDue(): Promise<number> {
   await notify(
     { role: ["admin", "operator"] },
     {
+      kind: overdue.length ? "alert" : "action",
+      actor: "recipient",
       subject: overdue.length
         ? `${PAYABLES_DIGEST_SUBJECT} ${overdue.length} parcela(s) vencida(s)`
         : `${PAYABLES_DIGEST_SUBJECT} ${rows.length} parcela(s) vencem nos próximos dias`,
@@ -604,6 +606,7 @@ export async function notifySuppliersToConfirm(
     await notify(
       { role: "supplier", partyId: supplierId },
       {
+        kind: "action",
         subject: `${CONFIRM_REMINDER_SUBJECT} ${lines.length} payment(s)`,
         body: lines.slice(0, 6).join("\n"),
         link: "/app/account",

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { parseNumberInput } from "@/lib/number-input";
 import { rateFor } from "@/lib/pricing";
-import { moneyValue, parseAmount } from "@/lib/workflow/money";
+import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -617,9 +617,14 @@ export async function registerCustomerPaymentAction(form: FormData) {
       `${parsed.currency} ${parsed.amount}`,
     );
     await notify(requesterTarget(order.requestedByUserId), {
-      subject: `Pedido #${order.number}: pagamento registrado`,
-      body: `${parsed.currency} ${parsed.amount.toFixed(2)} recebido pela Wellmix.`,
+      kind: "done",
       link: `/app/orders/${orderId}`,
+      text: (t) => ({
+        subject: t("notif.customerPayment.subject", { n: order.number }),
+        body: t("notif.customerPayment.body", {
+          amount: formatAmount(parsed.amount, parsed.currency, t.intl),
+        }),
+      }),
     });
   });
 }
@@ -748,6 +753,7 @@ export async function createPenaltyAction(form: FormData) {
     await notify(
       { role: "legal" },
       {
+        kind: "action",
         subject: `Multa registrada no pedido`,
         body: parsed.reason,
         link: `/app/orders/${orderId}`,

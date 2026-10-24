@@ -47,9 +47,12 @@ export async function openAfterSales(
   });
   await audit(user, "afterSales.open", "order", order.id, "Pós-venda aberto");
   await notify(requesterTarget(order.requestedByUserId), {
-    subject: `Pedido #${order.number}: como foi a sua compra?`,
-    body: "Avalie a experiência, conte problemas e diga se quer repor. Leva um minuto.",
+    kind: "action",
     link: `/app/orders/${order.id}#after-sales`,
+    text: (t) => ({
+      subject: t("notif.afterSales.subject", { n: order.number }),
+      body: t("notif.afterSales.body"),
+    }),
   });
   return row;
 }
@@ -97,6 +100,8 @@ export async function answerAfterSales(
     `Nota ${input.rating ?? "—"}; recompra: ${input.repurchaseInterest ?? "—"}`,
   );
   await notifyWellmix({
+    kind: input.problems ? "alert" : "info",
+    actor: input.problems ? "recipient" : null,
     subject: `Pedido #${order.number}: avaliação de pós-venda recebida`,
     body: `Nota ${input.rating ?? "—"}. ${input.problems ? `Problemas: ${input.problems}` : "Sem problemas relatados."}`,
     link: `/app/orders/${order.id}#after-sales`,

@@ -359,6 +359,8 @@ export async function compareInspection(
     }
     await audit(user, "inspection.divergence", "order", order.id, reason);
     await notifyWellmix({
+      kind: "alert",
+      actor: "recipient",
       subject: `Pedido #${order.number}: divergência comprado × inspecionado`,
       body: reason,
       link,

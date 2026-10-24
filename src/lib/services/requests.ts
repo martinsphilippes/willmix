@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatAmount } from "@/lib/workflow/money";
 import { randomUUID } from "node:crypto";
 
 import { formatNcm } from "@/lib/fiscal";
@@ -336,14 +337,16 @@ export async function createRequest(
       priceTiers: null,
     });
     await notifyWellmix({
+      kind: "action",
       subject: `Sourcing sob demanda: ${request.productName}`,
       body: "Cliente pediu um produto fora do catálogo. Localize fornecedores, cadastre opções e abra a RFQ.",
       link: `/app/sourcing?tab=items&status=draft`,
     });
   }
   await notifyWellmix({
+    kind: "action",
     subject: `Nova solicitação${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
-    body: `${request.quantity} ${request.unit}. Abra a RFQ para os fornecedores.`,
+    body: `${request.quantity.toLocaleString("pt-BR")} ${request.unit}. Abra a RFQ para os fornecedores.`,
     link: `/app/requests/${request.id}`,
   });
   return request;
@@ -398,9 +401,18 @@ export async function openRfq(
       await notify(
         { role: "supplier", partyId: supplierId },
         {
-          subject: `RFQ: ${request.productName}`,
-          body: `Quantidade ${request.quantity} ${request.unit}. Responda com preço, prazo e condições.`,
+          kind: "action",
           link: `/app/quotes/${quote.id}`,
+          text: (t) => ({
+            subject: t("notif.rfq.subject", {
+              product: request.productName,
+              ref: "",
+            }),
+            body: t("notif.rfq.body", {
+              qty: request.quantity.toLocaleString(t.intl),
+              unit: request.unit,
+            }),
+          }),
         },
       );
   }
@@ -480,9 +492,36 @@ export async function openBatchRfq(
       await notify(
         { role: "supplier", partyId: supplier.id },
         {
-          subject: `RFQ: ${items.length === 1 ? items[0].productName : `${items.length} produtos`}${number ? ` (solicitação nº ${number})` : ""}`,
-          body: `${items.map((r) => `${r.productName}: ${r.quantity} ${r.unit}`).join("; ")}. Responda cada produto com preço, prazo e condições.`,
+          kind: "action",
           link: quotes.length === 1 ? `/app/quotes/${quotes[0].id}` : "/app",
+          text: (t) => {
+            const ref = number ? t("notif.ref", { number }) : "";
+            return items.length === 1
+              ? {
+                  subject: t("notif.rfq.subject", {
+                    product: items[0].productName,
+                    ref,
+                  }),
+                  body: t("notif.rfq.body", {
+                    qty: items[0].quantity.toLocaleString(t.intl),
+                    unit: items[0].unit,
+                  }),
+                }
+              : {
+                  subject: t("notif.rfq.many.subject", {
+                    count: items.length,
+                    ref,
+                  }),
+                  body: t("notif.rfq.many.body", {
+                    items: items
+                      .map(
+                        (r) =>
+                          `${r.productName}: ${r.quantity.toLocaleString(t.intl)} ${r.unit}`,
+                      )
+                      .join("; "),
+                  }),
+                };
+          },
         },
       );
     }
@@ -549,8 +588,9 @@ export async function answerQuote(
   );
   if (request) {
     await notifyWellmix({
+      kind: "action",
       subject: `Cotação recebida: ${request.productName}`,
-      body: `${input.currency} ${input.price.toFixed(2)}, prazo ${input.leadTimeDays} dias.`,
+      body: `${formatAmount(input.price, input.currency)}, prazo ${input.leadTimeDays} dias.`,
       link: `/app/requests/${request.id}`,
     });
   }
@@ -690,16 +730,30 @@ export async function selectQuote(
     },
   );
   await notify(requesterTarget(request.requestedForUserId), {
-    subject: `Proposta disponível: ${request.productName}`,
-    body: `${quantity ?? request.quantity} ${request.unit}: valor ${input.sellCurrency} ${input.sellPrice.toFixed(2)}. Sinal de ${input.sellCurrency} ${downPayment.toFixed(2)} para iniciar o pedido.`,
+    kind: "action",
     link: `/app/requests/${request.id}`,
+    text: (t) => ({
+      subject: t("notif.proposal.subject", { product: request.productName }),
+      body: t("notif.proposal.body", {
+        qty: (quantity ?? request.quantity).toLocaleString(t.intl),
+        unit: request.unit,
+        total: formatAmount(input.sellPrice, input.sellCurrency, t.intl),
+        down: formatAmount(downPayment, input.sellCurrency, t.intl),
+      }),
+    }),
   });
   await notify(
     { role: "supplier", partyId: quote.supplierId },
     {
-      subject: `Cotação selecionada: ${request.productName}`,
-      body: "Sua cotação foi escolhida. O pedido será criado após a confirmação do sinal.",
+      kind: "info",
+      actor: "customer",
       link: `/app/quotes/${quote.id}`,
+      text: (t) => ({
+        subject: t("notif.quoteSelected.subject", {
+          product: request.productName,
+        }),
+        body: t("notif.quoteSelected.body"),
+      }),
     },
   );
 }
@@ -871,16 +925,23 @@ async function createOrderFromRequest(
     `Pedido #${number} criado a partir da solicitação`,
   );
   await notify(requesterTarget(request.requestedForUserId), {
-    subject: `Pedido #${number} criado`,
-    body: "Acompanhe a timeline do seu pedido.",
+    kind: "info",
+    actor: "supplier",
     link: `/app/orders/${order.id}`,
+    text: (t) => ({
+      subject: t("notif.orderCreated.customer.subject", { n: number }),
+      body: t("notif.orderCreated.customer.body"),
+    }),
   });
   await notify(
     { role: "supplier", partyId: quote.supplierId },
     {
-      subject: `Order #${number} created`,
-      body: "Complete the preparation checklist.",
+      kind: "action",
       link: `/app/orders/${order.id}`,
+      text: (t) => ({
+        subject: t("notif.orderCreated.supplier.subject", { n: number }),
+        body: t("notif.orderCreated.supplier.body"),
+      }),
     },
   );
   return (await store.get("orders", order.id)) ?? order;

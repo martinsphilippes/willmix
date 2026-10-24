@@ -2244,6 +2244,28 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "kind",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "action",
+            "alert",
+            "info",
+            "done"
+          ]
+        },
+        {
+          "key": "actor",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatAmount } from "@/lib/workflow/money";
 import {
   getStore,
   PAYMENT_EXTRA_DEFAULTS,
@@ -215,9 +216,14 @@ export async function offerKit(user: User, id: string) {
   await notify(
     { role: "customer", partyId: kit.customerId },
     {
-      subject: `Kit de marketing disponível: ${kit.name}`,
-      body: `Veja a prévia e, se quiser, compre por ${kit.price} ${kit.currency}.`,
+      kind: "info",
       link: `/app/marketing/${kit.id}`,
+      text: (t) => ({
+        subject: t("notif.kit.available.subject", { name: kit.name }),
+        body: t("notif.kit.available.body", {
+          price: formatAmount(kit.price, kit.currency, t.intl),
+        }),
+      }),
     },
   );
   return updated;
@@ -263,8 +269,9 @@ export async function purchaseKit(user: User, id: string) {
     `${kit.price} ${kit.currency}`,
   );
   await notifyWellmix({
+    kind: "action",
     subject: `Kit de marketing comprado: ${kit.name}`,
-    body: `Confirme o pagamento de ${kit.price} ${kit.currency} para liberar os arquivos.`,
+    body: `Confirme o pagamento de ${formatAmount(kit.price, kit.currency)} para liberar os arquivos.`,
     link: `/app/marketing/${kit.id}`,
   });
   return updated;
@@ -336,9 +343,12 @@ export async function releaseKit(user: User, id: string) {
     await notify(
       { role: "customer", partyId: kit.customerId },
       {
-        subject: `Kit de marketing liberado: ${kit.name}`,
-        body: "Os arquivos finais já estão disponíveis para download.",
+        kind: "done",
         link: `/app/marketing/${kit.id}`,
+        text: (t) => ({
+          subject: t("notif.kit.released.subject", { name: kit.name }),
+          body: t("notif.kit.released.body"),
+        }),
       },
     );
   return updated;

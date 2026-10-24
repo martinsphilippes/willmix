@@ -18,6 +18,7 @@ import {
   notifyWellmix,
 } from "@/lib/services/notifications";
 import { STAGE_KEYS } from "@/lib/db/schema";
+import { requirementLabel } from "@/i18n";
 import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
@@ -410,9 +411,12 @@ export async function submitRequirement(
       await notify(
         { role: "supplier", partyId: order.supplierId },
         {
-          subject: `Order #${order.number}: packaging artwork to review`,
-          body: "The artwork was uploaded. Check it and approve it for production, or reject it with a note.",
+          kind: "action",
           link: `/app/orders/${order.id}`,
+          text: (t) => ({
+            subject: t("notif.artwork.subject", { n: order.number }),
+            body: t("notif.artwork.body"),
+          }),
         },
       );
   }
@@ -628,9 +632,15 @@ export async function decideRequirement(
         ? { role: ["admin", "operator"] }
         : { role: redoRole, partyId: redoParty },
       {
-        subject: `Pedido #${order.number}: ${requirement.label} reprovado`,
-        body: note ?? "Revise e reenvie.",
+        kind: "action",
         link: `/app/orders/${order.id}`,
+        text: (t) => ({
+          subject: t("notif.rejected.subject", {
+            n: order.number,
+            item: requirementLabel(t, requirement),
+          }),
+          body: note ?? t("notif.rejected.body"),
+        }),
       },
     );
   }
@@ -765,6 +775,8 @@ async function checkWeightDivergence(
       link: `/app/orders/${order.id}`,
     });
     await notifyWellmix({
+      kind: "alert",
+      actor: "recipient",
       subject: `Pedido #${order.number}: revisão necessária na inspeção`,
       body: reason,
       link: `/app/orders/${order.id}`,
@@ -919,9 +931,17 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
           partyId: partyField ? order[partyField] : null,
         },
     {
-      subject: `Pedido #${order.number}: etapa ${key} aguarda sua ação`,
-      body: `Pendências: ${required.map((r) => r.label).join(", ")}.`,
+      kind: "action",
       link: `/app/orders/${order.id}`,
+      text: (t) => ({
+        subject: t("notif.stage.subject", {
+          n: order.number,
+          stage: t(`stage.${key}`),
+        }),
+        body: t("notif.stage.body", {
+          items: required.map((r) => requirementLabel(t, r)).join(", "),
+        }),
+      }),
     },
   );
 }

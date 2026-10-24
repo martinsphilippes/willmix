@@ -168,6 +168,11 @@ export type Visibility = (typeof VISIBILITIES)[number];
 
 export const NOTIFICATION_CHANNELS = ["inapp", "email", "whatsapp"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+/** O que o aviso pede de quem recebe: agir, prestar atenção, só saber ou algo concluído. */
+export const NOTIFICATION_KINDS = ["action", "alert", "info", "done"] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+/** Com quem está o assunto do aviso agora: quem recebe, a Wellmix ou um papel parceiro. */
+export type NotificationActor = "recipient" | "wellmix" | Role;
 
 export const PENALTY_STATUSES = [
   "open",
@@ -736,6 +741,10 @@ export interface Notification extends BaseRow {
   link: string | null;
   status: "sent" | "mock" | "failed";
   readAt: string | null;
+  /** O que o aviso pede de quem recebe; nulo nos avisos de antes do campo (a tela infere pelo assunto). */
+  kind: NotificationKind | null;
+  /** Com quem está o assunto agora; nulo quando não há o que fazer. */
+  actor: NotificationActor | null;
 }
 
 export interface AuditEntry extends BaseRow {
@@ -1825,6 +1834,8 @@ export const TABLES: Record<TableName, TableDef> = {
       link: str(255),
       status: enumOf(["sent", "mock", "failed"]),
       readAt: datetime(),
+      kind: enumOf(NOTIFICATION_KINDS, false),
+      actor: str(40),
     },
     indexes: [{ key: "by_user", type: "key", columns: ["userId"] }],
   },

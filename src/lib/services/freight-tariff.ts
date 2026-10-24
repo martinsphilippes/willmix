@@ -681,6 +681,7 @@ export async function refreshPerCbm(
       `Frete por m³ não atualizado: R$ ${suggestion.perCbm} (antes R$ ${previous}), variação acima de ${PER_CBM_MAX_JUMP * 100}%`,
     );
     await notifyWellmix({
+      kind: "action",
       subject: "Frete por m³ esperando conferência",
       body: `Com a tabela nova, o frete por m³ iria de R$ ${brl(previous)} para R$ ${brl(suggestion.perCbm)} (${destName}): variação acima de ${PER_CBM_MAX_JUMP * 100}%. O valor antigo continua. Confira as tabelas; se estiver certo, o admin aplica no tarifário.`,
       link: "/app/freight/tariff",

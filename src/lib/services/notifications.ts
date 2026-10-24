@@ -1,7 +1,16 @@
 import "server-only";
 
-import { getStore, type Role, type User } from "@/lib/db";
+import {
+  getStore,
+  type Notification,
+  type NotificationActor,
+  type NotificationKind,
+  type Role,
+  type User,
+} from "@/lib/db";
+import type { NewRow } from "@/lib/db/store";
 import { WELLMIX_ROLES } from "@/lib/auth/permissions";
+import { isLocale, translator, type Translate } from "@/i18n";
 
 export interface NotifyTarget {
   /** Usuários específicos. */
@@ -21,11 +30,28 @@ export function requesterTarget(
   return { userIds: userId ? [userId] : [] };
 }
 
-export interface NotifyMessage {
+export interface NotifyText {
   subject: string;
   body: string;
-  link?: string;
 }
+
+/**
+ * Mensagem de um aviso. `kind` diz o que ele pede de quem recebe: "action"
+ * (precisa de você), "alert" (atenção: atraso, problema, cancelamento),
+ * "info" (novidade) ou "done" (algo concluído). `actor` diz com quem está o
+ * assunto agora: "recipient" (quem recebe; padrão quando `kind` é "action"),
+ * "wellmix", um papel parceiro ou null (nada a fazer). `text` monta assunto e
+ * corpo no idioma de cada destinatário; `subject`/`body` fixos servem para os
+ * avisos só da equipe Wellmix.
+ */
+export type NotifyMessage = {
+  link?: string;
+  kind?: NotificationKind;
+  actor?: NotificationActor | null;
+} & (
+  | { subject: string; body: string; text?: undefined }
+  | { text: (t: Translate) => NotifyText; subject?: undefined; body?: undefined }
+);
 
 /**
  * NotificationService. Canais: in-app (sempre), e-mail e WhatsApp.
@@ -33,44 +59,77 @@ export interface NotifyMessage {
  * "mock" para inspeção. Quando houver provedor, substituir sendEmail/sendWhatsapp.
  */
 export async function notify(target: NotifyTarget, message: NotifyMessage) {
-  const store = getStore();
   const users = await resolveUsers(target);
+  const kind = message.kind ?? "info";
+  const actor =
+    message.actor === undefined
+      ? kind === "action"
+        ? "recipient"
+        : null
+      : message.actor;
   for (const user of users) {
-    await store.create("notifications", {
+    const text = textFor(user, message);
+    const row = {
       userId: user.id,
       partyId: user.partyId,
       role: user.role,
-      channel: "inapp",
-      subject: message.subject,
-      body: message.body,
+      subject: text.subject.slice(0, 200),
+      body: text.body,
       link: message.link ?? null,
-      status: "sent",
       readAt: null,
-    });
-    await store.create("notifications", {
-      userId: user.id,
-      partyId: user.partyId,
-      role: user.role,
+      kind,
+      actor,
+    };
+    await createNotification({ ...row, channel: "inapp", status: "sent" });
+    await createNotification({
+      ...row,
       channel: "email",
-      subject: message.subject,
-      body: message.body,
-      link: message.link ?? null,
-      status: await sendEmail(user, message),
-      readAt: null,
+      status: await sendEmail(user, text),
     });
-    await store.create("notifications", {
-      userId: user.id,
-      partyId: user.partyId,
-      role: user.role,
+    await createNotification({
+      ...row,
       channel: "whatsapp",
-      subject: message.subject,
-      body: message.body,
-      link: message.link ?? null,
-      status: await sendWhatsapp(user, message),
-      readAt: null,
+      status: await sendWhatsapp(user, text),
     });
   }
   return users.length;
+}
+
+/** Texto no idioma do destinatário (preferência do cadastro; sem ela, pt). */
+function textFor(user: User, message: NotifyMessage): NotifyText {
+  if (message.text)
+    return message.text(translator(isLocale(user.locale) ? user.locale : "pt"));
+  return { subject: message.subject, body: message.body };
+}
+
+/**
+ * Grava o aviso. Banco ainda sem as colunas `kind`/`actor` (esquema não
+ * publicado): grava sem elas, para o aviso não derrubar a operação que o
+ * gerou; até lá a tela infere o tipo pelo assunto.
+ */
+async function createNotification(row: NewRow<Notification>) {
+  const store = getStore();
+  try {
+    return await store.create("notifications", row);
+  } catch (error) {
+    if (!isUnknownColumn(error)) throw error;
+    if (process.env.NODE_ENV !== "test")
+      console.warn(
+        "[notifications] banco sem as colunas kind/actor: publique o esquema (npm run appwrite:push)",
+      );
+    const legacy: Record<string, unknown> = { ...row };
+    delete legacy.kind;
+    delete legacy.actor;
+    return store.create(
+      "notifications",
+      legacy as unknown as NewRow<Notification>,
+    );
+  }
+}
+
+function isUnknownColumn(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /unknown attribute/i.test(message);
 }
 
 /** Atalho: avisa a equipe Wellmix (admin e operadores). */
@@ -113,7 +172,7 @@ async function resolveUsers(target: NotifyTarget): Promise<User[]> {
 
 async function sendEmail(
   user: User,
-  message: NotifyMessage,
+  message: NotifyText,
 ): Promise<"sent" | "mock" | "failed"> {
   // EXTERNAL DEPENDENCY PENDING: provedor de e-mail (ex.: Resend). Sem chave, modo mock.
   if (process.env.NODE_ENV !== "test") {
@@ -124,12 +183,30 @@ async function sendEmail(
 
 async function sendWhatsapp(
   user: User,
-  message: NotifyMessage,
+  message: NotifyText,
 ): Promise<"sent" | "mock" | "failed"> {
   // EXTERNAL DEPENDENCY PENDING: WhatsApp Business API. Modo mock.
   void user;
   void message;
   return "mock";
+}
+
+/**
+ * Abre um aviso da própria lista: marca como lido e devolve o link para
+ * seguir (só caminhos do portal). Aviso de outra pessoa: null, nada muda.
+ */
+export async function openNotification(
+  user: User,
+  id: string,
+): Promise<string | null> {
+  const store = getStore();
+  const row = await store.get("notifications", id);
+  if (!row || row.userId !== user.id || row.channel !== "inapp") return null;
+  if (!row.readAt)
+    await store.update("notifications", id, {
+      readAt: new Date().toISOString(),
+    });
+  return row.link && /^\/app(?:[/?#]|$)/.test(row.link) ? row.link : null;
 }
 
 /**

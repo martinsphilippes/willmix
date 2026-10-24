@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatAmount } from "@/lib/workflow/money";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import {
   getStore,
@@ -619,6 +620,7 @@ async function syncOrderQuantity(
             : "Abra a ficha e salve para ajustar a quantidade e os valores."
         }`,
         link,
+        kind: "action",
       });
     return;
   }
@@ -740,13 +742,23 @@ async function applyQuantity(
     { quantity: pieces, fobTotal, sellPrice, afterPayment },
   );
   await notify(requesterTarget(order.requestedByUserId), {
-    subject: `Pedido #${order.number}: quantidade ajustada`,
-    body: `${item.name}: ${item.quantity} → ${pieces} ${item.unit} para fechar o container.${
-      sellPrice !== null && order.sellCurrency
-        ? ` Novo valor: ${order.sellCurrency} ${sellPrice.toFixed(2)}.`
-        : ""
-    }`,
+    kind: "info",
     link: `/app/orders/${order.id}`,
+    text: (t) => ({
+      subject: t("notif.quantityAdjusted.subject", { n: order.number }),
+      body:
+        t("notif.quantityAdjusted.body", {
+          item: item.name,
+          from: item.quantity.toLocaleString(t.intl),
+          to: pieces.toLocaleString(t.intl),
+          unit: item.unit,
+        }) +
+        (sellPrice !== null && order.sellCurrency
+          ? t("notif.quantityAdjusted.price", {
+              total: formatAmount(sellPrice, order.sellCurrency, t.intl),
+            })
+          : ""),
+    }),
   });
   // Fora do portal: Sankhya e containers já montados não mudam sozinhos.
   const allocated = await store.list("container_items", {
@@ -767,6 +779,7 @@ async function applyQuantity(
         .filter(Boolean)
         .join(" "),
       link: `/app/orders/${order.id}`,
+      kind: "action",
     });
 }
 

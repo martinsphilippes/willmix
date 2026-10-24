@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { translator } from "@/i18n";
 import { withTempStore } from "./setup";
 
 /*
@@ -140,9 +141,11 @@ describe("arte e embalagem", () => {
     const supplierNotes = await store.list("notifications", {
       filter: { userId: supplierA.id, channel: "inapp" },
     });
+    // O fornecedor A lê em chinês: o aviso sai no idioma dele.
+    const zh = translator("zh");
     expect(
-      supplierNotes.some((n) =>
-        n.subject.includes("packaging artwork to review"),
+      supplierNotes.some(
+        (n) => n.subject === zh("notif.artwork.subject", { n: order.number }),
       ),
     ).toBe(true);
     const supplierAfter = await pendingTasksFor(supplierA);
