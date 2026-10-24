@@ -3,6 +3,15 @@
  * lista do cadastro): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "productDelete.purgeSelected": "Excluir definitivamente",
+  "productDelete.confirmPurge":
+    "Excluir definitivamente {n} produto(s)? Some o cadastro, as variações, a ficha mestre e as fotos, sem volta. Produto que já esteve em solicitação, pedido, estoque ou embalagem não é apagado (fica nos excluídos).",
+  "productDelete.purged": "{n} produto(s) excluído(s) definitivamente.",
+  "productDelete.blocked":
+    "{n} produto(s) não puderam ser apagados de vez porque já estiveram em solicitação, pedido, estoque ou embalagem: continuam nos excluídos.",
+  "productDelete.error.nothing_purged": "Nenhum produto foi apagado.",
+  "productDelete.error.purge_blocked":
+    "Nenhum dos selecionados pode ser apagado de vez: todos já estiveram em solicitação, pedido, estoque ou embalagem.",
   "productDelete.selectAll": "Selecionar todos",
   "productDelete.selectOne": "Selecionar",
   "productDelete.clear": "Limpar seleção",
@@ -22,6 +31,15 @@ export const pt = {
 };
 
 export const en = {
+  "productDelete.purgeSelected": "Delete permanently",
+  "productDelete.confirmPurge":
+    "Permanently delete {n} product(s)? The product, its variations, master sheet and photos are removed for good. A product already used in a request, order, stock or packaging is not removed (it stays under deleted).",
+  "productDelete.purged": "{n} product(s) permanently deleted.",
+  "productDelete.blocked":
+    "{n} product(s) could not be removed for good because they were used in a request, order, stock or packaging: they stay under deleted.",
+  "productDelete.error.nothing_purged": "No product was removed.",
+  "productDelete.error.purge_blocked":
+    "None of the selected products can be removed for good: all were used in a request, order, stock or packaging.",
   "productDelete.selectAll": "Select all",
   "productDelete.selectOne": "Select",
   "productDelete.clear": "Clear selection",
@@ -41,6 +59,15 @@ export const en = {
 };
 
 export const zh = {
+  "productDelete.purgeSelected": "永久删除",
+  "productDelete.confirmPurge":
+    "永久删除 {n} 个产品？产品、规格、主表和照片将被彻底删除，无法恢复。已用于询价、订单、库存或包装的产品不会被删除（仍在已删除列表中）。",
+  "productDelete.purged": "已永久删除 {n} 个产品。",
+  "productDelete.blocked":
+    "{n} 个产品已用于询价、订单、库存或包装，无法永久删除，仍在已删除列表中。",
+  "productDelete.error.nothing_purged": "没有删除任何产品。",
+  "productDelete.error.purge_blocked":
+    "所选产品均已用于询价、订单、库存或包装，无法永久删除。",
   "productDelete.selectAll": "全选",
   "productDelete.selectOne": "选择",
   "productDelete.clear": "清除选择",

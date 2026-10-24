@@ -38,3 +38,14 @@ export async function restoreProductsAction(form: FormData) {
     return `/app/products?restored=${changed}`;
   });
 }
+
+export async function purgeProductsAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/products?view=deleted", async () => {
+    const { purgeProducts } = await import("@/lib/services/product-delete");
+    const { purged, blocked } = await purgeProducts(user, ids(form));
+    if (purged === 0 && blocked > 0) throw new Error("purge_blocked");
+    if (purged === 0) throw new Error("nothing_purged");
+    return `/app/products?view=deleted&purged=${purged}${blocked ? `&blocked=${blocked}` : ""}`;
+  });
+}
