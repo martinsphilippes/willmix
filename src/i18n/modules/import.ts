@@ -115,6 +115,7 @@ export const pt = {
   "import.field.address": "Endereço",
   "import.field.contactName": "Pessoa de contato",
   "import.field.wechat": "WeChat",
+  "import.entity.product_sheets": "Ficha técnica (produtos)",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -229,6 +230,7 @@ export const en: Record<keyof typeof pt, string> = {
   "import.field.address": "Address",
   "import.field.contactName": "Contact person",
   "import.field.wechat": "WeChat",
+  "import.entity.product_sheets": "Technical sheet (products)",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -341,4 +343,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "import.field.address": "地址",
   "import.field.contactName": "联系人",
   "import.field.wechat": "微信",
+  "import.entity.product_sheets": "产品技术表",
 };

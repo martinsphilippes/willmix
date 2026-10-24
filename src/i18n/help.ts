@@ -78,6 +78,8 @@ export const helpPt = {
     "Novo parceiro: tipo, nome, país e contatos.\nAbra um parceiro para criar os usuários dele (e-mail, senha inicial, idioma).\nImportar CSV: cadastro em lote com cabeçalho type,name,country,email,phone,taxId.",
   "help.party.body":
     "Edite os dados do parceiro e crie os usuários que acessam o portal por ele. Fornecedores chineses podem usar o idioma chinês; a senha inicial deve ser trocada pelo usuário.",
+  "help.sheetImport.body":
+    "Suba a planilha da ficha técnica (modelo SUPPLIER INFO) e escolha a linha: cada grupo de linhas vira um produto cadastrado com ficha mestre, fornecedor e fotos. No resultado, \"O que falta\" lista o que ainda precisa ser preenchido na ficha mestre de cada produto (medidas da caixa, as outras fotos da ficha); abra o produto para completar.",
   "help.products.body":
     "Produtos pertencem a uma linha. Quando o cliente escolhe um produto na solicitação, o pedido herda o checklist de preparação da linha.",
   "help.lines.body":
@@ -172,6 +174,8 @@ export const helpEn: Record<HelpKey, string> = {
     "New partner: type, name, country and contacts.\nOpen a partner to create its users (email, initial password, language).\nImport CSV: bulk registration with header type,name,country,email,phone,taxId.",
   "help.party.body":
     "Edit the partner data and create the users who access the portal for it. Chinese suppliers may use Chinese; the initial password should be changed by the user.",
+  "help.sheetImport.body":
+    "Upload the technical-sheet spreadsheet (SUPPLIER INFO template) and pick the line: each group of rows becomes a registered product with master sheet, supplier and photos. In the result, \"Missing\" lists what still needs filling in each product's master sheet (carton size, the other sheet photos); open the product to complete it.",
   "help.products.body":
     "Products belong to a line. When the customer picks a product in the request, the order inherits the line's preparation checklist.",
   "help.lines.body":
@@ -262,6 +266,8 @@ export const helpZh: Record<HelpKey, string> = {
     "新建合作伙伴：类型、名称、国家和联系方式。\n打开合作伙伴以创建其用户（邮箱、初始密码、语言）。\n导入 CSV：使用表头 type,name,country,email,phone,taxId 批量登记。",
   "help.party.body":
     "编辑合作伙伴信息并创建通过它访问门户的用户。中国供应商可使用中文；初始密码应由用户自行修改。",
+  "help.sheetImport.body":
+    "上传技术表（SUPPLIER INFO 模板）并选择产品线：每组行成为一个已建档产品，附主表、供应商和照片。结果中的“缺少”列出每个产品仍需补全的内容；打开产品即可补全。",
   "help.products.body":
     "产品属于产品线。客户在需求中选择产品后，订单继承该产品线的备货清单。",
   "help.lines.body":

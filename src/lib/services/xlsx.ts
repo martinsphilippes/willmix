@@ -395,10 +395,35 @@ export interface CellLimits {
   maxXmlBytes?: number;
 }
 
+/** Imagem ancorada numa aba: posição da âncora (linha e coluna, do zero) e os bytes. */
+export interface SheetImage {
+  row: number;
+  col: number;
+  name: string;
+  mime: string;
+  bytes: Uint8Array;
+}
+
+export interface ImageLimits {
+  /** Máximo de imagens devolvidas (as demais ficam de fora). */
+  maxImages?: number;
+  /** Maior imagem aceita em bytes (maiores ficam de fora). */
+  maxImageBytes?: number;
+  /** Soma dos bytes das imagens devolvidas (depois disso, as demais ficam de fora). */
+  maxTotalBytes?: number;
+  /** Só as imagens ancoradas nestas colunas (do zero); as outras nem são lidas. */
+  cols?: readonly number[];
+}
+
 /** Planilha aberta uma vez para ler várias abas (cada parte descompactada uma vez). */
 export interface Workbook {
   sheetNames(): string[];
   readCells(sheet: string, limits?: CellLimits): CellSheet;
+  /**
+   * Imagens flutuantes da aba (fotos coladas nas células): a âncora diz em
+   * que célula começam. Só PNG, JPEG e WebP; o resto (EMF, GIF…) fica de fora.
+   */
+  readImages(sheet: string, limits?: ImageLimits): SheetImage[];
 }
 
 export function openWorkbook(
@@ -442,7 +467,123 @@ export function openWorkbook(
       }
       return { name: target.name, cells, text };
     },
+    readImages(sheet, limits = {}) {
+      const maxImages = limits.maxImages ?? 200;
+      const maxBytes = limits.maxImageBytes ?? 8 * 1024 * 1024;
+      const maxTotal = limits.maxTotalBytes ?? Infinity;
+      const cols = limits.cols ? new Set(limits.cols) : null;
+      let total = 0;
+      const target = sheets.find((s) => s.name === sheet);
+      if (!target) throw new Error("xlsx_sheet_missing");
+      const drawingPath = partsOfType(zip, target.path, "/drawing")[0];
+      const drawing = drawingPath ? zip.get(drawingPath) : null;
+      if (!drawingPath || !drawing) return [];
+      const media = relationships(zip, drawingPath);
+      const out: SheetImage[] = [];
+      const cache = new Map<string, Uint8Array | null>();
+      const xml = decode(drawing);
+      for (const [, inner] of anchorsOf(xml)) {
+        if (out.length >= maxImages) break;
+        const from = firstTag(inner, ["xdr:from", "from"])?.[1];
+        if (from === undefined) continue;
+        const col = Number(firstTag(from, ["xdr:col", "col"])?.[1]);
+        const row = Number(firstTag(from, ["xdr:row", "row"])?.[1]);
+        const blip = firstTag(inner, ["a:blip", "blip"])?.[0] ?? "";
+        const embed = /\br:embed="([^"]+)"/.exec(blip)?.[1];
+        const path = embed ? media.get(embed)?.path : undefined;
+        if (!path || !Number.isInteger(col) || !Number.isInteger(row)) continue;
+        if (col < 0 || row < 0) continue;
+        if (cols && !cols.has(col)) continue;
+        const mime = imageMime(path);
+        if (!mime) continue;
+        let bytes = cache.get(path);
+        if (bytes === undefined) {
+          bytes = zip.get(path);
+          cache.set(path, bytes);
+        }
+        if (!bytes || bytes.length === 0 || bytes.length > maxBytes) continue;
+        if (total + bytes.length > maxTotal) break;
+        total += bytes.length;
+        out.push({
+          row,
+          col,
+          name: path.slice(path.lastIndexOf("/") + 1),
+          mime,
+          bytes,
+        });
+      }
+      return out;
+    },
   };
+}
+
+/* ---- Imagens: relacionamentos de uma parte, âncoras do desenho ---- */
+
+/** "xl/worksheets/sheet1.xml" → "xl/worksheets/_rels/sheet1.xml.rels". */
+function relsPathOf(partPath: string) {
+  const i = partPath.lastIndexOf("/");
+  return `${partPath.slice(0, i)}/_rels/${partPath.slice(i + 1)}.rels`;
+}
+
+/** Caminho de um Target relativo à pasta da parte ("../drawings/x.xml"); absoluto começa com "/". */
+function resolvePart(partPath: string, target: string) {
+  if (target.startsWith("/")) return target.slice(1);
+  const parts = partPath.split("/").slice(0, -1);
+  for (const piece of target.split("/")) {
+    if (piece === "..") parts.pop();
+    else if (piece !== "." && piece !== "") parts.push(piece);
+  }
+  return parts.join("/");
+}
+
+/** Relacionamentos de uma parte: Id → { caminho resolvido, tipo }. */
+function relationships(zip: Zip, partPath: string) {
+  const out = new Map<string, { path: string; type: string }>();
+  const rels = zip.get(relsPathOf(partPath));
+  if (!rels) return out;
+  for (const [attrs] of tags(decode(rels), "Relationship")) {
+    const id = /\bId="([^"]+)"/.exec(attrs)?.[1];
+    const target = /\bTarget="([^"]+)"/.exec(attrs)?.[1];
+    const type = /\bType="([^"]+)"/.exec(attrs)?.[1] ?? "";
+    // Alvo externo (link) não é parte do arquivo.
+    if (!id || !target || /TargetMode="External"/.test(attrs)) continue;
+    out.set(id, { path: resolvePart(partPath, unescapeXml(target)), type });
+  }
+  return out;
+}
+
+/** Partes relacionadas de um tipo (o tipo termina com o sufixo, ex.: "/drawing"). */
+function partsOfType(zip: Zip, partPath: string, suffix: string) {
+  return [...relationships(zip, partPath).values()]
+    .filter((r) => r.type.endsWith(suffix))
+    .map((r) => r.path);
+}
+
+/** Âncoras do desenho com célula de origem (com ou sem o prefixo xdr). */
+function* anchorsOf(xml: string): Generator<[string, string]> {
+  for (const name of [
+    "xdr:twoCellAnchor",
+    "xdr:oneCellAnchor",
+    "twoCellAnchor",
+    "oneCellAnchor",
+  ])
+    yield* tags(xml, name);
+}
+
+/** Primeira ocorrência de uma das tags (nomes alternativos com e sem prefixo). */
+function firstTag(xml: string, names: string[]): [string, string] | undefined {
+  for (const name of names) {
+    for (const tag of tags(xml, name)) return tag;
+  }
+  return undefined;
+}
+
+function imageMime(path: string): string | null {
+  const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "webp") return "image/webp";
+  return null;
 }
 
 /**

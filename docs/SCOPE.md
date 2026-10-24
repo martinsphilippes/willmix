@@ -32,7 +32,7 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 
 ## Vertical slice 1 (entregue)
 
-Login → solicitação (cliente ou Wellmix) → RFQ para fornecedores → resposta → comparação e seleção com preço ao cliente → sinal em modo manual → pedido com etapas e requisitos → checklist de preparação → arte feita pela agência e aprovada pelo fornecedor → inspeção com comparação de peso e bloqueio por divergência → embarque → desembaraço → transporte → confirmação de recebimento → encerramento. Control Tower, pendências por papel, notificações in-app, conta corrente do fornecedor com previsão de pagamentos, condição de pagamento por fornecedor e Contas a pagar (pagamento ao fornecedor fora do fluxo do pedido), multas, cadastros com importação CSV, configurações e lembretes por prazo.
+Login → solicitação (cliente ou Wellmix) → RFQ para fornecedores → resposta → comparação e seleção com preço ao cliente → sinal em modo manual → pedido com etapas e requisitos → checklist de preparação → arte feita pela agência e aprovada pelo fornecedor → inspeção com comparação de peso e bloqueio por divergência → embarque → desembaraço → transporte → confirmação de recebimento → encerramento. Control Tower, pendências por papel, notificações in-app, conta corrente do fornecedor com previsão de pagamentos, condição de pagamento por fornecedor e Contas a pagar (pagamento ao fornecedor fora do fluxo do pedido), multas, cadastros com importação CSV e cadastro de produtos pela planilha da ficha técnica (produto, ficha mestre, fornecedor e fotos num passo, com o que falta apontado), configurações e lembretes por prazo.
 
 ## Fora do escopo agora
 
