@@ -32,6 +32,10 @@ export async function createPurchaseSnapshot(
   const sourcing = product?.sourcingItemId
     ? await store.get("sourcing_items", product.sourcingItemId)
     : null;
+  // Item com variação: caixa, pesos, medidas da peça, CBM, cor, material e
+  // MOQ são os da variação pedida (cópia feita na solicitação), não os do
+  // produto (que espelham a variação de referência). Preço vem da cotação.
+  const v = item.variant ?? null;
   const snapshot = await store.create("purchase_snapshots", {
     orderId: order.id,
     orderItemId: item.id,
@@ -41,32 +45,34 @@ export async function createPurchaseSnapshot(
     supplierId: order.supplierId,
     quoteId: quote?.id ?? null,
     name: item.name,
-    supplierSku: product?.supplierSku ?? null,
-    material: product?.material ?? null,
-    color: product?.color ?? null,
+    supplierSku: v?.factoryItemCode ?? product?.supplierSku ?? null,
+    material: v ? v.material : (product?.material ?? null),
+    color: v ? v.colorAssortment : (product?.color ?? null),
     pantone: product?.pantone ?? null,
     unitPrice: quote?.price ?? item.unitPrice ?? product?.price ?? null,
     currency: quote?.currency ?? order.fobCurrency ?? product?.currency ?? null,
     quantity: item.quantity,
     unit: item.unit,
-    moq: product?.moq ?? null,
-    masterBoxQty: product?.masterBoxQty ?? null,
-    innerBoxQty: product?.innerBoxQty ?? null,
-    netWeightKg: product?.netWeightKg ?? null,
-    grossWeightKg: product?.grossWeightKg ?? null,
-    widthCm: product?.widthCm ?? null,
-    heightCm: product?.heightCm ?? null,
-    lengthCm: product?.lengthCm ?? null,
+    moq: v ? v.moq : (product?.moq ?? null),
+    masterBoxQty: v ? v.masterBoxQty : (product?.masterBoxQty ?? null),
+    innerBoxQty: v ? v.innerBoxQty : (product?.innerBoxQty ?? null),
+    netWeightKg: v ? v.netWeightKg : (product?.netWeightKg ?? null),
+    grossWeightKg: v ? v.grossWeightKg : (product?.grossWeightKg ?? null),
+    widthCm: v ? v.widthCm : (product?.widthCm ?? null),
+    heightCm: v ? v.heightCm : (product?.heightCm ?? null),
+    lengthCm: v ? v.lengthCm : (product?.lengthCm ?? null),
     boxLengthCm: product?.boxLengthCm ?? null,
     boxWidthCm: product?.boxWidthCm ?? null,
     boxHeightCm: product?.boxHeightCm ?? null,
-    cbm: product ? boxCbm(product) : null,
+    cbm: v ? v.cbm : product ? boxCbm(product) : null,
     specification: product?.specification ?? null,
     conditions: quote?.conditions ?? sourcing?.conditions ?? null,
     photoDocumentIds: photos.map((p) => p.documentId),
     note,
     ncm: product?.ncm ?? null,
     createdByUserId: user?.id ?? order.customerId,
+    // Coluna opcional: só vai quando o item tem variação.
+    ...(item.variantId ? { variantId: item.variantId } : {}),
   });
   await audit(
     user,

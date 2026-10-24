@@ -12,6 +12,8 @@ import {
 export interface RequestItemFields {
   index: number;
   productId: string | null;
+  /** Variação escolhida de um produto com variações (nula sem). */
+  variantId: string | null;
   productName: string;
   description: string;
   specification: string | null;
@@ -46,6 +48,7 @@ export function parseRequestItems(form: FormData): RequestItemFields[] {
       return {
         index,
         productId: text(`${p}productId`) || null,
+        variantId: text(`${p}variantId`) || null,
         productName: text(`${p}productName`),
         description: text(`${p}description`),
         specification: text(`${p}specification`) || null,
