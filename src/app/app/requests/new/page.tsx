@@ -22,6 +22,9 @@ import { PhotoInput } from "@/components/photo-input";
 import type { ProductFill } from "@/components/request-product-fields";
 import { RequestItems } from "@/components/request-items";
 import { effectiveMoq } from "@/lib/moq";
+import { buildProductSpec, productSpecLabels } from "@/lib/product-spec";
+import { variantsByProduct } from "@/lib/services/product-variants";
+import { variantSpecData } from "@/lib/services/variant-sales";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
@@ -39,8 +42,15 @@ export default async function NewRequestPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
-  const { error, productId, quantity, scheduleId, customerId, lookup } =
-    await searchParams;
+  const {
+    error,
+    productId,
+    variantId,
+    quantity,
+    scheduleId,
+    customerId,
+    lookup,
+  } = await searchParams;
   const t = await getT();
   const store = getStore();
   // Pré-preenchimento vindo da ficha do produto ou de uma programação de compra.
@@ -50,6 +60,8 @@ export default async function NewRequestPage({
       : null;
   const presetProductId =
     schedule?.productId ?? (typeof productId === "string" ? productId : "");
+  // Variação pré-escolhida (vitrine, página do produto): vale com o produto.
+  const presetVariantId = typeof variantId === "string" ? variantId : "";
   const presetQuantity =
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
   const presetCustomerId =
@@ -130,7 +142,7 @@ export default async function NewRequestPage({
   const dims = (a: number | null, b: number | null, c: number | null) =>
     a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
   // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
-  const [showcase, stockByProduct, masterSheets] = await Promise.all([
+  const [showcase, stockByProduct, masterSheets, variants] = await Promise.all([
     catalogShowcasePhotos(products.map((p) => p.id)),
     availableStockByProduct(),
     // Pedido mínimo: o da ficha mestre (gravada com orderId = id do produto), senão o do cadastro.
@@ -139,8 +151,11 @@ export default async function NewRequestPage({
           filter: { orderId: products.map((p) => p.id) },
         })
       : Promise.resolve([]),
+    // Variações ativas (produto com variações exige escolher uma).
+    variantsByProduct(products.map((p) => p.id)),
   ]);
   const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));
+  const specLabels = productSpecLabels(t);
   // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
   const qty = (n: number) => n.toLocaleString(t.intl);
   const stockFor = (productId: string): ProductFill["stock"] => {
@@ -159,6 +174,20 @@ export default async function NewRequestPage({
     id: p.id,
     stock: stockFor(p.id),
     moq: effectiveMoq(null, sheetMoq.get(p.id), p.moq),
+    // Cada variação com o próprio mínimo (variação > ficha mestre > cadastro),
+    // a especificação montada com os dados dela e a foto (sem preço nem fornecedor).
+    variants: (variants.get(p.id) ?? []).map((v) => ({
+      id: v.id,
+      name: v.name,
+      moq: effectiveMoq(v.moq, sheetMoq.get(p.id), p.moq),
+      specification: [
+        p.category ? `${t("catalog.category")}: ${p.category}` : null,
+        buildProductSpec(variantSpecData(v), specLabels),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      photoDocumentId: v.photoDocumentId,
+    })),
     photos: (showcase.get(p.id) ?? []).map((ph) => ({
       documentId: ph.documentId,
       caption: ph.caption?.trim() || p.name,
@@ -424,7 +453,7 @@ export default async function NewRequestPage({
           {/* key: ao escolher um produto da busca (mesma rota, outro ?productId) o formulário
             é recriado, senão o navegador mantém o valor anterior dos campos. */}
           <form
-            key={`${found?.id ?? "none"}-${presetProductId}-${presetCustomerId}`}
+            key={`${found?.id ?? "none"}-${presetProductId}-${presetVariantId}-${presetCustomerId}`}
             action={createRequestAction}
             className="space-y-3"
           >
@@ -482,6 +511,7 @@ export default async function NewRequestPage({
             <RequestItems
               products={productFills}
               presetProductId={presetProductId}
+              presetVariantId={presetVariantId}
               presetQuantity={String(presetQuantity)}
               defaultNotInCatalog={
                 !!found && strong.length === 0 && !presetProductId
@@ -527,6 +557,10 @@ export default async function NewRequestPage({
                 notInCatalogHint: t("requests.sourcingDemand.hint"),
                 product: t("common.product"),
                 select: t("common.select"),
+                variant: t("reqProduct.variant"),
+                variantChoose: t("reqProduct.variantChoose"),
+                variantHint: t("reqProduct.variantHint"),
+                variantPhoto: t("reqProduct.variantPhoto"),
                 filledHint: t("lookup.fill.hint"),
                 filledBadge: t("lookup.fill.badge"),
                 photos: t("lookup.fill.photos"),

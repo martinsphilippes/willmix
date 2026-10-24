@@ -24,6 +24,20 @@ export interface ProductFill {
   stock: { available: boolean; detail: string | null };
   /** Pedido mínimo em peças (ficha mestre, senão cadastro); nulo sem mínimo. */
   moq: number | null;
+  /**
+   * Variações do produto (vazio = produto sem variações, como sempre). Com
+   * variações, a escolha é obrigatória e preenche especificação, mínimo e foto.
+   */
+  variants: ProductVariantFill[];
+}
+export interface ProductVariantFill {
+  id: string;
+  name: string;
+  /** Mínimo da variação (senão ficha mestre, senão cadastro); nulo sem mínimo. */
+  moq: number | null;
+  /** Especificação montada com os dados da variação. */
+  specification: string;
+  photoDocumentId: string | null;
 }
 type Field = "productName" | "description" | "specification";
 type Option = { value: string; source: string };
@@ -31,6 +45,7 @@ type Option = { value: string; source: string };
 export function RequestProductFields({
   products,
   presetProductId,
+  presetVariantId = "",
   defaultNotInCatalog,
   suggestions,
   sourceLabels,
@@ -39,11 +54,16 @@ export function RequestProductFields({
   onProductChange,
 }: {
   products: ProductFill[];
-  /** Produto escolhido mudou ("" = nenhum): a linha ajusta a quantidade ao mínimo. */
-  onProductChange?: (productId: string) => void;
+  /**
+   * Produto ou variação escolhidos mudaram ("" = nenhum): a linha ajusta a
+   * quantidade ao mínimo (da variação, quando há uma).
+   */
+  onProductChange?: (productId: string, variantId: string) => void;
   /** Prefixo dos nomes dos campos (várias linhas de produto no mesmo formulário). */
   prefix?: string;
   presetProductId: string;
+  /** Variação pré-escolhida (?variantId=), junto com o produto. */
+  presetVariantId?: string;
   defaultNotInCatalog: boolean;
   suggestions: Partial<Record<Field, Option[]>>;
   sourceLabels: Record<string, string>;
@@ -56,6 +76,10 @@ export function RequestProductFields({
     notInCatalogHint: string;
     product: string;
     select: string;
+    variant: string;
+    variantChoose: string;
+    variantHint: string;
+    variantPhoto: string;
     filledHint: string;
     filledBadge: string;
     photos: string;
@@ -71,14 +95,19 @@ export function RequestProductFields({
   };
 }) {
   const initial = products.find((p) => p.id === presetProductId) ?? null;
+  const initialVariant =
+    initial?.variants.find((v) => v.id === presetVariantId) ?? null;
   const [notInCatalog, setNotInCatalog] = useState(
     defaultNotInCatalog && !initial,
   );
   const [productId, setProductId] = useState(initial?.id ?? "");
+  // Variação escolhida (só para produto com variações; "" = ainda não escolheu).
+  const [variantId, setVariantId] = useState(initialVariant?.id ?? "");
   const [values, setValues] = useState<Record<Field, string>>({
     productName: initial?.productName ?? "",
     description: initial?.description ?? "",
-    specification: initial?.specification ?? "",
+    specification:
+      initialVariant?.specification ?? initial?.specification ?? "",
   });
   const [picked, setPicked] = useState<Record<Field, number | null>>({
     productName: null,
@@ -91,7 +120,9 @@ export function RequestProductFields({
 
   function fillFrom(id: string) {
     setProductId(id);
-    onProductChange?.(id);
+    // Outro produto: a variação começa do zero (o campo fica obrigatório).
+    setVariantId("");
+    onProductChange?.(id, "");
     const p = products.find((x) => x.id === id);
     setPicked({ productName: null, description: null, specification: null });
     if (p) {
@@ -108,12 +139,27 @@ export function RequestProductFields({
     }
   }
 
+  /** Variação escolhida: a especificação passa a ser a dela (o nome é composto no servidor). */
+  function pickVariant(id: string) {
+    setVariantId(id);
+    onProductChange?.(productId, id);
+    const p = products.find((x) => x.id === productId);
+    const v = p?.variants.find((x) => x.id === id);
+    setPicked((k) => ({ ...k, specification: null }));
+    setValues((cur) => ({
+      ...cur,
+      specification: v?.specification ?? p?.specification ?? "",
+    }));
+  }
+
   function toggleNotInCatalog(checked: boolean) {
     setNotInCatalog(checked);
     if (checked && productId) fillFrom("");
   }
 
   const selected = products.find((p) => p.id === productId) ?? null;
+  const selectedVariant =
+    selected?.variants.find((v) => v.id === variantId) ?? null;
 
   const chip =
     "inline-flex max-w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition";
@@ -284,6 +330,52 @@ export function RequestProductFields({
             ) : null}
             {labels.filledHint}
           </p>
+          {/* Produto com variações: a escolha é obrigatória e preenche
+              especificação, pedido mínimo e foto. Produto sem variações: nada muda. */}
+          {selected && selected.variants.length > 0 ? (
+            <div className="space-y-1 pt-1">
+              <label
+                htmlFor={`rp-${prefix}variantId`}
+                className="block text-xs font-medium leading-5 text-zinc-700"
+              >
+                {labels.variant}
+              </label>
+              <select
+                id={`rp-${prefix}variantId`}
+                name={`${prefix}variantId`}
+                value={variantId}
+                required
+                onChange={(e) => pickVariant(e.target.value)}
+                data-request-variant
+                className={inputClass}
+              >
+                <option value="">{labels.variantChoose}</option>
+                {selected.variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-zinc-500">{labels.variantHint}</p>
+              {selectedVariant?.photoDocumentId ? (
+                <a
+                  href={`/api/files/${selectedVariant.photoDocumentId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block w-20 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 hover:border-brand-300"
+                  title={labels.variantPhoto}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                  <img
+                    src={`/api/files/${selectedVariant.photoDocumentId}`}
+                    alt={`${labels.variantPhoto}: ${selectedVariant.name}`}
+                    loading="lazy"
+                    className="aspect-square w-full object-cover"
+                  />
+                </a>
+              ) : null}
+            </div>
+          ) : null}
           {selected ? (
             <div className="space-y-1 pt-1">
               <p className="text-xs font-medium leading-5 text-zinc-700">

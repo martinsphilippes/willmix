@@ -6,6 +6,7 @@ import {
   type Product,
   type PurchaseSheet,
   type User,
+  type VariantSnapshot,
 } from "@/lib/db";
 import { createHash } from "node:crypto";
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -31,6 +32,11 @@ import {
   withBoxCbm,
   type SheetMissing,
 } from "./purchase-sheet-calc";
+import {
+  adoptSheetIntoVariant,
+  masterInputFromVariant,
+  sheetWithoutVariantFields,
+} from "./variant-sales";
 
 /*
  * Ficha de compra MESTRE do produto (cadastro): a mesma ficha do pedido e da
@@ -151,16 +157,23 @@ export function productSheetDraft(
  * (caixa, medidas, pesos, embalagem, cor, material, NCM…). Dados comerciais
  * do fornecedor de referência não saem da ficha mestre; datas, lotes e quem
  * preencheu são de cada compra. Nulo sem ficha mestre.
+ *
+ * Com a variação da solicitação (`variant`), os dados físicos dela (caixa,
+ * pesos, CBM, cores, material, embalagem) prevalecem sobre a ficha mestre,
+ * que espelha a variação de referência (docs/PRODUCT_VARIANTS.md, regra 4);
+ * sem ficha mestre, valem só eles.
  */
 export async function masterSheetInput(
   productId: string | null | undefined,
+  variant?: VariantSnapshot | null,
 ): Promise<SheetInput | null> {
   if (!productId) return null;
   const [stored, product] = await Promise.all([
     getProductSheet(productId),
     getStore().get("products", productId),
   ]);
-  if (!stored) return null;
+  const fromVariant = variant ? masterInputFromVariant(variant) : null;
+  if (!stored) return fromVariant && Object.keys(fromVariant).length ? fromVariant : null;
   // Ficha mestre gravada com só parte dos campos: o resto vem das colunas.
   const master = product
     ? withProductColumns(stored, productSheetDraft(product, null))
@@ -168,7 +181,7 @@ export async function masterSheetInput(
   const out: Record<string, unknown> = {};
   for (const k of MASTER_PRODUCT_FIELDS)
     if (master[k] !== undefined && master[k] !== null) out[k] = master[k];
-  return out as SheetInput;
+  return { ...out, ...fromVariant } as SheetInput;
 }
 
 const filled = (v: unknown) =>
@@ -626,15 +639,28 @@ export async function adoptSheetIntoProduct(
       moq: sheet.moq ?? null,
     });
   }
+  // Pedido ou cotação de um item com variação: preço, MOQ, caixa, pesos, CBM,
+  // cores, material e embalagem vão para a VARIAÇÃO (e o produto espelha a de
+  // referência); para o produto segue só o resto (NCM, energia, container…).
+  const variantId = await variantOfSheetOwner(ownerId);
+  const source: Partial<PurchaseSheet> = variantId
+    ? sheetWithoutVariantFields(sheet)
+    : sheet;
+  if (variantId)
+    await adoptSheetIntoVariant(user, variantId, sheet, {
+      commercial: ownSupplier,
+      overwrite: true,
+    });
   const input: Record<string, unknown> = {};
   for (const k of fields as readonly (keyof PurchaseSheet)[]) {
-    const v = sheet[k];
+    const v = source[k];
     // Só o que está preenchido: campo em branco não apaga o que a mestre já tem.
     if (v === undefined || v === null || v === "") continue;
     if (Array.isArray(v) && v.length === 0) continue;
     input[k] = v;
   }
-  await saveProductSheet(user, productId, input as SheetInput);
+  if (Object.keys(input).length)
+    await saveProductSheet(user, productId, input as SheetInput);
   // Fotos ficam onde foram enviadas (as do cadastro sobem na tela do produto):
   // documentos de pedido/cotação têm acesso próprio e não viram catálogo.
   const copiedPhotos = 0;
@@ -646,6 +672,23 @@ export async function adoptSheetIntoProduct(
     `Ficha mestre atualizada a partir da ficha ${ownerId}`,
   );
   return { productId, copiedPhotos };
+}
+
+/**
+ * Variação do item de quem é a ficha: a do item do pedido ou a da
+ * solicitação da cotação; nula sem variação.
+ */
+async function variantOfSheetOwner(ownerId: string): Promise<string | null> {
+  const store = getStore();
+  const [item] = await store.list("order_items", {
+    filter: { orderId: ownerId },
+    limit: 1,
+  });
+  if (item) return item.variantId ?? null;
+  const quote = await store.get("quotes", ownerId);
+  if (!quote) return null;
+  const request = await store.get("requests", quote.requestId);
+  return request?.variantId ?? null;
 }
 
 /**

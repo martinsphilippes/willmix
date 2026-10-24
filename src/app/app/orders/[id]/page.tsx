@@ -64,6 +64,7 @@ import {
   type InspectionReport,
 } from "@/lib/services/inspection-report";
 import { getSnapshotForOrder } from "@/lib/services/snapshots";
+import { variantSnapshotSummary } from "@/lib/services/variant-sales";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAfterSales } from "@/lib/services/after-sales";
@@ -394,6 +395,32 @@ export default async function OrderPage({
 
   /* Cartão do pedido: o que este papel pode ver (vazio = o cartão não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
+    // Variação pedida (nome para todos; os valores da cópia só para a Wellmix).
+    ...items
+      .filter((i) => i.variant)
+      .map((i): [ReactNode, ReactNode] => {
+        const summary = wellmix
+          ? variantSnapshotSummary(
+              i.variant!,
+              {
+                price: t("productVariants.col.price"),
+                moq: t("productVariants.col.moq"),
+                box: t("productVariants.col.box"),
+                cbm: t("productVariants.col.cbm"),
+              },
+              t.intl,
+            )
+          : null;
+        return [
+          t("productVariants.label"),
+          <span key={i.id} data-order-variant>
+            {i.variant!.name}
+            {summary ? (
+              <span className="block text-xs text-zinc-500">{summary}</span>
+            ) : null}
+          </span>,
+        ];
+      }),
     ...(user.role !== "customer" && (wellmix || user.role === "legal")
       ? [
           [t("common.customer"), partyName(order.customerId)] as [

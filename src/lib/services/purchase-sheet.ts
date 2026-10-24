@@ -15,11 +15,8 @@ import { assertWellmix, canViewOrder, isWellmix } from "@/lib/auth/permissions";
 import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
-import {
-  catalogPhotoKinds,
-  completeMasterFromSheet,
-  masterSheetInput,
-} from "./product-sheet";
+import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import { completeFromOrderSheet } from "./variant-sales";
 import {
   fillRecordsFromSheet,
   productForSupplier,
@@ -279,7 +276,10 @@ async function prefillBase(
   // (cotação) nem de uma compra anterior com o mesmo fornecedor; na recompra,
   // só completa o que a ficha dele não tem (a mestre pode ter vindo da compra
   // com outro fornecedor).
-  const master = await masterSheetInput(product?.id ?? null);
+  const master = await masterSheetInput(
+    product?.id ?? null,
+    request?.variant ?? null,
+  );
   // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
   const records = recordFields(
     supplier,
@@ -553,12 +553,18 @@ export async function saveSheet(
               .map((k) => [k, after[k]]),
           )
         : sheet;
-    await completeMasterFromSheet(
+    // Item com variação: a Wellmix adota na variação (o produto espelha a de
+    // referência); sem variação, no produto como sempre.
+    const [item] = adopt
+      ? await store.list("order_items", { filter: { orderId }, limit: 1 })
+      : [];
+    await completeFromOrderSheet(
       user,
       sheet.productId ?? null,
       changed,
       order.supplierId,
       adopt ? "adopt" : "fill",
+      item?.variantId ?? null,
     );
   }
   const missing = await syncRequirements(user, order, sheet);
