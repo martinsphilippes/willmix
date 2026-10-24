@@ -11,6 +11,7 @@ export const pt = {
   "sourcing.photo.angle": "Outro ângulo",
   "sourcing.photo.business_card": "Cartão de visita do fornecedor",
   "sourcing.photo.prompt": "Foto de referência (prompt)",
+  "sourcing.photo.supplier": "Foto do fornecedor (planilha)",
   "sheet.title": "Ficha de compra",
   "sheet.subtitle": "Pedido #{number} · {product}",
   "sheet.intro":
@@ -128,6 +129,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sourcing.photo.angle": "Other angle",
   "sourcing.photo.business_card": "Supplier business card",
   "sourcing.photo.prompt": "Reference photo (prompt)",
+  "sourcing.photo.supplier": "Supplier photo (sheet)",
   "sheet.title": "Purchase sheet",
   "sheet.subtitle": "Order #{number} · {product}",
   "sheet.intro":
@@ -245,6 +247,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sourcing.photo.angle": "其他角度",
   "sourcing.photo.business_card": "供应商名片",
   "sourcing.photo.prompt": "参考照片（提示）",
+  "sourcing.photo.supplier": "供应商照片（表格）",
   "sheet.title": "采购单",
   "sheet.subtitle": "订单 #{number} · {product}",
   "sheet.intro":
