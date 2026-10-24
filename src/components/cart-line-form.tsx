@@ -24,6 +24,7 @@ export function CartLineForm({
   itemId,
   productId,
   quantity,
+  moq = null,
   notes,
   labels,
 }: {
@@ -31,6 +32,8 @@ export function CartLineForm({
   itemId: string;
   productId: string;
   quantity: number;
+  /** Pedido mínimo do produto: a quantidade não desce dele. */
+  moq?: number | null;
   notes: string | null;
   labels: {
     quantity: string;
@@ -64,9 +67,14 @@ export function CartLineForm({
     setSaved(next);
   }
   const formRef = useRef<HTMLFormElement>(null);
+  // Piso: o mínimo (item antigo já abaixo dele pode ficar como está).
+  const min = moq && moq > 0 ? Math.min(moq, quantity) : 1;
   const saveIfChanged = () => {
     const form = formRef.current;
     if (!form) return;
+    // Digitou menos que o mínimo: volta ao mínimo antes de gravar.
+    const typed = Math.round(Number(q));
+    if (q !== "" && Number.isFinite(typed) && typed < min) setQ(String(min));
     if (q === saved.quantity && n === saved.notes) return;
     if (!form.checkValidity()) {
       form.reportValidity();
@@ -92,7 +100,7 @@ export function CartLineForm({
             name="quantity"
             type="number"
             inputMode="numeric"
-            min={1}
+            min={min}
             max={10_000_000}
             step={1}
             required
@@ -101,6 +109,7 @@ export function CartLineForm({
             onBlur={saveIfChanged}
             className={cx(input, "w-28 tabular-nums")}
             data-cart-quantity={productId}
+            data-cart-min={min}
           />
         </label>
         <label className="min-w-0 flex-1 basis-48 text-xs font-medium text-zinc-700">

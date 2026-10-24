@@ -55,11 +55,11 @@ export default async function ExploreProductPage({
       : t("common.error")
     : null;
   const back = `/app/explore/${encodeURIComponent(product.id)}`;
-  const startQty = product.estimate.ok
-    ? product.estimate.quantity
-    : product.moq && product.moq > 0
-      ? product.moq
-      : 1;
+  // Nunca abaixo do pedido mínimo (o controle também não deixa descer dele).
+  const startQty = Math.max(
+    product.moq && product.moq > 0 ? product.moq : 1,
+    product.estimate.ok ? product.estimate.quantity : 1,
+  );
 
   return (
     <div className="space-y-4" data-explore-detail={product.id}>

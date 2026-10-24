@@ -73,6 +73,12 @@ function validQuantity(quantity: number): number {
   return q;
 }
 
+/** O pedido mínimo do produto vale: abaixo dele, não entra (a tela já não deixa). */
+function assertMoq(product: Pick<Product, "moq">, quantity: number) {
+  if (product.moq && product.moq > 0 && quantity < product.moq)
+    throw new Error("cart_below_moq");
+}
+
 const cleanText = (text: string | null | undefined, max: number) => {
   const v = (text ?? "").trim().slice(0, max);
   return v || null;
@@ -107,6 +113,7 @@ export async function addToCart(
   const product = await store.get("products", productId);
   if (!product?.active) throw new Error("cart_product_unavailable");
   const q = validQuantity(quantity);
+  assertMoq(product, q);
   const lines = await ownLines(user);
   const existing = lines.find((l) => l.productId === productId);
   const note = cleanText(notes, CART_NOTES_MAX);
@@ -143,8 +150,14 @@ export async function updateCartItem(
   notes: string | null,
 ): Promise<void> {
   const line = await ownLine(user, itemId);
+  const q = validQuantity(quantity);
+  // Mudou a quantidade: respeita o mínimo (item antigo abaixo dele só sobe).
+  if (q !== line.quantity) {
+    const product = await getStore().get("products", line.productId);
+    if (product) assertMoq(product, q);
+  }
   await getStore().update("cart_items", line.id, {
-    quantity: validQuantity(quantity),
+    quantity: q,
     notes: cleanText(notes, CART_NOTES_MAX),
   });
 }
@@ -331,6 +344,7 @@ export async function requestProductNow(
   const customerId = await assertBuyer(user);
   const product = await getStore().get("products", productId);
   if (!product?.active) throw new Error("cart_product_unavailable");
+  assertMoq(product, validQuantity(quantity));
   const [created] = await createRequestBatch(
     user,
     { customerId, deadline: null, notes: null, requestedForUserId: null },

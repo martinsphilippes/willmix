@@ -57,6 +57,7 @@ export default async function CartPage({
   // Erros do item (mostrados no próprio item, sem trocar de tela).
   const lineErrors: Record<string, string> = {
     cart_quantity_invalid: t("explore.error.cart_quantity_invalid"),
+    cart_below_moq: t("explore.error.cart_below_moq"),
     cart_item_not_found: t("explore.error.cart_item_not_found"),
     invalid_input: t("explore.error.cart_quantity_invalid"),
     forbidden: t("explore.error.forbidden"),
@@ -190,6 +191,7 @@ export default async function CartPage({
                         itemId={line.id}
                         productId={line.productId}
                         quantity={line.quantity}
+                        moq={line.moq}
                         notes={line.notes}
                         labels={{
                           quantity: t("explore.cart.quantity"),
