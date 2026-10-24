@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { cx } from "./ui";
 
 /** Teto do carrinho (o mesmo do serviço). */
@@ -10,7 +11,9 @@ const MAX = 10_000_000;
  * Quantidade com − e + (de um em um) e a caixa para digitar o total. Nunca
  * fica abaixo do pedido mínimo: começa nele, o − não desce dele e um valor
  * menor digitado volta ao mínimo ao sair do campo (enquanto se digita, o
- * aviso diz qual é o mínimo). Sem mínimo, o piso é 1.
+ * aviso diz qual é o mínimo). Sem mínimo, o piso é 1. O aviso flutua acima
+ * da caixa, sem empurrar o que vem abaixo: assim o botão logo embaixo não
+ * muda de lugar quando o aviso some ao sair do campo (o clique não se perde).
  */
 export function QuantityStepper({
   name = "quantity",
@@ -57,7 +60,7 @@ export function QuantityStepper({
   const button =
     "shrink-0 font-semibold text-zinc-600 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-300 disabled:hover:bg-white";
   return (
-    <div className={compact ? "w-full" : undefined}>
+    <div className={cx("relative", compact && "w-full")}>
       <label
         htmlFor={id}
         className={cx(
@@ -99,6 +102,11 @@ export function QuantityStepper({
             onValueChange?.(clamp(Number(e.target.value)));
           }}
           onBlur={() => set(typed)}
+          // Enter envia o formulário: o mínimo entra no campo antes de o
+          // navegador validar (senão ele mostra o próprio aviso e não envia).
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && below) flushSync(() => set(typed));
+          }}
           className={cx(
             "min-w-0 border-x border-zinc-200 text-center font-semibold tabular-nums text-zinc-900 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
             compact ? "w-full flex-1 py-1.5 text-sm" : "w-28 py-2 text-base",
@@ -118,7 +126,11 @@ export function QuantityStepper({
         </button>
       </div>
       {below ? (
-        <p className="mt-1 text-xs text-amber-800" data-below-moq="">
+        <p
+          role="status"
+          className="absolute bottom-full left-0 z-10 mb-1 max-w-full rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-900 shadow-sm ring-1 ring-amber-200"
+          data-below-moq=""
+        >
           {belowMoqText}
         </p>
       ) : null}

@@ -180,7 +180,7 @@ export default async function CartPage({
                       ) : null}
                       {line.belowMoq && line.moq ? (
                         <p className="mt-2 text-xs text-amber-800">
-                          {t("explore.product.belowMoq", {
+                          {t("explore.cart.belowMoq", {
                             n: line.moq.toLocaleString(t.intl),
                           })}
                         </p>

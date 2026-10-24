@@ -4,6 +4,7 @@ import type { Translate } from "@/i18n";
 import { getStore, type Product, type Request, type User } from "@/lib/db";
 import { ForbiddenError } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import { getProductSheet } from "./product-sheet";
 import type { CatalogEstimate } from "./catalog-price-calc";
 import {
   canBuyOnStorefront,
@@ -39,7 +40,11 @@ export interface CartLine {
   quantity: number;
   notes: string | null;
   moq: number | null;
-  /** Abaixo do pedido mínimo: a Wellmix confirma se dá (não bloqueia). */
+  /**
+   * Abaixo do pedido mínimo (item de antes da regra, ou mínimo aumentado
+   * depois): a tela avisa e qualquer mudança de quantidade só vale a partir
+   * do mínimo.
+   */
   belowMoq: boolean;
   /** Preço estimado por unidade para esta quantidade. */
   estimate: CatalogEstimate;
@@ -73,10 +78,15 @@ function validQuantity(quantity: number): number {
   return q;
 }
 
-/** O pedido mínimo do produto vale: abaixo dele, não entra (a tela já não deixa). */
-function assertMoq(product: Pick<Product, "moq">, quantity: number) {
-  if (product.moq && product.moq > 0 && quantity < product.moq)
-    throw new Error("cart_below_moq");
+/**
+ * O pedido mínimo vale: abaixo dele, não entra (a tela já não deixa). É o
+ * mesmo mínimo que a vitrine mostra: o da ficha mestre do produto, senão o
+ * do cadastro (a regra de `pricingData` em catalog-explore).
+ */
+async function assertMoq(product: Pick<Product, "id" | "moq">, quantity: number) {
+  const sheet = await getProductSheet(product.id);
+  const moq = sheet?.moq ?? product.moq;
+  if (moq && moq > 0 && quantity < moq) throw new Error("cart_below_moq");
 }
 
 const cleanText = (text: string | null | undefined, max: number) => {
@@ -113,7 +123,7 @@ export async function addToCart(
   const product = await store.get("products", productId);
   if (!product?.active) throw new Error("cart_product_unavailable");
   const q = validQuantity(quantity);
-  assertMoq(product, q);
+  await assertMoq(product, q);
   const lines = await ownLines(user);
   const existing = lines.find((l) => l.productId === productId);
   const note = cleanText(notes, CART_NOTES_MAX);
@@ -154,7 +164,7 @@ export async function updateCartItem(
   // Mudou a quantidade: respeita o mínimo (item antigo abaixo dele só sobe).
   if (q !== line.quantity) {
     const product = await getStore().get("products", line.productId);
-    if (product) assertMoq(product, q);
+    if (product) await assertMoq(product, q);
   }
   await getStore().update("cart_items", line.id, {
     quantity: q,
@@ -344,7 +354,7 @@ export async function requestProductNow(
   const customerId = await assertBuyer(user);
   const product = await getStore().get("products", productId);
   if (!product?.active) throw new Error("cart_product_unavailable");
-  assertMoq(product, validQuantity(quantity));
+  await assertMoq(product, validQuantity(quantity));
   const [created] = await createRequestBatch(
     user,
     { customerId, deadline: null, notes: null, requestedForUserId: null },

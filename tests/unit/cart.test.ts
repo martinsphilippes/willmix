@@ -149,6 +149,31 @@ describe("carrinho", () => {
     );
   });
 
+  it("o mínimo é o da ficha mestre quando ela existe (o mesmo que a vitrine mostra)", async () => {
+    const { saveProductSheet } = await import("@/lib/services/product-sheet");
+    // Cadastro da jarra: mínimo 300 (seed); a ficha mestre diz 100.
+    await saveProductSheet(admin, "prod-piscina", { moq: 100 });
+    const shown = (await explore.exploreCatalog(joao, { q: "piscina" })).items[0];
+    expect(shown?.moq).toBe(100);
+    // O serviço aceita o mínimo mostrado e recusa abaixo dele.
+    await cart.addToCart(joao, "prod-piscina", 100);
+    await expect(cart.addToCart(joao, "prod-piscina", 99)).rejects.toThrow(
+      "cart_below_moq",
+    );
+    const line = (await cart.cartView(joao)).lines.find(
+      (l) => l.productId === "prod-piscina",
+    )!;
+    expect([line.moq, line.belowMoq]).toEqual([100, false]);
+    // Ficha mestre com mínimo maior que o cadastro: vale o maior também.
+    await saveProductSheet(admin, "prod-piscina", { moq: 5000 });
+    await expect(
+      cart.updateCartItem(joao, line.id, 4999, null),
+    ).rejects.toThrow("cart_below_moq");
+    await cart.updateCartItem(joao, line.id, 5000, null);
+    await cart.removeCartItem(joao, line.id);
+    await saveProductSheet(admin, "prod-piscina", { moq: null });
+  });
+
   it("adicionar de novo soma; cada login tem o próprio carrinho", async () => {
     await cart.addToCart(joao, "prod-panela", 500, "Logo da loja");
     const atMin = (await cart.cartView(joao)).lines[0];

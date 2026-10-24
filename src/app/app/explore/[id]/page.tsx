@@ -230,7 +230,7 @@ export default async function ExploreProductPage({
                   decreaseLabel={t("explore.product.decrease")}
                   increaseLabel={t("explore.product.increase")}
                   belowMoqText={t("explore.product.belowMoq", {
-                    n: (product.moq ?? 0).toLocaleString(t.intl),
+                    n: (product.moq ?? 1).toLocaleString(t.intl),
                   })}
                 />
                 <div>
