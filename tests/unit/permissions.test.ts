@@ -133,6 +133,11 @@ describe("isolamento entre papéis", () => {
 
     // campos sensíveis
     expect(canSeeSupplier(customer)).toBe(false);
+    // O transportador só leva a carga: não vê o fornecedor; despachante e
+    // companhia (exportador no BL e no despacho) veem.
+    expect(canSeeSupplier(by("carrier", "transportador"))).toBe(false);
+    expect(canSeeSupplier(by("broker", "despachante"))).toBe(true);
+    expect(canSeeSupplier(by("shipping_line", "armador"))).toBe(true);
     expect(canSeeInternalCosts(customer)).toBe(false);
     expect(canSeeInternalCosts(by("supplier", "fornecedor-a"))).toBe(false);
     expect(canSeeSellPrice(by("supplier", "fornecedor-a"))).toBe(false);

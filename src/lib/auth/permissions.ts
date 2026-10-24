@@ -6,6 +6,16 @@ export const isWellmix = (user: Pick<User, "role">) =>
   WELLMIX_ROLES.includes(user.role);
 export const isAdmin = (user: Pick<User, "role">) => user.role === "admin";
 
+/** Parceiros da operação: cada um vê no pedido só a parte dele. */
+export const PARTNER_ROLES: Role[] = [
+  "agency",
+  "broker",
+  "shipping_line",
+  "carrier",
+];
+export const isPartner = (user: Pick<User, "role">) =>
+  PARTNER_ROLES.includes(user.role);
+
 export class ForbiddenError extends Error {
   constructor(message = "forbidden") {
     super(message);
@@ -76,8 +86,13 @@ export function canViewOrder(user: User, order: Order): boolean {
 
 /** Campos financeiros internos: só Wellmix. */
 export const canSeeInternalCosts = (user: User) => isWellmix(user);
-/** Identidade do fornecedor: cliente nunca vê. */
-export const canSeeSupplier = (user: User) => user.role !== "customer";
+/**
+ * Identidade do fornecedor: cliente nunca vê; o transportador também não (só
+ * leva a carga do porto ao destino; despachante e companhia precisam do
+ * exportador).
+ */
+export const canSeeSupplier = (user: User) =>
+  user.role !== "customer" && user.role !== "carrier";
 /** Valor de venda ao cliente: fornecedor nunca vê. */
 export const canSeeSellPrice = (user: User) =>
   isWellmix(user) || user.role === "customer";

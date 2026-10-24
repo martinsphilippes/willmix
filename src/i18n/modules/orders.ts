@@ -245,6 +245,19 @@ export const pt = {
     "Produto ainda não está no catálogo: quero que a Wellmix encontre fornecedores",
   "requests.sourcingDemand.hint":
     "Deixe o produto em branco e descreva o que procura. A Wellmix registra a demanda para o time de sourcing na China, localiza fornecedores e depois abre a RFQ como em qualquer solicitação.",
+  "orders.cargo.title": "Carga e entrega",
+  "orders.cargo.hint":
+    "O que você vai transportar e para onde. Caixas, volume e peso são os previstos na ficha de compra: confira no carregamento.",
+  "orders.cargo.items": "Mercadoria",
+  "orders.cargo.pending": "A informar",
+  "orders.cargo.arrival": "Chegada do navio",
+  "orders.cargo.vessel": "Navio / viagem",
+  "orders.cargo.release": "Liberação aduaneira",
+  "orders.cargo.releasePending": "Ainda não liberada",
+  "orders.cargo.deliverTo": "Entregar em",
+  "orders.cargo.contact": "Contato",
+  "orders.cargo.noAddress":
+    "Endereço de entrega não cadastrado: combine com a Wellmix.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -479,6 +492,19 @@ export const en: Record<keyof typeof pt, string> = {
     "Product not in the catalog yet: I want Wellmix to find suppliers",
   "requests.sourcingDemand.hint":
     "Leave the product blank and describe what you are looking for. Wellmix records the demand for the sourcing team in China, finds suppliers and then opens the RFQ like any other request.",
+  "orders.cargo.title": "Cargo and delivery",
+  "orders.cargo.hint":
+    "What you will carry and where to. Cartons, volume and weight are the ones expected in the purchase sheet: check them at loading.",
+  "orders.cargo.items": "Goods",
+  "orders.cargo.pending": "To be informed",
+  "orders.cargo.arrival": "Vessel arrival",
+  "orders.cargo.vessel": "Vessel / voyage",
+  "orders.cargo.release": "Customs release",
+  "orders.cargo.releasePending": "Not released yet",
+  "orders.cargo.deliverTo": "Deliver to",
+  "orders.cargo.contact": "Contact",
+  "orders.cargo.noAddress":
+    "Delivery address not registered: arrange it with Wellmix.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -704,4 +730,16 @@ export const zh: Record<keyof typeof pt, string> = {
   "requests.sourcingDemand.label": "产品尚未在目录中：希望 Wellmix 寻找供应商",
   "requests.sourcingDemand.hint":
     "请将产品留空并描述您需要的商品。Wellmix 会为中国寻源团队登记需求，寻找供应商，然后像普通申请一样发起询价。",
+  "orders.cargo.title": "货物与交付",
+  "orders.cargo.hint":
+    "你要运输的货物和目的地。箱数、体积和重量为采购单预计值，装货时请核对。",
+  "orders.cargo.items": "货物",
+  "orders.cargo.pending": "待提供",
+  "orders.cargo.arrival": "船舶到港",
+  "orders.cargo.vessel": "船名 / 航次",
+  "orders.cargo.release": "海关放行",
+  "orders.cargo.releasePending": "尚未放行",
+  "orders.cargo.deliverTo": "交付至",
+  "orders.cargo.contact": "联系人",
+  "orders.cargo.noAddress": "未登记交付地址：请与 Wellmix 确认。",
 };

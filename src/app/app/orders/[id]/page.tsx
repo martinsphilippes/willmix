@@ -13,8 +13,12 @@ import {
   canSeeSupplier,
   canViewOrder,
   canViewRequest,
+  isPartner,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { stageVisibleTo } from "@/lib/order-view";
+import { cargoViewForOrder } from "@/lib/services/order-cargo";
+import { CargoCard } from "@/components/cargo-card";
 import {
   getStore,
   type AfterSales,
@@ -295,6 +299,21 @@ export default async function OrderPage({
   ]);
   const partyName = (pid: string | null) =>
     parties.find((p) => p.id === pid)?.name ?? "—";
+  /* Parceiro (agência, despachante, companhia, transportador): só a parte dele.
+     O transportador ganha o cartão "Carga e entrega" no lugar do cartão do pedido. */
+  const partner = isPartner(user);
+  const cargo =
+    user.role === "carrier"
+      ? await cargoViewForOrder(user, order, {
+          items,
+          stages,
+          requirements,
+          parties,
+        })
+      : null;
+  const visiblePenalties = partner
+    ? penalties.filter((p) => p.responsiblePartyId === user.partyId)
+    : penalties;
   const userName = (uid: string | null) =>
     users.find((u) => u.id === uid)?.name ?? "—";
   const docById = (did: string | null) =>
@@ -372,6 +391,102 @@ export default async function OrderPage({
             ? "cancel.settlementSaved"
             : null;
 
+  /* Cartão do pedido: o que este papel pode ver (vazio para agência e companhia). */
+  const orderInfoItems: Array<[ReactNode, ReactNode]> = [
+    ...(user.role !== "customer" && (wellmix || user.role === "legal")
+      ? [
+          [t("common.customer"), partyName(order.customerId)] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(canSeeSupplier(user) && user.role !== "supplier"
+      ? [
+          [t("common.supplier"), partyName(order.supplierId)] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(canSeeInternalCosts(user)
+      ? [
+          [
+            t("orders.fob"),
+            formatMoney(order.fobTotal, order.fobCurrency, t),
+          ] as [string, string],
+        ]
+      : []),
+    ...(canSeeSellPrice(user)
+      ? [
+          [
+            t("orders.sell"),
+            formatMoney(order.sellPrice, order.sellCurrency, t),
+          ] as [string, string],
+        ]
+      : []),
+    ...(wellmix
+      ? [
+          [
+            t("orders.erp"),
+            /* Cancelado sem número no ERP: nada a lançar no Sankhya. */
+            order.erpNumber ??
+              (isCancelled ? (
+                "—"
+              ) : (
+                <Badge tone="warning">
+                  {t(`erpStatus.${order.erpSyncStatus}`)}
+                </Badge>
+              )),
+          ] as [string, ReactNode],
+        ]
+      : []),
+    // Parceiro: a data do pedido não diz nada a ele.
+    ...(partner
+      ? []
+      : [
+          [t("common.date"), formatDate(order.createdAt, t)] as [
+            string,
+            string,
+          ],
+        ]),
+    /* Visão de Produto: modalidade de operação copiada do cliente (importador de registro).
+         Wellmix, cliente e despachante; nunca fornecedor, agência, armador ou transportador.
+         Pedidos antigos (nulo): nada aparece. */
+    ...(order.operationMode &&
+    (wellmix ||
+      user.role === "customer" ||
+      user.role === "broker" ||
+      user.role === "legal")
+      ? [
+          [
+            t("operations.mode.title"),
+            <span
+              key="operationMode"
+              className="inline-flex"
+              title={t("operations.mode.orderHint")}
+            >
+              <Badge tone="info">
+                {t(
+                  `operations.mode.badge.${order.operationMode}` as DictionaryKey,
+                )}
+              </Badge>
+            </span>,
+          ] as [string, ReactNode],
+        ]
+      : []),
+    /* Classificação fiscal (NCM) com validação humana: Wellmix e despachante. */
+    ...(followProduct && (wellmix || user.role === "broker")
+      ? [
+          [
+            t("catalog.tax.title"),
+            <TextLink key="tax" href={`/app/products/${followProduct.id}/tax`}>
+              {followProduct.ncm ?? t("catalog.tax.none")}
+            </TextLink>,
+          ] as [string, ReactNode],
+        ]
+      : []),
+  ];
   return (
     <>
       <PageHeader
@@ -555,11 +670,12 @@ export default async function OrderPage({
           ) : null}
 
           {flowStages
-            .filter(
-              (s) =>
-                s.key !== "CLOSED" &&
-                (wellmix ||
-                  (s.status !== "pending" && s.status !== "cancelled")),
+            .filter((s) =>
+              stageVisibleTo(
+                user,
+                s,
+                requirements.filter((r) => r.stageId === s.id),
+              ),
             )
             .map((stage) => {
               const reqs = requirements.filter((r) => r.stageId === stage.id);
@@ -780,106 +896,19 @@ export default async function OrderPage({
         {/* Coluna lateral: cards pequenos. No iPad em pé (sem a coluna lateral)
             ficam 2 por linha; da tela larga em diante, um abaixo do outro. */}
         <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:grid-cols-1">
-          <Card title={t("orders.title")}>
-            <DescriptionList
-              items={[
-                ...(user.role !== "customer" &&
-                (wellmix || user.role === "legal")
-                  ? [
-                      [t("common.customer"), partyName(order.customerId)] as [
-                        string,
-                        string,
-                      ],
-                    ]
-                  : []),
-                ...(canSeeSupplier(user) && user.role !== "supplier"
-                  ? [
-                      [t("common.supplier"), partyName(order.supplierId)] as [
-                        string,
-                        string,
-                      ],
-                    ]
-                  : []),
-                ...(canSeeInternalCosts(user)
-                  ? [
-                      [
-                        t("orders.fob"),
-                        formatMoney(order.fobTotal, order.fobCurrency, t),
-                      ] as [string, string],
-                    ]
-                  : []),
-                ...(canSeeSellPrice(user)
-                  ? [
-                      [
-                        t("orders.sell"),
-                        formatMoney(order.sellPrice, order.sellCurrency, t),
-                      ] as [string, string],
-                    ]
-                  : []),
-                ...(wellmix
-                  ? [
-                      [
-                        t("orders.erp"),
-                        /* Cancelado sem número no ERP: nada a lançar no Sankhya. */
-                        order.erpNumber ??
-                          (isCancelled ? (
-                            "—"
-                          ) : (
-                            <Badge tone="warning">
-                              {t(`erpStatus.${order.erpSyncStatus}`)}
-                            </Badge>
-                          )),
-                      ] as [string, ReactNode],
-                    ]
-                  : []),
-                [t("common.date"), formatDate(order.createdAt, t)],
-                /* Visão de Produto: modalidade de operação copiada do cliente (importador de registro).
-                   Wellmix, cliente e despachante; nunca fornecedor, agência, armador ou transportador.
-                   Pedidos antigos (nulo): nada aparece. */
-                ...(order.operationMode &&
-                (wellmix ||
-                  user.role === "customer" ||
-                  user.role === "broker" ||
-                  user.role === "legal")
-                  ? [
-                      [
-                        t("operations.mode.title"),
-                        <span
-                          key="operationMode"
-                          className="inline-flex"
-                          title={t("operations.mode.orderHint")}
-                        >
-                          <Badge tone="info">
-                            {t(
-                              `operations.mode.badge.${order.operationMode}` as DictionaryKey,
-                            )}
-                          </Badge>
-                        </span>,
-                      ] as [string, ReactNode],
-                    ]
-                  : []),
-                /* Classificação fiscal (NCM) com validação humana: Wellmix e despachante. */
-                ...(followProduct && (wellmix || user.role === "broker")
-                  ? [
-                      [
-                        t("catalog.tax.title"),
-                        <TextLink
-                          key="tax"
-                          href={`/app/products/${followProduct.id}/tax`}
-                        >
-                          {followProduct.ncm ?? t("catalog.tax.none")}
-                        </TextLink>,
-                      ] as [string, ReactNode],
-                    ]
-                  : []),
-              ]}
-            />
-            {wellmix && !isCancelled && order.erpSyncStatus === "pending" ? (
-              <p className="mt-2 text-xs text-amber-700">
-                {t("orders.erp.pending")}
-              </p>
-            ) : null}
-          </Card>
+          {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
+          {/* Cartão do pedido: para o parceiro, só se sobrar algo útil (o
+              despachante vê a modalidade e o NCM; agência e companhia, nada). */}
+          {cargo || !orderInfoItems.length ? null : (
+            <Card title={t("orders.title")}>
+              <DescriptionList items={orderInfoItems} />
+              {wellmix && !isCancelled && order.erpSyncStatus === "pending" ? (
+                <p className="mt-2 text-xs text-amber-700">
+                  {t("orders.erp.pending")}
+                </p>
+              ) : null}
+            </Card>
+          )}
 
           {wellmix || containers.length > 0 ? (
             <ContainersCard t={t} containers={containers} wellmix={wellmix} />
@@ -1353,13 +1382,13 @@ export default async function OrderPage({
             ) : null}
           </Card>
 
-          {wellmix || user.role === "legal" || penalties.length > 0 ? (
+          {wellmix || user.role === "legal" || visiblePenalties.length > 0 ? (
             <Card title={t("orders.penalties")}>
-              {penalties.length === 0 ? (
+              {visiblePenalties.length === 0 ? (
                 <Empty>{t("penalties.empty")}</Empty>
               ) : null}
               <ul className="space-y-1.5 text-sm">
-                {penalties.map((p) => (
+                {visiblePenalties.map((p) => (
                   <li
                     key={p.id}
                     className="rounded-lg border border-zinc-200/80 px-2.5 py-2"

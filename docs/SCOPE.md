@@ -24,10 +24,10 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 | Operador           | Cadastros, RFQ, seleção, pagamentos, designação de parceiros, exceções, multas           | Configurações                     |
 | Cliente            | Cria e acompanha solicitação, vê proposta e sinal, timeline, confirma recebimento        | Fornecedor, FOB, margem, cotações |
 | Fornecedor         | Responde RFQ, cumpre checklists, aprova a arte, envia fotos e peso, confirma pagamentos  | Cliente final, valor de venda     |
-| Agência            | Faz e envia a arte da embalagem (refaz quando o fornecedor reprova)                      | Valores                           |
-| Despachante        | Número do processo, documentos, custos, liberação                                        | Valores comerciais                |
-| Companhia marítima | Confirma o embarque (data, previsão, navio e BL opcionais); envia a própria tabela de frete | Valores comerciais; tabelas das outras companhias |
-| Transportador      | Placa, previsão, situação, entrega                                                       | Valores comerciais                |
+| Agência            | Faz e envia a arte da embalagem (refaz quando o fornecedor reprova)                      | Valores; etapas dos outros        |
+| Despachante        | Número do processo, documentos, custos, liberação (lê o Embarque: BL, navio, chegada)    | Valores comerciais; etapas dos outros |
+| Companhia marítima | Confirma o embarque (data, previsão, navio e BL opcionais); envia a própria tabela de frete | Valores comerciais; tabelas das outras companhias; etapas dos outros |
+| Transportador      | Placa, previsão, situação, entrega; vê a carga e onde entregar ("Carga e entrega")       | Valores comerciais; fornecedor; etapas dos outros |
 | Jurídico           | Visualiza e muda status de multas                                                        |                                   |
 
 ## Vertical slice 1 (entregue)
