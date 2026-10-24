@@ -15,7 +15,7 @@ export const pt = {
   "sheetImport.currencyHint": "Usada só quando o cabeçalho não diz (\"PRICE / U$\" já diz dólar).",
   "sheetImport.prefix": "Nome base (opcional)",
   "sheetImport.prefixHint":
-    "Entra antes da descrição e do tamanho: \"Porta-retrato\" vira \"Porta-retrato STONE MARBLE A4\".",
+    "Um produto com variações: é o nome do produto (\"Porta-retrato\"; sem ele, vale o nome da primeira linha). Um produto por linha: entra antes da descrição e do tamanho (\"Porta-retrato STONE MARBLE A4\").",
   "sheetImport.prefixPlaceholder": "ex.: Porta-retrato",
   "sheetImport.submit": "Importar e cadastrar",
   "sheetImport.pending": "Lendo a planilha…",
@@ -24,7 +24,7 @@ export const pt = {
     "Sem mapear coluna por coluna: o portal reconhece o cabeçalho do modelo (em inglês, português ou chinês).",
   "sheetImport.how.columns": "Preço, caixa master, inner, pesos, CBM, embalagem, cor, material, função e MOQ vão para a ficha mestre do produto; as medidas vão para o cadastro do produto.",
   "sheetImport.how.groups":
-    "Cada linha é uma cor; linhas seguidas com o mesmo código, descrição, tamanho e preço viram um produto só, com as cores juntas.",
+    "Cada linha é uma cor; linhas seguidas com o mesmo código, descrição, tamanho e preço formam um grupo, com as cores juntas. Por padrão a planilha inteira é um produto e cada grupo vira uma variação dele (preço, MOQ, caixa, medidas e foto próprios); a opção \"Um produto por linha\" mantém o comportamento anterior, um produto por grupo.",
   "sheetImport.how.photos":
     "A foto da coluna PHOTO entra como foto do fornecedor: é a imagem do produto no catálogo até a equipe tirar a foto original, que continua pendente na ficha. A foto do cartão vira o cartão do fornecedor.",
   "sheetImport.how.supplier":
@@ -73,6 +73,22 @@ export const pt = {
   "sheetImport.error.sheet_private": "O Google não entregou a planilha: ela não está compartilhada com \"Qualquer pessoa com o link\". Ajuste o compartilhamento e tente de novo.",
   "sheetImport.error.sheet_not_found": "Planilha do Google não encontrada: confira o link.",
   "sheetImport.error.sheet_fetch_failed": "Não foi possível baixar a planilha do Google agora. Tente de novo ou envie o arquivo .xlsx.",
+  "sheetImport.mode": "Resultado",
+  "sheetImport.mode.variants": "Um produto com variações (uma por linha da planilha)",
+  "sheetImport.mode.variantsHint":
+    "A planilha inteira é um produto; cada grupo de linhas vira uma variação (tamanho, modelo, acabamento) com preço, MOQ, caixa, medidas e foto próprios. Reimportar a mesma planilha atualiza o mesmo produto e as mesmas variações.",
+  "sheetImport.mode.products": "Um produto por linha (como antes)",
+  "sheetImport.mode.productsHint":
+    "Cada grupo de linhas vira um produto do catálogo, com ficha mestre e fotos.",
+  "sheetImport.result.variants": "Variações",
+  "sheetImport.result.variantsSummary":
+    "{created} variação(ões) criada(s), {updated} atualizada(s), {errors} com erro",
+  "sheetImport.result.variantPhoto": "foto",
+  "sheetImport.result.variantNoPhoto": "sem foto",
+  "sheetImport.result.variantErrors":
+    "{n} variação(ões) com erro: veja o motivo na lista e importe de novo depois de corrigir.",
+  "sheetImport.error.schema_outdated":
+    "A tabela de variações ainda não foi publicada no Appwrite (Action \"Publicar esquema Appwrite\"). O produto ficou cadastrado sem variações; publique o esquema e importe de novo, ou use \"Um produto por linha\".",
 };
 
 export const en = {
@@ -88,7 +104,7 @@ export const en = {
   "sheetImport.currencyHint": "Used only when the header does not say it (\"PRICE / U$\" already means dollars).",
   "sheetImport.prefix": "Base name (optional)",
   "sheetImport.prefixHint":
-    "Goes before the description and the size: \"Photo frame\" becomes \"Photo frame STONE MARBLE A4\".",
+    "One product with variations: it is the product name (\"Photo frame\"; without it, the first row's name is used). One product per row: goes before the description and the size (\"Photo frame STONE MARBLE A4\").",
   "sheetImport.prefixPlaceholder": "e.g. Photo frame",
   "sheetImport.submit": "Import and register",
   "sheetImport.pending": "Reading the spreadsheet…",
@@ -97,7 +113,7 @@ export const en = {
     "No column mapping: the portal recognises the template header (in English, Portuguese or Chinese).",
   "sheetImport.how.columns": "Price, master carton, inner, weights, CBM, packaging, colour, material, function and MOQ go to the product's master sheet; the size goes to the product record.",
   "sheetImport.how.groups":
-    "Each row is a colour; consecutive rows with the same code, description, size and price become one product with the colours together.",
+    "Each row is a colour; consecutive rows with the same code, description, size and price form a group, with the colours together. By default the whole sheet is one product and each group becomes a variation of it (own price, MOQ, carton, size and photo); the \"One product per row\" option keeps the previous behaviour, one product per group.",
   "sheetImport.how.photos":
     "The picture in the PHOTO column comes in as the supplier's photo: it is the product's catalog image until the team takes the original photo, which stays pending on the product's master sheet. The card picture becomes the supplier's business card.",
   "sheetImport.how.supplier":
@@ -146,6 +162,22 @@ export const en = {
   "sheetImport.error.sheet_private": "Google did not deliver the sheet: it is not shared with \"Anyone with the link\". Fix the sharing and try again.",
   "sheetImport.error.sheet_not_found": "Google sheet not found: check the link.",
   "sheetImport.error.sheet_fetch_failed": "The Google sheet could not be downloaded right now. Try again or upload the .xlsx file.",
+  "sheetImport.mode": "Result",
+  "sheetImport.mode.variants": "One product with variations (one per sheet row)",
+  "sheetImport.mode.variantsHint":
+    "The whole sheet is one product; each group of rows becomes a variation (size, model, finish) with its own price, MOQ, carton, size and photo. Importing the same sheet again updates the same product and the same variations.",
+  "sheetImport.mode.products": "One product per row (as before)",
+  "sheetImport.mode.productsHint":
+    "Each group of rows becomes a catalog product, with master sheet and photos.",
+  "sheetImport.result.variants": "Variations",
+  "sheetImport.result.variantsSummary":
+    "{created} variation(s) created, {updated} updated, {errors} with errors",
+  "sheetImport.result.variantPhoto": "photo",
+  "sheetImport.result.variantNoPhoto": "no photo",
+  "sheetImport.result.variantErrors":
+    "{n} variation(s) with errors: see the reason in the list and import again after fixing.",
+  "sheetImport.error.schema_outdated":
+    "The variations table has not been published to Appwrite yet (\"Publish Appwrite schema\" Action). The product was registered without variations; publish the schema and import again, or use \"One product per row\".",
 };
 
 export const zh = {
@@ -160,7 +192,7 @@ export const zh = {
   "sheetImport.currency": "价格币种",
   "sheetImport.currencyHint": "仅在表头未注明时使用（\"PRICE / U$\" 已表示美元）。",
   "sheetImport.prefix": "基础名称（可选）",
-  "sheetImport.prefixHint": "放在描述和尺寸之前：“相框”变为“相框 STONE MARBLE A4”。",
+  "sheetImport.prefixHint": "“一个产品，多种款式”：即产品名称（“相框”；留空则用第一行的名称）。“每行一个产品”：放在描述和尺寸之前（“相框 STONE MARBLE A4”）。",
   "sheetImport.prefixPlaceholder": "例如：相框",
   "sheetImport.submit": "导入并建档",
   "sheetImport.pending": "正在读取表格…",
@@ -168,7 +200,7 @@ export const zh = {
   "sheetImport.how.body": "无需逐列映射：门户自动识别模板表头（英文、葡文或中文）。",
   "sheetImport.how.columns": "价格、外箱装量、内盒、重量、CBM、包装、颜色、材质、功能和起订量写入产品主表；尺寸写入产品档案。",
   "sheetImport.how.groups":
-    "每行是一种颜色；编码、描述、尺寸和价格相同的连续行合并为一个产品，颜色一并记录。",
+    "每行是一种颜色；编码、描述、尺寸和价格相同的连续行组成一组，颜色一并记录。默认整张表格是一个产品，每组成为该产品的一个款式（各自的价格、起订量、装箱、尺寸和照片）；“每行一个产品”选项保留原来的方式，每组一个产品。",
   "sheetImport.how.photos": "PHOTO 列的图片作为供应商照片导入：在团队拍摄原始照片之前，它是产品在目录中的图片；原始照片在产品主表中仍为待办。名片图片成为供应商名片。",
   "sheetImport.how.supplier": "尚未建档的供应商将按名称、店铺号和电话自动建档。",
   "sheetImport.how.missing": "最后，每个产品都会显示主表还缺什么（外箱尺寸、主表其他照片等）。",
@@ -214,4 +246,17 @@ export const zh = {
   "sheetImport.error.sheet_private": "Google 未提供表格：它未设置为“知道链接的任何人”可访问。请调整共享设置后重试。",
   "sheetImport.error.sheet_not_found": "未找到 Google 表格：请检查链接。",
   "sheetImport.error.sheet_fetch_failed": "目前无法下载 Google 表格。请重试或上传 .xlsx 文件。",
+  "sheetImport.mode": "结果",
+  "sheetImport.mode.variants": "一个产品，多种款式（表格每行一个款式）",
+  "sheetImport.mode.variantsHint":
+    "整张表格是一个产品；每组行成为一个款式（尺寸、型号、工艺），各自有价格、起订量、装箱、尺寸和照片。重新导入同一表格会更新同一产品和同样的款式。",
+  "sheetImport.mode.products": "每行一个产品（与之前相同）",
+  "sheetImport.mode.productsHint": "每组行成为一个目录产品，附带主表和照片。",
+  "sheetImport.result.variants": "款式",
+  "sheetImport.result.variantsSummary": "新建 {created} 个款式，更新 {updated} 个，{errors} 个出错",
+  "sheetImport.result.variantPhoto": "有照片",
+  "sheetImport.result.variantNoPhoto": "无照片",
+  "sheetImport.result.variantErrors": "{n} 个款式出错：查看列表中的原因，修正后重新导入。",
+  "sheetImport.error.schema_outdated":
+    "款式表尚未发布到 Appwrite（“发布 Appwrite 架构”Action）。产品已建档但没有款式；请发布架构后重新导入，或使用“每行一个产品”。",
 };

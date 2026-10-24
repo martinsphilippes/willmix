@@ -103,6 +103,8 @@ import {
 } from "../_components/ai-section";
 import { CycleCard } from "../_components/cycle-card";
 import { SuppliersCard } from "../_components/suppliers-card";
+import { VariantsCard } from "../_components/variants-card";
+import { listProductVariants } from "@/lib/services/product-variants";
 import { SheetPhotoChecklist } from "../_components/sheet-photo-checklist";
 import { MissingFields } from "@/components/missing-fields";
 import { missingFieldsView } from "@/components/missing-fields-view";
@@ -170,6 +172,7 @@ export default async function ProductSheetPage({
     qty,
     sheet: sheetSaved,
     suppliers: suppliersDone,
+    variants: variantsDone,
     at: saveToken,
     from: errorFrom,
     fields: invalidFields,
@@ -257,6 +260,10 @@ export default async function ProductSheetPage({
   const autoSpec = autoProductSpec(product, masterView);
   // Fornecedores deste produto (principal primeiro) e o seletor da ficha mestre.
   const supplierRows = await productSuppliersView(product);
+  // Variações do produto (ativas e desativadas; vazio antes do esquema publicado).
+  const variants = await listProductVariants(product.id, {
+    includeInactive: true,
+  });
   const supplierOptions: SupplierOption[] = suppliers
     .filter((s) => s.active || s.id === product.supplierId)
     .map((s) => {
@@ -829,6 +836,17 @@ export default async function ProductSheetPage({
           rows={supplierRows}
           suppliers={suppliers}
           done={typeof suppliersDone === "string" ? suppliersDone : null}
+        />
+      </section>
+
+      {/* ---- Variações (modelo, tamanho, acabamento): o produto espelha a de referência ---- */}
+      <section className="mt-4">
+        <VariantsCard
+          t={t}
+          productId={product.id}
+          variants={variants}
+          done={typeof variantsDone === "string" ? variantsDone : null}
+          errorText={errorFrom === "variants" ? errorText : null}
         />
       </section>
 

@@ -9,6 +9,7 @@ import {
   ORDER_EXTRA_DEFAULTS,
   PAYMENT_EXTRA_DEFAULTS,
   type Order,
+  type ProductVariant,
   type Quote,
   type Request,
   type RequestOrigin,
@@ -16,6 +17,16 @@ import {
   type User,
   type RequestSchedule,
 } from "@/lib/db";
+import { variantSnapshot } from "@/lib/variants";
+import {
+  getProductVariant,
+  listProductVariants,
+} from "./product-variants";
+import {
+  completeFromOrderSheet,
+  requestProductName,
+  variantSpecification,
+} from "./variant-sales";
 import {
   ForbiddenError,
   assertWellmix,
@@ -75,11 +86,15 @@ export interface CreateRequestInput {
   schedule?: RequestSchedule | null;
   /** Número já reservado (lote: o mesmo para todos os produtos). */
   number?: number | null;
+  /** Variação escolhida do produto (docs/PRODUCT_VARIANTS.md). */
+  variantId?: string | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
 export interface RequestBatchItem {
   productId: string | null;
+  /** Variação escolhida do produto, quando ele tem variações. */
+  variantId?: string | null;
   productName: string;
   description: string;
   specification: string | null;
@@ -117,6 +132,7 @@ export async function createRequestBatch(
       const request = await createRequest(user, {
         ...base,
         productId: item.productId,
+        variantId: item.variantId ?? null,
         productName: item.productName,
         description: item.description,
         specification: item.specification,
@@ -254,22 +270,47 @@ export async function createRequest(
       input.customerId,
     );
   }
-  // Pedido mínimo do produto do catálogo: conferido antes de gastar número.
-  await assertProductMoq(input.productId, input.quantity, input.unit);
+  // Produto com variações: a variação é obrigatória, do produto e ativa.
+  const variant = await resolveRequestVariant(input.productId, input.variantId);
+  // Pedido mínimo do produto do catálogo (da variação, quando há): conferido
+  // antes de gastar número.
+  await assertProductMoq(
+    input.productId,
+    input.quantity,
+    input.unit,
+    variant?.id ?? null,
+  );
   // Prazo de resposta = SLA da Wellmix (Configurações). O cliente não escolhe;
   // a Wellmix pode ajustar numa solicitação específica.
   const deadline =
     (isWellmix(user) ? input.deadline : null) ||
     quoteSlaDeadline(settings.quoteSlaBusinessDays);
+  // Com variação: nome "Produto · Variação" e especificação da variação quando
+  // quem pediu não escreveu uma (docs/PRODUCT_VARIANTS.md, regra 3).
+  const product =
+    variant && input.productId
+      ? await store.get("products", input.productId)
+      : null;
+  const productName = variant
+    ? requestProductName(
+        input.productName,
+        product?.name ?? input.productName,
+        variant.name,
+      )
+    : input.productName;
+  const specification =
+    (input.specification ?? "").trim() ||
+    (variant ? variantSpecification(variant) : "") ||
+    null;
   const number = input.number ?? (await nextRequestNumber());
   const data = {
     requestedForUserId,
     customerId: input.customerId,
     createdByUserId: user.id,
     productId: input.productId ?? null,
-    productName: input.productName,
+    productName,
     description: input.description,
-    specification: input.specification ?? null,
+    specification,
     quantity: input.quantity,
     unit: input.unit,
     deadline,
@@ -284,6 +325,11 @@ export async function createRequest(
     notes: input.notes ?? null,
     // Só vai ao banco quando há lote (coluna opcional; antes dela existir, nada muda).
     ...(input.groupId ? { groupId: input.groupId } : {}),
+    // Variação escolhida e a cópia dos valores dela (colunas opcionais): só
+    // vão quando há uma.
+    ...(variant
+      ? { variantId: variant.id, variant: variantSnapshot(variant) }
+      : {}),
     // Idem para a programação de entregas (coluna opcional).
     ...(input.schedule ? { schedule: input.schedule } : {}),
   } as const;
@@ -365,13 +411,45 @@ export async function createRequest(
   return request;
 }
 
-/** Pedido mínimo do produto (ficha mestre, senão cadastro), em peças; nulo sem mínimo. */
-export async function productMoq(productId: string): Promise<number | null> {
+/**
+ * Variação da solicitação: produto com variações ativas exige uma
+ * (`variant_required`); a escolhida tem de ser do produto e estar ativa
+ * (`variant_invalid`). Produto sem variações, ou sem produto: nenhuma.
+ */
+async function resolveRequestVariant(
+  productId: string | null | undefined,
+  variantId: string | null | undefined,
+): Promise<ProductVariant | null> {
+  if (!productId) return null;
+  const variants = await listProductVariants(productId);
+  if (!variantId) {
+    if (variants.length) throw new RequestError("variant_required");
+    return null;
+  }
+  const variant = variants.find((v) => v.id === variantId) ?? null;
+  if (!variant) throw new RequestError("variant_invalid");
+  return variant;
+}
+
+/**
+ * Pedido mínimo do produto (variação escolhida, senão ficha mestre, senão
+ * cadastro), em peças; nulo sem mínimo.
+ */
+export async function productMoq(
+  productId: string,
+  variantId?: string | null,
+): Promise<number | null> {
   const product = await getStore().get("products", productId);
   if (!product) return null;
   const { getProductSheet } = await import("./product-sheet");
-  const sheet = await getProductSheet(productId);
-  return effectiveMoq(sheet?.moq, product.moq);
+  const [sheet, variant] = await Promise.all([
+    getProductSheet(productId),
+    variantId ? getProductVariant(variantId) : null,
+  ]);
+  // Variação de outro produto não conta (a criação já recusa; aqui é só o mínimo).
+  const variantMoq =
+    variant && variant.productId === productId ? variant.moq : null;
+  return effectiveMoq(variantMoq, sheet?.moq, product.moq);
 }
 
 /**
@@ -383,9 +461,10 @@ export async function assertProductMoq(
   productId: string | null | undefined,
   quantity: number,
   unit: string,
+  variantId?: string | null,
 ) {
   if (!productId || !isPieceUnit(unit)) return;
-  const moq = await productMoq(productId);
+  const moq = await productMoq(productId, variantId);
   if (moq !== null && quantity < moq) throw new RequestError("below_moq");
 }
 
@@ -932,6 +1011,14 @@ async function createOrderFromRequest(
     quantity: request.quantity,
     unit: request.unit,
     unitPrice: quote.price,
+    // Variação pedida e a cópia dos valores dela (colunas opcionais): só
+    // quando a solicitação tem uma.
+    ...(request.variantId
+      ? {
+          variantId: request.variantId,
+          ...(request.variant ? { variant: request.variant } : {}),
+        }
+      : {}),
   });
   // Condição de pagamento combinada com o fornecedor vale como estava hoje.
   const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
@@ -968,13 +1055,15 @@ async function createOrderFromRequest(
       limit: 1,
     });
     if (orderSheet) {
-      const { completeMasterFromSheet } = await import("./product-sheet");
-      await completeMasterFromSheet(
+      // Item com variação: os valores da ficha vão para a variação e o
+      // produto espelha a de referência; sem variação, para o produto.
+      await completeFromOrderSheet(
         user,
         request.productId,
         orderSheet,
         quote.supplierId,
         "adopt",
+        request.variantId ?? null,
       );
     }
   }
@@ -1117,6 +1206,9 @@ export async function createFollowUpRequest(
   return createRequest(user, {
     customerId: order.customerId,
     productId: item.productId,
+    // Mesma variação do pedido (a cópia dos valores é refeita com a variação
+    // de hoje; desativada, a recompra pede outra).
+    variantId: item.variantId ?? previous?.variantId ?? null,
     productName: item.name,
     description:
       previous?.description ??

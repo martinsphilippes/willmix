@@ -25,6 +25,8 @@ export async function importProductSheetAction(form: FormData) {
         uploadedFileName: z.string().max(255).nullable(),
         // Link de uma planilha do Google Sheets compartilhada com o link.
         sheetUrl: z.string().max(600).nullable(),
+        // Resultado: um produto com variações (padrão) ou um produto por linha.
+        mode: z.enum(["variants", "products"]),
       })
       .parse({
         lineId: str(form, "lineId"),
@@ -34,6 +36,7 @@ export async function importProductSheetAction(form: FormData) {
         uploadedFileId: str(form, "uploadedFileId") || null,
         uploadedFileName: str(form, "uploadedFileName") || null,
         sheetUrl: str(form, "sheetUrl") || null,
+        mode: str(form, "mode") || "variants",
       });
     const file = form.get("file");
     const { importProductSheet, SheetImportError } =
@@ -51,6 +54,7 @@ export async function importProductSheetAction(form: FormData) {
       namePrefix: parsed.namePrefix,
       defaultCurrency: parsed.currency,
       sheet: parsed.sheet,
+      mode: parsed.mode,
     });
     return `/app/products/import/${result.batchId}`;
   });

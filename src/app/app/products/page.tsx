@@ -5,6 +5,8 @@ import { getStore } from "@/lib/db";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
 import { listLinksForProducts } from "@/lib/services/product-suppliers";
+import { variantsByProduct } from "@/lib/services/product-variants";
+import { referenceVariant } from "@/lib/variants";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
@@ -75,6 +77,8 @@ export default async function ProductsPage({
     id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
   // Outros fornecedores de cada produto (além do principal), numa consulta.
   const links = await listLinksForProducts(products.map((p) => p.id));
+  // Variações ativas (uma consulta): preço "a partir de" e selo "N variações".
+  const variants = await variantsByProduct(products.map((p) => p.id));
   const otherSuppliers = (p: { id: string; supplierId: string | null }) =>
     new Set(
       links
@@ -137,6 +141,18 @@ export default async function ProductsPage({
                       >
                         {p.name}
                       </TextLink>
+                      {(variants.get(p.id)?.length ?? 0) > 0 ? (
+                        <span
+                          className="ml-1.5 align-middle"
+                          data-product-variants={variants.get(p.id)!.length}
+                        >
+                          <Badge tone="brand">
+                            {t("productVariants.count", {
+                              n: variants.get(p.id)!.length,
+                            })}
+                          </Badge>
+                        </span>
+                      ) : null}
                     </Td>
                     <Td>
                       <span className="font-mono text-xs text-zinc-700">
@@ -158,9 +174,22 @@ export default async function ProductsPage({
                       ) : null}
                     </Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">
-                      {p.price !== null
-                        ? formatMoney(p.price, p.currency, t)
-                        : "—"}
+                      {/* Com variações: o preço é o da variação de referência, "a partir de". */}
+                      {(() => {
+                        const list = variants.get(p.id) ?? [];
+                        const ref = referenceVariant(list);
+                        if (ref && ref.price !== null)
+                          return (
+                            <span data-product-price-from>
+                              {t("productVariants.from", {
+                                price: formatMoney(ref.price, ref.currency, t),
+                              })}
+                            </span>
+                          );
+                        return p.price !== null
+                          ? formatMoney(p.price, p.currency, t)
+                          : "—";
+                      })()}
                     </Td>
                     <Td className="text-right tabular-nums">{p.moq ?? "—"}</Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">

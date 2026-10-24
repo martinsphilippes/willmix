@@ -11,7 +11,11 @@ import {
 
 type ProductFieldsProps = Omit<
   React.ComponentProps<typeof RequestProductFields>,
-  "prefix" | "presetProductId" | "defaultNotInCatalog" | "suggestions"
+  | "prefix"
+  | "presetProductId"
+  | "presetVariantId"
+  | "defaultNotInCatalog"
+  | "suggestions"
 >;
 
 /**
@@ -22,6 +26,7 @@ type ProductFieldsProps = Omit<
  */
 export function RequestItems({
   presetProductId,
+  presetVariantId = "",
   presetQuantity,
   defaultNotInCatalog,
   suggestions,
@@ -29,6 +34,8 @@ export function RequestItems({
   ...fields
 }: ProductFieldsProps & {
   presetProductId: string;
+  /** Variação pré-escolhida (?variantId=) da primeira linha. */
+  presetVariantId?: string;
   presetQuantity: string;
   defaultNotInCatalog: boolean;
   suggestions: React.ComponentProps<typeof RequestProductFields>["suggestions"];
@@ -51,25 +58,33 @@ export function RequestItems({
 }) {
   const [rows, setRows] = useState<number[]>([0]);
   const [next, setNext] = useState(1);
-  // Produto escolhido por linha: o pedido mínimo dele vale para a quantidade.
-  const [product, setProduct] = useState<Record<number, string>>({
-    0: presetProductId,
-  });
-  const moqOf = (id: string | undefined) =>
-    (id && fields.products.find((p) => p.id === id)?.moq) || null;
+  // Produto (e variação) escolhidos por linha: o pedido mínimo deles vale
+  // para a quantidade; com variação escolhida, o mínimo é o dela.
+  const [product, setProduct] = useState<
+    Record<number, { id: string; variantId: string }>
+  >({ 0: { id: presetProductId, variantId: presetVariantId } });
+  const moqOf = (chosen: { id: string; variantId: string } | undefined) => {
+    if (!chosen?.id) return null;
+    const p = fields.products.find((x) => x.id === chosen.id);
+    if (!p) return null;
+    const v = chosen.variantId
+      ? p.variants.find((x) => x.id === chosen.variantId)
+      : null;
+    return (v ? v.moq : p.moq) || null;
+  };
   // Quantidade e unidade por linha (a programação de entregas soma na quantidade).
   // Produto com pedido mínimo já começa nele (nunca abaixo).
   const [qty, setQty] = useState<Record<number, string>>(() => {
-    const moq = moqOf(presetProductId);
+    const moq = moqOf({ id: presetProductId, variantId: presetVariantId });
     const preset = Number(presetQuantity.replace(",", ".")) || 0;
     return { 0: moq && preset < moq ? String(moq) : presetQuantity };
   });
   const [unit, setUnit] = useState<Record<number, string>>({ 0: "un" });
 
-  /** Produto da linha mudou: quantidade vazia ou abaixo do mínimo sobe para ele. */
-  function onProductChange(index: number, id: string) {
-    setProduct((p) => ({ ...p, [index]: id }));
-    const moq = moqOf(id);
+  /** Produto ou variação da linha mudou: quantidade vazia ou abaixo do mínimo sobe para ele. */
+  function onProductChange(index: number, id: string, variantId: string) {
+    setProduct((p) => ({ ...p, [index]: { id, variantId } }));
+    const moq = moqOf({ id, variantId });
     if (!moq) return;
     setQty((q) => {
       const current = Number((q[index] ?? "").replace(",", ".")) || 0;
@@ -147,9 +162,12 @@ export function RequestItems({
                 labels={labels}
                 prefix={prefix}
                 presetProductId={first ? presetProductId : ""}
+                presetVariantId={first ? presetVariantId : ""}
                 defaultNotInCatalog={first ? defaultNotInCatalog : false}
                 suggestions={first ? suggestions : {}}
-                onProductChange={(id) => onProductChange(index, id)}
+                onProductChange={(id, variantId) =>
+                  onProductChange(index, id, variantId)
+                }
               />
               <label className="block min-w-0 space-y-1">
                 <span className="block text-xs font-medium leading-5 text-zinc-700">

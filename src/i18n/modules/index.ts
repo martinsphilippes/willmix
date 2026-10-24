@@ -66,8 +66,10 @@ import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
+import * as productVariants from "./product-variants";
 
 export const modulesPt = {
+  ...productVariants.pt,
   ...productSheetImport.pt,
   ...notifications.pt,
   ...sourcing.pt,
@@ -133,6 +135,7 @@ export const modulesPt = {
   ...freightTariff.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
+  ...productVariants.en,
   ...productSheetImport.en,
   ...notifications.en,
   ...sourcing.en,
@@ -198,6 +201,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
+  ...productVariants.zh,
   ...productSheetImport.zh,
   ...notifications.zh,
   ...sourcing.zh,

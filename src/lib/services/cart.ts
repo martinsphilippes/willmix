@@ -1,26 +1,46 @@
 import "server-only";
 
 import type { Translate } from "@/i18n";
-import { getStore, type Product, type Request, type User } from "@/lib/db";
+import {
+  getStore,
+  type CartItem,
+  type Product,
+  type ProductVariant,
+  type Request,
+  type User,
+} from "@/lib/db";
 import { ForbiddenError } from "@/lib/auth/permissions";
+import { effectiveMoq } from "@/lib/moq";
 import { audit } from "./audit";
 import { getProductSheet } from "./product-sheet";
 import type { CatalogEstimate } from "./catalog-price-calc";
 import {
   canBuyOnStorefront,
   estimateForQuantities,
+  lineKey,
   specificationLines,
+  variantSpecificationLines,
 } from "./catalog-explore";
 import { catalogShowcasePhotos } from "./documents";
+import {
+  getProductVariant,
+  listProductVariants,
+  variantsByProduct,
+} from "./product-variants";
 import { createRequestBatch, type RequestBatchItem } from "./requests";
 
 /*
- * Carrinho da vitrine: um item por produto, por login do cliente. Só o
- * cliente mexe no próprio carrinho (a Wellmix vê a vitrine, mas não compra
- * por ele aqui), e só com "Cliente pode criar solicitação" ligado. Enviar o
- * carrinho cria uma solicitação de orçamento por produto, todas no mesmo
- * lote, pelo mesmo caminho da tela de solicitação; os itens enviados saem
- * do carrinho.
+ * Carrinho da vitrine: um item por produto (e por variação, no produto com
+ * variações), por login do cliente. Só o cliente mexe no próprio carrinho (a
+ * Wellmix vê a vitrine, mas não compra por ele aqui), e só com "Cliente pode
+ * criar solicitação" ligado. Enviar o carrinho cria uma solicitação de
+ * orçamento por item, todas no mesmo lote, pelo mesmo caminho da tela de
+ * solicitação; os itens enviados saem do carrinho.
+ *
+ * Variações (docs/PRODUCT_VARIANTS.md, regra 1): produto com variações ativas
+ * exige a variação (`cart_variant_required`), que tem de ser dele e estar
+ * ativa (`cart_variant_invalid`); o mínimo é o da variação; a solicitação
+ * nasce com "Produto · Variação" no nome e o `variantId`.
  */
 
 /** Teto de unidades por item (evita número absurdo digitado por engano). */
@@ -52,6 +72,14 @@ export interface CartLine {
   subtotal: number | null;
   /** Produto saiu do catálogo depois de entrar no carrinho. */
   unavailable: boolean;
+  /** Variação escolhida (produto com variações); nula nas linhas sem variação. */
+  variantId: string | null;
+  variantName: string | null;
+  /**
+   * A variação saiu ou foi desativada (ou o produto ganhou variações depois
+   * e a linha não tem uma): a tela avisa e o envio deixa a linha de fora.
+   */
+  variantUnavailable: boolean;
 }
 
 export interface CartView {
@@ -80,13 +108,50 @@ function validQuantity(quantity: number): number {
 
 /**
  * O pedido mínimo vale: abaixo dele, não entra (a tela já não deixa). É o
- * mesmo mínimo que a vitrine mostra: o da ficha mestre do produto, senão o
- * do cadastro (a regra de `pricingData` em catalog-explore).
+ * mesmo mínimo que a vitrine mostra: o da variação escolhida, senão o da
+ * ficha mestre do produto, senão o do cadastro (`effectiveMoq`).
  */
-async function assertMoq(product: Pick<Product, "id" | "moq">, quantity: number) {
+async function assertMoq(
+  product: Pick<Product, "id" | "moq">,
+  quantity: number,
+  variant: Pick<ProductVariant, "moq"> | null,
+) {
   const sheet = await getProductSheet(product.id);
-  const moq = sheet?.moq ?? product.moq;
-  if (moq && moq > 0 && quantity < moq) throw new Error("cart_below_moq");
+  const moq = effectiveMoq(variant?.moq, sheet?.moq, product.moq);
+  if (moq !== null && quantity < moq) throw new Error("cart_below_moq");
+}
+
+/**
+ * Variação escolhida para um produto: obrigatória quando ele tem variações
+ * ativas, e tem de ser uma delas. Produto sem variações não aceita nenhuma.
+ */
+async function resolveVariant(
+  productId: string,
+  variantId: string | null | undefined,
+): Promise<ProductVariant | null> {
+  const variants = await listProductVariants(productId);
+  if (!variantId) {
+    if (variants.length) throw new Error("cart_variant_required");
+    return null;
+  }
+  const variant = variants.find((v) => v.id === variantId);
+  if (!variant) throw new Error("cart_variant_invalid");
+  return variant;
+}
+
+/**
+ * Variação de uma linha já no carrinho, entre as ativas do produto: `ok`
+ * falso quando a linha precisa de variação e não tem uma válida (saiu, foi
+ * desativada, ou o produto ganhou variações depois).
+ */
+function lineVariant(
+  item: Pick<CartItem, "productId" | "variantId">,
+  variants: Map<string, ProductVariant[]>,
+): { ok: boolean; variant: ProductVariant | null } {
+  const list = variants.get(item.productId) ?? [];
+  if (!item.variantId) return { ok: list.length === 0, variant: null };
+  const variant = list.find((v) => v.id === item.variantId) ?? null;
+  return { ok: !!variant, variant };
 }
 
 const cleanText = (text: string | null | undefined, max: number) => {
@@ -117,15 +182,22 @@ export async function addToCart(
   productId: string,
   quantity: number,
   notes?: string | null,
+  variantId?: string | null,
 ): Promise<void> {
   const customerId = await assertBuyer(user);
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product?.active) throw new Error("cart_product_unavailable");
+  const variant = await resolveVariant(productId, variantId);
   const q = validQuantity(quantity);
-  await assertMoq(product, q);
+  await assertMoq(product, q, variant);
   const lines = await ownLines(user);
-  const existing = lines.find((l) => l.productId === productId);
+  // Junta pela regra produto + variação (não pelo índice do banco).
+  const existing = lines.find(
+    (l) =>
+      l.productId === productId &&
+      (l.variantId ?? null) === (variant?.id ?? null),
+  );
   const note = cleanText(notes, CART_NOTES_MAX);
   if (existing) {
     // Adicionar de novo soma (como nas lojas); a observação nova substitui.
@@ -142,6 +214,8 @@ export async function addToCart(
     productId,
     quantity: q,
     notes: note,
+    // Coluna nova: só vai quando há variação (esquema antigo continua aceitando).
+    ...(variant ? { variantId: variant.id } : {}),
   });
 }
 
@@ -161,10 +235,16 @@ export async function updateCartItem(
 ): Promise<void> {
   const line = await ownLine(user, itemId);
   const q = validQuantity(quantity);
-  // Mudou a quantidade: respeita o mínimo (item antigo abaixo dele só sobe).
+  // Mudou a quantidade: respeita o mínimo (item antigo abaixo dele só sobe),
+  // o da variação da linha quando ela ainda existe.
   if (q !== line.quantity) {
     const product = await getStore().get("products", line.productId);
-    if (product) await assertMoq(product, q);
+    if (product) {
+      const variant = line.variantId
+        ? await getProductVariant(line.variantId)
+        : null;
+      await assertMoq(product, q, variant?.active ? variant : null);
+    }
   }
   await getStore().update("cart_items", line.id, {
     quantity: q,
@@ -192,30 +272,41 @@ export async function cartView(user: User): Promise<CartView> {
   const items = await ownLines(user);
   if (!items.length) return empty;
   const ids = [...new Set(items.map((i) => i.productId))];
-  const [products, photos, estimates] = await Promise.all([
+  const [products, photos, variants, estimates] = await Promise.all([
     store.list("products", { filter: { id: ids } }),
     catalogShowcasePhotos(ids),
+    variantsByProduct(ids),
     estimateForQuantities(
       user,
-      items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      items.map((i) => ({
+        productId: i.productId,
+        variantId: i.variantId ?? null,
+        quantity: i.quantity,
+      })),
     ),
   ]);
   const lines: CartLine[] = items.map((item) => {
     const product = products.find((p) => p.id === item.productId);
     const unavailable = !product?.active;
-    const priced = estimates.get(item.productId);
+    const { ok: variantOk, variant } = lineVariant(item, variants);
+    const priced = estimates.get(lineKey(item.productId, item.variantId));
     const estimate: CatalogEstimate =
-      unavailable || !priced ? { ok: false, missing: [] } : priced.estimate;
-    // Pedido mínimo da mesma fonte da vitrine (ficha mestre ou cadastro).
+      unavailable || !variantOk || !priced
+        ? { ok: false, missing: [] }
+        : priced.estimate;
+    // Pedido mínimo da mesma fonte da vitrine (variação, ficha mestre ou cadastro).
     const moq = priced?.moq ?? product?.moq ?? null;
     return {
       id: item.id,
       productId: item.productId,
       name: product?.name ?? "—",
       category: product?.category ?? null,
+      // A foto da variação, quando tem; senão a principal do produto.
       photo: unavailable
         ? null
-        : (photos.get(item.productId)?.[0]?.documentId ?? null),
+        : (variant?.photoDocumentId ??
+          photos.get(item.productId)?.[0]?.documentId ??
+          null),
       quantity: item.quantity,
       notes: item.notes,
       moq,
@@ -227,6 +318,9 @@ export async function cartView(user: User): Promise<CartView> {
           ? estimate.totalBrl
           : null,
       unavailable,
+      variantId: item.variantId ?? null,
+      variantName: variant?.name ?? null,
+      variantUnavailable: !unavailable && !variantOk,
     };
   });
   const estimatedTotal =
@@ -240,9 +334,15 @@ export async function cartView(user: User): Promise<CartView> {
   };
 }
 
-/** Solicitação de orçamento de um produto do catálogo (vitrine). */
+/**
+ * Solicitação de orçamento de um produto do catálogo (vitrine). Com variação,
+ * o nome vira "Produto · Variação" (cortado em 160) e a especificação traz os
+ * dados dela em vez dos do cadastro (que espelham a variação de referência);
+ * o texto livre do cadastro, quando existe, continua.
+ */
 function requestItemFor(
   product: Product,
+  variant: ProductVariant | null,
   quantity: number,
   notes: string | null,
   t: Translate,
@@ -255,16 +355,28 @@ function requestItemFor(
     .join("\n");
   const spec = [
     product.category ? `${t("catalog.category")}: ${product.category}` : null,
-    ...specificationLines(product, t),
+    ...(variant
+      ? [
+          `${t("productVariants.col.name")}: ${variant.name}`,
+          ...variantSpecificationLines(variant, t),
+          ...(product.specification?.trim()
+            ? specificationLines(product, t)
+            : []),
+        ]
+      : specificationLines(product, t)),
   ].filter(Boolean);
   return {
     productId: product.id,
-    productName: product.name.slice(0, 160),
+    productName: (variant
+      ? `${product.name} · ${variant.name}`
+      : product.name
+    ).slice(0, 160),
     description,
     specification: spec.length ? spec.join("\n") : null,
     quantity,
     unit: "un",
     sourcingDemand: false,
+    ...(variant ? { variantId: variant.id } : {}),
   };
 }
 
@@ -287,9 +399,10 @@ function checkoutNotes(
 }
 
 /**
- * Envia o carrinho: cada produto vira uma solicitação de orçamento (lote com
- * 2 ou mais), com a quantidade e a personalização do item. Produtos que
- * saíram do catálogo ficam de fora (e continuam no carrinho, avisados).
+ * Envia o carrinho: cada item (produto + variação) vira uma solicitação de
+ * orçamento (lote com 2 ou mais), com a quantidade e a personalização do
+ * item. Produtos que saíram do catálogo e itens cuja variação sumiu ficam de
+ * fora (e continuam no carrinho, avisados).
  */
 export async function checkoutCart(
   user: User,
@@ -300,11 +413,15 @@ export async function checkoutCart(
   const store = getStore();
   const items = await ownLines(user);
   if (!items.length) throw new Error("cart_empty");
-  const products = await store.list("products", {
-    filter: { id: [...new Set(items.map((i) => i.productId))] },
-  });
+  const ids = [...new Set(items.map((i) => i.productId))];
+  const [products, variants] = await Promise.all([
+    store.list("products", { filter: { id: ids } }),
+    variantsByProduct(ids),
+  ]);
   const sendable = items.filter(
-    (i) => products.find((p) => p.id === i.productId)?.active,
+    (i) =>
+      products.find((p) => p.id === i.productId)?.active &&
+      lineVariant(i, variants).ok,
   );
   if (!sendable.length) throw new Error("cart_product_unavailable");
   const created = await createRequestBatch(
@@ -319,6 +436,7 @@ export async function checkoutCart(
     sendable.map((item) =>
       requestItemFor(
         products.find((p) => p.id === item.productId)!,
+        lineVariant(item, variants).variant,
         item.quantity,
         item.notes,
         t,
@@ -340,9 +458,9 @@ export async function checkoutCart(
 }
 
 /**
- * "Solicitar orçamento agora" na página do produto: só este produto, com a
- * quantidade e a personalização da tela, sem passar pelo carrinho (o que
- * já estava no carrinho fica lá).
+ * "Solicitar orçamento agora" na página do produto: só este produto (e a
+ * variação escolhida), com a quantidade e a personalização da tela, sem
+ * passar pelo carrinho (o que já estava no carrinho fica lá).
  */
 export async function requestProductNow(
   user: User,
@@ -350,17 +468,20 @@ export async function requestProductNow(
   quantity: number,
   notes: string | null,
   t: Translate,
+  variantId?: string | null,
 ): Promise<Request> {
   const customerId = await assertBuyer(user);
   const product = await getStore().get("products", productId);
   if (!product?.active) throw new Error("cart_product_unavailable");
-  await assertMoq(product, validQuantity(quantity));
+  const variant = await resolveVariant(productId, variantId);
+  await assertMoq(product, validQuantity(quantity), variant);
   const [created] = await createRequestBatch(
     user,
     { customerId, deadline: null, notes: null, requestedForUserId: null },
     [
       requestItemFor(
         product,
+        variant,
         validQuantity(quantity),
         cleanText(notes, CART_NOTES_MAX),
         t,
@@ -372,7 +493,9 @@ export async function requestProductNow(
     "cart.request_now",
     "request",
     created.id,
-    `Orçamento pedido direto da vitrine: ${product.name}`,
+    `Orçamento pedido direto da vitrine: ${product.name}${
+      variant ? ` · ${variant.name}` : ""
+    }`,
   );
   return created;
 }

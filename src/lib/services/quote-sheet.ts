@@ -23,6 +23,7 @@ import {
   type SheetRecords,
 } from "./sheet-records";
 import { productSupplierLink } from "./product-suppliers";
+import { commercialInputFromVariant } from "./variant-sales";
 import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
@@ -117,20 +118,29 @@ async function prefillQuoteBase(
   // pode ter os dados da compra com o vencedor; quem não salvou ficha vê só
   // os próprios dados (isolamento entre fornecedores).
   const open = quote.status === "invited" || quote.status === "answered";
+  // Variação pedida: a ficha nasce com os dados físicos dela (dentro da
+  // ficha mestre); preço, MOQ e código só para o fornecedor de referência.
+  const variant = request.variant ?? null;
   const [product, supplier, master, link] = await Promise.all([
     request.productId ? store.get("products", request.productId) : null,
     store.get("parties", quote.supplierId),
-    open ? masterSheetInput(request.productId) : null,
+    open ? masterSheetInput(request.productId, variant) : null,
     productSupplierLink(request.productId, quote.supplierId),
   ]);
   // Dados comerciais só do próprio fornecedor: o vínculo dele (última
-  // cotação) ou, se ele é o principal, o preço e o MOQ do produto. Nunca os
-  // de outro fornecedor (isolamento entre fornecedores).
+  // cotação) ou, se ele é o principal, o preço e o MOQ do produto (da
+  // variação pedida, quando há). Nunca os de outro fornecedor (isolamento
+  // entre fornecedores).
   const own = productOfSupplier(supplier, product);
-  const ownPrice = link?.price ?? (own ? (product?.price ?? null) : null);
+  const ownVariant = own && variant ? commercialInputFromVariant(variant) : {};
+  const ownPrice =
+    ownVariant.price ?? link?.price ?? (own ? (product?.price ?? null) : null);
   const ownCurrency =
-    link?.currency ?? (own ? (product?.currency ?? null) : null);
-  const ownMoq = link?.moq ?? (own ? (product?.moq ?? null) : null);
+    (ownVariant.currency as string | undefined) ??
+    link?.currency ??
+    (own ? (product?.currency ?? null) : null);
+  const ownMoq =
+    ownVariant.moq ?? link?.moq ?? (own ? (product?.moq ?? null) : null);
   // Programação de entregas pedida pelo cliente vira as programações da ficha.
   const requestLots = supplierLot1(
     scheduleToLots(
@@ -140,11 +150,17 @@ async function prefillQuoteBase(
   );
   // Ficha mestre do produto (cadastro) preenche tudo; o fornecedor e o preço
   // desta cotação prevalecem.
-  // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece.
-  const records = recordFields(
-    supplier,
-    productForSupplier(product, quote.supplierId, link),
-  );
+  // Bloco Fornecedor vem dos cadastros (fornecedor e produto) e prevalece;
+  // o código de fábrica da variação, quando o fornecedor é o de referência.
+  const records = {
+    ...recordFields(
+      supplier,
+      productForSupplier(product, quote.supplierId, link),
+    ),
+    ...(ownVariant.factoryItemCode
+      ? { factoryItemCode: ownVariant.factoryItemCode }
+      : {}),
+  };
   if (!open)
     return {
       productId: product?.id ?? null,

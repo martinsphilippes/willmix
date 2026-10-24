@@ -621,6 +621,12 @@ export interface Request extends BaseRow {
    * lote têm o mesmo número. Nulo nas antigas e antes do esquema publicado.
    */
   number?: number | null;
+  /**
+   * Variação escolhida de um produto com variações e a cópia dos valores dela
+   * (preço, MOQ, caixa, pesos, medidas, CBM…). Nulos sem variação.
+   */
+  variantId?: string | null;
+  variant?: VariantSnapshot | null;
 }
 
 export interface Quote extends BaseRow {
@@ -695,6 +701,9 @@ export interface OrderItem extends BaseRow {
   quantity: number;
   unit: string;
   unitPrice: number | null;
+  /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
+  variantId?: string | null;
+  variant?: VariantSnapshot | null;
 }
 
 export interface Stage extends BaseRow {
@@ -894,6 +903,8 @@ export interface ProductPhoto extends BaseRow {
   /** Imagem comercial derivada de qual original. */
   derivedFromPhotoId: string | null;
   isPrimary: boolean;
+  /** Foto de uma variação do produto (a da coluna PHOTO da planilha); nulo nas demais. */
+  variantId?: string | null;
 }
 
 /** Evidência de peso ou medida: valor informado, valor medido, foto, quem e quando. */
@@ -948,6 +959,8 @@ export interface PurchaseSnapshot extends BaseRow {
   note: string | null;
   createdByUserId: string;
   ncm: string | null;
+  /** Variação comprada (os valores acima vêm dela quando há uma). */
+  variantId?: string | null;
 }
 
 export interface PurchaseSchedule extends BaseRow {
@@ -1418,6 +1431,86 @@ export interface CartItem extends BaseRow {
   quantity: number;
   /** Personalização pedida pelo cliente (cor, logo, embalagem...). */
   notes: string | null;
+  /** Variação escolhida (produto com variações); nulo nos itens antigos. */
+  variantId?: string | null;
+}
+
+/**
+ * Variação de um produto do catálogo (modelo, tamanho, acabamento): preço,
+ * MOQ, caixa, pesos, medidas, CBM, cores, material, embalagem, código de
+ * fábrica e foto próprios. Escolhida na solicitação, no carrinho e no pedido;
+ * os valores viajam como cópia (`VariantSnapshot`). As colunas do produto e a
+ * ficha mestre espelham a variação de referência (menor preço). Desativar em
+ * vez de apagar. Ver docs/PRODUCT_VARIANTS.md.
+ */
+export interface ProductVariant extends BaseRow {
+  productId: string;
+  /** "GRECIE 4X6 / 10 X 15": descrição + tamanho, ou a coluna NAME da planilha. */
+  name: string;
+  /**
+   * Chave normalizada (código de fábrica + nome, minúsculas, sem acentos nem
+   * espaços repetidos) para a reimportação achar a mesma variação; única por
+   * produto.
+   */
+  key: string;
+  /** Ordem da planilha (e da lista). */
+  sortOrder: number | null;
+  active: boolean;
+  /** SKU/código do item na fábrica. */
+  factoryItemCode: string | null;
+  /** Texto do tamanho ("8X10 / 20X25", "A4"). */
+  sizeText: string | null;
+  /** Preço do fornecedor de referência. */
+  price: number | null;
+  /** USD/CNY/BRL/EUR (convenção do produto; a ficha usa RMB). */
+  currency: string | null;
+  moq: number | null;
+  masterBoxQty: number | null;
+  innerBoxQty: number | null;
+  /** Pesos por peça. */
+  netWeightKg: number | null;
+  grossWeightKg: number | null;
+  /** Medidas da peça (cm). */
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  /** CBM por caixa master. */
+  cbm: number | null;
+  /** Cores juntas ("White / Gray / bege"). */
+  colorAssortment: string | null;
+  material: string | null;
+  packageType: string | null;
+  capacityMl: number | null;
+  notes: string | null;
+  /** Foto da variação (documento); nulo sem foto. */
+  photoDocumentId: string | null;
+  /** Lote da importação que criou/atualizou; nulo quando feita à mão. */
+  importBatchId: string | null;
+}
+
+/**
+ * Cópia dos valores da variação no momento da solicitação/pedido (como o
+ * resto da ficha): a variação pode mudar depois sem alterar o que foi pedido.
+ * Montada por `variantSnapshot` em src/lib/variants.ts.
+ */
+export interface VariantSnapshot {
+  id: string;
+  name: string;
+  factoryItemCode: string | null;
+  price: number | null;
+  currency: string | null;
+  moq: number | null;
+  masterBoxQty: number | null;
+  innerBoxQty: number | null;
+  netWeightKg: number | null;
+  grossWeightKg: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  cbm: number | null;
+  colorAssortment: string | null;
+  material: string | null;
+  packageType: string | null;
 }
 
 /**
@@ -1558,6 +1651,7 @@ export interface Tables {
   manufacturer_cards: ManufacturerCard;
   cart_items: CartItem;
   freight_tariffs: FreightTariff;
+  product_variants: ProductVariant;
 }
 export type TableName = keyof Tables;
 
@@ -1587,6 +1681,12 @@ export interface IndexDef {
   key: string;
   type: "key" | "unique";
   columns: string[];
+  /**
+   * Chaves de índices antigos que este substitui: o publicador
+   * (scripts/appwrite-push.ts) apaga só estes antes de criar o novo; nunca
+   * outros. Ex.: `user_product_unique` → `user_product_variant_unique`.
+   */
+  drops?: string[];
 }
 
 export interface TableDef {
@@ -1750,6 +1850,8 @@ export const TABLES: Record<TableName, TableDef> = {
       groupId: id(false),
       schedule: json(),
       number: int(),
+      variantId: id(false),
+      variant: json(),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -1832,6 +1934,8 @@ export const TABLES: Record<TableName, TableDef> = {
       quantity: float(true),
       unit: str(20, true),
       unitPrice: float(),
+      variantId: id(false),
+      variant: json(),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
@@ -2076,11 +2180,13 @@ export const TABLES: Record<TableName, TableDef> = {
       takenByUserId: id(false),
       derivedFromPhotoId: id(false),
       isPrimary: bool(),
+      variantId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
       { key: "by_item", type: "key", columns: ["sourcingItemId"] },
       { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_variant", type: "key", columns: ["variantId"] },
     ],
   },
   measurements: {
@@ -2138,6 +2244,7 @@ export const TABLES: Record<TableName, TableDef> = {
       note: text(),
       createdByUserId: id(),
       ncm: str(10),
+      variantId: id(false),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
@@ -2597,12 +2704,18 @@ export const TABLES: Record<TableName, TableDef> = {
       productId: id(),
       quantity: int(true),
       notes: str(500),
+      variantId: id(false),
     },
     indexes: [
+      // Um item por produto E variação (duas variações do mesmo produto cabem
+      // no carrinho). Substitui `user_product_unique` (userId+productId), que
+      // o publicador apaga antes de criar este; o serviço continua juntando no
+      // mesmo item pela regra produto + variação, sem depender do índice.
       {
-        key: "user_product_unique",
+        key: "user_product_variant_unique",
         type: "unique",
-        columns: ["userId", "productId"],
+        columns: ["userId", "productId", "variantId"],
+        drops: ["user_product_unique"],
       },
     ],
   },
@@ -2625,6 +2738,44 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_line", type: "key", columns: ["shippingLineId", "status"] },
+    ],
+  },
+  product_variants: {
+    label: "Variações do produto",
+    columns: {
+      productId: id(),
+      name: str(160, true),
+      key: str(80, true),
+      sortOrder: int(),
+      active: bool(),
+      factoryItemCode: str(60),
+      sizeText: str(60),
+      price: float(),
+      currency: str(3),
+      moq: int(),
+      masterBoxQty: int(),
+      innerBoxQty: int(),
+      netWeightKg: float(),
+      grossWeightKg: float(),
+      lengthCm: float(),
+      widthCm: float(),
+      heightCm: float(),
+      cbm: float(),
+      colorAssortment: str(200),
+      material: str(200),
+      packageType: str(120),
+      capacityMl: float(),
+      notes: text(),
+      photoDocumentId: id(false),
+      importBatchId: id(false),
+    },
+    indexes: [
+      { key: "by_product", type: "key", columns: ["productId"] },
+      {
+        key: "product_key_unique",
+        type: "unique",
+        columns: ["productId", "key"],
+      },
     ],
   },
 };

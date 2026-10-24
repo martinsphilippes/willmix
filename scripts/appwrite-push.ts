@@ -173,6 +173,37 @@ async function waitColumns(tableId: TableName) {
   throw new Error(`${tableId}: colunas ainda em processamento`);
 }
 
+/**
+ * Índice substituído (`drops` no esquema, ex.: o único do carrinho que ganhou
+ * a variação): apaga só os listados e espera sumirem antes de criar o novo.
+ * Nenhum outro índice é tocado.
+ */
+async function dropReplacedIndexes(tableId: TableName, keys: string[]) {
+  const current = new Set(
+    (await tables.listIndexes({ databaseId, tableId })).indexes.map(
+      (i) => i.key,
+    ),
+  );
+  const toDrop = keys.filter((k) => current.has(k));
+  for (const key of toDrop) {
+    try {
+      await tables.deleteIndex({ databaseId, tableId, key });
+      console.log(`  ${tableId}: índice ${key} removido (substituído)`);
+    } catch (e) {
+      if (!isNotFound(e)) throw e;
+    }
+  }
+  if (!toDrop.length) return;
+  for (let i = 0; i < 60; i++) {
+    const left = (await tables.listIndexes({ databaseId, tableId })).indexes
+      .map((idx) => idx.key)
+      .filter((k) => toDrop.includes(k));
+    if (left.length === 0) return;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  throw new Error(`${tableId}: índices ${toDrop.join(", ")} ainda em remoção`);
+}
+
 async function ensureIndexes(tableId: TableName) {
   const def = TABLES[tableId];
   const existing = new Set(
@@ -183,6 +214,7 @@ async function ensureIndexes(tableId: TableName) {
   let created = 0;
   for (const idx of def.indexes ?? []) {
     if (existing.has(idx.key)) continue;
+    if (idx.drops?.length) await dropReplacedIndexes(tableId, idx.drops);
     try {
       await tables.createIndex({
         databaseId,

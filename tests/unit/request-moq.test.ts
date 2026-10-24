@@ -42,11 +42,14 @@ describe("regras puras", () => {
       expect(isPieceUnit(u)).toBe(true);
     for (const u of ["cx", "kg", "m", "caixas", "par"])
       expect(isPieceUnit(u)).toBe(false);
-    expect(effectiveMoq(null, 500)).toBe(500);
-    expect(effectiveMoq(800, 500)).toBe(800);
-    expect(effectiveMoq(0, 500)).toBe(500);
-    expect(effectiveMoq(null, null)).toBeNull();
-    expect(effectiveMoq(-1, 0)).toBeNull();
+    expect(effectiveMoq(null, null, 500)).toBe(500);
+    expect(effectiveMoq(null, 800, 500)).toBe(800);
+    expect(effectiveMoq(null, 0, 500)).toBe(500);
+    expect(effectiveMoq(null, null, null)).toBeNull();
+    expect(effectiveMoq(null, -1, 0)).toBeNull();
+    // A variação vence a ficha mestre, que vence o cadastro.
+    expect(effectiveMoq(300, 800, 500)).toBe(300);
+    expect(effectiveMoq(0, 800, 500)).toBe(800);
   });
 });
 

@@ -92,6 +92,8 @@ const requestBaseSchema = z.object({
 // recusa antes de criar qualquer solicitação do lote.
 const requestItemSchema = z.object({
   productId: z.string().max(64).optional().nullable(),
+  /** Variação escolhida (produto com variações); o serviço confere. */
+  variantId: z.string().max(64).optional().nullable(),
   productName: z.string().min(2).max(160),
   description: z.string().min(2).max(10_000),
   specification: z.string().max(10_000).optional().nullable(),
@@ -119,6 +121,7 @@ export async function createRequestAction(form: FormData) {
       const parsed = requestItemSchema.parse({ ...row, productName });
       items.push({
         productId: parsed.productId ?? null,
+        variantId: parsed.productId ? (parsed.variantId ?? null) : null,
         productName: parsed.productName,
         description: parsed.description,
         specification: parsed.specification ?? null,
