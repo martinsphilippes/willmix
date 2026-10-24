@@ -8,8 +8,7 @@ export const pt = {
     "Suba a planilha da ficha (modelo SUPPLIER INFO): os produtos são cadastrados na hora, com ficha mestre e fotos, e o portal mostra o que falta em cada um.",
   "sheetImport.form.title": "Planilha",
   "sheetImport.file": "Planilha (.xlsx)",
-  "sheetImport.fileHint":
-    "O modelo com as colunas PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL e MOQ. Arquivo .xls antigo: abra no Excel e salve como .xlsx.",
+  "sheetImport.fileHint": "O modelo com as colunas PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL e MOQ. Com fotos a planilha fica grande: o envio é feito direto ao armazenamento (até 50 MB). Arquivo .xls antigo: abra no Excel e salve como .xlsx.",
   "sheetImport.line": "Linha do produto",
   "sheetImport.lineHint": "A planilha não diz a linha: todos os produtos desta importação entram nela.",
   "sheetImport.currency": "Moeda do preço",
@@ -23,16 +22,14 @@ export const pt = {
   "sheetImport.how.title": "Como o portal lê a planilha",
   "sheetImport.how.body":
     "Sem mapear coluna por coluna: o portal reconhece o cabeçalho do modelo (em inglês, português ou chinês).",
-  "sheetImport.how.columns":
-    "Preço, caixa master, inner, pesos, CBM, medidas, embalagem, cor, material, função e MOQ vão para a ficha mestre do produto.",
+  "sheetImport.how.columns": "Preço, caixa master, inner, pesos, CBM, embalagem, cor, material, função e MOQ vão para a ficha mestre do produto; as medidas vão para o cadastro do produto.",
   "sheetImport.how.groups":
     "Cada linha é uma cor; linhas seguidas com o mesmo código, descrição, tamanho e preço viram um produto só, com as cores juntas.",
   "sheetImport.how.photos":
     "A foto da coluna PHOTO vira a foto original do produto e a do cartão vira o cartão do fornecedor.",
   "sheetImport.how.supplier":
     "Fornecedor que ainda não existe é cadastrado com nome, nº da loja e telefone.",
-  "sheetImport.how.missing":
-    "No fim, cada produto mostra o que ainda falta (medidas da caixa, fotos da ficha, NCM…).",
+  "sheetImport.how.missing": "No fim, cada produto mostra o que ainda falta na ficha mestre (medidas da caixa, as outras fotos da ficha…).",
   "sheetImport.previous": "Importações anteriores",
   "sheetImport.previous.empty": "Nenhuma importação de ficha técnica ainda.",
   "sheetImport.previous.line": "{created} criado(s) · {updated} atualizado(s) · {errors} erro(s)",
@@ -59,9 +56,15 @@ export const pt = {
   "sheetImport.error.no_header":
     "Não achei o cabeçalho da ficha (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Confira se é o modelo.",
   "sheetImport.error.no_rows": "A planilha não tem linhas de produto preenchidas.",
-  "sheetImport.error.too_many": "Muitos produtos de uma vez (máximo 300 por planilha).",
+  "sheetImport.error.too_many": "Muitos produtos de uma vez (máximo 80 por planilha): divida a planilha.",
   "sheetImport.error.file_required": "Escolha a planilha.",
   "sheetImport.error.line_required": "Escolha a linha do produto.",
+  "sheetImport.uploading": "Enviando a planilha… {percent}%",
+  "sheetImport.uploadFailed": "Falha no envio da planilha",
+  "sheetImport.uploaded": "Planilha enviada: {name} ({size}). Agora clique em Importar e cadastrar.",
+  "sheetImport.result.failed": "{n} produto(s) com erro: veja o motivo na linha e importe de novo depois de corrigir.",
+  "sheetImport.result.error": "Erro: {code}",
+  "sheetImport.error.too_large": "A planilha é grande demais para ler. Tire o que não é da ficha ou divida.",
 };
 
 export const en = {
@@ -70,8 +73,7 @@ export const en = {
     "Upload the sheet spreadsheet (SUPPLIER INFO template): products are registered at once, with master sheet and photos, and the portal shows what is still missing in each one.",
   "sheetImport.form.title": "Spreadsheet",
   "sheetImport.file": "Spreadsheet (.xlsx)",
-  "sheetImport.fileHint":
-    "The template with the columns PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL and MOQ. Old .xls file: open it in Excel and save as .xlsx.",
+  "sheetImport.fileHint": "The template with the columns PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL and MOQ. With photos the file gets big: it is uploaded straight to storage (up to 50 MB). Old .xls file: open it in Excel and save as .xlsx.",
   "sheetImport.line": "Product line",
   "sheetImport.lineHint": "The sheet does not say the line: every product in this import goes into it.",
   "sheetImport.currency": "Price currency",
@@ -85,16 +87,14 @@ export const en = {
   "sheetImport.how.title": "How the portal reads the sheet",
   "sheetImport.how.body":
     "No column mapping: the portal recognises the template header (in English, Portuguese or Chinese).",
-  "sheetImport.how.columns":
-    "Price, master carton, inner, weights, CBM, size, packaging, colour, material, function and MOQ go to the product's master sheet.",
+  "sheetImport.how.columns": "Price, master carton, inner, weights, CBM, packaging, colour, material, function and MOQ go to the product's master sheet; the size goes to the product record.",
   "sheetImport.how.groups":
     "Each row is a colour; consecutive rows with the same code, description, size and price become one product with the colours together.",
   "sheetImport.how.photos":
     "The picture in the PHOTO column becomes the product's original photo and the card picture becomes the supplier's business card.",
   "sheetImport.how.supplier":
     "A supplier that does not exist yet is registered with name, store number and phone.",
-  "sheetImport.how.missing":
-    "At the end, each product shows what is still missing (carton size, sheet photos, NCM…).",
+  "sheetImport.how.missing": "At the end, each product shows what is still missing in the master sheet (carton size, the other sheet photos…).",
   "sheetImport.previous": "Previous imports",
   "sheetImport.previous.empty": "No technical-sheet import yet.",
   "sheetImport.previous.line": "{created} created · {updated} updated · {errors} error(s)",
@@ -121,9 +121,15 @@ export const en = {
   "sheetImport.error.no_header":
     "The sheet header was not found (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Check that it is the template.",
   "sheetImport.error.no_rows": "The spreadsheet has no filled product rows.",
-  "sheetImport.error.too_many": "Too many products at once (maximum 300 per spreadsheet).",
+  "sheetImport.error.too_many": "Too many products at once (maximum 80 per spreadsheet): split the spreadsheet.",
   "sheetImport.error.file_required": "Choose the spreadsheet.",
   "sheetImport.error.line_required": "Choose the product line.",
+  "sheetImport.uploading": "Uploading the spreadsheet… {percent}%",
+  "sheetImport.uploadFailed": "Spreadsheet upload failed",
+  "sheetImport.uploaded": "Spreadsheet uploaded: {name} ({size}). Now click Import and register.",
+  "sheetImport.result.failed": "{n} product(s) with errors: see the reason on the row and import again after fixing.",
+  "sheetImport.result.error": "Error: {code}",
+  "sheetImport.error.too_large": "The spreadsheet is too big to read. Remove what is not part of the sheet or split it.",
 };
 
 export const zh = {
@@ -132,8 +138,7 @@ export const zh = {
     "上传技术表（SUPPLIER INFO 模板）：产品会立即建档，附带主表和照片，门户会显示每个产品还缺什么。",
   "sheetImport.form.title": "表格",
   "sheetImport.file": "表格（.xlsx）",
-  "sheetImport.fileHint":
-    "包含 PHOTO、DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX、N.W、G.W、CBM、SIZE、COLOR、MATERIAL、MOQ 等列的模板。旧版 .xls：请在 Excel 中另存为 .xlsx。",
+  "sheetImport.fileHint": "包含 PHOTO、DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX、N.W、G.W、CBM、SIZE、COLOR、MATERIAL、MOQ 等列的模板。带照片的表格较大：将直接上传至存储（最大 50 MB）。旧版 .xls：请在 Excel 中另存为 .xlsx。",
   "sheetImport.line": "产品线",
   "sheetImport.lineHint": "表格中没有产品线：本次导入的所有产品都归入所选产品线。",
   "sheetImport.currency": "价格币种",
@@ -145,13 +150,12 @@ export const zh = {
   "sheetImport.pending": "正在读取表格…",
   "sheetImport.how.title": "门户如何读取表格",
   "sheetImport.how.body": "无需逐列映射：门户自动识别模板表头（英文、葡文或中文）。",
-  "sheetImport.how.columns":
-    "价格、外箱装量、内盒、重量、CBM、尺寸、包装、颜色、材质、功能和起订量写入产品主表。",
+  "sheetImport.how.columns": "价格、外箱装量、内盒、重量、CBM、包装、颜色、材质、功能和起订量写入产品主表；尺寸写入产品档案。",
   "sheetImport.how.groups":
     "每行是一种颜色；编码、描述、尺寸和价格相同的连续行合并为一个产品，颜色一并记录。",
   "sheetImport.how.photos": "PHOTO 列的图片成为产品原始照片，名片图片成为供应商名片。",
   "sheetImport.how.supplier": "尚未建档的供应商将按名称、店铺号和电话自动建档。",
-  "sheetImport.how.missing": "最后，每个产品都会显示还缺什么（外箱尺寸、主表照片、NCM 等）。",
+  "sheetImport.how.missing": "最后，每个产品都会显示主表还缺什么（外箱尺寸、主表其他照片等）。",
   "sheetImport.previous": "历史导入",
   "sheetImport.previous.empty": "尚无技术表导入记录。",
   "sheetImport.previous.line": "新建 {created} · 更新 {updated} · 错误 {errors}",
@@ -176,7 +180,13 @@ export const zh = {
   "sheetImport.error.no_header":
     "未找到技术表表头（DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX…）。请确认是否为模板。",
   "sheetImport.error.no_rows": "表格中没有已填写的产品行。",
-  "sheetImport.error.too_many": "一次产品过多（每个表格最多 300 个）。",
+  "sheetImport.error.too_many": "一次产品过多（每个表格最多 80 个）：请拆分表格。",
   "sheetImport.error.file_required": "请选择表格。",
   "sheetImport.error.line_required": "请选择产品线。",
+  "sheetImport.uploading": "正在上传表格… {percent}%",
+  "sheetImport.uploadFailed": "表格上传失败",
+  "sheetImport.uploaded": "表格已上传：{name}（{size}）。现在请点击“导入并建档”。",
+  "sheetImport.result.failed": "{n} 个产品出错：查看该行原因，修正后重新导入。",
+  "sheetImport.result.error": "错误：{code}",
+  "sheetImport.error.too_large": "表格过大无法读取。请删除无关内容或拆分。",
 };

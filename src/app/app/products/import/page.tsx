@@ -20,7 +20,11 @@ import {
   formatDate,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { SheetFileInput } from "@/components/sheet-file-input";
 import { importProductSheetAction } from "../../actions/product-sheet-import";
+
+/** Importar cadastra até 80 produtos numa requisição: tempo maior que o padrão. */
+export const maxDuration = 60;
 
 /*
  * Importar a planilha da ficha técnica: os produtos nascem cadastrados (ficha
@@ -79,13 +83,11 @@ export default async function ProductSheetImportPage({
               label={t("sheetImport.file")}
               hint={t("sheetImport.fileHint")}
             >
-              <input
-                type="file"
-                name="file"
-                required
-                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-800"
-                data-sheet-import-file
+              <SheetFileInput
+                label={t("sheetImport.file")}
+                uploadingLabel={t("sheetImport.uploading")}
+                failedLabel={t("sheetImport.uploadFailed")}
+                chosenLabel={t("sheetImport.uploaded")}
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">

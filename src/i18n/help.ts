@@ -79,7 +79,7 @@ export const helpPt = {
   "help.party.body":
     "Edite os dados do parceiro e crie os usuários que acessam o portal por ele. Fornecedores chineses podem usar o idioma chinês; a senha inicial deve ser trocada pelo usuário.",
   "help.sheetImport.body":
-    "Suba a planilha da ficha técnica (modelo SUPPLIER INFO) e escolha a linha: cada grupo de linhas vira um produto cadastrado com ficha mestre, fornecedor e fotos. No resultado, \"O que falta\" lista o que ainda precisa ser preenchido em cada produto; abra o produto para completar.",
+    "Suba a planilha da ficha técnica (modelo SUPPLIER INFO) e escolha a linha: cada grupo de linhas vira um produto cadastrado com ficha mestre, fornecedor e fotos. No resultado, \"O que falta\" lista o que ainda precisa ser preenchido na ficha mestre de cada produto (medidas da caixa, as outras fotos da ficha); abra o produto para completar.",
   "help.products.body":
     "Produtos pertencem a uma linha. Quando o cliente escolhe um produto na solicitação, o pedido herda o checklist de preparação da linha.",
   "help.lines.body":
@@ -175,7 +175,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.party.body":
     "Edit the partner data and create the users who access the portal for it. Chinese suppliers may use Chinese; the initial password should be changed by the user.",
   "help.sheetImport.body":
-    "Upload the technical-sheet spreadsheet (SUPPLIER INFO template) and pick the line: each group of rows becomes a registered product with master sheet, supplier and photos. In the result, \"Missing\" lists what still needs filling in each product; open the product to complete it.",
+    "Upload the technical-sheet spreadsheet (SUPPLIER INFO template) and pick the line: each group of rows becomes a registered product with master sheet, supplier and photos. In the result, \"Missing\" lists what still needs filling in each product's master sheet (carton size, the other sheet photos); open the product to complete it.",
   "help.products.body":
     "Products belong to a line. When the customer picks a product in the request, the order inherits the line's preparation checklist.",
   "help.lines.body":

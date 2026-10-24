@@ -14,7 +14,7 @@ import {
 } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { uploadDocument } from "./documents";
+import { registerUploadedDocument, uploadDocument } from "./documents";
 import { saveProductSheet } from "./product-sheet";
 import { syncMainSupplierLink } from "./product-suppliers";
 import type { SheetInput } from "./purchase-sheet";
@@ -46,10 +46,21 @@ export class SheetImportError extends Error {}
 /** Entidade do lote em `import_batches` (histórico e evidência do arquivo). */
 export const SHEET_IMPORT_ENTITY = "product_sheets";
 export const MAX_SHEET_ROWS = 2000;
-export const MAX_SHEET_PRODUCTS = 300;
-/** Fotos: cada grupo tem no máximo a foto do produto e o cartão. */
-const MAX_IMAGES = 2 * MAX_SHEET_PRODUCTS + 50;
+/**
+ * Produtos por importação: cada um são ~20 gravações no banco (produto,
+ * ficha, vínculo, fotos, auditoria); mais que isso não cabe no tempo de uma
+ * requisição na Vercel. Planilha maior: dividir.
+ */
+export const MAX_SHEET_PRODUCTS = 80;
+/** Abas examinadas para achar a da ficha. */
+const MAX_SHEETS = 12;
+/** Fotos lidas: só as colunas de foto e cartão; o Excel grava várias âncoras por célula. */
+const MAX_IMAGES = 5000;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGES_TOTAL_BYTES = 120 * 1024 * 1024;
+/** Tetos do que se descompacta do arquivo (proteção contra "zip bomb"). */
+const WORKBOOK_MAX_BYTES = 192 * 1024 * 1024;
+const SHEET_XML_MAX_BYTES = 64 * 1024 * 1024;
 
 export type SheetColumn =
   | ReadingField
@@ -67,8 +78,8 @@ export type SheetColumn =
 
 /**
  * Sinônimos de cabeçalho por coluna (comparados sem acento, sem caixa e só
- * com letras e números). Primeiro vale a igualdade exata; depois, o
- * cabeçalho que começa com o sinônimo ("PRICE U" começa com "PRICE").
+ * com letras e números). Primeiro vale a igualdade exata; depois, regras
+ * especiais (preço, pesos da caixa) e o cabeçalho que começa com o sinônimo.
  */
 const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
   ["photo", ["PHOTO", "FOTO", "PICTURE", "IMAGE", "图片"]],
@@ -115,17 +126,10 @@ const DATA_COLUMNS: SheetColumn[] = [
   "masterCartonQty",
   "moq",
 ];
-/** Colunas numéricas (para saber se a 2ª linha é subcabeçalho ou dado). */
-const NUMERIC_COLUMNS: SheetColumn[] = [
-  "price",
-  "masterCartonQty",
-  "innerQty",
-  "moq",
-  "cbmPerCarton",
-  "netWeightPcKg",
-];
 /** Cabeçalhos que abrem um grupo de subcolunas (SIZE → LENGTH, WIDTH, HEIGHT). */
-const GROUP_HEADERS = new Set(["SIZE", "TAMANHO", "MEDIDAS", "DIMENSIONS", "尺寸"]);
+const GROUP_HEADER = /\b(SIZE|TAMANHO|MEDIDAS?|DIMENSIONS?|DIMENSOES)\b|尺寸/;
+/** Peso da caixa (não é por peça): fica de fora. */
+const CARTON_WORD = /\b(CTN|CARTON|BOX|CX|CAIXA|MASTER)\b/;
 
 export function normalizeHeader(raw: string): string {
   return raw
@@ -141,19 +145,34 @@ function matchColumn(header: string): SheetColumn | null {
   if (!h) return null;
   for (const [column, synonyms] of HEADERS)
     if (synonyms.includes(h)) return column;
-  for (const [column, synonyms] of HEADERS)
+  // "FOB PRICE", "PRICE USD", "UNIT PRICE RMB": é o preço (o incoterm vem junto).
+  if (/\b(PRICE|PRECO)\b|单价|价格/.test(h) && !/\bTOTAL\b/.test(h)) return "price";
+  // "N.W/CTN", "G.W BOX": peso da caixa, não da peça: ignorado.
+  if (/\b(N ?W|G ?W|NET WEIGHT|GROSS WEIGHT|PESO)\b/.test(h) && CARTON_WORD.test(h))
+    return null;
+  for (const [column, synonyms] of HEADERS) {
+    if (column === "incoterm") continue;
     for (const syn of synonyms)
       if (h.startsWith(`${syn} `)) return column;
+  }
   return null;
 }
 
-/** Moeda escrita no cabeçalho do preço ("PRICE / U$", "单价 RMB"). */
-function currencyInHeader(header: string): SheetCurrency | null {
+/** Moeda escrita no cabeçalho do preço ("PRICE / U$", "PREÇO R$", "单价 RMB"). */
+export function currencyInHeader(header: string): SheetCurrency | null {
   const h = header.toUpperCase();
-  if (/RMB|CNY|¥|元/.test(h)) return "RMB";
-  if (/USD|US\$|U\$|\$|DOLLAR|美元/.test(h)) return "USD";
-  if (/BRL|R\$|REAL/.test(h)) return "BRL";
+  if (/BRL|R\$|REAL|REAIS/.test(h)) return "BRL";
+  if (/RMB|CNY|¥|元|YUAN/.test(h)) return "RMB";
   if (/EUR|€/.test(h)) return "EUR";
+  if (/USD|US\$|U\$|DOLLAR|美元/.test(h) || /(^|[^A-Z])\$/.test(h)) return "USD";
+  return null;
+}
+
+/** Incoterm escrito no cabeçalho do preço ("FOB PRICE"). */
+function incotermInHeader(header: string): SheetIncoterm | null {
+  const h = normalizeHeader(header);
+  if (/\bFOB\b/.test(h) && !/\bEXW\b/.test(h)) return "FOB";
+  if (/\bEXW\b/.test(h) && !/\bFOB\b/.test(h)) return "EXW";
   return null;
 }
 
@@ -175,6 +194,25 @@ const text = (raw: string | undefined, max = 200): string | null => {
   const v = (raw ?? "").replace(/\s+/g, " ").trim();
   return v ? v.slice(0, max) : null;
 };
+
+/** Data gravada como número de série do Excel (dias desde 1899-12-30) → ISO. */
+function excelSerialDate(raw: string): string | null {
+  if (!/^\d{5}(\.\d+)?$/.test(raw.trim())) return null;
+  const days = Math.floor(Number(raw));
+  if (days < 20000 || days > 80000) return null;
+  return new Date(Date.UTC(1899, 11, 30) + days * 86_400_000).toISOString();
+}
+
+/** "350", "350 ml" → 350; "1.5L", "1,5 l" → 1500; texto ("A4") → null. */
+function capacityMl(raw: string): number | null {
+  const s = raw.trim();
+  if (/^[\d.,]+\s*ML$/i.test(s) || /^[\d.,]+$/.test(s)) return num(s);
+  if (/^[\d.,]+\s*L$/i.test(s)) {
+    const l = num(s);
+    return l === null ? null : Math.round(l * 1000);
+  }
+  return null;
+}
 
 export interface ParsedRow {
   /** Linha da aba como no Excel (1 = primeira). */
@@ -221,10 +259,36 @@ export function isLegacyXls(bytes: Uint8Array): boolean {
   return OLE_SIGNATURE.every((b, i) => bytes[i] === b);
 }
 
+type Cells = string[][];
+
+/** Quantas colunas conhecidas a linha tem (para achar o cabeçalho). */
+function headerScore(line: string[] | undefined) {
+  const found = new Set<SheetColumn>();
+  for (const cell of line ?? []) {
+    const col = cell && matchColumn(cell);
+    if (col) found.add(col);
+  }
+  return found.size;
+}
+
+/** Linha do cabeçalho entre as 12 primeiras (a que mais colunas conhecidas tem). */
+function findHeader(cells: Cells) {
+  let index = -1;
+  let best = 0;
+  for (let r = 0; r < Math.min(cells.length, 12); r++) {
+    const score = headerScore(cells[r]);
+    if (score > best) {
+      best = score;
+      index = r;
+    }
+  }
+  return { index, score: best };
+}
+
 /**
- * Lê a aba (a primeira ou a escolhida) e agrupa as linhas em produtos. Linhas
- * seguidas com o mesmo código, descrição, tamanho, preço e embalagem são o
- * mesmo produto em cores diferentes.
+ * Lê a aba da ficha (a escolhida, ou a que tem o cabeçalho mais parecido) e
+ * agrupa as linhas em produtos. Linhas seguidas com o mesmo código, descrição,
+ * tamanho, preço e embalagem são o mesmo produto em cores diferentes.
  */
 export function parseProductSheet(
   bytes: Uint8Array,
@@ -233,89 +297,111 @@ export function parseProductSheet(
   if (isLegacyXls(bytes)) throw new SheetImportError("xls_format");
   let workbook: ReturnType<typeof openWorkbook>;
   try {
-    workbook = openWorkbook(bytes);
+    workbook = openWorkbook(bytes, { maxTotalBytes: WORKBOOK_MAX_BYTES });
   } catch {
     throw new SheetImportError("invalid_file");
   }
   const names = workbook.sheetNames();
-  const sheetName = options.sheet && names.includes(options.sheet) ? options.sheet : names[0];
-  if (!sheetName) throw new SheetImportError("invalid_file");
-  const { cells } = workbook.readCells(sheetName, {
+  if (!names.length) throw new SheetImportError("invalid_file");
+  const limits = {
     maxRows: MAX_SHEET_ROWS + 12,
     maxCols: 120,
     maxCellChars: 500,
-  });
-  const warnings: string[] = [];
-
-  // Cabeçalho: entre as 12 primeiras linhas, a que mais colunas conhecidas tem.
-  let headerIndex = -1;
-  let best = 0;
-  for (let r = 0; r < Math.min(cells.length, 12); r++) {
-    const found = new Set<SheetColumn>();
-    for (const cell of cells[r] ?? []) {
-      const col = cell && matchColumn(cell);
-      if (col) found.add(col);
+    maxXmlBytes: SHEET_XML_MAX_BYTES,
+  };
+  const read = (name: string): Cells => {
+    try {
+      return workbook.readCells(name, limits).cells;
+    } catch (error) {
+      if (error instanceof Error && error.message === "xlsx_too_large")
+        throw new SheetImportError("too_large");
+      throw new SheetImportError("invalid_file");
     }
-    if (found.size > best) {
-      best = found.size;
-      headerIndex = r;
+  };
+  // Aba: a pedida; senão, entre as primeiras, a de cabeçalho mais parecido.
+  let sheetName: string | null = null;
+  let cells: Cells = [];
+  let header = { index: -1, score: 0 };
+  if (options.sheet && names.includes(options.sheet)) {
+    sheetName = options.sheet;
+    cells = read(sheetName);
+    header = findHeader(cells);
+  } else {
+    for (const name of names.slice(0, MAX_SHEETS)) {
+      const candidate = read(name);
+      const found = findHeader(candidate);
+      if (found.score > header.score) {
+        sheetName = name;
+        cells = candidate;
+        header = found;
+      }
+      if (found.score >= 8) break;
     }
   }
-  if (headerIndex < 0 || best < 4) throw new SheetImportError("no_header");
+  if (!sheetName || header.index < 0 || header.score < 4)
+    throw new SheetImportError("no_header");
+  const headerIndex = header.index;
   const row1 = cells[headerIndex] ?? [];
   const row2 = cells[headerIndex + 1] ?? [];
+  const warnings: string[] = [];
 
   // Colunas: cabeçalho de uma linha ou de duas (grupo + subcoluna).
   const columns: Partial<Record<SheetColumn, number>> = {};
   const headers: Partial<Record<SheetColumn, string>> = {};
   const width = Math.max(row1.length, row2.length);
   const take = (col: SheetColumn | null, index: number, header: string) => {
-    if (!col || columns[col] !== undefined) return;
+    if (!col || columns[col] !== undefined) return false;
     columns[col] = index;
     headers[col] = header;
+    return true;
   };
+  // Colunas reconhecidas pelo cabeçalho da 1ª linha (sem grupo): se a 2ª linha
+  // tiver valor numa delas, a 2ª linha é dado, não subcabeçalho. Rótulos
+  // soltos que não são coluna ("45 DAYS") não contam.
+  const plainRow1 = new Set<number>();
   let carry: string | null = null;
-  const used2 = new Set<number>();
   for (let c = 0; c < width; c++) {
     const h1 = (row1[c] ?? "").trim();
     const h2 = (row2[c] ?? "").trim();
     if (h1) {
-      const opensGroup = !!h2 && GROUP_HEADERS.has(normalizeHeader(h1));
+      const opensGroup = !!h2 && GROUP_HEADER.test(normalizeHeader(h1));
       carry = opensGroup ? h1 : null;
       if (opensGroup) {
-        used2.add(c);
-        take(matchColumn(`${h1} ${h2}`), c, `${h1} ${h2}`);
-      } else take(matchColumn(h1), c, h1);
+        if (!take(matchColumn(`${h1} ${h2}`), c, `${h1} ${h2}`))
+          take(matchColumn(h2), c, h2);
+      } else {
+        const own = matchColumn(h1);
+        if (own) plainRow1.add(c);
+        // Rótulo na 1ª linha e subcoluna na 2ª ("PRODUCT SIZE (CM)" / LENGTH).
+        if (!take(own, c, h1) && h2) {
+          if (!take(matchColumn(`${h1} ${h2}`), c, `${h1} ${h2}`))
+            take(matchColumn(h2), c, h2);
+        }
+      }
     } else if (h2 && carry) {
-      used2.add(c);
-      take(matchColumn(`${carry} ${h2}`), c, `${carry} ${h2}`);
+      if (!take(matchColumn(`${carry} ${h2}`), c, `${carry} ${h2}`))
+        take(matchColumn(h2), c, h2);
     } else {
       carry = null;
     }
   }
-  // A 2ª linha é subcabeçalho quando não traz números nas colunas numéricas
-  // (os cabeçalhos da direita, como "WX CBM", ficam nela sem grupo).
   const secondIsHeader =
     row2.some((v) => v && v.trim()) &&
-    !NUMERIC_COLUMNS.some((col) => {
-      const i = columns[col];
-      return i !== undefined && num(row2[i]) !== null;
-    });
+    !row2.some((v, c) => !!(v && v.trim()) && plainRow1.has(c));
   if (secondIsHeader)
     for (let c = 0; c < width; c++) {
       const h2 = (row2[c] ?? "").trim();
-      if (h2 && !used2.has(c) && !(row1[c] ?? "").trim())
-        take(matchColumn(h2), c, h2);
+      if (h2 && !(row1[c] ?? "").trim()) take(matchColumn(h2), c, h2);
     }
   const dataStart = headerIndex + (secondIsHeader ? 2 : 1);
-  const currency =
-    (columns.price !== undefined
-      ? currencyInHeader(headers.price ?? "")
-      : null) ?? null;
+  const priceHeader = headers.price ?? "";
+  const currency = currencyInHeader(priceHeader);
+  const incoterm = incotermInHeader(priceHeader);
 
   // Linhas de produto.
   const rows: ParsedRow[] = [];
-  for (let r = dataStart; r < cells.length && rows.length < MAX_SHEET_ROWS; r++) {
+  let truncated = false;
+  for (let r = dataStart; r < cells.length; r++) {
     const line = cells[r] ?? [];
     const values: Partial<Record<SheetColumn, string>> = {};
     for (const [col, index] of Object.entries(columns) as Array<[SheetColumn, number]>) {
@@ -323,17 +409,45 @@ export function parseProductSheet(
       if (v) values[col] = v;
     }
     if (!DATA_COLUMNS.some((col) => values[col])) continue;
+    if (rows.length >= MAX_SHEET_ROWS) {
+      truncated = true;
+      break;
+    }
     rows.push({ row: r + 1, values });
   }
   if (!rows.length) throw new SheetImportError("no_rows");
+  if (truncated) warnings.push(`rows_truncated:${MAX_SHEET_ROWS}`);
 
-  const images = workbook.readImages(sheetName, {
-    maxImages: MAX_IMAGES,
-    maxImageBytes: MAX_IMAGE_BYTES,
-  });
-  const groups = groupRows(rows, columns, images, currency ?? options.defaultCurrency ?? null, warnings);
+  const imageCols = [columns.photo, columns.businessCard].filter(
+    (c): c is number => c !== undefined,
+  );
+  const images = imageCols.length
+    ? workbook.readImages(sheetName, {
+        maxImages: MAX_IMAGES,
+        maxImageBytes: MAX_IMAGE_BYTES,
+        maxTotalBytes: MAX_IMAGES_TOTAL_BYTES,
+        cols: imageCols,
+      })
+    : [];
+  const groups = groupRows(
+    rows,
+    columns,
+    images,
+    currency ?? options.defaultCurrency ?? null,
+    incoterm,
+    warnings,
+  );
   if (groups.length > MAX_SHEET_PRODUCTS) throw new SheetImportError("too_many");
-  return { sheetName, headerRow: headerIndex + 1, columns, headers, currency, rows, groups, warnings };
+  return {
+    sheetName,
+    headerRow: headerIndex + 1,
+    columns,
+    headers,
+    currency,
+    rows,
+    groups,
+    warnings,
+  };
 }
 
 /** "33.5x24.8x1.5", "33,5 X 24,8 X 1,5 cm" → medidas; o resto é texto. */
@@ -353,6 +467,7 @@ function groupRows(
   columns: Partial<Record<SheetColumn, number>>,
   images: SheetImage[],
   currency: SheetCurrency | null,
+  incoterm: SheetIncoterm | null,
   warnings: string[],
 ): ProductGroup[] {
   const groups: ProductGroup[] = [];
@@ -361,12 +476,19 @@ function groupRows(
     const raw: Record<string, unknown> = {};
     for (const field of READING_FIELDS)
       if (values[field] !== undefined) raw[field] = values[field];
-    // Moeda: coluna própria, cabeçalho do preço ou a escolhida na tela.
-    raw.currency = values.currency ?? currency ?? undefined;
-    // Capacidade só vale como número; "A4" ou "8X10" é o tamanho (nome).
+    // Moeda e incoterm: coluna própria, cabeçalho do preço ou a escolhida na
+    // tela (só acompanham um preço; sem preço, a moeda não entra).
+    raw.currency = values.price ? (values.currency ?? currency ?? undefined) : values.currency;
+    if (!values.incoterm && incoterm) raw.incoterm = incoterm;
+    // Data gravada como número de série do Excel.
+    if (values.sheetDate) raw.sheetDate = excelSerialDate(values.sheetDate) ?? values.sheetDate;
+    // Capacidade: ml (ou litros); "A4" / "8X10" é o tamanho (vai para o nome).
     const capacity = values.capacityMl;
-    const capacityNumber = capacity && num(capacity) !== null && /^\s*[\d.,]+\s*(ML|L)?\s*$/i.test(capacity);
-    if (capacity && !capacityNumber) delete raw.capacityMl;
+    const ml = capacity ? capacityMl(capacity) : null;
+    if (capacity) {
+      if (ml !== null) raw.capacityMl = ml;
+      else delete raw.capacityMl;
+    }
     const reading = normalizeReading(raw);
     if (values.price && reading.price === undefined && !raw.currency)
       warnings.push(`row_${row}:price_without_currency`);
@@ -375,7 +497,7 @@ function groupRows(
     const widthCm = num(values.widthCm) ?? dims?.widthCm ?? null;
     const heightCm = num(values.heightCm) ?? dims?.heightCm ?? null;
     const sizeText =
-      (capacity && !capacityNumber ? text(capacity, 60) : null) ??
+      (capacity && ml === null ? text(capacity, 60) : null) ??
       (values.sizeText && !dims ? text(values.sizeText, 60) : null);
     const description = text(values.description, 120);
     const name = text(values.name, 160);
@@ -459,6 +581,9 @@ export interface SheetImportOptions {
   defaultCurrency?: SheetCurrency | null;
   sheet?: string | null;
 }
+
+/** Planilha enviada no formulário ou já subida direto ao armazenamento. */
+export type SheetSource = File | { fileKey: string; fileName?: string | null };
 
 export interface SheetImportRowResult {
   index: number;
@@ -561,9 +686,9 @@ async function resolveSupplier(
     null;
   if (found) {
     const patch: Partial<Party> = {};
-    if (!found.storeNumber && code) patch.storeNumber = code;
-    if (!found.phone && phone) patch.phone = phone;
-    if (!found.city && city) patch.city = city;
+    if (!found.storeNumber && code) patch.storeNumber = code.slice(0, 60);
+    if (!found.phone && phone) patch.phone = phone.slice(0, 40);
+    if (!found.city && city) patch.city = city.slice(0, 80);
     if (Object.keys(patch).length) {
       const updated = await store.update("parties", found.id, patch);
       Object.assign(found, updated);
@@ -577,14 +702,14 @@ async function resolveSupplier(
     name: name.slice(0, 160),
     country: "China",
     email: null,
-    phone,
+    phone: phone?.slice(0, 40) ?? null,
     taxId: null,
     notes: "Cadastrado pela importação da ficha técnica.",
-    city,
+    city: city?.slice(0, 80) ?? null,
     address: null,
     contactName: null,
     wechat: null,
-    storeNumber: code,
+    storeNumber: code?.slice(0, 60) ?? null,
     active: true,
   });
   await audit(user, "party.create", "party", party.id, `${party.name} (importação da ficha técnica)`);
@@ -606,27 +731,41 @@ async function attachPhoto(
   return photos.length;
 }
 
+/** Bytes e nome da planilha: do formulário ou do arquivo já subido direto. */
+async function sheetBytes(source: SheetSource) {
+  if (source instanceof File) {
+    if (source.size === 0) throw new SheetImportError("file_required");
+    return {
+      bytes: new Uint8Array(await source.arrayBuffer()),
+      name: source.name || "ficha.xlsx",
+    };
+  }
+  const stored = await getStore().getFile(source.fileKey);
+  if (!stored || stored.bytes.length === 0) throw new SheetImportError("file_required");
+  return { bytes: stored.bytes, name: source.fileName || stored.name || "ficha.xlsx" };
+}
+
 /**
  * Importa a planilha: para cada produto da aba, cadastra ou atualiza (mesmo
- * nome na mesma linha de produto), grava a ficha mestre e as fotos, e devolve
- * o que falta em cada um. O arquivo fica guardado como evidência do lote.
+ * nome na mesma linha de produto e mesmo fornecedor), grava a ficha mestre e
+ * as fotos, e devolve o que falta em cada um. O arquivo fica guardado como
+ * evidência do lote.
  */
 export async function importProductSheet(
   user: User,
-  file: File,
+  source: SheetSource,
   options: SheetImportOptions,
 ): Promise<SheetImportResult> {
   assertWellmix(user);
   const store = getStore();
   const line = options.lineId ? await store.get("product_lines", options.lineId) : null;
   if (!line) throw new SheetImportError("line_required");
-  if (file.size === 0) throw new SheetImportError("file_required");
   const currency =
     options.defaultCurrency && (SHEET_CURRENCIES as readonly string[]).includes(options.defaultCurrency)
       ? options.defaultCurrency
       : null;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const parsed = parseProductSheet(bytes, { sheet: options.sheet, defaultCurrency: currency });
+  const file = await sheetBytes(source);
+  const parsed = parseProductSheet(file.bytes, { sheet: options.sheet, defaultCurrency: currency });
 
   const [suppliers, products] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" } }),
@@ -643,20 +782,14 @@ export async function importProductSheet(
   };
   const results: SheetImportRowResult[] = [];
   const decisions: Record<string, string> = {};
-  const namesUsed = new Map<string, number>();
+  const namesUsed = new Set<string>();
   for (const group of parsed.groups) {
     const rowsLabel =
       group.firstRow === group.lastRow ? String(group.firstRow) : `${group.firstRow}–${group.lastRow}`;
-    let name = productNameFor(group, options.namePrefix);
-    // Dois produtos da planilha com o mesmo nome: o código da fábrica desempata.
-    const seen = namesUsed.get(norm(name)) ?? 0;
-    namesUsed.set(norm(name), seen + 1);
-    if (seen > 0)
-      name = `${name} ${group.reading.factoryItemCode ? `· ${group.reading.factoryItemCode}` : `(${seen + 1})`}`.slice(0, 160);
     const result: SheetImportRowResult = {
       index: group.index,
       rows: rowsLabel,
-      name,
+      name: productNameFor(group, options.namePrefix),
       productId: null,
       status: "error",
       error: null,
@@ -677,9 +810,32 @@ export async function importProductSheet(
         widthCm: group.widthCm,
         heightCm: group.heightCm,
       };
-      const existing = products.find(
-        (p) => p.lineId === options.lineId && norm(p.name) === norm(name),
+      // Mesmo nome na mesma linha: só do mesmo fornecedor (ou sem fornecedor).
+      // Nome igual de outro fornecedor: produto novo, com o fornecedor no nome.
+      const sameName = products.filter(
+        (p) => p.lineId === options.lineId && norm(p.name) === norm(result.name),
       );
+      let existing = sameName.find(
+        (p) => !p.supplierId || !supplierId || p.supplierId === supplierId,
+      );
+      let name = result.name;
+      if (!existing && sameName.length && supplier)
+        name = `${name} · ${supplier.party.name}`.slice(0, 160);
+      // Dois grupos da planilha com o mesmo nome: código da fábrica, depois um contador.
+      if (namesUsed.has(norm(name))) {
+        const code = group.reading.factoryItemCode;
+        const withCode = code ? `${name} · ${code}`.slice(0, 160) : null;
+        if (withCode && !namesUsed.has(norm(withCode))) name = withCode;
+        else {
+          const base = withCode ?? name;
+          let n = 2;
+          while (namesUsed.has(norm(`${base} (${n})`))) n++;
+          name = `${base} (${n})`.slice(0, 160);
+        }
+        existing = undefined;
+      }
+      namesUsed.add(norm(name));
+      result.name = name;
       let product: Product;
       if (existing) {
         const patch: Partial<Product> = {};
@@ -743,24 +899,31 @@ export async function importProductSheet(
       result.missing = saved.missing.filter((m) => !(m === "originalPhoto" && kinds.has("original")));
       decisions[String(group.index)] = `${result.status}:${product.id}`;
     } catch (error) {
+      // Falha depois de criar o produto: ele existe (fica no resultado), mas
+      // o grupo conta como erro, não duas vezes.
+      if (result.status === "created") summary.created--;
+      if (result.status === "updated") summary.updated--;
       result.status = "error";
-      result.error = error instanceof Error ? error.message : "unexpected";
+      result.error = (error instanceof Error ? error.message : "unexpected").slice(0, 120);
       summary.errors++;
-      decisions[String(group.index)] = `error:${result.error}`;
+      decisions[String(group.index)] = `error:${result.productId ?? "-"}:${result.error}`;
     }
   }
 
   // Lote: evidência (arquivo guardado) e histórico do que entrou.
-  const doc = await uploadDocument(user, file, {
-    type: "attachment",
-    visibility: "internal",
-  }).catch(() => null);
+  const doc = await (source instanceof File
+    ? uploadDocument(user, source, { type: "attachment", visibility: "internal" })
+    : registerUploadedDocument(user, source.fileKey, {
+        type: "attachment",
+        visibility: "internal",
+      })
+  ).catch(() => null);
   const headers = Object.values(parsed.headers).filter(Boolean) as string[];
   const batch: ImportBatch = await store.create("import_batches", {
     entity: SHEET_IMPORT_ENTITY,
     fileDocumentId: doc?.id ?? null,
-    fileName: (file.name || "ficha.xlsx").slice(0, 200),
-    sheetName: parsed.sheetName,
+    fileName: file.name.slice(0, 255),
+    sheetName: parsed.sheetName.slice(0, 120),
     headers,
     rows: parsed.rows.slice(0, 500).map((r) =>
       Object.fromEntries(
@@ -794,9 +957,26 @@ export async function importProductSheet(
   return { batchId: batch.id, sheetName: parsed.sheetName, summary, results, warnings: parsed.warnings };
 }
 
+/** Decisão de um grupo do lote: situação, produto (se existe) e erro. */
+export function batchDecision(decision: string): {
+  status: "created" | "updated" | "error";
+  productId: string | null;
+  error: string | null;
+} {
+  const [status, ...rest] = decision.split(":");
+  if (status === "created" || status === "updated")
+    return { status, productId: rest.join(":") || null, error: null };
+  const [productId, ...message] = rest;
+  return {
+    status: "error",
+    productId: productId && productId !== "-" ? productId : null,
+    error: message.join(":") || null,
+  };
+}
+
 /** Lote de ficha técnica: produtos (ids) de cada grupo, para a tela de resultado. */
 export function batchProductIds(batch: ImportBatch): string[] {
   return Object.values(batch.decisions)
-    .map((d) => (d.startsWith("created:") || d.startsWith("updated:") ? d.slice(d.indexOf(":") + 1) : null))
+    .map((d) => batchDecision(d).productId)
     .filter((id): id is string => !!id);
 }

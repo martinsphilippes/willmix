@@ -12,6 +12,7 @@ withTempStore();
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const svc = await import("@/lib/services/product-sheet-import");
+const { vi } = await import("vitest");
 const { getProductSheet } = await import("@/lib/services/product-sheet");
 const { openWorkbook } = await import("@/lib/services/xlsx");
 type User = import("@/lib/db").User;
@@ -149,6 +150,7 @@ describe("leitura do modelo", () => {
         name: "Produtos",
         cells: [
           ["Nome", "Fornecedor", "Preço", "Moeda", "Qtd/Caixa", "MOQ", "Cor", "Tamanho"],
+          ["Bandeja sem preço", "Ningbo C", "", "", "", "", "Natural", ""],
           ["Caneca cerâmica 350 ml", "Ningbo C", "2,35", "RMB", "48", "3000", "Branca", "12x9x10,5 cm"],
           ["Caneca cerâmica 350 ml", "Ningbo C", "2,35", "RMB", "48", "3000", "Preta", "12x9x10,5 cm"],
           ["Garrafa térmica", "Ningbo C", "1.8", "USD", "60", "5000", "Prata", ""],
@@ -157,11 +159,54 @@ describe("leitura do modelo", () => {
     ]);
     const parsed = svc.parseProductSheet(bytes, { defaultCurrency: "USD" });
     expect(parsed.currency).toBeNull();
-    expect(parsed.groups.map((g) => [g.name, g.reading.currency, g.reading.price, g.colors])).toEqual([
+    // A 1ª linha de dados sem preço nem quantidade é produto, não subcabeçalho.
+    expect(parsed.groups.map((g) => [g.name, g.reading.currency ?? null, g.reading.price ?? null, g.colors])).toEqual([
+      ["Bandeja sem preço", null, null, ["Natural"]],
       ["Caneca cerâmica 350 ml", "RMB", 2.35, ["Branca", "Preta"]],
       ["Garrafa térmica", "USD", 1.8, ["Prata"]],
     ]);
-    expect([parsed.groups[0].lengthCm, parsed.groups[0].widthCm, parsed.groups[0].heightCm]).toEqual([12, 9, 10.5]);
+    expect([parsed.groups[1].lengthCm, parsed.groups[1].widthCm, parsed.groups[1].heightCm]).toEqual([12, 9, 10.5]);
+  });
+
+  it("moeda e incoterm do cabeçalho do preço; pesos da caixa ficam de fora", () => {
+    expect(svc.currencyInHeader("PREÇO R$")).toBe("BRL");
+    expect(svc.currencyInHeader("PRICE   / U$")).toBe("USD");
+    expect(svc.currencyInHeader("UNIT PRICE (RMB)")).toBe("RMB");
+    expect(svc.currencyInHeader("$ PRICE")).toBe("USD");
+    expect(svc.currencyInHeader("PRICE")).toBeNull();
+    const parsed = svc.parseProductSheet(
+      xlsxBytes([
+        {
+          name: "Lista",
+          cells: [
+            ["ITEM NO", "SUPPLIER", "FOB PRICE USD", "QTY/CTN", "N.W/CTN", "G.W/CTN", "N.W PC", "MOQ", "PRODUCT SIZE (CM)", "", "", "CAPACITY", "DATE"],
+            ["", "", "", "", "", "", "", "", "LENGTH", "WIDTH", "HEIGHT", "", ""],
+            ["A-1", "Factory X", "2.5", "24", "12", "13", "0.4", "1000", "10", "8", "6", "1.5L", String(Math.round((Date.UTC(2026, 9, 13) - Date.UTC(1899, 11, 30)) / 86_400_000))],
+          ],
+        },
+      ]),
+    );
+    expect(parsed.columns.price).toBe(2);
+    expect(parsed.columns.netWeightPcKg).toBe(6);
+    expect(parsed.columns.grossWeightPcKg).toBeUndefined();
+    expect([parsed.columns.lengthCm, parsed.columns.widthCm, parsed.columns.heightCm]).toEqual([8, 9, 10]);
+    const [g] = parsed.groups;
+    expect(g.reading).toMatchObject({ price: 2.5, currency: "USD", incoterm: "FOB", masterCartonQty: 24, netWeightPcKg: 0.4, capacityMl: 1500, sheetDate: "2026-10-13T00:00:00.000Z" });
+    expect([g.lengthCm, g.widthCm, g.heightCm]).toEqual([10, 8, 6]);
+  });
+
+  it("escolhe a aba com o cabeçalho da ficha (não a primeira) e avisa quando corta linhas", () => {
+    const parsed = svc.parseProductSheet(
+      xlsxBytes([
+        { name: "Resumo", cells: [["Total", "Obs"], ["10", "x"]] },
+        template(),
+      ]),
+    );
+    expect(parsed.sheetName).toBe("SUPPLIER INFO");
+    expect(parsed.groups).toHaveLength(2);
+    const many = [["NAME", "SUPPLIER", "PRICE USD", "MOQ"]];
+    for (let i = 0; i < svc.MAX_SHEET_ROWS + 5; i++) many.push([`P${i}`, "S", "1", "10"]);
+    expect(() => svc.parseProductSheet(xlsxBytes([{ name: "X", cells: many }]))).toThrow("too_many");
   });
 
   it("recusa .xls antigo, arquivo que não é planilha e planilha sem cabeçalho", () => {
@@ -222,7 +267,8 @@ describe("importação", () => {
     // O que falta: medidas da caixa e as outras fotos da ficha; o que veio não falta.
     const missing = result.results[0].missing;
     expect(missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "scalePhoto", "rulerPhoto", "sidePhoto", "anglePhoto"]));
-    expect(missing).not.toEqual(expect.arrayContaining(["price", "moq", "colorAssortment", "material", "packageType", "originalPhoto"]));
+    for (const k of ["price", "moq", "colorAssortment", "material", "packageType", "originalPhoto"])
+      expect(missing).not.toContain(k);
     // Lote guardado com o arquivo e o resumo.
     const batch = (await store.get("import_batches", result.batchId))!;
     expect(batch).toMatchObject({ entity: "product_sheets", status: "imported", rowCount: 6, sheetName: "SUPPLIER INFO" });
@@ -241,6 +287,67 @@ describe("importação", () => {
     expect((await store.list("parties", { filter: { type: "supplier" } })).length).toBe(suppliersBefore);
     const photos = await store.list("product_photos", { filter: { productId: result.results[0].productId! } });
     expect(photos).toHaveLength(2);
+  });
+
+  it("mesmo nome de outro fornecedor vira produto novo com o fornecedor no nome; nomes repetidos ganham contador", async () => {
+    const store = getStore();
+    const sheet = (supplier: string, store2: string, rows: Array<[string, string, string]>) =>
+      xlsxBytes([
+        {
+          name: "Lista",
+          cells: [
+            ["NAME", "SUPPLIER NAME", "SUPPLIER STORE NO", "PRICE USD", "MOQ", "SKU", "COLOR"],
+            ...rows.map(([name, price, sku]) => [name, supplier, store2, price, "100", sku, ""]),
+          ],
+        },
+      ]);
+    const first = await svc.importProductSheet(admin, file(sheet("Alpha Co", "A1-100", [["Vaso decorativo", "3", "V1"], ["Vaso decorativo", "4", "V2"], ["Vaso decorativo", "5", ""]])), { lineId });
+    expect(first.results.map((r) => [r.name, r.status])).toEqual([
+      ["Vaso decorativo", "created"],
+      ["Vaso decorativo · V2", "created"],
+      ["Vaso decorativo (2)", "created"],
+    ]);
+    // Outro fornecedor, mesmo nome: não sequestra o produto do primeiro.
+    const second = await svc.importProductSheet(admin, file(sheet("Beta Ltd", "B2-200", [["Vaso decorativo", "9", "X9"]])), { lineId });
+    expect(second.results.map((r) => [r.name, r.status])).toEqual([["Vaso decorativo · Beta Ltd", "created"]]);
+    const alpha = (await store.list("products", { filter: { name: "Vaso decorativo" } }))[0];
+    expect(alpha.price).toBe(3);
+    // O mesmo fornecedor de novo: atualiza o dele.
+    const again = await svc.importProductSheet(admin, file(sheet("Alpha Co", "A1-100", [["Vaso decorativo", "3.5", "V1"]])), { lineId });
+    expect(again.results.map((r) => [r.name, r.status])).toEqual([["Vaso decorativo", "updated"]]);
+    expect((await store.get("products", alpha.id))!.price).toBe(3.5);
+  });
+
+  it("falha depois de criar o produto: conta como erro, mas o produto fica no resultado", async () => {
+    const store = getStore();
+    const original = store.create.bind(store);
+    const spy = vi.spyOn(store, "create").mockImplementation(async (table, data) => {
+      if (table === "purchase_sheets") throw new Error("sheet down");
+      return original(table, data as never);
+    });
+    let result: Awaited<ReturnType<typeof svc.importProductSheet>>;
+    try {
+      result = await svc.importProductSheet(admin, file(xlsxBytes([{ name: "L", cells: [["NAME", "SUPPLIER NAME", "PRICE USD", "MOQ"], ["Copo falho", "Gamma", "1", "10"]] }])), { lineId });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(result.summary).toMatchObject({ created: 0, updated: 0, errors: 1 });
+    expect(result.results[0]).toMatchObject({ status: "error", error: "sheet down" });
+    expect(result.results[0].productId).toBeTruthy();
+    const batch = (await store.get("import_batches", result.batchId))!;
+    expect(svc.batchDecision(batch.decisions["0"])).toEqual({ status: "error", productId: result.results[0].productId, error: "sheet down" });
+    expect(svc.batchProductIds(batch)).toEqual([result.results[0].productId]);
+  });
+
+  it("planilha já subida direto ao armazenamento (id) é lida e vira a evidência do lote", async () => {
+    const store = getStore();
+    const stored = await store.putFile(templateBytes(), "ficha-direta.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    const result = await svc.importProductSheet(admin, { fileKey: stored.key, fileName: "ficha-direta.xlsx" }, { lineId, namePrefix: "Porta-retrato" });
+    expect(result.summary.updated + result.summary.created).toBe(2);
+    const batch = (await store.get("import_batches", result.batchId))!;
+    expect(batch.fileName).toBe("ficha-direta.xlsx");
+    expect(batch.fileDocumentId).toBeTruthy();
+    await expect(svc.importProductSheet(admin, { fileKey: "00000000-0000-4000-8000-000000000000" }, { lineId })).rejects.toThrow("file_required");
   });
 
   it("só a Wellmix importa; linha é obrigatória", async () => {

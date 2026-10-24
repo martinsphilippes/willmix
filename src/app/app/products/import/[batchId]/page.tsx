@@ -4,6 +4,7 @@ import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import {
   SHEET_IMPORT_ENTITY,
+  batchDecision,
   batchProductIds,
 } from "@/lib/services/product-sheet-import";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
@@ -60,10 +61,8 @@ export default async function ProductSheetImportResultPage({
   ]);
   const rows = Object.entries(batch.decisions)
     .map(([index, decision]) => {
-      const sep = decision.indexOf(":");
-      const status = decision.slice(0, sep);
-      const value = decision.slice(sep + 1);
-      const product = status === "error" ? null : products.find((p) => p.id === value) ?? null;
+      const { status, productId, error } = batchDecision(decision);
+      const product = productId ? (products.find((p) => p.id === productId) ?? null) : null;
       const sheet = product ? sheets.find((s) => s.orderId === product.id) ?? null : null;
       const kinds = product
         ? photos.filter((p) => p.productId === product.id).map((p) => p.kind as string)
@@ -77,7 +76,7 @@ export default async function ProductSheetImportResultPage({
       return {
         index: Number(index),
         status,
-        error: status === "error" ? value : null,
+        error,
         product,
         sheet,
         photos: kinds.length,
@@ -89,7 +88,8 @@ export default async function ProductSheetImportResultPage({
     })
     .sort((a, b) => a.index - b.index);
   const s = batch.summary ?? {};
-  const incomplete = rows.filter((r) => r.product && r.missing.length).length;
+  const incomplete = rows.filter((r) => r.status !== "error" && r.product && r.missing.length).length;
+  const failed = rows.filter((r) => r.status === "error").length;
 
   return (
     <>
@@ -115,14 +115,17 @@ export default async function ProductSheetImportResultPage({
           </div>
         }
       />
-      <div className="mb-3">
+      <div className="mb-3 space-y-2">
+        {failed > 0 ? (
+          <Alert tone="danger">{t("sheetImport.result.failed", { n: failed })}</Alert>
+        ) : null}
         {rows.length === 0 ? null : incomplete > 0 ? (
           <Alert tone="warning">
             {t("sheetImport.result.incomplete", { n: incomplete })}
           </Alert>
-        ) : (
+        ) : failed === 0 ? (
           <Alert tone="success">{t("sheetImport.result.allComplete")}</Alert>
-        )}
+        ) : null}
       </div>
       <Card>
         {rows.length === 0 ? (
@@ -172,7 +175,9 @@ export default async function ProductSheetImportResultPage({
                   <Td className="text-right tabular-nums">{r.product ? r.photos : "—"}</Td>
                   <Td>
                     {r.error ? (
-                      <span className="text-sm text-red-700">{r.error}</span>
+                      <span className="text-sm text-red-700">
+                        {t("sheetImport.result.error", { code: r.error })}
+                      </span>
                     ) : r.missing.length === 0 ? (
                       <Badge tone="success">{t("sheetImport.result.complete")}</Badge>
                     ) : (

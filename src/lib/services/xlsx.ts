@@ -409,6 +409,10 @@ export interface ImageLimits {
   maxImages?: number;
   /** Maior imagem aceita em bytes (maiores ficam de fora). */
   maxImageBytes?: number;
+  /** Soma dos bytes das imagens devolvidas (depois disso, as demais ficam de fora). */
+  maxTotalBytes?: number;
+  /** Só as imagens ancoradas nestas colunas (do zero); as outras nem são lidas. */
+  cols?: readonly number[];
 }
 
 /** Planilha aberta uma vez para ler várias abas (cada parte descompactada uma vez). */
@@ -466,6 +470,9 @@ export function openWorkbook(
     readImages(sheet, limits = {}) {
       const maxImages = limits.maxImages ?? 200;
       const maxBytes = limits.maxImageBytes ?? 8 * 1024 * 1024;
+      const maxTotal = limits.maxTotalBytes ?? Infinity;
+      const cols = limits.cols ? new Set(limits.cols) : null;
+      let total = 0;
       const target = sheets.find((s) => s.name === sheet);
       if (!target) throw new Error("xlsx_sheet_missing");
       const drawingPath = partsOfType(zip, target.path, "/drawing")[0];
@@ -486,6 +493,7 @@ export function openWorkbook(
         const path = embed ? media.get(embed)?.path : undefined;
         if (!path || !Number.isInteger(col) || !Number.isInteger(row)) continue;
         if (col < 0 || row < 0) continue;
+        if (cols && !cols.has(col)) continue;
         const mime = imageMime(path);
         if (!mime) continue;
         let bytes = cache.get(path);
@@ -494,6 +502,8 @@ export function openWorkbook(
           cache.set(path, bytes);
         }
         if (!bytes || bytes.length === 0 || bytes.length > maxBytes) continue;
+        if (total + bytes.length > maxTotal) break;
+        total += bytes.length;
         out.push({
           row,
           col,

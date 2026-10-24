@@ -20,19 +20,28 @@ export async function importProductSheetAction(form: FormData) {
         namePrefix: z.string().max(60).nullable(),
         currency: z.enum(SHEET_CURRENCIES).nullable(),
         sheet: z.string().max(100).nullable(),
+        // Planilha grande (com fotos) já subida direto ao armazenamento.
+        uploadedFileId: z.string().max(64).nullable(),
+        uploadedFileName: z.string().max(255).nullable(),
       })
       .parse({
         lineId: str(form, "lineId"),
         namePrefix: str(form, "namePrefix") || null,
         currency: str(form, "currency") || null,
         sheet: str(form, "sheet") || null,
+        uploadedFileId: str(form, "uploadedFileId") || null,
+        uploadedFileName: str(form, "uploadedFileName") || null,
       });
     const file = form.get("file");
     const { importProductSheet, SheetImportError } =
       await import("@/lib/services/product-sheet-import");
-    if (!(file instanceof File) || file.size === 0)
-      throw new SheetImportError("file_required");
-    const result = await importProductSheet(user, file, {
+    const source = parsed.uploadedFileId
+      ? { fileKey: parsed.uploadedFileId, fileName: parsed.uploadedFileName }
+      : file instanceof File && file.size > 0
+        ? file
+        : null;
+    if (!source) throw new SheetImportError("file_required");
+    const result = await importProductSheet(user, source, {
       lineId: parsed.lineId,
       namePrefix: parsed.namePrefix,
       defaultCurrency: parsed.currency,
