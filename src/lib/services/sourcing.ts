@@ -147,20 +147,29 @@ export async function addPhotos(
       own && existing.length > 0 && existing[0].kind === "supplier";
     if (replacesSupplier)
       await store.update("product_photos", existing[0].id, { isPrimary: false });
-    const photo = await store.create("product_photos", {
-      productId: target.productId ?? null,
-      sourcingItemId: target.sourcingItemId ?? null,
-      orderId: target.orderId ?? null,
-      documentId: doc.id,
-      kind,
-      caption: options.caption ?? null,
-      takenAt: options.takenAt ?? new Date().toISOString(),
-      takenByUserId: user.id,
-      derivedFromPhotoId: options.derivedFromPhotoId ?? null,
-      isPrimary:
-        (existing.length === 0 && (own || kind === "supplier")) ||
-        replacesSupplier,
-    });
+    let photo: ProductPhoto;
+    try {
+      photo = await store.create("product_photos", {
+        productId: target.productId ?? null,
+        sourcingItemId: target.sourcingItemId ?? null,
+        orderId: target.orderId ?? null,
+        documentId: doc.id,
+        kind,
+        caption: options.caption ?? null,
+        takenAt: options.takenAt ?? new Date().toISOString(),
+        takenByUserId: user.id,
+        derivedFromPhotoId: options.derivedFromPhotoId ?? null,
+        isPrimary:
+          (existing.length === 0 && (own || kind === "supplier")) ||
+          replacesSupplier,
+      });
+    } catch (error) {
+      // A linha não entrou (ex.: tipo de foto ainda não publicado no esquema):
+      // o arquivo guardado um passo antes não fica órfão.
+      await store.remove("documents", doc.id).catch(() => undefined);
+      await store.removeFile(doc.storageKey).catch(() => undefined);
+      throw error;
+    }
     out.push(photo);
     if (photo.isPrimary) {
       if (target.productId)

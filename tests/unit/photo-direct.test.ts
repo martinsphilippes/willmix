@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -39,6 +39,24 @@ describe("fotos enviadas direto ao armazenamento", () => {
     await expect(
       addPhotos(admin, { productId: "prod-panela" }, [a.key], "angle"),
     ).rejects.toThrow("upload_missing");
+  });
+
+  it("linha da foto recusada (ex.: tipo ainda não publicado no esquema): arquivo e documento não ficam órfãos", async () => {
+    const store = getStore();
+    const docsBefore = (await store.list("documents")).length;
+    const original = store.create.bind(store);
+    const spy = vi.spyOn(store, "create").mockImplementation(async (table, data) => {
+      if (table === "product_photos") throw new Error("Invalid document structure: kind");
+      return original(table, data as never);
+    });
+    try {
+      await expect(
+        addPhotos(admin, { productId: "prod-panela" }, [new File([jpeg], "a.jpg", { type: "image/jpeg" })], "supplier"),
+      ).rejects.toThrow("Invalid document structure");
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await store.list("documents")).length).toBe(docsBefore);
   });
 
   it("arquivo que não é imagem é recusado e apagado", async () => {

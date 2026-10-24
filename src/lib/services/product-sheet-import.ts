@@ -917,6 +917,9 @@ export async function importProductSheet(
       const kinds = new Set(
         (await store.list("product_photos", { filter: { productId: product.id } })).map((p) => p.kind as string),
       );
+      // Produto que já tem a foto original (da equipe, ou a da planilha guardada
+      // assim pela versão anterior) não precisa da foto do fornecedor de novo.
+      if (kinds.has("original")) kinds.add("supplier");
       result.photos += await attachPhoto(user, product.id, group.photo, "supplier", kinds);
       result.photos += await attachPhoto(user, product.id, group.card, "business_card", kinds);
       summary.photos += result.photos;

@@ -359,12 +359,17 @@ describe("importação", () => {
     const store = getStore();
     const before = (await store.list("products")).length;
     const suppliersBefore = (await store.list("parties", { filter: { type: "supplier" } })).length;
+    // Produto importado pela versão anterior guardou a foto da planilha como "original".
+    const [first] = await store.list("products", { filter: { name: "Porta-retrato STONE MARBLE A4" } });
+    const [old] = await store.list("product_photos", { filter: { productId: first.id, kind: "supplier" } });
+    await store.update("product_photos", old.id, { kind: "original" });
     const result = await svc.importProductSheet(admin, file(templateBytes()), { lineId, namePrefix: "Porta-retrato" });
     expect(result.summary).toMatchObject({ created: 0, updated: 2, errors: 0, suppliersCreated: 0, photos: 0 });
     expect((await store.list("products")).length).toBe(before);
     expect((await store.list("parties", { filter: { type: "supplier" } })).length).toBe(suppliersBefore);
     const photos = await store.list("product_photos", { filter: { productId: result.results[0].productId! } });
     expect(photos).toHaveLength(2);
+    expect(photos.map((p) => p.kind).sort()).toEqual(["business_card", "original"]);
   });
 
   it("mesmo nome de outro fornecedor vira produto novo com o fornecedor no nome; nomes repetidos ganham contador", async () => {
