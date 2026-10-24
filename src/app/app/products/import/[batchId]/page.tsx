@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
@@ -190,130 +191,141 @@ export default async function ProductSheetImportResultPage({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr
-                  key={r.index}
-                  className={rowClass}
-                  data-sheet-import-row={r.status}
-                >
-                  <Td>
-                    {r.product ? (
-                      <TextLink href={`/app/products/${r.product.id}`}>
-                        {r.product.name}
-                      </TextLink>
-                    ) : (
-                      <span className="text-zinc-500">
-                        {t("sheetImport.result.group", { n: r.index + 1 })}
-                      </span>
-                    )}
-                    {r.product?.supplierSku ? (
-                      <span className="ml-2 font-mono text-xs text-zinc-500">
-                        {" "}
-                        {r.product.supplierSku}
-                      </span>
-                    ) : null}
-                    {/* Modo "variants": as variações do produto, na ordem da planilha. */}
-                    {mode === "variants" && variantRows.length ? (
-                      <div className="mt-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          {t("sheetImport.result.variants")} (
-                          {variantRows.length})
-                        </p>
-                        <ul
-                          className="mt-1 divide-y divide-zinc-100 rounded-md border border-zinc-200 text-xs"
-                          data-sheet-import-variants={variantRows.length}
+                <Fragment key={r.index}>
+                  <tr className={rowClass} data-sheet-import-row={r.status}>
+                    <Td>
+                      {r.product ? (
+                        <TextLink href={`/app/products/${r.product.id}`}>
+                          {r.product.name}
+                        </TextLink>
+                      ) : (
+                        <span className="text-zinc-500">
+                          {t("sheetImport.result.group", { n: r.index + 1 })}
+                        </span>
+                      )}
+                      {r.product?.supplierSku ? (
+                        <span className="ml-2 font-mono text-xs text-zinc-500">
+                          {" "}
+                          {r.product.supplierSku}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td>{r.supplier}</Td>
+                    <Td className="text-right tabular-nums">
+                      {r.product?.price !== null &&
+                      r.product?.price !== undefined
+                        ? formatMoney(r.product.price, r.product.currency, t)
+                        : "—"}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {r.product ? r.photos : "—"}
+                    </Td>
+                    <Td>
+                      {r.error ? (
+                        <span className="text-sm text-red-700">
+                          {t("sheetImport.result.error", { code: r.error })}
+                        </span>
+                      ) : r.missing.length === 0 ? (
+                        <Badge tone="success">
+                          {t("sheetImport.result.complete")}
+                        </Badge>
+                      ) : (
+                        <div
+                          className="flex flex-wrap gap-1"
+                          data-sheet-import-missing={r.missing.length}
                         >
-                          {variantRows.map((v) => (
-                            <li
-                              key={v.index}
-                              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-1"
-                              data-sheet-import-variant={v.status}
-                            >
-                              <span className="min-w-0 flex-1 truncate font-medium text-zinc-800">
-                                {v.variant?.name ??
-                                  t("sheetImport.result.group", {
-                                    n: v.index + 1,
-                                  })}
-                                {v.variant?.factoryItemCode ? (
-                                  <span className="ml-1.5 font-mono font-normal text-zinc-500">
-                                    {v.variant.factoryItemCode}
-                                  </span>
-                                ) : null}
-                              </span>
-                              <span className="tabular-nums text-zinc-700">
-                                {v.variant?.price != null
-                                  ? formatMoney(
-                                      v.variant.price,
-                                      v.variant.currency,
-                                      t,
-                                    )
-                                  : "—"}
-                              </span>
-                              <span className="tabular-nums text-zinc-600">
-                                {t("catalog.moq")}{" "}
-                                {v.variant?.moq != null
-                                  ? v.variant.moq.toLocaleString(t.intl)
-                                  : "—"}
-                              </span>
-                              <span className="text-zinc-600">
-                                {v.variant?.photoDocumentId
-                                  ? t("sheetImport.result.variantPhoto")
-                                  : t("sheetImport.result.variantNoPhoto")}
-                              </span>
-                              {v.error ? (
-                                <span className="text-red-700">
-                                  {t("sheetImport.result.error", {
-                                    code: v.error,
-                                  })}
-                                </span>
-                              ) : null}
-                              <Badge tone={STATUS_TONE[v.status] ?? "neutral"}>
-                                {t(
-                                  `sheetImport.status.${v.status}` as DictionaryKey,
-                                )}
-                              </Badge>
-                            </li>
+                          {r.missing.map((m) => (
+                            <Badge key={m} tone="warning">
+                              {t(`sheet.field.${m}` as DictionaryKey)}
+                            </Badge>
                           ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </Td>
-                  <Td>{r.supplier}</Td>
-                  <Td className="text-right tabular-nums">
-                    {r.product?.price !== null && r.product?.price !== undefined
-                      ? formatMoney(r.product.price, r.product.currency, t)
-                      : "—"}
-                  </Td>
-                  <Td className="text-right tabular-nums">
-                    {r.product ? r.photos : "—"}
-                  </Td>
-                  <Td>
-                    {r.error ? (
-                      <span className="text-sm text-red-700">
-                        {t("sheetImport.result.error", { code: r.error })}
-                      </span>
-                    ) : r.missing.length === 0 ? (
-                      <Badge tone="success">
-                        {t("sheetImport.result.complete")}
+                        </div>
+                      )}
+                    </Td>
+                    <Td>
+                      <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>
+                        {t(`sheetImport.status.${r.status}` as DictionaryKey)}
                       </Badge>
-                    ) : (
-                      <div
-                        className="flex flex-wrap gap-1"
-                        data-sheet-import-missing={r.missing.length}
-                      >
-                        {r.missing.map((m) => (
-                          <Badge key={m} tone="warning">
-                            {t(`sheet.field.${m}` as DictionaryKey)}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </Td>
-                  <Td>
-                    <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>
-                      {t(`sheetImport.status.${r.status}` as DictionaryKey)}
-                    </Badge>
-                  </Td>
-                </tr>
+                    </Td>
+                  </tr>
+                  {/* Modo "variants": a lista das variações ocupa a largura toda da tabela. */}
+                  {mode === "variants" && variantRows.length ? (
+                    <tr
+                      className="bg-zinc-50/60"
+                      data-sheet-import-variants-row
+                    >
+                      <Td colSpan={6} className="pt-0">
+                        {/* Modo "variants": as variações do produto, na ordem da planilha. */}
+                        {mode === "variants" && variantRows.length ? (
+                          <div className="mt-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                              {t("sheetImport.result.variants")} (
+                              {variantRows.length})
+                            </p>
+                            <ul
+                              className="mt-1 divide-y divide-zinc-100 rounded-md border border-zinc-200 text-xs"
+                              data-sheet-import-variants={variantRows.length}
+                            >
+                              {variantRows.map((v) => (
+                                <li
+                                  key={v.index}
+                                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-1"
+                                  data-sheet-import-variant={v.status}
+                                >
+                                  <span className="min-w-0 flex-1 truncate font-medium text-zinc-800">
+                                    {v.variant?.name ??
+                                      t("sheetImport.result.group", {
+                                        n: v.index + 1,
+                                      })}
+                                    {v.variant?.factoryItemCode ? (
+                                      <span className="ml-1.5 font-mono font-normal text-zinc-500">
+                                        {v.variant.factoryItemCode}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="tabular-nums text-zinc-700">
+                                    {v.variant?.price != null
+                                      ? formatMoney(
+                                          v.variant.price,
+                                          v.variant.currency,
+                                          t,
+                                        )
+                                      : "—"}
+                                  </span>
+                                  <span className="tabular-nums text-zinc-600">
+                                    {t("catalog.moq")}{" "}
+                                    {v.variant?.moq != null
+                                      ? v.variant.moq.toLocaleString(t.intl)
+                                      : "—"}
+                                  </span>
+                                  <span className="text-zinc-600">
+                                    {v.variant?.photoDocumentId
+                                      ? t("sheetImport.result.variantPhoto")
+                                      : t("sheetImport.result.variantNoPhoto")}
+                                  </span>
+                                  {v.error ? (
+                                    <span className="text-red-700">
+                                      {t("sheetImport.result.error", {
+                                        code: v.error,
+                                      })}
+                                    </span>
+                                  ) : null}
+                                  <Badge
+                                    tone={STATUS_TONE[v.status] ?? "neutral"}
+                                  >
+                                    {t(
+                                      `sheetImport.status.${v.status}` as DictionaryKey,
+                                    )}
+                                  </Badge>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </Td>
+                    </tr>
+                  ) : null}
+                </Fragment>
               ))}
             </tbody>
           </Table>
