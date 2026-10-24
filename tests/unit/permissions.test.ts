@@ -71,7 +71,8 @@ describe("isolamento entre papéis", () => {
       productId: "prod-boneca",
       productName: "Boneca",
       description: "Boneca 30 cm",
-      quantity: 500,
+      // Pedido mínimo da boneca (2000).
+      quantity: 2000,
       unit: "un",
     });
     // cliente não cria em nome de outro
