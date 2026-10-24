@@ -10,7 +10,7 @@ withTempStore();
 
 const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
-const { notify, openNotification } =
+const { notify, openNotification, forgetMissingColumns } =
   await import("@/lib/services/notifications");
 const { translator } = await import("@/i18n");
 const { displaySubject, notificationActor, notificationGroup, notificationKind } =
@@ -110,15 +110,37 @@ describe("avisos antigos (sem tipo gravado)", () => {
     expect(
       notificationKind({ subject: "ATRASADO: pedido #1, etapa SHIPPING", kind: null }),
     ).toBe("alert");
+    // "Pedido #2 criado" antigo tem o mesmo texto do modelo novo: novidade, com o fornecedor.
     const created = { subject: "Pedido #2 criado", kind: null, actor: null };
     expect(notificationKind(created)).toBe("info");
-    expect(notificationActor(created)).toBeNull();
+    expect(notificationActor(created)).toBe("supplier");
+    const other = { subject: "Kit de marketing liberado: Kit A", kind: null, actor: null };
+    expect([notificationKind(other), notificationActor(other)]).toEqual(["done", null]);
     // Com tipo gravado, o que está gravado vale (atenção sem ninguém a agir).
     expect(
       notificationActor({ subject: "x", kind: "alert", actor: null }),
     ).toBeNull();
     expect(notificationGroup("done")).toBe("news");
     expect(notificationGroup("alert")).toBe("alert");
+    // Cancelamento antigo ia para todo mundo: atenção, sem "sua vez".
+    const cancelled = { subject: "Pedido #4 cancelado", kind: null, actor: null };
+    expect(notificationKind(cancelled)).toBe("alert");
+    expect(notificationActor(cancelled)).toBeNull();
+  });
+
+  it("aviso novo gravado sem tipo (banco sem a coluna): reconhecido pelo modelo, em qualquer idioma", () => {
+    const pt = translator("pt");
+    const zh = translator("zh");
+    const stage = { subject: pt("notif.stage.subject", { n: 3, stage: pt("stage.SHIPPING") }), kind: null, actor: null };
+    expect([notificationKind(stage), notificationActor(stage)]).toEqual(["action", "recipient"]);
+    const created = { subject: zh("notif.orderCreated.customer.subject", { n: 3 }), kind: null, actor: null };
+    expect([notificationKind(created), notificationActor(created)]).toEqual(["info", "supplier"]);
+    const cancelled = { subject: translator("en")("notif.cancelled.subject", { n: 9 }), kind: null, actor: null };
+    expect([notificationKind(cancelled), notificationActor(cancelled)]).toEqual(["alert", null]);
+    const paid = { subject: pt("notif.customerPayment.subject", { n: 1 }), kind: null, actor: null };
+    expect([notificationKind(paid), notificationActor(paid)]).toEqual(["done", null]);
+    // Tipo gravado desconhecido: tratado como novidade, sem quebrar.
+    expect(notificationKind({ subject: "x", kind: "weird" as never })).toBe("info");
   });
 
   it("assunto antigo com a chave da etapa sai com o nome traduzido", () => {
@@ -171,7 +193,10 @@ describe("avisos antigos (sem tipo gravado)", () => {
     const row = await find(joao.id, "Sem coluna");
     expect(row).toBeTruthy();
     expect(row.kind ?? null).toBeNull();
-    expect(refused).toBe(3);
+    // Uma recusa basta: os outros canais já gravam sem as colunas.
+    expect(refused).toBe(1);
+    expect(await find(joao.id, "Sem coluna", "whatsapp")).toBeTruthy();
+    forgetMissingColumns();
     // Outros erros continuam subindo.
     const boom = vi
       .spyOn(store, "create")

@@ -287,8 +287,8 @@ export async function registerSupplierPayment(
       kind: "action",
       link: `/app/orders/${orderId}`,
       text: (t) => ({
-        subject: t("notif.paymentToSupplier.subject", { n: order.number }),
-        body: t("notif.paymentToSupplier.body", {
+        subject: t("notif.paymentRegistered.subject", { n: order.number }),
+        body: t("notif.paymentRegistered.body", {
           amount: formatAmount(amount, currency, t.intl),
         }),
       }),

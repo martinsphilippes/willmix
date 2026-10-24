@@ -105,26 +105,42 @@ function textFor(user: User, message: NotifyMessage): NotifyText {
 /**
  * Grava o aviso. Banco ainda sem as colunas `kind`/`actor` (esquema não
  * publicado): grava sem elas, para o aviso não derrubar a operação que o
- * gerou; até lá a tela infere o tipo pelo assunto.
+ * gerou; até lá a tela infere o tipo pelo assunto (os assuntos novos são
+ * reconhecidos pelo modelo). Depois de uma recusa, grava sem as colunas por
+ * um minuto (uma tentativa por aviso, não três) e então tenta de novo.
  */
+const LEGACY_COLUMNS_MS = 60_000;
+let legacyColumnsUntil = 0;
+
+/** Volta a tentar as colunas novas já (depois de publicar o esquema; testes). */
+export function forgetMissingColumns() {
+  legacyColumnsUntil = 0;
+}
+
 async function createNotification(row: NewRow<Notification>) {
   const store = getStore();
+  if (Date.now() < legacyColumnsUntil) return createLegacy(store, row);
   try {
     return await store.create("notifications", row);
   } catch (error) {
     if (!isUnknownColumn(error)) throw error;
+    legacyColumnsUntil = Date.now() + LEGACY_COLUMNS_MS;
     if (process.env.NODE_ENV !== "test")
       console.warn(
         "[notifications] banco sem as colunas kind/actor: publique o esquema (npm run appwrite:push)",
       );
-    const legacy: Record<string, unknown> = { ...row };
-    delete legacy.kind;
-    delete legacy.actor;
-    return store.create(
-      "notifications",
-      legacy as unknown as NewRow<Notification>,
-    );
+    return createLegacy(store, row);
   }
+}
+
+function createLegacy(store: ReturnType<typeof getStore>, row: NewRow<Notification>) {
+  const legacy: Record<string, unknown> = { ...row };
+  delete legacy.kind;
+  delete legacy.actor;
+  return store.create(
+    "notifications",
+    legacy as unknown as NewRow<Notification>,
+  );
 }
 
 function isUnknownColumn(error: unknown) {

@@ -75,6 +75,8 @@ export const pt = {
   "notif.kit.released.body":
     "Os arquivos finais já estão disponíveis para download.",
   "notif.unread": "Não lida",
+  "notif.paymentRegistered.subject": "Pedido #{n}: pagamento registrado, confirme quando entrar",
+  "notif.paymentRegistered.body": "{amount} registrado pela Wellmix. Confirme o recebimento assim que entrar na conta.",
 };
 
 export const en = {
@@ -148,6 +150,8 @@ export const en = {
   "notif.kit.released.subject": "Marketing kit released: {name}",
   "notif.kit.released.body": "The final files are ready to download.",
   "notif.unread": "Unread",
+  "notif.paymentRegistered.subject": "Order #{n}: payment registered, confirm when it arrives",
+  "notif.paymentRegistered.body": "{amount} registered by Wellmix. Confirm receipt as soon as it arrives.",
 };
 
 export const zh = {
@@ -198,7 +202,7 @@ export const zh = {
   "notif.quantityAdjusted.subject": "订单 #{n}：数量已调整",
   "notif.quantityAdjusted.body":
     "{item}：由 {from} 调整为 {to} {unit}，以装满集装箱。",
-  "notif.quantityAdjusted.price": " 新金额：{total}。",
+  "notif.quantityAdjusted.price": "新金额：{total}。",
   "notif.afterSales.subject": "订单 #{n}：这次采购体验如何？",
   "notif.afterSales.body":
     "请评价体验、反馈问题并告诉我们是否需要补货。只需一分钟。",
@@ -216,4 +220,6 @@ export const zh = {
   "notif.kit.released.subject": "营销素材包已放行：{name}",
   "notif.kit.released.body": "最终文件已可下载。",
   "notif.unread": "未读",
+  "notif.paymentRegistered.subject": "订单 #{n}：款项已登记，到账后请确认",
+  "notif.paymentRegistered.body": "Wellmix 已登记 {amount}。到账后请确认收款。",
 };
