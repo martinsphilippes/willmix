@@ -149,6 +149,18 @@ export const pt = {
   "explore.error.cart_below_moq":
     "Quantidade abaixo do pedido mínimo deste produto.",
   "explore.cart.belowMoq": "Abaixo do pedido mínimo ({n} un). Ao alterar a quantidade, ela sobe pelo menos até o mínimo.",
+  "explore.variant.label": "Variação",
+  "explore.variant.choose": "Escolha a variação",
+  "explore.variant.chooseLink": "Escolher variação",
+  "explore.priceFrom": "a partir de",
+  "explore.variants.count": "{n} variações",
+  "explore.variants.one": "1 variação",
+  "explore.error.cart_variant_required":
+    "Escolha a variação do produto antes de adicionar.",
+  "explore.error.cart_variant_invalid":
+    "Esta variação não está disponível: escolha outra.",
+  "explore.cart.variantUnavailable":
+    "A variação deste item não está mais disponível e não será enviada. Remova o item e escolha outra.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -297,6 +309,18 @@ export const en: Record<keyof typeof pt, string> = {
   "explore.error.cart_below_moq":
     "Quantity below this product's minimum order.",
   "explore.cart.belowMoq": "Below the minimum order ({n}). When you change the quantity, it goes up to at least the minimum.",
+  "explore.variant.label": "Variation",
+  "explore.variant.choose": "Choose the variation",
+  "explore.variant.chooseLink": "Choose variation",
+  "explore.priceFrom": "from",
+  "explore.variants.count": "{n} variations",
+  "explore.variants.one": "1 variation",
+  "explore.error.cart_variant_required":
+    "Choose the product variation before adding.",
+  "explore.error.cart_variant_invalid":
+    "This variation is not available: choose another.",
+  "explore.cart.variantUnavailable":
+    "This item's variation is no longer available and will not be sent. Remove the item and choose another.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -425,4 +449,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.error.invalid_input": "有字段无效：请检查数量和日期。",
   "explore.error.cart_below_moq": "数量低于该产品的起订量。",
   "explore.cart.belowMoq": "低于起订量（{n} 件）。修改数量时，将至少提升至起订量。",
+  "explore.variant.label": "款式",
+  "explore.variant.choose": "请选择款式",
+  "explore.variant.chooseLink": "选择款式",
+  "explore.priceFrom": "起价",
+  "explore.variants.count": "{n} 种款式",
+  "explore.variants.one": "1 种款式",
+  "explore.error.cart_variant_required": "加入前请先选择商品款式。",
+  "explore.error.cart_variant_invalid": "该款式不可用：请选择其他款式。",
+  "explore.cart.variantUnavailable":
+    "该商品的款式已不可用，不会提交。请移除后重新选择。",
 };

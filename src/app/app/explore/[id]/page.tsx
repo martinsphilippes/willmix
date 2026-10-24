@@ -18,6 +18,7 @@ import {
   PriceTag,
 } from "@/components/explore-ui";
 import { ExploreGallery } from "@/components/explore-gallery";
+import { ExploreVariantPicker } from "@/components/explore-variant-picker";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { SubmitButton } from "@/components/submit-button";
 import { Alert, formatDate } from "@/components/ui";
@@ -25,7 +26,9 @@ import { Alert, formatDate } from "@/components/ui";
 /*
  * Página do produto na vitrine: fotos, preço estimado (e por quantidade),
  * pedido mínimo, quantidade e personalização, e os botões de carrinho. Sem
- * fornecedor nem preço de compra (o serviço já não traz).
+ * fornecedor nem preço de compra (o serviço já não traz). Produto com
+ * variações: lista as variações (foto, nome, preço, mínimo) para o cliente
+ * escolher; o passo de quantidade usa o mínimo da escolhida.
  */
 export default async function ExploreProductPage({
   params,
@@ -55,6 +58,7 @@ export default async function ExploreProductPage({
       : t("common.error")
     : null;
   const back = `/app/explore/${encodeURIComponent(product.id)}`;
+  const hasVariants = product.variants.length > 0;
   // Nunca abaixo do pedido mínimo (o controle também não deixa descer dele).
   const startQty = Math.max(
     product.moq && product.moq > 0 ? product.moq : 1,
@@ -153,9 +157,45 @@ export default async function ExploreProductPage({
             {product.category ? (
               <p className="mt-1 text-sm text-zinc-500">{product.category}</p>
             ) : null}
+            {hasVariants ? (
+              <p
+                className="mt-1 text-sm text-zinc-500"
+                data-explore-variant-count={product.variants.length}
+              >
+                {product.variants.length === 1
+                  ? t("explore.variants.one")
+                  : t("explore.variants.count", {
+                      n: product.variants.length,
+                    })}
+              </p>
+            ) : null}
 
             <div className="mt-4">
-              {product.estimate.ok ? (
+              {hasVariants ? (
+                // Com variações: o menor preço ("a partir de"); cada variação
+                // mostra o próprio preço e mínimo no seletor.
+                product.priceFrom !== null ? (
+                  <>
+                    <p className="text-sm text-zinc-600">
+                      {t("explore.priceFrom")}
+                    </p>
+                    <PriceTag t={t} value={product.priceFrom} size="lg" />
+                    <p className="mt-1 text-sm font-medium text-emerald-700">
+                      {t("explore.price.estimated")}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-semibold text-zinc-800">
+                      {t("explore.price.onRequest")}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {t("explore.price.onRequestHint")}
+                    </p>
+                    <MissingReasons t={t} estimate={product.estimate} />
+                  </>
+                )
+              ) : product.estimate.ok ? (
                 <>
                   <PriceTag t={t} value={product.estimate.unitBrl} size="lg" />
                   <p className="mt-1 text-sm font-medium text-emerald-700">
@@ -173,7 +213,7 @@ export default async function ExploreProductPage({
                   <MissingReasons t={t} estimate={product.estimate} />
                 </>
               )}
-              {product.moq ? (
+              {product.moq && !hasVariants ? (
                 <p className="mt-2 text-sm text-zinc-700">
                   {t("explore.moq", {
                     n: product.moq.toLocaleString(t.intl),
@@ -182,7 +222,7 @@ export default async function ExploreProductPage({
               ) : null}
             </div>
 
-            {product.tiers.length ? (
+            {product.tiers.length && !hasVariants ? (
               <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200">
                 <p className="bg-zinc-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   {t("explore.product.tiers")}
@@ -222,17 +262,50 @@ export default async function ExploreProductPage({
               <form action={addToCartAction} className="mt-5 space-y-3">
                 <input type="hidden" name="productId" value={product.id} />
                 <input type="hidden" name="back" value={back} />
-                <QuantityStepper
-                  id="explore-quantity"
-                  defaultValue={startQty}
-                  moq={product.moq}
-                  label={t("explore.product.quantity")}
-                  decreaseLabel={t("explore.product.decrease")}
-                  increaseLabel={t("explore.product.increase")}
-                  belowMoqText={t("explore.product.belowMoq", {
-                    n: (product.moq ?? 1).toLocaleString(t.intl),
-                  })}
-                />
+                {hasVariants ? (
+                  // A variação (rádio `variantId`, obrigatória) e a quantidade
+                  // com o mínimo da escolhida.
+                  <ExploreVariantPicker
+                    variants={product.variants.map((v) => ({
+                      id: v.id,
+                      name: v.name,
+                      moq: v.moq,
+                      priceText: v.estimate.ok
+                        ? brl(t, v.estimate.unitBrl)
+                        : null,
+                      photoDocumentId: v.photoDocumentId,
+                      specification: v.specification,
+                    }))}
+                    productMoq={product.moq}
+                    startQty={startQty}
+                    intl={t.intl}
+                    quantityId="explore-quantity"
+                    labels={{
+                      choose: t("explore.variant.choose"),
+                      moq: t("explore.moq", { n: "{n}" }),
+                      perUnit: t("explore.price.unit"),
+                      estimated: t("explore.price.estimated"),
+                      onRequest: t("explore.price.onRequest"),
+                      noPhoto: t("explore.noPhoto"),
+                      quantity: t("explore.product.quantity"),
+                      decrease: t("explore.product.decrease"),
+                      increase: t("explore.product.increase"),
+                      belowMoq: t("explore.product.belowMoq", { n: "{n}" }),
+                    }}
+                  />
+                ) : (
+                  <QuantityStepper
+                    id="explore-quantity"
+                    defaultValue={startQty}
+                    moq={product.moq}
+                    label={t("explore.product.quantity")}
+                    decreaseLabel={t("explore.product.decrease")}
+                    increaseLabel={t("explore.product.increase")}
+                    belowMoqText={t("explore.product.belowMoq", {
+                      n: (product.moq ?? 1).toLocaleString(t.intl),
+                    })}
+                  />
+                )}
                 <div>
                   <label
                     htmlFor="explore-notes"
@@ -269,7 +342,7 @@ export default async function ExploreProductPage({
                 </div>
               </form>
             ) : null}
-            {product.estimate.ok ? (
+            {product.estimate.ok || product.priceFrom !== null ? (
               <p className="mt-4 text-xs leading-relaxed text-zinc-500">
                 {t("explore.product.estimateNote")}
               </p>

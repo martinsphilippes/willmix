@@ -15,6 +15,8 @@ import { errorCode, num, requireUser, run, str } from "./helpers";
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const quantitySchema = z.number().int().min(1).max(10_000_000);
 const notesSchema = z.string().max(500).nullable();
+/** Variação escolhida (produto com variações); vazio = sem variação. */
+const variantSchema = ID.nullable();
 
 /** Volta só para telas da vitrine (o formulário diz de onde veio). */
 function exploreBack(form: FormData, fallback: string) {
@@ -49,8 +51,9 @@ export async function addToCartAction(form: FormData) {
     const id = ID.parse(productId);
     const quantity = quantitySchema.parse(num(form, "quantity"));
     const notes = notesSchema.parse(optionalText(form, "notes"));
+    const variantId = variantSchema.parse(optionalText(form, "variantId"));
     const { addToCart } = await import("@/lib/services/cart");
-    await addToCart(user, id, quantity, notes);
+    await addToCart(user, id, quantity, notes, variantId);
     const target = withParams(back, { added: id, qty: String(quantity) });
     // Na grade, volta para o card (e não para o topo da lista).
     return back.startsWith("/app/explore?") || back === "/app/explore"
@@ -71,9 +74,17 @@ export async function requestNowAction(form: FormData) {
     const id = ID.parse(productId);
     const quantity = quantitySchema.parse(num(form, "quantity"));
     const notes = notesSchema.parse(optionalText(form, "notes"));
+    const variantId = variantSchema.parse(optionalText(form, "variantId"));
     const t = await getT();
     const { requestProductNow } = await import("@/lib/services/cart");
-    const created = await requestProductNow(user, id, quantity, notes, t);
+    const created = await requestProductNow(
+      user,
+      id,
+      quantity,
+      notes,
+      t,
+      variantId,
+    );
     return `/app/requests/${encodeURIComponent(created.id)}?fromCart=1`;
   });
 }
