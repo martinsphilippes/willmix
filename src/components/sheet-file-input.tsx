@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { SERVER_MAX_BYTES, uploadDirect } from "./direct-upload";
 
 /**
- * Campo da planilha (.xlsx). Planilha com fotos passa do teto da requisição
+ * Campo da planilha (.xlsx ou .xls). Planilha com fotos passa do teto da requisição
  * na Vercel (~4 MB): nesse caso sobe direto ao armazenamento e o formulário
  * leva só o id (`uploadedFileId`); menor, segue no próprio formulário. Em
  * desenvolvimento (modo memória) vai sempre pelo formulário.
@@ -100,7 +100,7 @@ export function SheetFileInput({
         type="file"
         name={name}
         required={required}
-        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
         disabled={working}
         onChange={onChange}
         aria-label={label}

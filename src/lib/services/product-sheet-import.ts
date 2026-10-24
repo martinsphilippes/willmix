@@ -26,7 +26,8 @@ import {
   type ReadingValues,
 } from "./sheet-reading-calc";
 import { addPhotos } from "./sourcing";
-import { openWorkbook, type SheetImage } from "./xlsx";
+import { openWorkbook, type SheetImage, type Workbook } from "./xlsx";
+import { openXlsWorkbook } from "./xls";
 
 /*
  * Cadastro de produtos pela planilha da ficha técnica (o modelo "SUPPLIER
@@ -254,7 +255,7 @@ export interface ParsedSheet {
 
 const OLE_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0];
 
-/** Excel antigo (.xls, binário OLE): o leitor só abre .xlsx. */
+/** Excel antigo (.xls, binário OLE): vai para o leitor BIFF8. */
 export function isLegacyXls(bytes: Uint8Array): boolean {
   return OLE_SIGNATURE.every((b, i) => bytes[i] === b);
 }
@@ -294,11 +295,17 @@ export function parseProductSheet(
   bytes: Uint8Array,
   options: { sheet?: string | null; defaultCurrency?: SheetCurrency | null } = {},
 ): ParsedSheet {
-  if (isLegacyXls(bytes)) throw new SheetImportError("xls_format");
-  let workbook: ReturnType<typeof openWorkbook>;
+  // Excel atual (.xlsx, ZIP) ou antigo (.xls, OLE/BIFF8): o mesmo leitor por trás.
+  let workbook: Workbook;
   try {
-    workbook = openWorkbook(bytes, { maxTotalBytes: WORKBOOK_MAX_BYTES });
-  } catch {
+    workbook = isLegacyXls(bytes)
+      ? openXlsWorkbook(bytes, { maxTotalBytes: WORKBOOK_MAX_BYTES })
+      : openWorkbook(bytes, { maxTotalBytes: WORKBOOK_MAX_BYTES });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    // Excel 95 ou anterior (BIFF5): salvar como .xlsx.
+    if (code === "xls_unsupported") throw new SheetImportError("xls_format");
+    if (code === "xlsx_too_large") throw new SheetImportError("too_large");
     throw new SheetImportError("invalid_file");
   }
   const names = workbook.sheetNames();

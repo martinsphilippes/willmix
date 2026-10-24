@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 import { PNG_1X1, xlsxBytes, type FixtureSheet } from "./xlsx-fixture";
+import { xlsBytes, type XlsFixtureSheet } from "./xls-fixture";
 
 /*
  * Cadastro de produtos pela planilha da ficha técnica (modelo SUPPLIER INFO):
@@ -86,10 +87,41 @@ const templateBytes = () =>
     ],
   });
 
-const file = (bytes: Uint8Array<ArrayBuffer>, name = "ficha.xlsx") =>
-  new File([bytes], name, {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const XLS_MIME = "application/vnd.ms-excel";
+
+const file = (bytes: Uint8Array<ArrayBuffer>, name = "ficha.xlsx", type = XLSX_MIME) =>
+  new File([bytes], name, { type });
+
+/**
+ * O mesmo modelo gravado como Excel 97-2003 (.xls): texto na SST, números
+ * como número (como o Excel grava), fotos coladas nas mesmas células. Outro
+ * fornecedor para não colidir com o lote em .xlsx.
+ */
+function xlsTemplateBytes(supplier = "MIN YAN XLS", store = "E4-9559", options: { biffVersion?: number } = {}) {
+  const sheet = template();
+  const cells: XlsFixtureSheet["cells"] = [];
+  sheet.cells.forEach((row, r) =>
+    row.forEach((raw, c) => {
+      if (raw === "") return;
+      const v = raw === "MIN YAN" ? supplier : raw === "E4-9558" ? store : raw;
+      cells.push({
+        row: r,
+        col: c,
+        cell: /^\d{1,8}(\.\d+)?$/.test(v) ? { kind: "number", value: Number(v) } : { kind: "sst", value: v },
+      });
+    }),
+  );
+  return xlsBytes(
+    [{ name: sheet.name, cells }],
+    [
+      { sheet: 0, col: 0, row: 2, bytes: PNG_1X1, kind: "png" },
+      { sheet: 0, col: 32, row: 2, bytes: JPEG, kind: "jpeg" },
+      { sheet: 0, col: 0, row: 5, bytes: PNG_1X1, kind: "png" },
+    ],
+    options,
+  );
+}
 
 describe("imagens da aba", () => {
   it("devolve cada imagem com a célula da âncora e os bytes", () => {
@@ -209,10 +241,11 @@ describe("leitura do modelo", () => {
     expect(() => svc.parseProductSheet(xlsxBytes([{ name: "X", cells: many }]))).toThrow("too_many");
   });
 
-  it("recusa .xls antigo, arquivo que não é planilha e planilha sem cabeçalho", () => {
+  it("recusa arquivo OLE que não é um .xls válido, arquivo que não é planilha e planilha sem cabeçalho", () => {
+    // Assinatura do Excel antigo sem um livro dentro: vai ao leitor .xls e é recusado.
     const ole = new Uint8Array(64);
     ole.set([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
-    expect(() => svc.parseProductSheet(ole)).toThrow("xls_format");
+    expect(() => svc.parseProductSheet(ole)).toThrow("invalid_file");
     expect(() => svc.parseProductSheet(new TextEncoder().encode("isto não é zip"))).toThrow("invalid_file");
     expect(() =>
       svc.parseProductSheet(xlsxBytes([{ name: "X", cells: [["a", "b"], ["1", "2"]] }])),
@@ -220,6 +253,17 @@ describe("leitura do modelo", () => {
     expect(() =>
       svc.parseProductSheet(xlsxBytes([{ name: "X", cells: [["SUPPLIER NAME", "SKU", "PRICE", "QTY/BOX", "MOQ"]] }])),
     ).toThrow("no_rows");
+  });
+
+  it("lê o mesmo modelo em .xls (Excel 97-2003): abas, cabeçalho, números e grupos iguais ao .xlsx", () => {
+    const fromXls = svc.parseProductSheet(xlsTemplateBytes("MIN YAN", "E4-9558"));
+    const fromXlsx = svc.parseProductSheet(templateBytes());
+    expect(fromXls.sheetName).toBe("SUPPLIER INFO");
+    expect(fromXls.columns).toEqual(fromXlsx.columns);
+    expect(fromXls.rows).toEqual(fromXlsx.rows);
+    expect(fromXls.groups).toEqual(fromXlsx.groups);
+    // Excel 95 (BIFF5) não é lido: a tela pede para salvar como .xlsx.
+    expect(() => svc.parseProductSheet(xlsTemplateBytes("MIN YAN", "E4-9558", { biffVersion: 0x0500 }))).toThrow("xls_format");
   });
 });
 
@@ -353,5 +397,29 @@ describe("importação", () => {
   it("só a Wellmix importa; linha é obrigatória", async () => {
     await expect(svc.importProductSheet(joao, file(templateBytes()), { lineId })).rejects.toThrow("forbidden");
     await expect(svc.importProductSheet(admin, file(templateBytes()), { lineId: "nao-existe" })).rejects.toThrow("line_required");
+  });
+  it("planilha .xls (Excel 97-2003) cadastra produtos, ficha e fotos como a .xlsx e guarda o arquivo original", async () => {
+    const store = getStore();
+    const before = (await store.list("products")).length;
+    const result = await svc.importProductSheet(admin, file(xlsTemplateBytes(), "ficha.xls", XLS_MIME), {
+      lineId,
+      namePrefix: "Porta-retrato",
+      defaultCurrency: "USD",
+    });
+    expect(result.summary).toMatchObject({ groups: 2, rows: 6, created: 2, updated: 0, errors: 0, suppliersCreated: 1, photos: 3 });
+    expect((await store.list("products")).length).toBe(before + 2);
+    const product = (await store.get("products", result.results[0].productId!))!;
+    expect(product).toMatchObject({
+      supplierSku: "1", price: 4, currency: "USD", moq: 2400, masterBoxQty: 12, innerBoxQty: 12,
+      netWeightKg: 0.225, cbm: 0.0183, lengthCm: 33.5, widthCm: 24.8, heightCm: 1.53, material: "PS+PVC",
+    });
+    const [supplier] = await store.list("parties", { filter: { type: "supplier", name: "MIN YAN XLS" } });
+    expect(supplier).toMatchObject({ storeNumber: "E4-9559", phone: "13515898686", city: "YIWU" });
+    const photos = await store.list("product_photos", { filter: { productId: product.id } });
+    expect(photos.map((p) => p.kind).sort()).toEqual(["business_card", "original"]);
+    const batch = (await store.get("import_batches", result.batchId))!;
+    expect(batch).toMatchObject({ status: "imported", rowCount: 6, sheetName: "SUPPLIER INFO" });
+    const evidence = (await store.get("documents", batch.fileDocumentId!))!;
+    expect(evidence).toMatchObject({ name: "ficha.xls", mime: XLS_MIME });
   });
 });
