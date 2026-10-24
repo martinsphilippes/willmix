@@ -57,6 +57,7 @@ export const pt = {
   "productVariants.done.toggled": "Situação da variação atualizada.",
   "productVariants.from": "a partir de {price}",
   "productVariants.count": "{n} variação(ões)",
+  "productVariants.label": "Variação",
   "catalog.error.variant_not_found": "Variação não encontrada.",
   "catalog.error.variant_duplicate":
     "Já existe uma variação com este código e nome neste produto.",
@@ -118,6 +119,7 @@ export const en = {
   "productVariants.done.toggled": "Variation status updated.",
   "productVariants.from": "from {price}",
   "productVariants.count": "{n} variation(s)",
+  "productVariants.label": "Variation",
   "catalog.error.variant_not_found": "Variation not found.",
   "catalog.error.variant_duplicate":
     "This product already has a variation with this code and name.",
@@ -177,6 +179,7 @@ export const zh = {
   "productVariants.done.toggled": "款式状态已更新。",
   "productVariants.from": "{price} 起",
   "productVariants.count": "{n} 个款式",
+  "productVariants.label": "款式",
   "catalog.error.variant_not_found": "未找到该款式。",
   "catalog.error.variant_duplicate": "该产品已有相同编码和名称的款式。",
   "catalog.error.variant_name_required": "请填写款式名称。",

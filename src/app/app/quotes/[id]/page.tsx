@@ -48,6 +48,10 @@ import { QuoteManufacturerCard } from "@/components/manufacturer-cards";
 import { quoteCardsView } from "@/lib/services/manufacturer-cards";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
+import {
+  requestVariantLabel,
+  variantSnapshotSummary,
+} from "@/lib/services/variant-sales";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 
 /** Fornecedor vê a RFQ e responde. Não vê outros fornecedores nem o cliente final. */
@@ -111,6 +115,20 @@ export default async function QuotePage({
     : (errorKeys
         .map((k) => [k, t(k as DictionaryKey)] as const)
         .find(([k, v]) => v !== k)?.[1] ?? t("common.error"));
+  const variantLabel = requestVariantLabel(request);
+  const variantSummary =
+    isWellmix(user) && request.variant
+      ? variantSnapshotSummary(
+          request.variant,
+          {
+            price: t("productVariants.col.price"),
+            moq: t("productVariants.col.moq"),
+            box: t("productVariants.col.box"),
+            cbm: t("productVariants.col.cbm"),
+          },
+          t.intl,
+        )
+      : null;
 
   return (
     <>
@@ -175,6 +193,23 @@ export default async function QuotePage({
         <Card title={t("requests.title")}>
           <DescriptionList
             items={[
+              // Variação pedida: o fornecedor vê o nome (faz parte da ficha);
+              // os valores da cópia (preço de referência, MOQ…) só a Wellmix.
+              ...(variantLabel
+                ? [
+                    [
+                      t("productVariants.label"),
+                      <span key="variant" data-request-variant>
+                        {variantLabel}
+                        {variantSummary ? (
+                          <span className="block text-xs text-zinc-500">
+                            {variantSummary}
+                          </span>
+                        ) : null}
+                      </span>,
+                    ] as [string, React.ReactNode],
+                  ]
+                : []),
               [t("common.quantity"), `${request.quantity} ${request.unit}`],
               [t("requests.deadline"), formatDate(request.deadline, t)],
               [t("quotes.validUntil"), formatDate(quote.validUntil, t)],

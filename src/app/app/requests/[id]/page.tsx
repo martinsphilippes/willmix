@@ -34,6 +34,7 @@ import {
   batchSiblings,
   getRequestForUser,
 } from "@/lib/services/requests";
+import { variantSnapshotSummary } from "@/lib/services/variant-sales";
 import {
   requestDisplayStatus,
   requestStatusTone,
@@ -109,6 +110,20 @@ export default async function RequestDetailPage({
     canViewRequest(user, r),
   );
   const wellmix = isWellmix(user);
+  // Valores da variação pedida (cópia feita na solicitação), só para a Wellmix.
+  const variantSummary =
+    wellmix && request.variant
+      ? variantSnapshotSummary(
+          request.variant,
+          {
+            price: t("productVariants.col.price"),
+            moq: t("productVariants.col.moq"),
+            box: t("productVariants.col.box"),
+            cbm: t("productVariants.col.cbm"),
+          },
+          t.intl,
+        )
+      : null;
   // Outros produtos do lote ainda em cotação (os que a RFQ do lote alcança).
   const rfqSiblings = siblings.filter((s) =>
     RFQ_OPEN_STATUSES.includes(s.status),
@@ -409,6 +424,23 @@ export default async function RequestDetailPage({
           <Card title={t("requests.title")} className="md:col-span-2">
             <DescriptionList
               items={[
+                // Variação pedida: o nome para todos; os valores da cópia
+                // (preço, MOQ, caixa, CBM) só para a Wellmix.
+                ...(request.variant
+                  ? [
+                      [
+                        t("productVariants.label"),
+                        <span key="variant" data-request-variant>
+                          {request.variant.name}
+                          {wellmix && variantSummary ? (
+                            <span className="block text-xs text-zinc-500">
+                              {variantSummary}
+                            </span>
+                          ) : null}
+                        </span>,
+                      ] as [string, React.ReactNode],
+                    ]
+                  : []),
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
                 [t("requests.deadline"), formatDate(request.deadline, t)],
                 [t("requests.description"), request.description],
