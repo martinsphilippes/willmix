@@ -392,8 +392,13 @@ export async function openRfq(
   }
   await validSuppliers(supplierIds);
   const settings = await getSettings();
+  // Briefing de embalagem: nasce com a primeira abertura da RFQ ou quando o
+  // formulário pede de propósito; convidar mais fornecedores não reabre um
+  // briefing adiado ou cancelado.
   const packaging =
-    settings.packagingBriefAt === "rfq" && options.packaging?.enabled !== false
+    settings.packagingBriefAt === "rfq" &&
+    options.packaging?.enabled !== false &&
+    (request.status === "REQUESTED" || options.packaging?.enabled === true)
       ? (options.packaging ?? {})
       : null;
   // Agência escolhida no formulário conferida antes de qualquer gravação.

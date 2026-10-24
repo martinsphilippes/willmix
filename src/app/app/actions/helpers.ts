@@ -147,6 +147,13 @@ export async function runInPlace(back: string, fn: () => Promise<void>) {
   if (failed) redirect(failed);
 }
 
+/** Acrescenta ?chave=valor a um caminho do portal, antes da âncora (#...). */
+export function withQuery(target: string, key: string, value: string): string {
+  const url = new URL(target, "http://x");
+  url.searchParams.set(key, value);
+  return url.pathname + url.search + url.hash;
+}
+
 /**
  * Campos da embalagem no formulário da RFQ (uma solicitação ou o lote): quem
  * faz a faca e a arte ("wellmix" = marketing da Wellmix; vazio = cadeia

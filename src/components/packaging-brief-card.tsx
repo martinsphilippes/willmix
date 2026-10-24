@@ -50,19 +50,26 @@ async function activeAgencies() {
 }
 
 /** Seletor "quem faz": agências ativas e o marketing Wellmix. */
-function OwnerSelect({
+export function OwnerSelect({
   t,
   agencies,
   value,
+  current,
   name = "packagingOwner",
   ariaLabel,
 }: {
   t: Translate;
   agencies: Array<{ id: string; name: string }>;
   value: string | null;
+  /** Dono atual fora da lista (agência inativa): continua visível, não cai na primeira. */
+  current?: { id: string; name: string } | null;
   name?: string;
   ariaLabel?: string;
 }) {
+  const missing =
+    current && value === current.id && !agencies.some((a) => a.id === value)
+      ? current
+      : null;
   return (
     <Select
       name={name}
@@ -70,6 +77,11 @@ function OwnerSelect({
       aria-label={ariaLabel}
       data-packaging-owner
     >
+      {missing ? (
+        <option value={missing.id}>
+          {t("packBrief.owner.inactive", { name: missing.name })}
+        </option>
+      ) : null}
       {agencies.map((a) => (
         <option key={a.id} value={a.id}>
           {a.name}
@@ -191,7 +203,7 @@ export async function PackagingBriefCard({
               {t(`packBrief.status.${brief.status}` as DictionaryKey)}
             </Badge>
           ) : null}
-          {live && !live.orderId ? (
+          {live && !live.orderId && request.status !== "ORDERED" ? (
             <Badge tone="warning">{t("packBrief.presale")}</Badge>
           ) : null}
         </span>
@@ -294,6 +306,7 @@ export async function PackagingBriefCard({
                     t={t}
                     agencies={agencies}
                     value={live.agencyId}
+                    current={agency ? { id: agency.id, name: agency.name } : null}
                     name="agencyId"
                     ariaLabel={t("packBrief.owner.label")}
                   />
@@ -334,7 +347,7 @@ export async function PackagingBriefCard({
             </form>
           ) : null}
         </div>
-      ) : (
+      ) : canOpen ? (
         <form action={openPackagingBriefAction} className="space-y-2">
           <input type="hidden" name="requestId" value={request.id} />
           <p className="text-sm text-zinc-600">{t("packBrief.card.none")}</p>
@@ -359,6 +372,9 @@ export async function PackagingBriefCard({
             {t("packBrief.openNow")}
           </SubmitButton>
         </form>
+      ) : (
+        // Cancelado e a solicitação já fechada: só o registro.
+        <p className="text-sm text-zinc-500">{t("packBrief.cancelledHint")}</p>
       )}
     </Card>
     </div>

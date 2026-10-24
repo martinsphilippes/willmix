@@ -263,6 +263,9 @@ export default async function RequestDetailPage({
   const proofDoc = downPayment?.proofDocumentId
     ? documents.find((d) => d.id === downPayment.proofDocumentId)
     : undefined;
+  // Anexos da solicitação: os arquivos do briefing de embalagem têm cartão próprio
+  // (e o cliente nunca os vê).
+  const attachments = documents.filter((d) => !d.packagingBriefId);
   /* RFQ: Wellmix escolhe fornecedores (antes da proposta). */
   const showRfq =
     wellmix &&
@@ -386,7 +389,11 @@ export default async function RequestDetailPage({
                       t(`reqBatch.error.${error}` as DictionaryKey) !==
                         `reqBatch.error.${error}`
                     ? t(`reqBatch.error.${error}` as DictionaryKey)
-                    : fallbackError(t, String(error))
+                    : typeof error === "string" &&
+                        t(`packBrief.error.${error}` as DictionaryKey) !==
+                          `packBrief.error.${error}`
+                      ? t(`packBrief.error.${error}` as DictionaryKey)
+                      : fallbackError(t, String(error))
         }
       />
       {saved === "requester" ? (
@@ -422,9 +429,9 @@ export default async function RequestDetailPage({
               unit={request.unit}
               t={t}
             />
-            {documents.length > 0 ? (
+            {attachments.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-2.5 text-sm">
-                {documents.map((d) => (
+                {attachments.map((d) => (
                   <li key={d.id}>
                     <TextLink href={`/api/files/${d.id}`} target="_blank">
                       {d.name}

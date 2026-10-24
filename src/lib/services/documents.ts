@@ -259,7 +259,8 @@ export async function canAccessDocument(
     // a solicitação não conceda nada a quem não é dono.
     const brief = await store.get("packaging_briefs", doc.packagingBriefId);
     if (!brief) return false;
-    if (user.role === "agency") return brief.agencyId === user.partyId;
+    if (user.role === "agency")
+      return !!user.partyId && brief.agencyId === user.partyId;
     if (user.role === "supplier") {
       if (!brief.orderId) return false;
       const order = await store.get("orders", brief.orderId);

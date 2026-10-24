@@ -370,6 +370,11 @@ export async function submitRequirement(
     );
   }
 
+  // Arte enviada pelo pedido: o briefing de embalagem (se houver) acompanha.
+  if (requirement.key === "art" && updated.documentId) {
+    const { syncBriefArt } = await import("@/lib/services/packaging-brief");
+    await syncBriefArt(order.id, updated.documentId);
+  }
   // Regra específica: número do ERP informado manualmente.
   if (
     stage.key === "ORDER_CREATED" &&
@@ -503,8 +508,11 @@ export async function clearRequirementDocument(
       });
     }
   }
-  // Arte excluída: a aprovação do fornecedor volta a pendente (como no reenvio).
+  // Arte excluída: a aprovação do fornecedor volta a pendente (como no reenvio)
+  // e o briefing de embalagem (se houver) deixa de apontar para ela.
   if (requirement.key === "art") {
+    const { syncBriefArt } = await import("@/lib/services/packaging-brief");
+    await syncBriefArt(order.id, null);
     const approvals = await store.list("requirements", {
       filter: { stageId: stage.id, key: "art_approval" },
     });

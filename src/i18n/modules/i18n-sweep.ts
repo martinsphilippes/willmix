@@ -147,6 +147,8 @@ export const pt = {
     "chave | rótulo | tipo (file, photo, text, number, date, confirm) | obrigatório (1/0)",
   "lines.requirementsExample": "purchase_sheet | Ficha de compra | text | 1",
   "common.intlLocale": "pt-BR",
+  "docType.print_ready": "Arquivos para a gráfica",
+  "docType.packaging_sample": "Foto da embalagem física",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -186,6 +188,8 @@ export const en: Record<keyof typeof pt, string> = {
     "key | label | type (file, photo, text, number, date, confirm) | required (1/0)",
   "lines.requirementsExample": "purchase_sheet | Purchase sheet | text | 1",
   "common.intlLocale": "en-US",
+  "docType.print_ready": "Print-ready files",
+  "docType.packaging_sample": "Photo of the physical packaging",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -224,4 +228,6 @@ export const zh: Record<keyof typeof pt, string> = {
     "键 | 标签 | 类型（file、photo、text、number、date、confirm）| 必填（1/0）",
   "lines.requirementsExample": "purchase_sheet | 采购单 | text | 1",
   "common.intlLocale": "zh-CN",
+  "docType.print_ready": "印刷文件",
+  "docType.packaging_sample": "实物包装照片",
 };

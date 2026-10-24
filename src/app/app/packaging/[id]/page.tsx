@@ -27,10 +27,11 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { FileAutoInput } from "@/components/file-auto-input";
-import { BRIEF_TONE } from "@/components/packaging-brief-card";
+import { BRIEF_TONE, OwnerSelect } from "@/components/packaging-brief-card";
 import {
   assignPackagingBriefAction,
   clearPackagingItemAction,
+  confirmPackagingDimsAction,
   saveAgencyNotesAction,
   savePackagingBriefTextAction,
   savePackagingDimsAction,
@@ -93,8 +94,9 @@ export default async function PackagingBriefPage({
     : brief.dimsSource === "quote" && brief.dimsProvisional
       ? t("packBrief.dims.source.quoteProvisional")
       : t(`packBrief.dims.source.${brief.dimsSource}` as DictionaryKey);
+  // Trocar o dono: só antes do pedido (depois, a agência é a do pedido).
   const agencies =
-    wellmix && brief.status !== "transferred"
+    wellmix && (brief.status === "open" || brief.status === "ready")
       ? await getStore().list("parties", {
           filter: { type: "agency", active: true },
           orderBy: "name",
@@ -243,6 +245,7 @@ export default async function PackagingBriefPage({
                         href={`/api/files/${p.documentId}`}
                         target="_blank"
                         rel="noreferrer"
+                        aria-label={`${t("packBrief.photos")}: ${p.caption?.trim() || request.productName}`}
                         className="block overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -273,12 +276,20 @@ export default async function PackagingBriefPage({
             }
           >
             {brief.dimsChangedAt ? (
-              <div className="mb-3">
+              <div className="mb-3 space-y-2">
                 <Alert tone="warning">
                   {t("packBrief.dims.changed", {
                     date: formatDate(brief.dimsChangedAt, t),
                   })}
                 </Alert>
+                {canEdit ? (
+                  <form action={confirmPackagingDimsAction}>
+                    <input type="hidden" name="briefId" value={brief.id} />
+                    <SubmitButton variant="secondary" data-packaging-dims-confirm>
+                      {t("packBrief.dims.confirm")}
+                    </SubmitButton>
+                  </form>
+                ) : null}
               </div>
             ) : null}
             {dims ? (
@@ -330,13 +341,13 @@ export default async function PackagingBriefPage({
                 <p className="col-span-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:col-span-6">
                   {t("packBrief.dims.form.title")}
                 </p>
-                <Field label="C (cm)">
+                <Field label={t("packBrief.dims.length")}>
                   <Input name="lengthCm" type="number" step="0.1" min="0" defaultValue={dims?.lengthCm ?? ""} required />
                 </Field>
-                <Field label="L (cm)">
+                <Field label={t("packBrief.dims.width")}>
                   <Input name="widthCm" type="number" step="0.1" min="0" defaultValue={dims?.widthCm ?? ""} required />
                 </Field>
-                <Field label="A (cm)">
+                <Field label={t("packBrief.dims.height")}>
                   <Input name="heightCm" type="number" step="0.1" min="0" defaultValue={dims?.heightCm ?? ""} required />
                 </Field>
                 <Field label={t("packBrief.dims.perCarton")}>
@@ -386,18 +397,18 @@ export default async function PackagingBriefPage({
                 <input type="hidden" name="briefId" value={brief.id} />
                 <div className="min-w-48 flex-1">
                   <Field label={t("packBrief.owner.label")}>
-                    <select
+                    <OwnerSelect
+                      t={t}
+                      agencies={agencies}
+                      value={brief.agencyId}
+                      current={
+                        brief.agencyId && view.agencyName
+                          ? { id: brief.agencyId, name: view.agencyName }
+                          : null
+                      }
                       name="agencyId"
-                      defaultValue={brief.agencyId ?? "wellmix"}
-                      className="h-8 w-full rounded-lg border border-zinc-300 bg-white px-2 text-[13px]"
-                    >
-                      {agencies.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
-                      ))}
-                      <option value="wellmix">{t("packBrief.owner.wellmix")}</option>
-                    </select>
+                      ariaLabel={t("packBrief.owner.label")}
+                    />
                   </Field>
                 </div>
                 <SubmitButton variant="secondary">
@@ -417,13 +428,19 @@ export default async function PackagingBriefPage({
                   t={t}
                   briefId={brief.id}
                   item={item}
+                  justSaved={saved === item.key}
                   missing={missing.includes(item.key)}
                   canEdit={
                     canEdit &&
-                    // Arte com a etapa do pedido aberta: pelo pedido (um caminho só).
-                    !(item.key === "art" && !!orderArt?.stageOpen)
+                    // Arte com a etapa do pedido aberta: pelo pedido (um caminho só);
+                    // etapa concluída: a arte aprovada fica como está.
+                    !(
+                      item.key === "art" &&
+                      (!!orderArt?.stageOpen || !!orderArt?.artLocked)
+                    )
                   }
                   artInOrder={item.key === "art" && !!orderArt?.stageOpen}
+                  artLocked={item.key === "art" && !!orderArt?.artLocked}
                   orderId={order?.id ?? null}
                 />
               ))}
@@ -462,17 +479,23 @@ function ItemRow({
   t,
   briefId,
   item,
+  justSaved,
   missing,
   canEdit,
   artInOrder,
+  artLocked,
   orderId,
 }: {
   t: Translate;
   briefId: string;
   item: PackagingItemView;
+  /** Acabou de ser enviado: a confirmação aparece aqui, onde a tela rola. */
+  justSaved: boolean;
   missing: boolean;
   canEdit: boolean;
   artInOrder: boolean;
+  /** Etapa do pedido concluída: a arte aprovada não se troca. */
+  artLocked: boolean;
   orderId: string | null;
 }) {
   const key: PackagingItemKey = item.key;
@@ -499,6 +522,14 @@ function ItemRow({
           <span className="text-xs font-normal text-zinc-500">
             ({t(item.required ? "packBrief.item.required" : "packBrief.item.optional")})
           </span>
+          {justSaved ? (
+            <span
+              className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200"
+              data-packaging-saved
+            >
+              {t("packBrief.uploaded")}
+            </span>
+          ) : null}
         </p>
         {doc ? (
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
@@ -541,6 +572,11 @@ function ItemRow({
             <Link href={`/app/orders/${orderId}`} className={linkClass}>
               {t("packBrief.openOrder")} →
             </Link>
+          </p>
+        ) : null}
+        {artLocked ? (
+          <p className="mt-0.5 text-xs text-zinc-600" data-packaging-art-locked>
+            {t("packBrief.error.art_locked")}
           </p>
         ) : null}
       </div>

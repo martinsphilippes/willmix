@@ -270,7 +270,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ? store
           .list("packaging_briefs", {
             filter: {
-              status: "open",
+              status: ["open", "transferred"],
               agencyId: agency ? user.partyId! : null,
             },
           })
@@ -287,8 +287,31 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ...reviews.map((r) => r.orderId).filter((id): id is string => !!id),
     ]),
   ];
-  // Depois do pedido criado a embalagem é cobrada pela etapa, não pelo briefing.
-  const briefs = openBriefs.filter((b) => !b.orderId);
+  // Antes do pedido: briefing aberto. Depois do pedido: só a arte ainda por
+  // enviar e só enquanto a etapa Arte e embalagem não começou (depois, a
+  // etapa cobra). Briefing "aberto" de solicitação já pedida (transferência
+  // que falhou) não cobra ninguém.
+  const transferredOpen = openBriefs.filter(
+    (b) => b.status === "transferred" && b.orderId && !b.artDocumentId,
+  );
+  const packagingStages = transferredOpen.length
+    ? await store
+        .list("stages", {
+          filter: {
+            orderId: [...new Set(transferredOpen.map((b) => b.orderId!))],
+            key: "PACKAGING",
+          },
+        })
+        .catch(() => [])
+    : [];
+  const briefs = [
+    ...openBriefs.filter((b) => b.status === "open" && !b.orderId),
+    ...transferredOpen.filter((b) =>
+      packagingStages.some(
+        (s) => s.orderId === b.orderId && s.status === "pending",
+      ),
+    ),
+  ];
   const quoteRequestIds = [
     ...new Set([
       ...quotes.map((q) => q.requestId),
@@ -369,10 +392,12 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   for (const brief of briefs) {
     const request = quoteRequests.find((r) => r.id === brief.requestId);
     if (!request || request.status === "CANCELLED") continue;
+    if (brief.status === "open" && request.status === "ORDERED") continue;
     const { missingPackagingItems } = await import("./packaging-brief-calc");
     const missing = missingPackagingItems(brief).map(
       (k) => PACKAGING_ITEM_LABEL[k],
     );
+    const inOrder = brief.status === "transferred";
     tasks.push(
       finish(
         {
@@ -381,9 +406,11 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           detail: [
             missing.length ? `Faltam: ${missing.join(", ")}` : "Obrigatórios enviados",
             `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
-            request.status === "WAITING_DOWN_PAYMENT"
-              ? "aguardando o sinal do cliente"
-              : "venda ainda não confirmada",
+            inOrder
+              ? "pedido criado: a arte é pedida antes de a etapa Arte e embalagem começar"
+              : request.status === "WAITING_DOWN_PAYMENT"
+                ? "aguardando o sinal do cliente"
+                : "venda ainda não confirmada",
           ].join(" · "),
           link: `/app/packaging/${brief.id}`,
           dueAt: brief.dueAt,

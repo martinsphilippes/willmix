@@ -66,10 +66,11 @@ export function isSchemaMissing(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return (
     /unknown attribute/i.test(error.message) ||
+    /attribute not found|not found in schema/i.test(error.message) ||
     /^(table|collection) with the requested id\b.*could not be found/i.test(
       error.message,
     ) ||
-    ["table_not_found", "collection_not_found"].includes(
+    ["table_not_found", "collection_not_found", "attribute_not_found"].includes(
       String((error as { type?: unknown }).type ?? ""),
     )
   );
@@ -214,6 +215,8 @@ export interface OpenBriefOptions {
   notify?: boolean;
   /** RFQ do lote: recebe os briefings criados para um aviso agrupado por agência. */
   collect?: PackagingBrief[];
+  /** Briefing cancelado: só a Wellmix, de propósito, abre outro (convidar mais fornecedores não reabre). */
+  reopen?: boolean;
 }
 
 /** Abre o briefing da solicitação (idempotente: um vivo por solicitação). */
@@ -225,7 +228,8 @@ export async function openPackagingBrief(
   assertWellmix(user);
   const store = getStore();
   const existing = await briefForRequest(request.id);
-  if (existing && LIVE.includes(existing.status)) return existing;
+  if (existing && (LIVE.includes(existing.status) || !options.reopen))
+    return existing;
   const settings = await getSettings();
   const owner = await resolvePackagingOwner(settings, options.agencyId);
   const master = request.productId
@@ -270,20 +274,8 @@ export async function openPackagingBrief(
     `Embalagem da solicitação${request.number ? ` nº ${request.number}` : ""}: ${owner.agencyId ? `agência ${owner.agencyId}` : "marketing Wellmix"} (${owner.ownerSource})`,
   );
   options.collect?.push(brief);
+  // No lote, os avisos (dono e "sem medidas") saem agrupados em notifyBriefsOpened.
   if (options.notify !== false) await notifyBriefsOpened([brief], [request]);
-  // Sem medidas da caixa no cadastro: a Wellmix completa a ficha ou aguarda a cotação.
-  if (!dims && owner.agencyId)
-    await notifyWellmix({
-      kind: "info",
-      actor: "wellmix",
-      link: `/app/packaging/${brief.id}`,
-      text: (t) => ({
-        subject: t("notif.packBrief.noDims.subject", {
-          product: request.productName,
-        }),
-        body: t("notif.packBrief.noDims.body"),
-      }),
-    });
   return brief;
 }
 
@@ -318,6 +310,34 @@ export async function notifyBriefsOpened(
   briefs: PackagingBrief[],
   requests: Request[],
 ) {
+  // Sem medidas da caixa no cadastro (agência fazendo): a Wellmix completa a
+  // ficha ou aguarda a cotação. Um aviso só, com a lista.
+  const noDims = briefs
+    .filter((b) => !b.dims && b.agencyId)
+    .map((b) => requests.find((r) => r.id === b.requestId))
+    .filter((r): r is Request => !!r);
+  if (noDims.length)
+    await notifyWellmix({
+      kind: "info",
+      actor: "wellmix",
+      link:
+        noDims.length === 1
+          ? `/app/packaging/${briefs.find((b) => b.requestId === noDims[0].id)!.id}`
+          : "/app/packaging",
+      text: (t) => ({
+        subject:
+          noDims.length === 1
+            ? t("notif.packBrief.noDims.subject", {
+                product: noDims[0].productName,
+              })
+            : t("notif.packBrief.noDims.many.subject", {
+                count: noDims.length,
+              }),
+        body: t("notif.packBrief.noDims.body", {
+          items: noDims.map((r) => r.productName).join("; "),
+        }),
+      }),
+    });
   const byOwner = new Map<string, PackagingBrief[]>();
   for (const b of briefs) {
     const key = b.agencyId ?? "";
@@ -432,7 +452,24 @@ export async function assignPackagingBrief(
     `Dono: ${brief.agencyId ?? "Wellmix"} → ${owner.agencyId ?? "Wellmix"}`,
   );
   if (request) {
-    await notifyBriefsOpened([updated], [request]);
+    if (updated.orderId && updated.artDocumentId) {
+      // Arte já no pedido: o novo dono só acompanha a aprovação (nada a enviar).
+      const order = await store.get("orders", updated.orderId);
+      if (order)
+        await notify(ownerTarget(updated), {
+          kind: "info",
+          actor: "supplier",
+          link: `/app/orders/${order.id}`,
+          text: (t) => ({
+            subject: t("notif.packBrief.transferred.subject", {
+              n: order.number,
+            }),
+            body: t("notif.packBrief.transferred.body", {
+              product: request.productName,
+            }),
+          }),
+        });
+    } else await notifyBriefsOpened([updated], [request]);
     if (brief.agencyId)
       await notify(
         { role: "agency", partyId: brief.agencyId },
@@ -542,10 +579,43 @@ export async function refreshPackagingDims(
 ): Promise<"set" | "changed" | "kept" | "none"> {
   if (!LIVE.includes(brief.status)) return "none";
   const next = packagingDimsFor(await getQuoteSheet(quoteId));
-  if (!next) return "none";
   const store = getStore();
   const request = await store.get("requests", brief.requestId);
   const product = request?.productName ?? "";
+  if (!next) {
+    // Cotação escolhida sem medidas enquanto a faca usa as provisórias de
+    // outra cotação: continuam provisórias e o dono fica sabendo.
+    if (
+      !options.provisional &&
+      brief.dims &&
+      brief.dimsSource === "quote" &&
+      brief.dimsQuoteId !== quoteId
+    ) {
+      await store.update("packaging_briefs", brief.id, {
+        dimsProvisional: true,
+      });
+      await notify(ownerTarget(brief), {
+        kind: "alert",
+        actor: "wellmix",
+        link: `/app/packaging/${brief.id}`,
+        text: (t) => ({
+          subject: t("notif.packBrief.dimsUnknown.subject", { product }),
+          body: t("notif.packBrief.dimsUnknown.body"),
+        }),
+      });
+      if (brief.agencyId)
+        await notifyWellmix({
+          kind: "action",
+          actor: "wellmix",
+          link: `/app/packaging/${brief.id}`,
+          text: (t) => ({
+            subject: t("notif.packBrief.dimsUnknown.subject", { product }),
+            body: t("notif.packBrief.dimsUnknown.body"),
+          }),
+        });
+    }
+    return "none";
+  }
   if (!brief.dims) {
     await store.update("packaging_briefs", brief.id, {
       dims: next,
@@ -614,14 +684,24 @@ export async function refreshPackagingDims(
   return "changed";
 }
 
-/** Ficha de cotação salva: um briefing sem medidas ganha as provisórias. */
+/**
+ * Ficha de cotação salva: um briefing sem medidas ganha as provisórias; a
+ * ficha do fornecedor já escolhido traz as definitivas (mesmo que tenha
+ * chegado depois da escolha).
+ */
 export async function packagingSheetSaved(
   user: User | null,
   requestId: string,
   quoteId: string,
 ) {
   const brief = await briefForRequest(requestId);
-  if (!brief || brief.dims || !LIVE.includes(brief.status)) return;
+  if (!brief || !LIVE.includes(brief.status)) return;
+  const request = await getStore().get("requests", requestId);
+  if (request?.selectedQuoteId === quoteId) {
+    await refreshPackagingDims(user, brief, quoteId, { provisional: false });
+    return;
+  }
+  if (brief.dims) return;
   await refreshPackagingDims(user, brief, quoteId, { provisional: true });
 }
 
@@ -689,7 +769,15 @@ export async function savePackagingDims(
     dimsQuoteId: null,
     dimsProvisional: false,
     updatedByUserId: user.id,
-    ...(changed && brief.dims ? { dimsChangedAt: new Date().toISOString() } : {}),
+    ...(changed && brief.dims
+      ? {
+          dimsChangedAt: new Date().toISOString(),
+          // Faca e arte prontas com as medidas antigas: a agência confere de novo.
+          ...(brief.status === "ready"
+            ? { status: "open" as const, readyAt: null }
+            : {}),
+        }
+      : {}),
   });
   await audit(user, "packaging_brief.dims", "packaging_brief", briefId, "Medidas informadas à mão", brief.dims, next);
   if (changed && brief.agencyId) {
@@ -708,6 +796,53 @@ export async function savePackagingDims(
         body: dimsText(t, next),
       }),
     });
+  }
+}
+
+/**
+ * Dono confere faca e arte depois de as medidas mudarem: o aviso some e, com
+ * os obrigatórios enviados, o briefing volta a "pronto".
+ */
+export async function confirmPackagingDims(user: User, briefId: string) {
+  const store = getStore();
+  const brief = await store.get("packaging_briefs", briefId);
+  if (!brief) throw new PackagingBriefError("not_found");
+  if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
+  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  const ready =
+    brief.status === "open" && missingPackagingItems(brief).length === 0;
+  const updated = await store.update("packaging_briefs", briefId, {
+    dimsChangedAt: null,
+    updatedByUserId: user.id,
+    ...(ready ? { status: "ready", readyAt: new Date().toISOString() } : {}),
+  });
+  await audit(
+    user,
+    "packaging_brief.dims_confirmed",
+    "packaging_brief",
+    briefId,
+    "Faca e arte conferidas com as medidas atuais",
+  );
+  return updated;
+}
+
+/**
+ * Arte enviada ou excluída pelo próprio pedido (item "Arte" da etapa): o
+ * briefing ligado acompanha, para a tela e as pendências não mostrarem uma
+ * versão superada. Nunca derruba o requisito (falha vai ao log).
+ */
+export async function syncBriefArt(
+  orderId: string,
+  documentId: string | null,
+): Promise<void> {
+  try {
+    const brief = await briefForOrder(orderId);
+    if (!brief || brief.artDocumentId === documentId) return;
+    await getStore().update("packaging_briefs", brief.id, {
+      artDocumentId: documentId,
+    });
+  } catch (error) {
+    console.error("[packaging-brief] arte do pedido não refletida", error);
   }
 }
 
@@ -804,6 +939,10 @@ export async function uploadPackagingItem(
   if (!PACKAGING_ITEM_KEYS.includes(key))
     throw new PackagingBriefError("invalid_kind");
   const stage = key === "art" ? await packagingStage(brief.orderId) : null;
+  // Etapa Arte e embalagem concluída (ou cancelada): a arte aprovada pelo
+  // fornecedor não se troca por aqui; a Wellmix reabre pelo pedido.
+  if (key === "art" && stage && !["pending", "active", "blocked"].includes(stage.status))
+    throw new PackagingBriefError("art_locked");
   const artRequirementId =
     key === "art" && brief.orderId ? brief.orderArtRequirementId : null;
   const input = {
@@ -912,6 +1051,8 @@ export async function clearPackagingItem(
   const documentId = brief[column];
   if (key === "art" && brief.orderId && brief.orderArtRequirementId) {
     const stage = await packagingStage(brief.orderId);
+    if (stage && !["pending", "active", "blocked"].includes(stage.status))
+      throw new PackagingBriefError("art_locked");
     if (stageOpen(stage)) {
       // Etapa aberta: a arte é excluída pelo pedido (volta a aprovação do fornecedor).
       const { clearRequirementDocument } = await import("@/lib/workflow/engine");
@@ -1067,15 +1208,16 @@ export async function remindPackagingBriefs(
   const store = getStore();
   let briefs: PackagingBrief[];
   try {
-    briefs = await store.list("packaging_briefs", { filter: { status: "open" } });
+    briefs = await store.list("packaging_briefs", {
+      filter: { status: ["open", "transferred"] },
+    });
   } catch (error) {
     if (isSchemaMissing(error)) return 0;
     throw error;
   }
   let sent = 0;
   for (const brief of briefs) {
-    if (brief.orderId || !brief.dueAt || Date.parse(brief.dueAt) > soon)
-      continue;
+    if (!brief.dueAt || Date.parse(brief.dueAt) > soon) continue;
     if (
       brief.reminderSentAt &&
       now - Date.parse(brief.reminderSentAt) < 86_400_000
@@ -1083,6 +1225,13 @@ export async function remindPackagingBriefs(
       continue;
     const request = await store.get("requests", brief.requestId);
     if (!request || request.status === "CANCELLED") continue;
+    if (brief.status === "transferred" || brief.orderId) {
+      // No pedido: só a arte ainda por enviar e só enquanto a etapa não
+      // começou (depois, a etapa cobra).
+      if (brief.artDocumentId) continue;
+      const stage = await packagingStage(brief.orderId);
+      if (!stage || stage.status !== "pending") continue;
+    } else if (request.status === "ORDERED") continue;
     const overdue = Date.parse(brief.dueAt) < now;
     const missing = missingPackagingItems(brief);
     await notify(ownerTarget(brief), {
@@ -1141,6 +1290,8 @@ export interface PackagingBriefView {
     art: Requirement | null;
     approval: Requirement | null;
     stageOpen: boolean;
+    /** Etapa concluída/cancelada: a arte aprovada não se troca pelo briefing. */
+    artLocked: boolean;
   } | null;
 }
 
@@ -1194,6 +1345,8 @@ export async function getPackagingBriefView(
       art: reqs.find((r) => r.key === "art") ?? null,
       approval: reqs.find((r) => r.key === "art_approval") ?? null,
       stageOpen: stageOpen(stage),
+      artLocked:
+        !!stage && !["pending", "active", "blocked"].includes(stage.status),
     };
   }
   const items = PACKAGING_ITEM_KEYS.map((key) => ({
@@ -1213,7 +1366,10 @@ export async function getPackagingBriefView(
     missing: missingPackagingItems(brief),
     canEdit: canEditPackagingBrief(user, brief) && LIVE.includes(brief.status),
     wellmix,
-    presale: !brief.orderId && brief.status !== "cancelled",
+    presale:
+      !brief.orderId &&
+      brief.status !== "cancelled" &&
+      request.status !== "ORDERED",
     order,
     orderArt,
   };

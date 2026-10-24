@@ -2,17 +2,19 @@
 
 import { z } from "zod";
 import { PACKAGING_ITEM_KEYS, getStore } from "@/lib/db";
+import { assertWellmix } from "@/lib/auth/permissions";
 import {
   assignPackagingBrief,
   cancelPackagingBrief,
   clearPackagingItem,
+  confirmPackagingDims,
   openPackagingBrief,
   saveAgencyNotes,
   savePackagingBriefText,
   savePackagingDims,
   uploadPackagingItem,
 } from "@/lib/services/packaging-brief";
-import { num, requireUser, run, str } from "./helpers";
+import { num, requireUser, run, str, withQuery } from "./helpers";
 
 /*
  * Briefing de embalagem (faca, arte, gráfica, foto): ações da agência (ou do
@@ -94,7 +96,7 @@ export async function savePackagingBriefTextAction(form: FormData) {
     const id = briefId.parse(brief.id);
     const text = z.string().max(4000).parse(str(form, "brief"));
     await savePackagingBriefText(user, id, text || null);
-    return `${target}${target.includes("?") ? "&" : "?"}saved=brief`;
+    return withQuery(target, "saved", "brief");
   });
 }
 
@@ -137,7 +139,7 @@ export async function assignPackagingBriefAction(form: FormData) {
         ? null
         : z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).parse(owner);
     await assignPackagingBrief(user, id, agencyId);
-    return `${target}${target.includes("?") ? "&" : "?"}saved=owner`;
+    return withQuery(target, "saved", "owner");
   });
 }
 
@@ -159,6 +161,8 @@ export async function openPackagingBriefAction(form: FormData) {
     .parse(str(form, "requestId"));
   const target = `/app/requests/${requestId}`;
   await run(target, async () => {
+    // Papel antes de qualquer leitura: nada da solicitação vaza a quem não é Wellmix.
+    assertWellmix(user);
     const request = await getStore().get("requests", requestId);
     if (!request) throw new Error("not_found");
     if (request.status === "CANCELLED" || request.status === "ORDERED")
@@ -174,7 +178,18 @@ export async function openPackagingBriefAction(form: FormData) {
     await openPackagingBrief(user, request, {
       agencyId,
       brief: brief || null,
+      reopen: true,
     });
     return `${target}?saved=packaging#packaging`;
+  });
+}
+
+/** Dono conferiu faca e arte depois de as medidas mudarem. */
+export async function confirmPackagingDimsAction(form: FormData) {
+  const user = await requireUser();
+  const brief = briefFrom(form);
+  await run(brief.back, async () => {
+    await confirmPackagingDims(user, briefId.parse(brief.id));
+    return `${back(brief.id)}?saved=dims#dims`;
   });
 }

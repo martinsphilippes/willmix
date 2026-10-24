@@ -30,6 +30,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { SubmitButton } from "@/components/submit-button";
 import { PackagingRfqFields } from "@/components/packaging-brief-card";
+import { briefsByRequest } from "@/lib/services/packaging-brief";
 import {
   deleteRequestsAction,
   openBatchRfqAction,
@@ -132,6 +133,16 @@ export default async function RequestBatchPage({
       invited: invitedIn(s.id),
     }))
     .sort((a, b) => b.supplies - a.supplies || a.name.localeCompare(b.name));
+  // Embalagem: campos da RFQ só quando algum produto do lote ainda não tem briefing vivo.
+  const batchBriefs = wellmix
+    ? await briefsByRequest(rfqRows.map((r) => r.id))
+    : new Map();
+  const allHaveBriefs =
+    rfqRows.length > 0 &&
+    rfqRows.every((r) => {
+      const b = batchBriefs.get(r.id);
+      return !!b && b.status !== "cancelled";
+    });
   const allInvited =
     rfqSuppliers.length > 0 &&
     rfqSuppliers.every((s) => s.invited === rfqRows.length);
@@ -372,7 +383,13 @@ export default async function RequestBatchPage({
                   );
                 })}
               </div>
-              <PackagingRfqFields t={t} withBrief={false} />
+              {allInvited || !rfqSuppliers.length ? null : (
+                <PackagingRfqFields
+                  t={t}
+                  withBrief={false}
+                  hasBrief={allHaveBriefs}
+                />
+              )}
               {allInvited || !rfqSuppliers.length ? null : (
                 <SubmitButton data-batch-rfq-submit>
                   {rfqRows.length === 1

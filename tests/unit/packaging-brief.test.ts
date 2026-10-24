@@ -572,13 +572,18 @@ describe("pedido criado", () => {
     expect(order.agencyId).toBe("agencia");
     const moved = (await pb.briefForRequest(request.id))!;
     expect(moved.status).toBe("transferred");
-    // Aviso "ainda pendente" com link ao briefing; pendência do briefing some.
+    // Aviso "ainda pendente" com link ao briefing; a pendência do briefing
+    // continua (uma só) até a arte chegar ou a etapa abrir.
     const notes = (await notificationsOf(agency)).slice(beforeAgency);
     expect(notes.some((n) => /ainda pendente/.test(n.subject))).toBe(true);
-    expect((await pendingTasksFor(agency)).filter((t) => t.link.includes(brief.id))).toHaveLength(0);
-    // Arte pelo briefing antes de a etapa abrir conclui o item; a etapa abre direto na aprovação.
+    const pending = (await pendingTasksFor(agency)).filter((t) => t.link.includes(brief.id));
+    expect(pending).toHaveLength(1);
+    expect(pending[0].detail).toContain("pedido criado");
+    // Arte pelo briefing antes de a etapa abrir conclui o item e a pendência some;
+    // a etapa abre direto na aprovação.
     await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
     expect((await packagingReqs(order.id)).art.status).toBe("done");
+    expect((await pendingTasksFor(agency)).filter((t) => t.link.includes(brief.id))).toHaveLength(0);
     await reachPackaging(order.id);
     const reqs = await packagingReqs(order.id);
     expect(reqs.stage.responsibleRole).toBe("supplier");
@@ -672,5 +677,103 @@ describe("cancelamento, troca de dono e lembretes", () => {
     } finally {
       (store as { create: typeof store.create }).create = original;
     }
+  });
+});
+
+describe("correções da revisão", () => {
+  it("convidar mais fornecedores não reabre um briefing cancelado nem abre um adiado; só a Wellmix reabre de propósito", async () => {
+    const store = getStore();
+    const request = await newRequest();
+    await r.openRfq(admin, request.id, ["fornecedor-a"]);
+    const first = (await pb.briefForRequest(request.id))!;
+    await pb.cancelPackagingBrief(admin, first.id);
+    await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
+    expect(await store.list("packaging_briefs", { filter: { requestId: request.id } })).toHaveLength(1);
+    expect((await pb.briefForRequest(request.id))!.status).toBe("cancelled");
+    const again = await pb.openPackagingBrief(admin, request, { reopen: true });
+    expect(again.id).not.toBe(first.id);
+    expect(again.status).toBe("open");
+
+    const deferred = await newRequest();
+    await r.openRfq(admin, deferred.id, ["fornecedor-a"], { packaging: { enabled: false } });
+    expect(await pb.briefForRequest(deferred.id)).toBeNull();
+    await r.openRfq(admin, deferred.id, ["fornecedor-b"]);
+    expect(await pb.briefForRequest(deferred.id)).toBeNull();
+    // Pedido explícito (caixa marcada no lote) abre mesmo com a RFQ já aberta.
+    await r.openRfq(admin, deferred.id, ["fornecedor-c"].filter(() => false).concat(["fornecedor-a"]), { packaging: { enabled: true } });
+    expect((await pb.briefForRequest(deferred.id))?.status).toBe("open");
+  });
+
+  it("login de agência sem empresa não abre arquivo do briefing do marketing Wellmix", async () => {
+    const request = await newRequest();
+    await r.openRfq(admin, request.id, ["fornecedor-a"], { packaging: { agencyId: null } });
+    const brief = (await pb.briefForRequest(request.id))!;
+    const { document } = await pb.uploadPackagingItem(admin, brief.id, "art", pdf());
+    const noParty = { ...agency, id: "agency-no-party", partyId: null } as User;
+    expect(await canAccessDocument(noParty, document)).toBe(false);
+    expect(await pb.getPackagingBriefView(noParty, brief.id)).toBeNull();
+  });
+
+  it("arte pelo pedido reflete no briefing; depois da aprovação a arte fica travada no briefing", async () => {
+    const store = getStore();
+    const request = await newRequest();
+    await r.openRfq(admin, request.id, ["fornecedor-a"]);
+    const brief = (await pb.briefForRequest(request.id))!;
+    const order = await toOrder(request);
+    // Pedido criado sem arte: pendência da agência continua (etapa ainda não começou).
+    expect((await pendingTasksFor(agency)).some((t) => t.link === `/app/packaging/${brief.id}`)).toBe(true);
+    await reachPackaging(order.id);
+    // Etapa aberta: a pendência do briefing some (a etapa cobra).
+    expect((await pendingTasksFor(agency)).some((t) => t.link === `/app/packaging/${brief.id}`)).toBe(false);
+    let reqs = await packagingReqs(order.id);
+    const { uploadDocument } = await import("@/lib/services/documents");
+    const doc = await uploadDocument(agency, pdf("pelo-pedido.pdf"), { orderId: order.id, requirementId: reqs.art.id, type: "art" });
+    await submitRequirement(agency, reqs.art.id, { documentId: doc.id });
+    expect((await store.get("packaging_briefs", brief.id))!.artDocumentId).toBe(doc.id);
+    reqs = await packagingReqs(order.id);
+    await decideRequirement(supplierA, reqs.approval.id, "approve", null);
+    expect((await packagingReqs(order.id)).stage.status).toBe("done");
+    await expect(pb.uploadPackagingItem(agency, brief.id, "art", pdf("troca.pdf"))).rejects.toThrow("art_locked");
+    await expect(pb.clearPackagingItem(agency, brief.id, "art")).rejects.toThrow("art_locked");
+    // A foto da embalagem física ainda pode chegar depois.
+    await expect(pb.uploadPackagingItem(agency, brief.id, "packaging_sample", pdf("foto.pdf"))).resolves.toBeTruthy();
+  });
+
+  it("fornecedor escolhido sem medidas: as provisórias de outra cotação continuam provisórias, com alerta; medidas à mão reabrem o pronto e a conferência fecha", async () => {
+    const store = getStore();
+    const request = await newRequest();
+    await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
+    const brief = (await pb.briefForRequest(request.id))!;
+    const [qa] = await store.list("quotes", { filter: { requestId: request.id, supplierId: "fornecedor-a" } });
+    const [qb] = await store.list("quotes", { filter: { requestId: request.id, supplierId: "fornecedor-b" } });
+    await saveQuoteSheet(supplierA, qa.id, { lengthCm: 60, widthCm: 40, heightCm: 30, masterCartonQty: 12 } as never);
+    // B respondeu com ficha sem as medidas da caixa.
+    await saveQuoteSheet(supplierB, qb.id, { moq: 100 } as never);
+    await r.answerQuote(supplierA, qa.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
+    await r.answerQuote(supplierB, qb.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
+    const before = (await notificationsOf(agency)).length;
+    const beforeAdmin = (await notificationsOf(admin)).length;
+    await r.selectQuote(admin, qb.id, { sellPrice: 1000, sellCurrency: "BRL", downPaymentAmount: 300 });
+    let fresh = (await pb.briefForRequest(request.id))!;
+    expect(fresh.dims?.lengthCm).toBe(60);
+    expect(fresh.dimsProvisional).toBe(true);
+    expect((await notificationsOf(agency)).slice(before).some((n) => /a confirmar/.test(n.subject))).toBe(true);
+    expect((await notificationsOf(admin)).slice(beforeAdmin).some((n) => /a confirmar/.test(n.subject))).toBe(true);
+    // A Wellmix informa as medidas à mão: deixam de ser provisórias.
+    await pb.savePackagingDims(admin, brief.id, { lengthCm: 61, widthCm: 40, heightCm: 30, masterCartonQty: 12, innerQty: null });
+    fresh = (await pb.briefForRequest(request.id))!;
+    expect(fresh.dimsProvisional).toBe(false);
+    expect(fresh.dimsSource).toBe("manual");
+    // Pronto → medidas à mão diferentes → em preparação com aviso → conferência → pronto de novo.
+    await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca.pdf"));
+    await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
+    expect((await pb.briefForRequest(request.id))!.status).toBe("ready");
+    await pb.savePackagingDims(admin, brief.id, { lengthCm: 80, widthCm: 50, heightCm: 40, masterCartonQty: 12, innerQty: null });
+    fresh = (await pb.briefForRequest(request.id))!;
+    expect(fresh.status).toBe("open");
+    expect(fresh.dimsChangedAt).not.toBeNull();
+    const confirmed = await pb.confirmPackagingDims(agency, brief.id);
+    expect(confirmed.dimsChangedAt).toBeNull();
+    expect(confirmed.status).toBe("ready");
   });
 });
