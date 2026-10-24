@@ -104,7 +104,8 @@ export async function getProductSheet(
   return row ?? null;
 }
 
-const sheetCurrency = (c: string | null | undefined) => {
+/** Moeda do produto (CNY) na convenção da ficha (RMB); fora da lista, nula. */
+export const sheetCurrency = (c: string | null | undefined) => {
   const v = (c ?? "").toUpperCase();
   if (v === "CNY" || v === "RMB") return "RMB" as const;
   return v === "USD" || v === "BRL" || v === "EUR" ? v : null;
@@ -346,9 +347,23 @@ export async function saveProductSheet(
   return writeProductSheet(user, productId, input);
 }
 
+/**
+ * Ficha mestre espelhada da variação de referência (produto com variações;
+ * ver services/product-variants.ts). Sem checar papel: quem chama já
+ * decidiu (importação, ações da Wellmix, adoção da ficha do pedido); sem
+ * usuário quando roda por conta do sistema.
+ */
+export async function mirrorMasterSheetFromVariant(
+  user: User | null,
+  productId: string,
+  input: SheetInput,
+): Promise<{ sheet: PurchaseSheet; missing: SheetMissing[] }> {
+  return writeProductSheet(user, productId, input, "product.sheet_from_variant");
+}
+
 /** Grava a ficha mestre (sem checar papel: quem chama já decidiu o que pode). */
 async function writeProductSheet(
-  user: User,
+  user: User | null,
   productId: string,
   input: SheetInput,
   action?: string,
@@ -381,7 +396,7 @@ async function writeProductSheet(
   if (existing) {
     sheet = await store.update("purchase_sheets", existing.id, {
       ...patch,
-      updatedByUserId: user.id,
+      updatedByUserId: user?.id ?? null,
     });
   } else {
     const blank = Object.fromEntries(
@@ -398,7 +413,7 @@ async function writeProductSheet(
       lots: normalizeLots(patch.lots as never),
       orderId: productId,
       productId,
-      updatedByUserId: user.id,
+      updatedByUserId: user?.id ?? null,
       completedAt: null,
     } as Omit<PurchaseSheet, "id" | "createdAt" | "updatedAt">);
   }

@@ -371,7 +371,8 @@ export async function productMoq(productId: string): Promise<number | null> {
   if (!product) return null;
   const { getProductSheet } = await import("./product-sheet");
   const sheet = await getProductSheet(productId);
-  return effectiveMoq(sheet?.moq, product.moq);
+  // Sem variação escolhida (a solicitação com variação chega na próxima fase).
+  return effectiveMoq(null, sheet?.moq, product.moq);
 }
 
 /**

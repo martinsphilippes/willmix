@@ -2,7 +2,10 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { getStore, SHEET_CURRENCIES } from "@/lib/db";
-import { SHEET_IMPORT_ENTITY } from "@/lib/services/product-sheet-import";
+import {
+  SHEET_IMPORT_ENTITY,
+  SHEET_IMPORT_MODES,
+} from "@/lib/services/product-sheet-import";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { dictionaries } from "@/i18n/dictionaries";
@@ -134,6 +137,35 @@ export default async function ProductSheetImportPage({
                 </Select>
               </Field>
             </div>
+            {/* Resultado: um produto com variações (padrão) ou um produto por linha (como antes). */}
+            <fieldset
+              className="space-y-1.5 rounded-lg border border-zinc-200 p-3"
+              data-sheet-import-mode
+            >
+              <legend className="px-1 text-xs font-medium text-zinc-700">
+                {t("sheetImport.mode")}
+              </legend>
+              {SHEET_IMPORT_MODES.map((mode) => (
+                <label
+                  key={mode}
+                  className="flex items-start gap-2 text-sm text-zinc-800"
+                >
+                  <input
+                    type="radio"
+                    name="mode"
+                    value={mode}
+                    defaultChecked={mode === "variants"}
+                    className="mt-1"
+                  />
+                  <span>
+                    {t(`sheetImport.mode.${mode}` as DictionaryKey)}
+                    <span className="block text-xs text-zinc-500">
+                      {t(`sheetImport.mode.${mode}Hint` as DictionaryKey)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
             <Field
               label={t("sheetImport.prefix")}
               hint={t("sheetImport.prefixHint")}

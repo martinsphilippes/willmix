@@ -12,11 +12,23 @@ import {
   type SheetIncoterm,
   type User,
 } from "@/lib/db";
+import { randomUUID } from "node:crypto";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 import { registerUploadedDocument, uploadDocument } from "./documents";
-import { saveProductSheet } from "./product-sheet";
+import { isSchemaMissing } from "./packaging-brief";
+import {
+  getProductSheet,
+  productSheetMissing,
+  saveProductSheet,
+} from "./product-sheet";
 import { syncMainSupplierLink } from "./product-suppliers";
+import {
+  setProductVariantPhoto,
+  syncProductFromVariants,
+  upsertProductVariant,
+  type VariantInput,
+} from "./product-variants";
 import type { SheetInput } from "./purchase-sheet";
 import type { SheetMissing } from "./purchase-sheet-calc";
 import {
@@ -33,9 +45,15 @@ import { openXlsWorkbook } from "./xls";
  * Cadastro de produtos pela planilha da ficha técnica (o modelo "SUPPLIER
  * INFO" da visita ao fornecedor: uma linha por cor, fotos coladas na coluna
  * PHOTO e o cartão do fornecedor na coluna dele). Em um passo: lê a aba,
- * agrupa as linhas em produtos, cadastra o fornecedor que faltar, cria (ou
- * atualiza) cada produto com a ficha mestre e as fotos, e devolve o que
- * ainda falta em cada um (a mesma regra da ficha mestre no produto).
+ * agrupa as linhas (mesmo código, descrição, tamanho e preço; cores juntas),
+ * cadastra o fornecedor que faltar e, conforme o modo:
+ * - "variants" (padrão): UM produto por planilha; cada grupo vira uma
+ *   variação (upsert pela chave código + nome), com a foto da coluna PHOTO
+ *   como foto da variação; a ficha mestre e as colunas do produto espelham a
+ *   variação de referência (docs/PRODUCT_VARIANTS.md);
+ * - "products": um produto por grupo, com ficha mestre e fotos (o
+ *   comportamento anterior, mantido).
+ * Devolve o que ainda falta em cada produto (a mesma regra da ficha mestre).
  *
  * A leitura é determinística (sem IA): os cabeçalhos são reconhecidos por
  * sinônimos (inglês do modelo, português e chinês), com duas linhas de
@@ -582,13 +600,25 @@ function groupRows(
 /* Importação                                                                */
 /* ------------------------------------------------------------------------ */
 
+/** Resultado da importação: um produto com variações (padrão) ou um produto por linha. */
+export type SheetImportMode = "variants" | "products";
+export const SHEET_IMPORT_MODES: readonly SheetImportMode[] = [
+  "variants",
+  "products",
+];
+
 export interface SheetImportOptions {
   lineId: string;
-  /** Entra antes da descrição e do tamanho no nome ("Porta-retrato"). */
+  /**
+   * "Um produto com variações": o nome do produto. "Um produto por linha":
+   * entra antes da descrição e do tamanho no nome ("Porta-retrato").
+   */
   namePrefix?: string | null;
   /** Moeda do preço quando a planilha não diz. */
   defaultCurrency?: SheetCurrency | null;
   sheet?: string | null;
+  /** Padrão "variants". */
+  mode?: SheetImportMode | null;
 }
 
 /** Planilha enviada no formulário ou já subida direto ao armazenamento. */
@@ -597,6 +627,22 @@ export type SheetSource =
   | { fileKey: string; fileName?: string | null }
   /** Link de uma planilha do Google Sheets compartilhada com o link. */
   | { url: string };
+
+/** Uma variação criada/atualizada no modo "um produto com variações". */
+export interface SheetImportVariantResult {
+  /** Grupo da planilha (índice do zero). */
+  index: number;
+  rows: string;
+  variantId: string | null;
+  name: string;
+  price: number | null;
+  currency: string | null;
+  moq: number | null;
+  /** A variação tem foto (da planilha agora ou de antes). */
+  photo: boolean;
+  status: "created" | "updated" | "error";
+  error: string | null;
+}
 
 export interface SheetImportRowResult {
   index: number;
@@ -608,16 +654,23 @@ export interface SheetImportRowResult {
   supplierName: string | null;
   photos: number;
   missing: SheetMissing[];
+  /** Só no modo "variants": as variações do produto, na ordem da planilha. */
+  variants?: SheetImportVariantResult[];
 }
 
 export interface SheetImportSummary extends Record<string, number> {
   groups: number;
   rows: number;
+  /** Produtos criados/atualizados/com erro (no modo "variants", o produto único). */
   created: number;
   updated: number;
   errors: number;
   suppliersCreated: number;
   photos: number;
+  /** Modo "variants": variações criadas, atualizadas e com erro. */
+  variantsCreated: number;
+  variantsUpdated: number;
+  variantErrors: number;
 }
 
 export interface SheetImportResult {
@@ -767,11 +820,33 @@ async function sheetBytes(source: SheetSource) {
   return { bytes: stored.bytes, name: source.fileName || stored.name || "ficha.xlsx" };
 }
 
+/** O que as duas formas de importar compartilham. */
+interface ImportContext {
+  user: User;
+  options: SheetImportOptions;
+  parsed: ParsedSheet;
+  /** Id do lote, gerado antes para as variações apontarem para ele. */
+  batchId: string;
+  suppliers: Party[];
+  products: Product[];
+  summary: SheetImportSummary;
+  results: SheetImportRowResult[];
+  decisions: Record<string, string>;
+  warnings: string[];
+}
+
+const rowsLabel = (g: Pick<ProductGroup, "firstRow" | "lastRow">) =>
+  g.firstRow === g.lastRow ? String(g.firstRow) : `${g.firstRow}–${g.lastRow}`;
+
+const errorText = (error: unknown) =>
+  (error instanceof Error ? error.message : "unexpected").slice(0, 120);
+
 /**
- * Importa a planilha: para cada produto da aba, cadastra ou atualiza (mesmo
- * nome na mesma linha de produto e mesmo fornecedor), grava a ficha mestre e
- * as fotos, e devolve o que falta em cada um. O arquivo fica guardado como
- * evidência do lote.
+ * Importa a planilha: cada produto é cadastrado ou atualizado (mesmo nome na
+ * mesma linha de produto e mesmo fornecedor), com a ficha mestre e as fotos,
+ * e o resultado diz o que falta em cada um. No modo padrão a planilha inteira
+ * é um produto e cada grupo de linhas, uma variação. O arquivo fica guardado
+ * como evidência do lote.
  */
 export async function importProductSheet(
   user: User,
@@ -782,6 +857,7 @@ export async function importProductSheet(
   const store = getStore();
   const line = options.lineId ? await store.get("product_lines", options.lineId) : null;
   if (!line) throw new SheetImportError("line_required");
+  const mode: SheetImportMode = options.mode === "products" ? "products" : "variants";
   const currency =
     options.defaultCurrency && (SHEET_CURRENCIES as readonly string[]).includes(options.defaultCurrency)
       ? options.defaultCurrency
@@ -793,24 +869,122 @@ export async function importProductSheet(
     store.list("parties", { filter: { type: "supplier" } }),
     store.list("products"),
   ]);
-  const summary: SheetImportSummary = {
-    groups: parsed.groups.length,
-    rows: parsed.rows.length,
-    created: 0,
-    updated: 0,
-    errors: 0,
-    suppliersCreated: 0,
-    photos: 0,
+  const ctx: ImportContext = {
+    user,
+    options,
+    parsed,
+    batchId: randomUUID(),
+    suppliers,
+    products,
+    summary: {
+      groups: parsed.groups.length,
+      rows: parsed.rows.length,
+      created: 0,
+      updated: 0,
+      errors: 0,
+      suppliersCreated: 0,
+      photos: 0,
+      variantsCreated: 0,
+      variantsUpdated: 0,
+      variantErrors: 0,
+    },
+    results: [],
+    decisions: {},
+    warnings: parsed.warnings,
   };
-  const results: SheetImportRowResult[] = [];
-  const decisions: Record<string, string> = {};
+  if (mode === "variants") await importAsVariants(ctx);
+  else await importAsProducts(ctx);
+  const { summary, results, decisions } = ctx;
+
+  // Lote: evidência (arquivo guardado) e histórico do que entrou. A planilha
+  // baixada do Google fica guardada como se tivesse sido enviada.
+  const doc = await (source instanceof File
+    ? uploadDocument(user, source, { type: "attachment", visibility: "internal" })
+    : "url" in source
+      ? uploadDocument(
+          user,
+          new File([new Uint8Array(file.bytes)], file.name, {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+          { type: "attachment", visibility: "internal" },
+        )
+      : registerUploadedDocument(user, source.fileKey, {
+          type: "attachment",
+          visibility: "internal",
+        })
+  ).catch(() => null);
+  const headers = Object.values(parsed.headers).filter(Boolean) as string[];
+  const batch: ImportBatch = await store.create("import_batches", {
+    id: ctx.batchId,
+    entity: SHEET_IMPORT_ENTITY,
+    fileDocumentId: doc?.id ?? null,
+    fileName: file.name.slice(0, 255),
+    sheetName: parsed.sheetName.slice(0, 120),
+    headers,
+    rows: parsed.rows.slice(0, 500).map((r) =>
+      Object.fromEntries(
+        (Object.entries(r.values) as Array<[SheetColumn, string]>).map(([col, v]) => [
+          parsed.headers[col] ?? col,
+          v,
+        ]),
+      ),
+    ),
+    mapping: {
+      __lineId: options.lineId,
+      __namePrefix: options.namePrefix?.trim() || "",
+      __currency: parsed.currency ?? currency ?? "",
+      __mode: mode,
+      ...Object.fromEntries(
+        (Object.entries(parsed.headers) as Array<[SheetColumn, string]>).map(([col, h]) => [h, col]),
+      ),
+    },
+    decisions,
+    status: "imported",
+    summary,
+    rowCount: parsed.rows.length,
+    createdByUserId: user.id,
+  });
+  await audit(
+    user,
+    "import.sheet",
+    "import_batch",
+    batch.id,
+    `Ficha técnica ${batch.fileName}: ${summary.created} criados, ${summary.updated} atualizados, ${summary.errors} erros, ${summary.suppliersCreated} fornecedor(es) novo(s), ${summary.photos} foto(s)` +
+      (mode === "variants"
+        ? `, ${summary.variantsCreated} variação(ões) criada(s), ${summary.variantsUpdated} atualizada(s), ${summary.variantErrors} com erro`
+        : ""),
+  );
+  return { batchId: batch.id, sheetName: parsed.sheetName, summary, results, warnings: parsed.warnings };
+}
+
+/**
+ * Produto do grupo: o que existe na mesma linha com o mesmo nome e o mesmo
+ * fornecedor (ou sem fornecedor); nome igual de outro fornecedor vira produto
+ * novo, com o fornecedor no nome.
+ */
+function matchProduct(
+  products: Product[],
+  lineId: string,
+  name: string,
+  supplierId: string | null,
+  supplierName: string | null,
+): { existing: Product | undefined; name: string } {
+  const sameName = products.filter((p) => p.lineId === lineId && norm(p.name) === norm(name));
+  const existing = sameName.find((p) => !p.supplierId || !supplierId || p.supplierId === supplierId);
+  if (!existing && sameName.length && supplierName)
+    return { existing, name: `${name} · ${supplierName}`.slice(0, 160) };
+  return { existing, name };
+}
+
+/** Um produto por grupo (o comportamento anterior, mantido sem mudanças). */
+async function importAsProducts(ctx: ImportContext): Promise<void> {
+  const { user, options, parsed, suppliers, products, summary, results, decisions } = ctx;
+  const store = getStore();
   const namesUsed = new Set<string>();
   for (const group of parsed.groups) {
-    const rowsLabel =
-      group.firstRow === group.lastRow ? String(group.firstRow) : `${group.firstRow}–${group.lastRow}`;
     const result: SheetImportRowResult = {
       index: group.index,
-      rows: rowsLabel,
+      rows: rowsLabel(group),
       name: productNameFor(group, options.namePrefix),
       productId: null,
       status: "error",
@@ -834,15 +1008,15 @@ export async function importProductSheet(
       };
       // Mesmo nome na mesma linha: só do mesmo fornecedor (ou sem fornecedor).
       // Nome igual de outro fornecedor: produto novo, com o fornecedor no nome.
-      const sameName = products.filter(
-        (p) => p.lineId === options.lineId && norm(p.name) === norm(result.name),
+      const matched = matchProduct(
+        products,
+        options.lineId,
+        result.name,
+        supplierId,
+        supplier?.party.name ?? null,
       );
-      let existing = sameName.find(
-        (p) => !p.supplierId || !supplierId || p.supplierId === supplierId,
-      );
-      let name = result.name;
-      if (!existing && sameName.length && supplier)
-        name = `${name} · ${supplier.party.name}`.slice(0, 160);
+      let existing = matched.existing;
+      let name = matched.name;
       // Dois grupos da planilha com o mesmo nome: código da fábrica, depois um contador.
       if (namesUsed.has(norm(name))) {
         const code = group.reading.factoryItemCode;
@@ -931,66 +1105,224 @@ export async function importProductSheet(
       if (result.status === "created") summary.created--;
       if (result.status === "updated") summary.updated--;
       result.status = "error";
-      result.error = (error instanceof Error ? error.message : "unexpected").slice(0, 120);
+      result.error = errorText(error);
       summary.errors++;
       decisions[String(group.index)] = `error:${result.productId ?? "-"}:${result.error}`;
     }
   }
+}
 
-  // Lote: evidência (arquivo guardado) e histórico do que entrou. A planilha
-  // baixada do Google fica guardada como se tivesse sido enviada.
-  const doc = await (source instanceof File
-    ? uploadDocument(user, source, { type: "attachment", visibility: "internal" })
-    : "url" in source
-      ? uploadDocument(
+/** Valores de uma variação a partir do grupo da planilha. */
+function variantInputFrom(group: ProductGroup, sortOrder: number): VariantInput {
+  const r = group.reading;
+  const n = (k: ReadingField) => (typeof r[k] === "number" ? (r[k] as number) : null);
+  const s = (k: ReadingField) => (typeof r[k] === "string" ? (r[k] as string) : null);
+  return {
+    name: productNameFor(group, null),
+    factoryItemCode: s("factoryItemCode"),
+    sizeText: group.sizeText,
+    price: n("price"),
+    currency: s("currency"),
+    moq: n("moq"),
+    masterBoxQty: n("masterCartonQty"),
+    innerBoxQty: n("innerQty"),
+    netWeightKg: n("netWeightPcKg"),
+    grossWeightKg: n("grossWeightPcKg"),
+    cbm: n("cbmPerCarton"),
+    lengthCm: group.lengthCm,
+    widthCm: group.widthCm,
+    heightCm: group.heightCm,
+    colorAssortment: s("colorAssortment"),
+    material: s("material"),
+    packageType: s("packageType"),
+    capacityMl: n("capacityMl"),
+    notes: group.notes,
+    sortOrder,
+  };
+}
+
+/**
+ * Um produto por planilha; cada grupo vira uma variação (upsert pela chave
+ * código + nome, para reimportar sem duplicar). Nome do produto: o "Nome
+ * base" informado, senão o nome do primeiro grupo. Fornecedor: o do primeiro
+ * grupo (grupos com outro fornecedor entram no mesmo produto, com aviso). A
+ * foto da coluna PHOTO é a foto da variação; o cartão vale para o produto. No
+ * fim, a ficha mestre e as colunas do produto espelham a variação de
+ * referência, e o que falta sai dessa ficha. Variação que sumiu da planilha
+ * fica como está (nunca se apaga).
+ */
+async function importAsVariants(ctx: ImportContext): Promise<void> {
+  const { user, options, parsed, batchId, suppliers, products, summary, results, decisions, warnings } =
+    ctx;
+  const store = getStore();
+  const groups = parsed.groups;
+  const first = groups[0];
+  const prefix = options.namePrefix?.trim() || "";
+  const result: SheetImportRowResult = {
+    index: 0,
+    rows: rowsLabel({ firstRow: first.firstRow, lastRow: groups[groups.length - 1].lastRow }),
+    name: prefix ? prefix.slice(0, 160) : productNameFor(first, null),
+    productId: null,
+    status: "error",
+    error: null,
+    supplierName: null,
+    photos: 0,
+    missing: [],
+    variants: [],
+  };
+  results.push(result);
+  const variants = result.variants as SheetImportVariantResult[];
+  try {
+    const supplier = await resolveSupplier(user, first.reading, suppliers);
+    if (supplier?.created) summary.suppliersCreated++;
+    result.supplierName = supplier?.party.name ?? null;
+    const supplierId = supplier?.party.id ?? null;
+    const supplierOf = (g: ProductGroup) =>
+      typeof g.reading.supplierName === "string" ? g.reading.supplierName : "";
+    const others = [
+      ...new Set(
+        groups.map(supplierOf).filter((n) => n && norm(n) !== norm(supplierOf(first))),
+      ),
+    ];
+    if (others.length) warnings.push(`supplier_mixed:${others.join(", ").slice(0, 120)}`);
+    const supplierSku =
+      typeof first.reading.factoryItemCode === "string" ? first.reading.factoryItemCode.slice(0, 60) : null;
+    const matched = matchProduct(
+      products,
+      options.lineId,
+      result.name,
+      supplierId,
+      supplier?.party.name ?? null,
+    );
+    const existing = matched.existing;
+    const name = matched.name;
+    result.name = name;
+    let product: Product;
+    if (existing) {
+      // Código e medidas vêm da variação de referência (sync); aqui só o fornecedor.
+      product =
+        supplierId && existing.supplierId !== supplierId
+          ? await store.update("products", existing.id, { supplierId })
+          : existing;
+      if (supplierId)
+        await syncMainSupplierLink(
           user,
-          new File([new Uint8Array(file.bytes)], file.name, {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          }),
-          { type: "attachment", visibility: "internal" },
-        )
-      : registerUploadedDocument(user, source.fileKey, {
-          type: "attachment",
-          visibility: "internal",
-        })
-  ).catch(() => null);
-  const headers = Object.values(parsed.headers).filter(Boolean) as string[];
-  const batch: ImportBatch = await store.create("import_batches", {
-    entity: SHEET_IMPORT_ENTITY,
-    fileDocumentId: doc?.id ?? null,
-    fileName: file.name.slice(0, 255),
-    sheetName: parsed.sheetName.slice(0, 120),
-    headers,
-    rows: parsed.rows.slice(0, 500).map((r) =>
-      Object.fromEntries(
-        (Object.entries(r.values) as Array<[SheetColumn, string]>).map(([col, v]) => [
-          parsed.headers[col] ?? col,
-          v,
-        ]),
-      ),
-    ),
-    mapping: {
-      __lineId: options.lineId,
-      __namePrefix: options.namePrefix?.trim() || "",
-      __currency: parsed.currency ?? currency ?? "",
-      ...Object.fromEntries(
-        (Object.entries(parsed.headers) as Array<[SheetColumn, string]>).map(([col, h]) => [h, col]),
-      ),
-    },
-    decisions,
-    status: "imported",
-    summary,
-    rowCount: parsed.rows.length,
-    createdByUserId: user.id,
-  });
-  await audit(
-    user,
-    "import.sheet",
-    "import_batch",
-    batch.id,
-    `Ficha técnica ${batch.fileName}: ${summary.created} criados, ${summary.updated} atualizados, ${summary.errors} erros, ${summary.suppliersCreated} fornecedor(es) novo(s), ${summary.photos} foto(s)`,
-  );
-  return { batchId: batch.id, sheetName: parsed.sheetName, summary, results, warnings: parsed.warnings };
+          { supplierId: existing.supplierId, supplierSku: existing.supplierSku },
+          { supplierId, supplierSku: existing.supplierSku ?? supplierSku },
+          product.id,
+        );
+      result.status = "updated";
+      summary.updated++;
+    } else {
+      product = await store.create("products", {
+        ...PRODUCT_EXTRA_DEFAULTS,
+        lineId: options.lineId,
+        name,
+        sku: null,
+        specification: null,
+        supplierId,
+        supplierSku,
+        material: typeof first.reading.material === "string" ? first.reading.material.slice(0, 120) : null,
+        lengthCm: first.lengthCm,
+        widthCm: first.widthCm,
+        heightCm: first.heightCm,
+        active: true,
+        source: "import",
+      });
+      products.push(product);
+      if (supplierId)
+        await syncMainSupplierLink(
+          user,
+          { supplierId: null, supplierSku: null },
+          { supplierId, supplierSku },
+          product.id,
+        );
+      await audit(user, "product.create", "product", product.id, `${name} (importação da ficha técnica, com variações)`);
+      result.status = "created";
+      summary.created++;
+    }
+    result.productId = product.id;
+    decisions["0"] = `${result.status}:${product.id}`;
+
+    // Variações: uma por grupo, na ordem da planilha; a foto da coluna PHOTO
+    // é a da variação (tipo supplier, com variantId), uma só por variação.
+    const photos = await store.list("product_photos", { filter: { productId: product.id } });
+    for (const [i, group] of groups.entries()) {
+      const vr: SheetImportVariantResult = {
+        index: group.index,
+        rows: rowsLabel(group),
+        variantId: null,
+        name: productNameFor(group, null),
+        price: null,
+        currency: null,
+        moq: null,
+        photo: false,
+        status: "error",
+        error: null,
+      };
+      variants.push(vr);
+      try {
+        const { variant, created } = await upsertProductVariant(
+          user,
+          product.id,
+          variantInputFrom(group, i),
+          { importBatchId: batchId },
+        );
+        vr.variantId = variant.id;
+        vr.name = variant.name;
+        vr.price = variant.price;
+        vr.currency = variant.currency;
+        vr.moq = variant.moq;
+        vr.status = created ? "created" : "updated";
+        if (created) summary.variantsCreated++;
+        else summary.variantsUpdated++;
+        let photo = photos.find((p) => p.variantId === variant.id && p.kind === "supplier") ?? null;
+        if (!photo && group.photo) {
+          const image = group.photo;
+          const fileOf = new File([new Uint8Array(image.bytes)], image.name, { type: image.mime });
+          [photo = null] = await addPhotos(
+            user,
+            { productId: product.id, variantId: variant.id },
+            [fileOf],
+            "supplier",
+          );
+          if (photo) {
+            photos.push(photo);
+            result.photos++;
+          }
+        }
+        if (photo) {
+          vr.photo = true;
+          if (variant.photoDocumentId !== photo.documentId)
+            await setProductVariantPhoto(user, variant.id, photo.documentId);
+        } else vr.photo = !!variant.photoDocumentId;
+        decisions[`variant:${group.index}`] = `${vr.status}:${variant.id}`;
+      } catch (error) {
+        // Tabela das variações ainda não publicada: o produto fica, a
+        // importação avisa para publicar o esquema (nada de variações pela metade).
+        if (isSchemaMissing(error)) throw new SheetImportError("schema_outdated");
+        vr.status = "error";
+        vr.error = errorText(error);
+        summary.variantErrors++;
+        decisions[`variant:${group.index}`] = `error:${vr.variantId ?? "-"}:${vr.error}`;
+      }
+    }
+    // Cartão de visita: um por produto (o primeiro que a planilha tiver).
+    const kinds = new Set(photos.map((p) => p.kind as string));
+    const card = groups.find((g) => g.card)?.card ?? null;
+    result.photos += await attachPhoto(user, product.id, card, "business_card", kinds);
+    summary.photos += result.photos;
+    // Ficha mestre e colunas do produto = variação de referência (menor preço).
+    await syncProductFromVariants(product.id, user);
+    result.missing = await productSheetMissing(product.id, await getProductSheet(product.id));
+  } catch (error) {
+    if (result.status === "created") summary.created--;
+    if (result.status === "updated") summary.updated--;
+    result.status = "error";
+    result.error = errorText(error);
+    summary.errors++;
+    decisions["0"] = `error:${result.productId ?? "-"}:${result.error}`;
+  }
 }
 
 /** Decisão de um grupo do lote: situação, produto (se existe) e erro. */
@@ -1010,9 +1342,35 @@ export function batchDecision(decision: string): {
   };
 }
 
+const VARIANT_DECISION = /^variant:(\d+)$/;
+
 /** Lote de ficha técnica: produtos (ids) de cada grupo, para a tela de resultado. */
 export function batchProductIds(batch: ImportBatch): string[] {
-  return Object.values(batch.decisions)
-    .map((d) => batchDecision(d).productId)
+  return Object.entries(batch.decisions)
+    .filter(([key]) => !VARIANT_DECISION.test(key))
+    .map(([, d]) => batchDecision(d).productId)
     .filter((id): id is string => !!id);
+}
+
+/** Modo com que o lote foi importado (lotes anteriores à opção: um produto por linha). */
+export function importBatchMode(batch: ImportBatch): SheetImportMode {
+  return batch.mapping?.__mode === "variants" ? "variants" : "products";
+}
+
+/** Lote no modo "variants": decisão de cada variação (grupo da planilha), na ordem. */
+export function batchVariantDecisions(batch: ImportBatch): Array<{
+  index: number;
+  status: "created" | "updated" | "error";
+  variantId: string | null;
+  error: string | null;
+}> {
+  return Object.entries(batch.decisions)
+    .map(([key, d]) => {
+      const m = VARIANT_DECISION.exec(key);
+      if (!m) return null;
+      const { status, productId, error } = batchDecision(d);
+      return { index: Number(m[1]), status, variantId: productId, error };
+    })
+    .filter((v): v is NonNullable<typeof v> => v !== null)
+    .sort((a, b) => a.index - b.index);
 }

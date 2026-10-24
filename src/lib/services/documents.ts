@@ -385,15 +385,32 @@ export async function catalogShowcasePhotos(
   return result;
 }
 
-/** O documento é uma das fotos mostradas de um produto ativo do catálogo? */
+/**
+ * O documento é uma foto do cadastro de um produto ativo do catálogo que o
+ * cliente pode ver? Qualquer tipo que não seja escondido (cartão, prompt)
+ * conta, mesmo além das 8 da vitrine (ex.: a foto de cada variação); a
+ * original que ganhou versão comercial continua fechada (a comercial é o
+ * que a Wellmix quer mostrar).
+ */
 async function isCatalogShowcasePhoto(
   productId: string,
   documentId: string,
 ): Promise<boolean> {
-  const product = await getStore().get("products", productId);
+  const store = getStore();
+  const product = await store.get("products", productId);
   if (!product?.active) return false;
-  const photos = (await catalogShowcasePhotos([productId])).get(productId);
-  return !!photos?.some((p) => p.documentId === documentId);
+  const photos = await store.list("product_photos", { filter: { productId } });
+  const replaced = new Set(
+    photos
+      .filter((p) => p.kind === "commercial" && p.derivedFromPhotoId)
+      .map((p) => p.derivedFromPhotoId as string),
+  );
+  return photos.some(
+    (p) =>
+      p.documentId === documentId &&
+      !CATALOG_HIDDEN_KINDS.includes(p.kind) &&
+      !replaced.has(p.id),
+  );
 }
 
 /** A agência tem briefing de embalagem (vivo) deste produto? */

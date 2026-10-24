@@ -158,7 +158,7 @@ export default async function NewRequestPage({
   const productFills: ProductFill[] = products.map((p) => ({
     id: p.id,
     stock: stockFor(p.id),
-    moq: effectiveMoq(sheetMoq.get(p.id), p.moq),
+    moq: effectiveMoq(null, sheetMoq.get(p.id), p.moq),
     photos: (showcase.get(p.id) ?? []).map((ph) => ({
       documentId: ph.documentId,
       caption: ph.caption?.trim() || p.name,

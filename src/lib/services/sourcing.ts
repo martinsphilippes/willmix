@@ -110,6 +110,8 @@ export async function addPhotos(
     sourcingItemId?: string | null;
     productId?: string | null;
     orderId?: string | null;
+    /** Foto de uma variação do produto (só gravada quando informada). */
+    variantId?: string | null;
   },
   files: PhotoSource[],
   kind: PhotoKind,
@@ -175,6 +177,9 @@ export async function addPhotos(
         isPrimary:
           (existing.length === 0 && (own || kind === "supplier")) ||
           replacesSupplier,
+        // Coluna nova (variações): só vai quando há variação, para a foto
+        // continuar entrando antes de o esquema ser publicado.
+        ...(target.variantId ? { variantId: target.variantId } : {}),
       });
     } catch (error) {
       // A linha não entrou (ex.: tipo de foto ainda não publicado no esquema):

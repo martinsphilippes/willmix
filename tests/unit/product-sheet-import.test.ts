@@ -16,6 +16,8 @@ const svc = await import("@/lib/services/product-sheet-import");
 const { vi } = await import("vitest");
 const { getProductSheet } = await import("@/lib/services/product-sheet");
 const { openWorkbook } = await import("@/lib/services/xlsx");
+const pv = await import("@/lib/services/product-variants");
+const { canAccessDocument } = await import("@/lib/services/documents");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -275,7 +277,7 @@ describe("leitura do modelo", () => {
   });
 });
 
-describe("importação", () => {
+describe("importação (um produto por linha, o modo anterior)", () => {
   it("cadastra produtos com ficha mestre, fornecedor e fotos, e diz o que falta", async () => {
     const store = getStore();
     const before = (await store.list("products")).length;
@@ -283,6 +285,7 @@ describe("importação", () => {
       lineId,
       namePrefix: "Porta-retrato",
       defaultCurrency: "USD",
+      mode: "products",
     });
     expect(result.summary).toMatchObject({ groups: 2, rows: 6, created: 2, updated: 0, errors: 0, suppliersCreated: 1, photos: 3 });
     expect(result.results.map((r) => [r.name, r.status, r.photos, r.supplierName])).toEqual([
@@ -363,7 +366,7 @@ describe("importação", () => {
     const [first] = await store.list("products", { filter: { name: "Porta-retrato STONE MARBLE A4" } });
     const [old] = await store.list("product_photos", { filter: { productId: first.id, kind: "supplier" } });
     await store.update("product_photos", old.id, { kind: "original" });
-    const result = await svc.importProductSheet(admin, file(templateBytes()), { lineId, namePrefix: "Porta-retrato" });
+    const result = await svc.importProductSheet(admin, file(templateBytes()), { lineId, namePrefix: "Porta-retrato", mode: "products" });
     expect(result.summary).toMatchObject({ created: 0, updated: 2, errors: 0, suppliersCreated: 0, photos: 0 });
     expect((await store.list("products")).length).toBe(before);
     expect((await store.list("parties", { filter: { type: "supplier" } })).length).toBe(suppliersBefore);
@@ -384,19 +387,19 @@ describe("importação", () => {
           ],
         },
       ]);
-    const first = await svc.importProductSheet(admin, file(sheet("Alpha Co", "A1-100", [["Vaso decorativo", "3", "V1"], ["Vaso decorativo", "4", "V2"], ["Vaso decorativo", "5", ""]])), { lineId });
+    const first = await svc.importProductSheet(admin, file(sheet("Alpha Co", "A1-100", [["Vaso decorativo", "3", "V1"], ["Vaso decorativo", "4", "V2"], ["Vaso decorativo", "5", ""]])), { lineId, mode: "products" });
     expect(first.results.map((r) => [r.name, r.status])).toEqual([
       ["Vaso decorativo", "created"],
       ["Vaso decorativo · V2", "created"],
       ["Vaso decorativo (2)", "created"],
     ]);
     // Outro fornecedor, mesmo nome: não sequestra o produto do primeiro.
-    const second = await svc.importProductSheet(admin, file(sheet("Beta Ltd", "B2-200", [["Vaso decorativo", "9", "X9"]])), { lineId });
+    const second = await svc.importProductSheet(admin, file(sheet("Beta Ltd", "B2-200", [["Vaso decorativo", "9", "X9"]])), { lineId, mode: "products" });
     expect(second.results.map((r) => [r.name, r.status])).toEqual([["Vaso decorativo · Beta Ltd", "created"]]);
     const alpha = (await store.list("products", { filter: { name: "Vaso decorativo" } }))[0];
     expect(alpha.price).toBe(3);
     // O mesmo fornecedor de novo: atualiza o dele.
-    const again = await svc.importProductSheet(admin, file(sheet("Alpha Co", "A1-100", [["Vaso decorativo", "3.5", "V1"]])), { lineId });
+    const again = await svc.importProductSheet(admin, file(sheet("Alpha Co", "A1-100", [["Vaso decorativo", "3.5", "V1"]])), { lineId, mode: "products" });
     expect(again.results.map((r) => [r.name, r.status])).toEqual([["Vaso decorativo", "updated"]]);
     expect((await store.get("products", alpha.id))!.price).toBe(3.5);
   });
@@ -410,7 +413,7 @@ describe("importação", () => {
     });
     let result: Awaited<ReturnType<typeof svc.importProductSheet>>;
     try {
-      result = await svc.importProductSheet(admin, file(xlsxBytes([{ name: "L", cells: [["NAME", "SUPPLIER NAME", "PRICE USD", "MOQ"], ["Copo falho", "Gamma", "1", "10"]] }])), { lineId });
+      result = await svc.importProductSheet(admin, file(xlsxBytes([{ name: "L", cells: [["NAME", "SUPPLIER NAME", "PRICE USD", "MOQ"], ["Copo falho", "Gamma", "1", "10"]] }])), { lineId, mode: "products" });
     } finally {
       spy.mockRestore();
     }
@@ -425,7 +428,7 @@ describe("importação", () => {
   it("planilha já subida direto ao armazenamento (id) é lida e vira a evidência do lote", async () => {
     const store = getStore();
     const stored = await store.putFile(templateBytes(), "ficha-direta.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    const result = await svc.importProductSheet(admin, { fileKey: stored.key, fileName: "ficha-direta.xlsx" }, { lineId, namePrefix: "Porta-retrato" });
+    const result = await svc.importProductSheet(admin, { fileKey: stored.key, fileName: "ficha-direta.xlsx" }, { lineId, namePrefix: "Porta-retrato", mode: "products" });
     expect(result.summary.updated + result.summary.created).toBe(2);
     const batch = (await store.get("import_batches", result.batchId))!;
     expect(batch.fileName).toBe("ficha-direta.xlsx");
@@ -444,6 +447,7 @@ describe("importação", () => {
       lineId,
       namePrefix: "Porta-retrato",
       defaultCurrency: "USD",
+      mode: "products",
     });
     expect(result.summary).toMatchObject({ groups: 2, rows: 6, created: 2, updated: 0, errors: 0, suppliersCreated: 1, photos: 3 });
     expect((await store.list("products")).length).toBe(before + 2);
@@ -460,5 +464,132 @@ describe("importação", () => {
     expect(batch).toMatchObject({ status: "imported", rowCount: 6, sheetName: "SUPPLIER INFO" });
     const evidence = (await store.get("documents", batch.fileDocumentId!))!;
     expect(evidence).toMatchObject({ name: "ficha.xls", mime: XLS_MIME });
+  });
+});
+
+describe("importação com variações (um produto por planilha, o modo padrão)", () => {
+  it("a planilha vira UM produto com uma variação por grupo, foto por variação e ficha mestre da variação de referência", async () => {
+    const store = getStore();
+    const before = (await store.list("products")).length;
+    const result = await svc.importProductSheet(admin, file(templateBytes()), {
+      lineId,
+      namePrefix: "Porta-retrato",
+      defaultCurrency: "USD",
+    });
+    expect(result.summary).toMatchObject({
+      groups: 2, rows: 6, created: 1, updated: 0, errors: 0, photos: 3, variantsCreated: 2, variantsUpdated: 0, variantErrors: 0,
+    });
+    expect((await store.list("products")).length).toBe(before + 1);
+    expect(result.results).toHaveLength(1);
+    const [row] = result.results;
+    expect(row).toMatchObject({ name: "Porta-retrato", status: "created", supplierName: "MIN YAN", photos: 3, rows: "3–8" });
+    expect(row.variants!.map((v) => [v.name, v.status, v.price, v.currency, v.moq, v.photo])).toEqual([
+      ["STONE MARBLE A4", "created", 4, "USD", 2400, true],
+      ["WD STRIBY VERT 8X10 / 20X25", "created", 3.15, "USD", 2400, true],
+    ]);
+
+    // Variações gravadas na ordem da planilha, com o lote e a foto de cada uma.
+    const productId = row.productId!;
+    const variants = await pv.listProductVariants(productId);
+    expect(variants.map((v) => [v.name, v.factoryItemCode, v.sortOrder, v.importBatchId === result.batchId, !!v.photoDocumentId])).toEqual([
+      ["STONE MARBLE A4", "1", 0, true, true],
+      ["WD STRIBY VERT 8X10 / 20X25", "MY-059A", 1, true, true],
+    ]);
+    expect(variants[0]).toMatchObject({
+      sizeText: "A4", price: 4, moq: 2400, masterBoxQty: 12, innerBoxQty: 12, netWeightKg: 0.225, cbm: 0.0183,
+      lengthCm: 33.5, widthCm: 24.8, heightCm: 1.53, colorAssortment: "White / Gray / bege", material: "PS+PVC",
+      packageType: "Shrink + OPP + sticker", active: true,
+    });
+    expect(variants[1]).toMatchObject({ sizeText: "8X10 / 20X25", innerBoxQty: null, colorAssortment: "BEGE / CARVALHO / MARROM" });
+    const photos = await store.list("product_photos", { filter: { productId } });
+    expect(photos.map((p) => [p.kind, p.variantId ?? null]).sort()).toEqual(
+      [["business_card", null], ["supplier", variants[0].id], ["supplier", variants[1].id]].sort(),
+    );
+    expect(photos.find((p) => p.variantId === variants[0].id)!.documentId).toBe(variants[0].photoDocumentId);
+    // A primeira foto de variação é a principal do produto.
+    expect((await store.get("products", productId))!.primaryPhotoDocumentId).toBe(variants[0].photoDocumentId);
+
+    // Produto e ficha mestre = variação de referência (a mais barata: WD STRIBY, 3.15).
+    const product = (await store.get("products", productId))!;
+    expect(product).toMatchObject({
+      lineId, source: "import", supplierSku: "MY-059A", price: 3.15, currency: "USD", moq: 2400, masterBoxQty: 24,
+      netWeightKg: 0.186, cbm: 0.0267, lengthCm: 27.2, widthCm: 22.2, heightCm: 1.4, material: "PS+PVC",
+    });
+    expect(product.color).toContain("BEGE");
+    const sheet = (await getProductSheet(productId))!;
+    expect(sheet).toMatchObject({ factoryItemCode: "MY-059A", price: 3.15, currency: "USD", moq: 2400, masterCartonQty: 24, cbmPerCarton: 0.0267, colorAssortment: "BEGE / CARVALHO / MARROM" });
+    for (const k of ["price", "moq", "colorAssortment", "material", "packageType"]) expect(row.missing).not.toContain(k);
+    expect(row.missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "originalPhoto"]));
+
+    // Lote: produto uma vez, uma decisão por variação; as variações não contam como produto.
+    const batch = (await store.get("import_batches", result.batchId))!;
+    expect(batch.id).toBe(result.batchId);
+    expect(batch.mapping.__mode).toBe("variants");
+    expect(svc.importBatchMode(batch)).toBe("variants");
+    expect(batch.decisions["0"]).toBe(`created:${productId}`);
+    expect(svc.batchProductIds(batch)).toEqual([productId]);
+    expect(svc.batchVariantDecisions(batch)).toEqual([
+      { index: 0, status: "created", variantId: variants[0].id, error: null },
+      { index: 1, status: "created", variantId: variants[1].id, error: null },
+    ]);
+
+    // A foto da variação é visível ao cliente como as outras do catálogo.
+    const doc = (await store.get("documents", variants[1].photoDocumentId!))!;
+    expect(await canAccessDocument(joao, doc)).toBe(true);
+  });
+
+  it("reimportar a mesma planilha atualiza o mesmo produto e as mesmas variações, sem duplicar nada", async () => {
+    const store = getStore();
+    const [product] = await store.list("products", { filter: { name: "Porta-retrato" } });
+    const [a] = await pv.listProductVariants(product.id);
+    // Preço mexido à mão volta ao da planilha (a planilha é a fonte na reimportação).
+    await pv.updateProductVariant(admin, a.id, { price: 9 });
+    const before = {
+      products: (await store.list("products")).length,
+      photos: (await store.list("product_photos", { filter: { productId: product.id } })).length,
+      variants: (await pv.listProductVariants(product.id, { includeInactive: true })).length,
+    };
+    const result = await svc.importProductSheet(admin, file(templateBytes()), { lineId, namePrefix: "Porta-retrato" });
+    expect(result.summary).toMatchObject({ created: 0, updated: 1, errors: 0, photos: 0, variantsCreated: 0, variantsUpdated: 2, variantErrors: 0 });
+    expect(result.results[0].productId).toBe(product.id);
+    expect(result.results[0].variants!.map((v) => [v.variantId, v.status, v.photo])).toEqual([
+      [a.id, "updated", true],
+      [expect.any(String), "updated", true],
+    ]);
+    expect((await store.list("products")).length).toBe(before.products);
+    expect((await store.list("product_photos", { filter: { productId: product.id } })).length).toBe(before.photos);
+    expect((await pv.listProductVariants(product.id, { includeInactive: true })).length).toBe(before.variants);
+    expect((await pv.getProductVariant(a.id))!.price).toBe(4);
+    expect((await store.get("products", product.id))!.price).toBe(3.15);
+  });
+
+  it("sem nome base, o produto leva o nome do primeiro grupo; .xls funciona igual", async () => {
+    const store = getStore();
+    const result = await svc.importProductSheet(admin, file(xlsTemplateBytes("MIN YAN XLS", "E4-9559"), "ficha.xls", XLS_MIME), {
+      lineId,
+      defaultCurrency: "USD",
+    });
+    expect(result.summary).toMatchObject({ created: 1, errors: 0, variantsCreated: 2, photos: 3 });
+    expect(result.results[0]).toMatchObject({ name: "STONE MARBLE A4", status: "created", supplierName: "MIN YAN XLS" });
+    const product = (await store.get("products", result.results[0].productId!))!;
+    expect(product).toMatchObject({ price: 3.15, supplierSku: "MY-059A" });
+    expect((await pv.listProductVariants(product.id)).map((v) => v.name)).toEqual(["STONE MARBLE A4", "WD STRIBY VERT 8X10 / 20X25"]);
+    // Uma variação com erro não derruba o produto: fica marcada e o resto entra.
+    const original = store.create.bind(store);
+    let calls = 0;
+    const spy = vi.spyOn(store, "create").mockImplementation(async (table, data) => {
+      if (table === "product_variants" && ++calls === 2) throw new Error("variant down");
+      return original(table, data as never);
+    });
+    let partial: Awaited<ReturnType<typeof svc.importProductSheet>>;
+    try {
+      partial = await svc.importProductSheet(admin, file(templateBytes()), { lineId, namePrefix: "Porta-retrato parcial" });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(partial.summary).toMatchObject({ created: 1, errors: 0, variantsCreated: 1, variantErrors: 1 });
+    expect(partial.results[0].variants!.map((v) => [v.status, v.error])).toEqual([["created", null], ["error", "variant down"]]);
+    const batch = (await store.get("import_batches", partial.batchId))!;
+    expect(svc.batchVariantDecisions(batch)[1]).toMatchObject({ index: 1, status: "error", variantId: null, error: "variant down" });
   });
 });
