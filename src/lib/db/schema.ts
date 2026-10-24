@@ -155,6 +155,9 @@ export const DOCUMENT_TYPES = [
   "art",
   "attachment",
   "other",
+  // Briefing de embalagem: arquivos para a gráfica e foto da embalagem física.
+  "print_ready",
+  "packaging_sample",
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
@@ -285,6 +288,37 @@ export const FREIGHT_QUOTE_STATUSES = [
   "cancelled",
 ] as const;
 export type FreightQuoteStatus = (typeof FREIGHT_QUOTE_STATUSES)[number];
+
+/*
+ * Briefing de embalagem (faca/die-cut, arte, arquivos para a gráfica e foto
+ * da embalagem física) aberto para a agência (ou o marketing da Wellmix)
+ * junto com a RFQ. open → ready (obrigatórios enviados) → transferred
+ * (pedido criado: a arte segue para a aprovação do fornecedor) | cancelled.
+ */
+export const PACKAGING_BRIEF_STATUSES = [
+  "open",
+  "ready",
+  "transferred",
+  "cancelled",
+] as const;
+export type PackagingBriefStatus = (typeof PACKAGING_BRIEF_STATUSES)[number];
+export const PACKAGING_ITEM_KEYS = [
+  "dieline",
+  "art",
+  "print_ready",
+  "packaging_sample",
+] as const;
+export type PackagingItemKey = (typeof PACKAGING_ITEM_KEYS)[number];
+/** Como o dono do briefing foi definido (auditoria): escolhido na RFQ, padrão das configurações, única agência ativa ou Wellmix por falta de agência. */
+export const PACKAGING_OWNER_SOURCES = [
+  "chosen",
+  "settings_default",
+  "only_active",
+  "wellmix",
+] as const;
+export type PackagingOwnerSource = (typeof PACKAGING_OWNER_SOURCES)[number];
+export const PACKAGING_DIMS_SOURCES = ["master", "quote", "manual"] as const;
+export type PackagingDimsSource = (typeof PACKAGING_DIMS_SOURCES)[number];
 
 /** Como o fornecedor entrou na lista do produto: cadastro (principal), cotação respondida ou à mão. */
 export const PRODUCT_SUPPLIER_SOURCES = ["catalog", "quote", "manual"] as const;
@@ -711,6 +745,12 @@ export interface Document extends BaseRow {
   kitId: string | null;
   /** Impressão digital visual (dHash, 16 hex) para achar a mesma foto no catálogo; "-" = não é imagem legível. */
   imageHash: string | null;
+  /**
+   * Arquivo de um briefing de embalagem (faca, arte, gráfica, foto): chave do
+   * isolamento (só a agência dona e, depois do pedido, o fornecedor escolhido).
+   * Opcional: documentos antigos ficam sem.
+   */
+  packagingBriefId?: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -1271,6 +1311,67 @@ export interface FreightQuote extends BaseRow {
   answeredAt: string | null;
 }
 
+/** Medidas que a faca e a arte usam (da ficha mestre, da cotação ou à mão). */
+export interface PackagingDims {
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  masterCartonQty: number | null;
+  innerQty: number | null;
+  cbmPerCarton: number | null;
+  packageType: string | null;
+  material: string | null;
+  colorPantones: PantoneColorRef[] | null;
+  capacityMl: number | null;
+}
+
+/**
+ * Briefing de embalagem: nasce com a RFQ (ou na escolha do fornecedor,
+ * conforme `packagingBriefAt`), um por solicitação. A agência (ou o marketing
+ * da Wellmix, `agencyId` nulo) envia faca, arte, arquivos para a gráfica e a
+ * foto da embalagem física; quando o pedido nasce, a arte já enviada conclui
+ * o item "Arte" da etapa Arte e embalagem e o fornecedor aprova.
+ */
+export interface PackagingBrief extends BaseRow {
+  requestId: string;
+  productId: string | null;
+  customerId: string;
+  /** Agência dona; nulo = marketing da Wellmix. */
+  agencyId: string | null;
+  ownerSource: PackagingOwnerSource;
+  status: PackagingBriefStatus;
+  /** Entregáveis obrigatórios para ficar "pronto" (congelados na abertura). */
+  requiredKeys: PackagingItemKey[];
+  /** Versão vigente de cada entregável. */
+  dielineDocumentId: string | null;
+  artDocumentId: string | null;
+  printReadyDocumentId: string | null;
+  sampleDocumentId: string | null;
+  dims: PackagingDims | null;
+  dimsSource: PackagingDimsSource | null;
+  /** Cotação de onde as medidas vieram. */
+  dimsQuoteId: string | null;
+  /** Medidas de uma cotação ainda não escolhida. */
+  dimsProvisional: boolean;
+  dimsChangedAt: string | null;
+  /** Instruções da Wellmix à agência. */
+  brief: string | null;
+  /** Observações da agência (gráfica, fornecedor). */
+  agencyNotes: string | null;
+  dueAt: string | null;
+  readyAt: string | null;
+  /** Depois da transferência: o pedido e o item "Arte" dele. */
+  orderId: string | null;
+  orderArtRequirementId: string | null;
+  transferredAt: string | null;
+  cancelledAt: string | null;
+  /** request_deleted | wellmix */
+  cancelReason: string | null;
+  reminderSentAt: string | null;
+  createdByUserId: string;
+  updatedByUserId: string | null;
+}
+
 /**
  * Cartão do fabricante (foto ou PDF) de um produto: diz quem fabrica. Um
  * produto pode ter vários (por fornecedor e ao longo do tempo); a cada
@@ -1448,6 +1549,7 @@ export interface Tables {
   product_lookups: ProductLookup;
   purchase_sheets: PurchaseSheet;
   freight_quotes: FreightQuote;
+  packaging_briefs: PackagingBrief;
   product_suppliers: ProductSupplier;
   sheet_readings: SheetReading;
   manufacturer_cards: ManufacturerCard;
@@ -1792,11 +1894,17 @@ export const TABLES: Record<TableName, TableDef> = {
       sourcingItemId: id(false),
       kitId: id(false),
       imageHash: str(32),
+      packagingBriefId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+      {
+        key: "by_packaging_brief",
+        type: "key",
+        columns: ["packagingBriefId"],
+      },
     ],
   },
   payments: {
@@ -2371,6 +2479,45 @@ export const TABLES: Record<TableName, TableDef> = {
         type: "key",
         columns: ["carrierId", "status"],
       },
+    ],
+  },
+  packaging_briefs: {
+    label: "Briefings de embalagem (faca e arte na RFQ)",
+    columns: {
+      requestId: id(),
+      productId: id(false),
+      customerId: id(),
+      agencyId: id(false),
+      ownerSource: enumOf(PACKAGING_OWNER_SOURCES),
+      status: enumOf(PACKAGING_BRIEF_STATUSES),
+      requiredKeys: json(),
+      dielineDocumentId: id(false),
+      artDocumentId: id(false),
+      printReadyDocumentId: id(false),
+      sampleDocumentId: id(false),
+      dims: json(),
+      dimsSource: enumOf(PACKAGING_DIMS_SOURCES, false),
+      dimsQuoteId: id(false),
+      dimsProvisional: bool(),
+      dimsChangedAt: datetime(),
+      brief: text(),
+      agencyNotes: text(),
+      dueAt: datetime(),
+      readyAt: datetime(),
+      orderId: id(false),
+      orderArtRequirementId: id(false),
+      transferredAt: datetime(),
+      cancelledAt: datetime(),
+      cancelReason: str(60),
+      reminderSentAt: datetime(),
+      createdByUserId: id(),
+      updatedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_agency_status", type: "key", columns: ["agencyId", "status"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
     ],
   },
   product_suppliers: {

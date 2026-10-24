@@ -13,6 +13,21 @@ export const DEFAULT_SETTINGS = {
   /** CUSTOMER | WELLMIX | BOTH: quem confirma o recebimento da entrega. */
   deliveryConfirmationMode: "BOTH" as "CUSTOMER" | "WELLMIX" | "BOTH",
   agencyValidationEnabled: true,
+  /* ---- Embalagem na RFQ (briefing de faca e arte para a agência) ---- */
+  /**
+   * Quando o briefing de embalagem nasce: "rfq" = junto com a RFQ (a agência
+   * trabalha em paralelo com a cotação; a venda ainda não está confirmada),
+   * "selection" = ao escolher o fornecedor, "order" = só no pedido (como antes).
+   */
+  packagingBriefAt: "rfq" as "rfq" | "selection" | "order",
+  /** Entregáveis obrigatórios para o briefing ficar pronto (dieline, art, print_ready, packaging_sample). */
+  packagingBriefRequired: ["dieline", "art"] as string[],
+  /** Prazo do briefing em dias quando a solicitação não tem prazo. */
+  packagingBriefDueDays: 7,
+  /** Agência padrão dos briefings (id do parceiro). Vazio: a única agência ativa, senão a Wellmix. */
+  packagingDefaultAgencyId: "",
+  /** A agência vê o nome do cliente no briefing (padrão: não, isolamento). */
+  agencyShowsCustomer: false,
   /** Tolerância de divergência de peso entre preparação e inspeção (%). */
   weightTolerancePercent: 3,
   paymentMode: "MANUAL" as const,

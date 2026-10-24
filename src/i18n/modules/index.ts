@@ -28,6 +28,7 @@ import * as purchaseSheet from "./purchase-sheet";
 import * as supplierPayment from "./supplier-payment";
 import * as supplierTerms from "./supplier-terms";
 import * as packaging from "./packaging";
+import * as packagingBrief from "./packaging-brief";
 import * as carton from "./carton";
 import * as dateOrder from "./date-order";
 import * as financeFx from "./finance-fx";
@@ -87,6 +88,7 @@ export const modulesPt = {
   ...supplierPayment.pt,
   ...supplierTerms.pt,
   ...packaging.pt,
+  ...packagingBrief.pt,
   ...carton.pt,
   ...dateOrder.pt,
   ...financeFx.pt,
@@ -151,6 +153,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...supplierPayment.en,
   ...supplierTerms.en,
   ...packaging.en,
+  ...packagingBrief.en,
   ...carton.en,
   ...dateOrder.en,
   ...financeFx.en,
@@ -215,6 +218,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...supplierPayment.zh,
   ...supplierTerms.zh,
   ...packaging.zh,
+  ...packagingBrief.zh,
   ...carton.zh,
   ...dateOrder.zh,
   ...financeFx.zh,

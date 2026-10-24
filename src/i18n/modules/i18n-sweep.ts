@@ -6,6 +6,11 @@
 const settingsPt = {
   customerCanCreateRequest: "Cliente pode criar solicitação",
   agencyValidationEnabled: "Arte da embalagem feita pela agência",
+  packagingBriefAt: "Quando a embalagem (faca e arte) começa",
+  packagingBriefRequired: "Entregáveis obrigatórios da embalagem",
+  packagingBriefDueDays: "Prazo do briefing de embalagem (dias)",
+  packagingDefaultAgencyId: "Agência padrão da embalagem",
+  agencyShowsCustomer: "Agência vê o nome do cliente",
   deliveryConfirmationMode: "Quem confirma a entrega",
   weightTolerancePercent: "Tolerância de peso (%)",
   downPaymentPercent: "Sinal (%)",
@@ -35,6 +40,11 @@ const settingsPt = {
 const settingsEn: Record<keyof typeof settingsPt, string> = {
   customerCanCreateRequest: "Customer can create requests",
   agencyValidationEnabled: "Packaging artwork made by the agency",
+  packagingBriefAt: "When packaging (dieline and artwork) starts",
+  packagingBriefRequired: "Required packaging deliverables",
+  packagingBriefDueDays: "Packaging brief due (days)",
+  packagingDefaultAgencyId: "Default packaging agency",
+  agencyShowsCustomer: "Agency sees the customer name",
   deliveryConfirmationMode: "Who confirms delivery",
   weightTolerancePercent: "Weight tolerance (%)",
   downPaymentPercent: "Down payment (%)",
@@ -64,6 +74,11 @@ const settingsEn: Record<keyof typeof settingsPt, string> = {
 const settingsZh: Record<keyof typeof settingsPt, string> = {
   customerCanCreateRequest: "客户可创建需求",
   agencyValidationEnabled: "包装设计稿由设计公司制作",
+  packagingBriefAt: "包装（刀模与设计稿）何时开始",
+  packagingBriefRequired: "包装必交交付物",
+  packagingBriefDueDays: "包装任务期限（天）",
+  packagingDefaultAgencyId: "默认包装设计公司",
+  agencyShowsCustomer: "设计公司可见客户名称",
   deliveryConfirmationMode: "由谁确认交付",
   weightTolerancePercent: "重量允差（%）",
   downPaymentPercent: "定金比例（%）",
@@ -132,6 +147,8 @@ export const pt = {
     "chave | rótulo | tipo (file, photo, text, number, date, confirm) | obrigatório (1/0)",
   "lines.requirementsExample": "purchase_sheet | Ficha de compra | text | 1",
   "common.intlLocale": "pt-BR",
+  "docType.print_ready": "Arquivos para a gráfica",
+  "docType.packaging_sample": "Foto da embalagem física",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -171,6 +188,8 @@ export const en: Record<keyof typeof pt, string> = {
     "key | label | type (file, photo, text, number, date, confirm) | required (1/0)",
   "lines.requirementsExample": "purchase_sheet | Purchase sheet | text | 1",
   "common.intlLocale": "en-US",
+  "docType.print_ready": "Print-ready files",
+  "docType.packaging_sample": "Photo of the physical packaging",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -209,4 +228,6 @@ export const zh: Record<keyof typeof pt, string> = {
     "键 | 标签 | 类型（file、photo、text、number、date、confirm）| 必填（1/0）",
   "lines.requirementsExample": "purchase_sheet | 采购单 | text | 1",
   "common.intlLocale": "zh-CN",
+  "docType.print_ready": "印刷文件",
+  "docType.packaging_sample": "实物包装照片",
 };

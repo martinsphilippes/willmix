@@ -32,6 +32,16 @@ import { createPurchaseSnapshot } from "./snapshots";
 import { copyQuoteSheetToOrder, getQuoteSheet } from "./quote-sheet";
 import { quotedQuantity } from "./purchase-sheet-calc";
 import { cancelFreightForRequest } from "./freight";
+import {
+  assertPackagingAgency,
+  cancelPackagingBriefForRequest,
+  notifyBriefsOpened,
+  openPackagingBriefSafe,
+  packagingSupplierSelected,
+  transferPackagingBrief,
+  briefForRequest,
+  type OpenBriefOptions,
+} from "./packaging-brief";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
@@ -366,6 +376,11 @@ export async function openRfq(
     notify?: boolean;
     /** Recebe cada cotação assim que é criada (RFQ do lote: avisos agrupados). */
     collect?: Quote[];
+    /**
+     * Briefing de embalagem aberto no mesmo ato (faca e arte para a agência
+     * ou o marketing da Wellmix). `enabled: false` adia para o pedido.
+     */
+    packaging?: OpenBriefOptions & { enabled?: boolean };
   } = {},
 ): Promise<Quote[]> {
   assertWellmix(user);
@@ -377,6 +392,17 @@ export async function openRfq(
   }
   await validSuppliers(supplierIds);
   const settings = await getSettings();
+  // Briefing de embalagem: nasce com a primeira abertura da RFQ ou quando o
+  // formulário pede de propósito; convidar mais fornecedores não reabre um
+  // briefing adiado ou cancelado.
+  const packaging =
+    settings.packagingBriefAt === "rfq" &&
+    options.packaging?.enabled !== false &&
+    (request.status === "REQUESTED" || options.packaging?.enabled === true)
+      ? (options.packaging ?? {})
+      : null;
+  // Agência escolhida no formulário conferida antes de qualquer gravação.
+  if (packaging?.agencyId) await assertPackagingAgency(packaging.agencyId);
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + settings.quotationExpirationDays);
 
@@ -426,6 +452,13 @@ export async function openRfq(
     requestId,
     `RFQ para ${supplierIds.length} fornecedor(es)`,
   );
+  // No mesmo ato, a embalagem: a agência (ou o marketing da Wellmix) recebe
+  // a pendência da faca e da arte enquanto os fornecedores cotam.
+  if (packaging)
+    await openPackagingBriefSafe(user, request, {
+      ...packaging,
+      notify: options.notify !== false && packaging.notify !== false,
+    });
   return invited;
 }
 
@@ -459,10 +492,13 @@ export async function openBatchRfq(
   user: User,
   groupId: string,
   supplierIds: string[],
+  options: { packaging?: OpenBriefOptions & { enabled?: boolean } } = {},
 ): Promise<{ requests: number; quotes: number }> {
   assertWellmix(user);
   const store = getStore();
   const suppliers = await validSuppliers(supplierIds);
+  if (options.packaging?.agencyId)
+    await assertPackagingAgency(options.packaging.agencyId);
   const rows = (
     await store.list("requests", { filter: { groupId }, orderBy: "createdAt" })
   ).filter((r) => RFQ_OPEN_STATUSES.includes(r.status));
@@ -471,12 +507,15 @@ export async function openBatchRfq(
      meio, os fornecedores ainda são avisados do que já foi criado (numa nova
      tentativa a cotação existente é pulada e não seria avisada) e o erro segue. */
   const created: Quote[] = [];
+  // Briefings de embalagem criados agora: um aviso só por agência, com a lista.
+  const briefs: import("@/lib/db").PackagingBrief[] = [];
   let failure: unknown = null;
   try {
     for (const r of rows)
       await openRfq(user, r.id, supplierIds, {
         notify: false,
         collect: created,
+        packaging: { ...options.packaging, notify: false, collect: briefs },
       });
   } catch (error) {
     failure = error;
@@ -529,6 +568,14 @@ export async function openBatchRfq(
     // Com falha anterior, ela é o erro que importa; o aviso perdido fica no log.
     if (!failure) throw error;
     console.error("[requests] aviso da RFQ do lote falhou", error);
+  }
+  if (briefs.length) {
+    try {
+      await notifyBriefsOpened(briefs, rows);
+    } catch (error) {
+      if (!failure) throw error;
+      console.error("[requests] aviso da embalagem do lote falhou", error);
+    }
   }
   if (failure) throw failure;
   const total = created.length;
@@ -675,6 +722,18 @@ export async function selectQuote(
   await cancelFreightForRequest(request.id, quote.id);
   // Histórico do fornecedor no produto: mais uma cotação escolhida.
   await markSupplierSelected(user, quote.id);
+  // Embalagem: as medidas da cotação escolhida passam a valer para a faca
+  // (alerta à agência se mudaram); com `packagingBriefAt = selection`, o
+  // briefing nasce aqui.
+  try {
+    if (settings.packagingBriefAt === "selection") {
+      const { openPackagingBriefSafe: open } = await import("./packaging-brief");
+      await open(user, request);
+    }
+    await packagingSupplierSelected(user, request, quote);
+  } catch (error) {
+    console.error("[requests] embalagem na escolha do fornecedor", error);
+  }
   // NCM, II e IPI usados na proposta vão para a ficha escolhida (e dela para o pedido).
   await stampTaxesOnSheet(quote.id, input.pricing ?? null);
   // A proposta vale para a quantidade da programação da cotação escolhida
@@ -808,6 +867,12 @@ async function createOrderFromRequest(
     : null;
   const number = await store.nextNumber("order_number");
   const fobTotal = quote.price !== null ? quote.price * request.quantity : null;
+  // Briefing de embalagem da RFQ: a agência dele é a agência do pedido.
+  const brief = await briefForRequest(request.id);
+  const briefLive =
+    brief && (brief.status === "open" || brief.status === "ready")
+      ? brief
+      : null;
 
   const order = await store.create("orders", {
     ...ORDER_EXTRA_DEFAULTS,
@@ -826,7 +891,7 @@ async function createOrderFromRequest(
     sellCurrency: request.sellCurrency,
     erpSyncStatus: "pending",
     erpNumber: null,
-    agencyId: null,
+    agencyId: briefLive?.agencyId ?? null,
     brokerId: null,
     shippingLineId: null,
     carrierId: null,
@@ -844,7 +909,13 @@ async function createOrderFromRequest(
   // Condição de pagamento combinada com o fornecedor vale como estava hoje.
   const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
   await snapshotOrderPaymentTerms(order);
-  await assignDefaultPartners(order);
+  await assignDefaultPartners(order, {
+    // "Marketing Wellmix" escolhido de propósito na RFQ: nenhuma agência é designada.
+    skipAgency:
+      !!briefLive &&
+      briefLive.ownerSource === "chosen" &&
+      briefLive.agencyId === null,
+  });
   await createStagesForOrder(
     await store.get("orders", order.id).then((o) => o ?? order),
   );
@@ -852,6 +923,15 @@ async function createOrderFromRequest(
   await createPurchaseSnapshot(user, order, item, quote, product);
   // A ficha preenchida na cotação vira a ficha do pedido (Preparação já preenchida).
   await copyQuoteSheetToOrder(quote.id, order.id);
+  // Embalagem preparada na RFQ: arquivos ao pedido (fornecedor vê), arte já
+  // enviada conclui o item "Arte"; o fornecedor só aprova.
+  if (briefLive) {
+    try {
+      await transferPackagingBrief(user, request, order);
+    } catch (error) {
+      console.error("[requests] transferência do briefing de embalagem", error);
+    }
+  }
   // Pedido fechado: a ficha da compra atualiza o cadastro do produto (a próxima
   // venda já vem preenchida). Produto fora do catálogo: a ficha do pedido
   // oferece cadastrar.
@@ -951,7 +1031,10 @@ async function createOrderFromRequest(
  * Parceiros padrão: quando existe exatamente um parceiro ativo de cada tipo,
  * ele é designado automaticamente. Caso contrário o operador designa no pedido.
  */
-async function assignDefaultPartners(order: Order) {
+async function assignDefaultPartners(
+  order: Order,
+  options: { skipAgency?: boolean } = {},
+) {
   const store = getStore();
   const patch: Partial<Order> = {};
   for (const [type, field] of [
@@ -960,6 +1043,9 @@ async function assignDefaultPartners(order: Order) {
     ["shipping_line", "shippingLineId"],
     ["carrier", "carrierId"],
   ] as const) {
+    // Já designado (ex.: agência do briefing de embalagem) não é sobrescrito.
+    if (order[field]) continue;
+    if (field === "agencyId" && options.skipAgency) continue;
     const parties = await store.list("parties", {
       filter: { type, active: true },
     });
@@ -1069,6 +1155,8 @@ export async function deleteRequests(
     for (const q of quotes)
       await store.update("quotes", q.id, { status: "rejected" });
     await cancelFreightForRequest(request.id);
+    // Embalagem em preparação: a agência é avisada para parar.
+    await cancelPackagingBriefForRequest(user, request.id, "request_deleted");
     await audit(
       user,
       "request.delete",

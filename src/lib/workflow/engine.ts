@@ -370,6 +370,11 @@ export async function submitRequirement(
     );
   }
 
+  // Arte enviada pelo pedido: o briefing de embalagem (se houver) acompanha.
+  if (requirement.key === "art" && updated.documentId) {
+    const { syncBriefArt } = await import("@/lib/services/packaging-brief");
+    await syncBriefArt(order.id, updated.documentId);
+  }
   // Regra específica: número do ERP informado manualmente.
   if (
     stage.key === "ORDER_CREATED" &&
@@ -503,8 +508,11 @@ export async function clearRequirementDocument(
       });
     }
   }
-  // Arte excluída: a aprovação do fornecedor volta a pendente (como no reenvio).
+  // Arte excluída: a aprovação do fornecedor volta a pendente (como no reenvio)
+  // e o briefing de embalagem (se houver) deixa de apontar para ela.
   if (requirement.key === "art") {
+    const { syncBriefArt } = await import("@/lib/services/packaging-brief");
+    await syncBriefArt(order.id, null);
     const approvals = await store.list("requirements", {
       filter: { stageId: stage.id, key: "art_approval" },
     });
@@ -892,12 +900,25 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
   const required = isOffFlowStage(key)
     ? []
     : requirements.filter((r) => r.required);
+  // Obrigatórios já concluídos antes de a etapa abrir (ex.: arte enviada no
+  // briefing de embalagem da RFQ): o responsável e o aviso são do próximo
+  // pendente, e o percentual já conta o que está feito.
+  const pendingRequired = required.filter((r) => r.status !== "done");
+  const percent =
+    required.length === 0
+      ? 0
+      : Math.round(
+          ((required.length - pendingRequired.length) / required.length) *
+            100,
+        );
 
   await store.update("stages", stage.id, {
     status: "active",
     startedAt: now,
     dueAt: dueDate(settings.stageDueDays[key]),
-    responsibleRole: required[0]?.role ?? stage.responsibleRole,
+    responsibleRole:
+      pendingRequired[0]?.role ?? required[0]?.role ?? stage.responsibleRole,
+    ...(percent > 0 ? { percent } : {}),
   });
   await store.update("orders", order.id, {
     status: key,
@@ -920,8 +941,13 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
     if (fresh) await completeStage(user, fresh);
     return;
   }
+  if (pendingRequired.length === 0) {
+    // Tudo já estava feito: conclui e segue (mesma regra de evaluateStage).
+    await evaluateStage(user, stage.id);
+    return;
+  }
 
-  const role = required[0].role;
+  const role = pendingRequired[0].role;
   const partyField = ROLE_PARTY_FIELD[role];
   await notify(
     role === "customer"
@@ -939,7 +965,7 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
           stage: t(`stage.${key}`),
         }),
         body: t("notif.stage.body", {
-          items: required.map((r) => requirementLabel(t, r)).join(", "),
+          items: pendingRequired.map((r) => requirementLabel(t, r)).join(", "),
         }),
       }),
     },

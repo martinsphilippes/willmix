@@ -200,7 +200,10 @@ export default async function QuotePage({
               {documents
                 .filter(
                   (d) =>
-                    d.visibility !== "internal" && d.visibility !== "customer",
+                    d.visibility !== "internal" &&
+                    d.visibility !== "customer" &&
+                    // Faca e arte do briefing de embalagem: só o fornecedor escolhido, no pedido.
+                    !d.packagingBriefId,
                 )
                 .map((d) => (
                   <li key={d.id}>

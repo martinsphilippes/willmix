@@ -26,7 +26,8 @@ export type TaskKind =
   | "sourcing_demand"
   | "freight_quote"
   | "supplier_payment"
-  | "confirm_receipt";
+  | "confirm_receipt"
+  | "packaging_brief";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -148,6 +149,7 @@ const STAGE_ORDER: string[] = STAGE_TEMPLATES.map((s) => s.key);
 const KIND_ORDER: string[] = [
   "rfq",
   "quote",
+  "packaging_brief",
   "select_supplier",
   "confirm_payment",
   "pay",
@@ -206,6 +208,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   // Arte e embalagem dos pedidos antigos: arte da agência, aprovação do fornecedor.
   await (await import("./packaging")).normalizePackaging();
   const customer = user.role === "customer" && !!user.partyId;
+  const agency = user.role === "agency" && !!user.partyId;
   const none = Promise.resolve([] as never[]);
 
   // Todas as consultas independentes saem juntas (cada ida ao banco custa uma
@@ -219,6 +222,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     reviews,
     waitingRequests,
     openAfterSales,
+    openBriefs,
   ] = await Promise.all([
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
     supplier
@@ -260,6 +264,18 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           filter: { customerId: user.partyId!, status: "open" },
         })
       : none,
+    // Briefings de embalagem em preparação: da agência (os dela) ou do
+    // marketing da Wellmix (sem agência). Tabela ainda não publicada: nenhum.
+    agency || wellmix
+      ? store
+          .list("packaging_briefs", {
+            filter: {
+              status: ["open", "transferred"],
+              agencyId: agency ? user.partyId! : null,
+            },
+          })
+          .catch(() => [])
+      : none,
   ]);
 
   // Pedidos, requisitos e solicitações citados acima, em uma rodada paralela.
@@ -271,7 +287,37 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ...reviews.map((r) => r.orderId).filter((id): id is string => !!id),
     ]),
   ];
-  const quoteRequestIds = [...new Set(quotes.map((q) => q.requestId))];
+  // Antes do pedido: briefing aberto. Depois do pedido: só a arte ainda por
+  // enviar e só enquanto a etapa Arte e embalagem não começou (depois, a
+  // etapa cobra). Briefing "aberto" de solicitação já pedida (transferência
+  // que falhou) não cobra ninguém.
+  const transferredOpen = openBriefs.filter(
+    (b) => b.status === "transferred" && b.orderId && !b.artDocumentId,
+  );
+  const packagingStages = transferredOpen.length
+    ? await store
+        .list("stages", {
+          filter: {
+            orderId: [...new Set(transferredOpen.map((b) => b.orderId!))],
+            key: "PACKAGING",
+          },
+        })
+        .catch(() => [])
+    : [];
+  const briefs = [
+    ...openBriefs.filter((b) => b.status === "open" && !b.orderId),
+    ...transferredOpen.filter((b) =>
+      packagingStages.some(
+        (s) => s.orderId === b.orderId && s.status === "pending",
+      ),
+    ),
+  ];
+  const quoteRequestIds = [
+    ...new Set([
+      ...quotes.map((q) => q.requestId),
+      ...briefs.map((b) => b.requestId),
+    ]),
+  ];
   const [orders, openRequirements, quoteRequests] = await Promise.all([
     orderIds.length ? store.list("orders", { filter: { id: orderIds } }) : none,
     stages.length
@@ -336,6 +382,39 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           detail: `${request.quantity} ${request.unit}`,
           link: `/app/quotes/${quote.id}`,
           dueAt: quote.validUntil,
+        },
+        now,
+      ),
+    );
+  }
+  // Embalagem (faca e arte) a preparar junto com a cotação: a pendência da
+  // agência nasce no mesmo instante em que a do fornecedor.
+  for (const brief of briefs) {
+    const request = quoteRequests.find((r) => r.id === brief.requestId);
+    if (!request || request.status === "CANCELLED") continue;
+    if (brief.status === "open" && request.status === "ORDERED") continue;
+    const { missingPackagingItems } = await import("./packaging-brief-calc");
+    const missing = missingPackagingItems(brief).map(
+      (k) => PACKAGING_ITEM_LABEL[k],
+    );
+    const inOrder = brief.status === "transferred";
+    tasks.push(
+      finish(
+        {
+          kind: "packaging_brief",
+          title: `${request.number ? `Solicitação nº ${request.number}: ` : ""}embalagem (faca e arte): ${request.productName}`,
+          detail: [
+            missing.length ? `Faltam: ${missing.join(", ")}` : "Obrigatórios enviados",
+            `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
+            inOrder
+              ? "pedido criado: a arte é pedida antes de a etapa Arte e embalagem começar"
+              : request.status === "WAITING_DOWN_PAYMENT"
+                ? "aguardando o sinal do cliente"
+                : "venda ainda não confirmada",
+          ].join(" · "),
+          link: `/app/packaging/${brief.id}`,
+          dueAt: brief.dueAt,
+          stageKey: "PACKAGING",
         },
         now,
       ),
@@ -538,6 +617,14 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 }
 
 type DraftTask = Omit<Task, "overdue" | "group" | "due" | "daysLeft">;
+
+/** Entregáveis do briefing de embalagem (pendências saem em português, como as demais). */
+const PACKAGING_ITEM_LABEL: Record<string, string> = {
+  dieline: "faca (die-cut)",
+  art: "arte",
+  print_ready: "arquivos para a gráfica",
+  packaging_sample: "foto da embalagem física",
+};
 
 function requestTask(request: Request): DraftTask {
   const base = {

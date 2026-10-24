@@ -98,6 +98,7 @@ import {
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
 import { RequirementForm } from "@/components/requirement-form";
+import { PackagingBriefFiles } from "@/components/packaging-brief-files";
 import { sheetAccess } from "@/lib/services/purchase-sheet";
 import { SubmitButton, SubmitTextButton } from "@/components/submit-button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
@@ -757,6 +758,9 @@ export default async function OrderPage({
                         orderId={order.id}
                         status={myTariff}
                       />
+                    ) : null}
+                    {stage.key === "PACKAGING" && stage.status !== "pending" ? (
+                      <PackagingBriefFiles t={t} user={user} orderId={order.id} />
                     ) : null}
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (
                       <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">

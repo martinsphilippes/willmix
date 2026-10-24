@@ -228,7 +228,11 @@ export async function openRfqAction(form: FormData) {
   const requestId = str(form, "requestId");
   await run(`/app/requests/${requestId}`, async () => {
     const supplierIds = form.getAll("supplierIds").map(String).filter(Boolean);
-    await openRfq(user, requestId, supplierIds);
+    // Junto com a RFQ, a embalagem: quem faz a faca e a arte e as instruções.
+    const { packagingOptionsFrom } = await import("./actions/helpers");
+    await openRfq(user, requestId, supplierIds, {
+      packaging: packagingOptionsFrom(form),
+    });
   });
 }
 
@@ -545,6 +549,10 @@ export async function assignPartnerAction(form: FormData) {
         await import("@/lib/services/packaging");
       const [pack] = stages.filter((s) => s.key === "PACKAGING");
       if (pack) await normalizePackagingStage(pack.id, { reassign: true });
+      // Briefing de embalagem ligado ao pedido acompanha a agência do pedido.
+      const { syncBriefAgencyFromOrder } =
+        await import("@/lib/services/packaging-brief");
+      await syncBriefAgencyFromOrder(orderId, partyId);
     }
     await audit(
       user,
@@ -1069,11 +1077,37 @@ export async function saveSettingsAction(form: FormData) {
         pairs.push([key, out]);
         continue;
       }
+      if (key === "packagingBriefRequired") {
+        // Caixas de marcação (uma por entregável); pelo menos uma.
+        if (!form.has(`${key}.__form`)) continue;
+        const { normalizeRequiredKeys } =
+          await import("@/lib/services/packaging-brief-calc");
+        const chosen = form
+          .getAll(key)
+          .filter((v): v is string => typeof v === "string");
+        if (!chosen.length) throw new Error("packaging_required_empty");
+        pairs.push([key, normalizeRequiredKeys(chosen)]);
+        continue;
+      }
       if (raw === null) continue;
       const current = DEFAULT_SETTINGS[key];
       let value: unknown = raw;
       if (typeof current === "boolean") value = raw === "on" || raw === "true";
-      else if (key === "marginPercent") {
+      else if (key === "packagingBriefAt") {
+        if (!["rfq", "selection", "order"].includes(String(raw)))
+          throw new Error("invalid_input");
+        value = String(raw);
+      } else if (key === "packagingBriefDueDays") {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > 365)
+          throw new Error("invalid_input");
+        value = n;
+      } else if (key === "packagingDefaultAgencyId") {
+        const v = String(raw).trim();
+        if (v && !/^[A-Za-z0-9_-]{1,64}$/.test(v))
+          throw new Error("invalid_input");
+        value = v;
+      } else if (key === "marginPercent") {
         const n = Number(String(raw).replace(",", "."));
         if (!(Number.isFinite(n) && n >= 0 && n <= 1000))
           throw new Error("margin_invalid");

@@ -408,6 +408,14 @@ export async function saveQuoteSheet(
       sheet.productId ?? request.productId ?? null,
       sheet,
     );
+  // Briefing de embalagem ainda sem medidas da caixa: as desta ficha servem
+  // de provisórias para a faca (sem revelar o fornecedor).
+  try {
+    const { packagingSheetSaved } = await import("./packaging-brief");
+    await packagingSheetSaved(user, request.id, quoteId);
+  } catch (error) {
+    console.error("[quote-sheet] medidas para a embalagem", error);
+  }
   // Cotação já respondida e com frete pedido: a carga desta ficha (caixas,
   // CBM, peso) é a que vale no preço; a companhia marítima revisa o frete
   // quando ela muda (sem mudança, nada é enviado).

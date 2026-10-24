@@ -79,6 +79,11 @@ import { MoneyInput } from "@/components/money-input";
 import { DownPaymentInput } from "@/components/down-payment-input";
 import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
+import {
+  PackagingBriefCard,
+  PackagingRfqFields,
+} from "@/components/packaging-brief-card";
+import { briefForRequest } from "@/lib/services/packaging-brief";
 
 export default async function RequestDetailPage({
   params,
@@ -258,12 +263,19 @@ export default async function RequestDetailPage({
   const proofDoc = downPayment?.proofDocumentId
     ? documents.find((d) => d.id === downPayment.proofDocumentId)
     : undefined;
+  // Anexos da solicitação: os arquivos do briefing de embalagem têm cartão próprio
+  // (e o cliente nunca os vê).
+  const attachments = documents.filter((d) => !d.packagingBriefId);
   /* RFQ: Wellmix escolhe fornecedores (antes da proposta). */
   const showRfq =
     wellmix &&
     ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
   /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
   const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
+  /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
+  const packagingBrief = wellmix ? await briefForRequest(request.id) : null;
+  const hasLiveBrief =
+    !!packagingBrief && packagingBrief.status !== "cancelled";
 
   return (
     <>
@@ -377,7 +389,11 @@ export default async function RequestDetailPage({
                       t(`reqBatch.error.${error}` as DictionaryKey) !==
                         `reqBatch.error.${error}`
                     ? t(`reqBatch.error.${error}` as DictionaryKey)
-                    : fallbackError(t, String(error))
+                    : typeof error === "string" &&
+                        t(`packBrief.error.${error}` as DictionaryKey) !==
+                          `packBrief.error.${error}`
+                      ? t(`packBrief.error.${error}` as DictionaryKey)
+                      : fallbackError(t, String(error))
         }
       />
       {saved === "requester" ? (
@@ -413,9 +429,9 @@ export default async function RequestDetailPage({
               unit={request.unit}
               t={t}
             />
-            {documents.length > 0 ? (
+            {attachments.length > 0 ? (
               <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-2.5 text-sm">
-                {documents.map((d) => (
+                {attachments.map((d) => (
                   <li key={d.id}>
                     <TextLink href={`/api/files/${d.id}`} target="_blank">
                       {d.name}
@@ -553,6 +569,9 @@ export default async function RequestDetailPage({
                       </label>
                     ))}
                   </div>
+                  {rfqOpened ? null : (
+                    <PackagingRfqFields t={t} hasBrief={hasLiveBrief} />
+                  )}
                   {allInvited ? null : (
                     <SubmitButton>
                       {rfqOpened
@@ -625,6 +644,15 @@ export default async function RequestDetailPage({
               </Card>
             ) : null}
           </div>
+        ) : null}
+
+        {/* Embalagem (faca e arte) preparada em paralelo com a cotação (só Wellmix) */}
+        {wellmix && request.status !== "REQUESTED" ? (
+          <PackagingBriefCard
+            t={t}
+            request={request}
+            saved={typeof saved === "string" ? saved : undefined}
+          />
         ) : null}
 
         {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
