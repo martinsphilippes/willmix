@@ -3,6 +3,7 @@ import "server-only";
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { ROLE_PARTY_FIELD, isOffFlowStage } from "@/lib/workflow/stages";
+import { requirementLabel } from "@/i18n";
 import { requesterTarget, notify } from "./notifications";
 
 /**
@@ -46,9 +47,18 @@ export async function runReminders() {
             partyId: partyField ? order[partyField] : null,
           },
       {
-        subject: `${overdue ? "ATRASADO" : "Vence em breve"}: pedido #${order.number}, etapa ${stage.key}`,
-        body: `Pendências: ${required.map((r) => r.label).join(", ")}.`,
+        kind: overdue ? "alert" : "action",
+        actor: "recipient",
         link: `/app/orders/${order.id}`,
+        text: (t) => ({
+          subject: t(overdue ? "notif.overdue.subject" : "notif.due.subject", {
+            n: order.number,
+            stage: t(`stage.${stage.key}`),
+          }),
+          body: t("notif.stage.body", {
+            items: required.map((r) => requirementLabel(t, r)).join(", "),
+          }),
+        }),
       },
     );
     await store.update("stages", stage.id, {

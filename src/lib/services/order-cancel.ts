@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { Translate } from "@/i18n";
 import {
   getStore,
   type Order,
@@ -9,7 +10,12 @@ import {
 } from "@/lib/db";
 import { assertRole, canViewOrder } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { notify, notifyWellmix, requesterTarget } from "./notifications";
+import {
+  notify,
+  notifyWellmix,
+  requesterTarget,
+  type NotifyText,
+} from "./notifications";
 
 /*
  * Cancelamento de pedido.
@@ -86,13 +92,13 @@ export async function customerCanRequestCancel(
 }
 
 /** Quem acompanha o pedido e deve saber do cancelamento. */
-async function notifyEveryone(order: Order, subject: string, body: string) {
+async function notifyEveryone(
+  order: Order,
+  text: (t: Translate) => NotifyText,
+) {
   const link = `/app/orders/${order.id}`;
-  await notify(requesterTarget(order.requestedByUserId), {
-    subject,
-    body,
-    link,
-  });
+  const message = { kind: "alert", actor: null, link, text } as const;
+  await notify(requesterTarget(order.requestedByUserId), message);
   const partners: Array<[string | null, Parameters<typeof notify>[0]["role"]]> =
     [
       [order.supplierId, "supplier"],
@@ -102,7 +108,7 @@ async function notifyEveryone(order: Order, subject: string, body: string) {
       [order.carrierId, "carrier"],
     ];
   for (const [partyId, role] of partners)
-    if (partyId) await notify({ role, partyId }, { subject, body, link });
+    if (partyId) await notify({ role, partyId }, message);
 }
 
 export interface CancelInput {
@@ -207,15 +213,15 @@ export async function cancelOrder(
       settlement: input.settlement,
     },
   );
-  await notifyEveryone(
-    order,
-    `Pedido #${order.number} cancelado`,
-    input.note
-      ? `O pedido foi cancelado pela Wellmix: ${input.note}`
-      : "O pedido foi cancelado pela Wellmix.",
-  );
+  await notifyEveryone(order, (t) => ({
+    subject: t("notif.cancelled.subject", { n: order.number }),
+    body: input.note
+      ? t("notif.cancelled.note", { note: input.note })
+      : t("notif.cancelled.body"),
+  }));
   if (order.erpNumber)
     await notifyWellmix({
+      kind: "action",
       subject: `Cancelar no Sankhya: pedido #${order.number}`,
       body: `O pedido foi cancelado no portal; cancele também o pedido ${order.erpNumber} no Sankhya.`,
       link: `/app/orders/${orderId}`,
@@ -279,6 +285,7 @@ export async function requestOrderCancel(
     { reason },
   );
   await notifyWellmix({
+    kind: "action",
     subject: `Pedido #${order.number}: cliente pediu cancelamento`,
     body: reason,
     link: `/app/orders/${orderId}#cancel`,
@@ -312,8 +319,11 @@ export async function rejectCancelRequest(
     { response },
   );
   await notify(requesterTarget(order.cancelRequestedByUserId), {
-    subject: `Pedido #${order.number}: cancelamento recusado`,
-    body: response,
+    kind: "info",
     link: `/app/orders/${orderId}`,
+    text: (t) => ({
+      subject: t("notif.cancelRefused.subject", { n: order.number }),
+      body: response,
+    }),
   });
 }

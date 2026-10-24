@@ -157,9 +157,15 @@ export async function normalizePackagingStage(
         ? { role: "agency", partyId: order.agencyId }
         : { role: ["admin", "operator"] },
       {
-        subject: `Pedido #${order.number}: etapa PACKAGING aguarda sua ação`,
-        body: "Pendências: Arte da embalagem (o fornecedor confere e aprova).",
+        kind: "action",
         link: `/app/orders/${order.id}`,
+        text: (t) => ({
+          subject: t("notif.stage.subject", {
+            n: order.number,
+            stage: t("stage.PACKAGING"),
+          }),
+          body: t("notif.stage.body", { items: t("notif.packaging.item") }),
+        }),
       },
     );
   // Percentual e responsável da etapa aberta acompanham os itens novos.

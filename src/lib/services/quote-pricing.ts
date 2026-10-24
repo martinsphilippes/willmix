@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatAmount } from "@/lib/workflow/money";
 import { getStore, type Quote, type Request, type User } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
@@ -310,9 +311,17 @@ export async function refreshProposal(user: User, requestId: string) {
     { sellPrice, downPaymentAmount, pricing },
   );
   await notify(requesterTarget(request.requestedForUserId), {
-    subject: `Proposta atualizada: ${request.productName}`,
-    body: `Novo valor BRL ${sellPrice.toFixed(2)} (câmbio do dia). Sinal: BRL ${downPaymentAmount.toFixed(2)}.`,
+    kind: "action",
     link: `/app/requests/${requestId}`,
+    text: (t) => ({
+      subject: t("notif.proposalUpdated.subject", {
+        product: request.productName,
+      }),
+      body: t("notif.proposalUpdated.body", {
+        total: formatAmount(sellPrice, "BRL", t.intl),
+        down: formatAmount(downPaymentAmount, "BRL", t.intl),
+      }),
+    }),
   });
   return { sellPrice, downPaymentAmount };
 }

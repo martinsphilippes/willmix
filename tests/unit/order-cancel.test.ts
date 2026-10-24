@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
+import { translator } from "@/i18n";
 import { withTempStore } from "./setup";
 
 /* Cancelamento: só o admin cancela (qualquer etapa); o cliente pede até a produção. */
@@ -128,12 +129,16 @@ describe("cancelamento pelo administrador", () => {
     const notes = await store.list("notifications", {
       filter: { channel: "inapp" },
     });
+    // Cada um na sua língua: o cliente em português, o fornecedor A em chinês.
     const subject = `Pedido #${order.number} cancelado`;
+    const zhSubject = translator("zh")("notif.cancelled.subject", {
+      n: order.number,
+    });
     expect(
       notes.some((n) => n.userId === joao.id && n.subject === subject),
     ).toBe(true);
     expect(
-      notes.some((n) => n.userId === supplierA.id && n.subject === subject),
+      notes.some((n) => n.userId === supplierA.id && n.subject === zhSubject),
     ).toBe(true);
     const logs = await store.list("audit_log", {
       filter: { entityId: order.id },

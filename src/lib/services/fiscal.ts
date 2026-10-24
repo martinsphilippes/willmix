@@ -279,6 +279,8 @@ export async function syncFiscalTables(
   const status = await fiscalStatus();
   if (failed.length || (targets.length === 0 && status.stale))
     await notifyWellmix({
+      kind: "alert",
+      actor: "recipient",
       subject: "Tabela fiscal (TEC/TIPI) precisa de atualização",
       body: failed.length
         ? `A atualização automática falhou (${lastError}). Suba a planilha oficial em Configurações.`

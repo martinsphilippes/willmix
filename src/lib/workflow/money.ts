@@ -72,3 +72,17 @@ export function formatMoneyValue(
 }
 
 export { CURRENCIES };
+
+/**
+ * Valor com moeda no idioma pedido ("R$ 1.234,56", "US$ 1,234.56", "¥1,234.56").
+ * Moeda desconhecida pelo Intl: "XXX 1234.56".
+ */
+export function formatAmount(amount: number, currency: string, intl = "pt-BR") {
+  try {
+    return new Intl.NumberFormat(intl, { style: "currency", currency }).format(
+      amount,
+    );
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}

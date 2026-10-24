@@ -126,6 +126,7 @@ export async function submitDownPaymentProof(
     `Comprovante do sinal enviado pelo cliente: ${doc.name}`,
   );
   await notifyWellmix({
+    kind: "action",
     subject: `Comprovante do sinal: ${request.productName}`,
     body: "O cliente anexou o comprovante do sinal. Confira o recebimento e confirme o sinal para criar o pedido.",
     link: `/app/requests/${requestId}`,

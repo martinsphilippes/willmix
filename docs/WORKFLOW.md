@@ -41,6 +41,10 @@ Datas em ordem: a previsão de chegada só abre depois de a data de embarque ser
 
 `evaluateStage` roda após cada submissão. Percentual = obrigatórios concluídos / obrigatórios. Quando todos os obrigatórios estão `done`, a etapa vira `done`, a próxima vira `active` (com prazo e responsável), o pedido recebe o novo status e o responsável é notificado. O responsável exibido é sempre o papel do próximo requisito pendente.
 
+### Notificações: o que o aviso pede e com quem está
+
+Cada aviso tem um tipo (`kind`): **ação** (precisa de quem recebe), **atenção** (atraso, problema, cancelamento), **novidade** ou **concluído**; e diz com quem está o assunto agora (`actor`: quem recebe, a Wellmix ou um papel parceiro; nulo quando não há o que fazer). A tela de Notificações agrupa em "Precisa de você", "Atenção" e "Novidades", e cada cartão mostra o tipo, "Agora é com você / com a Wellmix / com: Fornecedor" e o botão "Resolver"/"Abrir", que marca o aviso como lido e leva ao lugar. O texto sai no idioma de quem recebe (`notify({ text: (t) => … })`, com o nome traduzido da etapa e dos itens pendentes, nunca a chave interna como `DELIVERED`; valores com moeda formatados). Avisos antigos, sem tipo gravado, são classificados pelo assunto (`src/lib/notification-view.ts`). Quando a etapa seguinte abre, o responsável recebe uma ação; o cliente, ao ter o pedido criado, recebe uma novidade "agora é com o fornecedor".
+
 ## Arte e embalagem
 
 A agência de marketing faz a arte da embalagem e envia no pedido; o fornecedor confere a arte que tem de produzir e aprova (ou reprova com observação):

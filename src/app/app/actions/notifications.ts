@@ -32,3 +32,14 @@ export async function deleteAllNotificationsAction() {
     return `${BACK}?deleted=${count}`;
   });
 }
+
+/** Abre um aviso: marca como lido e vai para a tela dele (sem link, volta à lista). */
+export async function openNotificationAction(form: FormData) {
+  const user = await requireUser();
+  await run(BACK, async () => {
+    const id = ID.parse(str(form, "id"));
+    const { openNotification } =
+      await import("@/lib/services/notifications");
+    return (await openNotification(user, id)) ?? BACK;
+  });
+}

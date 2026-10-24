@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatAmount } from "@/lib/workflow/money";
 import {
   getStore,
   PAYMENT_EXTRA_DEFAULTS,
@@ -283,9 +284,14 @@ export async function registerSupplierPayment(
   await notify(
     { role: "supplier", partyId: order.supplierId },
     {
-      subject: `Order #${order.number}: payment registered`,
-      body: `${currency} ${amount.toFixed(2)}. Please confirm receipt.`,
+      kind: "action",
       link: `/app/orders/${orderId}`,
+      text: (t) => ({
+        subject: t("notif.paymentRegistered.subject", { n: order.number }),
+        body: t("notif.paymentRegistered.body", {
+          amount: formatAmount(amount, currency, t.intl),
+        }),
+      }),
     },
   );
   return payment;
@@ -382,9 +388,14 @@ export async function markSupplierPaymentPaid(
   await notify(
     { role: "supplier", partyId: order.supplierId },
     {
-      subject: `Order #${order.number}: payment sent`,
-      body: `${payment.currency} ${payment.amount.toFixed(2)}. Please confirm receipt.`,
+      kind: "action",
       link: "/app/account",
+      text: (t) => ({
+        subject: t("notif.paymentToSupplier.subject", { n: order.number }),
+        body: t("notif.paymentToSupplier.body", {
+          amount: formatAmount(payment.amount, payment.currency, t.intl),
+        }),
+      }),
     },
   );
   return updated;

@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { Translate } from "@/i18n";
+import { formatAmount } from "@/lib/workflow/money";
 import { quotedQuantity } from "./purchase-sheet-calc";
 import {
   getStore,
@@ -89,10 +91,12 @@ export async function inviteFreightForQuote(
   let invited = 0;
   for (const carrier of carriers) {
     const current = existing.find((f) => f.carrierId === carrier.id);
-    const message = {
-      subject: `Cotação de frete: ${request.productName}`,
-      body: `${cargo.totalCbm ?? "?"} m³ · ${cargo.cartons ?? "?"} caixas · ${cargo.grossWeightKg ?? "?"} kg. Informe o valor do frete.`,
-    };
+    const cargoText = (t: Translate) =>
+      t("notif.freightQuote.cargo", {
+        cbm: String(cargo.totalCbm ?? "?"),
+        cartons: String(cargo.cartons ?? "?"),
+        kg: String(cargo.grossWeightKg ?? "?"),
+      });
     if (!current) {
       const fq = await store.create("freight_quotes", {
         requestId: request.id,
@@ -110,7 +114,16 @@ export async function inviteFreightForQuote(
       });
       await notify(
         { role: "shipping_line", partyId: carrier.id },
-        { ...message, link: `/app/freight/${fq.id}` },
+        {
+          kind: "action",
+          link: `/app/freight/${fq.id}`,
+          text: (t) => ({
+            subject: t("notif.freightQuote.subject", {
+              product: request.productName,
+            }),
+            body: t("notif.freightQuote.body", { cargo: cargoText(t) }),
+          }),
+        },
       );
       invited++;
     } else if (current.status !== "cancelled" && !sameCargo(current, cargo)) {
@@ -121,9 +134,14 @@ export async function inviteFreightForQuote(
       await notify(
         { role: "shipping_line", partyId: carrier.id },
         {
-          subject: `Carga alterada: ${request.productName}`,
-          body: `${message.body} A ficha mudou; revise o frete.`,
+          kind: "action",
           link: `/app/freight/${current.id}`,
+          text: (t) => ({
+            subject: t("notif.freightChanged.subject", {
+              product: request.productName,
+            }),
+            body: t("notif.freightChanged.body", { cargo: cargoText(t) }),
+          }),
         },
       );
       invited++;
@@ -181,8 +199,9 @@ export async function answerFreight(
   );
   const request = await store.get("requests", fq.requestId);
   await notifyWellmix({
+    kind: "action",
     subject: `Frete informado: ${request?.productName ?? ""}`,
-    body: `${input.currency} ${input.amount.toFixed(2)}${input.transitDays ? `, ${input.transitDays} dias` : ""}.`,
+    body: `${formatAmount(input.amount, input.currency)}${input.transitDays ? `, ${input.transitDays} dias` : ""}.`,
     link: `/app/requests/${fq.requestId}`,
   });
   return updated;

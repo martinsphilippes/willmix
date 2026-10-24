@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { translator } from "@/i18n";
 import { withTempStore } from "./setup";
 
 /* Número da solicitação desde o envio (o lote divide um só) e RFQ do lote inteiro. */
@@ -137,8 +138,14 @@ describe("RFQ do lote inteiro", () => {
     }
     const subjects = (await inbox(supplierA)).slice(before);
     expect(subjects).toHaveLength(1);
-    expect(subjects[0]).toContain("2 produtos");
-    expect(subjects[0]).toContain(`nº ${created[0].number}`);
+    // Fornecedor A lê em chinês: 2 produtos e o nº da solicitação, no idioma dele.
+    const zh = translator("zh");
+    expect(subjects[0]).toBe(
+      zh("notif.rfq.many.subject", {
+        count: 2,
+        ref: zh("notif.ref", { number: created[0].number ?? 0 }),
+      }),
+    );
 
     // Convidar de novo não duplica cotação nem aviso.
     const again = await openBatchRfq(admin, groupId, ["fornecedor-a"]);
@@ -172,9 +179,14 @@ describe("RFQ do lote inteiro", () => {
       spy.mockRestore();
     }
     const afterFailure = (await inbox(supplierA)).slice(before);
-    expect(afterFailure).toEqual([
-      `RFQ: Parcial A (solicitação nº ${created[0].number})`,
-    ]);
+    // O fornecedor A lê em chinês: assunto no idioma dele, com o nº da solicitação.
+    const zh = translator("zh");
+    const rfq = (product: string) =>
+      zh("notif.rfq.subject", {
+        product,
+        ref: zh("notif.ref", { number: created[0].number ?? 0 }),
+      });
+    expect(afterFailure).toEqual([rfq("Parcial A")]);
     // Nova tentativa: só o produto B é novo e só ele é avisado.
     expect(await openBatchRfq(admin, groupId, ["fornecedor-a"])).toEqual({
       requests: 2,
@@ -182,7 +194,7 @@ describe("RFQ do lote inteiro", () => {
     });
     expect((await inbox(supplierA)).slice(before)).toEqual([
       ...afterFailure,
-      `RFQ: Parcial B (solicitação nº ${created[0].number})`,
+      rfq("Parcial B"),
     ]);
   });
 
