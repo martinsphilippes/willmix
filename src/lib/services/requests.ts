@@ -75,11 +75,15 @@ export interface CreateRequestInput {
   schedule?: RequestSchedule | null;
   /** Número já reservado (lote: o mesmo para todos os produtos). */
   number?: number | null;
+  /** Variação escolhida do produto (docs/PRODUCT_VARIANTS.md). */
+  variantId?: string | null;
 }
 
 /** Um produto do lote: vira uma solicitação própria. */
 export interface RequestBatchItem {
   productId: string | null;
+  /** Variação escolhida do produto, quando ele tem variações. */
+  variantId?: string | null;
   productName: string;
   description: string;
   specification: string | null;
@@ -117,6 +121,7 @@ export async function createRequestBatch(
       const request = await createRequest(user, {
         ...base,
         productId: item.productId,
+        variantId: item.variantId ?? null,
         productName: item.productName,
         description: item.description,
         specification: item.specification,
@@ -284,6 +289,8 @@ export async function createRequest(
     notes: input.notes ?? null,
     // Só vai ao banco quando há lote (coluna opcional; antes dela existir, nada muda).
     ...(input.groupId ? { groupId: input.groupId } : {}),
+    // Variação escolhida (coluna opcional): só vai quando há uma.
+    ...(input.variantId ? { variantId: input.variantId } : {}),
     // Idem para a programação de entregas (coluna opcional).
     ...(input.schedule ? { schedule: input.schedule } : {}),
   } as const;
