@@ -19,6 +19,9 @@ import { isMoneyRequirement, parseMoneyValue } from "@/lib/workflow/money";
  * Formulário inline de um requisito, conforme o tipo. Só renderizado para quem pode preencher.
  * `action` e `defaultValue` são opcionais (usados pela "nova medição" da inspeção:
  * reenvio de um requisito já concluído com o valor atual pré-preenchido).
+ * Larguras por container query (`@sm:`, `@xl:`…): o `<ul>` dos itens da etapa é o
+ * container; em cartão estreito os campos ocupam a largura, em cartão largo
+ * ficam compactos ao lado do rótulo.
  */
 export function RequirementForm({
   requirement,
@@ -47,7 +50,7 @@ export function RequirementForm({
         <Input
           name="note"
           placeholder={t("common.note")}
-          className="max-w-xs sm:w-48"
+          className="w-full max-w-xs @3xl:w-48"
         />
         <SubmitButton name="decision" value="approve" variant="primary">
           {t("common.approve")}
@@ -71,7 +74,7 @@ export function RequirementForm({
       </>
     );
     // Requisito de arquivo: os dois botões ocupam a largura no celular.
-    const wide = requirement.type === "file" ? "w-full sm:w-auto" : undefined;
+    const wide = requirement.type === "file" ? "w-full @sm:w-auto" : undefined;
     const photo = (
       <form
         action={action ?? submitRequirementAction}
@@ -99,7 +102,7 @@ export function RequirementForm({
     if (requirement.type === "photo") return photo;
     return (
       <div
-        className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:flex-wrap sm:items-start sm:justify-end"
+        className="flex w-full flex-col gap-1.5 @sm:flex-row @sm:flex-wrap @sm:items-start @3xl:w-auto @3xl:justify-end"
         data-requirement-upload=""
       >
         {photo}
@@ -158,7 +161,7 @@ export function RequirementForm({
           step="any"
           required
           defaultValue={defaultValue ?? undefined}
-          className="max-w-32 sm:w-32"
+          className="w-32"
         />
       ) : null}
 
@@ -167,7 +170,8 @@ export function RequirementForm({
           name="value"
           required
           defaultValue={defaultValue ?? undefined}
-          className="min-h-8! max-w-md sm:w-64"
+          // Divide a linha com o botão; em cartão largo, largura fixa ao lado do rótulo.
+          className="min-h-8! min-w-40 flex-1 @xl:w-64 @xl:flex-none"
           rows={1}
         />
       ) : null}
@@ -184,7 +188,7 @@ export function RequirementForm({
           minMessage={boundMessage(t, dateBounds?.minError, dateBounds?.min)}
           maxMessage={boundMessage(t, dateBounds?.maxError, dateBounds?.max)}
           defaultValue={defaultValue ?? undefined}
-          className="max-w-40 sm:w-40"
+          className="w-40"
         >
           {submit}
         </DateRangeInput>

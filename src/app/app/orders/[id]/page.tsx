@@ -681,7 +681,7 @@ export default async function OrderPage({
                         {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
                       </p>
                     ) : (
-                      <ul className="divide-y divide-zinc-100">
+                      <ul className="@container divide-y divide-zinc-100">
                         {reqs.map((r) => (
                           <RequirementRow
                             key={r.id}
@@ -1479,6 +1479,22 @@ function canSeeDoc(user: User, d: Document) {
   return false;
 }
 
+/**
+ * Linha de um item da etapa: empilhada (rótulo em cima, formulário embaixo) e,
+ * quando o cartão é largo (container query no `<ul>`), lado a lado. `row` é o
+ * `<li>`; `side` a coluna do formulário; `note` o aviso "aguardando…".
+ */
+const ROW_WIDE_XL = {
+  row: "@xl:flex-row @xl:items-start @xl:justify-between @xl:gap-4",
+  side: "min-w-0 @xl:max-w-[65%] @xl:shrink-0",
+  note: "@xl:max-w-56 @xl:shrink-0 @xl:text-right",
+};
+const ROW_WIDE_3XL = {
+  row: "@3xl:flex-row @3xl:items-start @3xl:justify-between @3xl:gap-4",
+  side: "min-w-0 @3xl:max-w-[65%] @3xl:shrink-0",
+  note: "@3xl:max-w-56 @3xl:shrink-0 @3xl:text-right",
+};
+
 function RequirementRow({
   requirement: r,
   order,
@@ -1560,8 +1576,13 @@ function RequirementRow({
       : r.status === "rejected"
         ? "danger"
         : "neutral";
+  // Formulário ao lado do rótulo só quando o cartão é largo o bastante (container
+  // query): os dois botões de arquivo e o aprovar/reprovar pedem mais espaço;
+  // antes disso, o formulário vai embaixo do rótulo, na largura do cartão.
+  const wide =
+    r.type === "file" || r.type === "approval" ? ROW_WIDE_3XL : ROW_WIDE_XL;
   return (
-    <li className="flex flex-col gap-1.5 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+    <li className={cx("flex flex-col gap-2 py-2.5", wide.row)}>
       <div className="min-w-0 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-zinc-900">
@@ -1634,7 +1655,7 @@ function RequirementRow({
       </div>
       {isSheet ? (
         sheetHref ? (
-          <div className="shrink-0">
+          <div className={wide.side}>
             <LinkButton
               href={sheetHref}
               variant={
@@ -1642,7 +1663,7 @@ function RequirementRow({
                   ? "primary"
                   : "secondary"
               }
-              className="w-full sm:w-auto"
+              className="w-full @sm:w-auto"
             >
               {r.status !== "done" && open && sheetEditable
                 ? sheetHint?.started && sheetHint.count > 0
@@ -1653,7 +1674,7 @@ function RequirementRow({
           </div>
         ) : null
       ) : canAct ? (
-        <div className="shrink-0">
+        <div className={wide.side}>
           <RequirementForm
             requirement={r}
             orderId={order.id}
@@ -1662,7 +1683,7 @@ function RequirementRow({
           />
         </div>
       ) : canRemeasure ? (
-        <div className="shrink-0">
+        <div className={wide.side}>
           <RequirementForm
             requirement={r}
             orderId={order.id}
@@ -1673,7 +1694,7 @@ function RequirementRow({
         </div>
       ) : open && waiting && r.status !== "done" ? (
         <p
-          className="shrink-0 text-xs text-zinc-500 sm:max-w-56 sm:text-right"
+          className={cx("text-xs text-zinc-500", wide.note)}
           data-requirement-waiting
         >
           {waiting}
