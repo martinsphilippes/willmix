@@ -33,6 +33,7 @@ import {
 } from "@/components/ui";
 import { CURRENCIES } from "@/lib/currencies";
 import { SubmitButton } from "@/components/submit-button";
+import { SHEET_IMPORT_ENTITY } from "@/lib/services/product-sheet-import";
 import {
   applyImportBatchAction,
   cancelImportBatchAction,
@@ -117,6 +118,9 @@ export default async function ImportBatchPage({
   const store = getStore();
   const batch = await store.get("import_batches", batchId);
   if (!batch) notFound();
+  // Lote da ficha técnica tem a própria tela de resultado.
+  if (batch.entity === SHEET_IMPORT_ENTITY)
+    redirect(`/app/products/import/${batch.id}`);
   const t = await getT();
   const entity = batch.entity as ImportEntity;
   const fields = TARGET_FIELDS[entity] ?? [];

@@ -92,9 +92,18 @@ export default async function ProductsPage({
         t={t}
         title={t("products.title")}
         actions={
-          <LinkButton href="/app/import?entity=products">
-            {t("parties.import")}
-          </LinkButton>
+          <div className="flex flex-wrap gap-2">
+            <LinkButton href="/app/import?entity=products">
+              {t("parties.import")}
+            </LinkButton>
+            <LinkButton
+              href="/app/products/import"
+              variant="primary"
+              data-products-import-sheet
+            >
+              {t("sheetImport.title")}
+            </LinkButton>
+          </div>
         }
       />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}

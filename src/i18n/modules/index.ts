@@ -64,8 +64,10 @@ import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
 import * as notifications from "./notifications";
+import * as productSheetImport from "./product-sheet-import";
 
 export const modulesPt = {
+  ...productSheetImport.pt,
   ...notifications.pt,
   ...sourcing.pt,
   ...catalog.pt,
@@ -129,6 +131,7 @@ export const modulesPt = {
   ...freightTariff.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
+  ...productSheetImport.en,
   ...notifications.en,
   ...sourcing.en,
   ...catalog.en,
@@ -192,6 +195,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
+  ...productSheetImport.zh,
   ...notifications.zh,
   ...sourcing.zh,
   ...catalog.zh,
