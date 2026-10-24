@@ -28,6 +28,13 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { saveProductAction } from "../actions";
+import {
+  deleteProductsAction,
+  restoreProductsAction,
+} from "../actions/products";
+import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
+
+const BULK_FORM = "products-bulk";
 
 /** Origem do produto: manual, sourcing (visita na China) ou importação de planilha. */
 const sourceTone = {
@@ -42,14 +49,20 @@ export default async function ProductsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertWellmix(user);
-  const { error } = await searchParams;
+  const { error, view, deleted, restored } = await searchParams;
+  const showDeleted = view === "deleted";
   const t = await getT();
   const store = getStore();
-  const [products, lines, suppliers] = await Promise.all([
+  const [allProducts, lines, suppliers] = await Promise.all([
     store.list("products", { orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
     store.list("parties", { filter: { type: "supplier" } }),
   ]);
+  // Excluídos (inativos) ficam fora da lista, em "Ver excluídos".
+  const deletedCount = allProducts.filter((p) => !p.active).length;
+  const products = allProducts.filter((p) =>
+    showDeleted ? !p.active : p.active,
+  );
   // Ficha mestre de cada produto (uma consulta): completa, parcial ou sem ficha.
   const masters = products.length
     ? await store.list("purchase_sheets", {
@@ -110,15 +123,76 @@ export default async function ProductsPage({
           </div>
         }
       />
-      {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
+      {error ? (
+        <Alert tone="danger">
+          {error === "nothing_deleted" || error === "nothing_restored"
+            ? t(`productDelete.error.${error}` as DictionaryKey)
+            : t("common.error")}
+        </Alert>
+      ) : null}
+      {deleted ? (
+        <Alert tone="success">
+          {t("productDelete.done", { n: Number(deleted) || 0 })}
+        </Alert>
+      ) : null}
+      {restored ? (
+        <Alert tone="success">
+          {t("productDelete.restored", { n: Number(restored) || 0 })}
+        </Alert>
+      ) : null}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {showDeleted ? (
+          <>
+            <h2 className="text-base font-semibold text-zinc-900">
+              {t("productDelete.deletedTitle")}
+            </h2>
+            <TextLink href="/app/products" className="ml-auto">
+              {t("productDelete.showActive")}
+            </TextLink>
+          </>
+        ) : deletedCount > 0 ? (
+          <TextLink
+            href="/app/products?view=deleted"
+            className="ml-auto"
+            data-products-show-deleted
+          >
+            {t("productDelete.showDeleted", { n: deletedCount })}
+          </TextLink>
+        ) : null}
+      </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-3 lg:items-start">
         <div className="min-w-0 lg:col-span-2">
+          {products.length > 0 ? (
+            <BulkDeleteBar
+              formId={BULK_FORM}
+              action={
+                showDeleted ? restoreProductsAction : deleteProductsAction
+              }
+              labels={{
+                selectAll: t("productDelete.selectAll"),
+                clear: t("productDelete.clear"),
+                selected: t("productDelete.selected"),
+                deleteSelected: showDeleted
+                  ? t("productDelete.restoreSelected")
+                  : t("productDelete.deleteSelected"),
+                confirmMany: showDeleted
+                  ? t("productDelete.confirmRestore")
+                  : t("productDelete.confirmMany"),
+              }}
+            />
+          ) : null}
           {products.length === 0 ? (
             <Empty>{t("common.none")}</Empty>
           ) : (
             <Table>
               <thead>
                 <tr>
+                  <Th className="w-10">
+                    <BulkSelectAll
+                      formId={BULK_FORM}
+                      label={t("productDelete.selectAll")}
+                    />
+                  </Th>
                   <Th>{t("common.name")}</Th>
                   <Th>SKU</Th>
                   <Th>{t("nav.lines")}</Th>
@@ -132,7 +206,18 @@ export default async function ProductsPage({
               </thead>
               <tbody>
                 {products.map((p) => (
-                  <tr key={p.id} className={rowClass}>
+                  <tr key={p.id} className={rowClass} data-product-row={p.id}>
+                    <Td className="w-10">
+                      <input
+                        type="checkbox"
+                        name="ids"
+                        value={p.id}
+                        form={BULK_FORM}
+                        aria-label={`${t("productDelete.selectOne")}: ${p.name}`}
+                        className="h-4 w-4 accent-brand-600"
+                        data-product-select={p.id}
+                      />
+                    </Td>
                     <Td className="font-medium">
                       <TextLink
                         href={`/app/products/${p.id}`}
