@@ -332,6 +332,7 @@ export const CATALOG_SHOWCASE_LIMIT = 8;
 const SHOWCASE_ORDER: ProductPhoto["kind"][] = [
   "commercial",
   "original",
+  "supplier",
   "packaging",
   "other",
 ];

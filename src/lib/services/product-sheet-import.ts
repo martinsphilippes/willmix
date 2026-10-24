@@ -734,7 +734,7 @@ async function attachPhoto(
   user: User,
   productId: string,
   image: SheetImage | null,
-  kind: "original" | "business_card",
+  kind: "supplier" | "business_card",
   existingKinds: Set<string>,
 ): Promise<number> {
   if (!image || existingKinds.has(kind)) return 0;
@@ -910,15 +910,17 @@ export async function importProductSheet(
         product.id,
         sheetInputFrom(group.reading, group.notes),
       );
-      // Fotos: a do produto (original) e o cartão do fornecedor; nunca repete em nova importação.
+      // Fotos: a da coluna PHOTO entra como foto do fornecedor (imagem do produto
+      // no catálogo, provisória) e a do cartão vira o cartão do fornecedor; nunca
+      // repete em nova importação. A foto original (evidência) é da equipe:
+      // continua pendente na ficha.
       const kinds = new Set(
         (await store.list("product_photos", { filter: { productId: product.id } })).map((p) => p.kind as string),
       );
-      result.photos += await attachPhoto(user, product.id, group.photo, "original", kinds);
+      result.photos += await attachPhoto(user, product.id, group.photo, "supplier", kinds);
       result.photos += await attachPhoto(user, product.id, group.card, "business_card", kinds);
       summary.photos += result.photos;
-      // O que falta, com as fotos recém-anexadas.
-      result.missing = saved.missing.filter((m) => !(m === "originalPhoto" && kinds.has("original")));
+      result.missing = saved.missing;
       decisions[String(group.index)] = `${result.status}:${product.id}`;
     } catch (error) {
       // Falha depois de criar o produto: ele existe (fica no resultado), mas

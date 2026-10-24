@@ -132,14 +132,21 @@ export async function addPhotos(
       sourcingItemId: target.sourcingItemId ?? null,
       orderId: target.orderId ?? null,
     });
-    // Vira principal quando ainda não há principal (primeira original/comercial),
-    // mesmo que já existam fotos de outros tipos (balança, embalagem...).
+    // Vira principal quando ainda não há principal (primeira original/comercial,
+    // ou a foto da planilha do fornecedor), mesmo que já existam fotos de outros
+    // tipos (balança, embalagem...). A foto do fornecedor é provisória: a
+    // primeira original ou comercial toma o lugar dela.
     const existing = await store.list("product_photos", {
       filter: target.productId
         ? { productId: target.productId, isPrimary: true }
         : { sourcingItemId: target.sourcingItemId ?? "", isPrimary: true },
       limit: 1,
     });
+    const own = kind === "original" || kind === "commercial";
+    const replacesSupplier =
+      own && existing.length > 0 && existing[0].kind === "supplier";
+    if (replacesSupplier)
+      await store.update("product_photos", existing[0].id, { isPrimary: false });
     const photo = await store.create("product_photos", {
       productId: target.productId ?? null,
       sourcingItemId: target.sourcingItemId ?? null,
@@ -151,7 +158,8 @@ export async function addPhotos(
       takenByUserId: user.id,
       derivedFromPhotoId: options.derivedFromPhotoId ?? null,
       isPrimary:
-        existing.length === 0 && (kind === "original" || kind === "commercial"),
+        (existing.length === 0 && (own || kind === "supplier")) ||
+        replacesSupplier,
     });
     out.push(photo);
     if (photo.isPrimary) {

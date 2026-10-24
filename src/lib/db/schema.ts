@@ -228,6 +228,9 @@ export const PHOTO_KINDS = [
   "angle",
   "business_card",
   "prompt",
+  /* Foto que veio na planilha do fornecedor (coluna PHOTO): imagem do produto
+     no catálogo até a equipe tirar a foto original, que continua pendente. */
+  "supplier",
 ] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
 

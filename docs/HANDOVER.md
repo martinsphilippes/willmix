@@ -69,7 +69,7 @@ Entregues recentemente: notificações por tipo e responsável (#117), cadastro 
 
 Pendências operacionais:
 
-- Rodar **"Publicar esquema Appwrite"** depois do deploy dos PRs #117 a #119 (colunas `kind`/`actor` em `notifications`, tabela `packaging_briefs`, coluna `documents.packagingBriefId`).
+- Rodar **"Publicar esquema Appwrite"** depois do deploy dos PRs #117 a #119 (colunas `kind`/`actor` em `notifications`, tabela `packaging_briefs`, coluna `documents.packagingBriefId`) e do PR da foto do fornecedor (valor `supplier` no tipo de foto de `product_photos`).
 - Cadastrar o domínio do portal nas **Platforms** do Appwrite (envio direto de arquivos grandes).
 - Cartão de crédito no AI Gateway da Vercel para reativar a busca de produto por foto/link (`lookupPaused` em Configurações).
 - Condição de pagamento cadastrada em cada fornecedor (Contas a pagar só gera parcelas com ela).
