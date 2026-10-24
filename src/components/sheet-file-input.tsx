@@ -16,9 +16,12 @@ export function SheetFileInput({
   uploadingLabel,
   failedLabel,
   chosenLabel,
+  required = true,
 }: {
   name?: string;
   label: string;
+  /** Falso quando há outro jeito de informar a planilha (ex.: link do Google Sheets). */
+  required?: boolean;
   /** Com {percent}: progresso do envio direto. */
   uploadingLabel: string;
   failedLabel: string;
@@ -36,7 +39,7 @@ export function SheetFileInput({
   function clearHidden() {
     hiddenRef.current?.remove();
     hiddenRef.current = null;
-    if (inputRef.current) inputRef.current.required = true;
+    if (inputRef.current) inputRef.current.required = required;
   }
 
   async function onChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -96,7 +99,7 @@ export function SheetFileInput({
         ref={inputRef}
         type="file"
         name={name}
-        required
+        required={required}
         accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         disabled={working}
         onChange={onChange}

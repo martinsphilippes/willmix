@@ -46,3 +46,6 @@ next-env.d.ts
 /.data*
 /test-results
 /playwright-report
+
+# Worktrees de agentes (sessão), nunca versionados
+.claude/worktrees/

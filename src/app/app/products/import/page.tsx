@@ -88,6 +88,18 @@ export default async function ProductSheetImportPage({
                 uploadingLabel={t("sheetImport.uploading")}
                 failedLabel={t("sheetImport.uploadFailed")}
                 chosenLabel={t("sheetImport.uploaded")}
+                required={false}
+              />
+            </Field>
+            {/* Alternativa ao arquivo: link de uma planilha do Google Sheets compartilhada com o link. */}
+            <Field label={t("sheetImport.url")} hint={t("sheetImport.urlHint")}>
+              <Input
+                name="sheetUrl"
+                type="url"
+                inputMode="url"
+                placeholder={t("sheetImport.urlPlaceholder")}
+                maxLength={600}
+                data-sheet-import-url
               />
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">

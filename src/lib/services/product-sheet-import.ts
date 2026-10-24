@@ -583,7 +583,11 @@ export interface SheetImportOptions {
 }
 
 /** Planilha enviada no formulário ou já subida direto ao armazenamento. */
-export type SheetSource = File | { fileKey: string; fileName?: string | null };
+export type SheetSource =
+  | File
+  | { fileKey: string; fileName?: string | null }
+  /** Link de uma planilha do Google Sheets compartilhada com o link. */
+  | { url: string };
 
 export interface SheetImportRowResult {
   index: number;
@@ -739,6 +743,15 @@ async function sheetBytes(source: SheetSource) {
       bytes: new Uint8Array(await source.arrayBuffer()),
       name: source.name || "ficha.xlsx",
     };
+  }
+  if ("url" in source) {
+    const { fetchGoogleSheetXlsx, GoogleSheetError } = await import("./google-sheet");
+    try {
+      return await fetchGoogleSheetXlsx(source.url);
+    } catch (error) {
+      if (error instanceof GoogleSheetError) throw new SheetImportError(error.message);
+      throw new SheetImportError("sheet_fetch_failed");
+    }
   }
   const stored = await getStore().getFile(source.fileKey);
   if (!stored || stored.bytes.length === 0) throw new SheetImportError("file_required");
@@ -910,13 +923,22 @@ export async function importProductSheet(
     }
   }
 
-  // Lote: evidência (arquivo guardado) e histórico do que entrou.
+  // Lote: evidência (arquivo guardado) e histórico do que entrou. A planilha
+  // baixada do Google fica guardada como se tivesse sido enviada.
   const doc = await (source instanceof File
     ? uploadDocument(user, source, { type: "attachment", visibility: "internal" })
-    : registerUploadedDocument(user, source.fileKey, {
-        type: "attachment",
-        visibility: "internal",
-      })
+    : "url" in source
+      ? uploadDocument(
+          user,
+          new File([new Uint8Array(file.bytes)], file.name, {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          }),
+          { type: "attachment", visibility: "internal" },
+        )
+      : registerUploadedDocument(user, source.fileKey, {
+          type: "attachment",
+          visibility: "internal",
+        })
   ).catch(() => null);
   const headers = Object.values(parsed.headers).filter(Boolean) as string[];
   const batch: ImportBatch = await store.create("import_batches", {

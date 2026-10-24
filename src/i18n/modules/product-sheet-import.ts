@@ -57,7 +57,7 @@ export const pt = {
     "Não achei o cabeçalho da ficha (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Confira se é o modelo.",
   "sheetImport.error.no_rows": "A planilha não tem linhas de produto preenchidas.",
   "sheetImport.error.too_many": "Muitos produtos de uma vez (máximo 80 por planilha): divida a planilha.",
-  "sheetImport.error.file_required": "Escolha a planilha.",
+  "sheetImport.error.file_required": "Escolha a planilha (.xlsx) ou cole o link do Google Sheets.",
   "sheetImport.error.line_required": "Escolha a linha do produto.",
   "sheetImport.uploading": "Enviando a planilha… {percent}%",
   "sheetImport.uploadFailed": "Falha no envio da planilha",
@@ -65,6 +65,13 @@ export const pt = {
   "sheetImport.result.failed": "{n} produto(s) com erro: veja o motivo na linha e importe de novo depois de corrigir.",
   "sheetImport.result.error": "Erro: {code}",
   "sheetImport.error.too_large": "A planilha é grande demais para ler. Tire o que não é da ficha ou divida.",
+  "sheetImport.url": "Ou o link de uma planilha do Google Sheets",
+  "sheetImport.urlHint": "Na planilha, use Compartilhar → \"Qualquer pessoa com o link\" (Leitor) e cole o link aqui. O portal baixa a planilha na hora; sem o compartilhamento, o Google não a entrega. Fotos da planilha do Google podem não vir.",
+  "sheetImport.urlPlaceholder": "https://docs.google.com/spreadsheets/d/…",
+  "sheetImport.error.sheet_url_invalid": "O link não é de uma planilha do Google Sheets (deve começar com https://docs.google.com/spreadsheets/d/…).",
+  "sheetImport.error.sheet_private": "O Google não entregou a planilha: ela não está compartilhada com \"Qualquer pessoa com o link\". Ajuste o compartilhamento e tente de novo.",
+  "sheetImport.error.sheet_not_found": "Planilha do Google não encontrada: confira o link.",
+  "sheetImport.error.sheet_fetch_failed": "Não foi possível baixar a planilha do Google agora. Tente de novo ou envie o arquivo .xlsx.",
 };
 
 export const en = {
@@ -122,7 +129,7 @@ export const en = {
     "The sheet header was not found (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Check that it is the template.",
   "sheetImport.error.no_rows": "The spreadsheet has no filled product rows.",
   "sheetImport.error.too_many": "Too many products at once (maximum 80 per spreadsheet): split the spreadsheet.",
-  "sheetImport.error.file_required": "Choose the spreadsheet.",
+  "sheetImport.error.file_required": "Choose the spreadsheet (.xlsx) or paste the Google Sheets link.",
   "sheetImport.error.line_required": "Choose the product line.",
   "sheetImport.uploading": "Uploading the spreadsheet… {percent}%",
   "sheetImport.uploadFailed": "Spreadsheet upload failed",
@@ -130,6 +137,13 @@ export const en = {
   "sheetImport.result.failed": "{n} product(s) with errors: see the reason on the row and import again after fixing.",
   "sheetImport.result.error": "Error: {code}",
   "sheetImport.error.too_large": "The spreadsheet is too big to read. Remove what is not part of the sheet or split it.",
+  "sheetImport.url": "Or a Google Sheets link",
+  "sheetImport.urlHint": "In the sheet, use Share → \"Anyone with the link\" (Viewer) and paste the link here. The portal downloads the sheet right away; without that sharing, Google will not deliver it. Photos from a Google sheet may not come through.",
+  "sheetImport.urlPlaceholder": "https://docs.google.com/spreadsheets/d/…",
+  "sheetImport.error.sheet_url_invalid": "The link is not a Google Sheets spreadsheet (it must start with https://docs.google.com/spreadsheets/d/…).",
+  "sheetImport.error.sheet_private": "Google did not deliver the sheet: it is not shared with \"Anyone with the link\". Fix the sharing and try again.",
+  "sheetImport.error.sheet_not_found": "Google sheet not found: check the link.",
+  "sheetImport.error.sheet_fetch_failed": "The Google sheet could not be downloaded right now. Try again or upload the .xlsx file.",
 };
 
 export const zh = {
@@ -181,7 +195,7 @@ export const zh = {
     "未找到技术表表头（DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX…）。请确认是否为模板。",
   "sheetImport.error.no_rows": "表格中没有已填写的产品行。",
   "sheetImport.error.too_many": "一次产品过多（每个表格最多 80 个）：请拆分表格。",
-  "sheetImport.error.file_required": "请选择表格。",
+  "sheetImport.error.file_required": "请选择表格（.xlsx）或粘贴 Google Sheets 链接。",
   "sheetImport.error.line_required": "请选择产品线。",
   "sheetImport.uploading": "正在上传表格… {percent}%",
   "sheetImport.uploadFailed": "表格上传失败",
@@ -189,4 +203,11 @@ export const zh = {
   "sheetImport.result.failed": "{n} 个产品出错：查看该行原因，修正后重新导入。",
   "sheetImport.result.error": "错误：{code}",
   "sheetImport.error.too_large": "表格过大无法读取。请删除无关内容或拆分。",
+  "sheetImport.url": "或 Google Sheets 链接",
+  "sheetImport.urlHint": "在表格中使用 共享 →“知道链接的任何人”（查看者），然后把链接粘贴到这里。门户会立即下载表格；未共享时 Google 不会提供。Google 表格中的照片可能无法导入。",
+  "sheetImport.urlPlaceholder": "https://docs.google.com/spreadsheets/d/…",
+  "sheetImport.error.sheet_url_invalid": "该链接不是 Google Sheets 表格（必须以 https://docs.google.com/spreadsheets/d/… 开头）。",
+  "sheetImport.error.sheet_private": "Google 未提供表格：它未设置为“知道链接的任何人”可访问。请调整共享设置后重试。",
+  "sheetImport.error.sheet_not_found": "未找到 Google 表格：请检查链接。",
+  "sheetImport.error.sheet_fetch_failed": "目前无法下载 Google 表格。请重试或上传 .xlsx 文件。",
 };

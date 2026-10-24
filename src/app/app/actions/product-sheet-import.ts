@@ -23,6 +23,8 @@ export async function importProductSheetAction(form: FormData) {
         // Planilha grande (com fotos) já subida direto ao armazenamento.
         uploadedFileId: z.string().max(64).nullable(),
         uploadedFileName: z.string().max(255).nullable(),
+        // Link de uma planilha do Google Sheets compartilhada com o link.
+        sheetUrl: z.string().max(600).nullable(),
       })
       .parse({
         lineId: str(form, "lineId"),
@@ -31,6 +33,7 @@ export async function importProductSheetAction(form: FormData) {
         sheet: str(form, "sheet") || null,
         uploadedFileId: str(form, "uploadedFileId") || null,
         uploadedFileName: str(form, "uploadedFileName") || null,
+        sheetUrl: str(form, "sheetUrl") || null,
       });
     const file = form.get("file");
     const { importProductSheet, SheetImportError } =
@@ -39,7 +42,9 @@ export async function importProductSheetAction(form: FormData) {
       ? { fileKey: parsed.uploadedFileId, fileName: parsed.uploadedFileName }
       : file instanceof File && file.size > 0
         ? file
-        : null;
+        : parsed.sheetUrl
+          ? { url: parsed.sheetUrl }
+          : null;
     if (!source) throw new SheetImportError("file_required");
     const result = await importProductSheet(user, source, {
       lineId: parsed.lineId,
