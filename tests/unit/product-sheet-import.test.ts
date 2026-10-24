@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 import { PNG_1X1, xlsxBytes, type FixtureSheet } from "./xlsx-fixture";
-import { xlsBytes, type XlsFixtureSheet } from "./xls-fixture";
+import { biffBytes, biffRecord, cfbBytes, xlsBytes, type XlsFixtureSheet } from "./xls-fixture";
 
 /*
  * Cadastro de produtos pela planilha da ficha técnica (modelo SUPPLIER INFO):
@@ -264,6 +264,14 @@ describe("leitura do modelo", () => {
     expect(fromXls.groups).toEqual(fromXlsx.groups);
     // Excel 95 (BIFF5) não é lido: a tela pede para salvar como .xlsx.
     expect(() => svc.parseProductSheet(xlsTemplateBytes("MIN YAN", "E4-9558", { biffVersion: 0x0500 }))).toThrow("xls_format");
+    // Planilha com senha (registro FILEPASS depois do BOF): aviso próprio, não "arquivo antigo".
+    const stream = biffBytes([{ name: "S", cells: [] }]);
+    const locked = new Uint8Array(stream.length + 10);
+    locked.set(stream.subarray(0, 20), 0);
+    locked.set(biffRecord(0x002f, new Uint8Array(6)), 20);
+    locked.set(stream.subarray(20), 30);
+    expect(() => svc.parseProductSheet(cfbBytes("Workbook", locked))).toThrow("sheet_encrypted");
+    expect(() => svc.parseProductSheet(cfbBytes("EncryptedPackage", new Uint8Array(3000)))).toThrow("sheet_encrypted");
   });
 });
 

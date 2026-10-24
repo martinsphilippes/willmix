@@ -18,7 +18,7 @@ import {
  * malformados que nunca travam nem lançam erro fora do contrato.
  */
 
-const ERRORS = ["xlsx_invalid", "xlsx_too_large", "xlsx_sheet_missing", "xls_unsupported"];
+const ERRORS = ["xlsx_invalid", "xlsx_too_large", "xlsx_sheet_missing", "xls_unsupported", "xls_encrypted"];
 
 const c = (row: number, col: number, cell: XlsCell) => ({ row, col, cell });
 
@@ -169,6 +169,18 @@ describe("openXlsWorkbook: SST dividida em CONTINUE", () => {
         "Ñandú 中文",
         "depois",
       ]);
+    }
+  });
+});
+
+describe("openXlsWorkbook: UTF-16 entre registros", () => {
+  it("par substituto (emoji) dividido entre registros continua um caractere só", () => {
+    const text = "a😀b😀😀c".repeat(40);
+    for (const recordLimit of [16, 17, 18, 19, 20, 21, 23, 25, 64]) {
+      const sheet = openXlsWorkbook(
+        xlsBytes([{ name: "E", cells: [c(0, 0, { kind: "sst", value: text })] }], [], { recordLimit }),
+      ).readCells("E", { maxCellChars: 20000 });
+      expect(sheet.cells[0][0], `limite ${recordLimit}`).toBe(text);
     }
   });
 });
@@ -377,7 +389,7 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     expect(() => openXlsWorkbook(empty)).toThrow("xlsx_invalid");
   });
 
-  it("planilha com senha (FILEPASS): xls_unsupported", () => {
+  it("planilha com senha (FILEPASS) ou pacote cifrado do Office: xls_encrypted", () => {
     const stream = biffBytes(sample());
     const bof = stream.subarray(0, 20);
     const rest = stream.subarray(20);
@@ -385,7 +397,9 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     locked.set(bof, 0);
     locked.set(biffRecord(0x002f, new Uint8Array(6)), bof.length);
     locked.set(rest, bof.length + 10);
-    expect(() => openXlsWorkbook(cfbBytes("Workbook", locked))).toThrow("xls_unsupported");
+    expect(() => openXlsWorkbook(cfbBytes("Workbook", locked))).toThrow("xls_encrypted");
+    // .xlsx com senha: contêiner OLE com o fluxo EncryptedPackage em vez do Workbook.
+    expect(() => openXlsWorkbook(cfbBytes("EncryptedPackage", new Uint8Array(3000)))).toThrow("xls_encrypted");
   });
 
   it("bytes trocados ao acaso (fuzz determinístico) ficam no contrato", () => {

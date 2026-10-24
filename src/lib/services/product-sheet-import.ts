@@ -305,6 +305,8 @@ export function parseProductSheet(
     const code = error instanceof Error ? error.message : "";
     // Excel 95 ou anterior (BIFF5): salvar como .xlsx.
     if (code === "xls_unsupported") throw new SheetImportError("xls_format");
+    // Planilha com senha (.xls ou .xlsx): tirar a senha e enviar de novo.
+    if (code === "xls_encrypted") throw new SheetImportError("sheet_encrypted");
     if (code === "xlsx_too_large") throw new SheetImportError("too_large");
     throw new SheetImportError("invalid_file");
   }

@@ -14,7 +14,8 @@ import type {
  * RSTRING), números (NUMBER, RK, MULRK), fórmulas com o último valor
  * calculado, booleanos e erros; fotos coladas (Escher: PNG e JPEG).
  * Limitações conhecidas: datas chegam como número serial do Excel; arquivo
- * com senha (FILEPASS) e BIFF5/Excel 95 dão `xls_unsupported`.
+ * com senha (FILEPASS, ou o pacote cifrado do Office atual) dá
+ * `xls_encrypted`; BIFF5/Excel 95 dá `xls_unsupported`.
  *
  * Arquivo vindo de fora: todo deslocamento é conferido antes de ler, os
  * laços são limitados pelo que já está na memória (cada registro avança ao
@@ -331,6 +332,13 @@ class Cursor {
   chars(cch: number, high: boolean): string {
     let out = "";
     let left = cch;
+    // UTF-16 decodificado em fluxo: um par substituto (emoji) dividido entre
+    // dois fragmentos continua um caractere só.
+    let decoder: TextDecoder | null = null;
+    const flush = () => {
+      if (decoder) out += decoder.decode();
+      decoder = null;
+    };
     while (left > 0) {
       const part = this.parts[this.i];
       const avail = part ? part.length - this.pos : 0;
@@ -345,12 +353,19 @@ class Cursor {
         continue;
       }
       const take = Math.min(left, high ? avail >> 1 : avail);
-      out += high
-        ? utf16.decode(part.subarray(this.pos, this.pos + take * 2))
-        : latin1(part, this.pos, take);
+      if (high) {
+        decoder ??= new TextDecoder("utf-16le");
+        out += decoder.decode(part.subarray(this.pos, this.pos + take * 2), {
+          stream: true,
+        });
+      } else {
+        flush();
+        out += latin1(part, this.pos, take);
+      }
       this.pos += high ? take * 2 : take;
       left -= take;
     }
+    flush();
     return out;
   }
 }
@@ -464,7 +479,7 @@ function readGlobals(stream: Uint8Array): Globals {
       return;
     }
     last = rid;
-    if (rid === FILEPASS) throw new Error("xls_unsupported");
+    if (rid === FILEPASS) throw new Error("xls_encrypted");
     if (rid === SST) sst.push(data);
     else if (rid === MSODRAWINGGROUP) drawingGroup.push(data);
     else if (rid === BOUNDSHEET && data.length >= 8) {
@@ -686,7 +701,12 @@ export function openXlsWorkbook(
   const entry =
     cfb.entries.find((e) => e.type === 2 && e.name === "Workbook") ??
     cfb.entries.find((e) => e.type === 2 && e.name === "Book");
-  if (!entry) throw invalid();
+  if (!entry) {
+    // .xlsx (ou .xls) com senha do Office atual: contêiner OLE com o pacote cifrado.
+    if (cfb.entries.some((e) => e.type === 2 && e.name === "EncryptedPackage"))
+      throw new Error("xls_encrypted");
+    throw invalid();
+  }
   const stream = cfb.read(entry, options.maxTotalBytes ?? MAX_TOTAL_BYTES);
   const globals = readGlobals(stream);
   const { sheets } = globals;

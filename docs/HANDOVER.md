@@ -74,7 +74,7 @@ Pendências operacionais:
 - Cartão de crédito no AI Gateway da Vercel para reativar a busca de produto por foto/link (`lookupPaused` em Configurações).
 - Condição de pagamento cadastrada em cada fornecedor (Contas a pagar só gera parcelas com ela).
 
-Em desenvolvimento: importação da ficha técnica em `.xls` (leitor próprio) e pelo link de uma planilha do Google Sheets.
+Importação da ficha técnica em `.xls` (leitor próprio, `src/lib/services/xls.ts`) e pelo link de uma planilha do Google Sheets (`src/lib/services/google-sheet.ts`): entregues no PR #122.
 
 Integrações pendentes de credencial (modo manual/mock até lá): e-mail, WhatsApp, Sankhya. Ver `docs/INTEGRATIONS.md`.
 

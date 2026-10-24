@@ -51,6 +51,7 @@ export const pt = {
   "sheetImport.status.updated": "Atualizado",
   "sheetImport.status.error": "Erro",
   "sheetImport.error.xls_format": "Arquivo .xls muito antigo (Excel 95 ou anterior): abra no Excel e salve como .xlsx.",
+  "sheetImport.error.sheet_encrypted": "A planilha está protegida por senha: abra no Excel, tire a senha (Arquivo → Informações → Proteger Pasta de Trabalho) e envie de novo.",
   "sheetImport.error.invalid_file": "Não foi possível ler o arquivo: envie a planilha em .xlsx.",
   "sheetImport.error.no_header":
     "Não achei o cabeçalho da ficha (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Confira se é o modelo.",
@@ -123,6 +124,7 @@ export const en = {
   "sheetImport.status.updated": "Updated",
   "sheetImport.status.error": "Error",
   "sheetImport.error.xls_format": "Very old .xls file (Excel 95 or earlier): open it in Excel and save as .xlsx.",
+  "sheetImport.error.sheet_encrypted": "The spreadsheet is password-protected: open it in Excel, remove the password (File → Info → Protect Workbook) and upload it again.",
   "sheetImport.error.invalid_file": "The file could not be read: upload the spreadsheet as .xlsx.",
   "sheetImport.error.no_header":
     "The sheet header was not found (DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX…). Check that it is the template.",
@@ -190,6 +192,7 @@ export const zh = {
   "sheetImport.status.updated": "已更新",
   "sheetImport.status.error": "错误",
   "sheetImport.error.xls_format": "过旧的 .xls 文件（Excel 95 或更早）：请在 Excel 中打开并另存为 .xlsx。",
+  "sheetImport.error.sheet_encrypted": "表格已设置密码保护：请在 Excel 中打开，取消密码（文件 → 信息 → 保护工作簿）后重新上传。",
   "sheetImport.error.invalid_file": "无法读取文件：请上传 .xlsx 表格。",
   "sheetImport.error.no_header":
     "未找到技术表表头（DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX…）。请确认是否为模板。",
