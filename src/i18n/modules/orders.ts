@@ -258,6 +258,7 @@ export const pt = {
   "orders.cargo.contact": "Contato",
   "orders.cargo.noAddress":
     "Endereço de entrega não cadastrado: combine com a Wellmix.",
+  "orders.cargo.shipped": "Embarcado em",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -505,6 +506,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.cargo.contact": "Contact",
   "orders.cargo.noAddress":
     "Delivery address not registered: arrange it with Wellmix.",
+  "orders.cargo.shipped": "Shipped on",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -742,4 +744,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.cargo.deliverTo": "交付至",
   "orders.cargo.contact": "联系人",
   "orders.cargo.noAddress": "未登记交付地址：请与 Wellmix 确认。",
+  "orders.cargo.shipped": "装船日期",
 };

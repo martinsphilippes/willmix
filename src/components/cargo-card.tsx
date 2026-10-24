@@ -36,7 +36,7 @@ export function CargoCard({ t, cargo }: { t: Translate; cargo: CargoView }) {
                     <span className="font-medium">{i.name}</span>
                     <span className="text-zinc-600">
                       {" "}
-                      · {num(i.quantity, 0)} {i.unit}
+                      · {num(i.quantity)} {i.unit}
                     </span>
                   </li>
                 ))}
@@ -73,11 +73,16 @@ export function CargoCard({ t, cargo }: { t: Translate; cargo: CargoView }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <dt className={dt}>{t("orders.cargo.arrival")}</dt>
-            <dd className={dd}>
+            <dd className={dd} data-cargo-arrival="">
               {cargo.eta ? day(cargo.eta) : pending}
               {cargo.vessel ? (
                 <span className="block text-xs text-zinc-600">
                   {t("orders.cargo.vessel")}: {cargo.vessel}
+                </span>
+              ) : null}
+              {cargo.shipDate ? (
+                <span className="block text-xs text-zinc-600">
+                  {t("orders.cargo.shipped")}: {day(cargo.shipDate)}
                 </span>
               ) : null}
             </dd>

@@ -38,7 +38,7 @@ import {
   loadOrderProgress,
   type DateBounds,
 } from "@/lib/workflow/engine";
-import { formatMoneyValue } from "@/lib/workflow/money";
+import { formatMoneyValue, isMoneyRequirement } from "@/lib/workflow/money";
 import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
@@ -391,7 +391,7 @@ export default async function OrderPage({
             ? "cancel.settlementSaved"
             : null;
 
-  /* Cartão do pedido: o que este papel pode ver (vazio para agência e companhia). */
+  /* Cartão do pedido: o que este papel pode ver (vazio = o cartão não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
     ...(user.role !== "customer" && (wellmix || user.role === "legal")
       ? [
@@ -898,7 +898,8 @@ export default async function OrderPage({
         <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:grid-cols-1">
           {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
           {/* Cartão do pedido: para o parceiro, só se sobrar algo útil (o
-              despachante vê a modalidade e o NCM; agência e companhia, nada). */}
+              despachante vê fornecedor, modalidade e NCM; agência e
+              companhia, o fornecedor). */}
           {cargo || !orderInfoItems.length ? null : (
             <Card title={t("orders.title")}>
               <DescriptionList items={orderInfoItems} />
@@ -1606,10 +1607,13 @@ function RequirementRow({
         ? "danger"
         : "neutral";
   // Formulário ao lado do rótulo só quando o cartão é largo o bastante (container
-  // query): os dois botões de arquivo e o aprovar/reprovar pedem mais espaço;
-  // antes disso, o formulário vai embaixo do rótulo, na largura do cartão.
+  // query): os dois botões de arquivo, o aprovar/reprovar e o valor com moeda
+  // pedem mais espaço; antes disso, o formulário vai embaixo do rótulo, na
+  // largura do cartão.
   const wide =
-    r.type === "file" || r.type === "approval" ? ROW_WIDE_3XL : ROW_WIDE_XL;
+    r.type === "file" || r.type === "approval" || isMoneyRequirement(r)
+      ? ROW_WIDE_3XL
+      : ROW_WIDE_XL;
   return (
     <li className={cx("flex flex-col gap-2 py-2.5", wide.row)}>
       <div className="min-w-0 text-sm">
