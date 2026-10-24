@@ -30,8 +30,10 @@ import { SubmitButton } from "@/components/submit-button";
 import { saveProductAction } from "../actions";
 import {
   deleteProductsAction,
+  purgeProductsAction,
   restoreProductsAction,
 } from "../actions/products";
+import { isAdmin } from "@/lib/auth/permissions";
 import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
 
 const BULK_FORM = "products-bulk";
@@ -49,7 +51,8 @@ export default async function ProductsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertWellmix(user);
-  const { error, view, deleted, restored } = await searchParams;
+  const { error, view, deleted, restored, purged, blocked } =
+    await searchParams;
   const showDeleted = view === "deleted";
   const t = await getT();
   const store = getStore();
@@ -125,7 +128,10 @@ export default async function ProductsPage({
       />
       {error ? (
         <Alert tone="danger">
-          {error === "nothing_deleted" || error === "nothing_restored"
+          {error === "nothing_deleted" ||
+          error === "nothing_restored" ||
+          error === "nothing_purged" ||
+          error === "purge_blocked"
             ? t(`productDelete.error.${error}` as DictionaryKey)
             : t("common.error")}
         </Alert>
@@ -133,6 +139,16 @@ export default async function ProductsPage({
       {deleted ? (
         <Alert tone="success">
           {t("productDelete.done", { n: Number(deleted) || 0 })}
+        </Alert>
+      ) : null}
+      {purged ? (
+        <Alert tone="success">
+          {t("productDelete.purged", { n: Number(purged) || 0 })}
+        </Alert>
+      ) : null}
+      {blocked ? (
+        <Alert tone="warning">
+          {t("productDelete.blocked", { n: Number(blocked) || 0 })}
         </Alert>
       ) : null}
       {restored ? (
@@ -167,6 +183,16 @@ export default async function ProductsPage({
               formId={BULK_FORM}
               action={
                 showDeleted ? restoreProductsAction : deleteProductsAction
+              }
+              primaryTone={showDeleted ? "neutral" : "danger"}
+              extra={
+                showDeleted && isAdmin(user)
+                  ? {
+                      action: purgeProductsAction,
+                      label: t("productDelete.purgeSelected"),
+                      confirmText: t("productDelete.confirmPurge"),
+                    }
+                  : undefined
               }
               labels={{
                 selectAll: t("productDelete.selectAll"),

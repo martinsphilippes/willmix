@@ -72,22 +72,32 @@ function DeleteSelectedButton({
   count,
   label,
   confirmText,
+  formAction,
+  tone = "danger",
 }: {
   count: number;
   label: string;
   confirmText: string;
+  /** Outra ação no mesmo formulário (ex.: excluir de vez ao lado de restaurar). */
+  formAction?: (form: FormData) => Promise<void>;
+  tone?: "danger" | "neutral";
 }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
+      formAction={formAction}
       disabled={count === 0 || pending}
       aria-busy={pending}
       onClick={(event) => {
         if (!window.confirm(confirmText.replace("{n}", String(count))))
           event.preventDefault();
       }}
-      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+      className={
+        tone === "danger"
+          ? "inline-flex min-h-10 items-center gap-2 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+          : "inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+      }
     >
       {pending ? (
         <span
@@ -106,9 +116,19 @@ export function BulkDeleteBar({
   formId,
   action,
   labels,
+  primaryTone = "danger",
+  extra,
 }: {
   formId: string;
   action: (form: FormData) => Promise<void>;
+  /** "neutral" quando a ação principal não apaga (ex.: restaurar). */
+  primaryTone?: "danger" | "neutral";
+  /** Segunda ação sobre a mesma seleção (botão vermelho à direita). */
+  extra?: {
+    action: (form: FormData) => Promise<void>;
+    label: string;
+    confirmText: string;
+  };
   labels: {
     selectAll: string;
     clear: string;
@@ -137,11 +157,22 @@ export function BulkDeleteBar({
           {labels.selected.replace("{n}", String(checked))}
         </span>
       </div>
-      <DeleteSelectedButton
-        count={checked}
-        label={labels.deleteSelected}
-        confirmText={labels.confirmMany}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <DeleteSelectedButton
+          count={checked}
+          label={labels.deleteSelected}
+          confirmText={labels.confirmMany}
+          tone={primaryTone}
+        />
+        {extra ? (
+          <DeleteSelectedButton
+            count={checked}
+            label={extra.label}
+            confirmText={extra.confirmText}
+            formAction={extra.action}
+          />
+        ) : null}
+      </div>
     </form>
   );
 }

@@ -51,3 +51,65 @@ describe("excluir produtos em lote", () => {
     expect((await getStore().get("products", p.id))!.active).toBe(true);
   });
 });
+
+describe("excluir definitivamente", () => {
+  it("apaga o produto excluído sem histórico (com variações, ficha, fotos) e mantém o que tem histórico", async () => {
+    const store = getStore();
+    const { purgeProducts } = await import("@/lib/services/product-delete");
+    const { upsertProductVariant } =
+      await import("@/lib/services/product-variants");
+    const { addPhotos } = await import("@/lib/services/sourcing");
+    const [line] = await store.list("product_lines", { limit: 1 });
+    const fresh = await store.create("products", {
+      ...(await store.list("products", { limit: 1 }))[0],
+      id: undefined,
+      name: "Produto para apagar",
+      sku: null,
+      lineId: line.id,
+      active: true,
+      primaryPhotoDocumentId: null,
+    } as never);
+    await upsertProductVariant(admin, fresh.id, { name: "A4" });
+    const [photo] = await addPhotos(
+      admin,
+      { productId: fresh.id },
+      [
+        new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "a.jpg", {
+          type: "image/jpeg",
+        }),
+      ],
+      "other",
+    );
+    // Produto com histórico: tem item de pedido.
+    const used = (await store.list("products", { filter: { active: true } }))[0]
+      .id;
+    await store.create("order_items", {
+      orderId: "pedido-teste",
+      productId: used,
+      name: "x",
+      quantity: 1,
+      unit: "un",
+      unitPrice: null,
+    } as never);
+    await setProductsActive(admin, [fresh.id, used], false);
+    // Ativo não sai de vez; operador não pode.
+    const operator = (
+      await store.list("users", { filter: { role: "operator" }, limit: 1 })
+    )[0];
+    await expect(purgeProducts(operator, [fresh.id])).rejects.toThrow();
+    const result = await purgeProducts(admin, [fresh.id, used]);
+    expect(result).toMatchObject({ purged: 1, blocked: 1 });
+    expect(await store.get("products", fresh.id)).toBeNull();
+    expect(
+      await store.list("product_variants", { filter: { productId: fresh.id } }),
+    ).toEqual([]);
+    expect(await store.get("product_photos", photo.id)).toBeNull();
+    expect(await store.get("documents", photo.documentId)).toBeNull();
+    expect(await store.get("products", used)).not.toBeNull();
+    const log = await store.list("audit_log", {
+      filter: { action: "product.purge" },
+    });
+    expect(log.map((l) => l.entityId)).toEqual([fresh.id]);
+    await setProductsActive(admin, [used], true);
+  });
+});
