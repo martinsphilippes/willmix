@@ -87,22 +87,28 @@ function openCfb(bytes: Uint8Array): Cfb {
     return off + 4 <= bytes.length ? view.getUint32(off, true) : ENDOFCHAIN;
   };
 
+  // A FAT precisa de no máximo um setor a cada `perSector` setores do arquivo:
+  // o cabeçalho não dita a alocação (contagem absurda vira esse teto).
+  const fatWanted = Math.min(
+    fatCount,
+    Math.ceil((sectorCount + 1) / perSector) + 1,
+  );
   // DIFAT: os 109 primeiros setores da FAT ficam no cabeçalho; o resto em
   // setores DIFAT encadeados (cada um termina com o número do próximo).
   const fatSectors: number[] = [];
-  for (let i = 0; i < 109 && fatSectors.length < fatCount; i++) {
+  for (let i = 0; i < 109 && fatSectors.length < fatWanted; i++) {
     const s = view.getUint32(0x4c + i * 4, true);
     if (s < MAX_REGULAR_SECTOR) fatSectors.push(s);
   }
   const seenDifat = new Set<number>();
   for (
     let d = difatStart, n = 0;
-    d < MAX_REGULAR_SECTOR && n < difatCount && fatSectors.length < fatCount;
+    d < MAX_REGULAR_SECTOR && n < difatCount && fatSectors.length < fatWanted;
     n++
   ) {
     if (d >= sectorCount || seenDifat.has(d)) throw invalid();
     seenDifat.add(d);
-    for (let i = 0; i < perSector - 1 && fatSectors.length < fatCount; i++) {
+    for (let i = 0; i < perSector - 1 && fatSectors.length < fatWanted; i++) {
       const s = entryAt(d, i);
       if (s < MAX_REGULAR_SECTOR) fatSectors.push(s);
     }

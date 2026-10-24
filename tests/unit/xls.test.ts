@@ -335,6 +335,40 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     expect(() => openXlsWorkbook(beyond)).toThrow("xlsx_invalid");
   });
 
+  it("cabeçalho com contagem de FAT absurda não dita a alocação (teto pelo tamanho do arquivo)", () => {
+    const bytes = xlsBytes(sample(), [], { padBytes: 9000 });
+    const view = new DataView(bytes.buffer, bytes.byteOffset);
+    const firstFat = view.getUint32(0x4c, true);
+    const hostile = bytes.slice();
+    const hv = new DataView(hostile.buffer);
+    // 4 bilhões de setores de FAT, todos "no cabeçalho" apontando para o mesmo setor.
+    hv.setUint32(0x2c, 0xfffffff0, true);
+    for (let i = 0; i < 109; i++) hv.setUint32(0x4c + i * 4, firstFat, true);
+    const Original = globalThis.Uint32Array;
+    let largest = 0;
+    globalThis.Uint32Array = new Proxy(Original, {
+      construct(target, args: unknown[]) {
+        if (typeof args[0] === "number") largest = Math.max(largest, args[0]);
+        return new (target as unknown as new (...a: unknown[]) => Uint32Array)(...args);
+      },
+    }) as unknown as Uint32ArrayConstructor;
+    try {
+      const wb = openXlsWorkbook(hostile);
+      expect(wb.sheetNames()).toEqual(openXlsWorkbook(bytes).sheetNames());
+      expect(wb.readCells("SUPPLIER INFO").cells).toEqual(openXlsWorkbook(bytes).readCells("SUPPLIER INFO").cells);
+    } finally {
+      globalThis.Uint32Array = Original;
+    }
+    // Tabela da FAT proporcional ao arquivo (~30 setores), não aos 4 bilhões do cabeçalho.
+    expect(largest).toBeLessThan(4096);
+    // Mesma contagem com DIFAT encadeado apontando para setores do arquivo: continua no contrato.
+    const chained = hostile.slice();
+    const cv = new DataView(chained.buffer);
+    cv.setUint32(0x44, view.getUint32(0x30, true), true);
+    cv.setUint32(0x48, 0xfffffff0, true);
+    expectContract(chained, "DIFAT hostil");
+  });
+
   it("BIFF5 (Excel 95) e BIFF2: xls_unsupported", () => {
     expect(() => openXlsWorkbook(xlsBytes(sample(), [], { biffVersion: 0x0500 }))).toThrow("xls_unsupported");
     const biff2 = cfbBytes("Workbook", biffRecord(0x0009, new Uint8Array(4)));
