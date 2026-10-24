@@ -864,6 +864,17 @@ export default async function RequestDetailPage({
                       ipiSource: taxSourceText(p.tax.ipiSource, p.tax.ncm),
                       ncmPending:
                         p.tax.ncmStatus === "none" && p.tax.iiSource === null,
+                      cbmNote:
+                        p.cbm.source === "product"
+                          ? t("pricing.calc.cbmFromProduct", {
+                              per: String(p.cbm.perCarton ?? "—"),
+                              cbm: (p.cbm.cbmPerCarton ?? 0).toLocaleString(
+                                t.intl,
+                                { maximumFractionDigits: 4 },
+                              ),
+                            })
+                          : null,
+                      sheetHref: `/app/quotes/${p.quoteId}#quote-sheet`,
                       shippingFreightNote:
                         p.shippingFreight.status === "answered"
                           ? t("freight.calc.answered", {
@@ -919,6 +930,7 @@ export default async function RequestDetailPage({
                       code: "{code}",
                     }),
                     cargoHigh: t("pricing.calc.cargoHigh"),
+                    openSheet: t("pricing.calc.openSheet"),
                     intl: t.intl,
                     fxStale:
                       pricing?.fx.status === "stale"

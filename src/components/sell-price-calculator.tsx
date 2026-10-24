@@ -32,6 +32,10 @@ export interface CalculatorQuote {
   ipiSource: string | null;
   /** Sem NCM confirmado: II e IPI em 0%. */
   ncmPending: boolean;
+  /** Volume do frete veio do cadastro (já traduzido); null = da ficha ou sem volume. */
+  cbmNote?: string | null;
+  /** Ficha da cotação, onde se preenche o volume que falta. */
+  sheetHref?: string | null;
 }
 
 type Labels = Record<
@@ -66,7 +70,8 @@ type Labels = Record<
   | "noFx"
   | "cargo"
   | "cargoValue"
-  | "cargoHigh",
+  | "cargoHigh"
+  | "openSheet",
   string
 > & {
   missing: Record<PricingMissing, string>;
@@ -212,6 +217,11 @@ export function SellPriceCalculator({
           <p className="font-semibold text-zinc-900">{labels.title}</p>
           {!current.hasSheet ? (
             <p className="text-xs text-amber-700">{labels.noSheet}</p>
+          ) : null}
+          {current.cbmNote ? (
+            <p className="text-xs text-brand-800" data-pricing-cbm-note>
+              {current.cbmNote}
+            </p>
           ) : null}
           {labels.fxStale ? (
             <p className="text-xs text-amber-700">{labels.fxStale}</p>
@@ -407,7 +417,21 @@ export function SellPriceCalculator({
           {shownMissing.length ? (
             <ul className="list-disc space-y-0.5 pl-5 text-xs text-amber-700">
               {shownMissing.map((m) => (
-                <li key={m}>{labels.missing[m]}</li>
+                <li key={m}>
+                  {labels.missing[m]}
+                  {m === "cbm" && current.sheetHref ? (
+                    <>
+                      {" "}
+                      <a
+                        href={current.sheetHref}
+                        className="font-semibold text-brand-700 underline underline-offset-2"
+                        data-pricing-open-sheet
+                      >
+                        {labels.openSheet}
+                      </a>
+                    </>
+                  ) : null}
+                </li>
               ))}
             </ul>
           ) : null}

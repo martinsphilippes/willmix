@@ -78,18 +78,21 @@ export const pt = {
     "= {amount} de sinal ({percent}% de {total}) · restante {rest}",
   "pricing.calc.carrierFreight": "Frete marítimo da companhia marítima (R$)",
   "pricing.calc.carrierFreightHint":
-    "Se informado, substitui a estimativa por CBM.",
+    "Opcional: só para trocar o frete calculado pela tabela da companhia marítima (ex.: valor fechado para este embarque).",
   "pricing.calc.missing.price": "A ficha não tem preço.",
   "pricing.calc.missing.fx": "Sem câmbio para a moeda da ficha.",
   "pricing.calc.missing.freight":
     "Sem frete marítimo: informe o da companhia marítima ou configure o frete por CBM.",
   "pricing.calc.missing.cbm":
-    "Sem CBM na ficha (caixa master e CBM da caixa): frete marítimo não estimado.",
+    "Falta o volume da caixa (peças por caixa master e CBM da caixa) na ficha do fornecedor e no cadastro do produto: sem ele, o frete da tabela da companhia marítima não é calculado.",
+  "pricing.calc.cbmFromProduct":
+    "Frete estimado pelo volume do cadastro do produto ({per} peças por caixa master, {cbm} m³ por caixa): a ficha do fornecedor ainda não tem o volume.",
+  "pricing.calc.openSheet": "Abrir a ficha da cotação",
   "pricing.calc.missing.importTax":
     "Imposto de importação não informado na ficha (0%).",
   "pricing.calc.missing.ipi": "IPI não informado na ficha (0%).",
   "pricing.calc.noSheet":
-    "Este fornecedor respondeu sem a ficha de compra: informe o valor ao cliente manualmente.",
+    "Este fornecedor respondeu sem a ficha de compra: a conta usa o preço da cotação e os dados do cadastro do produto.",
   "pricing.calc.marginZero":
     "Margem 0%: o valor sai igual ao custo. Configure a margem em Configurações.",
   "pricing.calc.fxStale":
@@ -174,17 +177,20 @@ export const en: Record<keyof typeof pt, string> = {
     "= {amount} down payment ({percent}% of {total}) · balance {rest}",
   "pricing.calc.carrierFreight": "Ocean freight from the shipping line (R$)",
   "pricing.calc.carrierFreightHint":
-    "If provided, it replaces the per-CBM estimate.",
+    "Optional: only to replace the freight calculated from the shipping line's table (e.g. a fixed price for this shipment).",
   "pricing.calc.missing.price": "The sheet has no price.",
   "pricing.calc.missing.fx": "No exchange rate for the sheet currency.",
   "pricing.calc.missing.freight":
     "No ocean freight: enter the shipping line's or set the freight per CBM.",
   "pricing.calc.missing.cbm":
-    "No CBM on the sheet (master carton and CBM per carton): freight not estimated.",
+    "The carton volume (pieces per master carton and CBM per carton) is missing on the supplier's sheet and in the product record: without it, the freight from the shipping line's table is not calculated.",
+  "pricing.calc.cbmFromProduct":
+    "Freight estimated from the product record volume ({per} pieces per master carton, {cbm} m³ per carton): the supplier's sheet does not have the volume yet.",
+  "pricing.calc.openSheet": "Open the quote sheet",
   "pricing.calc.missing.importTax": "Import duty not on the sheet (0%).",
   "pricing.calc.missing.ipi": "IPI not on the sheet (0%).",
   "pricing.calc.noSheet":
-    "This supplier answered without the purchase sheet: enter the customer value manually.",
+    "This supplier answered without the purchase sheet: the calculation uses the quote price and the product record data.",
   "pricing.calc.marginZero":
     "Margin 0%: the value equals the cost. Set the margin in Settings.",
   "pricing.calc.fxStale":
@@ -259,16 +265,21 @@ export const zh: Record<keyof typeof pt, string> = {
   "requests.downPayment.equals":
     "= 定金 {amount}（{total} 的 {percent}%）· 余款 {rest}",
   "pricing.calc.carrierFreight": "船公司海运费（R$）",
-  "pricing.calc.carrierFreightHint": "填写后将替代按立方米的预估。",
+  "pricing.calc.carrierFreightHint":
+    "可选：仅用于替换按船公司运价表计算的运费（例如本次运输的固定价格）。",
   "pricing.calc.missing.price": "采购单没有价格。",
   "pricing.calc.missing.fx": "没有采购单币种的汇率。",
   "pricing.calc.missing.freight":
     "没有海运费：请填写船公司运费或设置每立方米运费。",
   "pricing.calc.missing.cbm":
-    "采购单没有体积（外箱数量和每箱体积）：未预估运费。",
+    "供应商采购单和产品档案都缺少外箱体积（每外箱件数和每箱立方米）：无法按船公司运价表计算运费。",
+  "pricing.calc.cbmFromProduct":
+    "运费按产品档案的体积估算（每外箱 {per} 件，每箱 {cbm} 立方米）：供应商采购单尚未填写体积。",
+  "pricing.calc.openSheet": "打开报价采购单",
   "pricing.calc.missing.importTax": "采购单未填写进口税（0%）。",
   "pricing.calc.missing.ipi": "采购单未填写 IPI（0%）。",
-  "pricing.calc.noSheet": "该供应商未提交采购单：请手动填写客户价格。",
+  "pricing.calc.noSheet":
+    "该供应商未提交采购单：计算使用报价价格和产品档案数据。",
   "pricing.calc.marginZero":
     "利润率为 0%：价格等于成本。请在设置中配置利润率。",
   "pricing.calc.fxStale": "今日 PTAX 不可用：使用 {day} 的汇率作为建议。",
