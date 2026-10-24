@@ -33,6 +33,10 @@ describe("link do Google Sheets", () => {
     expect(gs.googleSheetId(LINK)).toBe(ID);
     expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/d/${ID}`)).toBe(ID);
     expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/d/${ID}/edit?usp=sharing`)).toBe(ID);
+    // Navegador com mais de uma conta do Google: "/u/1/" antes do "/d/".
+    expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/u/1/d/${ID}/edit#gid=0`)).toBe(ID);
+    expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/u/0/d/${ID}`)).toBe(ID);
+    expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/u/x/d/${ID}`)).toBeNull();
     expect(gs.googleSheetId("https://docs.google.com/document/d/abc123456789/edit")).toBeNull();
     expect(gs.googleSheetId("http://docs.google.com/spreadsheets/d/abc123456789")).toBeNull();
     expect(gs.googleSheetId("https://evil.example/spreadsheets/d/abc123456789")).toBeNull();
@@ -80,6 +84,16 @@ describe("link do Google Sheets", () => {
     await expect(
       gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: respond("x", { status: 404 }) }),
     ).rejects.toThrow("sheet_not_found");
+    // A página de erro do Google é HTML: continua "não encontrada", não "privada".
+    await expect(
+      gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: respond("<html>404</html>", { status: 404, type: "text/html" }) }),
+    ).rejects.toThrow("sheet_not_found");
+    await expect(
+      gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: respond("<html>500</html>", { status: 500, type: "text/html" }) }),
+    ).rejects.toThrow("sheet_fetch_failed");
+    await expect(
+      gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: respond("<html>429</html>", { status: 429, type: "text/html" }) }),
+    ).rejects.toThrow("sheet_fetch_failed");
     await expect(
       gs.fetchGoogleSheetXlsx(LINK, {
         fetchImpl: (async () => {

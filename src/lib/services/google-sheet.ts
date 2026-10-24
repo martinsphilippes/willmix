@@ -10,8 +10,9 @@ import "server-only";
 
 export class GoogleSheetError extends Error {}
 
+// Com mais de uma conta no navegador o Google põe "/u/<n>/" antes do "/d/".
 const SHEET_URL =
-  /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{10,120})(?:[/?#]|$)/;
+  /^https:\/\/docs\.google\.com\/spreadsheets\/(?:u\/\d{1,3}\/)?d\/([A-Za-z0-9_-]{10,120})(?:[/?#]|$)/;
 
 /** Id da planilha num link do Google Sheets; nulo quando o link não é de uma planilha. */
 export function googleSheetId(url: string): string | null {
@@ -86,16 +87,18 @@ export async function fetchGoogleSheetXlsx(
   try {
     const type = (response.headers.get("content-type") ?? "").toLowerCase();
     const finalUrl = response.url ?? "";
-    // Sem compartilhamento, o Google redireciona para o login (HTML).
+    // Id inexistente (a página de erro do Google também é HTML): não é falta de compartilhamento.
+    if (response.status === 404) throw new GoogleSheetError("sheet_not_found");
+    // Sem compartilhamento, o Google recusa ou redireciona para o login.
     if (
       response.status === 401 ||
       response.status === 403 ||
-      /accounts\.google\.com/.test(finalUrl) ||
-      type.startsWith("text/html")
+      /accounts\.google\.com/.test(finalUrl)
     )
       throw new GoogleSheetError("sheet_private");
-    if (response.status === 404) throw new GoogleSheetError("sheet_not_found");
     if (!response.ok) throw new GoogleSheetError("sheet_fetch_failed");
+    // Resposta "ok" com página HTML: é a tela de login servida no lugar do arquivo.
+    if (type.startsWith("text/html")) throw new GoogleSheetError("sheet_private");
     const declared = Number(response.headers.get("content-length") ?? "0");
     if (declared > maxBytes) throw new GoogleSheetError("too_large");
     const bytes = await readLimited(response, maxBytes);
