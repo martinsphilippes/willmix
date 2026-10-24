@@ -63,6 +63,7 @@ export interface XlsFixtureOptions {
 const ENDOFCHAIN = 0xfffffffe;
 const FREESECT = 0xffffffff;
 const FATSECT = 0xfffffffd;
+const DIFSECT = 0xfffffffc;
 const NOSTREAM = 0xffffffff;
 
 /* ---- bytes ---- */
@@ -461,15 +462,21 @@ export function cfbBytes(streamName: string, stream: Uint8Array): Uint8Array<Arr
   const miniStreamSectors = Math.ceil(miniStream.length / SS);
   const miniFatSectors = mini ? 1 : 0;
   const streamSectors = mini ? 0 : Math.ceil(stream.length / SS);
-  // Setores de FAT suficientes para cobrir todos (inclusive eles mesmos).
+  // Setores de FAT suficientes para cobrir todos (inclusive eles mesmos e os
+  // de DIFAT: acima de 109 setores de FAT, o cabeçalho não basta e cada setor
+  // DIFAT lista mais 127, como o Excel grava em arquivos acima de ~7 MB).
   let fatSectors = 1;
+  let difatSectors = 0;
   for (;;) {
-    const total = fatSectors + 1 + miniFatSectors + miniStreamSectors + streamSectors;
+    difatSectors = fatSectors > 109 ? Math.ceil((fatSectors - 109) / 127) : 0;
+    const total =
+      fatSectors + difatSectors + 1 + miniFatSectors + miniStreamSectors + streamSectors;
     const need = Math.ceil(total / (SS / 4));
     if (need <= fatSectors) break;
     fatSectors = need;
   }
-  const dirSector = fatSectors;
+  const difatStart = fatSectors;
+  const dirSector = fatSectors + difatSectors;
   const miniFatSector = dirSector + 1;
   const miniStreamStart = miniFatSector + miniFatSectors;
   const streamStart = miniStreamStart + miniStreamSectors;
@@ -489,10 +496,19 @@ export function cfbBytes(streamName: string, stream: Uint8Array): Uint8Array<Arr
   view.setUint32(0x38, 4096, true);
   view.setUint32(0x3c, mini ? miniFatSector : ENDOFCHAIN, true);
   view.setUint32(0x40, miniFatSectors, true);
-  view.setUint32(0x44, ENDOFCHAIN, true);
-  view.setUint32(0x48, 0, true);
+  view.setUint32(0x44, difatSectors ? difatStart : ENDOFCHAIN, true);
+  view.setUint32(0x48, difatSectors, true);
   for (let i = 0; i < 109; i++)
     view.setUint32(0x4c + i * 4, i < fatSectors ? i : FREESECT, true);
+  // Setores DIFAT: 127 números de setor de FAT e, por último, o próximo DIFAT.
+  for (let d = 0; d < difatSectors; d++) {
+    const off = SS * (1 + difatStart + d);
+    for (let i = 0; i < 127; i++) {
+      const k = 109 + d * 127 + i;
+      view.setUint32(off + i * 4, k < fatSectors ? k : FREESECT, true);
+    }
+    view.setUint32(off + 127 * 4, d + 1 < difatSectors ? difatStart + d + 1 : ENDOFCHAIN, true);
+  }
 
   // FAT.
   const fat = (s: number, v: number) =>
@@ -502,6 +518,7 @@ export function cfbBytes(streamName: string, stream: Uint8Array): Uint8Array<Arr
   };
   for (let s = 0; s < fatSectors * (SS / 4); s++) fat(s, FREESECT);
   for (let s = 0; s < fatSectors; s++) fat(s, FATSECT);
+  for (let d = 0; d < difatSectors; d++) fat(difatStart + d, DIFSECT);
   fat(dirSector, ENDOFCHAIN);
   if (mini) {
     fat(miniFatSector, ENDOFCHAIN);

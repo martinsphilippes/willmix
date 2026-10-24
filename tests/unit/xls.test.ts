@@ -278,6 +278,28 @@ describe("openXlsWorkbook: limites de tamanho", () => {
     const wb = openXlsWorkbook(xlsBytes(sample()));
     expect(() => wb.readCells("SUPPLIER INFO", { maxXmlBytes: 10 })).toThrow("xlsx_too_large");
     expect(wb.readCells("SUPPLIER INFO", { maxXmlBytes: 100000 }).cells[0][0]).toBe("PHOTO");
+    // Só números (SST vazia): é a própria região da aba (~42 KB) que passa do teto.
+    const cells: XlsFixtureSheet["cells"] = [];
+    for (let r = 0; r < 300; r++)
+      for (let col = 0; col < 10; col++) cells.push(c(r, col, { kind: "number", value: r * 10 + col }));
+    const numeric = openXlsWorkbook(xlsBytes([{ name: "N", cells }]));
+    expect(() => numeric.readCells("N", { maxXmlBytes: 20000 })).toThrow("xlsx_too_large");
+    expect(numeric.readCells("N", { maxXmlBytes: 100000, maxRows: 300 }).cells[299][9]).toBe("2999");
+  });
+
+  it("arquivo acima de ~7 MB usa setores DIFAT (como o Excel grava) e é lido igual", () => {
+    // 109 setores de FAT no cabeçalho cobrem 7,1 MB; além disso a FAT continua em DIFAT.
+    const big = xlsBytes(sample(), images(), { padBytes: 7_600_000 });
+    const view = new DataView(big.buffer, big.byteOffset);
+    expect(view.getUint32(0x48, true)).toBeGreaterThanOrEqual(1);
+    expect(view.getUint32(0x2c, true)).toBeGreaterThan(109);
+    const wb = openXlsWorkbook(big);
+    const small = openXlsWorkbook(xlsBytes(sample(), images()));
+    expect(wb.sheetNames()).toEqual(small.sheetNames());
+    expect(wb.readCells("SUPPLIER INFO").cells).toEqual(small.readCells("SUPPLIER INFO").cells);
+    expect(wb.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.bytes.length])).toEqual(
+      small.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.bytes.length]),
+    );
   });
 });
 
