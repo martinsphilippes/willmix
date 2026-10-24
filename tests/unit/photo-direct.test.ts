@@ -59,6 +59,41 @@ describe("fotos enviadas direto ao armazenamento", () => {
     expect((await store.list("documents")).length).toBe(docsBefore);
   });
 
+  it("só a primeira original/comercial toma o lugar da foto do fornecedor; escolhida à mão, ela fica", async () => {
+    const store = getStore();
+    const img = (name: string) => new File([jpeg], name, { type: "image/jpeg" });
+    const [product] = await store.list("products", { limit: 1, filter: { primaryPhotoDocumentId: null } });
+    const [supplier] = await addPhotos(admin, { productId: product.id }, [img("f.jpg")], "supplier");
+    expect(supplier.isPrimary).toBe(true);
+    const [first] = await addPhotos(admin, { productId: product.id }, [img("o.jpg")], "original");
+    expect(first.isPrimary).toBe(true);
+    expect((await store.get("product_photos", supplier.id))!.isPrimary).toBe(false);
+    // Alguém volta a escolher a foto do fornecedor como principal.
+    await store.update("product_photos", first.id, { isPrimary: false });
+    await store.update("product_photos", supplier.id, { isPrimary: true });
+    await store.update("products", product.id, { primaryPhotoDocumentId: supplier.documentId });
+    const [second] = await addPhotos(admin, { productId: product.id }, [img("c.jpg")], "commercial");
+    expect(second.isPrimary).toBe(false);
+    expect((await store.get("product_photos", supplier.id))!.isPrimary).toBe(true);
+    expect((await store.get("products", product.id))!.primaryPhotoDocumentId).toBe(supplier.documentId);
+  });
+
+  it("foto do fornecedor rebaixada que também é de um item de sourcing: o ponteiro do item acompanha", async () => {
+    const store = getStore();
+    const img = (name: string) => new File([jpeg], name, { type: "image/jpeg" });
+    const [item] = await store.list("sourcing_items", { limit: 1 });
+    const [product] = await store.list("products", { limit: 1, filter: { primaryPhotoDocumentId: null } });
+    const [supplier] = await addPhotos(admin, { sourcingItemId: item.id }, [img("s.jpg")], "supplier");
+    expect((await store.get("sourcing_items", item.id))!.primaryPhotoDocumentId).toBe(supplier.documentId);
+    // Item promovido a produto: a mesma foto passa a ser do produto também.
+    await store.update("product_photos", supplier.id, { productId: product.id });
+    await store.update("products", product.id, { primaryPhotoDocumentId: supplier.documentId });
+    const [original] = await addPhotos(admin, { productId: product.id }, [img("o.jpg")], "original");
+    expect(original.isPrimary).toBe(true);
+    expect((await store.get("products", product.id))!.primaryPhotoDocumentId).toBe(original.documentId);
+    expect((await store.get("sourcing_items", item.id))!.primaryPhotoDocumentId).toBe(original.documentId);
+  });
+
   it("arquivo que não é imagem é recusado e apagado", async () => {
     const store = getStore();
     const pdf = await store.putFile(
