@@ -132,35 +132,71 @@ export async function addPhotos(
       sourcingItemId: target.sourcingItemId ?? null,
       orderId: target.orderId ?? null,
     });
-    // Vira principal quando ainda não há principal (primeira original/comercial),
-    // mesmo que já existam fotos de outros tipos (balança, embalagem...).
+    // Vira principal quando ainda não há principal (primeira original/comercial,
+    // ou a foto da planilha do fornecedor), mesmo que já existam fotos de outros
+    // tipos (balança, embalagem...). A foto do fornecedor é provisória: a
+    // primeira original ou comercial toma o lugar dela.
     const existing = await store.list("product_photos", {
       filter: target.productId
         ? { productId: target.productId, isPrimary: true }
         : { sourcingItemId: target.sourcingItemId ?? "", isPrimary: true },
       limit: 1,
     });
-    const photo = await store.create("product_photos", {
-      productId: target.productId ?? null,
-      sourcingItemId: target.sourcingItemId ?? null,
-      orderId: target.orderId ?? null,
-      documentId: doc.id,
-      kind,
-      caption: options.caption ?? null,
-      takenAt: options.takenAt ?? new Date().toISOString(),
-      takenByUserId: user.id,
-      derivedFromPhotoId: options.derivedFromPhotoId ?? null,
-      isPrimary:
-        existing.length === 0 && (kind === "original" || kind === "commercial"),
-    });
+    const own = kind === "original" || kind === "commercial";
+    // Só a primeira original/comercial toma o lugar da foto do fornecedor: se já
+    // havia uma e a do fornecedor continua principal, alguém a escolheu.
+    let replacesSupplier = false;
+    if (own && existing.length > 0 && existing[0].kind === "supplier") {
+      const ownBefore = await store.list("product_photos", {
+        filter: target.productId
+          ? { productId: target.productId, kind: ["original", "commercial"] }
+          : {
+              sourcingItemId: target.sourcingItemId ?? "",
+              kind: ["original", "commercial"],
+            },
+        limit: 1,
+      });
+      replacesSupplier = ownBefore.length === 0;
+    }
+    if (replacesSupplier)
+      await store.update("product_photos", existing[0].id, { isPrimary: false });
+    let photo: ProductPhoto;
+    try {
+      photo = await store.create("product_photos", {
+        productId: target.productId ?? null,
+        sourcingItemId: target.sourcingItemId ?? null,
+        orderId: target.orderId ?? null,
+        documentId: doc.id,
+        kind,
+        caption: options.caption ?? null,
+        takenAt: options.takenAt ?? new Date().toISOString(),
+        takenByUserId: user.id,
+        derivedFromPhotoId: options.derivedFromPhotoId ?? null,
+        isPrimary:
+          (existing.length === 0 && (own || kind === "supplier")) ||
+          replacesSupplier,
+      });
+    } catch (error) {
+      // A linha não entrou (ex.: tipo de foto ainda não publicado no esquema):
+      // o arquivo guardado um passo antes não fica órfão.
+      await store.remove("documents", doc.id).catch(() => undefined);
+      await store.removeFile(doc.storageKey).catch(() => undefined);
+      throw error;
+    }
     out.push(photo);
     if (photo.isPrimary) {
-      if (target.productId)
-        await store.update("products", target.productId, {
+      // A foto rebaixada pode pertencer também à outra entidade (item de
+      // sourcing promovido a produto): o ponteiro dela acompanha a nova principal.
+      const demoted = replacesSupplier ? existing[0] : null;
+      const productId = target.productId ?? demoted?.productId ?? null;
+      const sourcingItemId =
+        target.sourcingItemId ?? demoted?.sourcingItemId ?? null;
+      if (productId)
+        await store.update("products", productId, {
           primaryPhotoDocumentId: doc.id,
         });
-      if (target.sourcingItemId)
-        await store.update("sourcing_items", target.sourcingItemId, {
+      if (sourcingItemId)
+        await store.update("sourcing_items", sourcingItemId, {
           primaryPhotoDocumentId: doc.id,
         });
     }

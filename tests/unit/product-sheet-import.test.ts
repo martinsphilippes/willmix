@@ -312,14 +312,15 @@ describe("importação", () => {
     // Vínculo produto × fornecedor com o código da fábrica.
     const links = await store.list("product_suppliers", { filter: { productId } });
     expect(links.map((l) => [l.supplierId, l.supplierSku])).toEqual([[minYan.id, "1"]]);
-    // Fotos: original (coluna PHOTO) e cartão do fornecedor; a 2ª linha só tem a foto.
+    // Fotos: a da coluna PHOTO entra como foto do fornecedor (imagem do catálogo) e o cartão; a 2ª linha só tem a foto.
     const kinds = (await store.list("product_photos", { filter: { productId } })).map((p) => p.kind).sort();
-    expect(kinds).toEqual(["business_card", "original"]);
+    expect(kinds).toEqual(["business_card", "supplier"]);
     expect(product.primaryPhotoDocumentId).toBeTruthy();
-    // O que falta: medidas da caixa e as outras fotos da ficha; o que veio não falta.
+    // O que falta: medidas da caixa e todas as fotos da ficha, inclusive a original
+    // (a da planilha não é a evidência da equipe); o que veio não falta.
     const missing = result.results[0].missing;
-    expect(missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "scalePhoto", "rulerPhoto", "sidePhoto", "anglePhoto"]));
-    for (const k of ["price", "moq", "colorAssortment", "material", "packageType", "originalPhoto"])
+    expect(missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "scalePhoto", "rulerPhoto", "sidePhoto", "anglePhoto", "originalPhoto"]));
+    for (const k of ["price", "moq", "colorAssortment", "material", "packageType"])
       expect(missing).not.toContain(k);
     // Lote guardado com o arquivo e o resumo.
     const batch = (await store.get("import_batches", result.batchId))!;
@@ -329,16 +330,46 @@ describe("importação", () => {
     expect(batch.mapping.__lineId).toBe(lineId);
   });
 
+  it("a foto original tirada pela equipe toma o lugar da foto do fornecedor como principal", async () => {
+    const store = getStore();
+    const { addPhotos } = await import("@/lib/services/sourcing");
+    const [product] = await store.list("products", { filter: { name: "Porta-retrato WD STRIBY VERT 8X10 / 20X25" } });
+    const before = (await store.list("product_photos", { filter: { productId: product.id, isPrimary: true } }))[0];
+    expect(before.kind).toBe("supplier");
+    const [original] = await addPhotos(
+      admin,
+      { productId: product.id },
+      [new File([new Uint8Array(PNG_1X1)], "original.png", { type: "image/png" })],
+      "original",
+    );
+    expect(original.isPrimary).toBe(true);
+    expect((await store.get("products", product.id))!.primaryPhotoDocumentId).toBe(original.documentId);
+    expect((await store.get("product_photos", before.id))!.isPrimary).toBe(false);
+    // Uma segunda original não derruba a principal já escolhida.
+    const [another] = await addPhotos(
+      admin,
+      { productId: product.id },
+      [new File([new Uint8Array(PNG_1X1)], "outra.png", { type: "image/png" })],
+      "original",
+    );
+    expect(another.isPrimary).toBe(false);
+  });
+
   it("importar de novo atualiza os mesmos produtos, sem duplicar produto, fornecedor nem foto", async () => {
     const store = getStore();
     const before = (await store.list("products")).length;
     const suppliersBefore = (await store.list("parties", { filter: { type: "supplier" } })).length;
+    // Produto importado pela versão anterior guardou a foto da planilha como "original".
+    const [first] = await store.list("products", { filter: { name: "Porta-retrato STONE MARBLE A4" } });
+    const [old] = await store.list("product_photos", { filter: { productId: first.id, kind: "supplier" } });
+    await store.update("product_photos", old.id, { kind: "original" });
     const result = await svc.importProductSheet(admin, file(templateBytes()), { lineId, namePrefix: "Porta-retrato" });
     expect(result.summary).toMatchObject({ created: 0, updated: 2, errors: 0, suppliersCreated: 0, photos: 0 });
     expect((await store.list("products")).length).toBe(before);
     expect((await store.list("parties", { filter: { type: "supplier" } })).length).toBe(suppliersBefore);
     const photos = await store.list("product_photos", { filter: { productId: result.results[0].productId! } });
     expect(photos).toHaveLength(2);
+    expect(photos.map((p) => p.kind).sort()).toEqual(["business_card", "original"]);
   });
 
   it("mesmo nome de outro fornecedor vira produto novo com o fornecedor no nome; nomes repetidos ganham contador", async () => {
@@ -424,7 +455,7 @@ describe("importação", () => {
     const [supplier] = await store.list("parties", { filter: { type: "supplier", name: "MIN YAN XLS" } });
     expect(supplier).toMatchObject({ storeNumber: "E4-9559", phone: "13515898686", city: "YIWU" });
     const photos = await store.list("product_photos", { filter: { productId: product.id } });
-    expect(photos.map((p) => p.kind).sort()).toEqual(["business_card", "original"]);
+    expect(photos.map((p) => p.kind).sort()).toEqual(["business_card", "supplier"]);
     const batch = (await store.get("import_batches", result.batchId))!;
     expect(batch).toMatchObject({ status: "imported", rowCount: 6, sheetName: "SUPPLIER INFO" });
     const evidence = (await store.get("documents", batch.fileDocumentId!))!;

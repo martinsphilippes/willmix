@@ -54,7 +54,7 @@ const MAX_HASH_BACKFILL = 200;
 /** Produtos com foto enviados à IA para comparação visual (até 2 fotos cada). */
 const MAX_VISUAL_PRODUCTS = 20;
 /** Fotos que mostram o produto (as de medida/balança costumam mostrar só um detalhe). */
-const VISUAL_KINDS = new Set(["original", "commercial", "packaging", "other"]);
+const VISUAL_KINDS = new Set(["original", "commercial", "supplier", "packaging", "other"]);
 
 const fold = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
