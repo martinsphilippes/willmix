@@ -99,7 +99,7 @@ export const en = {
   "sheetImport.how.groups":
     "Each row is a colour; consecutive rows with the same code, description, size and price become one product with the colours together.",
   "sheetImport.how.photos":
-    "The picture in the PHOTO column comes in as the supplier's photo: it is the product's catalog image until the team takes the original photo, which stays pending on the sheet. The card picture becomes the supplier's business card.",
+    "The picture in the PHOTO column comes in as the supplier's photo: it is the product's catalog image until the team takes the original photo, which stays pending on the product's master sheet. The card picture becomes the supplier's business card.",
   "sheetImport.how.supplier":
     "A supplier that does not exist yet is registered with name, store number and phone.",
   "sheetImport.how.missing": "At the end, each product shows what is still missing in the master sheet (carton size, the other sheet photos…).",
@@ -169,7 +169,7 @@ export const zh = {
   "sheetImport.how.columns": "价格、外箱装量、内盒、重量、CBM、包装、颜色、材质、功能和起订量写入产品主表；尺寸写入产品档案。",
   "sheetImport.how.groups":
     "每行是一种颜色；编码、描述、尺寸和价格相同的连续行合并为一个产品，颜色一并记录。",
-  "sheetImport.how.photos": "PHOTO 列的图片作为供应商照片导入：在团队拍摄原始照片之前，它是产品在目录中的图片，原始照片在技术表中仍为待办。名片图片成为供应商名片。",
+  "sheetImport.how.photos": "PHOTO 列的图片作为供应商照片导入：在团队拍摄原始照片之前，它是产品在目录中的图片；原始照片在产品主表中仍为待办。名片图片成为供应商名片。",
   "sheetImport.how.supplier": "尚未建档的供应商将按名称、店铺号和电话自动建档。",
   "sheetImport.how.missing": "最后，每个产品都会显示主表还缺什么（外箱尺寸、主表其他照片等）。",
   "sheetImport.previous": "历史导入",
