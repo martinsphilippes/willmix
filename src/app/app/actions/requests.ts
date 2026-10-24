@@ -66,7 +66,10 @@ export async function openBatchRfqAction(form: FormData) {
     if (!parsed.success) throw new Error("invalid_supplier");
     const supplierIds = parsed.data;
     const { openBatchRfq } = await import("@/lib/services/requests");
-    const result = await openBatchRfq(user, groupId.data, supplierIds);
+    const { packagingOptionsFrom } = await import("./helpers");
+    const result = await openBatchRfq(user, groupId.data, supplierIds, {
+      packaging: packagingOptionsFrom(form),
+    });
     return `${back}?rfq=${result.requests}`;
   });
 }

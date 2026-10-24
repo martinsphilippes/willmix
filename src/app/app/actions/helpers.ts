@@ -146,3 +146,26 @@ export async function runInPlace(back: string, fn: () => Promise<void>) {
   revalidatePath("/app", "layout");
   if (failed) redirect(failed);
 }
+
+/**
+ * Campos da embalagem no formulário da RFQ (uma solicitação ou o lote): quem
+ * faz a faca e a arte ("wellmix" = marketing da Wellmix; vazio = cadeia
+ * padrão), se o briefing abre agora e as instruções à agência.
+ */
+export function packagingOptionsFrom(form: FormData): {
+  agencyId?: string | null;
+  enabled?: boolean;
+  brief?: string | null;
+} {
+  if (!form.has("packagingForm")) return {};
+  const owner = str(form, "packagingOwner");
+  if (owner && owner !== "wellmix" && !/^[A-Za-z0-9_-]{1,64}$/.test(owner))
+    throw new Error("no_agency");
+  const brief = str(form, "packagingBrief");
+  if (brief.length > 2000) throw new Error("invalid_input");
+  return {
+    agencyId: owner === "" ? undefined : owner === "wellmix" ? null : owner,
+    enabled: form.get("packagingEnabled") === "on",
+    brief: brief || null,
+  };
+}

@@ -8,6 +8,11 @@ Defaults provisórios para não travar o desenvolvimento. Todos ajustáveis em `
 | `wellmixCanCreateRequest`  | `true`     | Wellmix cria em nome do cliente (mesmo formulário)                          |
 | `deliveryConfirmationMode` | `BOTH`     | Cliente confirma; Wellmix pode confirmar por ele. `WELLMIX` tira do cliente |
 | `agencyValidationEnabled`  | `true`     | Arte da embalagem feita pela agência designada; desligado, a Wellmix envia  |
+| `packagingBriefAt`         | `rfq`      | Quando o briefing de embalagem (faca e arte) nasce: `rfq` (com a cotação), `selection` (ao escolher o fornecedor) ou `order` (só no pedido) |
+| `packagingBriefRequired`   | faca + arte | Entregáveis que tornam o briefing "pronto" (dieline, art, print_ready, packaging_sample) |
+| `packagingBriefDueDays`    | `7`        | Prazo do briefing quando a solicitação não tem prazo                        |
+| `packagingDefaultAgencyId` | vazio      | Agência padrão dos briefings; vazio = única agência ativa, senão Wellmix     |
+| `agencyShowsCustomer`      | `false`    | A agência vê o nome do cliente no briefing (padrão: não, isolamento)        |
 | `weightTolerancePercent`   | `3`        | Divergência acima disso bloqueia a inspeção                                 |
 | `paymentMode`              | `MANUAL`   | Operador confirma o sinal e anexa comprovante                               |
 | `sankhyaMode`              | `MOCK`     | Pedido nasce com `erpSyncStatus = pending`; operador informa o número       |

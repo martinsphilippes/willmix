@@ -1860,7 +1860,9 @@
             "customs",
             "art",
             "attachment",
-            "other"
+            "other",
+            "print_ready",
+            "packaging_sample"
           ]
         },
         {
@@ -1962,6 +1964,14 @@
           "default": null,
           "type": "varchar",
           "size": 32
+        },
+        {
+          "key": "packagingBriefId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -1990,6 +2000,16 @@
           "type": "key",
           "columns": [
             "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_packaging_brief",
+          "type": "key",
+          "columns": [
+            "packagingBriefId"
           ],
           "orders": [
             "ASC"
@@ -5718,6 +5738,290 @@
           ],
           "orders": [
             "ASC",
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "packaging_briefs",
+      "databaseId": "willmix",
+      "name": "Briefings de embalagem (faca e arte na RFQ)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "requestId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "customerId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "agencyId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "ownerSource",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "chosen",
+            "settings_default",
+            "only_active",
+            "wellmix"
+          ]
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "open",
+            "ready",
+            "transferred",
+            "cancelled"
+          ]
+        },
+        {
+          "key": "requiredKeys",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "dielineDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "artDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "printReadyDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sampleDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "dims",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "dimsSource",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "master",
+            "quote",
+            "manual"
+          ]
+        },
+        {
+          "key": "dimsQuoteId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "dimsProvisional",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "dimsChangedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "brief",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "agencyNotes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "dueAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "readyAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "orderArtRequirementId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "transferredAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "cancelledAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "cancelReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 60
+        },
+        {
+          "key": "reminderSentAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "createdByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_request",
+          "type": "key",
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_agency_status",
+          "type": "key",
+          "columns": [
+            "agencyId",
+            "status"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_status",
+          "type": "key",
+          "columns": [
+            "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
             "ASC"
           ]
         }

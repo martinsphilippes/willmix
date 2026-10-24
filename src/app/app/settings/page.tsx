@@ -79,16 +79,22 @@ export default async function SettingsPage({
   const { ok, error, aiTest, aiModel, aiCode, fiscal, fiscalSync } =
     await searchParams;
   const t = await getT();
-  const [s, lineRows, customerRows, fx, fiscalInfo] = await Promise.all([
-    getSettings(),
-    getStore().list("product_lines", { orderBy: "name" }),
-    getStore().list("parties", {
-      filter: { type: "customer" },
-      orderBy: "name",
-    }),
-    getFxRates(),
-    fiscalStatus(),
-  ]);
+  const [s, lineRows, customerRows, fx, fiscalInfo, agencies] =
+    await Promise.all([
+      getSettings(),
+      getStore().list("product_lines", { orderBy: "name" }),
+      getStore().list("parties", {
+        filter: { type: "customer" },
+        orderBy: "name",
+      }),
+      getFxRates(),
+      fiscalStatus(),
+      // Agência padrão dos briefings de embalagem (faca e arte na RFQ).
+      getStore().list("parties", {
+        filter: { type: "agency", active: true },
+        orderBy: "name",
+      }),
+    ]);
   // "?fiscal=tec-10412-3": planilha carregada (tabela, NCMs, alíquotas alteradas).
   const fiscalMatch =
     typeof fiscal === "string" ? /^(tec|tipi)-(\d+)-(\d+)$/.exec(fiscal) : null;
@@ -183,6 +189,82 @@ export default async function SettingsPage({
                     <Select
                       name="agencyValidationEnabled"
                       defaultValue={String(s.agencyValidationEnabled)}
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
+                  {/* Embalagem (faca e arte) aberta junto com a RFQ para a agência. */}
+                  <Field label={t("settings.label.packagingBriefAt")}>
+                    <Select
+                      name="packagingBriefAt"
+                      defaultValue={s.packagingBriefAt}
+                      data-setting="packagingBriefAt"
+                    >
+                      <option value="rfq">
+                        {t("settings.option.packagingBriefAt.rfq")}
+                      </option>
+                      <option value="selection">
+                        {t("settings.option.packagingBriefAt.selection")}
+                      </option>
+                      <option value="order">
+                        {t("settings.option.packagingBriefAt.order")}
+                      </option>
+                    </Select>
+                  </Field>
+                  <Field label={t("settings.label.packagingDefaultAgencyId")}>
+                    <Select
+                      name="packagingDefaultAgencyId"
+                      defaultValue={s.packagingDefaultAgencyId}
+                    >
+                      <option value="">
+                        {t("settings.option.packagingAgencyAuto")}
+                      </option>
+                      {agencies.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label={t("settings.label.packagingBriefRequired")}>
+                    <input type="hidden" name="packagingBriefRequired.__form" value="1" />
+                    <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                      {(
+                        [
+                          "dieline",
+                          "art",
+                          "print_ready",
+                          "packaging_sample",
+                        ] as const
+                      ).map((key) => (
+                        <label key={key} className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            name="packagingBriefRequired"
+                            value={key}
+                            defaultChecked={s.packagingBriefRequired.includes(key)}
+                            className="h-4 w-4 accent-brand-600"
+                          />
+                          {t(`packBrief.item.${key}`)}
+                        </label>
+                      ))}
+                    </span>
+                  </Field>
+                  <Field label={t("settings.label.packagingBriefDueDays")}>
+                    <Input
+                      name="packagingBriefDueDays"
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="365"
+                      defaultValue={s.packagingBriefDueDays}
+                    />
+                  </Field>
+                  <Field label={t("settings.label.agencyShowsCustomer")}>
+                    <Select
+                      name="agencyShowsCustomer"
+                      defaultValue={String(s.agencyShowsCustomer)}
                     >
                       <option value="true">{t("common.yes")}</option>
                       <option value="false">{t("common.no")}</option>

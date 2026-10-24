@@ -79,6 +79,11 @@ import { MoneyInput } from "@/components/money-input";
 import { DownPaymentInput } from "@/components/down-payment-input";
 import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
+import {
+  PackagingBriefCard,
+  PackagingRfqFields,
+} from "@/components/packaging-brief-card";
+import { briefForRequest } from "@/lib/services/packaging-brief";
 
 export default async function RequestDetailPage({
   params,
@@ -264,6 +269,10 @@ export default async function RequestDetailPage({
     ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
   /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
   const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
+  /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
+  const packagingBrief = wellmix ? await briefForRequest(request.id) : null;
+  const hasLiveBrief =
+    !!packagingBrief && packagingBrief.status !== "cancelled";
 
   return (
     <>
@@ -553,6 +562,9 @@ export default async function RequestDetailPage({
                       </label>
                     ))}
                   </div>
+                  {rfqOpened ? null : (
+                    <PackagingRfqFields t={t} hasBrief={hasLiveBrief} />
+                  )}
                   {allInvited ? null : (
                     <SubmitButton>
                       {rfqOpened
@@ -625,6 +637,15 @@ export default async function RequestDetailPage({
               </Card>
             ) : null}
           </div>
+        ) : null}
+
+        {/* Embalagem (faca e arte) preparada em paralelo com a cotação (só Wellmix) */}
+        {wellmix && request.status !== "REQUESTED" ? (
+          <PackagingBriefCard
+            t={t}
+            request={request}
+            saved={typeof saved === "string" ? saved : undefined}
+          />
         ) : null}
 
         {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}

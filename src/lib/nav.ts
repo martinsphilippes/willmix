@@ -52,6 +52,8 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
           { href: "/app/reviews", key: "nav.reviews" },
           { href: "/app/freight", key: "nav.freight" },
           { href: "/app/freight/tariff", key: "nav.freightTariff" },
+          // Briefings de embalagem (faca e arte) abertos com a RFQ.
+          { href: "/app/packaging", key: "nav.packaging" },
           { href: "/app/containers", key: "nav.containers" },
         ],
       },
@@ -114,6 +116,9 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
     );
   if (role === "legal")
     orders.push({ href: "/app/penalties", key: "nav.penalties" });
+  // A agência começa pelos briefings de embalagem (faca e arte na RFQ).
+  if (role === "agency")
+    orders.unshift({ href: "/app/packaging", key: "nav.packaging" });
   return [
     group("nav.group.home", [
       { href: "/app", key: "nav.tasks" },

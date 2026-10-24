@@ -29,6 +29,7 @@ import {
 } from "@/components/ui";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { SubmitButton } from "@/components/submit-button";
+import { PackagingRfqFields } from "@/components/packaging-brief-card";
 import {
   deleteRequestsAction,
   openBatchRfqAction,
@@ -371,6 +372,7 @@ export default async function RequestBatchPage({
                   );
                 })}
               </div>
+              <PackagingRfqFields t={t} withBrief={false} />
               {allInvited || !rfqSuppliers.length ? null : (
                 <SubmitButton data-batch-rfq-submit>
                   {rfqRows.length === 1

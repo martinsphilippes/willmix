@@ -111,8 +111,16 @@ describe("menu principal", () => {
       { group: "nav.group.orders", items: ["/app/orders", "/app/penalties"] },
     ]);
     // Grupo com uma tela só vira link direto (sem lista de um item).
-    for (const role of ["agency", "broker", "carrier"] as const)
+    for (const role of ["broker", "carrier"] as const)
       expect(view(role)).toEqual([home, { link: "/app/orders" }]);
+    // A agência tem os briefings de embalagem (faca e arte na RFQ) e os pedidos.
+    expect(view("agency")).toEqual([
+      home,
+      {
+        group: "nav.group.orders",
+        items: ["/app/packaging", "/app/orders"],
+      },
+    ]);
     // Nenhuma tela some nem se repete; o início continua nas pendências.
     for (const role of ROLES.filter(
       (r) => r !== "admin" && r !== "operator" && r !== "customer",

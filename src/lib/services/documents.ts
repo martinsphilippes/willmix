@@ -57,6 +57,8 @@ export interface UploadInput {
   sourcingItemId?: string | null;
   /** Arquivo de kit de marketing (prévia ou final). */
   kitId?: string | null;
+  /** Entregável de um briefing de embalagem (faca, arte, gráfica, foto). */
+  packagingBriefId?: string | null;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -158,9 +160,16 @@ async function createDocumentRow(
   const { name, mime } = stored;
   let version = 1;
   let previousDocumentId: string | null = null;
-  if (input.requirementId) {
+  // Cadeia de versões: por requisito do pedido ou, no briefing de embalagem,
+  // por entregável (faca v1/v2, arte v1/v2/v3).
+  const chain = input.requirementId
+    ? { requirementId: input.requirementId }
+    : input.packagingBriefId
+      ? { packagingBriefId: input.packagingBriefId, type: input.type }
+      : null;
+  if (chain) {
     const previous = await store.list("documents", {
-      filter: { requirementId: input.requirementId },
+      filter: chain,
       orderBy: "version",
       direction: "desc",
       limit: 1,
@@ -186,6 +195,11 @@ async function createDocumentRow(
     productId: input.productId ?? null,
     sourcingItemId: input.sourcingItemId ?? null,
     kitId: input.kitId ?? null,
+    // Só quando há briefing: a coluna nova não vai ao Appwrite nos outros documentos
+    // (antes de o esquema ser publicado ela seria recusada).
+    ...(input.packagingBriefId
+      ? { packagingBriefId: input.packagingBriefId }
+      : {}),
     // Fotos de catálogo já nascem com a impressão digital (busca por foto).
     imageHash:
       bytes &&
@@ -217,6 +231,8 @@ function defaultVisibility(type: DocumentType): Visibility {
     case "dieline":
     case "label":
     case "art":
+    case "print_ready":
+    case "packaging_sample":
       return "supplier";
     default:
       return "internal";
@@ -235,6 +251,21 @@ export async function canAccessDocument(
     const { canViewKitDocument } = await import("./marketing");
     const kit = await store.get("marketing_kits", doc.kitId);
     return !!kit && canViewKitDocument(user, kit, doc.id);
+  }
+  if (doc.packagingBriefId) {
+    // Briefing de embalagem (faca, arte, gráfica, foto): a agência dona sempre;
+    // o fornecedor só o do pedido, depois que o pedido existe; cliente e
+    // concorrentes nunca. Decidido aqui, antes do pedido/solicitação, para que
+    // a solicitação não conceda nada a quem não é dono.
+    const brief = await store.get("packaging_briefs", doc.packagingBriefId);
+    if (!brief) return false;
+    if (user.role === "agency") return brief.agencyId === user.partyId;
+    if (user.role === "supplier") {
+      if (!brief.orderId) return false;
+      const order = await store.get("orders", brief.orderId);
+      return !!order && canViewOrder(user, order);
+    }
+    return false;
   }
   if (doc.orderId) {
     const order = await store.get("orders", doc.orderId);
@@ -255,6 +286,16 @@ export async function canAccessDocument(
     if (
       doc.productId &&
       user.role === "customer" &&
+      (await isCatalogShowcasePhoto(doc.productId, doc.id))
+    )
+      return true;
+    // Agência: as mesmas fotos de vitrine, só dos produtos de que tem briefing
+    // de embalagem (a arte precisa ver o produto).
+    if (
+      doc.productId &&
+      user.role === "agency" &&
+      !!user.partyId &&
+      (await agencyHasBriefFor(user.partyId, doc.productId)) &&
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
@@ -351,4 +392,20 @@ async function isCatalogShowcasePhoto(
   if (!product?.active) return false;
   const photos = (await catalogShowcasePhotos([productId])).get(productId);
   return !!photos?.some((p) => p.documentId === documentId);
+}
+
+/** A agência tem briefing de embalagem (vivo) deste produto? */
+async function agencyHasBriefFor(
+  agencyId: string,
+  productId: string,
+): Promise<boolean> {
+  try {
+    const rows = await getStore().list("packaging_briefs", {
+      filter: { agencyId, productId },
+    });
+    return rows.some((b) => b.status !== "cancelled");
+  } catch {
+    // Tabela ainda não publicada: nada a conceder.
+    return false;
+  }
 }
