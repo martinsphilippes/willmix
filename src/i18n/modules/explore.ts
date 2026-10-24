@@ -100,7 +100,7 @@ export const pt = {
   "explore.product.estimateNote":
     "Estimativa com frete marítimo, impostos de importação e o serviço Wellmix, pelo câmbio de hoje. O valor final vem na proposta.",
   "explore.product.belowMoq":
-    "Abaixo do pedido mínimo ({n} un): a Wellmix confirma se é possível.",
+    "Pedido mínimo: {n} un. Ao sair do campo, volta ao mínimo.",
   "explore.product.how.title": "Como funciona",
   "explore.product.how.1": "Monte o carrinho com os produtos e as quantidades.",
   "explore.product.how.2":
@@ -146,6 +146,9 @@ export const pt = {
   "explore.error.forbidden": "Só o cliente pode usar o carrinho.",
   "explore.error.invalid_input":
     "Algum campo está inválido: confira a quantidade e a data.",
+  "explore.error.cart_below_moq":
+    "Quantidade abaixo do pedido mínimo deste produto.",
+  "explore.cart.belowMoq": "Abaixo do pedido mínimo ({n} un). Ao alterar a quantidade, ela sobe pelo menos até o mínimo.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -245,7 +248,7 @@ export const en: Record<keyof typeof pt, string> = {
   "explore.product.estimateNote":
     "Estimate with ocean freight, import taxes and the Wellmix service, at today's exchange rate. The final price comes in the proposal.",
   "explore.product.belowMoq":
-    "Below the minimum order ({n} pcs): Wellmix confirms whether it is possible.",
+    "Minimum order: {n} pcs. On leaving the field, it goes back to the minimum.",
   "explore.product.how.title": "How it works",
   "explore.product.how.1": "Fill the cart with the products and quantities.",
   "explore.product.how.2":
@@ -291,6 +294,9 @@ export const en: Record<keyof typeof pt, string> = {
   "explore.error.forbidden": "Only the customer can use the cart.",
   "explore.error.invalid_input":
     "A field is invalid: check the quantity and the date.",
+  "explore.error.cart_below_moq":
+    "Quantity below this product's minimum order.",
+  "explore.cart.belowMoq": "Below the minimum order ({n}). When you change the quantity, it goes up to at least the minimum.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -379,7 +385,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.product.photo": "第 {n} 张，共 {total} 张",
   "explore.product.estimateNote":
     "预估价格含海运费、进口税费和 Wellmix 服务费，按今日汇率计算。最终价格以报价方案为准。",
-  "explore.product.belowMoq": "低于起订量（{n} 件）：由 Wellmix 确认是否可行。",
+  "explore.product.belowMoq": "起订量：{n} 件。离开输入框后将恢复为起订量。",
   "explore.product.how.title": "购买流程",
   "explore.product.how.1": "将商品和数量加入购物车。",
   "explore.product.how.2":
@@ -417,4 +423,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.error.cart_item_not_found": "该商品已不在购物车中。",
   "explore.error.forbidden": "只有客户可以使用购物车。",
   "explore.error.invalid_input": "有字段无效：请检查数量和日期。",
+  "explore.error.cart_below_moq": "数量低于该产品的起订量。",
+  "explore.cart.belowMoq": "低于起订量（{n} 件）。修改数量时，将至少提升至起订量。",
 };

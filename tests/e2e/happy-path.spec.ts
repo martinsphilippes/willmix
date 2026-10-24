@@ -758,7 +758,8 @@ test("vitrine: busca, página do produto, carrinho e pedido de orçamento", asyn
   await page.waitForURL(/\/app\/explore\/prod-panela/);
   await expect(page.locator("h1")).toContainText("Jogo de panelas");
   await page.fill("[data-quantity-input]", "300");
-  // Abaixo do pedido mínimo (500): avisa, sem bloquear.
+  // Abaixo do pedido mínimo (500): avisa enquanto digita (ao sair do campo,
+  // voltaria ao mínimo); aqui corrigimos para 600 antes de sair.
   await expect(page.locator("[data-below-moq]")).toBeVisible();
   await page.fill("[data-quantity-input]", "600");
   await expect(page.locator("[data-below-moq]")).toHaveCount(0);

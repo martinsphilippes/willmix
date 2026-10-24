@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { CartLineState } from "@/app/app/actions/cart";
 import { SubmitButton } from "./submit-button";
 import { cx } from "./ui";
@@ -24,6 +25,7 @@ export function CartLineForm({
   itemId,
   productId,
   quantity,
+  moq = null,
   notes,
   labels,
 }: {
@@ -31,6 +33,8 @@ export function CartLineForm({
   itemId: string;
   productId: string;
   quantity: number;
+  /** Pedido mínimo do produto: a quantidade não desce dele. */
+  moq?: number | null;
   notes: string | null;
   labels: {
     quantity: string;
@@ -63,11 +67,34 @@ export function CartLineForm({
     }
     setSaved(next);
   }
+  // Gravação recusada pelo servidor: o que está no campo volta a ser "por
+  // gravar", para a próxima saída do campo (ou "Atualizar") tentar de novo.
+  const [handled, setHandled] = useState(state);
+  if (handled !== state) {
+    setHandled(state);
+    if (state.error) setSaved(server);
+  }
   const formRef = useRef<HTMLFormElement>(null);
+  // Piso: o mínimo. Item antigo já abaixo dele fica como está enquanto não
+  // muda (dá para salvar a personalização); qualquer mudança de quantidade
+  // sobe pelo menos até o mínimo, como o serviço exige.
+  const floor = moq && moq > 0 ? moq : 1;
+  const min = quantity < floor && q === server.quantity ? quantity : floor;
+  /** Digitou menos que o mínimo: sobe ao mínimo já no DOM (a validação do formulário vê o valor certo). */
+  const clamped = () => {
+    const typed = Math.round(Number(q));
+    if (q === "" || q === server.quantity || !Number.isFinite(typed))
+      return q;
+    if (typed >= floor) return q;
+    const next = String(floor);
+    flushSync(() => setQ(next));
+    return next;
+  };
   const saveIfChanged = () => {
     const form = formRef.current;
     if (!form) return;
-    if (q === saved.quantity && n === saved.notes) return;
+    const next = clamped();
+    if (next === saved.quantity && n === saved.notes) return;
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
@@ -92,15 +119,20 @@ export function CartLineForm({
             name="quantity"
             type="number"
             inputMode="numeric"
-            min={1}
+            min={min}
             max={10_000_000}
             step={1}
             required
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onBlur={saveIfChanged}
+            // Enter envia o formulário: o mínimo entra antes de o navegador validar.
+            onKeyDown={(e) => {
+              if (e.key === "Enter") clamped();
+            }}
             className={cx(input, "w-28 tabular-nums")}
             data-cart-quantity={productId}
+            data-cart-min={min}
           />
         </label>
         <label className="min-w-0 flex-1 basis-48 text-xs font-medium text-zinc-700">

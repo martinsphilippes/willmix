@@ -72,6 +72,10 @@ O pagamento da Wellmix ao fornecedor é negociado com cada um e costuma vencer m
 
 Wellmix (admin e operador) pode preencher qualquer requisito. Os demais só preenchem requisitos do próprio papel e em pedidos em que o seu parceiro está designado (`ROLE_PARTY_FIELD`).
 
+## Quem vê o quê no pedido
+
+A Wellmix vê tudo. Cliente e fornecedor veem o andamento (etapas começadas ou concluídas). Um parceiro (agência, despachante, companhia marítima, transportador) vê só a etapa em que tem o que fazer (mesmo antes de ela começar) e nunca os valores das etapas dos outros (`stageVisibleTo` em `src/lib/order-view.ts`); o despachante também lê o Embarque (BL, navio, chegada), de que precisa para desembaraçar. O cartão do pedido (cliente, fornecedor, valores, data) só aparece ao parceiro se sobrar algo útil (o despachante vê fornecedor, modalidade e NCM; agência e companhia marítima, o fornecedor; o transportador, nada dele). O transportador, em vez dele, vê **Carga e entrega** (`cargoViewForOrder`): mercadoria, caixas, volume e peso previstos na ficha de compra (como na cotação de frete), chegada do navio (com navio e data de embarque), liberação aduaneira e onde entregar (o cliente do pedido: endereço, cidade, contato). O transportador não vê o fornecedor em lugar nenhum (`canSeeSupplier`). Multas: o parceiro vê só as dele.
+
 ## Inspeção cega e comparação comprado × inspecionado
 
 - Ao nascer, o pedido recebe um **snapshot da compra** (`purchase_snapshots`): ficha do produto + cotação congeladas. O cadastro mestre pode mudar depois; o snapshot não.

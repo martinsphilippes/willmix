@@ -140,23 +140,70 @@ describe("carrinho", () => {
     await expect(cart.addToCart(joao, "nao-existe", 10)).rejects.toThrow(
       "cart_product_unavailable",
     );
+    // O pedido mínimo vale (panela: 500; boneca: 2.000).
+    await expect(cart.addToCart(joao, "prod-panela", 499)).rejects.toThrow(
+      "cart_below_moq",
+    );
+    await expect(cart.addToCart(joao, "prod-boneca", 1000)).rejects.toThrow(
+      "cart_below_moq",
+    );
+  });
+
+  it("o mínimo é o da ficha mestre quando ela existe (o mesmo que a vitrine mostra)", async () => {
+    const { saveProductSheet } = await import("@/lib/services/product-sheet");
+    // Cadastro da jarra: mínimo 300 (seed); a ficha mestre diz 100.
+    await saveProductSheet(admin, "prod-piscina", { moq: 100 });
+    const shown = (await explore.exploreCatalog(joao, { q: "piscina" })).items[0];
+    expect(shown?.moq).toBe(100);
+    // O serviço aceita o mínimo mostrado e recusa abaixo dele.
+    await cart.addToCart(joao, "prod-piscina", 100);
+    await expect(cart.addToCart(joao, "prod-piscina", 99)).rejects.toThrow(
+      "cart_below_moq",
+    );
+    const line = (await cart.cartView(joao)).lines.find(
+      (l) => l.productId === "prod-piscina",
+    )!;
+    expect([line.moq, line.belowMoq]).toEqual([100, false]);
+    // Ficha mestre com mínimo maior que o cadastro: vale o maior também.
+    await saveProductSheet(admin, "prod-piscina", { moq: 5000 });
+    await expect(
+      cart.updateCartItem(joao, line.id, 4999, null),
+    ).rejects.toThrow("cart_below_moq");
+    await cart.updateCartItem(joao, line.id, 5000, null);
+    await cart.removeCartItem(joao, line.id);
+    await saveProductSheet(admin, "prod-piscina", { moq: null });
   });
 
   it("adicionar de novo soma; cada login tem o próprio carrinho", async () => {
     await cart.addToCart(joao, "prod-panela", 500, "Logo da loja");
-    await cart.addToCart(joao, "prod-panela", 200);
-    await cart.addToCart(joao, "prod-boneca", 1000);
+    const atMin = (await cart.cartView(joao)).lines[0];
+    await cart.addToCart(joao, "prod-panela", 500);
+    // Item de antes da regra do mínimo (gravado direto): fica, com o aviso.
+    await getStore().create("cart_items", {
+      userId: joao.id,
+      customerId: joao.partyId,
+      productId: "prod-boneca",
+      quantity: 1000,
+      notes: null,
+    } as never);
     const view = await cart.cartView(joao);
     expect(view.lines.map((l) => [l.productId, l.quantity])).toEqual([
-      ["prod-panela", 700],
+      ["prod-panela", 1000],
       ["prod-boneca", 1000],
     ]);
     const panela = view.lines[0];
     expect(panela.notes).toBe("Logo da loja");
     expect(panela.estimate.ok).toBe(true);
     expect(panela.subtotal).toBeGreaterThan(0);
-    // Boneca abaixo do mínimo (2.000): avisa, não bloqueia.
+    // Boneca abaixo do mínimo (2.000), de antes: avisa.
     expect(view.lines[1].belowMoq).toBe(true);
+    // Mudar a quantidade dela: só para o mínimo ou mais; a observação pode mudar.
+    await expect(
+      cart.updateCartItem(joao, view.lines[1].id, 1500, null),
+    ).rejects.toThrow("cart_below_moq");
+    await cart.updateCartItem(joao, view.lines[1].id, 1000, "Caixa branca");
+    await cart.updateCartItem(joao, view.lines[1].id, 2000, null);
+    expect((await cart.cartView(joao)).lines[1].belowMoq).toBe(false);
     expect(await cart.cartCount(joao)).toBe(2);
     // O colega da mesma empresa não vê nem mexe no carrinho do João.
     expect((await cart.cartView(colleague)).lines).toEqual([]);
@@ -173,11 +220,11 @@ describe("carrinho", () => {
       quantity: 1000,
       notes: "Logo azul",
     });
-    // A faixa de 1.000 deixa a unidade mais barata.
+    // A faixa de 1.000 deixa a unidade mais barata que a de 500.
     expect(
       after.lines[0].estimate.ok &&
-        panela.estimate.ok &&
-        after.lines[0].estimate.unitBrl < panela.estimate.unitBrl,
+        atMin.estimate.ok &&
+        after.lines[0].estimate.unitBrl < atMin.estimate.unitBrl,
     ).toBe(true);
   });
 

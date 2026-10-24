@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import type { ExploreProduct } from "@/lib/services/catalog-explore";
 import type { CatalogEstimate } from "@/lib/services/catalog-price-calc";
-import { addToCartAction } from "@/app/app/actions/cart";
-import { SubmitButton } from "@/components/submit-button";
+import { ExploreAddForm } from "@/components/explore-add-form";
 import { cx } from "@/components/ui";
 
 /*
@@ -410,21 +409,23 @@ export function ProductCard({
               ✓ {t("explore.inCart")} · {t("explore.viewCart")}
             </Link>
           ) : null}
-          <form action={addToCartAction}>
-            <input type="hidden" name="productId" value={product.id} />
-            <input type="hidden" name="quantity" value={quantity} />
-            <input type="hidden" name="back" value={back} />
-            <SubmitButton
-              variant="secondary"
-              className="w-full rounded-xl border-brand-200 px-2 text-brand-700 hover:border-brand-300 hover:bg-brand-50"
-              data-explore-add={product.id}
-            >
-              <CartIcon className="h-4 w-4 shrink-0" />
-              <span className="truncate">
-                {t("explore.addQty", { n: quantity.toLocaleString(t.intl) })}
-              </span>
-            </SubmitButton>
-          </form>
+          {/* Quantidade aqui mesmo (−, digitar, +), a partir do pedido mínimo. */}
+          <ExploreAddForm
+            productId={product.id}
+            back={back}
+            moq={product.moq}
+            startQty={quantity}
+            intl={t.intl}
+            labels={{
+              add: t("explore.addQty", { n: "{n}" }),
+              quantity: t("explore.product.quantity"),
+              decrease: t("explore.product.decrease"),
+              increase: t("explore.product.increase"),
+              belowMoq: t("explore.product.belowMoq", {
+                n: (product.moq ?? 1).toLocaleString(t.intl),
+              }),
+            }}
+          />
         </div>
       ) : null}
     </li>

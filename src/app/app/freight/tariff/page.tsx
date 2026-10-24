@@ -458,7 +458,9 @@ function ImportCard({
         {from ? <input type="hidden" name="from" value={from} /> : null}
         <div
           className={cx(
-            "grid items-end gap-3",
+            // Alinhados pelo topo: rótulos na mesma linha, caixas na mesma
+            // linha; as dicas (de tamanhos diferentes) ficam embaixo.
+            "grid items-start gap-3",
             "@lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto]",
           )}
         >
@@ -468,7 +470,7 @@ function ImportCard({
               hint={t("tariff.mine.goesToHint")}
             >
               <p
-                className="flex min-h-10 items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-900"
+                className="flex min-h-8 items-center rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-[13px] font-semibold text-zinc-900"
                 data-tariff-goes-to=""
               >
                 {ownLine ?? "—"}
@@ -521,7 +523,8 @@ function ImportCard({
               required
             />
           </Field>
-          <div className="@lg:pb-6">
+          {/* Botão na altura das caixas (abaixo da linha dos rótulos). */}
+          <div className="@lg:pt-6">
             <SubmitButton>
               {t(wellmix ? "tariff.import.submit" : "tariff.mine.submit")}
             </SubmitButton>
