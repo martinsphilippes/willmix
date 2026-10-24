@@ -518,7 +518,10 @@ describe("importação com variações (um produto por planilha, o modo padrão)
     expect(product.color).toContain("BEGE");
     const sheet = (await getProductSheet(productId))!;
     expect(sheet).toMatchObject({ factoryItemCode: "MY-059A", price: 3.15, currency: "USD", moq: 2400, masterCartonQty: 24, cbmPerCarton: 0.0267, colorAssortment: "BEGE / CARVALHO / MARROM" });
-    for (const k of ["price", "moq", "colorAssortment", "material", "packageType"]) expect(row.missing).not.toContain(k);
+    // Cabeçalho da planilha também entra: FOB/EXW, data, local, loja e telefone.
+    expect(sheet).toMatchObject({ incoterm: "EXW", location: "YIWU", supplierName: "MIN YAN", supplierStore: "E4-9558", supplierPhone: "13515898686" });
+    expect(sheet.sheetDate).toBeTruthy();
+    for (const k of ["price", "moq", "colorAssortment", "material", "packageType", "incoterm"]) expect(row.missing).not.toContain(k);
     expect(row.missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "originalPhoto"]));
 
     // Lote: produto uma vez, uma decisão por variação; as variações não contam como produto.
