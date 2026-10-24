@@ -555,9 +555,11 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await page.goto("/app/requests/new");
   await page.selectOption('select[name="p0.productId"]', "prod-jarra");
   await page.fill('textarea[name="p0.description"]', "Jarra de vidro");
-  await page.fill('input[name="p0.quantity"]', "100");
-  // Programação de entregas: 2 entregas (50 + 50), "+ Programação" → 3 (34 + 33 + 33),
-  // intervalo 30 dias; a 3ª vira 40 → total 107 e a quantidade acompanha.
+  // A jarra ganhou pedido mínimo (500) na ficha adotada do pedido do cenário
+  // anterior: a quantidade não fica abaixo dele (a tela sobe e o servidor recusa).
+  await page.fill('input[name="p0.quantity"]', "1000");
+  // Programação de entregas: 2 entregas (500 + 500), "+ Programação" → 3 (334 + 333 + 333),
+  // intervalo 30 dias; a 3ª vira 340 → total 1007 e a quantidade acompanha.
   await page.click('[data-request-item="0"] [data-schedule-on]');
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-item]'),
@@ -567,11 +569,11 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
     page.locator('[data-request-item="0"] [data-schedule-item]'),
   ).toHaveCount(3);
   await page.click('[data-request-item="0"] [data-schedule-interval="30"]');
-  await page.fill('input[name="p0.schedule.qty.3"]', "40");
+  await page.fill('input[name="p0.schedule.qty.3"]', "340");
   await expect(
     page.locator('[data-request-item="0"] [data-schedule-total]'),
-  ).toContainText("107");
-  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("107");
+  ).toContainText("1.007");
+  await expect(page.locator('input[name="p0.quantity"]')).toHaveValue("1007");
   await page.click("[data-add-request-item]");
   await page.check('[data-request-item="1"] input[name="p1.sourcingDemand"]');
   await page.fill('input[name="p1.productName"]', "Copo de vidro");
@@ -609,11 +611,11 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
   await expect(page.locator("[data-batch-siblings]")).toContainText(
     "Jarra de vidro",
   );
-  // A Jarra guarda a programação: 3 entregas, total 108.
+  // A Jarra guarda a programação: 3 entregas, total 1.007.
   await page.locator("[data-batch-siblings] a").first().click();
   await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
   await expect(page.locator("[data-request-schedule-table]")).toContainText(
-    "107",
+    "1.007",
   );
   // A Wellmix abre a RFQ do lote inteiro de uma vez: uma cotação por produto.
   await login(page, "admin@wellmix.com");

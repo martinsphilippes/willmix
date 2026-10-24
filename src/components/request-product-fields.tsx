@@ -22,6 +22,8 @@ export interface ProductFill {
   specification: string;
   /** Estoque da Wellmix (itens de container sem pedido); `detail` só para a Wellmix. */
   stock: { available: boolean; detail: string | null };
+  /** Pedido mínimo em peças (ficha mestre, senão cadastro); nulo sem mínimo. */
+  moq: number | null;
 }
 type Field = "productName" | "description" | "specification";
 type Option = { value: string; source: string };
@@ -34,8 +36,11 @@ export function RequestProductFields({
   sourceLabels,
   labels,
   prefix = "",
+  onProductChange,
 }: {
   products: ProductFill[];
+  /** Produto escolhido mudou ("" = nenhum): a linha ajusta a quantidade ao mínimo. */
+  onProductChange?: (productId: string) => void;
   /** Prefixo dos nomes dos campos (várias linhas de produto no mesmo formulário). */
   prefix?: string;
   presetProductId: string;
@@ -86,6 +91,7 @@ export function RequestProductFields({
 
   function fillFrom(id: string) {
     setProductId(id);
+    onProductChange?.(id);
     const p = products.find((x) => x.id === id);
     setPicked({ productName: null, description: null, specification: null });
     if (p) {

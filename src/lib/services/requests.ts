@@ -43,6 +43,7 @@ import {
   type OpenBriefOptions,
 } from "./packaging-brief";
 import { quoteSlaDeadline } from "@/lib/sla";
+import { effectiveMoq, isPieceUnit } from "@/lib/moq";
 import { openReview } from "./reviews";
 import { runComplianceGate } from "./compliance";
 import { runOperationGate } from "./operations";
@@ -253,6 +254,8 @@ export async function createRequest(
       input.customerId,
     );
   }
+  // Pedido mínimo do produto do catálogo: conferido antes de gastar número.
+  await assertProductMoq(input.productId, input.quantity, input.unit);
   // Prazo de resposta = SLA da Wellmix (Configurações). O cliente não escolhe;
   // a Wellmix pode ajustar numa solicitação específica.
   const deadline =
@@ -360,6 +363,30 @@ export async function createRequest(
     link: `/app/requests/${request.id}`,
   });
   return request;
+}
+
+/** Pedido mínimo do produto (ficha mestre, senão cadastro), em peças; nulo sem mínimo. */
+export async function productMoq(productId: string): Promise<number | null> {
+  const product = await getStore().get("products", productId);
+  if (!product) return null;
+  const { getProductSheet } = await import("./product-sheet");
+  const sheet = await getProductSheet(productId);
+  return effectiveMoq(sheet?.moq, product.moq);
+}
+
+/**
+ * Produto do catálogo com pedido mínimo: a quantidade (em peças) não pode
+ * ficar abaixo dele, nem pelo cliente nem pela Wellmix. Em outra unidade
+ * (caixas, kg) não há como comparar; a tela já sugere o mínimo.
+ */
+export async function assertProductMoq(
+  productId: string | null | undefined,
+  quantity: number,
+  unit: string,
+) {
+  if (!productId || !isPieceUnit(unit)) return;
+  const moq = await productMoq(productId);
+  if (moq !== null && quantity < moq) throw new RequestError("below_moq");
 }
 
 /** Próximo número de solicitação (contador próprio, como o dos pedidos). */

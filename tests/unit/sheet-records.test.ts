@@ -37,7 +37,8 @@ async function rfqFor(productId: string) {
     productName: "Panela",
     description: "Jogo de panelas",
     specification: null,
-    quantity: 100,
+    // Pedido mínimo da panela (500).
+    quantity: 500,
     unit: "un",
     deadline: null,
     notes: null,

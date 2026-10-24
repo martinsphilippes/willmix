@@ -21,6 +21,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import type { ProductFill } from "@/components/request-product-fields";
 import { RequestItems } from "@/components/request-items";
+import { effectiveMoq } from "@/lib/moq";
 import { getSettings } from "@/lib/settings";
 import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
@@ -129,10 +130,17 @@ export default async function NewRequestPage({
   const dims = (a: number | null, b: number | null, c: number | null) =>
     a !== null && b !== null && c !== null ? `${a} × ${b} × ${c}` : null;
   // Fotos do cadastro que aparecem ao escolher o produto (o cliente abre só estas).
-  const [showcase, stockByProduct] = await Promise.all([
+  const [showcase, stockByProduct, masterSheets] = await Promise.all([
     catalogShowcasePhotos(products.map((p) => p.id)),
     availableStockByProduct(),
+    // Pedido mínimo: o da ficha mestre (gravada com orderId = id do produto), senão o do cadastro.
+    products.length
+      ? store.list("purchase_sheets", {
+          filter: { orderId: products.map((p) => p.id) },
+        })
+      : Promise.resolve([]),
   ]);
+  const sheetMoq = new Map(masterSheets.map((s) => [s.orderId, s.moq]));
   // Estoque: o cliente vê só "em estoque"; quantidades ficam para a Wellmix.
   const qty = (n: number) => n.toLocaleString(t.intl);
   const stockFor = (productId: string): ProductFill["stock"] => {
@@ -150,6 +158,7 @@ export default async function NewRequestPage({
   const productFills: ProductFill[] = products.map((p) => ({
     id: p.id,
     stock: stockFor(p.id),
+    moq: effectiveMoq(sheetMoq.get(p.id), p.moq),
     photos: (showcase.get(p.id) ?? []).map((ph) => ({
       documentId: ph.documentId,
       caption: ph.caption?.trim() || p.name,
@@ -487,6 +496,9 @@ export default async function NewRequestPage({
                 hint: t("reqBatch.hint"),
                 quantity: t("common.quantity"),
                 unit: t("requests.unit"),
+                moq: t("reqProduct.moq", { n: "{n}", unit: "{unit}" }),
+                belowMoq: t("reqProduct.belowMoq", { n: "{n}", unit: "{unit}" }),
+                intl: t.intl,
                 schedule: {
                   intl: t.intl,
                   toggle: t("reqSchedule.toggle"),

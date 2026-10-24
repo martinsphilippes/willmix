@@ -33,7 +33,8 @@ function newRequest(description: string) {
     productName: "Panela",
     description,
     specification: null,
-    quantity: 100,
+    // No pedido mínimo da panela (500): abaixo dele a solicitação é recusada.
+    quantity: 500,
     unit: "un",
     deadline: null,
     notes: null,

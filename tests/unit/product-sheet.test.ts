@@ -172,7 +172,8 @@ describe("ficha mestre do produto", () => {
       productName: "Jarra",
       description: "Teste ficha mestre",
       specification: null,
-      quantity: 100,
+      // A ficha mestre acima tem pedido mínimo 1000: a solicitação não fica abaixo.
+      quantity: 1000,
       unit: "un",
       deadline: null,
       notes: null,
@@ -242,7 +243,7 @@ describe("ficha mestre do produto", () => {
       productName: "Panela",
       description: "Adotar ficha",
       specification: null,
-      quantity: 10,
+      quantity: 500,
       unit: "un",
       deadline: null,
       notes: null,

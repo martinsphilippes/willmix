@@ -14,6 +14,8 @@ Modelo: **solicitação → pedido → item → etapa → requisito → submiss�
 
 Quem responde a cotação de um produto do catálogo entra na lista de fornecedores do produto (`product_suppliers`), com o código do item, o preço, o MOQ e o prazo da resposta; escolher a cotação soma no histórico dele. O fornecedor principal continua sendo o do cadastro do produto.
 
+**Pedido mínimo na solicitação**: produto do catálogo com pedido mínimo (ficha mestre, senão cadastro) já entra na nova solicitação com a quantidade no mínimo; o campo não aceita menos (sair do campo abaixo do mínimo volta ao mínimo, como na vitrine) e o servidor recusa `below_moq` para cliente e Wellmix, inclusive na recompra. Só vale para quantidades em peças (un, pç, pcs…): em caixas ou quilos não há como comparar, e a tela só mostra o mínimo como referência.
+
 ## Etapas do pedido (tabela `stages`, chave `key`)
 
 Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked`, `done`), responsável, prazo (`dueAt`, calculado por `stageDueDays`), percentual e requisitos.

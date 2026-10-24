@@ -36,7 +36,8 @@ async function rfq(productId: string | null, name: string) {
     productId,
     productName: name,
     description: `${name} para revenda`,
-    quantity: 240,
+    // Acima de qualquer pedido mínimo do seed (500, 2000, 300).
+    quantity: 2000,
     unit: "un",
   });
   await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);

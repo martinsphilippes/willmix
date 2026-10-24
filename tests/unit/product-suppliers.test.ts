@@ -38,7 +38,8 @@ async function rfqFor(productId: string) {
     productName: "Produto",
     description: "Teste",
     specification: null,
-    quantity: 100,
+    // Acima de qualquer pedido mínimo do seed (500, 2000, 300).
+    quantity: 2000,
     unit: "un",
     deadline: null,
     notes: null,
@@ -122,7 +123,7 @@ describe("vários fornecedores por produto", () => {
       productName: "Panela",
       description: "Teste",
       specification: null,
-      quantity: 100,
+      quantity: 500,
       unit: "un",
       deadline: null,
       notes: null,

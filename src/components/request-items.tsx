@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { inputClass } from "@/components/ui";
+import { cx, inputClass } from "@/components/ui";
+import { isPieceUnit } from "@/lib/moq";
 import { RequestProductFields } from "@/components/request-product-fields";
 import {
   RequestScheduleFields,
@@ -39,14 +40,55 @@ export function RequestItems({
     hint: string;
     quantity: string;
     unit: string;
+    /** "Pedido mínimo: {n} {unit}". */
+    moq: string;
+    /** Quantidade digitada abaixo do mínimo ({n}, {unit}). */
+    belowMoq: string;
+    /** Idioma dos números (ex.: "pt-BR"). */
+    intl: string;
     schedule: ScheduleLabels;
   };
 }) {
   const [rows, setRows] = useState<number[]>([0]);
   const [next, setNext] = useState(1);
+  // Produto escolhido por linha: o pedido mínimo dele vale para a quantidade.
+  const [product, setProduct] = useState<Record<number, string>>({
+    0: presetProductId,
+  });
+  const moqOf = (id: string | undefined) =>
+    (id && fields.products.find((p) => p.id === id)?.moq) || null;
   // Quantidade e unidade por linha (a programação de entregas soma na quantidade).
-  const [qty, setQty] = useState<Record<number, string>>({ 0: presetQuantity });
+  // Produto com pedido mínimo já começa nele (nunca abaixo).
+  const [qty, setQty] = useState<Record<number, string>>(() => {
+    const moq = moqOf(presetProductId);
+    const preset = Number(presetQuantity.replace(",", ".")) || 0;
+    return { 0: moq && preset < moq ? String(moq) : presetQuantity };
+  });
   const [unit, setUnit] = useState<Record<number, string>>({ 0: "un" });
+
+  /** Produto da linha mudou: quantidade vazia ou abaixo do mínimo sobe para ele. */
+  function onProductChange(index: number, id: string) {
+    setProduct((p) => ({ ...p, [index]: id }));
+    const moq = moqOf(id);
+    if (!moq) return;
+    setQty((q) => {
+      const current = Number((q[index] ?? "").replace(",", ".")) || 0;
+      return current < moq && isPieceUnit(unit[index])
+        ? { ...q, [index]: String(moq) }
+        : q;
+    });
+  }
+  /** Saiu do campo abaixo do mínimo: volta ao mínimo (a regra da vitrine). */
+  function floorToMoq(index: number) {
+    const moq = moqOf(product[index]);
+    if (!moq || !isPieceUnit(unit[index])) return;
+    setQty((q) => {
+      const current = Number((q[index] ?? "").replace(",", ".")) || 0;
+      return current < moq ? { ...q, [index]: String(moq) } : q;
+    });
+  }
+  const fill = (text: string, n: number, u: string) =>
+    text.replace("{n}", n.toLocaleString(labels.intl)).replace("{unit}", u);
 
   function add() {
     setRows((r) => [...r, next]);
@@ -71,6 +113,11 @@ export function RequestItems({
           "{n}",
           String(position + 1),
         );
+        const moq = moqOf(product[index]);
+        const rowUnit = unit[index] ?? "un";
+        const moqApplies = !!moq && isPieceUnit(rowUnit);
+        const current = Number((qty[index] ?? "").replace(",", ".")) || 0;
+        const below = moqApplies && (qty[index] ?? "") !== "" && current < moq!;
         return (
           <fieldset
             key={index}
@@ -102,6 +149,7 @@ export function RequestItems({
                 presetProductId={first ? presetProductId : ""}
                 defaultNotInCatalog={first ? defaultNotInCatalog : false}
                 suggestions={first ? suggestions : {}}
+                onProductChange={(id) => onProductChange(index, id)}
               />
               <label className="block min-w-0 space-y-1">
                 <span className="block text-xs font-medium leading-5 text-zinc-700">
@@ -110,15 +158,31 @@ export function RequestItems({
                 <input
                   name={`${prefix}quantity`}
                   type="number"
-                  min="0.01"
+                  // Produto com pedido mínimo: o campo não aceita menos (nem o navegador deixa enviar).
+                  min={moqApplies ? moq! : "0.01"}
                   step="any"
                   required
                   value={qty[index] ?? ""}
                   onChange={(e) =>
                     setQty((q) => ({ ...q, [index]: e.target.value }))
                   }
-                  className={inputClass}
+                  onBlur={() => floorToMoq(index)}
+                  aria-describedby={moq ? `moq-${index}` : undefined}
+                  data-request-moq={moq ?? undefined}
+                  className={cx(inputClass, below && "border-red-400")}
                 />
+                {moq ? (
+                  <span
+                    id={`moq-${index}`}
+                    data-request-moq-hint={below ? "below" : "ok"}
+                    className={cx(
+                      "block text-xs leading-snug",
+                      below ? "font-medium text-red-700" : "text-zinc-500",
+                    )}
+                  >
+                    {fill(below ? labels.belowMoq : labels.moq, moq, rowUnit)}
+                  </span>
+                ) : null}
               </label>
               <label className="block min-w-0 space-y-1">
                 <span className="block text-xs font-medium leading-5 text-zinc-700">

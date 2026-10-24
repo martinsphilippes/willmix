@@ -95,7 +95,8 @@ async function quoteSheetFor(productId: string, supplierId: string) {
     productName: "Produto",
     description: "Teste",
     specification: null,
-    quantity: 100,
+    // Acima de qualquer pedido mínimo do seed (500, 2000, 300).
+    quantity: 2000,
     unit: "un",
     deadline: null,
     notes: null,
