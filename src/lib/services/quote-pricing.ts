@@ -19,6 +19,7 @@ import { getQuoteSheet } from "./quote-sheet";
 import { freightByQuote } from "./freight";
 import { requestNcm, type RequestNcm } from "./request-ncm";
 import { quotedQuantity } from "./purchase-sheet-calc";
+import { boxCbm } from "@/lib/logistics/cbm";
 
 /*
  * Valor ao cliente de uma cotação: ficha da cotação (ou o preço da cotação,
@@ -37,6 +38,15 @@ export interface QuotePricing {
   marginSource: "customer" | "line" | "default";
   freightPerCbm: number | null;
   freightCurrency: string;
+  /**
+   * De onde saiu o volume do frete por CBM: a ficha do fornecedor; sem ela,
+   * o cadastro do produto (ou da variação pedida); nulo = sem volume.
+   */
+  cbm: {
+    source: "sheet" | "product" | null;
+    perCarton: number | null;
+    cbmPerCarton: number | null;
+  };
   /** De onde saíram NCM, II e IPI (para a tela explicar a conta). */
   tax: {
     ncm: string | null;
@@ -154,15 +164,38 @@ export async function quotePricing(
     // Quantidade que a cotação compra: a programação da ficha (caixas × peças
     // por caixa), que fecha o container; sem programação, a pedida pelo cliente.
     const quantity = quotedQuantity(request, sheet);
+    // Volume: peças por caixa master e CBM da caixa da ficha do fornecedor;
+    // faltando, os do cadastro (variação pedida > produto), para o frete da
+    // tabela da companhia marítima sair mesmo antes da ficha.
+    const positive = (n: number | null | undefined) =>
+      typeof n === "number" && n > 0 ? n : null;
+    const sheetPer = positive(sheet?.masterCartonQty);
+    const sheetCbm = positive(sheet?.cbmPerCarton);
+    const variant = request.variant ?? null;
+    const catalogPer =
+      positive(variant?.masterBoxQty) ?? positive(product?.masterBoxQty);
+    const catalogCbm =
+      positive(variant?.cbm) ?? (product ? positive(boxCbm(product)) : null);
+    const fromSheet = sheetPer !== null && sheetCbm !== null;
+    const fromCatalog =
+      !fromSheet &&
+      (sheetPer ?? catalogPer) !== null &&
+      (sheetCbm ?? catalogCbm) !== null;
+    const perCarton = fromSheet
+      ? sheetPer
+      : fromCatalog
+        ? (sheetPer ?? catalogPer)
+        : null;
+    const cbmPerCarton = fromSheet
+      ? sheetCbm
+      : fromCatalog
+        ? (sheetCbm ?? catalogCbm)
+        : null;
     const input: PricingInput = {
       unitPrice: sheet?.price ?? quote.price,
       currency: sheet?.currency ?? quote.currency,
       quantity,
-      totalCbm: totalCbmFor(
-        quantity,
-        sheet?.masterCartonQty ?? null,
-        sheet?.cbmPerCarton ?? null,
-      ),
+      totalCbm: totalCbmFor(quantity, perCarton, cbmPerCarton),
       importTaxPercent: ii,
       ipiPercent: ipi,
       insurancePercent: settings.insurancePercent,
@@ -186,6 +219,11 @@ export async function quotePricing(
       marginSource: margin.source,
       freightPerCbm: settings.freightPerCbm,
       freightCurrency: settings.freightCurrency,
+      cbm: {
+        source: fromSheet ? "sheet" : fromCatalog ? "product" : null,
+        perCarton,
+        cbmPerCarton,
+      },
       tax: {
         ncm: ncm.ncm,
         ncmStatus: ncm.status,
