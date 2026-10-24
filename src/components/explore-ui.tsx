@@ -324,6 +324,8 @@ export function ProductCard({
     : product.moq && product.moq > 0
       ? product.moq
       : 1;
+  // Com variações: "a partir de" (a mais barata) e o cliente escolhe na página.
+  const hasVariants = product.variants.length > 0;
   return (
     <li
       id={`p-${product.id}`}
@@ -374,8 +376,34 @@ export function ProductCard({
           <h3 className="line-clamp-2 min-h-[2.5rem] break-words text-sm leading-5 text-zinc-800 group-hover:text-zinc-950">
             {product.name}
           </h3>
+          {hasVariants ? (
+            <span
+              className="inline-flex w-fit rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-inset ring-brand-200"
+              data-explore-variant-count={product.variants.length}
+            >
+              {product.variants.length === 1
+                ? t("explore.variants.one")
+                : t("explore.variants.count", { n: product.variants.length })}
+            </span>
+          ) : null}
           <div className="mt-auto pt-1">
-            {product.estimate.ok ? (
+            {hasVariants ? (
+              product.priceFrom !== null ? (
+                <>
+                  <span className="block text-[11px] text-zinc-500">
+                    {t("explore.priceFrom")}
+                  </span>
+                  <PriceTag t={t} value={product.priceFrom} />
+                  <span className="block text-[11px] text-emerald-800">
+                    {t("explore.price.estimated")}
+                  </span>
+                </>
+              ) : (
+                <span className="block text-sm font-semibold text-zinc-700">
+                  {t("explore.price.onRequest")}
+                </span>
+              )
+            ) : product.estimate.ok ? (
               <>
                 <PriceTag t={t} value={product.estimate.unitBrl} />
                 <span className="block text-[11px] text-emerald-800">
@@ -387,7 +415,7 @@ export function ProductCard({
                 {t("explore.price.onRequest")}
               </span>
             )}
-            {product.moq ? (
+            {product.moq && !hasVariants ? (
               <span className="mt-0.5 block text-xs text-zinc-600">
                 {t("explore.moq", {
                   n: product.moq.toLocaleString(t.intl),
@@ -398,7 +426,18 @@ export function ProductCard({
           </div>
         </div>
       </Link>
-      {canBuy ? (
+      {canBuy && hasVariants ? (
+        // A variação se escolhe na página do produto (o carrinho exige uma).
+        <div className="px-3 pb-3">
+          <Link
+            href={href}
+            className="flex w-full items-center justify-center rounded-xl border border-brand-200 px-2 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-50"
+            data-explore-choose-variant={product.id}
+          >
+            {t("explore.variant.chooseLink")}
+          </Link>
+        </div>
+      ) : canBuy ? (
         <div className="px-3 pb-3">
           {addedQty ? (
             <Link

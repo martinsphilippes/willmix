@@ -59,6 +59,8 @@ export default async function CartPage({
     cart_quantity_invalid: t("explore.error.cart_quantity_invalid"),
     cart_below_moq: t("explore.error.cart_below_moq"),
     cart_item_not_found: t("explore.error.cart_item_not_found"),
+    cart_variant_required: t("explore.error.cart_variant_required"),
+    cart_variant_invalid: t("explore.error.cart_variant_invalid"),
     invalid_input: t("explore.error.cart_quantity_invalid"),
     forbidden: t("explore.error.forbidden"),
     schema_outdated: t("explore.error.schema_outdated"),
@@ -114,12 +116,13 @@ export default async function CartPage({
                   key={line.id}
                   className={cx(
                     "rounded-3xl border bg-white p-3 shadow-sm shadow-zinc-900/[0.03] sm:p-4",
-                    line.unavailable
+                    line.unavailable || line.variantUnavailable
                       ? "border-amber-300"
                       : "border-zinc-200/80",
                   )}
                   data-cart-line={line.productId}
                   data-cart-qty={line.quantity}
+                  data-cart-variant={line.variantId ?? undefined}
                 >
                   <div className="flex gap-3">
                     <Link
@@ -146,6 +149,14 @@ export default async function CartPage({
                           >
                             {line.name}
                           </Link>
+                          {line.variantName ? (
+                            <p
+                              className="text-xs font-medium text-brand-700"
+                              data-cart-variant-name={line.variantId ?? ""}
+                            >
+                              {t("explore.variant.label")}: {line.variantName}
+                            </p>
+                          ) : null}
                           {line.category ? (
                             <p className="text-xs text-zinc-500">
                               {line.category}
@@ -176,6 +187,13 @@ export default async function CartPage({
                       {line.unavailable ? (
                         <p className="mt-2 text-xs font-medium text-amber-800">
                           {t("explore.cart.unavailable")}
+                        </p>
+                      ) : line.variantUnavailable ? (
+                        <p
+                          className="mt-2 text-xs font-medium text-amber-800"
+                          data-cart-variant-unavailable=""
+                        >
+                          {t("explore.cart.variantUnavailable")}
                         </p>
                       ) : null}
                       {line.belowMoq && line.moq ? (
