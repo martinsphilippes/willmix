@@ -102,20 +102,90 @@ export type SheetColumn =
  */
 const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
   ["photo", ["PHOTO", "FOTO", "PICTURE", "IMAGE", "图片"]],
-  ["businessCard", ["SUPPLIER BUSINESS CARD", "BUSINESS CARD", "CARTAO", "CARTAO DO FORNECEDOR", "名片"]],
+  [
+    "businessCard",
+    [
+      "SUPPLIER BUSINESS CARD",
+      "BUSINESS CARD",
+      "CARTAO",
+      "CARTAO DO FORNECEDOR",
+      "名片",
+    ],
+  ],
   ["sheetDate", ["DATE", "DATA", "日期"]],
   ["location", ["LOCAL", "LOCATION", "CITY", "CIDADE", "MARKET", "MERCADO"]],
-  ["supplierStore", ["SUPPLIER STORE NO YIWU", "SUPPLIER STORE NO", "STORE NO", "STORE", "LOJA", "BOOTH", "店铺"]],
-  ["supplierPhone", ["SUPPLIER PHONE NO", "SUPPLIER PHONE", "PHONE", "TEL", "TELEFONE", "MOBILE", "电话"]],
-  ["supplierName", ["SUPPLIER NAME", "SUPPLIER", "FORNECEDOR", "VENDOR", "FACTORY", "供应商"]],
-  ["factoryItemCode", ["SKU FACTORY ITEM CODE", "FACTORY ITEM CODE", "ITEM CODE", "ITEM NO", "SKU", "CODIGO", "CODE", "MODEL NO", "型号", "货号"]],
+  [
+    "supplierStore",
+    [
+      "SUPPLIER STORE NO YIWU",
+      "SUPPLIER STORE NO",
+      "STORE NO",
+      "STORE",
+      "LOJA",
+      "BOOTH",
+      "店铺",
+    ],
+  ],
+  [
+    "supplierPhone",
+    [
+      "SUPPLIER PHONE NO",
+      "SUPPLIER PHONE",
+      "PHONE",
+      "TEL",
+      "TELEFONE",
+      "MOBILE",
+      "电话",
+    ],
+  ],
+  [
+    "supplierName",
+    ["SUPPLIER NAME", "SUPPLIER", "FORNECEDOR", "VENDOR", "FACTORY", "供应商"],
+  ],
+  [
+    "factoryItemCode",
+    [
+      "SKU FACTORY ITEM CODE",
+      "FACTORY ITEM CODE",
+      "ITEM CODE",
+      "ITEM NO",
+      "SKU",
+      "CODIGO",
+      "CODE",
+      "MODEL NO",
+      "型号",
+      "货号",
+    ],
+  ],
   ["incoterm", ["FOB EXW", "INCOTERM", "FOB", "EXW"]],
   ["price", ["PRICE", "PRECO", "UNIT PRICE", "单价", "价格"]],
   ["currency", ["CURRENCY", "MOEDA", "币种"]],
-  ["masterCartonQty", ["QTY BOX", "QTY CTN", "PCS CTN", "QTY CARTON", "PCS BOX", "QTD CAIXA", "QTD POR CAIXA", "装箱数", "外箱装量"]],
-  ["innerQty", ["QTY INNER", "INNER", "PCS INNER", "QTD INNER", "INNER BOX", "内盒"]],
-  ["netWeightPcKg", ["N W PC", "NW PC", "N W", "NW", "NET WEIGHT", "PESO LIQUIDO", "净重"]],
-  ["grossWeightPcKg", ["G W PC", "GW PC", "G W", "GW", "GROSS WEIGHT", "PESO BRUTO", "毛重"]],
+  [
+    "masterCartonQty",
+    [
+      "QTY BOX",
+      "QTY CTN",
+      "PCS CTN",
+      "QTY CARTON",
+      "PCS BOX",
+      "QTD CAIXA",
+      "QTD POR CAIXA",
+      "装箱数",
+      "外箱装量",
+    ],
+  ],
+  [
+    "innerQty",
+    ["QTY INNER", "INNER", "PCS INNER", "QTD INNER", "INNER BOX", "内盒"],
+  ],
+  [
+    "netWeightPcKg",
+    ["N W PC", "NW PC", "N W", "NW", "NET WEIGHT", "PESO LIQUIDO", "净重"],
+  ],
+  [
+    "grossWeightPcKg",
+    ["G W PC", "GW PC", "G W", "GW", "GROSS WEIGHT", "PESO BRUTO", "毛重"],
+  ],
   ["cbmPerCarton", ["CBM", "CBM CTN", "CBM BOX", "CBM CAIXA", "体积"]],
   ["lengthCm", ["SIZE LENGTH", "LENGTH", "COMPRIMENTO", "长"]],
   ["widthCm", ["SIZE WIDTH", "WIDTH", "LARGURA", "宽"]],
@@ -123,12 +193,53 @@ const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
   ["sizeText", ["SIZE", "TAMANHO", "MEDIDAS", "DIMENSIONS", "尺寸"]],
   ["capacityMl", ["CAPACITY ML", "CAPACITY", "CAPACIDADE", "容量"]],
   ["packageType", ["PACKAGE", "PACKING", "PACKAGING", "EMBALAGEM", "包装"]],
-  ["colorAssortment", ["COLOR ASSOLTMENT", "COLOR ASSORTMENT", "COLOUR ASSORTMENT", "COLOR", "COLOUR", "COR", "CORES", "颜色"]],
+  [
+    "colorAssortment",
+    [
+      "COLOR ASSOLTMENT",
+      "COLOR ASSORTMENT",
+      "COLOUR ASSORTMENT",
+      "COLOR",
+      "COLOUR",
+      "COR",
+      "CORES",
+      "颜色",
+    ],
+  ],
   ["material", ["MATERIAL", "材质"]],
-  ["powerDetail", ["FUNCION BATERRY 110 220", "FUNCTION BATTERY 110 220", "FUNCTION", "FUNCION", "BATTERY", "VOLTAGE", "POWER", "FUNCAO"]],
+  [
+    "powerDetail",
+    [
+      "FUNCION BATERRY 110 220",
+      "FUNCTION BATTERY 110 220",
+      "FUNCTION",
+      "FUNCION",
+      "BATTERY",
+      "VOLTAGE",
+      "POWER",
+      "FUNCAO",
+    ],
+  ],
   ["moq", ["MOQ", "MIN ORDER", "PEDIDO MINIMO", "起订量"]],
-  ["description", ["OBS 1 LINHA", "OBS", "DESCRIPTION", "DESCRICAO", "REMARK", "REMARKS", "MODEL", "MODELO", "DESIGN", "备注"]],
-  ["name", ["PRODUCT NAME", "NAME", "NOME", "PRODUTO", "ITEM NAME", "产品名称"]],
+  [
+    "description",
+    [
+      "OBS 1 LINHA",
+      "OBS",
+      "DESCRIPTION",
+      "DESCRICAO",
+      "REMARK",
+      "REMARKS",
+      "MODEL",
+      "MODELO",
+      "DESIGN",
+      "备注",
+    ],
+  ],
+  [
+    "name",
+    ["PRODUCT NAME", "NAME", "NOME", "PRODUTO", "ITEM NAME", "产品名称"],
+  ],
   ["schedule", ["PURCHASE SCHEDULE", "PROGRAMACAO"]],
   ["interval", ["DEPARTURE INTERVAL IN DAYS", "DEPARTURE INTERVAL"]],
   ["purchaseQty", ["PURCHASE QTY IN PCS", "PURCHASE QTY"]],
@@ -165,14 +276,17 @@ function matchColumn(header: string): SheetColumn | null {
   for (const [column, synonyms] of HEADERS)
     if (synonyms.includes(h)) return column;
   // "FOB PRICE", "PRICE USD", "UNIT PRICE RMB": é o preço (o incoterm vem junto).
-  if (/\b(PRICE|PRECO)\b|单价|价格/.test(h) && !/\bTOTAL\b/.test(h)) return "price";
+  if (/\b(PRICE|PRECO)\b|单价|价格/.test(h) && !/\bTOTAL\b/.test(h))
+    return "price";
   // "N.W/CTN", "G.W BOX": peso da caixa, não da peça: ignorado.
-  if (/\b(N ?W|G ?W|NET WEIGHT|GROSS WEIGHT|PESO)\b/.test(h) && CARTON_WORD.test(h))
+  if (
+    /\b(N ?W|G ?W|NET WEIGHT|GROSS WEIGHT|PESO)\b/.test(h) &&
+    CARTON_WORD.test(h)
+  )
     return null;
   for (const [column, synonyms] of HEADERS) {
     if (column === "incoterm") continue;
-    for (const syn of synonyms)
-      if (h.startsWith(`${syn} `)) return column;
+    for (const syn of synonyms) if (h.startsWith(`${syn} `)) return column;
   }
   return null;
 }
@@ -183,7 +297,8 @@ export function currencyInHeader(header: string): SheetCurrency | null {
   if (/BRL|R\$|REAL|REAIS/.test(h)) return "BRL";
   if (/RMB|CNY|¥|元|YUAN/.test(h)) return "RMB";
   if (/EUR|€/.test(h)) return "EUR";
-  if (/USD|US\$|U\$|DOLLAR|美元/.test(h) || /(^|[^A-Z])\$/.test(h)) return "USD";
+  if (/USD|US\$|U\$|DOLLAR|美元/.test(h) || /(^|[^A-Z])\$/.test(h))
+    return "USD";
   return null;
 }
 
@@ -311,7 +426,10 @@ function findHeader(cells: Cells) {
  */
 export function parseProductSheet(
   bytes: Uint8Array,
-  options: { sheet?: string | null; defaultCurrency?: SheetCurrency | null } = {},
+  options: {
+    sheet?: string | null;
+    defaultCurrency?: SheetCurrency | null;
+  } = {},
 ): ParsedSheet {
   // Excel atual (.xlsx, ZIP) ou antigo (.xls, OLE/BIFF8): o mesmo leitor por trás.
   let workbook: Workbook;
@@ -431,7 +549,9 @@ export function parseProductSheet(
   for (let r = dataStart; r < cells.length; r++) {
     const line = cells[r] ?? [];
     const values: Partial<Record<SheetColumn, string>> = {};
-    for (const [col, index] of Object.entries(columns) as Array<[SheetColumn, number]>) {
+    for (const [col, index] of Object.entries(columns) as Array<
+      [SheetColumn, number]
+    >) {
       const v = (line[index] ?? "").trim();
       if (v) values[col] = v;
     }
@@ -464,7 +584,8 @@ export function parseProductSheet(
     incoterm,
     warnings,
   );
-  if (groups.length > MAX_SHEET_PRODUCTS) throw new SheetImportError("too_many");
+  if (groups.length > MAX_SHEET_PRODUCTS)
+    throw new SheetImportError("too_many");
   return {
     sheetName,
     headerRow: headerIndex + 1,
@@ -505,10 +626,13 @@ function groupRows(
       if (values[field] !== undefined) raw[field] = values[field];
     // Moeda e incoterm: coluna própria, cabeçalho do preço ou a escolhida na
     // tela (só acompanham um preço; sem preço, a moeda não entra).
-    raw.currency = values.price ? (values.currency ?? currency ?? undefined) : values.currency;
+    raw.currency = values.price
+      ? (values.currency ?? currency ?? undefined)
+      : values.currency;
     if (!values.incoterm && incoterm) raw.incoterm = incoterm;
     // Data gravada como número de série do Excel.
-    if (values.sheetDate) raw.sheetDate = excelSerialDate(values.sheetDate) ?? values.sheetDate;
+    if (values.sheetDate)
+      raw.sheetDate = excelSerialDate(values.sheetDate) ?? values.sheetDate;
     // Capacidade: ml (ou litros); "A4" / "8X10" é o tamanho (vai para o nome).
     const capacity = values.capacityMl;
     const ml = capacity ? capacityMl(capacity) : null;
@@ -530,9 +654,15 @@ function groupRows(
     const name = text(values.name, 160);
     const color = text(values.colorAssortment, 200);
     const noteParts = [
-      values.schedule ? `Purchase schedule: ${text(values.schedule, 80)}` : null,
-      values.interval ? `Departure interval (days): ${text(values.interval, 40)}` : null,
-      values.purchaseQty ? `Purchase qty (pcs): ${text(values.purchaseQty, 40)}` : null,
+      values.schedule
+        ? `Purchase schedule: ${text(values.schedule, 80)}`
+        : null,
+      values.interval
+        ? `Departure interval (days): ${text(values.interval, 40)}`
+        : null,
+      values.purchaseQty
+        ? `Purchase qty (pcs): ${text(values.purchaseQty, 40)}`
+        : null,
     ].filter(Boolean) as string[];
     const key = JSON.stringify([
       reading.factoryItemCode ?? "",
@@ -557,7 +687,10 @@ function groupRows(
     const last = groups[groups.length - 1];
     if (last && key === lastKey) {
       last.lastRow = row;
-      if (color && !last.colors.some((c) => c.toLowerCase() === color.toLowerCase()))
+      if (
+        color &&
+        !last.colors.some((c) => c.toLowerCase() === color.toLowerCase())
+      )
         last.colors.push(color);
       continue;
     }
@@ -584,7 +717,10 @@ function groupRows(
     col === undefined
       ? null
       : (images.find(
-          (img) => img.col === col && img.row + 1 >= g.firstRow && img.row + 1 <= g.lastRow,
+          (img) =>
+            img.col === col &&
+            img.row + 1 >= g.firstRow &&
+            img.row + 1 <= g.lastRow,
         ) ?? null);
   for (const g of groups) {
     g.photo = pick(g, columns.photo);
@@ -682,13 +818,25 @@ export interface SheetImportResult {
 }
 
 const norm = (s: string | null | undefined) =>
-  (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  (s ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 
 /** Nome do produto: prefixo + descrição + tamanho; ou a coluna NAME quando existe. */
-export function productNameFor(group: ProductGroup, prefix: string | null | undefined): string {
+export function productNameFor(
+  group: ProductGroup,
+  prefix: string | null | undefined,
+): string {
   const base =
     group.name ??
-    [prefix?.trim() || null, group.description, group.sizeText ?? dimsText(group)]
+    [
+      prefix?.trim() || null,
+      group.description,
+      group.sizeText ?? dimsText(group),
+    ]
       .filter(Boolean)
       .join(" ");
   const fallback = group.reading.factoryItemCode
@@ -704,8 +852,10 @@ function dimsText(g: ProductGroup) {
 }
 
 function sheetInputFrom(r: ReadingValues, notes: string | null): SheetInput {
-  const n = (k: ReadingField) => (typeof r[k] === "number" ? (r[k] as number) : undefined);
-  const s = (k: ReadingField) => (typeof r[k] === "string" ? (r[k] as string) : undefined);
+  const n = (k: ReadingField) =>
+    typeof r[k] === "number" ? (r[k] as number) : undefined;
+  const s = (k: ReadingField) =>
+    typeof r[k] === "string" ? (r[k] as string) : undefined;
   return {
     sheetDate: s("sheetDate"),
     location: s("location"),
@@ -742,9 +892,12 @@ async function resolveSupplier(
   suppliers: Party[],
 ): Promise<{ party: Party; created: boolean } | null> {
   const store = getStore();
-  const name = typeof reading.supplierName === "string" ? reading.supplierName : null;
-  const code = typeof reading.supplierStore === "string" ? reading.supplierStore : null;
-  const phone = typeof reading.supplierPhone === "string" ? reading.supplierPhone : null;
+  const name =
+    typeof reading.supplierName === "string" ? reading.supplierName : null;
+  const code =
+    typeof reading.supplierStore === "string" ? reading.supplierStore : null;
+  const phone =
+    typeof reading.supplierPhone === "string" ? reading.supplierPhone : null;
   const city = typeof reading.location === "string" ? reading.location : null;
   const found =
     (code && suppliers.find((p) => norm(p.storeNumber) === norm(code))) ||
@@ -778,7 +931,13 @@ async function resolveSupplier(
     storeNumber: code?.slice(0, 60) ?? null,
     active: true,
   });
-  await audit(user, "party.create", "party", party.id, `${party.name} (importação da ficha técnica)`);
+  await audit(
+    user,
+    "party.create",
+    "party",
+    party.id,
+    `${party.name} (importação da ficha técnica)`,
+  );
   suppliers.push(party);
   return { party, created: true };
 }
@@ -791,7 +950,9 @@ async function attachPhoto(
   existingKinds: Set<string>,
 ): Promise<number> {
   if (!image || existingKinds.has(kind)) return 0;
-  const file = new File([new Uint8Array(image.bytes)], image.name, { type: image.mime });
+  const file = new File([new Uint8Array(image.bytes)], image.name, {
+    type: image.mime,
+  });
   const photos = await addPhotos(user, { productId }, [file], kind);
   if (photos.length) existingKinds.add(kind);
   return photos.length;
@@ -807,17 +968,23 @@ async function sheetBytes(source: SheetSource) {
     };
   }
   if ("url" in source) {
-    const { fetchGoogleSheetXlsx, GoogleSheetError } = await import("./google-sheet");
+    const { fetchGoogleSheetXlsx, GoogleSheetError } =
+      await import("./google-sheet");
     try {
       return await fetchGoogleSheetXlsx(source.url);
     } catch (error) {
-      if (error instanceof GoogleSheetError) throw new SheetImportError(error.message);
+      if (error instanceof GoogleSheetError)
+        throw new SheetImportError(error.message);
       throw new SheetImportError("sheet_fetch_failed");
     }
   }
   const stored = await getStore().getFile(source.fileKey);
-  if (!stored || stored.bytes.length === 0) throw new SheetImportError("file_required");
-  return { bytes: stored.bytes, name: source.fileName || stored.name || "ficha.xlsx" };
+  if (!stored || stored.bytes.length === 0)
+    throw new SheetImportError("file_required");
+  return {
+    bytes: stored.bytes,
+    name: source.fileName || stored.name || "ficha.xlsx",
+  };
 }
 
 /** O que as duas formas de importar compartilham. */
@@ -855,15 +1022,22 @@ export async function importProductSheet(
 ): Promise<SheetImportResult> {
   assertWellmix(user);
   const store = getStore();
-  const line = options.lineId ? await store.get("product_lines", options.lineId) : null;
+  const line = options.lineId
+    ? await store.get("product_lines", options.lineId)
+    : null;
   if (!line) throw new SheetImportError("line_required");
-  const mode: SheetImportMode = options.mode === "products" ? "products" : "variants";
+  const mode: SheetImportMode =
+    options.mode === "products" ? "products" : "variants";
   const currency =
-    options.defaultCurrency && (SHEET_CURRENCIES as readonly string[]).includes(options.defaultCurrency)
+    options.defaultCurrency &&
+    (SHEET_CURRENCIES as readonly string[]).includes(options.defaultCurrency)
       ? options.defaultCurrency
       : null;
   const file = await sheetBytes(source);
-  const parsed = parseProductSheet(file.bytes, { sheet: options.sheet, defaultCurrency: currency });
+  const parsed = parseProductSheet(file.bytes, {
+    sheet: options.sheet,
+    defaultCurrency: currency,
+  });
 
   const [suppliers, products] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" } }),
@@ -898,20 +1072,24 @@ export async function importProductSheet(
 
   // Lote: evidência (arquivo guardado) e histórico do que entrou. A planilha
   // baixada do Google fica guardada como se tivesse sido enviada.
-  const doc = await (source instanceof File
-    ? uploadDocument(user, source, { type: "attachment", visibility: "internal" })
-    : "url" in source
-      ? uploadDocument(
-          user,
-          new File([new Uint8Array(file.bytes)], file.name, {
-            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          }),
-          { type: "attachment", visibility: "internal" },
-        )
-      : registerUploadedDocument(user, source.fileKey, {
+  const doc = await (
+    source instanceof File
+      ? uploadDocument(user, source, {
           type: "attachment",
           visibility: "internal",
         })
+      : "url" in source
+        ? uploadDocument(
+            user,
+            new File([new Uint8Array(file.bytes)], file.name, {
+              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            }),
+            { type: "attachment", visibility: "internal" },
+          )
+        : registerUploadedDocument(user, source.fileKey, {
+            type: "attachment",
+            visibility: "internal",
+          })
   ).catch(() => null);
   const headers = Object.values(parsed.headers).filter(Boolean) as string[];
   const batch: ImportBatch = await store.create("import_batches", {
@@ -921,21 +1099,24 @@ export async function importProductSheet(
     fileName: file.name.slice(0, 255),
     sheetName: parsed.sheetName.slice(0, 120),
     headers,
-    rows: parsed.rows.slice(0, 500).map((r) =>
-      Object.fromEntries(
-        (Object.entries(r.values) as Array<[SheetColumn, string]>).map(([col, v]) => [
-          parsed.headers[col] ?? col,
-          v,
-        ]),
+    rows: parsed.rows
+      .slice(0, 500)
+      .map((r) =>
+        Object.fromEntries(
+          (Object.entries(r.values) as Array<[SheetColumn, string]>).map(
+            ([col, v]) => [parsed.headers[col] ?? col, v],
+          ),
+        ),
       ),
-    ),
     mapping: {
       __lineId: options.lineId,
       __namePrefix: options.namePrefix?.trim() || "",
       __currency: parsed.currency ?? currency ?? "",
       __mode: mode,
       ...Object.fromEntries(
-        (Object.entries(parsed.headers) as Array<[SheetColumn, string]>).map(([col, h]) => [h, col]),
+        (Object.entries(parsed.headers) as Array<[SheetColumn, string]>).map(
+          ([col, h]) => [h, col],
+        ),
       ),
     },
     decisions,
@@ -954,7 +1135,13 @@ export async function importProductSheet(
         ? `, ${summary.variantsCreated} variação(ões) criada(s), ${summary.variantsUpdated} atualizada(s), ${summary.variantErrors} com erro`
         : ""),
   );
-  return { batchId: batch.id, sheetName: parsed.sheetName, summary, results, warnings: parsed.warnings };
+  return {
+    batchId: batch.id,
+    sheetName: parsed.sheetName,
+    summary,
+    results,
+    warnings: parsed.warnings,
+  };
 }
 
 /**
@@ -969,8 +1156,12 @@ function matchProduct(
   supplierId: string | null,
   supplierName: string | null,
 ): { existing: Product | undefined; name: string } {
-  const sameName = products.filter((p) => p.lineId === lineId && norm(p.name) === norm(name));
-  const existing = sameName.find((p) => !p.supplierId || !supplierId || p.supplierId === supplierId);
+  const sameName = products.filter(
+    (p) => p.lineId === lineId && norm(p.name) === norm(name),
+  );
+  const existing = sameName.find(
+    (p) => !p.supplierId || !supplierId || p.supplierId === supplierId,
+  );
   if (!existing && sameName.length && supplierName)
     return { existing, name: `${name} · ${supplierName}`.slice(0, 160) };
   return { existing, name };
@@ -978,7 +1169,16 @@ function matchProduct(
 
 /** Um produto por grupo (o comportamento anterior, mantido sem mudanças). */
 async function importAsProducts(ctx: ImportContext): Promise<void> {
-  const { user, options, parsed, suppliers, products, summary, results, decisions } = ctx;
+  const {
+    user,
+    options,
+    parsed,
+    suppliers,
+    products,
+    summary,
+    results,
+    decisions,
+  } = ctx;
   const store = getStore();
   const namesUsed = new Set<string>();
   for (const group of parsed.groups) {
@@ -1000,7 +1200,9 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       result.supplierName = supplier?.party.name ?? null;
       const supplierId = supplier?.party.id ?? null;
       const supplierSku =
-        typeof group.reading.factoryItemCode === "string" ? group.reading.factoryItemCode.slice(0, 60) : null;
+        typeof group.reading.factoryItemCode === "string"
+          ? group.reading.factoryItemCode.slice(0, 60)
+          : null;
       const sizes = {
         lengthCm: group.lengthCm,
         widthCm: group.widthCm,
@@ -1037,7 +1239,9 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         const patch: Partial<Product> = {};
         if (supplierId) patch.supplierId = supplierId;
         if (supplierSku) patch.supplierSku = supplierSku;
-        for (const [k, v] of Object.entries(sizes) as Array<[keyof typeof sizes, number | null]>)
+        for (const [k, v] of Object.entries(sizes) as Array<
+          [keyof typeof sizes, number | null]
+        >)
           if (v !== null) patch[k] = v;
         product = Object.keys(patch).length
           ? await store.update("products", existing.id, patch)
@@ -1045,7 +1249,10 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         if (supplierId)
           await syncMainSupplierLink(
             user,
-            { supplierId: existing.supplierId, supplierSku: existing.supplierSku },
+            {
+              supplierId: existing.supplierId,
+              supplierSku: existing.supplierSku,
+            },
             { supplierId, supplierSku: supplierSku ?? existing.supplierSku },
             product.id,
           );
@@ -1061,7 +1268,9 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
           supplierId,
           supplierSku,
           material:
-            typeof group.reading.material === "string" ? group.reading.material.slice(0, 120) : null,
+            typeof group.reading.material === "string"
+              ? group.reading.material.slice(0, 120)
+              : null,
           ...sizes,
           active: true,
           source: "import",
@@ -1074,7 +1283,13 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
             { supplierId, supplierSku },
             product.id,
           );
-        await audit(user, "product.create", "product", product.id, `${name} (importação da ficha técnica)`);
+        await audit(
+          user,
+          "product.create",
+          "product",
+          product.id,
+          `${name} (importação da ficha técnica)`,
+        );
         result.status = "created";
         summary.created++;
       }
@@ -1089,13 +1304,29 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       // repete em nova importação. A foto original (evidência) é da equipe:
       // continua pendente na ficha.
       const kinds = new Set(
-        (await store.list("product_photos", { filter: { productId: product.id } })).map((p) => p.kind as string),
+        (
+          await store.list("product_photos", {
+            filter: { productId: product.id },
+          })
+        ).map((p) => p.kind as string),
       );
       // Produto que já tem a foto original (da equipe, ou a da planilha guardada
       // assim pela versão anterior) não precisa da foto do fornecedor de novo.
       if (kinds.has("original")) kinds.add("supplier");
-      result.photos += await attachPhoto(user, product.id, group.photo, "supplier", kinds);
-      result.photos += await attachPhoto(user, product.id, group.card, "business_card", kinds);
+      result.photos += await attachPhoto(
+        user,
+        product.id,
+        group.photo,
+        "supplier",
+        kinds,
+      );
+      result.photos += await attachPhoto(
+        user,
+        product.id,
+        group.card,
+        "business_card",
+        kinds,
+      );
       summary.photos += result.photos;
       result.missing = saved.missing;
       decisions[String(group.index)] = `${result.status}:${product.id}`;
@@ -1107,16 +1338,22 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       result.status = "error";
       result.error = errorText(error);
       summary.errors++;
-      decisions[String(group.index)] = `error:${result.productId ?? "-"}:${result.error}`;
+      decisions[String(group.index)] =
+        `error:${result.productId ?? "-"}:${result.error}`;
     }
   }
 }
 
 /** Valores de uma variação a partir do grupo da planilha. */
-function variantInputFrom(group: ProductGroup, sortOrder: number): VariantInput {
+function variantInputFrom(
+  group: ProductGroup,
+  sortOrder: number,
+): VariantInput {
   const r = group.reading;
-  const n = (k: ReadingField) => (typeof r[k] === "number" ? (r[k] as number) : null);
-  const s = (k: ReadingField) => (typeof r[k] === "string" ? (r[k] as string) : null);
+  const n = (k: ReadingField) =>
+    typeof r[k] === "number" ? (r[k] as number) : null;
+  const s = (k: ReadingField) =>
+    typeof r[k] === "string" ? (r[k] as string) : null;
   return {
     name: productNameFor(group, null),
     factoryItemCode: s("factoryItemCode"),
@@ -1152,15 +1389,28 @@ function variantInputFrom(group: ProductGroup, sortOrder: number): VariantInput 
  * fica como está (nunca se apaga).
  */
 async function importAsVariants(ctx: ImportContext): Promise<void> {
-  const { user, options, parsed, batchId, suppliers, products, summary, results, decisions, warnings } =
-    ctx;
+  const {
+    user,
+    options,
+    parsed,
+    batchId,
+    suppliers,
+    products,
+    summary,
+    results,
+    decisions,
+    warnings,
+  } = ctx;
   const store = getStore();
   const groups = parsed.groups;
   const first = groups[0];
   const prefix = options.namePrefix?.trim() || "";
   const result: SheetImportRowResult = {
     index: 0,
-    rows: rowsLabel({ firstRow: first.firstRow, lastRow: groups[groups.length - 1].lastRow }),
+    rows: rowsLabel({
+      firstRow: first.firstRow,
+      lastRow: groups[groups.length - 1].lastRow,
+    }),
     name: prefix ? prefix.slice(0, 160) : productNameFor(first, null),
     productId: null,
     status: "error",
@@ -1181,12 +1431,17 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
       typeof g.reading.supplierName === "string" ? g.reading.supplierName : "";
     const others = [
       ...new Set(
-        groups.map(supplierOf).filter((n) => n && norm(n) !== norm(supplierOf(first))),
+        groups
+          .map(supplierOf)
+          .filter((n) => n && norm(n) !== norm(supplierOf(first))),
       ),
     ];
-    if (others.length) warnings.push(`supplier_mixed:${others.join(", ").slice(0, 120)}`);
+    if (others.length)
+      warnings.push(`supplier_mixed:${others.join(", ").slice(0, 120)}`);
     const supplierSku =
-      typeof first.reading.factoryItemCode === "string" ? first.reading.factoryItemCode.slice(0, 60) : null;
+      typeof first.reading.factoryItemCode === "string"
+        ? first.reading.factoryItemCode.slice(0, 60)
+        : null;
     const matched = matchProduct(
       products,
       options.lineId,
@@ -1207,7 +1462,10 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
       if (supplierId)
         await syncMainSupplierLink(
           user,
-          { supplierId: existing.supplierId, supplierSku: existing.supplierSku },
+          {
+            supplierId: existing.supplierId,
+            supplierSku: existing.supplierSku,
+          },
           { supplierId, supplierSku: existing.supplierSku ?? supplierSku },
           product.id,
         );
@@ -1222,7 +1480,10 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
         specification: null,
         supplierId,
         supplierSku,
-        material: typeof first.reading.material === "string" ? first.reading.material.slice(0, 120) : null,
+        material:
+          typeof first.reading.material === "string"
+            ? first.reading.material.slice(0, 120)
+            : null,
         lengthCm: first.lengthCm,
         widthCm: first.widthCm,
         heightCm: first.heightCm,
@@ -1237,7 +1498,13 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
           { supplierId, supplierSku },
           product.id,
         );
-      await audit(user, "product.create", "product", product.id, `${name} (importação da ficha técnica, com variações)`);
+      await audit(
+        user,
+        "product.create",
+        "product",
+        product.id,
+        `${name} (importação da ficha técnica, com variações)`,
+      );
       result.status = "created";
       summary.created++;
     }
@@ -1246,7 +1513,9 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
 
     // Variações: uma por grupo, na ordem da planilha; a foto da coluna PHOTO
     // é a da variação (tipo supplier, com variantId), uma só por variação.
-    const photos = await store.list("product_photos", { filter: { productId: product.id } });
+    const photos = await store.list("product_photos", {
+      filter: { productId: product.id },
+    });
     for (const [i, group] of groups.entries()) {
       const vr: SheetImportVariantResult = {
         index: group.index,
@@ -1276,10 +1545,15 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
         vr.status = created ? "created" : "updated";
         if (created) summary.variantsCreated++;
         else summary.variantsUpdated++;
-        let photo = photos.find((p) => p.variantId === variant.id && p.kind === "supplier") ?? null;
+        let photo =
+          photos.find(
+            (p) => p.variantId === variant.id && p.kind === "supplier",
+          ) ?? null;
         if (!photo && group.photo) {
           const image = group.photo;
-          const fileOf = new File([new Uint8Array(image.bytes)], image.name, { type: image.mime });
+          const fileOf = new File([new Uint8Array(image.bytes)], image.name, {
+            type: image.mime,
+          });
           [photo = null] = await addPhotos(
             user,
             { productId: product.id, variantId: variant.id },
@@ -1300,21 +1574,49 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
       } catch (error) {
         // Tabela das variações ainda não publicada: o produto fica, a
         // importação avisa para publicar o esquema (nada de variações pela metade).
-        if (isSchemaMissing(error)) throw new SheetImportError("schema_outdated");
+        if (isSchemaMissing(error))
+          throw new SheetImportError("schema_outdated");
         vr.status = "error";
         vr.error = errorText(error);
         summary.variantErrors++;
-        decisions[`variant:${group.index}`] = `error:${vr.variantId ?? "-"}:${vr.error}`;
+        decisions[`variant:${group.index}`] =
+          `error:${vr.variantId ?? "-"}:${vr.error}`;
       }
     }
     // Cartão de visita: um por produto (o primeiro que a planilha tiver).
     const kinds = new Set(photos.map((p) => p.kind as string));
     const card = groups.find((g) => g.card)?.card ?? null;
-    result.photos += await attachPhoto(user, product.id, card, "business_card", kinds);
+    result.photos += await attachPhoto(
+      user,
+      product.id,
+      card,
+      "business_card",
+      kinds,
+    );
     summary.photos += result.photos;
     // Ficha mestre e colunas do produto = variação de referência (menor preço).
     await syncProductFromVariants(product.id, user);
-    result.missing = await productSheetMissing(product.id, await getProductSheet(product.id));
+    // Cabeçalho da planilha (comum a todas as variações): FOB/EXW, data, local,
+    // fornecedor, loja, telefone e energia vão para a ficha mestre também.
+    const head = sheetInputFrom(first.reading, null);
+    const header: SheetInput = {};
+    for (const k of [
+      "incoterm",
+      "sheetDate",
+      "location",
+      "supplierName",
+      "supplierStore",
+      "supplierPhone",
+      "powerDetail",
+    ] as const)
+      if (head[k] !== undefined)
+        (header as Record<string, unknown>)[k] = head[k];
+    if (Object.keys(header).length)
+      await saveProductSheet(user, product.id, header);
+    result.missing = await productSheetMissing(
+      product.id,
+      await getProductSheet(product.id),
+    );
   } catch (error) {
     if (result.status === "created") summary.created--;
     if (result.status === "updated") summary.updated--;

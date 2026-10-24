@@ -12,7 +12,11 @@ import {
 } from "@/lib/db";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { audit } from "./audit";
-import { catalogPhotoKinds, masterSheetInput } from "./product-sheet";
+import {
+  catalogPhotoKinds,
+  getProductSheet,
+  masterSheetInput,
+} from "./product-sheet";
 import {
   fillRecordsFromSheet,
   productForSupplier,
@@ -141,6 +145,11 @@ async function prefillQuoteBase(
     (own ? (product?.currency ?? null) : null);
   const ownMoq =
     ownVariant.moq ?? link?.moq ?? (own ? (product?.moq ?? null) : null);
+  // FOB/EXW da ficha mestre: também só para o próprio fornecedor do produto.
+  const ownIncoterm =
+    own && open && request.productId
+      ? ((await getProductSheet(request.productId))?.incoterm ?? null)
+      : null;
   // Programação de entregas pedida pelo cliente vira as programações da ficha.
   const requestLots = supplierLot1(
     scheduleToLots(
@@ -183,6 +192,7 @@ async function prefillQuoteBase(
         sheetCurrency(quote.currency ?? ownCurrency) ?? master.currency ?? null,
       price: quote.price ?? ownPrice ?? master.price ?? null,
       moq: ownMoq ?? master.moq ?? null,
+      ...(ownIncoterm ? { incoterm: ownIncoterm } : {}),
       lots: requestLots,
       ...records,
     };

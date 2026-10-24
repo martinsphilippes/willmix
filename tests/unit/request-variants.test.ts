@@ -278,6 +278,8 @@ describe("cotação, pedido, adoção e recompra", () => {
 
   it("ficha de cotação nasce com os dados físicos da variação; preço, MOQ e código só para o fornecedor de referência", async () => {
     const store = getStore();
+    // FOB/EXW na ficha mestre: vai só para o fornecedor de referência.
+    await pm.saveProductSheet(admin, productId, { incoterm: "EXW" });
     const request = await r.createRequest(joao, input(b.id, 1200));
     await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
     const quotes = await store.list("quotes", { filter: { requestId: request.id } });
@@ -297,6 +299,7 @@ describe("cotação, pedido, adoção e recompra", () => {
       currency: "USD",
       moq: 1200,
       factoryItemCode: "MY-059A",
+      incoterm: "EXW",
     });
     const viewB = (await qs.getQuoteSheetForUser(supplierB, qb.id))!;
     expect(viewB.sheet).toMatchObject({
@@ -308,6 +311,7 @@ describe("cotação, pedido, adoção e recompra", () => {
     });
     expect(viewB.sheet.price ?? null).toBeNull();
     expect(viewB.sheet.moq ?? null).toBeNull();
+    expect(viewB.sheet.incoterm ?? null).toBeNull();
     expect(viewB.sheet.factoryItemCode ?? null).not.toBe("MY-059A");
 
     // A (referência) responde com a ficha: preço e caixa diferentes da variação.
