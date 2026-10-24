@@ -20,6 +20,15 @@ export function googleSheetId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Link de "Publicar na web" (/spreadsheets/d/e/2PACX-…/pubhtml): não leva o id
+ * da planilha, então não serve para a exportação; a tela pede o link de
+ * compartilhamento.
+ */
+export function isPublishedSheetUrl(url: string): boolean {
+  return /^https:\/\/docs\.google\.com\/spreadsheets\/(?:u\/\d{1,3}\/)?d\/e\//.test(url.trim());
+}
+
 export function isGoogleSheetUrl(url: string): boolean {
   return googleSheetId(url) !== null;
 }
@@ -68,7 +77,10 @@ export async function fetchGoogleSheetXlsx(
   options: FetchSheetOptions = {},
 ): Promise<{ bytes: Uint8Array; name: string }> {
   const id = googleSheetId(url);
-  if (!id) throw new GoogleSheetError("sheet_url_invalid");
+  if (!id)
+    throw new GoogleSheetError(
+      isPublishedSheetUrl(url) ? "sheet_published_link" : "sheet_url_invalid",
+    );
   const maxBytes = options.maxBytes ?? 50_000_000;
   const doFetch = options.fetchImpl ?? fetch;
   const controller = new AbortController();
@@ -135,6 +147,10 @@ async function readLimited(response: Response, maxBytes: number): Promise<Uint8A
       if (total > maxBytes) throw new GoogleSheetError("too_large");
       chunks.push(value);
     }
+  } catch (error) {
+    // Acima do teto: encerra o download em vez de deixá-lo correr até o fim.
+    await reader.cancel().catch(() => undefined);
+    throw error;
   } finally {
     reader.releaseLock();
   }

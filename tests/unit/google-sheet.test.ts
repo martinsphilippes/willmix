@@ -37,6 +37,11 @@ describe("link do Google Sheets", () => {
     expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/u/1/d/${ID}/edit#gid=0`)).toBe(ID);
     expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/u/0/d/${ID}`)).toBe(ID);
     expect(gs.googleSheetId(`https://docs.google.com/spreadsheets/u/x/d/${ID}`)).toBeNull();
+    // "Publicar na web" não traz o id: é outro erro, com a dica do link certo.
+    const published = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQabcDEFghiJKLmnoPQRstuVWxyz0123456789/pubhtml";
+    expect(gs.googleSheetId(published)).toBeNull();
+    expect(gs.isPublishedSheetUrl(published)).toBe(true);
+    expect(gs.isPublishedSheetUrl(LINK)).toBe(false);
     expect(gs.googleSheetId("https://docs.google.com/document/d/abc123456789/edit")).toBeNull();
     expect(gs.googleSheetId("http://docs.google.com/spreadsheets/d/abc123456789")).toBeNull();
     expect(gs.googleSheetId("https://evil.example/spreadsheets/d/abc123456789")).toBeNull();
@@ -82,6 +87,9 @@ describe("link do Google Sheets", () => {
   it("link errado, planilha inexistente, falha de rede e arquivo grande demais", async () => {
     await expect(gs.fetchGoogleSheetXlsx("https://example.com/x")).rejects.toThrow("sheet_url_invalid");
     await expect(
+      gs.fetchGoogleSheetXlsx("https://docs.google.com/spreadsheets/d/e/2PACX-1vQabcDEFghiJKLmnoPQRstuVWxyz/pubhtml"),
+    ).rejects.toThrow("sheet_published_link");
+    await expect(
       gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: respond("x", { status: 404 }) }),
     ).rejects.toThrow("sheet_not_found");
     // A página de erro do Google é HTML: continua "não encontrada", não "privada".
@@ -107,5 +115,27 @@ describe("link do Google Sheets", () => {
     await expect(
       gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: respond(big), maxBytes: 1024 }),
     ).rejects.toThrow("too_large");
+    // Acima do teto no meio do download: o fluxo é cancelado, não lido até o fim.
+    let pulled = 0;
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++;
+        const chunk = new Uint8Array(600);
+        if (pulled === 1) chunk.set([0x50, 0x4b]);
+        controller.enqueue(chunk);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const streaming: typeof fetch = async (input) => {
+      const res = new Response(stream, { status: 200, headers: { "content-type": "application/octet-stream" } });
+      Object.defineProperty(res, "url", { value: String(input) });
+      return res;
+    };
+    await expect(gs.fetchGoogleSheetXlsx(LINK, { fetchImpl: streaming, maxBytes: 1024 })).rejects.toThrow("too_large");
+    expect(cancelled).toBe(true);
+    expect(pulled).toBeLessThanOrEqual(3);
   });
 });

@@ -5,7 +5,7 @@
 export const pt = {
   "sheetImport.title": "Importar ficha técnica",
   "sheetImport.subtitle":
-    "Suba a planilha da ficha (modelo SUPPLIER INFO): os produtos são cadastrados na hora, com ficha mestre e fotos, e o portal mostra o que falta em cada um.",
+    "Suba a planilha da ficha (modelo SUPPLIER INFO, .xlsx ou .xls) ou cole o link dela no Google Sheets: os produtos são cadastrados na hora, com ficha mestre e fotos, e o portal mostra o que falta em cada um.",
   "sheetImport.form.title": "Planilha",
   "sheetImport.file": "Planilha (.xlsx ou .xls)",
   "sheetImport.fileHint": "O modelo com as colunas PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL e MOQ. Aceita o Excel atual (.xlsx) e o antigo (.xls). Com fotos a planilha fica grande: o envio é feito direto ao armazenamento (até 50 MB).",
@@ -65,9 +65,10 @@ export const pt = {
   "sheetImport.result.error": "Erro: {code}",
   "sheetImport.error.too_large": "A planilha é grande demais para ler. Tire o que não é da ficha ou divida.",
   "sheetImport.url": "Ou o link de uma planilha do Google Sheets",
-  "sheetImport.urlHint": "Na planilha, use Compartilhar → \"Qualquer pessoa com o link\" (Leitor) e cole o link aqui. O portal baixa a planilha na hora; sem o compartilhamento, o Google não a entrega. Fotos da planilha do Google podem não vir.",
+  "sheetImport.urlHint": "Na planilha, use Compartilhar → \"Qualquer pessoa com o link\" (Leitor) e cole o link aqui. O portal baixa a planilha na hora; sem o compartilhamento, o Google não a entrega. Fotos da planilha do Google podem não vir. Se enviar arquivo e link, vale o arquivo.",
   "sheetImport.urlPlaceholder": "https://docs.google.com/spreadsheets/d/…",
   "sheetImport.error.sheet_url_invalid": "O link não é de uma planilha do Google Sheets (deve começar com https://docs.google.com/spreadsheets/d/…).",
+  "sheetImport.error.sheet_published_link": "Esse é o link de \"Publicar na web\", que não serve para importar. Na planilha, use Compartilhar → Copiar link (com \"Qualquer pessoa com o link\") e cole esse.",
   "sheetImport.error.sheet_private": "O Google não entregou a planilha: ela não está compartilhada com \"Qualquer pessoa com o link\". Ajuste o compartilhamento e tente de novo.",
   "sheetImport.error.sheet_not_found": "Planilha do Google não encontrada: confira o link.",
   "sheetImport.error.sheet_fetch_failed": "Não foi possível baixar a planilha do Google agora. Tente de novo ou envie o arquivo .xlsx.",
@@ -76,7 +77,7 @@ export const pt = {
 export const en = {
   "sheetImport.title": "Import technical sheet",
   "sheetImport.subtitle":
-    "Upload the sheet spreadsheet (SUPPLIER INFO template): products are registered at once, with master sheet and photos, and the portal shows what is still missing in each one.",
+    "Upload the sheet spreadsheet (SUPPLIER INFO template, .xlsx or .xls) or paste its Google Sheets link: products are registered at once, with master sheet and photos, and the portal shows what is still missing in each one.",
   "sheetImport.form.title": "Spreadsheet",
   "sheetImport.file": "Spreadsheet (.xlsx or .xls)",
   "sheetImport.fileHint": "The template with the columns PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL and MOQ. Current Excel (.xlsx) and the old format (.xls) are accepted. With photos the file gets big: it is uploaded straight to storage (up to 50 MB).",
@@ -136,9 +137,10 @@ export const en = {
   "sheetImport.result.error": "Error: {code}",
   "sheetImport.error.too_large": "The spreadsheet is too big to read. Remove what is not part of the sheet or split it.",
   "sheetImport.url": "Or a Google Sheets link",
-  "sheetImport.urlHint": "In the sheet, use Share → \"Anyone with the link\" (Viewer) and paste the link here. The portal downloads the sheet right away; without that sharing, Google will not deliver it. Photos from a Google sheet may not come through.",
+  "sheetImport.urlHint": "In the sheet, use Share → \"Anyone with the link\" (Viewer) and paste the link here. The portal downloads the sheet right away; without that sharing, Google will not deliver it. Photos from a Google sheet may not come through. If both a file and a link are given, the file is used.",
   "sheetImport.urlPlaceholder": "https://docs.google.com/spreadsheets/d/…",
   "sheetImport.error.sheet_url_invalid": "The link is not a Google Sheets spreadsheet (it must start with https://docs.google.com/spreadsheets/d/…).",
+  "sheetImport.error.sheet_published_link": "That is the \"Publish to the web\" link, which cannot be imported. In the sheet, use Share → Copy link (with \"Anyone with the link\") and paste that one.",
   "sheetImport.error.sheet_private": "Google did not deliver the sheet: it is not shared with \"Anyone with the link\". Fix the sharing and try again.",
   "sheetImport.error.sheet_not_found": "Google sheet not found: check the link.",
   "sheetImport.error.sheet_fetch_failed": "The Google sheet could not be downloaded right now. Try again or upload the .xlsx file.",
@@ -147,7 +149,7 @@ export const en = {
 export const zh = {
   "sheetImport.title": "导入产品技术表",
   "sheetImport.subtitle":
-    "上传技术表（SUPPLIER INFO 模板）：产品会立即建档，附带主表和照片，门户会显示每个产品还缺什么。",
+    "上传技术表（SUPPLIER INFO 模板，.xlsx 或 .xls）或粘贴其 Google Sheets 链接：产品会立即建档，附带主表和照片，门户会显示每个产品还缺什么。",
   "sheetImport.form.title": "表格",
   "sheetImport.file": "表格（.xlsx 或 .xls）",
   "sheetImport.fileHint": "包含 PHOTO、DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX、N.W、G.W、CBM、SIZE、COLOR、MATERIAL 和 MOQ 列的模板。支持新版 Excel（.xlsx）和旧版（.xls）。含照片的文件较大：将直接上传到存储（最大 50 MB）。",
@@ -202,9 +204,10 @@ export const zh = {
   "sheetImport.result.error": "错误：{code}",
   "sheetImport.error.too_large": "表格过大无法读取。请删除无关内容或拆分。",
   "sheetImport.url": "或 Google Sheets 链接",
-  "sheetImport.urlHint": "在表格中使用 共享 →“知道链接的任何人”（查看者），然后把链接粘贴到这里。门户会立即下载表格；未共享时 Google 不会提供。Google 表格中的照片可能无法导入。",
+  "sheetImport.urlHint": "在表格中使用 共享 →“知道链接的任何人”（查看者），然后把链接粘贴到这里。门户会立即下载表格；未共享时 Google 不会提供。Google 表格中的照片可能无法导入。若同时提供文件和链接，以文件为准。",
   "sheetImport.urlPlaceholder": "https://docs.google.com/spreadsheets/d/…",
   "sheetImport.error.sheet_url_invalid": "该链接不是 Google Sheets 表格（必须以 https://docs.google.com/spreadsheets/d/… 开头）。",
+  "sheetImport.error.sheet_published_link": "这是“发布到网络”的链接，无法用于导入。请在表格中使用 共享 → 复制链接（“知道链接的任何人”），然后粘贴该链接。",
   "sheetImport.error.sheet_private": "Google 未提供表格：它未设置为“知道链接的任何人”可访问。请调整共享设置后重试。",
   "sheetImport.error.sheet_not_found": "未找到 Google 表格：请检查链接。",
   "sheetImport.error.sheet_fetch_failed": "目前无法下载 Google 表格。请重试或上传 .xlsx 文件。",

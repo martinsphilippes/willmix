@@ -23,8 +23,11 @@ import { SubmitButton } from "@/components/submit-button";
 import { SheetFileInput } from "@/components/sheet-file-input";
 import { importProductSheetAction } from "../../actions/product-sheet-import";
 
-/** Importar cadastra até 80 produtos numa requisição: tempo maior que o padrão. */
-export const maxDuration = 60;
+/**
+ * Importar cadastra até 80 produtos (com fotos) numa requisição e pode antes
+ * baixar a planilha do Google (até 25 s): tempo maior que o padrão.
+ */
+export const maxDuration = 120;
 
 /*
  * Importar a planilha da ficha técnica: os produtos nascem cadastrados (ficha
