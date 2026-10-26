@@ -68,8 +68,10 @@ import * as freightTariff from "./freight-tariff";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
+import * as messages from "./messages";
 
 export const modulesPt = {
+  ...messages.pt,
   ...productVariants.pt,
   ...productSheetImport.pt,
   ...notifications.pt,
@@ -137,6 +139,7 @@ export const modulesPt = {
   ...freightTariff.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
+  ...messages.en,
   ...productVariants.en,
   ...productSheetImport.en,
   ...notifications.en,
@@ -204,6 +207,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
+  ...messages.zh,
   ...productVariants.zh,
   ...productSheetImport.zh,
   ...notifications.zh,

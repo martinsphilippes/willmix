@@ -437,6 +437,18 @@ export type ImportBatchStatus = (typeof IMPORT_BATCH_STATUSES)[number];
 export const FREIGHT_TARIFF_STATUSES = ["active", "replaced"] as const;
 export type FreightTariffStatus = (typeof FREIGHT_TARIFF_STATUSES)[number];
 
+/* Mensagens (chat interno Wellmix × empresas parceiras) */
+export const CONVERSATION_STATUSES = ["open", "closed"] as const;
+export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number];
+/** Assunto da conversa: Geral, uma solicitação ou um pedido. */
+export const TOPIC_KINDS = ["general", "request", "order"] as const;
+export type TopicKind = (typeof TOPIC_KINDS)[number];
+/** Quem escreveu: a equipe Wellmix ou alguém da empresa parceira. */
+export const MESSAGE_SIDES = ["wellmix", "external"] as const;
+export type MessageSide = (typeof MESSAGE_SIDES)[number];
+/** Tamanho máximo do texto de uma mensagem. */
+export const MESSAGE_MAX_LENGTH = 4000;
+
 /* ------------------------------------------------------------------------ */
 /* Tipos das linhas                                                          */
 /* ------------------------------------------------------------------------ */
@@ -1607,6 +1619,51 @@ export interface ProductLookup extends BaseRow {
   requestId: string | null;
 }
 
+/**
+ * Conversa da Wellmix com uma empresa parceira: uma por empresa (`partyId`),
+ * vista e respondida por todos os logins dela; login sem empresa tem a sua
+ * (`userId`). A Wellmix (admin e operadores) vê todas.
+ */
+export interface Conversation extends BaseRow {
+  partyId: string | null;
+  userId: string | null;
+  lastMessageAt: string | null;
+  /** Começo da última mensagem (lista de conversas). */
+  lastMessagePreview: string | null;
+  status: ConversationStatus;
+}
+
+/**
+ * Assunto de uma conversa: "Geral" (um por conversa) ou ligado a uma
+ * solicitação ou a um pedido de que a empresa participa.
+ */
+export interface ConversationTopic extends BaseRow {
+  conversationId: string;
+  kind: TopicKind;
+  requestId: string | null;
+  orderId: string | null;
+  /** Referência do assunto (ex.: "#12 · Jarra de vidro"); vazio no Geral. */
+  title: string | null;
+  lastMessageAt: string | null;
+}
+
+export interface Message extends BaseRow {
+  conversationId: string;
+  topicId: string;
+  authorUserId: string;
+  authorSide: MessageSide;
+  body: string;
+  /** Anexo (documents); reservado, ainda não usado pela tela. */
+  attachmentDocumentId: string | null;
+}
+
+/** Até onde cada login leu cada assunto (uma linha por login e assunto). */
+export interface MessageRead extends BaseRow {
+  topicId: string;
+  userId: string;
+  lastReadAt: string;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -1652,6 +1709,10 @@ export interface Tables {
   cart_items: CartItem;
   freight_tariffs: FreightTariff;
   product_variants: ProductVariant;
+  conversations: Conversation;
+  conversation_topics: ConversationTopic;
+  messages: Message;
+  message_reads: MessageRead;
 }
 export type TableName = keyof Tables;
 
@@ -2776,6 +2837,65 @@ export const TABLES: Record<TableName, TableDef> = {
         type: "unique",
         columns: ["productId", "key"],
       },
+    ],
+  },
+  conversations: {
+    label: "Conversas",
+    columns: {
+      partyId: id(false),
+      userId: id(false),
+      lastMessageAt: datetime(),
+      lastMessagePreview: str(200),
+      status: enumOf(CONVERSATION_STATUSES),
+    },
+    indexes: [
+      { key: "by_party", type: "key", columns: ["partyId"] },
+      { key: "by_user", type: "key", columns: ["userId"] },
+    ],
+  },
+  conversation_topics: {
+    label: "Assuntos das conversas",
+    columns: {
+      conversationId: id(),
+      kind: enumOf(TOPIC_KINDS),
+      requestId: id(false),
+      orderId: id(false),
+      title: str(160),
+      lastMessageAt: datetime(),
+    },
+    indexes: [
+      { key: "by_conversation", type: "key", columns: ["conversationId"] },
+    ],
+  },
+  messages: {
+    label: "Mensagens",
+    columns: {
+      conversationId: id(),
+      topicId: id(),
+      authorUserId: id(),
+      authorSide: enumOf(MESSAGE_SIDES),
+      body: text(true),
+      attachmentDocumentId: id(false),
+    },
+    indexes: [
+      { key: "by_topic", type: "key", columns: ["topicId"] },
+      { key: "by_conversation", type: "key", columns: ["conversationId"] },
+    ],
+  },
+  message_reads: {
+    label: "Leitura das mensagens",
+    columns: {
+      topicId: id(),
+      userId: id(),
+      lastReadAt: datetime(true),
+    },
+    indexes: [
+      {
+        key: "topic_user_unique",
+        type: "unique",
+        columns: ["topicId", "userId"],
+      },
+      { key: "by_user", type: "key", columns: ["userId"] },
     ],
   },
 };

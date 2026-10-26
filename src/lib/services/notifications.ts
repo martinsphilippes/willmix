@@ -48,13 +48,16 @@ export type NotifyMessage = {
   link?: string;
   kind?: NotificationKind;
   actor?: NotificationActor | null;
+  /** Só a lista do portal (sino), sem e-mail nem WhatsApp (ex.: mensagens do chat). */
+  inAppOnly?: boolean;
 } & (
   | { subject: string; body: string; text?: undefined }
   | { text: (t: Translate) => NotifyText; subject?: undefined; body?: undefined }
 );
 
 /**
- * NotificationService. Canais: in-app (sempre), e-mail e WhatsApp.
+ * NotificationService. Canais: in-app (sempre), e-mail e WhatsApp
+ * (`inAppOnly`: só in-app, ex.: mensagens do chat).
  * E-mail e WhatsApp estão em modo mock: registram a notificação com status
  * "mock" para inspeção. Quando houver provedor, substituir sendEmail/sendWhatsapp.
  */
@@ -81,6 +84,7 @@ export async function notify(target: NotifyTarget, message: NotifyMessage) {
       actor,
     };
     await createNotification({ ...row, channel: "inapp", status: "sent" });
+    if (message.inAppOnly) continue;
     await createNotification({
       ...row,
       channel: "email",

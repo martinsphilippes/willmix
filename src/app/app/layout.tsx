@@ -6,7 +6,8 @@ import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
 import { LOCALES, type Locale } from "@/lib/db/schema";
-import { isNavGroup, navFor } from "@/lib/nav";
+import { isNavGroup, navFor, type NavLink } from "@/lib/nav";
+import { unreadCountFor } from "@/lib/services/messages";
 import { AppNav, MobileNav } from "@/components/app-nav";
 import { UserMenu } from "@/components/user-menu";
 import { WellmixLogo } from "@/components/brand";
@@ -121,13 +122,25 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   if (!user) redirect("/login?next=/app");
   const t = await getT();
   const locale = await getLocale();
+  // Mensagens não lidas (selo do item "Mensagens"); falha aqui não derruba o portal.
+  const unreadMessages = await unreadCountFor(user).catch((error: unknown) => {
+    console.error("unreadCountFor failed", error);
+    return 0;
+  });
+  const link = (l: NavLink) => ({
+    href: l.href,
+    label: t(l.key),
+    ...(l.badge === "messages" && unreadMessages > 0
+      ? {
+          badge: unreadMessages,
+          badgeLabel: t("messages.unread", { n: unreadMessages }),
+        }
+      : {}),
+  });
   const entries = navFor(user.role, isAdmin(user)).map((entry) =>
     isNavGroup(entry)
-      ? {
-          label: t(entry.key),
-          items: entry.items.map((i) => ({ href: i.href, label: t(i.key) })),
-        }
-      : { href: entry.href, label: t(entry.key) },
+      ? { label: t(entry.key), items: entry.items.map(link) }
+      : link(entry),
   );
   const showDemo =
     dataMode() === "memory" ||
