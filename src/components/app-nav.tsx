@@ -26,12 +26,45 @@ import { isActiveHref } from "@/lib/nav";
 export interface NavItemView {
   href: string;
   label: string;
+  /** Contador (ex.: mensagens não lidas); zero ou ausente não aparece. */
+  badge?: number;
+  /** Texto do contador para leitores de tela ("3 não lidas"). */
+  badgeLabel?: string;
 }
 export interface NavEntryView {
   label: string;
   href?: string;
   items?: NavItemView[];
+  badge?: number;
+  badgeLabel?: string;
 }
+
+/** Selo com o contador ao lado do item (no grupo, a soma dos itens). */
+function CountBadge({
+  n,
+  label,
+  light,
+}: {
+  n?: number;
+  label?: string;
+  light?: boolean;
+}) {
+  if (!n || n <= 0) return null;
+  return (
+    <span
+      aria-label={label}
+      data-nav-badge={n}
+      className={`ml-1.5 inline-flex min-w-4.5 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-4.5 ${
+        light ? "bg-white text-brand-700" : "bg-brand-600 text-white"
+      }`}
+    >
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
+const groupBadge = (items: NavItemView[]) =>
+  items.reduce((sum, i) => sum + (i.badge ?? 0), 0);
 
 /** Fecha quando a rota muda (voltar/avançar, navegação por código). */
 function useCloseOnNavigate(close: () => void) {
@@ -119,6 +152,7 @@ function GroupMenu({
         className={`${linkBase} inline-flex items-center gap-1 ${active ? linkActive : linkIdle}`}
       >
         {entry.label}
+        <CountBadge n={groupBadge(entry.items)} light />
         <svg
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -149,6 +183,7 @@ function GroupMenu({
                 className={popoverLink(current)}
               >
                 {item.label}
+                <CountBadge n={item.badge} label={item.badgeLabel} />
               </Link>
             );
           })}
@@ -189,6 +224,7 @@ export function AppNav({
             className={`${linkBase} ${isActiveHref(entry.href!, pathname) ? linkActive : linkIdle}`}
           >
             {entry.label}
+            <CountBadge n={entry.badge} label={entry.badgeLabel} light />
           </Link>
         ),
       )}
@@ -256,6 +292,7 @@ export function MobileNav({
         }`}
       >
         {link.label}
+        <CountBadge n={link.badge} label={link.badgeLabel} />
       </Link>
     );
   };
@@ -315,7 +352,12 @@ export function MobileNav({
                   {entry.items.map(item)}
                 </div>
               ) : (
-                item({ href: entry.href!, label: entry.label })
+                item({
+                  href: entry.href!,
+                  label: entry.label,
+                  badge: entry.badge,
+                  badgeLabel: entry.badgeLabel,
+                })
               ),
             )}
           </nav>

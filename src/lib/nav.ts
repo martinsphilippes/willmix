@@ -13,7 +13,16 @@ import type { Role } from "@/lib/db/schema";
 export interface NavLink {
   href: string;
   key: DictionaryKey;
+  /** Contador ao lado do item (ex.: mensagens não lidas), preenchido pelo layout. */
+  badge?: "messages";
 }
+
+/** Mensagens (chat com a Wellmix / com as empresas): todo papel que entra no portal. */
+const MESSAGES: NavLink = {
+  href: "/app/messages",
+  key: "nav.messages",
+  badge: "messages",
+};
 
 export interface NavGroup {
   key: DictionaryKey;
@@ -40,6 +49,7 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
           { href: "/app", key: "nav.controlTower" },
           { href: "/app/tasks", key: "nav.tasks" },
           { href: "/app/notifications", key: "nav.notifications" },
+          MESSAGES,
         ],
       },
       {
@@ -95,6 +105,7 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
           { href: "/app/orders", key: "nav.orders" },
           { href: "/app/tasks", key: "nav.tasks" },
           { href: "/app/notifications", key: "nav.notifications" },
+          MESSAGES,
           { href: "/app/history", key: "nav.history" },
           { href: "/app/marketing", key: "nav.marketing" },
         ],
@@ -123,6 +134,7 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
     group("nav.group.home", [
       { href: "/app", key: "nav.tasks" },
       { href: "/app/notifications", key: "nav.notifications" },
+      MESSAGES,
     ]),
     group("nav.group.orders", orders),
   ];

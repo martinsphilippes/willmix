@@ -85,6 +85,7 @@ import {
   PackagingRfqFields,
 } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
+import { ChatButtons } from "@/components/chat-buttons";
 
 export default async function RequestDetailPage({
   params,
@@ -334,14 +335,30 @@ export default async function RequestDetailPage({
           </span>
         }
         actions={
-          request.orderId ? (
-            <LinkButton
-              href={`/app/orders/${request.orderId}`}
-              variant="primary"
-            >
-              {t("requests.viewOrder")}
-            </LinkButton>
-          ) : null
+          <>
+            {/* Mensagens: assunto desta solicitação na conversa da empresa. */}
+            <ChatButtons
+              back={`/app/requests/${request.id}`}
+              requestId={request.id}
+              targets={[
+                wellmix
+                  ? {
+                      partyId: request.customerId,
+                      label: t("messages.chatCompany"),
+                      title: customer?.name,
+                    }
+                  : { label: t("messages.chatWellmix") },
+              ]}
+            />
+            {request.orderId ? (
+              <LinkButton
+                href={`/app/orders/${request.orderId}`}
+                variant="primary"
+              >
+                {t("requests.viewOrder")}
+              </LinkButton>
+            ) : null}
+          </>
         }
       />
       {order && orderCancelled && canViewOrder(user, order) ? (

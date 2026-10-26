@@ -27,10 +27,11 @@ describe("menu principal", () => {
     const hrefs = flattenNav(entries).map((l) => l.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
     // O dia a dia continua no começo do menu (celular mostra na ordem).
-    expect(hrefs.slice(0, 5)).toEqual([
+    expect(hrefs.slice(0, 6)).toEqual([
       "/app",
       "/app/tasks",
       "/app/notifications",
+      "/app/messages",
       "/app/requests",
       "/app/orders",
     ]);
@@ -76,6 +77,7 @@ describe("menu principal", () => {
       "/app/orders",
       "/app/tasks",
       "/app/notifications",
+      "/app/messages",
       "/app/history",
       "/app/marketing",
     ]);
@@ -90,7 +92,7 @@ describe("menu principal", () => {
       );
     const home = {
       group: "nav.group.home",
-      items: ["/app", "/app/notifications"],
+      items: ["/app", "/app/notifications", "/app/messages"],
     };
     expect(view("supplier")).toEqual([
       home,
@@ -130,6 +132,16 @@ describe("menu principal", () => {
       expect(hrefs[0]).toBe("/app");
       expect(hrefs).toContain("/app/orders");
       expect(hrefs).toContain("/app/notifications");
+    }
+  });
+
+  it("Mensagens no menu de todos os papéis, com o selo de não lidas", () => {
+    for (const role of ROLES) {
+      const links = flattenNav(navFor(role, role === "admin"));
+      const messages = links.filter((l) => l.href === "/app/messages");
+      expect(messages).toEqual([
+        { href: "/app/messages", key: "nav.messages", badge: "messages" },
+      ]);
     }
   });
 

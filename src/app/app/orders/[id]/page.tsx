@@ -17,6 +17,8 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { stageVisibleTo } from "@/lib/order-view";
+import { ChatButtons } from "@/components/chat-buttons";
+import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
 import {
@@ -577,6 +579,38 @@ export default async function OrderPage({
               </TextLink>
             ) : null}
           </span>
+        }
+        actions={
+          /* Mensagens: assunto deste pedido na conversa de cada empresa. */
+          <ChatButtons
+            back={`/app/orders/${order.id}`}
+            orderId={order.id}
+            prefix={wellmix ? t("messages.chatWith") : undefined}
+            targets={
+              wellmix
+                ? (
+                    [
+                      ["customer", order.customerId],
+                      ["supplier", order.supplierId],
+                      ["shipping_line", order.shippingLineId],
+                      ["carrier", order.carrierId],
+                      ["agency", order.agencyId],
+                      ["broker", order.brokerId],
+                    ] as Array<[PartyType, string | null]>
+                  ).flatMap(([type, pid]) =>
+                    pid
+                      ? [
+                          {
+                            partyId: pid,
+                            label: t(`messages.type.${type}`),
+                            title: partyName(pid),
+                          },
+                        ]
+                      : [],
+                  )
+                : [{ label: t("messages.chatWellmix") }]
+            }
+          />
         }
       />
       <ActionError
