@@ -502,7 +502,14 @@ export function missingForCompletion(
   photoKinds: readonly string[],
 ): SheetMissing[] {
   const missing: SheetMissing[] = [];
+  // Com o CBM da caixa master já informado (ex.: veio na planilha do
+  // fornecedor), as medidas da caixa deixam de ser obrigatórias: o frete e a
+  // cubagem usam o CBM. Sem CBM, as três medidas continuam exigidas.
+  const cbm = sheet?.cbmPerCarton;
+  const hasCbm = typeof cbm === "number" && cbm > 0;
+  const boxDims: readonly string[] = ["heightCm", "widthCm", "lengthCm"];
   for (const key of SHEET_REQUIRED_FIELDS) {
+    if (hasCbm && boxDims.includes(key)) continue;
     const value = sheet?.[key];
     if (value === null || value === undefined || value === "")
       missing.push(key);

@@ -149,6 +149,15 @@ describe("contas da planilha", () => {
       ]),
     );
   });
+
+  it("com o CBM da caixa informado, as medidas da caixa não são exigidas", () => {
+    const dims = ["heightCm", "widthCm", "lengthCm"];
+    const without = missingForCompletion({ cbmPerCarton: null }, []);
+    expect(without).toEqual(expect.arrayContaining(dims));
+    const withCbm = missingForCompletion({ cbmPerCarton: 0.085 }, []);
+    for (const d of dims) expect(withCbm).not.toContain(d);
+    expect(withCbm).not.toContain("cbmPerCarton");
+  });
 });
 
 describe("ficha no pedido", () => {

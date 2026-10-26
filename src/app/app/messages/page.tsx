@@ -33,6 +33,7 @@ import {
   cx,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { FileAutoInput } from "@/components/file-auto-input";
 import {
   MarkTopicRead,
   MessagesAutoRefresh,
@@ -416,7 +417,35 @@ function Thread({
                       · {formatWhen(m.createdAt, t.intl)}
                     </span>
                   </div>
-                  <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                  {m.attachment ? (
+                    <a
+                      href={`/api/files/${m.attachment.id}`}
+                      target="_blank"
+                      rel="noopener"
+                      className={cx(
+                        "mb-1 block",
+                        m.mine ? "text-white" : "text-brand-700",
+                      )}
+                      data-attachment
+                    >
+                      {m.attachment.isImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
+                        <img
+                          src={`/api/files/${m.attachment.id}`}
+                          alt={m.attachment.name}
+                          className="max-h-60 rounded-lg object-contain"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-semibold underline underline-offset-2">
+                          <span aria-hidden>📎</span>
+                          {m.attachment.name}
+                        </span>
+                      )}
+                    </a>
+                  ) : null}
+                  {m.attachment && m.body === `📎 ${m.attachment.name}` ? null : (
+                    <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                  )}
                 </div>
               </li>
             ))}
@@ -438,13 +467,22 @@ function Thread({
         >
           <Textarea
             name="body"
-            required
             rows={3}
             maxLength={MESSAGE_MAX_LENGTH}
             placeholder={t("messages.body.placeholder")}
           />
         </Field>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          {/* Escolher o arquivo envia na hora, junto com o texto digitado. */}
+          <FileAutoInput
+            name="file"
+            label={t("messages.attach.label")}
+            pendingLabel={t("messages.sending")}
+            uploadingLabel={t("messages.attach.uploading")}
+            tooBigLabel={t("messages.attach.tooBig")}
+            serverOnlyLabel={t("messages.attach.serverOnly")}
+            failedLabel={t("messages.attach.failed")}
+          />
           <SubmitButton pendingText={t("messages.sending")}>
             {t("messages.send")}
           </SubmitButton>
