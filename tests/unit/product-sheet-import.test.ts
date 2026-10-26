@@ -319,11 +319,12 @@ describe("importação (um produto por linha, o modo anterior)", () => {
     const kinds = (await store.list("product_photos", { filter: { productId } })).map((p) => p.kind).sort();
     expect(kinds).toEqual(["business_card", "supplier"]);
     expect(product.primaryPhotoDocumentId).toBeTruthy();
-    // O que falta: medidas da caixa e todas as fotos da ficha, inclusive a original
-    // (a da planilha não é a evidência da equipe); o que veio não falta.
+    // O que falta: todas as fotos da ficha, inclusive a original (a da planilha
+    // não é a evidência da equipe); o que veio não falta. A planilha traz o CBM
+    // da caixa, então as medidas da caixa não são exigidas.
     const missing = result.results[0].missing;
-    expect(missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "scalePhoto", "rulerPhoto", "sidePhoto", "anglePhoto", "originalPhoto"]));
-    for (const k of ["price", "moq", "colorAssortment", "material", "packageType"])
+    expect(missing).toEqual(expect.arrayContaining(["scalePhoto", "rulerPhoto", "sidePhoto", "anglePhoto", "originalPhoto"]));
+    for (const k of ["price", "moq", "colorAssortment", "material", "packageType", "heightCm", "widthCm", "lengthCm"])
       expect(missing).not.toContain(k);
     // Lote guardado com o arquivo e o resumo.
     const batch = (await store.get("import_batches", result.batchId))!;
@@ -521,8 +522,9 @@ describe("importação com variações (um produto por planilha, o modo padrão)
     // Cabeçalho da planilha também entra: FOB/EXW, data, local, loja e telefone.
     expect(sheet).toMatchObject({ incoterm: "EXW", location: "YIWU", supplierName: "MIN YAN", supplierStore: "E4-9558", supplierPhone: "13515898686" });
     expect(sheet.sheetDate).toBeTruthy();
-    for (const k of ["price", "moq", "colorAssortment", "material", "packageType", "incoterm"]) expect(row.missing).not.toContain(k);
-    expect(row.missing).toEqual(expect.arrayContaining(["heightCm", "widthCm", "lengthCm", "originalPhoto"]));
+    // Com o CBM da planilha, as medidas da caixa não faltam.
+    for (const k of ["price", "moq", "colorAssortment", "material", "packageType", "incoterm", "heightCm", "widthCm", "lengthCm"]) expect(row.missing).not.toContain(k);
+    expect(row.missing).toEqual(expect.arrayContaining(["originalPhoto"]));
 
     // Lote: produto uma vez, uma decisão por variação; as variações não contam como produto.
     const batch = (await store.get("import_batches", result.batchId))!;

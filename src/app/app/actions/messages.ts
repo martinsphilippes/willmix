@@ -13,6 +13,8 @@ import { field, requireUser, run, runInPlace, str } from "./helpers";
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const optionalId = ID.nullable();
+/** Id do arquivo que o navegador subiu direto ao armazenamento. */
+const uploadedId = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 const bodySchema = z.string().trim().min(1).max(MESSAGE_MAX_LENGTH);
 const BASE = "/app/messages";
 
@@ -24,10 +26,10 @@ function threadBack(conversationId: string, topicId: string) {
   return t.success ? `${BASE}?c=${c.data}&t=${t.data}` : `${BASE}?c=${c.data}`;
 }
 
-/** Volta de quem abriu o chat de outra tela (solicitação ou pedido). */
+/** Volta de quem abriu o chat de outra tela (solicitação, cotação ou pedido). */
 function pageBack(form: FormData) {
   const back = str(form, "back");
-  return /^\/app\/(requests|orders)\/[A-Za-z0-9_-]{1,64}$/.test(back)
+  return /^\/app\/(requests|quotes|orders)\/[A-Za-z0-9_-]{1,64}$/.test(back)
     ? back
     : BASE;
 }
@@ -40,10 +42,22 @@ export async function postMessageAction(form: FormData) {
   const back = threadBack(str(form, "conversationId"), str(form, "topicId"));
   await runInPlace(back, async () => {
     const topicId = ID.parse(str(form, "topicId"));
-    // Recusado (vazio ou longo demais): a tela aponta o campo da mensagem.
-    const body = field(form, "body", bodySchema);
+    // Anexo: arquivo no formulário (até ~4 MB) ou já subido direto.
+    const file = form.get("file");
+    const uploadedFileId = str(form, "uploadedFileId");
+    const attachment =
+      file instanceof File && file.size > 0
+        ? file
+        : uploadedFileId
+          ? { fileKey: uploadedId.parse(uploadedFileId) }
+          : null;
+    // Sem anexo o texto é obrigatório; com anexo pode ficar vazio. Recusado
+    // (vazio ou longo demais): a tela aponta o campo da mensagem.
+    const body = attachment
+      ? field(form, "body", z.string().trim().max(MESSAGE_MAX_LENGTH))
+      : field(form, "body", bodySchema);
     const { postMessage } = await import("@/lib/services/messages");
-    await postMessage(user, topicId, body);
+    await postMessage(user, topicId, body, attachment);
   });
 }
 

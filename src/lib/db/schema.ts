@@ -775,6 +775,11 @@ export interface Document extends BaseRow {
    * Opcional: documentos antigos ficam sem.
    */
   packagingBriefId?: string | null;
+  /**
+   * Anexo de uma mensagem do chat: só abre quem vê aquele assunto da conversa
+   * (a empresa da conversa e a Wellmix). Opcional: documentos antigos ficam sem.
+   */
+  conversationTopicId?: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -1653,7 +1658,7 @@ export interface Message extends BaseRow {
   authorUserId: string;
   authorSide: MessageSide;
   body: string;
-  /** Anexo (documents); reservado, ainda não usado pela tela. */
+  /** Anexo (documents, com conversationTopicId); null sem anexo. */
   attachmentDocumentId: string | null;
 }
 
@@ -2063,6 +2068,7 @@ export const TABLES: Record<TableName, TableDef> = {
       kitId: id(false),
       imageHash: str(32),
       packagingBriefId: id(false),
+      conversationTopicId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },

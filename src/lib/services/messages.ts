@@ -200,6 +200,19 @@ async function loadTopicFor(user: User, topicId: string) {
   return { topic, conversation };
 }
 
+/** O login pode abrir o assunto (e os anexos dele)? Nunca lança. */
+export async function canOpenTopic(
+  user: User,
+  topicId: string,
+): Promise<boolean> {
+  try {
+    await loadTopicFor(user, topicId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /* ---------------------------------------------------------------------- */
 /* Conversas e assuntos (encontrar ou criar)                               */
 /* ---------------------------------------------------------------------- */
@@ -434,6 +447,8 @@ export interface MessageView {
   authorName: string;
   authorSide: MessageSide;
   mine: boolean;
+  /** Arquivo anexado (abre por /api/files, que confere o acesso). */
+  attachment: { id: string; name: string; isImage: boolean } | null;
 }
 
 export interface ConversationView {
@@ -500,6 +515,18 @@ export async function getConversationView(
   const authors = authorIds.length
     ? await store.list("users", { filter: { id: authorIds } })
     : [];
+  const attachmentIds = rows
+    .map((m) => m.attachmentDocumentId)
+    .filter((id): id is string => !!id);
+  const attachments = attachmentIds.length
+    ? await store.list("documents", { filter: { id: attachmentIds } })
+    : [];
+  const attachmentOf = (m: Message): MessageView["attachment"] => {
+    const doc = attachments.find((d) => d.id === m.attachmentDocumentId);
+    return doc
+      ? { id: doc.id, name: doc.name, isImage: doc.mime.startsWith("image/") }
+      : null;
+  };
   const company = await companiesOf([conversation]);
   return {
     conversation: {
@@ -520,6 +547,7 @@ export async function getConversationView(
       authorName: authors.find((u) => u.id === m.authorUserId)?.name ?? "—",
       authorSide: m.authorSide,
       mine: m.authorUserId === user.id,
+      attachment: attachmentOf(m),
     })),
   };
 }
@@ -705,27 +733,61 @@ export function messageBody(body: string): string {
   return text;
 }
 
+/** Anexo: arquivo do formulário ou id do que o navegador já subiu direto. */
+export type MessageAttachment = File | { fileKey: string };
+
 /**
- * Escreve no assunto: grava a mensagem, atualiza a última mensagem da
- * conversa e do assunto, marca como lido para quem escreveu e avisa o outro
- * lado (Wellmix escreveu: os logins da empresa que veem o assunto; a empresa
- * escreveu: a equipe Wellmix).
+ * Escreve no assunto: grava a mensagem (com o anexo, se houver), atualiza a
+ * última mensagem da conversa e do assunto, marca como lido para quem
+ * escreveu e avisa o outro lado (Wellmix escreveu: os logins da empresa que
+ * veem o assunto; a empresa escreveu: a equipe Wellmix). Com anexo o texto
+ * pode ficar vazio (vale o nome do arquivo). O anexo só abre para quem vê o
+ * assunto (documents.conversationTopicId; ver canAccessDocument).
  */
 export async function postMessage(
   user: User,
   topicId: string,
   body: string,
+  attachment?: MessageAttachment | null,
 ): Promise<Message> {
-  const text = messageBody(body);
+  const attached =
+    attachment instanceof File
+      ? attachment.size > 0
+        ? attachment
+        : null
+      : (attachment ?? null);
+  const typed = body.trim();
+  const text = attached && !typed ? "" : messageBody(body);
   const store = getStore();
+  // Acesso antes de qualquer gravação (nem o arquivo sobe sem acesso).
   const { topic, conversation } = await loadTopicFor(user, topicId);
+  let attachmentDocumentId: string | null = null;
+  let fileName = "";
+  if (attached) {
+    const { uploadDocument, registerUploadedDocument } = await import(
+      "./documents"
+    );
+    const input = {
+      type: "attachment" as const,
+      visibility: "internal" as const,
+      conversationTopicId: topic.id,
+    };
+    // Arquivo no formulário ou já subido direto ao armazenamento (grande).
+    const doc =
+      attached instanceof File
+        ? await uploadDocument(user, attached, input)
+        : await registerUploadedDocument(user, attached.fileKey, input);
+    attachmentDocumentId = doc.id;
+    fileName = doc.name;
+  }
+  const shown = text || `📎 ${fileName}`.slice(0, MESSAGE_MAX_LENGTH);
   const message = await store.create("messages", {
     conversationId: conversation.id,
     topicId: topic.id,
     authorUserId: user.id,
     authorSide: sideOf(user),
-    body: text,
-    attachmentDocumentId: null,
+    body: shown,
+    attachmentDocumentId,
   });
   await Promise.all([
     store.update("conversation_topics", topic.id, {
@@ -733,11 +795,11 @@ export async function postMessage(
     }),
     store.update("conversations", conversation.id, {
       lastMessageAt: message.createdAt,
-      lastMessagePreview: previewOf(text),
+      lastMessagePreview: previewOf(shown),
     }),
   ]);
   await saveRead(user.id, topic.id);
-  await notifyOtherSide(user, conversation, topic, text);
+  await notifyOtherSide(user, conversation, topic, shown);
   return message;
 }
 

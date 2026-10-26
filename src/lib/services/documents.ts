@@ -59,6 +59,8 @@ export interface UploadInput {
   kitId?: string | null;
   /** Entregável de um briefing de embalagem (faca, arte, gráfica, foto). */
   packagingBriefId?: string | null;
+  /** Anexo do chat: o acesso segue o assunto da conversa. */
+  conversationTopicId?: string | null;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -200,6 +202,9 @@ async function createDocumentRow(
     ...(input.packagingBriefId
       ? { packagingBriefId: input.packagingBriefId }
       : {}),
+    ...(input.conversationTopicId
+      ? { conversationTopicId: input.conversationTopicId }
+      : {}),
     // Fotos de catálogo já nascem com a impressão digital (busca por foto).
     imageHash:
       bytes &&
@@ -246,6 +251,12 @@ export async function canAccessDocument(
 ): Promise<boolean> {
   if (isWellmix(user) || doc.uploadedByUserId === user.id) return true;
   const store = getStore();
+  if (doc.conversationTopicId) {
+    // Anexo do chat: só quem vê o assunto (empresa da conversa e, no assunto
+    // de solicitação/pedido, só quem vê a solicitação/o pedido).
+    const { canOpenTopic } = await import("./messages");
+    return canOpenTopic(user, doc.conversationTopicId);
+  }
   if (doc.kitId) {
     // Kit de marketing: prévia a partir da oferta, arquivo final só depois de liberado.
     const { canViewKitDocument } = await import("./marketing");

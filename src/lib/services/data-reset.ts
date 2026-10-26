@@ -3,11 +3,12 @@ import "server-only";
 import { getStore, type TableName, type User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { audit } from "./audit";
+import { isSchemaMissing } from "./packaging-brief";
 
 /*
  * Limpar dados de teste: apaga as VENDAS (solicitações, cotações, pedidos,
  * pagamentos, containers, inspeções, documentos e arquivos de venda,
- * notificações, sugestões da IA, kits de marketing e o histórico delas) e
+ * notificações, mensagens do chat (com os anexos), sugestões da IA, kits de marketing e o histórico delas) e
  * recomeça a numeração de solicitações e pedidos do #1.
  *
  * Fica: catálogo de produtos (fichas mestres, fotos, fornecedores do
@@ -48,7 +49,20 @@ const SALES_TABLES = [
   "marketing_kits",
   "ai_suggestions",
   "cart_items",
+  // Mensagens (chat): conversas, assuntos, mensagens e leituras de teste.
+  "messages",
+  "message_reads",
+  "conversation_topics",
+  "conversations",
 ] as const satisfies readonly TableName[];
+
+/** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
+const OPTIONAL_TABLES = new Set<TableName>([
+  "messages",
+  "message_reads",
+  "conversation_topics",
+  "conversations",
+]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */
 const SALES_ENTITIES = new Set([
@@ -135,6 +149,8 @@ export interface ResetPlan {
     kits: number;
     /** Itens de sourcing que as solicitações de teste criaram (sob demanda). */
     sourcing: number;
+    /** Mensagens do chat (conversas, assuntos e leituras vão em "other"). */
+    messages: number;
     /** Etapas, itens, fichas do pedido, medições, revisões, histórico… */
     other: number;
   };
@@ -160,7 +176,13 @@ interface Work {
 /** Calcula o que sai e o que perde a ligação, sem mudar nada. */
 async function buildWork(): Promise<Work> {
   const store = getStore();
-  const list = <K extends TableName>(table: K) => store.list(table);
+  const list = <K extends TableName>(table: K) =>
+    OPTIONAL_TABLES.has(table)
+      ? store.list(table).catch((error: unknown) => {
+          if (isSchemaMissing(error)) return [];
+          throw error;
+        })
+      : store.list(table);
   const [
     sales,
     documents,
@@ -354,6 +376,8 @@ async function buildWork(): Promise<Work> {
     // sourcing que sai.
     const sale =
       !!(d.orderId || d.requestId || d.requirementId || d.kitId) ||
+      // Anexo do chat (sai junto com as mensagens).
+      !!d.conversationTopicId ||
       droppedPhotoDocs.has(d.id) ||
       (!!d.sourcingItemId && sourcingGone.has(d.sourcingItemId));
     // Do catálogo: usado por algo que fica, ou do produto/sourcing que fica
@@ -453,6 +477,7 @@ async function buildWork(): Promise<Work> {
     aiSuggestions: count("ai_suggestions"),
     kits: count("marketing_kits"),
     sourcing: count("sourcing_items"),
+    messages: count("messages"),
     other: 0,
   };
   const named = Object.values(remove).reduce((s, n) => s + n, 0);

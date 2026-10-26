@@ -22,6 +22,7 @@ export const pt = {
   "reset.row.aiSuggestions": "Sugestões da IA",
   "reset.row.kits": "Kits de marketing",
   "reset.row.sourcing": "Itens de sourcing criados por solicitações",
+  "reset.row.messages": "Mensagens do chat (com anexos)",
   "reset.newData":
     "Existem {n} registros de venda criados depois da limpeza. Podem ser vendas reais: confira antes de apagar de novo.",
   "reset.countersKept":
@@ -67,6 +68,7 @@ export const en: Record<keyof typeof pt, string> = {
   "reset.row.aiSuggestions": "AI suggestions",
   "reset.row.kits": "Marketing kits",
   "reset.row.sourcing": "Sourcing items created by requests",
+  "reset.row.messages": "Chat messages (with attachments)",
   "reset.newData":
     "There are {n} sales records created after the cleanup. They may be real sales: check before deleting again.",
   "reset.countersKept":
@@ -111,6 +113,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "reset.row.aiSuggestions": "AI 建议",
   "reset.row.kits": "营销素材包",
   "reset.row.sourcing": "由需求创建的寻源项目",
+  "reset.row.messages": "聊天消息（含附件）",
   "reset.newData":
     "清理之后又新建了 {n} 条销售记录，可能是真实销售：再次删除前请先核对。",
   "reset.countersKept": "清理期间出现了新的销售，因此编号没有重新开始。",

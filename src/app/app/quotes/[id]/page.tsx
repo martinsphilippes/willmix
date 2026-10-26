@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
+import { ChatButtons } from "@/components/chat-buttons";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -160,6 +161,24 @@ export default async function QuotePage({
               {t(`quoteStatus.${quote.status}`)}
             </Badge>
           </span>
+        }
+        actions={
+          // Mensagens: o fornecedor fala com a Wellmix (e a Wellmix com o
+          // fornecedor) no assunto desta solicitação, na conversa da empresa.
+          isWellmix(user) || user.role === "supplier" ? (
+            <ChatButtons
+              back={`/app/quotes/${quote.id}`}
+              requestId={request.id}
+              targets={[
+                isWellmix(user)
+                  ? {
+                      partyId: quote.supplierId,
+                      label: t("messages.chatSupplier"),
+                    }
+                  : { label: t("messages.chatWellmix") },
+              ]}
+            />
+          ) : null
         }
       />
       <div className="space-y-3">
