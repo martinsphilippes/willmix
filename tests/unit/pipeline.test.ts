@@ -110,7 +110,7 @@ describe("painel de pedidos", () => {
     expect(await pipelineFor(supplierB)).toEqual([]);
   });
 
-  it("abrir a linha: itens do pedido e os produtos do mesmo lote da solicitação", async () => {
+  it("itens e grupo: cada produto com seus itens; o lote compartilha a chave da solicitação", async () => {
     const placed = await order("Prato com itens");
     const first = await request("Caneca do lote");
     const second = await request("Tigela do lote");
@@ -124,17 +124,23 @@ describe("painel de pedidos", () => {
         name: "Prato com itens",
         quantity: 1000,
         unit: "un",
-        href: null,
+        unitPrice: 2,
+        currency: "USD",
       }),
     ]);
-    const lote = rows.find((x) => x.key === `request:${first.id}`)!;
-    expect(lote.items.map((i) => i.name)).toEqual([
-      "Caneca do lote",
-      "Tigela do lote",
-    ]);
-    // A própria fica sem link; a outra do lote abre a dela.
-    expect(lote.items[0].href).toBeNull();
-    expect(lote.items[1].href).toBe(`/app/requests/${second.id}`);
-    expect(lote.items[1].status).toBe("REQUESTED");
+    // Pedido sem lote: o grupo é ele mesmo.
+    expect(orderRow.groupKey).toBe(`order:${placed.id}`);
+    const a = rows.find((x) => x.key === `request:${first.id}`)!;
+    const b = rows.find((x) => x.key === `request:${second.id}`)!;
+    expect(a.groupKey).toBe("group:lote-teste");
+    expect(b.groupKey).toBe("group:lote-teste");
+    expect(a.groupHref).toBe("/app/requests/batch/lote-teste");
+    expect(a.items.map((i) => i.name)).toEqual(["Caneca do lote"]);
+
+    // Fornecedor não vê preço (nem página do lote).
+    const forA = await pipelineFor(supplierA);
+    const mine = forA.find((x) => x.key === `order:${placed.id}`)!;
+    expect(mine.items[0].unitPrice).toBeNull();
+    expect(mine.groupHref).toBeNull();
   });
 });

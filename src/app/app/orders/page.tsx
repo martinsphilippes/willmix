@@ -54,41 +54,115 @@ export default async function OrdersPage({
         : REQUEST_STATUSES.indexOf(
             row.phase.key as (typeof REQUEST_STATUSES)[number],
           );
-  const tableRows: OrdersTableRow[] = rows.map((r) => ({
-    key: r.key,
-    href: r.href,
-    number:
-      r.kind === "order"
-        ? `#${r.number ?? "—"}`
-        : r.number
-          ? t("orders.panel.requestNumber", { n: r.number })
-          : "—",
-    isRequest: r.kind === "request",
-    product: r.product,
-    items: r.items.map((i) => ({
-      name: i.name,
-      variant: i.variant,
-      quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
-      href: i.href,
-      status: i.status
-        ? t(`reqStatusLabel.${i.status}` as DictionaryKey)
+  const phaseLabel = (r: (typeof rows)[number]) =>
+    r.phase.kind === "stage"
+      ? t(`stage.${r.phase.key}` as DictionaryKey)
+      : t(`reqStatusLabel.${r.phase.key}` as DictionaryKey);
+  const refLabel = (r: (typeof rows)[number]) =>
+    r.kind === "order"
+      ? `#${r.number ?? "—"}`
+      : r.number
+        ? t("orders.panel.requestNumber", { n: r.number })
+        : "—";
+  const money = (value: number | null, currency: string | null) =>
+    value === null
+      ? null
+      : `${currency ?? ""} ${value.toLocaleString(t.intl, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4,
+        })}`.trim();
+
+  // Como no Sankhya: uma linha por solicitação (os produtos do mesmo lote
+  // juntos) e, embaixo, os itens da linha escolhida. Cada produto continua
+  // com o próprio pedido; a linha resume o grupo.
+  const groups = new Map<string, (typeof rows)[number][]>();
+  for (const r of rows)
+    groups.set(r.groupKey, [...(groups.get(r.groupKey) ?? []), r]);
+  const STATE_WEIGHT = {
+    blocked: 0,
+    active: 1,
+    done: 2,
+    cancelled: 3,
+  } as const;
+  const tableRows: OrdersTableRow[] = [...groups.values()].map((members) => {
+    const sorted = [...members].sort(
+      (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.key.localeCompare(b.key),
+    );
+    const first = sorted[0];
+    const live = sorted.filter((r) => r.state !== "cancelled");
+    // Etapa: a do produto mais atrasado no fluxo (o que ainda segura o grupo).
+    const lead = [...(live.length ? live : sorted)].sort(
+      (a, b) => rank(a) - rank(b),
+    )[0];
+    const state = sorted
+      .map((r) => r.state)
+      .sort((a, b) => STATE_WEIGHT[a] - STATE_WEIGHT[b])[0];
+    const progresses = sorted
+      .map((r) => r.progress)
+      .filter((p): p is number => p !== null);
+    const dues = live
+      .map((r) => r.dueAt)
+      .filter((d): d is string => !!d)
+      .sort((a, b) => brazilDay(a).localeCompare(brazilDay(b)));
+    const updated = sorted
+      .map((r) => r.updatedAt)
+      .sort()
+      .at(-1)!;
+    const single = sorted.length === 1;
+    const suppliers = [
+      ...new Set(sorted.map((r) => r.supplier).filter((s): s is string => !!s)),
+    ];
+    const orderRefs = sorted.filter((r) => r.kind === "order").map(refLabel);
+    return {
+      key: first.groupKey,
+      href: single ? first.href : (first.groupHref ?? first.href),
+      number:
+        single || !first.requestNumber
+          ? refLabel(first)
+          : t("orders.panel.requestNumber", { n: first.requestNumber }),
+      // Embaixo do número: os pedidos do grupo (ou "Solicitação").
+      subtitle: single
+        ? first.kind === "request"
+          ? t("orders.panel.request")
+          : first.requestNumber
+            ? t("orders.panel.requestNumber", { n: first.requestNumber })
+            : null
+        : orderRefs.length
+          ? orderRefs.join(" · ")
+          : t("orders.panel.request"),
+      isRequest: sorted.every((r) => r.kind === "request"),
+      product: first.product,
+      items: sorted.flatMap((r) =>
+        r.items.map((i) => ({
+          name: i.name,
+          variant: i.variant,
+          quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
+          price: wellmix ? money(i.unitPrice, i.currency) : null,
+          supplier: r.supplier ?? "",
+          ref: refLabel(r),
+          href: r.href,
+          phase: phaseLabel(r),
+          state: r.state,
+          progress: r.progress,
+          dueLabel: formatDate(r.dueAt, t),
+          due: brazilDay(r.dueAt),
+        })),
+      ),
+      customer: first.customer ?? "",
+      supplier: suppliers.join(", "),
+      phase: phaseLabel(lead),
+      phaseKey: `${lead.phase.kind}:${lead.phase.key}`,
+      phaseRank: rank(lead),
+      state,
+      progress: progresses.length
+        ? Math.round(progresses.reduce((a, b) => a + b, 0) / progresses.length)
         : null,
-    })),
-    customer: r.customer ?? "",
-    supplier: r.supplier ?? "",
-    phase:
-      r.phase.kind === "stage"
-        ? t(`stage.${r.phase.key}` as DictionaryKey)
-        : t(`reqStatusLabel.${r.phase.key}` as DictionaryKey),
-    phaseKey: `${r.phase.kind}:${r.phase.key}`,
-    phaseRank: rank(r),
-    state: r.state,
-    progress: r.progress,
-    due: brazilDay(r.dueAt),
-    dueLabel: formatDate(r.dueAt, t),
-    updated: brazilDay(r.updatedAt),
-    updatedLabel: formatDate(r.updatedAt, t),
-  }));
+      due: dues.length ? brazilDay(dues[0]) : "",
+      dueLabel: dues.length ? formatDate(dues[0], t) : formatDate(null, t),
+      updated: brazilDay(updated),
+      updatedLabel: formatDate(updated, t),
+    };
+  });
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v.slice(0, 120) : undefined;
 
@@ -161,6 +235,13 @@ export default async function OrdersPage({
             empty: t("orders.panel.empty"),
             sortBy: t("orders.panel.sortBy"),
             moreItems: t("orders.panel.moreItems", { n: "{n}" }),
+            itemsOf: t("orders.panel.itemsOf", { ref: "{ref}" }),
+            pickRow: t("orders.panel.pickRow"),
+            price: t("orders.panel.unitPrice"),
+            seq: t("orders.panel.seq"),
+            variant: t("orders.panel.variant"),
+            quantity: t("common.quantity"),
+            ref: t("orders.panel.ref"),
             moreItem: t("orders.panel.moreItem"),
             items: t("orders.panel.items"),
             showItems: t("orders.panel.showItems"),

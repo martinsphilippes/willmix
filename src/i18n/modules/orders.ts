@@ -36,6 +36,12 @@ export const pt = {
   "orders.panel.openOrder": "Abrir pedido",
   "orders.panel.openRequest": "Abrir solicitação",
   "orders.panel.noItems": "Nenhum item cadastrado.",
+  "orders.panel.itemsOf": "Itens de {ref}",
+  "orders.panel.pickRow": "Clique numa linha acima para ver os itens.",
+  "orders.panel.unitPrice": "Preço un. (FOB)",
+  "orders.panel.seq": "Seq",
+  "orders.panel.variant": "Variação",
+  "orders.panel.ref": "Pedido",
   "orders.snapshot.hint":
     "O que foi efetivamente negociado neste pedido. O cadastro do produto pode mudar; este registro não. É a base da comparação na inspeção e só a Wellmix o vê.",
   "orders.snapshot.missing":
@@ -302,6 +308,12 @@ export const en: Record<keyof typeof pt, string> = {
   "orders.panel.openOrder": "Open order",
   "orders.panel.openRequest": "Open request",
   "orders.panel.noItems": "No items registered.",
+  "orders.panel.itemsOf": "Items of {ref}",
+  "orders.panel.pickRow": "Click a row above to see its items.",
+  "orders.panel.unitPrice": "Unit price (FOB)",
+  "orders.panel.seq": "Seq",
+  "orders.panel.variant": "Variant",
+  "orders.panel.ref": "Order",
   "orders.snapshot.hint":
     "What was actually negotiated for this order. The product record may change; this one does not. It is the basis for the inspection comparison and only Wellmix sees it.",
   "orders.snapshot.missing":
@@ -558,6 +570,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "orders.panel.openOrder": "打开订单",
   "orders.panel.openRequest": "打开需求",
   "orders.panel.noItems": "没有登记的明细。",
+  "orders.panel.itemsOf": "{ref} 的明细",
+  "orders.panel.pickRow": "点击上方的一行查看明细。",
+  "orders.panel.unitPrice": "单价（FOB）",
+  "orders.panel.seq": "序号",
+  "orders.panel.variant": "规格",
+  "orders.panel.ref": "订单",
   "orders.snapshot.hint":
     "本订单实际成交的内容。产品档案可以更改，此记录不会。它是验货比对的依据，仅 Wellmix 可见。",
   "orders.snapshot.missing": "本订单没有采购快照（创建于该功能上线之前）。",
