@@ -16,6 +16,18 @@ import {
 
 export type PipelineState = "active" | "blocked" | "done" | "cancelled";
 
+/** Item mostrado ao abrir a linha: produto, variação e quantidade. */
+export interface PipelineItem {
+  name: string;
+  variant: string | null;
+  quantity: number;
+  unit: string;
+  /** Solicitação do mesmo lote (abre a própria); nulo nos itens do pedido. */
+  href: string | null;
+  /** Situação da solicitação do lote (reqStatusLabel.*); nulo no pedido. */
+  status: string | null;
+}
+
 export interface PipelineRow {
   /** "order:<id>" ou "request:<id>". */
   key: string;
@@ -34,6 +46,8 @@ export interface PipelineRow {
   progress: number | null;
   dueAt: string | null;
   updatedAt: string;
+  /** Itens do pedido ou produtos do mesmo lote da solicitação. */
+  items: PipelineItem[];
 }
 
 const STATE_ORDER: Record<PipelineState, number> = {
@@ -72,6 +86,16 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       href: `/app/orders/${o.id}`,
       number: o.number,
       product: items.find((i) => i.orderId === o.id)?.name ?? "—",
+      items: items
+        .filter((i) => i.orderId === o.id)
+        .map((i) => ({
+          name: i.name,
+          variant: i.variant?.name ?? null,
+          quantity: i.quantity,
+          unit: i.unit,
+          href: null,
+          status: null,
+        })),
       customer: wellmix ? name(o.customerId) : null,
       supplier: showSupplier ? name(o.supplierId) : null,
       // Cancelado: a etapa em que estava (pedidos antigos sem ela: "Cancelado").
@@ -106,6 +130,17 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       href: `/app/requests/${r.id}`,
       number: r.number ?? null,
       product: r.productName,
+      // Lote: os produtos enviados juntos (mesmo formulário); sozinha, ela mesma.
+      items: (r.groupId ? requests.filter((x) => x.groupId === r.groupId) : [r])
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((x) => ({
+          name: x.productName,
+          variant: x.variant?.name ?? null,
+          quantity: x.quantity,
+          unit: x.unit,
+          href: x.id === r.id ? null : `/app/requests/${x.id}`,
+          status: x.status,
+        })),
       customer: name(r.customerId),
       supplier: selected ? name(selected.supplierId) : null,
       phase: { kind: "request", key: r.status },
