@@ -28,7 +28,10 @@ export type TaskKind =
   | "supplier_payment"
   | "confirm_receipt"
   | "packaging_brief"
-  | "approval";
+  | "approval"
+  | "production_follow"
+  | "sku_inspection"
+  | "sku_fix";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -679,6 +682,41 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         ),
       );
     }
+  }
+  // Produção (Fase C): follow 5/15/25 e reinspeção (Wellmix); SKU reprovado
+  // a corrigir (fornecedor).
+  if (wellmix || supplier) {
+    const orders = await store.list("orders", {
+      filter: supplier
+        ? { supplierId: user.partyId! }
+        : {
+            status: [
+              "ORDER_CREATED",
+              "PREPARATION",
+              "SUPPLIER_PAYMENT",
+              "PACKAGING",
+              "INSPECTION",
+              "SHIPPING",
+            ],
+          },
+    });
+    const { productionTasks } = await import("./production");
+    for (const p of await productionTasks(user, orders))
+      tasks.push(
+        finish(
+          {
+            kind: p.kind,
+            title: p.title,
+            detail: p.detail,
+            link: `/app/orders/${p.order.id}#production`,
+            dueAt: p.dueAt,
+            orderNumber: p.order.number,
+            customerId: p.order.customerId,
+            ownerUserId: p.order.ownerUserId ?? null,
+          },
+          now,
+        ),
+      );
   }
   // Pelo prazo: as mais urgentes primeiro; sem prazo por último.
   return sortTasks(tasks);

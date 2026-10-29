@@ -1,3 +1,4 @@
+import { ProductionCard } from "@/components/production-card";
 import {
   sheetProgress,
   syncPreparationFromSheet,
@@ -164,6 +165,7 @@ export default async function OrderPage({
     fields: invalidFields,
     at: errorToken,
     tariffOrigin,
+    production: productionNotice,
   } = await searchParams;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
@@ -208,6 +210,23 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  /* Produção: Wellmix e o fornecedor do pedido (fora das etapas). */
+  const productionView =
+    order.status !== "CANCELLED" &&
+    (wellmix || (user.role === "supplier" && order.supplierId === user.partyId))
+      ? await (await import("@/lib/services/production")).productionView(order)
+      : null;
+  const productionUserIds = new Set<string>();
+  for (const h of productionView?.track?.etdHistory ?? [])
+    productionUserIds.add(h.byUserId);
+  for (const f of productionView?.track?.followups ?? [])
+    productionUserIds.add(f.byUserId);
+  const productionNames = new Map(
+    (productionUserIds.size
+      ? await store.list("users", { filter: { id: [...productionUserIds] } })
+      : []
+    ).map((u) => [u.id, u.name]),
+  );
   // Etapas do fluxo (o pagamento ao fornecedor tem card próprio, fora dele).
   const flowStages = stages.filter((s) => !isOffFlowStage(s.key));
   const sheetHint = sheetState
@@ -627,7 +646,11 @@ export default async function OrderPage({
                   t(`orders.error.${error}` as DictionaryKey) !==
                     `orders.error.${error}`
                 ? t(`orders.error.${error}` as DictionaryKey)
-                : fallbackError(t, String(error))
+                : typeof error === "string" &&
+                    t(`production.error.${error}` as DictionaryKey) !==
+                      `production.error.${error}`
+                  ? t(`production.error.${error}` as DictionaryKey)
+                  : fallbackError(t, String(error))
         }
         fields={invalidFields}
         token={errorToken}
@@ -821,7 +844,11 @@ export default async function OrderPage({
                       />
                     ) : null}
                     {stage.key === "PACKAGING" && stage.status !== "pending" ? (
-                      <PackagingBriefFiles t={t} user={user} orderId={order.id} />
+                      <PackagingBriefFiles
+                        t={t}
+                        user={user}
+                        orderId={order.id}
+                      />
                     ) : null}
                     {stage.key === "INSPECTION" && user.role === "supplier" ? (
                       <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
@@ -953,6 +980,30 @@ export default async function OrderPage({
                   : termsNotice === "applied"
                     ? t("supplierTerms.applied")
                     : null
+              }
+            />
+          ) : null}
+
+          {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
+          {productionView ? (
+            <ProductionCard
+              t={t}
+              user={user}
+              order={order}
+              view={productionView}
+              wellmix={wellmix}
+              names={productionNames}
+              notice={
+                typeof productionNotice === "string" &&
+                [
+                  "saved",
+                  "followup",
+                  "scheduled",
+                  "inspected",
+                  "fixed",
+                ].includes(productionNotice)
+                  ? t(`production.done.${productionNotice}` as DictionaryKey)
+                  : null
               }
             />
           ) : null}

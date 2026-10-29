@@ -43,6 +43,7 @@ import * as sla from "./sla";
 import * as slaPanel from "./sla-panel";
 import * as approvals from "./approvals";
 import * as purchaseFlow from "./purchase-flow";
+import * as production from "./production";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
 import * as productDelete from "./product-delete";
@@ -112,6 +113,7 @@ export const modulesPt = {
   ...slaPanel.pt,
   ...approvals.pt,
   ...purchaseFlow.pt,
+  ...production.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
   ...productDelete.pt,
@@ -184,6 +186,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...slaPanel.en,
   ...approvals.en,
   ...purchaseFlow.en,
+  ...production.en,
   ...requestProduct.en,
   ...requestDelete.en,
   ...productDelete.en,
@@ -256,6 +259,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...slaPanel.zh,
   ...approvals.zh,
   ...purchaseFlow.zh,
+  ...production.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,
   ...productDelete.zh,
