@@ -82,6 +82,8 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
       {
         key: "nav.group.management",
         items: [
+          // Painéis por área (compras, produção, embarque, recebimento...).
+          { href: "/app/dashboards", key: "nav.dashboards" },
           { href: "/app/finance", key: "nav.finance" },
           { href: "/app/payables", key: "nav.payables" },
           { href: "/app/penalties", key: "nav.penalties" },
@@ -93,6 +95,8 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
                 { href: "/app/settings", key: "nav.settings" as DictionaryKey },
                 // Cargo, chefe e carteira de clientes (Painel de SLA).
                 { href: "/app/team", key: "nav.team" as DictionaryKey },
+                // Trilha de auditoria (quem fez o quê e quando).
+                { href: "/app/audit", key: "nav.audit" as DictionaryKey },
               ]
             : []),
         ],
