@@ -16,16 +16,15 @@ import {
 
 export type PipelineState = "active" | "blocked" | "done" | "cancelled";
 
-/** Item mostrado ao abrir a linha: produto, variação e quantidade. */
+/** Item do pedido/da solicitação (painel de itens embaixo da lista). */
 export interface PipelineItem {
   name: string;
   variant: string | null;
   quantity: number;
   unit: string;
-  /** Solicitação do mesmo lote (abre a própria); nulo nos itens do pedido. */
-  href: string | null;
-  /** Situação da solicitação do lote (reqStatusLabel.*); nulo no pedido. */
-  status: string | null;
+  /** Preço unitário FOB do fornecedor: só a Wellmix (nulo para os demais). */
+  unitPrice: number | null;
+  currency: string | null;
 }
 
 export interface PipelineRow {
@@ -46,8 +45,17 @@ export interface PipelineRow {
   progress: number | null;
   dueAt: string | null;
   updatedAt: string;
-  /** Itens do pedido ou produtos do mesmo lote da solicitação. */
+  /** Itens do pedido (ou o produto da solicitação). */
   items: PipelineItem[];
+  /**
+   * Solicitação a que a linha pertence (lote = mesmo groupId): a tela junta
+   * as linhas do mesmo grupo numa linha só, com os itens embaixo.
+   */
+  groupKey: string;
+  /** Página do grupo (lote) quem pode abrir; nulo = a da própria linha. */
+  groupHref: string | null;
+  /** Número da solicitação (o mesmo para o lote). */
+  requestNumber: number | null;
 }
 
 const STATE_ORDER: Record<PipelineState, number> = {
@@ -72,11 +80,43 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
   ]);
   const name = (id: string | null | undefined) =>
     (id && parties.find((p) => p.id === id)?.name) || null;
+  // Solicitação de cada pedido (lote e número). A Wellmix já carregou todas;
+  // os demais, só as dos pedidos que veem (só groupId e número são usados).
+  const visibleOrders = orders.filter((o) => canViewOrder(user, o));
+  const orderRequests = wellmix
+    ? requests
+    : await (async () => {
+        const ids = [
+          ...new Set(
+            visibleOrders
+              .map((o) => o.requestId)
+              .filter((id): id is string => !!id),
+          ),
+        ];
+        return ids.length
+          ? store.list("requests", { filter: { id: ids } })
+          : [];
+      })();
+  const requestById = new Map(orderRequests.map((r) => [r.id, r]));
+  // Página do lote: Wellmix e cliente abrem; os demais ficam na linha.
+  const lotePage = wellmix || user.role === "customer";
+  const group = (
+    request: { id: string; groupId?: string | null } | undefined,
+    own: string,
+  ) =>
+    request?.groupId
+      ? {
+          groupKey: `group:${request.groupId}`,
+          groupHref: lotePage
+            ? `/app/requests/batch/${encodeURIComponent(request.groupId)}`
+            : null,
+        }
+      : { groupKey: own, groupHref: null };
   const showSupplier = canSeeSupplier(user) && user.role !== "supplier";
   const rows: PipelineRow[] = [];
 
-  for (const o of orders) {
-    if (!canViewOrder(user, o)) continue;
+  for (const o of visibleOrders) {
+    const request = o.requestId ? requestById.get(o.requestId) : undefined;
     const stage = stages.find((s) => s.orderId === o.id);
     const cancelled = o.status === "CANCELLED";
     const closed = o.status === "CLOSED";
@@ -93,9 +133,11 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           variant: i.variant?.name ?? null,
           quantity: i.quantity,
           unit: i.unit,
-          href: null,
-          status: null,
+          unitPrice: wellmix ? i.unitPrice : null,
+          currency: wellmix ? o.fobCurrency : null,
         })),
+      ...group(request, `order:${o.id}`),
+      requestNumber: request?.number ?? null,
       customer: wellmix ? name(o.customerId) : null,
       supplier: showSupplier ? name(o.supplierId) : null,
       // Cancelado: a etapa em que estava (pedidos antigos sem ela: "Cancelado").
@@ -130,17 +172,18 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       href: `/app/requests/${r.id}`,
       number: r.number ?? null,
       product: r.productName,
-      // Lote: os produtos enviados juntos (mesmo formulário); sozinha, ela mesma.
-      items: (r.groupId ? requests.filter((x) => x.groupId === r.groupId) : [r])
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-        .map((x) => ({
-          name: x.productName,
-          variant: x.variant?.name ?? null,
-          quantity: x.quantity,
-          unit: x.unit,
-          href: x.id === r.id ? null : `/app/requests/${x.id}`,
-          status: x.status,
-        })),
+      items: [
+        {
+          name: r.productName,
+          variant: r.variant?.name ?? null,
+          quantity: r.quantity,
+          unit: r.unit,
+          unitPrice: selected?.price ?? null,
+          currency: selected?.currency ?? null,
+        },
+      ],
+      ...group(r, `request:${r.id}`),
+      requestNumber: r.number ?? null,
       customer: name(r.customerId),
       supplier: selected ? name(selected.supplierId) : null,
       phase: { kind: "request", key: r.status },

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   cx,
@@ -20,16 +20,23 @@ import {
 
 export type RowState = "active" | "blocked" | "done" | "cancelled";
 
-/** Item mostrado ao abrir a linha (produto, variação, quantidade). */
+/** Item da linha escolhida (painel de itens embaixo, como no Sankhya). */
 export interface OrdersTableItem {
   name: string;
   variant: string | null;
   /** Quantidade já formatada com a unidade ("2.400 un"). */
   quantity: string;
-  /** Outra solicitação do mesmo lote (abre a própria). */
-  href: string | null;
-  /** Situação traduzida (solicitações do lote). */
-  status: string | null;
+  /** Preço unitário formatado (só a Wellmix; nulo para os demais). */
+  price: string | null;
+  supplier: string;
+  /** Pedido ou solicitação deste item ("#4", "Sol. 6"). */
+  ref: string;
+  href: string;
+  phase: string;
+  state: RowState;
+  progress: number | null;
+  due: string;
+  dueLabel: string;
 }
 
 export interface OrdersTableRow {
@@ -37,6 +44,8 @@ export interface OrdersTableRow {
   href: string;
   items: OrdersTableItem[];
   number: string;
+  /** Embaixo do número: os pedidos do grupo, ou "Solicitação". */
+  subtitle: string | null;
   isRequest: boolean;
   product: string;
   customer: string;
@@ -87,6 +96,15 @@ export interface OrdersTableLabels {
   openOrder: string;
   openRequest: string;
   noItems: string;
+  /** "Itens de {ref}" (título do painel de itens). */
+  itemsOf: string;
+  /** Nenhuma linha escolhida. */
+  pickRow: string;
+  price: string;
+  seq: string;
+  variant: string;
+  quantity: string;
+  ref: string;
 }
 
 type Filters = Record<FilterKey, string>;
@@ -170,16 +188,9 @@ export function OrdersTable({
         FILTER_KEYS.map((k) => [k, initial[k] ?? ""]),
       ) as Filters,
   );
-  // Linhas abertas (itens do pedido/lote visíveis logo abaixo).
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
-  function toggleOpen(key: string) {
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
+  // Linha escolhida: os itens dela aparecem no painel de baixo (como no
+  // Sankhya). Sem escolha, vale a primeira da lista filtrada.
+  const [picked, setPicked] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(
     () => {
       // Só colunas conhecidas (link editado ou antigo não quebra a tela).
@@ -381,6 +392,8 @@ export function OrdersTable({
     </select>
   );
 
+  const current = shown.find((r) => r.key === picked) ?? shown[0] ?? null;
+
   return (
     <div data-orders-panel>
       <div className="mb-2 flex flex-wrap items-center gap-3 text-sm text-zinc-600">
@@ -466,201 +479,227 @@ export function OrdersTable({
                   !!r.due &&
                   r.due < today &&
                   (r.state === "active" || r.state === "blocked");
-                const expanded = open.has(r.key);
-                const columns =
-                  7 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0);
+                const selected = current?.key === r.key;
                 return (
-                  <Fragment key={r.key}>
-                    <tr
-                      className={cx(
-                        rowClass,
-                        "cursor-pointer",
-                        expanded && "bg-brand-50/40",
-                      )}
-                      data-orders-row={r.key}
-                      data-orders-state={r.state}
-                      aria-expanded={expanded}
-                      // Clicar na linha abre/fecha os itens; o número e o nome
-                      // continuam levando à página do pedido/da solicitação.
-                      onClick={(event) => {
-                        if ((event.target as HTMLElement).closest("a,button"))
-                          return;
-                        toggleOpen(r.key);
-                      }}
-                    >
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        <span className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => toggleOpen(r.key)}
-                            aria-expanded={expanded}
-                            aria-controls={`items-${r.key}`}
-                            aria-label={
-                              expanded ? labels.hideItems : labels.showItems
-                            }
-                            title={
-                              expanded ? labels.hideItems : labels.showItems
-                            }
-                            className="-ml-1 inline-flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-                            data-orders-toggle
-                          >
-                            <svg
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                              aria-hidden
-                              className={cx(
-                                "h-4 w-4 transition-transform",
-                                expanded && "rotate-90",
-                              )}
-                            >
-                              <path d="M7.2 4.5a.75.75 0 0 1 1.06 0l5 5a.75.75 0 0 1 0 1.06l-5 5a.75.75 0 1 1-1.06-1.06L11.67 10 7.2 5.56a.75.75 0 0 1 0-1.06Z" />
-                            </svg>
-                          </button>
-                          <Link href={r.href} className={linkClass}>
-                            {r.number}
-                          </Link>
+                  <tr
+                    key={r.key}
+                    className={cx(
+                      rowClass,
+                      "cursor-pointer",
+                      selected &&
+                        "bg-brand-50 ring-1 ring-inset ring-brand-200",
+                    )}
+                    data-orders-row={r.key}
+                    data-orders-state={r.state}
+                    aria-selected={selected}
+                    // Clicar na linha mostra os itens embaixo; o número e o
+                    // nome continuam abrindo a página.
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest("a,button"))
+                        return;
+                      setPicked(r.key);
+                    }}
+                  >
+                    <td className="whitespace-nowrap px-2.5 py-2">
+                      <Link href={r.href} className={linkClass}>
+                        {r.number}
+                      </Link>
+                      {r.subtitle ? (
+                        <span className="block text-[11px] text-zinc-500">
+                          {r.subtitle}
                         </span>
-                        {r.isRequest ? (
-                          <span className="block text-[11px] text-zinc-500">
-                            {labels.request}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
-                        <Link href={r.href} className="hover:underline">
-                          {r.product}
-                        </Link>
-                        {r.items.length > 1 ? (
-                          <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-zinc-500">
-                            {r.items.length === 2
-                              ? labels.moreItem
-                              : labels.moreItems.replace(
-                                  "{n}",
-                                  String(r.items.length - 1),
-                                )}
-                          </span>
-                        ) : null}
-                      </td>
-                      {showCustomer ? (
-                        <td className="min-w-32 px-2.5 py-2">
-                          {r.customer || "—"}
-                        </td>
                       ) : null}
-                      {showSupplier ? (
-                        <td className="min-w-32 px-2.5 py-2">
-                          {r.supplier || "—"}
-                        </td>
+                    </td>
+                    <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
+                      <Link href={r.href} className="hover:underline">
+                        {r.product}
+                      </Link>
+                      {r.items.length > 1 ? (
+                        <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-zinc-500">
+                          {r.items.length === 2
+                            ? labels.moreItem
+                            : labels.moreItems.replace(
+                                "{n}",
+                                String(r.items.length - 1),
+                              )}
+                        </span>
                       ) : null}
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        {r.phase}
+                    </td>
+                    {showCustomer ? (
+                      <td className="min-w-32 px-2.5 py-2">
+                        {r.customer || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-2.5 py-2">
-                        <Badge tone={STATE_TONE[r.state]}>
-                          {labels.states[r.state]}
-                        </Badge>
-                      </td>
-                      <td className="px-2.5 py-2">
-                        {r.progress === null ? (
-                          <span className="text-zinc-400">—</span>
-                        ) : (
-                          <div className="flex h-5 items-center gap-2">
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-                              <div
-                                className="h-full rounded-full bg-brand-600"
-                                style={{ width: `${r.progress}%` }}
-                              />
-                            </div>
-                            <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
-                              {r.progress}%
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                      <td
-                        className={cx(
-                          "whitespace-nowrap px-2.5 py-2 tabular-nums",
-                          overdue && "font-semibold text-red-700",
-                        )}
-                      >
-                        {r.dueLabel}
-                      </td>
-                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
-                        {r.updatedLabel}
-                      </td>
-                    </tr>
-                    {expanded ? (
-                      <tr
-                        id={`items-${r.key}`}
-                        className="bg-zinc-50/70"
-                        data-orders-items={r.key}
-                      >
-                        <td colSpan={columns} className="px-3 py-3 sm:pl-10">
-                          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                            {labels.items} ({r.items.length})
-                          </div>
-                          {r.items.length ? (
-                            <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">
-                              {r.items.map((item, i) => (
-                                <li
-                                  key={i}
-                                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2"
-                                  data-orders-item
-                                >
-                                  <span className="min-w-0">
-                                    {item.href ? (
-                                      <Link
-                                        href={item.href}
-                                        className="font-medium text-brand-700 hover:underline"
-                                      >
-                                        {item.name}
-                                      </Link>
-                                    ) : (
-                                      <span className="font-medium text-zinc-900">
-                                        {item.name}
-                                      </span>
-                                    )}
-                                    {item.variant ? (
-                                      <span className="ml-1.5 text-zinc-500">
-                                        · {item.variant}
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <span className="flex items-center gap-2 text-sm">
-                                    {item.status ? (
-                                      <Badge tone="neutral">
-                                        {item.status}
-                                      </Badge>
-                                    ) : null}
-                                    <span className="font-semibold tabular-nums text-zinc-800">
-                                      {item.quantity}
-                                    </span>
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-sm text-zinc-500">
-                              {labels.noItems}
-                            </p>
-                          )}
-                          <div className="mt-2">
-                            <Link href={r.href} className={linkClass}>
-                              {r.isRequest
-                                ? labels.openRequest
-                                : labels.openOrder}{" "}
-                              →
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
                     ) : null}
-                  </Fragment>
+                    {showSupplier ? (
+                      <td className="min-w-32 px-2.5 py-2">
+                        {r.supplier || "—"}
+                      </td>
+                    ) : null}
+                    <td className="whitespace-nowrap px-2.5 py-2">{r.phase}</td>
+                    <td className="whitespace-nowrap px-2.5 py-2">
+                      <Badge tone={STATE_TONE[r.state]}>
+                        {labels.states[r.state]}
+                      </Badge>
+                    </td>
+                    <td className="px-2.5 py-2">
+                      {r.progress === null ? (
+                        <span className="text-zinc-400">—</span>
+                      ) : (
+                        <div className="flex h-5 items-center gap-2">
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+                            <div
+                              className="h-full rounded-full bg-brand-600"
+                              style={{ width: `${r.progress}%` }}
+                            />
+                          </div>
+                          <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
+                            {r.progress}%
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td
+                      className={cx(
+                        "whitespace-nowrap px-2.5 py-2 tabular-nums",
+                        overdue && "font-semibold text-red-700",
+                      )}
+                    >
+                      {r.dueLabel}
+                    </td>
+                    <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
+                      {r.updatedLabel}
+                    </td>
+                  </tr>
                 );
               })
             )}
           </tbody>
         </table>
       </div>
+      <ItemsPanel
+        row={current}
+        labels={labels}
+        showSupplier={showSupplier}
+        today={today}
+      />
     </div>
+  );
+}
+
+/** Painel de itens da linha escolhida (embaixo da lista, como no Sankhya). */
+function ItemsPanel({
+  row,
+  labels,
+  showSupplier,
+  today,
+}: {
+  row: OrdersTableRow | null;
+  labels: OrdersTableLabels;
+  showSupplier: boolean;
+  today: string;
+}) {
+  const withPrice = !!row?.items.some((i) => i.price !== null);
+  const cell = "whitespace-nowrap px-2.5 py-2";
+  return (
+    <section
+      className="mt-4 rounded-xl border border-zinc-200/80 bg-white"
+      data-orders-items={row?.key ?? ""}
+      aria-live="polite"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-50/80 px-3 py-2">
+        <h2 className="text-sm font-semibold text-zinc-800">
+          {row
+            ? `${labels.itemsOf.replace("{ref}", row.number)} (${row.items.length})`
+            : labels.items}
+        </h2>
+        {row ? (
+          <Link href={row.href} className={cx(linkClass, "text-sm")}>
+            {row.isRequest ? labels.openRequest : labels.openOrder} →
+          </Link>
+        ) : null}
+      </header>
+      {!row ? (
+        <p className="px-3 py-4 text-sm text-zinc-500">{labels.pickRow}</p>
+      ) : row.items.length === 0 ? (
+        <p className="px-3 py-4 text-sm text-zinc-500">{labels.noItems}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[40rem] text-left text-sm">
+            <thead>
+              <tr className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                <th className="px-2.5 py-2">{labels.seq}</th>
+                <th className="px-2.5 py-2">{labels.product}</th>
+                <th className="px-2.5 py-2">{labels.variant}</th>
+                <th className="px-2.5 py-2 text-right">{labels.quantity}</th>
+                {withPrice ? (
+                  <th className="px-2.5 py-2 text-right">{labels.price}</th>
+                ) : null}
+                {showSupplier ? (
+                  <th className="px-2.5 py-2">{labels.supplier}</th>
+                ) : null}
+                <th className="px-2.5 py-2">{labels.ref}</th>
+                <th className="px-2.5 py-2">{labels.phase}</th>
+                <th className="px-2.5 py-2">{labels.state}</th>
+                <th className="px-2.5 py-2">{labels.due}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {row.items.map((item, i) => {
+                const late =
+                  !!item.due &&
+                  item.due < today &&
+                  (item.state === "active" || item.state === "blocked");
+                return (
+                  <tr key={i} className={rowClass} data-orders-item>
+                    <td className={cx(cell, "tabular-nums text-zinc-500")}>
+                      {i + 1}
+                    </td>
+                    <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
+                      {item.name}
+                    </td>
+                    <td className="px-2.5 py-2 text-zinc-600">
+                      {item.variant ?? "—"}
+                    </td>
+                    <td className={cx(cell, "text-right tabular-nums")}>
+                      {item.quantity}
+                    </td>
+                    {withPrice ? (
+                      <td className={cx(cell, "text-right tabular-nums")}>
+                        {item.price ?? "—"}
+                      </td>
+                    ) : null}
+                    {showSupplier ? (
+                      <td className="min-w-32 px-2.5 py-2">
+                        {item.supplier || "—"}
+                      </td>
+                    ) : null}
+                    <td className={cell}>
+                      <Link href={item.href} className={linkClass}>
+                        {item.ref}
+                      </Link>
+                    </td>
+                    <td className={cell}>{item.phase}</td>
+                    <td className={cell}>
+                      <Badge tone={STATE_TONE[item.state]}>
+                        {labels.states[item.state]}
+                      </Badge>
+                    </td>
+                    <td
+                      className={cx(
+                        cell,
+                        "tabular-nums",
+                        late && "font-semibold text-red-700",
+                      )}
+                    >
+                      {item.dueLabel}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
