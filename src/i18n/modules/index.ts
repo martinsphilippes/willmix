@@ -45,6 +45,7 @@ import * as approvals from "./approvals";
 import * as purchaseFlow from "./purchase-flow";
 import * as production from "./production";
 import * as importFlow from "./import-flow";
+import * as receiving from "./receiving";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
 import * as productDelete from "./product-delete";
@@ -116,6 +117,7 @@ export const modulesPt = {
   ...purchaseFlow.pt,
   ...production.pt,
   ...importFlow.pt,
+  ...receiving.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
   ...productDelete.pt,
@@ -190,6 +192,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...purchaseFlow.en,
   ...production.en,
   ...importFlow.en,
+  ...receiving.en,
   ...requestProduct.en,
   ...requestDelete.en,
   ...productDelete.en,
@@ -264,6 +267,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...purchaseFlow.zh,
   ...production.zh,
   ...importFlow.zh,
+  ...receiving.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,
   ...productDelete.zh,

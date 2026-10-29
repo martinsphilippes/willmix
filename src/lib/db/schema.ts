@@ -541,6 +541,17 @@ export type ImportStepStatus = (typeof IMPORT_STEP_STATUSES)[number];
 export const CUSTOMS_CHANNELS = ["green", "yellow", "red", "grey"] as const;
 export type CustomsChannel = (typeof CUSTOMS_CHANNELS)[number];
 
+/* Recebimento (Fase E, docs/RECEIVING.md): conferência da descarga. */
+export const RECEIVING_CHECKS = [
+  "seal_matches",
+  "container_ok",
+  "no_moisture",
+  "pallets_ok",
+  "labels_ok",
+  "quantity_counted",
+] as const;
+export type ReceivingCheck = (typeof RECEIVING_CHECKS)[number];
+
 /** Divisões da Wellmix: cada linha de produto e cada analista pertencem a uma. */
 export const DIVISIONS = ["wellmix", "wellkids"] as const;
 export type Division = (typeof DIVISIONS)[number];
@@ -1903,6 +1914,33 @@ export interface ImportStep extends BaseRow {
   rejectReason: string | null;
 }
 
+export interface ReceivingItem {
+  orderItemId: string;
+  expected: number;
+  received: number;
+  damaged: number;
+  note: string | null;
+}
+
+/** Recebimento do container no armazém (um por pedido). */
+export interface Receiving extends BaseRow {
+  orderId: string;
+  sealNumber: string | null;
+  sealIntact: YesNo | null;
+  sealPhotoDocumentId: string | null;
+  containerPhotoDocumentIds: string[];
+  checklist: ReceivingCheck[];
+  items: ReceivingItem[];
+  ricNumber: string | null;
+  ricDocumentId: string | null;
+  containerReturnedAt: string | null;
+  containerReturnDocumentId: string | null;
+  closedAt: string | null;
+  closedByUserId: string | null;
+  closingNote: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface MessageRead extends BaseRow {
   topicId: string;
   userId: string;
@@ -1962,6 +2000,7 @@ export interface Tables {
   production_tracks: ProductionTrack;
   sku_inspections: SkuInspection;
   import_steps: ImportStep;
+  receivings: Receiving;
 }
 export type TableName = keyof Tables;
 
@@ -3234,6 +3273,27 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "order_key_unique", type: "unique", columns: ["orderId", "key"] },
       { key: "by_document", type: "key", columns: ["documentId"] },
     ],
+  },
+  receivings: {
+    label: "Recebimento",
+    columns: {
+      orderId: id(),
+      sealNumber: str(60),
+      sealIntact: enumOf(YES_NO, false),
+      sealPhotoDocumentId: id(false),
+      containerPhotoDocumentIds: json(),
+      checklist: json(),
+      items: json(),
+      ricNumber: str(60),
+      ricDocumentId: id(false),
+      containerReturnedAt: datetime(),
+      containerReturnDocumentId: id(false),
+      closedAt: datetime(),
+      closedByUserId: id(false),
+      closingNote: text(),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],
   },
   message_reads: {
     label: "Leitura das mensagens",
