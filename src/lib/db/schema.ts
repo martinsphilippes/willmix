@@ -491,6 +491,18 @@ export const APPROVAL_STATUSES = [
 ] as const;
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
 
+/*
+ * Produção (Fase C, docs/PRODUCTION.md): fornecedor fábrica ou trade, follow
+ * aos 5/15/25 dias do início da produção e inspeção por SKU.
+ */
+export const PRODUCTION_MODES = ["factory", "trade"] as const;
+export type ProductionMode = (typeof PRODUCTION_MODES)[number];
+export const FOLLOWUP_DAYS = [5, 15, 25] as const;
+export const FOLLOWUP_STATUSES = ["on_track", "delayed"] as const;
+export type FollowupStatus = (typeof FOLLOWUP_STATUSES)[number];
+export const SKU_INSPECTION_RESULTS = ["approved", "rejected"] as const;
+export type SkuInspectionResult = (typeof SKU_INSPECTION_RESULTS)[number];
+
 /** Divisões da Wellmix: cada linha de produto e cada analista pertencem a uma. */
 export const DIVISIONS = ["wellmix", "wellkids"] as const;
 export type Division = (typeof DIVISIONS)[number];
@@ -1783,6 +1795,56 @@ export interface Approval extends BaseRow {
   decidedAt: string | null;
 }
 
+export interface EtdChange {
+  from: string | null;
+  to: string;
+  at: string;
+  byUserId: string;
+  reason: string | null;
+}
+
+export interface ProductionFollowup {
+  /** Dia do follow (5, 15 ou 25 dias do início da produção). */
+  day: number;
+  status: FollowupStatus;
+  note: string | null;
+  at: string;
+  byUserId: string;
+}
+
+/** Acompanhamento da produção de um pedido (um por pedido). */
+export interface ProductionTrack extends BaseRow {
+  orderId: string;
+  mode: ProductionMode | null;
+  /** Fornecedor trade: fábrica onde o produto é feito (onde inspecionar). */
+  factoryName: string | null;
+  factoryAddress: string | null;
+  productionStartAt: string | null;
+  etd: string | null;
+  /** ETD informado na primeira vez (para medir a variação). */
+  etdOriginal: string | null;
+  etdHistory: EtdChange[];
+  followups: ProductionFollowup[];
+  inspectionScheduledAt: string | null;
+  inspectionNote: string | null;
+  updatedByUserId: string | null;
+}
+
+/** Inspeção de um item (SKU) do pedido, rodada a rodada. */
+export interface SkuInspection extends BaseRow {
+  orderId: string;
+  orderItemId: string;
+  round: number;
+  result: SkuInspectionResult;
+  note: string | null;
+  inspectedByUserId: string;
+  inspectedAt: string;
+  /** Reprovado: o que o fornecedor fez para corrigir. */
+  supplierAction: string | null;
+  supplierRespondedAt: string | null;
+  supplierRespondedByUserId: string | null;
+}
+
 export interface MessageRead extends BaseRow {
   topicId: string;
   userId: string;
@@ -1839,6 +1901,8 @@ export interface Tables {
   messages: Message;
   message_reads: MessageRead;
   approvals: Approval;
+  production_tracks: ProductionTrack;
+  sku_inspections: SkuInspection;
 }
 export type TableName = keyof Tables;
 
@@ -3050,6 +3114,43 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_request", type: "key", columns: ["requestId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  production_tracks: {
+    label: "Acompanhamento da produção",
+    columns: {
+      orderId: id(),
+      mode: enumOf(PRODUCTION_MODES, false),
+      factoryName: str(160),
+      factoryAddress: text(),
+      productionStartAt: datetime(),
+      etd: datetime(),
+      etdOriginal: datetime(),
+      etdHistory: json(),
+      followups: json(),
+      inspectionScheduledAt: datetime(),
+      inspectionNote: text(),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],
+  },
+  sku_inspections: {
+    label: "Inspeção por SKU",
+    columns: {
+      orderId: id(),
+      orderItemId: id(),
+      round: int(true),
+      result: enumOf(SKU_INSPECTION_RESULTS),
+      note: text(),
+      inspectedByUserId: id(),
+      inspectedAt: datetime(true),
+      supplierAction: text(),
+      supplierRespondedAt: datetime(),
+      supplierRespondedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_item", type: "key", columns: ["orderItemId"] },
     ],
   },
   message_reads: {

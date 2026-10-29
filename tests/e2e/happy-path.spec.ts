@@ -378,6 +378,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.getByText("Preparação").first()).toBeVisible();
   // A Wellmix valida a ficha/imagens (comprador) e o cadastro do produto.
   await fillMyRequirements(page, orderUrl, {}, 2);
+  // Produção (Fase C): o cartão aparece para a Wellmix no pedido.
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-production-card]")).toBeVisible();
 
   // 8. PREPARATION: a ficha completa (com fotos) veio da cotação, então a etapa
   // se concluiu sozinha. O pagamento ao fornecedor saiu do fluxo (segue a
@@ -492,7 +495,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await login(page, "operador@wellmix.com");
   await page.goto(orderUrl);
   await expect(page.getByText(/Revisão necessária/).first()).toBeVisible();
-  await page.getByRole("button", { name: /Aprovar/ }).click();
+  await page.getByRole("button", { name: "Aprovar", exact: true }).click();
   await page.waitForLoadState("networkidle");
   await page.goto(orderUrl);
   await expect(page.getByText(/Embarque/).first()).toBeVisible();
