@@ -398,6 +398,10 @@ export async function createRequest(
     (variant ? variantSpecification(variant) : "") ||
     null;
   const number = input.number ?? (await nextRequestNumber());
+  // Analista responsável: o da divisão da linha do produto com menos
+  // pendências (docs/SLA_PANEL.md). Sem divisão configurada: sem responsável.
+  const { pickOwner } = await import("./team");
+  const ownerUserId = await pickOwner(input.productId).catch(() => null);
   const data = {
     requestedForUserId,
     customerId: input.customerId,
@@ -427,6 +431,8 @@ export async function createRequest(
       : {}),
     // Idem para a programação de entregas (coluna opcional).
     ...(input.schedule ? { schedule: input.schedule } : {}),
+    // Idem para o analista responsável (coluna opcional).
+    ...(ownerUserId ? { ownerUserId } : {}),
   } as const;
   let request: Request;
   try {
@@ -1080,6 +1086,8 @@ async function createOrderFromRequest(
     ...ORDER_EXTRA_DEFAULTS,
     // Só o login solicitante do cliente vê o pedido.
     requestedByUserId: request.requestedForUserId,
+    // O pedido segue com o analista da solicitação (coluna opcional).
+    ...(request.ownerUserId ? { ownerUserId: request.ownerUserId } : {}),
     number,
     requestId: request.id,
     customerId: request.customerId,

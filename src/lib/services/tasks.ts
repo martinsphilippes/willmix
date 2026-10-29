@@ -48,8 +48,10 @@ export interface Task {
   due: TaskDue;
   /** Dias até o prazo (negativo = atrasada); nulo sem prazo. */
   daysLeft: number | null;
-  /** Cliente da pendência (painel de SLA: cai na carteira do operador dele). */
+  /** Cliente da pendência (mostrado no painel de SLA). */
   customerId?: string | null;
+  /** Analista responsável (da solicitação/do pedido): dono no painel de SLA. */
+  ownerUserId?: string | null;
 }
 
 /* ---------------------------------------------------------------------------
@@ -367,6 +369,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           orderNumber: order.number,
           stageKey: stage.key,
           customerId: order.customerId,
+          ownerUserId: order.ownerUserId ?? null,
         },
         now,
       ),
@@ -421,6 +424,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           dueAt: brief.dueAt,
           stageKey: "PACKAGING",
           customerId: request.customerId,
+          ownerUserId: request.ownerUserId ?? null,
         },
         now,
       ),
@@ -471,6 +475,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           dueAt: null,
           orderNumber: order.number,
           customerId: order.customerId,
+          ownerUserId: order.ownerUserId ?? null,
         },
         now,
       ),
@@ -495,6 +500,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           dueAt: null,
           customerId:
             demandRequests.find((r) => r.id === d.requestId)?.customerId ??
+            null,
+          ownerUserId:
+            demandRequests.find((r) => r.id === d.requestId)?.ownerUserId ??
             null,
         },
         now,
@@ -522,6 +530,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           dueAt: null,
           customerId: r.orderId
             ? (orderById.get(r.orderId)?.customerId ?? null)
+            : null,
+          ownerUserId: r.orderId
+            ? (orderById.get(r.orderId)?.ownerUserId ?? null)
             : null,
         },
         now,
@@ -626,6 +637,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             dueAt: i.dueDate,
             orderNumber: payable.order.number,
             customerId: payable.order.customerId,
+            ownerUserId: payable.order.ownerUserId ?? null,
           },
           now,
         ),
@@ -651,6 +663,7 @@ function requestTask(request: Request): DraftTask {
     link: `/app/requests/${request.id}`,
     dueAt: request.deadline,
     customerId: request.customerId,
+    ownerUserId: request.ownerUserId ?? null,
   };
   switch (request.status) {
     case "REQUESTED":
