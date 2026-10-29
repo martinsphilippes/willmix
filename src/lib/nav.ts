@@ -48,6 +48,8 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
         items: [
           { href: "/app", key: "nav.controlTower" },
           { href: "/app/tasks", key: "nav.tasks" },
+          // O que cada operador deve, pelo prazo, na carteira dele.
+          { href: "/app/sla", key: "nav.sla" },
           { href: "/app/notifications", key: "nav.notifications" },
           MESSAGES,
         ],
@@ -87,7 +89,11 @@ export function navFor(role: Role, admin: boolean): NavEntry[] {
           { href: "/app/marketing", key: "nav.marketing" },
           { href: "/app/history", key: "nav.history" },
           ...(admin
-            ? [{ href: "/app/settings", key: "nav.settings" as DictionaryKey }]
+            ? [
+                { href: "/app/settings", key: "nav.settings" as DictionaryKey },
+                // Cargo, chefe e carteira de clientes (Painel de SLA).
+                { href: "/app/team", key: "nav.team" as DictionaryKey },
+              ]
             : []),
         ],
       },

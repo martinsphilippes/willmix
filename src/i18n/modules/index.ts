@@ -40,6 +40,7 @@ import * as supplierRanking from "./supplier-ranking";
 import * as explore from "./explore";
 import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
+import * as slaPanel from "./sla-panel";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
 import * as productDelete from "./product-delete";
@@ -106,6 +107,7 @@ export const modulesPt = {
   ...explore.pt,
   ...inspectionReport.pt,
   ...sla.pt,
+  ...slaPanel.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
   ...productDelete.pt,
@@ -175,6 +177,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...explore.en,
   ...inspectionReport.en,
   ...sla.en,
+  ...slaPanel.en,
   ...requestProduct.en,
   ...requestDelete.en,
   ...productDelete.en,
@@ -244,6 +247,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...explore.zh,
   ...inspectionReport.zh,
   ...sla.zh,
+  ...slaPanel.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,
   ...productDelete.zh,
