@@ -68,6 +68,8 @@ const roleForType: Record<string, string> = {
   shipping_line: "shipping_line",
   carrier: "carrier",
   legal: "legal",
+  comex: "comex",
+  logistics: "logistics",
 };
 
 export default async function PartyPage({

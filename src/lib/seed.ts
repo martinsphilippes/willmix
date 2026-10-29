@@ -99,6 +99,20 @@ export const DEMO_USERS: Array<{
     locale: "pt",
   },
   {
+    email: "comex@assessoria.com",
+    name: "Carla Comex",
+    role: "comex",
+    party: "comex",
+    locale: "pt",
+  },
+  {
+    email: "agente@cargo.com",
+    name: "Lucas Logística",
+    role: "logistics",
+    party: "agente-carga",
+    locale: "pt",
+  },
+  {
     email: "juridico@wellmix.com",
     name: "Júlia Jurídico",
     role: "legal",
@@ -205,6 +219,20 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: "Trans Rodo",
       country: "BR",
       email: "transportadora@rodo.com",
+    },
+    {
+      id: "comex",
+      type: "comex",
+      name: "Assessoria Comex",
+      country: "BR",
+      email: "comex@assessoria.com",
+    },
+    {
+      id: "agente-carga",
+      type: "logistics",
+      name: "Cargo Agentes de Carga",
+      country: "BR",
+      email: "agente@cargo.com",
     },
   ];
   for (const party of parties) {

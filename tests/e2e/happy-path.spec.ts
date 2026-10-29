@@ -381,6 +381,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Produção (Fase C): o cartão aparece para a Wellmix no pedido.
   await page.goto(orderUrl);
   await expect(page.locator("[data-production-card]")).toBeVisible();
+  // Embarque e desembaraço (Fase D): os passos aparecem para a Wellmix.
+  await expect(page.locator("[data-import-step=booking]")).toBeVisible();
 
   // 8. PREPARATION: a ficha completa (com fotos) veio da cotação, então a etapa
   // se concluiu sozinha. O pagamento ao fornecedor saiu do fluxo (segue a

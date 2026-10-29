@@ -82,7 +82,9 @@ export function SheetFileInput({
       }
     } catch (err) {
       const detail =
-        err instanceof Error && err.message ? ` (${err.message.slice(0, 160)})` : "";
+        err instanceof Error && err.message
+          ? ` (${err.message.slice(0, 160)})`
+          : "";
       setError(`${failedLabel}${detail}`);
       input.value = "";
       clearHidden();
@@ -114,7 +116,11 @@ export function SheetFileInput({
         </p>
       ) : null}
       {chosen ? (
-        <p className="text-xs text-emerald-800" role="status" data-sheet-import-uploaded>
+        <p
+          className="text-xs text-emerald-800"
+          role="status"
+          data-sheet-import-uploaded
+        >
           {chosen}
         </p>
       ) : null}

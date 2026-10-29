@@ -106,6 +106,8 @@ async function notifyEveryone(
       [order.brokerId, "broker"],
       [order.shippingLineId, "shipping_line"],
       [order.carrierId, "carrier"],
+      [order.comexId ?? null, "comex"],
+      [order.logisticsId ?? null, "logistics"],
     ];
   for (const [partyId, role] of partners)
     if (partyId) await notify({ role, partyId }, message);

@@ -1,3 +1,4 @@
+import { ImportFlowCard } from "@/components/import-flow-card";
 import { ProductionCard } from "@/components/production-card";
 import {
   sheetProgress,
@@ -166,6 +167,7 @@ export default async function OrderPage({
     at: errorToken,
     tariffOrigin,
     production: productionNotice,
+    importStep: importNotice,
   } = await searchParams;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
@@ -221,6 +223,18 @@ export default async function OrderPage({
     productionUserIds.add(h.byUserId);
   for (const f of productionView?.track?.followups ?? [])
     productionUserIds.add(f.byUserId);
+  /* Embarque e desembaraço (Fase D): passos que o usuário vê. */
+  const importFlow = await import("@/lib/services/import-flow");
+  const importSteps =
+    order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
+      ? await importFlow.importFlowView(user, order)
+      : [];
+  for (const v of importSteps) {
+    if (v.step?.submittedByUserId)
+      productionUserIds.add(v.step.submittedByUserId);
+    if (v.step?.validatedByUserId)
+      productionUserIds.add(v.step.validatedByUserId);
+  }
   const productionNames = new Map(
     (productionUserIds.size
       ? await store.list("users", { filter: { id: [...productionUserIds] } })
@@ -615,6 +629,8 @@ export default async function OrderPage({
                       ["carrier", order.carrierId],
                       ["agency", order.agencyId],
                       ["broker", order.brokerId],
+                      ["comex", order.comexId ?? null],
+                      ["logistics", order.logisticsId ?? null],
                     ] as Array<[PartyType, string | null]>
                   ).flatMap(([type, pid]) =>
                     pid
@@ -650,7 +666,11 @@ export default async function OrderPage({
                     t(`production.error.${error}` as DictionaryKey) !==
                       `production.error.${error}`
                   ? t(`production.error.${error}` as DictionaryKey)
-                  : fallbackError(t, String(error))
+                  : typeof error === "string" &&
+                      t(`importFlow.error.${error}` as DictionaryKey) !==
+                        `importFlow.error.${error}`
+                    ? t(`importFlow.error.${error}` as DictionaryKey)
+                    : fallbackError(t, String(error))
         }
         fields={invalidFields}
         token={errorToken}
@@ -984,6 +1004,19 @@ export default async function OrderPage({
             />
           ) : null}
 
+          {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={importSteps}
+            names={productionNames}
+            notice={
+              typeof importNotice === "string" &&
+              ["submitted", "validated", "rejected"].includes(importNotice)
+                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+                : null
+            }
+          />
           {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
           {productionView ? (
             <ProductionCard
@@ -1052,6 +1085,8 @@ export default async function OrderPage({
                     ["brokerId", "broker"],
                     ["shippingLineId", "shipping_line"],
                     ["carrierId", "carrier"],
+                    ["comexId", "comex"],
+                    ["logisticsId", "logistics"],
                   ] as const
                 ).map(([field, type]) => (
                   <form

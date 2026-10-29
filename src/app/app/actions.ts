@@ -536,6 +536,8 @@ export async function assignPartnerAction(form: FormData) {
       "brokerId",
       "shippingLineId",
       "carrierId",
+      "comexId",
+      "logisticsId",
     ] as const;
     if (!(allowed as readonly string[]).includes(field))
       throw new Error("invalid_field");
@@ -551,6 +553,8 @@ export async function assignPartnerAction(form: FormData) {
       brokerId: "broker",
       shippingLineId: "shipping_line",
       carrierId: "carrier",
+      comexId: "comex",
+      logisticsId: "logistics",
     };
     for (const stage of stages) {
       const reqs = await store.list("requirements", {

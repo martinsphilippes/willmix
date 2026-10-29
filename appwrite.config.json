@@ -49,7 +49,9 @@
             "broker",
             "shipping_line",
             "carrier",
-            "legal"
+            "legal",
+            "comex",
+            "logistics"
           ]
         },
         {
@@ -184,7 +186,9 @@
             "broker",
             "shipping_line",
             "carrier",
-            "legal"
+            "legal",
+            "comex",
+            "logistics"
           ]
         },
         {
@@ -1358,6 +1362,22 @@
           "size": 36
         },
         {
+          "key": "comexId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "logisticsId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
           "key": "closedAt",
           "required": false,
           "array": false,
@@ -1724,7 +1744,9 @@
             "broker",
             "shipping_line",
             "carrier",
-            "legal"
+            "legal",
+            "comex",
+            "logistics"
           ]
         },
         {
@@ -1881,7 +1903,9 @@
             "broker",
             "shipping_line",
             "carrier",
-            "legal"
+            "legal",
+            "comex",
+            "logistics"
           ]
         },
         {
@@ -2010,7 +2034,8 @@
             "attachment",
             "other",
             "print_ready",
-            "packaging_sample"
+            "packaging_sample",
+            "import_step"
           ]
         },
         {
@@ -2362,7 +2387,9 @@
             "broker",
             "shipping_line",
             "carrier",
-            "legal"
+            "legal",
+            "comex",
+            "logistics"
           ]
         },
         {
@@ -4256,7 +4283,9 @@
             "broker",
             "shipping_line",
             "carrier",
-            "legal"
+            "legal",
+            "comex",
+            "logistics"
           ]
         },
         {
@@ -7660,6 +7689,153 @@
           "type": "key",
           "columns": [
             "orderItemId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "import_steps",
+      "databaseId": "willmix",
+      "name": "Embarque e desembaraço",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "key",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "booking",
+            "draft_bl",
+            "invoice_packing",
+            "invoice_signed",
+            "bl",
+            "cargo_presence",
+            "numerario",
+            "numerario_paid",
+            "channel",
+            "di",
+            "ce_mercante",
+            "ci",
+            "danfe"
+          ]
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "pending",
+            "submitted",
+            "validated",
+            "rejected"
+          ]
+        },
+        {
+          "key": "value",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 200
+        },
+        {
+          "key": "amount",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "currency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
+          "key": "documentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "submittedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "submittedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "validatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "validatedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "rejectReason",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "order_key_unique",
+          "type": "unique",
+          "columns": [
+            "orderId",
+            "key"
+          ],
+          "orders": [
+            "ASC",
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_document",
+          "type": "key",
+          "columns": [
+            "documentId"
           ],
           "orders": [
             "ASC"

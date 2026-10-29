@@ -22,6 +22,9 @@ export const ROLES = [
   "shipping_line",
   "carrier",
   "legal",
+  // Fase D: assessoria de comércio exterior e agente de carga (logins próprios).
+  "comex",
+  "logistics",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -33,6 +36,8 @@ export const PARTY_TYPES = [
   "shipping_line",
   "carrier",
   "legal",
+  "comex",
+  "logistics",
 ] as const;
 export type PartyType = (typeof PARTY_TYPES)[number];
 
@@ -158,6 +163,8 @@ export const DOCUMENT_TYPES = [
   // Briefing de embalagem: arquivos para a gráfica e foto da embalagem física.
   "print_ready",
   "packaging_sample",
+  // Embarque e desembaraço (Fase D): arquivo de um passo (acesso pelo passo).
+  "import_step",
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
@@ -503,6 +510,37 @@ export type FollowupStatus = (typeof FOLLOWUP_STATUSES)[number];
 export const SKU_INSPECTION_RESULTS = ["approved", "rejected"] as const;
 export type SkuInspectionResult = (typeof SKU_INSPECTION_RESULTS)[number];
 
+/*
+ * Embarque e desembaraço (Fase D, docs/IMPORT_FLOW.md): passos do processo de
+ * importação, cada um com quem faz e quem valida.
+ */
+export const IMPORT_STEP_KEYS = [
+  "booking",
+  "draft_bl",
+  "invoice_packing",
+  "invoice_signed",
+  "bl",
+  "cargo_presence",
+  "numerario",
+  "numerario_paid",
+  "channel",
+  "di",
+  "ce_mercante",
+  "ci",
+  "danfe",
+] as const;
+export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
+export const IMPORT_STEP_STATUSES = [
+  "pending",
+  "submitted",
+  "validated",
+  "rejected",
+] as const;
+export type ImportStepStatus = (typeof IMPORT_STEP_STATUSES)[number];
+/** Canal de parametrização da DI/DUIMP. */
+export const CUSTOMS_CHANNELS = ["green", "yellow", "red", "grey"] as const;
+export type CustomsChannel = (typeof CUSTOMS_CHANNELS)[number];
+
 /** Divisões da Wellmix: cada linha de produto e cada analista pertencem a uma. */
 export const DIVISIONS = ["wellmix", "wellkids"] as const;
 export type Division = (typeof DIVISIONS)[number];
@@ -759,6 +797,9 @@ export interface Order extends BaseRow {
   brokerId: string | null;
   shippingLineId: string | null;
   carrierId: string | null;
+  /** Assessoria de comércio exterior e agente de carga (Fase D). Opcionais. */
+  comexId?: string | null;
+  logisticsId?: string | null;
   closedAt: string | null;
   notes: string | null;
   /** Modalidade de operação copiada do cliente ao criar o pedido (nulo nos antigos). */
@@ -1845,6 +1886,23 @@ export interface SkuInspection extends BaseRow {
   supplierRespondedByUserId: string | null;
 }
 
+/** Um passo do embarque/desembaraço de um pedido (um por pedido e passo). */
+export interface ImportStep extends BaseRow {
+  orderId: string;
+  key: ImportStepKey;
+  status: ImportStepStatus;
+  /** Número/texto (booking, BL, DI, CE, NF) ou o canal. */
+  value: string | null;
+  amount: number | null;
+  currency: string | null;
+  documentId: string | null;
+  submittedByUserId: string | null;
+  submittedAt: string | null;
+  validatedByUserId: string | null;
+  validatedAt: string | null;
+  rejectReason: string | null;
+}
+
 export interface MessageRead extends BaseRow {
   topicId: string;
   userId: string;
@@ -1903,6 +1961,7 @@ export interface Tables {
   approvals: Approval;
   production_tracks: ProductionTrack;
   sku_inspections: SkuInspection;
+  import_steps: ImportStep;
 }
 export type TableName = keyof Tables;
 
@@ -2166,6 +2225,8 @@ export const TABLES: Record<TableName, TableDef> = {
       brokerId: id(false),
       shippingLineId: id(false),
       carrierId: id(false),
+      comexId: id(false),
+      logisticsId: id(false),
       closedAt: datetime(),
       notes: text(),
       operationMode: enumOf(OPERATION_MODES, false),
@@ -3151,6 +3212,27 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_item", type: "key", columns: ["orderItemId"] },
+    ],
+  },
+  import_steps: {
+    label: "Embarque e desembaraço",
+    columns: {
+      orderId: id(),
+      key: enumOf(IMPORT_STEP_KEYS),
+      status: enumOf(IMPORT_STEP_STATUSES),
+      value: str(200),
+      amount: float(),
+      currency: str(3),
+      documentId: id(false),
+      submittedByUserId: id(false),
+      submittedAt: datetime(),
+      validatedByUserId: id(false),
+      validatedAt: datetime(),
+      rejectReason: text(),
+    },
+    indexes: [
+      { key: "order_key_unique", type: "unique", columns: ["orderId", "key"] },
+      { key: "by_document", type: "key", columns: ["documentId"] },
     ],
   },
   message_reads: {

@@ -61,7 +61,7 @@ export function ProductionCard({
 
   return (
     <Card title={t("production.title")}>
-      <span id="production" className="-mt-24 block scroll-mt-24" />
+      <span id="production" className="block scroll-mt-24" />
       <div className="space-y-4" data-production-card>
         {notice ? <Alert tone="success">{notice}</Alert> : null}
 

@@ -47,7 +47,8 @@ export async function PackagingBriefFiles({
         {t("orders.packagingFiles.title")}
         {request?.number ? (
           <span className="ml-1 font-normal text-zinc-500">
-            · {t("orders.packagingFiles.fromRequest", { n: request.number, who })}
+            ·{" "}
+            {t("orders.packagingFiles.fromRequest", { n: request.number, who })}
           </span>
         ) : null}
       </p>
@@ -81,7 +82,10 @@ export async function PackagingBriefFiles({
         })}
       </ul>
       {isWellmix(user) || user.role === "agency" ? (
-        <a href={`/app/packaging/${brief.id}`} className={`${linkClass} mt-1 inline-block`}>
+        <a
+          href={`/app/packaging/${brief.id}`}
+          className={`${linkClass} mt-1 inline-block`}
+        >
           {t("packBrief.card.view")} →
         </a>
       ) : null}
