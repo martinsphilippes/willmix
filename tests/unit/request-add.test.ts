@@ -51,11 +51,10 @@ describe("adicionar produtos à solicitação", () => {
   it("solicitação sozinha vira lote; o novo produto tem o mesmo número, cliente e solicitante", async () => {
     const first = await base("Vaso grande");
     await r.openRfq(admin, first.id, ["fornecedor-a"]);
-    const { groupId, created } = await r.addProductsToRequest(
-      admin,
-      first.id,
-      [item("Vaso pequeno"), item("Prato")],
-    );
+    const { groupId, created } = await r.addProductsToRequest(admin, first.id, [
+      item("Vaso pequeno"),
+      item("Prato"),
+    ]);
     expect(created).toHaveLength(2);
     const store = getStore();
     const updated = (await store.get("requests", first.id))!;
@@ -75,9 +74,9 @@ describe("adicionar produtos à solicitação", () => {
       item("Copo"),
     ]);
     expect(again.groupId).toBe(groupId);
-    expect(
-      (await store.list("requests", { filter: { groupId } })).length,
-    ).toBe(4);
+    expect((await store.list("requests", { filter: { groupId } })).length).toBe(
+      4,
+    );
   });
 
   it("cliente não acrescenta; cancelada não aceita", async () => {

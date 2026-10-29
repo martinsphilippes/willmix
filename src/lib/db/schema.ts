@@ -231,8 +231,15 @@ export const PHOTO_KINDS = [
   /* Foto que veio na planilha do fornecedor (coluna PHOTO): imagem do produto
      no catálogo até a equipe tirar a foto original, que continua pendente. */
   "supplier",
+  /* Fase B (fluxo de compras): foto HD do produto e die cut (faca) para o Marketing. */
+  "hd",
+  "die_cut",
 ] as const;
 export type PhotoKind = (typeof PHOTO_KINDS)[number];
+
+/** Sim/Não informado (nulo = ainda não informado). */
+export const YES_NO = ["yes", "no"] as const;
+export type YesNo = (typeof YES_NO)[number];
 
 /* ---- Ficha de compra (planilha COMPRAS, etapa Preparação) ---- */
 export const SHEET_INCOTERMS = ["FOB", "EXW"] as const;
@@ -1353,6 +1360,19 @@ export interface PurchaseSheet extends BaseRow {
   ncm: string | null;
   importTaxPercent: number | null;
   ipiPercent: number | null;
+  /*
+   * Despachante (Fase B, docs/PURCHASE_FLOW.md): antidumping, média e se o
+   * produto precisa de certificação. Opcionais: fichas antigas ficam sem.
+   * Com dumping, a escolha do fornecedor espera a liberação (gerente de
+   * produto ou comprador).
+   */
+  dumping?: YesNo | null;
+  dumpingNote?: string | null;
+  dumpingReleasedByUserId?: string | null;
+  dumpingReleasedAt?: string | null;
+  averagePrice?: number | null;
+  certificationRequired?: YesNo | null;
+  certificationNote?: string | null;
   ecommerceDescription: string | null;
   notes: string | null;
   updatedByUserId: string | null;
@@ -2744,6 +2764,13 @@ export const TABLES: Record<TableName, TableDef> = {
       notes: text(),
       updatedByUserId: id(false),
       completedAt: datetime(),
+      dumping: enumOf(YES_NO),
+      dumpingNote: text(),
+      dumpingReleasedByUserId: id(false),
+      dumpingReleasedAt: datetime(),
+      averagePrice: float(),
+      certificationRequired: enumOf(YES_NO),
+      certificationNote: text(),
     },
     indexes: [{ key: "by_order", type: "unique", columns: ["orderId"] }],
   },

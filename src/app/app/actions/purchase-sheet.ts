@@ -5,7 +5,7 @@ import {
   addSheetPhotos,
   removeSheetPhoto,
   saveSheet,
-  SHEET_PHOTO_KINDS,
+  ADDABLE_SHEET_PHOTO_KINDS,
 } from "@/lib/services/purchase-sheet";
 import { invalidTarget, parseSheet } from "./sheet-form";
 import { leadTimeFromLots } from "@/lib/services/purchase-sheet-calc";
@@ -48,7 +48,7 @@ export async function addPurchaseSheetPhotosAction(form: FormData) {
   // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
   await runInPlace(back, async () => {
     ORDER_ID.parse(orderId);
-    const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
+    const kind = z.enum(ADDABLE_SHEET_PHOTO_KINDS).parse(str(form, "kind"));
     const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (!photos.length) throw new Error("photo_required");
     await addSheetPhotos(user, orderId, kind, photos);
@@ -152,7 +152,7 @@ export async function addQuoteSheetPhotosAction(form: FormData) {
   // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
   await runInPlace(back, async () => {
     ORDER_ID.parse(quoteId);
-    const kind = z.enum(SHEET_PHOTO_KINDS).parse(str(form, "kind"));
+    const kind = z.enum(ADDABLE_SHEET_PHOTO_KINDS).parse(str(form, "kind"));
     const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
     if (!photos.length) throw new Error("photo_required");
     const { addQuoteSheetPhotos } = await import("@/lib/services/quote-sheet");

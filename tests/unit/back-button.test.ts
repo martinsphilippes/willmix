@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  parentFor,
-  recordVisit,
-  screenUrl,
-} from "@/components/back-button";
+import { parentFor, recordVisit, screenUrl } from "@/components/back-button";
 
 /* "Voltar": caminho das telas visitadas na aba e a tela mãe pelo menu. */
 describe("voltar para a tela anterior", () => {
@@ -33,10 +29,18 @@ describe("voltar para a tela anterior", () => {
   });
 
   it("sem tela anterior: a tela mãe mais específica do menu, senão o início", () => {
-    const menu = ["/app", "/app/orders", "/app/requests", "/app/freight", "/app/freight/tariff"];
+    const menu = [
+      "/app",
+      "/app/orders",
+      "/app/requests",
+      "/app/freight",
+      "/app/freight/tariff",
+    ];
     expect(parentFor("/app/orders/abc", menu)).toBe("/app/orders");
     expect(parentFor("/app/requests/batch/g1", menu)).toBe("/app/requests");
-    expect(parentFor("/app/freight/tariff/x", menu)).toBe("/app/freight/tariff");
+    expect(parentFor("/app/freight/tariff/x", menu)).toBe(
+      "/app/freight/tariff",
+    );
     expect(parentFor("/app/orders", menu)).toBe("/app");
     expect(parentFor("/app/quotes/q1", menu)).toBe("/app");
   });

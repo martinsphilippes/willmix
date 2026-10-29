@@ -58,7 +58,11 @@ async function newRequest(productId: string | null = "prod-jarra") {
   });
 }
 
-async function answer(request: Request, supplierUser: User, supplierId: string) {
+async function answer(
+  request: Request,
+  supplierUser: User,
+  supplierId: string,
+) {
   const [quote] = await getStore().list("quotes", {
     filter: { requestId: request.id, supplierId },
   });
@@ -240,7 +244,9 @@ describe("abertura junto com a RFQ", () => {
       ),
     ).toBe(true);
     const adminNotes = (await notificationsOf(admin)).slice(beforeAdmin);
-    expect(adminNotes.some((n) => /marketing Wellmix/.test(n.subject))).toBe(true);
+    expect(adminNotes.some((n) => /marketing Wellmix/.test(n.subject))).toBe(
+      true,
+    );
 
     const bad = await newRequest();
     await expect(
@@ -331,11 +337,21 @@ describe("entregáveis, medidas e isolamento", () => {
     const brief = (await pb.briefForRequest(request.id))!;
     const beforeAdmin = (await notificationsOf(admin)).length;
 
-    const d1 = await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca.pdf"));
+    const d1 = await pb.uploadPackagingItem(
+      agency,
+      brief.id,
+      "dieline",
+      pdf("faca.pdf"),
+    );
     expect(d1.document.version).toBe(1);
     expect(d1.document.packagingBriefId).toBe(brief.id);
     expect(d1.brief.status).toBe("open");
-    const d2 = await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca2.pdf"));
+    const d2 = await pb.uploadPackagingItem(
+      agency,
+      brief.id,
+      "dieline",
+      pdf("faca2.pdf"),
+    );
     expect(d2.document.version).toBe(2);
     expect(d2.document.previousDocumentId).toBe(d1.document.id);
     const a1 = await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
@@ -343,13 +359,22 @@ describe("entregáveis, medidas e isolamento", () => {
     expect(a1.brief.readyAt).not.toBeNull();
     // Pronto: a Wellmix recebe "concluído"; a pendência da agência some.
     const adminNotes = (await notificationsOf(admin)).slice(beforeAdmin);
-    expect(adminNotes.some((n) => n.kind === "done" && /Embalagem pronta/.test(n.subject))).toBe(true);
+    expect(
+      adminNotes.some(
+        (n) => n.kind === "done" && /Embalagem pronta/.test(n.subject),
+      ),
+    ).toBe(true);
     expect(
       (await pendingTasksFor(agency)).some((t) => t.link.includes(brief.id)),
     ).toBe(false);
 
     // Opcional depois de pronto: aviso de novidade, continua pronto.
-    const s1 = await pb.uploadPackagingItem(agency, brief.id, "packaging_sample", pdf("foto.pdf"));
+    const s1 = await pb.uploadPackagingItem(
+      agency,
+      brief.id,
+      "packaging_sample",
+      pdf("foto.pdf"),
+    );
     expect(s1.brief.status).toBe("ready");
 
     const cleared = await pb.clearPackagingItem(agency, brief.id, "art");
@@ -367,7 +392,12 @@ describe("entregáveis, medidas e isolamento", () => {
     const request = await newRequest();
     await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
     const brief = (await pb.briefForRequest(request.id))!;
-    const { document } = await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
+    const { document } = await pb.uploadPackagingItem(
+      agency,
+      brief.id,
+      "art",
+      pdf(),
+    );
     expect(await canAccessDocument(agency, document)).toBe(true);
     expect(await canAccessDocument(agencyB, document)).toBe(false);
     expect(await canAccessDocument(supplierA, document)).toBe(false);
@@ -429,8 +459,18 @@ describe("entregáveis, medidas e isolamento", () => {
     expect((await pb.briefForRequest(request.id))!.status).toBe("ready");
 
     // Fornecedor B escolhido: medidas bem diferentes → alerta e volta a "em preparação".
-    await r.answerQuote(supplierA, qa.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
-    await r.answerQuote(supplierB, qb.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
+    await r.answerQuote(supplierB, qb.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
     const before = (await notificationsOf(agency)).length;
     await r.selectQuote(admin, qb.id, {
       sellPrice: 1000,
@@ -444,7 +484,9 @@ describe("entregáveis, medidas e isolamento", () => {
     expect(brief.status).toBe("open");
     expect(brief.artDocumentId).not.toBeNull(); // arquivos ficam
     const notes = (await notificationsOf(agency)).slice(before);
-    expect(notes.some((n) => n.kind === "alert" && /mudaram/.test(n.subject))).toBe(true);
+    expect(
+      notes.some((n) => n.kind === "alert" && /mudaram/.test(n.subject)),
+    ).toBe(true);
   });
 
   it("ficha mestre completa: medidas 'master' desde a abertura; escolha dentro da tolerância não alerta", async () => {
@@ -481,16 +523,27 @@ describe("entregáveis, medidas e isolamento", () => {
     const brief = (await pb.briefForRequest(request.id))!;
     expect(brief.dimsSource).toBe("master");
     expect(brief.dims?.masterCartonQty).toBe(48);
-    const [qa] = await store.list("quotes", { filter: { requestId: request.id } });
+    const [qa] = await store.list("quotes", {
+      filter: { requestId: request.id },
+    });
     await saveQuoteSheet(supplierA, qa.id, {
       lengthCm: 51,
       widthCm: 40,
       heightCm: 30,
       masterCartonQty: 48,
     } as never);
-    await r.answerQuote(supplierA, qa.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
     const before = (await notificationsOf(agency)).length;
-    await r.selectQuote(admin, qa.id, { sellPrice: 1000, sellCurrency: "BRL", downPaymentAmount: 300 });
+    await r.selectQuote(admin, qa.id, {
+      sellPrice: 1000,
+      sellCurrency: "BRL",
+      downPaymentAmount: 300,
+    });
     const after = (await pb.briefForRequest(request.id))!;
     expect(after.dimsChangedAt).toBeNull();
     expect(after.dimsSource).toBe("quote");
@@ -498,7 +551,9 @@ describe("entregáveis, medidas e isolamento", () => {
     const notes = (await notificationsOf(agency)).slice(before);
     expect(notes.some((n) => /mudaram/.test(n.subject))).toBe(false);
     // "Fornecedor escolhido" informa quem fabrica.
-    expect(notes.some((n) => /Fornecedor escolhido/.test(n.subject))).toBe(true);
+    expect(notes.some((n) => /Fornecedor escolhido/.test(n.subject))).toBe(
+      true,
+    );
   });
 });
 
@@ -520,9 +575,13 @@ describe("pedido criado", () => {
     expect(reqs.art.documentId).toBe(art.document.id);
     expect(reqs.art.submittedByUserId).toBe(agency.id);
     expect(reqs.art.note).toMatch(/solicitação/);
-    expect((await store.get("documents", art.document.id))!.requirementId).toBe(reqs.art.id);
+    expect((await store.get("documents", art.document.id))!.requirementId).toBe(
+      reqs.art.id,
+    );
     // Pendência do briefing some (agora é do pedido).
-    expect((await pendingTasksFor(agency)).some((t) => t.link.includes(brief.id))).toBe(false);
+    expect(
+      (await pendingTasksFor(agency)).some((t) => t.link.includes(brief.id)),
+    ).toBe(false);
 
     const beforeSupplier = (await notificationsOf(supplierA)).length;
     const beforeAgency = (await notificationsOf(agency)).length;
@@ -533,28 +592,51 @@ describe("pedido criado", () => {
     expect(reqs.stage.percent).toBe(50);
     // Aviso vai ao fornecedor (aprovar), no idioma dele, não à agência.
     const zh = translator(supplierA.locale);
-    const supplierNotes = (await notificationsOf(supplierA)).slice(beforeSupplier);
+    const supplierNotes = (await notificationsOf(supplierA)).slice(
+      beforeSupplier,
+    );
     expect(
       supplierNotes.some(
         (n) =>
           n.subject ===
-            zh("notif.stage.subject", { n: order.number, stage: zh("stage.PACKAGING") }) &&
+            zh("notif.stage.subject", {
+              n: order.number,
+              stage: zh("stage.PACKAGING"),
+            }) &&
           n.body === zh("notif.stage.body", { items: zh("req.art_approval") }),
       ),
     ).toBe(true);
     expect((await notificationsOf(agency)).length).toBe(beforeAgency);
     // Pendência: do fornecedor; a agência não tem nenhuma neste pedido.
     const orderLink = `/app/orders/${order.id}`;
-    expect((await pendingTasksFor(supplierA)).some((t) => t.link === orderLink && t.stageKey === "PACKAGING")).toBe(true);
-    expect((await pendingTasksFor(agency)).some((t) => t.link === orderLink)).toBe(false);
+    expect(
+      (await pendingTasksFor(supplierA)).some(
+        (t) => t.link === orderLink && t.stageKey === "PACKAGING",
+      ),
+    ).toBe(true);
+    expect(
+      (await pendingTasksFor(agency)).some((t) => t.link === orderLink),
+    ).toBe(false);
 
     // Reprovar devolve à mesma agência; reenvio pelo briefing vira v2 e reabre a aprovação.
-    await decideRequirement(supplierA, reqs.approval.id, "reject", "Logo torto");
+    await decideRequirement(
+      supplierA,
+      reqs.approval.id,
+      "reject",
+      "Logo torto",
+    );
     reqs = await packagingReqs(order.id);
     // Reprovada: o item "Arte" volta a ser pedido (status `rejected`, como no pedido).
     expect(reqs.art.status).toBe("rejected");
-    expect((await pendingTasksFor(agency)).some((t) => t.link === orderLink)).toBe(true);
-    const again = await pb.uploadPackagingItem(agency, brief.id, "art", pdf("arte2.pdf"));
+    expect(
+      (await pendingTasksFor(agency)).some((t) => t.link === orderLink),
+    ).toBe(true);
+    const again = await pb.uploadPackagingItem(
+      agency,
+      brief.id,
+      "art",
+      pdf("arte2.pdf"),
+    );
     expect(again.document.version).toBe(2);
     reqs = await packagingReqs(order.id);
     expect(reqs.art.status).toBe("done");
@@ -576,19 +658,25 @@ describe("pedido criado", () => {
     // continua (uma só) até a arte chegar ou a etapa abrir.
     const notes = (await notificationsOf(agency)).slice(beforeAgency);
     expect(notes.some((n) => /ainda pendente/.test(n.subject))).toBe(true);
-    const pending = (await pendingTasksFor(agency)).filter((t) => t.link.includes(brief.id));
+    const pending = (await pendingTasksFor(agency)).filter((t) =>
+      t.link.includes(brief.id),
+    );
     expect(pending).toHaveLength(1);
     expect(pending[0].detail).toContain("pedido criado");
     // Arte pelo briefing antes de a etapa abrir conclui o item e a pendência some;
     // a etapa abre direto na aprovação.
     await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
     expect((await packagingReqs(order.id)).art.status).toBe("done");
-    expect((await pendingTasksFor(agency)).filter((t) => t.link.includes(brief.id))).toHaveLength(0);
+    expect(
+      (await pendingTasksFor(agency)).filter((t) => t.link.includes(brief.id)),
+    ).toHaveLength(0);
     await reachPackaging(order.id);
     const reqs = await packagingReqs(order.id);
     expect(reqs.stage.responsibleRole).toBe("supplier");
     const agencyTasks = await pendingTasksFor(agency);
-    expect(agencyTasks.filter((t) => t.link === `/app/orders/${order.id}`)).toHaveLength(0);
+    expect(
+      agencyTasks.filter((t) => t.link === `/app/orders/${order.id}`),
+    ).toHaveLength(0);
   });
 
   it("'Marketing Wellmix' escolhido de propósito: pedido nasce sem agência e a arte é da Wellmix", async () => {
@@ -614,10 +702,16 @@ describe("cancelamento, troca de dono e lembretes", () => {
     expect(after.status).toBe("cancelled");
     expect(after.cancelReason).toBe("request_deleted");
     const notes = (await notificationsOf(agency)).slice(before);
-    expect(notes.some((n) => n.kind === "alert" && /cancelada/.test(n.subject))).toBe(true);
-    expect((await pendingTasksFor(agency)).some((t) => t.link.includes(brief.id))).toBe(false);
+    expect(
+      notes.some((n) => n.kind === "alert" && /cancelada/.test(n.subject)),
+    ).toBe(true);
+    expect(
+      (await pendingTasksFor(agency)).some((t) => t.link.includes(brief.id)),
+    ).toBe(false);
     // Encerrado: nada mais entra.
-    await expect(pb.uploadPackagingItem(agency, brief.id, "art", pdf())).rejects.toThrow("brief_closed");
+    await expect(
+      pb.uploadPackagingItem(agency, brief.id, "art", pdf()),
+    ).rejects.toThrow("brief_closed");
   });
 
   it("trocar o dono avisa os dois; a Wellmix pode assumir", async () => {
@@ -630,12 +724,26 @@ describe("cancelamento, troca de dono e lembretes", () => {
     const mine = await pb.assignPackagingBrief(admin, brief.id, null);
     expect(mine.agencyId).toBeNull();
     expect(mine.ownerSource).toBe("chosen");
-    expect((await notificationsOf(agency)).slice(beforeAgency).some((n) => /transferida/.test(n.subject))).toBe(true);
-    expect((await notificationsOf(admin)).slice(beforeAdmin).some((n) => /marketing Wellmix/.test(n.subject))).toBe(true);
-    expect((await pendingTasksFor(admin)).some((t) => t.link.includes(brief.id))).toBe(true);
+    expect(
+      (await notificationsOf(agency))
+        .slice(beforeAgency)
+        .some((n) => /transferida/.test(n.subject)),
+    ).toBe(true);
+    expect(
+      (await notificationsOf(admin))
+        .slice(beforeAdmin)
+        .some((n) => /marketing Wellmix/.test(n.subject)),
+    ).toBe(true);
+    expect(
+      (await pendingTasksFor(admin)).some((t) => t.link.includes(brief.id)),
+    ).toBe(true);
     // Agência inativa não pode ser dona.
-    const b = (await store.list("parties", { filter: { name: "Agência B" } }))[0];
-    await expect(pb.assignPackagingBrief(admin, brief.id, b.id)).rejects.toThrow("no_agency");
+    const b = (
+      await store.list("parties", { filter: { name: "Agência B" } })
+    )[0];
+    await expect(
+      pb.assignPackagingBrief(admin, brief.id, b.id),
+    ).rejects.toThrow("no_agency");
   });
 
   it("lembrete: briefing vencido gera um alerta por dia", async () => {
@@ -688,27 +796,45 @@ describe("correções da revisão", () => {
     const first = (await pb.briefForRequest(request.id))!;
     await pb.cancelPackagingBrief(admin, first.id);
     await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
-    expect(await store.list("packaging_briefs", { filter: { requestId: request.id } })).toHaveLength(1);
+    expect(
+      await store.list("packaging_briefs", {
+        filter: { requestId: request.id },
+      }),
+    ).toHaveLength(1);
     expect((await pb.briefForRequest(request.id))!.status).toBe("cancelled");
     const again = await pb.openPackagingBrief(admin, request, { reopen: true });
     expect(again.id).not.toBe(first.id);
     expect(again.status).toBe("open");
 
     const deferred = await newRequest();
-    await r.openRfq(admin, deferred.id, ["fornecedor-a"], { packaging: { enabled: false } });
+    await r.openRfq(admin, deferred.id, ["fornecedor-a"], {
+      packaging: { enabled: false },
+    });
     expect(await pb.briefForRequest(deferred.id)).toBeNull();
     await r.openRfq(admin, deferred.id, ["fornecedor-b"]);
     expect(await pb.briefForRequest(deferred.id)).toBeNull();
     // Pedido explícito (caixa marcada no lote) abre mesmo com a RFQ já aberta.
-    await r.openRfq(admin, deferred.id, ["fornecedor-c"].filter(() => false).concat(["fornecedor-a"]), { packaging: { enabled: true } });
+    await r.openRfq(
+      admin,
+      deferred.id,
+      ["fornecedor-c"].filter(() => false).concat(["fornecedor-a"]),
+      { packaging: { enabled: true } },
+    );
     expect((await pb.briefForRequest(deferred.id))?.status).toBe("open");
   });
 
   it("login de agência sem empresa não abre arquivo do briefing do marketing Wellmix", async () => {
     const request = await newRequest();
-    await r.openRfq(admin, request.id, ["fornecedor-a"], { packaging: { agencyId: null } });
+    await r.openRfq(admin, request.id, ["fornecedor-a"], {
+      packaging: { agencyId: null },
+    });
     const brief = (await pb.briefForRequest(request.id))!;
-    const { document } = await pb.uploadPackagingItem(admin, brief.id, "art", pdf());
+    const { document } = await pb.uploadPackagingItem(
+      admin,
+      brief.id,
+      "art",
+      pdf(),
+    );
     const noParty = { ...agency, id: "agency-no-party", partyId: null } as User;
     expect(await canAccessDocument(noParty, document)).toBe(false);
     expect(await pb.getPackagingBriefView(noParty, brief.id)).toBeNull();
@@ -721,22 +847,47 @@ describe("correções da revisão", () => {
     const brief = (await pb.briefForRequest(request.id))!;
     const order = await toOrder(request);
     // Pedido criado sem arte: pendência da agência continua (etapa ainda não começou).
-    expect((await pendingTasksFor(agency)).some((t) => t.link === `/app/packaging/${brief.id}`)).toBe(true);
+    expect(
+      (await pendingTasksFor(agency)).some(
+        (t) => t.link === `/app/packaging/${brief.id}`,
+      ),
+    ).toBe(true);
     await reachPackaging(order.id);
     // Etapa aberta: a pendência do briefing some (a etapa cobra).
-    expect((await pendingTasksFor(agency)).some((t) => t.link === `/app/packaging/${brief.id}`)).toBe(false);
+    expect(
+      (await pendingTasksFor(agency)).some(
+        (t) => t.link === `/app/packaging/${brief.id}`,
+      ),
+    ).toBe(false);
     let reqs = await packagingReqs(order.id);
     const { uploadDocument } = await import("@/lib/services/documents");
-    const doc = await uploadDocument(agency, pdf("pelo-pedido.pdf"), { orderId: order.id, requirementId: reqs.art.id, type: "art" });
+    const doc = await uploadDocument(agency, pdf("pelo-pedido.pdf"), {
+      orderId: order.id,
+      requirementId: reqs.art.id,
+      type: "art",
+    });
     await submitRequirement(agency, reqs.art.id, { documentId: doc.id });
-    expect((await store.get("packaging_briefs", brief.id))!.artDocumentId).toBe(doc.id);
+    expect((await store.get("packaging_briefs", brief.id))!.artDocumentId).toBe(
+      doc.id,
+    );
     reqs = await packagingReqs(order.id);
     await decideRequirement(supplierA, reqs.approval.id, "approve", null);
     expect((await packagingReqs(order.id)).stage.status).toBe("done");
-    await expect(pb.uploadPackagingItem(agency, brief.id, "art", pdf("troca.pdf"))).rejects.toThrow("art_locked");
-    await expect(pb.clearPackagingItem(agency, brief.id, "art")).rejects.toThrow("art_locked");
+    await expect(
+      pb.uploadPackagingItem(agency, brief.id, "art", pdf("troca.pdf")),
+    ).rejects.toThrow("art_locked");
+    await expect(
+      pb.clearPackagingItem(agency, brief.id, "art"),
+    ).rejects.toThrow("art_locked");
     // A foto da embalagem física ainda pode chegar depois.
-    await expect(pb.uploadPackagingItem(agency, brief.id, "packaging_sample", pdf("foto.pdf"))).resolves.toBeTruthy();
+    await expect(
+      pb.uploadPackagingItem(
+        agency,
+        brief.id,
+        "packaging_sample",
+        pdf("foto.pdf"),
+      ),
+    ).resolves.toBeTruthy();
   });
 
   it("fornecedor escolhido sem medidas: as provisórias de outra cotação continuam provisórias, com alerta; medidas à mão reabrem o pronto e a conferência fecha", async () => {
@@ -744,23 +895,60 @@ describe("correções da revisão", () => {
     const request = await newRequest();
     await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
     const brief = (await pb.briefForRequest(request.id))!;
-    const [qa] = await store.list("quotes", { filter: { requestId: request.id, supplierId: "fornecedor-a" } });
-    const [qb] = await store.list("quotes", { filter: { requestId: request.id, supplierId: "fornecedor-b" } });
-    await saveQuoteSheet(supplierA, qa.id, { lengthCm: 60, widthCm: 40, heightCm: 30, masterCartonQty: 12 } as never);
+    const [qa] = await store.list("quotes", {
+      filter: { requestId: request.id, supplierId: "fornecedor-a" },
+    });
+    const [qb] = await store.list("quotes", {
+      filter: { requestId: request.id, supplierId: "fornecedor-b" },
+    });
+    await saveQuoteSheet(supplierA, qa.id, {
+      lengthCm: 60,
+      widthCm: 40,
+      heightCm: 30,
+      masterCartonQty: 12,
+    } as never);
     // B respondeu com ficha sem as medidas da caixa.
     await saveQuoteSheet(supplierB, qb.id, { moq: 100 } as never);
-    await r.answerQuote(supplierA, qa.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
-    await r.answerQuote(supplierB, qb.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
+    await r.answerQuote(supplierB, qb.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
     const before = (await notificationsOf(agency)).length;
     const beforeAdmin = (await notificationsOf(admin)).length;
-    await r.selectQuote(admin, qb.id, { sellPrice: 1000, sellCurrency: "BRL", downPaymentAmount: 300 });
+    await r.selectQuote(admin, qb.id, {
+      sellPrice: 1000,
+      sellCurrency: "BRL",
+      downPaymentAmount: 300,
+    });
     let fresh = (await pb.briefForRequest(request.id))!;
     expect(fresh.dims?.lengthCm).toBe(60);
     expect(fresh.dimsProvisional).toBe(true);
-    expect((await notificationsOf(agency)).slice(before).some((n) => /a confirmar/.test(n.subject))).toBe(true);
-    expect((await notificationsOf(admin)).slice(beforeAdmin).some((n) => /a confirmar/.test(n.subject))).toBe(true);
+    expect(
+      (await notificationsOf(agency))
+        .slice(before)
+        .some((n) => /a confirmar/.test(n.subject)),
+    ).toBe(true);
+    expect(
+      (await notificationsOf(admin))
+        .slice(beforeAdmin)
+        .some((n) => /a confirmar/.test(n.subject)),
+    ).toBe(true);
     // A Wellmix informa as medidas à mão: deixam de ser provisórias.
-    await pb.savePackagingDims(admin, brief.id, { lengthCm: 61, widthCm: 40, heightCm: 30, masterCartonQty: 12, innerQty: null });
+    await pb.savePackagingDims(admin, brief.id, {
+      lengthCm: 61,
+      widthCm: 40,
+      heightCm: 30,
+      masterCartonQty: 12,
+      innerQty: null,
+    });
     fresh = (await pb.briefForRequest(request.id))!;
     expect(fresh.dimsProvisional).toBe(false);
     expect(fresh.dimsSource).toBe("manual");
@@ -768,7 +956,13 @@ describe("correções da revisão", () => {
     await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca.pdf"));
     await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
     expect((await pb.briefForRequest(request.id))!.status).toBe("ready");
-    await pb.savePackagingDims(admin, brief.id, { lengthCm: 80, widthCm: 50, heightCm: 40, masterCartonQty: 12, innerQty: null });
+    await pb.savePackagingDims(admin, brief.id, {
+      lengthCm: 80,
+      widthCm: 50,
+      heightCm: 40,
+      masterCartonQty: 12,
+      innerQty: null,
+    });
     fresh = (await pb.briefForRequest(request.id))!;
     expect(fresh.status).toBe("open");
     expect(fresh.dimsChangedAt).not.toBeNull();

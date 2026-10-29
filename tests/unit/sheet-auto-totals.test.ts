@@ -213,7 +213,9 @@ describe("CBM da caixa master pelas medidas", () => {
       "fill",
     );
     expect(half).not.toContain("lengthCm");
-    expect((await store.get("products", "prod-boneca"))?.cbm ?? null).toBeNull();
+    expect(
+      (await store.get("products", "prod-boneca"))?.cbm ?? null,
+    ).toBeNull();
     // A mesma caixa inteira: completa o comprimento e o CBM sai das medidas.
     const same = await ps.completeMasterFromSheet(
       admin,

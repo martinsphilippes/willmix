@@ -155,9 +155,17 @@ export async function createRequestAction(form: FormData) {
             });
         return `/app/requests/batch/${encodeURIComponent(added.groupId)}?added=${added.created.length}`;
       }
+      // Compra para estoque (Wellmix, sem cliente): empresa interna.
+      const { STOCK_OPTION, ensureStockParty } =
+        await import("@/lib/services/purchase-flow");
+      const forStock =
+        isWellmix(user) && str(form, "customerId") === STOCK_OPTION;
+      const stockId = forStock ? (await ensureStockParty(user)).id : null;
       const base = requestBaseSchema.parse({
         customerId:
-          user.role === "customer" ? user.partyId : str(form, "customerId"),
+          user.role === "customer"
+            ? user.partyId
+            : (stockId ?? str(form, "customerId")),
         deadline: str(form, "deadline") || null,
         notes: str(form, "notes") || null,
       });
@@ -166,9 +174,10 @@ export async function createRequestAction(form: FormData) {
         {
           ...base,
           // Wellmix em nome do cliente: o login do cliente que solicitou.
-          requestedForUserId: isWellmix(user)
-            ? str(form, "requestedForUserId") || null
-            : null,
+          requestedForUserId:
+            isWellmix(user) && !forStock
+              ? str(form, "requestedForUserId") || null
+              : null,
         },
         items,
       );

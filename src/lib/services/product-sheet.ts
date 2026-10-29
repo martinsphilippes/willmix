@@ -22,6 +22,7 @@ import {
 import { audit } from "./audit";
 import {
   CUSTOMS_FIELDS,
+  OPTIONAL_SHEET_FIELDS,
   SHEET_PHOTO_KINDS,
   SUPPLIER_FIELDS,
   type SheetInput,
@@ -77,6 +78,12 @@ export const MASTER_PRODUCT_FIELDS = [
   "ncm",
   "importTaxPercent",
   "ipiPercent",
+  // Despachante (Fase B): valem para o produto, em qualquer fornecedor.
+  "dumping",
+  "dumpingNote",
+  "averagePrice",
+  "certificationRequired",
+  "certificationNote",
 ] as const satisfies readonly (keyof PurchaseSheet)[];
 /**
  * Campos COMERCIAIS do fornecedor de referência (loja, telefone, preço, MOQ,
@@ -173,7 +180,8 @@ export async function masterSheetInput(
     getStore().get("products", productId),
   ]);
   const fromVariant = variant ? masterInputFromVariant(variant) : null;
-  if (!stored) return fromVariant && Object.keys(fromVariant).length ? fromVariant : null;
+  if (!stored)
+    return fromVariant && Object.keys(fromVariant).length ? fromVariant : null;
   // Ficha mestre gravada com só parte dos campos: o resto vem das colunas.
   const master = product
     ? withProductColumns(stored, productSheetDraft(product, null))
@@ -371,7 +379,12 @@ export async function mirrorMasterSheetFromVariant(
   productId: string,
   input: SheetInput,
 ): Promise<{ sheet: PurchaseSheet; missing: SheetMissing[] }> {
-  return writeProductSheet(user, productId, input, "product.sheet_from_variant");
+  return writeProductSheet(
+    user,
+    productId,
+    input,
+    "product.sheet_from_variant",
+  );
 }
 
 /** Grava a ficha mestre (sem checar papel: quem chama já decidiu o que pode). */
@@ -413,7 +426,9 @@ async function writeProductSheet(
     });
   } else {
     const blank = Object.fromEntries(
-      [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].map((k) => [k, null]),
+      [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS]
+        .filter((k) => !OPTIONAL_SHEET_FIELDS.includes(k))
+        .map((k) => [k, null]),
     );
     // A mestre nasce com o que o produto já tem; o que veio agora prevalece.
     const fromProduct = Object.fromEntries(

@@ -41,6 +41,13 @@ async function fillStage(
   });
   for (const req of reqs) {
     if (!req.required || req.type === "approval") continue;
+    // Cada um preenche o que é seu (a Wellmix preenche tudo).
+    if (
+      user.role !== "admin" &&
+      user.role !== "operator" &&
+      req.role !== user.role
+    )
+      continue;
     if (req.type === "file" || req.type === "photo") {
       const doc = await store.create("documents", {
         ...DOCUMENT_EXTRA_DEFAULTS,
@@ -154,7 +161,9 @@ describe("fluxo completo: solicitação → entrega", () => {
 
     // Peso declarado = peso líquido por peça da ficha de compra.
     await saveSheet(supplierA, order.id, { netWeightPcKg: 12 });
-    const prep = await fillStage(supplierA, order.id, "PREPARATION");
+    await fillStage(supplierA, order.id, "PREPARATION");
+    // A Wellmix valida a ficha e o cadastro do produto (Fase B).
+    const prep = await fillStage(operator, order.id, "PREPARATION");
     expect(prep.status).toBe("done");
     // Pagamento ao fornecedor fora do fluxo: a etapa conclui sozinha, sem
     // itens, e o pedido vai direto para a embalagem.

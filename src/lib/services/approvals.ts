@@ -169,6 +169,10 @@ export async function submitForApproval(
     )
   )
     throw new ApprovalError("invalid_status");
+  // Dumping marcado pelo despachante: espera a liberação (Fase B).
+  const { dumpingHold } = await import("./purchase-flow");
+  if (await dumpingHold(quote.id))
+    throw new ApprovalError("dumping_release_required");
   const settings = await getSettings();
   const valueBrl = valueInBrl(input);
   const levels = levelsFor(valueBrl, settings.approvalExecutiveThresholdBrl);

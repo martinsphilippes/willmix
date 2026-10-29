@@ -13,8 +13,12 @@ const { seedDemo } = await import("@/lib/seed");
 const { notify, openNotification, forgetMissingColumns } =
   await import("@/lib/services/notifications");
 const { translator } = await import("@/i18n");
-const { displaySubject, notificationActor, notificationGroup, notificationKind } =
-  await import("@/lib/notification-view");
+const {
+  displaySubject,
+  notificationActor,
+  notificationGroup,
+  notificationKind,
+} = await import("@/lib/notification-view");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -37,7 +41,10 @@ const find = async (userId: string, subject: string, channel = "inapp") => {
 
 describe("tipo e com quem está", () => {
   it("ação: quem recebe é quem age, por padrão", async () => {
-    await notify({ userIds: [joao.id] }, { kind: "action", subject: "Faça X", body: "x" });
+    await notify(
+      { userIds: [joao.id] },
+      { kind: "action", subject: "Faça X", body: "x" },
+    );
     expect(await find(joao.id, "Faça X")).toMatchObject({
       kind: "action",
       actor: "recipient",
@@ -52,7 +59,12 @@ describe("tipo e com quem está", () => {
     });
     await notify(
       { userIds: [joao.id] },
-      { kind: "info", actor: "supplier", subject: "Com o fornecedor", body: "z" },
+      {
+        kind: "info",
+        actor: "supplier",
+        subject: "Com o fornecedor",
+        body: "z",
+      },
     );
     expect(await find(joao.id, "Com o fornecedor")).toMatchObject({
       kind: "info",
@@ -108,14 +120,24 @@ describe("avisos antigos (sem tipo gravado)", () => {
     expect(notificationKind(stage)).toBe("action");
     expect(notificationActor(stage)).toBe("recipient");
     expect(
-      notificationKind({ subject: "ATRASADO: pedido #1, etapa SHIPPING", kind: null }),
+      notificationKind({
+        subject: "ATRASADO: pedido #1, etapa SHIPPING",
+        kind: null,
+      }),
     ).toBe("alert");
     // "Pedido #2 criado" antigo tem o mesmo texto do modelo novo: novidade, com o fornecedor.
     const created = { subject: "Pedido #2 criado", kind: null, actor: null };
     expect(notificationKind(created)).toBe("info");
     expect(notificationActor(created)).toBe("supplier");
-    const other = { subject: "Kit de marketing liberado: Kit A", kind: null, actor: null };
-    expect([notificationKind(other), notificationActor(other)]).toEqual(["done", null]);
+    const other = {
+      subject: "Kit de marketing liberado: Kit A",
+      kind: null,
+      actor: null,
+    };
+    expect([notificationKind(other), notificationActor(other)]).toEqual([
+      "done",
+      null,
+    ]);
     // Com tipo gravado, o que está gravado vale (atenção sem ninguém a agir).
     expect(
       notificationActor({ subject: "x", kind: "alert", actor: null }),
@@ -123,7 +145,11 @@ describe("avisos antigos (sem tipo gravado)", () => {
     expect(notificationGroup("done")).toBe("news");
     expect(notificationGroup("alert")).toBe("alert");
     // Cancelamento antigo ia para todo mundo: atenção, sem "sua vez".
-    const cancelled = { subject: "Pedido #4 cancelado", kind: null, actor: null };
+    const cancelled = {
+      subject: "Pedido #4 cancelado",
+      kind: null,
+      actor: null,
+    };
     expect(notificationKind(cancelled)).toBe("alert");
     expect(notificationActor(cancelled)).toBeNull();
   });
@@ -131,16 +157,45 @@ describe("avisos antigos (sem tipo gravado)", () => {
   it("aviso novo gravado sem tipo (banco sem a coluna): reconhecido pelo modelo, em qualquer idioma", () => {
     const pt = translator("pt");
     const zh = translator("zh");
-    const stage = { subject: pt("notif.stage.subject", { n: 3, stage: pt("stage.SHIPPING") }), kind: null, actor: null };
-    expect([notificationKind(stage), notificationActor(stage)]).toEqual(["action", "recipient"]);
-    const created = { subject: zh("notif.orderCreated.customer.subject", { n: 3 }), kind: null, actor: null };
-    expect([notificationKind(created), notificationActor(created)]).toEqual(["info", "supplier"]);
-    const cancelled = { subject: translator("en")("notif.cancelled.subject", { n: 9 }), kind: null, actor: null };
-    expect([notificationKind(cancelled), notificationActor(cancelled)]).toEqual(["alert", null]);
-    const paid = { subject: pt("notif.customerPayment.subject", { n: 1 }), kind: null, actor: null };
-    expect([notificationKind(paid), notificationActor(paid)]).toEqual(["done", null]);
+    const stage = {
+      subject: pt("notif.stage.subject", { n: 3, stage: pt("stage.SHIPPING") }),
+      kind: null,
+      actor: null,
+    };
+    expect([notificationKind(stage), notificationActor(stage)]).toEqual([
+      "action",
+      "recipient",
+    ]);
+    const created = {
+      subject: zh("notif.orderCreated.customer.subject", { n: 3 }),
+      kind: null,
+      actor: null,
+    };
+    expect([notificationKind(created), notificationActor(created)]).toEqual([
+      "info",
+      "supplier",
+    ]);
+    const cancelled = {
+      subject: translator("en")("notif.cancelled.subject", { n: 9 }),
+      kind: null,
+      actor: null,
+    };
+    expect([notificationKind(cancelled), notificationActor(cancelled)]).toEqual(
+      ["alert", null],
+    );
+    const paid = {
+      subject: pt("notif.customerPayment.subject", { n: 1 }),
+      kind: null,
+      actor: null,
+    };
+    expect([notificationKind(paid), notificationActor(paid)]).toEqual([
+      "done",
+      null,
+    ]);
     // Tipo gravado desconhecido: tratado como novidade, sem quebrar.
-    expect(notificationKind({ subject: "x", kind: "weird" as never })).toBe("info");
+    expect(notificationKind({ subject: "x", kind: "weird" as never })).toBe(
+      "info",
+    );
   });
 
   it("assunto antigo com a chave da etapa sai com o nome traduzido", () => {
@@ -159,10 +214,19 @@ describe("avisos antigos (sem tipo gravado)", () => {
     ).toBe("Overdue: order #3, Shipping");
     // Chave desconhecida ou aviso novo: como está.
     expect(
-      displaySubject({ subject: "Pedido #1: etapa FOO aguarda sua ação", kind: null }, pt),
+      displaySubject(
+        { subject: "Pedido #1: etapa FOO aguarda sua ação", kind: null },
+        pt,
+      ),
     ).toBe("Pedido #1: etapa FOO aguarda sua ação");
     expect(
-      displaySubject({ subject: "Pedido #1: etapa DELIVERED aguarda sua ação", kind: "action" }, pt),
+      displaySubject(
+        {
+          subject: "Pedido #1: etapa DELIVERED aguarda sua ação",
+          kind: "action",
+        },
+        pt,
+      ),
     ).toBe("Pedido #1: etapa DELIVERED aguarda sua ação");
   });
 
@@ -178,7 +242,9 @@ describe("avisos antigos (sem tipo gravado)", () => {
           (data as { kind?: unknown }).kind !== undefined
         ) {
           refused++;
-          throw new Error('Invalid document structure: Unknown attribute: "kind"');
+          throw new Error(
+            'Invalid document structure: Unknown attribute: "kind"',
+          );
         }
         return original(table, data as never);
       });
