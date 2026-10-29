@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
-import { JOB_LEVELS } from "@/lib/db/schema";
+import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -17,13 +17,18 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { descendantsOf, ownerOf, wellmixTeam } from "@/lib/services/team";
-import { saveTeamMemberAction, setCustomerOwnerAction } from "../actions/team";
+import { descendantsOf, wellmixTeam } from "@/lib/services/team";
+import {
+  distributeUnassignedAction,
+  saveTeamMemberAction,
+  setLineDivisionAction,
+} from "../actions/team";
 
 /*
- * Equipe e carteira (só o administrador): cargo e chefe de cada login da
- * Wellmix e o operador responsável por cada cliente. É o que monta o Painel
- * de SLA (quem vê quem e de quem é cada pendência).
+ * Equipe e divisões (só o administrador): cargo, chefe e divisão de cada
+ * login da Wellmix e a divisão de cada linha de produto. A solicitação nova
+ * cai sozinha no analista da divisão da linha (o de menos pendências); é o
+ * que monta o Painel de SLA (quem vê quem e de quem é cada pendência).
  */
 
 export default async function TeamPage({
@@ -34,11 +39,11 @@ export default async function TeamPage({
   if (!isWellmix(user)) redirect("/app");
   if (!isAdmin(user)) redirect("/app/sla");
   const t = await getT();
-  const { saved, error } = await searchParams;
-  const [team, customers] = await Promise.all([
+  const { saved, error, distributed } = await searchParams;
+  const [team, lines] = await Promise.all([
     wellmixTeam(),
-    getStore().list("parties", {
-      filter: { type: "customer", active: true },
+    getStore().list("product_lines", {
+      filter: { active: true },
       orderBy: "name",
     }),
   ]);
@@ -49,6 +54,26 @@ export default async function TeamPage({
         ? t(errorKey as DictionaryKey)
         : t("common.error")
       : null;
+  const savedText =
+    saved === "member"
+      ? t("team.saved.member")
+      : saved === "line"
+        ? t("team.saved.line")
+        : null;
+  const distributedCount =
+    typeof distributed === "string" && /^\d+$/.test(distributed)
+      ? Number(distributed)
+      : null;
+  const divisionOptions = (
+    <>
+      <option value="">{t("team.none")}</option>
+      {DIVISIONS.map((d) => (
+        <option key={d} value={d}>
+          {t(`division.${d}` as DictionaryKey)}
+        </option>
+      ))}
+    </>
+  );
 
   return (
     <>
@@ -63,23 +88,27 @@ export default async function TeamPage({
           <Alert tone="danger">{errorText}</Alert>
         </div>
       ) : null}
-      {saved === "member" || saved === "portfolio" ? (
+      {savedText ? (
         <div className="mb-3" data-team-saved={saved}>
+          <Alert tone="success">{savedText}</Alert>
+        </div>
+      ) : null}
+      {distributedCount !== null ? (
+        <div className="mb-3" data-team-distributed={distributedCount}>
           <Alert tone="success">
-            {saved === "member"
-              ? t("team.saved.member")
-              : t("team.saved.portfolio")}
+            {t("team.distributed", { n: distributedCount })}
           </Alert>
         </div>
       ) : null}
 
-      <div className="grid items-start gap-4 xl:grid-cols-2">
+      <div className="grid items-start gap-4">
         <Card title={t("team.members")}>
           <Table>
             <thead>
               <tr>
                 <Th>{t("team.col.name")}</Th>
                 <Th>{t("team.col.level")}</Th>
+                <Th>{t("team.col.division")}</Th>
                 <Th>{t("team.col.manager")}</Th>
                 <Th />
               </tr>
@@ -123,6 +152,17 @@ export default async function TeamPage({
                     <Td>
                       <Select
                         dense
+                        name="division"
+                        form={formId}
+                        defaultValue={member.division ?? ""}
+                        aria-label={`${t("team.col.division")}: ${member.name}`}
+                      >
+                        {divisionOptions}
+                      </Select>
+                    </Td>
+                    <Td>
+                      <Select
+                        dense
                         name="managerUserId"
                         form={formId}
                         defaultValue={member.managerUserId ?? ""}
@@ -157,49 +197,44 @@ export default async function TeamPage({
           </Table>
         </Card>
 
-        <Card title={t("team.portfolio")}>
-          <div id="portfolio" className="scroll-mt-4" />
-          <p className="mb-2 text-sm text-zinc-600">
-            {t("team.portfolioIntro")}
-          </p>
+        <Card title={t("team.lines")}>
+          <div id="lines" className="scroll-mt-4" />
+          <p className="mb-2 text-sm text-zinc-600">{t("team.linesIntro")}</p>
           <Table>
             <thead>
               <tr>
-                <Th>{t("team.col.customer")}</Th>
-                <Th>{t("team.col.owner")}</Th>
+                <Th>{t("team.col.line")}</Th>
+                <Th>{t("team.col.division")}</Th>
                 <Th />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
-              {customers.map((c) => {
-                const formId = `owner-${c.id}`;
+              {lines.map((line) => {
+                const formId = `line-${line.id}`;
                 return (
                   <tr
-                    key={c.id}
-                    id={`c-${c.id}`}
+                    key={line.id}
+                    id={`l-${line.id}`}
                     className={rowClass}
-                    data-team-customer={c.id}
+                    data-team-line={line.id}
                   >
-                    <Td className="font-medium text-zinc-900">{c.name}</Td>
+                    <Td className="font-medium text-zinc-900">{line.name}</Td>
                     <Td>
-                      <Select
-                        dense
-                        name="ownerUserId"
-                        form={formId}
-                        defaultValue={ownerOf(c, team) ?? ""}
-                        aria-label={`${t("team.col.owner")}: ${c.name}`}
-                      >
-                        <option value="">{t("team.ownerNone")}</option>
-                        {team.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </Select>
+                      <div className="w-32">
+                        <Select
+                          dense
+                          name="division"
+                          form={formId}
+                          defaultValue={line.division ?? ""}
+                          aria-label={`${t("team.col.division")}: ${line.name}`}
+                        >
+                          {divisionOptions}
+                        </Select>
+                      </div>
                     </Td>
                     <Td>
-                      <form id={formId} action={setCustomerOwnerAction}>
-                        <input type="hidden" name="partyId" value={c.id} />
+                      <form id={formId} action={setLineDivisionAction}>
+                        <input type="hidden" name="lineId" value={line.id} />
                         <SubmitButton
                           variant="secondary"
                           className="px-2.5 py-1 text-xs"
@@ -213,6 +248,14 @@ export default async function TeamPage({
               })}
             </tbody>
           </Table>
+          <form action={distributeUnassignedAction} className="mt-3">
+            <p className="mb-2 text-xs text-zinc-500">
+              {t("team.distributeHint")}
+            </p>
+            <SubmitButton variant="secondary" data-team-distribute>
+              {t("team.distribute")}
+            </SubmitButton>
+          </form>
         </Card>
       </div>
     </>

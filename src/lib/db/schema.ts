@@ -453,6 +453,10 @@ export const MESSAGE_MAX_LENGTH = 4000;
 /* Tipos das linhas                                                          */
 /* ------------------------------------------------------------------------ */
 
+/** Divisões da Wellmix: cada linha de produto e cada analista pertencem a uma. */
+export const DIVISIONS = ["wellmix", "wellkids"] as const;
+export type Division = (typeof DIVISIONS)[number];
+
 /** Cargo do login da Wellmix (painel de SLA): do mais básico ao mais alto. */
 export const JOB_LEVELS = [
   "analyst",
@@ -483,6 +487,8 @@ export interface User extends BaseRow {
   jobLevel?: JobLevel | null;
   /** A quem o login responde (Wellmix): o chefe vê o painel dele e de quem está abaixo. */
   managerUserId?: string | null;
+  /** Divisão que o analista atende (as solicitações das linhas dela caem nele). */
+  division?: Division | null;
 }
 
 export interface Party extends BaseRow {
@@ -543,6 +549,8 @@ export interface ProductLine extends BaseRow {
   requiredCertifications: string[] | null;
   /** Prompts e regras da linha (Prompt Base + Linha + Produto + Contexto em src/lib/ai/prompts.ts). */
   prompts: LinePrompts | null;
+  /** Divisão da linha (Wellmix ou WellKids): define o analista responsável. */
+  division?: Division | null;
 }
 
 /** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
@@ -658,6 +666,11 @@ export interface Request extends BaseRow {
    */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
+  /**
+   * Analista responsável (automático pela divisão da linha do produto; ver
+   * docs/SLA_PANEL.md). O pedido herda. Nulo = sem responsável.
+   */
+  ownerUserId?: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -700,6 +713,8 @@ export interface Order extends BaseRow {
   operationMode: OperationMode | null;
   /** Login do cliente que solicitou: só ele, entre os logins do cliente, vê o pedido. */
   requestedByUserId: string | null;
+  /** Analista responsável (herdado da solicitação). Opcional. */
+  ownerUserId?: string | null;
   /*
    * Cancelamento (só admin, a qualquer momento). Opcionais: pedidos antigos
    * ficam sem. O acerto financeiro com o cliente é texto livre, editável.
@@ -1821,6 +1836,7 @@ export const TABLES: Record<TableName, TableDef> = {
       importerId: id(false),
       jobLevel: enumOf(JOB_LEVELS),
       managerUserId: id(false),
+      division: enumOf(DIVISIONS),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },
@@ -1870,6 +1886,7 @@ export const TABLES: Record<TableName, TableDef> = {
       active: bool(),
       requiredCertifications: json(),
       prompts: json(),
+      division: enumOf(DIVISIONS),
     },
   },
   products: {
@@ -1946,12 +1963,14 @@ export const TABLES: Record<TableName, TableDef> = {
       number: int(),
       variantId: id(false),
       variant: json(),
+      ownerUserId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_group", type: "key", columns: ["groupId"] },
       { key: "by_number", type: "key", columns: ["number"] },
+      { key: "by_owner", type: "key", columns: ["ownerUserId"] },
     ],
   },
   quotes: {
@@ -2011,9 +2030,11 @@ export const TABLES: Record<TableName, TableDef> = {
       cancelRequestReason: text(),
       cancelRequestResponse: text(),
       supplierPaymentTerms: json(),
+      ownerUserId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
       { key: "by_status", type: "key", columns: ["status"] },

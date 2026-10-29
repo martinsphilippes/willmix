@@ -205,7 +205,7 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
         }
       />
 
-      {showingMine && me && me.customers === 0 && !admin ? (
+      {showingMine && me && !me.division && !admin ? (
         <div className="mb-3">
           <Alert tone="info">{t("sla.noPortfolio")}</Alert>
         </div>
@@ -218,7 +218,7 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
               <tr>
                 <Th>{t("sla.col.person")}</Th>
                 <Th>{t("sla.col.level")}</Th>
-                <Th className="text-right">{t("sla.col.customers")}</Th>
+                <Th>{t("sla.col.customers")}</Th>
                 <Th className="text-right">{t("sla.col.overdue")}</Th>
                 <Th className="text-right">{t("sla.col.today")}</Th>
                 <Th className="text-right">{t("sla.col.week")}</Th>
@@ -251,7 +251,11 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
                       ? t(`level.${p.jobLevel}` as DictionaryKey)
                       : "—"}
                   </Td>
-                  <Td className="text-right tabular-nums">{p.customers}</Td>
+                  <Td className="text-zinc-600">
+                    {p.division
+                      ? t(`division.${p.division}` as DictionaryKey)
+                      : "—"}
+                  </Td>
                   <Td
                     className={cx(
                       "text-right tabular-nums",

@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   getStore,
+  type Division,
   type JobLevel,
   type Role,
   type StageKey,
@@ -17,7 +18,7 @@ import {
   type TaskDue,
   type TaskKind,
 } from "./tasks";
-import { ownerOf, visibleTeamIds, wellmixTeam } from "./team";
+import { visibleTeamIds, wellmixTeam } from "./team";
 
 /*
  * Painel de SLA (docs/SLA_PANEL.md). Cada pendência da Wellmix cai no painel
@@ -69,7 +70,8 @@ export interface SlaPerson {
   managerUserId: string | null;
   /** Profundidade na árvore do que o login vê (0 = topo). */
   depth: number;
-  customers: number;
+  /** Divisão que a pessoa atende (Wellmix ou WellKids). */
+  division: Division | null;
   counts: SlaCounts;
   /** Etapas concluídas nos últimos 30 dias: no prazo / total com prazo. */
   onTime: { done: number; total: number };
@@ -167,8 +169,10 @@ export async function slaBoardFor(
     store.list("stages", { filter: { status: "done" } }),
   ]);
   const customerById = new Map(customers.map((c) => [c.id, c]));
-  const ownerFor = (customerId: string | null | undefined) =>
-    (customerId && ownerOf(customerById.get(customerId), team)) || UNASSIGNED;
+  // Dono: o analista da solicitação/do pedido, se ainda é da equipe ativa.
+  const teamIds = new Set(team.map((u) => u.id));
+  const ownerFor = (ownerUserId: string | null | undefined) =>
+    ownerUserId && teamIds.has(ownerUserId) ? ownerUserId : UNASSIGNED;
 
   const all: SlaItem[] = [
     ...tasks.map((t): SlaItem => ({
@@ -184,7 +188,7 @@ export async function slaBoardFor(
       customerName: t.customerId
         ? (customerById.get(t.customerId)?.name ?? null)
         : null,
-      ownerId: ownerFor(t.customerId),
+      ownerId: ownerFor(t.ownerUserId),
       stageKey: t.stageKey,
     })),
     ...partnerItems.map((p) => ({
@@ -192,7 +196,7 @@ export async function slaBoardFor(
       customerName: p.customerId
         ? (customerById.get(p.customerId)?.name ?? null)
         : null,
-      ownerId: ownerFor(p.customerId),
+      ownerId: ownerFor(p.ownerUserId),
     })),
   ];
   const mine = all.filter(
@@ -215,7 +219,7 @@ export async function slaBoardFor(
   const stageOwner = new Map(
     doneStages.map((s) => [
       s.id,
-      ownerFor(orders.find((o) => o.id === s.orderId)?.customerId),
+      ownerFor(orders.find((o) => o.id === s.orderId)?.ownerUserId),
     ]),
   );
   const onTimeFor = (match: (ownerId: string) => boolean) => {
@@ -238,9 +242,7 @@ export async function slaBoardFor(
       jobLevel: user.jobLevel ?? null,
       managerUserId: user.managerUserId ?? null,
       depth,
-      customers: customers.filter(
-        (c) => c.active && ownerOf(c, team) === user.id,
-      ).length,
+      division: user.division ?? null,
       counts: countsFor((o) => o === user.id),
       onTime: onTimeFor((o) => o === user.id),
     }),
@@ -252,8 +254,7 @@ export async function slaBoardFor(
         jobLevel: null,
         managerUserId: null,
         depth: 0,
-        customers: customers.filter((c) => c.active && !ownerOf(c, team))
-          .length,
+        division: null,
         counts: countsFor((o) => o === UNASSIGNED),
         onTime: onTimeFor((o) => o === UNASSIGNED),
       }
@@ -295,7 +296,11 @@ export async function slaBoardFor(
  */
 async function partnerDelays(
   now: Date,
-): Promise<Array<Omit<SlaItem, "customerName" | "ownerId">>> {
+): Promise<
+  Array<
+    Omit<SlaItem, "customerName" | "ownerId"> & { ownerUserId: string | null }
+  >
+> {
   const store = getStore();
   const [stages, quotes, briefs, parties] = await Promise.all([
     store.list("stages", { filter: { status: ["active", "blocked"] } }),
@@ -307,7 +312,9 @@ async function partnerDelays(
   ]);
   const name = (id: string | null | undefined) =>
     (id && parties.find((p) => p.id === id)?.name) || null;
-  const out: Array<Omit<SlaItem, "customerName" | "ownerId">> = [];
+  const out: Array<
+    Omit<SlaItem, "customerName" | "ownerId"> & { ownerUserId: string | null }
+  > = [];
   const late = (dueAt: string | null) => {
     const daysLeft = daysUntil(dueAt, now);
     return { daysLeft, due: dueBucket(daysLeft) };
@@ -373,6 +380,7 @@ async function partnerDelays(
         due,
         daysLeft,
         customerId: order.customerId,
+        ownerUserId: order.ownerUserId ?? null,
         stageKey: s.key,
         waitingOn: roles,
         waitingParty: parties.length === 1 ? parties[0] : null,
@@ -402,6 +410,7 @@ async function partnerDelays(
       due,
       daysLeft,
       customerId: request.customerId,
+      ownerUserId: request.ownerUserId ?? null,
       waitingOn: ["supplier"],
       waitingParty: name(q.supplierId),
     });
@@ -431,6 +440,7 @@ async function partnerDelays(
       due,
       daysLeft,
       customerId: request.customerId,
+      ownerUserId: request.ownerUserId ?? null,
       stageKey: "PACKAGING",
       waitingOn: ["agency"],
       waitingParty: name(b.agencyId),
