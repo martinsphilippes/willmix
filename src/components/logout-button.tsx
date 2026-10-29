@@ -22,7 +22,9 @@ export function LogoutButton({
         if (
           key.startsWith("wellmix-draft:") ||
           key.startsWith("wellmix:draft-cleared:") ||
-          key === "wellmix:last-submit"
+          key === "wellmix:last-submit" ||
+          // Caminho do "Voltar" (telas visitadas nesta aba).
+          key === "wellmix:nav-history"
         )
           sessionStorage.removeItem(key);
     } catch {
