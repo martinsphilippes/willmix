@@ -32,6 +32,9 @@ const ALLOWED_MIME = [
   "application/vnd.ms-excel.sheet.macroenabled.12",
   "application/vnd.ms-excel",
   "text/csv",
+  // XML da DI/DUIMP (embarque e desembaraço); baixa como anexo, nunca abre na página.
+  "application/xml",
+  "text/xml",
   "application/zip",
   "application/octet-stream",
   "application/postscript",
@@ -279,6 +282,12 @@ export async function canAccessDocument(
     }
     return false;
   }
+  if (doc.type === "import_step") {
+    // Embarque e desembaraço: só quem vê o passo (numerário e DI ficam com a
+    // Wellmix e o comex; o fornecedor vê só a invoice e o BL, por exemplo).
+    const { canAccessStepDocument } = await import("./import-flow");
+    return canAccessStepDocument(user, doc.id);
+  }
   if (doc.orderId) {
     const order = await store.get("orders", doc.orderId);
     if (!order || !canViewOrder(user, order)) return false;
@@ -336,7 +345,10 @@ async function canViewCertificationDocument(
 }
 
 /** Tipos de foto do cadastro que o cliente nunca vê no catálogo. */
-const CATALOG_HIDDEN_KINDS: ProductPhoto["kind"][] = ["business_card", "prompt"];
+const CATALOG_HIDDEN_KINDS: ProductPhoto["kind"][] = [
+  "business_card",
+  "prompt",
+];
 
 /** Máximo de fotos do cadastro mostradas por produto na solicitação. */
 export const CATALOG_SHOWCASE_LIMIT = 8;

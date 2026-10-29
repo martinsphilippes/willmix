@@ -150,7 +150,7 @@ export function ApprovalCard({
 
   return (
     <Card title={t("approvals.title")}>
-      <span id="approval" className="-mt-24 block scroll-mt-24" />
+      <span id="approval" className="block scroll-mt-24" />
       <p className="mb-3 text-sm text-zinc-600">{t("approvals.intro")}</p>
       {sent ? (
         <div className="mb-3">

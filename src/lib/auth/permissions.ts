@@ -12,6 +12,8 @@ export const PARTNER_ROLES: Role[] = [
   "broker",
   "shipping_line",
   "carrier",
+  "comex",
+  "logistics",
 ];
 export const isPartner = (user: Pick<User, "role">) =>
   PARTNER_ROLES.includes(user.role);
@@ -59,7 +61,8 @@ export function canViewQuote(
  * - Wellmix: todos;
  * - cliente: só os do próprio login (quem solicitou), nunca os de outros logins;
  * - fornecedor: os seus;
- * - agência, despachante, armador, transportador: os pedidos em que foram designados;
+ * - agência, despachante, armador, transportador, comex, agente de carga: os
+ *   pedidos em que foram designados;
  * - jurídico: todos (somente leitura, multas).
  */
 export function canViewOrder(user: User, order: Order): boolean {
@@ -79,6 +82,10 @@ export function canViewOrder(user: User, order: Order): boolean {
       return order.shippingLineId === party;
     case "carrier":
       return order.carrierId === party;
+    case "comex":
+      return order.comexId === party;
+    case "logistics":
+      return order.logisticsId === party;
     default:
       return false;
   }

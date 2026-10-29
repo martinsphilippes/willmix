@@ -13,6 +13,9 @@ import { isPartner, isWellmix } from "@/lib/auth/permissions";
 export const PARTNER_READ_STAGES: Partial<Record<Role, readonly StageKey[]>> = {
   // O despachante desembaraça com o BL, o navio e a chegada do embarque.
   broker: ["SHIPPING"],
+  // Comex e agente de carga acompanham o embarque (BL, navio, chegada).
+  comex: ["SHIPPING"],
+  logistics: ["SHIPPING"],
 };
 
 /** A etapa é do parceiro (algum item é do papel dele, ou ele responde por ela). */

@@ -31,7 +31,9 @@ export type TaskKind =
   | "approval"
   | "production_follow"
   | "sku_inspection"
-  | "sku_fix";
+  | "sku_fix"
+  | "import_step"
+  | "import_validate";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -718,11 +720,72 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         ),
       );
   }
+  // Embarque e desembaraço (Fase D): passos a fazer e a validar.
+  const importRole =
+    user.role === "comex" || user.role === "logistics" ? user.role : null;
+  if (wellmix || supplier || (importRole && user.partyId)) {
+    const { importTasks } = await import("./import-flow");
+    const { isSchemaMissing } = await import("./packaging-brief");
+    let orders: Order[] = [];
+    try {
+      orders = await store.list("orders", {
+        filter: importRole
+          ? {
+              [importRole === "comex" ? "comexId" : "logisticsId"]:
+                user.partyId!,
+            }
+          : supplier
+            ? { supplierId: user.partyId! }
+            : { status: ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"] },
+      });
+    } catch (error) {
+      // Coluna nova ainda não publicada no Appwrite: sem pendências.
+      if (!isSchemaMissing(error)) throw error;
+    }
+    for (const p of await importTasks(user, orders)) {
+      const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
+      tasks.push(
+        finish(
+          {
+            kind: p.kind,
+            title:
+              p.kind === "import_validate"
+                ? `Validar ${step}: pedido #${p.order.number}`
+                : `${step}: pedido #${p.order.number}`,
+            detail: "",
+            link: `/app/orders/${p.order.id}#import-flow`,
+            dueAt: null,
+            orderNumber: p.order.number,
+            customerId: p.order.customerId,
+            ownerUserId: p.order.ownerUserId ?? null,
+          },
+          now,
+        ),
+      );
+    }
+  }
   // Pelo prazo: as mais urgentes primeiro; sem prazo por último.
   return sortTasks(tasks);
 }
 
 type DraftTask = Omit<Task, "overdue" | "group" | "due" | "daysLeft">;
+
+/** Passos do embarque/desembaraço (pendências saem em português, como as demais). */
+const IMPORT_STEP_LABEL: Record<string, string> = {
+  booking: "Booking",
+  draft_bl: "Draft do BL",
+  invoice_packing: "Invoice e packing list",
+  invoice_signed: "Invoice assinada",
+  bl: "BL",
+  cargo_presence: "Presença de carga",
+  numerario: "Numerário",
+  numerario_paid: "Pagar numerário",
+  channel: "Canal de parametrização",
+  di: "DI/DUIMP e XML",
+  ce_mercante: "CE Mercante",
+  ci: "Comprovante de importação (CI)",
+  danfe: "DANFE",
+};
 
 /** Nível da aprovação do pré-custo (pendências saem em português, como as demais). */
 const APPROVAL_LEVEL_LABEL: Record<string, string> = {

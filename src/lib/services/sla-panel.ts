@@ -357,6 +357,8 @@ async function partnerDelays(
         broker: "brokerId",
         shipping_line: "shippingLineId",
         carrier: "carrierId",
+        comex: "comexId",
+        logistics: "logisticsId",
         customer: "customerId",
       };
       const parties = roles

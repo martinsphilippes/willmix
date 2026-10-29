@@ -83,8 +83,7 @@ export function CartLineForm({
   /** Digitou menos que o mínimo: sobe ao mínimo já no DOM (a validação do formulário vê o valor certo). */
   const clamped = () => {
     const typed = Math.round(Number(q));
-    if (q === "" || q === server.quantity || !Number.isFinite(typed))
-      return q;
+    if (q === "" || q === server.quantity || !Number.isFinite(typed)) return q;
     if (typed >= floor) return q;
     const next = String(floor);
     flushSync(() => setQ(next));

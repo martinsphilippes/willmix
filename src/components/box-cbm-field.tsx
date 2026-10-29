@@ -47,7 +47,8 @@ function useBoxCbm(
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         const next = readBoxCbm(form);
-        if (last.current !== null && next === null) lost.current?.(last.current);
+        if (last.current !== null && next === null)
+          lost.current?.(last.current);
         else if (next !== null) calc.current?.(next);
         last.current = next;
         setCbm(next);

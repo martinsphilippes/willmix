@@ -59,11 +59,14 @@ const SALES_TABLES = [
   // Produção (follow, ETD) e inspeção por SKU dos pedidos de teste.
   "production_tracks",
   "sku_inspections",
+  // Embarque e desembaraço dos pedidos de teste.
+  "import_steps",
 ] as const satisfies readonly TableName[];
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
 const OPTIONAL_TABLES = new Set<TableName>([
   "approvals",
+  "import_steps",
   "production_tracks",
   "sku_inspections",
   "messages",
