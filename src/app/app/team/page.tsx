@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isAdmin, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
-import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
+import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -110,6 +110,7 @@ export default async function TeamPage({
                 <Th>{t("team.col.level")}</Th>
                 <Th>{t("team.col.division")}</Th>
                 <Th>{t("team.col.manager")}</Th>
+                <Th>{t("team.col.functions")}</Th>
                 <Th />
               </tr>
             </thead>
@@ -178,6 +179,35 @@ export default async function TeamPage({
                             </option>
                           ))}
                       </Select>
+                    </Td>
+                    <Td>
+                      {/* Funções: quem compra, planeja e aprova (aprovação do pré-custo). */}
+                      <input
+                        type="hidden"
+                        name="functions.__form"
+                        value="1"
+                        form={formId}
+                      />
+                      <div className="grid min-w-56 grid-cols-2 gap-x-3 gap-y-1">
+                        {WELLMIX_FUNCTIONS.map((f) => (
+                          <label
+                            key={f}
+                            className="inline-flex items-center gap-1.5 text-xs text-zinc-700"
+                          >
+                            <input
+                              type="checkbox"
+                              name="functions"
+                              value={f}
+                              form={formId}
+                              defaultChecked={(member.functions ?? []).includes(
+                                f,
+                              )}
+                              className="h-4 w-4 accent-brand-600"
+                            />
+                            {t(`function.${f}` as DictionaryKey)}
+                          </label>
+                        ))}
+                      </div>
                     </Td>
                     <Td>
                       <form id={formId} action={saveTeamMemberAction}>

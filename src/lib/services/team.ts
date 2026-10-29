@@ -1,6 +1,13 @@
 import "server-only";
 
-import { getStore, type Division, type JobLevel, type User } from "@/lib/db";
+import {
+  WELLMIX_FUNCTIONS,
+  getStore,
+  type Division,
+  type JobLevel,
+  type User,
+  type WellmixFunction,
+} from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { audit } from "./audit";
 
@@ -56,6 +63,8 @@ export async function setTeamMember(
     jobLevel: JobLevel | null;
     managerUserId: string | null;
     division: Division | null;
+    /** Funções (comprador, planner, diretoria…); ausente = não muda. */
+    functions?: WellmixFunction[];
   },
 ): Promise<void> {
   if (!isAdmin(user)) throw new ForbiddenError();
@@ -75,18 +84,23 @@ export async function setTeamMember(
     jobLevel: target.jobLevel ?? null,
     managerUserId: target.managerUserId ?? null,
     division: target.division ?? null,
+    functions: target.functions ?? [],
   };
+  const functions = input.functions
+    ? WELLMIX_FUNCTIONS.filter((f) => input.functions!.includes(f))
+    : undefined;
   await store.update("users", target.id, {
     jobLevel: input.jobLevel,
     managerUserId: input.managerUserId,
     division: input.division,
+    ...(functions ? { functions } : {}),
   });
   await audit(
     user,
     "team.member",
     "user",
     target.id,
-    `Equipe: ${target.name} (cargo, chefe e divisão)`,
+    `Equipe: ${target.name} (cargo, chefe, divisão e funções)`,
     before,
     input,
   );

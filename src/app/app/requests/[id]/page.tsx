@@ -87,6 +87,8 @@ import {
 } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
+import { ApprovalCard } from "@/components/approval-card";
+import { approvalsFor } from "@/lib/services/approvals";
 
 export default async function RequestDetailPage({
   params,
@@ -247,7 +249,25 @@ export default async function RequestDetailPage({
   const variance = pricingRecord
     ? fxVariance(pricingRecord, await getFxRates())
     : null;
-  const { refreshed, ncmConfirmed, ncmSuggested, ncmAi } = await searchParams;
+  const { refreshed, ncmConfirmed, ncmSuggested, ncmAi, approval, decided } =
+    await searchParams;
+  // Aprovação do pré-custo (só a Wellmix): a em aberto e as anteriores.
+  const approvalList = wellmix ? await approvalsFor(request.id) : [];
+  const approvalPending = approvalList.some((a) => a.status === "pending");
+  const approverIds = [
+    ...new Set(
+      approvalList.flatMap((a) => [
+        a.requestedByUserId,
+        ...a.steps.map((s) => s.userId),
+      ]),
+    ),
+  ];
+  const approverNames = new Map(
+    (approverIds.length
+      ? await store.list("users", { filter: { id: approverIds } })
+      : []
+    ).map((u) => [u.id, u.name]),
+  );
   /* NCM da solicitação (Wellmix): cadastro ou confirmado; sem ele, sugestões. */
   const ncmInfo =
     wellmix && request.status !== "CANCELLED"
@@ -998,11 +1018,33 @@ export default async function RequestDetailPage({
                   />
                 </Field>
                 <div className="sm:col-span-2 md:col-start-3">
-                  <SubmitButton>{t("requests.quotes.select")}</SubmitButton>
+                  {approvalPending ? (
+                    <p className="mb-2 text-xs text-amber-700">
+                      {t("approvals.blocked")}
+                    </p>
+                  ) : null}
+                  <SubmitButton>
+                    {settings.approvalsEnabled
+                      ? t("approvals.submit")
+                      : t("requests.quotes.select")}
+                  </SubmitButton>
                 </div>
               </form>
             ) : null}
           </Card>
+        ) : null}
+
+        {/* Aprovação do pré-custo (Wellmix): em aberto e anteriores. */}
+        {wellmix ? (
+          <ApprovalCard
+            t={t}
+            user={user}
+            requestId={request.id}
+            approvals={approvalList}
+            names={approverNames}
+            sent={approval === "sent"}
+            decided={typeof decided === "string" ? decided : null}
+          />
         ) : null}
 
         {/* Proposta e sinal */}

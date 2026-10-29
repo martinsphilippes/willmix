@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { assertRole } from "@/lib/auth/permissions";
-import { DIVISIONS, JOB_LEVELS } from "@/lib/db/schema";
+import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 import { requireUser, run, str } from "./helpers";
 
 /*
@@ -30,6 +30,19 @@ export async function saveTeamMemberAction(form: FormData) {
       jobLevel: level.parse(str(form, "jobLevel")),
       managerUserId: optionalId.parse(str(form, "managerUserId")),
       division: division.parse(str(form, "division")),
+      // Caixas de marcação das funções (o formulário sempre manda o marcador).
+      ...(form.has("functions.__form")
+        ? {
+            functions: z
+              .array(z.enum(WELLMIX_FUNCTIONS))
+              .max(WELLMIX_FUNCTIONS.length)
+              .parse(
+                form
+                  .getAll("functions")
+                  .filter((v): v is string => typeof v === "string"),
+              ),
+          }
+        : {}),
     });
     return `/app/team?saved=member#u-${targetId}`;
   });

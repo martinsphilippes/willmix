@@ -338,6 +338,33 @@ export default async function SettingsPage({
                 </Field>
               </div>
 
+              {/* Aprovação do pré-custo: níveis antes de a escolha do fornecedor valer. */}
+              <div className={section}>
+                <h3 className={h3}>{t("settings.approvals.title")}</h3>
+                <p className={hintP}>{t("settings.approvals.hint")}</p>
+                <div className="grid gap-3 @sm:grid-cols-2 @xl:grid-cols-4">
+                  <Field label={t("settings.approvals.enabled")}>
+                    <Select
+                      name="approvalsEnabled"
+                      defaultValue={String(s.approvalsEnabled)}
+                    >
+                      <option value="true">{t("common.yes")}</option>
+                      <option value="false">{t("common.no")}</option>
+                    </Select>
+                  </Field>
+                  <Field label={t("settings.approvals.threshold")}>
+                    <Input
+                      name="approvalExecutiveThresholdBrl"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      defaultValue={s.approvalExecutiveThresholdBrl}
+                    />
+                  </Field>
+                </div>
+              </div>
+
               {/* SLA de resposta da cotação: prazo de toda nova solicitação. */}
               <div className={section}>
                 <h3 className={h3}>{t("sla.settings.title")}</h3>
