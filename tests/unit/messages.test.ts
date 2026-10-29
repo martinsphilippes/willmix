@@ -291,3 +291,37 @@ describe("esquema ainda não publicado", () => {
     expect(await msg.getConversationView(admin, "qualquer")).toBeNull();
   });
 });
+
+describe("abrir a conversa no assunto certo", () => {
+  it("sem assunto escolhido, abre onde está a mensagem nova (não o Geral vazio)", async () => {
+    const request = await createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Copo assunto",
+      description: "Copo",
+      specification: null,
+      quantity: 100,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    const { conversationId, topicId } = await msg.openTopic(joao, {
+      requestId: request.id,
+    });
+    await msg.postMessage(joao, topicId, "qual é o preço por kg?");
+    // Wellmix abre a conversa pela lista (sem escolher assunto).
+    const view = await msg.getConversationView(admin, conversationId);
+    expect(view!.topic.id).toBe(topicId);
+    expect(view!.messages.some((m) => m.body.includes("preço por kg"))).toBe(
+      true,
+    );
+    // Escolhendo o Geral, continua indo para o Geral.
+    const general = view!.topics.find((t) => t.kind === "general")!;
+    const chosen = await msg.getConversationView(
+      admin,
+      conversationId,
+      general.id,
+    );
+    expect(chosen!.topic.id).toBe(general.id);
+  });
+});
