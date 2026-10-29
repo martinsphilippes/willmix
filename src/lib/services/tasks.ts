@@ -27,7 +27,8 @@ export type TaskKind =
   | "freight_quote"
   | "supplier_payment"
   | "confirm_receipt"
-  | "packaging_brief";
+  | "packaging_brief"
+  | "approval";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -435,7 +436,42 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       .filter((p) => p.requestId && p.proofDocumentId)
       .map((p) => p.requestId as string),
   );
+  // Aprovação do pré-custo: a escolha do fornecedor aguarda os aprovadores;
+  // a solicitação não pede mais "escolher fornecedor" enquanto isso.
+  const { approvalsToDecide, pendingApprovalsAll } =
+    await import("./approvals");
+  const awaitingApproval = wellmix
+    ? new Set((await pendingApprovalsAll()).map((a) => a.requestId))
+    : new Set<string>();
+  if (wellmix) {
+    const mineToDecide = await approvalsToDecide(user);
+    const approvalRequests = mineToDecide.length
+      ? await store.list("requests", {
+          filter: { id: [...new Set(mineToDecide.map((a) => a.requestId))] },
+        })
+      : [];
+    for (const a of mineToDecide) {
+      const r = approvalRequests.find((x) => x.id === a.requestId);
+      if (!r) continue;
+      const input = a.input as { sellPrice?: number; sellCurrency?: string };
+      tasks.push(
+        finish(
+          {
+            kind: "approval",
+            title: `Aprovar pré-custo (${APPROVAL_LEVEL_LABEL[a.currentLevel ?? "planner"]}): ${r.productName}`,
+            detail: `Valor ao cliente ${input.sellCurrency ?? ""} ${(input.sellPrice ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            link: `/app/requests/${r.id}#approval`,
+            dueAt: r.deadline,
+            customerId: r.customerId,
+            ownerUserId: r.ownerUserId ?? null,
+          },
+          now,
+        ),
+      );
+    }
+  }
   for (const request of wellmixRequests) {
+    if (awaitingApproval.has(request.id)) continue;
     const task = requestTask(request);
     if (task.kind === "confirm_payment" && withProof.has(request.id))
       task.detail = "Comprovante enviado pelo cliente: conferir e confirmar";
@@ -649,6 +685,13 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
 }
 
 type DraftTask = Omit<Task, "overdue" | "group" | "due" | "daysLeft">;
+
+/** Nível da aprovação do pré-custo (pendências saem em português, como as demais). */
+const APPROVAL_LEVEL_LABEL: Record<string, string> = {
+  planner: "planner",
+  purchasing_director: "diretoria de compras",
+  executive_director: "diretoria executiva",
+};
 
 /** Entregáveis do briefing de embalagem (pendências saem em português, como as demais). */
 const PACKAGING_ITEM_LABEL: Record<string, string> = {

@@ -453,6 +453,37 @@ export const MESSAGE_MAX_LENGTH = 4000;
 /* Tipos das linhas                                                          */
 /* ------------------------------------------------------------------------ */
 
+/**
+ * Funções de um login da Wellmix (docs/APPROVALS.md): quem compra, quem
+ * planeja, quem aprova. Um login pode ter várias. Admin faz tudo.
+ */
+export const WELLMIX_FUNCTIONS = [
+  "buyer",
+  "product_manager",
+  "planner",
+  "catalog",
+  "finance",
+  "purchasing_director",
+  "executive_director",
+] as const;
+export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
+
+/** Níveis de aprovação do pré-custo, na ordem. */
+export const APPROVAL_LEVELS = [
+  "planner",
+  "purchasing_director",
+  "executive_director",
+] as const;
+export type ApprovalLevel = (typeof APPROVAL_LEVELS)[number];
+export const APPROVAL_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+  "failed",
+] as const;
+export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number];
+
 /** Divisões da Wellmix: cada linha de produto e cada analista pertencem a uma. */
 export const DIVISIONS = ["wellmix", "wellkids"] as const;
 export type Division = (typeof DIVISIONS)[number];
@@ -489,6 +520,8 @@ export interface User extends BaseRow {
   managerUserId?: string | null;
   /** Divisão que o analista atende (as solicitações das linhas dela caem nele). */
   division?: Division | null;
+  /** Funções do login da Wellmix (comprador, planner, diretoria…). */
+  functions?: WellmixFunction[] | null;
 }
 
 export interface Party extends BaseRow {
@@ -1697,6 +1730,39 @@ export interface Message extends BaseRow {
 }
 
 /** Até onde cada login leu cada assunto (uma linha por login e assunto). */
+/** Uma decisão de um nível da aprovação. */
+export interface ApprovalStep {
+  level: ApprovalLevel;
+  decision: "approved" | "rejected";
+  userId: string;
+  at: string;
+  note: string | null;
+}
+
+/**
+ * Aprovação do pré-custo (docs/APPROVALS.md): a escolha do fornecedor e o
+ * valor ao cliente propostos pelo comprador só valem depois de aprovados,
+ * nível a nível. Reprovada: volta ao comprador com o motivo.
+ */
+export interface Approval extends BaseRow {
+  requestId: string;
+  quoteId: string;
+  requestedByUserId: string;
+  status: ApprovalStatus;
+  /** Escolha proposta (o que a seleção do fornecedor grava quando aprovada). */
+  input: Record<string, unknown>;
+  /** Valor ao cliente em BRL (nulo sem câmbio: vai até a diretoria executiva). */
+  valueBrl: number | null;
+  /** Níveis exigidos, na ordem. */
+  levels: ApprovalLevel[];
+  steps: ApprovalStep[];
+  /** Próximo nível a decidir (nulo quando terminou). */
+  currentLevel: ApprovalLevel | null;
+  /** Motivo da reprovação, do cancelamento ou da falha. */
+  reason: string | null;
+  decidedAt: string | null;
+}
+
 export interface MessageRead extends BaseRow {
   topicId: string;
   userId: string;
@@ -1752,6 +1818,7 @@ export interface Tables {
   conversation_topics: ConversationTopic;
   messages: Message;
   message_reads: MessageRead;
+  approvals: Approval;
 }
 export type TableName = keyof Tables;
 
@@ -1837,6 +1904,7 @@ export const TABLES: Record<TableName, TableDef> = {
       jobLevel: enumOf(JOB_LEVELS),
       managerUserId: id(false),
       division: enumOf(DIVISIONS),
+      functions: json(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },
@@ -2935,6 +3003,26 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_topic", type: "key", columns: ["topicId"] },
       { key: "by_conversation", type: "key", columns: ["conversationId"] },
+    ],
+  },
+  approvals: {
+    label: "Aprovações",
+    columns: {
+      requestId: id(),
+      quoteId: id(),
+      requestedByUserId: id(),
+      status: enumOf(APPROVAL_STATUSES),
+      input: jsonLarge(),
+      valueBrl: float(),
+      levels: json(),
+      steps: json(),
+      currentLevel: enumOf(APPROVAL_LEVELS),
+      reason: text(),
+      decidedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
   message_reads: {

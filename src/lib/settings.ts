@@ -9,6 +9,11 @@ import { getStore } from "@/lib/db";
  */
 export const DEFAULT_SETTINGS = {
   customerCanCreateRequest: true,
+  /* ---- Aprovação do pré-custo (docs/APPROVALS.md) ---- */
+  /** A escolha do fornecedor só vale depois de aprovada (planner → diretoria de compras → diretoria executiva). */
+  approvalsEnabled: true,
+  /** Valor ao cliente (BRL) a partir do qual a diretoria executiva também aprova. */
+  approvalExecutiveThresholdBrl: 100000,
   wellmixCanCreateRequest: true,
   /** CUSTOMER | WELLMIX | BOTH: quem confirma o recebimento da entrega. */
   deliveryConfirmationMode: "BOTH" as "CUSTOMER" | "WELLMIX" | "BOTH",

@@ -332,8 +332,22 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.locator("[data-down-payment-amount]")).toContainText(
     /11[.,]200.*28[.,]000.*16[.,]800/,
   );
-  await page.getByRole("button", { name: /^Selecionar$/ }).click();
+  // A escolha vai para a aprovação do pré-custo (planner e diretoria de
+  // compras; R$ 28.000 fica abaixo do limite da diretoria executiva).
+  await page.getByRole("button", { name: /^Enviar para aprovação$/ }).click();
   await page.waitForLoadState("networkidle");
+  await expect(page.locator("[data-approval-open]")).toBeVisible();
+  // O administrador decide os dois níveis.
+  await login(page, "admin@wellmix.com");
+  await page.goto(requestUrl);
+  for (const level of ["planner", "purchasing_director"]) {
+    await expect(page.locator(`[data-approval-level=${level}]`)).toContainText(
+      /Aguardando/,
+    );
+    await page.locator("[data-approval-approve]").click();
+    await page.waitForLoadState("networkidle");
+  }
+  await expect(page.locator("[data-approval-past=approved]")).toBeVisible();
   await expect(page.getByText(/Aguardando sinal/).first()).toBeVisible();
 
   // 5. Cliente vê a proposta, mas não vê fornecedor nem FOB

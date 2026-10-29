@@ -321,11 +321,16 @@ export async function selectQuoteAction(form: FormData) {
       .max(1_000_000_000)
       .nullable()
       .parse(num(form, "pricedQuantity"));
-    await selectQuote(user, parsed.quoteId, {
-      ...parsed,
-      pricing,
-      pricedQuantity,
-    });
+    const input = { ...parsed, pricing, pricedQuantity };
+    // Com aprovação (Configurações): a escolha vai para os aprovadores e só
+    // vale depois de aprovada (docs/APPROVALS.md).
+    const { approvalsRequired, submitForApproval } =
+      await import("@/lib/services/approvals");
+    if (await approvalsRequired()) {
+      await submitForApproval(user, parsed.quoteId, input);
+      return `/app/requests/${requestId}?approval=sent#approval`;
+    }
+    await selectQuote(user, parsed.quoteId, input);
   });
 }
 
@@ -1161,6 +1166,11 @@ export async function saveSettingsAction(form: FormData) {
         const c = String(raw).toUpperCase();
         if (!isCurrency(c)) throw new Error("invalid_currency");
         value = c;
+      } else if (key === "approvalExecutiveThresholdBrl") {
+        const n = Number(String(raw).trim().replace(",", "."));
+        if (!(Number.isFinite(n) && n >= 0 && n <= 1_000_000_000))
+          throw new Error("approval_threshold_invalid");
+        value = n;
       } else if (key === "quoteSlaBusinessDays") {
         const days = Number(raw);
         if (
