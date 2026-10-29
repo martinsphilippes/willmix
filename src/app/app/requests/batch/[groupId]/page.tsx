@@ -5,7 +5,11 @@ import {
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { RFQ_OPEN_STATUSES, canDeleteRequest } from "@/lib/services/requests";
+import {
+  RFQ_OPEN_STATUSES,
+  canAddProducts,
+  canDeleteRequest,
+} from "@/lib/services/requests";
 import { listProductSuppliers } from "@/lib/services/product-suppliers";
 import {
   cancelledOrderIds,
@@ -18,6 +22,7 @@ import {
   Alert,
   Badge,
   Card,
+  LinkButton,
   PageHeader,
   Table,
   Td,
@@ -49,7 +54,7 @@ export default async function RequestBatchPage({
   searchParams,
 }: PageProps<"/app/requests/batch/[groupId]">) {
   const { groupId } = await params;
-  const { created, deleted, skipped, error, rfq, fromCart } =
+  const { created, deleted, skipped, error, rfq, fromCart, added } =
     await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
@@ -158,6 +163,8 @@ export default async function RequestBatchPage({
   const count = (v: string | string[] | undefined) =>
     typeof v === "string" && /^\d+$/.test(v) ? Number(v) : 0;
   const createdCount = count(created);
+  // Base para "Adicionar produto": um produto do lote que ainda aceita.
+  const addBase = rows.find((r) => canAddProducts(user, r)) ?? null;
   // Mesmas mensagens de erro da lista (lote criado com falha depois, exclusão).
   const errorText = (code: string) => {
     for (const prefix of ["reqBatch.error.", "reqDelete.error."]) {
@@ -186,7 +193,22 @@ export default async function RequestBatchPage({
           </span>
         }
         actions={
-          <TextLink href="/app/requests">{t("reqDelete.backToList")}</TextLink>
+          <>
+            {/* Wellmix: mais produtos no mesmo lote enquanto há um que ainda
+                não virou pedido (o novo entra com o mesmo número). */}
+            {addBase ? (
+              <LinkButton
+                href={`/app/requests/new?addTo=${addBase.id}`}
+                variant="secondary"
+                data-add-product
+              >
+                {t("reqAdd.button")}
+              </LinkButton>
+            ) : null}
+            <TextLink href="/app/requests">
+              {t("reqDelete.backToList")}
+            </TextLink>
+          </>
         }
       />
       {typeof error === "string" && error ? (
@@ -211,6 +233,11 @@ export default async function RequestBatchPage({
               ? t("reqBatch.rfqDoneOne")
               : t("reqBatch.rfqDone", { n: count(rfq) })}
           </Alert>
+        </div>
+      ) : null}
+      {count(added) > 0 ? (
+        <div className="mb-3" data-batch-added>
+          <Alert tone="success">{t("reqAdd.done", { n: count(added) })}</Alert>
         </div>
       ) : null}
       {createdCount > 1 ? (
