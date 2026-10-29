@@ -6,7 +6,7 @@ import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
 import { LOCALES, type Locale } from "@/lib/db/schema";
-import { isNavGroup, navFor, type NavLink } from "@/lib/nav";
+import { flattenNav, isNavGroup, navFor, type NavLink } from "@/lib/nav";
 import { unreadCountFor } from "@/lib/services/messages";
 import { AppNav, MobileNav } from "@/components/app-nav";
 import { UserMenu } from "@/components/user-menu";
@@ -21,6 +21,7 @@ import { NavigationProgress } from "@/components/navigation-progress";
 import { SelectOnFocus } from "@/components/select-on-focus";
 import { SubmitTracker } from "@/components/field-errors";
 import { MissingLive } from "@/components/missing-live";
+import { BackButton } from "@/components/back-button";
 
 /** PT / EN / ZH: um toque troca o idioma (Server Action). `dark` para o cabeçalho, claro no painel do celular. */
 function LocaleSwitcher({
@@ -137,7 +138,8 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         }
       : {}),
   });
-  const entries = navFor(user.role, isAdmin(user)).map((entry) =>
+  const nav = navFor(user.role, isAdmin(user));
+  const entries = nav.map((entry) =>
     isNavGroup(entry)
       ? { label: t(entry.key), items: entry.items.map(link) }
       : link(entry),
@@ -271,6 +273,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         </div>
       ) : null}
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
+        {/* "Voltar" em todas as telas: para a tela anterior desta aba. */}
+        <Suspense fallback={null}>
+          <BackButton
+            label={t("common.back")}
+            menu={flattenNav(nav).map((l) => l.href)}
+          />
+        </Suspense>
         {children}
       </main>
       <footer className="border-t border-zinc-200 bg-white">
