@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Badge,
   cx,
@@ -20,9 +20,22 @@ import {
 
 export type RowState = "active" | "blocked" | "done" | "cancelled";
 
+/** Item mostrado ao abrir a linha (produto, variação, quantidade). */
+export interface OrdersTableItem {
+  name: string;
+  variant: string | null;
+  /** Quantidade já formatada com a unidade ("2.400 un"). */
+  quantity: string;
+  /** Outra solicitação do mesmo lote (abre a própria). */
+  href: string | null;
+  /** Situação traduzida (solicitações do lote). */
+  status: string | null;
+}
+
 export interface OrdersTableRow {
   key: string;
   href: string;
+  items: OrdersTableItem[];
   number: string;
   isRequest: boolean;
   product: string;
@@ -64,6 +77,16 @@ export interface OrdersTableLabels {
   clear: string;
   empty: string;
   sortBy: string;
+  /** "+{n} itens" ao lado do produto. */
+  moreItems: string;
+  /** "+1 item" (singular). */
+  moreItem: string;
+  items: string;
+  showItems: string;
+  hideItems: string;
+  openOrder: string;
+  openRequest: string;
+  noItems: string;
 }
 
 type Filters = Record<FilterKey, string>;
@@ -147,6 +170,16 @@ export function OrdersTable({
         FILTER_KEYS.map((k) => [k, initial[k] ?? ""]),
       ) as Filters,
   );
+  // Linhas abertas (itens do pedido/lote visíveis logo abaixo).
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  function toggleOpen(key: string) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(
     () => {
       // Só colunas conhecidas (link editado ou antigo não quebra a tela).
@@ -226,7 +259,12 @@ export function OrdersTable({
     const monthAgo = addDays(today, -30);
     const list = rows.filter((r) => {
       if (!has(r.number, filters.n)) return false;
-      if (!has(r.product, filters.p)) return false;
+      // Produto: acha também pelos outros itens do pedido/lote.
+      if (
+        !has(r.product, filters.p) &&
+        !r.items.some((i) => has(`${i.name} ${i.variant ?? ""}`, filters.p))
+      )
+        return false;
       if (showCustomer && !has(r.customer, filters.c)) return false;
       if (showSupplier && !has(r.supplier, filters.s)) return false;
       if (filters.ph && r.phaseKey !== filters.ph) return false;
@@ -428,73 +466,195 @@ export function OrdersTable({
                   !!r.due &&
                   r.due < today &&
                   (r.state === "active" || r.state === "blocked");
+                const expanded = open.has(r.key);
+                const columns =
+                  7 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0);
                 return (
-                  <tr
-                    key={r.key}
-                    className={rowClass}
-                    data-orders-row={r.key}
-                    data-orders-state={r.state}
-                  >
-                    <td className="whitespace-nowrap px-2.5 py-2">
-                      <Link href={r.href} className={linkClass}>
-                        {r.number}
-                      </Link>
-                      {r.isRequest ? (
-                        <span className="block text-[11px] text-zinc-500">
-                          {labels.request}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
-                      <Link href={r.href} className="hover:underline">
-                        {r.product}
-                      </Link>
-                    </td>
-                    {showCustomer ? (
-                      <td className="min-w-32 px-2.5 py-2">
-                        {r.customer || "—"}
-                      </td>
-                    ) : null}
-                    {showSupplier ? (
-                      <td className="min-w-32 px-2.5 py-2">
-                        {r.supplier || "—"}
-                      </td>
-                    ) : null}
-                    <td className="whitespace-nowrap px-2.5 py-2">{r.phase}</td>
-                    <td className="whitespace-nowrap px-2.5 py-2">
-                      <Badge tone={STATE_TONE[r.state]}>
-                        {labels.states[r.state]}
-                      </Badge>
-                    </td>
-                    <td className="px-2.5 py-2">
-                      {r.progress === null ? (
-                        <span className="text-zinc-400">—</span>
-                      ) : (
-                        <div className="flex h-5 items-center gap-2">
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-                            <div
-                              className="h-full rounded-full bg-brand-600"
-                              style={{ width: `${r.progress}%` }}
-                            />
-                          </div>
-                          <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
-                            {r.progress}%
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td
+                  <Fragment key={r.key}>
+                    <tr
                       className={cx(
-                        "whitespace-nowrap px-2.5 py-2 tabular-nums",
-                        overdue && "font-semibold text-red-700",
+                        rowClass,
+                        "cursor-pointer",
+                        expanded && "bg-brand-50/40",
                       )}
+                      data-orders-row={r.key}
+                      data-orders-state={r.state}
+                      aria-expanded={expanded}
+                      // Clicar na linha abre/fecha os itens; o número e o nome
+                      // continuam levando à página do pedido/da solicitação.
+                      onClick={(event) => {
+                        if ((event.target as HTMLElement).closest("a,button"))
+                          return;
+                        toggleOpen(r.key);
+                      }}
                     >
-                      {r.dueLabel}
-                    </td>
-                    <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
-                      {r.updatedLabel}
-                    </td>
-                  </tr>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <span className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleOpen(r.key)}
+                            aria-expanded={expanded}
+                            aria-controls={`items-${r.key}`}
+                            aria-label={
+                              expanded ? labels.hideItems : labels.showItems
+                            }
+                            title={
+                              expanded ? labels.hideItems : labels.showItems
+                            }
+                            className="-ml-1 inline-flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+                            data-orders-toggle
+                          >
+                            <svg
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              aria-hidden
+                              className={cx(
+                                "h-4 w-4 transition-transform",
+                                expanded && "rotate-90",
+                              )}
+                            >
+                              <path d="M7.2 4.5a.75.75 0 0 1 1.06 0l5 5a.75.75 0 0 1 0 1.06l-5 5a.75.75 0 1 1-1.06-1.06L11.67 10 7.2 5.56a.75.75 0 0 1 0-1.06Z" />
+                            </svg>
+                          </button>
+                          <Link href={r.href} className={linkClass}>
+                            {r.number}
+                          </Link>
+                        </span>
+                        {r.isRequest ? (
+                          <span className="block text-[11px] text-zinc-500">
+                            {labels.request}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
+                        <Link href={r.href} className="hover:underline">
+                          {r.product}
+                        </Link>
+                        {r.items.length > 1 ? (
+                          <span className="ml-1.5 whitespace-nowrap text-xs font-normal text-zinc-500">
+                            {r.items.length === 2
+                              ? labels.moreItem
+                              : labels.moreItems.replace(
+                                  "{n}",
+                                  String(r.items.length - 1),
+                                )}
+                          </span>
+                        ) : null}
+                      </td>
+                      {showCustomer ? (
+                        <td className="min-w-32 px-2.5 py-2">
+                          {r.customer || "—"}
+                        </td>
+                      ) : null}
+                      {showSupplier ? (
+                        <td className="min-w-32 px-2.5 py-2">
+                          {r.supplier || "—"}
+                        </td>
+                      ) : null}
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        {r.phase}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2">
+                        <Badge tone={STATE_TONE[r.state]}>
+                          {labels.states[r.state]}
+                        </Badge>
+                      </td>
+                      <td className="px-2.5 py-2">
+                        {r.progress === null ? (
+                          <span className="text-zinc-400">—</span>
+                        ) : (
+                          <div className="flex h-5 items-center gap-2">
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+                              <div
+                                className="h-full rounded-full bg-brand-600"
+                                style={{ width: `${r.progress}%` }}
+                              />
+                            </div>
+                            <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
+                              {r.progress}%
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className={cx(
+                          "whitespace-nowrap px-2.5 py-2 tabular-nums",
+                          overdue && "font-semibold text-red-700",
+                        )}
+                      >
+                        {r.dueLabel}
+                      </td>
+                      <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
+                        {r.updatedLabel}
+                      </td>
+                    </tr>
+                    {expanded ? (
+                      <tr
+                        id={`items-${r.key}`}
+                        className="bg-zinc-50/70"
+                        data-orders-items={r.key}
+                      >
+                        <td colSpan={columns} className="px-3 py-3 sm:pl-10">
+                          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                            {labels.items} ({r.items.length})
+                          </div>
+                          {r.items.length ? (
+                            <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white">
+                              {r.items.map((item, i) => (
+                                <li
+                                  key={i}
+                                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2"
+                                  data-orders-item
+                                >
+                                  <span className="min-w-0">
+                                    {item.href ? (
+                                      <Link
+                                        href={item.href}
+                                        className="font-medium text-brand-700 hover:underline"
+                                      >
+                                        {item.name}
+                                      </Link>
+                                    ) : (
+                                      <span className="font-medium text-zinc-900">
+                                        {item.name}
+                                      </span>
+                                    )}
+                                    {item.variant ? (
+                                      <span className="ml-1.5 text-zinc-500">
+                                        · {item.variant}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="flex items-center gap-2 text-sm">
+                                    {item.status ? (
+                                      <Badge tone="neutral">
+                                        {item.status}
+                                      </Badge>
+                                    ) : null}
+                                    <span className="font-semibold tabular-nums text-zinc-800">
+                                      {item.quantity}
+                                    </span>
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-zinc-500">
+                              {labels.noItems}
+                            </p>
+                          )}
+                          <div className="mt-2">
+                            <Link href={r.href} className={linkClass}>
+                              {r.isRequest
+                                ? labels.openRequest
+                                : labels.openOrder}{" "}
+                              →
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 );
               })
             )}

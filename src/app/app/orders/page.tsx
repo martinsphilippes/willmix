@@ -65,6 +65,15 @@ export default async function OrdersPage({
           : "—",
     isRequest: r.kind === "request",
     product: r.product,
+    items: r.items.map((i) => ({
+      name: i.name,
+      variant: i.variant,
+      quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
+      href: i.href,
+      status: i.status
+        ? t(`reqStatusLabel.${i.status}` as DictionaryKey)
+        : null,
+    })),
     customer: r.customer ?? "",
     supplier: r.supplier ?? "",
     phase:
@@ -151,6 +160,14 @@ export default async function OrdersPage({
             clear: t("orders.panel.clear"),
             empty: t("orders.panel.empty"),
             sortBy: t("orders.panel.sortBy"),
+            moreItems: t("orders.panel.moreItems", { n: "{n}" }),
+            moreItem: t("orders.panel.moreItem"),
+            items: t("orders.panel.items"),
+            showItems: t("orders.panel.showItems"),
+            hideItems: t("orders.panel.hideItems"),
+            openOrder: t("orders.panel.openOrder"),
+            openRequest: t("orders.panel.openRequest"),
+            noItems: t("orders.panel.noItems"),
           }}
         />
       )}

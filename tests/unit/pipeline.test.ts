@@ -109,4 +109,32 @@ describe("painel de pedidos", () => {
     );
     expect(await pipelineFor(supplierB)).toEqual([]);
   });
+
+  it("abrir a linha: itens do pedido e os produtos do mesmo lote da solicitação", async () => {
+    const placed = await order("Prato com itens");
+    const first = await request("Caneca do lote");
+    const second = await request("Tigela do lote");
+    for (const id of [first.id, second.id])
+      await getStore().update("requests", id, { groupId: "lote-teste" });
+
+    const rows = await pipelineFor(admin);
+    const orderRow = rows.find((x) => x.key === `order:${placed.id}`)!;
+    expect(orderRow.items).toEqual([
+      expect.objectContaining({
+        name: "Prato com itens",
+        quantity: 1000,
+        unit: "un",
+        href: null,
+      }),
+    ]);
+    const lote = rows.find((x) => x.key === `request:${first.id}`)!;
+    expect(lote.items.map((i) => i.name)).toEqual([
+      "Caneca do lote",
+      "Tigela do lote",
+    ]);
+    // A própria fica sem link; a outra do lote abre a dela.
+    expect(lote.items[0].href).toBeNull();
+    expect(lote.items[1].href).toBe(`/app/requests/${second.id}`);
+    expect(lote.items[1].status).toBe("REQUESTED");
+  });
 });
