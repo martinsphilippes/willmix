@@ -453,6 +453,16 @@ export const MESSAGE_MAX_LENGTH = 4000;
 /* Tipos das linhas                                                          */
 /* ------------------------------------------------------------------------ */
 
+/** Cargo do login da Wellmix (painel de SLA): do mais básico ao mais alto. */
+export const JOB_LEVELS = [
+  "analyst",
+  "coordinator",
+  "supervisor",
+  "manager",
+  "director",
+] as const;
+export type JobLevel = (typeof JOB_LEVELS)[number];
+
 export interface BaseRow {
   id: string;
   createdAt: string;
@@ -469,6 +479,10 @@ export interface User extends BaseRow {
   active: boolean;
   /** Preparação multi-importador: nulo = a importadora dona da plataforma (Wellmix). */
   importerId: string | null;
+  /** Cargo (Wellmix; painel de SLA). Opcional: logins antigos ficam sem. */
+  jobLevel?: JobLevel | null;
+  /** A quem o login responde (Wellmix): o chefe vê o painel dele e de quem está abaixo. */
+  managerUserId?: string | null;
 }
 
 export interface Party extends BaseRow {
@@ -503,6 +517,11 @@ export interface Party extends BaseRow {
   paymentTerms?: PaymentTermInstallment[] | null;
   /** Observação da condição (ex.: "T/T, banco em Hong Kong"). */
   paymentTermsNote?: string | null;
+  /**
+   * Cliente: operador da Wellmix responsável pela carteira. Tudo do cliente
+   * (solicitações, pedidos, etapas) cai no painel de SLA dele. Opcional.
+   */
+  ownerUserId?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -1800,8 +1819,13 @@ export const TABLES: Record<TableName, TableDef> = {
       passwordHash: str(255),
       active: bool(),
       importerId: id(false),
+      jobLevel: enumOf(JOB_LEVELS),
+      managerUserId: id(false),
     },
-    indexes: [{ key: "email_unique", type: "unique", columns: ["email"] }],
+    indexes: [
+      { key: "email_unique", type: "unique", columns: ["email"] },
+      { key: "by_manager", type: "key", columns: ["managerUserId"] },
+    ],
   },
   parties: {
     label: "Parceiros",
@@ -1830,8 +1854,12 @@ export const TABLES: Record<TableName, TableDef> = {
       storeNumber: str(60),
       paymentTerms: json(),
       paymentTermsNote: text(),
+      ownerUserId: id(false),
     },
-    indexes: [{ key: "by_type", type: "key", columns: ["type"] }],
+    indexes: [
+      { key: "by_type", type: "key", columns: ["type"] },
+      { key: "by_owner", type: "key", columns: ["ownerUserId"] },
+    ],
   },
   product_lines: {
     label: "Linhas de produto",

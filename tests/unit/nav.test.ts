@@ -30,10 +30,10 @@ describe("menu principal", () => {
     expect(hrefs.slice(0, 6)).toEqual([
       "/app",
       "/app/tasks",
+      "/app/sla",
       "/app/notifications",
       "/app/messages",
       "/app/requests",
-      "/app/orders",
     ]);
     for (const href of [
       "/app",
@@ -55,13 +55,18 @@ describe("menu principal", () => {
       "/app/penalties",
       "/app/notifications",
       "/app/settings",
+      // Painel de SLA e, só para o admin, Equipe e carteira.
+      "/app/sla",
+      "/app/team",
       // Vitrine como o cliente vê.
       "/app/explore",
     ])
       expect(hrefs).toContain(href);
-    // Operador: tudo igual, menos Configurações.
+    // Operador: tudo igual, menos Configurações e Equipe e carteira.
     const operator = flattenNav(navFor("operator", false)).map((l) => l.href);
-    expect(operator).toEqual(hrefs.filter((h) => h !== "/app/settings"));
+    expect(operator).toEqual(
+      hrefs.filter((h) => h !== "/app/settings" && h !== "/app/team"),
+    );
   });
 
   it('cliente: Explorar (vitrine) no início e o resto em "Meus pedidos"; nenhuma tela some', () => {

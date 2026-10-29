@@ -48,6 +48,8 @@ export interface Task {
   due: TaskDue;
   /** Dias até o prazo (negativo = atrasada); nulo sem prazo. */
   daysLeft: number | null;
+  /** Cliente da pendência (painel de SLA: cai na carteira do operador dele). */
+  customerId?: string | null;
 }
 
 /* ---------------------------------------------------------------------------
@@ -364,6 +366,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           dueAt: stage.dueAt,
           orderNumber: order.number,
           stageKey: stage.key,
+          customerId: order.customerId,
         },
         now,
       ),
@@ -404,7 +407,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           kind: "packaging_brief",
           title: `${request.number ? `Solicitação nº ${request.number}: ` : ""}embalagem (faca e arte): ${request.productName}`,
           detail: [
-            missing.length ? `Faltam: ${missing.join(", ")}` : "Obrigatórios enviados",
+            missing.length
+              ? `Faltam: ${missing.join(", ")}`
+              : "Obrigatórios enviados",
             `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
             inOrder
               ? "pedido criado: a arte é pedida antes de a etapa Arte e embalagem começar"
@@ -415,6 +420,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           link: `/app/packaging/${brief.id}`,
           dueAt: brief.dueAt,
           stageKey: "PACKAGING",
+          customerId: request.customerId,
         },
         now,
       ),
@@ -464,6 +470,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           link: `/app/orders/${order.id}#after-sales`,
           dueAt: null,
           orderNumber: order.number,
+          customerId: order.customerId,
         },
         now,
       ),
@@ -471,7 +478,13 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
 
   // Sourcing sob demanda: produto pedido por cliente ainda sem fornecedor.
-  for (const d of demands.filter((x) => x.requestId)) {
+  const withRequest = demands.filter((x) => x.requestId);
+  const demandRequests = withRequest.length
+    ? await store.list("requests", {
+        filter: { id: [...new Set(withRequest.map((d) => d.requestId!))] },
+      })
+    : [];
+  for (const d of withRequest) {
     tasks.push(
       finish(
         {
@@ -480,6 +493,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           detail: d.notes ?? "Localizar fornecedores e cadastrar opções",
           link: `/app/sourcing/items/${d.id}`,
           dueAt: null,
+          customerId:
+            demandRequests.find((r) => r.id === d.requestId)?.customerId ??
+            null,
         },
         now,
       ),
@@ -504,6 +520,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             .join(" · "),
           link: r.link ?? "/app/reviews",
           dueAt: null,
+          customerId: r.orderId
+            ? (orderById.get(r.orderId)?.customerId ?? null)
+            : null,
         },
         now,
       ),
@@ -606,6 +625,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             link: `/app/orders/${payable.order.id}#supplier-payment`,
             dueAt: i.dueDate,
             orderNumber: payable.order.number,
+            customerId: payable.order.customerId,
           },
           now,
         ),
@@ -630,6 +650,7 @@ function requestTask(request: Request): DraftTask {
   const base = {
     link: `/app/requests/${request.id}`,
     dueAt: request.deadline,
+    customerId: request.customerId,
   };
   switch (request.status) {
     case "REQUESTED":

@@ -519,3 +519,7 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - Wellmix (só ela, decisão do dono) tem "Adicionar produto" na solicitação e no lote enquanto a solicitação não virou pedido nem foi cancelada (`REQUESTED`, `RFQ_OPEN`, `QUOTATION_RECEIVED`, `SUPPLIER_SELECTED`, `WAITING_DOWN_PAYMENT`). Abre o formulário de nova solicitação em modo `?addTo=<id>`: sem escolher cliente, solicitante, prazo ou observação (vêm da solicitação; prazo = SLA) e sem a busca por foto.
 - Cada produto vira uma solicitação do MESMO lote (`groupId`; a solicitação sozinha passa a ser lote), com o mesmo número, cliente e solicitante (`addProductsToRequest` em `src/lib/services/requests.ts`). Cada um tem a própria cotação e vira o próprio pedido no sinal, como os demais produtos de um lote (decisão do dono: um pedido por produto). Falha no meio cancela (sem apagar) os produtos criados nessa chamada.
 - Depois de adicionar, a tela vai para o lote, com o aviso e a RFQ do lote para os produtos novos.
+
+## Painel de SLA por operador
+
+- Especificação em `docs/SLA_PANEL.md`. Carteira de clientes (`parties.ownerUserId`), cargo e chefe (`users.jobLevel`, `users.managerUserId`), tela **Painel de SLA** (`/app/sla`, toda a Wellmix) e **Equipe e carteira** (`/app/team`, só admin). Pendências ganharam `customerId` (em memória) para cair no dono da carteira; atrasos de parceiros aparecem à parte para cobrança; % de etapas no prazo em 30 dias. Nenhuma tela ou regra antiga mudou: Pendências continua igual para todos.
