@@ -112,9 +112,11 @@ describe("conversa por empresa", () => {
     const view = (await msg.getConversationView(joao, conversationId))!;
     expect(view.messages).toHaveLength(3);
     expect(
-      (await getStore().list("conversations", {
-        filter: { partyId: joao.partyId },
-      })).length,
+      (
+        await getStore().list("conversations", {
+          filter: { partyId: joao.partyId },
+        })
+      ).length,
     ).toBe(1);
   });
 
@@ -223,9 +225,11 @@ describe("avisos no sino", () => {
     const { conversationId, topicId } = await msg.openTopic(admin, {
       partyId: "fornecedor-c",
     });
-    const supplierC = (await getStore().list("users", {
-      filter: { partyId: "fornecedor-c" },
-    }))[0];
+    const supplierC = (
+      await getStore().list("users", {
+        filter: { partyId: "fornecedor-c" },
+      })
+    )[0];
     const before = (await inapp(supplierC.id)).length;
     await msg.postMessage(admin, topicId, "Primeira");
     await msg.postMessage(operator, topicId, "Segunda");

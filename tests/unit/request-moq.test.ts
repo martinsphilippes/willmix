@@ -60,9 +60,9 @@ describe("pedido mínimo ao criar a solicitação", () => {
     await expect(createRequest(joao, base("prod-panela", 100))).rejects.toThrow(
       "below_moq",
     );
-    await expect(createRequest(admin, base("prod-panela", 499))).rejects.toThrow(
-      "below_moq",
-    );
+    await expect(
+      createRequest(admin, base("prod-panela", 499)),
+    ).rejects.toThrow("below_moq");
     const ok = await createRequest(joao, base("prod-panela", 500));
     expect(ok.quantity).toBe(500);
     // Nada foi criado nas recusas (e o número não foi gasto).
@@ -79,7 +79,9 @@ describe("pedido mínimo ao criar a solicitação", () => {
     await expect(createRequest(joao, base(null, 1))).resolves.toBeTruthy();
     // prod-jarra: sem mínimo.
     expect(await productMoq("prod-jarra")).toBeNull();
-    await expect(createRequest(joao, base("prod-jarra", 1))).resolves.toBeTruthy();
+    await expect(
+      createRequest(joao, base("prod-jarra", 1)),
+    ).resolves.toBeTruthy();
   });
 
   it("a ficha mestre manda sobre o cadastro; o lote inteiro é recusado antes de criar qualquer solicitação", async () => {
@@ -92,16 +94,39 @@ describe("pedido mínimo ao criar a solicitação", () => {
     await expect(
       createRequestBatch(
         joao,
-        { customerId: "cliente-joao", deadline: null, notes: null, requestedForUserId: joao.id },
+        {
+          customerId: "cliente-joao",
+          deadline: null,
+          notes: null,
+          requestedForUserId: joao.id,
+        },
         [
-          { productId: "prod-jarra", productName: "Jarra", description: "x", specification: null, quantity: 10, unit: "un", sourcingDemand: false },
-          { productId: "prod-panela", productName: "Panela", description: "x", specification: null, quantity: 700, unit: "un", sourcingDemand: false },
+          {
+            productId: "prod-jarra",
+            productName: "Jarra",
+            description: "x",
+            specification: null,
+            quantity: 10,
+            unit: "un",
+            sourcingDemand: false,
+          },
+          {
+            productId: "prod-panela",
+            productName: "Panela",
+            description: "x",
+            specification: null,
+            quantity: 700,
+            unit: "un",
+            sourcingDemand: false,
+          },
         ],
       ),
     ).rejects.toThrow("below_moq");
     // A primeira nasceu e foi cancelada pela reversão do lote; nenhuma ativa sobrou.
     const after = await getStore().list("requests");
-    expect(after.slice(before).every((r) => r.status === "CANCELLED")).toBe(true);
+    expect(after.slice(before).every((r) => r.status === "CANCELLED")).toBe(
+      true,
+    );
   });
 
   it("recompra a partir de um pedido também respeita o mínimo", async () => {
@@ -112,17 +137,34 @@ describe("pedido mínimo ao criar a solicitação", () => {
     // Pedido da jarra (sem mínimo na hora da compra).
     const request = await createRequest(joao, base("prod-jarra", 100));
     await r.openRfq(admin, request.id, ["fornecedor-a"]);
-    const [quote] = await store.list("quotes", { filter: { requestId: request.id } });
-    await r.answerQuote(supplierA, quote.id, { price: 2, currency: "USD", leadTimeDays: 10, conditions: null });
-    await r.selectQuote(admin, quote.id, { sellPrice: 1000, sellCurrency: "BRL", downPaymentAmount: 300 });
+    const [quote] = await store.list("quotes", {
+      filter: { requestId: request.id },
+    });
+    await r.answerQuote(supplierA, quote.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
+    await r.selectQuote(admin, quote.id, {
+      sellPrice: 1000,
+      sellCurrency: "BRL",
+      downPaymentAmount: 300,
+    });
     const order = await r.confirmDownPayment(admin, request.id);
     // Depois o cadastro ganhou mínimo: a recompra abaixo dele é recusada.
     await store.update("products", "prod-jarra", { moq: 1000 });
     await expect(
-      createFollowUpRequest(admin, order.id, { quantity: 10, origin: "replenishment" }),
+      createFollowUpRequest(admin, order.id, {
+        quantity: 10,
+        origin: "replenishment",
+      }),
     ).rejects.toThrow("below_moq");
     await expect(
-      createFollowUpRequest(joao, order.id, { quantity: 1000, origin: "replenishment" }),
+      createFollowUpRequest(joao, order.id, {
+        quantity: 1000,
+        origin: "replenishment",
+      }),
     ).resolves.toBeTruthy();
     await store.update("products", "prod-jarra", { moq: null });
   });

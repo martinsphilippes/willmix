@@ -7,6 +7,7 @@ import {
   SHEET_CURRENCIES,
   SHEET_INCOTERMS,
   SHEET_POWER_SOURCES,
+  YES_NO,
 } from "@/lib/db/schema";
 import type { SheetInput } from "@/lib/services/purchase-sheet";
 import { MAX_LOTS } from "@/lib/services/purchase-sheet-calc";
@@ -158,6 +159,22 @@ export function parseSheet(form: FormData): {
     ),
     ipiPercent: safe("ipiPercent", () => num(form, "ipiPercent")),
   };
+  // Despachante (Fase B): colunas novas só vão ao banco quando preenchidas
+  // (antes da publicação do esquema, fichas sem elas seguem salvando).
+  const customs = {
+    dumping: safe("dumping", () => choice(form, "dumping", YES_NO)),
+    dumpingNote: safe("dumpingNote", () => text(form, "dumpingNote", 1000)),
+    averagePrice: safe("averagePrice", () => num(form, "averagePrice")),
+    certificationRequired: safe("certificationRequired", () =>
+      choice(form, "certificationRequired", YES_NO),
+    ),
+    certificationNote: safe("certificationNote", () =>
+      text(form, "certificationNote", 1000),
+    ),
+  };
+  for (const [k, v] of Object.entries(customs))
+    if (v !== undefined && v !== null)
+      (input as Record<string, unknown>)[k] = v;
   // Sem texto de cor mas com Pantone escolhidas: o texto vira a lista de códigos
   // (o campo "Cor / sortimento" continua obrigatório e legível fora do portal).
   if (!input.colorAssortment && input.colorPantones?.length)

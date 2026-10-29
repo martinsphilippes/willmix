@@ -138,6 +138,28 @@ export const DEFAULT_PREPARATION_REQUIREMENTS: RequirementTemplate[] = [
   },
 ];
 
+/**
+ * Validações da Wellmix na Preparação (Fase B, fluxo de compras): o comprador
+ * valida a ficha e as imagens enviadas pelo fornecedor e o cadastro valida o
+ * produto. Valem também quando a linha tem requisitos próprios.
+ */
+export const PREPARATION_VALIDATIONS: RequirementTemplate[] = [
+  {
+    key: "sheet_validated",
+    label: "Ficha e imagens validadas pelo comprador",
+    type: "confirm",
+    required: true,
+    role: "operator",
+  },
+  {
+    key: "product_registered",
+    label: "Cadastro do produto validado (cadastro)",
+    type: "confirm",
+    required: true,
+    role: "operator",
+  },
+];
+
 /** Quem envia a arte da embalagem: a agência do pedido ou, sem ela, a Wellmix. */
 export function artRole(
   order: Pick<Order, "agencyId">,
@@ -183,10 +205,12 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     key: "PREPARATION",
     responsibleRole: "supplier",
     partyField: "supplierId",
-    requirements: ({ line }) =>
-      line?.requirements?.length
+    requirements: ({ line }) => [
+      ...(line?.requirements?.length
         ? line.requirements
-        : DEFAULT_PREPARATION_REQUIREMENTS,
+        : DEFAULT_PREPARATION_REQUIREMENTS),
+      ...PREPARATION_VALIDATIONS,
+    ],
   },
   {
     /*

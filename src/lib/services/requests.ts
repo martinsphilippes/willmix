@@ -901,6 +901,10 @@ export async function selectQuote(
     throw new RequestError("invalid_quote");
   const request = await store.get("requests", quote.requestId);
   if (!request) throw new RequestError("not_found");
+  // Dumping marcado pelo despachante: espera a liberação (Fase B).
+  const { dumpingHold } = await import("./purchase-flow");
+  if (await dumpingHold(quote.id))
+    throw new RequestError("dumping_release_required");
   // Antes de qualquer gravação: a ficha não pode ter mudado depois da conta.
   const current = quotedQuantity(request, await getQuoteSheet(quote.id));
   if (
@@ -913,9 +917,13 @@ export async function selectQuote(
   const percent = input.downPaymentPercent ?? settings.downPaymentPercent;
   if (!Number.isFinite(percent) || percent < 0 || percent > 100)
     throw new RequestError("invalid_down_payment");
+  // Compra para estoque: sem cliente, sem sinal; o pedido nasce já.
+  const { isStockCustomer } = await import("./purchase-flow");
+  const stock = isStockCustomer(request.customerId);
   // Valor informado (quem chama já calculou) ou a % do valor ao cliente.
-  const downPayment =
-    input.downPaymentAmount ?? Math.round(input.sellPrice * percent) / 100;
+  const downPayment = stock
+    ? 0
+    : (input.downPaymentAmount ?? Math.round(input.sellPrice * percent) / 100);
 
   const others = await store.list("quotes", {
     filter: { requestId: request.id },
@@ -966,22 +974,23 @@ export async function selectQuote(
       { quantity: request.quantity },
       { quantity },
     );
-  await store.create("payments", {
-    ...PAYMENT_EXTRA_DEFAULTS,
-    orderId: null,
-    requestId: request.id,
-    direction: "customer_in",
-    amount: downPayment,
-    currency: input.sellCurrency,
-    fxRate: null,
-    method: settings.paymentMode,
-    status: "pending",
-    proofDocumentId: null,
-    registeredByUserId: user.id,
-    confirmedByUserId: null,
-    confirmedAt: null,
-    note: "Sinal",
-  });
+  if (!stock)
+    await store.create("payments", {
+      ...PAYMENT_EXTRA_DEFAULTS,
+      orderId: null,
+      requestId: request.id,
+      direction: "customer_in",
+      amount: downPayment,
+      currency: input.sellCurrency,
+      fxRate: null,
+      method: settings.paymentMode,
+      status: "pending",
+      proofDocumentId: null,
+      registeredByUserId: user.id,
+      confirmedByUserId: null,
+      confirmedAt: null,
+      note: "Sinal",
+    });
   await audit(
     user,
     "quote.select",
@@ -996,19 +1005,20 @@ export async function selectQuote(
       pricing: input.pricing ?? null,
     },
   );
-  await notify(requesterTarget(request.requestedForUserId), {
-    kind: "action",
-    link: `/app/requests/${request.id}`,
-    text: (t) => ({
-      subject: t("notif.proposal.subject", { product: request.productName }),
-      body: t("notif.proposal.body", {
-        qty: (quantity ?? request.quantity).toLocaleString(t.intl),
-        unit: request.unit,
-        total: formatAmount(input.sellPrice, input.sellCurrency, t.intl),
-        down: formatAmount(downPayment, input.sellCurrency, t.intl),
+  if (!stock)
+    await notify(requesterTarget(request.requestedForUserId), {
+      kind: "action",
+      link: `/app/requests/${request.id}`,
+      text: (t) => ({
+        subject: t("notif.proposal.subject", { product: request.productName }),
+        body: t("notif.proposal.body", {
+          qty: (quantity ?? request.quantity).toLocaleString(t.intl),
+          unit: request.unit,
+          total: formatAmount(input.sellPrice, input.sellCurrency, t.intl),
+          down: formatAmount(downPayment, input.sellCurrency, t.intl),
+        }),
       }),
-    }),
-  });
+    });
   await notify(
     { role: "supplier", partyId: quote.supplierId },
     {
@@ -1023,6 +1033,8 @@ export async function selectQuote(
       }),
     },
   );
+  // Estoque: sem sinal a esperar, o pedido é criado na hora.
+  if (stock) await confirmDownPayment(user, request.id);
 }
 
 /** MANUAL MODE: operador confirma o sinal (com comprovante opcional). Cria o pedido. */

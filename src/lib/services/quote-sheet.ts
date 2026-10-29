@@ -32,6 +32,7 @@ import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import {
   containerCapacity,
   CUSTOMS_FIELDS,
+  OPTIONAL_SHEET_FIELDS,
   getSheetPhotos,
   SHEET_PHOTO_KINDS,
   SUPPLIER_FIELDS,
@@ -407,7 +408,9 @@ export async function saveQuoteSheet(
   } else {
     const base = await prefillQuote(quote, request);
     const blank = Object.fromEntries(
-      [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].map((k) => [k, null]),
+      [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS]
+        .filter((k) => !OPTIONAL_SHEET_FIELDS.includes(k))
+        .map((k) => [k, null]),
     );
     sheet = await store.create("purchase_sheets", {
       ...blank,
@@ -418,6 +421,15 @@ export async function saveQuoteSheet(
       updatedByUserId: user.id,
       completedAt: null,
     } as Omit<PurchaseSheet, "id" | "createdAt" | "updatedAt">);
+  }
+  // Despachante (Fase B): dumping marcado e média alterada avisam quem decide.
+  if (access.editCustoms) {
+    try {
+      const { customsSaved } = await import("./purchase-flow");
+      await customsSaved(user, quoteId, existing, sheet);
+    } catch (error) {
+      console.error("[quote-sheet] avisos do despachante", error);
+    }
   }
   await audit(
     user,

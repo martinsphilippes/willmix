@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { STOCK_OPTION, isStockCustomer } from "@/lib/services/purchase-flow";
 import { getCurrentUser } from "@/lib/auth/session";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
@@ -519,16 +520,26 @@ export default async function NewRequestPage({
                   <Select
                     name="customerId"
                     required
-                    defaultValue={presetCustomerId}
+                    defaultValue={
+                      isStockCustomer(presetCustomerId)
+                        ? STOCK_OPTION
+                        : presetCustomerId
+                    }
                   >
                     <option value="" disabled>
                       {t("common.select")}
                     </option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {/* Origem interna: compra para estoque, sem cliente nem sinal. */}
+                    <option value={STOCK_OPTION} data-stock-option>
+                      {t("purchaseFlow.stock.option")}
+                    </option>
+                    {customers
+                      .filter((c) => !isStockCustomer(c.id))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
                   </Select>
                 </Field>
                 <Field

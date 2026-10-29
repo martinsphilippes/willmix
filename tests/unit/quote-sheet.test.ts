@@ -162,7 +162,15 @@ describe("ficha de compra na cotação", () => {
     const [prep] = await store.list("stages", {
       filter: { orderId: order.id, key: "PREPARATION" },
     });
-    expect(prep.status).toBe("done");
+    // Ficha completa; falta a Wellmix validar a ficha e o cadastro.
+    expect(prep.status).toBe("active");
+    for (const key of ["sheet_validated", "product_registered"]) {
+      const [v] = await store.list("requirements", {
+        filter: { stageId: prep.id, key },
+      });
+      await submitRequirement(admin, v.id, {});
+    }
+    expect((await store.get("stages", prep.id))?.status).toBe("done");
     // O pagamento ao fornecedor está fora do fluxo: segue para a embalagem.
     expect((await store.get("orders", order.id))?.status).toBe("PACKAGING");
     // A ficha da cotação continua guardada.

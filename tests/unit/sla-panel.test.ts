@@ -15,9 +15,8 @@ const { getStore } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const r = await import("@/lib/services/requests");
 const team = await import("@/lib/services/team");
-const { slaBoardFor, UNASSIGNED, ALL } = await import(
-  "@/lib/services/sla-panel"
-);
+const { slaBoardFor, UNASSIGNED, ALL } =
+  await import("@/lib/services/sla-panel");
 type User = import("@/lib/db").User;
 
 let admin: User;
@@ -160,9 +159,11 @@ describe("painel de SLA por divisão", () => {
     const [quote] = await getStore().list("quotes", {
       filter: { requestId: req.id },
     });
-    const supplierA = (await getStore().list("users", {
-      filter: { email: "supplier.a@china.com" },
-    }))[0];
+    const supplierA = (
+      await getStore().list("users", {
+        filter: { email: "supplier.a@china.com" },
+      })
+    )[0];
     await r.answerQuote(supplierA, quote.id, {
       price: 2,
       currency: "USD",

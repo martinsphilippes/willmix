@@ -2,6 +2,9 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
+import type { PurchaseSheet } from "@/lib/db";
+import { canReleaseDumping } from "@/lib/services/purchase-flow";
+import { releaseDumpingAction } from "../../actions/purchase-flow";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -100,6 +103,13 @@ export default async function QuotePage({
     scheduleNcmSuggestion(request.id);
   // O que falta é da parte do fornecedor (o despachante só edita NCM e tributos).
   const canFillSheet = !!sheetView && sheetView.access.editSupplier;
+  // Ficha gravada inteira (dumping e liberação do despachante, Fase B).
+  const dumpingInfo = sheetView
+    ? (sheetView.sheet as Partial<PurchaseSheet>)
+    : null;
+  const dumpingReleaser = dumpingInfo?.dumpingReleasedByUserId
+    ? await store.get("users", dumpingInfo.dumpingReleasedByUserId)
+    : null;
   const cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
   const errorCode = typeof error === "string" ? error : "";
   // Envio recusado: o que falta na ficha. O prazo de produção não é mais
@@ -109,6 +119,7 @@ export default async function QuotePage({
   const shownMissing = sheetView?.missing ?? [];
   const errorKeys = [
     `quoteSheet.error.${errorCode}`,
+    `purchaseFlow.error.${errorCode}`,
     `sheet.error.${errorCode}`,
   ];
   const errorText = !errorCode
@@ -191,6 +202,39 @@ export default async function QuotePage({
         />
         {typeof adopted === "string" && adopted ? (
           <Alert tone="success">{t("productSheet.adopted")}</Alert>
+        ) : null}
+        {/* Dumping marcado pelo despachante (Fase B): a escolha do fornecedor
+            espera a liberação do gerente de produto ou do comprador. */}
+        {isWellmix(user) && dumpingInfo?.dumping === "yes" ? (
+          <div id="dumping" className="scroll-mt-24" data-dumping-card>
+            <Alert tone={dumpingInfo.dumpingReleasedAt ? "success" : "warning"}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  {dumpingInfo.dumpingReleasedAt
+                    ? t("purchaseFlow.dumping.releasedAt", {
+                        name: dumpingReleaser?.name ?? "—",
+                        date: formatDate(dumpingInfo.dumpingReleasedAt, t),
+                      })
+                    : t("purchaseFlow.dumping.held")}
+                  {dumpingInfo.dumpingNote
+                    ? ` · ${dumpingInfo.dumpingNote}`
+                    : ""}
+                </span>
+                {!dumpingInfo.dumpingReleasedAt && canReleaseDumping(user) ? (
+                  <form action={releaseDumpingAction}>
+                    <input type="hidden" name="quoteId" value={quote.id} />
+                    <SubmitButton
+                      variant="secondary"
+                      className="px-2.5 py-1 text-xs"
+                      data-dumping-release
+                    >
+                      {t("purchaseFlow.dumping.release")}
+                    </SubmitButton>
+                  </form>
+                ) : null}
+              </div>
+            </Alert>
+          </div>
         ) : null}
         {saved === "sent" ? (
           <Alert tone="success">{t("quoteSheet.saved.sent")}</Alert>

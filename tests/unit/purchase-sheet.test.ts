@@ -92,6 +92,11 @@ async function orderInPreparation() {
   return { order: (await store.get("orders", order.id))!, prep };
 }
 
+/** A Wellmix confirma as validações da Preparação (ficha e cadastro). */
+const validatePrep = async (user: User, stageId: string) => {
+  for (const key of ["sheet_validated", "product_registered"])
+    await submitRequirement(user, (await req(stageId, key)).id, {});
+};
 const req = async (stageId: string, key: string) =>
   (await getStore().list("requirements", { filter: { stageId, key } }))[0];
 
@@ -225,7 +230,7 @@ describe("ficha no pedido", () => {
       (
         await getStore().list("requirements", { filter: { stageId: prep.id } })
       ).map((x) => x.key),
-    ).toEqual(["purchase_sheet"]);
+    ).toEqual(["purchase_sheet", "sheet_validated", "product_registered"]);
     expect((await req(prep.id, "purchase_sheet")).status).toBe("pending");
 
     await addSheetPhotos(supplierA, order.id, "weight_scale", [await png()]);
@@ -271,6 +276,9 @@ describe("ficha no pedido", () => {
     const sheetReq = await req(prep.id, "purchase_sheet");
     expect(sheetReq.status).toBe("done");
     expect(sheetReq.value).toContain("7200 pcs");
+    // Ficha completa não basta: a Wellmix valida ficha e cadastro.
+    expect((await getStore().get("stages", prep.id))!.status).toBe("active");
+    await validatePrep(admin, prep.id);
     expect((await getStore().get("stages", prep.id))!.status).toBe("done");
     // Excluir a foto antiga não mexe no que já está concluído.
     await removeSheetPhoto(admin, order.id, legacy.id);
@@ -398,6 +406,7 @@ describe("ficha completa com a Preparação parada", () => {
     // Wellmix (ou o fornecedor) abre o pedido: a Preparação se conclui.
     await syncPreparationFromSheet(admin, order.id);
     expect((await req(prep.id, "purchase_sheet")).status).toBe("done");
+    await validatePrep(admin, prep.id);
     expect((await getStore().get("stages", prep.id))!.status).toBe("done");
   });
 });

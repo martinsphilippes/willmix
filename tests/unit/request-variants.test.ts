@@ -130,10 +130,18 @@ beforeAll(async () => {
 
 describe("regras puras", () => {
   it("nome da solicitação: Produto · Variação; nome digitado fica e ganha a variação; cortado em 160", () => {
-    expect(vs.requestProductName("", "Porta-retrato", "A4")).toBe("Porta-retrato · A4");
-    expect(vs.requestProductName("porta-retrato", "Porta-retrato", "A4")).toBe("Porta-retrato · A4");
-    expect(vs.requestProductName("Meu quadro", "Porta-retrato", "A4")).toBe("Meu quadro · A4");
-    expect(vs.requestProductName("Meu quadro a4", "Porta-retrato", "A4")).toBe("Meu quadro a4");
+    expect(vs.requestProductName("", "Porta-retrato", "A4")).toBe(
+      "Porta-retrato · A4",
+    );
+    expect(vs.requestProductName("porta-retrato", "Porta-retrato", "A4")).toBe(
+      "Porta-retrato · A4",
+    );
+    expect(vs.requestProductName("Meu quadro", "Porta-retrato", "A4")).toBe(
+      "Meu quadro · A4",
+    );
+    expect(vs.requestProductName("Meu quadro a4", "Porta-retrato", "A4")).toBe(
+      "Meu quadro a4",
+    );
     expect(vs.requestProductName("", "x".repeat(170), "A4")).toHaveLength(160);
   });
 
@@ -155,8 +163,12 @@ describe("regras puras", () => {
       moq: 1200,
       factoryItemCode: "MY-059A",
     });
-    expect(vs.commercialInputFromVariant({ ...snap, currency: "CNY" }).currency).toBe("RMB");
-    expect(vs.requestVariantLabel({ variant: snap })).toBe("WD STRIBY VERT 8X10");
+    expect(
+      vs.commercialInputFromVariant({ ...snap, currency: "CNY" }).currency,
+    ).toBe("RMB");
+    expect(vs.requestVariantLabel({ variant: snap })).toBe(
+      "WD STRIBY VERT 8X10",
+    );
     expect(vs.requestVariantLabel({ variant: null })).toBeNull();
     expect(
       vs.variantSnapshotSummary(
@@ -164,32 +176,52 @@ describe("regras puras", () => {
         { price: "Preço", moq: "MOQ", box: "Caixa", cbm: "CBM" },
         "pt-BR",
       ),
-    ).toMatch(/^Preço: US\$\s?3,15 · MOQ: 1\.200 · Caixa: 24 \/ 6 · CBM: 0,0267$/);
+    ).toMatch(
+      /^Preço: US\$\s?3,15 · MOQ: 1\.200 · Caixa: 24 \/ 6 · CBM: 0,0267$/,
+    );
   });
 
   it("a variação sai da ficha para o produto; comerciais só quando pedido", () => {
-    const sheet = { price: 9, currency: "RMB" as const, moq: 50, masterCartonQty: 36, ncm: "3924.90.00" };
+    const sheet = {
+      price: 9,
+      currency: "RMB" as const,
+      moq: 50,
+      masterCartonQty: 36,
+      ncm: "3924.90.00",
+    };
     expect(vs.variantInputFromSheet(sheet, { commercial: true })).toEqual({
       price: 9,
       currency: "CNY",
       moq: 50,
       masterBoxQty: 36,
     });
-    expect(vs.variantInputFromSheet(sheet, { commercial: false })).toEqual({ masterBoxQty: 36 });
+    expect(vs.variantInputFromSheet(sheet, { commercial: false })).toEqual({
+      masterBoxQty: 36,
+    });
     expect(vs.sheetWithoutVariantFields(sheet)).toEqual({ ncm: "3924.90.00" });
   });
 });
 
 describe("solicitação com variação", () => {
   it("produto com variações exige a variação; de outro produto ou desativada é recusada", async () => {
-    await expect(r.createRequest(joao, input(null, 2400))).rejects.toThrow("variant_required");
-    await expect(r.createRequest(joao, input(otherVariant.id, 2400))).rejects.toThrow("variant_invalid");
-    await expect(r.createRequest(admin, input("nao-existe", 2400))).rejects.toThrow("variant_invalid");
+    await expect(r.createRequest(joao, input(null, 2400))).rejects.toThrow(
+      "variant_required",
+    );
+    await expect(
+      r.createRequest(joao, input(otherVariant.id, 2400)),
+    ).rejects.toThrow("variant_invalid");
+    await expect(
+      r.createRequest(admin, input("nao-existe", 2400)),
+    ).rejects.toThrow("variant_invalid");
     await pv.setProductVariantActive(admin, a.id, false);
-    await expect(r.createRequest(joao, input(a.id, 2400))).rejects.toThrow("variant_invalid");
+    await expect(r.createRequest(joao, input(a.id, 2400))).rejects.toThrow(
+      "variant_invalid",
+    );
     await pv.setProductVariantActive(admin, a.id, true);
     // Nada foi criado.
-    expect(await getStore().list("requests", { filter: { productId } })).toHaveLength(0);
+    expect(
+      await getStore().list("requests", { filter: { productId } }),
+    ).toHaveLength(0);
   });
 
   it("o mínimo é o da variação (vence a ficha mestre e o cadastro)", async () => {
@@ -197,16 +229,24 @@ describe("solicitação com variação", () => {
     expect(await r.productMoq(productId, b.id)).toBe(1200);
     // Sem variação: a ficha mestre espelha a de referência (B).
     expect(await r.productMoq(productId)).toBe(1200);
-    await expect(r.createRequest(joao, input(a.id, 1500))).rejects.toThrow("below_moq");
-    await expect(r.createRequest(admin, input(a.id, 2399))).rejects.toThrow("below_moq");
+    await expect(r.createRequest(joao, input(a.id, 1500))).rejects.toThrow(
+      "below_moq",
+    );
+    await expect(r.createRequest(admin, input(a.id, 2399))).rejects.toThrow(
+      "below_moq",
+    );
     // Em caixas não se compara.
-    await expect(r.createRequest(joao, input(a.id, 10, { unit: "cx" }))).resolves.toBeTruthy();
+    await expect(
+      r.createRequest(joao, input(a.id, 10, { unit: "cx" })),
+    ).resolves.toBeTruthy();
   });
 
   it("válida: variação, cópia dos valores, nome 'Produto · Variação' e especificação da variação", async () => {
     const request = await r.createRequest(joao, input(b.id, 1200));
     expect(request.variantId).toBe(b.id);
-    expect(request.variant).toEqual(variantSnapshot((await pv.getProductVariant(b.id))!));
+    expect(request.variant).toEqual(
+      variantSnapshot((await pv.getProductVariant(b.id))!),
+    );
     expect(request.productName).toBe("Porta-retrato · WD STRIBY VERT 8X10");
     expect(request.specification).toContain("Material: MDF");
     expect(request.specification).toContain("Cor: Bege / Carvalho");
@@ -214,10 +254,13 @@ describe("solicitação com variação", () => {
     expect(request.specification).toContain("0,0267 m³");
     expect(request.specification).toContain("27,2 × 22,2 × 1,4 cm");
     // Nome digitado pelo cliente fica, com a variação; especificação escrita fica.
-    const custom = await r.createRequest(joao, input(b.id, 1200, {
-      productName: "Quadro da sala",
-      specification: "Com vidro",
-    }));
+    const custom = await r.createRequest(
+      joao,
+      input(b.id, 1200, {
+        productName: "Quadro da sala",
+        specification: "Com vidro",
+      }),
+    );
     expect(custom.productName).toBe("Quadro da sala · WD STRIBY VERT 8X10");
     expect(custom.specification).toBe("Com vidro");
   });
@@ -233,7 +276,12 @@ describe("solicitação com variação", () => {
     form.set("p1.quantity", "1200");
     const rows = parseRequestItems(form);
     expect(rows.map((x) => x.variantId)).toEqual([a.id, null]);
-    const base = { customerId: "cliente-joao", deadline: null, notes: null, requestedForUserId: joao.id };
+    const base = {
+      customerId: "cliente-joao",
+      deadline: null,
+      notes: null,
+      requestedForUserId: joao.id,
+    };
     const item = (variantId: string | null, quantity: number) => ({
       productId,
       variantId,
@@ -244,7 +292,10 @@ describe("solicitação com variação", () => {
       unit: "un",
       sourcingDemand: false,
     });
-    const created = await r.createRequestBatch(joao, base, [item(a.id, 2400), item(b.id, 1200)]);
+    const created = await r.createRequestBatch(joao, base, [
+      item(a.id, 2400),
+      item(b.id, 1200),
+    ]);
     expect(created.map((x) => x.variantId)).toEqual([a.id, b.id]);
     expect(created.map((x) => x.productName)).toEqual([
       "Porta-retrato · STONE MARBLE A4",
@@ -256,19 +307,30 @@ describe("solicitação com variação", () => {
       r.createRequestBatch(joao, base, [item(a.id, 2400), item(null, 1200)]),
     ).rejects.toThrow("variant_required");
     const after = await getStore().list("requests");
-    expect(after.slice(before).every((x) => x.status === "CANCELLED")).toBe(true);
+    expect(after.slice(before).every((x) => x.status === "CANCELLED")).toBe(
+      true,
+    );
   });
 
   it("produto sem variações: nada muda (e variação nele é recusada)", async () => {
-    const plain = await r.createRequest(joao, input(null, 10, { productId: "prod-jarra", productName: "Jarra" }));
+    const plain = await r.createRequest(
+      joao,
+      input(null, 10, { productId: "prod-jarra", productName: "Jarra" }),
+    );
     expect(plain.variantId ?? null).toBeNull();
     expect(plain.variant ?? null).toBeNull();
     expect(plain.productName).toBe("Jarra");
     await expect(
-      r.createRequest(joao, input(b.id, 10, { productId: "prod-jarra", productName: "Jarra" })),
+      r.createRequest(
+        joao,
+        input(b.id, 10, { productId: "prod-jarra", productName: "Jarra" }),
+      ),
     ).rejects.toThrow("variant_invalid");
     // Fora do catálogo: a variação é ignorada.
-    const free = await r.createRequest(joao, input(b.id, 10, { productId: null, productName: "Livre" }));
+    const free = await r.createRequest(
+      joao,
+      input(b.id, 10, { productId: null, productName: "Livre" }),
+    );
     expect(free.variantId ?? null).toBeNull();
   });
 });
@@ -282,7 +344,9 @@ describe("cotação, pedido, adoção e recompra", () => {
     await pm.saveProductSheet(admin, productId, { incoterm: "EXW" });
     const request = await r.createRequest(joao, input(b.id, 1200));
     await r.openRfq(admin, request.id, ["fornecedor-a", "fornecedor-b"]);
-    const quotes = await store.list("quotes", { filter: { requestId: request.id } });
+    const quotes = await store.list("quotes", {
+      filter: { requestId: request.id },
+    });
     const qa = quotes.find((q) => q.supplierId === "fornecedor-a")!;
     const qb = quotes.find((q) => q.supplierId === "fornecedor-b")!;
     const viewA = (await qs.getQuoteSheetForUser(supplierA, qa.id))!;
@@ -321,13 +385,19 @@ describe("cotação, pedido, adoção e recompra", () => {
       masterCartonQty: 36,
       packageType: "GIFT BOX",
     });
-    await r.answerQuote(supplierA, qa.id, { price: 3.4, currency: "USD", leadTimeDays: 30 });
+    await r.answerQuote(supplierA, qa.id, {
+      price: 3.4,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
     await r.selectQuote(admin, qa.id, { sellPrice: 9000, sellCurrency: "BRL" });
     const order = await r.confirmDownPayment(admin, request.id);
     orderId = order.id;
 
     // O item e o snapshot de compra levam a variação.
-    const [item] = await store.list("order_items", { filter: { orderId: order.id } });
+    const [item] = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
     expect(item.variantId).toBe(b.id);
     expect(item.variant).toEqual(request.variant);
     expect(item.name).toBe("Porta-retrato · WD STRIBY VERT 8X10");
@@ -351,8 +421,16 @@ describe("cotação, pedido, adoção e recompra", () => {
     // Adoção: a ficha do pedido grava na VARIAÇÃO (fornecedor de referência:
     // preço também); a outra variação não muda; o produto espelha a referência.
     const bNow = (await pv.getProductVariant(b.id))!;
-    expect(bNow).toMatchObject({ price: 3.4, masterBoxQty: 36, packageType: "GIFT BOX", moq: 1200 });
-    expect(await pv.getProductVariant(a.id)).toMatchObject({ price: 4, masterBoxQty: 12 });
+    expect(bNow).toMatchObject({
+      price: 3.4,
+      masterBoxQty: 36,
+      packageType: "GIFT BOX",
+      moq: 1200,
+    });
+    expect(await pv.getProductVariant(a.id)).toMatchObject({
+      price: 4,
+      masterBoxQty: 12,
+    });
     const product = (await store.get("products", productId))!;
     expect(product).toMatchObject({ price: 3.4, masterBoxQty: 36 });
     expect((await pm.getProductSheet(productId))!.packageType).toBe("GIFT BOX");
@@ -364,22 +442,44 @@ describe("cotação, pedido, adoção e recompra", () => {
     expect((await pv.getProductVariant(b.id))!.netWeightKg).toBe(0.2);
     expect((await store.get("products", productId))!.netWeightKg).toBe(0.2);
     // Fornecedor: não troca o que a variação já tem.
-    await ps.saveSheet(supplierA, orderId, { grossWeightPcKg: 0.9, innerQty: 8 });
-    expect((await pv.getProductVariant(b.id))!).toMatchObject({ grossWeightKg: 0.25, innerBoxQty: 6 });
+    await ps.saveSheet(supplierA, orderId, {
+      grossWeightPcKg: 0.9,
+      innerQty: 8,
+    });
+    expect((await pv.getProductVariant(b.id))!).toMatchObject({
+      grossWeightKg: 0.25,
+      innerBoxQty: 6,
+    });
     expect((await store.get("products", productId))!.grossWeightKg).toBe(0.25);
     // "Atualizar o cadastro com esta ficha" (Wellmix): a variação recebe a ficha do pedido.
     await pm.adoptSheetIntoProduct(admin, orderId);
-    expect((await pv.getProductVariant(b.id))!).toMatchObject({ grossWeightKg: 0.9, innerBoxQty: 8 });
-    expect((await store.get("products", productId))!).toMatchObject({ grossWeightKg: 0.9, innerBoxQty: 8 });
+    expect((await pv.getProductVariant(b.id))!).toMatchObject({
+      grossWeightKg: 0.9,
+      innerBoxQty: 8,
+    });
+    expect((await store.get("products", productId))!).toMatchObject({
+      grossWeightKg: 0.9,
+      innerBoxQty: 8,
+    });
   });
 
   it("recompra leva a mesma variação (cópia refeita com os valores de hoje) e respeita o mínimo dela", async () => {
     await expect(
-      r.createFollowUpRequest(joao, orderId, { quantity: 100, origin: "replenishment" }),
+      r.createFollowUpRequest(joao, orderId, {
+        quantity: 100,
+        origin: "replenishment",
+      }),
     ).rejects.toThrow("below_moq");
-    const again = await r.createFollowUpRequest(joao, orderId, { quantity: 1200, origin: "replenishment" });
+    const again = await r.createFollowUpRequest(joao, orderId, {
+      quantity: 1200,
+      origin: "replenishment",
+    });
     expect(again.variantId).toBe(b.id);
-    expect(again.variant).toMatchObject({ id: b.id, price: 3.4, masterBoxQty: 36 });
+    expect(again.variant).toMatchObject({
+      id: b.id,
+      price: 3.4,
+      masterBoxQty: 36,
+    });
     expect(again.productName).toBe("Porta-retrato · WD STRIBY VERT 8X10");
   });
 
@@ -387,7 +487,9 @@ describe("cotação, pedido, adoção e recompra", () => {
     const store = getStore();
     const request = await r.createRequest(joao, input(a.id, 2400));
     await r.openRfq(admin, request.id, ["fornecedor-b"]);
-    const [qb] = await store.list("quotes", { filter: { requestId: request.id } });
+    const [qb] = await store.list("quotes", {
+      filter: { requestId: request.id },
+    });
     await qs.saveQuoteSheet(supplierB, qb.id, {
       price: 9,
       currency: "USD",
@@ -396,13 +498,29 @@ describe("cotação, pedido, adoção e recompra", () => {
       material: "PLASTIC B",
       packageType: "BOX B",
     });
-    await r.answerQuote(supplierB, qb.id, { price: 9, currency: "USD", leadTimeDays: 30 });
-    await r.selectQuote(admin, qb.id, { sellPrice: 30000, sellCurrency: "BRL" });
+    await r.answerQuote(supplierB, qb.id, {
+      price: 9,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    await r.selectQuote(admin, qb.id, {
+      sellPrice: 30000,
+      sellCurrency: "BRL",
+    });
     await r.confirmDownPayment(admin, request.id);
     const aNow = (await pv.getProductVariant(a.id))!;
     // Preço, MOQ, caixa e material de A ficam; a embalagem (em branco) é completada.
-    expect(aNow).toMatchObject({ price: 4, moq: 2400, masterBoxQty: 12, material: "PS+PVC", packageType: "BOX B" });
+    expect(aNow).toMatchObject({
+      price: 4,
+      moq: 2400,
+      masterBoxQty: 12,
+      material: "PS+PVC",
+      packageType: "BOX B",
+    });
     // A referência continua B: o produto não muda por esta compra.
-    expect((await store.get("products", productId))!).toMatchObject({ price: 3.4, masterBoxQty: 36 });
+    expect((await store.get("products", productId))!).toMatchObject({
+      price: 3.4,
+      masterBoxQty: 36,
+    });
   });
 });

@@ -42,6 +42,7 @@ import * as inspectionReport from "./inspection-report";
 import * as sla from "./sla";
 import * as slaPanel from "./sla-panel";
 import * as approvals from "./approvals";
+import * as purchaseFlow from "./purchase-flow";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
 import * as productDelete from "./product-delete";
@@ -110,6 +111,7 @@ export const modulesPt = {
   ...sla.pt,
   ...slaPanel.pt,
   ...approvals.pt,
+  ...purchaseFlow.pt,
   ...requestProduct.pt,
   ...requestDelete.pt,
   ...productDelete.pt,
@@ -181,6 +183,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sla.en,
   ...slaPanel.en,
   ...approvals.en,
+  ...purchaseFlow.en,
   ...requestProduct.en,
   ...requestDelete.en,
   ...productDelete.en,
@@ -252,6 +255,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sla.zh,
   ...slaPanel.zh,
   ...approvals.zh,
+  ...purchaseFlow.zh,
   ...requestProduct.zh,
   ...requestDelete.zh,
   ...productDelete.zh,

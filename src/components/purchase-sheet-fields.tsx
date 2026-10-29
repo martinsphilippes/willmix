@@ -812,6 +812,68 @@ export function PurchaseSheetFields({
               {t("ncm.sheet.tableHint", { rates: ncmRates })}
             </p>
           ) : null}
+          {/* Despachante (Fase B): antidumping, média e certificação. */}
+          <F t={t} m={missing} k="dumping" size="xs">
+            <select
+              name="dumping"
+              defaultValue={sheet.dumping ?? ""}
+              disabled={!access.editCustoms}
+              className={inputDenseClass}
+              data-sheet-dumping
+            >
+              <option value="">—</option>
+              <option value="yes">{t("common.yes")}</option>
+              <option value="no">{t("common.no")}</option>
+            </select>
+          </F>
+          {sheet.dumping === "yes" ? (
+            <p
+              className="text-xs font-medium text-amber-800 sm:pl-[11.75rem]"
+              data-dumping-status={sheet.dumpingReleasedAt ? "released" : "held"}
+            >
+              {sheet.dumpingReleasedAt
+                ? t("purchaseFlow.dumping.released")
+                : t("purchaseFlow.dumping.held")}
+            </p>
+          ) : null}
+          <F t={t} m={missing} k="dumpingNote" size="lg">
+            <input
+              name="dumpingNote"
+              maxLength={1000}
+              defaultValue={sheet.dumpingNote ?? ""}
+              disabled={!access.editCustoms}
+              className={inputDenseClass}
+            />
+          </F>
+          <F t={t} m={missing} k="averagePrice" size="xs">
+            <Num
+              name="averagePrice"
+              value={numValue(sheet.averagePrice ?? null)}
+              disabled={!access.editCustoms}
+            />
+          </F>
+          <F t={t} m={missing} k="certificationRequired" size="xs">
+            <select
+              name="certificationRequired"
+              defaultValue={sheet.certificationRequired ?? ""}
+              disabled={!access.editCustoms}
+              className={inputDenseClass}
+            >
+              <option value="">—</option>
+              <option value="yes">{t("common.yes")}</option>
+              <option value="no">{t("common.no")}</option>
+            </select>
+          </F>
+          <F t={t} m={missing} k="certificationNote" size="lg">
+            <input
+              name="certificationNote"
+              maxLength={1000}
+              placeholder={t("purchaseFlow.certificationNote.ph")}
+              defaultValue={sheet.certificationNote ?? ""}
+              disabled={!access.editCustoms}
+              className={inputDenseClass}
+            />
+          </F>
         </Rows>
       </Card>
 

@@ -18,11 +18,20 @@ import {
  * malformados que nunca travam nem lançam erro fora do contrato.
  */
 
-const ERRORS = ["xlsx_invalid", "xlsx_too_large", "xlsx_sheet_missing", "xls_unsupported", "xls_encrypted"];
+const ERRORS = [
+  "xlsx_invalid",
+  "xlsx_too_large",
+  "xlsx_sheet_missing",
+  "xls_unsupported",
+  "xls_encrypted",
+];
 
 const c = (row: number, col: number, cell: XlsCell) => ({ row, col, cell });
 
-const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]);
+const JPEG = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0,
+  1, 0, 0, 0xff, 0xd9,
+]);
 const EMF = Uint8Array.from([1, 0, 0, 0, 0x6c, 0, 0, 0, 1, 2, 3, 4]);
 
 function sample(): XlsFixtureSheet[] {
@@ -60,7 +69,10 @@ function sample(): XlsFixtureSheet[] {
     },
     {
       name: "Plan2 ✓",
-      cells: [c(2, 3, { kind: "sst", value: "PHOTO" }), c(0, 0, { kind: "number", value: 1 })],
+      cells: [
+        c(2, 3, { kind: "sst", value: "PHOTO" }),
+        c(0, 0, { kind: "number", value: 1 }),
+      ],
     },
   ];
 }
@@ -86,9 +98,21 @@ describe("openXlsWorkbook: abas e células", () => {
   it("lê texto, números, RK, MULRK, fórmulas, booleanos e erros na posição exata", () => {
     const sheet = wb.readCells("SUPPLIER INFO");
     expect(sheet.name).toBe("SUPPLIER INFO");
-    expect(sheet.cells[0]).toEqual(["PHOTO", "Ñandú 中文 ✓", "LABEL", "RSTRING"]);
+    expect(sheet.cells[0]).toEqual([
+      "PHOTO",
+      "Ñandú 中文 ✓",
+      "LABEL",
+      "RSTRING",
+    ]);
     expect(sheet.cells[1]).toEqual(["12", "2.5", "0.0183", "46000"]);
-    expect(sheet.cells[2]).toEqual(["7", "-3", "1.15", "-0.25", "2.5", "1234.5"]);
+    expect(sheet.cells[2]).toEqual([
+      "7",
+      "-3",
+      "1.15",
+      "-0.25",
+      "2.5",
+      "1234.5",
+    ]);
     expect(sheet.cells[3]).toEqual(["1", "2.5", "300", "-4"]);
     expect(sheet.cells[4]).toEqual(["calc", "3.5", "true"]);
     expect(sheet.cells[5]).toEqual(["true", "false", "#DIV/0!"]);
@@ -102,7 +126,16 @@ describe("openXlsWorkbook: abas e células", () => {
 
   it("marca como texto só as células de texto (SST, LABEL, RSTRING, fórmula com texto)", () => {
     const { text } = wb.readCells("SUPPLIER INFO");
-    expect([...text].sort()).toEqual(["0:0", "0:1", "0:2", "0:3", "4:0", "6:0", "7:0", "9:5"]);
+    expect([...text].sort()).toEqual([
+      "0:0",
+      "0:1",
+      "0:2",
+      "0:3",
+      "4:0",
+      "6:0",
+      "7:0",
+      "9:5",
+    ]);
   });
 
   it("segunda aba reaproveita a SST e tem células próprias", () => {
@@ -113,7 +146,11 @@ describe("openXlsWorkbook: abas e células", () => {
   });
 
   it("aplica maxRows, maxCols e maxCellChars", () => {
-    const sheet = wb.readCells("SUPPLIER INFO", { maxRows: 2, maxCols: 2, maxCellChars: 3 });
+    const sheet = wb.readCells("SUPPLIER INFO", {
+      maxRows: 2,
+      maxCols: 2,
+      maxCellChars: 3,
+    });
     expect(sheet.cells).toEqual([
       ["PHO", "Ñan"],
       ["12", "2.5"],
@@ -152,14 +189,24 @@ describe("openXlsWorkbook: SST dividida em CONTINUE", () => {
   it("texto longo cruza registros (byte de opções novo em cada continuação)", () => {
     const bytes = xlsBytes(sheets());
     expect(miniFatSectors(bytes)).toBe(0);
-    const sheet = openXlsWorkbook(bytes).readCells("A", { maxCellChars: 20000 });
-    expect(sheet.cells[0]).toEqual(["antes", long, wide, "Ñandú 中文", "depois"]);
+    const sheet = openXlsWorkbook(bytes).readCells("A", {
+      maxCellChars: 20000,
+    });
+    expect(sheet.cells[0]).toEqual([
+      "antes",
+      long,
+      wide,
+      "Ñandú 中文",
+      "depois",
+    ]);
     expect(sheet.cells[1]).toEqual(["x".repeat(50)]);
   });
 
   it("registros pequenos: divisões dentro de Latin-1, UTF-16 e trechos ricos", () => {
     for (const recordLimit of [16, 23, 64, 257]) {
-      const sheet = openXlsWorkbook(xlsBytes(sheets(), [], { recordLimit })).readCells("A", {
+      const sheet = openXlsWorkbook(
+        xlsBytes(sheets(), [], { recordLimit }),
+      ).readCells("A", {
         maxCellChars: 20000,
       });
       expect(sheet.cells[0], `limite ${recordLimit}`).toEqual([
@@ -178,7 +225,11 @@ describe("openXlsWorkbook: UTF-16 entre registros", () => {
     const text = "a😀b😀😀c".repeat(40);
     for (const recordLimit of [16, 17, 18, 19, 20, 21, 23, 25, 64]) {
       const sheet = openXlsWorkbook(
-        xlsBytes([{ name: "E", cells: [c(0, 0, { kind: "sst", value: text })] }], [], { recordLimit }),
+        xlsBytes(
+          [{ name: "E", cells: [c(0, 0, { kind: "sst", value: text })] }],
+          [],
+          { recordLimit },
+        ),
       ).readCells("E", { maxCellChars: 20000 });
       expect(sheet.cells[0][0], `limite ${recordLimit}`).toBe(text);
     }
@@ -187,7 +238,9 @@ describe("openXlsWorkbook: UTF-16 entre registros", () => {
 
 describe("openXlsWorkbook: mini stream e FAT regular", () => {
   it("fluxo pequeno fica no mini stream e é lido", () => {
-    const bytes = xlsBytes([{ name: "A", cells: [c(0, 0, { kind: "sst", value: "mini" })] }]);
+    const bytes = xlsBytes([
+      { name: "A", cells: [c(0, 0, { kind: "sst", value: "mini" })] },
+    ]);
     expect(bytes.length).toBeLessThan(4096 + 512 * 4);
     expect(miniFatSectors(bytes)).toBe(1);
     expect(openXlsWorkbook(bytes).readCells("A").cells).toEqual([["mini"]]);
@@ -214,35 +267,51 @@ describe("openXlsWorkbook: imagens", () => {
     ]);
     expect(Buffer.from(out[0].bytes).equals(Buffer.from(PNG_1X1))).toBe(true);
     expect(Buffer.from(out[1].bytes).equals(Buffer.from(JPEG))).toBe(true);
-    expect(wb.readImages("Plan2 ✓").map((i) => [i.row, i.col, i.name])).toEqual([
-      [1, 1, "image4.png"],
-    ]);
+    expect(wb.readImages("Plan2 ✓").map((i) => [i.row, i.col, i.name])).toEqual(
+      [[1, 1, "image4.png"]],
+    );
   });
 
   it("cols: só as âncoras nas colunas pedidas", () => {
-    expect(wb.readImages("SUPPLIER INFO", { cols: [0] }).map((i) => i.name)).toEqual(["image1.png"]);
-    expect(wb.readImages("SUPPLIER INFO", { cols: [3] }).map((i) => i.name)).toEqual(["image2.jpeg"]);
+    expect(
+      wb.readImages("SUPPLIER INFO", { cols: [0] }).map((i) => i.name),
+    ).toEqual(["image1.png"]);
+    expect(
+      wb.readImages("SUPPLIER INFO", { cols: [3] }).map((i) => i.name),
+    ).toEqual(["image2.jpeg"]);
     expect(wb.readImages("SUPPLIER INFO", { cols: [7] })).toEqual([]);
   });
 
   it("maxImages, maxImageBytes e maxTotalBytes", () => {
-    expect(wb.readImages("SUPPLIER INFO", { maxImages: 1 }).map((i) => i.name)).toEqual(["image1.png"]);
-    expect(wb.readImages("SUPPLIER INFO", { maxImageBytes: JPEG.length }).map((i) => i.name)).toEqual([
-      "image2.jpeg",
-    ]);
-    expect(wb.readImages("SUPPLIER INFO", { maxTotalBytes: PNG_1X1.length }).map((i) => i.name)).toEqual([
-      "image1.png",
-    ]);
+    expect(
+      wb.readImages("SUPPLIER INFO", { maxImages: 1 }).map((i) => i.name),
+    ).toEqual(["image1.png"]);
+    expect(
+      wb
+        .readImages("SUPPLIER INFO", { maxImageBytes: JPEG.length })
+        .map((i) => i.name),
+    ).toEqual(["image2.jpeg"]);
+    expect(
+      wb
+        .readImages("SUPPLIER INFO", { maxTotalBytes: PNG_1X1.length })
+        .map((i) => i.name),
+    ).toEqual(["image1.png"]);
     expect(wb.readImages("SUPPLIER INFO", { maxTotalBytes: 1 })).toEqual([]);
   });
 
   it("sem desenho: lista vazia", () => {
-    expect(openXlsWorkbook(xlsBytes(sample())).readImages("SUPPLIER INFO")).toEqual([]);
+    expect(
+      openXlsWorkbook(xlsBytes(sample())).readImages("SUPPLIER INFO"),
+    ).toEqual([]);
   });
 
   it("formas em CONTINUE depois do OBJ (como o Excel grava além de 8224 bytes)", () => {
-    const alt = openXlsWorkbook(xlsBytes(sample(), images(), { drawingContinue: true }));
-    expect(alt.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.name])).toEqual([
+    const alt = openXlsWorkbook(
+      xlsBytes(sample(), images(), { drawingContinue: true }),
+    );
+    expect(
+      alt.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.name]),
+    ).toEqual([
       [2, 0, "image1.png"],
       [5, 3, "image2.jpeg"],
     ]);
@@ -250,7 +319,9 @@ describe("openXlsWorkbook: imagens", () => {
 
   it("CONTINUE de um TXO (caixa de texto) não entra no desenho", () => {
     for (const drawingContinue of [false, true]) {
-      const wb2 = openXlsWorkbook(xlsBytes(sample(), images(), { textbox: true, drawingContinue }));
+      const wb2 = openXlsWorkbook(
+        xlsBytes(sample(), images(), { textbox: true, drawingContinue }),
+      );
       expect(
         wb2.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.name]),
         `drawingContinue=${drawingContinue}`,
@@ -262,7 +333,9 @@ describe("openXlsWorkbook: imagens", () => {
   });
 
   it("MSODRAWINGGROUP dividido em CONTINUE", () => {
-    const split = openXlsWorkbook(xlsBytes(sample(), images(), { recordLimit: 40 }));
+    const split = openXlsWorkbook(
+      xlsBytes(sample(), images(), { recordLimit: 40 }),
+    );
     const out = split.readImages("SUPPLIER INFO");
     expect(out.map((i) => i.name)).toEqual(["image1.png", "image2.jpeg"]);
     expect(Buffer.from(out[0].bytes).equals(Buffer.from(PNG_1X1))).toBe(true);
@@ -271,20 +344,32 @@ describe("openXlsWorkbook: imagens", () => {
 
 describe("openXlsWorkbook: limites de tamanho", () => {
   it("fluxo Workbook acima de maxTotalBytes: xlsx_too_large", () => {
-    expect(() => openXlsWorkbook(xlsBytes(sample()), { maxTotalBytes: 100 })).toThrow("xlsx_too_large");
+    expect(() =>
+      openXlsWorkbook(xlsBytes(sample()), { maxTotalBytes: 100 }),
+    ).toThrow("xlsx_too_large");
   });
 
   it("região da aba acima de maxXmlBytes: xlsx_too_large", () => {
     const wb = openXlsWorkbook(xlsBytes(sample()));
-    expect(() => wb.readCells("SUPPLIER INFO", { maxXmlBytes: 10 })).toThrow("xlsx_too_large");
-    expect(wb.readCells("SUPPLIER INFO", { maxXmlBytes: 100000 }).cells[0][0]).toBe("PHOTO");
+    expect(() => wb.readCells("SUPPLIER INFO", { maxXmlBytes: 10 })).toThrow(
+      "xlsx_too_large",
+    );
+    expect(
+      wb.readCells("SUPPLIER INFO", { maxXmlBytes: 100000 }).cells[0][0],
+    ).toBe("PHOTO");
     // Só números (SST vazia): é a própria região da aba (~42 KB) que passa do teto.
     const cells: XlsFixtureSheet["cells"] = [];
     for (let r = 0; r < 300; r++)
-      for (let col = 0; col < 10; col++) cells.push(c(r, col, { kind: "number", value: r * 10 + col }));
+      for (let col = 0; col < 10; col++)
+        cells.push(c(r, col, { kind: "number", value: r * 10 + col }));
     const numeric = openXlsWorkbook(xlsBytes([{ name: "N", cells }]));
-    expect(() => numeric.readCells("N", { maxXmlBytes: 20000 })).toThrow("xlsx_too_large");
-    expect(numeric.readCells("N", { maxXmlBytes: 100000, maxRows: 300 }).cells[299][9]).toBe("2999");
+    expect(() => numeric.readCells("N", { maxXmlBytes: 20000 })).toThrow(
+      "xlsx_too_large",
+    );
+    expect(
+      numeric.readCells("N", { maxXmlBytes: 100000, maxRows: 300 })
+        .cells[299][9],
+    ).toBe("2999");
   });
 
   it("arquivo acima de ~7 MB usa setores DIFAT (como o Excel grava) e é lido igual", () => {
@@ -296,9 +381,15 @@ describe("openXlsWorkbook: limites de tamanho", () => {
     const wb = openXlsWorkbook(big);
     const small = openXlsWorkbook(xlsBytes(sample(), images()));
     expect(wb.sheetNames()).toEqual(small.sheetNames());
-    expect(wb.readCells("SUPPLIER INFO").cells).toEqual(small.readCells("SUPPLIER INFO").cells);
-    expect(wb.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.bytes.length])).toEqual(
-      small.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.bytes.length]),
+    expect(wb.readCells("SUPPLIER INFO").cells).toEqual(
+      small.readCells("SUPPLIER INFO").cells,
+    );
+    expect(
+      wb.readImages("SUPPLIER INFO").map((i) => [i.row, i.col, i.bytes.length]),
+    ).toEqual(
+      small
+        .readImages("SUPPLIER INFO")
+        .map((i) => [i.row, i.col, i.bytes.length]),
     );
   });
 });
@@ -325,13 +416,17 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     try {
       open(bytes);
     } catch (error) {
-      expect(ERRORS, `${label}: ${String(error)}`).toContain((error as Error).message);
+      expect(ERRORS, `${label}: ${String(error)}`).toContain(
+        (error as Error).message,
+      );
     }
   };
 
   it("bytes aleatórios e arquivos vazios: xlsx_invalid", () => {
     const rnd = prng(7);
-    const random = Uint8Array.from({ length: 3000 }, () => Math.floor(rnd() * 256));
+    const random = Uint8Array.from({ length: 3000 }, () =>
+      Math.floor(rnd() * 256),
+    );
     expect(() => openXlsWorkbook(random)).toThrow("xlsx_invalid");
     expect(() => openXlsWorkbook(new Uint8Array(0))).toThrow("xlsx_invalid");
     expect(() => openXlsWorkbook(new Uint8Array(4096))).toThrow("xlsx_invalid");
@@ -341,13 +436,29 @@ describe("openXlsWorkbook: arquivos malformados", () => {
   });
 
   it("sem fluxo Workbook: xlsx_invalid", () => {
-    expect(() => openXlsWorkbook(cfbBytes("Outro", biffBytes(sample())))).toThrow("xlsx_invalid");
+    expect(() =>
+      openXlsWorkbook(cfbBytes("Outro", biffBytes(sample()))),
+    ).toThrow("xlsx_invalid");
   });
 
   it("arquivo truncado em vários pontos nunca lança outro erro", () => {
     const full = xlsBytes(sample(), images(), { padBytes: 9000 });
-    const cuts = [1, 100, 511, 512, 600, 1024, 1536, 2048, 4096, Math.floor(full.length / 2), full.length - 300, full.length - 1];
-    for (const cut of cuts) expectContract(full.subarray(0, cut), `corte em ${cut}`);
+    const cuts = [
+      1,
+      100,
+      511,
+      512,
+      600,
+      1024,
+      1536,
+      2048,
+      4096,
+      Math.floor(full.length / 2),
+      full.length - 300,
+      full.length - 1,
+    ];
+    for (const cut of cuts)
+      expectContract(full.subarray(0, cut), `corte em ${cut}`);
   });
 
   it("cadeia de setores com ciclo: xlsx_invalid", () => {
@@ -361,7 +472,11 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     expect(() => openXlsWorkbook(cyclic)).toThrow("xlsx_invalid");
     // Diretório em ciclo.
     const dirCycle = bytes.slice();
-    new DataView(dirCycle.buffer).setUint32(512 + dirSector * 4, dirSector, true);
+    new DataView(dirCycle.buffer).setUint32(
+      512 + dirSector * 4,
+      dirSector,
+      true,
+    );
     expect(() => openXlsWorkbook(dirCycle)).toThrow("xlsx_invalid");
     // Setor além do arquivo.
     const beyond = bytes.slice();
@@ -383,13 +498,17 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     globalThis.Uint32Array = new Proxy(Original, {
       construct(target, args: unknown[]) {
         if (typeof args[0] === "number") largest = Math.max(largest, args[0]);
-        return new (target as unknown as new (...a: unknown[]) => Uint32Array)(...args);
+        return new (target as unknown as new (...a: unknown[]) => Uint32Array)(
+          ...args,
+        );
       },
     }) as unknown as Uint32ArrayConstructor;
     try {
       const wb = openXlsWorkbook(hostile);
       expect(wb.sheetNames()).toEqual(openXlsWorkbook(bytes).sheetNames());
-      expect(wb.readCells("SUPPLIER INFO").cells).toEqual(openXlsWorkbook(bytes).readCells("SUPPLIER INFO").cells);
+      expect(wb.readCells("SUPPLIER INFO").cells).toEqual(
+        openXlsWorkbook(bytes).readCells("SUPPLIER INFO").cells,
+      );
     } finally {
       globalThis.Uint32Array = Original;
     }
@@ -404,7 +523,9 @@ describe("openXlsWorkbook: arquivos malformados", () => {
   });
 
   it("BIFF5 (Excel 95) e BIFF2: xls_unsupported", () => {
-    expect(() => openXlsWorkbook(xlsBytes(sample(), [], { biffVersion: 0x0500 }))).toThrow("xls_unsupported");
+    expect(() =>
+      openXlsWorkbook(xlsBytes(sample(), [], { biffVersion: 0x0500 })),
+    ).toThrow("xls_unsupported");
     const biff2 = cfbBytes("Workbook", biffRecord(0x0009, new Uint8Array(4)));
     expect(() => openXlsWorkbook(biff2)).toThrow("xls_unsupported");
     const empty = cfbBytes("Workbook", biffRecord(0x0001, new Uint8Array(4)));
@@ -419,9 +540,13 @@ describe("openXlsWorkbook: arquivos malformados", () => {
     locked.set(bof, 0);
     locked.set(biffRecord(0x002f, new Uint8Array(6)), bof.length);
     locked.set(rest, bof.length + 10);
-    expect(() => openXlsWorkbook(cfbBytes("Workbook", locked))).toThrow("xls_encrypted");
+    expect(() => openXlsWorkbook(cfbBytes("Workbook", locked))).toThrow(
+      "xls_encrypted",
+    );
     // .xlsx com senha: contêiner OLE com o fluxo EncryptedPackage em vez do Workbook.
-    expect(() => openXlsWorkbook(cfbBytes("EncryptedPackage", new Uint8Array(3000)))).toThrow("xls_encrypted");
+    expect(() =>
+      openXlsWorkbook(cfbBytes("EncryptedPackage", new Uint8Array(3000))),
+    ).toThrow("xls_encrypted");
   });
 
   it("bytes trocados ao acaso (fuzz determinístico) ficam no contrato", () => {

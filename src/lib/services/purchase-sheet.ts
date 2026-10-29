@@ -53,7 +53,20 @@ export const SHEET_PHOTO_KINDS = [
   "angle",
   "original",
 ] as const satisfies readonly PhotoKind[];
-export type SheetPhotoKind = (typeof SHEET_PHOTO_KINDS)[number];
+/**
+ * Fotos opcionais da ficha (Fase B): foto HD do produto e die cut (faca),
+ * pedidas ao fornecedor para o Marketing. Não contam como obrigatórias.
+ */
+export const EXTRA_SHEET_PHOTO_KINDS = [
+  "hd",
+  "die_cut",
+] as const satisfies readonly PhotoKind[];
+/** Tudo o que se pode adicionar na ficha (obrigatórias + opcionais). */
+export const ADDABLE_SHEET_PHOTO_KINDS = [
+  ...SHEET_PHOTO_KINDS,
+  ...EXTRA_SHEET_PHOTO_KINDS,
+] as const;
+export type SheetPhotoKind = (typeof ADDABLE_SHEET_PHOTO_KINDS)[number];
 /**
  * Tipos que já fizeram parte da ficha (foto de referência e cartão de visita):
  * não são do fornecedor e saíram do formulário. Fotos antigas desses tipos
@@ -106,10 +119,37 @@ export const CUSTOMS_FIELDS = [
   "ncm",
   "importTaxPercent",
   "ipiPercent",
+  // Fase B: antidumping, média e necessidade de certificação.
+  "dumping",
+  "dumpingNote",
+  "averagePrice",
+  "certificationRequired",
+  "certificationNote",
 ] as const;
 
 export type SheetField =
   (typeof SUPPLIER_FIELDS)[number] | (typeof CUSTOMS_FIELDS)[number];
+
+/**
+ * Colunas novas da ficha (Fase B): só vão ao banco quando têm valor, para
+ * fichas seguirem salvando antes de o esquema ser publicado.
+ */
+export const OPTIONAL_SHEET_FIELDS: readonly string[] = [
+  "dumping",
+  "dumpingNote",
+  "averagePrice",
+  "certificationRequired",
+  "certificationNote",
+];
+
+/** Tira as colunas novas vazias de um objeto de ficha (muda no lugar). */
+export function dropEmptyOptional<T extends Record<string, unknown>>(
+  row: T,
+): T {
+  for (const k of OPTIONAL_SHEET_FIELDS)
+    if (row[k] === null || row[k] === undefined) delete row[k];
+  return row;
+}
 export type SheetInput = Partial<Pick<PurchaseSheet, SheetField>>;
 
 export interface SheetAccess {
@@ -299,8 +339,13 @@ async function prefillBase(
     };
   }
   if (earlier) {
-    const reused = Object.fromEntries(
-      reusableFields(earlier.source).map((k) => [k, earlier.sheet[k] ?? null]),
+    const reused = dropEmptyOptional(
+      Object.fromEntries(
+        reusableFields(earlier.source).map((k) => [
+          k,
+          earlier.sheet[k] ?? null,
+        ]),
+      ),
     ) as SheetInput;
     if (earlier.source === "previous" && master) {
       const bag = reused as Record<string, unknown>;
@@ -494,7 +539,9 @@ export async function saveSheet(
     const { prefillSource: _source, ...base } = await prefill(order);
     void _source;
     const blank = Object.fromEntries(
-      [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS].map((k) => [k, null]),
+      [...SUPPLIER_FIELDS, ...CUSTOMS_FIELDS]
+        .filter((k) => !OPTIONAL_SHEET_FIELDS.includes(k))
+        .map((k) => [k, null]),
     );
     sheet = await store.create("purchase_sheets", {
       ...blank,

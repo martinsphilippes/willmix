@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { isStockCustomer } from "@/lib/services/purchase-flow";
 import { ActionError } from "@/components/action-error";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
@@ -344,6 +345,11 @@ export default async function RequestDetailPage({
                 {customer?.name}
               </span>
             ) : null}
+            {wellmix && isStockCustomer(request.customerId) ? (
+              <span data-stock-request>
+                <Badge tone="brand">{t("purchaseFlow.stock.badge")}</Badge>
+              </span>
+            ) : null}
             {origin ? (
               <Badge tone="brand">{t(`orders.origin.${origin}`)}</Badge>
             ) : null}
@@ -457,7 +463,16 @@ export default async function RequestDetailPage({
                         t(`packBrief.error.${error}` as DictionaryKey) !==
                           `packBrief.error.${error}`
                       ? t(`packBrief.error.${error}` as DictionaryKey)
-                      : fallbackError(t, String(error))
+                      : typeof error === "string" &&
+                          t(`approvals.error.${error}` as DictionaryKey) !==
+                            `approvals.error.${error}`
+                        ? t(`approvals.error.${error}` as DictionaryKey)
+                        : typeof error === "string" &&
+                            t(
+                              `purchaseFlow.error.${error}` as DictionaryKey,
+                            ) !== `purchaseFlow.error.${error}`
+                          ? t(`purchaseFlow.error.${error}` as DictionaryKey)
+                          : fallbackError(t, String(error))
         }
       />
       {saved === "requester" ? (

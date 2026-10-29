@@ -153,7 +153,8 @@ describe("carrinho", () => {
     const { saveProductSheet } = await import("@/lib/services/product-sheet");
     // Cadastro da jarra: mínimo 300 (seed); a ficha mestre diz 100.
     await saveProductSheet(admin, "prod-piscina", { moq: 100 });
-    const shown = (await explore.exploreCatalog(joao, { q: "piscina" })).items[0];
+    const shown = (await explore.exploreCatalog(joao, { q: "piscina" }))
+      .items[0];
     expect(shown?.moq).toBe(100);
     // O serviço aceita o mínimo mostrado e recusa abaixo dele.
     await cart.addToCart(joao, "prod-piscina", 100);

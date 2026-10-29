@@ -3215,7 +3215,9 @@
             "angle",
             "business_card",
             "prompt",
-            "supplier"
+            "supplier",
+            "hd",
+            "die_cut"
           ]
         },
         {
@@ -5758,6 +5760,66 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "dumping",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "yes",
+            "no"
+          ]
+        },
+        {
+          "key": "dumpingNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "dumpingReleasedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "dumpingReleasedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "averagePrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "certificationRequired",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "yes",
+            "no"
+          ]
+        },
+        {
+          "key": "certificationNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [

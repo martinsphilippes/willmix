@@ -5,7 +5,7 @@ import { Card, cx } from "@/components/ui";
 import { PhotoInput } from "@/components/photo-input";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { REQUIRED_SHEET_PHOTOS } from "@/lib/services/purchase-sheet-calc";
-import { SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
+import { ADDABLE_SHEET_PHOTO_KINDS as SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
 
 /*
  * Fotos da ficha de compra: uma linha por tipo, verde com check quando já tem
