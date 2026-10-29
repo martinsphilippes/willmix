@@ -574,6 +574,11 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     (await page.locator("[data-artwork-zip]").getAttribute("href"))!,
   );
   expect([200, 404]).toContain(zip.status());
+  // Painéis por área e auditoria (Fase G).
+  await page.goto("/app/dashboards?area=production");
+  await expect(page.locator("[data-dash-area=production]")).toBeVisible();
+  await page.goto("/app/audit");
+  await expect(page.locator("[data-audit-row]").first()).toBeVisible();
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
 });

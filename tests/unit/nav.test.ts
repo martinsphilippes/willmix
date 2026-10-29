@@ -60,12 +60,17 @@ describe("menu principal", () => {
       "/app/team",
       // Vitrine como o cliente vê.
       "/app/explore",
+      // Painéis por área e, só para o admin, a auditoria.
+      "/app/dashboards",
+      "/app/audit",
     ])
       expect(hrefs).toContain(href);
-    // Operador: tudo igual, menos Configurações e Equipe e carteira.
+    // Operador: tudo igual, menos Configurações, Equipe e Auditoria.
     const operator = flattenNav(navFor("operator", false)).map((l) => l.href);
     expect(operator).toEqual(
-      hrefs.filter((h) => h !== "/app/settings" && h !== "/app/team"),
+      hrefs.filter(
+        (h) => h !== "/app/settings" && h !== "/app/team" && h !== "/app/audit",
+      ),
     );
   });
 
