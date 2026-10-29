@@ -93,7 +93,7 @@ describe("dumping na ficha da cotação", () => {
     const notes = await getStore().list("notifications", {
       filter: { userId: manager.id },
     });
-    expect(notes.some((n) => n.link.includes(quote.id))).toBe(true);
+    expect(notes.some((n) => n.link?.includes(quote.id))).toBe(true);
 
     await expect(r.selectQuote(admin, quote.id, sell)).rejects.toThrow(
       "dumping_release_required",
