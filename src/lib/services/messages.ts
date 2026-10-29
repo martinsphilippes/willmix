@@ -129,6 +129,7 @@ function orderParties(order: Order): string[] {
     order.carrierId,
     order.comexId,
     order.logisticsId,
+    order.ocpId,
   ].filter((id): id is string => !!id);
 }
 

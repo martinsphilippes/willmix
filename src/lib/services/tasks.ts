@@ -722,7 +722,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
   // Embarque e desembaraço (Fase D): passos a fazer e a validar.
   const importRole =
-    user.role === "comex" || user.role === "logistics" ? user.role : null;
+    user.role === "comex" || user.role === "logistics" || user.role === "ocp"
+      ? user.role
+      : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
     const { importTasks } = await import("./import-flow");
     const { isSchemaMissing } = await import("./packaging-brief");
@@ -731,12 +733,24 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       orders = await store.list("orders", {
         filter: importRole
           ? {
-              [importRole === "comex" ? "comexId" : "logisticsId"]:
-                user.partyId!,
+              [importRole === "comex"
+                ? "comexId"
+                : importRole === "ocp"
+                  ? "ocpId"
+                  : "logisticsId"]: user.partyId!,
             }
           : supplier
             ? { supplierId: user.partyId! }
-            : { status: ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"] },
+            : {
+                status: [
+                  "PREPARATION",
+                  "PACKAGING",
+                  "INSPECTION",
+                  "SHIPPING",
+                  "CUSTOMS",
+                  "TRANSPORT",
+                ],
+              },
       });
     } catch (error) {
       // Coluna nova ainda não publicada no Appwrite: sem pendências.
@@ -785,6 +799,9 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   ce_mercante: "CE Mercante",
   ci: "Comprovante de importação (CI)",
   danfe: "DANFE",
+  cert_memorial: "Memorial descritivo (certificação)",
+  cert_lab: "Ensaio em laboratório (laudo)",
+  cert_registration: "Número de registro (certificado)",
 };
 
 /** Nível da aprovação do pré-custo (pendências saem em português, como as demais). */

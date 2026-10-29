@@ -107,10 +107,17 @@ export default async function MarketingPage({
         title={t("marketing.title")}
         subtitle={t("marketing.subtitle")}
         actions={
-          wellmix && settings.marketingEnabled ? (
-            <LinkButton href="/app/marketing/new" variant="primary">
-              + {t("marketing.newKit")}
-            </LinkButton>
+          wellmix ? (
+            <div className="flex flex-wrap gap-2">
+              <LinkButton href="/app/marketing/price-table">
+                {t("priceTable.title")}
+              </LinkButton>
+              {settings.marketingEnabled ? (
+                <LinkButton href="/app/marketing/new" variant="primary">
+                  + {t("marketing.newKit")}
+                </LinkButton>
+              ) : null}
+            </div>
           ) : undefined
         }
       />

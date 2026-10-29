@@ -1,3 +1,4 @@
+import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
 import { ProductionCard } from "@/components/production-card";
@@ -170,6 +171,7 @@ export default async function OrderPage({
     production: productionNotice,
     importStep: importNotice,
     receiving: receivingNotice,
+    artwork: artworkNotice,
   } = await searchParams;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
@@ -231,7 +233,25 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
-  for (const v of importSteps) {
+  /* Certificação (Fase F): com OCP designado, ficha pedindo certificação
+     ou passo já começado. */
+  const certAll =
+    order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
+      ? await importFlow.importFlowView(user, order, "certification")
+      : [];
+  const [certSheet] = certAll.length
+    ? await store.list("purchase_sheets", {
+        filter: { orderId: order.id },
+        limit: 1,
+      })
+    : [];
+  const certSteps =
+    order.ocpId ||
+    certAll.some((v) => v.step) ||
+    certSheet?.certificationRequired === "yes"
+      ? certAll
+      : [];
+  for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
     if (v.step?.validatedByUserId)
@@ -245,6 +265,14 @@ export default async function OrderPage({
       order.status,
     )
       ? await receivingSvc.receivingView(order)
+      : null;
+  /* Artes (Fase F): Wellmix, o designer e a agência do pedido. */
+  const artworkSvc = await import("@/lib/services/artwork");
+  const artworkView =
+    order.status !== "CANCELLED" &&
+    order.status !== "ORDER_CREATED" &&
+    artworkSvc.canFixArt(user, order)
+      ? await artworkSvc.artworkView(user, order)
       : null;
   const productionNames = new Map(
     (productionUserIds.size
@@ -642,6 +670,7 @@ export default async function OrderPage({
                       ["broker", order.brokerId],
                       ["comex", order.comexId ?? null],
                       ["logistics", order.logisticsId ?? null],
+                      ["ocp", order.ocpId ?? null],
                     ] as Array<[PartyType, string | null]>
                   ).flatMap(([type, pid]) =>
                     pid
@@ -685,7 +714,11 @@ export default async function OrderPage({
                         t(`receiving.error.${error}` as DictionaryKey) !==
                           `receiving.error.${error}`
                       ? t(`receiving.error.${error}` as DictionaryKey)
-                      : fallbackError(t, String(error))
+                      : typeof error === "string" &&
+                          t(`artwork.error.${error}` as DictionaryKey) !==
+                            `artwork.error.${error}`
+                        ? t(`artwork.error.${error}` as DictionaryKey)
+                        : fallbackError(t, String(error))
         }
         fields={invalidFields}
         token={errorToken}
@@ -1035,6 +1068,37 @@ export default async function OrderPage({
               }
             />
           ) : null}
+          {/* Artes (Fase F): designer, não conformidade por SKU, baixar todas. */}
+          {artworkView ? (
+            <ArtworkCard
+              t={t}
+              order={order}
+              view={artworkView}
+              wellmix={wellmix}
+              notice={
+                typeof artworkNotice === "string" &&
+                [
+                  "designer",
+                  "reported",
+                  "fixed",
+                  "accepted",
+                  "reopened",
+                ].includes(artworkNotice)
+                  ? t(`artwork.done.${artworkNotice}` as DictionaryKey)
+                  : null
+              }
+            />
+          ) : null}
+          {/* Certificação (Fase F): memorial, laboratório e registro com o OCP. */}
+          <ImportFlowCard
+            t={t}
+            order={order}
+            steps={certSteps}
+            names={productionNames}
+            title={t("certFlow.title")}
+            anchor="certification"
+            notice={null}
+          />
           {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
           <ImportFlowCard
             t={t}
@@ -1118,6 +1182,7 @@ export default async function OrderPage({
                     ["carrierId", "carrier"],
                     ["comexId", "comex"],
                     ["logisticsId", "logistics"],
+                    ["ocpId", "ocp"],
                   ] as const
                 ).map(([field, type]) => (
                   <form

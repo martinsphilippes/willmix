@@ -25,6 +25,8 @@ export const ROLES = [
   // Fase D: assessoria de comércio exterior e agente de carga (logins próprios).
   "comex",
   "logistics",
+  // Fase F: organismo de certificação de produto (logins próprios).
+  "ocp",
 ] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -38,6 +40,7 @@ export const PARTY_TYPES = [
   "legal",
   "comex",
   "logistics",
+  "ocp",
 ] as const;
 export type PartyType = (typeof PARTY_TYPES)[number];
 
@@ -479,6 +482,8 @@ export const WELLMIX_FUNCTIONS = [
   "finance",
   "purchasing_director",
   "executive_director",
+  // Fase F: designer do marketing (artes e embalagens).
+  "designer",
 ] as const;
 export type WellmixFunction = (typeof WELLMIX_FUNCTIONS)[number];
 
@@ -528,6 +533,10 @@ export const IMPORT_STEP_KEYS = [
   "ce_mercante",
   "ci",
   "danfe",
+  // Certificação (Fase F): memorial, laboratório e registro, com o OCP.
+  "cert_memorial",
+  "cert_lab",
+  "cert_registration",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [
@@ -551,6 +560,10 @@ export const RECEIVING_CHECKS = [
   "quantity_counted",
 ] as const;
 export type ReceivingCheck = (typeof RECEIVING_CHECKS)[number];
+
+/* Marketing (Fase F, docs/ARTWORK.md): não conformidade da arte por SKU. */
+export const ART_ISSUE_STATUSES = ["open", "fixed", "accepted"] as const;
+export type ArtIssueStatus = (typeof ART_ISSUE_STATUSES)[number];
 
 /** Divisões da Wellmix: cada linha de produto e cada analista pertencem a uma. */
 export const DIVISIONS = ["wellmix", "wellkids"] as const;
@@ -811,6 +824,9 @@ export interface Order extends BaseRow {
   /** Assessoria de comércio exterior e agente de carga (Fase D). Opcionais. */
   comexId?: string | null;
   logisticsId?: string | null;
+  /** Certificação (OCP) e designer das artes (Fase F). Opcionais. */
+  ocpId?: string | null;
+  designerUserId?: string | null;
   closedAt: string | null;
   notes: string | null;
   /** Modalidade de operação copiada do cliente ao criar o pedido (nulo nos antigos). */
@@ -1941,6 +1957,22 @@ export interface Receiving extends BaseRow {
   updatedByUserId: string | null;
 }
 
+/** Não conformidade da arte de um item do pedido; volta ao designer. */
+export interface ArtIssue extends BaseRow {
+  orderId: string;
+  orderItemId: string;
+  status: ArtIssueStatus;
+  note: string;
+  documentId: string | null;
+  reportedByUserId: string;
+  fixNote: string | null;
+  fixDocumentId: string | null;
+  fixedByUserId: string | null;
+  fixedAt: string | null;
+  acceptedByUserId: string | null;
+  acceptedAt: string | null;
+}
+
 export interface MessageRead extends BaseRow {
   topicId: string;
   userId: string;
@@ -2001,6 +2033,7 @@ export interface Tables {
   sku_inspections: SkuInspection;
   import_steps: ImportStep;
   receivings: Receiving;
+  art_issues: ArtIssue;
 }
 export type TableName = keyof Tables;
 
@@ -2266,6 +2299,8 @@ export const TABLES: Record<TableName, TableDef> = {
       carrierId: id(false),
       comexId: id(false),
       logisticsId: id(false),
+      ocpId: id(false),
+      designerUserId: id(false),
       closedAt: datetime(),
       notes: text(),
       operationMode: enumOf(OPERATION_MODES, false),
@@ -3294,6 +3329,24 @@ export const TABLES: Record<TableName, TableDef> = {
       updatedByUserId: id(false),
     },
     indexes: [{ key: "order_unique", type: "unique", columns: ["orderId"] }],
+  },
+  art_issues: {
+    label: "Não conformidades da arte",
+    columns: {
+      orderId: id(),
+      orderItemId: id(),
+      status: enumOf(ART_ISSUE_STATUSES),
+      note: text(true),
+      documentId: id(false),
+      reportedByUserId: id(),
+      fixNote: text(),
+      fixDocumentId: id(false),
+      fixedByUserId: id(false),
+      fixedAt: datetime(),
+      acceptedByUserId: id(false),
+      acceptedAt: datetime(),
+    },
+    indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
   message_reads: {
     label: "Leitura das mensagens",

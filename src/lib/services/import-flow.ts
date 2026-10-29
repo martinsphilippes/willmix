@@ -28,7 +28,9 @@ export class ImportFlowError extends Error {}
 
 /** Quem age num passo. */
 export type StepActor =
-  "logistics" | "comex" | "supplier" | "finance" | "wellmix";
+  "logistics" | "comex" | "ocp" | "supplier" | "finance" | "wellmix";
+/** Cartão do passo: embarque/desembaraço ou certificação (Fase F). */
+export type StepGroup = "import" | "certification";
 /** O que o passo pede. */
 export type StepInput =
   "text" | "file" | "text_file" | "money_file" | "channel" | "date";
@@ -42,7 +44,11 @@ export interface StepTemplate {
   visibleTo: Role[];
   /** Passo que precisa estar concluído antes. */
   after?: ImportStepKey;
+  /** Sem valor: embarque e desembaraço. */
+  group?: StepGroup;
 }
+
+export const groupOf = (tpl: StepTemplate): StepGroup => tpl.group ?? "import";
 
 export const IMPORT_STEPS: StepTemplate[] = [
   {
@@ -142,6 +148,33 @@ export const IMPORT_STEPS: StepTemplate[] = [
     visibleTo: ["comex", "logistics"],
     after: "di",
   },
+  // Certificação (Fase F, docs/CERTIFICATION.md): com o OCP do pedido.
+  {
+    key: "cert_memorial",
+    actor: "wellmix",
+    validator: "ocp",
+    input: "file",
+    visibleTo: ["ocp"],
+    group: "certification",
+  },
+  {
+    key: "cert_lab",
+    actor: "ocp",
+    validator: null,
+    input: "text_file",
+    visibleTo: ["ocp"],
+    after: "cert_memorial",
+    group: "certification",
+  },
+  {
+    key: "cert_registration",
+    actor: "ocp",
+    validator: "wellmix",
+    input: "text_file",
+    visibleTo: ["ocp", "comex"],
+    after: "cert_lab",
+    group: "certification",
+  },
 ];
 
 export const stepTemplate = (key: ImportStepKey) =>
@@ -150,6 +183,7 @@ export const stepTemplate = (key: ImportStepKey) =>
 const PARTNER_FIELD = {
   logistics: "logisticsId",
   comex: "comexId",
+  ocp: "ocpId",
   supplier: "supplierId",
 } as const;
 
@@ -412,34 +446,35 @@ export interface StepView {
 export async function importFlowView(
   user: User,
   order: Order,
+  group: StepGroup = "import",
 ): Promise<StepView[]> {
   const steps = await stepsOf(order.id);
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
-  return IMPORT_STEPS.filter((tpl) => canSeeStep(user, order, tpl.key)).map(
-    (tpl) => {
-      const step = steps.find((s) => s.key === tpl.key) ?? null;
-      const isReady = ready(tpl.key, steps);
-      const done = isDone(step ?? undefined);
-      return {
-        template: tpl,
-        step,
-        ready: isReady,
-        done,
-        canSubmit:
-          open &&
-          isReady &&
-          !(tpl.validator && step?.status === "validated") &&
-          actsAs(user, order, tpl.actor),
-        canValidate:
-          open &&
-          !!tpl.validator &&
-          step?.status === "submitted" &&
-          actsAs(user, order, tpl.validator) &&
-          (step.submittedByUserId !== user.id || isAdmin(user)),
-      };
-    },
-  );
+  return IMPORT_STEPS.filter(
+    (tpl) => groupOf(tpl) === group && canSeeStep(user, order, tpl.key),
+  ).map((tpl) => {
+    const step = steps.find((s) => s.key === tpl.key) ?? null;
+    const isReady = ready(tpl.key, steps);
+    const done = isDone(step ?? undefined);
+    return {
+      template: tpl,
+      step,
+      ready: isReady,
+      done,
+      canSubmit:
+        open &&
+        isReady &&
+        !(tpl.validator && step?.status === "validated") &&
+        actsAs(user, order, tpl.actor),
+      canValidate:
+        open &&
+        !!tpl.validator &&
+        step?.status === "submitted" &&
+        actsAs(user, order, tpl.validator) &&
+        (step.submittedByUserId !== user.id || isAdmin(user)),
+    };
+  });
 }
 
 /** Acesso ao arquivo de um passo: quem vê o passo. */
@@ -477,8 +512,13 @@ export async function importTasks(
   user: User,
   orders: Order[],
 ): Promise<ImportTaskDraft[]> {
-  const live = orders.filter((o) =>
-    ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"].includes(o.status),
+  const IMPORT_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"];
+  const live = orders.filter(
+    (o) =>
+      IMPORT_LIVE.includes(o.status) ||
+      // Certificação: do pedido criado em diante, com OCP designado.
+      (!!o.ocpId &&
+        !["ORDER_CREATED", "CLOSED", "CANCELLED"].includes(o.status)),
   );
   if (!live.length) return [];
   let rows: ImportStep[] = [];
@@ -495,6 +535,9 @@ export async function importTasks(
   for (const order of live) {
     const steps = rows.filter((r) => r.orderId === order.id);
     for (const tpl of IMPORT_STEPS) {
+      if (groupOf(tpl) === "import" && !IMPORT_LIVE.includes(order.status))
+        continue;
+      if (groupOf(tpl) === "certification" && !order.ocpId) continue;
       const step = steps.find((s) => s.key === tpl.key);
       // Validar o que foi enviado.
       if (

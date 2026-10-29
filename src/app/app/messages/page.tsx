@@ -62,6 +62,7 @@ const PICKER_ORDER: PartyType[] = [
   "broker",
   "comex",
   "logistics",
+  "ocp",
   "legal",
 ];
 
