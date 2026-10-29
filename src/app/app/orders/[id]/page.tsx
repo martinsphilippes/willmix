@@ -1,3 +1,4 @@
+import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
 import { ProductionCard } from "@/components/production-card";
 import {
@@ -168,6 +169,7 @@ export default async function OrderPage({
     tariffOrigin,
     production: productionNotice,
     importStep: importNotice,
+    receiving: receivingNotice,
   } = await searchParams;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
@@ -235,6 +237,15 @@ export default async function OrderPage({
     if (v.step?.validatedByUserId)
       productionUserIds.add(v.step.validatedByUserId);
   }
+  /* Recebimento (Fase E): só a Wellmix, do desembaraço em diante. */
+  const receivingSvc = await import("@/lib/services/receiving");
+  const receivingView =
+    wellmix &&
+    (receivingSvc.RECEIVING_STATUSES as readonly string[]).includes(
+      order.status,
+    )
+      ? await receivingSvc.receivingView(order)
+      : null;
   const productionNames = new Map(
     (productionUserIds.size
       ? await store.list("users", { filter: { id: [...productionUserIds] } })
@@ -670,7 +681,11 @@ export default async function OrderPage({
                       t(`importFlow.error.${error}` as DictionaryKey) !==
                         `importFlow.error.${error}`
                     ? t(`importFlow.error.${error}` as DictionaryKey)
-                    : fallbackError(t, String(error))
+                    : typeof error === "string" &&
+                        t(`receiving.error.${error}` as DictionaryKey) !==
+                          `receiving.error.${error}`
+                      ? t(`receiving.error.${error}` as DictionaryKey)
+                      : fallbackError(t, String(error))
         }
         fields={invalidFields}
         token={errorToken}
@@ -1004,6 +1019,22 @@ export default async function OrderPage({
             />
           ) : null}
 
+          {/* Recebimento (Fase E): lacre, checklist, divergência por SKU, RIC, fechamento. */}
+          {receivingView ? (
+            <ReceivingCard
+              t={t}
+              order={order}
+              view={receivingView}
+              notice={
+                typeof receivingNotice === "string" &&
+                ["saved", "counted", "ric", "returned", "closed"].includes(
+                  receivingNotice,
+                )
+                  ? t(`receiving.done.${receivingNotice}` as DictionaryKey)
+                  : null
+              }
+            />
+          ) : null}
           {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
           <ImportFlowCard
             t={t}

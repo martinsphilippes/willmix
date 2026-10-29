@@ -565,6 +565,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 15. Control Tower da Wellmix carrega
   await login(page, "admin@wellmix.com");
+  // Recebimento (Fase E) aparece para a Wellmix no pedido encerrado.
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-receiving-card]")).toBeVisible();
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
 });
