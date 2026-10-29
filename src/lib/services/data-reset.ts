@@ -62,6 +62,8 @@ const SALES_TABLES = [
   // Embarque e desembaraço dos pedidos de teste.
   "import_steps",
   "receivings",
+  "art_issues",
+  "art_issues",
 ] as const satisfies readonly TableName[];
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */

@@ -12,6 +12,10 @@ import { field, files, requireUser, run, str } from "./helpers";
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 
+/** Cartão de onde veio (embarque ou certificação). */
+const anchorOf = (form: FormData) =>
+  str(form, "anchor") === "certification" ? "certification" : "import-flow";
+
 function back(form: FormData) {
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
@@ -20,7 +24,7 @@ function back(form: FormData) {
 export async function submitImportStepAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
-  await run(`${to}#import-flow`, async () => {
+  await run(`${to}#${anchorOf(form)}`, async () => {
     const orderId = ID.parse(str(form, "orderId"));
     const key = z.enum(IMPORT_STEP_KEYS).parse(str(form, "key"));
     const value = field(form, "value", z.string().trim().max(200)) || null;
@@ -58,14 +62,14 @@ export async function submitImportStepAction(form: FormData) {
       currency,
       documentId,
     });
-    return `${to}?importStep=submitted#import-flow`;
+    return `${to}?importStep=submitted#${anchorOf(form)}`;
   });
 }
 
 export async function validateImportStepAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
-  await run(`${to}#import-flow`, async () => {
+  await run(`${to}#${anchorOf(form)}`, async () => {
     const orderId = ID.parse(str(form, "orderId"));
     const key = z.enum(IMPORT_STEP_KEYS).parse(str(form, "key"));
     const decision = z
@@ -74,6 +78,6 @@ export async function validateImportStepAction(form: FormData) {
     const reason = field(form, "reason", z.string().trim().max(1000)) || null;
     const { validateStep } = await import("@/lib/services/import-flow");
     await validateStep(user, orderId, key, decision, reason);
-    return `${to}?importStep=${decision}#import-flow`;
+    return `${to}?importStep=${decision}#${anchorOf(form)}`;
   });
 }

@@ -113,6 +113,13 @@ export const DEMO_USERS: Array<{
     locale: "pt",
   },
   {
+    email: "ocp@certifica.com",
+    name: "Olga OCP",
+    role: "ocp",
+    party: "ocp",
+    locale: "pt",
+  },
+  {
     email: "juridico@wellmix.com",
     name: "Júlia Jurídico",
     role: "legal",
@@ -233,6 +240,13 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
       name: "Cargo Agentes de Carga",
       country: "BR",
       email: "agente@cargo.com",
+    },
+    {
+      id: "ocp",
+      type: "ocp",
+      name: "Certifica OCP",
+      country: "BR",
+      email: "ocp@certifica.com",
     },
   ];
   for (const party of parties) {

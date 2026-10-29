@@ -35,12 +35,17 @@ export function ImportFlowCard({
   steps,
   notice,
   names,
+  title,
+  anchor = "import-flow",
 }: {
   t: Translate;
   order: Order;
   steps: StepView[];
   notice: string | null;
   names: Map<string, string>;
+  /** Certificação (Fase F) usa o mesmo cartão com outro título e âncora. */
+  title?: string;
+  anchor?: "import-flow" | "certification";
 }) {
   if (!steps.length) return null;
   const name = (id: string | null) => (id ? (names.get(id) ?? "—") : "—");
@@ -50,7 +55,7 @@ export function ImportFlowCard({
 
   return (
     <Card
-      title={t("importFlow.title")}
+      title={title ?? t("importFlow.title")}
       actions={
         <span className="text-sm text-zinc-500">
           {t("importFlow.progress", {
@@ -60,7 +65,7 @@ export function ImportFlowCard({
         </span>
       }
     >
-      <span id="import-flow" className="block scroll-mt-24" />
+      <span id={anchor} className="block scroll-mt-24" />
       {notice ? (
         <div className="mb-3">
           <Alert tone="success">{notice}</Alert>
@@ -176,6 +181,7 @@ export function ImportFlowCard({
                 >
                   <input type="hidden" name="orderId" value={order.id} />
                   <input type="hidden" name="key" value={tpl.key} />
+                  <input type="hidden" name="anchor" value={anchor} />
                   {tpl.input === "text" || tpl.input === "text_file" ? (
                     <Input
                       name="value"
@@ -245,6 +251,7 @@ export function ImportFlowCard({
                 >
                   <input type="hidden" name="orderId" value={order.id} />
                   <input type="hidden" name="key" value={tpl.key} />
+                  <input type="hidden" name="anchor" value={anchor} />
                   <Input
                     name="reason"
                     maxLength={1000}

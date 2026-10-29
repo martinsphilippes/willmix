@@ -51,7 +51,8 @@
             "carrier",
             "legal",
             "comex",
-            "logistics"
+            "logistics",
+            "ocp"
           ]
         },
         {
@@ -188,7 +189,8 @@
             "carrier",
             "legal",
             "comex",
-            "logistics"
+            "logistics",
+            "ocp"
           ]
         },
         {
@@ -1378,6 +1380,22 @@
           "size": 36
         },
         {
+          "key": "ocpId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "designerUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
           "key": "closedAt",
           "required": false,
           "array": false,
@@ -1746,7 +1764,8 @@
             "carrier",
             "legal",
             "comex",
-            "logistics"
+            "logistics",
+            "ocp"
           ]
         },
         {
@@ -1905,7 +1924,8 @@
             "carrier",
             "legal",
             "comex",
-            "logistics"
+            "logistics",
+            "ocp"
           ]
         },
         {
@@ -2389,7 +2409,8 @@
             "carrier",
             "legal",
             "comex",
-            "logistics"
+            "logistics",
+            "ocp"
           ]
         },
         {
@@ -4285,7 +4306,8 @@
             "carrier",
             "legal",
             "comex",
-            "logistics"
+            "logistics",
+            "ocp"
           ]
         },
         {
@@ -7732,7 +7754,10 @@
             "di",
             "ce_mercante",
             "ci",
-            "danfe"
+            "danfe",
+            "cert_memorial",
+            "cert_lab",
+            "cert_registration"
           ]
         },
         {
@@ -7974,6 +7999,125 @@
         {
           "key": "order_unique",
           "type": "unique",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "art_issues",
+      "databaseId": "willmix",
+      "name": "Não conformidades da arte",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "orderId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "orderItemId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "open",
+            "fixed",
+            "accepted"
+          ]
+        },
+        {
+          "key": "note",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "documentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "reportedByUserId",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "fixNote",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "fixDocumentId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "fixedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "fixedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "acceptedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "acceptedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
           "columns": [
             "orderId"
           ],

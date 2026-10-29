@@ -1276,6 +1276,7 @@ async function assignDefaultPartners(
     ["carrier", "carrierId"],
     ["comex", "comexId"],
     ["logistics", "logisticsId"],
+    ["ocp", "ocpId"],
   ] as const) {
     // Já designado (ex.: agência do briefing de embalagem) não é sobrescrito.
     if (order[field]) continue;

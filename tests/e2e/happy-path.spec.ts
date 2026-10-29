@@ -568,6 +568,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Recebimento (Fase E) aparece para a Wellmix no pedido encerrado.
   await page.goto(orderUrl);
   await expect(page.locator("[data-receiving-card]")).toBeVisible();
+  // Artes (Fase F): cartão e "baixar todas as artes" (zip).
+  await expect(page.locator("[data-artwork-card]")).toBeVisible();
+  const zip = await page.request.get(
+    (await page.locator("[data-artwork-zip]").getAttribute("href"))!,
+  );
+  expect([200, 404]).toContain(zip.status());
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
 });
