@@ -301,7 +301,10 @@ async function orderRef(order: Order) {
     filter: { orderId: order.id },
     limit: 1,
   });
-  return [`#${order.number}`, item?.name].filter(Boolean).join(" · ").slice(0, 160);
+  return [`#${order.number}`, item?.name]
+    .filter(Boolean)
+    .join(" · ")
+    .slice(0, 160);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -326,7 +329,10 @@ async function unreadByTopic(
   });
   const readAt = new Map<string, number>();
   for (const r of reads)
-    readAt.set(r.topicId, Math.max(readAt.get(r.topicId) ?? 0, time(r.lastReadAt)));
+    readAt.set(
+      r.topicId,
+      Math.max(readAt.get(r.topicId) ?? 0, time(r.lastReadAt)),
+    );
   const stale = active.filter(
     (t) => time(t.lastMessageAt) > (readAt.get(t.id) ?? 0),
   );
@@ -366,9 +372,7 @@ async function companiesOf(conversations: Conversation[]) {
     ...new Set(conversations.map((c) => c.partyId).filter(Boolean)),
   ] as string[];
   const userIds = [
-    ...new Set(
-      conversations.filter((c) => !c.partyId).map((c) => c.userId),
-    ),
+    ...new Set(conversations.filter((c) => !c.partyId).map((c) => c.userId)),
   ].filter(Boolean) as string[];
   const [parties, users] = await Promise.all([
     partyIds.length
@@ -490,8 +494,17 @@ export async function getConversationView(
   const topics = await visibleTopics(user, all);
   if (topicId && !topics.some((t) => t.id === topicId))
     throw new ForbiddenError();
-  const selected = topics.find((t) => t.id === (topicId || general.id))!;
   const unread = await unreadByTopic(user, topics);
+  // Sem assunto escolhido: abre onde há mensagem nova (a mais recente) ou,
+  // sem nada novo, o assunto da última mensagem; Geral só se não houver nada.
+  const byRecent = [...topics].sort(
+    (a, b) => time(b.lastMessageAt) - time(a.lastMessageAt),
+  );
+  const defaultTopic =
+    byRecent.find((t) => (unread.get(t.id) ?? 0) > 0) ??
+    byRecent.find((t) => t.lastMessageAt) ??
+    general;
+  const selected = topics.find((t) => t.id === (topicId || defaultTopic.id))!;
   const summary = (t: ConversationTopic): TopicSummary => ({
     id: t.id,
     kind: t.kind,
@@ -767,9 +780,8 @@ export async function postMessage(
   let attachmentDocumentId: string | null = null;
   let fileName = "";
   if (attached) {
-    const { uploadDocument, registerUploadedDocument } = await import(
-      "./documents"
-    );
+    const { uploadDocument, registerUploadedDocument } =
+      await import("./documents");
     const input = {
       type: "attachment" as const,
       visibility: "internal" as const,
@@ -854,9 +866,9 @@ async function notifyOtherSide(
       ? await store.list("users", {
           filter: { partyId: conversation.partyId, active: true },
         })
-      : (await conversationOwner(conversation).then((u) => (u ? [u] : []))).filter(
-          (u) => u.active,
-        );
+      : (
+          await conversationOwner(conversation).then((u) => (u ? [u] : []))
+        ).filter((u) => u.active);
     const external = logins.filter((u) => !isWellmix(u));
     const sees = await Promise.all(external.map((u) => canSeeTopic(u, topic)));
     recipients = external.filter((_, i) => sees[i]);
