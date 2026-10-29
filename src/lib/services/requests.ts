@@ -18,10 +18,7 @@ import {
   type RequestSchedule,
 } from "@/lib/db";
 import { variantSnapshot } from "@/lib/variants";
-import {
-  getProductVariant,
-  listProductVariants,
-} from "./product-variants";
+import { getProductVariant, listProductVariants } from "./product-variants";
 import {
   completeFromOrderSheet,
   requestProductName,
@@ -192,6 +189,104 @@ export async function createRequestBatch(
       `Lote com ${items.length} produtos: ${items.map((i) => i.productName).join(", ")}`,
     );
   return created;
+}
+
+/** Situações em que ainda dá para pôr produto na solicitação (antes do pedido). */
+const ADDABLE_STATUSES: readonly RequestStatus[] = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+  "SUPPLIER_SELECTED",
+  "WAITING_DOWN_PAYMENT",
+];
+
+/**
+ * Wellmix acrescenta produtos a uma solicitação que ainda não virou pedido:
+ * cada produto vira uma solicitação do MESMO lote (mesmo número, cliente e
+ * solicitante), com a própria cotação, e vira o próprio pedido no sinal, como
+ * os demais. Solicitação sozinha passa a ser lote. Se um produto falhar, os
+ * que nasceram nesta chamada são cancelados (sem apagar) e o erro segue.
+ */
+export async function addProductsToRequest(
+  user: User,
+  requestId: string,
+  items: RequestBatchItem[],
+): Promise<{ groupId: string; created: Request[] }> {
+  assertWellmix(user);
+  if (!items.length) throw new Error("no_products");
+  const store = getStore();
+  const base = await store.get("requests", requestId);
+  if (!base) throw new RequestError("not_found");
+  if (!ADDABLE_STATUSES.includes(base.status))
+    throw new RequestError("invalid_status");
+  const groupId = base.groupId ?? randomUUID();
+  if (!base.groupId) {
+    try {
+      await store.update("requests", base.id, { groupId });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /unknown attribute.*groupId/i.test(error.message)
+      )
+        throw new Error("schema_outdated");
+      throw error;
+    }
+  }
+  const created: Request[] = [];
+  try {
+    for (const item of items)
+      created.push(
+        await createRequest(user, {
+          customerId: base.customerId,
+          requestedForUserId: base.requestedForUserId,
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          productName: item.productName,
+          description: item.description,
+          specification: item.specification,
+          quantity: item.quantity,
+          unit: item.unit,
+          origin:
+            item.sourcingDemand && !item.productId
+              ? "sourcing_demand"
+              : "manual",
+          groupId,
+          schedule: item.schedule ?? null,
+          number: base.number ?? undefined,
+        }),
+      );
+  } catch (error) {
+    try {
+      for (const r of created) {
+        await store.update("requests", r.id, { status: "CANCELLED" });
+        await audit(
+          user,
+          "request.batch_rollback",
+          "request",
+          r.id,
+          "Produto acrescentado interrompido: solicitação cancelada",
+          { status: r.status },
+          { status: "CANCELLED" },
+        );
+      }
+    } catch (rollbackError) {
+      console.error("[requests] reversão do acréscimo falhou", rollbackError);
+    }
+    throw error;
+  }
+  await audit(
+    user,
+    "request.add_products",
+    "request",
+    base.id,
+    `Produtos acrescentados à solicitação${base.number ? ` nº ${base.number}` : ""}: ${created.map((r) => r.productName).join(", ")}`,
+  );
+  return { groupId, created };
+}
+
+/** A solicitação ainda aceita produto novo (Wellmix, antes de virar pedido)? */
+export function canAddProducts(user: User, request: Request): boolean {
+  return isWellmix(user) && ADDABLE_STATUSES.includes(request.status);
 }
 
 /** Outras solicitações do mesmo lote (a própria fora), mais antigas primeiro. */
@@ -833,7 +928,8 @@ export async function selectQuote(
   // briefing nasce aqui.
   try {
     if (settings.packagingBriefAt === "selection") {
-      const { openPackagingBriefSafe: open } = await import("./packaging-brief");
+      const { openPackagingBriefSafe: open } =
+        await import("./packaging-brief");
       await open(user, request);
     }
     await packagingSupplierSelected(user, request, quote);

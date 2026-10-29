@@ -35,6 +35,7 @@ import {
   openRfq,
   selectQuote,
   createRequestBatch,
+  addProductsToRequest,
   type RequestBatchItem,
 } from "@/lib/services/requests";
 import {
@@ -107,107 +108,125 @@ const requestItemSchema = z.object({
  */
 export async function createRequestAction(form: FormData) {
   const user = await requireUser();
-  await run("/app/requests/new", async () => {
-    const store = getStore();
-    const rows = parseRequestItems(form);
-    if (!rows.length) throw new Error("no_products");
-    const items: RequestBatchItem[] = [];
-    for (const row of rows) {
-      let productName = row.productName;
-      if (row.productId && !productName) {
-        const product = await store.get("products", row.productId);
-        productName = product?.name ?? "";
-      }
-      const parsed = requestItemSchema.parse({ ...row, productName });
-      items.push({
-        productId: parsed.productId ?? null,
-        variantId: parsed.productId ? (parsed.variantId ?? null) : null,
-        productName: parsed.productName,
-        description: parsed.description,
-        specification: parsed.specification ?? null,
-        quantity: parsed.quantity,
-        unit: parsed.unit,
-        // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
-        sourcingDemand: row.sourcingDemand && !parsed.productId,
-        // Programação de entregas: a quantidade da solicitação é a soma das entregas.
-        schedule: row.schedule,
-        ...(row.schedule ? { quantity: scheduleTotal(row.schedule) } : {}),
-      });
-    }
-    // Anexos conferidos antes de criar qualquer solicitação (tipo e tamanho).
-    for (const row of rows)
-      for (const file of row.attachments) assertUploadable(file);
-    const base = requestBaseSchema.parse({
-      customerId:
-        user.role === "customer" ? user.partyId : str(form, "customerId"),
-      deadline: str(form, "deadline") || null,
-      notes: str(form, "notes") || null,
-    });
-    const created = await createRequestBatch(
-      user,
-      {
-        ...base,
-        // Wellmix em nome do cliente: o login do cliente que solicitou.
-        requestedForUserId: isWellmix(user)
-          ? str(form, "requestedForUserId") || null
-          : null,
-      },
-      items,
-    );
-    const first = created[0];
-    const destination =
-      created.length === 1
-        ? `/app/requests/${first.id}`
-        : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
-    // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
-    // o usuário a removeu, não há a que ligar.
-    const presetPos = rows.findIndex((r) => r.index === 0);
-    const preset = presetPos >= 0 ? created[presetPos] : null;
-    try {
-      // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
-      const scheduleId = str(form, "scheduleId");
-      if (scheduleId && preset && isWellmix(user)) {
-        const schedule = await store.get("purchase_schedules", scheduleId);
-        // Só a programação do mesmo cliente (a tela preenche o cliente por ela).
-        if (
-          schedule &&
-          !schedule.requestId &&
-          (!schedule.customerId || schedule.customerId === preset.customerId)
-        )
-          await store.update("purchase_schedules", scheduleId, {
-            requestId: preset.id,
-            status: "confirmed",
-          });
-      }
-      // Anexos de cada produto fora do catálogo vão para a solicitação dele.
-      for (const [i, row] of rows.entries()) {
-        for (const file of row.attachments) {
-          await uploadDocument(user, file, {
-            requestId: created[i].id,
-            type: "attachment",
-            visibility: "internal",
-          });
+  // "Adicionar produto" numa solicitação existente (Wellmix): mesmo formulário.
+  const addToRaw = str(form, "addTo");
+  const addTo = /^[A-Za-z0-9_-]{1,64}$/.test(addToRaw) ? addToRaw : "";
+  await run(
+    addTo ? `/app/requests/new?addTo=${addTo}` : "/app/requests/new",
+    async () => {
+      const store = getStore();
+      const rows = parseRequestItems(form);
+      if (!rows.length) throw new Error("no_products");
+      const items: RequestBatchItem[] = [];
+      for (const row of rows) {
+        let productName = row.productName;
+        if (row.productId && !productName) {
+          const product = await store.get("products", row.productId);
+          productName = product?.name ?? "";
         }
+        const parsed = requestItemSchema.parse({ ...row, productName });
+        items.push({
+          productId: parsed.productId ?? null,
+          variantId: parsed.productId ? (parsed.variantId ?? null) : null,
+          productName: parsed.productName,
+          description: parsed.description,
+          specification: parsed.specification ?? null,
+          quantity: parsed.quantity,
+          unit: parsed.unit,
+          // Produto fora do catálogo: pede à Wellmix que encontre fornecedores (sourcing sob demanda).
+          sourcingDemand: row.sourcingDemand && !parsed.productId,
+          // Programação de entregas: a quantidade da solicitação é a soma das entregas.
+          schedule: row.schedule,
+          ...(row.schedule ? { quantity: scheduleTotal(row.schedule) } : {}),
+        });
       }
-      // Busca por foto/link: a foto enviada vira anexo da solicitação da linha 0.
-      const lookupId = str(form, "lookupId");
-      if (lookupId && preset) {
-        const { attachLookupToRequest } =
-          await import("@/lib/services/product-lookup");
-        await attachLookupToRequest(user, lookupId, preset.id);
+      // Anexos conferidos antes de criar qualquer solicitação (tipo e tamanho).
+      for (const row of rows)
+        for (const file of row.attachments) assertUploadable(file);
+      if (addTo) {
+        const added = await addProductsToRequest(user, addTo, items);
+        // Anexos de cada produto fora do catálogo vão para a solicitação dele.
+        for (const [i, row] of rows.entries())
+          for (const file of row.attachments)
+            await uploadDocument(user, file, {
+              requestId: added.created[i].id,
+              type: "attachment",
+              visibility: "internal",
+            });
+        return `/app/requests/batch/${encodeURIComponent(added.groupId)}?added=${added.created.length}`;
       }
-    } catch (error) {
-      // As solicitações já existem: leva o usuário até elas com o aviso, em vez
-      // de voltar ao formulário vazio (reenviar duplicaria tudo).
-      const code =
-        error instanceof Error && /^[a-z_]+$/.test(error.message)
-          ? error.message
-          : "after_create";
-      console.error("[action] /app/requests/new (após criar)", error);
-      return `${destination}${destination.includes("?") ? "&" : "?"}error=${code}`;
-    }
-    return destination;
-  });
+      const base = requestBaseSchema.parse({
+        customerId:
+          user.role === "customer" ? user.partyId : str(form, "customerId"),
+        deadline: str(form, "deadline") || null,
+        notes: str(form, "notes") || null,
+      });
+      const created = await createRequestBatch(
+        user,
+        {
+          ...base,
+          // Wellmix em nome do cliente: o login do cliente que solicitou.
+          requestedForUserId: isWellmix(user)
+            ? str(form, "requestedForUserId") || null
+            : null,
+        },
+        items,
+      );
+      const first = created[0];
+      const destination =
+        created.length === 1
+          ? `/app/requests/${first.id}`
+          : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
+      // Só a linha 0 recebe a busca por foto/link e a programação de compra; se
+      // o usuário a removeu, não há a que ligar.
+      const presetPos = rows.findIndex((r) => r.index === 0);
+      const preset = presetPos >= 0 ? created[presetPos] : null;
+      try {
+        // Programação de compra: a solicitação nasce dela e a programação fica "confirmada".
+        const scheduleId = str(form, "scheduleId");
+        if (scheduleId && preset && isWellmix(user)) {
+          const schedule = await store.get("purchase_schedules", scheduleId);
+          // Só a programação do mesmo cliente (a tela preenche o cliente por ela).
+          if (
+            schedule &&
+            !schedule.requestId &&
+            (!schedule.customerId || schedule.customerId === preset.customerId)
+          )
+            await store.update("purchase_schedules", scheduleId, {
+              requestId: preset.id,
+              status: "confirmed",
+            });
+        }
+        // Anexos de cada produto fora do catálogo vão para a solicitação dele.
+        for (const [i, row] of rows.entries()) {
+          for (const file of row.attachments) {
+            await uploadDocument(user, file, {
+              requestId: created[i].id,
+              type: "attachment",
+              visibility: "internal",
+            });
+          }
+        }
+        // Busca por foto/link: a foto enviada vira anexo da solicitação da linha 0.
+        const lookupId = str(form, "lookupId");
+        if (lookupId && preset) {
+          const { attachLookupToRequest } =
+            await import("@/lib/services/product-lookup");
+          await attachLookupToRequest(user, lookupId, preset.id);
+        }
+      } catch (error) {
+        // As solicitações já existem: leva o usuário até elas com o aviso, em vez
+        // de voltar ao formulário vazio (reenviar duplicaria tudo).
+        const code =
+          error instanceof Error && /^[a-z_]+$/.test(error.message)
+            ? error.message
+            : "after_create";
+        console.error("[action] /app/requests/new (após criar)", error);
+        return `${destination}${destination.includes("?") ? "&" : "?"}error=${code}`;
+      }
+      return destination;
+    },
+  );
 }
 
 /** Wellmix define ou troca o login solicitante (só ele, no cliente, vê a solicitação e o pedido). */

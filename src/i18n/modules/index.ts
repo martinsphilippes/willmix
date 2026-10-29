@@ -43,6 +43,7 @@ import * as sla from "./sla";
 import * as requestProduct from "./request-product";
 import * as requestDelete from "./request-delete";
 import * as productDelete from "./product-delete";
+import * as requestAdd from "./request-add";
 import * as pricing from "./pricing";
 import * as quoteSheet from "./quote-sheet";
 import * as freight from "./freight";
@@ -108,6 +109,7 @@ export const modulesPt = {
   ...requestProduct.pt,
   ...requestDelete.pt,
   ...productDelete.pt,
+  ...requestAdd.pt,
   ...pricing.pt,
   ...quoteSheet.pt,
   ...freight.pt,
@@ -176,6 +178,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...requestProduct.en,
   ...requestDelete.en,
   ...productDelete.en,
+  ...requestAdd.en,
   ...pricing.en,
   ...quoteSheet.en,
   ...freight.en,
@@ -244,6 +247,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...requestProduct.zh,
   ...requestDelete.zh,
   ...productDelete.zh,
+  ...requestAdd.zh,
   ...pricing.zh,
   ...quoteSheet.zh,
   ...freight.zh,

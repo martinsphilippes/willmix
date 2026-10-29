@@ -33,6 +33,7 @@ import {
   RFQ_OPEN_STATUSES,
   batchSiblings,
   getRequestForUser,
+  canAddProducts,
 } from "@/lib/services/requests";
 import { variantSnapshotSummary } from "@/lib/services/variant-sales";
 import {
@@ -350,6 +351,17 @@ export default async function RequestDetailPage({
                   : { label: t("messages.chatWellmix") },
               ]}
             />
+            {/* Wellmix: mais produtos nesta solicitação antes do pedido
+                (entram no mesmo lote, com o mesmo número). */}
+            {canAddProducts(user, request) ? (
+              <LinkButton
+                href={`/app/requests/new?addTo=${request.id}`}
+                variant="secondary"
+                data-add-product
+              >
+                {t("reqAdd.button")}
+              </LinkButton>
+            ) : null}
             {request.orderId ? (
               <LinkButton
                 href={`/app/orders/${request.orderId}`}
