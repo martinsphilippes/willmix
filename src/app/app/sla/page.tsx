@@ -22,10 +22,8 @@ import {
   formatDate,
   rowClass,
 } from "@/components/ui";
-import {
-  ChatOpenButton,
-  chatTargetFromHref,
-} from "@/components/chat-open-button";
+import { ChatOpenButton } from "@/components/chat-open-button";
+import { chatTargetFromHref } from "@/lib/chat-target";
 import {
   ALL,
   UNASSIGNED,

@@ -10,7 +10,8 @@ import {
   rowClass,
   type Tone,
 } from "./ui";
-import { ChatOpenButton, chatTargetFromHref } from "./chat-open-button";
+import { ChatOpenButton } from "./chat-open-button";
+import { chatTargetFromHref } from "@/lib/chat-target";
 
 /*
  * Painel de Pedidos com filtro em todas as colunas (texto ou lista) e

@@ -10,11 +10,8 @@ import {
   chatThreadAction,
 } from "@/app/app/actions/chat";
 import type { ChatContext, ConversationView } from "@/lib/services/messages";
-import {
-  CHAT_EVENT,
-  ChatIcon,
-  type ChatTargetDetail,
-} from "./chat-open-button";
+import { ChatIcon } from "./chat-open-button";
+import { CHAT_EVENT, type ChatTargetDetail } from "@/lib/chat-target";
 import { cx } from "./ui";
 
 /*

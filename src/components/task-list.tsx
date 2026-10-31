@@ -26,7 +26,8 @@ import {
   rowClass,
 } from "./ui";
 import { QuoteSentNotice } from "./quote-sent-notice";
-import { ChatOpenButton, chatTargetFromHref } from "./chat-open-button";
+import { ChatOpenButton } from "./chat-open-button";
+import { chatTargetFromHref } from "@/lib/chat-target";
 
 /*
  * Pendências: a lista vem do serviço já ordenada pelo prazo (atrasadas,

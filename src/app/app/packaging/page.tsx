@@ -19,6 +19,7 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Briefings de embalagem da agência (a Wellmix vê todos), abertos primeiro. */
 export default async function PackagingListPage() {
@@ -61,12 +62,20 @@ export default async function PackagingListPage() {
                   data-status={brief.status}
                 >
                   <Td>
-                    <Link
-                      href={`/app/packaging/${brief.id}`}
-                      className={linkClass}
-                    >
-                      {request?.productName ?? "—"}
-                    </Link>
+                    <span className="inline-flex items-center gap-1">
+                      <Link
+                        href={`/app/packaging/${brief.id}`}
+                        className={linkClass}
+                      >
+                        {request?.productName ?? "—"}
+                      </Link>
+                      {request ? (
+                        <ChatOpenButton
+                          target={{ requestId: request.id }}
+                          label={t("chat.open")}
+                        />
+                      ) : null}
+                    </span>
                     {request ? (
                       <span className="block text-xs text-zinc-500">
                         {request.quantity.toLocaleString(t.intl)} {request.unit}

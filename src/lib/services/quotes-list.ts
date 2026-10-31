@@ -14,6 +14,8 @@ export interface QuoteRow {
   id: string;
   status: QuoteStatus;
   productName: string;
+  /** Solicitação da cotação (o chat abre por ela). */
+  requestId: string;
   requestNumber: number | null;
   quantity: number;
   unit: string;
@@ -66,6 +68,7 @@ export async function quotesForUser(user: User): Promise<QuoteRow[]> {
       // Solicitação cancelada/excluída: nenhuma cotação dela vira pedido.
       status: requestCancelled ? "rejected" : quote.status,
       productName: request.productName,
+      requestId: request.id,
       requestNumber: request.number ?? null,
       quantity: request.quantity,
       unit: request.unit,

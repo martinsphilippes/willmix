@@ -22,6 +22,7 @@ import {
   rowClass,
   type Tone,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /*
  * Cotações do fornecedor (a Wellmix vê todas): para responder, enviadas
@@ -130,12 +131,18 @@ export default async function QuotesPage({
                   return (
                     <tr key={q.id} className={rowClass} data-quote-row={q.id}>
                       <Td className="min-w-44">
-                        <TextLink
-                          href={`/app/quotes/${q.id}`}
-                          className="font-medium"
-                        >
-                          {q.productName}
-                        </TextLink>
+                        <span className="inline-flex items-center gap-1">
+                          <TextLink
+                            href={`/app/quotes/${q.id}`}
+                            className="font-medium"
+                          >
+                            {q.productName}
+                          </TextLink>
+                          <ChatOpenButton
+                            target={{ requestId: q.requestId }}
+                            label={t("chat.open")}
+                          />
+                        </span>
                         {q.requestNumber ? (
                           <span className="block text-xs tabular-nums text-zinc-500">
                             {t("requests.numbered", { n: q.requestNumber })}
