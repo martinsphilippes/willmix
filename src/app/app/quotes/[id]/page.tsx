@@ -364,7 +364,7 @@ export default async function QuotePage({
           apontam para ele pelo atributo `form`. */}
       {/* Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
           o <form> é display: contents para os cards entrarem na grade. */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 lg:grid-cols-2" data-sheet-sections-root>
         {sheetView && (canFillSheet || isWellmix(user)) ? (
           // Foto do quadro preenchido à mão: a IA preenche a ficha e aponta
           // o que diverge (a Wellmix decide qual vale).
@@ -455,6 +455,7 @@ export default async function QuotePage({
                   : null
               }
               missing={canFillSheet ? sheetMissing : []}
+              sectionsMissing={sheetMissing}
               ncmSuggestions={
                 sheetView.access.editCustoms
                   ? ncmChipsView(

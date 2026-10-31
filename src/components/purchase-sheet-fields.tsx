@@ -34,6 +34,12 @@ import {
 } from "./carton-texts";
 import { MAX_PANTONE_PER_SHEET } from "@/lib/pantone";
 import { SupplierPicker, type SupplierOption } from "./supplier-picker";
+import { SheetSectionsNav } from "./sheet-sections";
+import {
+  initialSheetSection,
+  sheetSectionsView,
+  type SheetSectionKey,
+} from "./sheet-sections-view";
 
 /*
  * Campos da ficha de compra (planilha COMPRAS), usados dentro de um <form>:
@@ -61,6 +67,8 @@ export function PurchaseSheetFields({
   supplierOptions = null,
   supplierId = null,
   missing = [],
+  sectionsMissing = missing,
+  photosHref,
   orderQuantity = null,
   targetQuantity = null,
   ncmRates = null,
@@ -91,6 +99,14 @@ export function PurchaseSheetFields({
   supplierId?: string | null;
   /** Campos obrigatórios ainda vazios: ficam em vermelho e o aviso leva até eles. */
   missing?: readonly string[];
+  /**
+   * O que falta na tabela de blocos (uma linha por bloco, no alto da ficha).
+   * Por padrão é `missing`; quem só lê a ficha vê o estado real dos blocos
+   * sem os campos em vermelho.
+   */
+  sectionsMissing?: readonly string[];
+  /** Fotos fora da ficha (cadastro do produto): a linha "Fotos" leva até lá. */
+  photosHref?: string;
   /** Alíquotas da tabela pelo NCM da ficha ("II 20% · IPI 0%"): valem com II/IPI vazios. */
   ncmRates?: string | null;
   /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
@@ -116,12 +132,25 @@ export function PurchaseSheetFields({
   const access = { editCustoms };
   const required = t("sheet.required");
   const F = SheetField;
+  // Tabela de blocos no alto: o servidor já abre só o primeiro bloco com
+  // pendência (os outros nascem escondidos); a tabela troca o bloco aberto e
+  // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
+  const nav = sheetSectionsView(t, sectionsMissing, { master, photosHref });
+  const open = initialSheetSection(sectionsMissing, { photosHref });
+  const Section = SheetSection;
   return (
     <>
+      <div className="lg:col-span-2">
+        <SheetSectionsNav
+          sections={nav.sections}
+          labels={nav.labels}
+          initial={open}
+        />
+      </div>
       {/* Fornecedor e Produto lado a lado: primeiro quem vende, depois o que se compra.
           Na ficha do pedido/cotação a página é uma grade de 2 colunas (o <form> é
-          display: contents): daí as classes de ordem e de largura dos cards. */}
-      <div className="grid gap-4 lg:order-1 lg:col-span-2 lg:grid-cols-2">
+          display: contents): daí as classes de ordem e de largura dos blocos. */}
+      <Section open={open} k="supplier" order="lg:order-1">
         <Card title={t("sheet.section.supplier")} dense>
           <Rows>
             <F t={t} m={missing} k="sheetDate" size="sm">
@@ -265,6 +294,8 @@ export function PurchaseSheetFields({
             </div>
           ) : null}
         </Card>
+      </Section>
+      <Section open={open} k="product" order="lg:order-1">
         <Card title={t("sheet.section.product")} dense>
           <Rows>
             <F t={t} m={missing} k="netWeightPcKg" size="xs" req>
@@ -367,10 +398,10 @@ export function PurchaseSheetFields({
             </F>
           </Rows>
         </Card>
-      </div>
+      </Section>
 
       {/* Caixa e embalagem à esquerda, preço e condições à direita. */}
-      <div className="grid gap-4 lg:order-2 lg:col-span-2 lg:grid-cols-2">
+      <Section open={open} k="carton" order="lg:order-2">
         <Card title={t("sheet.section.carton")} dense>
           <Rows>
             <F t={t} m={missing} k="masterCartonQty" size="xs" req>
@@ -514,6 +545,8 @@ export function PurchaseSheetFields({
             </F>
           </Rows>
         </Card>
+      </Section>
+      <Section open={open} k="price" order="lg:order-2">
         <Card title={t("sheet.section.price")} dense>
           <Rows>
             <F t={t} m={missing} k="incoterm" size="xs" req>
@@ -562,348 +595,381 @@ export function PurchaseSheetFields({
             </F>
           </Rows>
         </Card>
-      </div>
+      </Section>
 
-      <Card title={t("sheet.section.schedule")} className="lg:order-3" dense>
-        <Rows>
-          {!master ? (
-            <F t={t} m={missing} k="productionStartAt" size="sm" req>
-              <input
-                type="date"
-                name="productionStartAt"
-                defaultValue={dateValue(sheet.productionStartAt)}
+      <Section open={open} k="schedule" order="lg:order-3">
+        <Card title={t("sheet.section.schedule")} dense>
+          <Rows>
+            {!master ? (
+              <F t={t} m={missing} k="productionStartAt" size="sm" req>
+                <input
+                  type="date"
+                  name="productionStartAt"
+                  defaultValue={dateValue(sheet.productionStartAt)}
+                  disabled={sup}
+                  className={inputDenseClass}
+                />
+              </F>
+            ) : null}
+            <F t={t} m={missing} k="containerType" size="sm">
+              <select
+                name="containerType"
+                defaultValue={view.containerType ?? ""}
                 disabled={sup}
+                className={inputDenseClass}
+              >
+                {view.containerTypes.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} · {c.capacityCbm} m³
+                  </option>
+                ))}
+              </select>
+            </F>
+          </Rows>
+          {master ? (
+            <p className="mt-3 text-xs text-zinc-500">
+              {t("productSheet.scheduleHint")}
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 text-xs text-zinc-500">
+                {t("sheet.lot.intervalHint")}
+              </p>
+              {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
+              <SheetSchedule
+                initialLots={lots.map((l) => ({
+                  departureIntervalDays: l.departureIntervalDays,
+                  masterCartons: l.masterCartons,
+                }))}
+                initial={{
+                  masterCartonQty: sheet.masterCartonQty ?? null,
+                  cbmPerCarton: sheet.cbmPerCarton ?? null,
+                  heightCm: sheet.heightCm ?? null,
+                  widthCm: sheet.widthCm ?? null,
+                  lengthCm: sheet.lengthCm ?? null,
+                  productionStartAt: dateValue(sheet.productionStartAt) || null,
+                  containerType: view.containerType ?? null,
+                }}
+                containerTypes={view.containerTypes}
+                disabled={sup}
+                lotRequired={lotRequired}
+                lot1Missing={missing.includes("lot1")}
+                requested={requestSchedule?.items ?? []}
+                unit={requestUnit}
+                quantity={orderQuantity}
+                target={targetQuantity}
+                labels={{
+                  gen: {
+                    toggle: t("sheet.gen.toggle"),
+                    hint: t("sheet.gen.hint"),
+                    total: t("sheet.gen.total"),
+                    count: t("sheet.gen.count"),
+                    interval: t("sheet.gen.interval"),
+                    days: t("sheet.gen.days", { n: "{n}" }),
+                    custom: t("sheet.gen.custom"),
+                    first: t("sheet.gen.first"),
+                    equals: t("sheet.gen.equals", {
+                      pieces: "{pieces}",
+                      cbm: "{cbm}",
+                    }),
+                    replace: t("sheet.gen.replace"),
+                    submit: t("sheet.gen.submit"),
+                    cancel: t("sheet.gen.cancel"),
+                    done: t("sheet.gen.done", {
+                      total: "{total}",
+                      count: "{count}",
+                      first: "{first}",
+                      days: "{days}",
+                    }),
+                    doneOne: t("sheet.gen.doneOne", {
+                      total: "{total}",
+                      first: "{first}",
+                    }),
+                    undo: t("sheet.gen.undo"),
+                    errorTotal: t("sheet.gen.error.total"),
+                    errorInterval: t("sheet.gen.error.interval"),
+                    errorFirst: t("sheet.gen.error.first"),
+                    fromLots: t("sheet.gen.fromLots"),
+                    fromRequested: t("sheet.gen.fromRequested", {
+                      quantity: "{quantity}",
+                      unit: "{unit}",
+                      perCarton: "{perCarton}",
+                      cartons: "{cartons}",
+                    }),
+                    fromQuantity: t("sheet.gen.fromQuantity", {
+                      quantity: "{quantity}",
+                      unit: "{unit}",
+                      perCarton: "{perCarton}",
+                      cartons: "{cartons}",
+                    }),
+                    extra: t("sheet.gen.extra", {
+                      pieces: "{pieces}",
+                      extra: "{extra}",
+                    }),
+                    needPerCarton: t("sheet.gen.needPerCarton"),
+                    goTo: t("sheet.gen.goTo"),
+                    useCalc: t("sheet.gen.useCalc", { cartons: "{cartons}" }),
+                  },
+                  intl: t.intl,
+                  lotColumn: t("sheet.lot.column"),
+                  interval: t("sheet.lot.interval"),
+                  cartons: t("sheet.lot.cartons"),
+                  pieces: t("sheet.lot.pieces"),
+                  cbm: t("sheet.lot.cbm"),
+                  departure: t("sheet.lot.departure"),
+                  lotTitle: t("sheet.lot.title", { n: "{n}" }),
+                  required,
+                  totalPieces: t("sheet.total.pieces"),
+                  totalCbm: t("sheet.total.cbm"),
+                  totalContainers: t("sheet.total.containers", {
+                    type: "{type}",
+                    capacity: "{capacity}",
+                  }),
+                  live: t("sheet.fill.live"),
+                  fillTitle: t("sheet.fill.title"),
+                  partial: t("sheet.fill.partial"),
+                  add: t("sheet.fill.add"),
+                  addNoPieces: t("sheet.fill.addNoPieces"),
+                  apply: t("sheet.fill.apply"),
+                  remove: t("sheet.fill.remove"),
+                  removeNoPieces: t("sheet.fill.removeNoPieces"),
+                  applyRemove: t("sheet.fill.applyRemove"),
+                  exact: t("sheet.fill.exact"),
+                  full: t("sheet.fill.full"),
+                  need: t("sheet.fill.need"),
+                  applied: t("sheet.fill.applied"),
+                  exactNow: t("sheet.fill.exactNow"),
+                  up: t("sheet.fill.up"),
+                  upNoPieces: t("sheet.fill.upNoPieces"),
+                  applyUp: t("sheet.fill.applyUp"),
+                  down: t("sheet.fill.down"),
+                  downNoPieces: t("sheet.fill.downNoPieces"),
+                  applyDown: t("sheet.fill.applyDown"),
+                  appliedTotal: t("sheet.fill.appliedTotal"),
+                  cbmHigh: t("sheet.fill.cbmHigh"),
+                  cbmHighSize: t("sheet.fill.cbmHighSize"),
+                  cbmMismatch: t("sheet.fill.cbmMismatch"),
+                  qty: {
+                    title: t("sheet.qty.title"),
+                    same: t("sheet.qty.same"),
+                    order: t("sheet.qty.order"),
+                    quote: t("sheet.qty.quote"),
+                    quoteDraft: t("sheet.qty.quoteDraft"),
+                    readonly: t("sheet.qty.readonly"),
+                    paid: t("sheet.qty.paid"),
+                  },
+                  addLot: t("sheet.lot.add"),
+                  removeLot: t("sheet.lot.remove", { n: "{n}" }),
+                  requested: t("sheet.lot.requested", {
+                    quantity: "{quantity}",
+                    unit: "{unit}",
+                    date: "{date}",
+                  }),
+                }}
+              />
+              <p className="mt-2 text-xs text-zinc-500">
+                {t("sheet.total.hint")}
+              </p>
+            </>
+          )}
+        </Card>
+      </Section>
+
+      {/* Despachante e e-commerce lado a lado (menos rolagem). */}
+      <Section open={open} k="customs" order="lg:order-5">
+        <Card title={t("sheet.section.customs")} dense>
+          <Rows>
+            <F
+              t={t}
+              m={missing}
+              k="ncm"
+              size="sm"
+              hint={
+                !access.editCustoms && sheet.ncm
+                  ? t("ncm.sheet.readOnly")
+                  : undefined
+              }
+            >
+              <input
+                name="ncm"
+                inputMode="decimal"
+                maxLength={12}
+                placeholder={t("ph.ncm")}
+                defaultValue={sheet.ncm ?? ""}
+                disabled={!access.editCustoms}
                 className={inputDenseClass}
               />
             </F>
-          ) : null}
-          <F t={t} m={missing} k="containerType" size="sm">
-            <select
-              name="containerType"
-              defaultValue={view.containerType ?? ""}
-              disabled={sup}
-              className={inputDenseClass}
-            >
-              {view.containerTypes.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} · {c.capacityCbm} m³
-                </option>
-              ))}
-            </select>
-          </F>
-        </Rows>
-        {master ? (
-          <p className="mt-3 text-xs text-zinc-500">
-            {t("productSheet.scheduleHint")}
-          </p>
-        ) : (
-          <>
-            <p className="mt-3 text-xs text-zinc-500">
-              {t("sheet.lot.intervalHint")}
-            </p>
-            {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
-            <SheetSchedule
-              initialLots={lots.map((l) => ({
-                departureIntervalDays: l.departureIntervalDays,
-                masterCartons: l.masterCartons,
-              }))}
-              initial={{
-                masterCartonQty: sheet.masterCartonQty ?? null,
-                cbmPerCarton: sheet.cbmPerCarton ?? null,
-                heightCm: sheet.heightCm ?? null,
-                widthCm: sheet.widthCm ?? null,
-                lengthCm: sheet.lengthCm ?? null,
-                productionStartAt: dateValue(sheet.productionStartAt) || null,
-                containerType: view.containerType ?? null,
-              }}
-              containerTypes={view.containerTypes}
-              disabled={sup}
-              lotRequired={lotRequired}
-              lot1Missing={missing.includes("lot1")}
-              requested={requestSchedule?.items ?? []}
-              unit={requestUnit}
-              quantity={orderQuantity}
-              target={targetQuantity}
-              labels={{
-                gen: {
-                  toggle: t("sheet.gen.toggle"),
-                  hint: t("sheet.gen.hint"),
-                  total: t("sheet.gen.total"),
-                  count: t("sheet.gen.count"),
-                  interval: t("sheet.gen.interval"),
-                  days: t("sheet.gen.days", { n: "{n}" }),
-                  custom: t("sheet.gen.custom"),
-                  first: t("sheet.gen.first"),
-                  equals: t("sheet.gen.equals", {
-                    pieces: "{pieces}",
-                    cbm: "{cbm}",
-                  }),
-                  replace: t("sheet.gen.replace"),
-                  submit: t("sheet.gen.submit"),
-                  cancel: t("sheet.gen.cancel"),
-                  done: t("sheet.gen.done", {
-                    total: "{total}",
-                    count: "{count}",
-                    first: "{first}",
-                    days: "{days}",
-                  }),
-                  doneOne: t("sheet.gen.doneOne", {
-                    total: "{total}",
-                    first: "{first}",
-                  }),
-                  undo: t("sheet.gen.undo"),
-                  errorTotal: t("sheet.gen.error.total"),
-                  errorInterval: t("sheet.gen.error.interval"),
-                  errorFirst: t("sheet.gen.error.first"),
-                  fromLots: t("sheet.gen.fromLots"),
-                  fromRequested: t("sheet.gen.fromRequested", {
-                    quantity: "{quantity}",
-                    unit: "{unit}",
-                    perCarton: "{perCarton}",
-                    cartons: "{cartons}",
-                  }),
-                  fromQuantity: t("sheet.gen.fromQuantity", {
-                    quantity: "{quantity}",
-                    unit: "{unit}",
-                    perCarton: "{perCarton}",
-                    cartons: "{cartons}",
-                  }),
-                  extra: t("sheet.gen.extra", {
-                    pieces: "{pieces}",
-                    extra: "{extra}",
-                  }),
-                  needPerCarton: t("sheet.gen.needPerCarton"),
-                  goTo: t("sheet.gen.goTo"),
-                  useCalc: t("sheet.gen.useCalc", { cartons: "{cartons}" }),
-                },
-                intl: t.intl,
-                lotColumn: t("sheet.lot.column"),
-                interval: t("sheet.lot.interval"),
-                cartons: t("sheet.lot.cartons"),
-                pieces: t("sheet.lot.pieces"),
-                cbm: t("sheet.lot.cbm"),
-                departure: t("sheet.lot.departure"),
-                lotTitle: t("sheet.lot.title", { n: "{n}" }),
-                required,
-                totalPieces: t("sheet.total.pieces"),
-                totalCbm: t("sheet.total.cbm"),
-                totalContainers: t("sheet.total.containers", {
-                  type: "{type}",
-                  capacity: "{capacity}",
-                }),
-                live: t("sheet.fill.live"),
-                fillTitle: t("sheet.fill.title"),
-                partial: t("sheet.fill.partial"),
-                add: t("sheet.fill.add"),
-                addNoPieces: t("sheet.fill.addNoPieces"),
-                apply: t("sheet.fill.apply"),
-                remove: t("sheet.fill.remove"),
-                removeNoPieces: t("sheet.fill.removeNoPieces"),
-                applyRemove: t("sheet.fill.applyRemove"),
-                exact: t("sheet.fill.exact"),
-                full: t("sheet.fill.full"),
-                need: t("sheet.fill.need"),
-                applied: t("sheet.fill.applied"),
-                exactNow: t("sheet.fill.exactNow"),
-                up: t("sheet.fill.up"),
-                upNoPieces: t("sheet.fill.upNoPieces"),
-                applyUp: t("sheet.fill.applyUp"),
-                down: t("sheet.fill.down"),
-                downNoPieces: t("sheet.fill.downNoPieces"),
-                applyDown: t("sheet.fill.applyDown"),
-                appliedTotal: t("sheet.fill.appliedTotal"),
-                cbmHigh: t("sheet.fill.cbmHigh"),
-                cbmHighSize: t("sheet.fill.cbmHighSize"),
-                cbmMismatch: t("sheet.fill.cbmMismatch"),
-                qty: {
-                  title: t("sheet.qty.title"),
-                  same: t("sheet.qty.same"),
-                  order: t("sheet.qty.order"),
-                  quote: t("sheet.qty.quote"),
-                  quoteDraft: t("sheet.qty.quoteDraft"),
-                  readonly: t("sheet.qty.readonly"),
-                  paid: t("sheet.qty.paid"),
-                },
-                addLot: t("sheet.lot.add"),
-                removeLot: t("sheet.lot.remove", { n: "{n}" }),
-                requested: t("sheet.lot.requested", {
-                  quantity: "{quantity}",
-                  unit: "{unit}",
-                  date: "{date}",
-                }),
-              }}
-            />
-            <p className="mt-2 text-xs text-zinc-500">
-              {t("sheet.total.hint")}
-            </p>
-          </>
-        )}
-      </Card>
-
-      {/* Despachante e e-commerce lado a lado (menos rolagem). */}
-      <Card title={t("sheet.section.customs")} className="lg:order-5" dense>
-        <Rows>
-          <F
-            t={t}
-            m={missing}
-            k="ncm"
-            size="sm"
-            hint={
-              !access.editCustoms && sheet.ncm
-                ? t("ncm.sheet.readOnly")
-                : undefined
-            }
-          >
-            <input
-              name="ncm"
-              inputMode="decimal"
-              maxLength={12}
-              placeholder={t("ph.ncm")}
-              defaultValue={sheet.ncm ?? ""}
-              disabled={!access.editCustoms}
-              className={inputDenseClass}
-            />
-          </F>
-          {access.editCustoms && ncmSuggestions.length ? (
-            <div className="sm:pl-[11.75rem]">
-              <NcmSuggestions
-                items={ncmSuggestions}
-                labels={{
-                  title: t("ncm.sheet.title"),
-                  use: t("ncm.sheet.use"),
-                  hint: t("ncm.sheet.hint"),
-                  applied: t("ncm.sheet.applied", { ncm: "{ncm}" }),
-                }}
-              />
-            </div>
-          ) : access.editCustoms && !sheet.ncm && ncmHelpLink ? (
-            <p className="text-xs text-zinc-600 sm:pl-[11.75rem]" data-ncm-help>
-              {t("ncm.sheet.none")}{" "}
-              <Link
-                href={ncmHelpLink}
-                target="_blank"
-                className="font-medium text-brand-700 underline"
+            {access.editCustoms && ncmSuggestions.length ? (
+              <div className="sm:pl-[11.75rem]">
+                <NcmSuggestions
+                  items={ncmSuggestions}
+                  labels={{
+                    title: t("ncm.sheet.title"),
+                    use: t("ncm.sheet.use"),
+                    hint: t("ncm.sheet.hint"),
+                    applied: t("ncm.sheet.applied", { ncm: "{ncm}" }),
+                  }}
+                />
+              </div>
+            ) : access.editCustoms && !sheet.ncm && ncmHelpLink ? (
+              <p
+                className="text-xs text-zinc-600 sm:pl-[11.75rem]"
+                data-ncm-help
               >
-                {t("ncm.sheet.requestLink")}
-              </Link>
-            </p>
-          ) : null}
-          <F t={t} m={missing} k="importTaxPercent" size="xs">
-            <Num
-              name="importTaxPercent"
-              value={numValue(sheet.importTaxPercent)}
-              disabled={!access.editCustoms}
-            />
-          </F>
-          <F t={t} m={missing} k="ipiPercent" size="xs">
-            <Num
-              name="ipiPercent"
-              value={numValue(sheet.ipiPercent)}
-              disabled={!access.editCustoms}
-            />
-          </F>
-          {/* II/IPI vazios não são "sem imposto": a conta usa a tabela pelo NCM. */}
-          {ncmRates &&
-          (sheet.importTaxPercent == null || sheet.ipiPercent == null) ? (
-            <p
-              className="text-xs text-zinc-500 sm:pl-[11.75rem]"
-              data-ncm-table-hint
-            >
-              {t("ncm.sheet.tableHint", { rates: ncmRates })}
-            </p>
-          ) : null}
-          {/* Despachante (Fase B): antidumping, média e certificação. */}
-          <F t={t} m={missing} k="dumping" size="xs">
-            <select
-              name="dumping"
-              defaultValue={sheet.dumping ?? ""}
-              disabled={!access.editCustoms}
-              className={inputDenseClass}
-              data-sheet-dumping
-            >
-              <option value="">—</option>
-              <option value="yes">{t("common.yes")}</option>
-              <option value="no">{t("common.no")}</option>
-            </select>
-          </F>
-          {sheet.dumping === "yes" ? (
-            <p
-              className="text-xs font-medium text-amber-800 sm:pl-[11.75rem]"
-              data-dumping-status={
-                sheet.dumpingReleasedAt ? "released" : "held"
-              }
-            >
-              {sheet.dumpingReleasedAt
-                ? t("purchaseFlow.dumping.released")
-                : t("purchaseFlow.dumping.held")}
-            </p>
-          ) : null}
-          <F t={t} m={missing} k="dumpingNote" size="lg">
-            <input
-              name="dumpingNote"
-              maxLength={1000}
-              defaultValue={sheet.dumpingNote ?? ""}
-              disabled={!access.editCustoms}
-              className={inputDenseClass}
-            />
-          </F>
-          <F t={t} m={missing} k="averagePrice" size="xs">
-            <Num
-              name="averagePrice"
-              value={numValue(sheet.averagePrice ?? null)}
-              disabled={!access.editCustoms}
-            />
-          </F>
-          <F t={t} m={missing} k="certificationRequired" size="xs">
-            <select
-              name="certificationRequired"
-              defaultValue={sheet.certificationRequired ?? ""}
-              disabled={!access.editCustoms}
-              className={inputDenseClass}
-            >
-              <option value="">—</option>
-              <option value="yes">{t("common.yes")}</option>
-              <option value="no">{t("common.no")}</option>
-            </select>
-          </F>
-          <F t={t} m={missing} k="certificationNote" size="lg">
-            <input
-              name="certificationNote"
-              maxLength={1000}
-              placeholder={t("purchaseFlow.certificationNote.ph")}
-              defaultValue={sheet.certificationNote ?? ""}
-              disabled={!access.editCustoms}
-              className={inputDenseClass}
-            />
-          </F>
-        </Rows>
-      </Card>
+                {t("ncm.sheet.none")}{" "}
+                <Link
+                  href={ncmHelpLink}
+                  target="_blank"
+                  className="font-medium text-brand-700 underline"
+                >
+                  {t("ncm.sheet.requestLink")}
+                </Link>
+              </p>
+            ) : null}
+            <F t={t} m={missing} k="importTaxPercent" size="xs">
+              <Num
+                name="importTaxPercent"
+                value={numValue(sheet.importTaxPercent)}
+                disabled={!access.editCustoms}
+              />
+            </F>
+            <F t={t} m={missing} k="ipiPercent" size="xs">
+              <Num
+                name="ipiPercent"
+                value={numValue(sheet.ipiPercent)}
+                disabled={!access.editCustoms}
+              />
+            </F>
+            {/* II/IPI vazios não são "sem imposto": a conta usa a tabela pelo NCM. */}
+            {ncmRates &&
+            (sheet.importTaxPercent == null || sheet.ipiPercent == null) ? (
+              <p
+                className="text-xs text-zinc-500 sm:pl-[11.75rem]"
+                data-ncm-table-hint
+              >
+                {t("ncm.sheet.tableHint", { rates: ncmRates })}
+              </p>
+            ) : null}
+            {/* Despachante (Fase B): antidumping, média e certificação. */}
+            <F t={t} m={missing} k="dumping" size="xs">
+              <select
+                name="dumping"
+                defaultValue={sheet.dumping ?? ""}
+                disabled={!access.editCustoms}
+                className={inputDenseClass}
+                data-sheet-dumping
+              >
+                <option value="">—</option>
+                <option value="yes">{t("common.yes")}</option>
+                <option value="no">{t("common.no")}</option>
+              </select>
+            </F>
+            {sheet.dumping === "yes" ? (
+              <p
+                className="text-xs font-medium text-amber-800 sm:pl-[11.75rem]"
+                data-dumping-status={
+                  sheet.dumpingReleasedAt ? "released" : "held"
+                }
+              >
+                {sheet.dumpingReleasedAt
+                  ? t("purchaseFlow.dumping.released")
+                  : t("purchaseFlow.dumping.held")}
+              </p>
+            ) : null}
+            <F t={t} m={missing} k="dumpingNote" size="lg">
+              <input
+                name="dumpingNote"
+                maxLength={1000}
+                defaultValue={sheet.dumpingNote ?? ""}
+                disabled={!access.editCustoms}
+                className={inputDenseClass}
+              />
+            </F>
+            <F t={t} m={missing} k="averagePrice" size="xs">
+              <Num
+                name="averagePrice"
+                value={numValue(sheet.averagePrice ?? null)}
+                disabled={!access.editCustoms}
+              />
+            </F>
+            <F t={t} m={missing} k="certificationRequired" size="xs">
+              <select
+                name="certificationRequired"
+                defaultValue={sheet.certificationRequired ?? ""}
+                disabled={!access.editCustoms}
+                className={inputDenseClass}
+              >
+                <option value="">—</option>
+                <option value="yes">{t("common.yes")}</option>
+                <option value="no">{t("common.no")}</option>
+              </select>
+            </F>
+            <F t={t} m={missing} k="certificationNote" size="lg">
+              <input
+                name="certificationNote"
+                maxLength={1000}
+                placeholder={t("purchaseFlow.certificationNote.ph")}
+                defaultValue={sheet.certificationNote ?? ""}
+                disabled={!access.editCustoms}
+                className={inputDenseClass}
+              />
+            </F>
+          </Rows>
+        </Card>
+      </Section>
 
-      <Card title={t("sheet.section.ecommerce")} className="lg:order-6" dense>
-        <Rows>
-          <F t={t} m={missing} k="ecommerceDescription" size="full">
-            <textarea
-              name="ecommerceDescription"
-              rows={3}
-              maxLength={4000}
-              defaultValue={sheet.ecommerceDescription ?? ""}
-              disabled={sup}
-              className={cx(inputDenseClass, "min-h-16")}
-            />
-          </F>
-          <F t={t} m={missing} k="notes" size="full">
-            <textarea
-              name="notes"
-              rows={2}
-              maxLength={2000}
-              defaultValue={sheet.notes ?? ""}
-              disabled={sup}
-              className={cx(inputDenseClass, "min-h-12")}
-            />
-          </F>
-        </Rows>
-      </Card>
+      <Section open={open} k="ecommerce" order="lg:order-6">
+        <Card title={t("sheet.section.ecommerce")} dense>
+          <Rows>
+            <F t={t} m={missing} k="ecommerceDescription" size="full">
+              <textarea
+                name="ecommerceDescription"
+                rows={3}
+                maxLength={4000}
+                defaultValue={sheet.ecommerceDescription ?? ""}
+                disabled={sup}
+                className={cx(inputDenseClass, "min-h-16")}
+              />
+            </F>
+            <F t={t} m={missing} k="notes" size="full">
+              <textarea
+                name="notes"
+                rows={2}
+                maxLength={2000}
+                defaultValue={sheet.notes ?? ""}
+                disabled={sup}
+                className={cx(inputDenseClass, "min-h-12")}
+              />
+            </F>
+          </Rows>
+        </Card>
+      </Section>
     </>
+  );
+}
+
+/** Bloco da ficha: nasce escondido se não é o aberto; a tabela de blocos troca. */
+function SheetSection({
+  k,
+  open,
+  order,
+  children,
+}: {
+  k: SheetSectionKey;
+  open: SheetSectionKey;
+  /** Ordem na grade de 2 colunas da página (lg:order-…). */
+  order: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      data-sheet-section={k}
+      hidden={k !== open}
+      className={cx(order, k === open && "lg:col-span-2")}
+    >
+      {children}
+    </div>
   );
 }
 
