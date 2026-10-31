@@ -140,6 +140,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "screens",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [

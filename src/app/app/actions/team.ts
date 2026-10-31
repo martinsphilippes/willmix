@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { assertRole } from "@/lib/auth/permissions";
 import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import { SCREENS } from "@/lib/auth/screens";
 import { requireUser, run, str } from "./helpers";
 
 /*
@@ -41,6 +42,24 @@ export async function saveTeamMemberAction(form: FormData) {
                   .getAll("functions")
                   .filter((v): v is string => typeof v === "string"),
               ),
+          }
+        : {}),
+      // Telas: "default" volta ao padrão das funções; "custom" grava as caixas marcadas.
+      ...(form.has("screens.__form")
+        ? {
+            screens:
+              z
+                .enum(["default", "custom"])
+                .parse(str(form, "screensMode") || "default") === "default"
+                ? null
+                : z
+                    .array(z.enum(SCREENS))
+                    .max(SCREENS.length)
+                    .parse(
+                      form
+                        .getAll("screens")
+                        .filter((v): v is string => typeof v === "string"),
+                    ),
           }
         : {}),
     });
