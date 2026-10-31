@@ -32,7 +32,12 @@ import { SubmitButton } from "@/components/submit-button";
 import { saveSettingsAction } from "../actions";
 import { ensureDemoAccountsAction } from "../actions/demo";
 import { demoAccountsEnabled } from "@/lib/demo";
-import { DEMO_PASSWORD, DEMO_USERS, existingDemoAccounts } from "@/lib/seed";
+import {
+  DEMO_PARTIES,
+  DEMO_PASSWORD,
+  DEMO_USERS,
+  existingDemoAccounts,
+} from "@/lib/seed";
 import { testAiAction } from "../actions/vision";
 import { aiErrorText } from "@/i18n/ai-error";
 
@@ -166,13 +171,23 @@ export default async function SettingsPage({
     ? DEMO_USERS.filter((u) => !demoExisting.has(u.email))
     : [];
   const demoCreated = typeof demo === "string" ? Number(demo) : null;
+  // Só e-mails de demonstração conhecidos e motivos com texto traduzido: a
+  // URL não vira um canal de texto livre na tela do admin.
+  const demoEmails = new Set([
+    ...DEMO_USERS.map((u) => u.email),
+    ...DEMO_PARTIES.map((p) => p.email),
+  ]);
   const demoFailures =
     typeof demoFailed === "string" && demoFailed
-      ? demoFailed.split(",").map((item) => {
-          const [email, ...rest] = item.split(":");
-          const reason = rest.join(":");
+      ? demoFailed.split(",").flatMap((item) => {
+          const [email, reason] = item.split(":");
+          if (
+            !demoEmails.has(email) ||
+            !/^[a-z][a-z0-9_]{1,59}$/.test(reason ?? "")
+          )
+            return [];
           const key = `settings.demo.reason.${reason}` as DictionaryKey;
-          return `${email}: ${t(key) !== key ? t(key) : reason}`;
+          return t(key) !== key ? [`${email}: ${t(key)}`] : [];
         })
       : [];
 
