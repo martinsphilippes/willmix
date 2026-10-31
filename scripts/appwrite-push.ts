@@ -440,6 +440,13 @@ async function verifySchema(): Promise<string[]> {
           `${where}: tamanho ${current.size} em produção, esquema pede ${col.size ?? 255}`,
         );
     }
+    // Coluna que só existe em produção (criada no console): informação, não
+    // erro; obrigatória, porém, recusa toda linha nova que o portal grava.
+    for (const [key, c] of live)
+      if (!(key in def.columns))
+        (c.required ? problems : extras).push(
+          `${tableId}.${key}: só em produção (${c.type}${c.required ? ", obrigatória" : ""})`,
+        );
     const indexes = new Set(await listAllIndexKeys(tableId));
     for (const idx of def.indexes ?? [])
       if (!indexes.has(idx.key))
@@ -447,6 +454,7 @@ async function verifySchema(): Promise<string[]> {
   }
   return problems;
 }
+const extras: string[] = [];
 
 await ensureDatabase();
 const names = Object.keys(TABLES) as TableName[];
@@ -457,6 +465,7 @@ for (const name of names) await ensureIndexes(name);
 await ensureBucket();
 console.log(`✓ Esquema publicado: ${names.length} tabelas, 1 bucket.`);
 const problems = await verifySchema();
+for (const line of extras) console.log(`  i ${line}`);
 if (problems.length) {
   console.error(
     `✗ Conferência: ${problems.length} diferença(s) entre produção e o esquema:`,
