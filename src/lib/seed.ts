@@ -422,8 +422,17 @@ export async function seedDemo(): Promise<{
 
   for (const party of DEMO_PARTIES) await createDemoParty(party);
 
+  // Uma conta que falhe (ex.: login já existia no Appwrite Auth) não
+  // interrompe a carga: linhas, produtos e o resto ainda são criados, e a
+  // conta pode ser completada depois em Configurações.
   const users: User[] = [];
-  for (const u of DEMO_USERS) users.push(await createDemoUser(u));
+  for (const u of DEMO_USERS) {
+    try {
+      users.push(await createDemoUser(u));
+    } catch (error) {
+      console.error("[seed] conta de demonstração não criada", u.email, error);
+    }
+  }
 
   // Brinquedos e infláveis exigem Inmetro; utilidades (usada pelo E2E) não exige nada.
   const lines: Array<{
@@ -685,8 +694,10 @@ export async function seedDemo(): Promise<{
     users,
     added: {
       parties: DEMO_PARTIES.map((p) => p.id),
-      users: DEMO_USERS.map((u) => u.email),
-      failed: [],
+      users: users.map((u) => u.email),
+      failed: DEMO_USERS.filter(
+        (u) => !users.some((c) => c.email === u.email),
+      ).map((u) => ({ email: u.email, reason: "unexpected" })),
     },
   };
 }
