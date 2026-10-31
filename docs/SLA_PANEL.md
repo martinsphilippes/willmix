@@ -45,6 +45,7 @@ Até aqui, todos os logins da Wellmix viam a mesma lista de Pendências. Nada er
    - RFQ aberta sem resposta depois do prazo da solicitação;
    - embalagem da agência vencida.
 5. SLA cumprido: etapas concluídas nos últimos 30 dias, com prazo, concluídas até o dia do prazo (dia em Brasília), por dono da carteira.
+   5a. Mensagens (Controladoria de mensagens, `/app/messages/control`): quem escreve por último passa a bola ao outro lado. Assunto com a bola na Wellmix vira pendência "Responder {empresa}" (`message_reply`) com prazo de 1 dia útil contado da última mensagem (sexta 15h → segunda 15h); o dono é o último login da Wellmix que escreveu no assunto (ninguém ainda → "Sem responsável"). A controladoria mostra, por assunto, com quem está a bola, há quanto tempo o outro lado espera, o prazo, a última mensagem e o analista; indicadores (com a Wellmix, atrasadas, com a empresa, respondidas no prazo e tempo médio nos últimos 30 dias), filtros por empresa e produto, visão por produto e CSV. Operador vê os assuntos em que escreveu e os sem analista; administrador vê todos (e pode pedir "só os meus"). Quem é de fora não abre a controladoria.
 6. Só o administrador muda cargo, chefe, divisão do analista e divisão da linha. São recusados: chefe de si mesmo e ciclo (o chefe escolhido está abaixo da pessoa). Tudo vai para o histórico (`team.member`, `team.line_division`, `team.distribute`).
 
 ## 6. Telas

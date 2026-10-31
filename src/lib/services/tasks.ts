@@ -33,7 +33,8 @@ export type TaskKind =
   | "sku_inspection"
   | "sku_fix"
   | "import_step"
-  | "import_validate";
+  | "import_validate"
+  | "message_reply";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -777,6 +778,30 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             orderNumber: p.order.number,
             customerId: p.order.customerId,
             ownerUserId: p.order.ownerUserId ?? null,
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Mensagens que a Wellmix deve responder (Controladoria de mensagens):
+  // prazo de 1 dia útil; o analista é quem escreveu por último pela Wellmix.
+  if (wellmix) {
+    const { wellmixMessageDebts } = await import("./message-control");
+    for (const m of await wellmixMessageDebts(now)) {
+      tasks.push(
+        finish(
+          {
+            kind: "message_reply",
+            title: `Responder ${m.partyName}`,
+            detail: `${m.title ?? "Geral"} · ${m.lastAuthorName}: ${m.lastPreview}`,
+            link: m.href,
+            chat: m.orderItemId
+              ? undefined
+              : { orderId: m.orderId, requestId: m.requestId },
+            dueAt: m.dueAt,
+            customerId: m.customerId,
+            ownerUserId: m.analystId,
           },
           now,
         ),

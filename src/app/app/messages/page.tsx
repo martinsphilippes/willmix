@@ -30,14 +30,12 @@ import {
   PageHeader,
   Select,
   Textarea,
+  TextLink,
   cx,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { FileAutoInput } from "@/components/file-auto-input";
-import {
-  MarkTopicRead,
-  MessagesAutoRefresh,
-} from "@/components/messages-live";
+import { MarkTopicRead, MessagesAutoRefresh } from "@/components/messages-live";
 import {
   postMessageAction,
   startConversationAction,
@@ -149,6 +147,13 @@ export default async function MessagesPage({
           wellmix
             ? t("messages.subtitle.wellmix")
             : t("messages.subtitle.external")
+        }
+        actions={
+          wellmix ? (
+            <TextLink href="/app/messages/control" data-msgctl-link>
+              {t("msgctl.link")}
+            </TextLink>
+          ) : null
         }
       />
       <ActionError
@@ -446,7 +451,8 @@ function Thread({
                       )}
                     </a>
                   ) : null}
-                  {m.attachment && m.body === `📎 ${m.attachment.name}` ? null : (
+                  {m.attachment &&
+                  m.body === `📎 ${m.attachment.name}` ? null : (
                     <p className="whitespace-pre-wrap break-words">{m.body}</p>
                   )}
                 </div>
@@ -460,7 +466,11 @@ function Thread({
         )}
       </div>
       <form action={postMessageAction} className="mt-3 space-y-2" data-composer>
-        <input type="hidden" name="conversationId" value={view.conversation.id} />
+        <input
+          type="hidden"
+          name="conversationId"
+          value={view.conversation.id}
+        />
         <input type="hidden" name="topicId" value={view.topic.id} />
         <Field
           label={t("messages.body.label")}

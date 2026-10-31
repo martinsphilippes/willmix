@@ -6,6 +6,10 @@ import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
 import type { PurchaseSheet } from "@/lib/db";
 import { canReleaseDumping } from "@/lib/services/purchase-flow";
+import {
+  ADDABLE_SHEET_PHOTO_KINDS,
+  SHEET_PHOTO_KINDS,
+} from "@/lib/services/purchase-sheet";
 import { releaseDumpingAction } from "../../actions/purchase-flow";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -456,6 +460,7 @@ export default async function QuotePage({
               }
               missing={canFillSheet ? sheetMissing : []}
               sectionsMissing={sheetMissing}
+              audience={user.role === "supplier" ? "supplier" : "wellmix"}
               ncmSuggestions={
                 sheetView.access.editCustoms
                   ? ncmChipsView(
@@ -483,6 +488,11 @@ export default async function QuotePage({
             hint={t("quoteSheet.photosHint")}
             className="lg:order-4"
             missing={canFillSheet ? sheetMissing : []}
+            kinds={
+              user.role === "supplier"
+                ? SHEET_PHOTO_KINDS
+                : ADDABLE_SHEET_PHOTO_KINDS
+            }
           />
         ) : null}
         {sheetView &&

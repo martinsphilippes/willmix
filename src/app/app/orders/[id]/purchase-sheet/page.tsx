@@ -13,7 +13,9 @@ import { Alert, Badge, LinkButton, PageHeader, Select } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
 import {
+  ADDABLE_SHEET_PHOTO_KINDS,
   QUANTITY_FOLLOWS_SHEET,
+  SHEET_PHOTO_KINDS,
   getSheetForUser,
   supplierPaymentRegistered,
 } from "@/lib/services/purchase-sheet";
@@ -294,6 +296,7 @@ export default async function PurchaseSheetPage({
             }
             missing={shownMissing}
             sectionsMissing={missing}
+            audience={user.role === "supplier" ? "supplier" : "wellmix"}
             ncmSuggestions={
               access.editCustoms
                 ? ncmChipsView(
@@ -319,6 +322,11 @@ export default async function PurchaseSheetPage({
           coveredKinds={view.catalogPhotoKinds}
           className="lg:order-4"
           missing={shownMissing}
+          kinds={
+            user.role === "supplier"
+              ? SHEET_PHOTO_KINDS
+              : ADDABLE_SHEET_PHOTO_KINDS
+          }
         />
 
         {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}

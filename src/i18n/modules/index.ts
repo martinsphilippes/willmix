@@ -6,6 +6,7 @@
 import * as catalog from "./catalog";
 import * as productSuppliers from "./product-suppliers";
 import * as sheetMissing from "./sheet-missing";
+import * as messageControl from "./message-control";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
@@ -153,6 +154,7 @@ export const modulesPt = {
   ...requestSchedule.pt,
   ...productSuppliers.pt,
   ...sheetMissing.pt,
+  ...messageControl.pt,
   ...productPhotos.pt,
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
@@ -232,6 +234,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...requestSchedule.en,
   ...productSuppliers.en,
   ...sheetMissing.en,
+  ...messageControl.en,
   ...productPhotos.en,
   ...sheetGenerate.en,
   ...notificationsDelete.en,
@@ -311,6 +314,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...requestSchedule.zh,
   ...productSuppliers.zh,
   ...sheetMissing.zh,
+  ...messageControl.zh,
   ...productPhotos.zh,
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,

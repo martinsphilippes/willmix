@@ -19,6 +19,7 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Pedidos de frete da companhia marítima (a Wellmix vê todos). */
 export default async function FreightListPage({
@@ -90,9 +91,15 @@ export default async function FreightListPage({
                   data-freight-status={f.status}
                 >
                   <Td>
-                    <Link href={`/app/freight/${f.id}`} className={linkClass}>
-                      {request?.productName ?? "—"}
-                    </Link>
+                    <span className="inline-flex items-center gap-1">
+                      <Link href={`/app/freight/${f.id}`} className={linkClass}>
+                        {request?.productName ?? "—"}
+                      </Link>
+                      <ChatOpenButton
+                        target={{ requestId: f.requestId }}
+                        label={t("chat.open")}
+                      />
+                    </span>
                     <span className="mt-1 block">
                       <Badge
                         tone={

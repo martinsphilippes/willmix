@@ -32,6 +32,7 @@ import {
   sourcingTone,
   visitTone,
 } from "./_components/shared";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Chip de filtro: selecionado na cor da marca, demais neutros (mesmo padrão de Parceiros). */
 const chipClass = (selected: boolean) =>
@@ -267,6 +268,10 @@ export default async function SourcingPage({
                             >
                               {t("catalog.sourcing.demand.open")}
                             </TextLink>
+                            <ChatOpenButton
+                              target={{ requestId: item.requestId }}
+                              label={t("chat.open")}
+                            />
                           </span>
                         ) : null}
                       </Td>

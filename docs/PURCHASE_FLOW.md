@@ -17,7 +17,7 @@ Tudo é registrado na auditoria (`dumping.flag`, `dumping.release`, `average.cha
 
 ## Fotos HD e faca (die cut)
 
-A ficha aceita mais dois tipos de foto, opcionais: **Foto em alta (HD)** e **Faca (die cut)**. Não contam para "ficha completa".
+A ficha aceita mais dois tipos de foto, opcionais: **Foto em alta (HD)** e **Faca (die cut)**. Não contam para "ficha completa". Só a Wellmix as adiciona na ficha (a faca vem do briefing de embalagem da agência): o fornecedor vê na sua ficha apenas as 5 fotos obrigatórias, os blocos dele (Fornecedor, Produto, Caixa, Preço, Programação) e o container do cálculo só para ver; Despachante e Descrição para e-commerce são da Wellmix e não aparecem para ele.
 
 ## Validações da Wellmix na Preparação
 

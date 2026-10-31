@@ -3,6 +3,7 @@
  * filtros por prazo e por tipo): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "tasks.group.message_reply": "Responder mensagem",
   "tasks.sortHint": "Ordenadas pelo prazo: as mais urgentes primeiro.",
   "tasks.filter.due": "Prazo",
   "tasks.filter.type": "Tipo",
@@ -36,6 +37,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "tasks.group.message_reply": "Reply to message",
   "tasks.sortHint": "Sorted by due date: most urgent first.",
   "tasks.filter.due": "Due",
   "tasks.filter.type": "Type",
@@ -69,6 +71,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "tasks.group.message_reply": "回复消息",
   "tasks.sortHint": "按截止日期排序：最紧急的在前。",
   "tasks.filter.due": "期限",
   "tasks.filter.type": "类型",
