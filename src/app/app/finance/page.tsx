@@ -23,6 +23,7 @@ import {
   formatMoney,
   rowClass,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Valor no card: um pouco menor que o padrão do Stat, para caber seis cards numa linha. */
 function Money({ children }: { children: ReactNode }) {
@@ -174,9 +175,15 @@ export default async function FinancePage() {
               {rows.map((r) => (
                 <tr key={r.order.id} className={rowClass}>
                   <Td>
-                    <TextLink href={`/app/orders/${r.order.id}`}>
-                      #{r.order.number}
-                    </TextLink>
+                    <span className="inline-flex items-center gap-1">
+                      <TextLink href={`/app/orders/${r.order.id}`}>
+                        #{r.order.number}
+                      </TextLink>
+                      <ChatOpenButton
+                        target={{ orderId: r.order.id }}
+                        label={t("chat.open")}
+                      />
+                    </span>
                     {/* Cancelado fica no histórico, mas fora de vendido, custo e margem. */}
                     {r.order.status === "CANCELLED" ? (
                       <div className="mt-0.5">

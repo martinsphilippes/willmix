@@ -39,6 +39,7 @@ import {
   termWhen,
 } from "@/components/supplier-terms-text";
 import { CertificationsSection } from "../products/_components/certifications-section";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Conta corrente do fornecedor: pedidos, valores, pagamentos, saldo. */
 export default async function AccountPage({
@@ -215,9 +216,15 @@ export default async function AccountPage({
                     data-forecast-row={`${payable.order.number}-${i.index}`}
                   >
                     <Td>
-                      <TextLink href={`/app/orders/${payable.order.id}`}>
-                        #{payable.order.number}
-                      </TextLink>
+                      <span className="inline-flex items-center gap-1">
+                        <TextLink href={`/app/orders/${payable.order.id}`}>
+                          #{payable.order.number}
+                        </TextLink>
+                        <ChatOpenButton
+                          target={{ orderId: payable.order.id }}
+                          label={t("chat.open")}
+                        />
+                      </span>
                     </Td>
                     <Td className="whitespace-nowrap">
                       {i.index}/{i.count}{" "}
@@ -295,9 +302,15 @@ export default async function AccountPage({
               {orders.map((o) => (
                 <tr key={o.id} className="bg-zinc-50/80">
                   <Td>
-                    <TextLink href={`/app/orders/${o.id}`}>
-                      #{o.number}
-                    </TextLink>
+                    <span className="inline-flex items-center gap-1">
+                      <TextLink href={`/app/orders/${o.id}`}>
+                        #{o.number}
+                      </TextLink>
+                      <ChatOpenButton
+                        target={{ orderId: o.id }}
+                        label={t("chat.open")}
+                      />
+                    </span>
                   </Td>
                   <Td className="whitespace-nowrap">
                     {formatDate(o.createdAt, t)}
@@ -332,7 +345,15 @@ export default async function AccountPage({
                 return (
                   <tr key={p.id}>
                     <Td className="pl-6">
-                      <span className="text-zinc-500">#{order?.number}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-zinc-500">#{order?.number}</span>
+                        {order ? (
+                          <ChatOpenButton
+                            target={{ orderId: order.id }}
+                            label={t("chat.open")}
+                          />
+                        ) : null}
+                      </span>
                     </Td>
                     <Td className="whitespace-nowrap">
                       {formatDate(p.createdAt, t)}
@@ -441,9 +462,15 @@ export default async function AccountPage({
                   return (
                     <tr key={o.id}>
                       <Td>
-                        <TextLink href={`/app/orders/${o.id}`}>
-                          #{o.number}
-                        </TextLink>
+                        <span className="inline-flex items-center gap-1">
+                          <TextLink href={`/app/orders/${o.id}`}>
+                            #{o.number}
+                          </TextLink>
+                          <ChatOpenButton
+                            target={{ orderId: o.id }}
+                            label={t("chat.open")}
+                          />
+                        </span>
                         {cancelled ? (
                           <span className="ml-2">
                             <Badge tone="danger">{t("stage.CANCELLED")}</Badge>

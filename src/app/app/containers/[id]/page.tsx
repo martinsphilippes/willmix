@@ -39,6 +39,7 @@ import {
   formatNumber,
   formatPercent,
 } from "../_components/shared";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Container (Wellmix): situação, ocupação em CBM e peso, itens e visão comercial. */
 export default async function ContainerPage({
@@ -297,9 +298,15 @@ export default async function ContainerPage({
                   <Td className="font-medium">{item.name}</Td>
                   <Td className="whitespace-nowrap">
                     {item.orderId ? (
-                      <TextLink href={`/app/orders/${item.orderId}`}>
-                        #{view.orderNumbers[item.orderId] ?? "?"}
-                      </TextLink>
+                      <span className="inline-flex items-center gap-1">
+                        <TextLink href={`/app/orders/${item.orderId}`}>
+                          #{view.orderNumbers[item.orderId] ?? "?"}
+                        </TextLink>
+                        <ChatOpenButton
+                          target={{ orderId: item.orderId }}
+                          label={t("chat.open")}
+                        />
+                      </span>
                     ) : (
                       "—"
                     )}
