@@ -942,6 +942,7 @@ export default async function ProductSheetPage({
           action={saveProductSheetAction}
           // Mesma grade de 2 colunas da ficha do pedido: cards pequenos lado a lado.
           className="grid gap-4 lg:grid-cols-2"
+          data-sheet-sections-root
         >
           <input type="hidden" name="productId" value={product.id} />
           <PurchaseSheetFields
@@ -955,6 +956,7 @@ export default async function ProductSheetPage({
             lotRequired={false}
             master
             missing={masterMissing}
+            photosHref="#photos"
             supplierOptions={supplierOptions}
             supplierId={product.supplierId}
             ncmSuggestions={ncmChipsView(

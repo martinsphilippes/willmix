@@ -236,7 +236,7 @@ export default async function PurchaseSheetPage({
           fica fora do <form> e aponta para ele pelo atributo `form`.
           Grade de 2 colunas: Fornecedor | Produto, Caixa | Preço, Programação | Fotos;
           o <form> é display: contents para os cards entrarem na grade. */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2" data-sheet-sections-root>
         {view.access.editSupplier ? (
           <SheetBoardReader
             t={t}
@@ -293,6 +293,7 @@ export default async function PurchaseSheetPage({
                 : null
             }
             missing={shownMissing}
+            sectionsMissing={missing}
             ncmSuggestions={
               access.editCustoms
                 ? ncmChipsView(

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Alert, type Tone } from "./ui";
+import { revealSheetField } from "@/lib/sheet-sections";
 
 export interface MissingItem {
   /** Chave do campo (data-field-anchor do campo na ficha). */
@@ -11,9 +12,8 @@ export interface MissingItem {
 
 /** Leva até o campo: rola até ele, dá foco e pisca a borda. */
 function goToField(key: string) {
-  const el = document.querySelector<HTMLElement>(
-    `[data-field-anchor~="${key}"]`,
-  );
+  // Ficha em blocos: abre antes o bloco do campo (escondido não rola nem foca).
+  const el = revealSheetField(key);
   if (!el) return false;
   const reduce = window.matchMedia?.(
     "(prefers-reduced-motion: reduce)",

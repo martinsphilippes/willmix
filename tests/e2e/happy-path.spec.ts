@@ -16,7 +16,15 @@ const pdf = {
 };
 
 /** Resposta da RFQ: ficha de compra completa (campos obrigatórios), sem fotos. */
+/** Ficha em blocos: abre todos os blocos de uma vez (o teste preenche todos). */
+async function showAllSheetSections(page: Page) {
+  const one = page.locator("button[data-sheet-sections-mode=one]");
+  if (await one.count()) await one.click();
+  await expect(page.locator("button[data-sheet-sections-mode=all]")).toBeVisible();
+}
+
 async function fillQuoteSheet(page: Page, price: string) {
+  await showAllSheetSections(page);
   // Cartão do fabricante (obrigatório para enviar): vem antes da ficha,
   // porque enviar a foto recarrega a página.
   const card = page.locator("[data-manufacturer-card]");
