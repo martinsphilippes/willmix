@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getStore } from "@/lib/db";
+import { getStore, type User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
@@ -13,7 +13,8 @@ import { UserMenu } from "@/components/user-menu";
 import { WellmixLogo } from "@/components/brand";
 import { LogoutButton } from "@/components/logout-button";
 import { DemoSwitcher } from "@/components/demo-switcher";
-import { DEMO_PASSWORD, DEMO_USERS } from "@/lib/seed";
+import { DEMO_PASSWORD, DEMO_USERS, existingDemoAccounts } from "@/lib/seed";
+import { demoAccountsEnabled } from "@/lib/demo";
 import { setLocaleAction } from "./actions";
 import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
@@ -111,11 +112,26 @@ function NotificationsBell({
   );
 }
 
-function demoAccounts(t: Translate) {
-  return DEMO_USERS.map((u) => ({
+/**
+ * Só as contas que existem no banco (um papel novo só entra depois de criado
+ * em Configurações). Quem está logado aparece sempre, mesmo sem ser conta de
+ * demonstração: o seletor mostra quem é, em vez de "escolher" a primeira.
+ */
+function demoAccounts(
+  t: Translate,
+  existing: Set<string>,
+  current: { email: string; name: string; role: User["role"] },
+) {
+  const list = DEMO_USERS.filter((u) => existing.has(u.email)).map((u) => ({
     email: u.email,
     label: `${t(`role.${u.role}`)} · ${u.name}`,
   }));
+  if (!list.some((a) => a.email === current.email))
+    list.unshift({
+      email: current.email,
+      label: `${t(`role.${current.role}`)} · ${current.name}`,
+    });
+  return list;
 }
 
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
@@ -144,9 +160,18 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       ? { label: t(entry.key), items: entry.items.map(link) }
       : link(entry),
   );
-  const showDemo =
-    dataMode() === "memory" ||
-    process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "1";
+  const showDemo = demoAccountsEnabled();
+  // Falha aqui não derruba o portal: o seletor só fica sem as contas.
+  const demoList = showDemo
+    ? demoAccounts(
+        t,
+        await existingDemoAccounts().catch((error: unknown) => {
+          console.error("existingDemoAccounts failed", error);
+          return new Set<string>();
+        }),
+        user,
+      )
+    : [];
   const roleLabel = t(`role.${user.role}`);
   // Não lidas no sino (até 100: o que a caixa de entrada mostra).
   const unread = (
@@ -194,10 +219,14 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
             {showDemo ? (
               <div className="hidden md:block">
                 <DemoSwitcher
-                  accounts={demoAccounts(t)}
+                  accounts={demoList}
                   current={user.email}
                   password={DEMO_PASSWORD}
                   label={t("nav.demo")}
+                  errors={{
+                    missing: t("demo.switch.missing"),
+                    failed: t("demo.switch.failed"),
+                  }}
                 />
               </div>
             ) : null}
@@ -246,11 +275,15 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                       />
                       {showDemo ? (
                         <DemoSwitcher
-                          accounts={demoAccounts(t)}
+                          accounts={demoList}
                           current={user.email}
                           password={DEMO_PASSWORD}
                           label={t("nav.demo")}
                           variant="light"
+                          errors={{
+                            missing: t("demo.switch.missing"),
+                            failed: t("demo.switch.failed"),
+                          }}
                         />
                       ) : null}
                     </div>

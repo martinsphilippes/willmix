@@ -128,178 +128,310 @@ export const DEMO_USERS: Array<{
   },
 ];
 
-/** Cria usuários, parceiros, linhas e produtos de demonstração. Idempotente. */
-export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
+export const DEMO_PARTIES: Array<{
+  id: string;
+  type: Role | "shipping_line";
+  name: string;
+  country: string;
+  email: string;
+  city?: string;
+  contactName?: string;
+  wechat?: string | null;
+  phone?: string;
+  storeNumber?: string;
+  paymentTerms?: PaymentTermInstallment[];
+  operationMode?: OperationMode;
+  radar?: RadarStatus;
+}> = [
+  {
+    id: "cliente-joao",
+    type: "customer",
+    name: "Loja do João Ltda",
+    country: "BR",
+    email: "joao@lojista.com",
+    // Opera via estrutura/trade da Wellmix (não tem RADAR): nenhum gate dispara.
+    operationMode: "via_trade",
+    radar: "none",
+  },
+  {
+    id: "fornecedor-a",
+    type: "supplier",
+    name: "Shenzhen Supplier A",
+    country: "CN",
+    email: "supplier.a@china.com",
+    city: "Shenzhen",
+    contactName: "Li Wei",
+    wechat: "liwei_sz",
+    phone: "+86 755 1234 5678",
+    storeNumber: "A 154678",
+    // Condição de pagamento: 30% no pedido + 70% 90 dias após a entrega.
+    paymentTerms: [
+      { percent: 30, base: "order_created", days: 0 },
+      { percent: 70, base: "delivered", days: 90 },
+    ],
+  },
+  {
+    id: "fornecedor-b",
+    type: "supplier",
+    name: "Guangzhou Supplier B",
+    country: "CN",
+    email: "supplier.b@china.com",
+    city: "Guangzhou",
+    contactName: "Chen Yu",
+    wechat: null,
+  },
+  {
+    id: "fornecedor-c",
+    type: "supplier",
+    name: "Ningbo Supplier C",
+    country: "CN",
+    email: "supplier.c@china.com",
+    city: "Ningbo",
+    contactName: "Wang Fang",
+    wechat: "wangfang_nb",
+    paymentTerms: [{ percent: 100, base: "delivered", days: 60 }],
+  },
+  {
+    id: "agencia",
+    type: "agency",
+    name: "Agência Criativa",
+    country: "BR",
+    email: "agencia@design.com",
+  },
+  {
+    id: "despachante",
+    type: "broker",
+    name: "Comex Despachos",
+    country: "BR",
+    email: "despachante@comex.com",
+  },
+  {
+    id: "armador",
+    type: "shipping_line",
+    name: "Marítima SA",
+    country: "BR",
+    email: "armador@maritima.com",
+  },
+  {
+    id: "transportador",
+    type: "carrier",
+    name: "Trans Rodo",
+    country: "BR",
+    email: "transportadora@rodo.com",
+  },
+  {
+    id: "comex",
+    type: "comex",
+    name: "Assessoria Comex",
+    country: "BR",
+    email: "comex@assessoria.com",
+  },
+  {
+    id: "agente-carga",
+    type: "logistics",
+    name: "Cargo Agentes de Carga",
+    country: "BR",
+    email: "agente@cargo.com",
+  },
+  {
+    id: "ocp",
+    type: "ocp",
+    name: "Certifica OCP",
+    country: "BR",
+    email: "ocp@certifica.com",
+  },
+];
+
+type DemoParty = (typeof DEMO_PARTIES)[number];
+type DemoUser = (typeof DEMO_USERS)[number];
+
+async function createDemoParty(party: DemoParty) {
+  await getStore().create("parties", {
+    ...PARTY_EXTRA_DEFAULTS,
+    id: party.id,
+    type: party.type as never,
+    name: party.name,
+    country: party.country,
+    email: party.email,
+    phone: party.phone ?? null,
+    taxId: null,
+    notes: null,
+    active: true,
+    city: party.city ?? null,
+    ...(party.storeNumber ? { storeNumber: party.storeNumber } : {}),
+    ...(party.paymentTerms ? { paymentTerms: party.paymentTerms } : {}),
+    contactName: party.contactName ?? null,
+    wechat: party.wechat ?? null,
+    operationMode: party.operationMode ?? null,
+    radar: party.radar ?? null,
+  });
+}
+
+/** Conta de demonstração: login no Appwrite Auth (produção) e linha em `users`. */
+async function createDemoUser(u: DemoUser): Promise<User> {
+  const store = getStore();
+  if (store.mode === "appwrite") {
+    // Autenticação fica no Appwrite Auth; a tabela users guarda papel e parceiro.
+    const { createAdminClient } = await import("@/lib/appwrite/server");
+    const { Query } = await import("node-appwrite");
+    const { users: authUsers } = createAdminClient();
+    const found = await authUsers.list({
+      queries: [Query.equal("email", u.email)],
+    });
+    if (found.total === 0)
+      await authUsers.create({
+        userId: "unique()",
+        email: u.email,
+        password: DEMO_PASSWORD,
+        name: u.name,
+      });
+  }
+  return store.create("users", {
+    ...USER_EXTRA_DEFAULTS,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    partyId: u.party,
+    locale: u.locale,
+    passwordHash: store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null,
+    active: true,
+  });
+}
+
+/** E-mails das contas de demonstração que existem no banco (ativas). */
+export async function existingDemoAccounts(): Promise<Set<string>> {
+  const rows = await getStore().list("users", {
+    filter: { email: DEMO_USERS.map((u) => u.email) },
+  });
+  return new Set(rows.filter((u) => u.active).map((u) => u.email));
+}
+
+export interface DemoAccountsResult {
+  /** Empresas e logins criados agora. */
+  parties: string[];
+  users: string[];
+  /** Logins que não puderam ser criados (código do erro para a tela). */
+  failed: Array<{ email: string; reason: string }>;
+}
+
+/**
+ * Cria as empresas e os logins de demonstração que ainda não existem (um
+ * papel novo no portal ganha a conta dele sem recriar o banco). Não mexe no
+ * que já existe. Falha em uma conta não impede as outras.
+ */
+export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
+  const store = getStore();
+  const result: DemoAccountsResult = { parties: [], users: [], failed: [] };
+  const partyIds = DEMO_PARTIES.map((p) => p.id);
+  const haveParties = new Set(
+    (await store.list("parties", { filter: { id: partyIds } })).map(
+      (p) => p.id,
+    ),
+  );
+  for (const party of DEMO_PARTIES) {
+    if (haveParties.has(party.id)) continue;
+    try {
+      await createDemoParty(party);
+      result.parties.push(party.id);
+    } catch (error) {
+      result.failed.push({
+        email: party.email,
+        reason: reasonOf(error, party.id),
+      });
+    }
+  }
+  const haveUsers = new Set(
+    (
+      await store.list("users", {
+        filter: { email: DEMO_USERS.map((u) => u.email) },
+      })
+    ).map((u) => u.email),
+  );
+  for (const u of DEMO_USERS) {
+    if (haveUsers.has(u.email)) continue;
+    // Sem a empresa (falhou acima), o login ficaria órfão; a falha da
+    // empresa já está na lista com esse e-mail.
+    if (
+      u.party &&
+      !haveParties.has(u.party) &&
+      !result.parties.includes(u.party)
+    ) {
+      if (!result.failed.some((f) => f.email === u.email))
+        result.failed.push({ email: u.email, reason: "party_missing" });
+      continue;
+    }
+    try {
+      await createDemoUser(u);
+      result.users.push(u.email);
+    } catch (error) {
+      result.failed.push({ email: u.email, reason: reasonOf(error, u.email) });
+    }
+  }
+  return result;
+}
+
+/**
+ * Código do motivo (a tela traduz; a mensagem inteira vai para o registro do
+ * servidor): esquema ainda não publicado (coluna, tabela ou valor novo de
+ * papel/tipo recusado pelo Appwrite) ou erro inesperado.
+ */
+export function demoFailureReason(
+  error: unknown,
+): "schema_outdated" | "unexpected" {
+  const type = String((error as { type?: unknown } | null)?.type ?? "");
+  const message = error instanceof Error ? error.message : String(error);
+  if (
+    [
+      "document_invalid_structure",
+      "attribute_not_found",
+      "table_not_found",
+      "collection_not_found",
+    ].includes(type) ||
+    /invalid document structure|invalid format|unknown attribute|attribute not found|not found in schema|invalid.*enum|not a valid enum/i.test(
+      message,
+    ) ||
+    /^(table|collection) with the requested id\b.*could not be found/i.test(
+      message,
+    )
+  )
+    return "schema_outdated";
+  return "unexpected";
+}
+
+function reasonOf(error: unknown, who: string) {
+  console.error("[demo] conta de demonstração não criada", who, error);
+  return demoFailureReason(error);
+}
+
+/**
+ * Cria usuários, parceiros, linhas e produtos de demonstração. Idempotente:
+ * com o banco já populado, só completa as contas de demonstração que faltam
+ * (ensureDemoAccounts) e devolve o que criou em `added`.
+ */
+export async function seedDemo(): Promise<{
+  created: boolean;
+  users: User[];
+  added: DemoAccountsResult;
+}> {
   const store = getStore();
   const existing = await store.list("users", { limit: 1 });
   if (existing.length > 0) {
-    return { created: false, users: await store.list("users") };
+    const added = await ensureDemoAccounts();
+    return { created: false, users: await store.list("users"), added };
   }
 
-  const parties: Array<{
-    id: string;
-    type: Role | "shipping_line";
-    name: string;
-    country: string;
-    email: string;
-    city?: string;
-    contactName?: string;
-    wechat?: string | null;
-    phone?: string;
-    storeNumber?: string;
-    paymentTerms?: PaymentTermInstallment[];
-    operationMode?: OperationMode;
-    radar?: RadarStatus;
-  }> = [
-    {
-      id: "cliente-joao",
-      type: "customer",
-      name: "Loja do João Ltda",
-      country: "BR",
-      email: "joao@lojista.com",
-      // Opera via estrutura/trade da Wellmix (não tem RADAR): nenhum gate dispara.
-      operationMode: "via_trade",
-      radar: "none",
-    },
-    {
-      id: "fornecedor-a",
-      type: "supplier",
-      name: "Shenzhen Supplier A",
-      country: "CN",
-      email: "supplier.a@china.com",
-      city: "Shenzhen",
-      contactName: "Li Wei",
-      wechat: "liwei_sz",
-      phone: "+86 755 1234 5678",
-      storeNumber: "A 154678",
-      // Condição de pagamento: 30% no pedido + 70% 90 dias após a entrega.
-      paymentTerms: [
-        { percent: 30, base: "order_created", days: 0 },
-        { percent: 70, base: "delivered", days: 90 },
-      ],
-    },
-    {
-      id: "fornecedor-b",
-      type: "supplier",
-      name: "Guangzhou Supplier B",
-      country: "CN",
-      email: "supplier.b@china.com",
-      city: "Guangzhou",
-      contactName: "Chen Yu",
-      wechat: null,
-    },
-    {
-      id: "fornecedor-c",
-      type: "supplier",
-      name: "Ningbo Supplier C",
-      country: "CN",
-      email: "supplier.c@china.com",
-      city: "Ningbo",
-      contactName: "Wang Fang",
-      wechat: "wangfang_nb",
-      paymentTerms: [{ percent: 100, base: "delivered", days: 60 }],
-    },
-    {
-      id: "agencia",
-      type: "agency",
-      name: "Agência Criativa",
-      country: "BR",
-      email: "agencia@design.com",
-    },
-    {
-      id: "despachante",
-      type: "broker",
-      name: "Comex Despachos",
-      country: "BR",
-      email: "despachante@comex.com",
-    },
-    {
-      id: "armador",
-      type: "shipping_line",
-      name: "Marítima SA",
-      country: "BR",
-      email: "armador@maritima.com",
-    },
-    {
-      id: "transportador",
-      type: "carrier",
-      name: "Trans Rodo",
-      country: "BR",
-      email: "transportadora@rodo.com",
-    },
-    {
-      id: "comex",
-      type: "comex",
-      name: "Assessoria Comex",
-      country: "BR",
-      email: "comex@assessoria.com",
-    },
-    {
-      id: "agente-carga",
-      type: "logistics",
-      name: "Cargo Agentes de Carga",
-      country: "BR",
-      email: "agente@cargo.com",
-    },
-    {
-      id: "ocp",
-      type: "ocp",
-      name: "Certifica OCP",
-      country: "BR",
-      email: "ocp@certifica.com",
-    },
-  ];
-  for (const party of parties) {
-    await store.create("parties", {
-      ...PARTY_EXTRA_DEFAULTS,
-      id: party.id,
-      type: party.type as never,
-      name: party.name,
-      country: party.country,
-      email: party.email,
-      phone: party.phone ?? null,
-      taxId: null,
-      notes: null,
-      active: true,
-      city: party.city ?? null,
-      ...(party.storeNumber ? { storeNumber: party.storeNumber } : {}),
-      ...(party.paymentTerms ? { paymentTerms: party.paymentTerms } : {}),
-      contactName: party.contactName ?? null,
-      wechat: party.wechat ?? null,
-      operationMode: party.operationMode ?? null,
-      radar: party.radar ?? null,
-    });
-  }
+  for (const party of DEMO_PARTIES) await createDemoParty(party);
 
-  const passwordHash =
-    store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null;
+  // Uma conta que falhe (ex.: login já existia no Appwrite Auth) não
+  // interrompe a carga: linhas, produtos e o resto ainda são criados, e a
+  // conta pode ser completada depois em Configurações.
   const users: User[] = [];
   for (const u of DEMO_USERS) {
-    if (store.mode === "appwrite") {
-      // Autenticação fica no Appwrite Auth; a tabela users guarda papel e parceiro.
-      const { createAdminClient } = await import("@/lib/appwrite/server");
-      const { users: authUsers } = createAdminClient();
-      await authUsers
-        .create({
-          userId: "unique()",
-          email: u.email,
-          password: DEMO_PASSWORD,
-          name: u.name,
-        })
-        .catch(() => undefined);
+    try {
+      users.push(await createDemoUser(u));
+    } catch (error) {
+      console.error("[seed] conta de demonstração não criada", u.email, error);
     }
-    users.push(
-      await store.create("users", {
-        ...USER_EXTRA_DEFAULTS,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        partyId: u.party,
-        locale: u.locale,
-        passwordHash,
-        active: true,
-      }),
-    );
   }
 
   // Brinquedos e infláveis exigem Inmetro; utilidades (usada pelo E2E) não exige nada.
@@ -557,5 +689,15 @@ export async function seedDemo(): Promise<{ created: boolean; users: User[] }> {
     notes: null,
     createdByUserId: users[0].id,
   });
-  return { created: true, users };
+  return {
+    created: true,
+    users,
+    added: {
+      parties: DEMO_PARTIES.map((p) => p.id),
+      users: users.map((u) => u.email),
+      failed: DEMO_USERS.filter(
+        (u) => !users.some((c) => c.email === u.email),
+      ).map((u) => ({ email: u.email, reason: "unexpected" })),
+    },
+  };
 }

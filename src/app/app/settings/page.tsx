@@ -30,6 +30,14 @@ import {
 import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { saveSettingsAction } from "../actions";
+import { ensureDemoAccountsAction } from "../actions/demo";
+import { demoAccountsEnabled } from "@/lib/demo";
+import {
+  DEMO_PARTIES,
+  DEMO_PASSWORD,
+  DEMO_USERS,
+  existingDemoAccounts,
+} from "@/lib/seed";
 import { testAiAction } from "../actions/vision";
 import { aiErrorText } from "@/i18n/ai-error";
 
@@ -76,8 +84,17 @@ export default async function SettingsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertRole(user, ["admin"]);
-  const { ok, error, aiTest, aiModel, aiCode, fiscal, fiscalSync } =
-    await searchParams;
+  const {
+    ok,
+    error,
+    aiTest,
+    aiModel,
+    aiCode,
+    fiscal,
+    fiscalSync,
+    demo,
+    demoFailed,
+  } = await searchParams;
   const t = await getT();
   const [s, lineRows, customerRows, fx, fiscalInfo, agencies] =
     await Promise.all([
@@ -147,6 +164,32 @@ export default async function SettingsPage({
       : aiEffective === "mock"
         ? "warning"
         : "neutral";
+  /* Contas de demonstração: quais existem no banco e o que a última criação deu. */
+  const showDemo = demoAccountsEnabled();
+  const demoExisting = showDemo ? await existingDemoAccounts() : new Set();
+  const demoMissing = showDemo
+    ? DEMO_USERS.filter((u) => !demoExisting.has(u.email))
+    : [];
+  const demoCreated = typeof demo === "string" ? Number(demo) : null;
+  // Só e-mails de demonstração conhecidos e motivos com texto traduzido: a
+  // URL não vira um canal de texto livre na tela do admin.
+  const demoEmails = new Set([
+    ...DEMO_USERS.map((u) => u.email),
+    ...DEMO_PARTIES.map((p) => p.email),
+  ]);
+  const demoFailures =
+    typeof demoFailed === "string" && demoFailed
+      ? demoFailed.split(",").flatMap((item) => {
+          const [email, reason] = item.split(":");
+          if (
+            !demoEmails.has(email) ||
+            !/^[a-z][a-z0-9_]{1,59}$/.test(reason ?? "")
+          )
+            return [];
+          const key = `settings.demo.reason.${reason}` as DictionaryKey;
+          return t(key) !== key ? [`${email}: ${t(key)}`] : [];
+        })
+      : [];
 
   /* Seções do formulário em duas colunas (iPad/desktop): cada coluna é um @container e os campos curtos formam grades densas. */
   const section = "space-y-3 border-t border-zinc-100 pt-3";
@@ -228,7 +271,11 @@ export default async function SettingsPage({
                     </Select>
                   </Field>
                   <Field label={t("settings.label.packagingBriefRequired")}>
-                    <input type="hidden" name="packagingBriefRequired.__form" value="1" />
+                    <input
+                      type="hidden"
+                      name="packagingBriefRequired.__form"
+                      value="1"
+                    />
                     <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
                       {(
                         [
@@ -243,7 +290,9 @@ export default async function SettingsPage({
                             type="checkbox"
                             name="packagingBriefRequired"
                             value={key}
-                            defaultChecked={s.packagingBriefRequired.includes(key)}
+                            defaultChecked={s.packagingBriefRequired.includes(
+                              key,
+                            )}
                             className="h-4 w-4 accent-brand-600"
                           />
                           {t(`packBrief.item.${key}`)}
@@ -710,6 +759,77 @@ export default async function SettingsPage({
           <SubmitButton>{t("common.save")}</SubmitButton>
         </form>
       </Card>
+      {/* Contas de demonstração: só com elas ligadas; cria as que faltam. */}
+      {showDemo ? (
+        <Card className="mt-4" title={t("settings.demo.title")}>
+          <div id="demo" className="scroll-mt-4" />
+          <p className="mb-3 text-sm text-zinc-600">
+            {t("settings.demo.intro", { password: DEMO_PASSWORD })}
+          </p>
+          {demoCreated !== null && Number.isFinite(demoCreated) ? (
+            demoCreated > 0 ? (
+              <div className="mb-3">
+                <Alert tone="success">
+                  {t("settings.demo.done", { n: String(demoCreated) })}
+                </Alert>
+              </div>
+            ) : // Com falhas, a lista delas já diz o que houve.
+            demoFailures.length === 0 ? (
+              <div className="mb-3">
+                <Alert tone="info">{t("settings.demo.none")}</Alert>
+              </div>
+            ) : null
+          ) : null}
+          {demoFailures.length ? (
+            <div className="mb-3">
+              <Alert tone="danger">
+                {t("settings.demo.failed", { list: demoFailures.join("; ") })}
+              </Alert>
+            </div>
+          ) : null}
+          <ul
+            className="grid gap-1.5 text-sm sm:grid-cols-2 lg:grid-cols-3"
+            data-demo-accounts
+          >
+            {DEMO_USERS.map((u) => {
+              const exists = demoExisting.has(u.email);
+              return (
+                <li
+                  key={u.email}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200 px-2.5 py-1.5"
+                  data-demo-account={u.email}
+                  data-demo-exists={exists ? "1" : "0"}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-zinc-900">
+                      {t(`role.${u.role}`)} · {u.name}
+                    </span>
+                    <span className="block truncate text-xs text-zinc-500">
+                      {u.email}
+                    </span>
+                  </span>
+                  <Badge tone={exists ? "success" : "warning"}>
+                    {t(
+                      exists ? "settings.demo.exists" : "settings.demo.missing",
+                    )}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+          <form action={ensureDemoAccountsAction} className="mt-3">
+            {demoMissing.length ? (
+              <SubmitButton data-demo-create>
+                {t("settings.demo.create")}
+              </SubmitButton>
+            ) : (
+              <p className="text-sm text-emerald-700">
+                {t("settings.demo.allCreated")}
+              </p>
+            )}
+          </form>
+        </Card>
+      ) : null}
       {/* Tabela fiscal e teste da IA lado a lado. */}
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <FiscalTableCard t={t} status={fiscalInfo} notice={fiscalNotice} />
