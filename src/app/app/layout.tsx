@@ -18,6 +18,7 @@ import { setLocaleAction } from "./actions";
 import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { ChatDrawer } from "@/components/chat-drawer";
 import { SelectOnFocus } from "@/components/select-on-focus";
 import { SubmitTracker } from "@/components/field-errors";
 import { MissingLive } from "@/components/missing-live";
@@ -314,6 +315,29 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         </Suspense>
         {children}
       </main>
+      {/* Painel lateral de chat: abre de qualquer linha com o ícone de conversa. */}
+      <ChatDrawer
+        labels={{
+          title: t("chat.title"),
+          with: t("chat.with"),
+          about: t("chat.about"),
+          wholeOrder: t("chat.whole.order"),
+          wholeRequest: t("chat.whole.request"),
+          openFull: t("chat.openFull"),
+          close: t("chat.close"),
+          loading: t("chat.loading"),
+          noParticipants: t("chat.noParticipants"),
+          error: t("chat.error"),
+          attachHint: t("chat.attachHint"),
+          send: t("messages.send"),
+          sending: t("messages.sending"),
+          placeholder: t("messages.body.placeholder"),
+          you: t("messages.you"),
+          wellmix: t("messages.side.wellmix"),
+          empty: t("messages.empty.thread"),
+          intl: t.intl,
+        }}
+      />
       <footer className="border-t border-zinc-200 bg-white">
         <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 text-xs text-zinc-500">
           <div className="flex items-center gap-3">

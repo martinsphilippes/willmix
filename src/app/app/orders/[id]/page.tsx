@@ -24,6 +24,7 @@ import {
 } from "@/lib/auth/permissions";
 import { stageVisibleTo } from "@/lib/order-view";
 import { ChatButtons } from "@/components/chat-buttons";
+import { ChatOpenButton } from "@/components/chat-open-button";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -602,10 +603,18 @@ export default async function OrderPage({
         title={t("orders.number", { number: order.number })}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <span>
-              {items
-                .map((i) => `${i.name} · ${i.quantity} ${i.unit}`)
-                .join("; ")}
+            {/* Cada item com o seu ícone de chat: a conversa desce até o produto. */}
+            <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+              {items.map((i, index) => (
+                <span key={i.id} className="inline-flex items-center">
+                  {index > 0 ? <span className="mr-1">;</span> : null}
+                  {`${i.name} · ${i.quantity} ${i.unit}`}
+                  <ChatOpenButton
+                    target={{ orderId: order.id, orderItemId: i.id }}
+                    label={`${t("chat.openItem")}: ${i.name}`}
+                  />
+                </span>
+              ))}
             </span>
             <Badge
               tone={

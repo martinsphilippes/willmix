@@ -83,6 +83,8 @@ export function topicLabel(
     return t("messages.topic.request", { ref: topic.title ?? "" });
   if (topic.kind === "order")
     return t("messages.topic.order", { ref: topic.title ?? "" });
+  if (topic.kind === "item")
+    return t("messages.topic.item", { ref: topic.title ?? "" });
   return t("messages.topic.general");
 }
 
@@ -181,7 +183,7 @@ async function canSeeTopic(
     const request = await store.get("requests", topic.requestId);
     return !!request && (await canSeeRequest(user, request));
   }
-  if (topic.kind === "order" && topic.orderId) {
+  if ((topic.kind === "order" || topic.kind === "item") && topic.orderId) {
     const order = await store.get("orders", topic.orderId);
     return !!order && canViewOrder(user, order);
   }
@@ -263,7 +265,7 @@ const ownKey = (user: User) => ({
 async function findTopic(
   conversationId: string,
   kind: TopicKind,
-  ref: { requestId?: string; orderId?: string } = {},
+  ref: { requestId?: string; orderId?: string; orderItemId?: string } = {},
 ): Promise<ConversationTopic | null> {
   const [found] = await getStore().list("conversation_topics", {
     filter: { conversationId, kind, ...ref },
@@ -636,6 +638,8 @@ export interface OpenTopicInput {
   userId?: string | null;
   requestId?: string | null;
   orderId?: string | null;
+  /** Um produto do pedido: o assunto desce até o item. */
+  orderItemId?: string | null;
 }
 
 /** Conversa em que o login abre o assunto. */
@@ -711,6 +715,37 @@ export async function openTopic(
     await generalTopic(conversation);
     return { conversationId: conversation.id, topicId: topic.id };
   }
+  if (input.orderItemId) {
+    // Item do pedido: mesmas regras do pedido; o item tem de ser dele.
+    const item = await store.get("order_items", input.orderItemId);
+    if (!item) throw new MessageError("not_found");
+    if (input.orderId && input.orderId !== item.orderId)
+      throw new MessageError("item_not_in_order");
+    const order = await store.get("orders", item.orderId);
+    if (!order) throw new MessageError("not_found");
+    if (!wellmix && !canViewOrder(user, order)) throw new ForbiddenError();
+    const conversation = await resolveConversation(
+      user,
+      input,
+      order.customerId,
+    );
+    if (!(await companyInOrder(conversation, order)))
+      throw new MessageError("not_participant");
+    const topic =
+      (await findTopic(conversation.id, "item", { orderItemId: item.id })) ??
+      (await store.create("conversation_topics", {
+        conversationId: conversation.id,
+        kind: "item",
+        requestId: null,
+        orderId: order.id,
+        orderItemId: item.id,
+        productId: item.productId ?? null,
+        title: `#${order.number} · ${item.name}`.slice(0, 160),
+        lastMessageAt: null,
+      }));
+    await generalTopic(conversation);
+    return { conversationId: conversation.id, topicId: topic.id };
+  }
   if (input.orderId) {
     const order = await store.get("orders", input.orderId);
     if (!order) throw new MessageError("not_found");
@@ -738,6 +773,103 @@ export async function openTopic(
   const conversation = await resolveConversation(user, input, null);
   const topic = await generalTopic(conversation);
   return { conversationId: conversation.id, topicId: topic.id };
+}
+
+/* ---------------------------------------------------------------------- */
+/* Painel lateral (chat a partir de qualquer linha)                        */
+/* ---------------------------------------------------------------------- */
+
+export interface ChatContext {
+  kind: "order" | "request";
+  id: string;
+  /** "Pedido #5" ou "Solicitação nº 3: Jarra". */
+  title: string;
+  /** Wellmix: com quem dá para conversar (empresas do pedido/da solicitação). */
+  participants: Array<{ partyId: string; name: string; type: PartyType }>;
+  /** Pedido: os produtos (a conversa pode descer até o item). */
+  items: Array<{ id: string; name: string }>;
+  /** Quem é de fora fala só com a Wellmix (não escolhe empresa). */
+  own: boolean;
+}
+
+/**
+ * O que o painel lateral precisa para abrir a conversa de um pedido ou de
+ * uma solicitação: as empresas participantes (Wellmix) e os itens. Quem é
+ * de fora só recebe o contexto do que ele mesmo vê.
+ */
+export async function chatContext(
+  user: User,
+  input: { orderId?: string | null; requestId?: string | null },
+): Promise<ChatContext> {
+  const store = getStore();
+  const wellmix = isWellmix(user);
+  if (input.orderId) {
+    const order = await store.get("orders", input.orderId);
+    if (!order) throw new MessageError("not_found");
+    if (!wellmix && !canViewOrder(user, order)) throw new ForbiddenError();
+    const items = await store.list("order_items", {
+      filter: { orderId: order.id },
+    });
+    const ids = wellmix ? orderParties(order) : [];
+    const parties = ids.length
+      ? await store.list("parties", { filter: { id: ids } })
+      : [];
+    return {
+      kind: "order",
+      id: order.id,
+      title: `Pedido #${order.number}`,
+      participants: ids.flatMap((id) => {
+        const p = parties.find((x) => x.id === id);
+        return p ? [{ partyId: p.id, name: p.name, type: p.type }] : [];
+      }),
+      items: items.map((i) => ({ id: i.id, name: i.name })),
+      own: !wellmix,
+    };
+  }
+  if (input.requestId) {
+    const request = await store.get("requests", input.requestId);
+    if (!request) throw new MessageError("not_found");
+    if (!wellmix && !(await canSeeRequest(user, request)))
+      throw new ForbiddenError();
+    let participants: ChatContext["participants"] = [];
+    if (wellmix) {
+      const quotes = await store.list("quotes", {
+        filter: { requestId: request.id },
+      });
+      const ids = [
+        ...new Set([request.customerId, ...quotes.map((q) => q.supplierId)]),
+      ].filter((id): id is string => !!id);
+      const parties = ids.length
+        ? await store.list("parties", { filter: { id: ids } })
+        : [];
+      participants = ids.flatMap((id) => {
+        const p = parties.find((x) => x.id === id);
+        return p ? [{ partyId: p.id, name: p.name, type: p.type }] : [];
+      });
+    }
+    return {
+      kind: "request",
+      id: request.id,
+      title: request.number
+        ? `Solicitação nº ${request.number}: ${request.productName}`
+        : request.productName,
+      participants,
+      items: [],
+      own: !wellmix,
+    };
+  }
+  throw new MessageError("not_found");
+}
+
+/** A conversa de um assunto (mesma leitura da tela de Mensagens), para o painel lateral. */
+export async function topicThread(
+  user: User,
+  topicId: string,
+): Promise<ConversationView> {
+  const { topic, conversation } = await loadTopicFor(user, topicId);
+  const view = await getConversationView(user, conversation.id, topic.id);
+  if (!view) throw new MessageError("not_found");
+  return view;
 }
 
 /** Texto da mensagem: sem espaços nas pontas, de 1 a 4.000 caracteres. */

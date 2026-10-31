@@ -22,6 +22,8 @@ import {
   formatDate,
   rowClass,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
+import { chatTargetFromHref } from "@/lib/chat-target";
 import {
   ALL,
   UNASSIGNED,
@@ -148,6 +150,14 @@ function ItemsTable({
               <TextLink href={item.link} className="font-semibold">
                 {item.title}
               </TextLink>
+              {chatTargetFromHref(item.link) ? (
+                <span className="ml-1 inline-block align-middle">
+                  <ChatOpenButton
+                    target={chatTargetFromHref(item.link)!}
+                    label={t("chat.open")}
+                  />
+                </span>
+              ) : null}
               {item.stageKey ? (
                 <span className="block text-xs font-normal text-zinc-500">
                   {t(`stage.${item.stageKey}` as DictionaryKey)}

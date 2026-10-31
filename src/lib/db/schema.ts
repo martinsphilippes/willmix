@@ -458,7 +458,8 @@ export type FreightTariffStatus = (typeof FREIGHT_TARIFF_STATUSES)[number];
 export const CONVERSATION_STATUSES = ["open", "closed"] as const;
 export type ConversationStatus = (typeof CONVERSATION_STATUSES)[number];
 /** Assunto da conversa: Geral, uma solicitação ou um pedido. */
-export const TOPIC_KINDS = ["general", "request", "order"] as const;
+/** "item": um produto do pedido (a conversa desce até o item). */
+export const TOPIC_KINDS = ["general", "request", "order", "item"] as const;
 export type TopicKind = (typeof TOPIC_KINDS)[number];
 /** Quem escreveu: a equipe Wellmix ou alguém da empresa parceira. */
 export const MESSAGE_SIDES = ["wellmix", "external"] as const;
@@ -1823,6 +1824,9 @@ export interface ConversationTopic extends BaseRow {
   /** Referência do assunto (ex.: "#12 · Jarra de vidro"); vazio no Geral. */
   title: string | null;
   lastMessageAt: string | null;
+  /** Assunto de item: o item do pedido e o produto dele (opcionais). */
+  orderItemId?: string | null;
+  productId?: string | null;
 }
 
 export interface Message extends BaseRow {
@@ -3225,9 +3229,13 @@ export const TABLES: Record<TableName, TableDef> = {
       orderId: id(false),
       title: str(160),
       lastMessageAt: datetime(),
+      orderItemId: id(false),
+      productId: id(false),
     },
     indexes: [
       { key: "by_conversation", type: "key", columns: ["conversationId"] },
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
   messages: {

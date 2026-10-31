@@ -42,6 +42,7 @@ import {
   stageTone,
 } from "@/components/ui";
 import { TaskItems } from "@/components/task-list";
+import { ChatOpenButton } from "@/components/chat-open-button";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
 
@@ -450,6 +451,11 @@ export default async function RequestsPage({
                     </Td>
                     <Td className="text-right">
                       <div className="flex items-center justify-end gap-3">
+                        {/* Conversa do lote: abre pela primeira solicitação dele. */}
+                        <ChatOpenButton
+                          target={{ requestId: rows[0].id }}
+                          label={t("chat.open")}
+                        />
                         <TextLink href={batchHref(entry.groupId)}>
                           {t("tasks.open")}
                         </TextLink>
@@ -538,6 +544,10 @@ export default async function RequestsPage({
                   </Td>
                   <Td className="text-right">
                     <div className="flex items-center justify-end gap-3">
+                      <ChatOpenButton
+                        target={{ requestId: r.id }}
+                        label={t("chat.open")}
+                      />
                       <TextLink href={`/app/requests/${r.id}`}>
                         {t("tasks.open")}
                       </TextLink>

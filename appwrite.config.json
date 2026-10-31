@@ -7243,7 +7243,8 @@
           "elements": [
             "general",
             "request",
-            "order"
+            "order",
+            "item"
           ]
         },
         {
@@ -7276,6 +7277,22 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "orderItemId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -7284,6 +7301,26 @@
           "type": "key",
           "columns": [
             "conversationId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_product",
+          "type": "key",
+          "columns": [
+            "productId"
           ],
           "orders": [
             "ASC"
