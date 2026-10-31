@@ -181,12 +181,6 @@ export default async function ReviewsPage({
                   </p>
                 </div>
                 <span className="inline-flex items-center gap-1">
-                  {orderOf(r) ? (
-                    <ChatOpenButton
-                      target={{ orderId: orderOf(r)!.id }}
-                      label={t("chat.open")}
-                    />
-                  ) : null}
                   {r.link ? (
                     <TextLink
                       href={r.link}
@@ -194,6 +188,12 @@ export default async function ReviewsPage({
                     >
                       {t("tasks.open")}
                     </TextLink>
+                  ) : null}
+                  {orderOf(r) ? (
+                    <ChatOpenButton
+                      target={{ orderId: orderOf(r)!.id }}
+                      label={t("chat.open")}
+                    />
                   ) : null}
                 </span>
               </div>

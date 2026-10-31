@@ -207,6 +207,7 @@ export default async function AccountPage({
                     {t("supplierTerms.col.amount")}
                   </Th>
                   <Th>{t("supplierTerms.col.status")}</Th>
+                  <Th />
                 </tr>
               </thead>
               <tbody>
@@ -216,15 +217,9 @@ export default async function AccountPage({
                     data-forecast-row={`${payable.order.number}-${i.index}`}
                   >
                     <Td>
-                      <span className="inline-flex items-center gap-1">
-                        <TextLink href={`/app/orders/${payable.order.id}`}>
-                          #{payable.order.number}
-                        </TextLink>
-                        <ChatOpenButton
-                          target={{ orderId: payable.order.id }}
-                          label={t("chat.open")}
-                        />
-                      </span>
+                      <TextLink href={`/app/orders/${payable.order.id}`}>
+                        #{payable.order.number}
+                      </TextLink>
                     </Td>
                     <Td className="whitespace-nowrap">
                       {i.index}/{i.count}{" "}
@@ -274,6 +269,12 @@ export default async function AccountPage({
                         {t(`supplierTerms.status.${i.status}` as DictionaryKey)}
                       </Badge>
                     </Td>
+                    <Td className="whitespace-nowrap text-right">
+                      <ChatOpenButton
+                        target={{ orderId: payable.order.id }}
+                        label={t("chat.open")}
+                      />
+                    </Td>
                   </tr>
                 ))}
               </tbody>
@@ -302,15 +303,9 @@ export default async function AccountPage({
               {orders.map((o) => (
                 <tr key={o.id} className="bg-zinc-50/80">
                   <Td>
-                    <span className="inline-flex items-center gap-1">
-                      <TextLink href={`/app/orders/${o.id}`}>
-                        #{o.number}
-                      </TextLink>
-                      <ChatOpenButton
-                        target={{ orderId: o.id }}
-                        label={t("chat.open")}
-                      />
-                    </span>
+                    <TextLink href={`/app/orders/${o.id}`}>
+                      #{o.number}
+                    </TextLink>
                   </Td>
                   <Td className="whitespace-nowrap">
                     {formatDate(o.createdAt, t)}
@@ -334,7 +329,12 @@ export default async function AccountPage({
                   </Td>
                   <Td />
                   <Td />
-                  <Td />
+                  <Td className="whitespace-nowrap text-right">
+                    <ChatOpenButton
+                      target={{ orderId: o.id }}
+                      label={t("chat.open")}
+                    />
+                  </Td>
                 </tr>
               ))}
               {mine.map((p) => {
@@ -345,15 +345,7 @@ export default async function AccountPage({
                 return (
                   <tr key={p.id}>
                     <Td className="pl-6">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="text-zinc-500">#{order?.number}</span>
-                        {order ? (
-                          <ChatOpenButton
-                            target={{ orderId: order.id }}
-                            label={t("chat.open")}
-                          />
-                        ) : null}
-                      </span>
+                      <span className="text-zinc-500">#{order?.number}</span>
                     </Td>
                     <Td className="whitespace-nowrap">
                       {formatDate(p.createdAt, t)}
@@ -418,6 +410,12 @@ export default async function AccountPage({
                             </SubmitButton>
                           </form>
                         ) : null}
+                        {order ? (
+                          <ChatOpenButton
+                            target={{ orderId: order.id }}
+                            label={t("chat.open")}
+                          />
+                        ) : null}
                       </span>
                     </Td>
                   </tr>
@@ -443,6 +441,7 @@ export default async function AccountPage({
                     {t("orders.account.pendingConfirm")}
                   </Th>
                   <Th className="text-right">{t("account.balance")}</Th>
+                  <Th />
                 </tr>
               </thead>
               <tbody>
@@ -462,15 +461,9 @@ export default async function AccountPage({
                   return (
                     <tr key={o.id}>
                       <Td>
-                        <span className="inline-flex items-center gap-1">
-                          <TextLink href={`/app/orders/${o.id}`}>
-                            #{o.number}
-                          </TextLink>
-                          <ChatOpenButton
-                            target={{ orderId: o.id }}
-                            label={t("chat.open")}
-                          />
-                        </span>
+                        <TextLink href={`/app/orders/${o.id}`}>
+                          #{o.number}
+                        </TextLink>
                         {cancelled ? (
                           <span className="ml-2">
                             <Badge tone="danger">{t("stage.CANCELLED")}</Badge>
@@ -493,6 +486,12 @@ export default async function AccountPage({
                         )}
                       >
                         {formatMoney(balance, o.fobCurrency, t)}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right">
+                        <ChatOpenButton
+                          target={{ orderId: o.id }}
+                          label={t("chat.open")}
+                        />
                       </Td>
                     </tr>
                   );

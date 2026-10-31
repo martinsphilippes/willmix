@@ -169,21 +169,16 @@ export default async function FinancePage() {
                 <Th>{t("finance.fx")}</Th>
                 <Th>{t("finance.cost")}</Th>
                 <Th>{t("finance.margin")}</Th>
+                <Th />
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.order.id} className={rowClass}>
                   <Td>
-                    <span className="inline-flex items-center gap-1">
-                      <TextLink href={`/app/orders/${r.order.id}`}>
-                        #{r.order.number}
-                      </TextLink>
-                      <ChatOpenButton
-                        target={{ orderId: r.order.id }}
-                        label={t("chat.open")}
-                      />
-                    </span>
+                    <TextLink href={`/app/orders/${r.order.id}`}>
+                      #{r.order.number}
+                    </TextLink>
                     {/* Cancelado fica no histórico, mas fora de vendido, custo e margem. */}
                     {r.order.status === "CANCELLED" ? (
                       <div className="mt-0.5">
@@ -325,6 +320,12 @@ export default async function FinancePage() {
                     ) : (
                       "—"
                     )}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    <ChatOpenButton
+                      target={{ orderId: r.order.id }}
+                      label={t("chat.open")}
+                    />
                   </Td>
                 </tr>
               ))}

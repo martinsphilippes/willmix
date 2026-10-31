@@ -90,11 +90,13 @@ export default async function DashboardsPage({
                 <TextLink href={`/app/orders/${r.id}`}>
                   {t("dash.order", { n: String(r.number) })}
                 </TextLink>
-                <ChatOpenButton
-                  target={{ orderId: r.id }}
-                  label={t("chat.open")}
-                />
                 <span className="text-zinc-600">{r.detail}</span>
+                <span className="ml-auto">
+                  <ChatOpenButton
+                    target={{ orderId: r.id }}
+                    label={t("chat.open")}
+                  />
+                </span>
               </li>
             ))}
           </ul>

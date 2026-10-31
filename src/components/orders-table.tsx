@@ -432,6 +432,7 @@ export function OrdersTable({
               {head("progress", labels.progress, "w-36")}
               {head("due", labels.due)}
               {head("updated", labels.updated)}
+              <th className="w-10 px-2.5 py-2" />
             </tr>
             <tr>
               {filterCell(text("n", labels.number))}
@@ -467,13 +468,14 @@ export function OrdersTable({
                   ["month", labels.updatedOptions.month],
                 ]),
               )}
+              <td className="px-2.5 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {shown.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0)}
+                  colSpan={8 + (showCustomer ? 1 : 0) + (showSupplier ? 1 : 0)}
                   className="px-3 py-6 text-center text-zinc-500"
                 >
                   {labels.empty}
@@ -507,17 +509,9 @@ export function OrdersTable({
                     }}
                   >
                     <td className="whitespace-nowrap px-2.5 py-2">
-                      <span className="inline-flex items-center gap-1">
-                        <Link href={r.href} className={linkClass}>
-                          {r.number}
-                        </Link>
-                        {chatTargetFromHref(r.href) ? (
-                          <ChatOpenButton
-                            target={chatTargetFromHref(r.href)!}
-                            label={labels.chat}
-                          />
-                        ) : null}
-                      </span>
+                      <Link href={r.href} className={linkClass}>
+                        {r.number}
+                      </Link>
                       {r.subtitle ? (
                         <span className="block text-[11px] text-zinc-500">
                           {r.subtitle}
@@ -582,6 +576,15 @@ export function OrdersTable({
                     </td>
                     <td className="whitespace-nowrap px-2.5 py-2 tabular-nums text-zinc-600">
                       {r.updatedLabel}
+                    </td>
+                    {/* Conversa do pedido/solicitação: sempre na última coluna. */}
+                    <td className="whitespace-nowrap px-2.5 py-2 text-right">
+                      {chatTargetFromHref(r.href) ? (
+                        <ChatOpenButton
+                          target={chatTargetFromHref(r.href)!}
+                          label={labels.chat}
+                        />
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -655,6 +658,7 @@ function ItemsPanel({
                 <th className="px-2.5 py-2">{labels.phase}</th>
                 <th className="px-2.5 py-2">{labels.state}</th>
                 <th className="px-2.5 py-2">{labels.due}</th>
+                <th className="w-10 px-2.5 py-2" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
@@ -688,24 +692,9 @@ function ItemsPanel({
                       </td>
                     ) : null}
                     <td className={cell}>
-                      <span className="inline-flex items-center gap-1">
-                        <Link href={item.href} className={linkClass}>
-                          {item.ref}
-                        </Link>
-                        {chatTargetFromHref(item.href) ? (
-                          <ChatOpenButton
-                            target={
-                              item.orderItemId
-                                ? {
-                                    ...chatTargetFromHref(item.href)!,
-                                    orderItemId: item.orderItemId,
-                                  }
-                                : chatTargetFromHref(item.href)!
-                            }
-                            label={labels.chat}
-                          />
-                        ) : null}
-                      </span>
+                      <Link href={item.href} className={linkClass}>
+                        {item.ref}
+                      </Link>
                     </td>
                     <td className={cell}>{item.phase}</td>
                     <td className={cell}>
@@ -721,6 +710,22 @@ function ItemsPanel({
                       )}
                     >
                       {item.dueLabel}
+                    </td>
+                    {/* Conversa do item (desce até o produto): última coluna. */}
+                    <td className={cx(cell, "text-right")}>
+                      {chatTargetFromHref(item.href) ? (
+                        <ChatOpenButton
+                          target={
+                            item.orderItemId
+                              ? {
+                                  ...chatTargetFromHref(item.href)!,
+                                  orderItemId: item.orderItemId,
+                                }
+                              : chatTargetFromHref(item.href)!
+                          }
+                          label={labels.chat}
+                        />
+                      ) : null}
                     </td>
                   </tr>
                 );

@@ -317,18 +317,12 @@ export default async function PayablesPage({
                       )}
                     </Td>
                     <Td className="min-w-40">
-                      <span className="inline-flex items-center gap-1">
-                        <TextLink
-                          href={`/app/orders/${payable.order.id}`}
-                          className="font-medium"
-                        >
-                          #{payable.order.number}
-                        </TextLink>
-                        <ChatOpenButton
-                          target={{ orderId: payable.order.id }}
-                          label={t("chat.open")}
-                        />
-                      </span>
+                      <TextLink
+                        href={`/app/orders/${payable.order.id}`}
+                        className="font-medium"
+                      >
+                        #{payable.order.number}
+                      </TextLink>
                       <span className="block text-xs text-zinc-500">
                         {payable.productName}
                       </span>
@@ -358,12 +352,18 @@ export default async function PayablesPage({
                       </Badge>
                     </Td>
                     <Td className="whitespace-nowrap text-right">
-                      <LinkButton
-                        href={`/app/orders/${payable.order.id}#supplier-payment`}
-                        variant={payable_ ? "primary" : "secondary"}
-                      >
-                        {payable_ ? t("payables.pay") : t("payables.open")}
-                      </LinkButton>
+                      <span className="inline-flex items-center gap-1.5">
+                        <LinkButton
+                          href={`/app/orders/${payable.order.id}#supplier-payment`}
+                          variant={payable_ ? "primary" : "secondary"}
+                        >
+                          {payable_ ? t("payables.pay") : t("payables.open")}
+                        </LinkButton>
+                        <ChatOpenButton
+                          target={{ orderId: payable.order.id }}
+                          label={t("chat.open")}
+                        />
+                      </span>
                     </Td>
                   </tr>
                 );

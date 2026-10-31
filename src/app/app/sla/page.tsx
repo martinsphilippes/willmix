@@ -150,14 +150,6 @@ function ItemsTable({
               <TextLink href={item.link} className="font-semibold">
                 {item.title}
               </TextLink>
-              {chatTargetFromHref(item.link) ? (
-                <span className="ml-1 inline-block align-middle">
-                  <ChatOpenButton
-                    target={chatTargetFromHref(item.link)!}
-                    label={t("chat.open")}
-                  />
-                </span>
-              ) : null}
               {item.stageKey ? (
                 <span className="block text-xs font-normal text-zinc-500">
                   {t(`stage.${item.stageKey}` as DictionaryKey)}
@@ -207,14 +199,22 @@ function ItemsTable({
               </span>
             </Td>
             <Td className="whitespace-nowrap text-right">
-              <LinkButton
-                href={item.link}
-                variant="primary"
-                className="min-h-8 px-3 py-1 text-xs"
-              >
-                {t("tasks.open")}
-                <span className="sr-only">: {item.title}</span>
-              </LinkButton>
+              <span className="inline-flex items-center gap-1.5">
+                <LinkButton
+                  href={item.link}
+                  variant="primary"
+                  className="min-h-8 px-3 py-1 text-xs"
+                >
+                  {t("tasks.open")}
+                  <span className="sr-only">: {item.title}</span>
+                </LinkButton>
+                {chatTargetFromHref(item.link) ? (
+                  <ChatOpenButton
+                    target={chatTargetFromHref(item.link)!}
+                    label={t("chat.open")}
+                  />
+                ) : null}
+              </span>
             </Td>
           </tr>
         ))}

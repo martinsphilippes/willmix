@@ -131,18 +131,12 @@ export default async function QuotesPage({
                   return (
                     <tr key={q.id} className={rowClass} data-quote-row={q.id}>
                       <Td className="min-w-44">
-                        <span className="inline-flex items-center gap-1">
-                          <TextLink
-                            href={`/app/quotes/${q.id}`}
-                            className="font-medium"
-                          >
-                            {q.productName}
-                          </TextLink>
-                          <ChatOpenButton
-                            target={{ requestId: q.requestId }}
-                            label={t("chat.open")}
-                          />
-                        </span>
+                        <TextLink
+                          href={`/app/quotes/${q.id}`}
+                          className="font-medium"
+                        >
+                          {q.productName}
+                        </TextLink>
                         {q.requestNumber ? (
                           <span className="block text-xs tabular-nums text-zinc-500">
                             {t("requests.numbered", { n: q.requestNumber })}
@@ -188,14 +182,20 @@ export default async function QuotesPage({
                         ) : null}
                       </Td>
                       <Td className="whitespace-nowrap text-right">
-                        <LinkButton
-                          href={`/app/quotes/${q.id}`}
-                          variant={toAnswer ? "primary" : "secondary"}
-                        >
-                          {toAnswer
-                            ? t("quotes.list.answer")
-                            : t("quotes.list.open")}
-                        </LinkButton>
+                        <span className="inline-flex items-center gap-1.5">
+                          <LinkButton
+                            href={`/app/quotes/${q.id}`}
+                            variant={toAnswer ? "primary" : "secondary"}
+                          >
+                            {toAnswer
+                              ? t("quotes.list.answer")
+                              : t("quotes.list.open")}
+                          </LinkButton>
+                          <ChatOpenButton
+                            target={{ requestId: q.requestId }}
+                            label={t("chat.open")}
+                          />
+                        </span>
                       </Td>
                     </tr>
                   );

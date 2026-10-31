@@ -232,6 +232,7 @@ export default async function SourcingPage({
                     <Th>{t("sourcing.moq")}</Th>
                     <Th>{t("common.status")}</Th>
                     <Th>{t("sourcing.foundAt")}</Th>
+                    <Th />
                   </tr>
                 </thead>
                 <tbody>
@@ -268,10 +269,6 @@ export default async function SourcingPage({
                             >
                               {t("catalog.sourcing.demand.open")}
                             </TextLink>
-                            <ChatOpenButton
-                              target={{ requestId: item.requestId }}
-                              label={t("chat.open")}
-                            />
                           </span>
                         ) : null}
                       </Td>
@@ -286,6 +283,14 @@ export default async function SourcingPage({
                         </Badge>
                       </Td>
                       <Td>{formatDate(item.foundAt ?? item.createdAt, t)}</Td>
+                      <Td className="whitespace-nowrap text-right">
+                        {item.requestId ? (
+                          <ChatOpenButton
+                            target={{ requestId: item.requestId }}
+                            label={t("chat.open")}
+                          />
+                        ) : null}
+                      </Td>
                     </tr>
                   ))}
                 </tbody>
