@@ -284,7 +284,7 @@ async function createDemoUser(u: DemoUser): Promise<User> {
   if (store.mode === "appwrite") {
     // Autenticação fica no Appwrite Auth; a tabela users guarda papel e parceiro.
     const { createAdminClient } = await import("@/lib/appwrite/server");
-    const { Query } = await import("node-appwrite");
+    const { ID, Query } = await import("node-appwrite");
     const { users: authUsers } = createAdminClient();
     await at("auth", async () => {
       const found = await authUsers.list({
@@ -292,7 +292,7 @@ async function createDemoUser(u: DemoUser): Promise<User> {
       });
       if (found.total === 0)
         await authUsers.create({
-          userId: "unique()",
+          userId: ID.unique(),
           email: u.email,
           password: DEMO_PASSWORD,
           name: u.name,
