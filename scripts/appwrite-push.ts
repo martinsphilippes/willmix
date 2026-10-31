@@ -13,6 +13,7 @@ import {
   Compression,
   OrderBy,
   Permission,
+  Query,
   Role,
   Storage,
   TablesDB,
@@ -46,6 +47,54 @@ const databaseId = DATABASE_ID;
 
 const isNotFound = (e: unknown) => (e as { code?: number })?.code === 404;
 const isConflict = (e: unknown) => (e as { code?: number })?.code === 409;
+
+/** Coluna como o Appwrite a devolve (só o que o publicador compara). */
+interface LiveColumn {
+  key: string;
+  type: string;
+  status: string;
+  error?: string;
+  required?: boolean;
+  default?: unknown;
+  size?: number;
+  elements?: string[];
+  format?: string;
+}
+
+/**
+ * Todas as colunas da tabela. A listagem vem paginada (25 por padrão): sem
+ * paginar, tabelas com mais colunas (pedidos, fichas, produtos) tinham as
+ * últimas colunas ignoradas, e um valor novo de enum nelas nunca era publicado.
+ */
+async function listAllColumns(tableId: TableName): Promise<LiveColumn[]> {
+  const all: LiveColumn[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const page = (
+      await tables.listColumns({
+        databaseId,
+        tableId,
+        queries: [Query.limit(100), Query.offset(offset)],
+      })
+    ).columns as unknown as LiveColumn[];
+    all.push(...page);
+    if (page.length < 100) return all;
+  }
+}
+
+async function listAllIndexKeys(tableId: TableName): Promise<string[]> {
+  const all: string[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const page = (
+      await tables.listIndexes({
+        databaseId,
+        tableId,
+        queries: [Query.limit(100), Query.offset(offset)],
+      })
+    ).indexes;
+    all.push(...page.map((i) => i.key));
+    if (page.length < 100) return all;
+  }
+}
 
 async function ensureDatabase() {
   try {
@@ -102,12 +151,14 @@ async function createColumn(tableId: string, key: string, def: ColumnDef) {
 
 async function ensureColumns(tableId: TableName) {
   const def = TABLES[tableId];
-  const columns = (await tables.listColumns({ databaseId, tableId })).columns;
+  const columns = await listAllColumns(tableId);
   const existing = new Set(columns.map((c) => c.key));
   let created = 0;
   for (const [key, col] of Object.entries(def.columns)) {
     if (existing.has(key)) {
       await ensureEnumElements(tableId, key, col, columns);
+      await ensureVarcharSize(tableId, key, col, columns);
+      await ensureOptional(tableId, key, col, columns);
       continue;
     }
     try {
@@ -128,12 +179,7 @@ async function ensureEnumElements(
   tableId: TableName,
   key: string,
   col: ColumnDef,
-  columns: Array<{
-    key: string;
-    elements?: string[];
-    required?: boolean;
-    default?: unknown;
-  }>,
+  columns: LiveColumn[],
 ) {
   if (col.type !== "string" || !col.enum) return;
   const current = columns.find((c) => c.key === key);
@@ -155,10 +201,98 @@ async function ensureEnumElements(
   console.log(`  ${tableId}.${key}: +${missing.join(", ")}`);
 }
 
+/**
+ * Texto curto que cresceu no esquema: aumenta o tamanho em produção. Nunca
+ * diminui (cortaria valores gravados).
+ */
+async function ensureVarcharSize(
+  tableId: TableName,
+  key: string,
+  col: ColumnDef,
+  columns: LiveColumn[],
+) {
+  if (col.type !== "string" || col.enum) return;
+  const current = columns.find((c) => c.key === key);
+  const want = col.size ?? 255;
+  if (!current || typeof current.size !== "number" || current.size >= want)
+    return;
+  await tables.updateVarcharColumn({
+    databaseId,
+    tableId,
+    key,
+    required: current.required ?? col.required ?? false,
+    xdefault: (current.required || typeof current.default !== "string"
+      ? null
+      : current.default) as unknown as string,
+    size: want,
+  });
+  console.log(`  ${tableId}.${key}: tamanho ${current.size} → ${want}`);
+}
+
+/**
+ * Coluna que o esquema diz opcional mas está obrigatória em produção (criada
+ * assim por engano numa tabela que já tinha linhas): passa a opcional. O
+ * contrário (opcional → obrigatória) nunca é feito aqui: invalidaria linhas.
+ */
+async function ensureOptional(
+  tableId: TableName,
+  key: string,
+  col: ColumnDef,
+  columns: LiveColumn[],
+) {
+  const current = columns.find((c) => c.key === key);
+  if (!current || !current.required || col.required) return;
+  const base = { databaseId, tableId, key, required: false };
+  const text = { ...base, xdefault: null as unknown as string };
+  switch (col.type) {
+    case "string":
+      if (col.enum)
+        await tables.updateEnumColumn({
+          ...text,
+          elements: current.elements ?? [...col.enum],
+        });
+      else
+        await tables.updateVarcharColumn({
+          ...text,
+          size: current.size ?? col.size ?? 255,
+        });
+      break;
+    case "text":
+    case "json":
+      await tables.updateTextColumn(text);
+      break;
+    case "json_large":
+      await tables.updateLongtextColumn(text);
+      break;
+    case "int":
+      await tables.updateIntegerColumn({
+        ...base,
+        xdefault: null as unknown as number,
+      });
+      break;
+    case "float":
+      await tables.updateFloatColumn({
+        ...base,
+        xdefault: null as unknown as number,
+      });
+      break;
+    case "bool":
+      await tables.updateBooleanColumn({
+        ...base,
+        xdefault: null as unknown as boolean,
+      });
+      break;
+    case "datetime":
+      await tables.updateDatetimeColumn(text);
+      break;
+  }
+  console.log(`  ${tableId}.${key}: obrigatória → opcional`);
+}
+
 /** Índices só podem ser criados quando as colunas estão "available". */
 async function waitColumns(tableId: TableName) {
   for (let i = 0; i < 60; i++) {
-    const cols = (await tables.listColumns({ databaseId, tableId })).columns;
+    const cols = await listAllColumns(tableId);
     const pending = cols.filter((c) => c.status !== "available");
     const failed = cols.filter(
       (c) => c.status === "failed" || c.status === "stuck",
@@ -179,11 +313,7 @@ async function waitColumns(tableId: TableName) {
  * Nenhum outro índice é tocado.
  */
 async function dropReplacedIndexes(tableId: TableName, keys: string[]) {
-  const current = new Set(
-    (await tables.listIndexes({ databaseId, tableId })).indexes.map(
-      (i) => i.key,
-    ),
-  );
+  const current = new Set(await listAllIndexKeys(tableId));
   const toDrop = keys.filter((k) => current.has(k));
   for (const key of toDrop) {
     try {
@@ -195,9 +325,9 @@ async function dropReplacedIndexes(tableId: TableName, keys: string[]) {
   }
   if (!toDrop.length) return;
   for (let i = 0; i < 60; i++) {
-    const left = (await tables.listIndexes({ databaseId, tableId })).indexes
-      .map((idx) => idx.key)
-      .filter((k) => toDrop.includes(k));
+    const left = (await listAllIndexKeys(tableId)).filter((k) =>
+      toDrop.includes(k),
+    );
     if (left.length === 0) return;
     await new Promise((r) => setTimeout(r, 1500));
   }
@@ -206,11 +336,7 @@ async function dropReplacedIndexes(tableId: TableName, keys: string[]) {
 
 async function ensureIndexes(tableId: TableName) {
   const def = TABLES[tableId];
-  const existing = new Set(
-    (await tables.listIndexes({ databaseId, tableId })).indexes.map(
-      (i) => i.key,
-    ),
-  );
+  const existing = new Set(await listAllIndexKeys(tableId));
   let created = 0;
   for (const idx of def.indexes ?? []) {
     if (existing.has(idx.key)) continue;
@@ -312,6 +438,101 @@ async function ensureBucket() {
   }
 }
 
+/** Tipos do Appwrite aceitos para cada tipo do esquema (texto é texto, número é número). */
+const COMPATIBLE_TYPES: Record<ColumnDef["type"], string[]> = {
+  string: ["string", "varchar", "text", "mediumtext", "longtext"],
+  text: ["string", "varchar", "text", "mediumtext", "longtext"],
+  json: ["string", "varchar", "text", "mediumtext", "longtext"],
+  json_large: ["string", "varchar", "text", "mediumtext", "longtext"],
+  int: ["integer", "bigint"],
+  float: ["double", "float"],
+  bool: ["boolean"],
+  datetime: ["datetime"],
+};
+
+/**
+ * Conferência final: produção contra o esquema, coluna por coluna e índice
+ * por índice. O que o publicador não corrige sozinho (coluna com outro tipo,
+ * obrigatória onde o esquema diz opcional, coluna com falha) aparece aqui,
+ * em vez de virar "esquema desatualizado" na tela sem ninguém saber por quê.
+ */
+async function verifySchema(): Promise<string[]> {
+  const problems: string[] = [];
+  for (const tableId of Object.keys(TABLES) as TableName[]) {
+    const def = TABLES[tableId];
+    const live = new Map(
+      (await listAllColumns(tableId)).map((c) => [c.key, c] as const),
+    );
+    for (const [key, col] of Object.entries(def.columns)) {
+      const current = live.get(key);
+      const where = `${tableId}.${key}`;
+      if (!current) {
+        problems.push(`${where}: coluna não existe em produção`);
+        continue;
+      }
+      if (current.status !== "available")
+        problems.push(
+          `${where}: coluna "${current.status}"${current.error ? ` (${current.error})` : ""}`,
+        );
+      if (!COMPATIBLE_TYPES[col.type].includes(current.type))
+        problems.push(
+          `${where}: tipo "${current.type}" em produção, esquema pede ${col.type}`,
+        );
+      if (col.enum) {
+        if (current.format !== "enum")
+          problems.push(`${where}: não é enum em produção`);
+        const have = new Set(current.elements ?? []);
+        const missing = col.enum.filter((v) => !have.has(v));
+        if (missing.length)
+          problems.push(`${where}: faltam os valores ${missing.join(", ")}`);
+      }
+      const required = col.required ?? false;
+      if ((current.required ?? false) !== required)
+        problems.push(
+          `${where}: ${current.required ? "obrigatória" : "opcional"} em produção, esquema diz ${required ? "obrigatória" : "opcional"}`,
+        );
+      if (
+        col.type === "string" &&
+        !col.enum &&
+        typeof current.size === "number" &&
+        current.size < (col.size ?? 255)
+      )
+        problems.push(
+          `${where}: tamanho ${current.size} em produção, esquema pede ${col.size ?? 255}`,
+        );
+    }
+    // Coluna obrigatória com linha vazia em produção: foi acrescentada depois
+    // de a tabela ter linhas. Toda gravação nessas linhas (e toda linha nova
+    // sem o campo) é recusada com "Missing required attribute": o esquema
+    // precisa marcá-la opcional (enumOf(X, false), id(false)…).
+    for (const [key, col] of Object.entries(def.columns)) {
+      if (!(col.required ?? false) || !live.has(key)) continue;
+      const empty = await tables.listRows({
+        databaseId,
+        tableId,
+        queries: [Query.isNull(key), Query.limit(1)],
+      });
+      if (empty.rows.length)
+        problems.push(
+          `${tableId}.${key}: obrigatória, mas há linhas sem valor em produção; marque opcional no esquema`,
+        );
+    }
+    // Coluna que só existe em produção (criada no console): informação, não
+    // erro; obrigatória, porém, recusa toda linha nova que o portal grava.
+    for (const [key, c] of live)
+      if (!(key in def.columns))
+        (c.required ? problems : extras).push(
+          `${tableId}.${key}: só em produção (${c.type}${c.required ? ", obrigatória" : ""})`,
+        );
+    const indexes = new Set(await listAllIndexKeys(tableId));
+    for (const idx of def.indexes ?? [])
+      if (!indexes.has(idx.key))
+        problems.push(`${tableId}: índice ${idx.key} não existe em produção`);
+  }
+  return problems;
+}
+const extras: string[] = [];
+
 await ensureDatabase();
 const names = Object.keys(TABLES) as TableName[];
 for (const name of names) await ensureTable(name);
@@ -320,3 +541,13 @@ for (const name of names) await waitColumns(name);
 for (const name of names) await ensureIndexes(name);
 await ensureBucket();
 console.log(`✓ Esquema publicado: ${names.length} tabelas, 1 bucket.`);
+const problems = await verifySchema();
+for (const line of extras) console.log(`  i ${line}`);
+if (problems.length) {
+  console.error(
+    `✗ Conferência: ${problems.length} diferença(s) entre produção e o esquema:`,
+  );
+  for (const p of problems) console.error(`  ! ${p}`);
+  process.exit(1);
+}
+console.log("✓ Conferência: produção igual ao esquema (colunas e índices).");

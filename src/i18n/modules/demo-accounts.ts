@@ -19,6 +19,7 @@ export const pt = {
   "settings.demo.reason.party_missing": "a empresa dela não foi criada",
   "settings.demo.reason.unexpected":
     "erro inesperado (o motivo está no registro do servidor)",
+  "settings.demo.detail": "[detalhe técnico: {detail}]",
   "demo.switch.missing":
     "Essa conta ainda não existe no banco. Peça ao administrador: Configurações → Contas de demonstração.",
   "demo.switch.failed": "Não foi possível trocar de conta. Tente de novo.",
@@ -41,6 +42,7 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.demo.reason.party_missing": "its company was not created",
   "settings.demo.reason.unexpected":
     "unexpected error (the reason is in the server log)",
+  "settings.demo.detail": "[technical detail: {detail}]",
   "demo.switch.missing":
     "This account does not exist in the database yet. Ask the admin: Settings → Demo accounts.",
   "demo.switch.failed": "Could not switch account. Try again.",
@@ -61,6 +63,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "架构未更新（请先发布 Appwrite 架构后重试）",
   "settings.demo.reason.party_missing": "其公司未创建",
   "settings.demo.reason.unexpected": "意外错误（原因见服务器日志）",
+  "settings.demo.detail": "[技术细节：{detail}]",
   "demo.switch.missing":
     "该账号在数据库中尚不存在。请联系管理员：设置 → 演示账号。",
   "demo.switch.failed": "无法切换账号，请重试。",

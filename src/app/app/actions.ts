@@ -919,9 +919,10 @@ export async function createUserAction(form: FormData) {
     const store = getStore();
     if (store.mode === "appwrite") {
       const { createAdminClient } = await import("@/lib/appwrite/server");
+      const { ID } = await import("node-appwrite");
       const { users } = createAdminClient();
       await users.create({
-        userId: "unique()",
+        userId: ID.unique(),
         email: parsed.email,
         password: parsed.password,
         name: parsed.name,

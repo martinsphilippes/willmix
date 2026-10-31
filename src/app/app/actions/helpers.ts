@@ -60,13 +60,18 @@ export function errorCode(back: string, error: unknown) {
       : error instanceof Error && ERROR_CODE.test(error.message)
         ? error.message
         : error instanceof Error &&
-            (/unknown attribute/i.test(error.message) ||
+            (/unknown attribute|missing required attribute/i.test(
+              error.message,
+            ) ||
               /^(table|collection) with the requested id\b.*could not be found/i.test(
                 error.message,
               ) ||
-              ["table_not_found", "collection_not_found"].includes(
-                String((error as { type?: unknown }).type ?? ""),
-              ))
+              [
+                "table_not_found",
+                "collection_not_found",
+                "column_not_found",
+                "attribute_not_found",
+              ].includes(String((error as { type?: unknown }).type ?? "")))
           ? // Coluna ou tabela nova ainda não publicada no Appwrite (esquema desatualizado).
             "schema_outdated"
           : "unexpected";

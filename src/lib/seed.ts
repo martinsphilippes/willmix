@@ -7,264 +7,43 @@ import {
   USER_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
   type LinePrompts,
-  type OperationMode,
-  type PaymentTermInstallment,
-  type RadarStatus,
   type Product,
-  type Role,
   type User,
 } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
 import { boxCbm } from "@/lib/logistics/cbm";
 
-/** Senha única de demonstração. Só existe no modo memória. */
-export const DEMO_PASSWORD = "wellmix123";
+export { DEMO_PARTIES, DEMO_PASSWORD, DEMO_USERS } from "./demo-data";
+import {
+  DEMO_PARTIES,
+  DEMO_PASSWORD,
+  DEMO_USERS,
+  demoPartyFields,
+  demoUserFields,
+  type DemoParty,
+  type DemoUser,
+} from "./demo-data";
 
-export const DEMO_USERS: Array<{
-  email: string;
-  name: string;
-  role: Role;
-  party: string | null;
-  locale: "pt" | "en" | "zh";
-}> = [
-  {
-    email: "admin@wellmix.com",
-    name: "Ana Admin",
-    role: "admin",
-    party: null,
-    locale: "pt",
-  },
-  {
-    email: "operador@wellmix.com",
-    name: "Otávio Operador",
-    role: "operator",
-    party: null,
-    locale: "pt",
-  },
-  {
-    email: "joao@lojista.com",
-    name: "João Cliente",
-    role: "customer",
-    party: "cliente-joao",
-    locale: "pt",
-  },
-  {
-    email: "supplier.a@china.com",
-    name: "Li Wei",
-    role: "supplier",
-    party: "fornecedor-a",
-    locale: "zh",
-  },
-  {
-    email: "supplier.b@china.com",
-    name: "Chen Yu",
-    role: "supplier",
-    party: "fornecedor-b",
-    locale: "en",
-  },
-  {
-    email: "supplier.c@china.com",
-    name: "Wang Fang",
-    role: "supplier",
-    party: "fornecedor-c",
-    locale: "zh",
-  },
-  {
-    email: "agencia@design.com",
-    name: "Agência Criativa",
-    role: "agency",
-    party: "agencia",
-    locale: "pt",
-  },
-  {
-    email: "despachante@comex.com",
-    name: "Diego Despachante",
-    role: "broker",
-    party: "despachante",
-    locale: "pt",
-  },
-  {
-    email: "armador@maritima.com",
-    name: "Marítima SA",
-    role: "shipping_line",
-    party: "armador",
-    locale: "en",
-  },
-  {
-    email: "transportadora@rodo.com",
-    name: "Trans Rodo",
-    role: "carrier",
-    party: "transportador",
-    locale: "pt",
-  },
-  {
-    email: "comex@assessoria.com",
-    name: "Carla Comex",
-    role: "comex",
-    party: "comex",
-    locale: "pt",
-  },
-  {
-    email: "agente@cargo.com",
-    name: "Lucas Logística",
-    role: "logistics",
-    party: "agente-carga",
-    locale: "pt",
-  },
-  {
-    email: "ocp@certifica.com",
-    name: "Olga OCP",
-    role: "ocp",
-    party: "ocp",
-    locale: "pt",
-  },
-  {
-    email: "juridico@wellmix.com",
-    name: "Júlia Jurídico",
-    role: "legal",
-    party: null,
-    locale: "pt",
-  },
-];
-
-export const DEMO_PARTIES: Array<{
-  id: string;
-  type: Role | "shipping_line";
-  name: string;
-  country: string;
-  email: string;
-  city?: string;
-  contactName?: string;
-  wechat?: string | null;
-  phone?: string;
-  storeNumber?: string;
-  paymentTerms?: PaymentTermInstallment[];
-  operationMode?: OperationMode;
-  radar?: RadarStatus;
-}> = [
-  {
-    id: "cliente-joao",
-    type: "customer",
-    name: "Loja do João Ltda",
-    country: "BR",
-    email: "joao@lojista.com",
-    // Opera via estrutura/trade da Wellmix (não tem RADAR): nenhum gate dispara.
-    operationMode: "via_trade",
-    radar: "none",
-  },
-  {
-    id: "fornecedor-a",
-    type: "supplier",
-    name: "Shenzhen Supplier A",
-    country: "CN",
-    email: "supplier.a@china.com",
-    city: "Shenzhen",
-    contactName: "Li Wei",
-    wechat: "liwei_sz",
-    phone: "+86 755 1234 5678",
-    storeNumber: "A 154678",
-    // Condição de pagamento: 30% no pedido + 70% 90 dias após a entrega.
-    paymentTerms: [
-      { percent: 30, base: "order_created", days: 0 },
-      { percent: 70, base: "delivered", days: 90 },
-    ],
-  },
-  {
-    id: "fornecedor-b",
-    type: "supplier",
-    name: "Guangzhou Supplier B",
-    country: "CN",
-    email: "supplier.b@china.com",
-    city: "Guangzhou",
-    contactName: "Chen Yu",
-    wechat: null,
-  },
-  {
-    id: "fornecedor-c",
-    type: "supplier",
-    name: "Ningbo Supplier C",
-    country: "CN",
-    email: "supplier.c@china.com",
-    city: "Ningbo",
-    contactName: "Wang Fang",
-    wechat: "wangfang_nb",
-    paymentTerms: [{ percent: 100, base: "delivered", days: 60 }],
-  },
-  {
-    id: "agencia",
-    type: "agency",
-    name: "Agência Criativa",
-    country: "BR",
-    email: "agencia@design.com",
-  },
-  {
-    id: "despachante",
-    type: "broker",
-    name: "Comex Despachos",
-    country: "BR",
-    email: "despachante@comex.com",
-  },
-  {
-    id: "armador",
-    type: "shipping_line",
-    name: "Marítima SA",
-    country: "BR",
-    email: "armador@maritima.com",
-  },
-  {
-    id: "transportador",
-    type: "carrier",
-    name: "Trans Rodo",
-    country: "BR",
-    email: "transportadora@rodo.com",
-  },
-  {
-    id: "comex",
-    type: "comex",
-    name: "Assessoria Comex",
-    country: "BR",
-    email: "comex@assessoria.com",
-  },
-  {
-    id: "agente-carga",
-    type: "logistics",
-    name: "Cargo Agentes de Carga",
-    country: "BR",
-    email: "agente@cargo.com",
-  },
-  {
-    id: "ocp",
-    type: "ocp",
-    name: "Certifica OCP",
-    country: "BR",
-    email: "ocp@certifica.com",
-  },
-];
-
-type DemoParty = (typeof DEMO_PARTIES)[number];
-type DemoUser = (typeof DEMO_USERS)[number];
+/** Marca onde a falha nasceu (tabela ou Appwrite Auth) para o motivo na tela. */
+async function at<T>(where: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof Error && !("where" in error))
+      Object.assign(error, { where });
+    throw error;
+  }
+}
 
 async function createDemoParty(party: DemoParty) {
-  await getStore().create("parties", {
-    ...PARTY_EXTRA_DEFAULTS,
-    id: party.id,
-    type: party.type as never,
-    name: party.name,
-    country: party.country,
-    email: party.email,
-    phone: party.phone ?? null,
-    taxId: null,
-    notes: null,
-    active: true,
-    city: party.city ?? null,
-    ...(party.storeNumber ? { storeNumber: party.storeNumber } : {}),
-    ...(party.paymentTerms ? { paymentTerms: party.paymentTerms } : {}),
-    contactName: party.contactName ?? null,
-    wechat: party.wechat ?? null,
-    operationMode: party.operationMode ?? null,
-    radar: party.radar ?? null,
-  });
+  await at("parties", () =>
+    getStore().create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      ...demoPartyFields(party),
+      type: party.type as never,
+    }),
+  );
 }
 
 /** Conta de demonstração: login no Appwrite Auth (produção) e linha em `users`. */
@@ -273,29 +52,29 @@ async function createDemoUser(u: DemoUser): Promise<User> {
   if (store.mode === "appwrite") {
     // Autenticação fica no Appwrite Auth; a tabela users guarda papel e parceiro.
     const { createAdminClient } = await import("@/lib/appwrite/server");
-    const { Query } = await import("node-appwrite");
+    const { ID, Query } = await import("node-appwrite");
     const { users: authUsers } = createAdminClient();
-    const found = await authUsers.list({
-      queries: [Query.equal("email", u.email)],
-    });
-    if (found.total === 0)
-      await authUsers.create({
-        userId: "unique()",
-        email: u.email,
-        password: DEMO_PASSWORD,
-        name: u.name,
+    await at("auth", async () => {
+      const found = await authUsers.list({
+        queries: [Query.equal("email", u.email)],
       });
+      if (found.total === 0)
+        await authUsers.create({
+          userId: ID.unique(),
+          email: u.email,
+          password: DEMO_PASSWORD,
+          name: u.name,
+        });
+    });
   }
-  return store.create("users", {
-    ...USER_EXTRA_DEFAULTS,
-    email: u.email,
-    name: u.name,
-    role: u.role,
-    partyId: u.party,
-    locale: u.locale,
-    passwordHash: store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null,
-    active: true,
-  });
+  return at("users", () =>
+    store.create("users", {
+      ...USER_EXTRA_DEFAULTS,
+      ...demoUserFields(u),
+      passwordHash:
+        store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null,
+    }),
+  );
 }
 
 /** E-mails das contas de demonstração que existem no banco (ativas). */
@@ -311,7 +90,7 @@ export interface DemoAccountsResult {
   parties: string[];
   users: string[];
   /** Logins que não puderam ser criados (código do erro para a tela). */
-  failed: Array<{ email: string; reason: string }>;
+  failed: Array<{ email: string; reason: string; detail?: string }>;
 }
 
 /**
@@ -334,10 +113,7 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       await createDemoParty(party);
       result.parties.push(party.id);
     } catch (error) {
-      result.failed.push({
-        email: party.email,
-        reason: reasonOf(error, party.id),
-      });
+      result.failed.push({ email: party.email, ...reasonOf(error, party.id) });
     }
   }
   const haveUsers = new Set(
@@ -364,7 +140,7 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       await createDemoUser(u);
       result.users.push(u.email);
     } catch (error) {
-      result.failed.push({ email: u.email, reason: reasonOf(error, u.email) });
+      result.failed.push({ email: u.email, ...reasonOf(error, u.email) });
     }
   }
   return result;
@@ -383,11 +159,13 @@ export function demoFailureReason(
   if (
     [
       "document_invalid_structure",
+      "row_invalid_structure",
       "attribute_not_found",
+      "column_not_found",
       "table_not_found",
       "collection_not_found",
     ].includes(type) ||
-    /invalid document structure|invalid format|unknown attribute|attribute not found|not found in schema|invalid.*enum|not a valid enum/i.test(
+    /invalid document structure|invalid format|unknown attribute|attribute not found|not found in schema|missing required attribute|invalid.*enum|not a valid enum/i.test(
       message,
     ) ||
     /^(table|collection) with the requested id\b.*could not be found/i.test(
@@ -398,9 +176,34 @@ export function demoFailureReason(
   return "unexpected";
 }
 
+/**
+ * Detalhe técnico, só códigos (vai na URL e aparece na tela): onde falhou
+ * (parties.type, users.role, auth) e o tipo de erro do Appwrite
+ * (document_invalid_structure…). Sem isso o administrador só via "esquema
+ * desatualizado" sem saber qual coluna, e o registro do servidor não está
+ * à mão de quem opera o portal.
+ */
+export function demoFailureDetail(error: unknown): string | undefined {
+  const e = error as { where?: unknown; type?: unknown } | null;
+  const where = /^[a-z_]{1,30}$/.test(String(e?.where ?? ""))
+    ? String(e?.where)
+    : "";
+  const type = /^[a-z_]{1,60}$/.test(String(e?.type ?? ""))
+    ? String(e?.type)
+    : "";
+  const message = error instanceof Error ? error.message : String(error);
+  const column =
+    where && where !== "auth"
+      ? /attribute[:\s]+"?([A-Za-z_][A-Za-z0-9_]{0,60})"?/i.exec(message)?.[1]
+      : undefined;
+  const place = column ? `${where}.${column}` : where;
+  const detail = [place, type].filter(Boolean).join(":");
+  return detail || undefined;
+}
+
 function reasonOf(error: unknown, who: string) {
   console.error("[demo] conta de demonstração não criada", who, error);
-  return demoFailureReason(error);
+  return { reason: demoFailureReason(error), detail: demoFailureDetail(error) };
 }
 
 /**

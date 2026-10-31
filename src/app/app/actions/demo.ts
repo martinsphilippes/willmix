@@ -19,9 +19,11 @@ export async function ensureDemoAccountsAction() {
     const params = new URLSearchParams({
       demo: String(added.users.length),
       demoFailed: added.failed
-        .map((f) => `${f.email}:${f.reason}`)
+        .map((f) =>
+          [f.email, f.reason, f.detail].filter(Boolean).join(":"),
+        )
         .join(",")
-        .slice(0, 500),
+        .slice(0, 800),
     });
     return `/app/settings?${params.toString()}#demo`;
   });

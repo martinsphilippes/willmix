@@ -32,10 +32,60 @@ describe("motivo da falha ao criar conta", () => {
         Object.assign(new Error("x"), { type: "table_not_found" }),
       ),
     ).toBe("schema_outdated");
+    // Nomes do TablesDB (Appwrite 1.8) e coluna obrigatória criada depois da tabela.
+    expect(
+      seed.demoFailureReason(
+        Object.assign(
+          new Error('Invalid document structure: Missing required attribute "jobLevel"'),
+          { type: "row_invalid_structure" },
+        ),
+      ),
+    ).toBe("schema_outdated");
+    expect(
+      seed.demoFailureReason(
+        Object.assign(new Error("x"), { type: "column_not_found" }),
+      ),
+    ).toBe("schema_outdated");
     // Sem vírgula nem dois-pontos: o código viaja na URL sem embaralhar a lista.
     expect(seed.demoFailureReason(new Error("fetch failed: a, b"))).toBe(
       "unexpected",
     );
+  });
+
+  it("detalhe técnico: onde falhou (tabela.coluna ou auth) e o tipo do erro, só códigos", () => {
+    const enumError = Object.assign(
+      new Error(
+        'Invalid document structure: Attribute "type" has invalid format. Value must be one of (customer, supplier)',
+      ),
+      { type: "document_invalid_structure", where: "parties" },
+    );
+    expect(seed.demoFailureDetail(enumError)).toBe(
+      "parties.type:document_invalid_structure",
+    );
+    expect(
+      seed.demoFailureDetail(
+        Object.assign(new Error('Unknown attribute: "functions"'), {
+          where: "users",
+          type: "document_invalid_structure",
+        }),
+      ),
+    ).toBe("users.functions:document_invalid_structure");
+    // Appwrite Auth: sem coluna; só o tipo do erro.
+    expect(
+      seed.demoFailureDetail(
+        Object.assign(new Error("A user with the same email already exists"), {
+          where: "auth",
+          type: "user_already_exists",
+        }),
+      ),
+    ).toBe("auth:user_already_exists");
+    // Valores fora do formato de código não entram (nada de texto livre na URL).
+    expect(
+      seed.demoFailureDetail(
+        Object.assign(new Error("x"), { where: "a b", type: "Boom!" }),
+      ),
+    ).toBeUndefined();
+    expect(seed.demoFailureDetail(new Error("fetch failed"))).toBeUndefined();
   });
 });
 

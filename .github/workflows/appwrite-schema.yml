@@ -4,8 +4,16 @@ name: Publicar esquema Appwrite
 # no banco de produção as tabelas, colunas e índices novos de
 # src/lib/db/schema.ts. Só ADICIONA (scripts/appwrite-push.ts nunca apaga nem
 # altera o que existe). A chave fica em Settings → Secrets → APPWRITE_API_KEY.
+# Com a opção "Criar contas de demonstração" marcada, cria também as empresas e
+# os logins de demonstração que faltam (scripts/appwrite-demo-accounts.ts), com
+# o erro inteiro do Appwrite no registro quando alguma não puder ser criada.
 on:
   workflow_dispatch:
+    inputs:
+      demo_accounts:
+        description: "Criar as contas de demonstração que faltam (Comex, agente de carga, OCP…)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -42,3 +50,7 @@ jobs:
       # divide um número). Só preenche número vazio; rodar de novo não muda nada.
       - name: Numerar solicitações antigas
         run: node scripts/appwrite-backfill-request-numbers.ts
+      # Só com a opção marcada: cria o que falta, nunca altera nem apaga.
+      - name: Criar contas de demonstração que faltam
+        if: ${{ inputs.demo_accounts }}
+        run: node scripts/appwrite-demo-accounts.ts
