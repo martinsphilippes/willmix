@@ -7,243 +7,23 @@ import {
   USER_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
   type LinePrompts,
-  type OperationMode,
-  type PaymentTermInstallment,
-  type RadarStatus,
   type Product,
-  type Role,
   type User,
 } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
 import { boxCbm } from "@/lib/logistics/cbm";
 
-/** Senha única de demonstração. Só existe no modo memória. */
-export const DEMO_PASSWORD = "wellmix123";
-
-export const DEMO_USERS: Array<{
-  email: string;
-  name: string;
-  role: Role;
-  party: string | null;
-  locale: "pt" | "en" | "zh";
-}> = [
-  {
-    email: "admin@wellmix.com",
-    name: "Ana Admin",
-    role: "admin",
-    party: null,
-    locale: "pt",
-  },
-  {
-    email: "operador@wellmix.com",
-    name: "Otávio Operador",
-    role: "operator",
-    party: null,
-    locale: "pt",
-  },
-  {
-    email: "joao@lojista.com",
-    name: "João Cliente",
-    role: "customer",
-    party: "cliente-joao",
-    locale: "pt",
-  },
-  {
-    email: "supplier.a@china.com",
-    name: "Li Wei",
-    role: "supplier",
-    party: "fornecedor-a",
-    locale: "zh",
-  },
-  {
-    email: "supplier.b@china.com",
-    name: "Chen Yu",
-    role: "supplier",
-    party: "fornecedor-b",
-    locale: "en",
-  },
-  {
-    email: "supplier.c@china.com",
-    name: "Wang Fang",
-    role: "supplier",
-    party: "fornecedor-c",
-    locale: "zh",
-  },
-  {
-    email: "agencia@design.com",
-    name: "Agência Criativa",
-    role: "agency",
-    party: "agencia",
-    locale: "pt",
-  },
-  {
-    email: "despachante@comex.com",
-    name: "Diego Despachante",
-    role: "broker",
-    party: "despachante",
-    locale: "pt",
-  },
-  {
-    email: "armador@maritima.com",
-    name: "Marítima SA",
-    role: "shipping_line",
-    party: "armador",
-    locale: "en",
-  },
-  {
-    email: "transportadora@rodo.com",
-    name: "Trans Rodo",
-    role: "carrier",
-    party: "transportador",
-    locale: "pt",
-  },
-  {
-    email: "comex@assessoria.com",
-    name: "Carla Comex",
-    role: "comex",
-    party: "comex",
-    locale: "pt",
-  },
-  {
-    email: "agente@cargo.com",
-    name: "Lucas Logística",
-    role: "logistics",
-    party: "agente-carga",
-    locale: "pt",
-  },
-  {
-    email: "ocp@certifica.com",
-    name: "Olga OCP",
-    role: "ocp",
-    party: "ocp",
-    locale: "pt",
-  },
-  {
-    email: "juridico@wellmix.com",
-    name: "Júlia Jurídico",
-    role: "legal",
-    party: null,
-    locale: "pt",
-  },
-];
-
-export const DEMO_PARTIES: Array<{
-  id: string;
-  type: Role | "shipping_line";
-  name: string;
-  country: string;
-  email: string;
-  city?: string;
-  contactName?: string;
-  wechat?: string | null;
-  phone?: string;
-  storeNumber?: string;
-  paymentTerms?: PaymentTermInstallment[];
-  operationMode?: OperationMode;
-  radar?: RadarStatus;
-}> = [
-  {
-    id: "cliente-joao",
-    type: "customer",
-    name: "Loja do João Ltda",
-    country: "BR",
-    email: "joao@lojista.com",
-    // Opera via estrutura/trade da Wellmix (não tem RADAR): nenhum gate dispara.
-    operationMode: "via_trade",
-    radar: "none",
-  },
-  {
-    id: "fornecedor-a",
-    type: "supplier",
-    name: "Shenzhen Supplier A",
-    country: "CN",
-    email: "supplier.a@china.com",
-    city: "Shenzhen",
-    contactName: "Li Wei",
-    wechat: "liwei_sz",
-    phone: "+86 755 1234 5678",
-    storeNumber: "A 154678",
-    // Condição de pagamento: 30% no pedido + 70% 90 dias após a entrega.
-    paymentTerms: [
-      { percent: 30, base: "order_created", days: 0 },
-      { percent: 70, base: "delivered", days: 90 },
-    ],
-  },
-  {
-    id: "fornecedor-b",
-    type: "supplier",
-    name: "Guangzhou Supplier B",
-    country: "CN",
-    email: "supplier.b@china.com",
-    city: "Guangzhou",
-    contactName: "Chen Yu",
-    wechat: null,
-  },
-  {
-    id: "fornecedor-c",
-    type: "supplier",
-    name: "Ningbo Supplier C",
-    country: "CN",
-    email: "supplier.c@china.com",
-    city: "Ningbo",
-    contactName: "Wang Fang",
-    wechat: "wangfang_nb",
-    paymentTerms: [{ percent: 100, base: "delivered", days: 60 }],
-  },
-  {
-    id: "agencia",
-    type: "agency",
-    name: "Agência Criativa",
-    country: "BR",
-    email: "agencia@design.com",
-  },
-  {
-    id: "despachante",
-    type: "broker",
-    name: "Comex Despachos",
-    country: "BR",
-    email: "despachante@comex.com",
-  },
-  {
-    id: "armador",
-    type: "shipping_line",
-    name: "Marítima SA",
-    country: "BR",
-    email: "armador@maritima.com",
-  },
-  {
-    id: "transportador",
-    type: "carrier",
-    name: "Trans Rodo",
-    country: "BR",
-    email: "transportadora@rodo.com",
-  },
-  {
-    id: "comex",
-    type: "comex",
-    name: "Assessoria Comex",
-    country: "BR",
-    email: "comex@assessoria.com",
-  },
-  {
-    id: "agente-carga",
-    type: "logistics",
-    name: "Cargo Agentes de Carga",
-    country: "BR",
-    email: "agente@cargo.com",
-  },
-  {
-    id: "ocp",
-    type: "ocp",
-    name: "Certifica OCP",
-    country: "BR",
-    email: "ocp@certifica.com",
-  },
-];
-
-type DemoParty = (typeof DEMO_PARTIES)[number];
-type DemoUser = (typeof DEMO_USERS)[number];
+export { DEMO_PARTIES, DEMO_PASSWORD, DEMO_USERS } from "./demo-data";
+import {
+  DEMO_PARTIES,
+  DEMO_PASSWORD,
+  DEMO_USERS,
+  demoPartyFields,
+  demoUserFields,
+  type DemoParty,
+  type DemoUser,
+} from "./demo-data";
 
 /** Marca onde a falha nasceu (tabela ou Appwrite Auth) para o motivo na tela. */
 async function at<T>(where: string, work: () => Promise<T>): Promise<T> {
@@ -257,25 +37,13 @@ async function at<T>(where: string, work: () => Promise<T>): Promise<T> {
 }
 
 async function createDemoParty(party: DemoParty) {
-  await at("parties", () => getStore().create("parties", {
-    ...PARTY_EXTRA_DEFAULTS,
-    id: party.id,
-    type: party.type as never,
-    name: party.name,
-    country: party.country,
-    email: party.email,
-    phone: party.phone ?? null,
-    taxId: null,
-    notes: null,
-    active: true,
-    city: party.city ?? null,
-    ...(party.storeNumber ? { storeNumber: party.storeNumber } : {}),
-    ...(party.paymentTerms ? { paymentTerms: party.paymentTerms } : {}),
-    contactName: party.contactName ?? null,
-    wechat: party.wechat ?? null,
-    operationMode: party.operationMode ?? null,
-    radar: party.radar ?? null,
-  }));
+  await at("parties", () =>
+    getStore().create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      ...demoPartyFields(party),
+      type: party.type as never,
+    }),
+  );
 }
 
 /** Conta de demonstração: login no Appwrite Auth (produção) e linha em `users`. */
@@ -302,14 +70,9 @@ async function createDemoUser(u: DemoUser): Promise<User> {
   return at("users", () =>
     store.create("users", {
       ...USER_EXTRA_DEFAULTS,
-      email: u.email,
-      name: u.name,
-      role: u.role,
-      partyId: u.party,
-      locale: u.locale,
+      ...demoUserFields(u),
       passwordHash:
         store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null,
-      active: true,
     }),
   );
 }

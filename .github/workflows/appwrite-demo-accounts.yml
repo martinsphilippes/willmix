@@ -1,0 +1,40 @@
+name: Criar contas de demonstração
+
+# Botão manual (Actions → "Criar contas de demonstração" → Run workflow): cria
+# no banco de produção as empresas e os logins de demonstração que ainda não
+# existem (src/lib/demo-data.ts), com o erro inteiro do Appwrite no registro
+# quando alguma não puder ser criada. Só cria o que falta; nunca altera nem
+# apaga. Usa a mesma chave do botão "Publicar esquema Appwrite".
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appwrite-demo-accounts
+  cancel-in-progress: false
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+      NEXT_PUBLIC_APPWRITE_ENDPOINT: ${{ vars.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1' }}
+      NEXT_PUBLIC_APPWRITE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '6ab41ae700396f0409b8' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Conferir a chave
+        run: |
+          if [ -z "$APPWRITE_API_KEY" ]; then
+            echo "::error::Cadastre APPWRITE_API_KEY em Settings → Secrets and variables → Actions (ambiente production ou do repositório)."
+            exit 1
+          fi
+      - name: Criar as contas que faltam
+        run: node scripts/appwrite-demo-accounts.ts
