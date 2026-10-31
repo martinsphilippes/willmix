@@ -458,3 +458,68 @@ describe("assunto por item do pedido", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 });
+
+describe("árvore de assuntos", () => {
+  it("Geral, pedido com os produtos embaixo e solicitação com o produto", async () => {
+    const { translator } = await import("@/i18n");
+    const t = translator("pt");
+    const store = getStore();
+    // Pedido com dois itens: só o primeiro tem conversa.
+    const order = await store.create("orders", {
+      number: 901,
+      customerId: joao.partyId!,
+      supplierId: supplierA.partyId!,
+      status: "PREPARATION",
+    } as never);
+    const [i1] = await Promise.all([
+      store.create("order_items", {
+        orderId: order.id,
+        productId: "prod-jarra",
+        name: "Jarra de vidro",
+        quantity: 10,
+        unit: "un",
+        unitPrice: null,
+      } as never),
+      store.create("order_items", {
+        orderId: order.id,
+        productId: null,
+        name: "Copo de vidro",
+        quantity: 5,
+        unit: "un",
+        unitPrice: null,
+      } as never),
+    ]);
+    const request = await createRequest(joao, {
+      customerId: joao.partyId!,
+      productName: "Jarra de vidro 1,5 L",
+      description: "Jarra da árvore",
+      quantity: 1000,
+      unit: "un",
+    });
+    await openRfq(admin, request.id, ["fornecedor-a"]);
+    const item = await msg.openTopic(supplierA, { orderItemId: i1.id });
+    const req = await msg.openTopic(supplierA, { requestId: request.id });
+    const view = (await msg.getConversationView(
+      supplierA,
+      item.conversationId,
+    ))!;
+    const tree = await msg.topicTree(t, view.topics);
+    expect(tree[0].kind).toBe("general");
+    const orderNode = tree.find(
+      (n) => n.kind === "order" && n.orderId === order.id,
+    )!;
+    expect(orderNode.label).toContain("#901");
+    // Pedido sem conversa própria ainda: abre ao tocar.
+    expect(orderNode.topic).toBeNull();
+    expect(orderNode.children.map((c) => c.label)).toEqual([
+      "Jarra de vidro",
+      "Copo de vidro",
+    ]);
+    expect(orderNode.children[0].topic?.id).toBe(item.topicId);
+    expect(orderNode.children[1].topic).toBeNull();
+    expect(orderNode.children[1].orderItemId).toBeTruthy();
+    const reqNode = tree.find((n) => n.topic?.id === req.topicId)!;
+    expect(reqNode.kind).toBe("request");
+    expect(reqNode.sub).toBe("Jarra de vidro 1,5 L");
+  });
+});

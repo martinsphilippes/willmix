@@ -444,9 +444,137 @@ export interface TopicSummary {
   kind: TopicKind;
   requestId: string | null;
   orderId: string | null;
+  /** Assunto de item: o item do pedido. */
+  orderItemId?: string | null;
   title: string | null;
   lastMessageAt: string | null;
   unread: number;
+}
+
+/*
+ * Árvore de assuntos (lista de quem é de fora e abas da Wellmix): Geral;
+ * cada pedido pelo número com os produtos dele embaixo (o assunto do item,
+ * ou "abrir" quando ainda não existe); cada solicitação pelo número com o
+ * produto. Assim o fornecedor acha a conversa pelo pedido e desce ao produto.
+ */
+export interface TopicNode {
+  key: string;
+  kind: "general" | "order" | "request" | "item";
+  /** Nome da linha ("Pedido #12", "Solicitação #8", nome do produto). */
+  label: string;
+  /** Segunda linha (produto da solicitação). */
+  sub?: string | null;
+  /** Assunto já existente (link); nulo = abre ao tocar (pedido/item sem conversa). */
+  topic: TopicSummary | null;
+  orderId?: string | null;
+  orderItemId?: string | null;
+  children: TopicNode[];
+}
+
+export async function topicTree(
+  t: Translate,
+  topics: TopicSummary[],
+): Promise<TopicNode[]> {
+  const store = getStore();
+  const orderIds = [
+    ...new Set(topics.map((x) => x.orderId).filter(Boolean)),
+  ] as string[];
+  const [orders, items] = await Promise.all([
+    orderIds.length ? store.list("orders", { filter: { id: orderIds } }) : [],
+    orderIds.length
+      ? store.list("order_items", { filter: { orderId: orderIds } })
+      : [],
+  ]);
+  const nodes: TopicNode[] = [];
+  const general = topics.find((x) => x.kind === "general");
+  if (general)
+    nodes.push({
+      key: general.id,
+      kind: "general",
+      label: topicLabel(t, general),
+      topic: general,
+      children: [],
+    });
+  // Pedidos: pelo número, mais recente primeiro; itens na ordem do pedido.
+  const byNumber = [...orders].sort((a, b) => b.number - a.number);
+  for (const order of byNumber) {
+    const orderTopic =
+      topics.find((x) => x.kind === "order" && x.orderId === order.id) ?? null;
+    const itemNodes: TopicNode[] = items
+      .filter((i) => i.orderId === order.id)
+      .map((i) => {
+        const topic =
+          topics.find((x) => x.kind === "item" && x.orderItemId === i.id) ??
+          null;
+        return {
+          key: topic?.id ?? `item:${i.id}`,
+          kind: "item" as const,
+          label: i.name,
+          topic,
+          orderId: order.id,
+          orderItemId: i.id,
+          children: [],
+        };
+      });
+    // Assunto de item cujo item sumiu do pedido: ainda aparece, pelo título.
+    for (const x of topics)
+      if (
+        x.kind === "item" &&
+        x.orderId === order.id &&
+        !itemNodes.some((n) => n.topic?.id === x.id)
+      )
+        itemNodes.push({
+          key: x.id,
+          kind: "item",
+          label: (x.title ?? "").replace(/^#\d+ · /, "") || topicLabel(t, x),
+          topic: x,
+          orderId: order.id,
+          orderItemId: x.orderItemId ?? null,
+          children: [],
+        });
+    nodes.push({
+      key: orderTopic?.id ?? `order:${order.id}`,
+      kind: "order",
+      label: t("messages.topic.order", { ref: `#${order.number}` }),
+      topic: orderTopic,
+      orderId: order.id,
+      children: itemNodes,
+    });
+  }
+  // Pedido de assunto que não está mais no banco: linha pelo título.
+  for (const x of topics)
+    if (
+      (x.kind === "order" || x.kind === "item") &&
+      x.orderId &&
+      !orders.some((o) => o.id === x.orderId)
+    )
+      nodes.push({
+        key: x.id,
+        kind: x.kind,
+        label: topicLabel(t, x),
+        topic: x,
+        orderId: x.orderId,
+        children: [],
+      });
+  // Solicitações: número e produto, mais recente primeiro.
+  const requests = topics
+    .filter((x) => x.kind === "request")
+    .sort((a, b) => time(b.lastMessageAt) - time(a.lastMessageAt));
+  for (const x of requests) {
+    const [ref, ...rest] = (x.title ?? "").split(" · ");
+    const hasNumber = /^#\d+$/.test(ref ?? "");
+    nodes.push({
+      key: x.id,
+      kind: "request",
+      label: hasNumber
+        ? t("messages.topic.request", { ref })
+        : topicLabel(t, x),
+      sub: hasNumber ? rest.join(" · ") || null : null,
+      topic: x,
+      children: [],
+    });
+  }
+  return nodes;
 }
 
 export interface MessageView {
@@ -512,6 +640,7 @@ export async function getConversationView(
     kind: t.kind,
     requestId: t.requestId,
     orderId: t.orderId,
+    orderItemId: t.orderItemId ?? null,
     title: t.title,
     lastMessageAt: t.lastMessageAt,
     unread: unread.get(t.id) ?? 0,

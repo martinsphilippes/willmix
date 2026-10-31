@@ -4,6 +4,7 @@
  * pt, en e zh.
  */
 export const pt = {
+  "messages.tree.open": "Abrir conversa",
   "nav.messages": "Mensagens",
   "messages.title": "Mensagens",
   "messages.subtitle.wellmix":
@@ -83,6 +84,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "messages.tree.open": "Start conversation",
   "nav.messages": "Messages",
   "messages.title": "Messages",
   "messages.subtitle.wellmix":
@@ -162,6 +164,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "messages.tree.open": "开始对话",
   "nav.messages": "消息",
   "messages.title": "消息",
   "messages.subtitle.wellmix":
