@@ -245,8 +245,19 @@ export const DEMO_PARTIES: Array<{
 type DemoParty = (typeof DEMO_PARTIES)[number];
 type DemoUser = (typeof DEMO_USERS)[number];
 
+/** Marca onde a falha nasceu (tabela ou Appwrite Auth) para o motivo na tela. */
+async function at<T>(where: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof Error && !("where" in error))
+      Object.assign(error, { where });
+    throw error;
+  }
+}
+
 async function createDemoParty(party: DemoParty) {
-  await getStore().create("parties", {
+  await at("parties", () => getStore().create("parties", {
     ...PARTY_EXTRA_DEFAULTS,
     id: party.id,
     type: party.type as never,
@@ -264,7 +275,7 @@ async function createDemoParty(party: DemoParty) {
     wechat: party.wechat ?? null,
     operationMode: party.operationMode ?? null,
     radar: party.radar ?? null,
-  });
+  }));
 }
 
 /** Conta de demonstração: login no Appwrite Auth (produção) e linha em `users`. */
@@ -275,27 +286,32 @@ async function createDemoUser(u: DemoUser): Promise<User> {
     const { createAdminClient } = await import("@/lib/appwrite/server");
     const { Query } = await import("node-appwrite");
     const { users: authUsers } = createAdminClient();
-    const found = await authUsers.list({
-      queries: [Query.equal("email", u.email)],
-    });
-    if (found.total === 0)
-      await authUsers.create({
-        userId: "unique()",
-        email: u.email,
-        password: DEMO_PASSWORD,
-        name: u.name,
+    await at("auth", async () => {
+      const found = await authUsers.list({
+        queries: [Query.equal("email", u.email)],
       });
+      if (found.total === 0)
+        await authUsers.create({
+          userId: "unique()",
+          email: u.email,
+          password: DEMO_PASSWORD,
+          name: u.name,
+        });
+    });
   }
-  return store.create("users", {
-    ...USER_EXTRA_DEFAULTS,
-    email: u.email,
-    name: u.name,
-    role: u.role,
-    partyId: u.party,
-    locale: u.locale,
-    passwordHash: store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null,
-    active: true,
-  });
+  return at("users", () =>
+    store.create("users", {
+      ...USER_EXTRA_DEFAULTS,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      partyId: u.party,
+      locale: u.locale,
+      passwordHash:
+        store.mode === "memory" ? hashPassword(DEMO_PASSWORD) : null,
+      active: true,
+    }),
+  );
 }
 
 /** E-mails das contas de demonstração que existem no banco (ativas). */
@@ -311,7 +327,7 @@ export interface DemoAccountsResult {
   parties: string[];
   users: string[];
   /** Logins que não puderam ser criados (código do erro para a tela). */
-  failed: Array<{ email: string; reason: string }>;
+  failed: Array<{ email: string; reason: string; detail?: string }>;
 }
 
 /**
@@ -334,10 +350,7 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       await createDemoParty(party);
       result.parties.push(party.id);
     } catch (error) {
-      result.failed.push({
-        email: party.email,
-        reason: reasonOf(error, party.id),
-      });
+      result.failed.push({ email: party.email, ...reasonOf(error, party.id) });
     }
   }
   const haveUsers = new Set(
@@ -364,7 +377,7 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       await createDemoUser(u);
       result.users.push(u.email);
     } catch (error) {
-      result.failed.push({ email: u.email, reason: reasonOf(error, u.email) });
+      result.failed.push({ email: u.email, ...reasonOf(error, u.email) });
     }
   }
   return result;
@@ -398,9 +411,34 @@ export function demoFailureReason(
   return "unexpected";
 }
 
+/**
+ * Detalhe técnico, só códigos (vai na URL e aparece na tela): onde falhou
+ * (parties.type, users.role, auth) e o tipo de erro do Appwrite
+ * (document_invalid_structure…). Sem isso o administrador só via "esquema
+ * desatualizado" sem saber qual coluna, e o registro do servidor não está
+ * à mão de quem opera o portal.
+ */
+export function demoFailureDetail(error: unknown): string | undefined {
+  const e = error as { where?: unknown; type?: unknown } | null;
+  const where = /^[a-z_]{1,30}$/.test(String(e?.where ?? ""))
+    ? String(e?.where)
+    : "";
+  const type = /^[a-z_]{1,60}$/.test(String(e?.type ?? ""))
+    ? String(e?.type)
+    : "";
+  const message = error instanceof Error ? error.message : String(error);
+  const column =
+    where && where !== "auth"
+      ? /attribute[:\s]+"?([A-Za-z_][A-Za-z0-9_]{0,60})"?/i.exec(message)?.[1]
+      : undefined;
+  const place = column ? `${where}.${column}` : where;
+  const detail = [place, type].filter(Boolean).join(":");
+  return detail || undefined;
+}
+
 function reasonOf(error: unknown, who: string) {
   console.error("[demo] conta de demonstração não criada", who, error);
-  return demoFailureReason(error);
+  return { reason: demoFailureReason(error), detail: demoFailureDetail(error) };
 }
 
 /**

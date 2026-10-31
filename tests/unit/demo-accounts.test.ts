@@ -37,6 +37,42 @@ describe("motivo da falha ao criar conta", () => {
       "unexpected",
     );
   });
+
+  it("detalhe técnico: onde falhou (tabela.coluna ou auth) e o tipo do erro, só códigos", () => {
+    const enumError = Object.assign(
+      new Error(
+        'Invalid document structure: Attribute "type" has invalid format. Value must be one of (customer, supplier)',
+      ),
+      { type: "document_invalid_structure", where: "parties" },
+    );
+    expect(seed.demoFailureDetail(enumError)).toBe(
+      "parties.type:document_invalid_structure",
+    );
+    expect(
+      seed.demoFailureDetail(
+        Object.assign(new Error('Unknown attribute: "functions"'), {
+          where: "users",
+          type: "document_invalid_structure",
+        }),
+      ),
+    ).toBe("users.functions:document_invalid_structure");
+    // Appwrite Auth: sem coluna; só o tipo do erro.
+    expect(
+      seed.demoFailureDetail(
+        Object.assign(new Error("A user with the same email already exists"), {
+          where: "auth",
+          type: "user_already_exists",
+        }),
+      ),
+    ).toBe("auth:user_already_exists");
+    // Valores fora do formato de código não entram (nada de texto livre na URL).
+    expect(
+      seed.demoFailureDetail(
+        Object.assign(new Error("x"), { where: "a b", type: "Boom!" }),
+      ),
+    ).toBeUndefined();
+    expect(seed.demoFailureDetail(new Error("fetch failed"))).toBeUndefined();
+  });
 });
 
 describe("contas de demonstração", () => {

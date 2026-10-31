@@ -180,14 +180,22 @@ export default async function SettingsPage({
   const demoFailures =
     typeof demoFailed === "string" && demoFailed
       ? demoFailed.split(",").flatMap((item) => {
-          const [email, reason] = item.split(":");
+          const [email, reason, ...rest] = item.split(":");
           if (
             !demoEmails.has(email) ||
             !/^[a-z][a-z0-9_]{1,59}$/.test(reason ?? "")
           )
             return [];
           const key = `settings.demo.reason.${reason}` as DictionaryKey;
-          return t(key) !== key ? [`${email}: ${t(key)}`] : [];
+          if (t(key) === key) return [];
+          // Detalhe técnico (onde e qual erro), só códigos: parties.type:document_invalid_structure.
+          const detail = rest.join(":");
+          const technical = /^[a-z_]{1,30}(\.[A-Za-z0-9_]{1,60})?(:[a-z_]{1,60})?$/.test(
+            detail,
+          )
+            ? ` ${t("settings.demo.detail", { detail })}`
+            : "";
+          return [`${email}: ${t(key)}${technical}`];
         })
       : [];
 
