@@ -752,13 +752,18 @@ export default async function SettingsPage({
             {t("settings.demo.intro", { password: DEMO_PASSWORD })}
           </p>
           {demoCreated !== null && Number.isFinite(demoCreated) ? (
-            <div className="mb-3">
-              <Alert tone={demoCreated > 0 ? "success" : "info"}>
-                {demoCreated > 0
-                  ? t("settings.demo.done", { n: String(demoCreated) })
-                  : t("settings.demo.none")}
-              </Alert>
-            </div>
+            demoCreated > 0 ? (
+              <div className="mb-3">
+                <Alert tone="success">
+                  {t("settings.demo.done", { n: String(demoCreated) })}
+                </Alert>
+              </div>
+            ) : // Com falhas, a lista delas já diz o que houve.
+            demoFailures.length === 0 ? (
+              <div className="mb-3">
+                <Alert tone="info">{t("settings.demo.none")}</Alert>
+              </div>
+            ) : null
           ) : null}
           {demoFailures.length ? (
             <div className="mb-3">

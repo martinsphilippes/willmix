@@ -4,7 +4,7 @@ import { WellmixLogo } from "@/components/brand";
 import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth/session";
 import { dataMode } from "@/lib/env";
-import { getStore, STAGE_KEYS } from "@/lib/db";
+import { STAGE_KEYS } from "@/lib/db";
 import {
   DEMO_PASSWORD,
   DEMO_USERS,
@@ -28,10 +28,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const t = await getT();
 
   const memory = dataMode() === "memory";
-  if (memory) {
-    const users = await getStore().list("users", { limit: 1 });
-    if (users.length === 0) await seedDemo();
-  }
+  // Modo memória: banco vazio ganha a carga inicial; banco antigo (de antes
+  // de um papel novo) ganha só as contas de demonstração que faltam.
+  if (memory) await seedDemo();
   // Contas de demonstração: sempre no modo memória; em produção só com a variável
   // ligada. Só as que existem no banco (papel novo entra depois de criada).
   const showDemo = demoAccountsEnabled();

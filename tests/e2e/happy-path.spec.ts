@@ -587,6 +587,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // novo) e volta ao admin.
   await page.goto("/app/settings");
   await expect(page.locator("[data-demo-accounts]")).toBeVisible();
+  // Banco de antes de um papel novo: o botão cria o que falta.
+  const createDemo = page.locator("[data-demo-create]");
+  if (await createDemo.isVisible()) {
+    await createDemo.click();
+    await page.waitForURL(/[?&]demo=\d+/);
+  }
   await expect(page.locator("[data-demo-exists='0']")).toHaveCount(0);
   const demoSelect = page
     .getByRole("combobox", {

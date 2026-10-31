@@ -349,13 +349,15 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
   );
   for (const u of DEMO_USERS) {
     if (haveUsers.has(u.email)) continue;
-    // Sem a empresa (falhou acima), o login ficaria órfão.
+    // Sem a empresa (falhou acima), o login ficaria órfão; a falha da
+    // empresa já está na lista com esse e-mail.
     if (
       u.party &&
       !haveParties.has(u.party) &&
       !result.parties.includes(u.party)
     ) {
-      result.failed.push({ email: u.email, reason: "party_missing" });
+      if (!result.failed.some((f) => f.email === u.email))
+        result.failed.push({ email: u.email, reason: "party_missing" });
       continue;
     }
     try {

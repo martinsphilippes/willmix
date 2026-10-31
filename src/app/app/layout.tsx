@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getStore } from "@/lib/db";
+import { getStore, type User } from "@/lib/db";
 import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
@@ -112,12 +112,26 @@ function NotificationsBell({
   );
 }
 
-/** Só as contas que existem no banco: um papel novo só entra depois de criado em Configurações. */
-function demoAccounts(t: Translate, existing: Set<string>) {
-  return DEMO_USERS.filter((u) => existing.has(u.email)).map((u) => ({
+/**
+ * Só as contas que existem no banco (um papel novo só entra depois de criado
+ * em Configurações). Quem está logado aparece sempre, mesmo sem ser conta de
+ * demonstração: o seletor mostra quem é, em vez de "escolher" a primeira.
+ */
+function demoAccounts(
+  t: Translate,
+  existing: Set<string>,
+  current: { email: string; name: string; role: User["role"] },
+) {
+  const list = DEMO_USERS.filter((u) => existing.has(u.email)).map((u) => ({
     email: u.email,
     label: `${t(`role.${u.role}`)} · ${u.name}`,
   }));
+  if (!list.some((a) => a.email === current.email))
+    list.unshift({
+      email: current.email,
+      label: `${t(`role.${current.role}`)} · ${current.name}`,
+    });
+  return list;
 }
 
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
@@ -153,8 +167,9 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         t,
         await existingDemoAccounts().catch((error: unknown) => {
           console.error("existingDemoAccounts failed", error);
-          return new Set<string>([user.email]);
+          return new Set<string>();
         }),
+        user,
       )
     : [];
   const roleLabel = t(`role.${user.role}`);
