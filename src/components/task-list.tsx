@@ -14,13 +14,16 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
-  Card,
   Empty,
   LinkButton,
   PageHeader,
+  Table,
+  Td,
   TextLink,
+  Th,
   cx,
   formatDate,
+  rowClass,
 } from "./ui";
 import { QuoteSentNotice } from "./quote-sent-notice";
 
@@ -224,14 +227,25 @@ function dueLabel(task: Task, t: Translate): string | null {
 }
 
 /**
- * Lista de pendências (também usada no início do cliente, em Solicitações).
- * Duas colunas quando o espaço é largo (@container): a ordem pelo prazo segue
- * linha a linha; numa coluna estreita fica uma pendência por linha.
+ * Lista de pendências em linhas (também usada no início do cliente, em
+ * Solicitações): a mesma tabela das outras telas (Pedidos, Control Tower),
+ * uma pendência por linha, na ordem do prazo, com o botão Abrir na linha.
  */
 export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
   return (
-    <div className="@container">
-      <ul className="grid items-start gap-2 @2xl:grid-cols-2">
+    <Table>
+      <thead>
+        <tr>
+          <Th>{t("tasks.col.task")}</Th>
+          <Th>{t("tasks.col.detail")}</Th>
+          <Th>{t("tasks.filter.type")}</Th>
+          <Th>{t("common.due")}</Th>
+          <Th className="text-right">
+            <span className="sr-only">{t("tasks.open")}</span>
+          </Th>
+        </tr>
+      </thead>
+      <tbody>
         {tasks.map((task, i) => {
           // Requisito de etapa: etapa traduzida (o serviço guarda a chave).
           const title =
@@ -243,53 +257,69 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
               : task.title;
           const relative = dueLabel(task, t);
           return (
-            <li
+            <tr
               key={i}
+              data-task-row
               data-task-due={task.due}
               data-task-group={task.group}
-              className="min-w-0"
+              className={rowClass}
             >
-              <Card className="p-3 sm:p-3.5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-zinc-900">
-                        {title}
-                      </span>
-                      {task.overdue ? (
+              <Td className="min-w-48 font-semibold text-zinc-900">
+                <Link href={task.link} className="hover:underline">
+                  {title}
+                </Link>
+              </Td>
+              <Td className="min-w-40 text-zinc-600">{task.detail || "—"}</Td>
+              <Td className="whitespace-nowrap text-zinc-700">
+                {groupLabel(task.group, !!task.stageKey, t)}
+              </Td>
+              <Td
+                className={cx(
+                  "whitespace-nowrap tabular-nums",
+                  task.overdue && "font-semibold text-red-700",
+                )}
+              >
+                {task.dueAt ? (
+                  <>
+                    {formatDate(task.dueAt, t)}
+                    {task.overdue ? (
+                      <span className="ml-1.5 align-middle">
                         <Badge tone="danger">{t("common.overdue")}</Badge>
-                      ) : task.due === "today" ? (
+                      </span>
+                    ) : task.due === "today" ? (
+                      <span className="ml-1.5 align-middle">
                         <Badge tone="warning">{t("tasks.due.today")}</Badge>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm text-zinc-600">{task.detail}</p>
-                    {task.dueAt ? (
-                      <p
+                      </span>
+                    ) : null}
+                    {/* "vence em 3 dias" / "atrasada há 2 dias"; "vence hoje" já está no selo. */}
+                    {relative && task.due !== "today" ? (
+                      <span
                         className={cx(
-                          "mt-1.5 text-xs",
-                          task.overdue
-                            ? "font-semibold text-red-700"
-                            : "text-zinc-500",
+                          "block text-xs font-normal",
+                          task.overdue ? "text-red-700" : "text-zinc-500",
                         )}
                       >
-                        {t("common.due")}: {formatDate(task.dueAt, t)}
-                        {relative ? ` · ${relative}` : null}
-                      </p>
+                        {relative}
+                      </span>
                     ) : null}
-                  </div>
-                  <LinkButton
-                    href={task.link}
-                    variant="primary"
-                    className="shrink-0"
-                  >
-                    {t("tasks.open")}
-                  </LinkButton>
-                </div>
-              </Card>
-            </li>
+                  </>
+                ) : (
+                  <span className="text-zinc-400">—</span>
+                )}
+              </Td>
+              <Td className="whitespace-nowrap text-right">
+                <LinkButton
+                  href={task.link}
+                  variant="primary"
+                  className="min-h-8 px-3 py-1 text-xs"
+                >
+                  {t("tasks.open")}
+                </LinkButton>
+              </Td>
+            </tr>
           );
         })}
-      </ul>
-    </div>
+      </tbody>
+    </Table>
   );
 }

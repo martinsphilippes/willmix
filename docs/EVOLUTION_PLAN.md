@@ -354,6 +354,11 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Filtros como links (`?due=overdue|today|week|later|none` e `?type=<etapa ou tipo>`), com contagem em cada chip; só aparecem os chips com pendências. "Tipo" agrupa requisitos pela etapa (na ordem do fluxo) e as demais pendências pelo tipo (abrir RFQ, responder cotação, escolher fornecedor, confirmar sinal, pagar sinal, frete, revisão, sourcing, pós-venda). Funciona sem JavaScript e a URL filtrada pode ser compartilhada.
 - Cada pendência mostra a etapa traduzida ("Pedido #3: Preparação", antes a chave crua) e o prazo relativo ("vence em 7 dias", "atrasada há 2 dias"). `Task` ganhou `stageKey`, `group`, `due` e `daysLeft`; nada foi removido.
 
+## Pendências em linhas (tabela)
+
+- A tela Pendências (`/app/tasks`, o início dos parceiros e as pendências no início do cliente) deixou os cartões e passou a usar a mesma tabela das outras listas (Pedidos, Control Tower): uma pendência por linha, com as colunas Pendência (link), Detalhe, Tipo (etapa ou tipo da pendência), Prazo (data, selo "Atrasado"/"vence hoje" e o prazo relativo) e o botão Abrir na linha. A ordem pelo prazo e os filtros por prazo e tipo (chips como links) não mudaram. Cada linha leva `data-task-row`, `data-task-due` e `data-task-group` (o E2E procura a linha da RFQ por `[data-task-row]`).
+- O tipo "Embalagem (faca e arte)" ganhou rótulo nos três idiomas (antes o chip mostrava a chave).
+
 ## Vários produtos numa solicitação só (lote)
 
 - A tela "Nova solicitação" aceita vários produtos: uma linha por produto ("+ Adicionar outro produto", "Remover"), cada uma com "fora do catálogo", produto do catálogo (preenche com a ficha), nome, descrição, especificação, anexos, quantidade e unidade; prazo e observação valem para todas. Os campos levam o prefixo `p<n>.` (`p0.productId`, `p0.quantity`…), lidos por `parseRequestItems` (`src/app/app/actions/request-items.ts`); a busca por foto/link e a programação de compra preenchem só a primeira linha.
@@ -529,4 +534,3 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - Especificação em `docs/ACCESS.md`. Uma lista só de telas (`src/lib/auth/screens.ts`) e uma regra só (`screensFor`): admin vê tudo; operador vê o básico (Control Tower, Pendências, SLA, Notificações, Mensagens) mais as telas das funções marcadas em Equipe e divisões; cliente, fornecedor e parceiros têm a lista fixa do papel (as mesmas telas de antes). **Financeiro é só do administrador** (Financeiro, Contas a pagar, conta corrente, totais em dinheiro do Control Tower, painel Financeiro, pagamentos e margem no pedido, confirmação do sinal, condição de pagamento do fornecedor).
 - Menu (`navFor(user)`), guarda das páginas (`requireScreen`, volta ao início com aviso), Server Actions (`assertScreen`/`assertAnyScreen`; as de pagamento, `assertRole(["admin"])`), Control Tower (faixa Financeiro e valores só com a tela Financeiro; aviso de acesso negado e de login sem função) e Equipe e divisões (coluna "Telas" calculada, aviso de login sem função).
 - Nada removido: toda rota continua existindo; quem não a abre volta ao início com `?denied=tela`. Operadores já cadastrados veem só o básico até o admin marcar as funções.
-

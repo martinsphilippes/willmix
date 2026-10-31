@@ -235,7 +235,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Pendências vêm pelo prazo: abre a da RFQ, não a primeira da lista.
   await page.goto("/app/tasks");
   await page
-    .locator("li", { hasText: /RFQ/ })
+    .locator("[data-task-row]", { hasText: /RFQ/ })
     .first()
     .getByRole("link", { name: /打开|Open|Abrir/ })
     .click();
