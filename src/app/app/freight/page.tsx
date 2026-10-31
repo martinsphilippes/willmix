@@ -78,6 +78,7 @@ export default async function FreightListPage({
               <Th>{t("freight.col.cargo")}</Th>
               <Th>{t("freight.col.deadline")}</Th>
               <Th>{t("freight.col.value")}</Th>
+              <Th />
             </tr>
           </thead>
           <tbody>
@@ -91,15 +92,9 @@ export default async function FreightListPage({
                   data-freight-status={f.status}
                 >
                   <Td>
-                    <span className="inline-flex items-center gap-1">
-                      <Link href={`/app/freight/${f.id}`} className={linkClass}>
-                        {request?.productName ?? "—"}
-                      </Link>
-                      <ChatOpenButton
-                        target={{ requestId: f.requestId }}
-                        label={t("chat.open")}
-                      />
-                    </span>
+                    <Link href={`/app/freight/${f.id}`} className={linkClass}>
+                      {request?.productName ?? "—"}
+                    </Link>
                     <span className="mt-1 block">
                       <Badge
                         tone={
@@ -135,6 +130,12 @@ export default async function FreightListPage({
                     {f.status === "answered"
                       ? formatMoney(f.amount, f.currency, t)
                       : "—"}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    <ChatOpenButton
+                      target={{ requestId: f.requestId }}
+                      label={t("chat.open")}
+                    />
                   </Td>
                 </tr>
               );

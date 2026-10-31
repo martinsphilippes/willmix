@@ -372,24 +372,14 @@ export async function ControlTower({
                       <Th>{t("orders.stage")}</Th>
                       <Th>{t("common.responsible")}</Th>
                       <Th>{t("common.due")}</Th>
+                      <Th />
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.id} className={rowClass}>
                         <Td className="whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1">
-                            <TextLink href={row.link}>{row.number}</TextLink>
-                            {/* Conversa daquele pedido/solicitação (desce até o item no painel). */}
-                            <ChatOpenButton
-                              target={
-                                row.requestStatus
-                                  ? { requestId: row.id }
-                                  : { orderId: row.id }
-                              }
-                              label={t("chat.open")}
-                            />
-                          </span>
+                          <TextLink href={row.link}>{row.number}</TextLink>
                         </Td>
                         <Td>{row.customer}</Td>
                         <Td>{row.product}</Td>
@@ -422,6 +412,17 @@ export async function ControlTower({
                           >
                             {formatDate(row.dueAt, t)}
                           </span>
+                        </Td>
+                        {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
+                        <Td className="whitespace-nowrap text-right">
+                          <ChatOpenButton
+                            target={
+                              row.requestStatus
+                                ? { requestId: row.id }
+                                : { orderId: row.id }
+                            }
+                            label={t("chat.open")}
+                          />
                         </Td>
                       </tr>
                     ))}

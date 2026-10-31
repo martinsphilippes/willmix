@@ -39,6 +39,7 @@ import {
   termWhen,
 } from "@/components/supplier-terms-text";
 import { CertificationsSection } from "../products/_components/certifications-section";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Conta corrente do fornecedor: pedidos, valores, pagamentos, saldo. */
 export default async function AccountPage({
@@ -206,6 +207,7 @@ export default async function AccountPage({
                     {t("supplierTerms.col.amount")}
                   </Th>
                   <Th>{t("supplierTerms.col.status")}</Th>
+                  <Th />
                 </tr>
               </thead>
               <tbody>
@@ -267,6 +269,12 @@ export default async function AccountPage({
                         {t(`supplierTerms.status.${i.status}` as DictionaryKey)}
                       </Badge>
                     </Td>
+                    <Td className="whitespace-nowrap text-right">
+                      <ChatOpenButton
+                        target={{ orderId: payable.order.id }}
+                        label={t("chat.open")}
+                      />
+                    </Td>
                   </tr>
                 ))}
               </tbody>
@@ -321,7 +329,12 @@ export default async function AccountPage({
                   </Td>
                   <Td />
                   <Td />
-                  <Td />
+                  <Td className="whitespace-nowrap text-right">
+                    <ChatOpenButton
+                      target={{ orderId: o.id }}
+                      label={t("chat.open")}
+                    />
+                  </Td>
                 </tr>
               ))}
               {mine.map((p) => {
@@ -397,6 +410,12 @@ export default async function AccountPage({
                             </SubmitButton>
                           </form>
                         ) : null}
+                        {order ? (
+                          <ChatOpenButton
+                            target={{ orderId: order.id }}
+                            label={t("chat.open")}
+                          />
+                        ) : null}
                       </span>
                     </Td>
                   </tr>
@@ -422,6 +441,7 @@ export default async function AccountPage({
                     {t("orders.account.pendingConfirm")}
                   </Th>
                   <Th className="text-right">{t("account.balance")}</Th>
+                  <Th />
                 </tr>
               </thead>
               <tbody>
@@ -466,6 +486,12 @@ export default async function AccountPage({
                         )}
                       >
                         {formatMoney(balance, o.fobCurrency, t)}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right">
+                        <ChatOpenButton
+                          target={{ orderId: o.id }}
+                          label={t("chat.open")}
+                        />
                       </Td>
                     </tr>
                   );

@@ -271,14 +271,6 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                 <TextLink href={task.link} className="font-semibold">
                   {title}
                 </TextLink>
-                {(task.chat ?? chatTargetFromHref(task.link)) ? (
-                  <span className="ml-1 inline-block align-middle">
-                    <ChatOpenButton
-                      target={(task.chat ?? chatTargetFromHref(task.link))!}
-                      label={t("chat.open")}
-                    />
-                  </span>
-                ) : null}
                 {task.overdue ? (
                   <span className="ml-1.5 align-middle">
                     <Badge tone="danger">{t("common.overdue")}</Badge>
@@ -318,14 +310,23 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                 )}
               </Td>
               <Td className="whitespace-nowrap text-right">
-                <LinkButton
-                  href={task.link}
-                  variant="primary"
-                  className="min-h-8 px-3 py-1 text-xs"
-                >
-                  {t("tasks.open")}
-                  <span className="sr-only">: {title}</span>
-                </LinkButton>
+                <span className="inline-flex items-center gap-1.5">
+                  <LinkButton
+                    href={task.link}
+                    variant="primary"
+                    className="min-h-8 px-3 py-1 text-xs"
+                  >
+                    {t("tasks.open")}
+                    <span className="sr-only">: {title}</span>
+                  </LinkButton>
+                  {/* Conversa do pedido/solicitação: sempre no fim da linha. */}
+                  {(task.chat ?? chatTargetFromHref(task.link)) ? (
+                    <ChatOpenButton
+                      target={(task.chat ?? chatTargetFromHref(task.link))!}
+                      label={t("chat.open")}
+                    />
+                  ) : null}
+                </span>
               </Td>
             </tr>
           );

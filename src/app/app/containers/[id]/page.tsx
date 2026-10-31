@@ -39,6 +39,7 @@ import {
   formatNumber,
   formatPercent,
 } from "../_components/shared";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Container (Wellmix): situação, ocupação em CBM e peso, itens e visão comercial. */
 export default async function ContainerPage({
@@ -335,23 +336,31 @@ export default async function ContainerPage({
                     </Badge>
                   </Td>
                   <Td className="whitespace-nowrap text-right">
-                    {closed ? null : (
-                      <form action={removeContainerItemAction}>
-                        <input
-                          type="hidden"
-                          name="containerId"
-                          value={container.id}
+                    <span className="inline-flex items-center justify-end gap-1.5">
+                      {closed ? null : (
+                        <form action={removeContainerItemAction}>
+                          <input
+                            type="hidden"
+                            name="containerId"
+                            value={container.id}
+                          />
+                          <input type="hidden" name="itemId" value={item.id} />
+                          <SubmitButton
+                            type="submit"
+                            variant="danger"
+                            className="px-2.5 py-1 text-xs"
+                          >
+                            {t("containers.remove")}
+                          </SubmitButton>
+                        </form>
+                      )}
+                      {item.orderId ? (
+                        <ChatOpenButton
+                          target={{ orderId: item.orderId }}
+                          label={t("chat.open")}
                         />
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <SubmitButton
-                          type="submit"
-                          variant="danger"
-                          className="px-2.5 py-1 text-xs"
-                        >
-                          {t("containers.remove")}
-                        </SubmitButton>
-                      </form>
-                    )}
+                      ) : null}
+                    </span>
                   </Td>
                 </tr>
               ))}

@@ -343,13 +343,13 @@ export default async function MessageControlPage({
                   </Td>
                   <Td className="whitespace-nowrap">
                     <span className="inline-flex items-center gap-1">
+                      <TextLink href={r.href}>{t("msgctl.open")}</TextLink>
                       {target ? (
                         <ChatOpenButton
                           target={target}
                           label={t("chat.open")}
                         />
                       ) : null}
-                      <TextLink href={r.href}>{t("msgctl.open")}</TextLink>
                     </span>
                   </Td>
                 </tr>

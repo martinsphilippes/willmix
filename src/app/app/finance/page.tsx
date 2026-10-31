@@ -23,6 +23,7 @@ import {
   formatMoney,
   rowClass,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Valor no card: um pouco menor que o padrão do Stat, para caber seis cards numa linha. */
 function Money({ children }: { children: ReactNode }) {
@@ -168,6 +169,7 @@ export default async function FinancePage() {
                 <Th>{t("finance.fx")}</Th>
                 <Th>{t("finance.cost")}</Th>
                 <Th>{t("finance.margin")}</Th>
+                <Th />
               </tr>
             </thead>
             <tbody>
@@ -318,6 +320,12 @@ export default async function FinancePage() {
                     ) : (
                       "—"
                     )}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    <ChatOpenButton
+                      target={{ orderId: r.order.id }}
+                      label={t("chat.open")}
+                    />
                   </Td>
                 </tr>
               ))}

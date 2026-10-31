@@ -52,6 +52,7 @@ export default async function PenaltiesPage() {
               <Th>{t("common.date")}</Th>
               <Th>{t("common.status")}</Th>
               <Th />
+              <Th />
             </tr>
           </thead>
           <tbody>
@@ -60,15 +61,9 @@ export default async function PenaltiesPage() {
               return (
                 <tr key={p.id} className={rowClass}>
                   <Td>
-                    <span className="inline-flex items-center gap-1">
-                      <TextLink href={`/app/orders/${p.orderId}`}>
-                        #{order?.number}
-                      </TextLink>
-                      <ChatOpenButton
-                        target={{ orderId: p.orderId }}
-                        label={t("chat.open")}
-                      />
-                    </span>
+                    <TextLink href={`/app/orders/${p.orderId}`}>
+                      #{order?.number}
+                    </TextLink>
                   </Td>
                   <Td>
                     {parties.find((x) => x.id === p.responsiblePartyId)?.name ??
@@ -128,6 +123,12 @@ export default async function PenaltiesPage() {
                           </SubmitButton>
                         ))}
                     </form>
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    <ChatOpenButton
+                      target={{ orderId: p.orderId }}
+                      label={t("chat.open")}
+                    />
                   </Td>
                 </tr>
               );

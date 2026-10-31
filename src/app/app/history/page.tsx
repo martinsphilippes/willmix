@@ -180,6 +180,7 @@ export default async function HistoryPage({
                   <Th className="text-right">{t("history.replenishments")}</Th>
                   <Th>{t("history.repurchase")}</Th>
                   <Th>{t("history.lastOrder")}</Th>
+                  <Th />
                 </tr>
               </thead>
               <tbody>
@@ -221,21 +222,21 @@ export default async function HistoryPage({
                       <Interest value={r.repurchaseInterest} t={t} />
                     </Td>
                     <Td>
-                      <span className="inline-flex items-center gap-1">
-                        <TextLink
-                          href={`/app/orders/${r.lastOrderId}`}
-                          className="whitespace-nowrap"
-                        >
-                          {t("orders.number", { number: r.lastOrderNumber })}
-                        </TextLink>
-                        <ChatOpenButton
-                          target={{ orderId: r.lastOrderId }}
-                          label={t("chat.open")}
-                        />
-                      </span>
+                      <TextLink
+                        href={`/app/orders/${r.lastOrderId}`}
+                        className="whitespace-nowrap"
+                      >
+                        {t("orders.number", { number: r.lastOrderNumber })}
+                      </TextLink>
                       <div className="mt-1.5">
                         <RowActions row={r} t={t} />
                       </div>
+                    </Td>
+                    <Td className="whitespace-nowrap text-right">
+                      <ChatOpenButton
+                        target={{ orderId: r.lastOrderId }}
+                        label={t("chat.open")}
+                      />
                     </Td>
                   </tr>
                 ))}

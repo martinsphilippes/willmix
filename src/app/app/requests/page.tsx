@@ -451,11 +451,6 @@ export default async function RequestsPage({
                     </Td>
                     <Td className="text-right">
                       <div className="flex items-center justify-end gap-3">
-                        {/* Conversa do lote: abre pela primeira solicitação dele. */}
-                        <ChatOpenButton
-                          target={{ requestId: rows[0].id }}
-                          label={t("chat.open")}
-                        />
                         <TextLink href={batchHref(entry.groupId)}>
                           {t("tasks.open")}
                         </TextLink>
@@ -475,6 +470,11 @@ export default async function RequestsPage({
                             />
                           </form>
                         ) : null}
+                        {/* Conversa do lote: abre pela primeira solicitação dele. */}
+                        <ChatOpenButton
+                          target={{ requestId: rows[0].id }}
+                          label={t("chat.open")}
+                        />
                       </div>
                     </Td>
                   </tr>
@@ -544,10 +544,6 @@ export default async function RequestsPage({
                   </Td>
                   <Td className="text-right">
                     <div className="flex items-center justify-end gap-3">
-                      <ChatOpenButton
-                        target={{ requestId: r.id }}
-                        label={t("chat.open")}
-                      />
                       <TextLink href={`/app/requests/${r.id}`}>
                         {t("tasks.open")}
                       </TextLink>
@@ -560,6 +556,10 @@ export default async function RequestsPage({
                           />
                         </form>
                       ) : null}
+                      <ChatOpenButton
+                        target={{ requestId: r.id }}
+                        label={t("chat.open")}
+                      />
                     </div>
                   </Td>
                 </tr>

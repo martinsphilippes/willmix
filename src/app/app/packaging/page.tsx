@@ -49,6 +49,7 @@ export default async function PackagingListPage() {
               <Th>{t("packBrief.col.items")}</Th>
               <Th>{t("packBrief.col.deadline")}</Th>
               <Th>{t("packBrief.col.status")}</Th>
+              <Th />
             </tr>
           </thead>
           <tbody>
@@ -62,20 +63,12 @@ export default async function PackagingListPage() {
                   data-status={brief.status}
                 >
                   <Td>
-                    <span className="inline-flex items-center gap-1">
-                      <Link
-                        href={`/app/packaging/${brief.id}`}
-                        className={linkClass}
-                      >
-                        {request?.productName ?? "—"}
-                      </Link>
-                      {request ? (
-                        <ChatOpenButton
-                          target={{ requestId: request.id }}
-                          label={t("chat.open")}
-                        />
-                      ) : null}
-                    </span>
+                    <Link
+                      href={`/app/packaging/${brief.id}`}
+                      className={linkClass}
+                    >
+                      {request?.productName ?? "—"}
+                    </Link>
                     {request ? (
                       <span className="block text-xs text-zinc-500">
                         {request.quantity.toLocaleString(t.intl)} {request.unit}
@@ -122,6 +115,14 @@ export default async function PackagingListPage() {
                         <Badge tone="warning">{t("packBrief.presale")}</Badge>
                       ) : null}
                     </span>
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    {request ? (
+                      <ChatOpenButton
+                        target={{ requestId: request.id }}
+                        label={t("chat.open")}
+                      />
+                    ) : null}
                   </Td>
                 </tr>
               );

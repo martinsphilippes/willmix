@@ -33,6 +33,7 @@ import {
   formatMoney,
   rowClass,
 } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /*
  * Contas a pagar (só Wellmix): uma linha por parcela de pagamento ao
@@ -351,12 +352,18 @@ export default async function PayablesPage({
                       </Badge>
                     </Td>
                     <Td className="whitespace-nowrap text-right">
-                      <LinkButton
-                        href={`/app/orders/${payable.order.id}#supplier-payment`}
-                        variant={payable_ ? "primary" : "secondary"}
-                      >
-                        {payable_ ? t("payables.pay") : t("payables.open")}
-                      </LinkButton>
+                      <span className="inline-flex items-center gap-1.5">
+                        <LinkButton
+                          href={`/app/orders/${payable.order.id}#supplier-payment`}
+                          variant={payable_ ? "primary" : "secondary"}
+                        >
+                          {payable_ ? t("payables.pay") : t("payables.open")}
+                        </LinkButton>
+                        <ChatOpenButton
+                          target={{ orderId: payable.order.id }}
+                          label={t("chat.open")}
+                        />
+                      </span>
                     </Td>
                   </tr>
                 );

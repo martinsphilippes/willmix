@@ -12,6 +12,7 @@ import {
 } from "@/lib/services/dashboards";
 import { canSeeAudit } from "@/lib/services/audit-view";
 import { Card, Empty, PageHeader, Stat, TextLink } from "@/components/ui";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /*
  * Painéis por área (Fase G): compras, produção, embarque/desembaraço,
@@ -90,6 +91,12 @@ export default async function DashboardsPage({
                   {t("dash.order", { n: String(r.number) })}
                 </TextLink>
                 <span className="text-zinc-600">{r.detail}</span>
+                <span className="ml-auto">
+                  <ChatOpenButton
+                    target={{ orderId: r.id }}
+                    label={t("chat.open")}
+                  />
+                </span>
               </li>
             ))}
           </ul>
