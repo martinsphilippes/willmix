@@ -74,7 +74,8 @@ export function SheetSectionsNav({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const mode = useSyncExternalStore(subscribe, readMode, serverMode);
-  const [selected, setSelected] = useState<SheetSectionKey>(initial);
+  // Bloco aberto; nulo = todos recolhidos (tocar de novo no bloco aberto fecha).
+  const [selected, setSelected] = useState<SheetSectionKey | null>(initial);
   // Mesma lista de pendências → mesmo efeito (não refaz à toa).
   const sectionsKey = sections
     .map((s) => `${s.key}:${s.missing.map((m) => m.key).join(",")}`)
@@ -84,7 +85,7 @@ export function SheetSectionsNav({
     ref.current?.closest<HTMLElement>("[data-sheet-sections-root]") ?? document;
 
   /** Esconde/mostra os blocos conforme o modo; bloco sozinho ocupa a largura. */
-  const apply = useCallback((m: Mode, s: SheetSectionKey) => {
+  const apply = useCallback((m: Mode, s: SheetSectionKey | null) => {
     const root = rootOf();
     for (const el of root.querySelectorAll<HTMLElement>(
       "[data-sheet-section]",
@@ -97,12 +98,14 @@ export function SheetSectionsNav({
       root.setAttribute("data-sheet-sections-mode", m);
   }, []);
 
+  /** Abre o bloco; `toggle`: tocar de novo no bloco aberto recolhe. */
   const choose = useCallback(
-    (key: SheetSectionKey, m: Mode = mode) => {
-      setSelected(key);
-      apply(m, key);
+    (key: SheetSectionKey, toggle = false) => {
+      const next = toggle && mode === "one" && selected === key ? null : key;
+      setSelected(next);
+      apply(mode, next);
     },
-    [apply, mode],
+    [apply, mode, selected],
   );
 
   const toggleMode = () => {
@@ -179,8 +182,9 @@ export function SheetSectionsNav({
             ) : (
               <button
                 type="button"
-                onClick={() => choose(s.key)}
+                onClick={() => choose(s.key, true)}
                 aria-current={active ? "true" : undefined}
+                aria-expanded={s.href ? undefined : active}
                 className="font-medium text-zinc-900 underline decoration-dotted underline-offset-2 hover:decoration-solid"
               >
                 {s.label}
@@ -195,7 +199,7 @@ export function SheetSectionsNav({
                   if (s.href) return;
                   // Toque na linha vale como no nome (o botão já cuidou).
                   if ((e.target as HTMLElement).closest("button,a")) return;
-                  choose(s.key);
+                  choose(s.key, true);
                 }}
                 className={cx(
                   rowClass,
