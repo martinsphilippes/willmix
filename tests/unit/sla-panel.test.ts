@@ -218,4 +218,19 @@ describe("painel de SLA por divisão", () => {
     ).rejects.toThrow("manager_self");
     await expect(slaBoardFor(joao)).rejects.toThrow();
   });
+
+  it("as etapas por trás de 'no prazo' acompanham o indicador e a pessoa escolhida", async () => {
+    const all = await slaBoardFor(admin, ALL);
+    expect(all.recentStages.length).toBe(all.onTime.total);
+    expect(all.recentStages.filter((s) => s.onTime).length).toBe(
+      all.onTime.done,
+    );
+    for (const s of all.recentStages) {
+      expect(s.link).toBe(`/app/orders/${s.orderId}`);
+      expect(typeof s.onTime).toBe("boolean");
+    }
+    const one = await slaBoardFor(admin, analyst.id);
+    expect(one.recentStages.every((s) => s.ownerId === analyst.id)).toBe(true);
+    expect(one.recentStages.length).toBe(one.onTime.total);
+  });
 });

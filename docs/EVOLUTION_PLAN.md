@@ -354,6 +354,16 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - Filtros como links (`?due=overdue|today|week|later|none` e `?type=<etapa ou tipo>`), com contagem em cada chip; só aparecem os chips com pendências. "Tipo" agrupa requisitos pela etapa (na ordem do fluxo) e as demais pendências pelo tipo (abrir RFQ, responder cotação, escolher fornecedor, confirmar sinal, pagar sinal, frete, revisão, sourcing, pós-venda). Funciona sem JavaScript e a URL filtrada pode ser compartilhada.
 - Cada pendência mostra a etapa traduzida ("Pedido #3: Preparação", antes a chave crua) e o prazo relativo ("vence em 7 dias", "atrasada há 2 dias"). `Task` ganhou `stageKey`, `group`, `due` e `daysLeft`; nada foi removido.
 
+## Pendências em linhas (tabela)
+
+- A tela Pendências (`/app/tasks`, o início dos parceiros e as pendências no início do cliente) deixou os cartões e passou a usar a mesma tabela das outras listas (Pedidos, Control Tower): uma pendência por linha, com as colunas Pendência (link), Detalhe, Tipo (etapa ou tipo da pendência), Prazo (data, selo "Atrasado"/"vence hoje" e o prazo relativo) e o botão Abrir na linha. A ordem pelo prazo e os filtros por prazo e tipo (chips como links) não mudaram. Cada linha leva `data-task-row`, `data-task-due` e `data-task-group` (o E2E procura a linha da RFQ por `[data-task-row]`).
+- O briefing de embalagem continua agrupado na etapa "Arte e embalagem" (a pendência nasce com a etapa), tanto no chip quanto na coluna Tipo.
+- Revisão: o título da linha tem cara de link (cor da marca e sublinhado, como o nº em Pedidos) e o selo "Atrasado"/"vence hoje" fica ao lado dele, para a 1ª coluna bastar no celular; o Detalhe quebra linha; o botão Abrir leva o título só para leitor de tela. No início do cliente as pendências ficam em largura inteira, com os pedidos em andamento embaixo (a tabela não cabia em meia coluna).
+
+## Painel de SLA: cartões como filtros e tabela embaixo
+
+- Os cartões de totais do Painel de SLA (`/app/sla`) ficaram menores (`Stat` com `compact`) e viraram filtros (`?show=`): tocar num deles abre, embaixo, na mesma tela, a tabela em linhas daquele grupo (atrasadas, vencem hoje, próximos 7 dias, depois e sem prazo, parceiros atrasados). Sem escolha, a tabela mostra todas as pendências da pessoa escolhida (`?u=` continua valendo). O cartão "Etapas no prazo (30 dias)" abre a tabela das etapas por trás do indicador (`SlaBoard.recentStages`: pedido, etapa, cliente, prazo, concluída em, no prazo ou fora). As listas em cartões por grupo saíram; nenhuma informação foi removida (cada coluna da tabela corresponde a um dado que a lista mostrava), e o grupo "Depois e sem prazo" ganhou cartão.
+
 ## Vários produtos numa solicitação só (lote)
 
 - A tela "Nova solicitação" aceita vários produtos: uma linha por produto ("+ Adicionar outro produto", "Remover"), cada uma com "fora do catálogo", produto do catálogo (preenche com a ficha), nome, descrição, especificação, anexos, quantidade e unidade; prazo e observação valem para todas. Os campos levam o prefixo `p<n>.` (`p0.productId`, `p0.quantity`…), lidos por `parseRequestItems` (`src/app/app/actions/request-items.ts`); a busca por foto/link e a programação de compra preenchem só a primeira linha.
@@ -409,6 +419,11 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 ## Menu da Wellmix só com grupos
 
 - A barra do menu da Wellmix passou de 7 itens (4 links soltos + 3 grupos) para 4 grupos com lista suspensa: **Início** (Control Tower, Pendências, Notificações), **Pedidos** (Solicitações, Pedidos, Sourcing, Revisões, Fretes, Containers: do pedido do cliente à entrega), **Cadastros** e **Gestão** (sem mudança). A logo continua levando ao Control Tower em um clique e o sino às notificações. Nenhuma tela saiu nem se repetiu (`tests/unit/nav.test.ts`); no celular, o painel mostra os mesmos grupos como títulos, com o dia a dia no começo. O cliente também ficou só com grupos: **Início** (Solicitações, que é a tela inicial dele, Pendências, Notificações) e **Pedidos** (Pedidos, Histórico, Marketing); a logo leva às Solicitações. Fornecedores e parceiros também: **Início** (Pendências, Notificações) e **Pedidos** com a tela própria do papel (fornecedor: Pedidos e Conta corrente; companhia marítima: Fretes e Pedidos; jurídico: Pedidos e Multas). Grupo com uma tela só vira link direto (agência, despachante e transportador veem "Início ▾" e o link "Pedidos"), para não abrir uma lista de um item.
+
+## Notificações em linhas; aviso resolvido sai da lista
+
+- A tela Notificações (`/app/notifications`) trocou os cartões pela tabela padrão de linhas finas, um bloco por seção (Precisa de você, Atenção, Novidades): Tipo (selo), Aviso (assunto e texto), Com quem (agora é com você / com a Wellmix / com: papel), Quando, e os botões Resolver/Abrir (marca como lido e leva ao lugar) e Excluir.
+- Aviso resolvido (lido) sai da lista: por padrão só os não lidos aparecem; "Mostrar as lidas (N)" (`?read=1`) traz de volta, em cinza, e "Ocultar as lidas" volta ao padrão. Quando só há lidos, a tela diz "Nenhum aviso novo. N já lido(s)." com o link. O sino do cabeçalho, "✓ N" (marcar todas como lidas) e "Excluir todas" não mudaram. Nada foi removido: todo aviso continua gravado e visível pelo link.
 
 ## Excluir notificações
 
@@ -529,4 +544,3 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - Especificação em `docs/ACCESS.md`. Uma lista só de telas (`src/lib/auth/screens.ts`) e uma regra só (`screensFor`): admin vê tudo; operador vê o básico (Control Tower, Pendências, SLA, Notificações, Mensagens) mais as telas das funções marcadas em Equipe e divisões; cliente, fornecedor e parceiros têm a lista fixa do papel (as mesmas telas de antes). **Financeiro é só do administrador** (Financeiro, Contas a pagar, conta corrente, totais em dinheiro do Control Tower, painel Financeiro, pagamentos e margem no pedido, confirmação do sinal, condição de pagamento do fornecedor).
 - Menu (`navFor(user)`), guarda das páginas (`requireScreen`, volta ao início com aviso), Server Actions (`assertScreen`/`assertAnyScreen`; as de pagamento, `assertRole(["admin"])`), Control Tower (faixa Financeiro e valores só com a tela Financeiro; aviso de acesso negado e de login sem função) e Equipe e divisões (coluna "Telas" calculada, aviso de login sem função).
 - Nada removido: toda rota continua existindo; quem não a abre volta ao início com `?denied=tela`. Operadores já cadastrados veem só o básico até o admin marcar as funções.
-

@@ -537,6 +537,7 @@ export function Stat({
   href,
   tone = "neutral",
   active = false,
+  compact = false,
 }: {
   label: ReactNode;
   value: ReactNode;
@@ -544,11 +545,14 @@ export function Stat({
   tone?: Tone;
   /** Card selecionado (ex.: filtro atual da Control Tower). */
   active?: boolean;
+  /** Card menor (ex.: filtros do Painel de SLA): menos espaço e número menor. */
+  compact?: boolean;
 }) {
   const content = (
     <div
       className={cx(
-        "relative flex h-full flex-col overflow-hidden rounded-2xl border bg-white p-4 shadow-sm transition",
+        "relative flex h-full flex-col overflow-hidden border bg-white shadow-sm transition",
+        compact ? "rounded-xl p-2.5 sm:p-3" : "rounded-2xl p-4",
         href && "hover:-translate-y-0.5 hover:shadow-md",
         active
           ? "border-brand-600 ring-2 ring-brand-600"
@@ -574,13 +578,19 @@ export function Stat({
       />
       <div
         className={cx(
-          "text-xs font-semibold uppercase tracking-wide",
+          "font-semibold uppercase tracking-wide",
+          compact ? "text-[11px]" : "text-xs",
           active ? "text-brand-700" : "text-zinc-500",
         )}
       >
         {label}
       </div>
-      <div className="mt-auto break-words pt-1.5 text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl">
+      <div
+        className={cx(
+          "mt-auto break-words font-bold tracking-tight text-zinc-900",
+          compact ? "pt-1 text-lg sm:text-xl" : "pt-1.5 text-xl sm:text-2xl",
+        )}
+      >
         {value}
       </div>
     </div>
@@ -589,7 +599,7 @@ export function Stat({
     <Link
       href={href}
       aria-current={active ? "true" : undefined}
-      className="block h-full rounded-2xl"
+      className={cx("block h-full", compact ? "rounded-xl" : "rounded-2xl")}
     >
       {content}
     </Link>

@@ -77,6 +77,21 @@ export interface SlaPerson {
   onTime: { done: number; total: number };
 }
 
+/** Etapa concluída nos últimos 30 dias (com prazo): a linha do indicador "no prazo". */
+export interface SlaStage {
+  orderId: string;
+  orderNumber: number;
+  link: string;
+  stageKey: StageKey;
+  dueAt: string;
+  completedAt: string;
+  onTime: boolean;
+  /** Operador responsável (ou UNASSIGNED). */
+  ownerId: string;
+  customerId: string | null;
+  customerName: string | null;
+}
+
 export interface SlaBoard {
   people: SlaPerson[];
   /** Linha "Sem responsável" (só o admin vê). */
@@ -87,6 +102,8 @@ export interface SlaBoard {
   /** Totais do que está escolhido. */
   totals: SlaCounts;
   onTime: { done: number; total: number };
+  /** As etapas por trás de `onTime` (mais recentes primeiro), para a tabela do cartão. */
+  recentStages: SlaStage[];
   /** O login tem equipe (ou é admin): mostra a tabela da equipe. */
   manages: boolean;
 }
@@ -274,17 +291,39 @@ export async function slaBoardFor(
         (a.daysLeft ?? Number.POSITIVE_INFINITY) -
         (b.daysLeft ?? Number.POSITIVE_INFINITY),
     );
+  // "No prazo" olha o mesmo conjunto de pessoas que as pendências.
+  const onTimeMatch =
+    pick === ALL
+      ? (o: string) => visible.has(o) || (admin && o === UNASSIGNED)
+      : match;
+  const stageRows: SlaStage[] = doneStages
+    .filter((s) => onTimeMatch(stageOwner.get(s.id)!))
+    .map((s) => {
+      const order = orders.find((o) => o.id === s.orderId);
+      return {
+        orderId: s.orderId,
+        orderNumber: order?.number ?? 0,
+        link: `/app/orders/${s.orderId}`,
+        stageKey: s.key,
+        dueAt: s.dueAt!,
+        completedAt: s.completedAt!,
+        onTime: onTimeDay(s.completedAt!, s.dueAt!),
+        ownerId: stageOwner.get(s.id)!,
+        customerId: order?.customerId ?? null,
+        customerName: order?.customerId
+          ? (customerById.get(order.customerId)?.name ?? null)
+          : null,
+      };
+    })
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
   return {
     people,
     unassigned,
     selected: pick,
     items,
     totals: countsFor(match),
-    onTime: onTimeFor(
-      pick === ALL
-        ? (o) => visible.has(o) || (admin && o === UNASSIGNED)
-        : match,
-    ),
+    onTime: onTimeFor(onTimeMatch),
+    recentStages: stageRows,
     manages,
   };
 }

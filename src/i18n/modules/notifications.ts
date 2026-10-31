@@ -16,6 +16,14 @@ export const pt = {
   "notif.open.action": "Resolver",
   "notif.summary.action": "{n} esperando a sua ação",
   "notif.summary.clear": "Nada esperando a sua ação.",
+  "notif.col.kind": "Tipo",
+  "notif.col.subject": "Aviso",
+  "notif.col.with": "Com quem",
+  "notif.col.when": "Quando",
+  "notif.showRead": "Mostrar as lidas ({n})",
+  "notif.hideRead": "Ocultar as lidas",
+  "notif.readHidden": "Aviso resolvido (lido) sai da lista.",
+  "notif.onlyRead": "Nenhum aviso novo. {n} já lido(s).",
   "notif.ref": " (solicitação nº {number})",
   "notif.stage.subject": "Pedido #{n}: {stage} precisa de você",
   "notif.stage.body": "Falta: {items}.",
@@ -50,7 +58,8 @@ export const pt = {
     "{items}. Responda cada produto com preço, prazo e condições.",
   "notif.paymentToSupplier.subject":
     "Pedido #{n}: pagamento enviado, confirme o recebimento",
-  "notif.paymentToSupplier.body": "{amount}. Confirme assim que entrar na conta.",
+  "notif.paymentToSupplier.body":
+    "{amount}. Confirme assim que entrar na conta.",
   "notif.customerPayment.subject": "Pedido #{n}: pagamento recebido",
   "notif.customerPayment.body": "{amount} recebido pela Wellmix.",
   "notif.quantityAdjusted.subject": "Pedido #{n}: quantidade ajustada",
@@ -75,8 +84,10 @@ export const pt = {
   "notif.kit.released.body":
     "Os arquivos finais já estão disponíveis para download.",
   "notif.unread": "Não lida",
-  "notif.paymentRegistered.subject": "Pedido #{n}: pagamento registrado, confirme quando entrar",
-  "notif.paymentRegistered.body": "{amount} registrado pela Wellmix. Confirme o recebimento assim que entrar na conta.",
+  "notif.paymentRegistered.subject":
+    "Pedido #{n}: pagamento registrado, confirme quando entrar",
+  "notif.paymentRegistered.body":
+    "{amount} registrado pela Wellmix. Confirme o recebimento assim que entrar na conta.",
 };
 
 export const en = {
@@ -93,6 +104,14 @@ export const en = {
   "notif.open.action": "Resolve",
   "notif.summary.action": "{n} waiting for you",
   "notif.summary.clear": "Nothing waiting for you.",
+  "notif.col.kind": "Type",
+  "notif.col.subject": "Notice",
+  "notif.col.with": "With",
+  "notif.col.when": "When",
+  "notif.showRead": "Show read ({n})",
+  "notif.hideRead": "Hide read",
+  "notif.readHidden": "Resolved (read) notices leave the list.",
+  "notif.onlyRead": "No new notices. {n} already read.",
   "notif.ref": " (request no. {number})",
   "notif.stage.subject": "Order #{n}: {stage} needs you",
   "notif.stage.body": "Pending: {items}.",
@@ -103,11 +122,13 @@ export const en = {
   "notif.artwork.subject": "Order #{n}: packaging artwork to approve",
   "notif.artwork.body":
     "The artwork was uploaded. Check it and approve it for production, or reject it with a note.",
-  "notif.packaging.item": "Packaging artwork (the supplier checks and approves)",
+  "notif.packaging.item":
+    "Packaging artwork (the supplier checks and approves)",
   "notif.orderCreated.customer.subject": "Order #{n} created",
   "notif.orderCreated.customer.body":
     "Now with the supplier, who fills in the purchase sheet. Follow the timeline.",
-  "notif.orderCreated.supplier.subject": "Order #{n}: fill in the purchase sheet",
+  "notif.orderCreated.supplier.subject":
+    "Order #{n}: fill in the purchase sheet",
   "notif.orderCreated.supplier.body":
     "The order was created. Complete the preparation checklist so production can start.",
   "notif.proposal.subject": "Proposal ready: {product}",
@@ -144,14 +165,18 @@ export const en = {
   "notif.freightQuote.cargo": "{cbm} m³ · {cartons} cartons · {kg} kg",
   "notif.freightQuote.body": "{cargo}. Enter the freight price.",
   "notif.freightChanged.subject": "Cargo changed: {product}",
-  "notif.freightChanged.body": "{cargo}. The sheet changed; review the freight.",
+  "notif.freightChanged.body":
+    "{cargo}. The sheet changed; review the freight.",
   "notif.kit.available.subject": "Marketing kit available: {name}",
-  "notif.kit.available.body": "See the preview and, if you like it, buy it for {price}.",
+  "notif.kit.available.body":
+    "See the preview and, if you like it, buy it for {price}.",
   "notif.kit.released.subject": "Marketing kit released: {name}",
   "notif.kit.released.body": "The final files are ready to download.",
   "notif.unread": "Unread",
-  "notif.paymentRegistered.subject": "Order #{n}: payment registered, confirm when it arrives",
-  "notif.paymentRegistered.body": "{amount} registered by Wellmix. Confirm receipt as soon as it arrives.",
+  "notif.paymentRegistered.subject":
+    "Order #{n}: payment registered, confirm when it arrives",
+  "notif.paymentRegistered.body":
+    "{amount} registered by Wellmix. Confirm receipt as soon as it arrives.",
 };
 
 export const zh = {
@@ -168,6 +193,14 @@ export const zh = {
   "notif.open.action": "去处理",
   "notif.summary.action": "{n} 条等待您处理",
   "notif.summary.clear": "没有需要您处理的事项。",
+  "notif.col.kind": "类型",
+  "notif.col.subject": "通知",
+  "notif.col.with": "当前负责",
+  "notif.col.when": "时间",
+  "notif.showRead": "显示已读（{n}）",
+  "notif.hideRead": "隐藏已读",
+  "notif.readHidden": "已处理（已读）的通知会从列表移除。",
+  "notif.onlyRead": "没有新通知。{n} 条已读。",
   "notif.ref": "（申请编号 {number}）",
   "notif.stage.subject": "订单 #{n}：{stage}需要您处理",
   "notif.stage.body": "待办：{items}。",
@@ -185,7 +218,8 @@ export const zh = {
   "notif.orderCreated.supplier.body":
     "订单已创建。请完成备产清单，以便开始生产。",
   "notif.proposal.subject": "报价已就绪：{product}",
-  "notif.proposal.body": "{qty} {unit}，合计 {total}。支付定金 {down} 即可下单。",
+  "notif.proposal.body":
+    "{qty} {unit}，合计 {total}。支付定金 {down} 即可下单。",
   "notif.proposalUpdated.subject": "报价已更新：{product}",
   "notif.proposalUpdated.body": "新金额 {total}（按当日汇率）。定金：{down}。",
   "notif.quoteSelected.subject": "报价已中选：{product}",

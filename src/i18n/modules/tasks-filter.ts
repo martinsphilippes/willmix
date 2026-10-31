@@ -31,6 +31,8 @@ export const pt = {
   "tasks.group.review": "Revisão",
   "tasks.group.sourcing_demand": "Sourcing sob demanda",
   "tasks.group.after_sales": "Pós-venda",
+  "tasks.col.task": "Pendência",
+  "tasks.col.detail": "Detalhe",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -62,6 +64,8 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.review": "Review",
   "tasks.group.sourcing_demand": "Sourcing on demand",
   "tasks.group.after_sales": "After-sales",
+  "tasks.col.task": "Task",
+  "tasks.col.detail": "Detail",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -93,4 +97,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.review": "复核",
   "tasks.group.sourcing_demand": "按需寻源",
   "tasks.group.after_sales": "售后",
+  "tasks.col.task": "待办",
+  "tasks.col.detail": "详情",
 };
