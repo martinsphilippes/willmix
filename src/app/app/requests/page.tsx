@@ -149,14 +149,9 @@ export default async function RequestsPage({
             </LinkButton>
           </section>
 
-          {/* Pendências e pedidos em andamento lado a lado em telas grandes. */}
+          {/* Pendências (tabela, largura inteira) e, embaixo, os pedidos em andamento. */}
           {tasks.length > 0 || inProgress.length > 0 ? (
-            <div
-              className={cx(
-                "grid items-start gap-4",
-                tasks.length > 0 && inProgress.length > 0 && "lg:grid-cols-2",
-              )}
-            >
+            <div className="grid items-start gap-4">
               {tasks.length > 0 ? (
                 <section className="min-w-0 space-y-2">
                   <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">

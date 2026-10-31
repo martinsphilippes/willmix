@@ -264,12 +264,22 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
               data-task-group={task.group}
               className={rowClass}
             >
-              <Td className="min-w-48 font-semibold text-zinc-900">
-                <Link href={task.link} className="hover:underline">
+              {/* Título com cara de link (como o nº em Pedidos) e o selo ao lado: no celular a 1ª coluna já diz tudo. */}
+              <Td className="min-w-40">
+                <TextLink href={task.link} className="font-semibold">
                   {title}
-                </Link>
+                </TextLink>
+                {task.overdue ? (
+                  <span className="ml-1.5 align-middle">
+                    <Badge tone="danger">{t("common.overdue")}</Badge>
+                  </span>
+                ) : task.due === "today" ? (
+                  <span className="ml-1.5 align-middle">
+                    <Badge tone="warning">{t("tasks.due.today")}</Badge>
+                  </span>
+                ) : null}
               </Td>
-              <Td className="min-w-40 text-zinc-600">{task.detail || "—"}</Td>
+              <Td className="min-w-32 text-zinc-600">{task.detail || "—"}</Td>
               <Td className="whitespace-nowrap text-zinc-700">
                 {groupLabel(task.group, !!task.stageKey, t)}
               </Td>
@@ -282,17 +292,7 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                 {task.dueAt ? (
                   <>
                     {formatDate(task.dueAt, t)}
-                    {task.overdue ? (
-                      <span className="ml-1.5 align-middle">
-                        <Badge tone="danger">{t("common.overdue")}</Badge>
-                      </span>
-                    ) : task.due === "today" ? (
-                      <span className="ml-1.5 align-middle">
-                        <Badge tone="warning">{t("tasks.due.today")}</Badge>
-                      </span>
-                    ) : null}
-                    {/* "vence em 3 dias" / "atrasada há 2 dias"; "vence hoje" já está no selo. */}
-                    {relative && task.due !== "today" ? (
+                    {relative ? (
                       <span
                         className={cx(
                           "block text-xs font-normal",
@@ -314,6 +314,7 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                   className="min-h-8 px-3 py-1 text-xs"
                 >
                   {t("tasks.open")}
+                  <span className="sr-only">: {title}</span>
                 </LinkButton>
               </Td>
             </tr>

@@ -357,7 +357,8 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 ## Pendências em linhas (tabela)
 
 - A tela Pendências (`/app/tasks`, o início dos parceiros e as pendências no início do cliente) deixou os cartões e passou a usar a mesma tabela das outras listas (Pedidos, Control Tower): uma pendência por linha, com as colunas Pendência (link), Detalhe, Tipo (etapa ou tipo da pendência), Prazo (data, selo "Atrasado"/"vence hoje" e o prazo relativo) e o botão Abrir na linha. A ordem pelo prazo e os filtros por prazo e tipo (chips como links) não mudaram. Cada linha leva `data-task-row`, `data-task-due` e `data-task-group` (o E2E procura a linha da RFQ por `[data-task-row]`).
-- O tipo "Embalagem (faca e arte)" ganhou rótulo nos três idiomas (antes o chip mostrava a chave).
+- O briefing de embalagem continua agrupado na etapa "Arte e embalagem" (a pendência nasce com a etapa), tanto no chip quanto na coluna Tipo.
+- Revisão: o título da linha tem cara de link (cor da marca e sublinhado, como o nº em Pedidos) e o selo "Atrasado"/"vence hoje" fica ao lado dele, para a 1ª coluna bastar no celular; o Detalhe quebra linha; o botão Abrir leva o título só para leitor de tela. No início do cliente as pendências ficam em largura inteira, com os pedidos em andamento embaixo (a tabela não cabia em meia coluna).
 
 ## Painel de SLA: cartões como filtros e tabela embaixo
 
@@ -418,6 +419,11 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 ## Menu da Wellmix só com grupos
 
 - A barra do menu da Wellmix passou de 7 itens (4 links soltos + 3 grupos) para 4 grupos com lista suspensa: **Início** (Control Tower, Pendências, Notificações), **Pedidos** (Solicitações, Pedidos, Sourcing, Revisões, Fretes, Containers: do pedido do cliente à entrega), **Cadastros** e **Gestão** (sem mudança). A logo continua levando ao Control Tower em um clique e o sino às notificações. Nenhuma tela saiu nem se repetiu (`tests/unit/nav.test.ts`); no celular, o painel mostra os mesmos grupos como títulos, com o dia a dia no começo. O cliente também ficou só com grupos: **Início** (Solicitações, que é a tela inicial dele, Pendências, Notificações) e **Pedidos** (Pedidos, Histórico, Marketing); a logo leva às Solicitações. Fornecedores e parceiros também: **Início** (Pendências, Notificações) e **Pedidos** com a tela própria do papel (fornecedor: Pedidos e Conta corrente; companhia marítima: Fretes e Pedidos; jurídico: Pedidos e Multas). Grupo com uma tela só vira link direto (agência, despachante e transportador veem "Início ▾" e o link "Pedidos"), para não abrir uma lista de um item.
+
+## Notificações em linhas; aviso resolvido sai da lista
+
+- A tela Notificações (`/app/notifications`) trocou os cartões pela tabela padrão de linhas finas, um bloco por seção (Precisa de você, Atenção, Novidades): Tipo (selo), Aviso (assunto e texto), Com quem (agora é com você / com a Wellmix / com: papel), Quando, e os botões Resolver/Abrir (marca como lido e leva ao lugar) e Excluir.
+- Aviso resolvido (lido) sai da lista: por padrão só os não lidos aparecem; "Mostrar as lidas (N)" (`?read=1`) traz de volta, em cinza, e "Ocultar as lidas" volta ao padrão. Quando só há lidos, a tela diz "Nenhum aviso novo. N já lido(s)." com o link. O sino do cabeçalho, "✓ N" (marcar todas como lidas) e "Excluir todas" não mudaram. Nada foi removido: todo aviso continua gravado e visível pelo link.
 
 ## Excluir notificações
 

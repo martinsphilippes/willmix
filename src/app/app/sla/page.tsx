@@ -144,17 +144,17 @@ function ItemsTable({
             className={rowClass}
             data-sla-item={item.source}
           >
-            <Td className="min-w-48 font-semibold text-zinc-900">
-              <Link href={item.link} className="hover:underline">
+            <Td className="min-w-40">
+              <TextLink href={item.link} className="font-semibold">
                 {item.title}
-              </Link>
+              </TextLink>
               {item.stageKey ? (
                 <span className="block text-xs font-normal text-zinc-500">
                   {t(`stage.${item.stageKey}` as DictionaryKey)}
                 </span>
               ) : null}
             </Td>
-            <Td className="min-w-40 text-zinc-600">{item.detail || "—"}</Td>
+            <Td className="min-w-32 text-zinc-600">{item.detail || "—"}</Td>
             <Td className="text-zinc-700">{item.customerName ?? "—"}</Td>
             {showOwner ? (
               <Td className="whitespace-nowrap text-zinc-700">
@@ -203,6 +203,7 @@ function ItemsTable({
                 className="min-h-8 px-3 py-1 text-xs"
               >
                 {t("tasks.open")}
+                <span className="sr-only">: {item.title}</span>
               </LinkButton>
             </Td>
           </tr>

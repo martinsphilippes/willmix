@@ -79,7 +79,7 @@ export const helpPt = {
   "help.party.body":
     "Edite os dados do parceiro e crie os usuários que acessam o portal por ele. Fornecedores chineses podem usar o idioma chinês; a senha inicial deve ser trocada pelo usuário.",
   "help.sheetImport.body":
-    "Suba a planilha da ficha técnica (modelo SUPPLIER INFO) e escolha a linha: cada grupo de linhas vira um produto cadastrado com ficha mestre, fornecedor e fotos. No resultado, \"O que falta\" lista o que ainda precisa ser preenchido na ficha mestre de cada produto (medidas da caixa, as outras fotos da ficha); abra o produto para completar.",
+    'Suba a planilha da ficha técnica (modelo SUPPLIER INFO) e escolha a linha: cada grupo de linhas vira um produto cadastrado com ficha mestre, fornecedor e fotos. No resultado, "O que falta" lista o que ainda precisa ser preenchido na ficha mestre de cada produto (medidas da caixa, as outras fotos da ficha); abra o produto para completar.',
   "help.products.body":
     "Produtos pertencem a uma linha. Quando o cliente escolhe um produto na solicitação, o pedido herda o checklist de preparação da linha.",
   "help.lines.body":
@@ -93,7 +93,7 @@ export const helpPt = {
   "help.finance.steps":
     "Recebimento do cliente: registre no pedido (card Financeiro) o sinal e as parcelas seguintes, com comprovante.\nPagamento ao fornecedor: segue a condição do cadastro do fornecedor; as parcelas ficam em Gestão → Contas a pagar. Registre no card Pagamento ao fornecedor do pedido, com valor, moeda e câmbio; o fornecedor confirma na conta corrente.\nMargem: venda menos custo convertido. Pago com câmbio = real; pago sem câmbio e a pagar = câmbio do dia (~). Informe o câmbio nos pagamentos para a margem deixar de ser estimativa.\nA receber e A pagar em destaque indicam pendência de caixa.",
   "help.notifications.body":
-    "Avisos do portal em três blocos: \"Precisa de você\" (sua vez de agir: Resolver leva direto ao lugar), \"Atenção\" (atraso, problema ou cancelamento) e \"Novidades\" (o que andou nos seus pedidos, com quem está agora). E-mail e WhatsApp ainda estão em modo simulado; a lista aqui é a fonte confiável.",
+    'Avisos do portal em três blocos: "Precisa de você" (sua vez de agir: Resolver leva direto ao lugar), "Atenção" (atraso, problema ou cancelamento) e "Novidades" (o que andou nos seus pedidos, com quem está agora). Aviso resolvido (lido) sai da lista; "Mostrar as lidas" traz de volta. E-mail e WhatsApp ainda estão em modo simulado; a lista aqui é a fonte confiável.',
 };
 
 export type HelpKey = keyof typeof helpPt;
@@ -175,7 +175,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.party.body":
     "Edit the partner data and create the users who access the portal for it. Chinese suppliers may use Chinese; the initial password should be changed by the user.",
   "help.sheetImport.body":
-    "Upload the technical-sheet spreadsheet (SUPPLIER INFO template) and pick the line: each group of rows becomes a registered product with master sheet, supplier and photos. In the result, \"Missing\" lists what still needs filling in each product's master sheet (carton size, the other sheet photos); open the product to complete it.",
+    'Upload the technical-sheet spreadsheet (SUPPLIER INFO template) and pick the line: each group of rows becomes a registered product with master sheet, supplier and photos. In the result, "Missing" lists what still needs filling in each product\'s master sheet (carton size, the other sheet photos); open the product to complete it.',
   "help.products.body":
     "Products belong to a line. When the customer picks a product in the request, the order inherits the line's preparation checklist.",
   "help.lines.body":
@@ -189,7 +189,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.finance.steps":
     "Customer receipt: register on the order (Finance card) the down payment and the following installments, with proof.\nSupplier payment: follows the terms in the supplier record; installments are in Management → Payables. Register it on the order's Supplier payment card with amount, currency and FX rate; the supplier confirms in their account.\nMargin: sale minus converted cost. Paid with a rate = actual; paid without a rate and payable = today's rate (~). Enter the FX rate on payments so the margin stops being an estimate.\nHighlighted Receivable and Payable indicate pending cash.",
   "help.notifications.body":
-    "Portal notices in three blocks: \"Needs you\" (your turn to act: Resolve takes you straight there), \"Attention\" (delay, problem or cancellation) and \"Updates\" (what moved in your orders and who has it now). Email and WhatsApp are still simulated; this list is the reliable source.",
+    'Portal notices in three blocks: "Needs you" (your turn to act: Resolve takes you straight there), "Attention" (delay, problem or cancellation) and "Updates" (what moved in your orders and who has it now). Resolved (read) notices leave the list; "Show read" brings them back. Email and WhatsApp are still simulated; this list is the reliable source.',
 };
 
 export const helpZh: Record<HelpKey, string> = {
@@ -281,5 +281,5 @@ export const helpZh: Record<HelpKey, string> = {
   "help.finance.steps":
     "客户收款：在订单的“财务”卡片登记定金及后续款项，并附凭证。\n供应商付款：按供应商资料中的付款条件执行；分期款项在“管理 → 应付账款”。在订单的“供应商付款”卡片登记金额、币种和汇率；供应商在往来账中确认。\n毛利：销售额减去折算成本。已付且有汇率 = 实际；未填汇率的已付和应付 = 当日汇率（~）。为付款填写汇率后毛利不再是估算。\n高亮的应收和应付表示待处理的现金。",
   "help.notifications.body":
-    "门户通知分三块：“需要您处理”（轮到您了，点“去处理”直达）、“注意”（逾期、问题或取消）和“动态”（您的订单有何进展、现在由谁处理）。邮件和 WhatsApp 仍为模拟模式；此列表是可靠来源。",
+    "门户通知分三块：“需要您处理”（轮到您了，点“去处理”直达）、“注意”（逾期、问题或取消）和“动态”（您的订单有何进展、现在由谁处理）。已处理（已读）的通知会从列表移除，“显示已读”可再查看。邮件和 WhatsApp 仍为模拟模式；此列表是可靠来源。",
 };
