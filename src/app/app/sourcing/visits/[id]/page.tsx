@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { loadVisit } from "@/lib/services/sourcing";
 import { getT } from "@/i18n/server";
@@ -31,7 +31,7 @@ export default async function VisitPage({
 }: PageProps<"/app/sourcing/visits/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "sourcing");
   const { id } = await params;
   const { error } = await searchParams;
   const data = await loadVisit(id);

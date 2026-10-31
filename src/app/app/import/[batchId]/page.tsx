@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore, type ImportBatch } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
@@ -112,7 +112,7 @@ export default async function ImportBatchPage({
 }: BatchPageProps) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "import");
   const { batchId } = await params;
   const { error, step } = await searchParams;
   const store = getStore();

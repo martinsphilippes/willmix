@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
 import { canDeleteRequest } from "@/lib/services/requests";
 import {
@@ -55,7 +56,7 @@ export default async function RequestsPage({
   const showDeleted = view === "deleted";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
+  requireScreen(user, "requests");
   const t = await getT();
   const store = getStore();
   // Cliente: só as solicitações do próprio login (canViewRequest).

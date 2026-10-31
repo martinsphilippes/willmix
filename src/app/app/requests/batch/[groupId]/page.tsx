@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import {
   canViewOrder,
   canViewRequest,
@@ -58,7 +59,7 @@ export default async function RequestBatchPage({
     await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
+  requireScreen(user, "requests");
   const t = await getT();
   const store = getStore();
   const rows = (

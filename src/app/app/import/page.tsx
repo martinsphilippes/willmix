@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -40,7 +40,7 @@ export default async function ImportPage({
 }: PageProps<"/app/import">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "import");
   const { entity, created, skipped, error } = await searchParams;
   const t = await getT();
   const current =

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertAnyScreen, assertScreen } from "@/lib/auth/screens";
 import { files, requireUser, run, str, uploadedPhotoKeys } from "./helpers";
 
 /*
@@ -19,6 +20,7 @@ export async function addManufacturerCardAction(form: FormData) {
   const quoteId = str(form, "quoteId").slice(0, 64);
   const back = quoteBack(quoteId);
   await run(`${back}#manufacturer-card`, async () => {
+    assertScreen(user, "quotes");
     ID.parse(quoteId);
     const photo = files(form, "photo")[0] ?? uploadedPhotoKeys(form)[0];
     if (!photo) throw new Error("photo_required");
@@ -34,6 +36,7 @@ export async function confirmManufacturerCardAction(form: FormData) {
   const quoteId = str(form, "quoteId").slice(0, 64);
   const back = quoteBack(quoteId);
   await run(`${back}#manufacturer-card`, async () => {
+    assertScreen(user, "quotes");
     ID.parse(quoteId);
     const cardId = ID.parse(str(form, "cardId"));
     const { confirmCardForQuote } =
@@ -56,6 +59,8 @@ export async function updateManufacturerCardAction(form: FormData) {
     ? rawBack
     : "/app";
   await run(`${back}#manufacturer-card`, async () => {
+    // Cartão editado na cotação ou na página do produto.
+    assertAnyScreen(user, ["quotes", "products"]);
     const cardId = ID.parse(str(form, "cardId"));
     const factory = str(form, "isFactory");
     const { updateCardInfo } =

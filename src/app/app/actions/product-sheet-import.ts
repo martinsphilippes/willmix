@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import { SHEET_CURRENCIES } from "@/lib/db";
 import { requireUser, run, str } from "./helpers";
 
@@ -14,6 +15,7 @@ const BACK = "/app/products/import";
 export async function importProductSheetAction(form: FormData) {
   const user = await requireUser();
   await run(BACK, async () => {
+    assertScreen(user, "products");
     const parsed = z
       .object({
         lineId: z.string().min(1).max(64),

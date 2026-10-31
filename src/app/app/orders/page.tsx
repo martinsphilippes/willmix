@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -38,6 +39,7 @@ export default async function OrdersPage({
 }: PageProps<"/app/orders">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "orders");
   const t = await getT();
   const params = await searchParams;
   const rows = await pipelineFor(user);

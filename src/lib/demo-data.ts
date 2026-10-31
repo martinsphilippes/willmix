@@ -3,6 +3,7 @@ import type {
   PaymentTermInstallment,
   RadarStatus,
   Role,
+  WellmixFunction,
 } from "./db/schema";
 
 /*
@@ -21,6 +22,8 @@ export const DEMO_USERS: Array<{
   role: Role;
   party: string | null;
   locale: "pt" | "en" | "zh";
+  /** Funções do login da Wellmix (telas que abre, docs/ACCESS.md). */
+  functions?: WellmixFunction[];
 }> = [
   {
     email: "admin@wellmix.com",
@@ -35,6 +38,8 @@ export const DEMO_USERS: Array<{
     role: "operator",
     party: null,
     locale: "pt",
+    // Compra e planejamento (o financeiro é só do admin).
+    functions: ["buyer", "planner"],
   },
   {
     email: "joao@lojista.com",
@@ -270,5 +275,6 @@ export function demoUserFields(u: DemoUser) {
     partyId: u.party,
     locale: u.locale,
     active: true,
+    ...(u.functions ? { functions: u.functions } : {}),
   };
 }

@@ -116,15 +116,18 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       result.failed.push({ email: party.email, ...reasonOf(error, party.id) });
     }
   }
-  const haveUsers = new Set(
-    (
-      await store.list("users", {
-        filter: { email: DEMO_USERS.map((u) => u.email) },
-      })
-    ).map((u) => u.email),
-  );
+  const existingUsers = await store.list("users", {
+    filter: { email: DEMO_USERS.map((u) => u.email) },
+  });
   for (const u of DEMO_USERS) {
-    if (haveUsers.has(u.email)) continue;
+    const existing = existingUsers.find((e) => e.email === u.email);
+    if (existing) {
+      // Conta de demonstração de antes das funções: ganha as da lista (só
+      // quando não tem nenhuma; o que o admin marcou fica).
+      if (u.functions?.length && !(existing.functions ?? []).length)
+        await store.update("users", existing.id, { functions: u.functions });
+      continue;
+    }
     // Sem a empresa (falhou acima), o login ficaria órfão; a falha da
     // empresa já está na lista com esse e-mail.
     if (

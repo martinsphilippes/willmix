@@ -525,9 +525,7 @@ async function sentRecently(
  */
 export async function notifyPayablesDue(): Promise<number> {
   // Job chamado duas vezes no mesmo dia: um resumo só.
-  if (
-    await sentRecently({ role: ["admin", "operator"] }, PAYABLES_DIGEST_SUBJECT)
-  )
+  if (await sentRecently({ role: ["admin"] }, PAYABLES_DIGEST_SUBJECT))
     return 0;
   const rows = payableRows(await listPayables()).filter(
     (r) =>
@@ -546,7 +544,7 @@ export async function notifyPayablesDue(): Promise<number> {
   if (rows.length > lines.length)
     lines.push(`… e mais ${rows.length - lines.length}.`);
   await notify(
-    { role: ["admin", "operator"] },
+    { role: ["admin"] },
     {
       kind: overdue.length ? "alert" : "action",
       actor: "recipient",

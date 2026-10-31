@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { ActionError } from "@/components/action-error";
 import { quotedQuantity } from "@/lib/services/purchase-sheet-calc";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { getFreightView } from "@/lib/services/freight";
 import { getT } from "@/i18n/server";
 import {
@@ -37,6 +38,7 @@ export default async function FreightPage({
 }: PageProps<"/app/freight/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "freight");
   const { id } = await params;
   const {
     error,

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { deleteRequests } from "@/lib/services/requests";
 import { requireUser, run } from "./helpers";
 
@@ -28,6 +29,7 @@ export async function deleteRequestsAction(form: FormData) {
       ? `/app/requests/batch/${encodeURIComponent(groupId.data)}`
       : "/app/requests";
   await run(back, async () => {
+    assertScreen(user, "requests");
     const ids = deleteSchema.parse(
       form.getAll("ids").filter((v): v is string => typeof v === "string"),
     );
@@ -53,6 +55,7 @@ export async function openBatchRfqAction(form: FormData) {
       : "/app/requests";
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "requests");
     if (!groupId.success || !groupId.data) throw new Error("invalid_input");
     const parsed = z
       .array(z.string().min(1).max(64))

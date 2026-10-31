@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import { Alert, Card, PageHeader } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
@@ -10,7 +10,7 @@ export default async function NewPartyPage({
 }: PageProps<"/app/parties/new">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "parties");
   const { error } = await searchParams;
   const t = await getT();
   return (

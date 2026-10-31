@@ -7,6 +7,7 @@ import {
   ForbiddenError,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { assertAnyScreen, assertScreen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import {
   confirmSupplierPaymentReceipt,
@@ -35,6 +36,7 @@ export async function ensureSnapshotAction(form: FormData) {
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "orders");
     const order = await getStore().get("orders", orderId);
     if (!order) throw new Error("not_found");
     await ensureSnapshot(user, order);
@@ -58,6 +60,7 @@ export async function remeasureAction(form: FormData) {
   const orderId = str(form, "orderId");
   const back = `/app/orders/${orderId}?remeasure=1`;
   await run(back, async () => {
+    assertScreen(user, "orders");
     const parsed = remeasureSchema.parse({
       orderId,
       requirementId: str(form, "requirementId"),
@@ -96,6 +99,7 @@ export async function acknowledgePaymentAction(form: FormData) {
   const paymentId = str(form, "paymentId");
   const back = safeBack(str(form, "back"), "/app/account");
   await run(back, async () => {
+    assertAnyScreen(user, ["orders", "account"]);
     await confirmSupplierPaymentReceipt(user, paymentId);
   });
 }
@@ -106,6 +110,7 @@ export async function acknowledgeDocumentAction(form: FormData) {
   const documentId = str(form, "documentId");
   const back = safeBack(str(form, "back"), "/app/orders");
   await run(back, async () => {
+    assertScreen(user, "orders");
     const store = getStore();
     const doc = await store.get("documents", documentId);
     if (!doc) throw new Error("not_found");

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { canSeeInternalCosts, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { loadCommercialHistory, type HistoryRow } from "@/lib/services/history";
@@ -79,7 +80,7 @@ export default async function HistoryPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const wellmix = isWellmix(user);
-  if (!(wellmix || user.role === "customer")) redirect("/app");
+  requireScreen(user, "history");
   const { customerId: customerParam, error } = await searchParams;
   const customerId =
     wellmix && typeof customerParam === "string" && customerParam

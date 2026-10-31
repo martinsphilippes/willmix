@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import {
   SOURCING_STATUSES,
   VISIT_STATUSES,
@@ -55,7 +55,7 @@ export default async function SourcingPage({
 }: PageProps<"/app/sourcing">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "sourcing");
   const { tab: tabParam, status: statusParam, error } = await searchParams;
   const tab = tabParam === "visits" ? "visits" : "items";
   const itemStatus =

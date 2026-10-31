@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { CONTAINER_STATUSES, getStore } from "@/lib/db";
 import {
   addContainerItem,
@@ -49,6 +50,7 @@ export async function createContainerAction(form: FormData) {
   const user = await requireUser();
   await run("/app/containers", async () => {
     assertWellmix(user);
+    assertScreen(user, "containers");
     const input = parse(createSchema, {
       code: str(form, "code"),
       type: str(form, "type"),
@@ -72,6 +74,7 @@ export async function setContainerStatusAction(form: FormData) {
   const id = str(form, "id");
   await run(`/app/containers/${id}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "containers");
     const input = parse(statusSchema, { id, status: str(form, "status") });
     await setContainerStatus(user, input.id, input.status);
   });
@@ -99,6 +102,7 @@ export async function addContainerItemAction(form: FormData) {
   const containerId = str(form, "containerId");
   await run(`/app/containers/${containerId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "containers");
     const input = parse(itemSchema, {
       containerId,
       mode: str(form, "mode"),
@@ -150,6 +154,7 @@ export async function removeContainerItemAction(form: FormData) {
   const containerId = str(form, "containerId");
   await run(`/app/containers/${containerId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "containers");
     const input = parse(removeSchema, {
       containerId,
       itemId: str(form, "itemId"),

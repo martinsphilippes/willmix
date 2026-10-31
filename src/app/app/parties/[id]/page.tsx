@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix, isAdmin } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
+import { isAdmin } from "@/lib/auth/permissions";
 import {
   getStore,
   LOCALES,
@@ -79,7 +81,7 @@ export default async function PartyPage({
 }: PageProps<"/app/parties/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "parties");
   const { id } = await params;
   const { error, saved } = await searchParams;
   const store = getStore();
@@ -486,9 +488,9 @@ export default async function PartyPage({
               </SubmitButton>
             </form>
           </Card>
-          {isSupplier ? (
+          {isSupplier && canOpen(user, "finance") ? (
             /* Condição de pagamento negociada com o fornecedor: os pedidos novos
-               copiam; vira parcelas em Contas a pagar. */
+               copiam; vira parcelas em Contas a pagar. Financeiro: só o admin. */
             <Card
               title={
                 <span id="payment-terms" className="scroll-mt-24">

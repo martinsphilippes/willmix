@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type { InstallmentStatus } from "@/lib/supplier-terms";
@@ -92,7 +92,7 @@ export default async function PayablesPage({
 }: PageProps<"/app/payables">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/payables");
-  assertWellmix(user);
+  requireScreen(user, "payables");
   const t = await getT();
   const params = await searchParams;
   const tab: Tab = TABS.find((s) => s === params.status) ?? "open";

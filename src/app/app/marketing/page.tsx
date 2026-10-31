@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import {
   getStore,
@@ -42,7 +43,7 @@ export default async function MarketingPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const wellmix = isWellmix(user);
-  if (!(wellmix || user.role === "customer")) redirect("/app");
+  requireScreen(user, "marketing");
   const params = await searchParams;
   const one = (v: string | string[] | undefined) =>
     typeof v === "string" ? v : "";

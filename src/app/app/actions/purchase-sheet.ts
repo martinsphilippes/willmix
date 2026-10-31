@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import {
   addSheetPhotos,
   removeSheetPhoto,
@@ -33,6 +34,7 @@ export async function savePurchaseSheetAction(form: FormData) {
   const orderId = str(form, "orderId").slice(0, 64);
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
   await run(back, async () => {
+    assertScreen(user, "orders");
     ORDER_ID.parse(orderId);
     const { input, invalid } = parseSheet(form);
     const { missing } = await saveSheet(user, orderId, input);
@@ -47,6 +49,7 @@ export async function addPurchaseSheetPhotosAction(form: FormData) {
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
   // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
   await runInPlace(back, async () => {
+    assertScreen(user, "orders");
     ORDER_ID.parse(orderId);
     const kind = z.enum(ADDABLE_SHEET_PHOTO_KINDS).parse(str(form, "kind"));
     const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
@@ -61,6 +64,7 @@ export async function removePurchaseSheetPhotoAction(form: FormData) {
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
   // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
   await runInPlace(back, async () => {
+    assertScreen(user, "orders");
     ORDER_ID.parse(orderId);
     const photoId = ORDER_ID.parse(str(form, "photoId"));
     await removeSheetPhoto(user, orderId, photoId);
@@ -77,6 +81,7 @@ export async function answerQuoteWithSheetAction(form: FormData) {
   const quoteId = str(form, "quoteId").slice(0, 64);
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
   await run(back, async () => {
+    assertScreen(user, "quotes");
     ORDER_ID.parse(quoteId);
     const { saveQuoteSheet, saveQuoteTermsDraft } =
       await import("@/lib/services/quote-sheet");
@@ -151,6 +156,7 @@ export async function addQuoteSheetPhotosAction(form: FormData) {
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
   // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
   await runInPlace(back, async () => {
+    assertScreen(user, "quotes");
     ORDER_ID.parse(quoteId);
     const kind = z.enum(ADDABLE_SHEET_PHOTO_KINDS).parse(str(form, "kind"));
     const photos = [...files(form, "photos"), ...uploadedPhotoKeys(form)];
@@ -166,6 +172,7 @@ export async function removeQuoteSheetPhotoAction(form: FormData) {
   const back = `/app/quotes/${encodeURIComponent(quoteId)}`;
   // Fica na tela (sem navegar): a linha da foto muda na hora e os campos digitados não se perdem.
   await runInPlace(back, async () => {
+    assertScreen(user, "quotes");
     ORDER_ID.parse(quoteId);
     const photoId = ORDER_ID.parse(str(form, "photoId"));
     const { removeQuoteSheetPhoto } =
@@ -179,6 +186,7 @@ export async function saveProductSheetAction(form: FormData) {
   const user = await requireUser();
   const productId = z.string().min(1).max(64).parse(str(form, "productId"));
   await run(`/app/products/${productId}`, async () => {
+    assertScreen(user, "products");
     const {
       saveProductSheet,
       getProductSheet,
@@ -310,6 +318,7 @@ export async function adoptSheetIntoProductAction(form: FormData) {
   const rawBack = str(form, "back");
   const back = /^\/app\/[A-Za-z0-9\-_/]*$/.test(rawBack) ? rawBack : "/app";
   await run(back, async () => {
+    assertScreen(user, "products");
     const { adoptSheetIntoProduct } =
       await import("@/lib/services/product-sheet");
     const { productId } = await adoptSheetIntoProduct(user, ownerId);
@@ -323,6 +332,7 @@ export async function registerProductFromSheetAction(form: FormData) {
   const orderId = str(form, "orderId").slice(0, 64);
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
   await run(back, async () => {
+    assertScreen(user, "products");
     ORDER_ID.parse(orderId);
     const lineId = ORDER_ID.parse(str(form, "lineId"));
     const { registerProductFromOrderSheet } =
@@ -346,6 +356,7 @@ export async function applySheetQuantityAction(form: FormData) {
   const orderId = str(form, "orderId").slice(0, 64);
   const back = `/app/orders/${encodeURIComponent(orderId)}/purchase-sheet`;
   await run(back, async () => {
+    assertScreen(user, "orders");
     ORDER_ID.parse(orderId);
     const { applySheetQuantity } =
       await import("@/lib/services/purchase-sheet");

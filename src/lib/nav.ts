@@ -1,13 +1,17 @@
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import type { Role } from "@/lib/db/schema";
+import { isWellmix } from "@/lib/auth/permissions";
+import { screensFor, type Screen } from "@/lib/auth/screens";
+import type { User } from "@/lib/db/schema";
 
 /*
- * Menu principal do portal. A Wellmix tem muitas telas: tudo fica em quatro
- * grupos (Início, Pedidos, Cadastros, Gestão), sem links soltos na barra; a
- * logo continua levando ao Control Tower. Cliente, fornecedores e parceiros
- * também veem dois grupos (Início, Pedidos); o cliente vê a vitrine
- * (Explorar) e "Meus pedidos". A logo leva ao início de cada um. Grupo com
- * uma tela só vira link direto (sem lista de um item).
+ * Menu principal do portal. O que cada login vê vem de uma regra só
+ * (src/lib/auth/screens.ts, docs/ACCESS.md): o menu mostra as telas que o
+ * login abre, nos grupos de sempre. A Wellmix tem quatro grupos (Início,
+ * Pedidos, Cadastros, Gestão): o admin vê tudo; o operador, o básico mais as
+ * telas das suas funções. Cliente, fornecedores e parceiros veem dois grupos
+ * (Início, Pedidos); o cliente vê a vitrine (Explorar) e "Meus pedidos". A
+ * logo leva ao início de cada um. Grupo com uma tela só vira link direto;
+ * grupo vazio some.
  */
 
 export interface NavLink {
@@ -35,118 +39,140 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
   return "items" in entry;
 }
 
-/** Grupo do menu; com uma tela só, vira o próprio link. */
-function group(key: DictionaryKey, items: NavLink[]): NavEntry {
-  return items.length === 1 ? items[0] : { key, items };
+/** Grupo do menu; com uma tela só, vira o próprio link; vazio, some. */
+function group(key: DictionaryKey, items: NavLink[]): NavEntry[] {
+  if (items.length === 0) return [];
+  return items.length === 1 ? [items[0]] : [{ key, items }];
 }
 
-export function navFor(role: Role, admin: boolean): NavEntry[] {
-  if (role === "admin" || role === "operator") {
+type Entry = [Screen, NavLink];
+
+/** Só os links das telas que o login abre, na ordem dada. */
+function pick(has: Set<Screen>, entries: Entry[]): NavLink[] {
+  return entries.filter(([screen]) => has.has(screen)).map(([, link]) => link);
+}
+
+export function navFor(
+  user: Pick<User, "role"> & Partial<Pick<User, "functions">>,
+): NavEntry[] {
+  const has = screensFor(user);
+  if (isWellmix(user)) {
     return [
-      {
-        key: "nav.group.home",
-        items: [
-          { href: "/app", key: "nav.controlTower" },
-          { href: "/app/tasks", key: "nav.tasks" },
+      ...group(
+        "nav.group.home",
+        pick(has, [
+          ["home", { href: "/app", key: "nav.controlTower" }],
+          ["tasks", { href: "/app/tasks", key: "nav.tasks" }],
           // O que cada operador deve, pelo prazo, na carteira dele.
-          { href: "/app/sla", key: "nav.sla" },
-          { href: "/app/notifications", key: "nav.notifications" },
-          MESSAGES,
-        ],
-      },
-      {
-        // Do pedido do cliente à entrega: comercial e operação juntos.
-        key: "nav.group.orders",
-        items: [
-          { href: "/app/requests", key: "nav.requests" },
-          { href: "/app/orders", key: "nav.orders" },
-          { href: "/app/sourcing", key: "nav.sourcing" },
-          { href: "/app/reviews", key: "nav.reviews" },
-          { href: "/app/freight", key: "nav.freight" },
-          { href: "/app/freight/tariff", key: "nav.freightTariff" },
+          ["sla", { href: "/app/sla", key: "nav.sla" }],
+          [
+            "notifications",
+            { href: "/app/notifications", key: "nav.notifications" },
+          ],
+          ["messages", MESSAGES],
+        ]),
+      ),
+      // Do pedido do cliente à entrega: comercial e operação juntos.
+      ...group(
+        "nav.group.orders",
+        pick(has, [
+          ["requests", { href: "/app/requests", key: "nav.requests" }],
+          ["orders", { href: "/app/orders", key: "nav.orders" }],
+          ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
+          ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
+          ["freight", { href: "/app/freight", key: "nav.freight" }],
+          [
+            "freightTariff",
+            { href: "/app/freight/tariff", key: "nav.freightTariff" },
+          ],
           // Briefings de embalagem (faca e arte) abertos com a RFQ.
-          { href: "/app/packaging", key: "nav.packaging" },
-          { href: "/app/containers", key: "nav.containers" },
-        ],
-      },
-      {
-        key: "nav.group.registry",
-        items: [
-          { href: "/app/parties", key: "nav.parties" },
-          { href: "/app/products", key: "nav.products" },
-          { href: "/app/lines", key: "nav.lines" },
+          ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
+          ["containers", { href: "/app/containers", key: "nav.containers" }],
+        ]),
+      ),
+      ...group(
+        "nav.group.registry",
+        pick(has, [
+          ["parties", { href: "/app/parties", key: "nav.parties" }],
+          ["products", { href: "/app/products", key: "nav.products" }],
+          ["lines", { href: "/app/lines", key: "nav.lines" }],
           // A vitrine como o cliente vê (preço estimado, o que falta no cadastro).
-          { href: "/app/explore", key: "nav.explorePreview" },
-        ],
-      },
-      {
-        key: "nav.group.management",
-        items: [
+          ["explore", { href: "/app/explore", key: "nav.explorePreview" }],
+        ]),
+      ),
+      ...group(
+        "nav.group.management",
+        pick(has, [
           // Painéis por área (compras, produção, embarque, recebimento...).
-          { href: "/app/dashboards", key: "nav.dashboards" },
-          { href: "/app/finance", key: "nav.finance" },
-          { href: "/app/payables", key: "nav.payables" },
-          { href: "/app/penalties", key: "nav.penalties" },
-          { href: "/app/after-sales", key: "nav.afterSales" },
-          { href: "/app/marketing", key: "nav.marketing" },
-          { href: "/app/history", key: "nav.history" },
-          ...(admin
-            ? [
-                { href: "/app/settings", key: "nav.settings" as DictionaryKey },
-                // Cargo, chefe e carteira de clientes (Painel de SLA).
-                { href: "/app/team", key: "nav.team" as DictionaryKey },
-                // Trilha de auditoria (quem fez o quê e quando).
-                { href: "/app/audit", key: "nav.audit" as DictionaryKey },
-              ]
-            : []),
-        ],
-      },
+          ["dashboards", { href: "/app/dashboards", key: "nav.dashboards" }],
+          ["finance", { href: "/app/finance", key: "nav.finance" }],
+          ["payables", { href: "/app/payables", key: "nav.payables" }],
+          ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
+          ["afterSales", { href: "/app/after-sales", key: "nav.afterSales" }],
+          ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
+          ["history", { href: "/app/history", key: "nav.history" }],
+          ["settings", { href: "/app/settings", key: "nav.settings" }],
+          // Cargo, chefe, funções e carteira de clientes (Painel de SLA).
+          ["team", { href: "/app/team", key: "nav.team" }],
+          // Trilha de auditoria (quem fez o quê e quando).
+          ["audit", { href: "/app/audit", key: "nav.audit" }],
+        ]),
+      ),
     ];
   }
-  if (role === "customer")
+  if (user.role === "customer")
     // Início do cliente é a vitrine (Explorar); o resto (orçamentos, pedidos,
     // pendências) fica num grupo só, "Meus pedidos".
     return [
       { href: "/app/explore", key: "nav.explore" },
-      {
-        key: "nav.group.myOrders",
-        items: [
-          { href: "/app/requests", key: "nav.myQuotes" },
-          { href: "/app/orders", key: "nav.orders" },
-          { href: "/app/tasks", key: "nav.tasks" },
-          { href: "/app/notifications", key: "nav.notifications" },
-          MESSAGES,
-          { href: "/app/history", key: "nav.history" },
-          { href: "/app/marketing", key: "nav.marketing" },
-        ],
-      },
+      ...group(
+        "nav.group.myOrders",
+        pick(has, [
+          ["requests", { href: "/app/requests", key: "nav.myQuotes" }],
+          ["orders", { href: "/app/orders", key: "nav.orders" }],
+          ["tasks", { href: "/app/tasks", key: "nav.tasks" }],
+          [
+            "notifications",
+            { href: "/app/notifications", key: "nav.notifications" },
+          ],
+          ["messages", MESSAGES],
+          ["history", { href: "/app/history", key: "nav.history" }],
+          ["marketing", { href: "/app/marketing", key: "nav.marketing" }],
+        ]),
+      ),
     ];
   // Fornecedores e parceiros: início nas Pendências; no grupo Pedidos, a tela
-  // própria do papel (conta corrente, fretes, multas), quando houver.
-  const orders: NavLink[] = [{ href: "/app/orders", key: "nav.orders" }];
-  if (role === "supplier") {
-    // Cotações primeiro: é por onde o fornecedor começa (e volta às enviadas).
-    orders.unshift({ href: "/app/quotes", key: "nav.quotes" });
-    orders.push({ href: "/app/account", key: "nav.account" });
-  }
-  if (role === "shipping_line")
-    orders.unshift(
-      { href: "/app/freight", key: "nav.freight" },
-      // A companhia envia a própria tabela de fretes (só vê as dela).
-      { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
-    );
-  if (role === "legal")
-    orders.push({ href: "/app/penalties", key: "nav.penalties" });
-  // A agência começa pelos briefings de embalagem (faca e arte na RFQ).
-  if (role === "agency")
-    orders.unshift({ href: "/app/packaging", key: "nav.packaging" });
+  // própria do papel (cotações, fretes, embalagens, multas, conta corrente).
   return [
-    group("nav.group.home", [
-      { href: "/app", key: "nav.tasks" },
-      { href: "/app/notifications", key: "nav.notifications" },
-      MESSAGES,
-    ]),
-    group("nav.group.orders", orders),
+    ...group(
+      "nav.group.home",
+      pick(has, [
+        ["home", { href: "/app", key: "nav.tasks" }],
+        [
+          "notifications",
+          { href: "/app/notifications", key: "nav.notifications" },
+        ],
+        ["messages", MESSAGES],
+      ]),
+    ),
+    ...group(
+      "nav.group.orders",
+      pick(has, [
+        // Cotações primeiro: é por onde o fornecedor começa (e volta às enviadas).
+        ["quotes", { href: "/app/quotes", key: "nav.quotes" }],
+        ["freight", { href: "/app/freight", key: "nav.freight" }],
+        // A companhia envia a própria tabela de fretes (só vê as dela).
+        [
+          "freightTariff",
+          { href: "/app/freight/tariff", key: "nav.myFreightTariff" },
+        ],
+        // A agência começa pelos briefings de embalagem (faca e arte na RFQ).
+        ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
+        ["orders", { href: "/app/orders", key: "nav.orders" }],
+        ["penalties", { href: "/app/penalties", key: "nav.penalties" }],
+        ["account", { href: "/app/account", key: "nav.account" }],
+      ]),
+    ),
   ];
 }
 

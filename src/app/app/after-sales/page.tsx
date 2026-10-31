@@ -3,7 +3,7 @@ import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import {
   getStore,
   AFTER_SALES_STATUSES,
@@ -77,7 +77,7 @@ export default async function AfterSalesPage({
 }: PageProps<"/app/after-sales">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "afterSales");
   const { status: statusParam, error } = await searchParams;
   const status: AfterSalesStatus =
     typeof statusParam === "string" &&

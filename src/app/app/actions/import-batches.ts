@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import {
   applyImportBatch,
   cancelImportBatch,
@@ -24,6 +25,7 @@ export async function createImportBatchAction(form: FormData) {
   const entity = str(form, "entity");
   await run(`/app/import?entity=${entity}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "import");
     const parsed = z
       .object({ entity: entitySchema, sheet: z.string().max(80).nullable() })
       .parse({ entity, sheet: str(form, "sheet") || null });
@@ -49,6 +51,7 @@ export async function setBatchMappingAction(form: FormData) {
   const batchId = str(form, "batchId");
   await run(`/app/import/${batchId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "import");
     const entity = entitySchema.parse(str(form, "entity"));
     const allowed = new Set(TARGET_FIELDS[entity].map((f) => f.key));
     const mapping: Record<string, string> = {};
@@ -83,6 +86,7 @@ export async function applyImportBatchAction(form: FormData) {
   const batchId = str(form, "batchId");
   await run(`/app/import/${batchId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "import");
     const decisions: Record<string, string> = {};
     const decisionSchema = z.enum(["create", "update", "skip"]);
     for (const [key, value] of form.entries()) {
@@ -101,6 +105,7 @@ export async function cancelImportBatchAction(form: FormData) {
   const batchId = str(form, "batchId");
   await run(`/app/import/${batchId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "import");
     await cancelImportBatch(user, batchId);
     return "/app/import";
   });

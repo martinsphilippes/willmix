@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ActionError } from "@/components/action-error";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore, type PackagingItemKey } from "@/lib/db";
 import {
   getPackagingBriefView,
@@ -55,6 +56,7 @@ export default async function PackagingBriefPage({
 }: PageProps<"/app/packaging/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "packaging");
   const { id } = await params;
   const {
     error,
@@ -158,7 +160,9 @@ export default async function PackagingBriefPage({
           token={errorToken}
         />
         {savedText ? <Alert tone="success">{savedText}</Alert> : null}
-        {presale ? <Alert tone="info">{t("packBrief.presaleHint")}</Alert> : null}
+        {presale ? (
+          <Alert tone="info">{t("packBrief.presaleHint")}</Alert>
+        ) : null}
         {brief.status === "ready" ? (
           <Alert tone="success">{t("packBrief.readyHint")}</Alert>
         ) : null}
@@ -285,7 +289,10 @@ export default async function PackagingBriefPage({
                 {canEdit ? (
                   <form action={confirmPackagingDimsAction}>
                     <input type="hidden" name="briefId" value={brief.id} />
-                    <SubmitButton variant="secondary" data-packaging-dims-confirm>
+                    <SubmitButton
+                      variant="secondary"
+                      data-packaging-dims-confirm
+                    >
                       {t("packBrief.dims.confirm")}
                     </SubmitButton>
                   </form>
@@ -299,12 +306,18 @@ export default async function PackagingBriefPage({
                     t("packBrief.dims.carton"),
                     `${num(t.intl, dims.lengthCm)} × ${num(t.intl, dims.widthCm)} × ${num(t.intl, dims.heightCm)} cm`,
                   ],
-                  [t("packBrief.dims.perCarton"), num(t.intl, dims.masterCartonQty, 0)],
+                  [
+                    t("packBrief.dims.perCarton"),
+                    num(t.intl, dims.masterCartonQty, 0),
+                  ],
                   [t("packBrief.dims.inner"), num(t.intl, dims.innerQty, 0)],
                   [t("packBrief.dims.cbm"), num(t.intl, dims.cbmPerCarton, 4)],
                   [t("packBrief.dims.package"), dims.packageType],
                   [t("packBrief.dims.material"), dims.material],
-                  [t("packBrief.dims.capacity"), num(t.intl, dims.capacityMl, 0)],
+                  [
+                    t("packBrief.dims.capacity"),
+                    num(t.intl, dims.capacityMl, 0),
+                  ],
                   [
                     t("packBrief.dims.pantone"),
                     dims.colorPantones?.length ? (
@@ -342,19 +355,52 @@ export default async function PackagingBriefPage({
                   {t("packBrief.dims.form.title")}
                 </p>
                 <Field label={t("packBrief.dims.length")}>
-                  <Input name="lengthCm" type="number" step="0.1" min="0" defaultValue={dims?.lengthCm ?? ""} required />
+                  <Input
+                    name="lengthCm"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    defaultValue={dims?.lengthCm ?? ""}
+                    required
+                  />
                 </Field>
                 <Field label={t("packBrief.dims.width")}>
-                  <Input name="widthCm" type="number" step="0.1" min="0" defaultValue={dims?.widthCm ?? ""} required />
+                  <Input
+                    name="widthCm"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    defaultValue={dims?.widthCm ?? ""}
+                    required
+                  />
                 </Field>
                 <Field label={t("packBrief.dims.height")}>
-                  <Input name="heightCm" type="number" step="0.1" min="0" defaultValue={dims?.heightCm ?? ""} required />
+                  <Input
+                    name="heightCm"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    defaultValue={dims?.heightCm ?? ""}
+                    required
+                  />
                 </Field>
                 <Field label={t("packBrief.dims.perCarton")}>
-                  <Input name="masterCartonQty" type="number" step="1" min="0" defaultValue={dims?.masterCartonQty ?? ""} />
+                  <Input
+                    name="masterCartonQty"
+                    type="number"
+                    step="1"
+                    min="0"
+                    defaultValue={dims?.masterCartonQty ?? ""}
+                  />
                 </Field>
                 <Field label={t("packBrief.dims.inner")}>
-                  <Input name="innerQty" type="number" step="1" min="0" defaultValue={dims?.innerQty ?? ""} />
+                  <Input
+                    name="innerQty"
+                    type="number"
+                    step="1"
+                    min="0"
+                    defaultValue={dims?.innerQty ?? ""}
+                  />
                 </Field>
                 <div className="flex items-end">
                   <SubmitButton variant="secondary">
@@ -421,7 +467,10 @@ export default async function PackagingBriefPage({
 
         <div className="space-y-4">
           <Card title={t("packBrief.itemsTitle")}>
-            <ul className="@container divide-y divide-zinc-100" data-packaging-items>
+            <ul
+              className="@container divide-y divide-zinc-100"
+              data-packaging-items
+            >
               {items.map((item) => (
                 <ItemRow
                   key={item.key}
@@ -447,7 +496,13 @@ export default async function PackagingBriefPage({
             </ul>
           </Card>
 
-          <Card title={<span id="notes" className="scroll-mt-24">{t("packBrief.notes")}</span>}>
+          <Card
+            title={
+              <span id="notes" className="scroll-mt-24">
+                {t("packBrief.notes")}
+              </span>
+            }
+          >
             {canEdit ? (
               <form action={saveAgencyNotesAction} className="space-y-2">
                 <input type="hidden" name="briefId" value={brief.id} />
@@ -515,12 +570,27 @@ function ItemRow({
     >
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-zinc-900">
-          <span className={doc ? "text-emerald-700" : missing ? "text-amber-700" : "text-zinc-400"} aria-hidden>
+          <span
+            className={
+              doc
+                ? "text-emerald-700"
+                : missing
+                  ? "text-amber-700"
+                  : "text-zinc-400"
+            }
+            aria-hidden
+          >
             {doc ? "✓" : "○"}
           </span>
           {t(`packBrief.item.${key}` as DictionaryKey)}
           <span className="text-xs font-normal text-zinc-500">
-            ({t(item.required ? "packBrief.item.required" : "packBrief.item.optional")})
+            (
+            {t(
+              item.required
+                ? "packBrief.item.required"
+                : "packBrief.item.optional",
+            )}
+            )
           </span>
           {justSaved ? (
             <span
@@ -562,7 +632,12 @@ function ItemRow({
             ) : null}
           </div>
         ) : (
-          <p className={cx("mt-0.5 text-xs", missing ? "text-amber-700" : "text-zinc-500")}>
+          <p
+            className={cx(
+              "mt-0.5 text-xs",
+              missing ? "text-amber-700" : "text-zinc-500",
+            )}
+          >
             {t("packBrief.item.missing")}
           </p>
         )}
@@ -585,7 +660,10 @@ function ItemRow({
           className="flex w-full flex-col gap-1.5 @sm:flex-row @sm:flex-wrap @sm:items-start @xl:w-auto @xl:justify-end"
           data-packaging-upload={key}
         >
-          <form action={uploadPackagingItemAction} className="flex flex-wrap items-center gap-1.5 w-full @sm:w-auto">
+          <form
+            action={uploadPackagingItemAction}
+            className="flex flex-wrap items-center gap-1.5 w-full @sm:w-auto"
+          >
             {target}
             <PhotoInput
               name="file"
@@ -603,7 +681,10 @@ function ItemRow({
               className="w-full @sm:w-auto"
             />
           </form>
-          <form action={uploadPackagingItemAction} className="flex flex-wrap items-center gap-1.5 w-full @sm:w-auto">
+          <form
+            action={uploadPackagingItemAction}
+            className="flex flex-wrap items-center gap-1.5 w-full @sm:w-auto"
+          >
             {target}
             <FileAutoInput
               name="file"

@@ -357,8 +357,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.getByText("Shenzhen Supplier A")).toHaveCount(0);
   await expect(page.getByText(/FOB/)).toHaveCount(0);
 
-  // 6. Wellmix confirma o sinal (manual) → pedido criado
-  await login(page, "operador@wellmix.com");
+  // 6. O admin confirma o sinal (manual; financeiro é só dele) → pedido criado
+  await login(page, "admin@wellmix.com");
   await page.goto(requestUrl);
   await page.getByRole("button", { name: /Confirmar sinal recebido/ }).click();
   await page.waitForURL(/\/app\/orders\/[^/]+$/);
@@ -372,7 +372,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   )?.match(/#(\d+)/)?.[1];
   expect(orderNumber).toBeTruthy();
 
-  // 7. ORDER_CREATED: operador confirma (Wellmix pode preencher tudo; limitamos a 1 envio)
+  // 7. ORDER_CREATED: o operador (comprador) confirma (limitamos a 1 envio)
+  await login(page, "operador@wellmix.com");
   await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
@@ -405,7 +406,14 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 9. Pagamento ao fornecedor (fora do fluxo): condição do cadastro
   // (30% no pedido + 70% 90 dias após a entrega), parcela 1 vence hoje.
+  // Financeiro é só do admin: o operador nem vê Contas a pagar.
   await login(page, "operador@wellmix.com");
+  await page.goto("/app/payables");
+  await page.waitForURL(/\/app\?denied=payables/);
+  await expect(page.getByText(/não tem acesso a Contas a pagar/)).toBeVisible();
+  await page.goto(orderUrl);
+  await expect(page.getByText("Valor a pagar ao fornecedor")).toHaveCount(0);
+  await login(page, "admin@wellmix.com");
   await page.goto("/app/payables");
   await expect(
     page.locator(`[data-payable-row="${orderNumber}-1"]`),

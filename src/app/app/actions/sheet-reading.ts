@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { SHEET_READING_SCOPES } from "@/lib/db";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
+import { assertAnyScreen } from "@/lib/auth/screens";
 import { aiErrorCode, AiError } from "@/lib/integrations/ai";
 import { READING_FIELDS } from "@/lib/services/sheet-reading-calc";
 import { files, requireUser, run, str, uploadedPhotoKeys } from "./helpers";
@@ -30,6 +31,8 @@ export async function readSheetBoardAction(form: FormData) {
   const back =
     scope.success && key.success ? backFor(scope.data, key.data) : "/app";
   await run(`${back}#board`, async () => {
+    if (isWellmix(user))
+      assertAnyScreen(user, ["quotes", "orders", "products"]);
     if (!scope.success || !key.success) throw new Error("invalid_input");
     const photo = files(form, "photo")[0] ?? uploadedPhotoKeys(form)[0];
     if (!photo) throw new Error("photo_required");
@@ -55,6 +58,7 @@ export async function resolveReadingDivergenceAction(form: FormData) {
     scope.success && key.success ? backFor(scope.data, key.data) : "/app";
   await run(`${back}#board`, async () => {
     assertWellmix(user);
+    assertAnyScreen(user, ["quotes", "orders", "products"]);
     const readingId = KEY.parse(str(form, "readingId"));
     const field = z.enum(READING_FIELDS).parse(str(form, "field"));
     const choice = z.enum(["photo", "sheet"]).parse(str(form, "choice"));

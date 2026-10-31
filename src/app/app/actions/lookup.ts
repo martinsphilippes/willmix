@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { isWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { runProductLookup } from "@/lib/services/product-lookup";
 import { files, requireUser, run, str } from "./helpers";
 
@@ -17,6 +18,7 @@ export async function lookupProductAction(form: FormData) {
   await run(back, async () => {
     if (!(isWellmix(user) || user.role === "customer"))
       throw new Error("forbidden");
+    assertScreen(user, "requests");
     const url = str(form, "url");
     if (url && !z.string().url().max(2000).safeParse(url).success)
       throw new Error("lookup_invalid_url");

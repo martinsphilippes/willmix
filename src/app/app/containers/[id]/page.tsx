@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { CONTAINER_STATUSES, getStore } from "@/lib/db";
 import { listOrderItemChoices, loadContainer } from "@/lib/services/containers";
 import { getSettings } from "@/lib/settings";
@@ -47,7 +47,7 @@ export default async function ContainerPage({
 }: PageProps<"/app/containers/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "containers");
   const { id } = await params;
   const { error } = await searchParams;
   const t = await getT();

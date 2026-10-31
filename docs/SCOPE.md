@@ -21,7 +21,7 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 | Papel              | Faz                                                                                      | Não vê                            |
 | ------------------ | ---------------------------------------------------------------------------------------- | --------------------------------- |
 | Admin Wellmix      | Tudo, inclusive configurações e usuários internos                                        |                                   |
-| Operador           | Cadastros, RFQ, seleção, pagamentos, designação de parceiros, exceções, multas           | Configurações                     |
+| Operador           | Só as telas das suas funções (docs/ACCESS.md): cadastros, RFQ, seleção, designação de parceiros, produção, embarque, recebimento… | Financeiro (valores, pagamentos, contas a pagar), Configurações, Equipe |
 | Cliente            | Cria e acompanha solicitação, vê proposta e sinal, timeline, confirma recebimento        | Fornecedor, FOB, margem, cotações |
 | Fornecedor         | Responde RFQ, cumpre checklists, aprova a arte, envia fotos e peso, confirma pagamentos  | Cliente final, valor de venda     |
 | Agência            | Já na RFQ, prepara faca (die-cut), arte, arquivos para a gráfica e foto da embalagem no briefing; refaz quando o fornecedor reprova | Valores; cotações; cliente; etapas dos outros |

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { QuoteStatus } from "@/lib/db";
@@ -42,7 +43,7 @@ export default async function QuotesPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/quotes");
   const wellmix = isWellmix(user);
-  if (!wellmix && user.role !== "supplier") redirect("/app");
+  requireScreen(user, "quotes");
   const t = await getT();
   const { status } = await searchParams;
   const active = TABS.find((s) => s === status) ?? null;

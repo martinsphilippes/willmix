@@ -4,7 +4,7 @@ import { productSpecLabels, sameSpec } from "@/lib/product-spec";
 import { translator } from "@/i18n";
 import type { ComponentProps } from "react";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { ProductManufacturerCards } from "@/components/manufacturer-cards";
 import { productCards } from "@/lib/services/manufacturer-cards";
@@ -164,7 +164,7 @@ export default async function ProductSheetPage({
 }: PageProps<"/app/products/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "products");
   const { id } = await params;
   const {
     error,

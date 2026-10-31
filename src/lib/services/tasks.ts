@@ -7,7 +7,7 @@ import {
   type StageKey,
   type User,
 } from "@/lib/db";
-import { canViewRequest, isWellmix } from "@/lib/auth/permissions";
+import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
@@ -660,8 +660,8 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     }
   }
 
-  // Wellmix: parcelas a pagar a fornecedores vencidas ou vencendo em 7 dias.
-  if (wellmix) {
+  // Admin (financeiro é só dele): parcelas a pagar a fornecedores vencidas ou vencendo em 7 dias.
+  if (isAdmin(user)) {
     const { listPayables, payableRows } = await import("./supplier-terms");
     for (const { payable, installment: i } of payableRows(
       await listPayables(),

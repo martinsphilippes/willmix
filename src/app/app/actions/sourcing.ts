@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   MEASUREMENT_KINDS,
@@ -93,6 +94,7 @@ export async function saveVisitAction(form: FormData) {
     id ? `/app/sourcing/visits/${id}` : "/app/sourcing/visits/new",
     async () => {
       assertWellmix(user);
+      assertScreen(user, "sourcing");
       const supplier = await resolveSupplier(form);
       const parsed = parse(visitSchema, {
         ...supplier,
@@ -161,6 +163,7 @@ export async function saveSourcingItemAction(form: FormData) {
     : `/app/sourcing/items/new${visitId ? `?visitId=${encodeURIComponent(visitId)}` : ""}`;
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const store = getStore();
     const current = id ? await store.get("sourcing_items", id) : null;
     if (id && !current) throw new Error("item_not_found");
@@ -244,6 +247,7 @@ export async function addSourcingPhotosAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const parsed = parse(photoSchema, {
       itemId,
       kind: str(form, "kind") || "original",
@@ -292,6 +296,7 @@ export async function setPrimaryPhotoAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const { photoId } = parse(z.object({ photoId: z.string().min(1) }), {
       photoId: str(form, "photoId"),
     });
@@ -322,6 +327,7 @@ export async function addSourcingMeasurementAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const item = await getStore().get("sourcing_items", itemId);
     if (!item) throw new Error("item_not_found");
     const parsed = parse(measurementSchema, {
@@ -344,6 +350,7 @@ export async function promoteSourcingItemAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const lineId = str(form, "lineId");
     if (!lineId) throw new Error("line_required");
     const store = getStore();
@@ -365,6 +372,7 @@ export async function discardSourcingItemAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     await setSourcingItemStatus(user, itemId, "discarded");
   });
 }

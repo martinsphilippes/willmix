@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertRole, assertWellmix, isWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { getStore, type Role } from "@/lib/db";
 import { audit } from "@/lib/services/audit";
 import {
@@ -57,6 +58,7 @@ export async function suggestNcmAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
+    if (isWellmix(user)) assertScreen(user, "products");
     const product = await getStore().get("products", productId);
     if (!product) throw new Error("product_not_found");
     const created = await suggestTaxCandidates(user, productId);
@@ -88,6 +90,7 @@ export async function addTaxCandidateAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
+    if (isWellmix(user)) assertScreen(user, "products");
     const parsed = candidateSchema.parse({
       ncm: str(form, "ncm"),
       description: str(form, "description") || null,
@@ -124,6 +127,7 @@ export async function validateTaxAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
+    if (isWellmix(user)) assertScreen(user, "products");
     const id = z.string().min(1).parse(str(form, "id"));
     const row = await getStore().get("tax_classifications", id);
     if (!row || row.productId !== productId) throw new Error("not_found");
@@ -138,6 +142,7 @@ export async function rejectTaxAction(form: FormData) {
   const back = taxBack(form, productId);
   await run(back, async () => {
     assertRole(user, TAX_ROLES);
+    if (isWellmix(user)) assertScreen(user, "products");
     const parsed = z
       .object({ id: z.string().min(1), note: z.string().max(2000).nullable() })
       .parse({ id: str(form, "id"), note: str(form, "note") || null });
@@ -189,6 +194,7 @@ export async function addCertificationAction(form: FormData) {
   const back = certBack(form, entity, entityId);
   await run(back, async () => {
     assertRole(user, ["admin", "operator", "supplier"]);
+    if (isWellmix(user)) assertScreen(user, "products");
     if (!str(form, "kind")) throw new Error("kind_required");
     const parsed = certificationSchema.parse({
       kind: str(form, "kind"),
@@ -228,6 +234,7 @@ export async function setCertificationStatusAction(form: FormData) {
   const back = certBack(form, entity, entityId);
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const parsed = statusSchema.parse({
       id: str(form, "id"),
       status: str(form, "status"),
@@ -251,6 +258,7 @@ export async function setLineCertificationsAction(form: FormData) {
   const lineId = str(form, "lineId");
   await run("/app/lines", async () => {
     assertWellmix(user);
+    assertScreen(user, "lines");
     const store = getStore();
     const line = await store.get("product_lines", lineId);
     if (!line) throw new Error("line_not_found");

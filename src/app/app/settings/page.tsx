@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertRole } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import { getStore } from "@/lib/db";
 import { getFxRates } from "@/lib/services/fx";
@@ -83,7 +83,7 @@ export default async function SettingsPage({
 }: PageProps<"/app/settings">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertRole(user, ["admin"]);
+  requireScreen(user, "settings");
   const {
     ok,
     error,
@@ -190,11 +190,10 @@ export default async function SettingsPage({
           if (t(key) === key) return [];
           // Detalhe técnico (onde e qual erro), só códigos: parties.type:document_invalid_structure.
           const detail = rest.join(":");
-          const technical = /^[a-z_]{1,30}(\.[A-Za-z0-9_]{1,60})?(:[a-z_]{1,60})?$/.test(
-            detail,
-          )
-            ? ` ${t("settings.demo.detail", { detail })}`
-            : "";
+          const technical =
+            /^[a-z_]{1,30}(\.[A-Za-z0-9_]{1,60})?(:[a-z_]{1,60})?$/.test(detail)
+              ? ` ${t("settings.demo.detail", { detail })}`
+              : "";
           return [`${email}: ${t(key)}${technical}`];
         })
       : [];

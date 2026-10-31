@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import { field, requireUser, run, str } from "./helpers";
 
 /*
@@ -21,6 +22,7 @@ export async function decideApprovalAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#approval`, async () => {
+    assertScreen(user, "requests");
     const approvalId = ID.parse(str(form, "approvalId"));
     const decision = z
       .enum(["approved", "rejected"])
@@ -36,6 +38,7 @@ export async function cancelApprovalAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#approval`, async () => {
+    assertScreen(user, "requests");
     const approvalId = ID.parse(str(form, "approvalId"));
     const { cancelApproval } = await import("@/lib/services/approvals");
     await cancelApproval(user, approvalId);

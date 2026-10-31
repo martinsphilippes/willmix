@@ -1,7 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { isWellmix } from "@/lib/auth/permissions";
+import { assertRole, isWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { files, requireUser, run, str } from "./helpers";
 
 /*
@@ -33,6 +34,7 @@ export async function importFreightTariffAction(form: FormData) {
   const from = backFrom(form);
   const back = from ? `${BACK}?from=${encodeURIComponent(from)}` : BACK;
   await run(back, async () => {
+    assertScreen(user, "freightTariff");
     const [file] = files(form, "file");
     if (!file) throw new Error("tariff_file_required");
     const raw = str(form, "referenceDate");
@@ -80,6 +82,7 @@ export async function applyTariffPerCbmAction(form: FormData) {
   if (from) params.set("from", from);
   const back = params.size ? `${BACK}?${params.toString()}` : BACK;
   await run(back, async () => {
+    assertRole(user, ["admin"]);
     const id = ID.parse(tariffId);
     const dest = DESTINATION.parse(destination);
     const { applyTariffPerCbm } = await import("@/lib/services/freight-tariff");

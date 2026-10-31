@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { REVIEW_STATUSES } from "@/lib/db";
 import { resolveReviewById } from "@/lib/services/reviews";
 import { requireUser, run, str } from "./helpers";
@@ -27,6 +28,7 @@ export async function decideReviewAction(form: FormData) {
   const back = `/app/reviews?status=${status}`;
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "reviews");
     const parsed = decisionSchema.safeParse({
       id: str(form, "id"),
       decision: str(form, "decision"),

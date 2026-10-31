@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
@@ -50,7 +50,7 @@ export default async function ProductsPage({
 }: PageProps<"/app/products">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "products");
   const { error, view, deleted, restored, purged, blocked } =
     await searchParams;
   const showDeleted = view === "deleted";
