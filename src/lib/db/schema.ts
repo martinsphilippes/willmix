@@ -603,6 +603,12 @@ export interface User extends BaseRow {
   division?: Division | null;
   /** Funções do login da Wellmix (comprador, planner, diretoria…). */
   functions?: WellmixFunction[] | null;
+  /**
+   * Telas liberadas uma a uma pelo administrador (docs/ACCESS.md). Nula ou
+   * ausente: o login abre o padrão das funções. Guarda chaves de
+   * src/lib/auth/screens.ts (validadas ao salvar e ao ler).
+   */
+  screens?: string[] | null;
 }
 
 export interface Party extends BaseRow {
@@ -2127,6 +2133,7 @@ export const TABLES: Record<TableName, TableDef> = {
       managerUserId: id(false),
       division: enumOf(DIVISIONS, false),
       functions: json(),
+      screens: json(),
     },
     indexes: [
       { key: "email_unique", type: "unique", columns: ["email"] },

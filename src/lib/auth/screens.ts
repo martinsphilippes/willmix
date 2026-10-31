@@ -10,7 +10,8 @@ import { ForbiddenError, isAdmin, isWellmix } from "./permissions";
  * básico mais a união das telas das suas funções (Gestão → Equipe e
  * divisões); cliente, fornecedor e parceiros têm a lista fixa do papel.
  * Financeiro (Financeiro, Contas a pagar, conta corrente do fornecedor) é só
- * do administrador: nenhuma função o libera.
+ * do administrador: nenhuma função o libera. O administrador pode, porém,
+ * marcar as telas de um login uma a uma (users.screens), inclusive essas.
  */
 
 export const SCREENS = [
@@ -243,16 +244,83 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   designer: ["orders", "packaging", "products", "marketing", "explore"],
 };
 
-type Who = Pick<User, "role"> & Partial<Pick<User, "functions">>;
+type Who = Pick<User, "role"> & Partial<Pick<User, "functions" | "screens">>;
 
-/** Telas que o login abre (menu e guarda das páginas saem daqui). */
+/** Grupos do menu, com todas as telas (a tela de acessos mostra as caixas assim). */
+export const SCREEN_GROUPS: ReadonlyArray<{
+  key: DictionaryKey;
+  screens: readonly Screen[];
+}> = [
+  {
+    key: "nav.group.home",
+    screens: ["home", "tasks", "sla", "notifications", "messages"],
+  },
+  {
+    key: "nav.group.orders",
+    screens: [
+      "requests",
+      "quotes",
+      "orders",
+      "sourcing",
+      "reviews",
+      "freight",
+      "freightTariff",
+      "packaging",
+      "containers",
+    ],
+  },
+  {
+    key: "nav.group.registry",
+    screens: ["parties", "products", "lines", "explore", "import"],
+  },
+  {
+    key: "nav.group.management",
+    screens: [
+      "dashboards",
+      "finance",
+      "payables",
+      "penalties",
+      "afterSales",
+      "marketing",
+      "history",
+      "account",
+      "settings",
+      "team",
+      "audit",
+    ],
+  },
+];
+
+const isScreen = (value: unknown): value is Screen =>
+  typeof value === "string" && (SCREENS as readonly string[]).includes(value);
+
+/** Só chaves de tela válidas (o banco pode ter lixo ou chave antiga). */
+export const validScreens = (list: unknown): Screen[] =>
+  Array.isArray(list) ? list.filter(isScreen) : [];
+
+/** Padrão das funções: o básico mais as telas de cada função marcada. */
+export function functionScreensFor(user: Who): Set<Screen> {
+  const set = new Set<Screen>(WELLMIX_BASE);
+  for (const fn of user.functions ?? [])
+    for (const screen of FUNCTION_SCREENS[fn] ?? []) set.add(screen);
+  return set;
+}
+
+/** O administrador marcou as telas deste login uma a uma (em vez do padrão das funções)? */
+export const hasCustomScreens = (user: Who) =>
+  isWellmix(user) && !isAdmin(user) && Array.isArray(user.screens);
+
+/**
+ * Telas que o login abre (menu e guarda das páginas saem daqui). Admin: todas.
+ * Operador: a lista marcada pelo administrador (mais o básico), se houver;
+ * senão o padrão das funções. Cliente, fornecedor e parceiros: a lista do papel.
+ */
 export function screensFor(user: Who): Set<Screen> {
   if (isAdmin(user)) return new Set(SCREENS);
   if (isWellmix(user)) {
-    const set = new Set<Screen>(WELLMIX_BASE);
-    for (const fn of user.functions ?? [])
-      for (const screen of FUNCTION_SCREENS[fn] ?? []) set.add(screen);
-    return set;
+    if (Array.isArray(user.screens))
+      return new Set<Screen>([...WELLMIX_BASE, ...validScreens(user.screens)]);
+    return functionScreensFor(user);
   }
   return new Set(ROLE_SCREENS[user.role as keyof typeof ROLE_SCREENS] ?? []);
 }
@@ -271,6 +339,8 @@ export function assertAnyScreen(user: Who, screens: readonly Screen[]) {
   if (!screens.some((s) => has.has(s))) throw new ForbiddenError();
 }
 
-/** Login da Wellmix sem função alguma: vê só o básico e um aviso no início. */
+/** Login da Wellmix que abre só o básico (sem função e sem tela marcada): aviso no início. */
 export const hasNoFunction = (user: Who) =>
-  isWellmix(user) && !isAdmin(user) && (user.functions ?? []).length === 0;
+  isWellmix(user) &&
+  !isAdmin(user) &&
+  [...screensFor(user)].every((s) => WELLMIX_BASE.includes(s));

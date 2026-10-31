@@ -219,6 +219,39 @@ describe("painel de SLA por divisão", () => {
     await expect(slaBoardFor(joao)).rejects.toThrow();
   });
 
+  it("telas marcadas uma a uma: só chaves válidas, sem o básico; nulo volta ao padrão", async () => {
+    const { screensFor, hasCustomScreens } = await import("@/lib/auth/screens");
+    await team.setTeamMember(admin, analyst.id, {
+      jobLevel: "analyst",
+      managerUserId: null,
+      division: "wellmix",
+      screens: ["finance", "tasks", "orders", "nada"],
+    });
+    let saved = (await getStore().get("users", analyst.id))!;
+    expect(saved.screens).toEqual(["finance", "orders"]);
+    expect(hasCustomScreens(saved)).toBe(true);
+    expect(screensFor(saved).has("finance")).toBe(true);
+    expect(screensFor(saved).has("tasks")).toBe(true);
+    await team.setTeamMember(admin, analyst.id, {
+      jobLevel: "analyst",
+      managerUserId: null,
+      division: "wellmix",
+      screens: null,
+    });
+    saved = (await getStore().get("users", analyst.id))!;
+    expect(saved.screens ?? null).toBeNull();
+    expect(hasCustomScreens(saved)).toBe(false);
+    // Só o admin.
+    await expect(
+      team.setTeamMember(manager, analyst.id, {
+        jobLevel: null,
+        managerUserId: null,
+        division: null,
+        screens: ["finance"],
+      }),
+    ).rejects.toThrow();
+  });
+
   it("as etapas por trás de 'no prazo' acompanham o indicador e a pessoa escolhida", async () => {
     const all = await slaBoardFor(admin, ALL);
     expect(all.recentStages.length).toBe(all.onTime.total);

@@ -3,12 +3,16 @@ import {
   ADMIN_ONLY,
   FUNCTION_SCREENS,
   SCREENS,
+  SCREEN_GROUPS,
   WELLMIX_BASE,
   assertScreen,
   canOpen,
+  functionScreensFor,
+  hasCustomScreens,
   hasNoFunction,
   screenOfPath,
   screensFor,
+  validScreens,
 } from "@/lib/auth/screens";
 import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
@@ -103,6 +107,35 @@ describe("telas por papel e por função", () => {
     // Toda função conhecida tem uma lista (nenhuma esquecida).
     for (const fn of WELLMIX_FUNCTIONS)
       expect(FUNCTION_SCREENS[fn]).toBeDefined();
+  });
+
+  it("telas marcadas uma a uma vencem o padrão das funções; o básico fica sempre", () => {
+    const buyer = { role: "operator" as const, functions: ["buyer" as const] };
+    // Sem lista: padrão das funções.
+    expect(hasCustomScreens(buyer)).toBe(false);
+    expect(canOpen(buyer, "finance")).toBe(false);
+    // Lista explícita: só o que foi marcado (mais o básico), inclusive Financeiro.
+    const custom = { ...buyer, screens: ["finance", "orders", "lixo"] };
+    expect(hasCustomScreens(custom)).toBe(true);
+    expect(canOpen(custom, "finance")).toBe(true);
+    expect(canOpen(custom, "orders")).toBe(true);
+    expect(canOpen(custom, "requests")).toBe(false);
+    for (const screen of WELLMIX_BASE)
+      expect(canOpen(custom, screen)).toBe(true);
+    expect(validScreens(["finance", "x", 3])).toEqual(["finance"]);
+    // Lista vazia: só o básico (e o aviso de login sem acesso).
+    const none = { ...buyer, screens: [] };
+    expect(hasNoFunction(none)).toBe(true);
+    expect([...screensFor(none)].sort()).toEqual([...WELLMIX_BASE].sort());
+    // O padrão das funções continua disponível para "Voltar ao padrão".
+    expect(functionScreensFor(custom).has("requests")).toBe(true);
+    // Nula: volta ao padrão.
+    expect(canOpen({ ...buyer, screens: null }, "requests")).toBe(true);
+    // Admin ignora a lista.
+    expect(canOpen({ role: "admin", screens: [] }, "finance")).toBe(true);
+    // Os grupos do menu cobrem todas as telas, sem repetir.
+    const grouped = SCREEN_GROUPS.flatMap((g) => [...g.screens]);
+    expect([...grouped].sort()).toEqual([...SCREENS].sort());
   });
 
   it("rota → tela (a mais específica primeiro)", () => {

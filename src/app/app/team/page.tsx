@@ -3,17 +3,18 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
 import {
-  SCREEN_LABEL,
   WELLMIX_BASE,
+  hasCustomScreens,
   hasNoFunction,
   screensFor,
 } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
-import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
+import { DIVISIONS } from "@/lib/db/schema";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
+  Badge,
   Card,
   PageHeader,
   Select,
@@ -24,18 +25,18 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { descendantsOf, wellmixTeam } from "@/lib/services/team";
+import { wellmixTeam } from "@/lib/services/team";
 import {
   distributeUnassignedAction,
-  saveTeamMemberAction,
   setLineDivisionAction,
 } from "../actions/team";
 
 /*
- * Equipe e divisões (só o administrador): cargo, chefe e divisão de cada
- * login da Wellmix e a divisão de cada linha de produto. A solicitação nova
- * cai sozinha no analista da divisão da linha (o de menos pendências); é o
- * que monta o Painel de SLA (quem vê quem e de quem é cada pendência).
+ * Equipe e divisões (só o administrador): a lista da equipe em linhas (cargo,
+ * divisão, chefe, funções e quantas telas cada login abre) com "Editar
+ * acessos" para a página da pessoa (/app/team/[id]); e a divisão de cada
+ * linha de produto. A solicitação nova cai sozinha no analista da divisão da
+ * linha (o de menos pendências); é o que monta o Painel de SLA.
  */
 
 export default async function TeamPage({
@@ -70,6 +71,11 @@ export default async function TeamPage({
     typeof distributed === "string" && /^\d+$/.test(distributed)
       ? Number(distributed)
       : null;
+  const nameOf = (id: string | null | undefined) =>
+    (id && team.find((m) => m.id === id)?.name) || t("team.none");
+  // Telas além do básico (as que de fato dependem de função ou de liberação).
+  const extraScreens = (member: (typeof team)[number]) =>
+    [...screensFor(member)].filter((s) => !WELLMIX_BASE.includes(s)).length;
   const divisionOptions = (
     <>
       <option value="">{t("team.none")}</option>
@@ -129,134 +135,83 @@ export default async function TeamPage({
                 <Th>{t("team.col.manager")}</Th>
                 <Th>{t("team.col.functions")}</Th>
                 <Th>{t("team.col.screens")}</Th>
-                <Th />
+                <Th className="text-right">
+                  <span className="sr-only">{t("team.edit")}</span>
+                </Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {team.map((member) => {
-                const below = descendantsOf(member.id, team);
-                const formId = `member-${member.id}`;
-                return (
-                  <tr
-                    key={member.id}
-                    id={`u-${member.id}`}
-                    className={rowClass}
-                    data-team-member={member.id}
-                  >
-                    <Td>
-                      <div className="font-medium text-zinc-900">
-                        {member.name}
-                      </div>
-                      <div className="text-xs text-zinc-500">
-                        {t(`role.${member.role}` as DictionaryKey)} ·{" "}
-                        {member.email}
-                      </div>
-                    </Td>
-                    <Td>
-                      <Select
-                        dense
-                        name="jobLevel"
-                        form={formId}
-                        defaultValue={member.jobLevel ?? ""}
-                        aria-label={`${t("team.col.level")}: ${member.name}`}
-                      >
-                        <option value="">{t("team.none")}</option>
-                        {JOB_LEVELS.map((l) => (
-                          <option key={l} value={l}>
-                            {t(`level.${l}` as DictionaryKey)}
-                          </option>
-                        ))}
-                      </Select>
-                    </Td>
-                    <Td>
-                      <Select
-                        dense
-                        name="division"
-                        form={formId}
-                        defaultValue={member.division ?? ""}
-                        aria-label={`${t("team.col.division")}: ${member.name}`}
-                      >
-                        {divisionOptions}
-                      </Select>
-                    </Td>
-                    <Td>
-                      <Select
-                        dense
-                        name="managerUserId"
-                        form={formId}
-                        defaultValue={member.managerUserId ?? ""}
-                        aria-label={`${t("team.col.manager")}: ${member.name}`}
-                      >
-                        <option value="">{t("team.none")}</option>
-                        {team
-                          // Nem ele mesmo nem quem está abaixo dele (ciclo).
-                          .filter((m) => m.id !== member.id && !below.has(m.id))
-                          .map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.name}
-                            </option>
-                          ))}
-                      </Select>
-                    </Td>
-                    <Td>
-                      {/* Funções: quem compra, planeja e aprova (aprovação do pré-custo). */}
-                      <input
-                        type="hidden"
-                        name="functions.__form"
-                        value="1"
-                        form={formId}
-                      />
-                      <div className="grid min-w-56 grid-cols-2 gap-x-3 gap-y-1">
-                        {WELLMIX_FUNCTIONS.map((f) => (
-                          <label
-                            key={f}
-                            className="inline-flex items-center gap-1.5 text-xs text-zinc-700"
-                          >
-                            <input
-                              type="checkbox"
-                              name="functions"
-                              value={f}
-                              form={formId}
-                              defaultChecked={(member.functions ?? []).includes(
-                                f,
-                              )}
-                              className="h-4 w-4 accent-brand-600"
-                            />
-                            {t(`function.${f}` as DictionaryKey)}
-                          </label>
-                        ))}
-                      </div>
-                    </Td>
-                    <Td
-                      className="max-w-60 text-xs text-zinc-600"
-                      data-team-screens={member.id}
+            <tbody>
+              {team.map((member) => (
+                <tr
+                  key={member.id}
+                  id={`u-${member.id}`}
+                  className={rowClass}
+                  data-team-member={member.id}
+                >
+                  <Td>
+                    <TextLink
+                      href={`/app/team/${member.id}`}
+                      className="font-semibold"
                     >
-                      {/* Telas que o login abre, calculadas das funções (docs/ACCESS.md). */}
+                      {member.name}
+                    </TextLink>
+                    <div className="text-xs text-zinc-500">
+                      {t(`role.${member.role}` as DictionaryKey)} ·{" "}
+                      {member.email}
+                    </div>
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {member.jobLevel
+                      ? t(`level.${member.jobLevel}` as DictionaryKey)
+                      : t("team.none")}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {member.division
+                      ? t(`division.${member.division}` as DictionaryKey)
+                      : t("team.none")}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {nameOf(member.managerUserId)}
+                  </Td>
+                  <Td>
+                    <div className="flex flex-wrap gap-1">
+                      {(member.functions ?? []).length ? (
+                        (member.functions ?? []).map((f) => (
+                          <Badge key={f}>
+                            {t(`function.${f}` as DictionaryKey)}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-zinc-400">{t("team.none")}</span>
+                      )}
+                    </div>
+                  </Td>
+                  <Td className="whitespace-nowrap text-zinc-700">
+                    <span data-team-screens={member.id}>
                       {isAdmin(member)
                         ? t("team.screens.all")
-                        : hasNoFunction(member)
-                          ? t("team.screens.base")
-                          : [...screensFor(member)]
-                              .filter(
-                                (screen) => !WELLMIX_BASE.includes(screen),
-                              )
-                              .map((screen) => t(SCREEN_LABEL[screen]))
-                              .join(", ")}
-                    </Td>
-                    <Td>
-                      <form id={formId} action={saveTeamMemberAction}>
-                        <input type="hidden" name="userId" value={member.id} />
-                        <SubmitButton
-                          variant="secondary"
-                          className="px-2.5 py-1 text-xs"
-                        >
-                          {t("team.save")}
-                        </SubmitButton>
-                      </form>
-                    </Td>
-                  </tr>
-                );
-              })}
+                        : hasCustomScreens(member)
+                          ? t("team.screens.custom", {
+                              n: extraScreens(member),
+                            })
+                          : hasNoFunction(member)
+                            ? t("team.screens.base")
+                            : t("team.screens.default", {
+                                n: extraScreens(member),
+                              })}
+                    </span>
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    <TextLink
+                      href={`/app/team/${member.id}`}
+                      className="text-xs"
+                      data-team-edit={member.id}
+                    >
+                      {t("team.edit")}
+                    </TextLink>
+                  </Td>
+                </tr>
+              ))}
             </tbody>
           </Table>
         </Card>

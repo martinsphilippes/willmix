@@ -9,6 +9,7 @@ import {
   type WellmixFunction,
 } from "@/lib/db";
 import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
+import { WELLMIX_BASE, validScreens } from "@/lib/auth/screens";
 import { audit } from "./audit";
 
 /*
@@ -65,6 +66,11 @@ export async function setTeamMember(
     division: Division | null;
     /** Funções (comprador, planner, diretoria…); ausente = não muda. */
     functions?: WellmixFunction[];
+    /**
+     * Telas marcadas uma a uma (docs/ACCESS.md): lista = personalizado;
+     * null = volta ao padrão das funções; ausente = não muda.
+     */
+    screens?: string[] | null;
   },
 ): Promise<void> {
   if (!isAdmin(user)) throw new ForbiddenError();
@@ -85,24 +91,33 @@ export async function setTeamMember(
     managerUserId: target.managerUserId ?? null,
     division: target.division ?? null,
     functions: target.functions ?? [],
+    screens: target.screens ?? null,
   };
   const functions = input.functions
     ? WELLMIX_FUNCTIONS.filter((f) => input.functions!.includes(f))
     : undefined;
+  // Telas: só chaves válidas, sem o básico (que todo login da Wellmix já tem).
+  const screens =
+    input.screens === undefined
+      ? undefined
+      : input.screens === null
+        ? null
+        : validScreens(input.screens).filter((s) => !WELLMIX_BASE.includes(s));
   await store.update("users", target.id, {
     jobLevel: input.jobLevel,
     managerUserId: input.managerUserId,
     division: input.division,
     ...(functions ? { functions } : {}),
+    ...(screens !== undefined ? { screens } : {}),
   });
   await audit(
     user,
     "team.member",
     "user",
     target.id,
-    `Equipe: ${target.name} (cargo, chefe, divisão e funções)`,
+    `Equipe: ${target.name} (cargo, chefe, divisão, funções e telas)`,
     before,
-    input,
+    { ...input, ...(screens !== undefined ? { screens } : {}) },
   );
 }
 
