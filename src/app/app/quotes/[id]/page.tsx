@@ -45,6 +45,11 @@ import {
   ncmSuggestionsFor,
 } from "@/lib/services/ncm-suggestions";
 import { PurchaseSheetFields } from "@/components/purchase-sheet-fields";
+import {
+  RequestInfoTable,
+  specificationColumns,
+  type InfoColumn,
+} from "@/components/request-info-table";
 import { SheetSafety } from "@/components/sheet-safety";
 import { ActionError } from "@/components/action-error";
 import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
@@ -260,9 +265,12 @@ export default async function QuotePage({
         ) : null}
       </div>
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-        <Card title={t("requests.title")}>
-          <DescriptionList
-            items={[
+        <Card title={t("requests.title")} className="lg:col-span-2">
+          {/* Uma linha, cada coluna uma informação (inclusive cada item da
+              especificação): mesmo padrão de tabela das outras telas. */}
+          <RequestInfoTable
+            rowKey={request.id}
+            columns={[
               // Variação pedida: o fornecedor vê o nome (faz parte da ficha);
               // os valores da cópia (preço de referência, MOQ…) só a Wellmix.
               ...(variantLabel
@@ -277,22 +285,17 @@ export default async function QuotePage({
                           </span>
                         ) : null}
                       </span>,
-                    ] as [string, React.ReactNode],
+                    ] as InfoColumn,
                   ]
                 : []),
               [t("common.quantity"), `${request.quantity} ${request.unit}`],
               [t("requests.deadline"), formatDate(request.deadline, t)],
               [t("quotes.validUntil"), formatDate(quote.validUntil, t)],
               [t("requests.description"), request.description],
-              [
+              ...specificationColumns(
+                request.specification,
                 t("requests.specification"),
-                // Uma informação por linha (como a especificação é montada).
-                request.specification ? (
-                  <span className="whitespace-pre-line">
-                    {request.specification}
-                  </span>
-                ) : null,
-              ],
+              ),
             ]}
           />
           <RequestScheduleTable

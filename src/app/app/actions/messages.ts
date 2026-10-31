@@ -66,7 +66,10 @@ export async function postMessageAction(form: FormData) {
  * mostra mensagens novas (a página em si não marca nada ao ser montada), e
  * atualiza o selo do menu e o sino.
  */
-export async function markTopicReadAction(conversationId: string, topicId: string) {
+export async function markTopicReadAction(
+  conversationId: string,
+  topicId: string,
+) {
   const user = await requireUser();
   await runInPlace(threadBack(conversationId, topicId), async () => {
     const id = ID.parse(topicId);
@@ -86,6 +89,25 @@ export async function openChatAction(form: FormData) {
       partyId: optionalId.parse(optional(form, "partyId")),
       requestId: optionalId.parse(optional(form, "requestId")),
       orderId: optionalId.parse(optional(form, "orderId")),
+    };
+    const { openTopic } = await import("@/lib/services/messages");
+    const opened = await openTopic(user, input);
+    return threadBack(opened.conversationId, opened.topicId);
+  });
+}
+
+/**
+ * Árvore de assuntos: pedido ou item ainda sem conversa. Abre (ou cria) o
+ * assunto na conversa em que a pessoa está e vai para ele.
+ */
+export async function openTreeTopicAction(form: FormData) {
+  const user = await requireUser();
+  const conversationId = str(form, "conversationId");
+  await run(threadBack(conversationId, ""), async () => {
+    const input = {
+      conversationId: ID.parse(conversationId),
+      orderId: optionalId.parse(optional(form, "orderId")),
+      orderItemId: optionalId.parse(optional(form, "orderItemId")),
     };
     const { openTopic } = await import("@/lib/services/messages");
     const opened = await openTopic(user, input);

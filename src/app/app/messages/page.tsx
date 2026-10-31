@@ -13,9 +13,10 @@ import {
   getConversationView,
   listConversationsFor,
   topicLabel,
+  topicTree,
   type ConversationSummary,
   type ConversationView,
-  type TopicSummary,
+  type TopicNode,
 } from "@/lib/services/messages";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
@@ -37,6 +38,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { FileAutoInput } from "@/components/file-auto-input";
 import { MarkTopicRead, MessagesAutoRefresh } from "@/components/messages-live";
 import {
+  openTreeTopicAction,
   postMessageAction,
   startConversationAction,
 } from "../actions/messages";
@@ -121,6 +123,7 @@ export default async function MessagesPage({
     }
   }
   const directory = wellmix ? await chatDirectory(user) : null;
+  const tree = view ? await topicTree(t, view.topics) : [];
   const errorText = !error
     ? null
     : error === "invalid_input"
@@ -221,13 +224,13 @@ export default async function MessagesPage({
             />
           ) : view ? (
             <Card dense title={t("messages.topics")}>
-              <TopicLinks t={t} view={view} vertical />
+              <TopicLinks t={t} view={view} tree={tree} vertical />
             </Card>
           ) : null}
         </div>
         <div className="min-w-0">
           {view ? (
-            <Thread t={t} view={view} wellmix={wellmix} />
+            <Thread t={t} view={view} tree={tree} wellmix={wellmix} />
           ) : (
             <Empty>
               {wellmix
@@ -303,54 +306,118 @@ function ConversationList({
   );
 }
 
-/** Assuntos da conversa: abas (Wellmix, em cima da conversa) ou lista (quem é de fora). */
+/**
+ * Assuntos da conversa em árvore: Geral; cada pedido pelo número com os
+ * produtos embaixo; cada solicitação pelo número com o produto. Lista (quem
+ * é de fora) ou abas (Wellmix, em cima da conversa). Pedido ou item ainda
+ * sem conversa: um toque abre.
+ */
 function TopicLinks({
   t,
   view,
+  tree,
   vertical,
 }: {
   t: Translate;
   view: ConversationView;
+  tree: TopicNode[];
   vertical?: boolean;
 }) {
-  const link = (topic: TopicSummary) => {
-    const current = topic.id === view.topic.id;
-    return (
+  const base = cx(
+    "inline-flex min-w-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm transition",
+    vertical ? "flex w-full" : "",
+  );
+  const node = (n: TopicNode, depth: number) => {
+    const current = !!n.topic && n.topic.id === view.topic.id;
+    const indent = vertical && depth ? "ml-4" : "";
+    const text = (
+      <span className="min-w-0 flex-1 truncate">
+        {!vertical && depth ? "› " : null}
+        {n.label}
+        {n.sub ? (
+          <span
+            className={cx(
+              "block truncate text-xs font-normal",
+              current ? "text-white/85" : "text-zinc-500",
+            )}
+          >
+            {n.sub}
+          </span>
+        ) : null}
+      </span>
+    );
+    const row = n.topic ? (
       <Link
-        key={topic.id}
-        href={`/app/messages?c=${view.conversation.id}&t=${topic.id}`}
+        href={`/app/messages?c=${view.conversation.id}&t=${n.topic.id}`}
         aria-current={current ? "page" : undefined}
-        data-topic={topic.kind}
+        data-topic={n.topic.kind}
+        data-topic-node={n.kind}
         className={cx(
-          "inline-flex min-w-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-sm transition",
-          vertical ? "flex w-full" : "",
+          base,
+          indent,
           current
             ? "bg-brand-600 font-semibold text-white"
             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200",
         )}
       >
-        <span className="min-w-0 flex-1 truncate">{topicLabel(t, topic)}</span>
-        {topic.unread > 0 ? (
+        {text}
+        {n.topic.unread > 0 ? (
           <span
             className={cx(
               "rounded-full px-1.5 text-[11px] font-bold leading-5",
               current ? "bg-white text-brand-700" : "bg-brand-600 text-white",
             )}
-            aria-label={t("messages.unread", { n: topic.unread })}
-            data-unread={topic.unread}
+            aria-label={t("messages.unread", { n: n.topic.unread })}
+            data-unread={n.topic.unread}
           >
-            {topic.unread}
+            {n.topic.unread}
           </span>
         ) : null}
       </Link>
+    ) : (
+      // Pedido ou item sem conversa ainda: o toque abre o assunto.
+      <form action={openTreeTopicAction} className={cx("contents")}>
+        <input
+          type="hidden"
+          name="conversationId"
+          value={view.conversation.id}
+        />
+        {n.orderItemId ? (
+          <input type="hidden" name="orderItemId" value={n.orderItemId} />
+        ) : n.orderId ? (
+          <input type="hidden" name="orderId" value={n.orderId} />
+        ) : null}
+        <button
+          type="submit"
+          data-topic-node={n.kind}
+          data-topic-open=""
+          title={t("messages.tree.open")}
+          className={cx(
+            base,
+            indent,
+            "border border-dashed border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-50",
+          )}
+        >
+          {text}
+        </button>
+      </form>
+    );
+    return (
+      <li key={n.key} className={cx(vertical ? "space-y-1" : "contents")}>
+        {row}
+        {n.children.length ? (
+          <ul className={cx(vertical ? "space-y-1" : "contents")}>
+            {n.children.map((c) => node(c, depth + 1))}
+          </ul>
+        ) : null}
+      </li>
     );
   };
   return (
-    <nav
-      aria-label={t("messages.topics")}
-      className={cx(vertical ? "space-y-1" : "flex flex-wrap gap-1.5")}
-    >
-      {view.topics.map(link)}
+    <nav aria-label={t("messages.topics")}>
+      <ul className={cx(vertical ? "space-y-1" : "flex flex-wrap gap-1.5")}>
+        {tree.map((n) => node(n, 0))}
+      </ul>
     </nav>
   );
 }
@@ -358,10 +425,12 @@ function TopicLinks({
 function Thread({
   t,
   view,
+  tree,
   wellmix,
 }: {
   t: Translate;
   view: ConversationView;
+  tree: TopicNode[];
   wellmix: boolean;
 }) {
   const type = typeLabel(t, view.conversation.type);
@@ -380,7 +449,7 @@ function Thread({
     >
       {wellmix ? (
         <div className="mb-3">
-          <TopicLinks t={t} view={view} />
+          <TopicLinks t={t} view={view} tree={tree} />
         </div>
       ) : null}
       {/* Coluna invertida: a conversa abre já no fim (mensagens mais novas). */}
