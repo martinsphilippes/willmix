@@ -70,9 +70,12 @@ export function isSchemaMissing(error: unknown): boolean {
     /^(table|collection) with the requested id\b.*could not be found/i.test(
       error.message,
     ) ||
-    ["table_not_found", "collection_not_found", "attribute_not_found"].includes(
-      String((error as { type?: unknown }).type ?? ""),
-    )
+    [
+      "table_not_found",
+      "collection_not_found",
+      "attribute_not_found",
+      "column_not_found",
+    ].includes(String((error as { type?: unknown }).type ?? ""))
   );
 }
 

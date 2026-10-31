@@ -158,6 +158,7 @@ async function ensureColumns(tableId: TableName) {
     if (existing.has(key)) {
       await ensureEnumElements(tableId, key, col, columns);
       await ensureVarcharSize(tableId, key, col, columns);
+      await ensureOptional(tableId, key, col, columns);
       continue;
     }
     try {
@@ -226,6 +227,66 @@ async function ensureVarcharSize(
     size: want,
   });
   console.log(`  ${tableId}.${key}: tamanho ${current.size} → ${want}`);
+}
+
+/**
+ * Coluna que o esquema diz opcional mas está obrigatória em produção (criada
+ * assim por engano numa tabela que já tinha linhas): passa a opcional. O
+ * contrário (opcional → obrigatória) nunca é feito aqui: invalidaria linhas.
+ */
+async function ensureOptional(
+  tableId: TableName,
+  key: string,
+  col: ColumnDef,
+  columns: LiveColumn[],
+) {
+  const current = columns.find((c) => c.key === key);
+  if (!current || !current.required || col.required) return;
+  const base = { databaseId, tableId, key, required: false };
+  const text = { ...base, xdefault: null as unknown as string };
+  switch (col.type) {
+    case "string":
+      if (col.enum)
+        await tables.updateEnumColumn({
+          ...text,
+          elements: current.elements ?? [...col.enum],
+        });
+      else
+        await tables.updateVarcharColumn({
+          ...text,
+          size: current.size ?? col.size ?? 255,
+        });
+      break;
+    case "text":
+    case "json":
+      await tables.updateTextColumn(text);
+      break;
+    case "json_large":
+      await tables.updateLongtextColumn(text);
+      break;
+    case "int":
+      await tables.updateIntegerColumn({
+        ...base,
+        xdefault: null as unknown as number,
+      });
+      break;
+    case "float":
+      await tables.updateFloatColumn({
+        ...base,
+        xdefault: null as unknown as number,
+      });
+      break;
+    case "bool":
+      await tables.updateBooleanColumn({
+        ...base,
+        xdefault: null as unknown as boolean,
+      });
+      break;
+    case "datetime":
+      await tables.updateDatetimeColumn(text);
+      break;
+  }
+  console.log(`  ${tableId}.${key}: obrigatória → opcional`);
 }
 
 /** Índices só podem ser criados quando as colunas estão "available". */
@@ -438,6 +499,22 @@ async function verifySchema(): Promise<string[]> {
       )
         problems.push(
           `${where}: tamanho ${current.size} em produção, esquema pede ${col.size ?? 255}`,
+        );
+    }
+    // Coluna obrigatória com linha vazia em produção: foi acrescentada depois
+    // de a tabela ter linhas. Toda gravação nessas linhas (e toda linha nova
+    // sem o campo) é recusada com "Missing required attribute": o esquema
+    // precisa marcá-la opcional (enumOf(X, false), id(false)…).
+    for (const [key, col] of Object.entries(def.columns)) {
+      if (!(col.required ?? false) || !live.has(key)) continue;
+      const empty = await tables.listRows({
+        databaseId,
+        tableId,
+        queries: [Query.isNull(key), Query.limit(1)],
+      });
+      if (empty.rows.length)
+        problems.push(
+          `${tableId}.${key}: obrigatória, mas há linhas sem valor em produção; marque opcional no esquema`,
         );
     }
     // Coluna que só existe em produção (criada no console): informação, não

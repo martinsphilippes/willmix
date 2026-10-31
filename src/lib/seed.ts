@@ -159,11 +159,13 @@ export function demoFailureReason(
   if (
     [
       "document_invalid_structure",
+      "row_invalid_structure",
       "attribute_not_found",
+      "column_not_found",
       "table_not_found",
       "collection_not_found",
     ].includes(type) ||
-    /invalid document structure|invalid format|unknown attribute|attribute not found|not found in schema|invalid.*enum|not a valid enum/i.test(
+    /invalid document structure|invalid format|unknown attribute|attribute not found|not found in schema|missing required attribute|invalid.*enum|not a valid enum/i.test(
       message,
     ) ||
     /^(table|collection) with the requested id\b.*could not be found/i.test(

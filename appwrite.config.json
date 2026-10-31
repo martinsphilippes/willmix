@@ -101,7 +101,7 @@
         },
         {
           "key": "jobLevel",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -124,7 +124,7 @@
         },
         {
           "key": "division",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -469,7 +469,7 @@
         },
         {
           "key": "division",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -1311,7 +1311,7 @@
         },
         {
           "key": "erpSyncStatus",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -5814,7 +5814,7 @@
         },
         {
           "key": "dumping",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -5855,7 +5855,7 @@
         },
         {
           "key": "certificationRequired",
-          "required": true,
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",

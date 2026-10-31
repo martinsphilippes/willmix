@@ -2097,6 +2097,13 @@ const datetime = (required = false): ColumnDef => ({
   type: "datetime",
   required,
 });
+/**
+ * Enum obrigatório por padrão (status, tipo, papel). ATENÇÃO: coluna acrescentada
+ * a uma tabela que já existe em produção tem de ser opcional (`enumOf(X, false)`):
+ * obrigatória, o Appwrite recusa toda linha nova sem ela ("Missing required
+ * attribute") e as linhas antigas, vazias, ficam inválidas. A conferência do
+ * publicador (scripts/appwrite-push.ts) aponta coluna obrigatória com linhas vazias.
+ */
 const enumOf = (values: readonly string[], required = true): ColumnDef => ({
   type: "string",
   size: 40,
@@ -2116,9 +2123,9 @@ export const TABLES: Record<TableName, TableDef> = {
       passwordHash: str(255),
       active: bool(),
       importerId: id(false),
-      jobLevel: enumOf(JOB_LEVELS),
+      jobLevel: enumOf(JOB_LEVELS, false),
       managerUserId: id(false),
-      division: enumOf(DIVISIONS),
+      division: enumOf(DIVISIONS, false),
       functions: json(),
     },
     indexes: [
@@ -2169,7 +2176,7 @@ export const TABLES: Record<TableName, TableDef> = {
       active: bool(),
       requiredCertifications: json(),
       prompts: json(),
-      division: enumOf(DIVISIONS),
+      division: enumOf(DIVISIONS, false),
     },
   },
   products: {
@@ -2291,7 +2298,7 @@ export const TABLES: Record<TableName, TableDef> = {
       fobCurrency: str(3),
       sellPrice: float(),
       sellCurrency: str(3),
-      erpSyncStatus: enumOf(ERP_SYNC_STATUSES),
+      erpSyncStatus: enumOf(ERP_SYNC_STATUSES, false),
       erpNumber: str(60),
       agencyId: id(false),
       brokerId: id(false),
@@ -2963,12 +2970,12 @@ export const TABLES: Record<TableName, TableDef> = {
       notes: text(),
       updatedByUserId: id(false),
       completedAt: datetime(),
-      dumping: enumOf(YES_NO),
+      dumping: enumOf(YES_NO, false),
       dumpingNote: text(),
       dumpingReleasedByUserId: id(false),
       dumpingReleasedAt: datetime(),
       averagePrice: float(),
-      certificationRequired: enumOf(YES_NO),
+      certificationRequired: enumOf(YES_NO, false),
       certificationNote: text(),
     },
     indexes: [{ key: "by_order", type: "unique", columns: ["orderId"] }],

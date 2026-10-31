@@ -32,6 +32,20 @@ describe("motivo da falha ao criar conta", () => {
         Object.assign(new Error("x"), { type: "table_not_found" }),
       ),
     ).toBe("schema_outdated");
+    // Nomes do TablesDB (Appwrite 1.8) e coluna obrigatória criada depois da tabela.
+    expect(
+      seed.demoFailureReason(
+        Object.assign(
+          new Error('Invalid document structure: Missing required attribute "jobLevel"'),
+          { type: "row_invalid_structure" },
+        ),
+      ),
+    ).toBe("schema_outdated");
+    expect(
+      seed.demoFailureReason(
+        Object.assign(new Error("x"), { type: "column_not_found" }),
+      ),
+    ).toBe("schema_outdated");
     // Sem vírgula nem dois-pontos: o código viaja na URL sem embaralhar a lista.
     expect(seed.demoFailureReason(new Error("fetch failed: a, b"))).toBe(
       "unexpected",
