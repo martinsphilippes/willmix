@@ -42,6 +42,8 @@ export interface Task {
   kind: TaskKind;
   title: string;
   detail: string;
+  /** Pedido/solicitação da conversa (ícone de chat) quando o link não é deles (cotação, embalagem, frete). */
+  chat?: { orderId?: string | null; requestId?: string | null };
   link: string;
   dueAt: string | null;
   overdue: boolean;
@@ -393,6 +395,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           title: `RFQ: ${request.productName}`,
           detail: `${request.quantity} ${request.unit}`,
           link: `/app/quotes/${quote.id}`,
+          chat: { requestId: request.id },
           dueAt: quote.validUntil,
         },
         now,
@@ -427,6 +430,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
                 : "venda ainda não confirmada",
           ].join(" · "),
           link: `/app/packaging/${brief.id}`,
+          chat: { requestId: request.id },
           dueAt: brief.dueAt,
           stageKey: "PACKAGING",
           customerId: request.customerId,
@@ -600,6 +604,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             title: `Frete: ${request.productName}`,
             detail: `${f.totalCbm ?? "?"} m³ · ${f.cartons ?? "?"} cx · ${f.grossWeightKg ?? "?"} kg`,
             link: `/app/freight/${f.id}`,
+            chat: { requestId: request.id },
             dueAt: request.deadline,
           },
           now,
