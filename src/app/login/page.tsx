@@ -5,7 +5,13 @@ import { LoginForm } from "@/components/login-form";
 import { getCurrentUser } from "@/lib/auth/session";
 import { dataMode } from "@/lib/env";
 import { getStore, STAGE_KEYS } from "@/lib/db";
-import { DEMO_PASSWORD, DEMO_USERS, seedDemo } from "@/lib/seed";
+import {
+  DEMO_PASSWORD,
+  DEMO_USERS,
+  existingDemoAccounts,
+  seedDemo,
+} from "@/lib/seed";
+import { demoAccountsEnabled } from "@/lib/demo";
 import { getT } from "@/i18n/server";
 import { OFF_FLOW_STAGES } from "@/lib/workflow/stages";
 
@@ -26,8 +32,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     const users = await getStore().list("users", { limit: 1 });
     if (users.length === 0) await seedDemo();
   }
-  // Contas de demonstração: sempre no modo memória; em produção só com a variável ligada.
-  const showDemo = memory || process.env.NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS === "1";
+  // Contas de demonstração: sempre no modo memória; em produção só com a variável
+  // ligada. Só as que existem no banco (papel novo entra depois de criada).
+  const showDemo = demoAccountsEnabled();
+  const demoExisting = showDemo
+    ? await existingDemoAccounts().catch(() => new Set<string>())
+    : new Set<string>();
   const roles = t("help.login.roles").split("\n").filter(Boolean);
   const flow = t("help.flow.steps").split("\n").filter(Boolean);
 
@@ -118,12 +128,14 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             }}
             demo={
               showDemo
-                ? DEMO_USERS.map((u) => ({
-                    email: u.email,
-                    name: u.name,
-                    role: t(`role.${u.role}`),
-                    password: DEMO_PASSWORD,
-                  }))
+                ? DEMO_USERS.filter((u) => demoExisting.has(u.email)).map(
+                    (u) => ({
+                      email: u.email,
+                      name: u.name,
+                      role: t(`role.${u.role}`),
+                      password: DEMO_PASSWORD,
+                    }),
+                  )
                 : []
             }
           />

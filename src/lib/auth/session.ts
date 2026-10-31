@@ -62,6 +62,10 @@ export async function signIn(email: string, password: string): Promise<User> {
     email: normalized,
     password,
   });
+  // Já havia sessão neste navegador (troca de conta): a antiga só é
+  // encerrada depois que a nova entrou; se a nova falhasse, nada mudaria.
+  if (jar.get(sessionCookieName())?.value)
+    await signOut().catch(() => undefined);
   jar.set(sessionCookieName(), session.secret, {
     httpOnly: true,
     secure,

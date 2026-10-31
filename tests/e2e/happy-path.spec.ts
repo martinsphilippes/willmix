@@ -581,6 +581,24 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.locator("[data-audit-row]").first()).toBeVisible();
   await page.goto("/app");
   await expect(page.getByText("Control Tower").first()).toBeVisible();
+
+  // 16. Contas de demonstração: em Configurações todas existem; o seletor
+  // "Demo" do topo troca de conta sem deslogar antes (entra como OCP, papel
+  // novo) e volta ao admin.
+  await page.goto("/app/settings");
+  await expect(page.locator("[data-demo-accounts]")).toBeVisible();
+  await expect(page.locator("[data-demo-exists='0']")).toHaveCount(0);
+  const demoSelect = page
+    .getByRole("combobox", {
+      name: /Conta de demonstração|Demo account|演示账号/,
+    })
+    .first();
+  await demoSelect.selectOption("ocp@certifica.com");
+  await page.waitForURL(/\/app$/);
+  await expect(
+    page.getByRole("button", { name: /Olga OCP/ }).first(),
+  ).toBeVisible();
+  await expect(page.locator("[data-demo-switch-error]")).toHaveCount(0);
 });
 
 test("vários produtos numa solicitação: cada um vira uma solicitação do mesmo lote", async ({

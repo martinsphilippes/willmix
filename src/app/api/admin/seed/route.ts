@@ -19,5 +19,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     created: result.created,
     users: result.users.length,
+    // Banco já populado: só as contas de demonstração que faltavam.
+    added: result.added,
   });
 }

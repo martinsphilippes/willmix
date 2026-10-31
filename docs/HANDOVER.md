@@ -10,14 +10,14 @@ Portal Operacional de Importações da Wellmix: do pedido de orçamento do clien
 
 ## 2. Onde roda
 
-| Peça                     | Onde                                                                 | Observação                                                                                       |
-| ------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Código                   | GitHub, repositório `willmix`, branch principal `wellmix`            | Toda mudança entra por PR com o CI verde e squash merge.                                         |
-| Portal (produção)        | Vercel, projeto `wellmix` (região `fra1`), `portal-wellmix.vercel.app` | Deploy automático a cada merge em `wellmix`; prévia por PR. Variáveis de ambiente ficam lá.      |
-| Banco e arquivos         | Appwrite Cloud, projeto `6ab41ae700396f0409b8` (região `fra`)        | Banco `willmix` (TablesDB), bucket `arquivos`, Auth por e-mail e senha. Ver `docs/APPWRITE.md`.  |
-| Rotinas                  | Vercel Cron (`vercel.json`)                                          | Lembretes diários (`/api/jobs/reminders`) e tabela fiscal mensal (`/api/jobs/fiscal`).           |
-| IA                       | Vercel AI Gateway (token OIDC do projeto) ou `ANTHROPIC_API_KEY`     | Sem credencial o portal fica em modo manual. Busca por foto/link aguarda cartão no AI Gateway.   |
-| E-mail, WhatsApp, Sankhya| Mock/manual                                                          | Ver `docs/INTEGRATIONS.md`; nada é inventado como real.                                          |
+| Peça                      | Onde                                                                   | Observação                                                                                      |
+| ------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Código                    | GitHub, repositório `willmix`, branch principal `wellmix`              | Toda mudança entra por PR com o CI verde e squash merge.                                        |
+| Portal (produção)         | Vercel, projeto `wellmix` (região `fra1`), `portal-wellmix.vercel.app` | Deploy automático a cada merge em `wellmix`; prévia por PR. Variáveis de ambiente ficam lá.     |
+| Banco e arquivos          | Appwrite Cloud, projeto `6ab41ae700396f0409b8` (região `fra`)          | Banco `willmix` (TablesDB), bucket `arquivos`, Auth por e-mail e senha. Ver `docs/APPWRITE.md`. |
+| Rotinas                   | Vercel Cron (`vercel.json`)                                            | Lembretes diários (`/api/jobs/reminders`) e tabela fiscal mensal (`/api/jobs/fiscal`).          |
+| IA                        | Vercel AI Gateway (token OIDC do projeto) ou `ANTHROPIC_API_KEY`       | Sem credencial o portal fica em modo manual. Busca por foto/link aguarda cartão no AI Gateway.  |
+| E-mail, WhatsApp, Sankhya | Mock/manual                                                            | Ver `docs/INTEGRATIONS.md`; nada é inventado como real.                                         |
 
 ## 3. Acessos a conceder (checklist)
 
@@ -57,7 +57,8 @@ Fluxo: branch → PR para `wellmix` → CI verde → squash merge → deploy aut
 1. **Portal**: merge em `wellmix` faz o deploy na Vercel. Variáveis necessárias (nomes; valores só na Vercel): `DATA_MODE=appwrite`, `NEXT_PUBLIC_APPWRITE_ENDPOINT`, `NEXT_PUBLIC_APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `CRON_SECRET`; opcionais `ANTHROPIC_API_KEY`/`AI_GATEWAY_API_KEY`. Lista completa em `docs/AMBIENTE.md`.
 2. **Esquema do banco**: sempre que um PR acrescentar tabela ou coluna em `schema.ts`, rode uma vez GitHub → Actions → **"Publicar esquema Appwrite"** → Run workflow (só adiciona, nunca apaga). A chave fica em Settings → Secrets (`APPWRITE_API_KEY`). Até rodar, as telas que dependem da novidade ficam vazias e o resto segue (o código trata o esquema desatualizado).
 3. **Arquivos grandes** (fotos, planilhas, arte): sobem direto do navegador ao Appwrite. Para isso o domínio do portal precisa estar cadastrado no Appwrite em Settings → Platforms (Web), senão o navegador bloqueia por CORS.
-4. **Dados iniciais** num banco novo: `POST /api/admin/seed` com `Authorization: Bearer <CRON_SECRET>`.
+4. **Dados iniciais** num banco novo: `POST /api/admin/seed` com `Authorization: Bearer <CRON_SECRET>`. Com o banco já populado, a mesma chamada só cria as contas de demonstração que faltam (resposta `added`).
+5. **Contas de demonstração novas** (um papel novo, como Comex, agente de carga ou OCP): com `NEXT_PUBLIC_SHOW_DEMO_ACCOUNTS=1`, o admin cria em Configurações → **Contas de demonstração** → "Criar as contas que faltam" (depois de publicar o esquema, se o papel for novo). O seletor "Demo" e a tela de login só listam contas que existem no banco.
 
 ## 6. Documentos para ler (nesta ordem)
 
