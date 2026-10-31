@@ -325,3 +325,136 @@ describe("abrir a conversa no assunto certo", () => {
     expect(chosen!.topic.id).toBe(general.id);
   });
 });
+
+/*
+ * Assunto por item: a conversa desce até o produto do pedido. Mesmas regras
+ * do pedido (empresa participante; quem é de fora só o que vê); o item tem
+ * de ser do pedido. O painel lateral usa chatContext (com quem e os itens).
+ */
+describe("assunto por item do pedido", () => {
+  let orderId: string;
+  let itemId: string;
+  let supplierOfOrder: User;
+  let otherSupplier: User;
+
+  beforeAll(async () => {
+    // Compra para estoque: escolhido o fornecedor, o pedido nasce na hora.
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("approvalsEnabled", false);
+    const pf = await import("@/lib/services/purchase-flow");
+    const r = await import("@/lib/services/requests");
+    await pf.ensureStockParty(admin);
+    const req = await r.createRequest(operator, {
+      customerId: pf.STOCK_PARTY_ID,
+      productId: null,
+      productName: "Panela para estoque (chat)",
+      description: "Panela",
+      specification: null,
+      quantity: 500,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    await r.openRfq(admin, req.id, [supplierA.partyId!]);
+    const [quote] = await getStore().list("quotes", {
+      filter: { requestId: req.id },
+    });
+    await r.answerQuote(supplierA, quote.id, {
+      price: 3,
+      currency: "USD",
+      leadTimeDays: 10,
+      conditions: null,
+    });
+    await r.selectQuote(admin, quote.id, {
+      sellPrice: 5_000,
+      sellCurrency: "BRL",
+    });
+    const [order] = await getStore().list("orders", {
+      filter: { requestId: req.id },
+    });
+    orderId = order.id;
+    const [item] = await getStore().list("order_items", {
+      filter: { orderId },
+    });
+    itemId = item.id;
+    supplierOfOrder = supplierA;
+    otherSupplier = supplierB;
+  });
+
+  it("Wellmix abre o assunto do item com o fornecedor; abrir de novo devolve o mesmo", async () => {
+    const opened = await msg.openTopic(admin, {
+      orderId,
+      orderItemId: itemId,
+      partyId: supplierOfOrder.partyId,
+    });
+    const topic = (await getStore().get(
+      "conversation_topics",
+      opened.topicId,
+    ))!;
+    expect(topic.kind).toBe("item");
+    expect(topic.orderId).toBe(orderId);
+    expect(topic.orderItemId).toBe(itemId);
+    expect(topic.title).toMatch(/^#\d+ · Panela para estoque/);
+    const again = await msg.openTopic(admin, {
+      orderItemId: itemId,
+      partyId: supplierOfOrder.partyId,
+    });
+    expect(again.topicId).toBe(opened.topicId);
+    // O assunto do pedido inteiro é outro.
+    const whole = await msg.openTopic(admin, {
+      orderId,
+      partyId: supplierOfOrder.partyId,
+    });
+    expect(whole.topicId).not.toBe(opened.topicId);
+  });
+
+  it("o fornecedor do pedido abre o item na conversa dele; fornecedor de fora, não", async () => {
+    const mine = await msg.openTopic(supplierOfOrder, { orderItemId: itemId });
+    const [own] = await msg.listConversationsFor(supplierOfOrder);
+    expect(mine.conversationId).toBe(own.id);
+    await msg.postMessage(
+      supplierOfOrder,
+      mine.topicId,
+      "a tampa muda de cor?",
+    );
+    const thread = await msg.topicThread(admin, mine.topicId);
+    expect(thread.topic.kind).toBe("item");
+    expect(thread.messages.some((m) => m.body.includes("tampa"))).toBe(true);
+    await expect(
+      msg.openTopic(otherSupplier, { orderItemId: itemId }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(
+      msg.openTopic(admin, {
+        orderItemId: itemId,
+        partyId: otherSupplier.partyId,
+      }),
+    ).rejects.toThrow("not_participant");
+  });
+
+  it("item de outro pedido é recusado", async () => {
+    await expect(
+      msg.openTopic(admin, {
+        orderId: "pedido-que-nao-e-este",
+        orderItemId: itemId,
+        partyId: supplierOfOrder.partyId,
+      }),
+    ).rejects.toThrow("item_not_in_order");
+  });
+
+  it("contexto do painel: Wellmix vê as empresas e os itens; o fornecedor só fala com a Wellmix", async () => {
+    const ctx = await msg.chatContext(admin, { orderId });
+    expect(ctx.kind).toBe("order");
+    expect(ctx.own).toBe(false);
+    expect(
+      ctx.participants.some((p) => p.partyId === supplierOfOrder.partyId),
+    ).toBe(true);
+    expect(ctx.items.map((i) => i.id)).toContain(itemId);
+    const mine = await msg.chatContext(supplierOfOrder, { orderId });
+    expect(mine.own).toBe(true);
+    expect(mine.participants).toEqual([]);
+    expect(mine.items.map((i) => i.id)).toContain(itemId);
+    await expect(
+      msg.chatContext(otherSupplier, { orderId }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});

@@ -10,6 +10,7 @@ import {
   type Screen,
 } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
+import { ChatOpenButton } from "./chat-open-button";
 import {
   loadControlTower,
   loadTowerTotals,
@@ -376,8 +377,19 @@ export async function ControlTower({
                   <tbody>
                     {rows.map((row) => (
                       <tr key={row.id} className={rowClass}>
-                        <Td>
-                          <TextLink href={row.link}>{row.number}</TextLink>
+                        <Td className="whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1">
+                            <TextLink href={row.link}>{row.number}</TextLink>
+                            {/* Conversa daquele pedido/solicitação (desce até o item no painel). */}
+                            <ChatOpenButton
+                              target={
+                                row.requestStatus
+                                  ? { requestId: row.id }
+                                  : { orderId: row.id }
+                              }
+                              label={t("chat.open")}
+                            />
+                          </span>
                         </Td>
                         <Td>{row.customer}</Td>
                         <Td>{row.product}</Td>

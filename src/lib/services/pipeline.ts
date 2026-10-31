@@ -18,6 +18,8 @@ export type PipelineState = "active" | "blocked" | "done" | "cancelled";
 
 /** Item do pedido/da solicitação (painel de itens embaixo da lista). */
 export interface PipelineItem {
+  /** Item do pedido (o chat desce até ele); nulo na solicitação. */
+  id?: string | null;
   name: string;
   variant: string | null;
   quantity: number;
@@ -129,6 +131,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       items: items
         .filter((i) => i.orderId === o.id)
         .map((i) => ({
+          id: i.id,
           name: i.name,
           variant: i.variant?.name ?? null,
           quantity: i.quantity,

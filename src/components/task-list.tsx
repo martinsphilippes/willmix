@@ -26,6 +26,7 @@ import {
   rowClass,
 } from "./ui";
 import { QuoteSentNotice } from "./quote-sent-notice";
+import { ChatOpenButton, chatTargetFromHref } from "./chat-open-button";
 
 /*
  * Pendências: a lista vem do serviço já ordenada pelo prazo (atrasadas,
@@ -269,6 +270,14 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                 <TextLink href={task.link} className="font-semibold">
                   {title}
                 </TextLink>
+                {chatTargetFromHref(task.link) ? (
+                  <span className="ml-1 inline-block align-middle">
+                    <ChatOpenButton
+                      target={chatTargetFromHref(task.link)!}
+                      label={t("chat.open")}
+                    />
+                  </span>
+                ) : null}
                 {task.overdue ? (
                   <span className="ml-1.5 align-middle">
                     <Badge tone="danger">{t("common.overdue")}</Badge>

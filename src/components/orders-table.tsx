@@ -10,6 +10,7 @@ import {
   rowClass,
   type Tone,
 } from "./ui";
+import { ChatOpenButton, chatTargetFromHref } from "./chat-open-button";
 
 /*
  * Painel de Pedidos com filtro em todas as colunas (texto ou lista) e
@@ -22,6 +23,8 @@ export type RowState = "active" | "blocked" | "done" | "cancelled";
 
 /** Item da linha escolhida (painel de itens embaixo, como no Sankhya). */
 export interface OrdersTableItem {
+  /** Item do pedido (o chat desce até ele); nulo em solicitação. */
+  orderItemId?: string | null;
   name: string;
   variant: string | null;
   /** Quantidade já formatada com a unidade ("2.400 un"). */
@@ -100,6 +103,8 @@ export interface OrdersTableLabels {
   itemsOf: string;
   /** Nenhuma linha escolhida. */
   pickRow: string;
+  /** Ícone de chat da linha ("Conversar sobre este pedido ou solicitação"). */
+  chat: string;
   price: string;
   seq: string;
   variant: string;
@@ -501,9 +506,17 @@ export function OrdersTable({
                     }}
                   >
                     <td className="whitespace-nowrap px-2.5 py-2">
-                      <Link href={r.href} className={linkClass}>
-                        {r.number}
-                      </Link>
+                      <span className="inline-flex items-center gap-1">
+                        <Link href={r.href} className={linkClass}>
+                          {r.number}
+                        </Link>
+                        {chatTargetFromHref(r.href) ? (
+                          <ChatOpenButton
+                            target={chatTargetFromHref(r.href)!}
+                            label={labels.chat}
+                          />
+                        ) : null}
+                      </span>
                       {r.subtitle ? (
                         <span className="block text-[11px] text-zinc-500">
                           {r.subtitle}
@@ -674,9 +687,24 @@ function ItemsPanel({
                       </td>
                     ) : null}
                     <td className={cell}>
-                      <Link href={item.href} className={linkClass}>
-                        {item.ref}
-                      </Link>
+                      <span className="inline-flex items-center gap-1">
+                        <Link href={item.href} className={linkClass}>
+                          {item.ref}
+                        </Link>
+                        {chatTargetFromHref(item.href) ? (
+                          <ChatOpenButton
+                            target={
+                              item.orderItemId
+                                ? {
+                                    ...chatTargetFromHref(item.href)!,
+                                    orderItemId: item.orderItemId,
+                                  }
+                                : chatTargetFromHref(item.href)!
+                            }
+                            label={labels.chat}
+                          />
+                        ) : null}
+                      </span>
                     </td>
                     <td className={cell}>{item.phase}</td>
                     <td className={cell}>

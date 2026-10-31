@@ -136,6 +136,7 @@ export default async function OrdersPage({
       product: first.product,
       items: sorted.flatMap((r) =>
         r.items.map((i) => ({
+          orderItemId: r.kind === "order" ? (i.id ?? null) : null,
           name: i.name,
           variant: i.variant,
           quantity: `${i.quantity.toLocaleString(t.intl)} ${i.unit}`,
@@ -239,6 +240,7 @@ export default async function OrdersPage({
             moreItems: t("orders.panel.moreItems", { n: "{n}" }),
             itemsOf: t("orders.panel.itemsOf", { ref: "{ref}" }),
             pickRow: t("orders.panel.pickRow"),
+            chat: t("chat.open"),
             price: t("orders.panel.unitPrice"),
             seq: t("orders.panel.seq"),
             variant: t("orders.panel.variant"),
