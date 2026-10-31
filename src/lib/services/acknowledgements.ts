@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getStore, type AckEvent, type User } from "@/lib/db";
-import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { ForbiddenError, isAdmin } from "@/lib/auth/permissions";
 import { submitRequirement } from "@/lib/workflow/engine";
 import { audit } from "./audit";
 
@@ -143,8 +143,10 @@ export async function confirmSupplierPaymentReceipt(
     throw new Error("not_found");
   const order = await store.get("orders", payment.orderId);
   if (!order) throw new Error("not_found");
+  // Confirmar recebimento de pagamento é do financeiro (só o admin) ou do
+  // próprio fornecedor do pedido.
   if (!(
-    isWellmix(user) ||
+    isAdmin(user) ||
     (user.role === "supplier" && order.supplierId === user.partyId)
   ))
     throw new ForbiddenError();

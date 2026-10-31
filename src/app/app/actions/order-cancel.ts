@@ -1,6 +1,8 @@
 "use server";
 
 import { z } from "zod";
+import { assertRole } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { ORDER_CANCEL_REASONS } from "@/lib/db";
 import {
   cancelOrder,
@@ -31,6 +33,7 @@ export async function cancelOrderAction(form: FormData) {
   const user = await requireUser();
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
+    assertRole(user, ["admin"]);
     id.parse(orderId);
     if (str(form, "confirm") !== "1") throw new Error("confirm_required");
     await cancelOrder(user, orderId, {
@@ -46,6 +49,7 @@ export async function updateCancelSettlementAction(form: FormData) {
   const user = await requireUser();
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
+    assertRole(user, ["admin"]);
     id.parse(orderId);
     await updateCancelSettlement(
       user,
@@ -60,6 +64,7 @@ export async function requestOrderCancelAction(form: FormData) {
   const user = await requireUser();
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
+    assertScreen(user, "orders");
     id.parse(orderId);
     const reason = field(form, "reason", z.string().min(3).max(1000));
     await requestOrderCancel(user, orderId, reason);
@@ -71,6 +76,7 @@ export async function rejectCancelRequestAction(form: FormData) {
   const user = await requireUser();
   const { orderId, back } = orderBack(form);
   await run(back, async () => {
+    assertRole(user, ["admin"]);
     id.parse(orderId);
     const response = field(form, "response", z.string().min(3).max(1000));
     await rejectCancelRequest(user, orderId, response);

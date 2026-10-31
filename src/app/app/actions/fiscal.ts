@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertRole, assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { REQUEST_NCM_SOURCES } from "@/lib/db/schema";
 import { field, files, requireUser, run, str } from "./helpers";
 
@@ -58,6 +59,7 @@ export async function suggestRequestNcmAction(form: FormData) {
   await run(back, async () => {
     ID.parse(requestId);
     assertWellmix(user);
+    assertScreen(user, "requests");
     const { suggestRequestNcm } = await import("@/lib/services/request-ncm");
     const r = await suggestRequestNcm(user, requestId);
     return `${back}?ncmSuggested=${r.count}${r.aiError ? `&ncmAi=${r.aiError}` : ""}#ncm`;
@@ -72,6 +74,7 @@ export async function confirmRequestNcmAction(form: FormData) {
   await run(back, async () => {
     ID.parse(requestId);
     assertWellmix(user);
+    assertScreen(user, "requests");
     const ncm = field(
       form,
       "ncm",

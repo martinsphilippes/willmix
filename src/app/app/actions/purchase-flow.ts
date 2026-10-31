@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import { requireUser, run, str } from "./helpers";
 
 /*
@@ -15,6 +16,7 @@ export async function releaseDumpingAction(form: FormData) {
   const raw = str(form, "quoteId");
   const quoteId = ID.safeParse(raw).success ? raw : "";
   await run(quoteId ? `/app/quotes/${quoteId}#dumping` : "/app", async () => {
+    assertScreen(user, "quotes");
     const id = ID.parse(quoteId);
     const { releaseDumping } = await import("@/lib/services/purchase-flow");
     await releaseDumping(user, id);

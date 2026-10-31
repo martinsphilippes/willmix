@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { getT } from "@/i18n/server";
+import { assertScreen } from "@/lib/auth/screens";
 import { brazilDay } from "@/lib/supplier-terms";
 import { revalidatePath } from "next/cache";
 import { errorCode, num, requireUser, run, str } from "./helpers";
@@ -48,6 +49,7 @@ export async function addToCartAction(form: FormData) {
   const productId = str(form, "productId").slice(0, 64);
   const back = exploreBack(form, "/app/explore");
   await run(back, async () => {
+    assertScreen(user, "explore");
     const id = ID.parse(productId);
     const quantity = quantitySchema.parse(num(form, "quantity"));
     const notes = notesSchema.parse(optionalText(form, "notes"));
@@ -71,6 +73,7 @@ export async function requestNowAction(form: FormData) {
   const productId = str(form, "productId").slice(0, 64);
   const back = exploreBack(form, "/app/explore");
   await run(back, async () => {
+    assertScreen(user, "explore");
     const id = ID.parse(productId);
     const quantity = quantitySchema.parse(num(form, "quantity"));
     const notes = notesSchema.parse(optionalText(form, "notes"));
@@ -108,6 +111,7 @@ export async function cartLineAction(
   const user = await requireUser();
   let error: string | null = null;
   try {
+    assertScreen(user, "explore");
     const itemId = ID.parse(str(form, "itemId"));
     const service = await import("@/lib/services/cart");
     if (str(form, "op") === "remove") {
@@ -139,6 +143,7 @@ function needByDate(form: FormData): string | null {
 export async function checkoutCartAction(form: FormData) {
   const user = await requireUser();
   await run("/app/explore/cart", async () => {
+    assertScreen(user, "explore");
     let deadline: string | null;
     try {
       deadline = needByDate(form);

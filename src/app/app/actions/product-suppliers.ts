@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { field, requireUser, run, str } from "./helpers";
 
 /*
@@ -28,6 +29,7 @@ export async function addProductSupplierAction(form: FormData) {
   const productId = ID.parse(str(form, "productId"));
   await run(back(productId), async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const { supplierId } = ids(form);
     const code = field(form, "supplierSku", CODE);
     const { addProductSupplier } =
@@ -43,6 +45,7 @@ export async function setProductSupplierCodeAction(form: FormData) {
   const productId = ID.parse(str(form, "productId"));
   await run(back(productId), async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const { supplierId } = ids(form);
     const code = field(form, "supplierSku", CODE);
     const { setProductSupplierCode } =
@@ -58,6 +61,7 @@ export async function setMainSupplierAction(form: FormData) {
   const productId = ID.parse(str(form, "productId"));
   await run(back(productId), async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const { supplierId } = ids(form);
     const { setMainSupplier } =
       await import("@/lib/services/product-suppliers");
@@ -72,6 +76,7 @@ export async function removeProductSupplierAction(form: FormData) {
   const productId = ID.parse(str(form, "productId"));
   await run(back(productId), async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const { supplierId } = ids(form);
     const { removeProductSupplier } =
       await import("@/lib/services/product-suppliers");

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import { submitDownPaymentProof } from "@/lib/services/down-payment";
 import { files, requireUser, run, str } from "./helpers";
 
@@ -13,6 +14,7 @@ export async function submitDownPaymentProofAction(form: FormData) {
   const requestId = str(form, "requestId").slice(0, 64);
   const back = `/app/requests/${encodeURIComponent(requestId)}`;
   await run(back, async () => {
+    assertScreen(user, "requests");
     z.string()
       .regex(/^[A-Za-z0-9_-]{1,64}$/)
       .parse(requestId);

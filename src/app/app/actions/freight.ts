@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { CURRENCIES } from "@/lib/currencies";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { answerFreight } from "@/lib/services/freight";
 import { field, requireUser, run, str } from "./helpers";
 import { parseNumberInput } from "@/lib/number-input";
@@ -27,6 +28,7 @@ export async function answerFreightAction(form: FormData) {
     ID.parse(freightId);
     if (!isWellmix(user) && user.role !== "shipping_line")
       throw new ForbiddenError();
+    assertScreen(user, "freight");
     // Valor como as pessoas digitam ("1.250,00", "1,250.00"); recusado aponta o campo.
     const amount = field(
       form,

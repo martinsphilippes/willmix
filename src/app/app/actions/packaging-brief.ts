@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { PACKAGING_ITEM_KEYS, getStore } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertAnyScreen, assertScreen } from "@/lib/auth/screens";
 import {
   assignPackagingBrief,
   cancelPackagingBrief,
@@ -45,6 +46,7 @@ export async function uploadPackagingItemAction(form: FormData) {
   const user = await requireUser();
   const brief = briefFrom(form);
   await run(brief.back, async () => {
+    assertScreen(user, "packaging");
     const id = briefId.parse(brief.id);
     const key = itemKey.parse(str(form, "key"));
     const file = form.get("file");
@@ -69,6 +71,7 @@ export async function clearPackagingItemAction(form: FormData) {
   const user = await requireUser();
   const brief = briefFrom(form);
   await run(brief.back, async () => {
+    assertScreen(user, "packaging");
     const id = briefId.parse(brief.id);
     const key = itemKey.parse(str(form, "key"));
     await clearPackagingItem(user, id, key);
@@ -80,6 +83,7 @@ export async function saveAgencyNotesAction(form: FormData) {
   const user = await requireUser();
   const brief = briefFrom(form);
   await run(brief.back, async () => {
+    assertScreen(user, "packaging");
     const id = briefId.parse(brief.id);
     const notes = z.string().max(4000).parse(str(form, "agencyNotes"));
     await saveAgencyNotes(user, id, notes || null);
@@ -93,6 +97,7 @@ export async function savePackagingBriefTextAction(form: FormData) {
   const brief = briefFrom(form);
   const target = returnTarget(form, brief.back);
   await run(target, async () => {
+    assertAnyScreen(user, ["requests", "packaging"]);
     const id = briefId.parse(brief.id);
     const text = z.string().max(4000).parse(str(form, "brief"));
     await savePackagingBriefText(user, id, text || null);
@@ -105,6 +110,7 @@ export async function savePackagingDimsAction(form: FormData) {
   const user = await requireUser();
   const brief = briefFrom(form);
   await run(brief.back, async () => {
+    assertScreen(user, "packaging");
     const id = briefId.parse(brief.id);
     const parsed = z
       .object({
@@ -132,12 +138,16 @@ export async function assignPackagingBriefAction(form: FormData) {
   const brief = briefFrom(form);
   const target = returnTarget(form, brief.back);
   await run(target, async () => {
+    assertAnyScreen(user, ["requests", "packaging"]);
     const id = briefId.parse(brief.id);
     const owner = str(form, "agencyId");
     const agencyId =
       owner === "" || owner === "wellmix"
         ? null
-        : z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).parse(owner);
+        : z
+            .string()
+            .regex(/^[A-Za-z0-9_-]{1,64}$/)
+            .parse(owner);
     await assignPackagingBrief(user, id, agencyId);
     return withQuery(target, "saved", "owner");
   });
@@ -148,6 +158,7 @@ export async function cancelPackagingBriefAction(form: FormData) {
   const brief = briefFrom(form);
   const target = returnTarget(form, brief.back);
   await run(target, async () => {
+    assertAnyScreen(user, ["requests", "packaging"]);
     await cancelPackagingBrief(user, briefId.parse(brief.id));
   });
 }
@@ -163,6 +174,7 @@ export async function openPackagingBriefAction(form: FormData) {
   await run(target, async () => {
     // Papel antes de qualquer leitura: nada da solicitação vaza a quem não é Wellmix.
     assertWellmix(user);
+    assertAnyScreen(user, ["requests", "packaging"]);
     const request = await getStore().get("requests", requestId);
     if (!request) throw new Error("not_found");
     if (request.status === "CANCELLED" || request.status === "ORDERED")
@@ -173,7 +185,10 @@ export async function openPackagingBriefAction(form: FormData) {
         ? undefined
         : owner === "wellmix"
           ? null
-          : z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).parse(owner);
+          : z
+              .string()
+              .regex(/^[A-Za-z0-9_-]{1,64}$/)
+              .parse(owner);
     const brief = z.string().max(2000).parse(str(form, "packagingBrief"));
     await openPackagingBrief(user, request, {
       agencyId,
@@ -189,6 +204,7 @@ export async function confirmPackagingDimsAction(form: FormData) {
   const user = await requireUser();
   const brief = briefFrom(form);
   await run(brief.back, async () => {
+    assertScreen(user, "packaging");
     await confirmPackagingDims(user, briefId.parse(brief.id));
     return `${back(brief.id)}?saved=dims#dims`;
   });

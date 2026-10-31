@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { assertScreen } from "@/lib/auth/screens";
 import { requireUser, run } from "./helpers";
 
 /*
@@ -22,6 +23,7 @@ function ids(form: FormData) {
 export async function deleteProductsAction(form: FormData) {
   const user = await requireUser();
   await run("/app/products", async () => {
+    assertScreen(user, "products");
     const { setProductsActive } = await import("@/lib/services/product-delete");
     const { changed } = await setProductsActive(user, ids(form), false);
     if (changed === 0) throw new Error("nothing_deleted");
@@ -32,6 +34,7 @@ export async function deleteProductsAction(form: FormData) {
 export async function restoreProductsAction(form: FormData) {
   const user = await requireUser();
   await run("/app/products?view=deleted", async () => {
+    assertScreen(user, "products");
     const { setProductsActive } = await import("@/lib/services/product-delete");
     const { changed } = await setProductsActive(user, ids(form), true);
     if (changed === 0) throw new Error("nothing_restored");
@@ -42,6 +45,7 @@ export async function restoreProductsAction(form: FormData) {
 export async function purgeProductsAction(form: FormData) {
   const user = await requireUser();
   await run("/app/products?view=deleted", async () => {
+    assertScreen(user, "products");
     const { purgeProducts } = await import("@/lib/services/product-delete");
     const { purged, blocked } = await purgeProducts(user, ids(form));
     if (purged === 0 && blocked > 0) throw new Error("purge_blocked");

@@ -6,6 +6,7 @@ import {
   PRODUCTION_MODES,
   SKU_INSPECTION_RESULTS,
 } from "@/lib/db/schema";
+import { assertScreen } from "@/lib/auth/screens";
 import { field, requireUser, run, str } from "./helpers";
 
 /*
@@ -30,6 +31,7 @@ export async function saveProductionPlanAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#production`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const mode = str(form, "mode");
     const start = str(form, "productionStartAt");
@@ -53,6 +55,7 @@ export async function recordFollowupAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#production`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const day = z.coerce.number().int().parse(str(form, "day"));
     const status = z.enum(FOLLOWUP_STATUSES).parse(str(form, "status"));
@@ -70,6 +73,7 @@ export async function scheduleInspectionAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#production`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const at = isoDay(DATE.parse(str(form, "inspectionAt")));
     const { scheduleInspection } = await import("@/lib/services/production");
@@ -85,6 +89,7 @@ export async function inspectSkuAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#production`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const orderItemId = ID.parse(str(form, "orderItemId"));
     const result = z.enum(SKU_INSPECTION_RESULTS).parse(str(form, "result"));
@@ -102,6 +107,7 @@ export async function respondSkuAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#production`, async () => {
+    assertScreen(user, "orders");
     const inspectionId = ID.parse(str(form, "inspectionId"));
     const action = field(form, "action", z.string().trim().min(1).max(1000));
     const { respondSku } = await import("@/lib/services/production");

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { parsePantoneRefs } from "@/lib/pantone";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   MEASUREMENT_KINDS,
@@ -86,6 +87,7 @@ export async function updateProductSheetAction(form: FormData) {
   const id = str(form, "id");
   await run(`/app/products/${id}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const store = getStore();
     const product = await store.get("products", id);
     if (!product) throw new Error("product_not_found");
@@ -249,6 +251,7 @@ export async function addProductPhotosAction(form: FormData) {
   // Erro volta para o card Fotos (from=photos), onde a pessoa está.
   await run(`/app/products/${productId}?from=photos#photos`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const parsed = z
       .object({
         kind: z.enum(PHOTO_KINDS),
@@ -281,6 +284,7 @@ export async function setPrimaryPhotoAction(form: FormData) {
   const productId = str(form, "productId");
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const photoId = z.string().min(1).parse(str(form, "photoId"));
     const photo = await getStore().get("product_photos", photoId);
     if (!photo || photo.productId !== productId)
@@ -296,6 +300,7 @@ export async function addProductMeasurementAction(form: FormData) {
   const productId = str(form, "productId");
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const parsed = z
       .object({
         kind: z.enum(MEASUREMENT_KINDS),
@@ -327,6 +332,7 @@ export async function savePurchaseScheduleAction(form: FormData) {
   const productId = str(form, "productId");
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const store = getStore();
     const product = await store.get("products", productId);
     if (!product) throw new Error("product_not_found");
@@ -400,6 +406,7 @@ export async function setScheduleStatusAction(form: FormData) {
   const productId = str(form, "productId");
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const parsed = z
       .object({
         scheduleId: z.string().min(1),
@@ -433,6 +440,7 @@ export async function updatePartyExtraAction(form: FormData) {
   const id = str(form, "id");
   await run(`/app/parties/${id}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "parties");
     const store = getStore();
     const party = await store.get("parties", id);
     if (!party) throw new Error("party_not_found");
@@ -516,6 +524,7 @@ export async function saveProductPriceTiersAction(form: FormData) {
   const productId = str(form, "productId");
   await run(`/app/products/${productId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const store = getStore();
     const product = await store.get("products", productId);
     if (!product) throw new Error("product_not_found");
@@ -543,6 +552,7 @@ export async function saveSourcingPriceTiersAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const store = getStore();
     const item = await store.get("sourcing_items", itemId);
     if (!item) throw new Error("item_not_found");
@@ -569,6 +579,7 @@ export async function linkSourcingItemRequestAction(form: FormData) {
   const itemId = str(form, "itemId");
   await run(`/app/sourcing/items/${itemId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "sourcing");
     const store = getStore();
     const item = await store.get("sourcing_items", itemId);
     if (!item) throw new Error("item_not_found");

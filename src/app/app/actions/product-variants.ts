@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { num, requireUser, run, str } from "./helpers";
 
 /*
@@ -80,6 +81,7 @@ export async function saveProductVariantAction(form: FormData) {
   const productId = ID.parse(str(form, "productId"));
   await run(backError(productId), async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const variantId = str(form, "variantId") || null;
     const input = variantFrom(form);
     const svc = await import("@/lib/services/product-variants");
@@ -102,6 +104,7 @@ export async function toggleProductVariantAction(form: FormData) {
   const productId = ID.parse(str(form, "productId"));
   await run(backError(productId), async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const variantId = ID.parse(str(form, "variantId"));
     const active = str(form, "active") === "1";
     const svc = await import("@/lib/services/product-variants");

@@ -1662,7 +1662,8 @@ export default async function OrderPage({
                   </li>
                 ))}
               </ul>
-              {wellmix ? (
+              {/* Multas: diretorias e admin (docs/ACCESS.md). */}
+              {wellmix && canOpen(user, "penalties") ? (
                 <details className="mt-2">
                   <summary className="cursor-pointer text-sm font-semibold text-brand-700 transition hover:text-brand-800">
                     {t("orders.penalty.new")}

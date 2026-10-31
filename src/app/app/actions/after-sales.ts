@@ -7,6 +7,7 @@ import {
   ForbiddenError,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { getStore, REPURCHASE_INTERESTS } from "@/lib/db";
 import {
   answerAfterSales,
@@ -48,6 +49,7 @@ export async function answerAfterSalesAction(form: FormData) {
   const orderId = str(form, "orderId");
   const back = `/app/orders/${orderId}#after-sales`;
   await run(back, async () => {
+    assertScreen(user, "orders");
     const interest = str(form, "repurchaseInterest");
     const parsed = answerSchema.parse({
       afterSalesId: str(form, "afterSalesId"),
@@ -82,6 +84,7 @@ export async function closeAfterSalesAction(form: FormData) {
   const back = `/app/orders/${orderId}#after-sales`;
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "orders");
     const parsed = z
       .object({
         afterSalesId: z.string().min(1),
@@ -106,6 +109,7 @@ export async function openAfterSalesAction(form: FormData) {
   const back = `/app/orders/${orderId}#after-sales`;
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "orders");
     const order = await getStore().get("orders", orderId);
     if (!order) throw new Error("not_found");
     if (order.status !== "CLOSED" && order.status !== "DELIVERED")
@@ -140,6 +144,7 @@ export async function createFollowUpRequestAction(form: FormData) {
   await run(back, async () => {
     if (!(isWellmix(user) || user.role === "customer"))
       throw new ForbiddenError();
+    assertScreen(user, "orders");
     const parsed = followUpSchema.parse({
       orderId,
       quantity: num(form, "quantity"),

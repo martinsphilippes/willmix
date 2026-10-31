@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { RECEIVING_CHECKS, YES_NO } from "@/lib/db/schema";
 import type { User } from "@/lib/db";
+import { assertScreen } from "@/lib/auth/screens";
 import { field, files, requireUser, run, str } from "./helpers";
 
 /*
@@ -44,6 +45,7 @@ export async function saveUnloadingAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#receiving`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const intact = str(form, "sealIntact");
     const checklist = form
@@ -80,6 +82,7 @@ export async function saveCountsAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#receiving`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const ids = form.getAll("itemId").map((v) => ID.parse(String(v)));
     const count = z.coerce.number().int().min(0).max(1e9);
@@ -99,6 +102,7 @@ export async function saveRicAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#receiving`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const [doc] = await upload(
       user,
@@ -119,6 +123,7 @@ export async function saveReturnAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#receiving`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const day = DATE.parse(str(form, "returnedAt"));
     const [doc] = await upload(
@@ -140,6 +145,7 @@ export async function closeReceivingAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#receiving`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const { closeReceiving } = await import("@/lib/services/receiving");
     await closeReceiving(

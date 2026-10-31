@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { IMPORT_STEP_KEYS } from "@/lib/db/schema";
+import { assertScreen } from "@/lib/auth/screens";
 import { field, files, requireUser, run, str } from "./helpers";
 
 /*
@@ -45,6 +46,7 @@ export async function submitImportStepAction(form: FormData) {
     // Confere antes de subir o arquivo: quem não faz o passo não grava nada.
     if (!svc.actsAs(user, order, svc.stepTemplate(key).actor))
       throw new Error("forbidden");
+    assertScreen(user, "orders");
     const [file] = files(form, "file");
     let documentId: string | null = null;
     if (file) {
@@ -70,6 +72,7 @@ export async function validateImportStepAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
   await run(`${to}#${anchorOf(form)}`, async () => {
+    assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const key = z.enum(IMPORT_STEP_KEYS).parse(str(form, "key"));
     const decision = z

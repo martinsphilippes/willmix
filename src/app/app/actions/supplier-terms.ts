@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { assertRole } from "@/lib/auth/permissions";
 import { PAYMENT_TERM_BASES } from "@/lib/db";
 import { parseNumberInput } from "@/lib/number-input";
 import { MAX_TERM_DAYS, MAX_TERM_INSTALLMENTS } from "@/lib/supplier-terms";
@@ -12,9 +12,9 @@ import {
 import { num, requireUser, run, str } from "./helpers";
 
 /*
- * Condição de pagamento ao fornecedor (só a Wellmix): parcelas no cadastro do
- * fornecedor e "usar a condição atual" num pedido. O servidor confere tudo
- * (soma 100%, marcos conhecidos, dias de 0 a 720).
+ * Condição de pagamento ao fornecedor (só o administrador): parcelas no
+ * cadastro do fornecedor e "usar a condição atual" num pedido. O servidor
+ * confere tudo (soma 100%, marcos conhecidos, dias de 0 a 720).
  */
 
 const termSchema = z.object({
@@ -28,7 +28,7 @@ export async function saveSupplierTermsAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "id");
   await run(`/app/parties/${id}#payment-terms`, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     const text = (v: FormDataEntryValue) =>
       typeof v === "string" ? v.trim() : "";
     const percents = form.getAll("termPercent").map(text);
@@ -76,7 +76,7 @@ export async function applySupplierTermsAction(form: FormData) {
   const orderId = str(form, "orderId");
   // Erro volta para o topo do pedido, onde o aviso aparece.
   await run(`/app/orders/${orderId}`, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     await applySupplierTermsToOrder(user, orderId);
     return `/app/orders/${orderId}?terms=applied#supplier-payment`;
   });
@@ -91,7 +91,7 @@ export async function markSupplierPaymentPaidAction(form: FormData) {
   const orderId = str(form, "orderId");
   const paymentId = str(form, "paymentId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     const fxRate = z.number().positive().nullable().parse(num(form, "fxRate"));
     const proof = form.get("proof");
     const { markSupplierPaymentPaid } =
@@ -113,7 +113,7 @@ export async function setSupplierPaymentFxAction(form: FormData) {
   const orderId = str(form, "orderId");
   const paymentId = str(form, "paymentId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     // Câmbio vazio, zero ou negativo: mensagem própria (não a genérica).
     const parsed = z.number().positive().safeParse(num(form, "fxRate"));
     if (!parsed.success) throw new Error("invalid_fx");

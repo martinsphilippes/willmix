@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { CURRENCIES } from "@/lib/currencies";
 import { assertRole, assertWellmix } from "@/lib/auth/permissions";
+import { assertAnyScreen, assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   OPERATION_MODES,
@@ -61,6 +62,7 @@ export async function saveLinePromptsAction(form: FormData) {
   const lineId = str(form, "lineId");
   await run("/app/lines", async () => {
     assertWellmix(user);
+    assertScreen(user, "lines");
     const store = getStore();
     const line = await store.get("product_lines", lineId);
     if (!line) throw new Error("line_not_found");
@@ -115,6 +117,7 @@ export async function requestProductSuggestionAction(form: FormData) {
   const back = entityBack(entity, entityId);
   await run(aiErrorBack(back), async () => {
     assertWellmix(user);
+    assertAnyScreen(user, ["products", "sourcing"]);
     const parsed = z
       .object({
         photoDocumentId: z.string().max(64).nullable(),
@@ -138,6 +141,7 @@ export async function applyProductSuggestionAction(form: FormData) {
   const back = entityBack(entity, entityId);
   await run(aiErrorBack(back), async () => {
     assertWellmix(user);
+    assertAnyScreen(user, ["products", "sourcing"]);
     const id = z.string().min(1).parse(str(form, "id"));
     const apply = new Set(form.getAll("apply").map(String));
     const field = (key: string) =>
@@ -177,6 +181,7 @@ export async function discardSuggestionAction(form: FormData) {
   const back = safeBack(str(form, "back"), "/app/products");
   await run(aiErrorBack(back), async () => {
     assertWellmix(user);
+    assertAnyScreen(user, ["products", "sourcing"]);
     const parsed = z
       .object({ id: z.string().min(1), note: z.string().max(2000).nullable() })
       .parse({ id: str(form, "id"), note: str(form, "note") || null });
@@ -202,6 +207,7 @@ export async function createKitAction(form: FormData) {
   const back = safeBack(str(form, "back"), `/app/products/${productId}`);
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     const parsed = z
       .object({
         customerId: z.string().max(64).nullable(),
@@ -225,6 +231,7 @@ export async function updateKitAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     const parsed = z
       .object({
         name: z.string().min(1).max(160),
@@ -272,6 +279,7 @@ export async function addKitFileAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     const stage = str(form, "stage") === "final" ? "final" : "preview";
     const list = files(form, "files");
     if (list.length === 0) throw new Error("file_required");
@@ -285,6 +293,7 @@ export async function requestMarketingSuggestionAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     const kit = await getStore().get("marketing_kits", id);
     if (!kit) throw new Error("not_found");
     const context = z
@@ -302,6 +311,7 @@ export async function offerKitAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     await offerKit(user, id);
     return `${kitBack(id)}?ok=offered`;
   });
@@ -312,6 +322,7 @@ export async function purchaseKitAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "id");
   await run(kitBack(id), async () => {
+    assertScreen(user, "marketing");
     await purchaseKit(user, id);
     return `${kitBack(id)}?ok=purchased`;
   });
@@ -321,7 +332,7 @@ export async function confirmKitPaymentAction(form: FormData) {
   const user = await requireUser();
   const id = str(form, "id");
   await run(kitBack(id), async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     const [proof] = files(form, "proof");
     await confirmKitPayment(user, id, proof ?? null);
     return `${kitBack(id)}?ok=paid`;
@@ -333,6 +344,7 @@ export async function releaseKitAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     await releaseKit(user, id);
     return `${kitBack(id)}?ok=released`;
   });
@@ -343,6 +355,7 @@ export async function cancelKitAction(form: FormData) {
   const id = str(form, "id");
   await run(kitBack(id), async () => {
     assertWellmix(user);
+    assertScreen(user, "marketing");
     await cancelKit(user, id, str(form, "note") || null);
     return `${kitBack(id)}?ok=cancelled`;
   });
@@ -357,6 +370,7 @@ export async function saveCustomerOperationAction(form: FormData) {
   const partyId = str(form, "partyId");
   await run(`/app/parties/${partyId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "parties");
     const parsed = z
       .object({
         operationMode: z.enum(OPERATION_MODES).nullable(),
