@@ -34,3 +34,29 @@ export function addBusinessDays(isoDate: string, days: number): string {
 export function quoteSlaDeadline(days: number, now = new Date()): string {
   return addBusinessDays(todayInBrazil(now), days);
 }
+
+/**
+ * Prazo de resposta de uma mensagem (Controladoria de mensagens): dias
+ * úteis contados do instante da última mensagem, pulando sábado e domingo
+ * (Brasília). Sexta 15h + 1 dia útil = segunda 15h.
+ */
+export const MESSAGE_SLA_BUSINESS_DAYS = 1;
+
+function isWeekendInBrazil(ms: number): boolean {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "short",
+  }).format(new Date(ms));
+  return weekday === "Sat" || weekday === "Sun";
+}
+
+/** Instante (ISO) `days` dias úteis depois de `fromIso`; nulo se a data é inválida. */
+export function businessDeadline(fromIso: string, days: number): string | null {
+  let ms = Date.parse(fromIso);
+  if (Number.isNaN(ms)) return null;
+  for (let left = Math.max(0, Math.floor(days)); left > 0; left--) {
+    ms += 86_400_000;
+    while (isWeekendInBrazil(ms)) ms += 86_400_000;
+  }
+  return new Date(ms).toISOString();
+}

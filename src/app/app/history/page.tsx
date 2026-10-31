@@ -24,6 +24,7 @@ import {
   rowClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 const interestTone = (v: string | null) =>
   v === "yes" ? "success" : v === "maybe" ? "warning" : "neutral";
@@ -220,12 +221,18 @@ export default async function HistoryPage({
                       <Interest value={r.repurchaseInterest} t={t} />
                     </Td>
                     <Td>
-                      <TextLink
-                        href={`/app/orders/${r.lastOrderId}`}
-                        className="whitespace-nowrap"
-                      >
-                        {t("orders.number", { number: r.lastOrderNumber })}
-                      </TextLink>
+                      <span className="inline-flex items-center gap-1">
+                        <TextLink
+                          href={`/app/orders/${r.lastOrderId}`}
+                          className="whitespace-nowrap"
+                        >
+                          {t("orders.number", { number: r.lastOrderNumber })}
+                        </TextLink>
+                        <ChatOpenButton
+                          target={{ orderId: r.lastOrderId }}
+                          label={t("chat.open")}
+                        />
+                      </span>
                       <div className="mt-1.5">
                         <RowActions row={r} t={t} />
                       </div>
@@ -254,12 +261,18 @@ export default async function HistoryPage({
                       </p>
                     ) : null}
                   </div>
-                  <TextLink
-                    href={`/app/orders/${r.lastOrderId}`}
-                    className="whitespace-nowrap text-sm"
-                  >
-                    {t("orders.number", { number: r.lastOrderNumber })}
-                  </TextLink>
+                  <span className="inline-flex items-center gap-1">
+                    <TextLink
+                      href={`/app/orders/${r.lastOrderId}`}
+                      className="whitespace-nowrap text-sm"
+                    >
+                      {t("orders.number", { number: r.lastOrderNumber })}
+                    </TextLink>
+                    <ChatOpenButton
+                      target={{ orderId: r.lastOrderId }}
+                      label={t("chat.open")}
+                    />
+                  </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   <Item label={t("history.purchases")}>

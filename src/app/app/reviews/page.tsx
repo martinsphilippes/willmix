@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { decideReviewAction } from "../actions/reviews";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 /** Chip de filtro: selecionado na cor da marca, demais neutros (mesmo padrão de Parceiros/Sourcing). */
 const chipClass = (selected: boolean) =>
@@ -179,11 +180,22 @@ export default async function ReviewsPage({
                     })}
                   </p>
                 </div>
-                {r.link ? (
-                  <TextLink href={r.link} className="whitespace-nowrap text-sm">
-                    {t("tasks.open")}
-                  </TextLink>
-                ) : null}
+                <span className="inline-flex items-center gap-1">
+                  {orderOf(r) ? (
+                    <ChatOpenButton
+                      target={{ orderId: orderOf(r)!.id }}
+                      label={t("chat.open")}
+                    />
+                  ) : null}
+                  {r.link ? (
+                    <TextLink
+                      href={r.link}
+                      className="whitespace-nowrap text-sm"
+                    >
+                      {t("tasks.open")}
+                    </TextLink>
+                  ) : null}
+                </span>
               </div>
 
               <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">

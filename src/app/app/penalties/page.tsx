@@ -18,6 +18,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { updatePenaltyStatusAction } from "../actions";
+import { ChatOpenButton } from "@/components/chat-open-button";
 
 export default async function PenaltiesPage() {
   const user = await getCurrentUser();
@@ -59,9 +60,15 @@ export default async function PenaltiesPage() {
               return (
                 <tr key={p.id} className={rowClass}>
                   <Td>
-                    <TextLink href={`/app/orders/${p.orderId}`}>
-                      #{order?.number}
-                    </TextLink>
+                    <span className="inline-flex items-center gap-1">
+                      <TextLink href={`/app/orders/${p.orderId}`}>
+                        #{order?.number}
+                      </TextLink>
+                      <ChatOpenButton
+                        target={{ orderId: p.orderId }}
+                        label={t("chat.open")}
+                      />
+                    </span>
                   </Td>
                   <Td>
                     {parties.find((x) => x.id === p.responsiblePartyId)?.name ??
