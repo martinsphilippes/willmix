@@ -21,23 +21,23 @@ Até aqui, todos os logins da Wellmix viam a mesma lista de Pendências. Nada er
 
 ## 4. Modelo de dados (aditivo)
 
-| Tabela | Coluna | Observação |
-| --- | --- | --- |
-| `users` | `jobLevel` | enum `analyst`, `coordinator`, `supervisor`, `manager`, `director`; opcional |
-| `users` | `managerUserId` | a quem responde; opcional; índice `by_manager` |
-| `users` | `division` | `wellmix` ou `wellkids`: divisão que o analista atende; opcional |
-| `product_lines` | `division` | divisão da linha; opcional |
-| `requests` | `ownerUserId` | analista responsável (automático); opcional; índice `by_owner` |
-| `orders` | `ownerUserId` | herdado da solicitação; opcional; índice `by_owner` |
-| `parties` | `ownerUserId` | da versão por carteira; sem uso |
+| Tabela          | Coluna          | Observação                                                                   |
+| --------------- | --------------- | ---------------------------------------------------------------------------- |
+| `users`         | `jobLevel`      | enum `analyst`, `coordinator`, `supervisor`, `manager`, `director`; opcional |
+| `users`         | `managerUserId` | a quem responde; opcional; índice `by_manager`                               |
+| `users`         | `division`      | `wellmix` ou `wellkids`: divisão que o analista atende; opcional             |
+| `product_lines` | `division`      | divisão da linha; opcional                                                   |
+| `requests`      | `ownerUserId`   | analista responsável (automático); opcional; índice `by_owner`               |
+| `orders`        | `ownerUserId`   | herdado da solicitação; opcional; índice `by_owner`                          |
+| `parties`       | `ownerUserId`   | da versão por carteira; sem uso                                              |
 
 `Task` (src/lib/services/tasks.ts) ganhou `customerId` e `ownerUserId` (em memória, não são colunas; o dono vem da solicitação ou do pedido). Ele vale nas pendências de etapa, embalagem, solicitação (RFQ, escolher fornecedor, confirmar sinal), pós-venda, revisão, sourcing sob demanda e pagamento ao fornecedor.
 
 ## 5. Regras
 
 1. Dono da pendência = `ownerUserId` da solicitação (ou do pedido), se for um login ativo da Wellmix. Senão, "Sem responsável" (produto fora do catálogo, linha sem divisão, divisão sem analista ou dado de antes da regra).
-1a. Escolha automática (`pickOwner`): produto → linha → divisão → analistas ativos da divisão → o com menos pendências abertas (solicitações antes do pedido + pedidos em andamento); empate pela ordem do nome. Feita ao criar a solicitação (inclusive lote e "Adicionar produto"); o pedido copia ao nascer.
-1b. "Distribuir agora" (admin) aplica a mesma regra a tudo que está aberto e sem responsável.
+   1a. Escolha automática (`pickOwner`): produto → linha → divisão → analistas ativos da divisão → o com menos pendências abertas (solicitações antes do pedido + pedidos em andamento); empate pela ordem do nome. Feita ao criar a solicitação (inclusive lote e "Adicionar produto"); o pedido copia ao nascer.
+   1b. "Distribuir agora" (admin) aplica a mesma regra a tudo que está aberto e sem responsável.
 2. Quem vê quem (`visibleTeamIds`): o administrador vê todos os logins da Wellmix e "Sem responsável". Os demais veem o próprio painel e o de toda a equipe abaixo (subordinados e os deles). Escolher pelo endereço (`?u=`) alguém fora disso cai no padrão.
 3. O padrão é "Todos" para quem tem equipe (ou é admin) e o próprio painel para quem não tem.
 4. Atrasos de parceiros (não contam como atraso do operador, mas aparecem para ele cobrar):
@@ -51,7 +51,7 @@ Até aqui, todos os logins da Wellmix viam a mesma lista de Pendências. Nada er
 
 - **Início → Painel de SLA** (`/app/sla`, toda a Wellmix):
   - Tabela da equipe (quem tem equipe): pessoa (recuada pela árvore), cargo, divisão, atrasadas, vencem hoje, próximos 7 dias, parceiros atrasados e % no prazo.
-  - Cartões de totais e listas por prazo, cada item com link para a tela onde se resolve.
+  - Cartões de totais menores, que funcionam como filtros (`?show=overdue|today|week|later|partner|onTime`): tocar num deles abre, embaixo, na mesma tela, a tabela em linhas daquele grupo (pendência, detalhe, cliente, responsável quando a visão é de todos, aguardando quem, prazo e Abrir). Sem escolha, a tabela mostra todas as pendências da pessoa. O cartão "Etapas no prazo (30 dias)" abre a tabela das etapas por trás do indicador (pedido, etapa, cliente, prazo, concluída em, no prazo ou fora do prazo).
 - **Gestão → Equipe e divisões** (`/app/team`, só admin): cargo, divisão e "responde a" de cada login (a lista do chefe já esconde ele mesmo e quem está abaixo), a divisão de cada linha de produto e o botão "Distribuir agora".
 
 ## 7. Segurança

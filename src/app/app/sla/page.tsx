@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -9,6 +10,8 @@ import {
   Alert,
   Badge,
   Card,
+  Empty,
+  LinkButton,
   PageHeader,
   Stat,
   Table,
@@ -23,6 +26,7 @@ import {
   ALL,
   UNASSIGNED,
   slaBoardFor,
+  type SlaBoard,
   type SlaItem,
   type SlaPerson,
 } from "@/lib/services/sla-panel";
@@ -31,10 +35,42 @@ import {
  * Painel de SLA (docs/SLA_PANEL.md): o que cada operador deve, pelo prazo, na
  * carteira de clientes dele, e o que está atrasado com parceiros para ele
  * cobrar. Quem tem equipe vê a tabela de todos abaixo dele e escolhe uma
- * pessoa (?u=); o administrador vê todos e "Sem responsável".
+ * pessoa (?u=); o administrador vê todos e "Sem responsável". Os cartões de
+ * totais são filtros (?show=): tocar num deles abre, embaixo, a tabela em
+ * linhas daquele grupo (atrasadas, vencem hoje, 7 dias, depois, parceiros,
+ * etapas no prazo), como na Control Tower.
  */
 
 type Translate = Awaited<ReturnType<typeof getT>>;
+
+/** Grupos dos cartões; "all" é a tabela inteira (padrão). */
+const SHOW = [
+  "all",
+  "overdue",
+  "today",
+  "week",
+  "later",
+  "partner",
+  "onTime",
+] as const;
+type Show = (typeof SHOW)[number];
+
+function itemsOf(items: SlaItem[], show: Show): SlaItem[] {
+  switch (show) {
+    case "overdue":
+    case "today":
+    case "week":
+      return items.filter((i) => i.source === "task" && i.due === show);
+    case "later":
+      return items.filter(
+        (i) => i.source === "task" && (i.due === "later" || i.due === "none"),
+      );
+    case "partner":
+      return items.filter((i) => i.source === "partner");
+    default:
+      return items;
+  }
+}
 
 function pct(done: number, total: number) {
   return total ? Math.round((done / total) * 100) : null;
@@ -72,70 +108,169 @@ function dueText(t: Translate, item: SlaItem) {
   return t("sla.dueIn", { n: item.daysLeft });
 }
 
-function ItemList({ t, items }: { t: Translate; items: SlaItem[] }) {
+/** Tabela em linhas das pendências do grupo escolhido. */
+function ItemsTable({
+  t,
+  items,
+  showOwner,
+  nameOf,
+}: {
+  t: Translate;
+  items: SlaItem[];
+  /** Coluna "Responsável" (quando a visão é de mais de uma pessoa). */
+  showOwner: boolean;
+  nameOf: (id: string) => string;
+}) {
+  const waiting = items.some((i) => i.waitingOn?.length);
   return (
-    <ul className="divide-y divide-zinc-100">
-      {items.map((item, i) => (
-        <li
-          key={`${item.link}-${i}`}
-          className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2"
-          data-sla-item={item.source}
-        >
-          <div className="min-w-0">
-            <Link
-              href={item.link}
-              className="font-medium text-zinc-900 hover:text-brand-700 hover:underline"
-            >
-              {item.title}
-            </Link>
-            {item.stageKey ? (
-              <span className="ml-1.5 text-xs text-zinc-500">
-                · {t(`stage.${item.stageKey}` as DictionaryKey)}
-              </span>
+    <Table>
+      <thead>
+        <tr>
+          <Th>{t("sla.col.item")}</Th>
+          <Th>{t("sla.col.detail")}</Th>
+          <Th>{t("common.customer")}</Th>
+          {showOwner ? <Th>{t("common.responsible")}</Th> : null}
+          {waiting ? <Th>{t("sla.col.waiting")}</Th> : null}
+          <Th>{t("common.due")}</Th>
+          <Th className="text-right">
+            <span className="sr-only">{t("tasks.open")}</span>
+          </Th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item, i) => (
+          <tr
+            key={`${item.link}-${i}`}
+            className={rowClass}
+            data-sla-item={item.source}
+          >
+            <Td className="min-w-48 font-semibold text-zinc-900">
+              <Link href={item.link} className="hover:underline">
+                {item.title}
+              </Link>
+              {item.stageKey ? (
+                <span className="block text-xs font-normal text-zinc-500">
+                  {t(`stage.${item.stageKey}` as DictionaryKey)}
+                </span>
+              ) : null}
+            </Td>
+            <Td className="min-w-40 text-zinc-600">{item.detail || "—"}</Td>
+            <Td className="text-zinc-700">{item.customerName ?? "—"}</Td>
+            {showOwner ? (
+              <Td className="whitespace-nowrap text-zinc-700">
+                {nameOf(item.ownerId)}
+              </Td>
             ) : null}
-            <div className="text-xs text-zinc-500">
-              {[
-                item.detail || null,
-                item.customerName
-                  ? t("sla.customer", { name: item.customerName })
-                  : null,
-                item.waitingOn?.length
-                  ? t("sla.waiting", {
-                      who:
-                        item.waitingParty ??
-                        item.waitingOn
-                          .map((r) => t(`role.${r}` as DictionaryKey))
-                          .join(", "),
-                    })
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2 text-xs">
-            {item.dueAt ? (
-              <span className="tabular-nums text-zinc-500">
-                {formatDate(item.dueAt, t)}
-              </span>
+            {waiting ? (
+              <Td className="text-zinc-700">
+                {item.waitingOn?.length
+                  ? (item.waitingParty ??
+                    item.waitingOn
+                      .map((r) => t(`role.${r}` as DictionaryKey))
+                      .join(", "))
+                  : "—"}
+              </Td>
             ) : null}
-            <Badge
-              tone={
-                item.daysLeft === null
-                  ? "neutral"
-                  : item.daysLeft < 0
-                    ? "danger"
-                    : item.daysLeft === 0
-                      ? "warning"
-                      : "info"
-              }
+            <Td
+              className={cx(
+                "whitespace-nowrap tabular-nums",
+                item.daysLeft !== null &&
+                  item.daysLeft < 0 &&
+                  "font-semibold text-red-700",
+              )}
             >
-              {dueText(t, item)}
-            </Badge>
-          </div>
-        </li>
-      ))}
-    </ul>
+              {item.dueAt ? formatDate(item.dueAt, t) : null}
+              <span className={cx("align-middle", item.dueAt && "ml-1.5")}>
+                <Badge
+                  tone={
+                    item.daysLeft === null
+                      ? "neutral"
+                      : item.daysLeft < 0
+                        ? "danger"
+                        : item.daysLeft === 0
+                          ? "warning"
+                          : "info"
+                  }
+                >
+                  {dueText(t, item)}
+                </Badge>
+              </span>
+            </Td>
+            <Td className="whitespace-nowrap text-right">
+              <LinkButton
+                href={item.link}
+                variant="primary"
+                className="min-h-8 px-3 py-1 text-xs"
+              >
+                {t("tasks.open")}
+              </LinkButton>
+            </Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
+  );
+}
+
+/** Tabela das etapas por trás de "Etapas no prazo (30 dias)". */
+function StagesTable({
+  t,
+  stages,
+  showOwner,
+  nameOf,
+}: {
+  t: Translate;
+  stages: SlaBoard["recentStages"];
+  showOwner: boolean;
+  nameOf: (id: string) => string;
+}) {
+  return (
+    <Table>
+      <thead>
+        <tr>
+          <Th>#</Th>
+          <Th>{t("orders.stage")}</Th>
+          <Th>{t("common.customer")}</Th>
+          {showOwner ? <Th>{t("common.responsible")}</Th> : null}
+          <Th>{t("common.due")}</Th>
+          <Th>{t("sla.col.completed")}</Th>
+          <Th>{t("common.status")}</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {stages.map((s, i) => (
+          <tr
+            key={`${s.orderId}-${s.stageKey}-${i}`}
+            className={rowClass}
+            data-sla-stage={s.onTime ? "on-time" : "late"}
+          >
+            <Td className="whitespace-nowrap">
+              <TextLink href={s.link}>#{s.orderNumber || "—"}</TextLink>
+            </Td>
+            <Td className="whitespace-nowrap font-medium text-zinc-900">
+              {t(`stage.${s.stageKey}` as DictionaryKey)}
+            </Td>
+            <Td className="text-zinc-700">{s.customerName ?? "—"}</Td>
+            {showOwner ? (
+              <Td className="whitespace-nowrap text-zinc-700">
+                {nameOf(s.ownerId)}
+              </Td>
+            ) : null}
+            <Td className="whitespace-nowrap tabular-nums">
+              {formatDate(s.dueAt, t)}
+            </Td>
+            <Td className="whitespace-nowrap tabular-nums">
+              {formatDate(s.completedAt, t)}
+            </Td>
+            <Td className="whitespace-nowrap">
+              <Badge tone={s.onTime ? "success" : "danger"}>
+                {s.onTime ? t("sla.onTimeYes") : t("sla.onTimeNo")}
+              </Badge>
+            </Td>
+          </tr>
+        ))}
+      </tbody>
+    </Table>
   );
 }
 
@@ -144,9 +279,14 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
   if (!user) redirect("/login");
   requireScreen(user, "sla");
   const t = await getT();
-  const { u } = await searchParams;
+  const { u, show: showParam } = await searchParams;
   const board = await slaBoardFor(user, typeof u === "string" ? u : null);
   const admin = isAdmin(user);
+  const show: Show = (SHOW as readonly string[]).includes(
+    typeof showParam === "string" ? showParam : "",
+  )
+    ? (showParam as Show)
+    : "all";
 
   const rows: SlaPerson[] = [
     ...board.people,
@@ -160,40 +300,59 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
         : (board.people.find((p) => p.id === id)?.name ?? "—");
   const me = board.people.find((p) => p.id === user.id);
   const showingMine = board.selected === user.id;
+  const showOwner = board.selected === ALL;
+  // Os cartões trocam só o grupo; a pessoa escolhida (?u=) fica.
+  const href = (next: Show) => {
+    const p = new URLSearchParams();
+    if (typeof u === "string" && u) p.set("u", u);
+    if (next !== "all") p.set("show", next);
+    const q = p.toString();
+    return q ? `/app/sla?${q}` : "/app/sla";
+  };
 
-  const sections: Array<{ key: string; title: string; items: SlaItem[] }> = [
+  const cards: Array<{
+    key: Exclude<Show, "all">;
+    label: string;
+    value: ReactNode;
+    tone?: "danger" | "warning";
+  }> = [
     {
       key: "overdue",
-      title: t("sla.section.overdue"),
-      items: board.items.filter(
-        (i) => i.source === "task" && i.due === "overdue",
-      ),
+      label: t("sla.col.overdue"),
+      value: board.totals.overdue,
+      tone: board.totals.overdue ? "danger" : undefined,
     },
     {
       key: "today",
-      title: t("sla.section.today"),
-      items: board.items.filter(
-        (i) => i.source === "task" && i.due === "today",
-      ),
+      label: t("sla.col.today"),
+      value: board.totals.today,
+      tone: board.totals.today ? "warning" : undefined,
     },
-    {
-      key: "week",
-      title: t("sla.section.week"),
-      items: board.items.filter((i) => i.source === "task" && i.due === "week"),
-    },
+    { key: "week", label: t("sla.col.week"), value: board.totals.week },
+    { key: "later", label: t("sla.col.later"), value: board.totals.later },
     {
       key: "partner",
-      title: t("sla.section.partner"),
-      items: board.items.filter((i) => i.source === "partner"),
+      label: t("sla.col.partner"),
+      value: board.totals.partnerLate,
+      tone: board.totals.partnerLate ? "warning" : undefined,
     },
     {
-      key: "later",
-      title: t("sla.section.later"),
-      items: board.items.filter(
-        (i) => i.source === "task" && (i.due === "later" || i.due === "none"),
-      ),
+      key: "onTime",
+      label: t("sla.col.onTime"),
+      value: <OnTime t={t} value={board.onTime} />,
     },
   ];
+  const sectionTitle: Record<Show, string> = {
+    all: t("sla.show.all"),
+    overdue: t("sla.section.overdue"),
+    today: t("sla.section.today"),
+    week: t("sla.section.week"),
+    later: t("sla.section.later"),
+    partner: t("sla.section.partner"),
+    onTime: t("sla.col.onTime"),
+  };
+  const shown = show === "onTime" ? [] : itemsOf(board.items, show);
+  const count = show === "onTime" ? board.recentStages.length : shown.length;
 
   return (
     <>
@@ -301,62 +460,80 @@ export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
         </Card>
       ) : null}
 
-      <h2
-        className="mb-2 text-sm font-semibold text-zinc-700"
-        data-sla-selected={board.selected}
-      >
-        {t("sla.viewing", { name: nameOf(board.selected) })}
-      </h2>
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h2
+          className="text-sm font-semibold text-zinc-700"
+          data-sla-selected={board.selected}
+        >
+          {t("sla.viewing", { name: nameOf(board.selected) })}
+        </h2>
+        <p className="text-xs text-zinc-500">{t("sla.show.hint")}</p>
+      </div>
       {board.selected === UNASSIGNED ? (
         <div className="mb-3">
           <Alert tone="warning">{t("sla.unassignedHint")}</Alert>
         </div>
       ) : null}
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Stat
-          label={t("sla.col.overdue")}
-          value={board.totals.overdue}
-          tone={board.totals.overdue ? "danger" : "neutral"}
-        />
-        <Stat
-          label={t("sla.col.today")}
-          value={board.totals.today}
-          tone={board.totals.today ? "warning" : "neutral"}
-        />
-        <Stat label={t("sla.col.week")} value={board.totals.week} />
-        <Stat
-          label={t("sla.col.partner")}
-          value={board.totals.partnerLate}
-          tone={board.totals.partnerLate ? "warning" : "neutral"}
-        />
-        <Stat
-          label={t("sla.col.onTime")}
-          value={<OnTime t={t} value={board.onTime} />}
-        />
+      {/* Cartões menores, como filtros: o escolhido fica marcado. */}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {cards.map((c) => (
+          <Stat
+            key={c.key}
+            compact
+            label={c.label}
+            value={c.value}
+            href={href(c.key)}
+            tone={show === c.key ? undefined : c.tone}
+            active={show === c.key}
+          />
+        ))}
       </div>
 
-      {board.items.length === 0 ? (
-        <Alert tone="success">{t("sla.allClear")}</Alert>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {sections
-            .filter((s) => s.items.length > 0)
-            .map((s) => (
-              <Card
-                key={s.key}
-                title={`${s.title} (${s.items.length})`}
-                className={cx(
-                  s.key === "overdue" && "border-red-200",
-                  s.key === "partner" && "border-amber-200",
-                )}
-              >
-                <div data-sla-section={s.key}>
-                  <ItemList t={t} items={s.items} />
-                </div>
-              </Card>
-            ))}
+      <Card
+        title={`${sectionTitle[show]} (${count})`}
+        actions={
+          show !== "all" ? (
+            <TextLink href={href("all")} className="text-sm">
+              {t("sla.show.all")}
+            </TextLink>
+          ) : null
+        }
+        className={cx(
+          show === "overdue" && "border-red-200",
+          show === "partner" && "border-amber-200",
+        )}
+      >
+        <div data-sla-section={show}>
+          {show === "onTime" ? (
+            <>
+              <p className="mb-2 text-xs text-zinc-500">
+                {t("sla.onTimeHint")}
+              </p>
+              {board.recentStages.length === 0 ? (
+                <Empty>{t("sla.onTimeEmpty")}</Empty>
+              ) : (
+                <StagesTable
+                  t={t}
+                  stages={board.recentStages}
+                  showOwner={showOwner}
+                  nameOf={nameOf}
+                />
+              )}
+            </>
+          ) : board.items.length === 0 ? (
+            <Alert tone="success">{t("sla.allClear")}</Alert>
+          ) : shown.length === 0 ? (
+            <Empty>{t("sla.empty")}</Empty>
+          ) : (
+            <ItemsTable
+              t={t}
+              items={shown}
+              showOwner={showOwner}
+              nameOf={nameOf}
+            />
+          )}
         </div>
-      )}
+      </Card>
     </>
   );
 }

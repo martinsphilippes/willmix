@@ -359,6 +359,10 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - A tela Pendências (`/app/tasks`, o início dos parceiros e as pendências no início do cliente) deixou os cartões e passou a usar a mesma tabela das outras listas (Pedidos, Control Tower): uma pendência por linha, com as colunas Pendência (link), Detalhe, Tipo (etapa ou tipo da pendência), Prazo (data, selo "Atrasado"/"vence hoje" e o prazo relativo) e o botão Abrir na linha. A ordem pelo prazo e os filtros por prazo e tipo (chips como links) não mudaram. Cada linha leva `data-task-row`, `data-task-due` e `data-task-group` (o E2E procura a linha da RFQ por `[data-task-row]`).
 - O tipo "Embalagem (faca e arte)" ganhou rótulo nos três idiomas (antes o chip mostrava a chave).
 
+## Painel de SLA: cartões como filtros e tabela embaixo
+
+- Os cartões de totais do Painel de SLA (`/app/sla`) ficaram menores (`Stat` com `compact`) e viraram filtros (`?show=`): tocar num deles abre, embaixo, na mesma tela, a tabela em linhas daquele grupo (atrasadas, vencem hoje, próximos 7 dias, depois e sem prazo, parceiros atrasados). Sem escolha, a tabela mostra todas as pendências da pessoa escolhida (`?u=` continua valendo). O cartão "Etapas no prazo (30 dias)" abre a tabela das etapas por trás do indicador (`SlaBoard.recentStages`: pedido, etapa, cliente, prazo, concluída em, no prazo ou fora). As listas em cartões por grupo saíram; nenhuma informação foi removida (cada coluna da tabela corresponde a um dado que a lista mostrava), e o grupo "Depois e sem prazo" ganhou cartão.
+
 ## Vários produtos numa solicitação só (lote)
 
 - A tela "Nova solicitação" aceita vários produtos: uma linha por produto ("+ Adicionar outro produto", "Remover"), cada uma com "fora do catálogo", produto do catálogo (preenche com a ficha), nome, descrição, especificação, anexos, quantidade e unidade; prazo e observação valem para todas. Os campos levam o prefixo `p<n>.` (`p0.productId`, `p0.quantity`…), lidos por `parseRequestItems` (`src/app/app/actions/request-items.ts`); a busca por foto/link e a programação de compra preenchem só a primeira linha.
