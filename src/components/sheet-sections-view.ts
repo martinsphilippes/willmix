@@ -112,7 +112,13 @@ export function sheetSectionsView(
   {
     master = false,
     photosHref,
-  }: { master?: boolean; photosHref?: string } = {},
+    omit = [],
+  }: {
+    master?: boolean;
+    photosHref?: string;
+    /** Blocos que não aparecem para quem preenche (ex.: fornecedor sem Despachante). */
+    omit?: readonly SheetSectionKey[];
+  } = {},
 ): { sections: SheetSectionRow[]; labels: SheetSectionsLabels } {
   const required = new Set<string>([
     ...SHEET_REQUIRED_FIELDS,
@@ -123,21 +129,23 @@ export function sheetSectionsView(
     required.delete("productionStartAt");
     required.delete("lot1");
   }
-  const sections = SHEET_SECTIONS.map((key): SheetSectionRow => {
-    const fields = SHEET_SECTION_FIELDS[key];
-    return {
-      key,
-      label: t(`sheet.section.${key}` as DictionaryKey),
-      missing: fields
-        .filter((f) => missing.includes(f))
-        .map((f) => ({
-          key: f,
-          label: t(`sheet.field.${f}` as DictionaryKey),
-        })),
-      optional: !fields.some((f) => required.has(f)),
-      href: key === "photos" ? photosHref : undefined,
-    };
-  });
+  const sections = SHEET_SECTIONS.filter((k) => !omit.includes(k)).map(
+    (key): SheetSectionRow => {
+      const fields = SHEET_SECTION_FIELDS[key];
+      return {
+        key,
+        label: t(`sheet.section.${key}` as DictionaryKey),
+        missing: fields
+          .filter((f) => missing.includes(f))
+          .map((f) => ({
+            key: f,
+            label: t(`sheet.field.${f}` as DictionaryKey),
+          })),
+        optional: !fields.some((f) => required.has(f)),
+        href: key === "photos" ? photosHref : undefined,
+      };
+    },
+  );
   const marker = "\u0001";
   const [missingBefore, missingAfter = ""] = t("sheet.sections.missing", {
     fields: marker,

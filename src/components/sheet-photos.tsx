@@ -5,7 +5,7 @@ import { Card, cx } from "@/components/ui";
 import { PhotoInput } from "@/components/photo-input";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { REQUIRED_SHEET_PHOTOS } from "@/lib/services/purchase-sheet-calc";
-import { ADDABLE_SHEET_PHOTO_KINDS as SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
+import { ADDABLE_SHEET_PHOTO_KINDS } from "@/lib/services/purchase-sheet";
 import { initialSheetSection } from "./sheet-sections-view";
 
 /*
@@ -24,7 +24,10 @@ export function SheetPhotosCard({
   coveredKinds = [],
   className = "mt-4",
   missing = [],
+  kinds: SHEET_PHOTO_KINDS = ADDABLE_SHEET_PHOTO_KINDS,
 }: {
+  /** Tipos que se pode adicionar aqui (fornecedor: só as 5 obrigatórias). */
+  kinds?: readonly string[];
   /** Fotos obrigatórias que faltam (scalePhoto…): ficam em vermelho e o aviso leva até elas. */
   missing?: readonly string[];
   t: Translate;

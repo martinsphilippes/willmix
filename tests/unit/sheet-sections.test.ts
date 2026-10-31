@@ -67,6 +67,20 @@ describe("ficha em blocos", () => {
     expect(by.photos.optional).toBe(false);
   });
 
+  it("fornecedor: sem Despachante nem E-commerce na tabela de blocos", () => {
+    const { sections } = sheetSectionsView(t, [], {
+      omit: ["customs", "ecommerce"],
+    });
+    expect(sections.map((s) => s.key)).toEqual([
+      "supplier",
+      "product",
+      "carton",
+      "price",
+      "schedule",
+      "photos",
+    ]);
+  });
+
   it("abre de início o primeiro bloco com pendência", () => {
     expect(initialSheetSection([])).toBe("supplier");
     expect(initialSheetSection(["cbmPerCarton", "price"])).toBe("carton");

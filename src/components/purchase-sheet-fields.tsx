@@ -69,6 +69,7 @@ export function PurchaseSheetFields({
   missing = [],
   sectionsMissing = missing,
   photosHref,
+  audience = "wellmix",
   orderQuantity = null,
   targetQuantity = null,
   ncmRates = null,
@@ -107,6 +108,12 @@ export function PurchaseSheetFields({
   sectionsMissing?: readonly string[];
   /** Fotos fora da ficha (cadastro do produto): a linha "Fotos" leva até lá. */
   photosHref?: string;
+  /**
+   * Quem está preenchendo. Fornecedor: só o que é dele (sem Despachante nem
+   * E-commerce, que são da Wellmix; o container do cálculo é escolha da
+   * Wellmix e fica só para ver).
+   */
+  audience?: "wellmix" | "supplier";
   /** Alíquotas da tabela pelo NCM da ficha ("II 20% · IPI 0%"): valem com II/IPI vazios. */
   ncmRates?: string | null;
   /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
@@ -135,7 +142,12 @@ export function PurchaseSheetFields({
   // Tabela de blocos no alto: o servidor já abre só o primeiro bloco com
   // pendência (os outros nascem escondidos); a tabela troca o bloco aberto e
   // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
-  const nav = sheetSectionsView(t, sectionsMissing, { master, photosHref });
+  const supplierOnly = audience === "supplier";
+  const nav = sheetSectionsView(t, sectionsMissing, {
+    master,
+    photosHref,
+    omit: supplierOnly ? ["customs", "ecommerce"] : [],
+  });
   const open = initialSheetSection(sectionsMissing, { photosHref });
   const Section = SheetSection;
   return (
@@ -615,7 +627,7 @@ export function PurchaseSheetFields({
               <select
                 name="containerType"
                 defaultValue={view.containerType ?? ""}
-                disabled={sup}
+                disabled={sup || supplierOnly}
                 className={inputDenseClass}
               >
                 {view.containerTypes.map((c) => (
@@ -775,176 +787,180 @@ export function PurchaseSheetFields({
         </Card>
       </Section>
 
-      {/* Despachante e e-commerce lado a lado (menos rolagem). */}
-      <Section open={open} k="customs" order="lg:order-5">
-        <Card title={t("sheet.section.customs")} dense>
-          <Rows>
-            <F
-              t={t}
-              m={missing}
-              k="ncm"
-              size="sm"
-              hint={
-                !access.editCustoms && sheet.ncm
-                  ? t("ncm.sheet.readOnly")
-                  : undefined
-              }
-            >
-              <input
-                name="ncm"
-                inputMode="decimal"
-                maxLength={12}
-                placeholder={t("ph.ncm")}
-                defaultValue={sheet.ncm ?? ""}
-                disabled={!access.editCustoms}
-                className={inputDenseClass}
-              />
-            </F>
-            {access.editCustoms && ncmSuggestions.length ? (
-              <div className="sm:pl-[11.75rem]">
-                <NcmSuggestions
-                  items={ncmSuggestions}
-                  labels={{
-                    title: t("ncm.sheet.title"),
-                    use: t("ncm.sheet.use"),
-                    hint: t("ncm.sheet.hint"),
-                    applied: t("ncm.sheet.applied", { ncm: "{ncm}" }),
-                  }}
-                />
-              </div>
-            ) : access.editCustoms && !sheet.ncm && ncmHelpLink ? (
-              <p
-                className="text-xs text-zinc-600 sm:pl-[11.75rem]"
-                data-ncm-help
-              >
-                {t("ncm.sheet.none")}{" "}
-                <Link
-                  href={ncmHelpLink}
-                  target="_blank"
-                  className="font-medium text-brand-700 underline"
-                >
-                  {t("ncm.sheet.requestLink")}
-                </Link>
-              </p>
-            ) : null}
-            <F t={t} m={missing} k="importTaxPercent" size="xs">
-              <Num
-                name="importTaxPercent"
-                value={numValue(sheet.importTaxPercent)}
-                disabled={!access.editCustoms}
-              />
-            </F>
-            <F t={t} m={missing} k="ipiPercent" size="xs">
-              <Num
-                name="ipiPercent"
-                value={numValue(sheet.ipiPercent)}
-                disabled={!access.editCustoms}
-              />
-            </F>
-            {/* II/IPI vazios não são "sem imposto": a conta usa a tabela pelo NCM. */}
-            {ncmRates &&
-            (sheet.importTaxPercent == null || sheet.ipiPercent == null) ? (
-              <p
-                className="text-xs text-zinc-500 sm:pl-[11.75rem]"
-                data-ncm-table-hint
-              >
-                {t("ncm.sheet.tableHint", { rates: ncmRates })}
-              </p>
-            ) : null}
-            {/* Despachante (Fase B): antidumping, média e certificação. */}
-            <F t={t} m={missing} k="dumping" size="xs">
-              <select
-                name="dumping"
-                defaultValue={sheet.dumping ?? ""}
-                disabled={!access.editCustoms}
-                className={inputDenseClass}
-                data-sheet-dumping
-              >
-                <option value="">—</option>
-                <option value="yes">{t("common.yes")}</option>
-                <option value="no">{t("common.no")}</option>
-              </select>
-            </F>
-            {sheet.dumping === "yes" ? (
-              <p
-                className="text-xs font-medium text-amber-800 sm:pl-[11.75rem]"
-                data-dumping-status={
-                  sheet.dumpingReleasedAt ? "released" : "held"
+      {/* Despachante e e-commerce lado a lado (menos rolagem); são da Wellmix:
+          o fornecedor não os vê. */}
+      {supplierOnly ? null : (
+        <Section open={open} k="customs" order="lg:order-5">
+          <Card title={t("sheet.section.customs")} dense>
+            <Rows>
+              <F
+                t={t}
+                m={missing}
+                k="ncm"
+                size="sm"
+                hint={
+                  !access.editCustoms && sheet.ncm
+                    ? t("ncm.sheet.readOnly")
+                    : undefined
                 }
               >
-                {sheet.dumpingReleasedAt
-                  ? t("purchaseFlow.dumping.released")
-                  : t("purchaseFlow.dumping.held")}
-              </p>
-            ) : null}
-            <F t={t} m={missing} k="dumpingNote" size="lg">
-              <input
-                name="dumpingNote"
-                maxLength={1000}
-                defaultValue={sheet.dumpingNote ?? ""}
-                disabled={!access.editCustoms}
-                className={inputDenseClass}
-              />
-            </F>
-            <F t={t} m={missing} k="averagePrice" size="xs">
-              <Num
-                name="averagePrice"
-                value={numValue(sheet.averagePrice ?? null)}
-                disabled={!access.editCustoms}
-              />
-            </F>
-            <F t={t} m={missing} k="certificationRequired" size="xs">
-              <select
-                name="certificationRequired"
-                defaultValue={sheet.certificationRequired ?? ""}
-                disabled={!access.editCustoms}
-                className={inputDenseClass}
-              >
-                <option value="">—</option>
-                <option value="yes">{t("common.yes")}</option>
-                <option value="no">{t("common.no")}</option>
-              </select>
-            </F>
-            <F t={t} m={missing} k="certificationNote" size="lg">
-              <input
-                name="certificationNote"
-                maxLength={1000}
-                placeholder={t("purchaseFlow.certificationNote.ph")}
-                defaultValue={sheet.certificationNote ?? ""}
-                disabled={!access.editCustoms}
-                className={inputDenseClass}
-              />
-            </F>
-          </Rows>
-        </Card>
-      </Section>
-
-      <Section open={open} k="ecommerce" order="lg:order-6">
-        <Card title={t("sheet.section.ecommerce")} dense>
-          <Rows>
-            <F t={t} m={missing} k="ecommerceDescription" size="full">
-              <textarea
-                name="ecommerceDescription"
-                rows={3}
-                maxLength={4000}
-                defaultValue={sheet.ecommerceDescription ?? ""}
-                disabled={sup}
-                className={cx(inputDenseClass, "min-h-16")}
-              />
-            </F>
-            <F t={t} m={missing} k="notes" size="full">
-              <textarea
-                name="notes"
-                rows={2}
-                maxLength={2000}
-                defaultValue={sheet.notes ?? ""}
-                disabled={sup}
-                className={cx(inputDenseClass, "min-h-12")}
-              />
-            </F>
-          </Rows>
-        </Card>
-      </Section>
+                <input
+                  name="ncm"
+                  inputMode="decimal"
+                  maxLength={12}
+                  placeholder={t("ph.ncm")}
+                  defaultValue={sheet.ncm ?? ""}
+                  disabled={!access.editCustoms}
+                  className={inputDenseClass}
+                />
+              </F>
+              {access.editCustoms && ncmSuggestions.length ? (
+                <div className="sm:pl-[11.75rem]">
+                  <NcmSuggestions
+                    items={ncmSuggestions}
+                    labels={{
+                      title: t("ncm.sheet.title"),
+                      use: t("ncm.sheet.use"),
+                      hint: t("ncm.sheet.hint"),
+                      applied: t("ncm.sheet.applied", { ncm: "{ncm}" }),
+                    }}
+                  />
+                </div>
+              ) : access.editCustoms && !sheet.ncm && ncmHelpLink ? (
+                <p
+                  className="text-xs text-zinc-600 sm:pl-[11.75rem]"
+                  data-ncm-help
+                >
+                  {t("ncm.sheet.none")}{" "}
+                  <Link
+                    href={ncmHelpLink}
+                    target="_blank"
+                    className="font-medium text-brand-700 underline"
+                  >
+                    {t("ncm.sheet.requestLink")}
+                  </Link>
+                </p>
+              ) : null}
+              <F t={t} m={missing} k="importTaxPercent" size="xs">
+                <Num
+                  name="importTaxPercent"
+                  value={numValue(sheet.importTaxPercent)}
+                  disabled={!access.editCustoms}
+                />
+              </F>
+              <F t={t} m={missing} k="ipiPercent" size="xs">
+                <Num
+                  name="ipiPercent"
+                  value={numValue(sheet.ipiPercent)}
+                  disabled={!access.editCustoms}
+                />
+              </F>
+              {/* II/IPI vazios não são "sem imposto": a conta usa a tabela pelo NCM. */}
+              {ncmRates &&
+              (sheet.importTaxPercent == null || sheet.ipiPercent == null) ? (
+                <p
+                  className="text-xs text-zinc-500 sm:pl-[11.75rem]"
+                  data-ncm-table-hint
+                >
+                  {t("ncm.sheet.tableHint", { rates: ncmRates })}
+                </p>
+              ) : null}
+              {/* Despachante (Fase B): antidumping, média e certificação. */}
+              <F t={t} m={missing} k="dumping" size="xs">
+                <select
+                  name="dumping"
+                  defaultValue={sheet.dumping ?? ""}
+                  disabled={!access.editCustoms}
+                  className={inputDenseClass}
+                  data-sheet-dumping
+                >
+                  <option value="">—</option>
+                  <option value="yes">{t("common.yes")}</option>
+                  <option value="no">{t("common.no")}</option>
+                </select>
+              </F>
+              {sheet.dumping === "yes" ? (
+                <p
+                  className="text-xs font-medium text-amber-800 sm:pl-[11.75rem]"
+                  data-dumping-status={
+                    sheet.dumpingReleasedAt ? "released" : "held"
+                  }
+                >
+                  {sheet.dumpingReleasedAt
+                    ? t("purchaseFlow.dumping.released")
+                    : t("purchaseFlow.dumping.held")}
+                </p>
+              ) : null}
+              <F t={t} m={missing} k="dumpingNote" size="lg">
+                <input
+                  name="dumpingNote"
+                  maxLength={1000}
+                  defaultValue={sheet.dumpingNote ?? ""}
+                  disabled={!access.editCustoms}
+                  className={inputDenseClass}
+                />
+              </F>
+              <F t={t} m={missing} k="averagePrice" size="xs">
+                <Num
+                  name="averagePrice"
+                  value={numValue(sheet.averagePrice ?? null)}
+                  disabled={!access.editCustoms}
+                />
+              </F>
+              <F t={t} m={missing} k="certificationRequired" size="xs">
+                <select
+                  name="certificationRequired"
+                  defaultValue={sheet.certificationRequired ?? ""}
+                  disabled={!access.editCustoms}
+                  className={inputDenseClass}
+                >
+                  <option value="">—</option>
+                  <option value="yes">{t("common.yes")}</option>
+                  <option value="no">{t("common.no")}</option>
+                </select>
+              </F>
+              <F t={t} m={missing} k="certificationNote" size="lg">
+                <input
+                  name="certificationNote"
+                  maxLength={1000}
+                  placeholder={t("purchaseFlow.certificationNote.ph")}
+                  defaultValue={sheet.certificationNote ?? ""}
+                  disabled={!access.editCustoms}
+                  className={inputDenseClass}
+                />
+              </F>
+            </Rows>
+          </Card>
+        </Section>
+      )}
+      {supplierOnly ? null : (
+        <Section open={open} k="ecommerce" order="lg:order-6">
+          <Card title={t("sheet.section.ecommerce")} dense>
+            <Rows>
+              <F t={t} m={missing} k="ecommerceDescription" size="full">
+                <textarea
+                  name="ecommerceDescription"
+                  rows={3}
+                  maxLength={4000}
+                  defaultValue={sheet.ecommerceDescription ?? ""}
+                  disabled={sup}
+                  className={cx(inputDenseClass, "min-h-16")}
+                />
+              </F>
+              <F t={t} m={missing} k="notes" size="full">
+                <textarea
+                  name="notes"
+                  rows={2}
+                  maxLength={2000}
+                  defaultValue={sheet.notes ?? ""}
+                  disabled={sup}
+                  className={cx(inputDenseClass, "min-h-12")}
+                />
+              </F>
+            </Rows>
+          </Card>
+        </Section>
+      )}
     </>
   );
 }
