@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix, isAdmin } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
+import { isAdmin } from "@/lib/auth/permissions";
 import {
   getStore,
   LOCALES,
@@ -79,7 +80,7 @@ export default async function PartyPage({
 }: PageProps<"/app/parties/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "parties");
   const { id } = await params;
   const { error, saved } = await searchParams;
   const store = getStore();

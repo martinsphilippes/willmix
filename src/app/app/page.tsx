@@ -11,12 +11,13 @@ import { TaskList } from "@/components/task-list";
 export default async function AppHome({ searchParams }: PageProps<"/app">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app");
-  const { filter, sent } = await searchParams;
+  const { filter, sent, denied } = await searchParams;
   if (isWellmix(user)) {
     return (
       <ControlTower
         user={user}
         filter={typeof filter === "string" ? filter : undefined}
+        denied={typeof denied === "string" ? denied : undefined}
       />
     );
   }
@@ -28,7 +29,8 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
     <TaskList
       user={user}
       sent={
-        typeof sent === "string" && /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/.test(sent)
+        typeof sent === "string" &&
+        /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/.test(sent)
           ? sent
           : null
       }

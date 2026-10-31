@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
+import { isAdmin } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -141,7 +142,7 @@ function ItemList({ t, items }: { t: Translate; items: SlaItem[] }) {
 export default async function SlaPage({ searchParams }: PageProps<"/app/sla">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!isWellmix(user)) redirect("/app");
+  requireScreen(user, "sla");
   const t = await getT();
   const { u } = await searchParams;
   const board = await slaBoardFor(user, typeof u === "string" ? u : null);

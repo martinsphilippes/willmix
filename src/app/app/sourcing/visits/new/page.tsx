@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { Alert, PageHeader } from "@/components/ui";
@@ -12,7 +12,7 @@ export default async function NewVisitPage({
 }: PageProps<"/app/sourcing/visits/new">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "sourcing");
   const { error } = await searchParams;
   const t = await getT();
   const suppliers = await getStore().list("parties", {

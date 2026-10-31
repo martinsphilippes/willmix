@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore, SHEET_CURRENCIES } from "@/lib/db";
 import {
   SHEET_IMPORT_ENTITY,
@@ -41,7 +41,7 @@ export default async function ProductSheetImportPage({
 }: PageProps<"/app/products/import">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "products");
   const { error } = await searchParams;
   const t = await getT();
   const store = getStore();

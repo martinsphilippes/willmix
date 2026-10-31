@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -38,6 +39,7 @@ export default async function ExploreProductPage({
   const { id } = await params;
   if (!user)
     redirect(`/login?next=${encodeURIComponent(`/app/explore/${id}`)}`);
+  requireScreen(user, "explore");
   if (!canExplore(user))
     redirect(user.role === "customer" ? "/app/requests" : "/app");
   const sp = await searchParams;

@@ -21,6 +21,7 @@ import { hasFiscalTable } from "@/lib/services/fiscal";
 import { formatNcm } from "@/lib/fiscal";
 import { RequestNcmCard } from "@/components/request-ncm-card";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import {
   canSeeSupplier,
   canViewOrder,
@@ -97,6 +98,7 @@ export default async function RequestDetailPage({
 }: PageProps<"/app/requests/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "requests");
   const { id } = await params;
   const {
     error,

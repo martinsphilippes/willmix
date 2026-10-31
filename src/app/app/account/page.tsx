@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type Document } from "@/lib/db";
 import {
@@ -45,6 +46,7 @@ export default async function AccountPage({
 }: PageProps<"/app/account">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "account");
   const { supplier, error } = await searchParams;
   const supplierId =
     user.role === "supplier"

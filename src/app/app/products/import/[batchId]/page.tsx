@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import {
   SHEET_IMPORT_ENTITY,
@@ -49,7 +49,7 @@ export default async function ProductSheetImportResultPage({
   const { batchId } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "products");
   const t = await getT();
   const store = getStore();
   const batch = await store.get("import_batches", batchId);

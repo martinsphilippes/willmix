@@ -2,6 +2,13 @@ import type { Translate } from "@/i18n";
 import type { ReactNode } from "react";
 import type { User } from "@/lib/db";
 import { isWellmix } from "@/lib/auth/permissions";
+import {
+  SCREENS,
+  SCREEN_LABEL,
+  canOpen,
+  hasNoFunction,
+  type Screen,
+} from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import {
   loadControlTower,
@@ -9,6 +16,7 @@ import {
   type TowerTotals,
 } from "@/lib/services/control-tower";
 import {
+  Alert,
   Badge,
   Card,
   cx,
@@ -65,9 +73,12 @@ function Money({ children }: { children: ReactNode }) {
 async function TowerTotalsStrip({
   totals,
   t,
+  finance,
 }: {
   totals: TowerTotals;
   t: Awaited<ReturnType<typeof getT>>;
+  /** Valores em dinheiro só para quem abre Financeiro (admin). */
+  finance: boolean;
 }) {
   const pipelineLabel: Record<TowerTotals["pipeline"][number]["key"], string> =
     {
@@ -80,68 +91,74 @@ async function TowerTotalsStrip({
     };
   return (
     <>
-      <section aria-label={t("ct.finance.title")} className="mb-4">
-        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            {t("ct.finance.title")}
-          </h2>
-          <p className="text-xs text-zinc-500">{t("ct.totals.hint")}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Stat
-            label={t("finance.sold")}
-            value={
-              <Money>{formatMoney(totals.sold, totals.sellCurrency, t)}</Money>
-            }
-            href="/app/finance"
-          />
-          <Stat
-            label={t("finance.received")}
-            value={
-              <Money>
-                {formatMoney(totals.received, totals.sellCurrency, t)}
-              </Money>
-            }
-            href="/app/finance"
-          />
-          <Stat
-            label={t("finance.receivable")}
-            value={
-              <Money>
-                {formatMoney(totals.receivable, totals.sellCurrency, t)}
-              </Money>
-            }
-            href="/app/finance"
-            tone={totals.receivable > 0 ? "warning" : undefined}
-          />
-          <Stat
-            label={t("ct.finance.purchased")}
-            value={
-              <Money>
-                {moneyByCurrency(totals.purchasedByCurrency, "USD", t)}
-              </Money>
-            }
-            href="/app/finance"
-          />
-          <Stat
-            label={t("ct.finance.paid")}
-            value={
-              <Money>{moneyByCurrency(totals.paidByCurrency, "USD", t)}</Money>
-            }
-            href="/app/finance"
-          />
-          <Stat
-            label={t("ct.finance.payable")}
-            value={
-              <Money>
-                {moneyByCurrency(totals.payableByCurrency, "USD", t)}
-              </Money>
-            }
-            href="/app/finance"
-            tone={hasValue(totals.payableByCurrency) ? "warning" : undefined}
-          />
-        </div>
-      </section>
+      {finance ? (
+        <section aria-label={t("ct.finance.title")} className="mb-4">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("ct.finance.title")}
+            </h2>
+            <p className="text-xs text-zinc-500">{t("ct.totals.hint")}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat
+              label={t("finance.sold")}
+              value={
+                <Money>
+                  {formatMoney(totals.sold, totals.sellCurrency, t)}
+                </Money>
+              }
+              href="/app/finance"
+            />
+            <Stat
+              label={t("finance.received")}
+              value={
+                <Money>
+                  {formatMoney(totals.received, totals.sellCurrency, t)}
+                </Money>
+              }
+              href="/app/finance"
+            />
+            <Stat
+              label={t("finance.receivable")}
+              value={
+                <Money>
+                  {formatMoney(totals.receivable, totals.sellCurrency, t)}
+                </Money>
+              }
+              href="/app/finance"
+              tone={totals.receivable > 0 ? "warning" : undefined}
+            />
+            <Stat
+              label={t("ct.finance.purchased")}
+              value={
+                <Money>
+                  {moneyByCurrency(totals.purchasedByCurrency, "USD", t)}
+                </Money>
+              }
+              href="/app/finance"
+            />
+            <Stat
+              label={t("ct.finance.paid")}
+              value={
+                <Money>
+                  {moneyByCurrency(totals.paidByCurrency, "USD", t)}
+                </Money>
+              }
+              href="/app/finance"
+            />
+            <Stat
+              label={t("ct.finance.payable")}
+              value={
+                <Money>
+                  {moneyByCurrency(totals.payableByCurrency, "USD", t)}
+                </Money>
+              }
+              href="/app/finance"
+              tone={hasValue(totals.payableByCurrency) ? "warning" : undefined}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <section aria-label={t("ct.operation.title")} className="mb-4">
         <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -155,9 +172,11 @@ async function TowerTotalsStrip({
               value={
                 <>
                   {t("ct.operation.orders", { count: p.count })}
-                  <span className="block text-xs font-medium text-zinc-500">
-                    {formatMoney(p.value, totals.sellCurrency, t)}
-                  </span>
+                  {finance ? (
+                    <span className="block text-xs font-medium text-zinc-500">
+                      {formatMoney(p.value, totals.sellCurrency, t)}
+                    </span>
+                  ) : null}
                 </>
               }
             />
@@ -255,12 +274,20 @@ function CommercialCard({
 export async function ControlTower({
   user,
   filter,
+  denied,
 }: {
   user: User;
   filter?: string;
+  /** Tela que o login tentou abrir sem acesso (?denied=…): aviso no início. */
+  denied?: string;
 }) {
   const t = await getT();
   const wellmix = isWellmix(user);
+  const finance = canOpen(user, "finance");
+  const operations = canOpen(user, "orders");
+  const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
+    ? (denied as Screen)
+    : null;
   const [data, totals] = await Promise.all([
     loadControlTower(),
     wellmix ? loadTowerTotals() : Promise.resolve(null),
@@ -297,107 +324,132 @@ export async function ControlTower({
         title={t("ct.title")}
         subtitle={t("home.welcome", { name: user.name })}
       />
-      {totals ? <TowerTotalsStrip totals={totals} t={t} /> : null}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {cards.map((c) => (
-          <Stat
-            key={c.key}
-            label={c.label}
-            value={data.buckets[c.key].length}
-            href={`/app?filter=${c.key}`}
-            tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
-            active={c.key === selected}
-          />
-        ))}
-      </div>
+      {deniedScreen ? (
+        <div className="mb-4">
+          <Alert tone="warning">
+            {t("access.denied", { screen: t(SCREEN_LABEL[deniedScreen]) })}
+          </Alert>
+        </div>
+      ) : null}
+      {hasNoFunction(user) ? (
+        <div className="mb-4" data-no-function>
+          <Alert tone="info">{t("access.noFunction")}</Alert>
+        </div>
+      ) : null}
+      {totals && operations ? (
+        <TowerTotalsStrip totals={totals} t={t} finance={finance} />
+      ) : null}
+      {operations ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {cards.map((c) => (
+              <Stat
+                key={c.key}
+                label={c.label}
+                value={data.buckets[c.key].length}
+                href={`/app?filter=${c.key}`}
+                tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
+                active={c.key === selected}
+              />
+            ))}
+          </div>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-        <Card
-          className="min-w-0 lg:col-span-2"
-          title={cards.find((c) => c.key === selected)?.label}
-        >
-          {rows.length === 0 ? (
-            <Empty>{t("common.none")}</Empty>
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>#</Th>
-                  <Th>{t("common.customer")}</Th>
-                  <Th>{t("common.product")}</Th>
-                  <Th>{t("orders.stage")}</Th>
-                  <Th>{t("common.responsible")}</Th>
-                  <Th>{t("common.due")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className={rowClass}>
-                    <Td>
-                      <TextLink href={row.link}>{row.number}</TextLink>
-                    </Td>
-                    <Td>{row.customer}</Td>
-                    <Td>{row.product}</Td>
-                    <Td className="whitespace-nowrap">
-                      <Badge
-                        tone={stageTone(
-                          row.stageKey === "CLOSED"
-                            ? "done"
-                            : row.blocked
-                              ? "blocked"
-                              : "active",
-                        )}
+          <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+            <Card
+              className="min-w-0 lg:col-span-2"
+              title={cards.find((c) => c.key === selected)?.label}
+            >
+              {rows.length === 0 ? (
+                <Empty>{t("common.none")}</Empty>
+              ) : (
+                <Table>
+                  <thead>
+                    <tr>
+                      <Th>#</Th>
+                      <Th>{t("common.customer")}</Th>
+                      <Th>{t("common.product")}</Th>
+                      <Th>{t("orders.stage")}</Th>
+                      <Th>{t("common.responsible")}</Th>
+                      <Th>{t("common.due")}</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.id} className={rowClass}>
+                        <Td>
+                          <TextLink href={row.link}>{row.number}</TextLink>
+                        </Td>
+                        <Td>{row.customer}</Td>
+                        <Td>{row.product}</Td>
+                        <Td className="whitespace-nowrap">
+                          <Badge
+                            tone={stageTone(
+                              row.stageKey === "CLOSED"
+                                ? "done"
+                                : row.blocked
+                                  ? "blocked"
+                                  : "active",
+                            )}
+                          >
+                            {row.stageKey
+                              ? t(`stage.${row.stageKey}`)
+                              : t(`reqStatusLabel.${row.requestStatus!}`)}
+                            {row.blocked
+                              ? ` · ${t("stageStatus.blocked")}`
+                              : ""}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          {row.responsible ? t(`role.${row.responsible}`) : "—"}
+                        </Td>
+                        <Td className="whitespace-nowrap">
+                          <span
+                            className={cx(
+                              row.overdue && "font-semibold text-red-700",
+                            )}
+                          >
+                            {formatDate(row.dueAt, t)}
+                          </span>
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Card>
+            <Card className="min-w-0" title={t("ct.exceptions")}>
+              {data.exceptions.length === 0 ? (
+                <Empty>{t("common.none")}</Empty>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {data.exceptions.map((e, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <Badge
+                          tone={e.severity === "high" ? "danger" : "warning"}
+                        >
+                          {t(`ct.exception.${e.kind}`)}
+                        </Badge>
+                        <p className="mt-1 text-zinc-700">{e.detail}</p>
+                      </div>
+                      <TextLink
+                        href={e.link}
+                        className="whitespace-nowrap text-xs"
                       >
-                        {row.stageKey
-                          ? t(`stage.${row.stageKey}`)
-                          : t(`reqStatusLabel.${row.requestStatus!}`)}
-                        {row.blocked ? ` · ${t("stageStatus.blocked")}` : ""}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      {row.responsible ? t(`role.${row.responsible}`) : "—"}
-                    </Td>
-                    <Td className="whitespace-nowrap">
-                      <span
-                        className={cx(
-                          row.overdue && "font-semibold text-red-700",
-                        )}
-                      >
-                        {formatDate(row.dueAt, t)}
-                      </span>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card>
-        <Card className="min-w-0" title={t("ct.exceptions")}>
-          {data.exceptions.length === 0 ? (
-            <Empty>{t("common.none")}</Empty>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {data.exceptions.map((e, i) => (
-                <li
-                  key={i}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <Badge tone={e.severity === "high" ? "danger" : "warning"}>
-                      {t(`ct.exception.${e.kind}`)}
-                    </Badge>
-                    <p className="mt-1 text-zinc-700">{e.detail}</p>
-                  </div>
-                  <TextLink href={e.link} className="whitespace-nowrap text-xs">
-                    {t("tasks.open")}
-                  </TextLink>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-      {totals ? <CommercialCard totals={totals} t={t} /> : null}
+                        {t("tasks.open")}
+                      </TextLink>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+        </>
+      ) : null}
+      {totals && finance ? <CommercialCard totals={totals} t={t} /> : null}
     </>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -26,6 +27,7 @@ export default async function ExplorePage({
 }: PageProps<"/app/explore">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/explore");
+  requireScreen(user, "explore");
   // Cliente sem empresa vai às solicitações (o início, /app, o mandaria de volta).
   if (!canExplore(user))
     redirect(user.role === "customer" ? "/app/requests" : "/app");

@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isAdmin, isWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
+import { isAdmin } from "@/lib/auth/permissions";
+import {
+  SCREEN_LABEL,
+  WELLMIX_BASE,
+  hasNoFunction,
+  screensFor,
+} from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { DIVISIONS, JOB_LEVELS, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 import { getT } from "@/i18n/server";
@@ -36,8 +43,7 @@ export default async function TeamPage({
 }: PageProps<"/app/team">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!isWellmix(user)) redirect("/app");
-  if (!isAdmin(user)) redirect("/app/sla");
+  requireScreen(user, "team");
   const t = await getT();
   const { saved, error, distributed } = await searchParams;
   const [team, lines] = await Promise.all([
@@ -101,8 +107,19 @@ export default async function TeamPage({
         </div>
       ) : null}
 
+      {team.filter(hasNoFunction).length > 0 ? (
+        <div className="mb-3" data-team-no-function>
+          <Alert tone="warning">
+            {t("team.noFunction.notice", {
+              n: String(team.filter(hasNoFunction).length),
+            })}
+          </Alert>
+        </div>
+      ) : null}
+
       <div className="grid items-start gap-4">
         <Card title={t("team.members")}>
+          <p className="mb-2 text-xs text-zinc-500">{t("team.screens.hint")}</p>
           <Table>
             <thead>
               <tr>
@@ -111,6 +128,7 @@ export default async function TeamPage({
                 <Th>{t("team.col.division")}</Th>
                 <Th>{t("team.col.manager")}</Th>
                 <Th>{t("team.col.functions")}</Th>
+                <Th>{t("team.col.screens")}</Th>
                 <Th />
               </tr>
             </thead>
@@ -208,6 +226,22 @@ export default async function TeamPage({
                           </label>
                         ))}
                       </div>
+                    </Td>
+                    <Td
+                      className="max-w-60 text-xs text-zinc-600"
+                      data-team-screens={member.id}
+                    >
+                      {/* Telas que o login abre, calculadas das funções (docs/ACCESS.md). */}
+                      {isAdmin(member)
+                        ? t("team.screens.all")
+                        : hasNoFunction(member)
+                          ? t("team.screens.base")
+                          : [...screensFor(member)]
+                              .filter(
+                                (screen) => !WELLMIX_BASE.includes(screen),
+                              )
+                              .map((screen) => t(SCREEN_LABEL[screen]))
+                              .join(", ")}
                     </Td>
                     <Td>
                       <form id={formId} action={saveTeamMemberAction}>

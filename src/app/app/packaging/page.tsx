@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { listPackagingBriefsFor } from "@/lib/services/packaging-brief";
 import { BRIEF_TONE } from "@/components/packaging-brief-card";
@@ -24,7 +25,7 @@ export default async function PackagingListPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const wellmix = isWellmix(user);
-  if (!wellmix && user.role !== "agency") redirect("/app");
+  requireScreen(user, "packaging");
   const t = await getT();
   const rows = await listPackagingBriefsFor(user);
 
@@ -87,12 +88,12 @@ export default async function PackagingListPage() {
                         ? // Depois do pedido, a arte segue pelo pedido (o briefing não a acompanha).
                           t("packBrief.status.transferred")
                         : missing.length
-                        ? `${t("packBrief.item.missing")}: ${missing
-                            .map((k) =>
-                              t(`packBrief.item.${k}` as DictionaryKey),
-                            )
-                            .join(", ")}`
-                        : t("packBrief.status.ready")}
+                          ? `${t("packBrief.item.missing")}: ${missing
+                              .map((k) =>
+                                t(`packBrief.item.${k}` as DictionaryKey),
+                              )
+                              .join(", ")}`
+                          : t("packBrief.status.ready")}
                   </Td>
                   <Td
                     className={

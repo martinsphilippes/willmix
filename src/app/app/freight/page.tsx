@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { listFreightFor } from "@/lib/services/freight";
@@ -27,7 +28,7 @@ export default async function FreightListPage({
   if (!user) redirect("/login");
   const { sent } = await searchParams;
   const wellmix = isWellmix(user);
-  if (!wellmix && user.role !== "shipping_line") redirect("/app");
+  requireScreen(user, "freight");
   const t = await getT();
   const rows = await listFreightFor(user);
   const store = getStore();

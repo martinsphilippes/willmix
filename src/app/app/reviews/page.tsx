@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore, REVIEW_STATUSES, type ReviewStatus } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
@@ -49,7 +49,7 @@ export default async function ReviewsPage({
 }: PageProps<"/app/reviews">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "reviews");
   const { status: statusParam, error } = await searchParams;
   const status: ReviewStatus =
     typeof statusParam === "string" &&

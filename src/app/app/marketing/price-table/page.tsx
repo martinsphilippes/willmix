@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import { priceTable } from "@/lib/services/price-table";
@@ -18,6 +19,7 @@ import {
 export default async function PriceTablePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "marketing");
   if (!isWellmix(user)) notFound();
   const t = await getT();
   const rows = await priceTable(user);

@@ -6,13 +6,22 @@ import {
   navFor,
   type NavLink,
 } from "@/lib/nav";
-import { ROLES } from "@/lib/db/schema";
+import { ROLES, WELLMIX_FUNCTIONS } from "@/lib/db/schema";
 
 /* Menu principal: todos os papéis veem grupos (sem links soltos); grupo com
-   uma tela só vira link. Nenhuma tela some nem se repete. */
+   uma tela só vira link; grupo vazio some. O menu segue as telas do login
+   (src/lib/auth/screens.ts): nenhuma tela some do admin nem se repete. */
+const ADMIN = { role: "admin" as const };
+const view = (user: Parameters<typeof navFor>[0]) =>
+  navFor(user).map((e) =>
+    isNavGroup(e)
+      ? { group: e.key, items: e.items.map((i) => i.href) }
+      : { link: e.href },
+  );
+
 describe("menu principal", () => {
-  it("Wellmix: tudo em quatro grupos, sem links soltos na barra", () => {
-    const entries = navFor("admin", true);
+  it("admin: tudo em quatro grupos, sem links soltos na barra", () => {
+    const entries = navFor(ADMIN);
     const direct = entries
       .filter((e): e is NavLink => !isNavGroup(e))
       .map((e) => e.href);
@@ -43,39 +52,88 @@ describe("menu principal", () => {
       "/app/reviews",
       "/app/sourcing",
       "/app/freight",
+      "/app/freight/tariff",
+      "/app/packaging",
       "/app/containers",
       "/app/parties",
       "/app/products",
       "/app/lines",
+      "/app/explore",
+      "/app/dashboards",
       "/app/finance",
       "/app/payables",
-      "/app/history",
+      "/app/penalties",
       "/app/after-sales",
       "/app/marketing",
-      "/app/penalties",
+      "/app/history",
       "/app/notifications",
       "/app/settings",
-      // Painel de SLA e, só para o admin, Equipe e carteira.
       "/app/sla",
       "/app/team",
-      // Vitrine como o cliente vê.
-      "/app/explore",
-      // Painéis por área e, só para o admin, a auditoria.
-      "/app/dashboards",
       "/app/audit",
     ])
       expect(hrefs).toContain(href);
-    // Operador: tudo igual, menos Configurações, Equipe e Auditoria.
-    const operator = flattenNav(navFor("operator", false)).map((l) => l.href);
-    expect(operator).toEqual(
-      hrefs.filter(
-        (h) => h !== "/app/settings" && h !== "/app/team" && h !== "/app/audit",
+  });
+
+  it("operador sem função: só o grupo Início; com todas as funções, tudo menos o que é só do admin", () => {
+    const none = navFor({ role: "operator", functions: null });
+    expect(none.map((e) => (isNavGroup(e) ? e.key : e.href))).toEqual([
+      "nav.group.home",
+    ]);
+    expect(flattenNav(none).map((l) => l.href)).toEqual([
+      "/app",
+      "/app/tasks",
+      "/app/sla",
+      "/app/notifications",
+      "/app/messages",
+    ]);
+    const all = flattenNav(
+      navFor({ role: "operator", functions: [...WELLMIX_FUNCTIONS] }),
+    ).map((l) => l.href);
+    const admin = flattenNav(navFor(ADMIN)).map((l) => l.href);
+    expect(all).toEqual(
+      admin.filter(
+        (h) =>
+          ![
+            "/app/finance",
+            "/app/payables",
+            "/app/settings",
+            "/app/team",
+          ].includes(h),
       ),
     );
   });
 
+  it("operador por função: comprador vê compras; financeiro não aparece para ninguém além do admin", () => {
+    const buyer = flattenNav(
+      navFor({ role: "operator", functions: ["buyer"] }),
+    ).map((l) => l.href);
+    expect(buyer).toContain("/app/requests");
+    expect(buyer).toContain("/app/orders");
+    expect(buyer).toContain("/app/products");
+    expect(buyer).not.toContain("/app/lines");
+    expect(buyer).not.toContain("/app/finance");
+    expect(buyer).not.toContain("/app/payables");
+    // Designer: um grupo de Pedidos com duas telas e Cadastros com Produtos e Vitrine.
+    expect(view({ role: "operator", functions: ["designer"] })).toEqual([
+      {
+        group: "nav.group.home",
+        items: [
+          "/app",
+          "/app/tasks",
+          "/app/sla",
+          "/app/notifications",
+          "/app/messages",
+        ],
+      },
+      { group: "nav.group.orders", items: ["/app/orders", "/app/packaging"] },
+      { group: "nav.group.registry", items: ["/app/products", "/app/explore"] },
+      { link: "/app/marketing" },
+    ]);
+  });
+
   it('cliente: Explorar (vitrine) no início e o resto em "Meus pedidos"; nenhuma tela some', () => {
-    const entries = navFor("customer", false);
+    const entries = navFor({ role: "customer" });
     expect(entries[0]).toEqual({ href: "/app/explore", key: "nav.explore" });
     expect(entries.filter(isNavGroup).map((g) => g.key)).toEqual([
       "nav.group.myOrders",
@@ -94,39 +152,39 @@ describe("menu principal", () => {
   });
 
   it("fornecedores e parceiros: Início (Pendências, Notificações) e Pedidos com a tela do papel", () => {
-    const view = (role: (typeof ROLES)[number]) =>
-      navFor(role, false).map((e) =>
-        isNavGroup(e)
-          ? { group: e.key, items: e.items.map((i) => i.href) }
-          : { link: e.href },
-      );
     const home = {
       group: "nav.group.home",
       items: ["/app", "/app/notifications", "/app/messages"],
     };
-    expect(view("supplier")).toEqual([
+    expect(view({ role: "supplier" })).toEqual([
       home,
       {
         group: "nav.group.orders",
         items: ["/app/quotes", "/app/orders", "/app/account"],
       },
     ]);
-    expect(view("shipping_line")).toEqual([
+    expect(view({ role: "shipping_line" })).toEqual([
       home,
       {
         group: "nav.group.orders",
         items: ["/app/freight", "/app/freight/tariff", "/app/orders"],
       },
     ]);
-    expect(view("legal")).toEqual([
+    expect(view({ role: "legal" })).toEqual([
       home,
       { group: "nav.group.orders", items: ["/app/orders", "/app/penalties"] },
     ]);
     // Grupo com uma tela só vira link direto (sem lista de um item).
-    for (const role of ["broker", "carrier"] as const)
-      expect(view(role)).toEqual([home, { link: "/app/orders" }]);
+    for (const role of [
+      "broker",
+      "carrier",
+      "comex",
+      "logistics",
+      "ocp",
+    ] as const)
+      expect(view({ role })).toEqual([home, { link: "/app/orders" }]);
     // A agência tem os briefings de embalagem (faca e arte na RFQ) e os pedidos.
-    expect(view("agency")).toEqual([
+    expect(view({ role: "agency" })).toEqual([
       home,
       {
         group: "nav.group.orders",
@@ -137,7 +195,7 @@ describe("menu principal", () => {
     for (const role of ROLES.filter(
       (r) => r !== "admin" && r !== "operator" && r !== "customer",
     )) {
-      const hrefs = flattenNav(navFor(role, false)).map((l) => l.href);
+      const hrefs = flattenNav(navFor({ role })).map((l) => l.href);
       expect(new Set(hrefs).size).toBe(hrefs.length);
       expect(hrefs[0]).toBe("/app");
       expect(hrefs).toContain("/app/orders");
@@ -147,7 +205,7 @@ describe("menu principal", () => {
 
   it("Mensagens no menu de todos os papéis, com o selo de não lidas", () => {
     for (const role of ROLES) {
-      const links = flattenNav(navFor(role, role === "admin"));
+      const links = flattenNav(navFor({ role, functions: null }));
       const messages = links.filter((l) => l.href === "/app/messages");
       expect(messages).toEqual([
         { href: "/app/messages", key: "nav.messages", badge: "messages" },
@@ -168,10 +226,16 @@ describe("menu principal", () => {
     );
   });
 
-  it("tarifário de frete no menu da Wellmix e da companhia marítima (a dela); dos outros parceiros, não", () => {
-    const wellmix = flattenNav(navFor("operator", false)).map((l) => l.href);
-    expect(wellmix).toContain("/app/freight/tariff");
-    const shipping = flattenNav(navFor("shipping_line", false));
+  it("tarifário de frete no menu do admin, do comprador e da companhia marítima (a dela); dos outros parceiros, não", () => {
+    expect(flattenNav(navFor(ADMIN)).map((l) => l.href)).toContain(
+      "/app/freight/tariff",
+    );
+    expect(
+      flattenNav(navFor({ role: "operator", functions: ["buyer"] })).map(
+        (l) => l.href,
+      ),
+    ).toContain("/app/freight/tariff");
+    const shipping = flattenNav(navFor({ role: "shipping_line" }));
     expect(shipping.map((l) => l.href)).toContain("/app/freight/tariff");
     expect(shipping.find((l) => l.href === "/app/freight/tariff")?.key).toBe(
       "nav.myFreightTariff",
@@ -183,7 +247,7 @@ describe("menu principal", () => {
       "carrier",
       "agency",
     ] as const)
-      expect(flattenNav(navFor(role, false)).map((l) => l.href)).not.toContain(
+      expect(flattenNav(navFor({ role })).map((l) => l.href)).not.toContain(
         "/app/freight/tariff",
       );
   });

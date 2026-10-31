@@ -1,7 +1,8 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -22,7 +23,7 @@ export default async function DashboardsPage({
 }: PageProps<"/app/dashboards">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!isWellmix(user)) notFound();
+  requireScreen(user, "dashboards");
   const t = await getT();
   const { area: raw } = await searchParams;
   const area: DashboardArea = (DASHBOARD_AREAS as readonly string[]).includes(
@@ -30,6 +31,11 @@ export default async function DashboardsPage({
   )
     ? (raw as DashboardArea)
     : "purchasing";
+  // Financeiro é só do administrador (docs/ACCESS.md).
+  const areas = DASHBOARD_AREAS.filter(
+    (a) => a !== "finance" || canOpen(user, "finance"),
+  );
+  if (!areas.includes(area)) redirect("/app?denied=finance");
   const panel = await areaPanel(user, area);
 
   return (
@@ -44,7 +50,7 @@ export default async function DashboardsPage({
         }
       />
       <nav className="flex flex-wrap gap-1.5" data-dash-tabs>
-        {DASHBOARD_AREAS.map((a) => (
+        {areas.map((a) => (
           <Link
             key={a}
             href={`/app/dashboards?area=${a}`}

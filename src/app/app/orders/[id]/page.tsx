@@ -11,6 +11,8 @@ import { Fragment, type ReactNode } from "react";
 import { fallbackError } from "@/i18n/error-text";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import {
   canSeeInternalCosts,
   canSeeSellPrice,
@@ -154,6 +156,7 @@ export default async function OrderPage({
 }: PageProps<"/app/orders/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "orders");
   const { id } = await params;
   const {
     error,
@@ -187,6 +190,8 @@ export default async function OrderPage({
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
+  // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
+  const financeAccess = canOpen(user, "finance");
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
   const remeasureMode = remeasure === "1";
   /* Ficha de compra (Preparação): quem vê ganha o atalho no item do checklist. */
@@ -400,7 +405,7 @@ export default async function OrderPage({
   const overdue = isOverdue(currentStage?.dueAt);
   const visiblePayments = payments.filter((p) =>
     wellmix
-      ? true
+      ? financeAccess
       : user.role === "customer"
         ? p.direction === "customer_in"
         : user.role === "supplier"
@@ -1030,12 +1035,12 @@ export default async function OrderPage({
 
           {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
               fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
-          {wellmix ||
+          {financeAccess ||
           (user.role === "supplier" && order.supplierId === user.partyId) ? (
             <SupplierPaymentCard
               order={order}
               t={t}
-              wellmix={wellmix}
+              wellmix={financeAccess}
               notice={
                 typeof paid === "string" &&
                 [
@@ -1218,7 +1223,7 @@ export default async function OrderPage({
             </Card>
           ) : null}
 
-          {finance ? (
+          {finance && financeAccess ? (
             <Card title={t("finance.title")}>
               <DescriptionList
                 items={[
@@ -1375,7 +1380,7 @@ export default async function OrderPage({
                     : []),
                 ]}
               />
-              {wellmix && finance.receivable > 0 ? (
+              {financeAccess && finance.receivable > 0 ? (
                 <form
                   action={registerCustomerPaymentAction}
                   className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5"
@@ -1422,7 +1427,7 @@ export default async function OrderPage({
           {visiblePayments.length > 0 ? (
             <Card title={t("orders.payments")}>
               <div id="payments" className="scroll-mt-24" />
-              {wellmix && fxSaved === "saved" ? (
+              {financeAccess && fxSaved === "saved" ? (
                 <p className="mb-2 text-xs font-medium text-emerald-700">
                   {t("finance.fx.savedNotice")}
                 </p>

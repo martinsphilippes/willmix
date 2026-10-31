@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { assertRole, isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { listTaxClassifications } from "@/lib/services/taxes";
@@ -28,6 +29,8 @@ export default async function ProductTaxPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   assertRole(user, ["admin", "operator", "broker"]);
+  // Wellmix: só quem abre Produtos; o despachante entra pelo pedido.
+  if (user.role !== "broker") requireScreen(user, "products");
   const { id } = await params;
   const { error } = await searchParams;
   const store = getStore();

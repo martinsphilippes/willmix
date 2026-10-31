@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { requirementLabel } from "@/i18n";
@@ -29,7 +29,7 @@ export default async function LinesPage({
 }: PageProps<"/app/lines">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "lines");
   const { error, edit, saved } = await searchParams;
   const t = await getT();
   const store = getStore();

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
@@ -50,6 +51,7 @@ export default async function PurchaseSheetPage({
 }: PageProps<"/app/orders/[id]/purchase-sheet">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "orders");
   const { id } = await params;
   const {
     saved,

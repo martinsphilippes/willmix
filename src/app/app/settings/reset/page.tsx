@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertRole } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -33,7 +33,7 @@ export default async function ResetPage({
 }: PageProps<"/app/settings/reset">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertRole(user, ["admin"]);
+  requireScreen(user, "settings");
   const { done, error } = await searchParams;
   const t = await getT();
   const plan = await planSalesReset(user);

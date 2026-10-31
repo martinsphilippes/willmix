@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { STOCK_OPTION, isStockCustomer } from "@/lib/services/purchase-flow";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -43,7 +44,7 @@ export default async function NewRequestPage({
 }: PageProps<"/app/requests/new">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWellmix(user) || user.role === "customer")) redirect("/app");
+  requireScreen(user, "requests");
   const {
     error,
     productId,

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
@@ -29,6 +30,7 @@ export default async function NewMarketingKitPage({
 }: PageProps<"/app/marketing/new">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "marketing");
   if (!isWellmix(user)) redirect("/app/marketing");
   const params = await searchParams;
   const presetProductId =

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type AiSuggestion, type Document } from "@/lib/db";
 import { loadKit } from "@/lib/services/marketing";
@@ -86,6 +87,7 @@ export default async function MarketingKitPage({
 }: PageProps<"/app/marketing/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "marketing");
   const { id } = await params;
   const sp = await searchParams;
   const view = await loadKit(user, id);

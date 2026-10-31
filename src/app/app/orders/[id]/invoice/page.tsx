@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
@@ -17,6 +18,7 @@ export default async function InvoicePage({
 }: PageProps<"/app/orders/[id]/invoice">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "orders");
   const { id } = await params;
   const store = getStore();
   const order = await store.get("orders", id);

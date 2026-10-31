@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import {
   getStore,
   MEASUREMENT_KINDS,
@@ -65,7 +65,7 @@ export default async function SourcingItemPage({
 }: PageProps<"/app/sourcing/items/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "sourcing");
   const { id } = await params;
   const { error, from: errorFrom, ai: aiNotice, saved } = await searchParams;
   const data = await loadSourcingItem(id);

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getStore, type User } from "@/lib/db";
-import { isAdmin } from "@/lib/auth/permissions";
 import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
 import { LOCALES, type Locale } from "@/lib/db/schema";
@@ -154,7 +153,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         }
       : {}),
   });
-  const nav = navFor(user.role, isAdmin(user));
+  const nav = navFor(user);
   const entries = nav.map((entry) =>
     isNavGroup(entry)
       ? { label: t(entry.key), items: entry.items.map(link) }

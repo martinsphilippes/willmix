@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { isWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
@@ -22,7 +22,7 @@ import { updatePenaltyStatusAction } from "../actions";
 export default async function PenaltiesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!(isWellmix(user) || user.role === "legal")) redirect("/app");
+  requireScreen(user, "penalties");
   const t = await getT();
   const store = getStore();
   const [penalties, orders, parties] = await Promise.all([

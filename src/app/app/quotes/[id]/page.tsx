@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
 import type { PurchaseSheet } from "@/lib/db";
@@ -65,6 +66,7 @@ export default async function QuotePage({
 }: PageProps<"/app/quotes/[id]">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  requireScreen(user, "quotes");
   const { id } = await params;
   const {
     error,

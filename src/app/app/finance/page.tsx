@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { requireScreen } from "@/lib/auth/guard";
 import { loadFinance } from "@/lib/services/finance";
 import {
   approx,
@@ -38,7 +38,7 @@ function Money({ children }: { children: ReactNode }) {
 export default async function FinancePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  assertWellmix(user);
+  requireScreen(user, "finance");
   const t = await getT();
   const { rows, summary } = await loadFinance();
   const fmtBy = (map: Record<string, number>) =>

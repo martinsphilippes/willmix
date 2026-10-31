@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type FreightTariff, type Party, type User } from "@/lib/db";
 import { getSettings, type Settings } from "@/lib/settings";
@@ -154,8 +155,8 @@ export default async function FreightTariffPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/app/freight/tariff");
   const wellmix = isWellmix(user);
-  if (!wellmix && !(user.role === "shipping_line" && user.partyId))
-    redirect("/app");
+  requireScreen(user, "freightTariff");
+  if (user.role === "shipping_line" && !user.partyId) redirect("/app");
   const sp = await searchParams;
   const t = await getT();
   const param = (k: string) => (typeof sp[k] === "string" ? sp[k] : null);
