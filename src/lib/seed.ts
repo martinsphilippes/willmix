@@ -334,7 +334,10 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       await createDemoParty(party);
       result.parties.push(party.id);
     } catch (error) {
-      result.failed.push({ email: party.email, reason: reasonOf(error) });
+      result.failed.push({
+        email: party.email,
+        reason: reasonOf(error, party.id),
+      });
     }
   }
   const haveUsers = new Set(
@@ -359,22 +362,43 @@ export async function ensureDemoAccounts(): Promise<DemoAccountsResult> {
       await createDemoUser(u);
       result.users.push(u.email);
     } catch (error) {
-      result.failed.push({ email: u.email, reason: reasonOf(error) });
+      result.failed.push({ email: u.email, reason: reasonOf(error, u.email) });
     }
   }
   return result;
 }
 
-/** Código curto do erro: esquema não publicado ou a mensagem do serviço. */
-function reasonOf(error: unknown): string {
+/**
+ * Código do motivo (a tela traduz; a mensagem inteira vai para o registro do
+ * servidor): esquema ainda não publicado (coluna, tabela ou valor novo de
+ * papel/tipo recusado pelo Appwrite) ou erro inesperado.
+ */
+export function demoFailureReason(
+  error: unknown,
+): "schema_outdated" | "unexpected" {
+  const type = String((error as { type?: unknown } | null)?.type ?? "");
   const message = error instanceof Error ? error.message : String(error);
   if (
-    /unknown attribute|invalid.*enum|not a valid enum|attribute not found/i.test(
+    [
+      "document_invalid_structure",
+      "attribute_not_found",
+      "table_not_found",
+      "collection_not_found",
+    ].includes(type) ||
+    /invalid document structure|invalid format|unknown attribute|attribute not found|not found in schema|invalid.*enum|not a valid enum/i.test(
+      message,
+    ) ||
+    /^(table|collection) with the requested id\b.*could not be found/i.test(
       message,
     )
   )
     return "schema_outdated";
-  return message.slice(0, 120) || "unexpected";
+  return "unexpected";
+}
+
+function reasonOf(error: unknown, who: string) {
+  console.error("[demo] conta de demonstração não criada", who, error);
+  return demoFailureReason(error);
 }
 
 /**

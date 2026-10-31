@@ -15,6 +15,30 @@ beforeAll(async () => {
   await seed.seedDemo();
 });
 
+describe("motivo da falha ao criar conta", () => {
+  it("valor de papel recusado pelo Appwrite é esquema desatualizado; o resto é inesperado", () => {
+    const appwriteEnum = Object.assign(
+      new Error(
+        'Invalid document structure: Attribute "type" has invalid format. Value must be one of (customer, supplier)',
+      ),
+      { type: "document_invalid_structure" },
+    );
+    expect(seed.demoFailureReason(appwriteEnum)).toBe("schema_outdated");
+    expect(
+      seed.demoFailureReason(new Error('Unknown attribute: "functions"')),
+    ).toBe("schema_outdated");
+    expect(
+      seed.demoFailureReason(
+        Object.assign(new Error("x"), { type: "table_not_found" }),
+      ),
+    ).toBe("schema_outdated");
+    // Sem vírgula nem dois-pontos: o código viaja na URL sem embaralhar a lista.
+    expect(seed.demoFailureReason(new Error("fetch failed: a, b"))).toBe(
+      "unexpected",
+    );
+  });
+});
+
 describe("contas de demonstração", () => {
   it("segunda carga não duplica nada e não cria conta nova", async () => {
     const before = (await getStore().list("users")).length;
