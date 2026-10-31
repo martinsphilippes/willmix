@@ -21,13 +21,21 @@ export default async function AppHome({ searchParams }: PageProps<"/app">) {
       />
     );
   }
+  // Tela negada (?denied=…): o aviso segue para o início de cada papel.
+  const deniedQs =
+    typeof denied === "string" && /^[a-zA-Z]{1,30}$/.test(denied)
+      ? `?denied=${denied}`
+      : "";
   // Cliente: a vitrine; sem empresa vinculada, a lista de solicitações.
   if (user.role === "customer")
-    redirect(user.partyId ? "/app/explore" : "/app/requests");
+    redirect(
+      user.partyId ? `/app/explore${deniedQs}` : `/app/requests${deniedQs}`,
+    );
   // Cotação recém-enviada pelo fornecedor: confirmação e próxima a responder.
   return (
     <TaskList
       user={user}
+      denied={typeof denied === "string" ? denied : null}
       sent={
         typeof sent === "string" &&
         /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/.test(sent)

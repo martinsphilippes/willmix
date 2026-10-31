@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { fallbackError } from "@/i18n/error-text";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { isWellmix } from "@/lib/auth/permissions";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
@@ -106,7 +107,7 @@ export default async function PurchaseSheetPage({
   )
     scheduleNcmSuggestion(request.id);
   const productLines =
-    view.saved && isWellmix(user) && !view.sheet.productId
+    view.saved && canOpen(user, "products") && !view.sheet.productId
       ? (await getStore().list("product_lines", { orderBy: "name" })).filter(
           (l) => l.active !== false,
         )
@@ -320,7 +321,7 @@ export default async function PurchaseSheetPage({
         />
 
         {/* Wellmix: a ficha deste pedido vira a ficha mestre do produto (cadastro). */}
-        {view.saved && isWellmix(user) && view.sheet.productId ? (
+        {view.saved && canOpen(user, "products") && view.sheet.productId ? (
           <form
             action={adoptSheetIntoProductAction}
             className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50/60 px-3 py-2 text-sm lg:order-7 lg:col-span-2"
@@ -343,7 +344,7 @@ export default async function PurchaseSheetPage({
 
         {/* Wellmix: produto digitado pelo nome (fora do catálogo) vira cadastro
             com esta ficha, para a próxima venda já vir preenchida. */}
-        {view.saved && isWellmix(user) && !view.sheet.productId ? (
+        {view.saved && canOpen(user, "products") && !view.sheet.productId ? (
           <form
             action={registerProductFromSheetAction}
             className="flex flex-wrap items-end gap-3 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 text-sm lg:order-7 lg:col-span-2"

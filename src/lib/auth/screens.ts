@@ -181,9 +181,10 @@ const DIRECTOR: readonly Screen[] = SCREENS.filter(
 );
 
 /**
- * Telas que cada função libera para o operador (além do básico). Financeiro
- * não entra em nenhuma: é só do administrador. A função "financeiro" continua
- * valendo dentro do pedido (validar e pagar o numerário, docs/IMPORT_FLOW.md).
+ * Telas que cada função libera para o operador (além do básico). As telas
+ * financeiras não entram em nenhuma: são só do administrador. A função
+ * "financeiro" abre só o pedido, para validar e pagar o numerário
+ * (docs/IMPORT_FLOW.md).
  */
 export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   buyer: [
@@ -235,7 +236,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "import",
     "explore",
   ],
-  finance: [],
+  // Só o pedido: validar e pagar o numerário (docs/IMPORT_FLOW.md); o resto do financeiro é do admin.
+  finance: ["orders"],
   purchasing_director: DIRECTOR,
   executive_director: DIRECTOR,
   designer: ["orders", "packaging", "products", "marketing", "explore"],

@@ -56,8 +56,8 @@ describe("telas por papel e por função", () => {
       expect(canOpen(everything, screen)).toBe(false);
       expect(canOpen({ role: "admin" }, screen)).toBe(true);
     }
-    // A função "financeiro" não libera tela alguma (vale dentro do pedido).
-    expect(FUNCTION_SCREENS.finance).toEqual([]);
+    // A função "financeiro" abre só o pedido (numerário), nunca o Financeiro.
+    expect(FUNCTION_SCREENS.finance).toEqual(["orders"]);
     expect(
       canOpen({ role: "operator", functions: ["finance"] }, "finance"),
     ).toBe(false);

@@ -15,7 +15,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 1. **Admin**: todas as telas (sem mudança).
 2. **Operador Wellmix**: telas básicas + a união das telas das suas funções. Sem função, vê só o básico e um aviso no início para pedir a função ao administrador.
    - Básico de todo login da Wellmix: Control Tower, Pendências, Painel de SLA, Notificações, Mensagens.
-3. **Financeiro é só do administrador**, seja qual for a função: Financeiro, Contas a pagar, conta corrente do fornecedor, a faixa "Financeiro" do Control Tower (vendido, recebido, a receber, comprado, pago, saldo), os valores em R$ dos cartões de Operação, o painel Financeiro em Painéis por área e, no pedido, o cartão financeiro (venda, custo, margem), os pagamentos do cliente e o pagamento ao fornecedor. O fornecedor continua vendo a previsão de pagamento dele; o cliente, os pagamentos dele. A função "financeiro" não libera tela: continua valendo só dentro do pedido (validar e pagar o numerário, docs/IMPORT_FLOW.md); sem ninguém com ela, o admin faz.
+3. **Financeiro é só do administrador**, seja qual for a função: Financeiro, Contas a pagar, conta corrente do fornecedor, a faixa "Financeiro" do Control Tower (vendido, recebido, a receber, comprado, pago, saldo), os valores em R$ dos cartões de Operação, o painel Financeiro em Painéis por área e, no pedido, o cartão financeiro (venda, custo, margem), os pagamentos do cliente e o pagamento ao fornecedor. O fornecedor continua vendo a previsão de pagamento dele; o cliente, os pagamentos dele. A função "financeiro" abre só a tela Pedidos, para validar e pagar o numerário dentro do pedido (docs/IMPORT_FLOW.md), sem ver pagamentos, valores nem margem; sem ninguém com ela, o admin faz.
 4. **Cliente, fornecedor e parceiros**: as mesmas telas de hoje, agora escritas na mesma tabela (nada foi removido).
 5. Página fora do permitido: volta ao início com o aviso "Você não tem acesso a X; peça ao administrador" (não é erro técnico). Server Action fora do permitido: recusada (`forbidden`), como já acontece com papéis.
 6. Dentro da tela, as regras existentes continuam valendo (quem aprova nível, quem valida numerário, quem é designer, isolamento por empresa e por login). Preços de compra (FOB), preço ao cliente e margem na **solicitação** continuam com quem abre Solicitações: é o trabalho de compra.
@@ -44,7 +44,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 | Auditoria | | | | | ✓ | ✓ | |
 | Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe | só admin | | | | | | |
 
-A função **financeiro** não aparece na tabela: não libera tela (regra 3).
+A função **financeiro** não aparece na tabela: abre só Pedidos (regra 3).
 
 Motivos (das especificações já escritas): comprador abre RFQ, escolhe fornecedor, valida ficha e imagens, acompanha produção e recebimento; gerente de produto libera dumping e cuida de produto, linha, vitrine, marketing e pós-venda; planner aprova o pré-custo, acompanha ETD e follow, containers e fretes; cadastro valida o cadastro do produto no pedido, importa fichas e planilhas; diretorias aprovam, acompanham painéis e auditoria; designer cuida de artes, embalagem, fotos e marketing.
 

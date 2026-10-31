@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { User } from "@/lib/db";
+import { SCREENS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import {
   TASK_DUE_FILTERS,
   filterTasks,
@@ -11,6 +12,7 @@ import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
+  Alert,
   Badge,
   Card,
   Empty,
@@ -32,8 +34,11 @@ export async function TaskList({
   due = null,
   group = null,
   sent = null,
+  denied = null,
 }: {
   user: User;
+  /** Tela que o login tentou abrir sem acesso (?denied=…): aviso no início. */
+  denied?: string | null;
   due?: string | null;
   group?: string | null;
   /** Cotação que o fornecedor acabou de enviar (confirmação no topo). */
@@ -41,6 +46,9 @@ export async function TaskList({
 }) {
   const t = await getT();
   const tasks = await pendingTasksFor(user);
+  const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
+    ? (denied as Screen)
+    : null;
   const shown = filterTasks(tasks, { due, group });
   const filtering = shown.length !== tasks.length || !!due || !!group;
   // Cliente tem poucas ações próprias: a ajuda fala só delas.
@@ -62,6 +70,11 @@ export async function TaskList({
         title={t("tasks.title")}
         subtitle={t("home.welcome", { name: user.name })}
       />
+      {deniedScreen ? (
+        <Alert tone="warning">
+          {t("access.denied", { screen: t(SCREEN_LABEL[deniedScreen]) })}
+        </Alert>
+      ) : null}
       {sent ? (
         <QuoteSentNotice user={user} quoteId={sent} tasks={tasks} t={t} />
       ) : null}

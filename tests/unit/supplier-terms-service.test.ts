@@ -224,8 +224,9 @@ describe("contas a pagar, pendências e aviso diário", () => {
 
     const sent = await terms.notifyPayablesDue();
     expect(sent).toBeGreaterThan(0);
+    // Financeiro é só do admin: o resumo vai a ele, não ao operador.
     const notes = await store.list("notifications", {
-      filter: { userId: operator.id },
+      filter: { userId: admin.id },
     });
     expect(
       notes.some(
@@ -234,6 +235,14 @@ describe("contas a pagar, pendências e aviso diário", () => {
           n.link?.startsWith("/app/payables"),
       ),
     ).toBe(true);
+    const operatorNotes = await store.list("notifications", {
+      filter: { userId: operator.id },
+    });
+    expect(
+      operatorNotes.some((n) =>
+        n.subject.startsWith("Pagamento a fornecedores"),
+      ),
+    ).toBe(false);
     // Fornecedor não recebe o resumo da Wellmix.
     const supplierNotes = await store.list("notifications", {
       filter: { userId: supplierA.id },

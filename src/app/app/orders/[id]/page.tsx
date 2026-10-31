@@ -814,7 +814,10 @@ export default async function OrderPage({
             </div>
           ) : null}
 
-          {customerSide && delivered && items[0] ? (
+          {customerSide &&
+          delivered &&
+          items[0] &&
+          (!wellmix || canOpen(user, "requests")) ? (
             <div id="followup" className="min-w-0 md:col-span-2">
               <FollowUpCard
                 t={t}
@@ -1223,7 +1226,7 @@ export default async function OrderPage({
             </Card>
           ) : null}
 
-          {finance && financeAccess ? (
+          {finance && (financeAccess || user.role === "customer") ? (
             <Card title={t("finance.title")}>
               <DescriptionList
                 items={[

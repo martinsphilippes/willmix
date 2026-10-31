@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { SCREENS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -32,6 +33,12 @@ export default async function ExplorePage({
   if (!canExplore(user))
     redirect(user.role === "customer" ? "/app/requests" : "/app");
   const params = await searchParams;
+  // Tela negada no caminho até aqui (?denied=…): aviso, só com chave conhecida.
+  const deniedScreen = (SCREENS as readonly string[]).includes(
+    String(params.denied ?? ""),
+  )
+    ? (params.denied as Screen)
+    : null;
   const q = typeof params.q === "string" ? params.q.slice(0, 120) : "";
   const lineId =
     typeof params.line === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(params.line)
@@ -119,6 +126,11 @@ export default async function ExplorePage({
         </div>
       ) : null}
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      {deniedScreen ? (
+        <Alert tone="warning">
+          {t("access.denied", { screen: t(SCREEN_LABEL[deniedScreen]) })}
+        </Alert>
+      ) : null}
       <TrustStrip t={t} slaDays={settings.quoteSlaBusinessDays} />
 
       {/* Categorias (linhas de produto), com a contagem da busca atual. */}

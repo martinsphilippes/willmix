@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore, type AiSuggestion, type Document } from "@/lib/db";
 import { loadKit } from "@/lib/services/marketing";
@@ -326,25 +327,30 @@ export default async function MarketingKitPage({
                         ],
                       ]}
                     />
-                    <p className="text-xs text-zinc-500">
-                      {t("marketing.payment.manual")}
-                    </p>
-                    <form
-                      action={confirmKitPaymentAction}
-                      className="space-y-3 border-t border-zinc-100 pt-3"
-                    >
-                      <input type="hidden" name="id" value={kit.id} />
-                      <Field label={t("marketing.payment.proof")}>
-                        <Input
-                          name="proof"
-                          type="file"
-                          accept="image/*,application/pdf"
-                        />
-                      </Field>
-                      <SubmitButton pendingText="..." className="w-full">
-                        {t("marketing.payment.confirm")}
-                      </SubmitButton>
-                    </form>
+                    {/* Confirmar o pagamento é do financeiro: só o admin. */}
+                    {canOpen(user, "finance") ? (
+                      <>
+                        <p className="text-xs text-zinc-500">
+                          {t("marketing.payment.manual")}
+                        </p>
+                        <form
+                          action={confirmKitPaymentAction}
+                          className="space-y-3 border-t border-zinc-100 pt-3"
+                        >
+                          <input type="hidden" name="id" value={kit.id} />
+                          <Field label={t("marketing.payment.proof")}>
+                            <Input
+                              name="proof"
+                              type="file"
+                              accept="image/*,application/pdf"
+                            />
+                          </Field>
+                          <SubmitButton pendingText="..." className="w-full">
+                            {t("marketing.payment.confirm")}
+                          </SubmitButton>
+                        </form>
+                      </>
+                    ) : null}
                   </>
                 ) : null}
 

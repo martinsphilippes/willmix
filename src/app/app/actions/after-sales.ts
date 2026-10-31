@@ -144,7 +144,8 @@ export async function createFollowUpRequestAction(form: FormData) {
   await run(back, async () => {
     if (!(isWellmix(user) || user.role === "customer"))
       throw new ForbiddenError();
-    assertScreen(user, "orders");
+    // Recompra abre uma solicitação: precisa da tela Solicitações (o cliente tem).
+    assertScreen(user, "requests");
     const parsed = followUpSchema.parse({
       orderId,
       quantity: num(form, "quantity"),
