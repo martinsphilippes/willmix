@@ -523,3 +523,10 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 ## Painel de SLA por operador
 
 - Especificação em `docs/SLA_PANEL.md`. Carteira de clientes (`parties.ownerUserId`), cargo e chefe (`users.jobLevel`, `users.managerUserId`), tela **Painel de SLA** (`/app/sla`, toda a Wellmix) e **Equipe e carteira** (`/app/team`, só admin). Pendências ganharam `customerId` (em memória) para cair no dono da carteira; atrasos de parceiros aparecem à parte para cobrança; % de etapas no prazo em 30 dias. Nenhuma tela ou regra antiga mudou: Pendências continua igual para todos.
+
+## Telas por papel e por função (limpeza de acesso)
+
+- Especificação em `docs/ACCESS.md`. Uma lista só de telas (`src/lib/auth/screens.ts`) e uma regra só (`screensFor`): admin vê tudo; operador vê o básico (Control Tower, Pendências, SLA, Notificações, Mensagens) mais as telas das funções marcadas em Equipe e divisões; cliente, fornecedor e parceiros têm a lista fixa do papel (as mesmas telas de antes). **Financeiro é só do administrador** (Financeiro, Contas a pagar, conta corrente, totais em dinheiro do Control Tower, painel Financeiro, pagamentos e margem no pedido, confirmação do sinal, condição de pagamento do fornecedor).
+- Menu (`navFor(user)`), guarda das páginas (`requireScreen`, volta ao início com aviso), Server Actions (`assertScreen`/`assertAnyScreen`; as de pagamento, `assertRole(["admin"])`), Control Tower (faixa Financeiro e valores só com a tela Financeiro; aviso de acesso negado e de login sem função) e Equipe e divisões (coluna "Telas" calculada, aviso de login sem função).
+- Nada removido: toda rota continua existindo; quem não a abre volta ao início com `?denied=tela`. Operadores já cadastrados veem só o básico até o admin marcar as funções.
+

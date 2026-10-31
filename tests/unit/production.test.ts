@@ -18,6 +18,8 @@ type User = import("@/lib/db").User;
 type Order = import("@/lib/db").Order;
 
 let admin: User;
+/** Operador de demonstração: comprador e planner (recebe os alertas de ETD). */
+let planner: User;
 let joao: User;
 let supplierA: User;
 let supplierB: User;
@@ -26,6 +28,7 @@ let order: Order;
 beforeAll(async () => {
   const { users } = await seedDemo();
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
+  planner = users.find((u) => u.email === "operador@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   supplierA = users.find((u) => u.email === "supplier.a@china.com")!;
   supplierB = users.find(
@@ -83,8 +86,10 @@ describe("produção do pedido", () => {
     await expect(
       pr.savePlan(supplierA, order.id, { etd: "2026-12-20T12:00:00.000Z" }),
     ).rejects.toThrow("etd_reason_required");
+    // O alerta de ETD vai a quem tem a função planner/comprador (o operador de
+    // demonstração), não mais aos admins por falta de alguém com a função.
     const before = await getStore().list("notifications", {
-      filter: { userId: admin.id },
+      filter: { userId: planner.id },
     });
     await pr.savePlan(supplierA, order.id, {
       etd: "2026-12-20T12:00:00.000Z",
@@ -95,7 +100,7 @@ describe("produção do pedido", () => {
     expect(track.etdOriginal?.slice(0, 10)).toBe("2026-12-01");
     expect(track.etdHistory).toHaveLength(2);
     const after = await getStore().list("notifications", {
-      filter: { userId: admin.id },
+      filter: { userId: planner.id },
     });
     expect(after.length).toBeGreaterThan(before.length);
   });

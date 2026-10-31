@@ -101,8 +101,11 @@ describe("dumping na ficha da cotação", () => {
     await expect(ap.submitForApproval(admin, quote.id, sell)).rejects.toThrow(
       "dumping_release_required",
     );
-    // Operador sem a função não libera; o gerente de produto libera.
-    await expect(pf.releaseDumping(operator, quote.id)).rejects.toThrow();
+    // Operador sem a função não libera (o de demonstração é comprador, e o
+    // comprador libera); o gerente de produto libera.
+    await expect(
+      pf.releaseDumping({ ...operator, functions: [] }, quote.id),
+    ).rejects.toThrow();
     await pf.releaseDumping(manager, quote.id);
     expect(await pf.dumpingHold(quote.id)).toBe(false);
 

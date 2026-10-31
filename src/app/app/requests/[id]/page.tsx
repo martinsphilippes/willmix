@@ -22,6 +22,7 @@ import { formatNcm } from "@/lib/fiscal";
 import { RequestNcmCard } from "@/components/request-ncm-card";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import {
   canSeeSupplier,
   canViewOrder,
@@ -1303,7 +1304,8 @@ export default async function RequestDetailPage({
                       </SubmitButton>
                     </form>
                   ) : null}
-                  {wellmix ? (
+                  {/* Confirmar o sinal é do financeiro: só o administrador. */}
+                  {wellmix && canOpen(user, "finance") ? (
                     <form
                       action={confirmDownPaymentAction}
                       className="flex min-w-0 flex-wrap items-end gap-3 lg:col-start-1"

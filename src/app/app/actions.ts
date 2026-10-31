@@ -15,6 +15,7 @@ import {
   isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
@@ -114,6 +115,7 @@ export async function createRequestAction(form: FormData) {
   await run(
     addTo ? `/app/requests/new?addTo=${addTo}` : "/app/requests/new",
     async () => {
+      assertScreen(user, "requests");
       const store = getStore();
       const rows = parseRequestItems(form);
       if (!rows.length) throw new Error("no_products");
@@ -244,6 +246,7 @@ export async function setRequesterAction(form: FormData) {
   const requestId = str(form, "requestId");
   await run(`/app/requests/${requestId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "requests");
     const requesterId = z
       .string()
       .max(64)
@@ -258,6 +261,7 @@ export async function openRfqAction(form: FormData) {
   const user = await requireUser();
   const requestId = str(form, "requestId");
   await run(`/app/requests/${requestId}`, async () => {
+    assertScreen(user, "requests");
     const supplierIds = form.getAll("supplierIds").map(String).filter(Boolean);
     // Junto com a RFQ, a embalagem: quem faz a faca e a arte e as instruções.
     const { packagingOptionsFrom } = await import("./actions/helpers");
@@ -272,6 +276,7 @@ export async function answerQuoteAction(form: FormData) {
   const quoteId = str(form, "quoteId");
   const back = str(form, "back") || `/app/quotes/${quoteId}`;
   await run(back, async () => {
+    assertScreen(user, "quotes");
     const parsed = z
       .object({
         price: z.number().positive(),
@@ -294,6 +299,7 @@ export async function selectQuoteAction(form: FormData) {
   const user = await requireUser();
   const requestId = str(form, "requestId");
   await run(`/app/requests/${requestId}`, async () => {
+    assertScreen(user, "requests");
     const parsed = z
       .object({
         quoteId: z.string().min(1),
@@ -379,6 +385,7 @@ export async function refreshProposalAction(form: FormData) {
   const user = await requireUser();
   const requestId = str(form, "requestId");
   await run(`/app/requests/${requestId}`, async () => {
+    assertScreen(user, "requests");
     const { refreshProposal } = await import("@/lib/services/quote-pricing");
     await refreshProposal(user, requestId);
     return `/app/requests/${requestId}?refreshed=1#proposal`;
@@ -389,6 +396,7 @@ export async function confirmDownPaymentAction(form: FormData) {
   const user = await requireUser();
   const requestId = str(form, "requestId");
   await run(`/app/requests/${requestId}`, async () => {
+    assertRole(user, ["admin"]);
     const proof = form.get("proof");
     let proofId: string | null = null;
     if (proof instanceof File && proof.size > 0) {
@@ -413,6 +421,7 @@ export async function submitRequirementAction(form: FormData) {
   const orderId = str(form, "orderId");
   const requirementId = str(form, "requirementId");
   await run(`/app/orders/${orderId}`, async () => {
+    assertScreen(user, "orders");
     const store = getStore();
     const requirement = await store.get("requirements", requirementId);
     if (!requirement || requirement.orderId !== orderId)
@@ -482,6 +491,7 @@ export async function clearRequirementDocumentAction(form: FormData) {
   const orderId = str(form, "orderId");
   const requirementId = str(form, "requirementId");
   await run(`/app/orders/${orderId}`, async () => {
+    assertScreen(user, "orders");
     const requirement = await getStore().get("requirements", requirementId);
     if (!requirement || requirement.orderId !== orderId)
       throw new Error("not_found");
@@ -507,6 +517,7 @@ export async function decideRequirementAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
+    assertScreen(user, "orders");
     const decision = str(form, "decision") === "approve" ? "approve" : "reject";
     await decideRequirement(
       user,
@@ -521,6 +532,7 @@ export async function unblockStageAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
+    assertScreen(user, "orders");
     await unblockStage(user, str(form, "stageId"));
   });
 }
@@ -530,6 +542,7 @@ export async function assignPartnerAction(form: FormData) {
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "orders");
     const field = str(form, "field");
     const allowed = [
       "agencyId",
@@ -611,7 +624,7 @@ export async function registerCustomerPaymentAction(form: FormData) {
   const orderId = str(form, "orderId");
   const back = str(form, "back") || `/app/orders/${orderId}`;
   await run(back, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     const store = getStore();
     const order = await store.get("orders", orderId);
     if (!order) throw new Error("not_found");
@@ -683,7 +696,7 @@ export async function registerSupplierPaymentAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     const store = getStore();
     const order = await store.get("orders", orderId);
     if (!order) throw new Error("not_found");
@@ -735,7 +748,7 @@ export async function quickSupplierPaymentAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
-    assertWellmix(user);
+    assertRole(user, ["admin"]);
     const method = z
       .enum(["transfer_copied", "finance_email", "finance_whatsapp"])
       .parse(str(form, "method"));
@@ -769,6 +782,7 @@ export async function createPenaltyAction(form: FormData) {
   const orderId = str(form, "orderId");
   await run(`/app/orders/${orderId}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "penalties");
     const parsed = z
       .object({
         reason: z.string().min(2),
@@ -816,6 +830,7 @@ export async function updatePenaltyStatusAction(form: FormData) {
   const user = await requireUser();
   await run("/app/penalties", async () => {
     assertRole(user, ["admin", "operator", "legal"]);
+    assertScreen(user, "penalties");
     const status = str(form, "status");
     if (!["open", "disputed", "paid", "cancelled"].includes(status))
       throw new Error("invalid");
@@ -853,6 +868,7 @@ export async function savePartyAction(form: FormData) {
   const id = str(form, "id");
   await run(id ? `/app/parties/${id}` : "/app/parties/new", async () => {
     assertWellmix(user);
+    assertScreen(user, "parties");
     const parsed = z
       .object({
         type: z.enum(PARTY_TYPES),
@@ -896,6 +912,7 @@ export async function createUserAction(form: FormData) {
   const back = partyId ? `/app/parties/${partyId}` : "/app/parties";
   await run(back, async () => {
     assertWellmix(user);
+    assertScreen(user, "parties");
     const parsed = z
       .object({
         email: z.string().email(),
@@ -953,6 +970,7 @@ export async function saveProductAction(form: FormData) {
   const user = await requireUser();
   await run("/app/products", async () => {
     assertWellmix(user);
+    assertScreen(user, "products");
     const parsed = z
       .object({
         lineId: z.string().min(1),
@@ -982,6 +1000,7 @@ export async function saveLineAction(form: FormData) {
   const user = await requireUser();
   await run("/app/lines", async () => {
     assertWellmix(user);
+    assertScreen(user, "lines");
     const name = str(form, "name");
     if (name.length < 2) throw new Error("invalid_name");
     const requirements = str(form, "requirements")
@@ -1047,6 +1066,7 @@ export async function importCsvAction(form: FormData) {
   const entity = str(form, "entity");
   await run(`/app/import?entity=${entity}`, async () => {
     assertWellmix(user);
+    assertScreen(user, "import");
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0)
       throw new Error("file_required");
