@@ -61,6 +61,7 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/packaging", "packaging"],
   ["/app/containers", "containers"],
   ["/app/parties", "parties"],
+  ["/app/customers", "parties"],
   ["/app/lines", "lines"],
   ["/app/explore", "explore"],
   ["/app/import", "import"],

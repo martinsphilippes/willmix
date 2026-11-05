@@ -4,6 +4,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import { Alert, Card, PageHeader } from "@/components/ui";
 import { PartyForm } from "@/components/party-form";
+import { PARTY_TYPES } from "@/lib/db/schema";
 
 export default async function NewPartyPage({
   searchParams,
@@ -11,7 +12,10 @@ export default async function NewPartyPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "parties");
-  const { error } = await searchParams;
+  const { error, type } = await searchParams;
+  const defaultType = (PARTY_TYPES as readonly string[]).includes(String(type))
+    ? (type as (typeof PARTY_TYPES)[number])
+    : undefined;
   const t = await getT();
   return (
     <>
@@ -22,7 +26,7 @@ export default async function NewPartyPage({
       />
       {error ? <Alert tone="danger">{t("common.error")}</Alert> : null}
       <Card className="mt-3 max-w-2xl">
-        <PartyForm t={t} />
+        <PartyForm t={t} defaultType={defaultType} />
       </Card>
     </>
   );

@@ -93,6 +93,8 @@ export function navFor(
       ...group(
         "nav.group.registry",
         pick(has, [
+          // Clientes com a conta de cada um (contratado, entregue, a receber).
+          ["parties", { href: "/app/customers", key: "nav.customers" }],
           ["parties", { href: "/app/parties", key: "nav.parties" }],
           ["products", { href: "/app/products", key: "nav.products" }],
           ["lines", { href: "/app/lines", key: "nav.lines" }],
