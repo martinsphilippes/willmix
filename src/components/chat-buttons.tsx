@@ -50,7 +50,7 @@ export function ChatButtons({
 }) {
   if (!targets.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5" data-chat-buttons>
+    <div className="flex flex-wrap items-center gap-2" data-chat-buttons>
       {prefix ? (
         <span className="text-xs font-medium text-zinc-500">{prefix}</span>
       ) : null}
@@ -66,9 +66,9 @@ export function ChatButtons({
           {target.partyId ? (
             <input type="hidden" name="partyId" value={target.partyId} />
           ) : null}
+          {/* Mesmo tamanho dos outros botões do topo da página. */}
           <SubmitButton
             variant="secondary"
-            className="px-2.5 py-1 text-xs"
             title={target.title}
             data-chat-target={target.partyId ?? "own"}
           >
