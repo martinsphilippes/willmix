@@ -12,6 +12,7 @@ import * as suppliers from "./suppliers";
 import * as requestsList from "./requests-list";
 import * as productsList from "./products-list";
 import * as inventory from "./inventory";
+import * as saleSheet from "./sale-sheet";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
@@ -165,6 +166,7 @@ export const modulesPt = {
   ...requestsList.pt,
   ...productsList.pt,
   ...inventory.pt,
+  ...saleSheet.pt,
   ...productPhotos.pt,
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
@@ -250,6 +252,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...requestsList.en,
   ...productsList.en,
   ...inventory.en,
+  ...saleSheet.en,
   ...productPhotos.en,
   ...sheetGenerate.en,
   ...notificationsDelete.en,
@@ -335,6 +338,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...requestsList.zh,
   ...productsList.zh,
   ...inventory.zh,
+  ...saleSheet.zh,
   ...productPhotos.zh,
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,

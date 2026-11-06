@@ -28,7 +28,7 @@ import {
   linkClass,
   rowClass,
 } from "@/components/ui";
-import { AccountBar, TabLink } from "@/components/customer-account";
+import { AccountBar, IconLink, TabLink } from "@/components/customer-account";
 import { describeTerms } from "@/components/supplier-terms-text";
 import { parseTerms } from "@/lib/supplier-terms";
 import { accountBase, accountLabels } from "./labels";
@@ -236,7 +236,15 @@ export async function PartyAccountDetail({
                     data-customer-order={r.number}
                   >
                     <Td className="whitespace-nowrap">
-                      <TextLink href={`/app/orders/${r.orderId}`}>
+                      {/* Cliente: abre o pedido de venda em lista; fornecedor, o pedido. */}
+                      <TextLink
+                        href={
+                          supplier
+                            ? `/app/orders/${r.orderId}`
+                            : `/app/customers/${party.id}/orders/${r.orderId}`
+                        }
+                        data-customer-order-link
+                      >
                         #{r.number}
                       </TextLink>
                     </Td>
@@ -281,6 +289,12 @@ export async function PartyAccountDetail({
                       ) : null}
                     </Td>
                     <Td className="whitespace-nowrap text-right">
+                      {/* Pedido completo (etapas, aprovações, registros). */}
+                      <IconLink
+                        href={`/app/orders/${r.orderId}`}
+                        icon="eye"
+                        label={t("sale.openFull")}
+                      />
                       <ChatOpenButton
                         target={{ orderId: r.orderId }}
                         label={t("chat.open")}
