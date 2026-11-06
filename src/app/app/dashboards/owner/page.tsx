@@ -116,7 +116,12 @@ export default async function OwnerPanelPage() {
           </>
         }
         actions={
-          <LinkButton href="/app/dashboards">{t("dash.title")}</LinkButton>
+          <span className="flex flex-wrap gap-2">
+            <LinkButton href="/app/dashboards/cashflow">
+              {t("cash.link")}
+            </LinkButton>
+            <LinkButton href="/app/dashboards">{t("dash.title")}</LinkButton>
+          </span>
         }
       />
 
