@@ -35,6 +35,29 @@ export const pt = {
   "owner.top.orders": "{n} pedido(s)",
   "owner.top.empty": "Sem pedidos nos últimos 12 meses.",
   "owner.none": "—",
+  "nav.cashflow": "Fluxo de caixa",
+  "cash.title": "Fluxo de caixa previsto",
+  "cash.subtitle":
+    "Semana a semana: o que deve entrar dos clientes e sair para os fornecedores. Entradas: sinal das solicitações aguardando pagamento (agora) e saldo dos pedidos na entrega ao cliente. Saídas: parcelas ao fornecedor pela condição de pagamento.",
+  "cash.link": "Fluxo de caixa",
+  "cash.col.week": "Semana",
+  "cash.col.in": "Entradas",
+  "cash.col.out": "Saídas",
+  "cash.col.net": "Saldo da semana (R$)",
+  "cash.col.cum": "Saldo acumulado (R$)",
+  "cash.bucket.overdue": "Atrasado",
+  "cash.bucket.later": "Depois de {date}",
+  "cash.bucket.nodate": "Sem data (aguarda embarque ou entrega)",
+  "cash.week": "{from} a {to}",
+  "cash.thisWeek": "esta semana",
+  "cash.type.down": "Sinal",
+  "cash.type.balance": "Saldo do pedido",
+  "cash.type.installment": "Parcela ao fornecedor",
+  "cash.details": "Ver {n} lançamento(s)",
+  "cash.missingRate":
+    "Sem câmbio do dia para {list}: essas saídas aparecem na moeda delas, mas ficam fora do saldo em reais.",
+  "cash.firstNegative": "Atenção: o saldo acumulado fica negativo em {when}.",
+  "cash.empty": "Nada a receber nem a pagar por enquanto.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -70,6 +93,30 @@ export const en: Record<keyof typeof pt, string> = {
   "owner.top.orders": "{n} order(s)",
   "owner.top.empty": "No orders in the last 12 months.",
   "owner.none": "—",
+  "nav.cashflow": "Cash flow",
+  "cash.title": "Projected cash flow",
+  "cash.subtitle":
+    "Week by week: what should come in from customers and go out to suppliers. Inflows: down payment of requests waiting for payment (now) and order balance on delivery to the customer. Outflows: supplier installments by the payment terms.",
+  "cash.link": "Cash flow",
+  "cash.col.week": "Week",
+  "cash.col.in": "Inflows",
+  "cash.col.out": "Outflows",
+  "cash.col.net": "Week balance (BRL)",
+  "cash.col.cum": "Cumulative balance (BRL)",
+  "cash.bucket.overdue": "Overdue",
+  "cash.bucket.later": "After {date}",
+  "cash.bucket.nodate": "No date (waiting for shipping or delivery)",
+  "cash.week": "{from} to {to}",
+  "cash.thisWeek": "this week",
+  "cash.type.down": "Down payment",
+  "cash.type.balance": "Order balance",
+  "cash.type.installment": "Supplier installment",
+  "cash.details": "See {n} entry(ies)",
+  "cash.missingRate":
+    "No exchange rate today for {list}: those outflows show in their currency but stay out of the BRL balance.",
+  "cash.firstNegative":
+    "Warning: the cumulative balance turns negative in {when}.",
+  "cash.empty": "Nothing to receive or pay for now.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -105,4 +152,27 @@ export const zh: Record<keyof typeof pt, string> = {
   "owner.top.orders": "{n} 个订单",
   "owner.top.empty": "近 12 个月无订单。",
   "owner.none": "—",
+  "nav.cashflow": "现金流",
+  "cash.title": "现金流预测",
+  "cash.subtitle":
+    "按周显示：客户应收入账与供应商应付支出。收入：待付定金的询价（立即）和订单余款（交货时）。支出：按付款条件的供应商分期。",
+  "cash.link": "现金流",
+  "cash.col.week": "周",
+  "cash.col.in": "收入",
+  "cash.col.out": "支出",
+  "cash.col.net": "本周结余（BRL）",
+  "cash.col.cum": "累计结余（BRL）",
+  "cash.bucket.overdue": "已逾期",
+  "cash.bucket.later": "{date} 之后",
+  "cash.bucket.nodate": "无日期（等待装运或交货）",
+  "cash.week": "{from} 至 {to}",
+  "cash.thisWeek": "本周",
+  "cash.type.down": "定金",
+  "cash.type.balance": "订单余款",
+  "cash.type.installment": "供应商分期",
+  "cash.details": "查看 {n} 条",
+  "cash.missingRate":
+    "缺少 {list} 的当日汇率：这些支出按原币显示，不计入 BRL 结余。",
+  "cash.firstNegative": "注意：累计结余将在 {when} 变为负数。",
+  "cash.empty": "目前没有应收或应付。",
 };

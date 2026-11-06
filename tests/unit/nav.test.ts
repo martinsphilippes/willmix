@@ -101,6 +101,7 @@ describe("menu principal", () => {
             "/app/team",
             // Painel do dono: números de Finanças, só do admin.
             "/app/dashboards/owner",
+            "/app/dashboards/cashflow",
           ].includes(h),
       ),
     );

@@ -51,6 +51,11 @@ export default async function DashboardsPage({
                 {t("owner.title")}
               </TextLink>
             ) : null}
+            {canOpen(user, "finance") ? (
+              <TextLink href="/app/dashboards/cashflow" data-cashflow-link>
+                {t("cash.link")}
+              </TextLink>
+            ) : null}
             {canSeeAudit(user) ? (
               <TextLink href="/app/audit">{t("audit.title")}</TextLink>
             ) : null}

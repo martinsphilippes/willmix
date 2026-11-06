@@ -111,6 +111,11 @@ export function navFor(
           // Painéis por área (compras, produção, embarque, recebimento...).
           // Painel do dono: vendas, margem, a receber/pagar, estoque (só Finanças).
           ["finance", { href: "/app/dashboards/owner", key: "nav.owner" }],
+          // Fluxo de caixa previsto: entradas e saídas por semana (só Finanças).
+          [
+            "finance",
+            { href: "/app/dashboards/cashflow", key: "nav.cashflow" },
+          ],
           ["dashboards", { href: "/app/dashboards", key: "nav.dashboards" }],
           ["finance", { href: "/app/finance", key: "nav.finance" }],
           ["payables", { href: "/app/payables", key: "nav.payables" }],
