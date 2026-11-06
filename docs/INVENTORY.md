@@ -32,3 +32,7 @@ Tabelas novas: `stock_movements`, `stock_counts`, `stock_count_items` (publicar 
 Coluna "Limite" na tela Estoque: cada produto pode ter um estoque mínimo no Brasil (`products.minStock`, opcional; vazio tira o limite). Selo verde "Acima do limite", amarelo "Abaixo · a caminho" (o que está em trânsito e em produção cobre) ou vermelho "Repor". Cartão-filtro "Abaixo do limite". Produto com limite e sem estoque nenhum também aparece. Quando uma baixa por venda ou um ajuste de inventário faz o estoque no Brasil cruzar o limite para baixo, o admin recebe um aviso (uma vez por cruzamento). CSV com a coluna Limite.
 
 Sugestão de compra: no selo "Repor" aparece "Comprar N", que abre uma compra para estoque já com o produto e a quantidade (`reorderQuantity`): o que falta para o limite contando trânsito e produção, no mínimo o MOQ do produto e arredondado para caixas master inteiras.
+
+## Painel do dono (`/app/dashboards/owner`)
+
+Só quem abre Finanças (admin); menu Gestão → Painel do dono e link em Painéis por área. Mostra: vendas do mês (com o mês anterior), margem do mês, recebido no mês e a receber, pago a fornecedores no mês e a pagar, estoque (valor de custo e produtos abaixo do limite), perdas do último inventário fechado, solicitações em aberto, aguardando sinal, pedidos em andamento, vendas dos últimos 6 meses, pedidos por etapa e os maiores clientes e fornecedores em 12 meses. Compras para estoque não contam como venda. Cada número leva à tela onde se age. Serviço em `src/lib/services/owner-panel.ts` (funções puras testadas).
