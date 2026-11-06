@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getStore } from "@/lib/db";
+import { brazilDay } from "@/lib/supplier-terms";
 import type {
   Container,
   ContainerItem,
@@ -30,6 +31,7 @@ export const INVENTORY_SITUATIONS = [
   "transit",
   "production",
   "below",
+  "idle",
 ] as const;
 export type InventorySituation = (typeof INVENTORY_SITUATIONS)[number];
 
@@ -46,6 +48,34 @@ export interface InventoryRow {
   /** Containers e pedidos de estoque de onde vem a quantidade. */
   containerIds: string[];
   orderIds: string[];
+  /** Última chegada ao Brasil (container ou compra para estoque entregue). */
+  lastInAt?: string | null;
+  /** Última baixa por venda. */
+  lastSaleAt?: string | null;
+  /** Dias sem vender o que está no Brasil (nulo sem estoque no Brasil ou sem data). */
+  idleDays?: number | null;
+}
+
+/** Produto parado: estoque no Brasil sem venda há este número de dias ou mais. */
+export const IDLE_DAYS = 90;
+
+/** Dias entre a última venda (ou a chegada, se nunca vendeu) e hoje. */
+export function idleDaysFor(
+  r: Pick<InventoryRow, "brazil" | "lastInAt" | "lastSaleAt">,
+  today: string,
+): number | null {
+  if (!(r.brazil > 0)) return null;
+  const ref = [r.lastSaleAt, r.lastInAt]
+    .filter((d): d is string => !!d)
+    .sort()
+    .pop();
+  if (!ref) return null;
+  const days = Math.floor(
+    (Date.parse(`${today.slice(0, 10)}T12:00:00Z`) -
+      Date.parse(`${ref.slice(0, 10)}T12:00:00Z`)) /
+      86_400_000,
+  );
+  return Math.max(0, days);
 }
 
 const TRANSIT: readonly string[] = ["planning", "loading", "shipped"];
@@ -72,10 +102,12 @@ export function buildInventory(input: {
   >[];
   products: Pick<Product, "id" | "masterBoxQty">[];
   /** Baixas por venda e ajustes do inventário: mexem no que está no Brasil. */
-  movements?: Pick<
+  movements?: (Pick<
     StockMovement,
     "productId" | "quantity" | "unit" | "updatedAt"
-  >[];
+  > & { kind?: StockMovement["kind"] })[];
+  /** Hoje (AAAA-MM-DD) para calcular os dias parado; sem ele, não calcula. */
+  today?: string;
 }): InventoryRow[] {
   const status = new Map(input.containers.map((c) => [c.id, c.status]));
   const stockOrder = new Map(input.stockOrders.map((o) => [o.id, o]));
@@ -95,6 +127,9 @@ export function buildInventory(input: {
         lastAt: null,
         containerIds: [],
         orderIds: [],
+        lastInAt: null,
+        lastSaleAt: null,
+        idleDays: null,
       };
       rows.set(productId, r);
     }
@@ -103,6 +138,8 @@ export function buildInventory(input: {
   const touch = (r: InventoryRow, at: string | null | undefined) => {
     if (at && (!r.lastAt || at > r.lastAt)) r.lastAt = at;
   };
+  const later = (a: string | null | undefined, b: string | null | undefined) =>
+    !b ? (a ?? null) : !a || b > a ? b : a;
   // Quanto de cada item de pedido de estoque já foi para um container.
   const containerized = new Map<string, number>();
   for (const it of input.containerItems) {
@@ -120,7 +157,10 @@ export function buildInventory(input: {
     if (st === "closed" && !fromStockOrder) continue;
     const r = row(it.productId, it.unit);
     if (TRANSIT.includes(st)) r.transit += it.quantity;
-    else r.brazil += it.quantity;
+    else {
+      r.brazil += it.quantity;
+      r.lastInAt = later(r.lastInAt, it.updatedAt);
+    }
     r.boxes += it.boxCount;
     touch(r, it.updatedAt);
     if (!r.containerIds.includes(it.containerId))
@@ -134,8 +174,10 @@ export function buildInventory(input: {
     const rest = oi.quantity - (containerized.get(oi.id) ?? 0);
     if (!(rest > 0)) continue;
     const r = row(oi.productId, oi.unit);
-    if (ORDER_IN_BRAZIL.includes(order.status)) r.brazil += rest;
-    else r.production += rest;
+    if (ORDER_IN_BRAZIL.includes(order.status)) {
+      r.brazil += rest;
+      r.lastInAt = later(r.lastInAt, order.updatedAt);
+    } else r.production += rest;
     r.boxes += boxesFor(rest, product.get(oi.productId)?.masterBoxQty ?? null);
     touch(r, order.updatedAt);
     if (!r.orderIds.includes(order.id)) r.orderIds.push(order.id);
@@ -145,8 +187,12 @@ export function buildInventory(input: {
     const r = row(m.productId, m.unit ?? "un");
     r.brazil = Math.max(0, r.brazil + m.quantity);
     touch(r, m.updatedAt);
+    if (m.kind === "sale_out") r.lastSaleAt = later(r.lastSaleAt, m.updatedAt);
   }
-  for (const r of rows.values()) r.total = r.brazil + r.transit + r.production;
+  for (const r of rows.values()) {
+    r.total = r.brazil + r.transit + r.production;
+    if (input.today) r.idleDays = idleDaysFor(r, input.today);
+  }
   return [...rows.values()].filter((r) => r.total > 0);
 }
 
@@ -166,13 +212,19 @@ export function limitStatus(
   return r.total >= minStock ? "incoming" : "reorder";
 }
 
-/** A linha está na situação do filtro? ("below": abaixo do limite no Brasil.) */
+/**
+ * A linha está na situação do filtro? ("below": abaixo do limite no Brasil;
+ * "idle": parado, sem venda há IDLE_DAYS dias ou mais.)
+ */
 export function inInventorySituation(
-  r: Pick<InventoryRow, "brazil" | "transit" | "production" | "total">,
+  r: Pick<InventoryRow, "brazil" | "transit" | "production" | "total"> & {
+    idleDays?: number | null;
+  },
   s: InventorySituation,
   minStock?: number | null,
 ): boolean {
   if (s === "all") return true;
+  if (s === "idle") return (r.idleDays ?? -1) >= IDLE_DAYS;
   if (s === "below") {
     const st = limitStatus(r, minStock);
     return st === "incoming" || st === "reorder";
@@ -181,7 +233,7 @@ export function inInventorySituation(
 }
 
 /** Carrega containers, itens e compras para estoque e monta as linhas. */
-export async function loadInventory(): Promise<InventoryRow[]> {
+export async function loadInventory(now = new Date()): Promise<InventoryRow[]> {
   const store = getStore();
   const [containers, orders, movements] = await Promise.all([
     store.list("containers"),
@@ -218,6 +270,7 @@ export async function loadInventory(): Promise<InventoryRow[]> {
     stockOrderItems,
     products,
     movements,
+    today: brazilDay(now.toISOString()) ?? undefined,
   });
 }
 

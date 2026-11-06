@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         money && value !== null ? value.toFixed(2) : "",
         p?.notes,
         l.lastAt?.slice(0, 10),
+        l.idleDays ?? "",
       ]
         .map(cell)
         .join(";"),

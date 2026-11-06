@@ -2,7 +2,12 @@ import "server-only";
 
 import { getStore, type Payment } from "@/lib/db";
 import { loadFinance, type OrderFinance } from "./finance";
-import { listStockMovements, loadInventory, limitStatus } from "./inventory";
+import {
+  IDLE_DAYS,
+  listStockMovements,
+  loadInventory,
+  limitStatus,
+} from "./inventory";
 import { safeList } from "./stock";
 import { STOCK_PARTY_ID } from "./purchase-flow";
 
@@ -120,7 +125,7 @@ export async function loadOwnerPanel(now = new Date()) {
       loadFinance(),
       store.list("payments"),
       store.list("requests"),
-      loadInventory(),
+      loadInventory(now),
       listStockMovements(),
       safeList("stock_counts"),
     ]);
@@ -143,12 +148,14 @@ export async function loadOwnerPanel(now = new Date()) {
   const product = (id: string) => products.find((p) => p.id === id) ?? null;
   const stockValue = new Map<string, number>();
   let below = 0;
+  let idle = 0;
   for (const r of inventory) {
     const p = product(r.productId);
     if (p?.price != null)
       add(stockValue, p.currency ?? "USD", p.price * r.total);
     const st = limitStatus(r, p?.minStock);
     if (st === "incoming" || st === "reorder") below += 1;
+    if ((r.idleDays ?? -1) >= IDLE_DAYS) idle += 1;
   }
   // Produtos com limite e sem estoque nenhum também estão abaixo.
   const withLimit = (await store.list("products", { filter: { active: true } }))
@@ -243,6 +250,7 @@ export async function loadOwnerPanel(now = new Date()) {
     stock: {
       value: stockValue,
       below,
+      idle,
       lastCount: lastCount ?? null,
       lossQty,
       lossValue,

@@ -56,6 +56,9 @@ export async function inventoryData(filter: {
       lastAt: null,
       containerIds: [],
       orderIds: [],
+      lastInAt: null,
+      lastSaleAt: null,
+      idleDays: null,
     })),
   ];
   const products = rows.length
@@ -105,7 +108,11 @@ export async function inventoryData(filter: {
 
 /** Quantidade da situação escolhida (em "todos", o total). */
 export function qtyFor(l: InventoryRow, s: InventorySituation): number {
-  return s === "all" ? l.total : s === "below" ? l.brazil : l[s];
+  return s === "all"
+    ? l.total
+    : s === "below" || s === "idle"
+      ? l.brazil
+      : l[s];
 }
 
 /** Custo da quantidade da situação (preço de compra × quantidade). */

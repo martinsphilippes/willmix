@@ -185,7 +185,11 @@ export default async function OwnerPanelPage() {
         <Kpi
           label={t("owner.stock")}
           value={multi(d.stock.value)}
-          sub={t("owner.stock.below", { n: d.stock.below })}
+          sub={
+            d.stock.idle > 0
+              ? `${t("owner.stock.below", { n: d.stock.below })} · ${t("owner.stock.idle", { n: d.stock.idle })}`
+              : t("owner.stock.below", { n: d.stock.below })
+          }
           tone={d.stock.below > 0 ? "bad" : "neutral"}
           href={
             d.stock.below > 0 ? "/app/inventory?situ=below" : "/app/inventory"

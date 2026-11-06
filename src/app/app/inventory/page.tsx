@@ -6,6 +6,7 @@ import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
+  IDLE_DAYS,
   INVENTORY_SITUATIONS,
   limitStatus,
   reorderQuantity,
@@ -200,7 +201,7 @@ export default async function InventoryPage({
         </details>
       ) : null}
       <div className="mb-3 space-y-2" data-inventory-filters>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {INVENTORY_SITUATIONS.map((k) => (
             <Stat
               key={k}
@@ -212,7 +213,9 @@ export default async function InventoryPage({
               tone={
                 k === "below" && counts.below > 0 && situation !== k
                   ? "danger"
-                  : "neutral"
+                  : k === "idle" && counts.idle > 0 && situation !== k
+                    ? "warning"
+                    : "neutral"
               }
             />
           ))}
@@ -336,6 +339,15 @@ export default async function InventoryPage({
                     <span className="block font-mono text-xs font-normal text-zinc-500">
                       {p?.sku ?? ""}
                     </span>
+                    {(l.idleDays ?? -1) >= IDLE_DAYS ? (
+                      <span
+                        className="mt-1 block w-fit rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                        title={t("inv.idle.hint")}
+                        data-inventory-idle
+                      >
+                        {t("inv.idle.badge", { n: l.idleDays ?? 0 })}
+                      </span>
+                    ) : null}
                   </Td>
                   <Td>
                     <span
@@ -445,6 +457,15 @@ export default async function InventoryPage({
                   </Td>
                   <Td className="whitespace-nowrap">
                     {l.lastAt ? formatDate(l.lastAt, t) : "—"}
+                    {l.brazil > 0 ? (
+                      <span className="block text-xs text-zinc-500">
+                        {l.lastSaleAt
+                          ? t("inv.idle.lastSale", {
+                              date: formatDate(l.lastSaleAt, t),
+                            })
+                          : t("inv.idle.never")}
+                      </span>
+                    ) : null}
                     <span className="block text-xs text-zinc-500">
                       {t("inv.where", {
                         c: l.containerIds.length,
