@@ -45,9 +45,16 @@ export default async function DashboardsPage({
         title={t("dash.title")}
         subtitle={t("dash.subtitle")}
         actions={
-          canSeeAudit(user) ? (
-            <TextLink href="/app/audit">{t("audit.title")}</TextLink>
-          ) : undefined
+          <span className="flex flex-wrap items-center gap-3">
+            {canOpen(user, "finance") ? (
+              <TextLink href="/app/dashboards/owner" data-owner-link>
+                {t("owner.title")}
+              </TextLink>
+            ) : null}
+            {canSeeAudit(user) ? (
+              <TextLink href="/app/audit">{t("audit.title")}</TextLink>
+            ) : null}
+          </span>
         }
       />
       <nav className="flex flex-wrap gap-1.5" data-dash-tabs>
