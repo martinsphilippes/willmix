@@ -14,6 +14,13 @@ import { audit } from "./audit";
 import { notify } from "./notifications";
 import { loadInventory } from "./inventory";
 import { isSchemaMissing } from "./packaging-brief";
+import { STOCK_PARTY_ID } from "./purchase-flow";
+import {
+  RESERVATION_MAX_DAYS,
+  freeStock,
+  isReservationLive,
+} from "./reservation-rules";
+import { addDays, brazilDay } from "@/lib/supplier-terms";
 
 /*
  * Estoque no Brasil: baixa por venda e inventário às cegas (docs/INVENTORY.md).
@@ -51,10 +58,14 @@ function assertAdmin(user: User) {
   if (!isAdmin(user)) throw new ForbiddenError();
 }
 
-/** Quanto do produto está no Brasil agora (o que pode sair). */
+/** Quanto do produto está no Brasil agora e quanto disso está reservado. */
 export async function stockInBrazil(productId: string) {
   const row = (await loadInventory()).find((r) => r.productId === productId);
-  return { quantity: row?.brazil ?? 0, unit: row?.unit ?? "un" };
+  return {
+    quantity: row?.brazil ?? 0,
+    reserved: row?.reserved ?? 0,
+    unit: row?.unit ?? "un",
+  };
 }
 
 /** Baixa por venda: tira do estoque no Brasil, nunca mais do que há. */
@@ -77,9 +88,16 @@ export async function recordSaleOut(
     if (!order || order.status === "CANCELLED")
       throw new StockError("order_not_found");
   }
-  const { quantity: available, unit } = await stockInBrazil(product.id);
+  const {
+    quantity: available,
+    reserved,
+    unit,
+  } = await stockInBrazil(product.id);
   if (input.quantity > available + 1e-6)
     throw new StockError("stock_insufficient");
+  // O reservado para clientes só sai pela reserva ("Usar" na tela Reservas).
+  if (input.quantity > freeStock(available, reserved) + 1e-6)
+    throw new StockError("stock_reserved");
   await warnIfBelowLimit(product, available, available - input.quantity);
   const movement = await store.create("stock_movements", {
     productId: product.id,
@@ -355,4 +373,141 @@ export async function setMinStock(
     productId,
     `Limite de estoque de ${product.name}: ${minStock ?? "sem limite"}`,
   );
+}
+
+/* ------------------------------------------------------------------------ */
+/* Reserva de estoque para cliente                                            */
+/* ------------------------------------------------------------------------ */
+
+const todayBr = () => brazilDay(new Date().toISOString()) as string;
+
+/**
+ * Reserva parte do estoque livre no Brasil para um cliente, por `days` dias.
+ * A quantidade some do livre (vitrine e baixa para outros) até ser usada,
+ * cancelada ou vencer.
+ */
+export async function createReservation(
+  user: User,
+  input: {
+    productId: string;
+    customerId: string;
+    quantity: number;
+    days: number;
+    note: string | null;
+  },
+) {
+  assertStockUser(user);
+  if (!(input.quantity > 0)) throw new StockError("quantity_required");
+  if (!(input.days >= 1 && input.days <= RESERVATION_MAX_DAYS))
+    throw new StockError("reservation_days");
+  const store = getStore();
+  const product = await store.get("products", input.productId);
+  if (!product) throw new StockError("product_not_found");
+  const customer = await store.get("parties", input.customerId);
+  if (
+    !customer ||
+    customer.type !== "customer" ||
+    customer.id === STOCK_PARTY_ID
+  )
+    throw new StockError("customer_not_found");
+  const { quantity, reserved, unit } = await stockInBrazil(product.id);
+  if (input.quantity > freeStock(quantity, reserved) + 1e-6)
+    throw new StockError("stock_insufficient");
+  const expires = addDays(todayBr(), input.days);
+  const reservation = await store.create("stock_reservations", {
+    productId: product.id,
+    customerId: customer.id,
+    quantity: input.quantity,
+    unit,
+    status: "active",
+    // Meio-dia no Brasil: o dia (AAAA-MM-DD) é o mesmo em UTC; vale até o fim dele.
+    expiresAt: `${expires}T15:00:00.000Z`,
+    note: input.note,
+    createdByUserId: user.id,
+    movementId: null,
+    closedByUserId: null,
+    closedAt: null,
+  });
+  await audit(
+    user,
+    "stock.reserve",
+    "product",
+    product.id,
+    `Reserva: ${input.quantity} ${unit} de ${product.name} para ${customer.name} até ${expires}`,
+  );
+  return reservation;
+}
+
+async function liveReservation(user: User, id: string) {
+  assertStockUser(user);
+  const r = await getStore().get("stock_reservations", id);
+  if (!r) throw new StockError("reservation_not_found");
+  if (!isReservationLive(r, todayBr()))
+    throw new StockError("reservation_closed");
+  return r;
+}
+
+/** Cancela a reserva: a quantidade volta a ficar livre. */
+export async function cancelReservation(user: User, id: string) {
+  const r = await liveReservation(user, id);
+  const store = getStore();
+  await store.update("stock_reservations", r.id, {
+    status: "cancelled",
+    closedByUserId: user.id,
+    closedAt: new Date().toISOString(),
+  });
+  const product = await store.get("products", r.productId);
+  await audit(
+    user,
+    "stock.reserve_cancel",
+    "product",
+    r.productId,
+    `Reserva cancelada: ${r.quantity} ${r.unit ?? ""} de ${product?.name ?? ""}`,
+  );
+}
+
+/** Usa a reserva: vira baixa por venda da quantidade reservada. */
+export async function consumeReservation(
+  user: User,
+  id: string,
+  orderId: string | null,
+) {
+  const r = await liveReservation(user, id);
+  const store = getStore();
+  const product = await store.get("products", r.productId);
+  if (!product) throw new StockError("product_not_found");
+  if (orderId) {
+    const order = await store.get("orders", orderId);
+    if (!order || order.status === "CANCELLED")
+      throw new StockError("order_not_found");
+  }
+  const { quantity: available, unit } = await stockInBrazil(product.id);
+  if (r.quantity > available + 1e-6) throw new StockError("stock_insufficient");
+  await warnIfBelowLimit(product, available, available - r.quantity);
+  const customer = await store.get("parties", r.customerId);
+  const movement = await store.create("stock_movements", {
+    productId: product.id,
+    kind: "sale_out",
+    quantity: -r.quantity,
+    unit: r.unit ?? unit,
+    orderId,
+    countId: null,
+    countItemId: null,
+    note: [customer?.name, r.note].filter(Boolean).join(" · ") || null,
+    createdByUserId: user.id,
+  });
+  await store.update("stock_reservations", r.id, {
+    status: "used",
+    movementId: movement.id,
+    closedByUserId: user.id,
+    closedAt: new Date().toISOString(),
+  });
+  await audit(
+    user,
+    "stock.reserve_use",
+    "product",
+    product.id,
+    `Reserva usada (baixa por venda): ${r.quantity} ${r.unit ?? unit} de ${product.name} para ${customer?.name ?? ""}`,
+  );
+  return movement;
 }

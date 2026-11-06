@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
         p?.notes,
         l.lastAt?.slice(0, 10),
         l.idleDays ?? "",
+        l.reserved ?? 0,
       ]
         .map(cell)
         .join(";"),

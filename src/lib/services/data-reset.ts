@@ -68,6 +68,7 @@ const SALES_TABLES = [
   "stock_movements",
   "stock_count_items",
   "stock_counts",
+  "stock_reservations",
 ] as const satisfies readonly TableName[];
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
@@ -84,6 +85,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "stock_movements",
   "stock_count_items",
   "stock_counts",
+  "stock_reservations",
 ]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */

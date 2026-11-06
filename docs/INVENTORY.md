@@ -33,6 +33,10 @@ Coluna "Limite" na tela Estoque: cada produto pode ter um estoque mínimo no Bra
 
 Sugestão de compra: no selo "Repor" aparece "Comprar N", que abre uma compra para estoque já com o produto e a quantidade (`reorderQuantity`): o que falta para o limite contando trânsito e produção, no mínimo o MOQ do produto e arredondado para caixas master inteiras.
 
+## Reserva para cliente (`/app/inventory/reservations`)
+
+Quem trabalha com Estoque (Wellmix com a tela Produtos) separa parte do estoque livre no Brasil para um cliente, com validade em dias (padrão 15, até 120). O reservado continua no físico (o inventário conta normalmente), mas sai do livre: a vitrine não oferece e a baixa por venda comum não deixa passar do livre (erro `stock_reserved`). "Usar" transforma a reserva em baixa por venda (com pedido opcional, ligada à reserva); "Cancelar" devolve ao livre; vencida (passou o dia da validade) deixa de segurar sozinha, sem gravar nada. Abas Ativas, Vencidas, Usadas, Canceladas; na tela Estoque, coluna "Reservado" com o livre embaixo, e a planilha ganha "Reservado". Tudo vai para a auditoria. Tabela nova `stock_reservations` (publicar o esquema; sem ela, nada fica reservado e a tela fica vazia). Regras puras em `src/lib/services/reservation-rules.ts`.
+
 ## Produto parado
 
 Produto com estoque no Brasil e sem baixa por venda há 90 dias ou mais (se nunca vendeu, conta desde a última chegada ao Brasil: container chegado ou compra para estoque entregue). Ajustes de inventário não contam como venda. Na tela Estoque: cartão-filtro "Parados (90+ dias)", selo "Parado há N dias" embaixo do nome e "Última venda" na coluna Última movimentação; a planilha ganha a coluna "Dias parado"; o Painel do dono mostra quantos estão parados no cartão de estoque. Sem mudança de esquema (`idleDaysFor` e `IDLE_DAYS` em `src/lib/services/inventory.ts`).
