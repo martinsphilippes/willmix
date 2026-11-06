@@ -11,6 +11,7 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   Alert,
   Badge,
+  Button,
   Card,
   Empty,
   Field,
@@ -35,6 +36,14 @@ import {
 } from "../actions/products";
 import { isAdmin } from "@/lib/auth/permissions";
 import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
+import { IconLink } from "@/components/customer-account";
+import { Thumb } from "../sourcing/_components/shared";
+import {
+  inProductFilter,
+  matchesProduct,
+  productThumbId,
+  readProductFilter,
+} from "@/lib/services/product-list";
 
 const BULK_FORM = "products-bulk";
 
@@ -51,8 +60,10 @@ export default async function ProductsPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "products");
-  const { error, view, deleted, restored, purged, blocked } =
-    await searchParams;
+  const sp = await searchParams;
+  const { error, view, deleted, restored, purged, blocked } = sp;
+  const filter = readProductFilter(sp);
+  const filtering = !!(filter.q || filter.lineId || filter.supplierId);
   const showDeleted = view === "deleted";
   const t = await getT();
   const store = getStore();
@@ -63,9 +74,32 @@ export default async function ProductsPage({
   ]);
   // Excluídos (inativos) ficam fora da lista, em "Ver excluídos".
   const deletedCount = allProducts.filter((p) => !p.active).length;
-  const products = allProducts.filter((p) =>
+  const listed = allProducts.filter((p) =>
     showDeleted ? !p.active : p.active,
   );
+  // Outros fornecedores de cada produto (além do principal), numa consulta.
+  const links = await listLinksForProducts(listed.map((p) => p.id));
+  const supplierName = (id: string | null) =>
+    id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
+  // Busca e filtros (linha, fornecedor principal ou vinculado) pela URL.
+  const products = listed.filter(
+    (p) =>
+      inProductFilter(
+        p,
+        filter,
+        new Set(
+          links.filter((l) => l.productId === p.id).map((l) => l.supplierId),
+        ),
+      ) && matchesProduct(p, supplierName(p.supplierId), filter.q),
+  );
+  const listQuery = () => {
+    const q = new URLSearchParams();
+    if (filter.q) q.set("q", filter.q);
+    if (filter.lineId) q.set("line", filter.lineId);
+    if (filter.supplierId) q.set("supplier", filter.supplierId);
+    const out = q.toString();
+    return out ? `?${out}` : "";
+  };
   // Ficha mestre de cada produto (uma consulta): completa, parcial ou sem ficha.
   const masters = products.length
     ? await store.list("purchase_sheets", {
@@ -89,10 +123,6 @@ export default async function ProductsPage({
     );
     return missing.length ? ("partial" as const) : ("complete" as const);
   };
-  const supplierName = (id: string | null) =>
-    id ? (suppliers.find((s) => s.id === id)?.name ?? "—") : "—";
-  // Outros fornecedores de cada produto (além do principal), numa consulta.
-  const links = await listLinksForProducts(products.map((p) => p.id));
   // Variações ativas (uma consulta): preço "a partir de" e selo "N variações".
   const variants = await variantsByProduct(products.map((p) => p.id));
   const otherSuppliers = (p: { id: string; supplierId: string | null }) =>
@@ -176,8 +206,120 @@ export default async function ProductsPage({
           </TextLink>
         ) : null}
       </div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-3 lg:items-start">
-        <div className="min-w-0 lg:col-span-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <form
+          method="get"
+          action="/app/products"
+          className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+          data-product-search
+        >
+          {showDeleted ? (
+            <input type="hidden" name="view" value="deleted" />
+          ) : null}
+          <Input
+            name="q"
+            defaultValue={filter.q}
+            placeholder={t("prodList.search")}
+            aria-label={t("prodList.search")}
+            className="w-full max-w-md"
+          />
+          <Select
+            name="line"
+            defaultValue={filter.lineId}
+            aria-label={t("nav.lines")}
+            className="w-auto"
+          >
+            <option value="">{t("prodList.allLines")}</option>
+            {lines.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            name="supplier"
+            defaultValue={filter.supplierId}
+            aria-label={t("common.supplier")}
+            className="w-auto"
+          >
+            <option value="">{t("prodList.allSuppliers")}</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" variant="primary">
+            {t("prodList.searchButton")}
+          </Button>
+          {filtering ? (
+            <TextLink
+              href={
+                showDeleted ? "/app/products?view=deleted" : "/app/products"
+              }
+            >
+              {t("prodList.clear")}
+            </TextLink>
+          ) : null}
+        </form>
+        <span className="text-sm text-zinc-500" data-product-total>
+          {t("prodList.total", { n: products.length })}
+        </span>
+        {!showDeleted ? (
+          <LinkButton
+            href={`/app/products/export${listQuery()}`}
+            data-product-export
+          >
+            {t("prodList.export")}
+          </LinkButton>
+        ) : null}
+      </div>
+      {/* Novo produto: formulário curto que abre sob o botão; a tabela usa a largura toda. */}
+      <details
+        className="mt-3 rounded-2xl border border-zinc-200/80 bg-white shadow-sm [&[open]>summary]:border-b [&[open]>summary]:border-zinc-200/80"
+        data-product-new
+      >
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand-700">
+          + {t("prodList.new")}
+        </summary>
+        <div className="p-4">
+          <Card
+            title={`${t("common.new")} ${t("common.product").toLowerCase()}`}
+          >
+            <form
+              action={saveProductAction}
+              className="grid gap-2 md:grid-cols-4 md:items-end"
+            >
+              <Field label={t("common.name")}>
+                <Input name="name" required />
+              </Field>
+              <Field label="SKU">
+                <Input name="sku" />
+              </Field>
+              <Field label={t("nav.lines")}>
+                <Select name="lineId" required defaultValue="">
+                  <option value="" disabled>
+                    {t("common.select")}
+                  </option>
+                  {lines.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={t("requests.specification")}>
+                <Textarea name="specification" rows={1} />
+              </Field>
+              <div className="md:col-span-4">
+                <SubmitButton>{t("common.save")}</SubmitButton>
+              </div>
+            </form>
+          </Card>
+        </div>
+      </details>
+      <div className="mt-4">
+        <div className="min-w-0">
           {products.length > 0 ? (
             <BulkDeleteBar
               formId={BULK_FORM}
@@ -208,7 +350,7 @@ export default async function ProductsPage({
             />
           ) : null}
           {products.length === 0 ? (
-            <Empty>{t("common.none")}</Empty>
+            <Empty>{filtering ? t("prodList.empty") : t("common.none")}</Empty>
           ) : (
             <Table>
               <thead>
@@ -219,15 +361,21 @@ export default async function ProductsPage({
                       label={t("productDelete.selectAll")}
                     />
                   </Th>
+                  <Th className="w-14">{t("prodList.col.photo")}</Th>
+                  <Th>{t("prodList.col.category")}</Th>
                   <Th>{t("common.name")}</Th>
                   <Th>SKU</Th>
+                  <Th>{t("prodList.col.supplierSku")}</Th>
                   <Th>{t("nav.lines")}</Th>
-                  <Th>{t("common.supplier")}</Th>
                   <Th className="text-right">{t("common.price")}</Th>
                   <Th className="text-right">{t("catalog.moq")}</Th>
-                  <Th className="text-right">{t("catalog.cbmPerBox")}</Th>
+                  <Th>{t("prodList.col.box")}</Th>
+                  <Th>{t("prodList.col.material")}</Th>
+                  <Th>{t("prodList.col.notes")}</Th>
+                  <Th>{t("common.supplier")}</Th>
                   <Th>{t("catalog.source")}</Th>
                   <Th>{t("productSheet.column")}</Th>
+                  <Th className="text-right">{t("prodList.col.actions")}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -244,7 +392,26 @@ export default async function ProductsPage({
                         data-product-select={p.id}
                       />
                     </Td>
-                    <Td className="font-medium">
+                    <Td className="w-14">
+                      <Thumb
+                        documentId={productThumbId(p, productPhotos)}
+                        alt={
+                          productThumbId(p, productPhotos)
+                            ? p.name
+                            : t("prodList.noPhoto")
+                        }
+                        className="h-10 w-10"
+                      />
+                    </Td>
+                    <Td>
+                      <span
+                        className="block max-w-40 truncate"
+                        title={p.category ?? undefined}
+                      >
+                        {p.category ?? "—"}
+                      </span>
+                    </Td>
+                    <Td className="min-w-48 font-medium">
                       <TextLink
                         href={`/app/products/${p.id}`}
                         className="text-zinc-900"
@@ -266,24 +433,16 @@ export default async function ProductsPage({
                       ) : null}
                     </Td>
                     <Td>
-                      <span className="font-mono text-xs text-zinc-700">
+                      <span className="whitespace-nowrap font-mono text-xs text-zinc-700">
                         {p.sku ?? "—"}
                       </span>
                     </Td>
-                    <Td>{lines.find((l) => l.id === p.lineId)?.name ?? "—"}</Td>
-                    <Td className="whitespace-nowrap">
-                      {supplierName(p.supplierId)}
-                      {otherSuppliers(p) ? (
-                        <span
-                          className="ml-1.5 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
-                          title={t("productSuppliers.moreTitle", {
-                            n: otherSuppliers(p),
-                          })}
-                        >
-                          {t("productSuppliers.more", { n: otherSuppliers(p) })}
-                        </span>
-                      ) : null}
+                    <Td>
+                      <span className="font-mono text-xs text-zinc-700">
+                        {p.supplierSku ?? "—"}
+                      </span>
                     </Td>
+                    <Td>{lines.find((l) => l.id === p.lineId)?.name ?? "—"}</Td>
                     <Td className="whitespace-nowrap text-right tabular-nums">
                       {/* Com variações: o preço é o da variação de referência, "a partir de". */}
                       {(() => {
@@ -303,10 +462,54 @@ export default async function ProductsPage({
                       })()}
                     </Td>
                     <Td className="text-right tabular-nums">{p.moq ?? "—"}</Td>
-                    <Td className="whitespace-nowrap text-right tabular-nums">
-                      {p.cbm !== null
-                        ? `${p.cbm.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`
-                        : "—"}
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {p.masterBoxQty !== null || p.cbm !== null ? (
+                        <>
+                          {p.masterBoxQty !== null
+                            ? t("prodList.boxQty", { n: p.masterBoxQty })
+                            : "—"}
+                          {p.cbm !== null ? (
+                            <span className="block text-xs text-zinc-500">
+                              {`${p.cbm.toLocaleString(t.intl, { maximumFractionDigits: 4 })} m³`}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td>
+                      <span
+                        className="block max-w-40 truncate"
+                        title={
+                          [p.material, p.color].filter(Boolean).join(" / ") ||
+                          undefined
+                        }
+                      >
+                        {[p.material, p.color].filter(Boolean).join(" / ") ||
+                          "—"}
+                      </span>
+                    </Td>
+                    <Td>
+                      <span
+                        className="block max-w-48 truncate"
+                        title={p.notes ?? undefined}
+                      >
+                        {p.notes ?? "—"}
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      {supplierName(p.supplierId)}
+                      {otherSuppliers(p) ? (
+                        <span
+                          className="ml-1.5 rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600"
+                          title={t("productSuppliers.moreTitle", {
+                            n: otherSuppliers(p),
+                          })}
+                        >
+                          {t("productSuppliers.more", { n: otherSuppliers(p) })}
+                        </span>
+                      ) : null}
                     </Td>
                     <Td>
                       {p.source ? (
@@ -330,41 +533,19 @@ export default async function ProductsPage({
                         t("productSheet.badge.none")
                       )}
                     </Td>
+                    <Td className="text-right">
+                      <IconLink
+                        href={`/app/products/${p.id}`}
+                        icon="pencil"
+                        label={t("prodList.edit")}
+                      />
+                    </Td>
                   </tr>
                 ))}
               </tbody>
             </Table>
           )}
         </div>
-        <Card title={`${t("common.new")} ${t("common.product").toLowerCase()}`}>
-          <form action={saveProductAction} className="space-y-2">
-            <Field label={t("common.name")}>
-              <Input name="name" required />
-            </Field>
-            {/* SKU (curto) ao lado da linha. */}
-            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
-              <Field label="SKU">
-                <Input name="sku" />
-              </Field>
-              <Field label={t("nav.lines")}>
-                <Select name="lineId" required defaultValue="">
-                  <option value="" disabled>
-                    {t("common.select")}
-                  </option>
-                  {lines.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <Field label={t("requests.specification")}>
-              <Textarea name="specification" rows={2} />
-            </Field>
-            <SubmitButton>{t("common.save")}</SubmitButton>
-          </form>
-        </Card>
       </div>
     </>
   );

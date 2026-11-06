@@ -13,9 +13,12 @@ import { SubmitButton } from "./submit-button";
 export function PartyForm({
   party,
   t,
+  defaultType,
 }: {
   party?: Party | null;
   t: Translate;
+  /** Tipo já escolhido num cadastro novo (ex.: "Novo cliente" da tela Clientes). */
+  defaultType?: Party["type"];
 }) {
   return (
     <form action={savePartyAction} className="@container space-y-3">
@@ -26,7 +29,7 @@ export function PartyForm({
             <Select
               name="type"
               required
-              defaultValue={party?.type ?? "supplier"}
+              defaultValue={party?.type ?? defaultType ?? "supplier"}
             >
               {PARTY_TYPES.map((pt) => (
                 <option key={pt} value={pt}>
