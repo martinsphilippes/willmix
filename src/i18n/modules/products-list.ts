@@ -23,6 +23,10 @@ export const pt = {
   "prodList.col.actions": "Ações",
   "prodList.edit": "Editar a ficha do produto",
   "prodList.noPhoto": "Sem foto",
+  "prodList.gallery.title": "Ver todas as fotos",
+  "prodList.gallery.close": "Fechar",
+  "prodList.gallery.open": "Abrir em tamanho real",
+  "prodList.gallery.count": "{n} foto(s)",
   "prodList.boxQty": "{n} un/cx",
   "prodList.csv.header":
     "Nome;SKU;Categoria;Cód. do fornecedor;Linha;Fornecedor;Preço;Moeda;MOQ;Un. por caixa;CBM por caixa;Material;Cor;Observações;NCM;Origem",
@@ -47,6 +51,10 @@ export const en: Record<keyof typeof pt, string> = {
   "prodList.col.actions": "Actions",
   "prodList.edit": "Edit the product sheet",
   "prodList.noPhoto": "No photo",
+  "prodList.gallery.title": "See all photos",
+  "prodList.gallery.close": "Close",
+  "prodList.gallery.open": "Open full size",
+  "prodList.gallery.count": "{n} photo(s)",
   "prodList.boxQty": "{n} pcs/ctn",
   "prodList.csv.header":
     "Name;SKU;Category;Supplier code;Line;Supplier;Price;Currency;MOQ;Pcs per carton;CBM per carton;Material;Color;Notes;NCM;Source",
@@ -71,6 +79,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "prodList.col.actions": "操作",
   "prodList.edit": "编辑产品资料",
   "prodList.noPhoto": "无图片",
+  "prodList.gallery.title": "查看全部图片",
+  "prodList.gallery.close": "关闭",
+  "prodList.gallery.open": "查看原图",
+  "prodList.gallery.count": "{n} 张图片",
   "prodList.boxQty": "{n} 件/箱",
   "prodList.csv.header":
     "名称;SKU;分类;工厂货号;产品线;供应商;价格;币种;起订量;每箱数量;每箱体积;材质;颜色;备注;NCM;来源",

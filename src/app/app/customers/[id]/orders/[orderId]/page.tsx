@@ -26,7 +26,8 @@ import {
 } from "@/components/ui";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { PrintButton } from "@/components/print-button";
-import { Thumb } from "../../../../sourcing/_components/shared";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
 
 const PAYMENT_TONE = {
   pending: "warning",
@@ -209,10 +210,9 @@ export default async function SaleSheetPage({
                 >
                   <Td className="text-right tabular-nums">{i + 1}</Td>
                   <Td className="w-14">
-                    <Thumb
-                      documentId={l.photoDocumentId}
-                      alt={l.name}
-                      className="h-10 w-10"
+                    <PhotoGallery
+                      name={l.name}
+                      {...galleryProps(t, l.photos)}
                     />
                   </Td>
                   <Td className="min-w-44 font-medium">

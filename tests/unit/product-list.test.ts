@@ -78,3 +78,48 @@ describe("lista de produtos", () => {
     expect(readProductFilter({ q: "a".repeat(200) }).q.length).toBe(120);
   });
 });
+
+describe("galeria de fotos da linha", () => {
+  it("principal primeiro, sem repetir, e inclui a principal fora da lista", async () => {
+    const { productPhotoList } = await import("@/lib/services/product-list");
+    const photos = [
+      {
+        productId: "p1",
+        documentId: "a",
+        isPrimary: false,
+        kind: "original" as const,
+      },
+      {
+        productId: "p1",
+        documentId: "b",
+        isPrimary: true,
+        kind: "commercial" as const,
+      },
+      {
+        productId: "p1",
+        documentId: "c",
+        isPrimary: false,
+        kind: "packaging" as const,
+      },
+      {
+        productId: "p2",
+        documentId: "z",
+        isPrimary: false,
+        kind: "other" as const,
+      },
+    ];
+    expect(
+      productPhotoList({ id: "p1", primaryPhotoDocumentId: "c" }, photos).map(
+        (p) => p.documentId,
+      ),
+    ).toEqual(["c", "b", "a"]);
+    expect(
+      productPhotoList({ id: "p1", primaryPhotoDocumentId: "x" }, photos).map(
+        (p) => p.documentId,
+      ),
+    ).toEqual(["x", "b", "a", "c"]);
+    expect(
+      productPhotoList({ id: "p3", primaryPhotoDocumentId: null }, photos),
+    ).toEqual([]);
+  });
+});

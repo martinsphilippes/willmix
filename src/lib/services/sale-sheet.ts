@@ -7,12 +7,13 @@ import type {
   OrderItem,
   Party,
   Product,
+  ProductPhoto,
   Request,
   Stage,
 } from "@/lib/db";
 import { boxesFor } from "@/lib/logistics/cbm";
 import { customerDetail, isDelivered } from "./customer-accounts";
-import { productThumbId } from "./product-list";
+import { productPhotoList, productThumbId } from "./product-list";
 
 /*
  * Pedido de venda em lista (ficha do cliente → registro de vendas → pedido):
@@ -29,6 +30,8 @@ export interface SaleLine {
   orderStatus: Order["status"];
   productId: string | null;
   photoDocumentId: string | null;
+  /** Todas as fotos do produto (galeria da linha), a principal primeiro. */
+  photos: { documentId: string; kind: string | null }[];
   name: string;
   variantName: string | null;
   sku: string | null;
@@ -70,6 +73,7 @@ export function buildSaleLines(input: {
     productId: string | null;
     documentId: string;
     isPrimary: boolean;
+    kind: ProductPhoto["kind"];
   }[];
 }): SaleLine[] {
   const product = new Map(input.products.map((p) => [p.id, p]));
@@ -93,6 +97,7 @@ export function buildSaleLines(input: {
         orderStatus: o.status,
         productId: it.productId,
         photoDocumentId: p ? productThumbId(p, input.photos) : null,
+        photos: p ? productPhotoList(p, input.photos) : [],
         name: it.name,
         variantName: v?.name ?? null,
         sku: p?.sku ?? null,
