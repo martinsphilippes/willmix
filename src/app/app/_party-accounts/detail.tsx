@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { isWellmix } from "@/lib/auth/permissions";
+import { loadSupplierScores } from "@/lib/services/supplier-score-load";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
@@ -95,6 +97,12 @@ export async function PartyAccountDetail({
   const { account, orders, payments } = detail;
   const party = account.party;
   const terms = supplier ? parseTerms(party.paymentTerms ?? null) : null;
+  // Nota do fornecedor: só a Wellmix vê.
+  const scoreRow =
+    supplier && isWellmix(user)
+      ? ((await loadSupplierScores()).find((r) => r.supplier.id === party.id) ??
+        null)
+      : null;
   const store = getStore();
   const [users, owner] = await Promise.all([
     tab === "info"
@@ -140,6 +148,14 @@ export async function PartyAccountDetail({
               </Badge>
             ) : null}
             {party.city ? <span>{party.city}</span> : null}
+            {scoreRow?.score.grade ? (
+              <TextLink href="/app/suppliers/scorecard" data-supplier-score>
+                {t("score.inSupplier", {
+                  grade: scoreRow.score.grade,
+                  score: (scoreRow.score.score ?? 0).toLocaleString(t.intl),
+                })}
+              </TextLink>
+            ) : null}
             {!party.active ? (
               <Badge tone="neutral">{L("inactive")}</Badge>
             ) : null}
