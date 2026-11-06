@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -103,9 +104,19 @@ export async function PartyAccountList({
         title={L("title")}
         subtitle={L("subtitle")}
         actions={
-          <LinkButton href={`/app/parties/new?type=${side}`} variant="primary">
-            + {L("new")}
-          </LinkButton>
+          <>
+            {side === "supplier" && isWellmix(user) ? (
+              <LinkButton href="/app/suppliers/scorecard" data-scorecard-link>
+                {t("score.link")}
+              </LinkButton>
+            ) : null}
+            <LinkButton
+              href={`/app/parties/new?type=${side}`}
+              variant="primary"
+            >
+              + {L("new")}
+            </LinkButton>
+          </>
         }
       />
 
