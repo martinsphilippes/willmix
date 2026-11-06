@@ -32,6 +32,7 @@ import { AccountBar, TabLink } from "@/components/customer-account";
 import { describeTerms } from "@/components/supplier-terms-text";
 import { parseTerms } from "@/lib/supplier-terms";
 import { accountBase, accountLabels } from "./labels";
+import { STOCK_OPTION } from "@/lib/services/purchase-flow";
 import { ChatOpenButton } from "@/components/chat-open-button";
 
 /*
@@ -191,14 +192,19 @@ export async function PartyAccountDetail({
             >
               {onlyDelivered ? L("sales.all") : L("sales.deliveries")}
             </LinkButton>
-            {supplier ? null : (
-              <LinkButton
-                href={`/app/requests/new?customerId=${encodeURIComponent(party.id)}`}
-                variant="primary"
-              >
-                + {L("sales.newRequest")}
-              </LinkButton>
-            )}
+            {/* Cliente: solicitação para ele. Fornecedor: compra para estoque
+                (o fornecedor entra na RFQ, como em toda compra). */}
+            <LinkButton
+              href={
+                supplier
+                  ? `/app/requests/new?customerId=${STOCK_OPTION}`
+                  : `/app/requests/new?customerId=${encodeURIComponent(party.id)}`
+              }
+              title={supplier ? L("sales.newRequestHint") : undefined}
+              variant="primary"
+            >
+              + {L("sales.newRequest")}
+            </LinkButton>
           </div>
           {shown.length === 0 ? (
             <Empty>{L("sales.empty")}</Empty>

@@ -37,6 +37,9 @@ export const pt = {
   "supp.sales.receiveHint":
     "Abre o pedido mais antigo com saldo, na parte de pagamento ao fornecedor.",
   "supp.sales.deliveries": "Só embarcados",
+  "supp.sales.newRequest": "Nova compra",
+  "supp.sales.newRequestHint":
+    "Abre uma compra para estoque; o fornecedor entra no envio da RFQ.",
   "supp.sales.empty": "Nenhum pedido com este fornecedor.",
   "supp.col.contract": "Valor do contrato (FOB)",
   "supp.col.delivered": "Mercadoria entregue",
@@ -89,6 +92,9 @@ export const en: Record<keyof typeof pt, string> = {
   "supp.sales.receiveHint":
     "Opens the oldest order with a balance, in the supplier payment section.",
   "supp.sales.deliveries": "Shipped only",
+  "supp.sales.newRequest": "New purchase",
+  "supp.sales.newRequestHint":
+    "Opens a stock purchase; the supplier is added when the RFQ is sent.",
   "supp.sales.empty": "No orders with this supplier.",
   "supp.col.contract": "Contract value (FOB)",
   "supp.col.delivered": "Goods delivered",
@@ -139,6 +145,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "supp.sales.receive": "登记付款",
   "supp.sales.receiveHint": "打开最早有余额的订单的供应商付款部分。",
   "supp.sales.deliveries": "仅已装运",
+  "supp.sales.newRequest": "新建采购",
+  "supp.sales.newRequestHint": "新建库存采购；发送询价时选择该供应商。",
   "supp.sales.empty": "与该供应商暂无订单。",
   "supp.col.contract": "合同金额（FOB）",
   "supp.col.delivered": "已收货",
