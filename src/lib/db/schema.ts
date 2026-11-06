@@ -724,6 +724,8 @@ export interface Product extends BaseRow {
   ncm: string | null;
   /** Faixas de preço por quantidade negociadas: [{ minQty, price }]. Base da análise de oportunidade. */
   priceTiers: PriceTier[] | null;
+  /** Estoque mínimo (limite): abaixo dele a tela Estoque pede reposição e o admin é avisado. Nulo = sem limite. */
+  minStock?: number | null;
 }
 
 export interface PriceTier {
@@ -2299,6 +2301,7 @@ export const TABLES: Record<TableName, TableDef> = {
       primaryPhotoDocumentId: id(false),
       ncm: str(10),
       priceTiers: json(),
+      minStock: float(),
     },
     indexes: [
       { key: "by_line", type: "key", columns: ["lineId"] },

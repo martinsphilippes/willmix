@@ -18,6 +18,7 @@ describe("colunas acrescentadas depois são opcionais", () => {
     ["purchase_sheets", "dumping"],
     ["purchase_sheets", "certificationRequired"],
     ["parties", "ownerUserId"],
+    ["products", "minStock"],
   ] as const)("%s.%s", (table, column) => {
     expect(TABLES[table].columns[column].required ?? false).toBe(false);
   });

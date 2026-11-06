@@ -29,6 +29,7 @@ export const INVENTORY_SITUATIONS = [
   "brazil",
   "transit",
   "production",
+  "below",
 ] as const;
 export type InventorySituation = (typeof INVENTORY_SITUATIONS)[number];
 
@@ -149,12 +150,33 @@ export function buildInventory(input: {
   return [...rows.values()].filter((r) => r.total > 0);
 }
 
-/** A linha está na situação do filtro? */
+export type LimitStatus = "ok" | "incoming" | "reorder";
+
+/**
+ * Situação diante do limite (estoque mínimo): acima dele; abaixo no Brasil
+ * mas coberto pelo que vem a caminho; ou repor (nem com o que vem chega).
+ * Sem limite definido, nulo.
+ */
+export function limitStatus(
+  r: Pick<InventoryRow, "brazil" | "total">,
+  minStock: number | null | undefined,
+): LimitStatus | null {
+  if (!minStock || !(minStock > 0)) return null;
+  if (r.brazil >= minStock) return "ok";
+  return r.total >= minStock ? "incoming" : "reorder";
+}
+
+/** A linha está na situação do filtro? ("below": abaixo do limite no Brasil.) */
 export function inInventorySituation(
-  r: Pick<InventoryRow, "brazil" | "transit" | "production">,
+  r: Pick<InventoryRow, "brazil" | "transit" | "production" | "total">,
   s: InventorySituation,
+  minStock?: number | null,
 ): boolean {
   if (s === "all") return true;
+  if (s === "below") {
+    const st = limitStatus(r, minStock);
+    return st === "incoming" || st === "reorder";
+  }
   return r[s] > 0;
 }
 

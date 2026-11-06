@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   getStore,
+  type Product,
   type StockCountItem,
   type Tables,
   type User,
@@ -79,6 +80,7 @@ export async function recordSaleOut(
   const { quantity: available, unit } = await stockInBrazil(product.id);
   if (input.quantity > available + 1e-6)
     throw new StockError("stock_insufficient");
+  await warnIfBelowLimit(product, available, available - input.quantity);
   const movement = await store.create("stock_movements", {
     productId: product.id,
     kind: "sale_out",
@@ -235,6 +237,13 @@ export async function approveStockCountItem(
     approvedAt: new Date().toISOString(),
     approvalNote: note,
   });
+  if (difference !== 0) {
+    const product = await store.get("products", item.productId);
+    if (product) {
+      const { quantity: before } = await stockInBrazil(product.id);
+      await warnIfBelowLimit(product, before, before + difference);
+    }
+  }
   if (difference !== 0)
     await store.create("stock_movements", {
       productId: item.productId,
@@ -294,4 +303,56 @@ export async function safeList<T extends "stock_counts" | "stock_count_items">(
     if (isSchemaMissing(error)) return [];
     throw error;
   }
+}
+
+/**
+ * Avisa o admin quando o estoque no Brasil cruza o limite para baixo (estava
+ * no limite ou acima e fica abaixo). Sem limite, nada.
+ */
+async function warnIfBelowLimit(
+  product: Pick<Product, "id" | "name" | "minStock">,
+  before: number,
+  after: number,
+) {
+  const min = product.minStock ?? 0;
+  if (!(min > 0) || !(before >= min) || !(after < min)) return;
+  await notify(
+    { role: "admin" },
+    {
+      kind: "alert",
+      link: "/app/inventory?situ=below",
+      text: (t) => ({
+        subject: t("inv.limit.notify.subject", { product: product.name }),
+        body: t("inv.limit.notify.body", {
+          product: product.name,
+          qty: Math.max(0, after),
+          min,
+        }),
+      }),
+    },
+  );
+}
+
+/** Define o limite (estoque mínimo) do produto; vazio tira o limite. */
+export async function setMinStock(
+  user: User,
+  productId: string,
+  minStock: number | null,
+) {
+  assertStockUser(user);
+  if (minStock !== null && !(minStock >= 0))
+    throw new StockError("quantity_required");
+  const store = getStore();
+  const product = await store.get("products", productId);
+  if (!product) throw new StockError("product_not_found");
+  await store.update("products", productId, {
+    minStock: minStock && minStock > 0 ? minStock : null,
+  });
+  await audit(
+    user,
+    "stock.min_stock",
+    "product",
+    productId,
+    `Limite de estoque de ${product.name}: ${minStock ?? "sem limite"}`,
+  );
 }

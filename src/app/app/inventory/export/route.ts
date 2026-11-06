@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         l.transit,
         l.production,
         qtyFor(l, filter.situation),
+        p?.minStock ?? "",
         l.unit,
         money && p?.price != null ? p.price.toFixed(2) : "",
         money ? p?.currency : "",

@@ -5,14 +5,15 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
-import { INVENTORY_SITUATIONS } from "@/lib/services/inventory";
+import { INVENTORY_SITUATIONS, limitStatus } from "@/lib/services/inventory";
 import { productPhotoList } from "@/lib/services/product-list";
 import { STOCK_OPTION, STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
 import { SubmitButton } from "@/components/submit-button";
-import { stockOutAction } from "../actions/stock";
+import { setMinStockAction, stockOutAction } from "../actions/stock";
 import { stockErrorText } from "./_errors";
 import {
   Alert,
+  Badge,
   Button,
   Empty,
   Field,
@@ -39,6 +40,12 @@ import {
   readInventoryFilter,
   valueByCurrency,
 } from "./_data";
+
+const LIMIT_TONE = {
+  ok: "success",
+  incoming: "warning",
+  reorder: "danger",
+} as const;
 
 /**
  * Estoque da Wellmix por produto: no Brasil, em trânsito e em produção, com
@@ -122,6 +129,9 @@ export default async function InventoryPage({
           </>
         }
       />
+      {sp.limit === "saved" ? (
+        <Alert tone="success">{t("inv.limit.saved")}</Alert>
+      ) : null}
       {sp.stockOut === "done" ? (
         <Alert tone="success">{t("stockOut.done")}</Alert>
       ) : null}
@@ -186,7 +196,7 @@ export default async function InventoryPage({
         </details>
       ) : null}
       <div className="mb-3 space-y-2" data-inventory-filters>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {INVENTORY_SITUATIONS.map((k) => (
             <Stat
               key={k}
@@ -195,6 +205,11 @@ export default async function InventoryPage({
               value={counts[k]}
               href={`/app/inventory${listQuery({ situ: k })}`}
               active={situation === k}
+              tone={
+                k === "below" && counts.below > 0 && situation !== k
+                  ? "danger"
+                  : "neutral"
+              }
             />
           ))}
         </div>
@@ -270,6 +285,9 @@ export default async function InventoryPage({
               <Th className="text-right">{t("inv.col.transit")}</Th>
               <Th className="text-right">{t("inv.col.production")}</Th>
               <Th className="text-right">{t("inv.col.total")}</Th>
+              <Th>
+                <span title={t("inv.limit.hint")}>{t("inv.col.limit")}</span>
+              </Th>
               {money ? (
                 <>
                   <Th className="text-right">{t("inv.col.cost")}</Th>
@@ -337,6 +355,49 @@ export default async function InventoryPage({
                   </Td>
                   <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
                     {num(l.total)} {l.unit}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    <div data-inventory-limit>
+                      {(() => {
+                        const st = limitStatus(l, p?.minStock);
+                        return st ? (
+                          <Badge tone={LIMIT_TONE[st]}>
+                            {t(`inv.limit.${st}`)}
+                          </Badge>
+                        ) : null;
+                      })()}
+                      {p ? (
+                        <form
+                          action={setMinStockAction}
+                          className="mt-1 flex items-center gap-1"
+                        >
+                          <input type="hidden" name="productId" value={p.id} />
+                          <input
+                            type="hidden"
+                            name="back"
+                            value={`/app/inventory${listQuery({})}`}
+                          />
+                          <Input
+                            name="minStock"
+                            type="number"
+                            min="0"
+                            step="1"
+                            inputMode="numeric"
+                            defaultValue={p.minStock ?? ""}
+                            aria-label={`${t("inv.col.limit")}: ${p.name}`}
+                            className="w-20 px-2 py-1 text-xs"
+                          />
+                          <SubmitButton
+                            variant="secondary"
+                            className="px-2 py-1 text-xs"
+                            title={t("inv.limit.save")}
+                            pendingText="…"
+                          >
+                            ✓
+                          </SubmitButton>
+                        </form>
+                      ) : null}
+                    </div>
                   </Td>
                   {money ? (
                     <>
