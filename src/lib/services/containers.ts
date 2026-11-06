@@ -497,5 +497,19 @@ export async function availableStockByProduct(): Promise<
     const arrived = Math.max(0, entry.quantity - entry.inTransit + m.quantity);
     entry.quantity = entry.inTransit + arrived;
   }
+  // Reservas para clientes saem do que está livre no Brasil.
+  const { listStockReservations } = await import("./inventory");
+  const { reservedByProduct } = await import("./reservation-rules");
+  const { brazilDay } = await import("@/lib/supplier-terms");
+  const reserved = reservedByProduct(
+    await listStockReservations(),
+    brazilDay(new Date().toISOString()) ?? "",
+  );
+  for (const [productId, qty] of reserved) {
+    const entry = out.get(productId);
+    if (!entry) continue;
+    const arrived = Math.max(0, entry.quantity - entry.inTransit - qty);
+    entry.quantity = entry.inTransit + arrived;
+  }
   return out;
 }

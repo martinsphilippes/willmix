@@ -2,6 +2,7 @@ import "server-only";
 
 import { getStore } from "@/lib/db";
 import { brazilDay } from "@/lib/supplier-terms";
+import { reservedByProduct } from "./reservation-rules";
 import type {
   Container,
   ContainerItem,
@@ -9,6 +10,7 @@ import type {
   OrderItem,
   Product,
   StockMovement,
+  StockReservation,
 } from "@/lib/db";
 import { boxesFor } from "@/lib/logistics/cbm";
 import { STOCK_PARTY_ID } from "./purchase-flow";
@@ -54,6 +56,8 @@ export interface InventoryRow {
   lastSaleAt?: string | null;
   /** Dias sem vender o que está no Brasil (nulo sem estoque no Brasil ou sem data). */
   idleDays?: number | null;
+  /** Reservado para clientes (reservas valendo hoje); sai do livre, não do físico. */
+  reserved?: number;
 }
 
 /** Produto parado: estoque no Brasil sem venda há este número de dias ou mais. */
@@ -108,6 +112,11 @@ export function buildInventory(input: {
   > & { kind?: StockMovement["kind"] })[];
   /** Hoje (AAAA-MM-DD) para calcular os dias parado; sem ele, não calcula. */
   today?: string;
+  /** Reservas para clientes; só contam as valendo em `today`. */
+  reservations?: Pick<
+    StockReservation,
+    "id" | "productId" | "quantity" | "status" | "expiresAt"
+  >[];
 }): InventoryRow[] {
   const status = new Map(input.containers.map((c) => [c.id, c.status]));
   const stockOrder = new Map(input.stockOrders.map((o) => [o.id, o]));
@@ -193,6 +202,10 @@ export function buildInventory(input: {
     r.total = r.brazil + r.transit + r.production;
     if (input.today) r.idleDays = idleDaysFor(r, input.today);
   }
+  if (input.today && input.reservations?.length) {
+    const reserved = reservedByProduct(input.reservations, input.today);
+    for (const r of rows.values()) r.reserved = reserved.get(r.productId) ?? 0;
+  }
   return [...rows.values()].filter((r) => r.total > 0);
 }
 
@@ -235,10 +248,11 @@ export function inInventorySituation(
 /** Carrega containers, itens e compras para estoque e monta as linhas. */
 export async function loadInventory(now = new Date()): Promise<InventoryRow[]> {
   const store = getStore();
-  const [containers, orders, movements] = await Promise.all([
+  const [containers, orders, movements, reservations] = await Promise.all([
     store.list("containers"),
     store.list("orders", { filter: { customerId: STOCK_PARTY_ID } }),
     listStockMovements(),
+    listStockReservations(),
   ]);
   const stockOrders = orders.filter((o) => o.status !== "CANCELLED");
   const [containerItems, stockOrderItems] = await Promise.all([
@@ -271,7 +285,18 @@ export async function loadInventory(now = new Date()): Promise<InventoryRow[]> {
     products,
     movements,
     today: brazilDay(now.toISOString()) ?? undefined,
+    reservations,
   });
+}
+
+/** Reservas para clientes; banco sem a tabela (esquema não publicado) = nenhuma. */
+export async function listStockReservations(): Promise<StockReservation[]> {
+  try {
+    return await getStore().list("stock_reservations");
+  } catch (error) {
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
 }
 
 /** Movimentações de estoque; banco sem a tabela (esquema não publicado) = nenhuma. */

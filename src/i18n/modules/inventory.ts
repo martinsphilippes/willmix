@@ -58,7 +58,7 @@ export const pt = {
   "inv.open": "Abrir a ficha do produto",
   "inv.openContainer": "Abrir o container",
   "inv.csv.header":
-    "Produto;SKU;Categoria;Cód. do fornecedor;Especificação;Cor;Caixas;No Brasil;Em trânsito;Em produção;Total;Limite;Unidade;Preço de compra;Moeda;Valor total;Observações;Última movimentação;Dias parado",
+    "Produto;SKU;Categoria;Cód. do fornecedor;Especificação;Cor;Caixas;No Brasil;Em trânsito;Em produção;Total;Limite;Unidade;Preço de compra;Moeda;Valor total;Observações;Última movimentação;Dias parado;Reservado",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -116,7 +116,7 @@ export const en: Record<keyof typeof pt, string> = {
   "inv.open": "Open the product sheet",
   "inv.openContainer": "Open the container",
   "inv.csv.header":
-    "Product;SKU;Category;Supplier code;Specification;Color;Cartons;In Brazil;In transit;In production;Total;Limit;Unit;Purchase price;Currency;Total value;Notes;Last movement;Idle days",
+    "Product;SKU;Category;Supplier code;Specification;Color;Cartons;In Brazil;In transit;In production;Total;Limit;Unit;Purchase price;Currency;Total value;Notes;Last movement;Idle days;Reserved",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -173,5 +173,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "inv.open": "打开产品资料",
   "inv.openContainer": "打开货柜",
   "inv.csv.header":
-    "产品;SKU;分类;工厂货号;规格;颜色;箱数;在巴西;在途;生产中;合计;下限;单位;采购价;币种;总金额;备注;最近变动;滞销天数",
+    "产品;SKU;分类;工厂货号;规格;颜色;箱数;在巴西;在途;生产中;合计;下限;单位;采购价;币种;总金额;备注;最近变动;滞销天数;已预留",
 };

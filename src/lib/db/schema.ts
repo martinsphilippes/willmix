@@ -2061,6 +2061,34 @@ export interface StockCountItem extends BaseRow {
   approvalNote: string | null;
 }
 
+export const STOCK_RESERVATION_STATUSES = [
+  "active",
+  "used",
+  "cancelled",
+] as const;
+export type StockReservationStatus =
+  (typeof STOCK_RESERVATION_STATUSES)[number];
+
+/**
+ * Reserva de estoque no Brasil para um cliente: a quantidade sai do
+ * disponível (vitrine e baixa para outros) até ser usada (vira baixa por
+ * venda), cancelada ou vencer (`expiresAt` passado = vencida, sem gravar).
+ */
+export interface StockReservation extends BaseRow {
+  productId: string;
+  customerId: string;
+  quantity: number;
+  unit: string | null;
+  status: StockReservationStatus;
+  expiresAt: string | null;
+  note: string | null;
+  createdByUserId: string;
+  /** Baixa por venda que usou a reserva. */
+  movementId: string | null;
+  closedByUserId: string | null;
+  closedAt: string | null;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -2119,6 +2147,7 @@ export interface Tables {
   stock_movements: StockMovement;
   stock_counts: StockCount;
   stock_count_items: StockCountItem;
+  stock_reservations: StockReservation;
 }
 export type TableName = keyof Tables;
 
@@ -3519,6 +3548,27 @@ export const TABLES: Record<TableName, TableDef> = {
         columns: ["countId", "productId"],
       },
       { key: "by_count", type: "key", columns: ["countId"] },
+    ],
+  },
+  stock_reservations: {
+    label: "Reservas de estoque para clientes",
+    columns: {
+      productId: id(),
+      customerId: id(),
+      quantity: float(true),
+      unit: str(20),
+      status: enumOf(STOCK_RESERVATION_STATUSES),
+      expiresAt: datetime(),
+      note: text(),
+      createdByUserId: id(),
+      movementId: id(false),
+      closedByUserId: id(false),
+      closedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_customer", type: "key", columns: ["customerId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
 };

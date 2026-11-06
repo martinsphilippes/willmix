@@ -3,7 +3,10 @@
 import { z } from "zod";
 import {
   approveStockCountItem,
+  cancelReservation,
   closeStockCount,
+  createReservation,
+  consumeReservation,
   recordSaleOut,
   setMinStock,
   startStockCount,
@@ -113,5 +116,53 @@ export async function setMinStockAction(form: FormData) {
     const url = new URL(back, "http://x");
     url.searchParams.set("limit", "saved");
     return url.pathname + url.search;
+  });
+}
+
+const RES_BACK = "/app/inventory/reservations";
+
+/** Reserva estoque livre no Brasil para um cliente. */
+export async function createReservationAction(form: FormData) {
+  const user = await requireUser();
+  await run(RES_BACK, async () => {
+    const input = z
+      .object({
+        productId: ID,
+        customerId: ID,
+        quantity: QTY.refine((n) => n > 0),
+        days: z.coerce.number().int().min(1).max(120),
+        note: NOTE,
+      })
+      .parse({
+        productId: str(form, "productId"),
+        customerId: str(form, "customerId"),
+        quantity: str(form, "quantity").replace(",", "."),
+        days: str(form, "days"),
+        note: str(form, "note"),
+      });
+    await createReservation(user, input);
+    return `${RES_BACK}?done=created`;
+  });
+}
+
+/** Usa a reserva (vira baixa por venda). */
+export async function consumeReservationAction(form: FormData) {
+  const user = await requireUser();
+  await run(RES_BACK, async () => {
+    const { id, orderId } = z
+      .object({ id: ID, orderId: z.union([ID, z.literal("")]) })
+      .parse({ id: str(form, "id"), orderId: str(form, "orderId") });
+    await consumeReservation(user, id, orderId || null);
+    return `${RES_BACK}?done=used`;
+  });
+}
+
+/** Cancela a reserva (a quantidade volta a ficar livre). */
+export async function cancelReservationAction(form: FormData) {
+  const user = await requireUser();
+  await run(RES_BACK, async () => {
+    const id = ID.parse(str(form, "id"));
+    await cancelReservation(user, id);
+    return `${RES_BACK}?done=cancelled`;
   });
 }

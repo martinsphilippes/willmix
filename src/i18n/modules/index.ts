@@ -15,6 +15,7 @@ import * as inventory from "./inventory";
 import * as saleSheet from "./sale-sheet";
 import * as stock from "./stock";
 import * as owner from "./owner";
+import * as reservations from "./reservations";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
@@ -171,6 +172,7 @@ export const modulesPt = {
   ...saleSheet.pt,
   ...stock.pt,
   ...owner.pt,
+  ...reservations.pt,
   ...productPhotos.pt,
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
@@ -259,6 +261,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...saleSheet.en,
   ...stock.en,
   ...owner.en,
+  ...reservations.en,
   ...productPhotos.en,
   ...sheetGenerate.en,
   ...notificationsDelete.en,
@@ -347,6 +350,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...saleSheet.zh,
   ...stock.zh,
   ...owner.zh,
+  ...reservations.zh,
   ...productPhotos.zh,
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,

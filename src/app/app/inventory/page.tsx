@@ -119,6 +119,12 @@ export default async function InventoryPage({
               {t("stockCount.link")}
             </LinkButton>
             <LinkButton
+              href="/app/inventory/reservations"
+              data-inventory-reservations
+            >
+              {t("res.link")}
+            </LinkButton>
+            <LinkButton
               href="/app/inventory/movements"
               data-inventory-movements
             >
@@ -165,6 +171,9 @@ export default async function InventoryPage({
                     {l.product?.name ?? l.productId}
                     {l.product?.sku ? ` (${l.product.sku})` : ""} ·{" "}
                     {t("stockOut.available", { n: num(l.brazil) })}
+                    {l.reserved
+                      ? ` · ${t("inv.reserved.free", { n: num(Math.max(0, l.brazil - l.reserved)) })}`
+                      : ""}
                   </option>
                 ))}
               </Select>
@@ -289,6 +298,7 @@ export default async function InventoryPage({
               <Th>{t("prodList.col.supplierSku")}</Th>
               <Th className="text-right">{t("inv.col.boxes")}</Th>
               <Th className="text-right">{t("inv.col.brazil")}</Th>
+              <Th className="text-right">{t("inv.col.reserved")}</Th>
               <Th className="text-right">{t("inv.col.transit")}</Th>
               <Th className="text-right">{t("inv.col.production")}</Th>
               <Th className="text-right">{t("inv.col.total")}</Th>
@@ -365,6 +375,25 @@ export default async function InventoryPage({
                   </Td>
                   <Td className="text-right tabular-nums">{num(l.boxes)}</Td>
                   <Td className="text-right tabular-nums">{qty(l.brazil)}</Td>
+                  <Td className="whitespace-nowrap text-right tabular-nums">
+                    {l.reserved ? (
+                      <TextLink
+                        href="/app/inventory/reservations"
+                        className="font-semibold text-amber-800"
+                      >
+                        {num(l.reserved)}
+                      </TextLink>
+                    ) : (
+                      <span className="text-zinc-400">0</span>
+                    )}
+                    {l.reserved ? (
+                      <span className="block text-xs text-zinc-500">
+                        {t("inv.reserved.free", {
+                          n: num(Math.max(0, l.brazil - l.reserved)),
+                        })}
+                      </span>
+                    ) : null}
+                  </Td>
                   <Td className="text-right tabular-nums">{qty(l.transit)}</Td>
                   <Td className="text-right tabular-nums">
                     {qty(l.production)}
