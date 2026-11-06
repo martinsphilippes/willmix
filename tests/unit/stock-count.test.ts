@@ -217,3 +217,25 @@ describe("limite (estoque mínimo)", () => {
     ).toBeNull();
   });
 });
+
+describe("sugestão de compra (reposição)", () => {
+  it("falta para o limite, no mínimo o MOQ, em caixas inteiras", () => {
+    expect(inv.reorderQuantity({ minStock: 100, total: 40 })).toBe(60);
+    expect(inv.reorderQuantity({ minStock: 100, total: 40, moq: 200 })).toBe(
+      200,
+    );
+    expect(
+      inv.reorderQuantity({ minStock: 100, total: 40, unitsPerBox: 24 }),
+    ).toBe(72);
+    expect(
+      inv.reorderQuantity({
+        minStock: 1000,
+        total: 720,
+        moq: 2000,
+        unitsPerBox: 48,
+      }),
+    ).toBe(2016);
+    expect(inv.reorderQuantity({ minStock: 100, total: 100 })).toBe(0);
+    expect(inv.reorderQuantity({ minStock: null, total: 0 })).toBe(0);
+  });
+});

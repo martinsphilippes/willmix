@@ -21,6 +21,9 @@ export const pt = {
   "inv.limit.hint":
     "Estoque mínimo no Brasil. Abaixo dele aparece em amarelo (o que vem a caminho cobre) ou vermelho (repor) e o admin é avisado.",
   "inv.limit.save": "Salvar limite",
+  "inv.reorder.buy": "Comprar {n}",
+  "inv.reorder.hint":
+    "Abre uma compra para estoque já com o produto e a quantidade que falta para o limite (contando o que vem a caminho), no mínimo o pedido mínimo e em caixas inteiras.",
   "inv.limit.saved": "Limite salvo.",
   "inv.limit.notify.subject": "Estoque abaixo do limite: {product}",
   "inv.limit.notify.body":
@@ -70,6 +73,9 @@ export const en: Record<keyof typeof pt, string> = {
   "inv.limit.hint":
     "Minimum stock in Brazil. Below it the row turns yellow (incoming covers it) or red (reorder) and the admin is notified.",
   "inv.limit.save": "Save limit",
+  "inv.reorder.buy": "Buy {n}",
+  "inv.reorder.hint":
+    "Opens a stock purchase with the product and the quantity missing to reach the limit (counting what is on the way), at least the MOQ and in whole cartons.",
   "inv.limit.saved": "Limit saved.",
   "inv.limit.notify.subject": "Stock below limit: {product}",
   "inv.limit.notify.body":
@@ -119,6 +125,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "inv.limit.hint":
     "巴西最低库存。低于下限时显示黄色（在途可补足）或红色（需补货），并通知管理员。",
   "inv.limit.save": "保存下限",
+  "inv.reorder.buy": "采购 {n}",
+  "inv.reorder.hint":
+    "打开备货采购，已填好产品和补足下限所需的数量（计入在途），不低于起订量并按整箱。",
   "inv.limit.saved": "下限已保存。",
   "inv.limit.notify.subject": "库存低于下限：{product}",
   "inv.limit.notify.body":

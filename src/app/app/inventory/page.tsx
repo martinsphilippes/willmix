@@ -5,7 +5,11 @@ import { isWellmix } from "@/lib/auth/permissions";
 import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
-import { INVENTORY_SITUATIONS, limitStatus } from "@/lib/services/inventory";
+import {
+  INVENTORY_SITUATIONS,
+  limitStatus,
+  reorderQuantity,
+} from "@/lib/services/inventory";
 import { productPhotoList } from "@/lib/services/product-list";
 import { STOCK_OPTION, STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
 import { SubmitButton } from "@/components/submit-button";
@@ -360,10 +364,32 @@ export default async function InventoryPage({
                     <div data-inventory-limit>
                       {(() => {
                         const st = limitStatus(l, p?.minStock);
+                        const buy =
+                          st === "reorder" && p
+                            ? reorderQuantity({
+                                minStock: p.minStock,
+                                total: l.total,
+                                moq: p.moq,
+                                unitsPerBox: p.masterBoxQty,
+                              })
+                            : 0;
                         return st ? (
-                          <Badge tone={LIMIT_TONE[st]}>
-                            {t(`inv.limit.${st}`)}
-                          </Badge>
+                          <span className="flex flex-wrap items-center gap-1">
+                            <Badge tone={LIMIT_TONE[st]}>
+                              {t(`inv.limit.${st}`)}
+                            </Badge>
+                            {buy > 0 && p ? (
+                              <LinkButton
+                                href={`/app/requests/new?customerId=${STOCK_OPTION}&productId=${p.id}&quantity=${buy}`}
+                                variant="primary"
+                                className="px-2 py-0.5 text-xs"
+                                title={t("inv.reorder.hint")}
+                                data-inventory-reorder={buy}
+                              >
+                                {t("inv.reorder.buy", { n: num(buy) })}
+                              </LinkButton>
+                            ) : null}
+                          </span>
                         ) : null;
                       })()}
                       {p ? (

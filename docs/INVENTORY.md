@@ -30,3 +30,5 @@ Tabelas novas: `stock_movements`, `stock_counts`, `stock_count_items` (publicar 
 ## Limite (estoque mínimo)
 
 Coluna "Limite" na tela Estoque: cada produto pode ter um estoque mínimo no Brasil (`products.minStock`, opcional; vazio tira o limite). Selo verde "Acima do limite", amarelo "Abaixo · a caminho" (o que está em trânsito e em produção cobre) ou vermelho "Repor". Cartão-filtro "Abaixo do limite". Produto com limite e sem estoque nenhum também aparece. Quando uma baixa por venda ou um ajuste de inventário faz o estoque no Brasil cruzar o limite para baixo, o admin recebe um aviso (uma vez por cruzamento). CSV com a coluna Limite.
+
+Sugestão de compra: no selo "Repor" aparece "Comprar N", que abre uma compra para estoque já com o produto e a quantidade (`reorderQuantity`): o que falta para o limite contando trânsito e produção, no mínimo o MOQ do produto e arredondado para caixas master inteiras.
