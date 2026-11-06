@@ -10,6 +10,7 @@ import * as messageControl from "./message-control";
 import * as customers from "./customers";
 import * as suppliers from "./suppliers";
 import * as requestsList from "./requests-list";
+import * as productsList from "./products-list";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
@@ -161,6 +162,7 @@ export const modulesPt = {
   ...customers.pt,
   ...suppliers.pt,
   ...requestsList.pt,
+  ...productsList.pt,
   ...productPhotos.pt,
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
@@ -244,6 +246,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...customers.en,
   ...suppliers.en,
   ...requestsList.en,
+  ...productsList.en,
   ...productPhotos.en,
   ...sheetGenerate.en,
   ...notificationsDelete.en,
@@ -327,6 +330,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...customers.zh,
   ...suppliers.zh,
   ...requestsList.zh,
+  ...productsList.zh,
   ...productPhotos.zh,
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,
