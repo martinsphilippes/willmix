@@ -6,7 +6,7 @@ import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { INVENTORY_SITUATIONS } from "@/lib/services/inventory";
-import { productThumbId } from "@/lib/services/product-list";
+import { productPhotoList } from "@/lib/services/product-list";
 import { STOCK_OPTION } from "@/lib/services/purchase-flow";
 import {
   Button,
@@ -24,7 +24,8 @@ import {
   rowClass,
 } from "@/components/ui";
 import { IconLink } from "@/components/customer-account";
-import { Thumb } from "../sourcing/_components/shared";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
 import {
   inventoryData,
   lineValue,
@@ -183,7 +184,6 @@ export default async function InventoryPage({
           <tbody>
             {lines.map((l) => {
               const p = l.product;
-              const thumb = p ? productThumbId(p, photos) : null;
               const value = lineValue(l, situation);
               const qty = (n: number) =>
                 n > 0 ? num(n) : <span className="text-zinc-400">0</span>;
@@ -194,10 +194,9 @@ export default async function InventoryPage({
                   data-inventory-row={l.productId}
                 >
                   <Td className="w-14">
-                    <Thumb
-                      documentId={thumb}
-                      alt={thumb && p ? p.name : t("prodList.noPhoto")}
-                      className="h-10 w-10"
+                    <PhotoGallery
+                      name={p?.name ?? ""}
+                      {...galleryProps(t, p ? productPhotoList(p, photos) : [])}
                     />
                   </Td>
                   <Td>{p?.category ?? "—"}</Td>

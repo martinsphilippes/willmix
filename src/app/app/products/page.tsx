@@ -37,11 +37,12 @@ import {
 import { isAdmin } from "@/lib/auth/permissions";
 import { BulkDeleteBar, BulkSelectAll } from "@/components/bulk-delete";
 import { IconLink } from "@/components/customer-account";
-import { Thumb } from "../sourcing/_components/shared";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
 import {
   inProductFilter,
   matchesProduct,
-  productThumbId,
+  productPhotoList,
   readProductFilter,
 } from "@/lib/services/product-list";
 
@@ -393,14 +394,9 @@ export default async function ProductsPage({
                       />
                     </Td>
                     <Td className="w-14">
-                      <Thumb
-                        documentId={productThumbId(p, productPhotos)}
-                        alt={
-                          productThumbId(p, productPhotos)
-                            ? p.name
-                            : t("prodList.noPhoto")
-                        }
-                        className="h-10 w-10"
+                      <PhotoGallery
+                        name={p.name}
+                        {...galleryProps(t, productPhotoList(p, productPhotos))}
                       />
                     </Td>
                     <Td>

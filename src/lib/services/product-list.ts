@@ -76,3 +76,37 @@ export function inProductFilter(
     return false;
   return true;
 }
+
+/**
+ * Todas as fotos do produto para a galeria da linha: a principal primeiro,
+ * depois a marcada como principal e as demais, sem repetir.
+ */
+export function productPhotoList(
+  p: Pick<Product, "id" | "primaryPhotoDocumentId">,
+  photos: Pick<
+    ProductPhoto,
+    "productId" | "documentId" | "isPrimary" | "kind"
+  >[],
+): { documentId: string; kind: ProductPhoto["kind"] | null }[] {
+  const own = photos.filter((ph) => ph.productId === p.id);
+  const ordered = [
+    ...own.filter((ph) => ph.documentId === p.primaryPhotoDocumentId),
+    ...own.filter((ph) => ph.isPrimary),
+    ...own,
+  ];
+  const seen = new Set<string>();
+  const out: { documentId: string; kind: ProductPhoto["kind"] | null }[] = [];
+  if (
+    p.primaryPhotoDocumentId &&
+    !own.some((ph) => ph.documentId === p.primaryPhotoDocumentId)
+  ) {
+    seen.add(p.primaryPhotoDocumentId);
+    out.push({ documentId: p.primaryPhotoDocumentId, kind: null });
+  }
+  for (const ph of ordered) {
+    if (seen.has(ph.documentId)) continue;
+    seen.add(ph.documentId);
+    out.push({ documentId: ph.documentId, kind: ph.kind });
+  }
+  return out;
+}

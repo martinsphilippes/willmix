@@ -33,3 +33,7 @@ A mesma tela, do lado da compra (como em Contas a pagar):
 4. A pagar: FOB menos o pago de cada pedido. Pago: tudo o que já foi pago ao fornecedor na moeda do FOB.
 5. Na linha, "abertas" são as cotações ainda por responder. Sem o atalho de nova solicitação (isso é do cliente).
 6. A ficha mostra Registros de compras, Pagamentos (atalho "Registrar pagamento" abre o pagamento ao fornecedor do pedido) e Informações do fornecedor, com nº da loja, condição de pagamento e dados bancários.
+
+## Pedido de venda em lista (`/app/customers/[id]/orders/[orderId]`)
+
+Clicar no nº do pedido em "Registros de vendas" abre o pedido em lista (só leitura): cabeçalho (data da venda, embarque, entrega, situação, analista, endereço, valor do contrato), uma linha por produto (imagem, código, cód. do item, especificação, cor, peso bruto, quantidade, qtd. por caixa, caixas, volume, preço unit., valor, entregue, pedido, observações) com linha de total, recebimentos (entregue, recebido, a receber e cada pagamento), observações e anexos. Pedidos do mesmo lote aparecem juntos. Exportar (CSV) e Imprimir. O ícone de olho na linha e o botão "Abrir pedido completo" levam à tela completa do pedido, que continua com tudo (etapas, aprovações, registros). Valores só para quem abre Finanças; serviço em `src/lib/services/sale-sheet.ts`.
