@@ -1,0 +1,293 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
+import { requireScreen } from "@/lib/auth/guard";
+import { isWellmix } from "@/lib/auth/permissions";
+import { canOpen } from "@/lib/auth/screens";
+import { getStore } from "@/lib/db";
+import { getT } from "@/i18n/server";
+import { INVENTORY_SITUATIONS } from "@/lib/services/inventory";
+import { productThumbId } from "@/lib/services/product-list";
+import { STOCK_OPTION } from "@/lib/services/purchase-flow";
+import {
+  Button,
+  Empty,
+  Input,
+  LinkButton,
+  PageHeader,
+  Stat,
+  Table,
+  Td,
+  TextLink,
+  Th,
+  formatDate,
+  formatMoney,
+  rowClass,
+} from "@/components/ui";
+import { IconLink } from "@/components/customer-account";
+import { Thumb } from "../sourcing/_components/shared";
+import {
+  inventoryData,
+  lineValue,
+  qtyFor,
+  readInventoryFilter,
+  valueByCurrency,
+} from "./_data";
+
+/**
+ * Estoque da Wellmix por produto: no Brasil, em trânsito e em produção, com
+ * caixas, totais e (só para quem abre Finanças) o valor de custo. Só a
+ * Wellmix; leitura no servidor.
+ */
+export default async function InventoryPage({
+  searchParams,
+}: PageProps<"/app/inventory">) {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  requireScreen(user, "products");
+  if (!isWellmix(user)) redirect("/app");
+  const t = await getT();
+  const filter = readInventoryFilter(await searchParams);
+  const { situation, q } = filter;
+  const money = canOpen(user, "finance");
+  const { lines, counts, hasAny } = await inventoryData(filter);
+  const photos = lines.length
+    ? await getStore().list("product_photos", {
+        filter: { productId: lines.map((l) => l.productId) },
+      })
+    : [];
+  const listQuery = (over: { situ?: string | null }) => {
+    const p = new URLSearchParams();
+    const situ = over.situ === undefined ? situation : over.situ;
+    if (situ && situ !== "all") p.set("situ", situ);
+    if (q) p.set("q", q);
+    const out = p.toString();
+    return out ? `?${out}` : "";
+  };
+  const totalUnits = lines.reduce((s, l) => s + qtyFor(l, situation), 0);
+  const totalBoxes = lines.reduce((s, l) => s + l.boxes, 0);
+  const totals = valueByCurrency(lines, situation);
+  const num = (n: number) => n.toLocaleString(t.intl);
+
+  return (
+    <>
+      <PageHeader
+        t={t}
+        title={t("inv.title")}
+        subtitle={t("inv.subtitle")}
+        actions={
+          <LinkButton
+            href={`/app/requests/new?customerId=${STOCK_OPTION}`}
+            variant="primary"
+            data-inventory-new
+          >
+            {t("inv.newPurchase")}
+          </LinkButton>
+        }
+      />
+      <div className="mb-3 space-y-2" data-inventory-filters>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {INVENTORY_SITUATIONS.map((k) => (
+            <Stat
+              key={k}
+              compact
+              label={t(`inv.situ.${k}`)}
+              value={counts[k]}
+              href={`/app/inventory${listQuery({ situ: k })}`}
+              active={situation === k}
+            />
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <form
+            method="get"
+            action="/app/inventory"
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+            data-inventory-search
+          >
+            {situation !== "all" ? (
+              <input type="hidden" name="situ" value={situation} />
+            ) : null}
+            <Input
+              name="q"
+              defaultValue={q}
+              placeholder={t("inv.search")}
+              aria-label={t("inv.search")}
+              className="w-full max-w-md"
+            />
+            <Button type="submit" variant="primary">
+              {t("inv.searchButton")}
+            </Button>
+          </form>
+          <LinkButton
+            href={`/app/inventory/export${listQuery({})}`}
+            data-inventory-export
+          >
+            {t("inv.export")}
+          </LinkButton>
+        </div>
+        {/* Totais da lista mostrada, como no rodapé do sistema antigo. */}
+        <div
+          className="flex flex-wrap justify-end gap-x-6 gap-y-1 text-sm text-zinc-700"
+          data-inventory-totals
+        >
+          <span>
+            {t("inv.total.boxes")}:{" "}
+            <strong className="tabular-nums">{num(totalBoxes)}</strong>
+          </span>
+          <span>
+            {t("inv.total.units")}:{" "}
+            <strong className="tabular-nums">{num(totalUnits)}</strong>
+          </span>
+          {money ? (
+            <span title={t("inv.total.valueHint")} data-inventory-value>
+              {t("inv.total.value")}:{" "}
+              <strong className="tabular-nums">
+                {totals.size
+                  ? [...totals]
+                      .map(([c, v]) => formatMoney(v, c, t))
+                      .join(" + ")
+                  : "—"}
+              </strong>
+            </span>
+          ) : null}
+        </div>
+      </div>
+      {lines.length === 0 ? (
+        <Empty>{hasAny ? t("inv.emptyFilter") : t("inv.empty")}</Empty>
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <Th className="w-14">{t("prodList.col.photo")}</Th>
+              <Th>{t("prodList.col.category")}</Th>
+              <Th>{t("common.name")}</Th>
+              <Th>{t("inv.col.spec")}</Th>
+              <Th>{t("inv.col.color")}</Th>
+              <Th>{t("prodList.col.supplierSku")}</Th>
+              <Th className="text-right">{t("inv.col.boxes")}</Th>
+              <Th className="text-right">{t("inv.col.brazil")}</Th>
+              <Th className="text-right">{t("inv.col.transit")}</Th>
+              <Th className="text-right">{t("inv.col.production")}</Th>
+              <Th className="text-right">{t("inv.col.total")}</Th>
+              {money ? (
+                <>
+                  <Th className="text-right">{t("inv.col.cost")}</Th>
+                  <Th className="text-right">{t("inv.col.value")}</Th>
+                </>
+              ) : null}
+              <Th>{t("prodList.col.notes")}</Th>
+              <Th>{t("inv.col.last")}</Th>
+              <Th className="text-right">{t("prodList.col.actions")}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((l) => {
+              const p = l.product;
+              const thumb = p ? productThumbId(p, photos) : null;
+              const value = lineValue(l, situation);
+              const qty = (n: number) =>
+                n > 0 ? num(n) : <span className="text-zinc-400">0</span>;
+              return (
+                <tr
+                  key={l.productId}
+                  className={rowClass}
+                  data-inventory-row={l.productId}
+                >
+                  <Td className="w-14">
+                    <Thumb
+                      documentId={thumb}
+                      alt={thumb && p ? p.name : t("prodList.noPhoto")}
+                      className="h-10 w-10"
+                    />
+                  </Td>
+                  <Td>{p?.category ?? "—"}</Td>
+                  <Td className="min-w-44 font-medium">
+                    {p ? (
+                      <TextLink
+                        href={`/app/products/${p.id}`}
+                        className="text-zinc-900"
+                      >
+                        {p.name}
+                      </TextLink>
+                    ) : (
+                      "—"
+                    )}
+                    <span className="block font-mono text-xs font-normal text-zinc-500">
+                      {p?.sku ?? ""}
+                    </span>
+                  </Td>
+                  <Td>
+                    <span
+                      className="block max-w-48 truncate"
+                      title={p?.specification ?? undefined}
+                    >
+                      {p?.specification ?? "—"}
+                    </span>
+                  </Td>
+                  <Td>{p?.color ?? "—"}</Td>
+                  <Td>
+                    <span className="whitespace-nowrap font-mono text-xs text-zinc-700">
+                      {p?.supplierSku ?? "—"}
+                    </span>
+                  </Td>
+                  <Td className="text-right tabular-nums">{num(l.boxes)}</Td>
+                  <Td className="text-right tabular-nums">{qty(l.brazil)}</Td>
+                  <Td className="text-right tabular-nums">{qty(l.transit)}</Td>
+                  <Td className="text-right tabular-nums">
+                    {qty(l.production)}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                    {num(l.total)} {l.unit}
+                  </Td>
+                  {money ? (
+                    <>
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {formatMoney(p?.price ?? null, p?.currency, t)}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {formatMoney(value, p?.currency, t)}
+                      </Td>
+                    </>
+                  ) : null}
+                  <Td>
+                    <span
+                      className="block max-w-48 truncate"
+                      title={p?.notes ?? undefined}
+                    >
+                      {p?.notes ?? "—"}
+                    </span>
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {l.lastAt ? formatDate(l.lastAt, t) : "—"}
+                    <span className="block text-xs text-zinc-500">
+                      {t("inv.where", {
+                        c: l.containerIds.length,
+                        o: l.orderIds.length,
+                      })}
+                    </span>
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    {p ? (
+                      <IconLink
+                        href={`/app/products/${p.id}`}
+                        icon="eye"
+                        label={t("inv.open")}
+                      />
+                    ) : null}
+                    {l.containerIds[0] ? (
+                      <IconLink
+                        href={`/app/containers/${l.containerIds[0]}`}
+                        icon="box"
+                        label={t("inv.openContainer")}
+                      />
+                    ) : null}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
+      )}
+    </>
+  );
+}

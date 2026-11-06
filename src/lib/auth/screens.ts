@@ -53,6 +53,7 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/freight/tariff", "freightTariff"],
   ["/app/freight", "freight"],
   ["/app/products", "products"],
+  ["/app/inventory", "products"],
   ["/app/requests", "requests"],
   ["/app/quotes", "quotes"],
   ["/app/orders", "orders"],

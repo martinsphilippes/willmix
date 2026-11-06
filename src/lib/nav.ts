@@ -98,6 +98,8 @@ export function navFor(
           ["parties", { href: "/app/suppliers", key: "nav.suppliers" }],
           ["parties", { href: "/app/parties", key: "nav.parties" }],
           ["products", { href: "/app/products", key: "nav.products" }],
+          // Estoque: no Brasil, em trânsito e em produção (compras para estoque).
+          ["products", { href: "/app/inventory", key: "nav.inventory" }],
           ["lines", { href: "/app/lines", key: "nav.lines" }],
           // A vitrine como o cliente vê (preço estimado, o que falta no cadastro).
           ["explore", { href: "/app/explore", key: "nav.explorePreview" }],

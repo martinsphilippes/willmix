@@ -127,7 +127,10 @@ describe("menu principal", () => {
         ],
       },
       { group: "nav.group.orders", items: ["/app/orders", "/app/packaging"] },
-      { group: "nav.group.registry", items: ["/app/products", "/app/explore"] },
+      {
+        group: "nav.group.registry",
+        items: ["/app/products", "/app/inventory", "/app/explore"],
+      },
       { link: "/app/marketing" },
     ]);
   });

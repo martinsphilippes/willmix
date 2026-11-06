@@ -180,6 +180,7 @@ const ICON_PATH = {
   plus: "M12 5v14M5 12h14",
   eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
   pencil: "M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4",
+  box: "M3 7l9-4 9 4v10l-9 4-9-4V7Zm0 0 9 4 9-4M12 11v10",
 } as const;
 
 /** Ícone de linha (link), como os da lista de pedidos. */
