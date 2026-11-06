@@ -7,11 +7,17 @@ import { getStore } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import { INVENTORY_SITUATIONS } from "@/lib/services/inventory";
 import { productPhotoList } from "@/lib/services/product-list";
-import { STOCK_OPTION } from "@/lib/services/purchase-flow";
+import { STOCK_OPTION, STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
+import { SubmitButton } from "@/components/submit-button";
+import { stockOutAction } from "../actions/stock";
+import { stockErrorText } from "./_errors";
 import {
+  Alert,
   Button,
   Empty,
+  Field,
   Input,
+  Select,
   LinkButton,
   PageHeader,
   Stat,
@@ -47,7 +53,8 @@ export default async function InventoryPage({
   requireScreen(user, "products");
   if (!isWellmix(user)) redirect("/app");
   const t = await getT();
-  const filter = readInventoryFilter(await searchParams);
+  const sp = await searchParams;
+  const filter = readInventoryFilter(sp);
   const { situation, q } = filter;
   const money = canOpen(user, "finance");
   const { lines, counts, hasAny } = await inventoryData(filter);
@@ -68,6 +75,25 @@ export default async function InventoryPage({
   const totalBoxes = lines.reduce((s, l) => s + l.boxes, 0);
   const totals = valueByCurrency(lines, situation);
   const num = (n: number) => n.toLocaleString(t.intl);
+  // Baixa por venda: produtos com estoque no Brasil e pedidos de clientes.
+  const outChoices = (await inventoryData({ situation: "brazil", q: "" }))
+    .lines;
+  const customerOrders = outChoices.length
+    ? (
+        await getStore().list("orders", {
+          orderBy: "number",
+          direction: "desc",
+        })
+      )
+        .filter(
+          (o) => o.status !== "CANCELLED" && o.customerId !== STOCK_PARTY_ID,
+        )
+        .slice(0, 200)
+    : [];
+  const parties = customerOrders.length
+    ? await getStore().list("parties", { filter: { type: "customer" } })
+    : [];
+  const errorCode = typeof sp.error === "string" ? sp.error : null;
 
   return (
     <>
@@ -76,15 +102,89 @@ export default async function InventoryPage({
         title={t("inv.title")}
         subtitle={t("inv.subtitle")}
         actions={
-          <LinkButton
-            href={`/app/requests/new?customerId=${STOCK_OPTION}`}
-            variant="primary"
-            data-inventory-new
-          >
-            {t("inv.newPurchase")}
-          </LinkButton>
+          <>
+            <LinkButton href="/app/inventory/counts" data-inventory-counts>
+              {t("stockCount.link")}
+            </LinkButton>
+            <LinkButton
+              href="/app/inventory/movements"
+              data-inventory-movements
+            >
+              {t("stockMov.link")}
+            </LinkButton>
+            <LinkButton
+              href={`/app/requests/new?customerId=${STOCK_OPTION}`}
+              variant="primary"
+              data-inventory-new
+            >
+              {t("inv.newPurchase")}
+            </LinkButton>
+          </>
         }
       />
+      {sp.stockOut === "done" ? (
+        <Alert tone="success">{t("stockOut.done")}</Alert>
+      ) : null}
+      {errorCode ? (
+        <Alert tone="danger">{stockErrorText(t, errorCode)}</Alert>
+      ) : null}
+      {outChoices.length ? (
+        <details
+          className="mb-3 rounded-2xl border border-zinc-200/80 bg-white shadow-sm"
+          data-stock-out
+        >
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand-700 [&::-webkit-details-marker]:hidden">
+            {t("stockOut.open")}
+          </summary>
+          <form
+            action={stockOutAction}
+            className="grid gap-3 border-t border-zinc-200/80 p-4 md:grid-cols-[minmax(0,2fr)_8rem_minmax(0,2fr)_minmax(0,2fr)_auto] md:items-end"
+          >
+            <Field label={t("stockOut.product")}>
+              <Select name="productId" required defaultValue="">
+                <option value="" disabled>
+                  {t("common.select")}
+                </option>
+                {outChoices.map((l) => (
+                  <option key={l.productId} value={l.productId}>
+                    {l.product?.name ?? l.productId}
+                    {l.product?.sku ? ` (${l.product.sku})` : ""} ·{" "}
+                    {t("stockOut.available", { n: num(l.brazil) })}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t("stockOut.quantity")}>
+              <Input
+                name="quantity"
+                type="number"
+                min="1"
+                step="1"
+                required
+                inputMode="numeric"
+              />
+            </Field>
+            <Field label={t("stockOut.order")}>
+              <Select name="orderId" defaultValue="">
+                <option value="">{t("stockOut.noOrder")}</option>
+                {customerOrders.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    #{o.number} ·{" "}
+                    {parties.find((p) => p.id === o.customerId)?.name ?? ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={t("stockOut.note")}>
+              <Input name="note" maxLength={500} />
+            </Field>
+            <SubmitButton variant="danger">{t("stockOut.submit")}</SubmitButton>
+            <p className="text-xs text-zinc-500 md:col-span-5">
+              {t("stockOut.hint")}
+            </p>
+          </form>
+        </details>
+      ) : null}
       <div className="mb-3 space-y-2" data-inventory-filters>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {INVENTORY_SITUATIONS.map((k) => (

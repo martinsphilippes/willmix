@@ -236,13 +236,9 @@ export async function PartyAccountDetail({
                     data-customer-order={r.number}
                   >
                     <Td className="whitespace-nowrap">
-                      {/* Cliente: abre o pedido de venda em lista; fornecedor, o pedido. */}
+                      {/* Abre o pedido em lista (venda ao cliente ou compra do fornecedor). */}
                       <TextLink
-                        href={
-                          supplier
-                            ? `/app/orders/${r.orderId}`
-                            : `/app/customers/${party.id}/orders/${r.orderId}`
-                        }
+                        href={`${accountBase(side)}/${party.id}/orders/${r.orderId}`}
                         data-customer-order-link
                       >
                         #{r.number}

@@ -489,5 +489,13 @@ export async function availableStockByProduct(): Promise<
       entry.inTransit += item.quantity;
     out.set(item.productId, entry);
   }
+  // Baixas por venda e ajustes do inventário saem do que já chegou ao Brasil.
+  const { listStockMovements } = await import("./inventory");
+  for (const m of await listStockMovements()) {
+    const entry = out.get(m.productId);
+    if (!entry) continue;
+    const arrived = Math.max(0, entry.quantity - entry.inTransit + m.quantity);
+    entry.quantity = entry.inTransit + arrived;
+  }
   return out;
 }

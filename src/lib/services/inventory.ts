@@ -7,9 +7,11 @@ import type {
   Order,
   OrderItem,
   Product,
+  StockMovement,
 } from "@/lib/db";
 import { boxesFor } from "@/lib/logistics/cbm";
 import { STOCK_PARTY_ID } from "./purchase-flow";
+import { isSchemaMissing } from "./packaging-brief";
 
 /*
  * Estoque da Wellmix (tela Estoque), por produto, a partir do que já existe:
@@ -68,6 +70,11 @@ export function buildInventory(input: {
     "id" | "orderId" | "productId" | "quantity" | "unit"
   >[];
   products: Pick<Product, "id" | "masterBoxQty">[];
+  /** Baixas por venda e ajustes do inventário: mexem no que está no Brasil. */
+  movements?: Pick<
+    StockMovement,
+    "productId" | "quantity" | "unit" | "updatedAt"
+  >[];
 }): InventoryRow[] {
   const status = new Map(input.containers.map((c) => [c.id, c.status]));
   const stockOrder = new Map(input.stockOrders.map((o) => [o.id, o]));
@@ -132,6 +139,12 @@ export function buildInventory(input: {
     touch(r, order.updatedAt);
     if (!r.orderIds.includes(order.id)) r.orderIds.push(order.id);
   }
+  for (const m of input.movements ?? []) {
+    if (!m.productId || !m.quantity) continue;
+    const r = row(m.productId, m.unit ?? "un");
+    r.brazil = Math.max(0, r.brazil + m.quantity);
+    touch(r, m.updatedAt);
+  }
   for (const r of rows.values()) r.total = r.brazil + r.transit + r.production;
   return [...rows.values()].filter((r) => r.total > 0);
 }
@@ -148,9 +161,10 @@ export function inInventorySituation(
 /** Carrega containers, itens e compras para estoque e monta as linhas. */
 export async function loadInventory(): Promise<InventoryRow[]> {
   const store = getStore();
-  const [containers, orders] = await Promise.all([
+  const [containers, orders, movements] = await Promise.all([
     store.list("containers"),
     store.list("orders", { filter: { customerId: STOCK_PARTY_ID } }),
+    listStockMovements(),
   ]);
   const stockOrders = orders.filter((o) => o.status !== "CANCELLED");
   const [containerItems, stockOrderItems] = await Promise.all([
@@ -167,7 +181,7 @@ export async function loadInventory(): Promise<InventoryRow[]> {
   ]);
   const productIds = [
     ...new Set(
-      [...containerItems, ...stockOrderItems]
+      [...containerItems, ...stockOrderItems, ...movements]
         .map((i) => i.productId)
         .filter(Boolean) as string[],
     ),
@@ -181,5 +195,16 @@ export async function loadInventory(): Promise<InventoryRow[]> {
     stockOrders,
     stockOrderItems,
     products,
+    movements,
   });
+}
+
+/** Movimentações de estoque; banco sem a tabela (esquema não publicado) = nenhuma. */
+export async function listStockMovements(): Promise<StockMovement[]> {
+  try {
+    return await getStore().list("stock_movements");
+  } catch (error) {
+    if (isSchemaMissing(error)) return [];
+    throw error;
+  }
 }
