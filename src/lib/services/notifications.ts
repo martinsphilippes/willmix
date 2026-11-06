@@ -52,7 +52,11 @@ export type NotifyMessage = {
   inAppOnly?: boolean;
 } & (
   | { subject: string; body: string; text?: undefined }
-  | { text: (t: Translate) => NotifyText; subject?: undefined; body?: undefined }
+  | {
+      text: (t: Translate) => NotifyText;
+      subject?: undefined;
+      body?: undefined;
+    }
 );
 
 /**
@@ -137,7 +141,10 @@ async function createNotification(row: NewRow<Notification>) {
   }
 }
 
-function createLegacy(store: ReturnType<typeof getStore>, row: NewRow<Notification>) {
+function createLegacy(
+  store: ReturnType<typeof getStore>,
+  row: NewRow<Notification>,
+) {
   const legacy: Record<string, unknown> = { ...row };
   delete legacy.kind;
   delete legacy.actor;

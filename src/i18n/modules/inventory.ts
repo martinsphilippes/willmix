@@ -14,6 +14,12 @@ export const pt = {
   "inv.situ.transit": "Em trânsito",
   "inv.situ.production": "Em produção",
   "inv.situ.below": "Abaixo do limite",
+  "inv.situ.idle": "Parados (90+ dias)",
+  "inv.idle.badge": "Parado há {n} dias",
+  "inv.idle.lastSale": "Última venda: {date}",
+  "inv.idle.never": "Nunca vendido desde a chegada",
+  "inv.idle.hint":
+    "Produto parado: tem estoque no Brasil e não vende há 90 dias ou mais (se nunca vendeu, conta desde a chegada). Pense em promoção, kit ou oferta ao cliente.",
   "inv.col.limit": "Limite",
   "inv.limit.ok": "Acima do limite",
   "inv.limit.incoming": "Abaixo · a caminho",
@@ -52,7 +58,7 @@ export const pt = {
   "inv.open": "Abrir a ficha do produto",
   "inv.openContainer": "Abrir o container",
   "inv.csv.header":
-    "Produto;SKU;Categoria;Cód. do fornecedor;Especificação;Cor;Caixas;No Brasil;Em trânsito;Em produção;Total;Limite;Unidade;Preço de compra;Moeda;Valor total;Observações;Última movimentação",
+    "Produto;SKU;Categoria;Cód. do fornecedor;Especificação;Cor;Caixas;No Brasil;Em trânsito;Em produção;Total;Limite;Unidade;Preço de compra;Moeda;Valor total;Observações;Última movimentação;Dias parado",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -66,6 +72,12 @@ export const en: Record<keyof typeof pt, string> = {
   "inv.situ.transit": "In transit",
   "inv.situ.production": "In production",
   "inv.situ.below": "Below limit",
+  "inv.situ.idle": "Idle (90+ days)",
+  "inv.idle.badge": "Idle for {n} days",
+  "inv.idle.lastSale": "Last sale: {date}",
+  "inv.idle.never": "Never sold since arrival",
+  "inv.idle.hint":
+    "Idle product: stock in Brazil with no sale for 90 days or more (if never sold, counted from arrival). Consider a promotion, bundle or customer offer.",
   "inv.col.limit": "Limit",
   "inv.limit.ok": "Above limit",
   "inv.limit.incoming": "Below · on the way",
@@ -104,7 +116,7 @@ export const en: Record<keyof typeof pt, string> = {
   "inv.open": "Open the product sheet",
   "inv.openContainer": "Open the container",
   "inv.csv.header":
-    "Product;SKU;Category;Supplier code;Specification;Color;Cartons;In Brazil;In transit;In production;Total;Limit;Unit;Purchase price;Currency;Total value;Notes;Last movement",
+    "Product;SKU;Category;Supplier code;Specification;Color;Cartons;In Brazil;In transit;In production;Total;Limit;Unit;Purchase price;Currency;Total value;Notes;Last movement;Idle days",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -118,6 +130,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "inv.situ.transit": "在途",
   "inv.situ.production": "生产中",
   "inv.situ.below": "低于下限",
+  "inv.situ.idle": "滞销（90天以上）",
+  "inv.idle.badge": "已滞销 {n} 天",
+  "inv.idle.lastSale": "最近销售：{date}",
+  "inv.idle.never": "到货后从未销售",
+  "inv.idle.hint":
+    "滞销产品：巴西有库存且 90 天及以上没有销售（从未销售则从到货起算）。可考虑促销、组合或向客户推荐。",
   "inv.col.limit": "下限",
   "inv.limit.ok": "高于下限",
   "inv.limit.incoming": "低于下限 · 在途补足",
@@ -155,5 +173,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "inv.open": "打开产品资料",
   "inv.openContainer": "打开货柜",
   "inv.csv.header":
-    "产品;SKU;分类;工厂货号;规格;颜色;箱数;在巴西;在途;生产中;合计;下限;单位;采购价;币种;总金额;备注;最近变动",
+    "产品;SKU;分类;工厂货号;规格;颜色;箱数;在巴西;在途;生产中;合计;下限;单位;采购价;币种;总金额;备注;最近变动;滞销天数",
 };

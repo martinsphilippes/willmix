@@ -88,7 +88,8 @@ export const pt = {
   "sheet.cbmFromSize": "Pelas medidas: {cbm} m³",
   "sheet.cbmAuto": "Calculado pelas medidas (A × L × C)",
   "sheet.cbmManual": "Ou preencha as medidas da caixa: o CBM é calculado",
-  "sheet.cbmWillUpdate": "Salvo hoje: {stored} m³; ao salvar, vale o das medidas.",
+  "sheet.cbmWillUpdate":
+    "Salvo hoje: {stored} m³; ao salvar, vale o das medidas.",
   "sheet.lot.title": "Programação {n}",
   "sheet.lot.column": "Prog.",
   "sheet.lot.add": "Programação",

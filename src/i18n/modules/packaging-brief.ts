@@ -108,7 +108,8 @@ export const pt = {
   "packBrief.uploaded": "Arquivo enviado.",
   "packBrief.error.brief_closed":
     "Este briefing já foi encerrado (cancelado ou concluído).",
-  "packBrief.error.not_owner": "Só o responsável pelo briefing (ou a Wellmix) altera.",
+  "packBrief.error.not_owner":
+    "Só o responsável pelo briefing (ou a Wellmix) altera.",
   "packBrief.error.invalid_kind": "Entregável desconhecido.",
   "packBrief.error.no_agency":
     "Agência inválida ou inativa. Escolha outra ou o marketing Wellmix.",
@@ -116,7 +117,8 @@ export const pt = {
   "packBrief.error.invalid_dims":
     "Informe comprimento, largura e altura da caixa (cm).",
   "packBrief.error.document_required": "Escolha um arquivo.",
-  "settings.option.packagingBriefAt.rfq": "Ao abrir a RFQ (em paralelo com a cotação)",
+  "settings.option.packagingBriefAt.rfq":
+    "Ao abrir a RFQ (em paralelo com a cotação)",
   "settings.option.packagingBriefAt.selection": "Ao escolher o fornecedor",
   "settings.option.packagingBriefAt.order": "Só no pedido (como antes)",
   "settings.option.packagingAgencyAuto":
@@ -134,11 +136,13 @@ export const pt = {
     "Embalagem (marketing Wellmix): {product}{ref}",
   "notif.packBrief.wellmix.body":
     "{qty} {unit}. Sem agência designada: a equipe faz a faca e a arte, ou designe uma agência na solicitação.{due}",
-  "notif.packBrief.many.subject": "Embalagem para preparar: {count} produtos{ref}",
+  "notif.packBrief.many.subject":
+    "Embalagem para preparar: {count} produtos{ref}",
   "notif.packBrief.many.body":
     "Envie faca e arte de cada um: {items}. A cotação corre em paralelo e a venda ainda não está confirmada.",
   "notif.packBrief.noDims.subject": "Embalagem sem medidas: {product}",
-  "notif.packBrief.noDims.body": "A ficha do produto não tem as medidas da caixa: {items}. A agência começa pelo briefing; informe as medidas ou aguarde a cotação.",
+  "notif.packBrief.noDims.body":
+    "A ficha do produto não tem as medidas da caixa: {items}. A agência começa pelo briefing; informe as medidas ou aguarde a cotação.",
   "notif.packBrief.item.subject": "{item} enviado: {product}",
   "notif.packBrief.item.body": "Enviado por {who}.",
   "notif.packBrief.ready.subject": "Embalagem pronta: {product}",
@@ -150,7 +154,8 @@ export const pt = {
     "Medidas provisórias da embalagem: {product}",
   "notif.packBrief.dimsConfirmed.subject":
     "Medidas da embalagem confirmadas: {product}",
-  "notif.packBrief.dimsChanged.subject": "Medidas da embalagem mudaram: {product}",
+  "notif.packBrief.dimsChanged.subject":
+    "Medidas da embalagem mudaram: {product}",
   "notif.packBrief.supplier.subject": "Fornecedor escolhido: {product}",
   "notif.packBrief.supplier.body":
     "{supplier} vai produzir. As medidas da cotação dele passam a valer para a faca e a arte.",
@@ -176,15 +181,20 @@ export const pt = {
   "notif.packBrief.overdue.subject": "ATRASADA: embalagem de {product}{ref}",
   "notif.packBrief.due.subject": "Embalagem vence em breve: {product}{ref}",
   "notif.packBrief.missing": "Falta enviar: {items}.",
-  "packBrief.error.art_locked": "A arte já foi aprovada no pedido: para trocar, a Wellmix reabre o item pelo pedido.",
+  "packBrief.error.art_locked":
+    "A arte já foi aprovada no pedido: para trocar, a Wellmix reabre o item pelo pedido.",
   "packBrief.dims.length": "Comprimento (cm)",
   "packBrief.dims.width": "Largura (cm)",
   "packBrief.dims.height": "Altura (cm)",
-  "packBrief.dims.confirm": "Conferi: faca e arte estão de acordo com as medidas",
+  "packBrief.dims.confirm":
+    "Conferi: faca e arte estão de acordo com as medidas",
   "packBrief.owner.inactive": "{name} (inativa)",
-  "notif.packBrief.noDims.many.subject": "Embalagem sem medidas: {count} produtos",
-  "notif.packBrief.dimsUnknown.subject": "Medidas da embalagem a confirmar: {product}",
-  "notif.packBrief.dimsUnknown.body": "O fornecedor escolhido ainda não informou as medidas da caixa; as atuais vieram de outra cotação e continuam provisórias. A Wellmix confirma ou informa à mão.",
+  "notif.packBrief.noDims.many.subject":
+    "Embalagem sem medidas: {count} produtos",
+  "notif.packBrief.dimsUnknown.subject":
+    "Medidas da embalagem a confirmar: {product}",
+  "notif.packBrief.dimsUnknown.body":
+    "O fornecedor escolhido ainda não informou as medidas da caixa; as atuais vieram de outra cotação e continuam provisórias. A Wellmix confirma ou informa à mão.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -290,7 +300,8 @@ export const en: Record<keyof typeof pt, string> = {
   "packBrief.uploaded": "File sent.",
   "packBrief.error.brief_closed":
     "This brief is already closed (cancelled or completed).",
-  "packBrief.error.not_owner": "Only the brief owner (or Wellmix) can change it.",
+  "packBrief.error.not_owner":
+    "Only the brief owner (or Wellmix) can change it.",
   "packBrief.error.invalid_kind": "Unknown deliverable.",
   "packBrief.error.no_agency":
     "Invalid or inactive agency. Choose another one or Wellmix marketing.",
@@ -307,20 +318,21 @@ export const en: Record<keyof typeof pt, string> = {
   "settings.error.packaging_required_empty":
     "Check at least one required packaging deliverable.",
   "orders.packagingFiles.title": "Packaging files",
-  "orders.packagingFiles.fromRequest":
-    "Prepared in request no. {n} by {who}.",
+  "orders.packagingFiles.fromRequest": "Prepared in request no. {n} by {who}.",
   "notif.packBrief.subject": "Packaging to prepare: {product}{ref}",
   "notif.packBrief.body":
     "{qty} {unit}. Send the dieline (die-cut) and the packaging artwork; print-ready files and a photo of the physical packaging when ready. The quotation runs in parallel and the sale is not confirmed yet.{due}",
   "notif.packBrief.due": " Due: {date}.",
-  "notif.packBrief.wellmix.subject": "Packaging (Wellmix marketing): {product}{ref}",
+  "notif.packBrief.wellmix.subject":
+    "Packaging (Wellmix marketing): {product}{ref}",
   "notif.packBrief.wellmix.body":
     "{qty} {unit}. No agency assigned: the team prepares the dieline and artwork, or assign an agency in the request.{due}",
   "notif.packBrief.many.subject": "Packaging to prepare: {count} products{ref}",
   "notif.packBrief.many.body":
     "Send the dieline and artwork of each one: {items}. The quotation runs in parallel and the sale is not confirmed yet.",
   "notif.packBrief.noDims.subject": "Packaging without dimensions: {product}",
-  "notif.packBrief.noDims.body": "The product sheet has no carton dimensions: {items}. The agency starts from the brief; enter the dimensions or wait for the quote.",
+  "notif.packBrief.noDims.body":
+    "The product sheet has no carton dimensions: {items}. The agency starts from the brief; enter the dimensions or wait for the quote.",
   "notif.packBrief.item.subject": "{item} sent: {product}",
   "notif.packBrief.item.body": "Sent by {who}.",
   "notif.packBrief.ready.subject": "Packaging ready: {product}",
@@ -332,7 +344,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Provisional packaging dimensions: {product}",
   "notif.packBrief.dimsConfirmed.subject":
     "Packaging dimensions confirmed: {product}",
-  "notif.packBrief.dimsChanged.subject": "Packaging dimensions changed: {product}",
+  "notif.packBrief.dimsChanged.subject":
+    "Packaging dimensions changed: {product}",
   "notif.packBrief.supplier.subject": "Supplier chosen: {product}",
   "notif.packBrief.supplier.body":
     "{supplier} will produce it. The dimensions of their quote now apply to the dieline and artwork.",
@@ -358,15 +371,19 @@ export const en: Record<keyof typeof pt, string> = {
   "notif.packBrief.overdue.subject": "OVERDUE: packaging for {product}{ref}",
   "notif.packBrief.due.subject": "Packaging due soon: {product}{ref}",
   "notif.packBrief.missing": "Still to send: {items}.",
-  "packBrief.error.art_locked": "The artwork was already approved in the order: to replace it, Wellmix reopens the item from the order.",
+  "packBrief.error.art_locked":
+    "The artwork was already approved in the order: to replace it, Wellmix reopens the item from the order.",
   "packBrief.dims.length": "Length (cm)",
   "packBrief.dims.width": "Width (cm)",
   "packBrief.dims.height": "Height (cm)",
   "packBrief.dims.confirm": "Checked: dieline and artwork match the dimensions",
   "packBrief.owner.inactive": "{name} (inactive)",
-  "notif.packBrief.noDims.many.subject": "Packaging without dimensions: {count} products",
-  "notif.packBrief.dimsUnknown.subject": "Packaging dimensions to confirm: {product}",
-  "notif.packBrief.dimsUnknown.body": "The chosen supplier has not given the carton dimensions yet; the current ones came from another quote and remain provisional. Wellmix confirms them or enters them manually.",
+  "notif.packBrief.noDims.many.subject":
+    "Packaging without dimensions: {count} products",
+  "notif.packBrief.dimsUnknown.subject":
+    "Packaging dimensions to confirm: {product}",
+  "notif.packBrief.dimsUnknown.body":
+    "The chosen supplier has not given the carton dimensions yet; the current ones came from another quote and remain provisional. Wellmix confirms them or enters them manually.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -435,7 +452,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "packBrief.readyHint":
     "已完成：刀模和设计稿已上传。供应商将在订单的“设计与包装”阶段审核设计稿。",
   "packBrief.transferredHint": "现已进入订单 #{n}：设计稿交由供应商审核。",
-  "packBrief.transferredArtHint": "“设计与包装”阶段已开启：请在订单中重新上传设计稿。",
+  "packBrief.transferredArtHint":
+    "“设计与包装”阶段已开启：请在订单中重新上传设计稿。",
   "packBrief.cancelledHint": "任务已取消：申请未转为订单。无需再处理。",
   "packBrief.openOrder": "打开订单",
   "packBrief.orderArt.pending": "等待供应商审核",
@@ -459,20 +477,23 @@ export const zh: Record<keyof typeof pt, string> = {
   "packBrief.rfq.owner": "包装（刀模与设计稿）负责方",
   "packBrief.rfq.openNow": "与询价同时开启包装任务",
   "packBrief.rfq.brief": "给设计公司的说明（可选）",
-  "packBrief.rfq.hint": "设计公司在供应商报价期间准备刀模和设计稿；销售尚未确认。",
+  "packBrief.rfq.hint":
+    "设计公司在供应商报价期间准备刀模和设计稿；销售尚未确认。",
   "packBrief.saved": "已保存。",
   "packBrief.uploaded": "文件已上传。",
   "packBrief.error.brief_closed": "该任务已结束（已取消或已完成）。",
   "packBrief.error.not_owner": "只有任务负责方（或 Wellmix）可以修改。",
   "packBrief.error.invalid_kind": "未知的交付物。",
-  "packBrief.error.no_agency": "设计公司无效或已停用。请选择其他公司或 Wellmix 市场部。",
+  "packBrief.error.no_agency":
+    "设计公司无效或已停用。请选择其他公司或 Wellmix 市场部。",
   "packBrief.error.not_found": "未找到包装任务。",
   "packBrief.error.invalid_dims": "请填写外箱的长、宽、高（厘米）。",
   "packBrief.error.document_required": "请选择文件。",
   "settings.option.packagingBriefAt.rfq": "开启询价时（与报价并行）",
   "settings.option.packagingBriefAt.selection": "选定供应商时",
   "settings.option.packagingBriefAt.order": "仅在订单中（沿用旧流程）",
-  "settings.option.packagingAgencyAuto": "自动（唯一在用的设计公司，否则 Wellmix）",
+  "settings.option.packagingAgencyAuto":
+    "自动（唯一在用的设计公司，否则 Wellmix）",
   "settings.error.packaging_required_empty": "请至少勾选一项必交的包装交付物。",
   "orders.packagingFiles.title": "包装文件",
   "orders.packagingFiles.fromRequest": "由 {who} 在申请编号 {n} 中准备。",
@@ -487,7 +508,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "notif.packBrief.many.body":
     "请上传各产品的刀模和设计稿：{items}。报价同时进行，销售尚未确认。",
   "notif.packBrief.noDims.subject": "包装缺少尺寸：{product}",
-  "notif.packBrief.noDims.body": "产品档案没有外箱尺寸：{items}。设计公司先从任务开始；请填写尺寸或等待报价。",
+  "notif.packBrief.noDims.body":
+    "产品档案没有外箱尺寸：{items}。设计公司先从任务开始；请填写尺寸或等待报价。",
   "notif.packBrief.item.subject": "{item}已上传：{product}",
   "notif.packBrief.item.body": "由 {who} 上传。",
   "notif.packBrief.ready.subject": "包装已完成：{product}",
@@ -499,14 +521,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "notif.packBrief.dimsConfirmed.subject": "包装尺寸已确认：{product}",
   "notif.packBrief.dimsChanged.subject": "包装尺寸已变更：{product}",
   "notif.packBrief.supplier.subject": "已选定供应商：{product}",
-  "notif.packBrief.supplier.body": "{supplier} 将负责生产。其报价中的尺寸现适用于刀模和设计稿。",
+  "notif.packBrief.supplier.body":
+    "{supplier} 将负责生产。其报价中的尺寸现适用于刀模和设计稿。",
   "notif.packBrief.reassigned.subject": "包装任务已转移：{product}",
-  "notif.packBrief.reassigned.body": "刀模和设计稿已由其他负责方接手。无需再处理。",
+  "notif.packBrief.reassigned.body":
+    "刀模和设计稿已由其他负责方接手。无需再处理。",
   "notif.packBrief.cancelled.subject": "包装任务已取消：{product}",
   "notif.packBrief.cancelled.body": "申请未转为订单。请停止工作；无需再处理。",
   "notif.packBrief.instructions.subject": "包装说明：{product}",
   "notif.packBrief.transferred.subject": "订单 #{n} 已创建：包装设计稿已上传",
-  "notif.packBrief.transferred.body": "{product}：设计稿等待供应商在“设计与包装”阶段审核。",
+  "notif.packBrief.transferred.body":
+    "{product}：设计稿等待供应商在“设计与包装”阶段审核。",
   "notif.packBrief.transferredOpen.subject": "订单 #{n} 已创建：包装仍待处理",
   "notif.packBrief.transferredOpen.body":
     "{product}：销售已确认，刀模和设计稿尚未上传。请通过任务上传；订单的“设计与包装”阶段会要求缺少的内容。",
@@ -516,7 +541,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "notif.packBrief.overdue.subject": "已逾期：{product} 的包装{ref}",
   "notif.packBrief.due.subject": "包装即将到期：{product}{ref}",
   "notif.packBrief.missing": "尚未上传：{items}。",
-  "packBrief.error.art_locked": "设计稿已在订单中获批：如需更换，由 Wellmix 在订单中重新开启该项。",
+  "packBrief.error.art_locked":
+    "设计稿已在订单中获批：如需更换，由 Wellmix 在订单中重新开启该项。",
   "packBrief.dims.length": "长（厘米）",
   "packBrief.dims.width": "宽（厘米）",
   "packBrief.dims.height": "高（厘米）",
@@ -524,5 +550,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "packBrief.owner.inactive": "{name}（已停用）",
   "notif.packBrief.noDims.many.subject": "包装缺少尺寸：{count} 个产品",
   "notif.packBrief.dimsUnknown.subject": "包装尺寸待确认：{product}",
-  "notif.packBrief.dimsUnknown.body": "已选供应商尚未提供外箱尺寸；当前尺寸来自其他报价，仍为临时数据。由 Wellmix 确认或手动填写。",
+  "notif.packBrief.dimsUnknown.body":
+    "已选供应商尚未提供外箱尺寸；当前尺寸来自其他报价，仍为临时数据。由 Wellmix 确认或手动填写。",
 };

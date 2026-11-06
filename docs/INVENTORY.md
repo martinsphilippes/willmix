@@ -33,6 +33,10 @@ Coluna "Limite" na tela Estoque: cada produto pode ter um estoque mínimo no Bra
 
 Sugestão de compra: no selo "Repor" aparece "Comprar N", que abre uma compra para estoque já com o produto e a quantidade (`reorderQuantity`): o que falta para o limite contando trânsito e produção, no mínimo o MOQ do produto e arredondado para caixas master inteiras.
 
+## Produto parado
+
+Produto com estoque no Brasil e sem baixa por venda há 90 dias ou mais (se nunca vendeu, conta desde a última chegada ao Brasil: container chegado ou compra para estoque entregue). Ajustes de inventário não contam como venda. Na tela Estoque: cartão-filtro "Parados (90+ dias)", selo "Parado há N dias" embaixo do nome e "Última venda" na coluna Última movimentação; a planilha ganha a coluna "Dias parado"; o Painel do dono mostra quantos estão parados no cartão de estoque. Sem mudança de esquema (`idleDaysFor` e `IDLE_DAYS` em `src/lib/services/inventory.ts`).
+
 ## Painel do dono (`/app/dashboards/owner`)
 
 Só quem abre Finanças (admin); menu Gestão → Painel do dono e link em Painéis por área. Mostra: vendas do mês (com o mês anterior), margem do mês, recebido no mês e a receber, pago a fornecedores no mês e a pagar, estoque (valor de custo e produtos abaixo do limite), perdas do último inventário fechado, solicitações em aberto, aguardando sinal, pedidos em andamento, vendas dos últimos 6 meses, pedidos por etapa e os maiores clientes e fornecedores em 12 meses. Compras para estoque não contam como venda. Cada número leva à tela onde se age. Serviço em `src/lib/services/owner-panel.ts` (funções puras testadas).

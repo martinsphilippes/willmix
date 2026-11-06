@@ -63,7 +63,8 @@ export const pt = {
   "reqBatch.error.empty": "Um dos anexos está vazio.",
   "reqBatch.error.after_create":
     "As solicitações foram criadas, mas uma etapa seguinte falhou (anexo, foto da busca ou programação). Abra a solicitação e confira os anexos.",
-  "reqBatch.error.below_moq": "Quantidade abaixo do pedido mínimo do produto. Use pelo menos o mínimo cadastrado (a tela mostra o valor).",
+  "reqBatch.error.below_moq":
+    "Quantidade abaixo do pedido mínimo do produto. Use pelo menos o mínimo cadastrado (a tela mostra o valor).",
   "reqBatch.error.variant_required": "Escolha a variação do produto.",
   "reqBatch.error.variant_invalid":
     "A variação escolhida não é deste produto ou está desativada.",
@@ -131,7 +132,8 @@ export const en: Record<keyof typeof pt, string> = {
   "reqBatch.error.empty": "One of the attachments is empty.",
   "reqBatch.error.after_create":
     "The requests were created, but a later step failed (attachment, lookup photo or schedule). Open the request and check the attachments.",
-  "reqBatch.error.below_moq": "Quantity below the product's minimum order. Use at least the registered minimum (shown on the form).",
+  "reqBatch.error.below_moq":
+    "Quantity below the product's minimum order. Use at least the registered minimum (shown on the form).",
   "reqBatch.error.variant_required": "Choose the product variation.",
   "reqBatch.error.variant_invalid":
     "The chosen variation does not belong to this product or is deactivated.",
@@ -195,7 +197,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "reqBatch.error.empty": "有附件为空。",
   "reqBatch.error.after_create":
     "需求已创建，但后续步骤失败（附件、搜索图片或采购计划）。请打开需求并检查附件。",
-  "reqBatch.error.below_moq": "数量低于该产品的起订量。请至少填写档案中的起订量（表单中有显示）。",
+  "reqBatch.error.below_moq":
+    "数量低于该产品的起订量。请至少填写档案中的起订量（表单中有显示）。",
   "reqBatch.error.variant_required": "请选择产品款式。",
   "reqBatch.error.variant_invalid": "所选款式不属于该产品或已停用。",
 };

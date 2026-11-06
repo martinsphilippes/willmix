@@ -150,7 +150,10 @@ export async function briefsByRequest(
     });
     for (const row of rows) {
       const current = map.get(row.requestId);
-      if (!current || (!LIVE.includes(current.status) && LIVE.includes(row.status)))
+      if (
+        !current ||
+        (!LIVE.includes(current.status) && LIVE.includes(row.status))
+      )
         map.set(row.requestId, row);
     }
   } catch (error) {
@@ -348,8 +351,13 @@ export async function notifyBriefsOpened(
   }
   for (const [agencyId, group] of byOwner) {
     const items = group
-      .map((b) => ({ brief: b, request: requests.find((r) => r.id === b.requestId) }))
-      .filter((x): x is { brief: PackagingBrief; request: Request } => !!x.request);
+      .map((b) => ({
+        brief: b,
+        request: requests.find((r) => r.id === b.requestId),
+      }))
+      .filter(
+        (x): x is { brief: PackagingBrief; request: Request } => !!x.request,
+      );
     if (!items.length) continue;
     const number = items.find((x) => x.request.number)?.request.number;
     await notify(
@@ -423,7 +431,8 @@ export async function assignPackagingBrief(
   const store = getStore();
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   if (brief.agencyId === agencyId) return brief;
   const settings = await getSettings();
   const owner = await resolvePackagingOwner(settings, agencyId);
@@ -752,7 +761,8 @@ export async function savePackagingDims(
   const store = getStore();
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   if (!(input.lengthCm && input.widthCm && input.heightCm))
     throw new PackagingBriefError("invalid_dims");
   const next: PackagingDims = {
@@ -782,7 +792,15 @@ export async function savePackagingDims(
         }
       : {}),
   });
-  await audit(user, "packaging_brief.dims", "packaging_brief", briefId, "Medidas informadas à mão", brief.dims, next);
+  await audit(
+    user,
+    "packaging_brief.dims",
+    "packaging_brief",
+    briefId,
+    "Medidas informadas à mão",
+    brief.dims,
+    next,
+  );
   if (changed && brief.agencyId) {
     const request = await store.get("requests", brief.requestId);
     await notify(ownerTarget(brief), {
@@ -811,7 +829,8 @@ export async function confirmPackagingDims(user: User, briefId: string) {
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
   if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   const ready =
     brief.status === "open" && missingPackagingItems(brief).length === 0;
   const updated = await store.update("packaging_briefs", briefId, {
@@ -862,7 +881,8 @@ export async function savePackagingBriefText(
   const store = getStore();
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   const value = text?.trim() || null;
   if (value === brief.brief) return brief;
   const updated = await store.update("packaging_briefs", briefId, {
@@ -895,7 +915,8 @@ export async function saveAgencyNotes(
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
   if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   return store.update("packaging_briefs", briefId, {
     agencyNotes: notes?.trim() || null,
     updatedByUserId: user.id,
@@ -906,9 +927,7 @@ export async function saveAgencyNotes(
 /* Entregáveis                                                               */
 /* ------------------------------------------------------------------------ */
 
-export type PackagingUploadSource =
-  | File
-  | { fileKey: string; photo?: boolean };
+export type PackagingUploadSource = File | { fileKey: string; photo?: boolean };
 
 async function packagingStage(orderId: string | null): Promise<Stage | null> {
   if (!orderId) return null;
@@ -938,13 +957,18 @@ export async function uploadPackagingItem(
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
   if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   if (!PACKAGING_ITEM_KEYS.includes(key))
     throw new PackagingBriefError("invalid_kind");
   const stage = key === "art" ? await packagingStage(brief.orderId) : null;
   // Etapa Arte e embalagem concluída (ou cancelada): a arte aprovada pelo
   // fornecedor não se troca por aqui; a Wellmix reabre pelo pedido.
-  if (key === "art" && stage && !["pending", "active", "blocked"].includes(stage.status))
+  if (
+    key === "art" &&
+    stage &&
+    !["pending", "active", "blocked"].includes(stage.status)
+  )
     throw new PackagingBriefError("art_locked");
   const artRequirementId =
     key === "art" && brief.orderId ? brief.orderArtRequirementId : null;
@@ -1047,7 +1071,8 @@ export async function clearPackagingItem(
   const brief = await store.get("packaging_briefs", briefId);
   if (!brief) throw new PackagingBriefError("not_found");
   if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
-  if (!LIVE.includes(brief.status)) throw new PackagingBriefError("brief_closed");
+  if (!LIVE.includes(brief.status))
+    throw new PackagingBriefError("brief_closed");
   if (!PACKAGING_ITEM_KEYS.includes(key))
     throw new PackagingBriefError("invalid_kind");
   const column = ITEM_COLUMN[key];
@@ -1058,7 +1083,8 @@ export async function clearPackagingItem(
       throw new PackagingBriefError("art_locked");
     if (stageOpen(stage)) {
       // Etapa aberta: a arte é excluída pelo pedido (volta a aprovação do fornecedor).
-      const { clearRequirementDocument } = await import("@/lib/workflow/engine");
+      const { clearRequirementDocument } =
+        await import("@/lib/workflow/engine");
       await clearRequirementDocument(user, brief.orderArtRequirementId);
     } else {
       await store.update("requirements", brief.orderArtRequirementId, {
@@ -1162,7 +1188,9 @@ export async function transferPackagingBrief(
         actor: "supplier",
         link: `/app/orders/${order.id}`,
         text: (t) => ({
-          subject: t("notif.packBrief.transferred.subject", { n: order.number }),
+          subject: t("notif.packBrief.transferred.subject", {
+            n: order.number,
+          }),
           body: t("notif.packBrief.transferred.body", {
             product: request.productName,
           }),
@@ -1326,7 +1354,9 @@ export async function getPackagingBriefView(
   const selected = request.selectedQuoteId
     ? await store.get("quotes", request.selectedQuoteId)
     : null;
-  const supplier = selected ? await store.get("parties", selected.supplierId) : null;
+  const supplier = selected
+    ? await store.get("parties", selected.supplierId)
+    : null;
   const ids = PACKAGING_ITEM_KEYS.map((k) => brief![ITEM_COLUMN[k]]).filter(
     (id): id is string => !!id,
   );
