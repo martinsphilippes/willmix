@@ -12,7 +12,11 @@ import type {
   Stage,
 } from "@/lib/db";
 import { boxesFor } from "@/lib/logistics/cbm";
-import { customerDetail, isDelivered } from "./customer-accounts";
+import {
+  customerDetail,
+  isDelivered,
+  type AccountSide,
+} from "./customer-accounts";
 import { productPhotoList, productThumbId } from "./product-list";
 
 /*
@@ -61,12 +65,26 @@ const round = (n: number, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
 export function buildSaleLines(input: {
   orders: Pick<
     Order,
-    "id" | "number" | "status" | "sellPrice" | "sellCurrency" | "notes"
+    | "id"
+    | "number"
+    | "status"
+    | "sellPrice"
+    | "sellCurrency"
+    | "notes"
+    | "fobCurrency"
   >[];
   items: Pick<
     OrderItem,
-    "orderId" | "productId" | "name" | "quantity" | "unit" | "variant"
+    | "orderId"
+    | "productId"
+    | "name"
+    | "quantity"
+    | "unit"
+    | "variant"
+    | "unitPrice"
   >[];
+  /** Cliente: preço de venda; fornecedor: preço FOB do item e embarque como entrega. */
+  side?: AccountSide;
   products: Product[];
   requests: Pick<Request, "orderId" | "specification" | "notes">[];
   photos: {
@@ -81,11 +99,13 @@ export function buildSaleLines(input: {
   for (const o of [...input.orders].sort((a, b) => a.number - b.number)) {
     const items = input.items.filter((i) => i.orderId === o.id);
     const orderQty = items.reduce((s, i) => s + i.quantity, 0);
-    const unit =
+    const supplier = input.side === "supplier";
+    const sellUnit =
       o.sellPrice !== null && orderQty > 0 ? o.sellPrice / orderQty : null;
     const req = input.requests.find((r) => r.orderId === o.id);
     for (const it of items) {
       const p = it.productId ? (product.get(it.productId) ?? null) : null;
+      const unit = supplier ? (it.unitPrice ?? null) : sellUnit;
       const v = it.variant ?? null;
       const perBox = v?.masterBoxQty ?? p?.masterBoxQty ?? null;
       const boxes = boxesFor(it.quantity, perBox);
@@ -112,8 +132,11 @@ export function buildSaleLines(input: {
         weightKg: gross !== null ? round(it.quantity * gross, 2) : null,
         unitPrice: unit !== null ? round(unit, 4) : null,
         amount: unit !== null ? round(unit * it.quantity) : null,
-        currency: o.sellCurrency,
-        delivered: o.status !== "CANCELLED" && isDelivered(o) ? it.quantity : 0,
+        currency: supplier ? o.fobCurrency : o.sellCurrency,
+        delivered:
+          o.status !== "CANCELLED" && isDelivered(o, input.side)
+            ? it.quantity
+            : 0,
         notes: req?.notes ?? o.notes ?? null,
       });
     }
@@ -149,11 +172,17 @@ export function saleTotals(lines: SaleLine[]) {
  * Carrega o pedido de venda do cliente: o pedido pedido e os do mesmo lote.
  * Nulo quando o pedido não é deste cliente (ou não existe).
  */
-export async function loadSaleSheet(partyId: string, orderId: string) {
+export async function loadSaleSheet(
+  partyId: string,
+  orderId: string,
+  side: AccountSide = "customer",
+) {
   const store = getStore();
   const order = await store.get("orders", orderId);
-  if (!order || order.customerId !== partyId) return null;
-  const detail = await customerDetail(partyId);
+  const ownerOf = (o: Pick<Order, "customerId" | "supplierId">) =>
+    side === "supplier" ? o.supplierId : o.customerId;
+  if (!order || ownerOf(order) !== partyId) return null;
+  const detail = await customerDetail(partyId, side);
   if (!detail) return null;
   const request = order.requestId
     ? await store.get("requests", order.requestId)
@@ -162,7 +191,7 @@ export async function loadSaleSheet(partyId: string, orderId: string) {
   const groupRequests = request?.groupId
     ? (
         await store.list("requests", { filter: { groupId: request.groupId } })
-      ).filter((r) => r.customerId === partyId)
+      ).filter((r) => side === "supplier" || r.customerId === partyId)
     : request
       ? [request]
       : [];
@@ -174,7 +203,7 @@ export async function loadSaleSheet(partyId: string, orderId: string) {
   ];
   const orders = (
     await store.list("orders", { filter: { id: orderIds } })
-  ).filter((o) => o.customerId === partyId);
+  ).filter((o) => ownerOf(o) === partyId);
   const requestIds = groupRequests.map((r) => r.id);
   const [items, stages, documents] = await Promise.all([
     store.list("order_items", { filter: { orderId: orderIds } }),
@@ -199,6 +228,7 @@ export async function loadSaleSheet(partyId: string, orderId: string) {
     products,
     requests: groupRequests,
     photos,
+    side,
   });
   const rows = detail.orders.filter((r) => orderIds.includes(r.orderId));
   const payments = detail.payments.filter(

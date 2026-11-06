@@ -64,6 +64,10 @@ const SALES_TABLES = [
   "receivings",
   "art_issues",
   "art_issues",
+  // Estoque de teste: baixas, inventários e perdas (o estoque vem dos containers apagados).
+  "stock_movements",
+  "stock_count_items",
+  "stock_counts",
 ] as const satisfies readonly TableName[];
 
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
@@ -77,6 +81,9 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "message_reads",
   "conversation_topics",
   "conversations",
+  "stock_movements",
+  "stock_count_items",
+  "stock_counts",
 ]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */

@@ -25,6 +25,7 @@ describe("pedido de venda em lista", () => {
           status: "DELIVERED",
           sellPrice: 1000,
           sellCurrency: "BRL",
+          fobCurrency: "USD",
           notes: null,
         },
         {
@@ -33,6 +34,7 @@ describe("pedido de venda em lista", () => {
           status: "PACKAGING",
           sellPrice: null,
           sellCurrency: null,
+          fobCurrency: "USD",
           notes: "urgente",
         },
       ],
@@ -44,6 +46,7 @@ describe("pedido de venda em lista", () => {
           quantity: 5,
           unit: "un",
           variant: null,
+          unitPrice: 2,
         },
         {
           orderId: "o2",
@@ -52,6 +55,7 @@ describe("pedido de venda em lista", () => {
           quantity: 100,
           unit: "un",
           variant: null,
+          unitPrice: 2,
         },
       ],
       products: [product],
@@ -94,6 +98,7 @@ describe("pedido de venda em lista", () => {
           status: "CANCELLED",
           sellPrice: 50,
           sellCurrency: "USD",
+          fobCurrency: "USD",
           notes: null,
         },
       ],
@@ -104,6 +109,7 @@ describe("pedido de venda em lista", () => {
           name: "Jarra",
           quantity: 10,
           unit: "un",
+          unitPrice: 2,
           variant: {
             id: "v",
             name: "2 L",
@@ -137,5 +143,42 @@ describe("pedido de venda em lista", () => {
     });
     // Pedido cancelado não soma no valor.
     expect(saleTotals([l]).amounts.size).toBe(0);
+  });
+
+  it("fornecedor: preço FOB do item e embarcado conta como entregue", () => {
+    const [l] = buildSaleLines({
+      orders: [
+        {
+          id: "o",
+          number: 3,
+          status: "CUSTOMS",
+          sellPrice: 9000,
+          sellCurrency: "BRL",
+          fobCurrency: "USD",
+          notes: null,
+        },
+      ],
+      items: [
+        {
+          orderId: "o",
+          productId: "p1",
+          name: "Jarra",
+          quantity: 100,
+          unit: "un",
+          variant: null,
+          unitPrice: 1.5,
+        },
+      ],
+      products: [product],
+      requests: [],
+      photos: [],
+      side: "supplier",
+    });
+    expect(l).toMatchObject({
+      unitPrice: 1.5,
+      amount: 150,
+      currency: "USD",
+      delivered: 100,
+    });
   });
 });

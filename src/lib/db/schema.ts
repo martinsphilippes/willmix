@@ -1989,6 +1989,76 @@ export interface MessageRead extends BaseRow {
   lastReadAt: string;
 }
 
+/* ---- Estoque: baixas, inventário às cegas e perdas (docs/INVENTORY.md) ---- */
+
+export const STOCK_MOVEMENT_KINDS = [
+  "sale_out",
+  "count_loss",
+  "count_gain",
+] as const;
+export type StockMovementKind = (typeof STOCK_MOVEMENT_KINDS)[number];
+
+/** Saída ou ajuste do estoque no Brasil (quantidade negativa = saiu). */
+export interface StockMovement extends BaseRow {
+  productId: string;
+  kind: StockMovementKind;
+  quantity: number;
+  unit: string | null;
+  /** Pedido do cliente atendido pela baixa (opcional). */
+  orderId: string | null;
+  /** Inventário e item de contagem que geraram o ajuste. */
+  countId: string | null;
+  countItemId: string | null;
+  note: string | null;
+  createdByUserId: string;
+}
+
+export const STOCK_COUNT_STATUSES = ["open", "closed"] as const;
+export type StockCountStatus = (typeof STOCK_COUNT_STATUSES)[number];
+
+/** Inventário (contagem física): aberto pelo admin, fechado quando tudo foi contado. */
+export interface StockCount extends BaseRow {
+  number: number;
+  status: StockCountStatus;
+  note: string | null;
+  startedByUserId: string;
+  closedByUserId: string | null;
+  closedAt: string | null;
+}
+
+export const STOCK_COUNT_ITEM_STATUSES = [
+  "pending",
+  "retry",
+  "review",
+  "ok",
+  "approved",
+] as const;
+export type StockCountItemStatus = (typeof STOCK_COUNT_ITEM_STATUSES)[number];
+
+/**
+ * Produto a contar num inventário. `expected` (o que o sistema tem) nunca vai
+ * para quem conta: a contagem é às cegas. Duas tentativas; errou as duas, o
+ * admin aprova a quantidade final e a diferença vira perda ou sobra.
+ */
+export interface StockCountItem extends BaseRow {
+  countId: string;
+  productId: string;
+  expected: number;
+  unit: string | null;
+  status: StockCountItemStatus;
+  attempt1Qty: number | null;
+  attempt1ByUserId: string | null;
+  attempt1At: string | null;
+  attempt2Qty: number | null;
+  attempt2ByUserId: string | null;
+  attempt2At: string | null;
+  finalQty: number | null;
+  difference: number | null;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  approvalNote: string | null;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -2044,6 +2114,9 @@ export interface Tables {
   import_steps: ImportStep;
   receivings: Receiving;
   art_issues: ArtIssue;
+  stock_movements: StockMovement;
+  stock_counts: StockCount;
+  stock_count_items: StockCountItem;
 }
 export type TableName = keyof Tables;
 
@@ -3384,6 +3457,65 @@ export const TABLES: Record<TableName, TableDef> = {
         columns: ["topicId", "userId"],
       },
       { key: "by_user", type: "key", columns: ["userId"] },
+    ],
+  },
+  stock_movements: {
+    label: "Movimentações de estoque",
+    columns: {
+      productId: id(),
+      kind: enumOf(STOCK_MOVEMENT_KINDS),
+      quantity: float(true),
+      unit: str(20),
+      orderId: id(false),
+      countId: id(false),
+      countItemId: id(false),
+      note: text(),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_product", type: "key", columns: ["productId"] },
+      { key: "by_count", type: "key", columns: ["countId"] },
+    ],
+  },
+  stock_counts: {
+    label: "Inventários (contagem física)",
+    columns: {
+      number: int(true),
+      status: enumOf(STOCK_COUNT_STATUSES),
+      note: text(),
+      startedByUserId: id(),
+      closedByUserId: id(false),
+      closedAt: datetime(),
+    },
+    indexes: [{ key: "by_status", type: "key", columns: ["status"] }],
+  },
+  stock_count_items: {
+    label: "Itens do inventário",
+    columns: {
+      countId: id(),
+      productId: id(),
+      expected: float(true),
+      unit: str(20),
+      status: enumOf(STOCK_COUNT_ITEM_STATUSES),
+      attempt1Qty: float(),
+      attempt1ByUserId: id(false),
+      attempt1At: datetime(),
+      attempt2Qty: float(),
+      attempt2ByUserId: id(false),
+      attempt2At: datetime(),
+      finalQty: float(),
+      difference: float(),
+      approvedByUserId: id(false),
+      approvedAt: datetime(),
+      approvalNote: text(),
+    },
+    indexes: [
+      {
+        key: "count_product_unique",
+        type: "unique",
+        columns: ["countId", "productId"],
+      },
+      { key: "by_count", type: "key", columns: ["countId"] },
     ],
   },
 };
