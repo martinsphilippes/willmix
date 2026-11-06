@@ -5,6 +5,7 @@ import {
   approveStockCountItem,
   closeStockCount,
   recordSaleOut,
+  setMinStock,
   startStockCount,
   submitStockCount,
 } from "@/lib/services/stock";
@@ -94,5 +95,23 @@ export async function closeStockCountAction(form: FormData) {
   await run(back, async () => {
     await closeStockCount(user, countId);
     return `${back}?closed=1`;
+  });
+}
+
+/** Limite (estoque mínimo) de um produto, na linha da tela Estoque. */
+export async function setMinStockAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "back");
+  const back = /^\/app\/inventory(\?[A-Za-z0-9_=&%.+-]{0,200})?$/.test(raw)
+    ? raw
+    : "/app/inventory";
+  await run(back, async () => {
+    const productId = ID.parse(str(form, "productId"));
+    const value = str(form, "minStock").replace(",", ".");
+    const minStock = value === "" ? null : QTY.parse(value);
+    await setMinStock(user, productId, minStock);
+    const url = new URL(back, "http://x");
+    url.searchParams.set("limit", "saved");
+    return url.pathname + url.search;
   });
 }

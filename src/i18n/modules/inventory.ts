@@ -13,6 +13,18 @@ export const pt = {
   "inv.situ.brazil": "No Brasil",
   "inv.situ.transit": "Em trânsito",
   "inv.situ.production": "Em produção",
+  "inv.situ.below": "Abaixo do limite",
+  "inv.col.limit": "Limite",
+  "inv.limit.ok": "Acima do limite",
+  "inv.limit.incoming": "Abaixo · a caminho",
+  "inv.limit.reorder": "Repor",
+  "inv.limit.hint":
+    "Estoque mínimo no Brasil. Abaixo dele aparece em amarelo (o que vem a caminho cobre) ou vermelho (repor) e o admin é avisado.",
+  "inv.limit.save": "Salvar limite",
+  "inv.limit.saved": "Limite salvo.",
+  "inv.limit.notify.subject": "Estoque abaixo do limite: {product}",
+  "inv.limit.notify.body":
+    "{product} ficou com {qty} no Brasil, abaixo do limite de {min}. Veja a tela Estoque e programe a reposição.",
   "inv.total.boxes": "Total de caixas",
   "inv.total.units": "Total de unidades",
   "inv.total.value": "Valor de custo",
@@ -37,7 +49,7 @@ export const pt = {
   "inv.open": "Abrir a ficha do produto",
   "inv.openContainer": "Abrir o container",
   "inv.csv.header":
-    "Produto;SKU;Categoria;Cód. do fornecedor;Especificação;Cor;Caixas;No Brasil;Em trânsito;Em produção;Total;Unidade;Preço de compra;Moeda;Valor total;Observações;Última movimentação",
+    "Produto;SKU;Categoria;Cód. do fornecedor;Especificação;Cor;Caixas;No Brasil;Em trânsito;Em produção;Total;Limite;Unidade;Preço de compra;Moeda;Valor total;Observações;Última movimentação",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -50,6 +62,18 @@ export const en: Record<keyof typeof pt, string> = {
   "inv.situ.brazil": "In Brazil",
   "inv.situ.transit": "In transit",
   "inv.situ.production": "In production",
+  "inv.situ.below": "Below limit",
+  "inv.col.limit": "Limit",
+  "inv.limit.ok": "Above limit",
+  "inv.limit.incoming": "Below · on the way",
+  "inv.limit.reorder": "Reorder",
+  "inv.limit.hint":
+    "Minimum stock in Brazil. Below it the row turns yellow (incoming covers it) or red (reorder) and the admin is notified.",
+  "inv.limit.save": "Save limit",
+  "inv.limit.saved": "Limit saved.",
+  "inv.limit.notify.subject": "Stock below limit: {product}",
+  "inv.limit.notify.body":
+    "{product} is at {qty} in Brazil, below the limit of {min}. Check the Inventory screen and plan the reorder.",
   "inv.total.boxes": "Total cartons",
   "inv.total.units": "Total units",
   "inv.total.value": "Cost value",
@@ -74,7 +98,7 @@ export const en: Record<keyof typeof pt, string> = {
   "inv.open": "Open the product sheet",
   "inv.openContainer": "Open the container",
   "inv.csv.header":
-    "Product;SKU;Category;Supplier code;Specification;Color;Cartons;In Brazil;In transit;In production;Total;Unit;Purchase price;Currency;Total value;Notes;Last movement",
+    "Product;SKU;Category;Supplier code;Specification;Color;Cartons;In Brazil;In transit;In production;Total;Limit;Unit;Purchase price;Currency;Total value;Notes;Last movement",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -87,6 +111,18 @@ export const zh: Record<keyof typeof pt, string> = {
   "inv.situ.brazil": "在巴西",
   "inv.situ.transit": "在途",
   "inv.situ.production": "生产中",
+  "inv.situ.below": "低于下限",
+  "inv.col.limit": "下限",
+  "inv.limit.ok": "高于下限",
+  "inv.limit.incoming": "低于下限 · 在途补足",
+  "inv.limit.reorder": "需补货",
+  "inv.limit.hint":
+    "巴西最低库存。低于下限时显示黄色（在途可补足）或红色（需补货），并通知管理员。",
+  "inv.limit.save": "保存下限",
+  "inv.limit.saved": "下限已保存。",
+  "inv.limit.notify.subject": "库存低于下限：{product}",
+  "inv.limit.notify.body":
+    "{product} 在巴西剩余 {qty}，低于下限 {min}。请查看库存页面并安排补货。",
   "inv.total.boxes": "总箱数",
   "inv.total.units": "总数量",
   "inv.total.value": "成本金额",
@@ -110,5 +146,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "inv.open": "打开产品资料",
   "inv.openContainer": "打开货柜",
   "inv.csv.header":
-    "产品;SKU;分类;工厂货号;规格;颜色;箱数;在巴西;在途;生产中;合计;单位;采购价;币种;总金额;备注;最近变动",
+    "产品;SKU;分类;工厂货号;规格;颜色;箱数;在巴西;在途;生产中;合计;下限;单位;采购价;币种;总金额;备注;最近变动",
 };

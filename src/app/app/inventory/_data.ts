@@ -37,8 +37,27 @@ export async function inventoryData(filter: {
   situation: InventorySituation;
   q: string;
 }) {
-  const rows = await loadInventory();
+  const loaded = await loadInventory();
   const store = getStore();
+  // Produtos com limite e sem estoque nenhum também aparecem (a repor).
+  const withLimit = (await store.list("products", { filter: { active: true } }))
+    .filter((p) => (p.minStock ?? 0) > 0)
+    .filter((p) => !loaded.some((r) => r.productId === p.id));
+  const rows: InventoryRow[] = [
+    ...loaded,
+    ...withLimit.map((p) => ({
+      productId: p.id,
+      brazil: 0,
+      transit: 0,
+      production: 0,
+      total: 0,
+      boxes: 0,
+      unit: "un",
+      lastAt: null,
+      containerIds: [],
+      orderIds: [],
+    })),
+  ];
   const products = rows.length
     ? await store.list("products", {
         filter: { id: rows.map((r) => r.productId) },
@@ -74,18 +93,19 @@ export async function inventoryData(filter: {
   const counts = Object.fromEntries(
     INVENTORY_SITUATIONS.map((s) => [
       s,
-      searched.filter((l) => inInventorySituation(l, s)).length,
+      searched.filter((l) => inInventorySituation(l, s, l.product?.minStock))
+        .length,
     ]),
   ) as Record<InventorySituation, number>;
   const shown = searched.filter((l) =>
-    inInventorySituation(l, filter.situation),
+    inInventorySituation(l, filter.situation, l.product?.minStock),
   );
   return { lines: shown, counts, hasAny: lines.length > 0 };
 }
 
 /** Quantidade da situação escolhida (em "todos", o total). */
 export function qtyFor(l: InventoryRow, s: InventorySituation): number {
-  return s === "all" ? l.total : l[s];
+  return s === "all" ? l.total : s === "below" ? l.brazil : l[s];
 }
 
 /** Custo da quantidade da situação (preço de compra × quantidade). */

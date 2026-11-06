@@ -163,3 +163,57 @@ describe("inventário às cegas", () => {
     );
   });
 });
+
+describe("limite (estoque mínimo)", () => {
+  it("situação: acima, abaixo coberto pelo que vem, repor; sem limite, nada", () => {
+    const row = { brazil: 10, total: 30 };
+    expect(inv.limitStatus(row, null)).toBeNull();
+    expect(inv.limitStatus(row, 10)).toBe("ok");
+    expect(inv.limitStatus(row, 20)).toBe("incoming");
+    expect(inv.limitStatus(row, 40)).toBe("reorder");
+    expect(
+      inv.inInventorySituation(
+        { brazil: 10, transit: 20, production: 0, total: 30 },
+        "below",
+        20,
+      ),
+    ).toBe(true);
+  });
+
+  it("baixa que cruza o limite avisa o admin; só a Wellmix define o limite", async () => {
+    await expect(s.setMinStock(customer, "prod-boneca", 47)).rejects.toThrow();
+    await s.setMinStock(operator, "prod-boneca", 47);
+    expect((await getStore().get("products", "prod-boneca"))?.minStock).toBe(
+      47,
+    );
+    const before = (await getStore().list("notifications")).filter(
+      (n) => n.userId === admin.id && n.subject.includes("limite"),
+    ).length;
+    await s.recordSaleOut(operator, {
+      productId: "prod-boneca",
+      quantity: 2,
+      orderId: null,
+      note: null,
+    });
+    const after = (await getStore().list("notifications")).filter(
+      (n) => n.userId === admin.id && n.subject.includes("limite"),
+    ).length;
+    expect(after).toBeGreaterThan(before);
+    // Já abaixo: outra baixa não repete o aviso.
+    await s.recordSaleOut(operator, {
+      productId: "prod-boneca",
+      quantity: 1,
+      orderId: null,
+      note: null,
+    });
+    expect(
+      (await getStore().list("notifications")).filter(
+        (n) => n.userId === admin.id && n.subject.includes("limite"),
+      ).length,
+    ).toBe(after);
+    await s.setMinStock(operator, "prod-boneca", null);
+    expect(
+      (await getStore().get("products", "prod-boneca"))?.minStock,
+    ).toBeNull();
+  });
+});

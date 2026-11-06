@@ -746,6 +746,13 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "minStock",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
         }
       ],
       "indexes": [
