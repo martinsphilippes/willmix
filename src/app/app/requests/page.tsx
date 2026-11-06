@@ -27,6 +27,7 @@ import { getT } from "@/i18n/server";
 import {
   Alert,
   Badge,
+  Button,
   Card,
   Empty,
   LinkButton,
@@ -38,20 +39,34 @@ import {
   Th,
   cx,
   formatDate,
+  formatMoney,
+  Input,
   rowClass,
+  Stat,
   stageTone,
 } from "@/components/ui";
 import { TaskItems } from "@/components/task-list";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import { customerOrdersInProgress } from "@/lib/services/customer-home";
+import { canOpen } from "@/lib/auth/screens";
+import {
+  REQUEST_SITUATIONS,
+  downStatus,
+  inSituation,
+  matchesRequest,
+  receivedByRequest,
+  todayBrazil,
+  type RequestSituation,
+} from "@/lib/services/request-list";
 
 const BULK_FORM = "requests-bulk-delete";
 
 export default async function RequestsPage({
   searchParams,
 }: PageProps<"/app/requests">) {
-  const { view, deleted, skipped, error, group, created } = await searchParams;
+  const sp = await searchParams;
+  const { view, deleted, skipped, error, group, created } = sp;
   // Lote: ?group=<groupId> mostra só as solicitações criadas juntas.
   const groupId = typeof group === "string" && group ? group : null;
   const showDeleted = view === "deleted";
@@ -64,16 +79,24 @@ export default async function RequestsPage({
   // Cliente: esta é a página inicial; pendências e pedidos em andamento vêm no topo.
   const customer = user.role === "customer";
   // Tudo numa rodada só: lista, parceiros, pendências e pedidos em andamento.
-  const [allRequests, parties, tasks, inProgress] = await Promise.all([
-    store.list("requests", {
-      filter: customer ? { customerId: user.partyId! } : undefined,
-      orderBy: "createdAt",
-      direction: "desc",
-    }),
-    store.list("parties", { filter: { type: "customer" } }),
-    customer ? pendingTasksFor(user) : Promise.resolve([]),
-    customer ? customerOrdersInProgress(user) : Promise.resolve([]),
-  ]);
+  const wellmix = isWellmix(user);
+  // Wellmix: valores só para quem abre Finanças (o mesmo dinheiro de lá).
+  const money = wellmix && canOpen(user, "finance");
+  const [allRequests, parties, tasks, inProgress, team, payments] =
+    await Promise.all([
+      store.list("requests", {
+        filter: customer ? { customerId: user.partyId! } : undefined,
+        orderBy: "createdAt",
+        direction: "desc",
+      }),
+      store.list("parties", { filter: { type: "customer" } }),
+      customer ? pendingTasksFor(user) : Promise.resolve([]),
+      customer ? customerOrdersInProgress(user) : Promise.resolve([]),
+      wellmix ? store.list("users") : Promise.resolve([]),
+      money
+        ? store.list("payments", { filter: { direction: "customer_in" } })
+        : Promise.resolve([]),
+    ]);
   const visible = allRequests.filter((r) => canViewRequest(user, r));
   // Pedido cancelado: a solicitação segue ORDERED no banco, mas o selo mostra
   // "Pedido cancelado" em vez de "Pedido criado".
@@ -87,7 +110,72 @@ export default async function RequestsPage({
   const byStatus = visible.filter((r) =>
     showDeleted ? closed(r) : !closed(r),
   );
-  const requests = byStatus.filter((r) => !groupId || r.groupId === groupId);
+  // Wellmix: filtro por situação (cartões) e busca, como na ordem de venda.
+  const situation: RequestSituation = (
+    REQUEST_SITUATIONS as readonly string[]
+  ).includes(String(sp.situ))
+    ? (sp.situ as RequestSituation)
+    : "all";
+  const q = typeof sp.q === "string" ? sp.q.slice(0, 120) : "";
+  const today = todayBrazil();
+  const customerName = (id: string) =>
+    parties.find((p) => p.id === id)?.name ?? "";
+  const situationCounts = Object.fromEntries(
+    REQUEST_SITUATIONS.map((k) => [
+      k,
+      byStatus.filter((r) =>
+        inSituation(r, requestDisplayStatus(r, cancelled), k, today),
+      ).length,
+    ]),
+  ) as Record<RequestSituation, number>;
+  const filtering = wellmix && !showDeleted && !groupId;
+  const requests = byStatus
+    .filter((r) => !groupId || r.groupId === groupId)
+    .filter(
+      (r) =>
+        !filtering ||
+        (inSituation(r, requestDisplayStatus(r, cancelled), situation, today) &&
+          matchesRequest(r, customerName(r.customerId), q)),
+    );
+  const received = receivedByRequest(payments);
+  const orderIds = [
+    ...new Set(requests.map((r) => r.orderId).filter(Boolean)),
+  ] as string[];
+  const orders =
+    wellmix && orderIds.length
+      ? await store.list("orders", { filter: { id: orderIds } })
+      : [];
+  const orderNumber = (id: string | null) =>
+    id ? (orders.find((o) => o.id === id)?.number ?? null) : null;
+  const ownerName = (id: string | null | undefined) =>
+    id ? (team.find((u) => u.id === id)?.name ?? "—") : "—";
+  const listQuery = (patch: Record<string, string | null>) => {
+    const p = new URLSearchParams();
+    const merged: Record<string, string | null> = {
+      situ: situation === "all" ? null : situation,
+      q: q || null,
+      ...patch,
+    };
+    for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
+    const str = p.toString();
+    return str ? `?${str}` : "";
+  };
+  const DOWN_TONE = {
+    paid: "success",
+    partial: "warning",
+    pending: "danger",
+    none: "neutral",
+  } as const;
+  /** Soma por moeda (lote): uma moeda só mostra o total; mais de uma, cada uma. */
+  const moneySum = (items: Array<{ v: number | null; c: string | null }>) => {
+    const by = new Map<string, number>();
+    for (const { v, c } of items)
+      if (typeof v === "number")
+        by.set(c ?? "BRL", (by.get(c ?? "BRL") ?? 0) + v);
+    return by.size
+      ? [...by.entries()].map(([c, v]) => formatMoney(v, c, t)).join(" + ")
+      : "—";
+  };
   // Tamanho de cada lote (selo da linha que ficou sozinha nesta lista, ex.:
   // o outro produto do lote foi excluído): tudo o que este usuário vê.
   const groupSize = new Map<string, number>();
@@ -325,6 +413,60 @@ export default async function RequestsPage({
           </TextLink>
         ) : null}
       </div>
+      {filtering ? (
+        <div className="mb-3 space-y-2" data-request-filters>
+          {/* Situação como cartões-filtro (o escolhido fica marcado). */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {REQUEST_SITUATIONS.map((k) => (
+              <Stat
+                key={k}
+                compact
+                label={t(`reqList.situ.${k}`)}
+                value={situationCounts[k]}
+                href={`/app/requests${listQuery({ situ: k === "all" ? null : k })}`}
+                tone={
+                  situation === k
+                    ? undefined
+                    : k === "late" && situationCounts.late > 0
+                      ? "danger"
+                      : k === "waiting" && situationCounts.waiting > 0
+                        ? "warning"
+                        : "neutral"
+                }
+                active={situation === k}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <form
+              method="get"
+              action="/app/requests"
+              className="flex min-w-0 flex-1 flex-wrap items-center gap-2"
+              data-request-search
+            >
+              {situation !== "all" ? (
+                <input type="hidden" name="situ" value={situation} />
+              ) : null}
+              <Input
+                name="q"
+                defaultValue={q}
+                placeholder={t("reqList.search")}
+                aria-label={t("reqList.search")}
+                className="w-full max-w-md"
+              />
+              <Button type="submit" variant="primary">
+                {t("reqList.searchButton")}
+              </Button>
+            </form>
+            <LinkButton
+              href={`/app/requests/export${listQuery({})}`}
+              data-request-export
+            >
+              {t("reqList.export")}
+            </LinkButton>
+          </div>
+        </div>
+      ) : null}
       {!showDeleted && anyDeletable ? (
         <BulkDeleteBar
           formId={BULK_FORM}
@@ -340,7 +482,11 @@ export default async function RequestsPage({
       ) : null}
       {requests.length === 0 ? (
         <Empty>
-          {customer ? t("customerHome.requests.empty") : t("common.none")}
+          {customer
+            ? t("customerHome.requests.empty")
+            : filtering && (q || situation !== "all")
+              ? t("reqList.empty")
+              : t("common.none")}
         </Empty>
       ) : (
         <Table>
@@ -355,11 +501,20 @@ export default async function RequestsPage({
                 </Th>
               ) : null}
               <Th className="w-14">{t("requests.numberShort")}</Th>
+              {wellmix ? <Th>{t("reqList.col.date")}</Th> : null}
               <Th>{t("common.product")}</Th>
               {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
+              {wellmix ? <Th>{t("reqList.col.owner")}</Th> : null}
               <Th>{t("common.quantity")}</Th>
               <Th>{t("common.status")}</Th>
               <Th>{t("requests.deadline")}</Th>
+              {money ? (
+                <>
+                  <Th className="text-right">{t("reqList.col.sell")}</Th>
+                  <Th>{t("reqList.col.down")}</Th>
+                </>
+              ) : null}
+              {wellmix ? <Th>{t("reqList.col.order")}</Th> : null}
               <Th />
             </tr>
           </thead>
@@ -399,6 +554,11 @@ export default async function RequestsPage({
                         {rows.find((r) => r.number)?.number ?? "—"}
                       </span>
                     </Td>
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {formatDate(rows[0].createdAt, t)}
+                      </Td>
+                    ) : null}
                     <Td className="min-w-40 font-medium text-zinc-900">
                       <TextLink
                         href={batchHref(entry.groupId)}
@@ -418,6 +578,11 @@ export default async function RequestsPage({
                       <Td className="min-w-32">
                         {parties.find((p) => p.id === rows[0].customerId)
                           ?.name ?? "—"}
+                      </Td>
+                    ) : null}
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap">
+                        {ownerName(rows[0].ownerUserId)}
                       </Td>
                     ) : null}
                     <Td className="tabular-nums">
@@ -449,6 +614,35 @@ export default async function RequestsPage({
                     <Td className="whitespace-nowrap tabular-nums">
                       {formatDate(earliestDeadline(rows), t)}
                     </Td>
+                    {money ? (
+                      <>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {moneySum(
+                            rows.map((r) => ({
+                              v: r.sellPrice,
+                              c: r.sellCurrency,
+                            })),
+                          )}
+                        </Td>
+                        <Td className="whitespace-nowrap tabular-nums">
+                          {moneySum(
+                            rows.map((r) => ({
+                              v: r.downPaymentAmount,
+                              c: r.sellCurrency,
+                            })),
+                          )}
+                        </Td>
+                      </>
+                    ) : null}
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap">
+                        {rows.some((r) => r.orderId)
+                          ? t("reqList.orders", {
+                              n: rows.filter((r) => r.orderId).length,
+                            })
+                          : "—"}
+                      </Td>
+                    ) : null}
                     <Td className="text-right">
                       <div className="flex items-center justify-end gap-3">
                         <TextLink href={batchHref(entry.groupId)}>
@@ -514,6 +708,11 @@ export default async function RequestsPage({
                   <Td className="whitespace-nowrap tabular-nums text-zinc-600">
                     <span data-request-number>{r.number ?? "—"}</span>
                   </Td>
+                  {wellmix ? (
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {formatDate(r.createdAt, t)}
+                    </Td>
+                  ) : null}
                   <Td className="min-w-40 font-medium text-zinc-900">
                     {r.productName}
                     {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
@@ -531,6 +730,11 @@ export default async function RequestsPage({
                       {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
                     </Td>
                   ) : null}
+                  {wellmix ? (
+                    <Td className="whitespace-nowrap">
+                      {ownerName(r.ownerUserId)}
+                    </Td>
+                  ) : null}
                   <Td className="whitespace-nowrap tabular-nums">
                     {r.quantity} {r.unit}
                   </Td>
@@ -542,6 +746,54 @@ export default async function RequestsPage({
                   <Td className="whitespace-nowrap tabular-nums">
                     {formatDate(r.deadline, t)}
                   </Td>
+                  {money ? (
+                    <>
+                      <Td className="whitespace-nowrap text-right tabular-nums">
+                        {r.sellPrice !== null
+                          ? formatMoney(r.sellPrice, r.sellCurrency, t)
+                          : "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        {(() => {
+                          const got = received.get(r.id) ?? 0;
+                          const st = downStatus(r, got);
+                          if (st === "none") return "—";
+                          return (
+                            <span data-request-down={st}>
+                              <span className="tabular-nums">
+                                {formatMoney(
+                                  r.downPaymentAmount ?? got,
+                                  r.sellCurrency,
+                                  t,
+                                )}
+                              </span>{" "}
+                              <Badge tone={DOWN_TONE[st]}>
+                                {t(`reqList.down.${st}`)}
+                              </Badge>
+                              {st === "partial" ? (
+                                <span className="block text-xs text-zinc-500">
+                                  {t("reqList.down.received", {
+                                    amount: formatMoney(got, r.sellCurrency, t),
+                                  })}
+                                </span>
+                              ) : null}
+                            </span>
+                          );
+                        })()}
+                      </Td>
+                    </>
+                  ) : null}
+                  {wellmix ? (
+                    <Td className="whitespace-nowrap">
+                      {r.orderId ? (
+                        <TextLink href={`/app/orders/${r.orderId}`}>
+                          #{orderNumber(r.orderId) ?? "?"}
+                        </TextLink>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                  ) : null}
                   <Td className="text-right">
                     <div className="flex items-center justify-end gap-3">
                       <TextLink href={`/app/requests/${r.id}`}>
