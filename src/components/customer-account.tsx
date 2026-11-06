@@ -84,9 +84,12 @@ export function MoneyLines({
 export function AccountCards({
   totals,
   t,
+  label,
 }: {
   totals: AccountTotals;
   t: Translate;
+  /** Textos do lado (cliente ou fornecedor): "card.contract", "hint.contract"… */
+  label: (key: string) => string;
 }) {
   const fallback = mainCurrency(totals);
   return (
@@ -111,9 +114,9 @@ export function AccountCards({
           />
           <span
             className="mt-1 text-[13px] font-medium text-white/90"
-            title={t(`cust.hint.${k}`)}
+            title={label(`hint.${k}`)}
           >
-            {t(`cust.card.${k}`)}
+            {label(`card.${k}`)}
           </span>
         </div>
       ))}
@@ -128,9 +131,11 @@ export function AccountCards({
 export function AccountBar({
   totals,
   t,
+  label,
 }: {
   totals: AccountTotals;
   t: Translate;
+  label: (key: string) => string;
 }) {
   const currency = mainCurrency(totals);
   const values = ACCOUNT_KEYS.map((k) => totals[k][currency] ?? 0);
@@ -156,10 +161,10 @@ export function AccountBar({
           <div key={k} data-customer-value={k}>
             <dt
               className="flex items-center gap-1.5 text-xs text-zinc-500"
-              title={t(`cust.hint.${k}`)}
+              title={label(`hint.${k}`)}
             >
               <span className={cx("h-2 w-2 rounded-full", TONE[k].dot)} />
-              {t(`cust.card.${k}`)}
+              {label(`card.${k}`)}
             </dt>
             <dd className="mt-0.5 font-semibold text-zinc-900">
               <MoneyLines money={totals[k]} t={t} fallback={currency} />

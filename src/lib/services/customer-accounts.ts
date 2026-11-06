@@ -33,9 +33,24 @@ function add(m: Money, currency: string, value: number) {
   m[c] = cents((m[c] ?? 0) + value);
 }
 
+/**
+ * Lado da conta. Cliente: venda e recebimentos (customer_in). Fornecedor:
+ * FOB e pagamentos (supplier_out), como na tela Contas a pagar.
+ */
+export type AccountSide = "customer" | "supplier";
+
 const DELIVERED: readonly string[] = ["DELIVERED", "CLOSED"];
-export const isDelivered = (o: Pick<Order, "status">) =>
-  DELIVERED.includes(o.status);
+/** Fornecedor (FOB): a mercadoria é dele até o embarque; embarcou, entregou. */
+const SHIPPED: readonly string[] = [
+  "CUSTOMS",
+  "TRANSPORT",
+  "DELIVERED",
+  "CLOSED",
+];
+export const isDelivered = (
+  o: Pick<Order, "status">,
+  side: AccountSide = "customer",
+) => (side === "supplier" ? SHIPPED : DELIVERED).includes(o.status);
 
 const settled = (p: Payment) =>
   p.status === "confirmed" || p.status === "received";
@@ -76,27 +91,37 @@ export interface CustomerOrderRow {
   delivery: DeliveryStatus;
 }
 
-/** Uma linha por pedido, com as situações de recebimento e entrega. */
-export function orderRow(f: OrderFinance): CustomerOrderRow {
+/**
+ * Uma linha por pedido, com as situações de recebimento e entrega. No lado
+ * do fornecedor: FOB, pago e a pagar na moeda do FOB.
+ */
+export function orderRow(
+  f: OrderFinance,
+  side: AccountSide = "customer",
+): CustomerOrderRow {
   const o = f.order;
   const cancelled = o.status === "CANCELLED";
-  const delivered = isDelivered(o);
+  const delivered = isDelivered(o, side);
+  const supplier = side === "supplier";
+  const value = supplier ? f.fob : f.sell;
+  const moved = supplier ? f.paid : f.received;
+  const open = supplier ? f.payable : f.receivable;
   return {
     orderId: o.id,
     number: o.number,
     createdAt: o.createdAt,
     product: f.productName,
     status: o.status,
-    currency: f.sellCurrency,
-    contract: cancelled ? 0 : f.sell,
-    delivered: delivered && !cancelled ? f.sell : 0,
-    receivable: cancelled ? 0 : Math.max(0, f.receivable),
-    received: f.received,
+    currency: supplier ? f.fobCurrency : f.sellCurrency,
+    contract: cancelled ? 0 : value,
+    delivered: delivered && !cancelled ? value : 0,
+    receivable: cancelled ? 0 : Math.max(0, open),
+    received: moved,
     receipt: cancelled
       ? "cancelled"
-      : f.sell > 0 && f.received >= f.sell - 0.005
+      : value > 0 && moved >= value - 0.005
         ? "paid"
-        : f.received > 0
+        : moved > 0
           ? "partial"
           : "open",
     delivery: cancelled ? "cancelled" : delivered ? "delivered" : "in_progress",
@@ -155,39 +180,58 @@ const OPEN_REQUEST: readonly string[] = [
 ];
 
 interface Loaded {
-  customers: Party[];
+  side: AccountSide;
+  parties: Party[];
   finance: OrderFinance[];
   requests: Request[];
   requestPayments: Payment[];
+  /** Fornecedor: cotações ainda por responder (convites abertos). */
+  openQuotes: Map<string, number>;
 }
 
-async function load(): Promise<Loaded> {
+async function load(side: AccountSide): Promise<Loaded> {
   const store = getStore();
-  const [customers, { rows }, requests, payments] = await Promise.all([
-    store.list("parties", { filter: { type: "customer" }, orderBy: "name" }),
+  const supplier = side === "supplier";
+  const [parties, { rows }, requests, payments, quotes] = await Promise.all([
+    store.list("parties", { filter: { type: side }, orderBy: "name" }),
     loadFinance({ estimate: false }),
-    store.list("requests"),
-    store.list("payments", { filter: { direction: "customer_in" } }),
+    supplier ? Promise.resolve([] as Request[]) : store.list("requests"),
+    supplier
+      ? Promise.resolve([] as Payment[])
+      : store.list("payments", { filter: { direction: "customer_in" } }),
+    supplier
+      ? store.list("quotes", { filter: { status: "invited" } })
+      : Promise.resolve([]),
   ]);
+  const openQuotes = new Map<string, number>();
+  for (const q of quotes)
+    openQuotes.set(q.supplierId, (openQuotes.get(q.supplierId) ?? 0) + 1);
   return {
-    customers,
+    side,
+    parties,
     finance: rows,
     requests,
     requestPayments: payments.filter((p) => !p.orderId && p.requestId),
+    openQuotes,
   };
 }
 
+const ownerOf = (f: OrderFinance, side: AccountSide) =>
+  side === "supplier" ? f.order.supplierId : f.order.customerId;
+
 function accountOf(party: Party, data: Loaded): CustomerAccount {
-  const mine = data.finance.filter((f) => f.order.customerId === party.id);
-  const rows = mine.map(orderRow);
+  const mine = data.finance.filter((f) => ownerOf(f, data.side) === party.id);
+  const rows = mine.map((f) => orderRow(f, data.side));
   const myRequests = data.requests.filter((r) => r.customerId === party.id);
   const requestIds = new Set(myRequests.map((r) => r.id));
   return {
     party,
     orders: rows.length,
     openOrders: rows.filter((r) => r.delivery === "in_progress").length,
-    openRequests: myRequests.filter((r) => OPEN_REQUEST.includes(r.status))
-      .length,
+    openRequests:
+      data.side === "supplier"
+        ? (data.openQuotes.get(party.id) ?? 0)
+        : myRequests.filter((r) => OPEN_REQUEST.includes(r.status)).length,
     lastOrderAt:
       rows.map((r) => r.createdAt).sort((a, b) => b.localeCompare(a))[0] ??
       null,
@@ -212,11 +256,12 @@ export interface CustomerListFilter {
 /** Lista de clientes com a conta de cada um e os totais de todos os listados. */
 export async function customerAccounts(
   filter: CustomerListFilter = {},
+  side: AccountSide = "customer",
 ): Promise<{ rows: CustomerAccount[]; totals: AccountTotals }> {
-  const data = await load();
+  const data = await load(side);
   const q = norm(filter.q).trim();
   const status = filter.status ?? "active";
-  const rows = data.customers
+  const rows = data.parties
     .filter((p) =>
       status === "all" ? true : status === "active" ? p.active : !p.active,
     )
@@ -240,17 +285,21 @@ export interface CustomerDetail {
   >;
 }
 
-/** Ficha do cliente: conta, pedidos e recebimentos. Nulo se não é cliente. */
+/**
+ * Ficha do cliente (ou do fornecedor, `side`): conta, pedidos e recebimentos
+ * (pagamentos, no fornecedor). Nulo se a empresa não é daquele tipo.
+ */
 export async function customerDetail(
   partyId: string,
+  side: AccountSide = "customer",
 ): Promise<CustomerDetail | null> {
   const store = getStore();
   const party = await store.get("parties", partyId);
-  if (!party || party.type !== "customer") return null;
-  const data = await load();
-  const mine = data.finance.filter((f) => f.order.customerId === party.id);
+  if (!party || party.type !== side) return null;
+  const data = await load(side);
+  const mine = data.finance.filter((f) => ownerOf(f, side) === party.id);
   const orders = mine
-    .map(orderRow)
+    .map((f) => orderRow(f, side))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const orderIds = mine.map((f) => f.order.id);
   const requestIds = data.requests
@@ -259,7 +308,11 @@ export async function customerDetail(
   const payments =
     orderIds.length || requestIds.length
       ? (
-          await store.list("payments", { filter: { direction: "customer_in" } })
+          await store.list("payments", {
+            filter: {
+              direction: side === "supplier" ? "supplier_out" : "customer_in",
+            },
+          })
         ).filter(
           (p) =>
             (p.orderId && orderIds.includes(p.orderId)) ||

@@ -38,13 +38,45 @@ const pay = (over: Partial<Payment>): Payment =>
     ...over,
   }) as Payment;
 
+const supp = (status: string, fob: number, paid: number): OrderFinance =>
+  ({
+    order: { id: `s-${status}`, number: 2, createdAt: "2026-10-02", status },
+    productName: "Jarra",
+    sellCurrency: "BRL",
+    sell: 99999,
+    received: 0,
+    receivable: 99999,
+    fobCurrency: "USD",
+    fob,
+    paid,
+    payable: fob - paid,
+  }) as unknown as OrderFinance;
+
+describe("conta do fornecedor", () => {
+  it("FOB, embarcado, antecipado, a pagar e pago (em dólar)", () => {
+    const rows = [
+      supp("CUSTOMS", 1000, 1000), // embarcado e pago
+      supp("PACKAGING", 500, 150), // antes do embarque: 150 antecipado
+    ].map((f) => orderRow(f, "supplier"));
+    expect(rows[0].delivery).toBe("delivered");
+    expect(rows[0].receipt).toBe("paid");
+    expect(rows[1].delivery).toBe("in_progress");
+    const t = accountTotals(rows);
+    expect(t.contract).toEqual({ USD: 1500 });
+    expect(t.delivered).toEqual({ USD: 1000 });
+    expect(t.prepaid).toEqual({ USD: 150 });
+    expect(t.receivable).toEqual({ USD: 350 });
+    expect(t.received).toEqual({ USD: 1150 });
+  });
+});
+
 describe("conta do cliente", () => {
   it("contrato, entregue, antecipado, a receber e recebido", () => {
     const rows = [
       fin("DELIVERED", 1000, 600), // entregue, falta 400
       fin("SHIPPING", 500, 200), // em andamento: 200 antecipado
       fin("CANCELLED", 300, 50), // fora do contrato; o recebido conta
-    ].map(orderRow);
+    ].map((f) => orderRow(f));
     const t = accountTotals(rows, [
       pay({ amount: 100 }), // sinal da solicitação: antecipado e recebido
       pay({ amount: 999, status: "pending" }), // não confirmado: fora

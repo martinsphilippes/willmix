@@ -95,6 +95,7 @@ export function navFor(
         pick(has, [
           // Clientes com a conta de cada um (contratado, entregue, a receber).
           ["parties", { href: "/app/customers", key: "nav.customers" }],
+          ["parties", { href: "/app/suppliers", key: "nav.suppliers" }],
           ["parties", { href: "/app/parties", key: "nav.parties" }],
           ["products", { href: "/app/products", key: "nav.products" }],
           ["lines", { href: "/app/lines", key: "nav.lines" }],
