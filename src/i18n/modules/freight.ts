@@ -176,8 +176,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "freight.saved": "运费已发送给 Wellmix。",
   "freight.sent.transit": "运输 {days} 天",
   "freight.sent.until": "有效期至 {date}",
-  "freight.sent.edit":
-    "已通知 Wellmix。在其确定报价之前，可以在该运费询价中更新金额。",
+  "freight.sent.edit": "已通知 Wellmix。在其确定报价之前，可以在该运费询价中更新金额。",
   "freight.sent.next": "报下一个：{product}",
   "freight.sent.none": "没有其他等待报价的运费询价。",
   "freight.sent.pending": "还有 {n} 个运费询价等待报价。",

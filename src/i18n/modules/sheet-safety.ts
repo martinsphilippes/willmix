@@ -94,8 +94,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "产品主档随此采购单更新：保存时会同步产品的主采购单。",
   "pricing.error.sheet_changed":
     "计算后报价采购单已更改（箱数不同）。请在刷新后的页面核对客户金额，然后重新选择。",
-  "pricing.error.invalid_down_payment":
-    "定金是客户价格的百分比：请填写 0 到 100。",
+  "pricing.error.invalid_down_payment": "定金是客户价格的百分比：请填写 0 到 100。",
   "sheet.qty.quoteDraft":
     "保存或提交采购单后，本报价数量为 {to} {unit}（与需求 {from} 相差 {diff}）。",
   "sheet.draftRestored":
