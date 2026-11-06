@@ -8,6 +8,7 @@ import {
   type Request,
 } from "@/lib/db";
 import { loadFinance, type OrderFinance } from "./finance";
+import { STOCK_PARTY_ID } from "./purchase-flow";
 
 /*
  * Conta do cliente (tela Clientes, docs/CUSTOMERS.md): por cliente, o que foi
@@ -193,7 +194,10 @@ async function load(side: AccountSide): Promise<Loaded> {
   const store = getStore();
   const supplier = side === "supplier";
   const [parties, { rows }, requests, payments, quotes] = await Promise.all([
-    store.list("parties", { filter: { type: side }, orderBy: "name" }),
+    store
+      .list("parties", { filter: { type: side }, orderBy: "name" })
+      // Cliente é quem compra da Wellmix: a empresa interna de estoque fica fora.
+      .then((list) => list.filter((p) => p.id !== STOCK_PARTY_ID)),
     loadFinance({ estimate: false }),
     supplier ? Promise.resolve([] as Request[]) : store.list("requests"),
     supplier
@@ -295,7 +299,7 @@ export async function customerDetail(
 ): Promise<CustomerDetail | null> {
   const store = getStore();
   const party = await store.get("parties", partyId);
-  if (!party || party.type !== side) return null;
+  if (!party || party.type !== side || party.id === STOCK_PARTY_ID) return null;
   const data = await load(side);
   const mine = data.finance.filter((f) => ownerOf(f, side) === party.id);
   const orders = mine
