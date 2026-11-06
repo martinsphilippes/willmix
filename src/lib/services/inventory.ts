@@ -230,3 +230,27 @@ export async function listStockMovements(): Promise<StockMovement[]> {
     throw error;
   }
 }
+
+/**
+ * Quantidade sugerida para repor (função pura): o que falta para o limite,
+ * contando o que já vem a caminho; nunca abaixo do pedido mínimo (MOQ) e
+ * arredondada para caixas master inteiras. Nada falta, zero.
+ */
+export function reorderQuantity(input: {
+  minStock: number | null | undefined;
+  total: number;
+  moq?: number | null;
+  unitsPerBox?: number | null;
+}): number {
+  const min = input.minStock ?? 0;
+  const missing = min - input.total;
+  if (!(min > 0) || !(missing > 0)) return 0;
+  let qty = Math.max(
+    Math.ceil(missing),
+    input.moq && input.moq > 0 ? input.moq : 0,
+  );
+  const box =
+    input.unitsPerBox && input.unitsPerBox > 0 ? input.unitsPerBox : 0;
+  if (box) qty = Math.ceil(qty / box) * box;
+  return qty;
+}
