@@ -1,6 +1,11 @@
 import "server-only";
 
-import { getStore, type StageKey, type User } from "@/lib/db";
+import {
+  getStore,
+  type StageKey,
+  type User,
+  type VariantSnapshot,
+} from "@/lib/db";
 import {
   canSeeSupplier,
   canViewOrder,
@@ -27,6 +32,14 @@ export interface PipelineItem {
   /** Preço unitário FOB do fornecedor: só a Wellmix (nulo para os demais). */
   unitPrice: number | null;
   currency: string | null;
+  /*
+   * Para foto, código, especificação, caixas, volume e peso na tabela de
+   * itens (como a folha do fornecedor): só a Wellmix (nulos para os demais).
+   */
+  productId: string | null;
+  variantData: VariantSnapshot | null;
+  /** Especificação da solicitação (vale antes da do cadastro). */
+  specification: string | null;
 }
 
 export interface PipelineRow {
@@ -138,6 +151,9 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           unit: i.unit,
           unitPrice: wellmix ? i.unitPrice : null,
           currency: wellmix ? o.fobCurrency : null,
+          productId: wellmix ? i.productId : null,
+          variantData: wellmix ? (i.variant ?? null) : null,
+          specification: wellmix ? (request?.specification ?? null) : null,
         })),
       ...group(request, `order:${o.id}`),
       requestNumber: request?.number ?? null,
@@ -183,6 +199,10 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
           unit: r.unit,
           unitPrice: selected?.price ?? null,
           currency: selected?.currency ?? null,
+          // Solicitações só entram para a Wellmix.
+          productId: r.productId,
+          variantData: r.variant ?? null,
+          specification: r.specification,
         },
       ],
       ...group(r, `request:${r.id}`),

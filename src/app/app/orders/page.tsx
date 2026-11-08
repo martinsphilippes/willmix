@@ -5,9 +5,18 @@ import { canSeeSupplier, isWellmix } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { STAGE_KEYS, REQUEST_STATUSES } from "@/lib/db/schema";
-import { pipelineFor } from "@/lib/services/pipeline";
+import { getStore, type Product, type ProductPhoto } from "@/lib/db";
+import { pipelineFor, type PipelineItem } from "@/lib/services/pipeline";
+import { itemLogistics, logisticsTotals } from "@/lib/services/item-logistics";
+import { productPhotoList } from "@/lib/services/product-list";
 import { Empty, PageHeader, formatDate } from "@/components/ui";
-import { OrdersTable, type OrdersTableRow } from "@/components/orders-table";
+import { galleryProps } from "@/components/photo-gallery-props";
+import {
+  OrdersTable,
+  type OrdersItemDetail,
+  type OrdersItemsTotals,
+  type OrdersTableRow,
+} from "@/components/orders-table";
 
 /*
  * Pedidos: todos os pedidos (em andamento, bloqueados, concluídos e
@@ -73,6 +82,104 @@ export default async function OrdersPage({
           minimumFractionDigits: 2,
           maximumFractionDigits: 4,
         })}`.trim();
+
+  /*
+   * Tabela de itens com as colunas da folha do fornecedor (foto, código, cód.
+   * do item, especificação, cor, peso, quantidade por caixa, caixas, volume
+   * e valor): só a Wellmix, a mesma regra da foto, do código e do preço FOB
+   * nos itens do pedido. Para os demais nada disso sai do servidor.
+   */
+  const productIds = wellmix
+    ? [
+        ...new Set(
+          rows
+            .flatMap((r) => r.items.map((i) => i.productId))
+            .filter((id): id is string => !!id),
+        ),
+      ]
+    : [];
+  const store = getStore();
+  const [products, photos] = productIds.length
+    ? await Promise.all([
+        store.list("products", { filter: { id: productIds } }),
+        store.list("product_photos", { filter: { productId: productIds } }),
+      ])
+    : [[] as Product[], [] as ProductPhoto[]];
+  const productById = new Map(products.map((p) => [p.id, p]));
+  const num = (n: number, digits = 2) =>
+    n.toLocaleString(t.intl, { maximumFractionDigits: digits });
+  /** Conta do item (a mesma da folha do fornecedor) e preço × quantidade. */
+  const figures = (i: PipelineItem) => {
+    const product = i.productId ? (productById.get(i.productId) ?? null) : null;
+    return {
+      product,
+      logistics: itemLogistics({
+        quantity: i.quantity,
+        variant: i.variantData,
+        product,
+        specification: i.specification,
+      }),
+      amount:
+        i.unitPrice !== null
+          ? Math.round(i.unitPrice * i.quantity * 100) / 100
+          : null,
+    };
+  };
+  const itemDetail = (i: PipelineItem): OrdersItemDetail | null => {
+    if (!wellmix) return null;
+    const { product, logistics: l, amount } = figures(i);
+    const gallery = galleryProps(
+      t,
+      product ? productPhotoList(product, photos) : [],
+    );
+    return {
+      photos: gallery.photos,
+      gallery: gallery.labels,
+      sku: l.sku,
+      supplierSku: l.supplierSku,
+      specification: l.specification,
+      color: l.color,
+      weight: l.weightKg !== null ? num(l.weightKg) : null,
+      perBox: l.unitsPerBox !== null ? num(l.unitsPerBox, 0) : null,
+      // Sem quantidade por caixa no cadastro, "—" (não um 0 enganoso).
+      boxes: l.unitsPerBox !== null ? num(l.boxes, 0) : null,
+      cbm: l.cbm !== null ? num(l.cbm, 3) : null,
+      amount: money(amount, i.currency),
+    };
+  };
+  /** Total dos itens que seguem (cancelados fora; grupo todo cancelado: todos). */
+  const itemsTotals = (
+    members: (typeof rows)[number][],
+  ): OrdersItemsTotals | null => {
+    if (!wellmix) return null;
+    const live = members.filter((r) => r.state !== "cancelled");
+    const totals = logisticsTotals(
+      (live.length ? live : members)
+        .flatMap((r) => r.items)
+        .map((i) => {
+          const { logistics, amount } = figures(i);
+          return {
+            quantity: i.quantity,
+            unit: i.unit,
+            logistics,
+            amount,
+            currency: i.currency,
+          };
+        }),
+    );
+    const amounts = Object.entries(totals.amounts)
+      .map(([currency, value]) => money(value, currency))
+      .filter((s): s is string => !!s);
+    return {
+      weight: totals.weightKg !== null ? num(totals.weightKg) : null,
+      quantity: totals.quantity
+        ? `${totals.quantity.value.toLocaleString(t.intl)} ${totals.quantity.unit}`
+        : null,
+      boxes: totals.boxes !== null ? num(totals.boxes, 0) : null,
+      cbm: totals.cbm !== null ? num(totals.cbm, 3) : null,
+      amount: amounts.length ? amounts.join(" · ") : null,
+    };
+  };
 
   // Como no Sankhya: uma linha por solicitação (os produtos do mesmo lote
   // juntos) e, embaixo, os itens da linha escolhida. Cada produto continua
@@ -149,8 +256,10 @@ export default async function OrdersPage({
           progress: r.progress,
           dueLabel: formatDate(r.dueAt, t),
           due: brazilDay(r.dueAt),
+          detail: itemDetail(i),
         })),
       ),
+      itemsTotals: itemsTotals(sorted),
       customer: first.customer ?? "",
       supplier: suppliers.join(", "),
       phase: phaseLabel(lead),
@@ -253,6 +362,18 @@ export default async function OrdersPage({
             openOrder: t("orders.panel.openOrder"),
             openRequest: t("orders.panel.openRequest"),
             noItems: t("orders.panel.noItems"),
+            // Os mesmos nomes de coluna da folha do fornecedor.
+            image: t("sale.col.photo"),
+            code: t("sale.col.code"),
+            itemCode: t("sale.col.supplierSku"),
+            spec: t("sale.col.spec"),
+            color: t("sale.col.color"),
+            weight: t("sale.col.weight"),
+            perBox: t("sale.col.perBox"),
+            boxes: t("sale.col.boxes"),
+            cbm: t("sale.col.cbm"),
+            amount: t("supp.sale.col.amount"),
+            total: t("sale.total"),
           }}
         />
       )}

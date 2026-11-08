@@ -11,7 +11,17 @@ import {
   type Tone,
 } from "./ui";
 import { ChatOpenButton } from "./chat-open-button";
+import { PhotoGallery, type GalleryPhoto } from "./photo-gallery";
 import { chatTargetFromHref } from "@/lib/chat-target";
+
+/** Textos da galeria de fotos da linha (já no idioma de quem vê). */
+type GalleryLabels = {
+  title: string;
+  close: string;
+  open: string;
+  count: string;
+  noPhoto: string;
+};
 
 /*
  * Painel de Pedidos com filtro em todas as colunas (texto ou lista) e
@@ -41,6 +51,36 @@ export interface OrdersTableItem {
   progress: number | null;
   due: string;
   dueLabel: string;
+  /**
+   * Foto, código, especificação, caixas, volume e peso (como a folha do
+   * fornecedor). Só a Wellmix: para os demais o servidor nem manda.
+   */
+  detail?: OrdersItemDetail | null;
+}
+
+/** Valores já formatados no servidor (nulo = "—"). */
+export interface OrdersItemDetail {
+  photos: GalleryPhoto[];
+  gallery: GalleryLabels;
+  sku: string | null;
+  supplierSku: string | null;
+  specification: string | null;
+  color: string | null;
+  weight: string | null;
+  perBox: string | null;
+  boxes: string | null;
+  cbm: string | null;
+  /** Preço × quantidade (mesma moeda do preço). */
+  amount: string | null;
+}
+
+/** Linha de total da tabela de itens (itens cancelados ficam de fora). */
+export interface OrdersItemsTotals {
+  weight: string | null;
+  quantity: string | null;
+  boxes: string | null;
+  cbm: string | null;
+  amount: string | null;
 }
 
 export interface OrdersTableRow {
@@ -66,6 +106,8 @@ export interface OrdersTableRow {
   dueLabel: string;
   updated: string;
   updatedLabel: string;
+  /** Total da tabela de itens (só com os detalhes da Wellmix). */
+  itemsTotals?: OrdersItemsTotals | null;
 }
 
 export interface OrdersTableLabels {
@@ -111,6 +153,18 @@ export interface OrdersTableLabels {
   variant: string;
   quantity: string;
   ref: string;
+  /** Colunas da folha do fornecedor (tabela de itens com detalhes). */
+  image: string;
+  code: string;
+  itemCode: string;
+  spec: string;
+  color: string;
+  weight: string;
+  perBox: string;
+  boxes: string;
+  cbm: string;
+  amount: string;
+  total: string;
 }
 
 type Filters = Record<FilterKey, string>;
@@ -603,7 +657,12 @@ export function OrdersTable({
   );
 }
 
-/** Painel de itens da linha escolhida (embaixo da lista, como no Sankhya). */
+/**
+ * Painel de itens da linha escolhida (embaixo da lista, como no Sankhya).
+ * Para a Wellmix, as colunas da folha do fornecedor (foto, código, cód. do
+ * item, especificação, cor, peso, quantidade por caixa, caixas, volume e
+ * valor) e a linha de total; os demais veem a tabela de sempre.
+ */
 function ItemsPanel({
   row,
   labels,
@@ -616,7 +675,10 @@ function ItemsPanel({
   today: string;
 }) {
   const withPrice = !!row?.items.some((i) => i.price !== null);
+  const detailed = !!row?.items.some((i) => i.detail);
   const cell = "whitespace-nowrap px-2.5 py-2";
+  const num = cx(cell, "text-right tabular-nums");
+  const dash = (v: string | null | undefined) => v ?? "—";
   return (
     <section
       className="mt-4 rounded-xl border border-zinc-200/80 bg-white"
@@ -641,15 +703,43 @@ function ItemsPanel({
         <p className="px-3 py-4 text-sm text-zinc-500">{labels.noItems}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-left text-sm">
+          <table
+            className={cx(
+              "w-full text-left text-sm",
+              detailed ? "min-w-[72rem]" : "min-w-[40rem]",
+            )}
+            data-orders-items-detailed={detailed ? "" : undefined}
+          >
             <thead>
-              <tr className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              <tr className="align-bottom text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
                 <th className="px-2.5 py-2">{labels.seq}</th>
+                {detailed ? (
+                  <th className="w-14 px-2.5 py-2">{labels.image}</th>
+                ) : null}
                 <th className="px-2.5 py-2">{labels.product}</th>
                 <th className="px-2.5 py-2">{labels.variant}</th>
+                {detailed ? (
+                  <>
+                    <th className="px-2.5 py-2">{labels.code}</th>
+                    <th className="px-2.5 py-2">{labels.itemCode}</th>
+                    <th className="px-2.5 py-2">{labels.spec}</th>
+                    <th className="px-2.5 py-2">{labels.color}</th>
+                    <th className="px-2.5 py-2 text-right">{labels.weight}</th>
+                  </>
+                ) : null}
                 <th className="px-2.5 py-2 text-right">{labels.quantity}</th>
+                {detailed ? (
+                  <>
+                    <th className="px-2.5 py-2 text-right">{labels.perBox}</th>
+                    <th className="px-2.5 py-2 text-right">{labels.boxes}</th>
+                    <th className="px-2.5 py-2 text-right">{labels.cbm}</th>
+                  </>
+                ) : null}
                 {withPrice ? (
                   <th className="px-2.5 py-2 text-right">{labels.price}</th>
+                ) : null}
+                {withPrice && detailed ? (
+                  <th className="px-2.5 py-2 text-right">{labels.amount}</th>
                 ) : null}
                 {showSupplier ? (
                   <th className="px-2.5 py-2">{labels.supplier}</th>
@@ -667,24 +757,89 @@ function ItemsPanel({
                   !!item.due &&
                   item.due < today &&
                   (item.state === "active" || item.state === "blocked");
+                const d = item.detail ?? null;
                 return (
-                  <tr key={i} className={rowClass} data-orders-item>
+                  <tr
+                    key={i}
+                    className={cx(
+                      rowClass,
+                      detailed && item.state === "cancelled" && "opacity-60",
+                    )}
+                    data-orders-item
+                  >
                     <td className={cx(cell, "tabular-nums text-zinc-500")}>
                       {i + 1}
                     </td>
+                    {detailed ? (
+                      <td className="w-14 px-2.5 py-1.5">
+                        {d ? (
+                          <PhotoGallery
+                            name={item.name}
+                            photos={d.photos}
+                            labels={d.gallery}
+                          />
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    ) : null}
                     <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
                       {item.name}
                     </td>
                     <td className="px-2.5 py-2 text-zinc-600">
                       {item.variant ?? "—"}
                     </td>
-                    <td className={cx(cell, "text-right tabular-nums")}>
+                    {detailed ? (
+                      <>
+                        <td className={cell}>
+                          <span className="font-mono text-xs text-zinc-700">
+                            {dash(d?.sku)}
+                          </span>
+                        </td>
+                        <td className={cell}>
+                          <span className="font-mono text-xs text-zinc-700">
+                            {dash(d?.supplierSku)}
+                          </span>
+                        </td>
+                        <td className="px-2.5 py-2">
+                          <span
+                            className="block max-w-48 truncate"
+                            title={d?.specification ?? undefined}
+                            data-orders-item-spec
+                          >
+                            {dash(d?.specification)}
+                          </span>
+                        </td>
+                        <td className="min-w-24 px-2.5 py-2">
+                          {dash(d?.color)}
+                        </td>
+                        <td className={num} data-orders-item-weight>
+                          {dash(d?.weight)}
+                        </td>
+                      </>
+                    ) : null}
+                    <td
+                      className={cx(num, detailed && "font-semibold")}
+                      data-orders-item-qty
+                    >
                       {item.quantity}
                     </td>
+                    {detailed ? (
+                      <>
+                        <td className={num}>{dash(d?.perBox)}</td>
+                        <td className={num} data-orders-item-boxes>
+                          {dash(d?.boxes)}
+                        </td>
+                        <td className={num} data-orders-item-cbm>
+                          {dash(d?.cbm)}
+                        </td>
+                      </>
+                    ) : null}
                     {withPrice ? (
-                      <td className={cx(cell, "text-right tabular-nums")}>
-                        {item.price ?? "—"}
-                      </td>
+                      <td className={num}>{item.price ?? "—"}</td>
+                    ) : null}
+                    {withPrice && detailed ? (
+                      <td className={num}>{dash(d?.amount)}</td>
                     ) : null}
                     {showSupplier ? (
                       <td className="min-w-32 px-2.5 py-2">
@@ -730,6 +885,29 @@ function ItemsPanel({
                   </tr>
                 );
               })}
+              {detailed && row.itemsTotals ? (
+                <tr
+                  className="bg-amber-50/60 font-semibold"
+                  data-orders-items-total
+                >
+                  {/* Nº, imagem, produto, variação, código, cód. do item, especificação e cor. */}
+                  <td colSpan={8} className={cell}>
+                    {labels.total}
+                  </td>
+                  <td className={num}>{dash(row.itemsTotals.weight)}</td>
+                  <td className={num}>{dash(row.itemsTotals.quantity)}</td>
+                  <td />
+                  <td className={num}>{dash(row.itemsTotals.boxes)}</td>
+                  <td className={num}>{dash(row.itemsTotals.cbm)}</td>
+                  {withPrice ? (
+                    <>
+                      <td />
+                      <td className={num}>{dash(row.itemsTotals.amount)}</td>
+                    </>
+                  ) : null}
+                  <td colSpan={5 + (showSupplier ? 1 : 0)} />
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
