@@ -6,7 +6,18 @@ import {
   reportArtIssueAction,
   reviewArtFixAction,
 } from "@/app/app/actions/artwork";
-import { Alert, Badge, Card, Input, Select, formatDate } from "./ui";
+import {
+  Alert,
+  Badge,
+  Card,
+  Input,
+  Select,
+  Table,
+  Td,
+  Th,
+  formatDate,
+  rowClass,
+} from "./ui";
 import { SubmitButton } from "./submit-button";
 import type { getT } from "@/i18n/server";
 
@@ -53,186 +64,254 @@ export function ArtworkCard({
       <span id="artwork" className="block scroll-mt-24" />
       <div className="space-y-3" data-artwork-card>
         {notice ? <Alert tone="success">{notice}</Alert> : null}
-        {/* Designer do pedido. */}
-        {wellmix ? (
-          <form
-            action={assignDesignerAction}
-            className="flex flex-wrap items-end gap-2"
-          >
-            {hidden}
-            <label className="text-sm font-medium text-zinc-800">
-              {t("artwork.designer")}
+        {/* Designer do pedido numa linha. */}
+        <Table>
+          <thead>
+            <tr>
+              <Th>{t("artwork.col.designer")}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <Td className="min-w-56">
+                {wellmix ? (
+                  <form
+                    action={assignDesignerAction}
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    {hidden}
+                    <Select
+                      name="designerUserId"
+                      defaultValue={order.designerUserId ?? ""}
+                      aria-label={t("artwork.designer")}
+                      className="min-w-0 flex-1"
+                    >
+                      <option value="">—</option>
+                      {view.candidates.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                          {u.role === "agency" ? ` (${t("role.agency")})` : ""}
+                        </option>
+                      ))}
+                    </Select>
+                    <SubmitButton
+                      variant="secondary"
+                      className="px-2.5 py-1 text-xs"
+                      data-artwork-designer
+                    >
+                      {t("artwork.saveDesigner")}
+                    </SubmitButton>
+                    {!view.candidates.length ? (
+                      <span className="w-full text-xs text-zinc-500">
+                        {t("artwork.noCandidates")}
+                      </span>
+                    ) : null}
+                  </form>
+                ) : (
+                  (view.designer?.name ?? "—")
+                )}
+              </Td>
+            </tr>
+          </tbody>
+        </Table>
+
+        {/* Não conformidade por SKU: uma por linha (SKU sem nenhuma, uma
+            linha "sem não conformidade"). */}
+        <Table>
+          <thead>
+            <tr>
+              <Th>{t("artwork.col.sku")}</Th>
+              <Th>{t("artwork.col.status")}</Th>
+              <Th>{t("artwork.col.issue")}</Th>
+              <Th>{t("artwork.col.fix")}</Th>
+              <Th>{t("artwork.col.action")}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {view.items.flatMap(({ item, issues }) =>
+              issues.length === 0
+                ? [
+                    <tr
+                      key={item.id}
+                      className={rowClass}
+                      data-artwork-item={item.id}
+                    >
+                      <Td className="min-w-40 font-medium">{item.name}</Td>
+                      <Td className="whitespace-nowrap">
+                        <Badge tone="neutral">{t("artwork.noIssues")}</Badge>
+                      </Td>
+                      <Td>—</Td>
+                      <Td>—</Td>
+                      <Td>—</Td>
+                    </tr>,
+                  ]
+                : issues.map((issue, n) => (
+                    <tr
+                      key={issue.id}
+                      className={rowClass}
+                      data-artwork-item={n === 0 ? item.id : undefined}
+                      data-artwork-issue={issue.status}
+                    >
+                      <Td className="min-w-40 font-medium">{item.name}</Td>
+                      <Td className="whitespace-nowrap">
+                        <Badge tone={tone(issue.status)}>
+                          {t(`artwork.status.${issue.status}`)}
+                        </Badge>
+                      </Td>
+                      <Td className="min-w-48">
+                        <span className="whitespace-pre-line">
+                          {issue.note}
+                        </span>
+                        {issue.documentId ? (
+                          <a
+                            href={`/api/files/${issue.documentId}`}
+                            className="ml-1 text-brand-700 underline"
+                          >
+                            {t("artwork.file")}
+                          </a>
+                        ) : null}
+                      </Td>
+                      <Td className="min-w-48 text-zinc-600">
+                        {issue.fixNote ? (
+                          <>
+                            {t("artwork.fix", {
+                              note: issue.fixNote,
+                              date: formatDate(issue.fixedAt, t),
+                            })}
+                            {issue.fixDocumentId ? (
+                              <a
+                                href={`/api/files/${issue.fixDocumentId}`}
+                                className="ml-1 text-brand-700 underline"
+                              >
+                                {t("artwork.file")}
+                              </a>
+                            ) : null}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      <Td className="min-w-64">
+                        {issue.status === "open" && view.canFix ? (
+                          <form
+                            action={fixArtIssueAction}
+                            className="flex flex-wrap items-end gap-2"
+                          >
+                            {hidden}
+                            <input
+                              type="hidden"
+                              name="issueId"
+                              value={issue.id}
+                            />
+                            <Input
+                              name="fixNote"
+                              required
+                              maxLength={2000}
+                              placeholder={t("artwork.fixPh")}
+                            />
+                            <input
+                              type="file"
+                              name="file"
+                              className={fileClass}
+                              aria-label={t("artwork.file")}
+                            />
+                            <SubmitButton
+                              className="px-2.5 py-1 text-xs"
+                              data-artwork-fix
+                            >
+                              {t("artwork.sendFix")}
+                            </SubmitButton>
+                          </form>
+                        ) : issue.status === "fixed" && wellmix ? (
+                          <form
+                            action={reviewArtFixAction}
+                            className="flex flex-wrap items-end gap-2"
+                          >
+                            {hidden}
+                            <input
+                              type="hidden"
+                              name="issueId"
+                              value={issue.id}
+                            />
+                            <Input
+                              name="note"
+                              maxLength={2000}
+                              placeholder={t("artwork.reopenPh")}
+                            />
+                            <SubmitButton
+                              name="decision"
+                              value="accept"
+                              className="px-2.5 py-1 text-xs"
+                              data-artwork-accept
+                            >
+                              {t("artwork.accept")}
+                            </SubmitButton>
+                            <SubmitButton
+                              name="decision"
+                              value="reopen"
+                              variant="danger"
+                              className="px-2.5 py-1 text-xs"
+                              data-artwork-reopen
+                            >
+                              {t("artwork.reopen")}
+                            </SubmitButton>
+                          </form>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                    </tr>
+                  )),
+            )}
+          </tbody>
+        </Table>
+
+        {/* Nova não conformidade (Wellmix): escolhe o SKU numa linha só. */}
+        {wellmix && view.items.length ? (
+          <details className="rounded-xl border border-zinc-200 bg-white">
+            <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-brand-700 [&::-webkit-details-marker]:hidden">
+              {t("artwork.reportTitle")}
+            </summary>
+            <form
+              action={reportArtIssueAction}
+              className="flex flex-wrap items-end gap-2 border-t border-zinc-200 p-3"
+            >
+              {hidden}
               <Select
-                name="designerUserId"
-                defaultValue={order.designerUserId ?? ""}
+                name="orderItemId"
+                required
+                defaultValue={view.items[0].item.id}
+                aria-label={t("artwork.col.sku")}
               >
-                <option value="">—</option>
-                {view.candidates.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                    {u.role === "agency" ? ` (${t("role.agency")})` : ""}
+                {view.items.map(({ item }) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </Select>
-            </label>
-            <SubmitButton
-              variant="secondary"
-              className="px-2.5 py-1 text-xs"
-              data-artwork-designer
-            >
-              {t("artwork.saveDesigner")}
-            </SubmitButton>
-            {!view.candidates.length ? (
-              <p className="w-full text-xs text-zinc-500">
-                {t("artwork.noCandidates")}
-              </p>
-            ) : null}
-          </form>
-        ) : (
-          <p className="text-sm">
-            {t("artwork.designer")}: {view.designer?.name ?? "—"}
-          </p>
-        )}
-
-        {/* Não conformidade por SKU. */}
-        <ul className="space-y-2.5">
-          {view.items.map(({ item, issues }) => (
-            <li
-              key={item.id}
-              className="rounded-lg border border-zinc-200 p-2.5 text-sm"
-              data-artwork-item={item.id}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{item.name}</span>
-                {!issues.length ? (
-                  <Badge tone="neutral">{t("artwork.noIssues")}</Badge>
-                ) : null}
-              </div>
-              {issues.map((issue) => (
-                <div
-                  key={issue.id}
-                  className="mt-2 border-l-2 border-zinc-200 pl-2"
-                  data-artwork-issue={issue.status}
-                >
-                  <Badge tone={tone(issue.status)}>
-                    {t(`artwork.status.${issue.status}`)}
-                  </Badge>{" "}
-                  <span className="whitespace-pre-line">{issue.note}</span>
-                  {issue.documentId ? (
-                    <a
-                      href={`/api/files/${issue.documentId}`}
-                      className="ml-1 text-brand-700 underline"
-                    >
-                      {t("artwork.file")}
-                    </a>
-                  ) : null}
-                  {issue.fixNote ? (
-                    <p className="mt-1 text-zinc-600">
-                      {t("artwork.fix", {
-                        note: issue.fixNote,
-                        date: formatDate(issue.fixedAt, t),
-                      })}
-                      {issue.fixDocumentId ? (
-                        <a
-                          href={`/api/files/${issue.fixDocumentId}`}
-                          className="ml-1 text-brand-700 underline"
-                        >
-                          {t("artwork.file")}
-                        </a>
-                      ) : null}
-                    </p>
-                  ) : null}
-                  {issue.status === "open" && view.canFix ? (
-                    <form
-                      action={fixArtIssueAction}
-                      className="mt-1.5 flex flex-wrap items-end gap-2"
-                    >
-                      {hidden}
-                      <input type="hidden" name="issueId" value={issue.id} />
-                      <Input
-                        name="fixNote"
-                        required
-                        maxLength={2000}
-                        placeholder={t("artwork.fixPh")}
-                      />
-                      <input
-                        type="file"
-                        name="file"
-                        className={fileClass}
-                        aria-label={t("artwork.file")}
-                      />
-                      <SubmitButton
-                        className="px-2.5 py-1 text-xs"
-                        data-artwork-fix
-                      >
-                        {t("artwork.sendFix")}
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                  {issue.status === "fixed" && wellmix ? (
-                    <form
-                      action={reviewArtFixAction}
-                      className="mt-1.5 flex flex-wrap items-end gap-2"
-                    >
-                      {hidden}
-                      <input type="hidden" name="issueId" value={issue.id} />
-                      <Input
-                        name="note"
-                        maxLength={2000}
-                        placeholder={t("artwork.reopenPh")}
-                      />
-                      <SubmitButton
-                        name="decision"
-                        value="accept"
-                        className="px-2.5 py-1 text-xs"
-                        data-artwork-accept
-                      >
-                        {t("artwork.accept")}
-                      </SubmitButton>
-                      <SubmitButton
-                        name="decision"
-                        value="reopen"
-                        variant="danger"
-                        className="px-2.5 py-1 text-xs"
-                        data-artwork-reopen
-                      >
-                        {t("artwork.reopen")}
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                </div>
-              ))}
-              {wellmix ? (
-                <form
-                  action={reportArtIssueAction}
-                  className="mt-2 flex flex-wrap items-end gap-2"
-                >
-                  {hidden}
-                  <input type="hidden" name="orderItemId" value={item.id} />
-                  <Input
-                    name="note"
-                    required
-                    maxLength={2000}
-                    placeholder={t("artwork.issuePh")}
-                  />
-                  <input
-                    type="file"
-                    name="file"
-                    className={fileClass}
-                    aria-label={t("artwork.file")}
-                  />
-                  <SubmitButton
-                    variant="secondary"
-                    className="px-2.5 py-1 text-xs"
-                    data-artwork-report
-                  >
-                    {t("artwork.report")}
-                  </SubmitButton>
-                </form>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+              <Input
+                name="note"
+                required
+                maxLength={2000}
+                placeholder={t("artwork.issuePh")}
+                className="min-w-0 flex-1"
+              />
+              <input
+                type="file"
+                name="file"
+                className={fileClass}
+                aria-label={t("artwork.file")}
+              />
+              <SubmitButton
+                variant="secondary"
+                className="px-2.5 py-1 text-xs"
+                data-artwork-report
+              >
+                {t("artwork.report")}
+              </SubmitButton>
+            </form>
+          </details>
+        ) : null}
       </div>
     </Card>
   );

@@ -12,8 +12,13 @@ import {
   Card,
   Input,
   Select,
+  Table,
+  Td,
+  Th,
+  cx,
   formatDate,
   formatMoney,
+  rowClass,
 } from "./ui";
 import { SubmitButton } from "./submit-button";
 import type { getT } from "@/i18n/server";
@@ -71,215 +76,255 @@ export function ImportFlowCard({
           <Alert tone="success">{notice}</Alert>
         </div>
       ) : null}
-      <ol className="space-y-2.5" data-import-flow>
-        {steps.map(
-          ({
-            template: tpl,
-            step,
-            ready,
-            done: isDone,
-            canSubmit,
-            canValidate,
-          }) => (
-            <li
-              key={tpl.key}
-              className="rounded-lg border border-zinc-200 p-2.5 text-sm"
-              data-import-step={tpl.key}
-              data-import-status={step?.status ?? "pending"}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-zinc-900">
+      {/* Um passo por linha: situação, quem faz e valida, o que foi
+          informado, quem enviou e a ação (enviar ou validar). */}
+      <Table>
+        <thead>
+          <tr>
+            <Th>{t("importFlow.col.step")}</Th>
+            <Th>{t("importFlow.col.status")}</Th>
+            <Th>{t("importFlow.col.who")}</Th>
+            <Th>{t("importFlow.col.value")}</Th>
+            <Th>{t("importFlow.col.sent")}</Th>
+            <Th>{t("importFlow.col.action")}</Th>
+          </tr>
+        </thead>
+        <tbody data-import-flow>
+          {steps.map(
+            ({
+              template: tpl,
+              step,
+              ready,
+              done: isDone,
+              canSubmit,
+              canValidate,
+            }) => (
+              <tr
+                key={tpl.key}
+                className={rowClass}
+                data-import-step={tpl.key}
+                data-import-status={step?.status ?? "pending"}
+              >
+                <Td className="min-w-40 font-medium text-zinc-900">
                   {label(tpl.key)}
-                </span>
-                <Badge
-                  tone={
-                    isDone
-                      ? "success"
-                      : step?.status === "rejected"
-                        ? "danger"
-                        : step?.status === "submitted"
-                          ? "warning"
-                          : "neutral"
-                  }
-                >
-                  {t(
-                    `importFlow.status.${isDone ? "done" : (step?.status ?? "pending")}` as DictionaryKey,
-                  )}
-                </Badge>
-                <span className="text-xs text-zinc-500">
+                  {!ready ? (
+                    <span className="block text-xs font-normal text-zinc-500">
+                      {t("importFlow.waitingPrevious", {
+                        step: tpl.after ? label(tpl.after) : "",
+                      })}
+                    </span>
+                  ) : null}
+                </Td>
+                <Td className="whitespace-nowrap">
+                  <Badge
+                    tone={
+                      isDone
+                        ? "success"
+                        : step?.status === "rejected"
+                          ? "danger"
+                          : step?.status === "submitted"
+                            ? "warning"
+                            : "neutral"
+                    }
+                  >
+                    {t(
+                      `importFlow.status.${isDone ? "done" : (step?.status ?? "pending")}` as DictionaryKey,
+                    )}
+                  </Badge>
+                  {step?.status === "rejected" && step.rejectReason ? (
+                    <span className="mt-1 block max-w-56 whitespace-normal text-xs text-red-700">
+                      {t("importFlow.rejectedReason", {
+                        reason: step.rejectReason,
+                      })}
+                    </span>
+                  ) : null}
+                </Td>
+                <Td className="min-w-36 text-xs text-zinc-600">
                   {t("importFlow.who", {
                     actor: actorLabel(tpl.actor),
                     validator: tpl.validator ? actorLabel(tpl.validator) : "—",
                   })}
-                </span>
-              </div>
-              {step && step.status !== "pending" ? (
-                <p className="mt-1 text-zinc-700">
-                  {step.value
-                    ? tpl.input === "channel"
-                      ? t(`importFlow.channel.${step.value}` as DictionaryKey)
-                      : tpl.input === "date"
-                        ? formatDate(step.value, t)
-                        : step.value
-                    : null}
-                  {step.amount !== null
-                    ? ` ${formatMoney(step.amount, step.currency ?? "BRL", t)}`
-                    : null}
-                  {step.documentId ? (
+                </Td>
+                <Td className="min-w-32">
+                  {step && step.status !== "pending" ? (
                     <>
-                      {" "}
-                      <a
-                        href={`/api/files/${step.documentId}`}
-                        className="text-brand-700 underline"
-                        data-import-file
+                      {step.value
+                        ? tpl.input === "channel"
+                          ? t(
+                              `importFlow.channel.${step.value}` as DictionaryKey,
+                            )
+                          : tpl.input === "date"
+                            ? formatDate(step.value, t)
+                            : step.value
+                        : null}
+                      {step.amount !== null ? (
+                        <span className="block tabular-nums">
+                          {formatMoney(step.amount, step.currency ?? "BRL", t)}
+                        </span>
+                      ) : null}
+                      {step.documentId ? (
+                        <a
+                          href={`/api/files/${step.documentId}`}
+                          className="block text-brand-700 underline"
+                          data-import-file
+                        >
+                          {t("importFlow.file")}
+                        </a>
+                      ) : null}
+                      {!step.value && step.amount === null && !step.documentId
+                        ? "—"
+                        : null}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </Td>
+                <Td className="min-w-36 text-xs text-zinc-600">
+                  {step && step.status !== "pending" ? (
+                    <>
+                      {name(step.submittedByUserId)} ·{" "}
+                      {formatDate(step.submittedAt, t)}
+                      {step.validatedAt && step.status === "validated" ? (
+                        <span className="block">
+                          {t("importFlow.validatedBy", {
+                            name: name(step.validatedByUserId),
+                          })}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </Td>
+                <Td className="min-w-64">
+                  {tpl.key === "invoice_packing" && canSubmit ? (
+                    <a
+                      href={`/app/orders/${order.id}/invoice`}
+                      target="_blank"
+                      rel="noopener"
+                      className="mb-1 block text-brand-700 underline"
+                      data-invoice-generate
+                    >
+                      {t("importFlow.invoice.generate")}
+                    </a>
+                  ) : null}
+                  {canSubmit ? (
+                    <form
+                      action={submitImportStepAction}
+                      className="flex flex-wrap items-end gap-2"
+                    >
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <input type="hidden" name="key" value={tpl.key} />
+                      <input type="hidden" name="anchor" value={anchor} />
+                      {tpl.input === "text" || tpl.input === "text_file" ? (
+                        <Input
+                          name="value"
+                          required
+                          maxLength={200}
+                          defaultValue={step?.value ?? ""}
+                          placeholder={t(
+                            `importFlow.ph.${tpl.key}` as DictionaryKey,
+                          )}
+                        />
+                      ) : null}
+                      {tpl.input === "date" ? (
+                        <Input
+                          type="date"
+                          name="value"
+                          required
+                          defaultValue={step?.value?.slice(0, 10) ?? ""}
+                        />
+                      ) : null}
+                      {tpl.input === "channel" ? (
+                        <Select
+                          name="value"
+                          defaultValue={step?.value ?? "green"}
+                        >
+                          {CUSTOMS_CHANNELS.map((c) => (
+                            <option key={c} value={c}>
+                              {t(`importFlow.channel.${c}`)}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : null}
+                      {tpl.input === "money_file" ? (
+                        <>
+                          <Input
+                            name="amount"
+                            inputMode="decimal"
+                            required
+                            placeholder={t("importFlow.amount")}
+                            defaultValue={step?.amount ?? ""}
+                          />
+                          <input type="hidden" name="currency" value="BRL" />
+                        </>
+                      ) : null}
+                      {["file", "text_file", "money_file"].includes(
+                        tpl.input,
+                      ) ? (
+                        <input
+                          type="file"
+                          name="file"
+                          required={!step?.documentId}
+                          className={fileClass}
+                          aria-label={t("importFlow.file")}
+                        />
+                      ) : null}
+                      <SubmitButton
+                        className="px-2.5 py-1 text-xs"
+                        data-import-submit={tpl.key}
                       >
-                        {t("importFlow.file")}
-                      </a>
-                    </>
+                        {t(
+                          step?.status === "rejected" ||
+                            step?.status === "submitted"
+                            ? "importFlow.resubmit"
+                            : "importFlow.submit",
+                        )}
+                      </SubmitButton>
+                    </form>
                   ) : null}
-                  <span className="text-zinc-500">
-                    {" "}
-                    · {name(step.submittedByUserId)} ·{" "}
-                    {formatDate(step.submittedAt, t)}
-                    {step.validatedAt && step.status === "validated"
-                      ? ` · ${t("importFlow.validatedBy", { name: name(step.validatedByUserId) })}`
-                      : ""}
-                  </span>
-                </p>
-              ) : null}
-              {step?.status === "rejected" && step.rejectReason ? (
-                <p className="mt-1 text-red-700">
-                  {t("importFlow.rejectedReason", {
-                    reason: step.rejectReason,
-                  })}
-                </p>
-              ) : null}
-              {!ready ? (
-                <p className="mt-1 text-xs text-zinc-500">
-                  {t("importFlow.waitingPrevious", {
-                    step: tpl.after ? label(tpl.after) : "",
-                  })}
-                </p>
-              ) : null}
-              {tpl.key === "invoice_packing" && canSubmit ? (
-                <p className="mt-1">
-                  <a
-                    href={`/app/orders/${order.id}/invoice`}
-                    target="_blank"
-                    rel="noopener"
-                    className="text-brand-700 underline"
-                    data-invoice-generate
-                  >
-                    {t("importFlow.invoice.generate")}
-                  </a>
-                </p>
-              ) : null}
-              {canSubmit ? (
-                <form
-                  action={submitImportStepAction}
-                  className="mt-2 flex flex-wrap items-end gap-2"
-                >
-                  <input type="hidden" name="orderId" value={order.id} />
-                  <input type="hidden" name="key" value={tpl.key} />
-                  <input type="hidden" name="anchor" value={anchor} />
-                  {tpl.input === "text" || tpl.input === "text_file" ? (
-                    <Input
-                      name="value"
-                      required
-                      maxLength={200}
-                      defaultValue={step?.value ?? ""}
-                      placeholder={t(
-                        `importFlow.ph.${tpl.key}` as DictionaryKey,
+                  {canValidate ? (
+                    <form
+                      action={validateImportStepAction}
+                      className={cx(
+                        "flex flex-wrap items-end gap-2",
+                        canSubmit && "mt-2",
                       )}
-                    />
-                  ) : null}
-                  {tpl.input === "date" ? (
-                    <Input
-                      type="date"
-                      name="value"
-                      required
-                      defaultValue={step?.value?.slice(0, 10) ?? ""}
-                    />
-                  ) : null}
-                  {tpl.input === "channel" ? (
-                    <Select name="value" defaultValue={step?.value ?? "green"}>
-                      {CUSTOMS_CHANNELS.map((c) => (
-                        <option key={c} value={c}>
-                          {t(`importFlow.channel.${c}`)}
-                        </option>
-                      ))}
-                    </Select>
-                  ) : null}
-                  {tpl.input === "money_file" ? (
-                    <>
+                    >
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <input type="hidden" name="key" value={tpl.key} />
+                      <input type="hidden" name="anchor" value={anchor} />
                       <Input
-                        name="amount"
-                        inputMode="decimal"
-                        required
-                        placeholder={t("importFlow.amount")}
-                        defaultValue={step?.amount ?? ""}
+                        name="reason"
+                        maxLength={1000}
+                        placeholder={t("importFlow.reasonPh")}
                       />
-                      <input type="hidden" name="currency" value="BRL" />
-                    </>
+                      <SubmitButton
+                        name="decision"
+                        value="validated"
+                        className="px-2.5 py-1 text-xs"
+                        data-import-validate={tpl.key}
+                      >
+                        {t("importFlow.validate")}
+                      </SubmitButton>
+                      <SubmitButton
+                        name="decision"
+                        value="rejected"
+                        variant="danger"
+                        className="px-2.5 py-1 text-xs"
+                        data-import-reject={tpl.key}
+                      >
+                        {t("importFlow.reject")}
+                      </SubmitButton>
+                    </form>
                   ) : null}
-                  {["file", "text_file", "money_file"].includes(tpl.input) ? (
-                    <input
-                      type="file"
-                      name="file"
-                      required={!step?.documentId}
-                      className={fileClass}
-                      aria-label={t("importFlow.file")}
-                    />
-                  ) : null}
-                  <SubmitButton
-                    className="px-2.5 py-1 text-xs"
-                    data-import-submit={tpl.key}
-                  >
-                    {t(
-                      step?.status === "rejected" ||
-                        step?.status === "submitted"
-                        ? "importFlow.resubmit"
-                        : "importFlow.submit",
-                    )}
-                  </SubmitButton>
-                </form>
-              ) : null}
-              {canValidate ? (
-                <form
-                  action={validateImportStepAction}
-                  className="mt-2 flex flex-wrap items-end gap-2"
-                >
-                  <input type="hidden" name="orderId" value={order.id} />
-                  <input type="hidden" name="key" value={tpl.key} />
-                  <input type="hidden" name="anchor" value={anchor} />
-                  <Input
-                    name="reason"
-                    maxLength={1000}
-                    placeholder={t("importFlow.reasonPh")}
-                  />
-                  <SubmitButton
-                    name="decision"
-                    value="validated"
-                    className="px-2.5 py-1 text-xs"
-                    data-import-validate={tpl.key}
-                  >
-                    {t("importFlow.validate")}
-                  </SubmitButton>
-                  <SubmitButton
-                    name="decision"
-                    value="rejected"
-                    variant="danger"
-                    className="px-2.5 py-1 text-xs"
-                    data-import-reject={tpl.key}
-                  >
-                    {t("importFlow.reject")}
-                  </SubmitButton>
-                </form>
-              ) : null}
-            </li>
-          ),
-        )}
-      </ol>
+                  {!canSubmit && !canValidate ? "—" : null}
+                </Td>
+              </tr>
+            ),
+          )}
+        </tbody>
+      </Table>
     </Card>
   );
 }

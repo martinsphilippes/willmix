@@ -83,7 +83,6 @@ import {
   Alert,
   Badge,
   Card,
-  DescriptionList,
   Empty,
   Field,
   Input,
@@ -145,6 +144,7 @@ import {
 } from "../../actions/after-sales";
 import { MoneyInput } from "@/components/money-input";
 import { ColorCards, type ColorCard } from "@/components/color-cards";
+import { PairsTable } from "@/components/pairs-table";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { productPhotoList } from "@/lib/services/product-list";
@@ -1512,7 +1512,7 @@ export default async function OrderPage({
         </div>
       ) : null}
 
-      <div className="mt-6 grid min-w-0 gap-6">
+      <div className="mt-6 flex min-w-0 flex-col gap-6">
         {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
             fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
         {showSupplierPayment ? (
@@ -2253,7 +2253,7 @@ export default async function OrderPage({
       ) : null}
 
       {admin || user.role === "customer" ? (
-        <div className="mt-6 grid min-w-0 gap-6">
+        <div className="mt-6 flex min-w-0 flex-col gap-6">
           {admin ? (
             <AdminCancelCard
               t={t}
@@ -2698,7 +2698,7 @@ function SnapshotCard({
       <p className="mb-2 text-xs leading-relaxed text-zinc-500">
         {t("orders.snapshot.hint")}
       </p>
-      <DescriptionList
+      <PairsTable
         items={[
           [t("common.name"), snapshot.name],
           [t("common.supplier"), supplierName],
@@ -2961,84 +2961,116 @@ function InspectionResultCard({
         </div>
       ) : null}
 
-      {/* Decisão da revisão | divergências, lado a lado na tela larga. */}
-      <div className="mt-4 grid items-start gap-3 md:grid-cols-2">
-        <div className="min-w-0 rounded-xl border border-zinc-200 px-3 py-2.5">
+      {/* Decisão da revisão numa linha. */}
+      <div className="mt-4">
+        <h3 className="mb-2 text-sm font-semibold text-zinc-900">
+          {t("inspReport.decision")}
+        </h3>
+        <Table>
+          <thead>
+            <tr>
+              <Th>{t("inspReport.decision")}</Th>
+              <Th>{t("orderView.col.trail")}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className={rowClass} data-inspection-decision>
+              <Td className="min-w-56 text-zinc-800">{decision}</Td>
+              <Td className="text-xs text-zinc-500">
+                {review && review.status !== "pending" ? (
+                  <>
+                    {review.value !== "auto"
+                      ? `${userName(review.submittedByUserId)} · `
+                      : ""}
+                    {formatDateTime(review.submittedAt, t.intl)}
+                    {review.note ? ` · ${review.note}` : ""}
+                  </>
+                ) : (
+                  "—"
+                )}
+              </Td>
+            </tr>
+          </tbody>
+        </Table>
+      </div>
+
+      {/* Divergências: uma por linha. */}
+      <div className="mt-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-zinc-900">
-            {t("inspReport.decision")}
+            {t("inspReport.divergences")}
+            {openCount > 0 ? (
+              <span className="ml-2">
+                <Badge tone="warning">{openCount}</Badge>
+              </span>
+            ) : null}
           </h3>
-          <p className="mt-1 text-sm text-zinc-800">{decision}</p>
-          {review && review.status !== "pending" ? (
-            <p className="mt-0.5 text-xs text-zinc-500">
-              {review.value !== "auto"
-                ? `${userName(review.submittedByUserId)} · `
-                : ""}
-              {formatDateTime(review.submittedAt, t.intl)}
-              {review.note ? ` · ${review.note}` : ""}
-            </p>
+          {openCount > 0 ? (
+            <TextLink href="/app/reviews" className="text-xs">
+              {t("orders.inspection.reviewsLink")} →
+            </TextLink>
           ) : null}
         </div>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-zinc-900">
-              {t("inspReport.divergences")}
-              {openCount > 0 ? (
-                <span className="ml-2">
-                  <Badge tone="warning">{openCount}</Badge>
-                </span>
-              ) : null}
-            </h3>
-            {openCount > 0 ? (
-              <TextLink href="/app/reviews" className="text-xs">
-                {t("orders.inspection.reviewsLink")} →
-              </TextLink>
-            ) : null}
-          </div>
-          {report.reviews.length === 0 ? (
-            <p className="mt-1 text-xs text-zinc-500">
-              {t("inspReport.noDivergences")}
-            </p>
-          ) : (
-            <ul className="mt-2 space-y-1.5 text-sm">
+        {report.reviews.length === 0 ? (
+          <p className="text-xs text-zinc-500">
+            {t("inspReport.noDivergences")}
+          </p>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t("inspReport.col.problem")}</Th>
+                <Th className="text-right">
+                  {t("orders.inspection.expected")}
+                </Th>
+                <Th className="text-right">{t("orders.inspection.found")}</Th>
+                <Th>{t("inspReport.col.when")}</Th>
+                <Th>{t("common.status")}</Th>
+                <Th>{t("inspReport.resolvedBy")}</Th>
+              </tr>
+            </thead>
+            <tbody>
               {report.reviews.map((r) => (
-                <li
+                <tr
                   key={r.id}
                   className={cx(
-                    "rounded-lg border px-3 py-2",
-                    r.status === "open"
-                      ? "border-amber-200 bg-amber-50/60"
-                      : "border-zinc-200",
+                    rowClass,
+                    r.status === "open" && "bg-amber-50/60",
                   )}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium text-zinc-900">{r.problem}</p>
+                  <Td className="min-w-44 font-medium text-zinc-900">
+                    {r.problem}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right tabular-nums">
+                    {r.expected ?? "—"}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right font-medium tabular-nums text-red-700">
+                    {r.found ?? "—"}
+                  </Td>
+                  <Td className="whitespace-nowrap text-xs text-zinc-600">
+                    {formatDateTime(r.createdAt, t.intl)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
                     <Badge tone={r.status === "open" ? "warning" : "success"}>
                       {t(`reviews.status.${r.status}`)}
                     </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-zinc-600">
-                    {t("orders.inspection.expected")}:{" "}
-                    <span className="font-medium">{r.expected ?? "—"}</span> ·{" "}
-                    {t("orders.inspection.found")}:{" "}
-                    <span className="font-medium text-red-700">
-                      {r.found ?? "—"}
-                    </span>{" "}
-                    · {formatDateTime(r.createdAt, t.intl)}
-                  </p>
-                  {r.status !== "open" ? (
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {t("inspReport.resolvedBy")}:{" "}
-                      {userName(r.resolvedByUserId)} ·{" "}
-                      {formatDateTime(r.resolvedAt, t.intl)}
-                      {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
-                    </p>
-                  ) : null}
-                </li>
+                  </Td>
+                  <Td className="min-w-40 text-xs text-zinc-500">
+                    {r.status !== "open" ? (
+                      <>
+                        {userName(r.resolvedByUserId)} ·{" "}
+                        {formatDateTime(r.resolvedAt, t.intl)}
+                        {r.resolutionNote ? ` · ${r.resolutionNote}` : ""}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                </tr>
               ))}
-            </ul>
-          )}
-        </div>
+            </tbody>
+          </Table>
+        )}
       </div>
 
       {report.timeline.length > 0 ? (
@@ -3046,26 +3078,40 @@ function InspectionResultCard({
           <summary className="cursor-pointer text-sm font-semibold text-zinc-900">
             {t("inspReport.timeline")} ({report.timeline.length})
           </summary>
-          <ol className="mt-2 space-y-1.5 border-l border-zinc-200 pl-4 text-xs">
-            {report.timeline.map((e) => (
-              <li key={e.id} className="text-zinc-600">
-                <span className="font-medium text-zinc-800">
-                  {eventLabel(e.action)}
-                </span>{" "}
-                · {e.summary.replace(/^INSPECTION:\s*/, "")}
-                {e.action === "requirement.submit" &&
-                e.after &&
-                typeof e.after === "object" &&
-                "value" in e.after &&
-                (e.after as { value: unknown }).value
-                  ? ` = ${String((e.after as { value: unknown }).value)}`
-                  : ""}
-                <span className="block text-zinc-500">
-                  {userName(e.userId)} · {formatDateTime(e.createdAt, t.intl)}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <div className="mt-2">
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("inspReport.col.event")}</Th>
+                  <Th>{t("inspReport.col.detail")}</Th>
+                  <Th>{t("inspReport.col.who")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.timeline.map((e) => (
+                  <tr key={e.id} className={rowClass}>
+                    <Td className="whitespace-nowrap font-medium text-zinc-800">
+                      {eventLabel(e.action)}
+                    </Td>
+                    <Td className="min-w-56 text-xs text-zinc-600">
+                      {e.summary.replace(/^INSPECTION:\s*/, "")}
+                      {e.action === "requirement.submit" &&
+                      e.after &&
+                      typeof e.after === "object" &&
+                      "value" in e.after &&
+                      (e.after as { value: unknown }).value
+                        ? ` = ${String((e.after as { value: unknown }).value)}`
+                        : ""}
+                    </Td>
+                    <Td className="whitespace-nowrap text-xs text-zinc-500">
+                      {userName(e.userId)} ·{" "}
+                      {formatDateTime(e.createdAt, t.intl)}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
         </details>
       ) : null}
     </Card>
@@ -3261,7 +3307,7 @@ function AfterSalesCard({
               <Alert tone="success">{t("orders.afterSales.thanks")}</Alert>
             </div>
           ) : null}
-          <DescriptionList
+          <PairsTable
             items={[
               [
                 t("orders.afterSales.rating"),
@@ -3381,7 +3427,7 @@ async function FollowUpCard({
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <DescriptionList
+          <PairsTable
             items={[
               [t("common.product"), item.name],
               [
