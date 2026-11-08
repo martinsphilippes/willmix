@@ -11,7 +11,7 @@ import type {
   Request,
   Stage,
 } from "@/lib/db";
-import { boxesFor } from "@/lib/logistics/cbm";
+import { itemLogistics } from "./item-logistics";
 import {
   customerDetail,
   isDelivered,
@@ -107,10 +107,13 @@ export function buildSaleLines(input: {
       const p = it.productId ? (product.get(it.productId) ?? null) : null;
       const unit = supplier ? (it.unitPrice ?? null) : sellUnit;
       const v = it.variant ?? null;
-      const perBox = v?.masterBoxQty ?? p?.masterBoxQty ?? null;
-      const boxes = boxesFor(it.quantity, perBox);
-      const boxCbm = v?.cbm ?? p?.cbm ?? null;
-      const gross = v?.grossWeightKg ?? p?.grossWeightKg ?? null;
+      // Mesma conta da lista de Pedidos (código, caixas, volume e peso).
+      const l = itemLogistics({
+        quantity: it.quantity,
+        variant: v,
+        product: p,
+        specification: req?.specification,
+      });
       lines.push({
         orderId: o.id,
         orderNumber: o.number,
@@ -120,16 +123,16 @@ export function buildSaleLines(input: {
         photos: p ? productPhotoList(p, input.photos) : [],
         name: it.name,
         variantName: v?.name ?? null,
-        sku: p?.sku ?? null,
-        supplierSku: v?.factoryItemCode ?? p?.supplierSku ?? null,
-        specification: req?.specification ?? p?.specification ?? null,
-        color: v?.colorAssortment ?? p?.color ?? null,
+        sku: l.sku,
+        supplierSku: l.supplierSku,
+        specification: l.specification,
+        color: l.color,
         quantity: it.quantity,
         unit: it.unit,
-        unitsPerBox: perBox,
-        boxes,
-        cbm: boxCbm !== null ? round(boxes * boxCbm, 4) : null,
-        weightKg: gross !== null ? round(it.quantity * gross, 2) : null,
+        unitsPerBox: l.unitsPerBox,
+        boxes: l.boxes,
+        cbm: l.cbm,
+        weightKg: l.weightKg,
         unitPrice: unit !== null ? round(unit, 4) : null,
         amount: unit !== null ? round(unit * it.quantity) : null,
         currency: supplier ? o.fobCurrency : o.sellCurrency,

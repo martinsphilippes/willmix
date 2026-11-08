@@ -24,13 +24,16 @@ beforeAll(async () => {
   supplierB = users.find((u) => u.email === "supplier.b@china.com")!;
 });
 
-async function request(name: string) {
+async function request(
+  name: string,
+  extra: { productId?: string; specification?: string } = {},
+) {
   return r.createRequest(joao, {
     customerId: "cliente-joao",
-    productId: null,
+    productId: extra.productId ?? null,
     productName: name,
     description: name,
-    specification: null,
+    specification: extra.specification ?? null,
     quantity: 1000,
     unit: "un",
     deadline: null,
@@ -38,8 +41,11 @@ async function request(name: string) {
   });
 }
 
-async function order(name: string) {
-  const req = await request(name);
+async function order(
+  name: string,
+  extra: { productId?: string; specification?: string } = {},
+) {
+  const req = await request(name, extra);
   await r.openRfq(admin, req.id, ["fornecedor-a"]);
   const [quote] = await getStore().list("quotes", {
     filter: { requestId: req.id },
@@ -142,5 +148,30 @@ describe("painel de pedidos", () => {
     const mine = forA.find((x) => x.key === `order:${placed.id}`)!;
     expect(mine.items[0].unitPrice).toBeNull();
     expect(mine.groupHref).toBeNull();
+  });
+  it("produto, variação e especificação do item (foto, caixas, volume na tela) só para a Wellmix", async () => {
+    const placed = await order("Panelas com tampa", {
+      productId: "prod-panela",
+      specification: "Com tampa de vidro",
+    });
+    const forAdmin = (await pipelineFor(admin)).find(
+      (x) => x.key === `order:${placed.id}`,
+    )!;
+    expect(forAdmin.items[0]).toMatchObject({
+      productId: "prod-panela",
+      specification: "Com tampa de vidro",
+    });
+    // Fornecedor e cliente não recebem esses dados (nem o preço).
+    for (const user of [supplierA, joao]) {
+      const row = (await pipelineFor(user)).find(
+        (x) => x.key === `order:${placed.id}`,
+      )!;
+      expect(row.items[0]).toMatchObject({
+        productId: null,
+        variantData: null,
+        specification: null,
+        unitPrice: null,
+      });
+    }
   });
 });

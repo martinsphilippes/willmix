@@ -103,6 +103,10 @@ Uma coluna só, cada parte numa tabela (o mesmo visual de Clientes, Fornecedores
 
 Para a Wellmix, as colunas importantes vêm primeiro: nº, foto, produto (abre a solicitação), quantidade, cliente, situação, **próximo passo** (e com quem está: Wellmix, fornecedores, cliente, diretoria ou o papel da etapa do pedido, com "Etapa atrasada"), prazo e pedido; depois valor ao cliente e sinal (só Finanças), **cotações** (respondidas de enviadas; melhor preço ou o escolhido só para Finanças; dias de produção), analista e data. Quem abre Finanças vê também os cartões coloridos da lista na tela: em proposta, sinal a receber, sinal recebido e viraram pedido. O CSV ganha próximo passo, com quem, cotações e etapa do pedido. Regras puras em `src/lib/services/request-list.ts` (`quoteSummary`, `requestNextStep`).
 
+## Lista de Pedidos: itens da linha escolhida (`/app/orders`)
+
+Embaixo da lista, a tabela de itens da linha escolhida ganha, para a Wellmix, as mesmas colunas da folha Fornecedores → fornecedor → pedido: imagem (galeria de fotos do produto), código, cód. do item (fábrica), especificação (a da solicitação vale antes da do cadastro), cor, peso bruto, quantidade, quantidade por caixa, caixas, volume (m³), preço FOB e valor FOB, e uma linha de **Total** (itens cancelados ficam de fora; grupo todo cancelado soma todos; quantidade só soma na mesma unidade; dado que nenhum item tem aparece "—"). Continuam fornecedor, pedido, etapa, situação, prazo e conversa. A variação escolhida vale antes do cadastro do produto, com a mesma conta da folha (`itemLogistics` e `logisticsTotals` em `src/lib/services/item-logistics.ts`), então os números batem entre as telas. Cliente, fornecedor e parceiros veem a tabela de antes: o servidor nem manda esses dados para eles (`pipelineFor` só preenche produto, variação e especificação para a Wellmix).
+
 ## Inspeção cega e comparação comprado × inspecionado
 
 - Ao nascer, o pedido recebe um **snapshot da compra** (`purchase_snapshots`): ficha do produto + cotação congeladas. O cadastro mestre pode mudar depois; o snapshot não.
