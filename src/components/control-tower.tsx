@@ -332,94 +332,94 @@ export async function ControlTower({
           </div>
 
           <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-            <Card
-              className="min-w-0 lg:col-span-2"
-              title={listTitle}
-              data-tower-list={boardCard?.key ?? selected}
-            >
-              {rows.length === 0 ? (
-                <Empty>{t("common.none")}</Empty>
-              ) : (
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>#</Th>
-                      <Th>{t("common.customer")}</Th>
-                      <Th>{t("common.product")}</Th>
-                      <Th>{t("orders.stage")}</Th>
-                      <Th>{t("common.responsible")}</Th>
-                      <Th>{t("common.due")}</Th>
-                      <Th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr key={row.id} className={rowClass}>
-                        <Td className="whitespace-nowrap">
-                          <TextLink href={row.link}>{row.number}</TextLink>
-                        </Td>
-                        <Td>{row.customer}</Td>
-                        <Td>{row.product}</Td>
-                        <Td className="whitespace-nowrap">
-                          {row.kind === "cert" ? (
-                            <Badge tone="warning">{t("board.cert")}</Badge>
-                          ) : row.cancelled ? (
-                            <Badge tone="danger">
-                              {t("board.cancelled")}
-                              {row.stageKey
-                                ? ` · ${t(`stage.${row.stageKey}`)}`
-                                : ""}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              tone={stageTone(
-                                row.stageKey === "CLOSED"
-                                  ? "done"
-                                  : row.blocked
-                                    ? "blocked"
-                                    : "active",
+            <Card className="min-w-0 lg:col-span-2" title={listTitle}>
+              <div data-tower-list={boardCard?.key ?? selected}>
+                {rows.length === 0 ? (
+                  <Empty>{t("common.none")}</Empty>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>#</Th>
+                        <Th>{t("common.customer")}</Th>
+                        <Th>{t("common.product")}</Th>
+                        <Th>{t("orders.stage")}</Th>
+                        <Th>{t("common.responsible")}</Th>
+                        <Th>{t("common.due")}</Th>
+                        <Th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.id} className={rowClass}>
+                          <Td className="whitespace-nowrap">
+                            <TextLink href={row.link}>{row.number}</TextLink>
+                          </Td>
+                          <Td>{row.customer}</Td>
+                          <Td>{row.product}</Td>
+                          <Td className="whitespace-nowrap">
+                            {row.kind === "cert" ? (
+                              <Badge tone="warning">{t("board.cert")}</Badge>
+                            ) : row.cancelled ? (
+                              <Badge tone="danger">
+                                {t("board.cancelled")}
+                                {row.stageKey
+                                  ? ` · ${t(`stage.${row.stageKey}`)}`
+                                  : ""}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                tone={stageTone(
+                                  row.stageKey === "CLOSED"
+                                    ? "done"
+                                    : row.blocked
+                                      ? "blocked"
+                                      : "active",
+                                )}
+                              >
+                                {row.stageKey
+                                  ? t(`stage.${row.stageKey}`)
+                                  : t(`reqStatusLabel.${row.requestStatus!}`)}
+                                {row.blocked
+                                  ? ` · ${t("stageStatus.blocked")}`
+                                  : ""}
+                              </Badge>
+                            )}
+                          </Td>
+                          <Td>
+                            {row.responsible
+                              ? t(`role.${row.responsible}`)
+                              : "—"}
+                          </Td>
+                          <Td className="whitespace-nowrap">
+                            <span
+                              className={cx(
+                                row.overdue && "font-semibold text-red-700",
                               )}
                             >
-                              {row.stageKey
-                                ? t(`stage.${row.stageKey}`)
-                                : t(`reqStatusLabel.${row.requestStatus!}`)}
-                              {row.blocked
-                                ? ` · ${t("stageStatus.blocked")}`
-                                : ""}
-                            </Badge>
-                          )}
-                        </Td>
-                        <Td>
-                          {row.responsible ? t(`role.${row.responsible}`) : "—"}
-                        </Td>
-                        <Td className="whitespace-nowrap">
-                          <span
-                            className={cx(
-                              row.overdue && "font-semibold text-red-700",
+                              {formatDate(row.dueAt, t)}
+                            </span>
+                          </Td>
+                          {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
+                          <Td className="whitespace-nowrap text-right">
+                            {row.kind === "cert" ? null : (
+                              <ChatOpenButton
+                                target={
+                                  row.kind === "request" ||
+                                  (!row.kind && row.requestStatus)
+                                    ? { requestId: row.id }
+                                    : { orderId: row.id }
+                                }
+                                label={t("chat.open")}
+                              />
                             )}
-                          >
-                            {formatDate(row.dueAt, t)}
-                          </span>
-                        </Td>
-                        {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
-                        <Td className="whitespace-nowrap text-right">
-                          {row.kind === "cert" ? null : (
-                            <ChatOpenButton
-                              target={
-                                row.kind === "request" ||
-                                (!row.kind && row.requestStatus)
-                                  ? { requestId: row.id }
-                                  : { orderId: row.id }
-                              }
-                              label={t("chat.open")}
-                            />
-                          )}
-                        </Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </div>
             </Card>
             <Card className="min-w-0" title={t("ct.exceptions")}>
               {data.exceptions.length === 0 ? (
