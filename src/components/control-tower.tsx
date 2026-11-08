@@ -16,6 +16,9 @@ import {
   loadTowerTotals,
   type TowerTotals,
 } from "@/lib/services/control-tower";
+import { isBoardCardKey, loadTowerBoard } from "@/lib/services/tower-board";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { TowerBoardView } from "./tower-board";
 import {
   Alert,
   Badge,
@@ -68,142 +71,78 @@ function Money({ children }: { children: ReactNode }) {
 }
 
 /**
- * Faixas "Financeiro" e "Operação" (docs/EVOLUTION_PLAN.md, itens 27 e 28):
- * reutilizam o financeiro e os containers; só o que foi lançado, nada estimado.
+ * Faixa "Financeiro" (docs/EVOLUTION_PLAN.md, item 27): reutiliza o
+ * financeiro; só o que foi lançado, nada estimado. A faixa "Operação" virou
+ * os quadros de ponta a ponta (tower-board.tsx).
  */
-async function TowerTotalsStrip({
+function FinanceStrip({
   totals,
   t,
-  finance,
 }: {
   totals: TowerTotals;
   t: Awaited<ReturnType<typeof getT>>;
-  /** Valores em dinheiro só para quem abre Financeiro (admin). */
-  finance: boolean;
 }) {
-  const pipelineLabel: Record<TowerTotals["pipeline"][number]["key"], string> =
-    {
-      production: t("ct.operation.production"),
-      ready: t("ct.operation.ready"),
-      shipped: t("ct.operation.shipped"),
-      customs: t("ct.operation.customs"),
-      transport: t("ct.operation.transport"),
-      delivered: t("ct.operation.delivered"),
-    };
   return (
-    <>
-      {finance ? (
-        <section aria-label={t("ct.finance.title")} className="mb-4">
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {t("ct.finance.title")}
-            </h2>
-            <p className="text-xs text-zinc-500">{t("ct.totals.hint")}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Stat
-              label={t("finance.sold")}
-              value={
-                <Money>
-                  {formatMoney(totals.sold, totals.sellCurrency, t)}
-                </Money>
-              }
-              href="/app/finance"
-            />
-            <Stat
-              label={t("finance.received")}
-              value={
-                <Money>
-                  {formatMoney(totals.received, totals.sellCurrency, t)}
-                </Money>
-              }
-              href="/app/finance"
-            />
-            <Stat
-              label={t("finance.receivable")}
-              value={
-                <Money>
-                  {formatMoney(totals.receivable, totals.sellCurrency, t)}
-                </Money>
-              }
-              href="/app/finance"
-              tone={totals.receivable > 0 ? "warning" : undefined}
-            />
-            <Stat
-              label={t("ct.finance.purchased")}
-              value={
-                <Money>
-                  {moneyByCurrency(totals.purchasedByCurrency, "USD", t)}
-                </Money>
-              }
-              href="/app/finance"
-            />
-            <Stat
-              label={t("ct.finance.paid")}
-              value={
-                <Money>
-                  {moneyByCurrency(totals.paidByCurrency, "USD", t)}
-                </Money>
-              }
-              href="/app/finance"
-            />
-            <Stat
-              label={t("ct.finance.payable")}
-              value={
-                <Money>
-                  {moneyByCurrency(totals.payableByCurrency, "USD", t)}
-                </Money>
-              }
-              href="/app/finance"
-              tone={hasValue(totals.payableByCurrency) ? "warning" : undefined}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      <section aria-label={t("ct.operation.title")} className="mb-4">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {t("ct.operation.title")}
+    <section aria-label={t("ct.finance.title")} className="mb-4">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          {t("ct.finance.title")}
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {totals.pipeline.map((p) => (
-            <Stat
-              key={p.key}
-              label={pipelineLabel[p.key]}
-              value={
-                <>
-                  {t("ct.operation.orders", { count: p.count })}
-                  {finance ? (
-                    <span className="block text-xs font-medium text-zinc-500">
-                      {formatMoney(p.value, totals.sellCurrency, t)}
-                    </span>
-                  ) : null}
-                </>
-              }
-            />
-          ))}
-        </div>
-        {/* Três números curtos: uma linha só também no celular. */}
-        <div className="mt-3 grid grid-cols-3 gap-3">
-          <Stat
-            label={t("ct.operation.reviewsOpen")}
-            value={totals.reviewsOpen}
-            href="/app/reviews"
-            tone={totals.reviewsOpen > 0 ? "danger" : undefined}
-          />
-          <Stat
-            label={t("ct.operation.containersOpen")}
-            value={`${totals.containers.open} / ${totals.containers.total}`}
-            href="/app/containers"
-          />
-          <Stat
-            label={t("ct.operation.avgOccupancy")}
-            value={percent(totals.containers.avgOccupancyPercent, t.intl)}
-            href="/app/containers"
-          />
-        </div>
-      </section>
-    </>
+        <p className="text-xs text-zinc-500">{t("ct.totals.hint")}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat
+          label={t("finance.sold")}
+          value={
+            <Money>{formatMoney(totals.sold, totals.sellCurrency, t)}</Money>
+          }
+          href="/app/finance"
+        />
+        <Stat
+          label={t("finance.received")}
+          value={
+            <Money>
+              {formatMoney(totals.received, totals.sellCurrency, t)}
+            </Money>
+          }
+          href="/app/finance"
+        />
+        <Stat
+          label={t("finance.receivable")}
+          value={
+            <Money>
+              {formatMoney(totals.receivable, totals.sellCurrency, t)}
+            </Money>
+          }
+          href="/app/finance"
+          tone={totals.receivable > 0 ? "warning" : undefined}
+        />
+        <Stat
+          label={t("ct.finance.purchased")}
+          value={
+            <Money>
+              {moneyByCurrency(totals.purchasedByCurrency, "USD", t)}
+            </Money>
+          }
+          href="/app/finance"
+        />
+        <Stat
+          label={t("ct.finance.paid")}
+          value={
+            <Money>{moneyByCurrency(totals.paidByCurrency, "USD", t)}</Money>
+          }
+          href="/app/finance"
+        />
+        <Stat
+          label={t("ct.finance.payable")}
+          value={
+            <Money>{moneyByCurrency(totals.payableByCurrency, "USD", t)}</Money>
+          }
+          href="/app/finance"
+          tone={hasValue(totals.payableByCurrency) ? "warning" : undefined}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -275,10 +214,13 @@ function CommercialCard({
 export async function ControlTower({
   user,
   filter,
+  card,
   denied,
 }: {
   user: User;
   filter?: string;
+  /** Quadrado escolhido nos quadros da operação (?card=…). */
+  card?: string;
   /** Tela que o login tentou abrir sem acesso (?denied=…): aviso no início. */
   denied?: string;
 }) {
@@ -289,10 +231,16 @@ export async function ControlTower({
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)
     : null;
-  const [data, totals] = await Promise.all([
+  const [data, totals, board] = await Promise.all([
     loadControlTower(),
     wellmix ? loadTowerTotals() : Promise.resolve(null),
+    wellmix && operations ? loadTowerBoard({ finance }) : Promise.resolve(null),
   ]);
+  // Quadrado escolhido (os que levam a outra tela não filtram a lista).
+  const boardCard =
+    board && isBoardCardKey(card)
+      ? (board.cards.find((c) => c.key === card && !c.href) ?? null)
+      : null;
   const cards: Array<{
     key: keyof typeof data.buckets;
     label: string;
@@ -315,7 +263,10 @@ export async function ControlTower({
     filter && filter in data.buckets
       ? (filter as keyof typeof data.buckets)
       : "active";
-  const rows = data.buckets[selected];
+  const rows = boardCard ? boardCard.rows : data.buckets[selected];
+  const listTitle = boardCard
+    ? t(`board.card.${boardCard.key}` as DictionaryKey)
+    : cards.find((c) => c.key === selected)?.label;
 
   return (
     <>
@@ -337,11 +288,36 @@ export async function ControlTower({
           <Alert tone="info">{t("access.noFunction")}</Alert>
         </div>
       ) : null}
-      {totals && operations ? (
-        <TowerTotalsStrip totals={totals} t={t} finance={finance} />
+      {totals && operations && finance ? (
+        <FinanceStrip totals={totals} t={t} />
+      ) : null}
+      {board ? (
+        <section aria-label={t("ct.operation.title")} className="mb-2">
+          <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            {t("ct.operation.title")}
+          </h2>
+          <TowerBoardView
+            board={board}
+            t={t}
+            selected={boardCard?.key ?? null}
+            occupancy={
+              totals?.containers.avgOccupancyPercent !== null &&
+              totals?.containers.avgOccupancyPercent !== undefined
+                ? t("board.occupancy", {
+                    pct: percent(totals.containers.avgOccupancyPercent, t.intl),
+                  })
+                : null
+            }
+          />
+        </section>
       ) : null}
       {operations ? (
         <>
+          {board ? (
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {t("board.general")}
+            </h2>
+          ) : null}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {cards.map((c) => (
               <Stat
@@ -350,85 +326,100 @@ export async function ControlTower({
                 value={data.buckets[c.key].length}
                 href={`/app?filter=${c.key}`}
                 tone={data.buckets[c.key].length > 0 ? c.tone : undefined}
-                active={c.key === selected}
+                active={!boardCard && c.key === selected}
               />
             ))}
           </div>
 
           <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-            <Card
-              className="min-w-0 lg:col-span-2"
-              title={cards.find((c) => c.key === selected)?.label}
-            >
-              {rows.length === 0 ? (
-                <Empty>{t("common.none")}</Empty>
-              ) : (
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>#</Th>
-                      <Th>{t("common.customer")}</Th>
-                      <Th>{t("common.product")}</Th>
-                      <Th>{t("orders.stage")}</Th>
-                      <Th>{t("common.responsible")}</Th>
-                      <Th>{t("common.due")}</Th>
-                      <Th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr key={row.id} className={rowClass}>
-                        <Td className="whitespace-nowrap">
-                          <TextLink href={row.link}>{row.number}</TextLink>
-                        </Td>
-                        <Td>{row.customer}</Td>
-                        <Td>{row.product}</Td>
-                        <Td className="whitespace-nowrap">
-                          <Badge
-                            tone={stageTone(
-                              row.stageKey === "CLOSED"
-                                ? "done"
-                                : row.blocked
-                                  ? "blocked"
-                                  : "active",
-                            )}
-                          >
-                            {row.stageKey
-                              ? t(`stage.${row.stageKey}`)
-                              : t(`reqStatusLabel.${row.requestStatus!}`)}
-                            {row.blocked
-                              ? ` · ${t("stageStatus.blocked")}`
-                              : ""}
-                          </Badge>
-                        </Td>
-                        <Td>
-                          {row.responsible ? t(`role.${row.responsible}`) : "—"}
-                        </Td>
-                        <Td className="whitespace-nowrap">
-                          <span
-                            className={cx(
-                              row.overdue && "font-semibold text-red-700",
-                            )}
-                          >
-                            {formatDate(row.dueAt, t)}
-                          </span>
-                        </Td>
-                        {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
-                        <Td className="whitespace-nowrap text-right">
-                          <ChatOpenButton
-                            target={
-                              row.requestStatus
-                                ? { requestId: row.id }
-                                : { orderId: row.id }
-                            }
-                            label={t("chat.open")}
-                          />
-                        </Td>
+            <Card className="min-w-0 lg:col-span-2" title={listTitle}>
+              <div data-tower-list={boardCard?.key ?? selected}>
+                {rows.length === 0 ? (
+                  <Empty>{t("common.none")}</Empty>
+                ) : (
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>#</Th>
+                        <Th>{t("common.customer")}</Th>
+                        <Th>{t("common.product")}</Th>
+                        <Th>{t("orders.stage")}</Th>
+                        <Th>{t("common.responsible")}</Th>
+                        <Th>{t("common.due")}</Th>
+                        <Th />
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.id} className={rowClass}>
+                          <Td className="whitespace-nowrap">
+                            <TextLink href={row.link}>{row.number}</TextLink>
+                          </Td>
+                          <Td>{row.customer}</Td>
+                          <Td>{row.product}</Td>
+                          <Td className="whitespace-nowrap">
+                            {row.kind === "cert" ? (
+                              <Badge tone="warning">{t("board.cert")}</Badge>
+                            ) : row.cancelled ? (
+                              <Badge tone="danger">
+                                {t("board.cancelled")}
+                                {row.stageKey
+                                  ? ` · ${t(`stage.${row.stageKey}`)}`
+                                  : ""}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                tone={stageTone(
+                                  row.stageKey === "CLOSED"
+                                    ? "done"
+                                    : row.blocked
+                                      ? "blocked"
+                                      : "active",
+                                )}
+                              >
+                                {row.stageKey
+                                  ? t(`stage.${row.stageKey}`)
+                                  : t(`reqStatusLabel.${row.requestStatus!}`)}
+                                {row.blocked
+                                  ? ` · ${t("stageStatus.blocked")}`
+                                  : ""}
+                              </Badge>
+                            )}
+                          </Td>
+                          <Td>
+                            {row.responsible
+                              ? t(`role.${row.responsible}`)
+                              : "—"}
+                          </Td>
+                          <Td className="whitespace-nowrap">
+                            <span
+                              className={cx(
+                                row.overdue && "font-semibold text-red-700",
+                              )}
+                            >
+                              {formatDate(row.dueAt, t)}
+                            </span>
+                          </Td>
+                          {/* Conversa daquele pedido/solicitação: sempre na última coluna. */}
+                          <Td className="whitespace-nowrap text-right">
+                            {row.kind === "cert" ? null : (
+                              <ChatOpenButton
+                                target={
+                                  row.kind === "request" ||
+                                  (!row.kind && row.requestStatus)
+                                    ? { requestId: row.id }
+                                    : { orderId: row.id }
+                                }
+                                label={t("chat.open")}
+                              />
+                            )}
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </div>
             </Card>
             <Card className="min-w-0" title={t("ct.exceptions")}>
               {data.exceptions.length === 0 ? (

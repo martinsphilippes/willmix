@@ -10,7 +10,7 @@ import {
 } from "@/lib/db";
 
 /** Pedido do item de revisão (itens antigos podem ter só entity "order"). */
-const reviewOrderId = (r: ReviewItem) =>
+export const reviewOrderId = (r: ReviewItem) =>
   r.orderId ?? (r.entity === "order" ? r.entityId : null);
 
 export interface TowerRow {
@@ -25,6 +25,13 @@ export interface TowerRow {
   overdue: boolean;
   blocked: boolean;
   link: string;
+  /**
+   * Quadros da operação (tower-board.ts): o que a linha é, para o selo da
+   * etapa e a conversa. Sem ele vale a regra antiga (solicitação pela situação).
+   */
+  kind?: "order" | "request" | "cert";
+  /** Pedido cancelado (selo "Cancelado" com a etapa em que parou). */
+  cancelled?: boolean;
 }
 
 export interface TowerException {
