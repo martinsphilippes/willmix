@@ -31,7 +31,6 @@ import { CargoCard } from "@/components/cargo-card";
 import {
   getStore,
   type AfterSales,
-  type Container,
   type Document,
   type Order,
   type OrderItem,
@@ -145,6 +144,10 @@ import {
   openAfterSalesAction,
 } from "../../actions/after-sales";
 import { MoneyInput } from "@/components/money-input";
+import { ColorCards, type ColorCard } from "@/components/color-cards";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
+import { productPhotoList } from "@/lib/services/product-list";
 import {
   FreightTariffBox,
   FreightTariffUploadBox,
@@ -176,7 +179,10 @@ export default async function OrderPage({
     importStep: importNotice,
     receiving: receivingNotice,
     artwork: artworkNotice,
+    stage: stageQuery,
   } = await searchParams;
+  // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
+  const stageParam = typeof stageQuery === "string" ? stageQuery : null;
   // Pedido de antes da inversão da arte: arte da agência, aprovação do fornecedor.
   await normalizePackaging(id);
   await normalizeShipping(id);
@@ -455,6 +461,19 @@ export default async function OrderPage({
     sourceOrderRow && canViewOrder(user, sourceOrderRow)
       ? sourceOrderRow
       : null;
+  /* Itens em linhas: foto e código do produto só para a Wellmix. */
+  const itemProductIds = [
+    ...new Set(items.map((i) => i.productId).filter(Boolean)),
+  ] as string[];
+  const [itemProducts, itemPhotos] =
+    wellmix && itemProductIds.length
+      ? await Promise.all([
+          store.list("products", { filter: { id: itemProductIds } }),
+          store.list("product_photos", {
+            filter: { productId: itemProductIds },
+          }),
+        ])
+      : [[], []];
   /* Cancelamento: só o admin cancela; o cliente pede até a produção começar. */
   const isCancelled = order.status === "CANCELLED";
   const admin = user.role === "admin";
@@ -474,33 +493,33 @@ export default async function OrderPage({
             : null;
 
   /* Cartão do pedido: o que este papel pode ver (vazio = o cartão não aparece). */
+  /* Variação pedida (nome para todos; os valores da cópia só para a Wellmix):
+     fica na tabela de itens, na linha do produto. */
+  const variantCell = (i: OrderItem) => {
+    if (!i.variant) return "—";
+    const summary = wellmix
+      ? variantSnapshotSummary(
+          i.variant,
+          {
+            price: t("productVariants.col.price"),
+            moq: t("productVariants.col.moq"),
+            box: t("productVariants.col.box"),
+            cbm: t("productVariants.col.cbm"),
+          },
+          t.intl,
+        )
+      : null;
+    return (
+      <span data-order-variant>
+        {i.variant.name}
+        {summary ? (
+          <span className="block text-xs text-zinc-500">{summary}</span>
+        ) : null}
+      </span>
+    );
+  };
+  /* Resumo do pedido (uma linha): o que este papel pode ver (vazio = não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
-    // Variação pedida (nome para todos; os valores da cópia só para a Wellmix).
-    ...items
-      .filter((i) => i.variant)
-      .map((i): [ReactNode, ReactNode] => {
-        const summary = wellmix
-          ? variantSnapshotSummary(
-              i.variant!,
-              {
-                price: t("productVariants.col.price"),
-                moq: t("productVariants.col.moq"),
-                box: t("productVariants.col.box"),
-                cbm: t("productVariants.col.cbm"),
-              },
-              t.intl,
-            )
-          : null;
-        return [
-          t("productVariants.label"),
-          <span key={i.id} data-order-variant>
-            {i.variant!.name}
-            {summary ? (
-              <span className="block text-xs text-zinc-500">{summary}</span>
-            ) : null}
-          </span>,
-        ];
-      }),
     ...(user.role !== "customer" && (wellmix || user.role === "legal")
       ? [
           [t("common.customer"), partyName(order.customerId)] as [
@@ -595,6 +614,187 @@ export default async function OrderPage({
         ]
       : []),
   ];
+  /* Etapas em linhas: quem vê a etapa abre os detalhes dela; a etapa em
+     andamento (ou que ainda aceita dados, como o BL depois do embarque)
+     fica aberta sempre. ?stage=CHAVE abre outra; ?stage=all, todas. */
+  const stageVisible = (s: (typeof stages)[number]) =>
+    stageVisibleTo(
+      user,
+      s,
+      requirements.filter((r) => r.stageId === s.id),
+    );
+  const defaultExpanded = (s: (typeof stages)[number]) =>
+    s.status === "active" ||
+    s.status === "blocked" ||
+    requirements.some(
+      (r) =>
+        r.stageId === s.id &&
+        r.status !== "done" &&
+        canCompleteLater(s, r, order),
+    );
+  const openableStages = flowStages.filter(stageVisible);
+  const expandedStageIds = new Set(
+    openableStages
+      .filter(
+        (s) =>
+          defaultExpanded(s) || stageParam === "all" || stageParam === s.key,
+      )
+      .map((s) => s.id),
+  );
+  const stageHref = (s: (typeof stages)[number]) =>
+    `/app/orders/${order.id}?stage=${s.key}#stage-${s.id}`;
+  // Pagamento ao fornecedor: o administrador e o fornecedor do pedido.
+  const showSupplierPayment =
+    financeAccess ||
+    (user.role === "supplier" && order.supplierId === user.partyId);
+  const showAfterSales =
+    customerSide && (!!afterSales || (wellmix && delivered));
+  const showFollowUp =
+    customerSide &&
+    delivered &&
+    !!items[0] &&
+    (!wellmix || canOpen(user, "requests"));
+  /* Cartões coloridos do alto (como Clientes e Fornecedores): os mesmos
+     valores e a mesma regra de quem vê do antigo cartão Financeiro (cliente:
+     venda, recebido e a receber; administrador: também compra, pago, a pagar
+     e margem). */
+  const moneyCards: ColorCard[] =
+    finance && (financeAccess || user.role === "customer")
+      ? [
+          {
+            key: "sell",
+            label: t("orderView.money.sell"),
+            value: formatMoney(finance.sell, finance.sellCurrency, t),
+            tone: "indigo",
+          },
+          {
+            key: "received",
+            label: t("orderView.money.received"),
+            value: formatMoney(finance.received, finance.sellCurrency, t),
+            tone: "emerald",
+          },
+          {
+            key: "receivable",
+            label: t("orderView.money.receivable"),
+            value: formatMoney(finance.receivable, finance.sellCurrency, t),
+            tone: "rose",
+          },
+          ...(wellmix
+            ? ([
+                {
+                  key: "fob",
+                  label: t("orderView.money.fob"),
+                  value: formatMoney(finance.fob, finance.fobCurrency, t),
+                  tone: "slate",
+                },
+                {
+                  key: "paid",
+                  label: t("orderView.money.paid"),
+                  value: (
+                    <>
+                      {formatMoney(finance.paid, finance.fobCurrency, t)}
+                      {/* Pago em outra moeda: à parte, na moeda dele. */}
+                      {Object.entries(finance.paidOther).map(([c, v]) => (
+                        <span
+                          key={c}
+                          className="block text-xs font-medium text-white/85"
+                          data-paid-other={c}
+                        >
+                          + {formatMoney(v, c, t)}
+                        </span>
+                      ))}
+                    </>
+                  ),
+                  tone: "sky",
+                },
+                {
+                  key: "payable",
+                  label: t("orderView.money.payable"),
+                  value: formatMoney(finance.payable, finance.fobCurrency, t),
+                  tone: "orange",
+                },
+                {
+                  key: "margin",
+                  label: t("orderView.money.margin"),
+                  // Cancelado não é venda: sem margem (como na tela Financeiro).
+                  value:
+                    finance.margin !== null && !isCancelled
+                      ? approx(
+                          formatMoney(finance.margin, finance.sellCurrency, t),
+                          finance.estimated,
+                        )
+                      : "—",
+                  sub:
+                    finance.marginPct !== null &&
+                    finance.margin !== null &&
+                    !isCancelled
+                      ? `${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%`
+                      : undefined,
+                  tone: "violet",
+                },
+              ] as ColorCard[])
+            : []),
+        ]
+      : [];
+  /* Índice: atalhos só para as partes que este login vê. */
+  const indexLinks: Array<[string, string]> = [
+    ...(!cargo && orderInfoItems.length
+      ? [["#order-summary", t("orderView.summary")] as [string, string]]
+      : []),
+    ...(!cargo
+      ? [["#order-items", t("orderView.items")] as [string, string]]
+      : []),
+    ["#order-stages", t("orderView.stages")],
+    ...(showAfterSales
+      ? [["#after-sales", t("orders.afterSales.title")] as [string, string]]
+      : []),
+    ...(showFollowUp
+      ? [["#followup", t("orders.followup.title")] as [string, string]]
+      : []),
+    ...(showSupplierPayment
+      ? [["#supplier-payment", t("supplierTerms.card")] as [string, string]]
+      : []),
+    ...(productionView
+      ? [["#production", t("production.title")] as [string, string]]
+      : []),
+    ...(importSteps.length
+      ? [["#import-flow", t("importFlow.title")] as [string, string]]
+      : []),
+    ...(certSteps.length
+      ? [["#certification", t("certFlow.title")] as [string, string]]
+      : []),
+    ...(receivingView
+      ? [["#receiving", t("receiving.title")] as [string, string]]
+      : []),
+    ...(artworkView
+      ? [["#artwork", t("artwork.title")] as [string, string]]
+      : []),
+    ...(wellmix || containers.length > 0
+      ? [
+          ["#order-containers", t("orders.containers.title")] as [
+            string,
+            string,
+          ],
+        ]
+      : []),
+    ...(finance && financeAccess
+      ? [["#order-finance", t("orderView.finance")] as [string, string]]
+      : []),
+    ...(visiblePayments.length > 0
+      ? [["#payments", t("orders.payments")] as [string, string]]
+      : []),
+    ["#order-documents", t("orders.documents")],
+    ...(wellmix || user.role === "legal" || visiblePenalties.length > 0
+      ? [["#order-penalties", t("orders.penalties")] as [string, string]]
+      : []),
+    ...(wellmix
+      ? [
+          ["#order-partners", t("orders.partners")] as [string, string],
+          ["#snapshot", t("orders.snapshot.title")] as [string, string],
+        ]
+      : []),
+  ];
+
   return (
     <>
       <PageHeader
@@ -767,804 +967,1018 @@ export default async function OrderPage({
         <Alert tone="success">{t("orders.closed")}</Alert>
       ) : null}
 
-      {/* Coluna principal: linha do tempo e etapas. Etapas concluídas ou ainda
-          não iniciadas ficam lado a lado (2 por linha a partir do iPad); a etapa
-          aberta, o relatório da inspeção e os cards de pós-venda ocupam a
-          largura toda. */}
-      <div className="mt-3 grid gap-4 lg:grid-cols-3">
-        <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:col-span-2">
-          <Card title={t("orders.timeline")} className="md:col-span-2">
-            <ol className="-mx-2 grid gap-x-4 gap-y-0.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-              {flowStages.map((s, index) => (
-                <li
+      {/* Tela em linhas: uma coluna só, cada parte numa tabela (como as
+          telas de Clientes, Fornecedores e o pedido em lista). Índice com
+          atalhos para as partes que este login vê. */}
+      <nav
+        className="mb-4 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 print:hidden"
+        data-order-index
+      >
+        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          {t("orderView.index")}
+        </span>
+        {indexLinks.map(([href, label]) => (
+          <a key={href} href={href} className={cx(linkClass, "text-sm")}>
+            {label}
+          </a>
+        ))}
+      </nav>
+
+      {moneyCards.length ? (
+        <ColorCards name="order" items={moneyCards} />
+      ) : null}
+
+      {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
+
+      {/* Resumo do pedido numa linha: o que este papel pode ver (vazio = não
+          aparece). Para o parceiro, só se sobrar algo útil. */}
+      {cargo || !orderInfoItems.length ? null : (
+        <OrderSection id="order-summary" title={t("orderView.summary")}>
+          <Table>
+            <thead>
+              <tr>
+                {orderInfoItems.map(([label], i) => (
+                  <Th key={i}>{label}</Th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className={rowClass} data-order-summary>
+                {orderInfoItems.map(([, value], i) => (
+                  <Td key={i} className="whitespace-nowrap">
+                    {value}
+                  </Td>
+                ))}
+              </tr>
+            </tbody>
+          </Table>
+          {wellmix && !isCancelled && order.erpSyncStatus === "pending" ? (
+            <p className="mt-2 text-xs text-amber-700">
+              {t("orders.erp.pending")}
+            </p>
+          ) : null}
+        </OrderSection>
+      )}
+
+      {/* Itens do pedido: um produto por linha (variação, quantidade e,
+          para a Wellmix, foto e preço de compra). */}
+      {cargo ? null : (
+        <OrderSection id="order-items" title={t("orderView.items")}>
+          <Table>
+            <thead>
+              <tr>
+                <Th className="w-10 text-right">{t("orderView.col.n")}</Th>
+                {wellmix ? (
+                  <Th className="w-14">{t("orderView.col.photo")}</Th>
+                ) : null}
+                <Th>{t("orderView.col.product")}</Th>
+                <Th>{t("orderView.col.variant")}</Th>
+                <Th className="text-right">{t("orderView.col.qty")}</Th>
+                {canSeeInternalCosts(user) ? (
+                  <>
+                    <Th className="text-right">
+                      {t("orderView.col.unitPrice")}
+                    </Th>
+                    <Th className="text-right">{t("orderView.col.total")}</Th>
+                  </>
+                ) : null}
+                <Th />
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((i, index) => {
+                const product = i.productId
+                  ? itemProducts.find((p) => p.id === i.productId)
+                  : null;
+                return (
+                  <tr key={i.id} className={rowClass} data-order-item>
+                    <Td className="text-right tabular-nums">{index + 1}</Td>
+                    {wellmix ? (
+                      <Td className="w-14">
+                        <PhotoGallery
+                          name={i.name}
+                          {...galleryProps(
+                            t,
+                            product
+                              ? productPhotoList(product, itemPhotos)
+                              : [],
+                          )}
+                        />
+                      </Td>
+                    ) : null}
+                    <Td className="min-w-44 font-medium">
+                      {wellmix && i.productId ? (
+                        <TextLink
+                          href={`/app/products/${i.productId}`}
+                          className="text-zinc-900"
+                        >
+                          {i.name}
+                        </TextLink>
+                      ) : (
+                        i.name
+                      )}
+                      {product?.sku ? (
+                        <span className="block font-mono text-xs font-normal text-zinc-500">
+                          {product.sku}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td className="min-w-40">{variantCell(i)}</Td>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {i.quantity.toLocaleString(t.intl)} {i.unit}
+                    </Td>
+                    {canSeeInternalCosts(user) ? (
+                      <>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {i.unitPrice !== null
+                            ? formatMoney(i.unitPrice, order.fobCurrency, t)
+                            : "—"}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {i.unitPrice !== null
+                            ? formatMoney(
+                                Math.round(i.unitPrice * i.quantity * 100) /
+                                  100,
+                                order.fobCurrency,
+                                t,
+                              )
+                            : "—"}
+                        </Td>
+                      </>
+                    ) : null}
+                    <Td className="w-10 text-right">
+                      <ChatOpenButton
+                        target={{ orderId: order.id, orderItemId: i.id }}
+                        label={`${t("chat.openItem")}: ${i.name}`}
+                      />
+                    </Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </OrderSection>
+      )}
+
+      {/* Etapas: uma linha por etapa (todas, como a linha do tempo). A etapa
+          em andamento (e a que ainda aceita dados) aparece aberta embaixo;
+          as outras abrem em "Ver detalhes". */}
+      <OrderSection
+        id="order-stages"
+        title={t("orderView.stages")}
+        actions={
+          openableStages.length > 1 ? (
+            stageParam === "all" ? (
+              <TextLink
+                href={`/app/orders/${order.id}#order-stages`}
+                className="text-sm"
+                data-stage-show-current
+              >
+                {t("orderView.stage.current")}
+              </TextLink>
+            ) : (
+              <TextLink
+                href={`/app/orders/${order.id}?stage=all#order-stages`}
+                className="text-sm"
+                data-stage-show-all
+              >
+                {t("orderView.stage.all")}
+              </TextLink>
+            )
+          ) : null
+        }
+      >
+        <Table>
+          <thead>
+            <tr>
+              <Th className="w-10">#</Th>
+              <Th>{t("orderView.col.stage")}</Th>
+              <Th>{t("orderView.col.status")}</Th>
+              <Th>{t("orderView.col.responsible")}</Th>
+              <Th>{t("orderView.col.due")}</Th>
+              <Th>{t("orderView.col.done")}</Th>
+              <Th>{t("orderView.col.progress")}</Th>
+              <Th className="text-right">{t("orderView.col.reqs")}</Th>
+              <Th />
+            </tr>
+          </thead>
+          <tbody>
+            {flowStages.map((s, index) => {
+              const visible = stageVisible(s);
+              const reqs = requirements.filter((r) => r.stageId === s.id);
+              const open = s.status === "active" || s.status === "blocked";
+              const expanded = expandedStageIds.has(s.id);
+              return (
+                <tr
                   key={s.id}
                   className={cx(
-                    "flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 text-sm",
-                    s.status === "active" && "bg-brand-50",
-                    s.status === "blocked" && "bg-amber-50",
+                    rowClass,
+                    s.status === "active" && "bg-brand-50/60",
+                    s.status === "blocked" && "bg-amber-50/70",
                   )}
+                  data-stage-row={s.key}
                 >
-                  <StepDot state={s.status}>{index + 1}</StepDot>
-                  <a
-                    href={`#stage-${s.id}`}
-                    className={cx(
-                      "transition hover:text-brand-700",
-                      s.status === "pending"
-                        ? "text-zinc-500"
-                        : s.status === "active"
-                          ? "font-semibold text-brand-800"
-                          : s.status === "blocked"
-                            ? "font-semibold text-amber-900"
-                            : "text-zinc-900",
-                    )}
-                  >
-                    {t(`stage.${s.key}`)}
-                  </a>
-                  {s.status === "active" || s.status === "blocked" ? (
-                    <span className="ml-auto text-xs font-semibold tabular-nums text-zinc-600">
-                      {s.percent}%
+                  <Td className="w-10">
+                    <StepDot state={s.status}>{index + 1}</StepDot>
+                  </Td>
+                  <Td className="min-w-40">
+                    <span
+                      className={cx(
+                        s.status === "pending"
+                          ? "text-zinc-500"
+                          : s.status === "active"
+                            ? "font-semibold text-brand-800"
+                            : s.status === "blocked"
+                              ? "font-semibold text-amber-900"
+                              : "font-medium text-zinc-900",
+                      )}
+                    >
+                      {visible ? (
+                        <a
+                          href={stageHref(s)}
+                          className="transition hover:text-brand-700"
+                        >
+                          {t(`stage.${s.key}`)}
+                        </a>
+                      ) : (
+                        t(`stage.${s.key}`)
+                      )}
                     </span>
-                  ) : null}
-                </li>
-              ))}
-            </ol>
-          </Card>
-
-          {customerSide && (afterSales || (wellmix && delivered)) ? (
-            <div id="after-sales" className="min-w-0 md:col-span-2">
-              <AfterSalesCard
-                t={t}
-                afterSales={afterSales}
-                orderId={order.id}
-                user={user}
-                wellmix={wellmix}
-                answeredBy={userName(afterSales?.answeredByUserId ?? null)}
-              />
-            </div>
-          ) : null}
-
-          {customerSide &&
-          delivered &&
-          items[0] &&
-          (!wellmix || canOpen(user, "requests")) ? (
-            <div id="followup" className="min-w-0 md:col-span-2">
-              <FollowUpCard
-                t={t}
-                order={order}
-                item={items[0]}
-                photoDocumentId={followProduct?.primaryPhotoDocumentId ?? null}
-                derived={derivedRequests}
-                wellmix={wellmix}
-              />
-            </div>
-          ) : null}
-
-          {flowStages
-            .filter((s) =>
-              stageVisibleTo(
-                user,
-                s,
-                requirements.filter((r) => r.stageId === s.id),
-              ),
-            )
-            .map((stage) => {
-              const reqs = requirements.filter((r) => r.stageId === stage.id);
-              // Datas já informadas no pedido (limites: chegada ≥ embarque, entrega ≥ chegada).
-              const dateValueOf = (sk: string, key: string) =>
-                requirements.find(
-                  (x) =>
-                    x.key === key &&
-                    x.status === "done" &&
-                    stages.find((st) => st.id === x.stageId)?.key === sk,
-                )?.value ?? null;
-              const open =
-                stage.status === "active" || stage.status === "blocked";
-              return (
-                <Fragment key={stage.id}>
-                  <Card
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    <Badge tone={stageTone(s.status)}>
+                      {t(`stageStatus.${s.status}`)}
+                    </Badge>
+                  </Td>
+                  <Td className="whitespace-nowrap text-zinc-700">
+                    {visible ? t(`role.${s.responsibleRole}`) : "—"}
+                  </Td>
+                  <Td
                     className={cx(
-                      open && "md:col-span-2",
-                      stage.status === "active" &&
-                        "border-brand-300! ring-4 ring-brand-50",
-                      stage.status === "blocked" &&
-                        "border-amber-400! ring-4 ring-amber-50",
+                      "whitespace-nowrap tabular-nums",
+                      visible && open && isOverdue(s.dueAt)
+                        ? "font-semibold text-red-700"
+                        : "text-zinc-700",
                     )}
-                    title={
-                      <span
-                        id={`stage-${stage.id}`}
-                        className="flex flex-wrap items-center gap-2"
-                      >
-                        {t(`stage.${stage.key}`)}
-                        <Badge tone={stageTone(stage.status)}>
-                          {t(`stageStatus.${stage.status}`)}
-                        </Badge>
-                        {open && stage.dueAt ? (
-                          <span
-                            className={cx(
-                              "text-xs",
-                              isOverdue(stage.dueAt)
-                                ? "font-semibold text-red-700"
-                                : "font-normal text-zinc-500",
-                            )}
-                          >
-                            {t("common.due")}: {formatDate(stage.dueAt, t)}
-                          </span>
-                        ) : null}
-                      </span>
-                    }
-                    actions={
-                      open ? (
-                        <span className="flex items-center gap-2 text-xs text-zinc-500">
-                          <span>
-                            {t("common.responsible")}:{" "}
-                            <span className="font-semibold text-zinc-700">
-                              {t(`role.${stage.responsibleRole}`)}
-                            </span>
-                          </span>
-                          <span className="w-24">
-                            <Progress percent={stage.percent} />
-                          </span>
-                        </span>
-                      ) : null
-                    }
                   >
-                    <p className="mb-2 text-xs leading-relaxed text-zinc-500">
-                      {t(`help.stage.${stage.key}`)}
-                    </p>
-                    {stage.key === "SHIPPING" && showTariff ? (
-                      <FreightTariffBox
-                        t={t}
-                        orderId={order.id}
-                        stageId={stage.id}
-                        shippingLineId={order.shippingLineId}
-                        view={tariffView}
-                        keepParams={remeasureMode ? { remeasure: "1" } : {}}
-                      />
-                    ) : null}
-                    {stage.key === "SHIPPING" && showMyTariff ? (
-                      <FreightTariffUploadBox
-                        t={t}
-                        orderId={order.id}
-                        status={myTariff}
-                      />
-                    ) : null}
-                    {stage.key === "PACKAGING" && stage.status !== "pending" ? (
-                      <PackagingBriefFiles
-                        t={t}
-                        user={user}
-                        orderId={order.id}
-                      />
-                    ) : null}
-                    {stage.key === "INSPECTION" && user.role === "supplier" ? (
-                      <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
-                        {t("orders.inspection.blindHint")}
-                      </p>
-                    ) : null}
-                    {stage.key === "INSPECTION" &&
-                    open &&
-                    (stage.status === "blocked" || stage.status === "active") &&
-                    reqs.some(
-                      (r) => r.status === "done" && isRemeasurable(r),
-                    ) &&
-                    (wellmix || user.role === "supplier") ? (
-                      <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-                        {remeasureMode ? (
-                          <>
-                            <span className="text-xs text-zinc-600">
-                              {t("orders.inspection.remeasureHint")}
-                            </span>
-                            <TextLink
-                              href={`/app/orders/${order.id}#stage-${stage.id}`}
-                              className="text-xs"
-                            >
-                              {t("orders.inspection.remeasureClose")}
-                            </TextLink>
-                          </>
-                        ) : (
-                          <TextLink
-                            href={`/app/orders/${order.id}?remeasure=1#stage-${stage.id}`}
-                          >
-                            {t("orders.inspection.remeasure")} →
-                          </TextLink>
-                        )}
-                      </div>
-                    ) : null}
-                    {stage.status === "pending" ? (
-                      <p className="text-sm text-zinc-500">
-                        {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
-                      </p>
+                    {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
+                  </Td>
+                  <Td className="whitespace-nowrap tabular-nums text-zinc-700">
+                    {visible && s.completedAt
+                      ? formatDate(s.completedAt, t)
+                      : "—"}
+                  </Td>
+                  <Td className="w-32">
+                    {open ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-16">
+                          <Progress percent={s.percent} />
+                        </span>
+                        <span className="text-xs font-semibold tabular-nums text-zinc-600">
+                          {s.percent}%
+                        </span>
+                      </span>
+                    ) : s.status === "done" ? (
+                      <span className="text-xs font-semibold text-emerald-700">
+                        100%
+                      </span>
                     ) : (
-                      <ul className="@container divide-y divide-zinc-100">
-                        {reqs.map((r) => (
-                          <RequirementRow
-                            key={r.id}
-                            requirement={r}
-                            order={order}
-                            user={user}
-                            t={t}
-                            waiting={
-                              r.key === "art_approval" &&
-                              reqs.some(
-                                (x) => x.key === "art" && x.status !== "done",
-                              )
-                                ? t("packaging.waitingArt")
-                                : dateWaiting(t, stage.key, r, reqs)
-                            }
-                            dateBounds={
-                              r.type === "date"
-                                ? dateBoundsFor(stage.key, r.key, dateValueOf)
-                                : undefined
-                            }
-                            doc={docById(r.documentId)}
-                            submittedBy={userName(r.submittedByUserId)}
-                            open={
-                              open ||
-                              // Embarque confirmado: BL, datas e navio ainda podem vir.
-                              canCompleteLater(stage, r, order)
-                            }
-                            wellmix={wellmix}
-                            remeasure={
-                              remeasureMode &&
-                              stage.key === "INSPECTION" &&
-                              (stage.status === "blocked" ||
-                                stage.status === "active") &&
-                              isRemeasurable(r)
-                            }
-                            sheetHref={sheetHref}
-                            sheetEditable={sheet.editSupplier}
-                            sheetHint={sheetHint}
-                          />
-                        ))}
-                      </ul>
+                      <span className="text-zinc-400">—</span>
                     )}
-                    {stage.status === "blocked" && wellmix ? (
-                      <form action={unblockStageAction} className="mt-2">
-                        <input type="hidden" name="orderId" value={order.id} />
-                        <input type="hidden" name="stageId" value={stage.id} />
-                        <SubmitButton variant="secondary">
-                          {t("orders.unblock")}
-                        </SubmitButton>
-                      </form>
+                  </Td>
+                  <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                    {visible && reqs.length
+                      ? t("orderView.stage.reqs", {
+                          done: reqs.filter((r) => r.status === "done").length,
+                          total: reqs.length,
+                        })
+                      : "—"}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right">
+                    {visible ? (
+                      expanded && !defaultExpanded(s) ? (
+                        <TextLink
+                          href={`/app/orders/${order.id}#order-stages`}
+                          className="text-sm"
+                        >
+                          {t("orderView.stage.close")}
+                        </TextLink>
+                      ) : expanded ? null : (
+                        <TextLink
+                          href={stageHref(s)}
+                          className="text-sm"
+                          data-stage-open={s.key}
+                        >
+                          {t("orderView.stage.open")}
+                        </TextLink>
+                      )
                     ) : null}
-                  </Card>
-                  {stage.key === "INSPECTION" &&
-                  wellmix &&
-                  stage.status !== "pending" ? (
-                    inspection ? (
-                      <div className="min-w-0 md:col-span-2">
-                        <InspectionResultCard
-                          key={`${stage.id}-result`}
-                          t={t}
-                          report={inspection}
-                          userName={userName}
-                        />
-                      </div>
-                    ) : null
-                  ) : null}
-                </Fragment>
+                  </Td>
+                </tr>
               );
             })}
+          </tbody>
+        </Table>
+        {openableStages.length > 1 ? (
+          <p className="mt-1.5 text-xs text-zinc-500 print:hidden">
+            {t("orderView.stage.hint")}
+          </p>
+        ) : null}
 
-          {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
-              fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
-          {financeAccess ||
-          (user.role === "supplier" && order.supplierId === user.partyId) ? (
-            <SupplierPaymentCard
-              order={order}
+        {flowStages
+          .filter((s) => stageVisible(s) && expandedStageIds.has(s.id))
+          .map((stage) => {
+            const reqs = requirements.filter((r) => r.stageId === stage.id);
+            // Datas já informadas no pedido (limites: chegada ≥ embarque, entrega ≥ chegada).
+            const dateValueOf = (sk: string, key: string) =>
+              requirements.find(
+                (x) =>
+                  x.key === key &&
+                  x.status === "done" &&
+                  stages.find((st) => st.id === x.stageId)?.key === sk,
+              )?.value ?? null;
+            const open =
+              stage.status === "active" || stage.status === "blocked";
+            return (
+              <Fragment key={stage.id}>
+                <Card
+                  className={cx(
+                    "mt-4",
+                    stage.status === "active" &&
+                      "border-brand-300! ring-4 ring-brand-50",
+                    stage.status === "blocked" &&
+                      "border-amber-400! ring-4 ring-amber-50",
+                  )}
+                  title={
+                    <span
+                      id={`stage-${stage.id}`}
+                      className="flex scroll-mt-24 flex-wrap items-center gap-2"
+                    >
+                      {t(`stage.${stage.key}`)}
+                      <Badge tone={stageTone(stage.status)}>
+                        {t(`stageStatus.${stage.status}`)}
+                      </Badge>
+                      {open && stage.dueAt ? (
+                        <span
+                          className={cx(
+                            "text-xs",
+                            isOverdue(stage.dueAt)
+                              ? "font-semibold text-red-700"
+                              : "font-normal text-zinc-500",
+                          )}
+                        >
+                          {t("common.due")}: {formatDate(stage.dueAt, t)}
+                        </span>
+                      ) : null}
+                    </span>
+                  }
+                  actions={
+                    open ? (
+                      <span className="flex items-center gap-2 text-xs text-zinc-500">
+                        <span>
+                          {t("common.responsible")}:{" "}
+                          <span className="font-semibold text-zinc-700">
+                            {t(`role.${stage.responsibleRole}`)}
+                          </span>
+                        </span>
+                        <span className="w-24">
+                          <Progress percent={stage.percent} />
+                        </span>
+                      </span>
+                    ) : !defaultExpanded(stage) ? (
+                      <TextLink
+                        href={`/app/orders/${order.id}#order-stages`}
+                        className="text-xs"
+                      >
+                        {t("orderView.stage.close")}
+                      </TextLink>
+                    ) : null
+                  }
+                >
+                  <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+                    {t(`help.stage.${stage.key}`)}
+                  </p>
+                  {stage.key === "SHIPPING" && showTariff ? (
+                    <FreightTariffBox
+                      t={t}
+                      orderId={order.id}
+                      stageId={stage.id}
+                      shippingLineId={order.shippingLineId}
+                      view={tariffView}
+                      keepParams={remeasureMode ? { remeasure: "1" } : {}}
+                    />
+                  ) : null}
+                  {stage.key === "SHIPPING" && showMyTariff ? (
+                    <FreightTariffUploadBox
+                      t={t}
+                      orderId={order.id}
+                      status={myTariff}
+                    />
+                  ) : null}
+                  {stage.key === "PACKAGING" && stage.status !== "pending" ? (
+                    <PackagingBriefFiles t={t} user={user} orderId={order.id} />
+                  ) : null}
+                  {stage.key === "INSPECTION" && user.role === "supplier" ? (
+                    <p className="mb-2 rounded-lg bg-brand-50 px-3 py-1.5 text-xs leading-relaxed text-brand-800">
+                      {t("orders.inspection.blindHint")}
+                    </p>
+                  ) : null}
+                  {stage.key === "INSPECTION" &&
+                  open &&
+                  (stage.status === "blocked" || stage.status === "active") &&
+                  reqs.some((r) => r.status === "done" && isRemeasurable(r)) &&
+                  (wellmix || user.role === "supplier") ? (
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                      {remeasureMode ? (
+                        <>
+                          <span className="text-xs text-zinc-600">
+                            {t("orders.inspection.remeasureHint")}
+                          </span>
+                          <TextLink
+                            href={`/app/orders/${order.id}#stage-${stage.id}`}
+                            className="text-xs"
+                          >
+                            {t("orders.inspection.remeasureClose")}
+                          </TextLink>
+                        </>
+                      ) : (
+                        <TextLink
+                          href={`/app/orders/${order.id}?remeasure=1#stage-${stage.id}`}
+                        >
+                          {t("orders.inspection.remeasure")} →
+                        </TextLink>
+                      )}
+                    </div>
+                  ) : null}
+                  {stage.status === "pending" ? (
+                    <p className="text-sm text-zinc-500">
+                      {reqs.map((r) => requirementLabel(t, r)).join(" · ")}
+                    </p>
+                  ) : (
+                    <ul className="@container divide-y divide-zinc-100">
+                      {reqs.map((r) => (
+                        <RequirementRow
+                          key={r.id}
+                          requirement={r}
+                          order={order}
+                          user={user}
+                          t={t}
+                          waiting={
+                            r.key === "art_approval" &&
+                            reqs.some(
+                              (x) => x.key === "art" && x.status !== "done",
+                            )
+                              ? t("packaging.waitingArt")
+                              : dateWaiting(t, stage.key, r, reqs)
+                          }
+                          dateBounds={
+                            r.type === "date"
+                              ? dateBoundsFor(stage.key, r.key, dateValueOf)
+                              : undefined
+                          }
+                          doc={docById(r.documentId)}
+                          submittedBy={userName(r.submittedByUserId)}
+                          open={
+                            open ||
+                            // Embarque confirmado: BL, datas e navio ainda podem vir.
+                            canCompleteLater(stage, r, order)
+                          }
+                          wellmix={wellmix}
+                          remeasure={
+                            remeasureMode &&
+                            stage.key === "INSPECTION" &&
+                            (stage.status === "blocked" ||
+                              stage.status === "active") &&
+                            isRemeasurable(r)
+                          }
+                          sheetHref={sheetHref}
+                          sheetEditable={sheet.editSupplier}
+                          sheetHint={sheetHint}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                  {stage.status === "blocked" && wellmix ? (
+                    <form action={unblockStageAction} className="mt-2">
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <input type="hidden" name="stageId" value={stage.id} />
+                      <SubmitButton variant="secondary">
+                        {t("orders.unblock")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
+                </Card>
+              </Fragment>
+            );
+          })}
+        {/* Relatório da inspeção (Wellmix): sempre à vista depois que a
+            inspeção começa, aberta ou não a etapa. */}
+        {inspection &&
+        wellmix &&
+        stages.some((s) => s.key === "INSPECTION" && s.status !== "pending") ? (
+          <div className="mt-4 min-w-0">
+            <InspectionResultCard
               t={t}
-              wellmix={financeAccess}
-              notice={
-                typeof paid === "string" &&
-                [
-                  "transfer_copied",
-                  "finance_email",
-                  "finance_whatsapp",
-                  "marked",
-                ].includes(paid)
-                  ? t(`supplierPay.done.${paid}` as DictionaryKey)
-                  : termsNotice === "applied"
-                    ? t("supplierTerms.applied")
-                    : null
-              }
+              report={inspection}
+              userName={userName}
             />
-          ) : null}
+          </div>
+        ) : null}
+      </OrderSection>
 
-          {/* Recebimento (Fase E): lacre, checklist, divergência por SKU, RIC, fechamento. */}
-          {receivingView ? (
-            <ReceivingCard
-              t={t}
-              order={order}
-              view={receivingView}
-              notice={
-                typeof receivingNotice === "string" &&
-                ["saved", "counted", "ric", "returned", "closed"].includes(
-                  receivingNotice,
-                )
-                  ? t(`receiving.done.${receivingNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null}
-          {/* Artes (Fase F): designer, não conformidade por SKU, baixar todas. */}
-          {artworkView ? (
-            <ArtworkCard
-              t={t}
-              order={order}
-              view={artworkView}
-              wellmix={wellmix}
-              notice={
-                typeof artworkNotice === "string" &&
-                [
-                  "designer",
-                  "reported",
-                  "fixed",
-                  "accepted",
-                  "reopened",
-                ].includes(artworkNotice)
-                  ? t(`artwork.done.${artworkNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null}
-          {/* Certificação (Fase F): memorial, laboratório e registro com o OCP. */}
-          <ImportFlowCard
+      {showAfterSales ? (
+        <div id="after-sales" className="mt-6 min-w-0 scroll-mt-24">
+          <AfterSalesCard
             t={t}
-            order={order}
-            steps={certSteps}
-            names={productionNames}
-            title={t("certFlow.title")}
-            anchor="certification"
-            notice={null}
+            afterSales={afterSales}
+            orderId={order.id}
+            user={user}
+            wellmix={wellmix}
+            answeredBy={userName(afterSales?.answeredByUserId ?? null)}
           />
-          {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
-          <ImportFlowCard
+        </div>
+      ) : null}
+
+      {showFollowUp && items[0] ? (
+        <div id="followup" className="mt-6 min-w-0 scroll-mt-24">
+          <FollowUpCard
             t={t}
             order={order}
-            steps={importSteps}
+            item={items[0]}
+            photoDocumentId={followProduct?.primaryPhotoDocumentId ?? null}
+            derived={derivedRequests}
+            wellmix={wellmix}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-6 grid min-w-0 gap-6">
+        {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
+            fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
+        {showSupplierPayment ? (
+          <SupplierPaymentCard
+            order={order}
+            t={t}
+            wellmix={financeAccess}
+            notice={
+              typeof paid === "string" &&
+              [
+                "transfer_copied",
+                "finance_email",
+                "finance_whatsapp",
+                "marked",
+              ].includes(paid)
+                ? t(`supplierPay.done.${paid}` as DictionaryKey)
+                : termsNotice === "applied"
+                  ? t("supplierTerms.applied")
+                  : null
+            }
+          />
+        ) : null}
+
+        {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
+        {productionView ? (
+          <ProductionCard
+            t={t}
+            user={user}
+            order={order}
+            view={productionView}
+            wellmix={wellmix}
             names={productionNames}
             notice={
-              typeof importNotice === "string" &&
-              ["submitted", "validated", "rejected"].includes(importNotice)
-                ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+              typeof productionNotice === "string" &&
+              ["saved", "followup", "scheduled", "inspected", "fixed"].includes(
+                productionNotice,
+              )
+                ? t(`production.done.${productionNotice}` as DictionaryKey)
                 : null
             }
           />
-          {/* Produção (Fase C): ETD, follow 5/15/25, inspeção agendada e por SKU. */}
-          {productionView ? (
-            <ProductionCard
-              t={t}
-              user={user}
-              order={order}
-              view={productionView}
-              wellmix={wellmix}
-              names={productionNames}
-              notice={
-                typeof productionNotice === "string" &&
-                [
-                  "saved",
-                  "followup",
-                  "scheduled",
-                  "inspected",
-                  "fixed",
-                ].includes(productionNotice)
-                  ? t(`production.done.${productionNotice}` as DictionaryKey)
-                  : null
-              }
-            />
-          ) : null}
-        </div>
+        ) : null}
 
-        {/* Coluna lateral: cards pequenos. No iPad em pé (sem a coluna lateral)
-            ficam 2 por linha; da tela larga em diante, um abaixo do outro. */}
-        <div className="grid min-w-0 content-start items-start gap-4 md:grid-cols-2 lg:grid-cols-1">
-          {cargo ? <CargoCard t={t} cargo={cargo} /> : null}
-          {/* Cartão do pedido: para o parceiro, só se sobrar algo útil (o
-              despachante vê fornecedor, modalidade e NCM; agência e
-              companhia, o fornecedor). */}
-          {cargo || !orderInfoItems.length ? null : (
-            <Card title={t("orders.title")}>
-              <DescriptionList items={orderInfoItems} />
-              {wellmix && !isCancelled && order.erpSyncStatus === "pending" ? (
-                <p className="mt-2 text-xs text-amber-700">
-                  {t("orders.erp.pending")}
-                </p>
-              ) : null}
-            </Card>
-          )}
+        {/* Embarque e desembaraço (Fase D): booking, BL, invoice, numerário, DI... */}
+        <ImportFlowCard
+          t={t}
+          order={order}
+          steps={importSteps}
+          names={productionNames}
+          notice={
+            typeof importNotice === "string" &&
+            ["submitted", "validated", "rejected"].includes(importNotice)
+              ? t(`importFlow.done.${importNotice}` as DictionaryKey)
+              : null
+          }
+        />
+        {/* Certificação (Fase F): memorial, laboratório e registro com o OCP. */}
+        <ImportFlowCard
+          t={t}
+          order={order}
+          steps={certSteps}
+          names={productionNames}
+          title={t("certFlow.title")}
+          anchor="certification"
+          notice={null}
+        />
 
-          {wellmix || containers.length > 0 ? (
-            <ContainersCard t={t} containers={containers} wellmix={wellmix} />
-          ) : null}
+        {/* Recebimento (Fase E): lacre, checklist, divergência por SKU, RIC, fechamento. */}
+        {receivingView ? (
+          <ReceivingCard
+            t={t}
+            order={order}
+            view={receivingView}
+            notice={
+              typeof receivingNotice === "string" &&
+              ["saved", "counted", "ric", "returned", "closed"].includes(
+                receivingNotice,
+              )
+                ? t(`receiving.done.${receivingNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
+        {/* Artes (Fase F): designer, não conformidade por SKU, baixar todas. */}
+        {artworkView ? (
+          <ArtworkCard
+            t={t}
+            order={order}
+            view={artworkView}
+            wellmix={wellmix}
+            notice={
+              typeof artworkNotice === "string" &&
+              [
+                "designer",
+                "reported",
+                "fixed",
+                "accepted",
+                "reopened",
+              ].includes(artworkNotice)
+                ? t(`artwork.done.${artworkNotice}` as DictionaryKey)
+                : null
+            }
+          />
+        ) : null}
+      </div>
 
-          {wellmix ? (
-            <div id="snapshot" className="min-w-0">
-              <SnapshotCard
-                t={t}
-                snapshot={snapshot}
-                orderId={order.id}
-                supplierName={partyName(snapshot?.supplierId ?? null)}
-                createdBy={userName(snapshot?.createdByUserId ?? null)}
-              />
-            </div>
-          ) : null}
-
-          {wellmix ? (
-            <Card title={t("orders.partners")}>
-              <div className="space-y-2">
-                {(
-                  [
-                    ["agencyId", "agency"],
-                    ["brokerId", "broker"],
-                    ["shippingLineId", "shipping_line"],
-                    ["carrierId", "carrier"],
-                    ["comexId", "comex"],
-                    ["logisticsId", "logistics"],
-                    ["ocpId", "ocp"],
-                  ] as const
-                ).map(([field, type]) => (
-                  <form
-                    key={field}
-                    action={assignPartnerAction}
-                    className="flex items-end gap-2"
-                  >
-                    <input type="hidden" name="orderId" value={order.id} />
-                    <input type="hidden" name="field" value={field} />
-                    <div className="min-w-0 flex-1">
-                      <Field label={t(`party.${type}`)}>
-                        <Select
-                          name="partyId"
-                          defaultValue={order[field] ?? ""}
+      {/* Containers em que o pedido está (cliente e parceiros: só código e ETA). */}
+      {wellmix || containers.length > 0 ? (
+        <OrderSection
+          id="order-containers"
+          title={t("orders.containers.title")}
+        >
+          {containers.length === 0 ? (
+            <Empty>{t("orders.containers.none")}</Empty>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("orderView.col.container")}</Th>
+                  {wellmix ? (
+                    <>
+                      <Th>{t("orderView.col.containerType")}</Th>
+                      <Th>{t("orders.containers.etd")}</Th>
+                    </>
+                  ) : null}
+                  <Th>{t("orders.containers.eta")}</Th>
+                  {wellmix ? <Th>{t("orderView.col.status")}</Th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {containers.map((c) => (
+                  <tr key={c.id} className={rowClass} data-order-container>
+                    <Td className="whitespace-nowrap font-semibold">
+                      {wellmix ? (
+                        <TextLink href={`/app/containers/${c.id}`}>
+                          {c.code}
+                        </TextLink>
+                      ) : (
+                        c.code
+                      )}
+                    </Td>
+                    {wellmix ? (
+                      <>
+                        <Td className="whitespace-nowrap">{c.type}</Td>
+                        <Td className="whitespace-nowrap tabular-nums">
+                          {formatDate(c.etd, t)}
+                        </Td>
+                      </>
+                    ) : null}
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {formatDate(c.eta, t)}
+                    </Td>
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap">
+                        <Badge
+                          tone={
+                            c.status === "closed" || c.status === "arrived"
+                              ? "success"
+                              : c.status === "shipped"
+                                ? "info"
+                                : "neutral"
+                          }
                         >
-                          <option value="">—</option>
-                          {parties
-                            .filter((p) => p.type === type && p.active)
-                            .map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                              </option>
-                            ))}
-                        </Select>
-                      </Field>
-                    </div>
-                    <SubmitButton variant="secondary">
-                      {t("orders.assign")}
-                    </SubmitButton>
-                  </form>
+                          {t(`orders.containers.status.${c.status}`)}
+                        </Badge>
+                      </Td>
+                    ) : null}
+                  </tr>
                 ))}
-              </div>
-            </Card>
-          ) : null}
+              </tbody>
+            </Table>
+          )}
+        </OrderSection>
+      ) : null}
 
-          {finance && (financeAccess || user.role === "customer") ? (
-            <Card title={t("finance.title")}>
-              <DescriptionList
-                items={[
-                  [
-                    t("finance.sale"),
-                    formatMoney(finance.sell, finance.sellCurrency, t),
-                  ],
-                  [
-                    t("finance.received"),
-                    formatMoney(finance.received, finance.sellCurrency, t),
-                  ],
-                  [
-                    t("finance.receivable"),
+      {/* Financeiro do pedido (só administrador): custo, câmbio e margem
+          detalhados; os valores principais estão nos cartões do alto. */}
+      {finance && financeAccess ? (
+        <OrderSection id="order-finance" title={t("orderView.finance")}>
+          <Table>
+            <thead>
+              <tr>
+                <Th className="text-right">{t("finance.cost")}</Th>
+                {!isCancelled &&
+                fxRateLines(t, finance) &&
+                finance.fxBasis !== "same" ? (
+                  <Th>{t("finance.fx")}</Th>
+                ) : null}
+                <Th className="text-right">{t("finance.margin")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className={rowClass}>
+                <Td className="whitespace-nowrap text-right tabular-nums">
+                  {finance.cost !== null ? (
+                    <span data-finance-cost="">
+                      {approx(
+                        formatMoney(finance.cost, finance.sellCurrency, t),
+                        finance.estimated,
+                      )}
+                      {costEstimateNote(t, finance) ? (
+                        <span className="block text-xs text-zinc-500">
+                          {costEstimateNote(t, finance)}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : isCancelled ? (
+                    // Cancelado sem nada pago: não há custo a mostrar.
+                    "—"
+                  ) : (
+                    t("finance.fxMissing")
+                  )}
+                </Td>
+                {!isCancelled &&
+                fxRateLines(t, finance) &&
+                finance.fxBasis !== "same" ? (
+                  <Td>
+                    <span data-finance-fx="">
+                      {fxRateLines(t, finance)!.main}
+                      {fxRateLines(t, finance)!.notes.map((n, i) => (
+                        <span key={i} className="block text-xs text-zinc-500">
+                          {n}
+                        </span>
+                      ))}
+                    </span>
+                  </Td>
+                ) : null}
+                <Td className="whitespace-nowrap text-right tabular-nums">
+                  {/* Cancelado não é venda: sem margem (como na tela Financeiro). */}
+                  {finance.margin !== null && !isCancelled ? (
                     <span
-                      key="r"
                       className={
-                        finance.receivable > 0
-                          ? "font-medium text-amber-700"
-                          : "text-emerald-700"
+                        finance.margin < 0
+                          ? "font-medium text-red-700"
+                          : "font-medium text-emerald-700"
                       }
                     >
-                      {formatMoney(finance.receivable, finance.sellCurrency, t)}
-                    </span>,
-                  ],
-                  ...(wellmix
-                    ? ([
-                        [
-                          t("orders.fob"),
-                          formatMoney(finance.fob, finance.fobCurrency, t),
-                        ],
-                        [
-                          t("finance.paid"),
-                          <span key="pd">
-                            {formatMoney(finance.paid, finance.fobCurrency, t)}
-                            {/* Pago em outra moeda: à parte, na moeda dele. */}
-                            {Object.entries(finance.paidOther).map(([c, v]) => (
-                              <span
-                                key={c}
-                                className="block text-xs text-zinc-500"
-                                data-paid-other={c}
-                              >
-                                + {formatMoney(v, c, t)}
-                              </span>
-                            ))}
-                          </span>,
-                        ],
-                        [
-                          t("finance.payable"),
-                          <span
-                            key="p"
-                            className={
-                              finance.payable > 0
-                                ? "font-medium text-amber-700"
-                                : "text-emerald-700"
-                            }
-                          >
-                            {formatMoney(
-                              finance.payable,
-                              finance.fobCurrency,
-                              t,
-                            )}
-                          </span>,
-                        ],
-                        [
-                          t("finance.cost"),
-                          finance.cost !== null ? (
-                            <span key="c" data-finance-cost="">
-                              {approx(
-                                formatMoney(
-                                  finance.cost,
-                                  finance.sellCurrency,
-                                  t,
-                                ),
-                                finance.estimated,
-                              )}
-                              {costEstimateNote(t, finance) ? (
-                                <span className="block text-xs text-zinc-500">
-                                  {costEstimateNote(t, finance)}
-                                </span>
-                              ) : null}
-                            </span>
-                          ) : isCancelled ? (
-                            // Cancelado sem nada pago: não há custo a mostrar.
-                            "—"
-                          ) : (
-                            t("finance.fxMissing")
-                          ),
-                        ],
-                        ...(!isCancelled &&
-                        fxRateLines(t, finance) &&
-                        finance.fxBasis !== "same"
-                          ? ([
-                              [
-                                t("finance.fx"),
-                                <span key="fx" data-finance-fx="">
-                                  {fxRateLines(t, finance)!.main}
-                                  {fxRateLines(t, finance)!.notes.map(
-                                    (n, i) => (
-                                      <span
-                                        key={i}
-                                        className="block text-xs text-zinc-500"
-                                      >
-                                        {n}
-                                      </span>
-                                    ),
-                                  )}
-                                </span>,
-                              ],
-                            ] as [string, ReactNode][])
-                          : []),
-                        [
-                          t("finance.margin"),
-                          // Cancelado não é venda: sem margem (como na tela Financeiro).
-                          finance.margin !== null && !isCancelled ? (
-                            <span
-                              key="m"
-                              className={
-                                finance.margin < 0
-                                  ? "font-medium text-red-700"
-                                  : "font-medium text-emerald-700"
-                              }
-                            >
-                              {approx(
-                                formatMoney(
-                                  finance.margin,
-                                  finance.sellCurrency,
-                                  t,
-                                ),
-                                finance.estimated,
-                              )}
-                              {finance.marginPct !== null
-                                ? ` (${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
-                                : ""}
-                              {fxEffectText(t, finance) ? (
-                                <span
-                                  title={fxEffectText(t, finance)!.title}
-                                  className={cx(
-                                    "block text-xs",
-                                    fxEffectText(t, finance)!.negative
-                                      ? "text-red-700"
-                                      : "text-emerald-700",
-                                  )}
-                                  data-fx-effect=""
-                                >
-                                  {fxEffectText(t, finance)!.text}
-                                </span>
-                              ) : null}
-                            </span>
-                          ) : (
-                            "—"
-                          ),
-                        ],
-                      ] as [string, ReactNode][])
-                    : []),
-                ]}
-              />
-              {financeAccess && finance.receivable > 0 ? (
-                <form
-                  action={registerCustomerPaymentAction}
-                  className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5"
-                >
-                  <input type="hidden" name="orderId" value={order.id} />
-                  <Field label={t("orders.value")}>
-                    <MoneyInput
-                      locale={t.intl}
-                      name="amount"
-                      watchField="currency"
-                      required
-                      defaultAmount={finance.receivable}
-                      className="w-full"
-                    />
-                  </Field>
-                  <Field label={t("common.currency")}>
-                    <CurrencySelect
-                      name="currency"
-                      value={finance.sellCurrency}
-                      t={t}
-                    />
-                  </Field>
-                  <div className="col-span-2">
-                    <Field label={t("finance.method")}>
-                      <Input
-                        name="method"
-                        placeholder={t("ph.finance.method")}
-                      />
-                    </Field>
-                  </div>
-                  <div className="col-span-2">
-                    <Field label={t("requests.payment.proof")}>
-                      <Input name="proof" type="file" />
-                    </Field>
-                  </div>
-                  <div className="col-span-2">
-                    <SubmitButton>{t("finance.registerReceipt")}</SubmitButton>
-                  </div>
-                </form>
-              ) : null}
-            </Card>
+                      {approx(
+                        formatMoney(finance.margin, finance.sellCurrency, t),
+                        finance.estimated,
+                      )}
+                      {finance.marginPct !== null
+                        ? ` (${finance.marginPct.toLocaleString(t.intl, { maximumFractionDigits: 1 })}%)`
+                        : ""}
+                      {fxEffectText(t, finance) ? (
+                        <span
+                          title={fxEffectText(t, finance)!.title}
+                          className={cx(
+                            "block text-xs",
+                            fxEffectText(t, finance)!.negative
+                              ? "text-red-700"
+                              : "text-emerald-700",
+                          )}
+                          data-fx-effect=""
+                        >
+                          {fxEffectText(t, finance)!.text}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </Td>
+              </tr>
+            </tbody>
+          </Table>
+          {finance.receivable > 0 ? (
+            <details className="mt-3 rounded-xl border border-zinc-200 bg-white">
+              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-brand-700 [&::-webkit-details-marker]:hidden">
+                {t("orderView.registerReceipt")}
+              </summary>
+              <form
+                action={registerCustomerPaymentAction}
+                className="grid gap-2 border-t border-zinc-200 p-3 sm:grid-cols-2 lg:grid-cols-[10rem_8rem_minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end"
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <Field label={t("orders.value")}>
+                  <MoneyInput
+                    locale={t.intl}
+                    name="amount"
+                    watchField="currency"
+                    required
+                    defaultAmount={finance.receivable}
+                    className="w-full"
+                  />
+                </Field>
+                <Field label={t("common.currency")}>
+                  <CurrencySelect
+                    name="currency"
+                    value={finance.sellCurrency}
+                    t={t}
+                  />
+                </Field>
+                <Field label={t("finance.method")}>
+                  <Input name="method" placeholder={t("ph.finance.method")} />
+                </Field>
+                <Field label={t("requests.payment.proof")}>
+                  <Input name="proof" type="file" />
+                </Field>
+                <SubmitButton>{t("finance.registerReceipt")}</SubmitButton>
+              </form>
+            </details>
           ) : null}
+        </OrderSection>
+      ) : null}
 
-          {visiblePayments.length > 0 ? (
-            <Card title={t("orders.payments")}>
-              <div id="payments" className="scroll-mt-24" />
-              {financeAccess && fxSaved === "saved" ? (
-                <p className="mb-2 text-xs font-medium text-emerald-700">
-                  {t("finance.fx.savedNotice")}
-                </p>
-              ) : null}
-              <ul className="space-y-1.5 text-sm">
-                {visiblePayments.map((p) => (
-                  <li
-                    key={p.id}
-                    className="rounded-lg border border-zinc-200/80 px-2.5 py-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-zinc-900">
-                        {formatMoney(p.amount, p.currency, t)}
-                      </span>
-                      <Badge
-                        tone={p.status === "pending" ? "warning" : "success"}
-                      >
-                        {t(`paymentStatus.${p.status}`)}
-                      </Badge>
-                    </div>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {p.direction === "customer_in"
-                        ? t("common.customer")
-                        : t("common.supplier")}{" "}
-                      · {formatDate(p.confirmedAt ?? p.createdAt, t)}
-                      {p.note ? ` · ${p.note}` : ""}
-                    </p>
+      {/* Pagamentos: um por linha (cliente e fornecedor, conforme o papel). */}
+      {visiblePayments.length > 0 ? (
+        <OrderSection id="payments" title={t("orders.payments")}>
+          {financeAccess && fxSaved === "saved" ? (
+            <p className="mb-2 text-xs font-medium text-emerald-700">
+              {t("finance.fx.savedNotice")}
+            </p>
+          ) : null}
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t("orderView.col.date")}</Th>
+                <Th>{t("orderView.col.from")}</Th>
+                <Th className="text-right">{t("orderView.col.amount")}</Th>
+                <Th>{t("orderView.col.status")}</Th>
+                <Th>{t("orderView.col.note")}</Th>
+                <Th>{t("orderView.col.proof")}</Th>
+                {wellmix ? <Th>{t("orderView.col.fx")}</Th> : null}
+                {showTrail ? <Th>{t("orderView.col.trail")}</Th> : null}
+                <Th />
+              </tr>
+            </thead>
+            <tbody>
+              {visiblePayments.map((p) => (
+                <tr key={p.id} className={rowClass} data-order-payment>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {formatDate(p.confirmedAt ?? p.createdAt, t)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {p.direction === "customer_in"
+                      ? t("common.customer")
+                      : t("common.supplier")}
+                  </Td>
+                  <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                    {formatMoney(p.amount, p.currency, t)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    <Badge
+                      tone={p.status === "pending" ? "warning" : "success"}
+                    >
+                      {t(`paymentStatus.${p.status}`)}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    <span
+                      className="block max-w-56 truncate"
+                      title={p.note ?? undefined}
+                    >
+                      {p.note ?? "—"}
+                    </span>
+                  </Td>
+                  <Td className="whitespace-nowrap">
                     {p.proofDocumentId &&
                     docById(p.proofDocumentId) &&
                     canSeeDoc(user, docById(p.proofDocumentId)!) ? (
                       <a
                         href={`/api/files/${p.proofDocumentId}`}
-                        className={cx(linkClass, "mt-1 inline-block text-xs")}
+                        className={cx(linkClass, "text-xs")}
                         target="_blank"
                       >
                         {t("requests.payment.proof")}
                       </a>
-                    ) : null}
-                    {/* Câmbio do pagamento ao fornecedor (custo real no
-                        financeiro): só a Wellmix vê e informa depois de pago. */}
-                    {wellmix &&
-                    p.direction === "supplier_out" &&
-                    p.currency.toUpperCase() !== "BRL" &&
-                    (p.status === "confirmed" || p.status === "received")
-                      ? (() => {
-                          // Informar (sem câmbio) ou corrigir (câmbio já salvo).
-                          const fxForm = (
-                            <form
-                              action={setSupplierPaymentFxAction}
-                              className="mt-1.5 flex flex-wrap items-end gap-2"
-                              data-payment-fx-form={p.id}
-                            >
-                              <input
-                                type="hidden"
-                                name="orderId"
-                                value={order.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="paymentId"
-                                value={p.id}
-                              />
-                              <div className="w-36 min-w-0">
-                                <Field
-                                  label={t("finance.fx.setTitle")}
-                                  hint={
-                                    p.fxRate
-                                      ? undefined
-                                      : t("finance.fx.paymentMissing")
-                                  }
-                                >
-                                  <Input
-                                    name="fxRate"
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    required
-                                    defaultValue={p.fxRate ?? undefined}
-                                    placeholder={t("finance.fx.unitHint", {
-                                      currency: p.currency,
-                                    })}
-                                  />
-                                </Field>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                  {wellmix ? (
+                    <Td>
+                      {/* Câmbio do pagamento ao fornecedor (custo real no
+                          financeiro): só a Wellmix vê e informa depois de pago. */}
+                      {p.direction === "supplier_out" &&
+                      p.currency.toUpperCase() !== "BRL" &&
+                      (p.status === "confirmed" || p.status === "received")
+                        ? (() => {
+                            // Informar (sem câmbio) ou corrigir (câmbio já salvo).
+                            const fxForm = (
+                              <form
+                                action={setSupplierPaymentFxAction}
+                                className="mt-1.5 flex flex-wrap items-end gap-2"
+                                data-payment-fx-form={p.id}
+                              >
+                                <input
+                                  type="hidden"
+                                  name="orderId"
+                                  value={order.id}
+                                />
+                                <input
+                                  type="hidden"
+                                  name="paymentId"
+                                  value={p.id}
+                                />
+                                <div className="w-36 min-w-0">
+                                  <Field
+                                    label={t("finance.fx.setTitle")}
+                                    hint={
+                                      p.fxRate
+                                        ? undefined
+                                        : t("finance.fx.paymentMissing")
+                                    }
+                                  >
+                                    <Input
+                                      name="fxRate"
+                                      type="number"
+                                      step="any"
+                                      min="0"
+                                      required
+                                      defaultValue={p.fxRate ?? undefined}
+                                      placeholder={t("finance.fx.unitHint", {
+                                        currency: p.currency,
+                                      })}
+                                    />
+                                  </Field>
+                                </div>
+                                <SubmitButton variant="secondary">
+                                  {t("finance.fx.setSave")}
+                                </SubmitButton>
+                              </form>
+                            );
+                            if (!p.fxRate) return fxForm;
+                            return (
+                              <div data-payment-fx={p.id}>
+                                <p className="text-xs text-zinc-500">
+                                  {t("finance.fx.paymentRate", {
+                                    rate: p.fxRate.toLocaleString(t.intl, {
+                                      minimumFractionDigits: 4,
+                                      maximumFractionDigits: 4,
+                                    }),
+                                    currency: p.currency,
+                                  })}
+                                </p>
+                                <details>
+                                  <summary className="cursor-pointer text-xs font-medium text-brand-700">
+                                    {t("finance.fx.correct")}
+                                  </summary>
+                                  {fxForm}
+                                </details>
                               </div>
-                              <SubmitButton variant="secondary">
-                                {t("finance.fx.setSave")}
-                              </SubmitButton>
-                            </form>
-                          );
-                          if (!p.fxRate) return fxForm;
-                          return (
-                            <div className="mt-0.5" data-payment-fx={p.id}>
-                              <p className="text-xs text-zinc-500">
-                                {t("finance.fx.paymentRate", {
-                                  rate: p.fxRate.toLocaleString(t.intl, {
-                                    minimumFractionDigits: 4,
-                                    maximumFractionDigits: 4,
-                                  }),
-                                  currency: p.currency,
-                                })}
-                              </p>
-                              <details>
-                                <summary className="cursor-pointer text-xs font-medium text-brand-700">
-                                  {t("finance.fx.correct")}
-                                </summary>
-                                {fxForm}
-                              </details>
-                            </div>
-                          );
-                        })()
-                      : null}
-                    {showTrail && paymentTrails[p.id] ? (
-                      <AckTrail
-                        t={t}
-                        summary={paymentTrails[p.id]}
-                        showNames={wellmix}
-                      />
-                    ) : null}
+                            );
+                          })()
+                        : "—"}
+                    </Td>
+                  ) : null}
+                  {showTrail ? (
+                    <Td className="min-w-40">
+                      {paymentTrails[p.id] ? (
+                        <AckTrail
+                          t={t}
+                          summary={paymentTrails[p.id]}
+                          showNames={wellmix}
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                  ) : null}
+                  <Td className="whitespace-nowrap text-right">
                     {p.direction === "supplier_out" &&
                     p.status !== "received" &&
                     (user.role === "supplier" || wellmix) ? (
-                      <form
-                        action={acknowledgePaymentAction}
-                        className="mt-1.5"
-                      >
+                      <form action={acknowledgePaymentAction}>
                         <input type="hidden" name="paymentId" value={p.id} />
                         <input
                           type="hidden"
@@ -1576,159 +1990,270 @@ export default async function OrderPage({
                         </SubmitButton>
                       </form>
                     ) : null}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ) : null}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </OrderSection>
+      ) : null}
 
-          <Card title={t("orders.documents")}>
-            {visibleDocs.length === 0 ? (
-              <Empty>{t("common.none")}</Empty>
-            ) : (
-              <ul className="-mx-2 space-y-0.5 text-sm">
+      {/* Documentos: um por linha, com a trilha visualizado/confirmado. */}
+      <OrderSection id="order-documents" title={t("orders.documents")}>
+        {visibleDocs.length === 0 ? (
+          <Empty>{t("common.none")}</Empty>
+        ) : (
+          <>
+            <Table>
+              <thead>
+                <tr>
+                  <Th>{t("orderView.col.document")}</Th>
+                  <Th>{t("orderView.col.type")}</Th>
+                  <Th className="text-right">{t("orderView.col.version")}</Th>
+                  <Th>{t("orderView.col.trail")}</Th>
+                  <Th />
+                </tr>
+              </thead>
+              <tbody>
                 {visibleDocs.map((d) => (
-                  <li
-                    key={d.id}
-                    className={cx(rowClass, "rounded-lg px-2 py-1")}
-                  >
-                    <div className="flex items-center justify-between gap-2">
+                  <tr key={d.id} className={rowClass} data-order-document>
+                    <Td className="min-w-44">
                       <a
                         href={`/api/files/${d.id}`}
-                        className={cx(linkClass, "min-w-0 truncate")}
+                        className={cx(linkClass, "block max-w-72 truncate")}
                         target="_blank"
+                        title={d.name}
                       >
                         {d.name}
                       </a>
-                      <span className="shrink-0 text-xs text-zinc-500">
-                        {t(`docType.${d.type}` as DictionaryKey)} · v{d.version}
-                      </span>
-                    </div>
-                    {documentTrails[d.id] ? (
-                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    </Td>
+                    <Td className="whitespace-nowrap text-zinc-700">
+                      {t(`docType.${d.type}` as DictionaryKey)}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                      v{d.version}
+                    </Td>
+                    <Td className="min-w-40">
+                      {documentTrails[d.id] ? (
                         <AckTrail
                           t={t}
                           summary={documentTrails[d.id]}
                           showNames={wellmix}
                         />
-                        {d.uploadedByUserId !== user.id ? (
-                          confirmedDocs.has(d.id) ? (
-                            <span className="text-xs text-emerald-700">
-                              ✓ {t("orders.ack.confirmedDoc")}
-                            </span>
-                          ) : (
-                            <form action={acknowledgeDocumentAction}>
-                              <input
-                                type="hidden"
-                                name="documentId"
-                                value={d.id}
-                              />
-                              <input
-                                type="hidden"
-                                name="back"
-                                value={`/app/orders/${order.id}`}
-                              />
-                              <SubmitTextButton className="min-h-9 text-xs">
-                                {t("orders.ack.confirmDoc")}
-                              </SubmitTextButton>
-                            </form>
-                          )
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </li>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right">
+                      {documentTrails[d.id] &&
+                      d.uploadedByUserId !== user.id ? (
+                        confirmedDocs.has(d.id) ? (
+                          <span className="text-xs text-emerald-700">
+                            ✓ {t("orders.ack.confirmedDoc")}
+                          </span>
+                        ) : (
+                          <form action={acknowledgeDocumentAction}>
+                            <input
+                              type="hidden"
+                              name="documentId"
+                              value={d.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="back"
+                              value={`/app/orders/${order.id}`}
+                            />
+                            <SubmitTextButton className="min-h-9 text-xs">
+                              {t("orders.ack.confirmDoc")}
+                            </SubmitTextButton>
+                          </form>
+                        )
+                      ) : null}
+                    </Td>
+                  </tr>
                 ))}
-              </ul>
-            )}
-            {visibleDocs.length > 0 ? (
-              <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
-                {t("orders.ack.hint")}
-              </p>
-            ) : null}
-          </Card>
+              </tbody>
+            </Table>
+            <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">
+              {t("orders.ack.hint")}
+            </p>
+          </>
+        )}
+      </OrderSection>
 
-          {wellmix || user.role === "legal" || visiblePenalties.length > 0 ? (
-            <Card title={t("orders.penalties")}>
-              {visiblePenalties.length === 0 ? (
-                <Empty>{t("penalties.empty")}</Empty>
-              ) : null}
-              <ul className="space-y-1.5 text-sm">
+      {/* Multas: uma por linha; nova multa para diretorias e admin (docs/ACCESS.md). */}
+      {wellmix || user.role === "legal" || visiblePenalties.length > 0 ? (
+        <OrderSection id="order-penalties" title={t("orders.penalties")}>
+          {visiblePenalties.length === 0 ? (
+            <Empty>{t("penalties.empty")}</Empty>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <Th className="text-right">{t("orderView.col.amount")}</Th>
+                  <Th>{t("orderView.col.status")}</Th>
+                  <Th>{t("orderView.col.reason")}</Th>
+                  <Th>{t("orderView.col.partyResponsible")}</Th>
+                </tr>
+              </thead>
+              <tbody>
                 {visiblePenalties.map((p) => (
-                  <li
-                    key={p.id}
-                    className="rounded-lg border border-zinc-200/80 px-2.5 py-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-zinc-900">
-                        {formatMoney(p.amount, p.currency, t)}
-                      </span>
+                  <tr key={p.id} className={rowClass} data-order-penalty>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {formatMoney(p.amount, p.currency, t)}
+                    </Td>
+                    <Td className="whitespace-nowrap">
                       <Badge tone={p.status === "open" ? "danger" : "neutral"}>
                         {t(`penaltyStatus.${p.status}`)}
                       </Badge>
-                    </div>
-                    <p className="mt-0.5 text-zinc-700">{p.reason}</p>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {t("orders.penalty.responsible")}:{" "}
+                    </Td>
+                    <Td className="min-w-56 text-zinc-700">{p.reason}</Td>
+                    <Td className="whitespace-nowrap">
                       {partyName(p.responsiblePartyId)}
-                    </p>
-                  </li>
+                    </Td>
+                  </tr>
                 ))}
-              </ul>
-              {/* Multas: diretorias e admin (docs/ACCESS.md). */}
-              {wellmix && canOpen(user, "penalties") ? (
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-sm font-semibold text-brand-700 transition hover:text-brand-800">
+              </tbody>
+            </Table>
+          )}
+          {wellmix && canOpen(user, "penalties") ? (
+            <details className="mt-3 rounded-xl border border-zinc-200 bg-white">
+              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-brand-700 transition hover:text-brand-800 [&::-webkit-details-marker]:hidden">
+                {t("orders.penalty.new")}
+              </summary>
+              <form
+                action={createPenaltyAction}
+                className="grid gap-2 border-t border-zinc-200 p-3 sm:grid-cols-2"
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <div className="sm:col-span-2">
+                  <Field label={t("orders.penalty.reason")}>
+                    <Textarea name="reason" required rows={2} />
+                  </Field>
+                </div>
+                <Field label={t("orders.value")}>
+                  <MoneyInput
+                    locale={t.intl}
+                    name="amount"
+                    watchField="currency"
+                    required
+                    className="w-full"
+                  />
+                </Field>
+                <Field label={t("common.currency")}>
+                  <CurrencySelect name="currency" value="BRL" t={t} />
+                </Field>
+                <Field label={t("orders.penalty.responsible")}>
+                  <Select name="responsiblePartyId" defaultValue="">
+                    <option value="">—</option>
+                    {[
+                      order.supplierId,
+                      order.agencyId,
+                      order.brokerId,
+                      order.shippingLineId,
+                      order.carrierId,
+                    ]
+                      .filter((v): v is string => !!v)
+                      .map((pid) => (
+                        <option key={pid} value={pid}>
+                          {partyName(pid)}
+                        </option>
+                      ))}
+                  </Select>
+                </Field>
+                <Field label={t("orders.penalty.evidence")}>
+                  <Input name="evidence" type="file" />
+                </Field>
+                <div className="sm:col-span-2">
+                  <SubmitButton variant="danger">
                     {t("orders.penalty.new")}
-                  </summary>
-                  <form action={createPenaltyAction} className="mt-2 space-y-2">
-                    <input type="hidden" name="orderId" value={order.id} />
-                    <Field label={t("orders.penalty.reason")}>
-                      <Textarea name="reason" required rows={2} />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Field label={t("orders.value")}>
-                        <MoneyInput
-                          locale={t.intl}
-                          name="amount"
-                          watchField="currency"
-                          required
-                          className="w-full"
-                        />
-                      </Field>
-                      <Field label={t("common.currency")}>
-                        <CurrencySelect name="currency" value="BRL" t={t} />
-                      </Field>
-                    </div>
-                    <Field label={t("orders.penalty.responsible")}>
-                      <Select name="responsiblePartyId" defaultValue="">
+                  </SubmitButton>
+                </div>
+              </form>
+            </details>
+          ) : null}
+        </OrderSection>
+      ) : null}
+
+      {/* Parceiros do pedido (Wellmix): um por linha, com quem está
+          designado e o campo para trocar. */}
+      {wellmix ? (
+        <OrderSection id="order-partners" title={t("orders.partners")}>
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t("orderView.col.partnerType")}</Th>
+                <Th>{t("orderView.col.partnerNow")}</Th>
+                <Th>{t("orderView.col.partnerChange")}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ["agencyId", "agency"],
+                  ["brokerId", "broker"],
+                  ["shippingLineId", "shipping_line"],
+                  ["carrierId", "carrier"],
+                  ["comexId", "comex"],
+                  ["logisticsId", "logistics"],
+                  ["ocpId", "ocp"],
+                ] as const
+              ).map(([field, type]) => (
+                <tr key={field} className={rowClass} data-order-partner={type}>
+                  <Td className="whitespace-nowrap font-medium">
+                    {t(`party.${type}`)}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    {order[field] ? partyName(order[field] ?? null) : "—"}
+                  </Td>
+                  <Td>
+                    <form
+                      action={assignPartnerAction}
+                      className="flex min-w-64 items-center gap-2"
+                    >
+                      <input type="hidden" name="orderId" value={order.id} />
+                      <input type="hidden" name="field" value={field} />
+                      <Select
+                        name="partyId"
+                        defaultValue={order[field] ?? ""}
+                        aria-label={t(`party.${type}`)}
+                        className="min-w-0 flex-1"
+                      >
                         <option value="">—</option>
-                        {[
-                          order.supplierId,
-                          order.agencyId,
-                          order.brokerId,
-                          order.shippingLineId,
-                          order.carrierId,
-                        ]
-                          .filter((v): v is string => !!v)
-                          .map((pid) => (
-                            <option key={pid} value={pid}>
-                              {partyName(pid)}
+                        {parties
+                          .filter((p) => p.type === type && p.active)
+                          .map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
                             </option>
                           ))}
                       </Select>
-                    </Field>
-                    <Field label={t("orders.penalty.evidence")}>
-                      <Input name="evidence" type="file" />
-                    </Field>
-                    <SubmitButton variant="danger">
-                      {t("orders.penalty.new")}
-                    </SubmitButton>
-                  </form>
-                </details>
-              ) : null}
-            </Card>
-          ) : null}
+                      <SubmitButton variant="secondary">
+                        {t("orders.assign")}
+                      </SubmitButton>
+                    </form>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </OrderSection>
+      ) : null}
 
+      {wellmix ? (
+        <div id="snapshot" className="mt-6 min-w-0 scroll-mt-24">
+          <SnapshotCard
+            t={t}
+            snapshot={snapshot}
+            orderId={order.id}
+            supplierName={partyName(snapshot?.supplierId ?? null)}
+            createdBy={userName(snapshot?.createdByUserId ?? null)}
+          />
+        </div>
+      ) : null}
+
+      {admin || user.role === "customer" ? (
+        <div className="mt-6 grid min-w-0 gap-6">
           {admin ? (
             <AdminCancelCard
               t={t}
@@ -1755,8 +2280,38 @@ export default async function OrderPage({
             />
           ) : null}
         </div>
-      </div>
+      ) : null}
     </>
+  );
+}
+
+/**
+ * Parte da tela do pedido em linhas: título na cor da marca (como no pedido em
+ * lista) e o conteúdo (tabela) na largura toda. O id é a âncora do índice.
+ */
+function OrderSection({
+  id,
+  title,
+  actions,
+  children,
+}: {
+  id: string;
+  title: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      className="mt-6 min-w-0 scroll-mt-24"
+      data-order-section={id}
+    >
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-brand-700">{title}</h2>
+        {actions}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -2513,70 +3068,6 @@ function InspectionResultCard({
           </ol>
         </details>
       ) : null}
-    </Card>
-  );
-}
-
-/** Containers em que o pedido está. Cliente e parceiros: só código e ETA. */
-function ContainersCard({
-  t,
-  containers,
-  wellmix,
-}: {
-  t: Translate;
-  containers: Container[];
-  wellmix: boolean;
-}) {
-  return (
-    <Card title={t("orders.containers.title")}>
-      {containers.length === 0 ? (
-        <Empty>{t("orders.containers.none")}</Empty>
-      ) : (
-        <ul className="space-y-1.5 text-sm">
-          {containers.map((c) => (
-            <li
-              key={c.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-200/80 px-2.5 py-2"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-zinc-900">
-                  {wellmix ? (
-                    <TextLink href={`/app/containers/${c.id}`}>
-                      {c.code}
-                    </TextLink>
-                  ) : (
-                    c.code
-                  )}
-                  {wellmix ? (
-                    <span className="ml-2 text-xs font-normal text-zinc-500">
-                      {c.type}
-                    </span>
-                  ) : null}
-                </p>
-                <p className="mt-0.5 text-xs text-zinc-500">
-                  {wellmix
-                    ? `${t("orders.containers.etd")}: ${formatDate(c.etd, t)} · `
-                    : ""}
-                  {t("orders.containers.eta")}: {formatDate(c.eta, t)}
-                </p>
-              </div>
-              {wellmix ? (
-                <Badge
-                  tone={
-                    c.status === "closed" || c.status === "arrived"
-                      ? "success"
-                      : c.status === "shipped"
-                        ? "info"
-                        : "neutral"
-                  }
-                >
-                  {t(`orders.containers.status.${c.status}`)}
-                </Badge>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
     </Card>
   );
 }

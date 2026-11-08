@@ -13,10 +13,16 @@ import {
   REQUEST_SITUATIONS,
   inSituation,
   matchesRequest,
+  nextStepText,
+  nextStepWho,
+  quoteSummary,
   receivedByRequest,
+  requestNextStep,
   todayBrazil,
   type RequestSituation,
 } from "@/lib/services/request-list";
+import { isSchemaMissing } from "@/lib/services/packaging-brief";
+import type { Approval } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +70,24 @@ export async function GET(request: NextRequest) {
     ? await store.list("orders", { filter: { id: orderIds } })
     : [];
   const received = receivedByRequest(payments);
+  // Próximo passo, cotações e etapa do pedido (as mesmas regras da tela).
+  const stageIds = orders
+    .map((o) => o.currentStageId)
+    .filter(Boolean) as string[];
+  const [quotes, approvals, stages] = await Promise.all([
+    rows.length
+      ? store.list("quotes", { filter: { requestId: rows.map((r) => r.id) } })
+      : Promise.resolve([]),
+    store
+      .list("approvals", { filter: { status: "pending" } })
+      .catch((e: unknown) => {
+        if (isSchemaMissing(e)) return [] as Approval[];
+        throw e;
+      }),
+    stageIds.length
+      ? store.list("stages", { filter: { id: stageIds } })
+      : Promise.resolve([]),
+  ]);
   const cell = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? "" : String(v);
     return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -92,6 +116,39 @@ export async function GET(request: NextRequest) {
         r.orderId
           ? `#${orders.find((o) => o.id === r.orderId)?.number ?? "?"}`
           : "",
+        ...(() => {
+          const qs = quoteSummary(
+            quotes.filter((q) => q.requestId === r.id),
+            r.selectedQuoteId,
+          );
+          const order = r.orderId
+            ? orders.find((o) => o.id === r.orderId)
+            : null;
+          const stage = order?.currentStageId
+            ? stages.find((st) => st.id === order.currentStageId)
+            : null;
+          const next = requestNextStep({
+            status: r.status,
+            display: requestDisplayStatus(r, cancelled),
+            quotes: qs,
+            approval: approvals.find((a) => a.requestId === r.id) ?? null,
+            order: order
+              ? {
+                  status: order.status,
+                  responsibleRole: stage?.responsibleRole ?? null,
+                  dueAt: stage?.dueAt ?? null,
+                }
+              : null,
+            today,
+          });
+          return [
+            nextStepText(t, next),
+            nextStepWho(t, next),
+            qs.answered,
+            qs.invited,
+            order ? t(`stage.${order.status}` as DictionaryKey) : "",
+          ];
+        })(),
       ]
         .map(cell)
         .join(";"),

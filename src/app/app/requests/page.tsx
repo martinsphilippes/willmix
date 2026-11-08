@@ -22,7 +22,7 @@ import {
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { deleteRequestsAction } from "../actions/requests";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { getStore } from "@/lib/db";
+import { getStore, type Approval, type Quote } from "@/lib/db";
 import { getT } from "@/i18n/server";
 import {
   Alert,
@@ -55,10 +55,22 @@ import {
   downStatus,
   inSituation,
   matchesRequest,
+  nextStepText,
+  nextStepWho,
+  quoteSummary,
   receivedByRequest,
+  requestNextStep,
   todayBrazil,
+  type NextStep,
+  type QuoteSummary,
   type RequestSituation,
 } from "@/lib/services/request-list";
+import { productPhotoList } from "@/lib/services/product-list";
+import { isSchemaMissing } from "@/lib/services/packaging-brief";
+import { PhotoGallery } from "@/components/photo-gallery";
+import { galleryProps } from "@/components/photo-gallery-props";
+import { ColorCards } from "@/components/color-cards";
+import { MoneyLines } from "@/components/customer-account";
 
 const BULK_FORM = "requests-bulk-delete";
 
@@ -147,6 +159,133 @@ export default async function RequestsPage({
       : [];
   const orderNumber = (id: string | null) =>
     id ? (orders.find((o) => o.id === id)?.number ?? null) : null;
+  /* Wellmix: foto do produto, cotações (convites e respostas), aprovação
+     pendente e a etapa atual do pedido, numa rodada só. */
+  const requestIds = requests.map((r) => r.id);
+  const productIds = [
+    ...new Set(requests.map((r) => r.productId).filter(Boolean)),
+  ] as string[];
+  const stageIds = orders
+    .map((o) => o.currentStageId)
+    .filter(Boolean) as string[];
+  const [quotes, approvals, products, photos, stages] = wellmix
+    ? await Promise.all([
+        requestIds.length
+          ? store.list("quotes", { filter: { requestId: requestIds } })
+          : Promise.resolve([] as Quote[]),
+        store
+          .list("approvals", { filter: { status: "pending" } })
+          .catch((e: unknown) => {
+            // Aprovações ainda não publicadas no banco: nenhuma pendente.
+            if (isSchemaMissing(e)) return [] as Approval[];
+            throw e;
+          }),
+        productIds.length
+          ? store.list("products", { filter: { id: productIds } })
+          : Promise.resolve([]),
+        productIds.length
+          ? store.list("product_photos", {
+              filter: { productId: productIds },
+            })
+          : Promise.resolve([]),
+        stageIds.length
+          ? store.list("stages", { filter: { id: stageIds } })
+          : Promise.resolve([]),
+      ])
+    : [[], [], [], [], []];
+  const quotesOf = (r: (typeof requests)[number]): QuoteSummary =>
+    quoteSummary(
+      quotes.filter((q) => q.requestId === r.id),
+      r.selectedQuoteId,
+    );
+  const nextOf = (r: (typeof requests)[number]): NextStep => {
+    const order = r.orderId ? orders.find((o) => o.id === r.orderId) : null;
+    const stage = order?.currentStageId
+      ? stages.find((st) => st.id === order.currentStageId)
+      : null;
+    return requestNextStep({
+      status: r.status,
+      display: requestDisplayStatus(r, cancelled),
+      quotes: quotesOf(r),
+      approval: approvals.find((a) => a.requestId === r.id) ?? null,
+      order: order
+        ? {
+            status: order.status,
+            responsibleRole: stage?.responsibleRole ?? null,
+            dueAt: stage?.dueAt ?? null,
+          }
+        : null,
+      today,
+    });
+  };
+  const nextText = (n: NextStep) => nextStepText(t, n);
+  const whoText = (n: NextStep) => nextStepWho(t, n);
+  /** Próximo passo e com quem está (a vez da Wellmix em destaque). */
+  const nextCell = (n: NextStep) =>
+    n.key === "none" ? (
+      "—"
+    ) : (
+      <span data-request-next={n.key}>
+        <span className="font-medium text-zinc-900">{nextText(n)}</span>
+        {n.who ? (
+          <span
+            className={cx(
+              "block text-xs",
+              n.who === "wellmix" || n.who === "approvers"
+                ? "font-medium text-amber-700"
+                : "text-zinc-500",
+            )}
+          >
+            {whoText(n)}
+          </span>
+        ) : null}
+        {n.late ? (
+          <span className="mt-0.5 block">
+            <Badge tone="danger">{t("reqList.late")}</Badge>
+          </span>
+        ) : null}
+      </span>
+    );
+  const photoCell = (r: (typeof requests)[number]) => {
+    const p = r.productId ? products.find((x) => x.id === r.productId) : null;
+    return (
+      <PhotoGallery
+        name={r.productName}
+        {...galleryProps(t, p ? productPhotoList(p, photos) : [])}
+      />
+    );
+  };
+  /* Cartões coloridos (como Clientes e Fornecedores), só para quem abre
+     Finanças, sobre a lista que está na tela (filtro e busca). */
+  const cardMoney = () => {
+    const out = {
+      proposed: {} as Record<string, number>,
+      downDue: {} as Record<string, number>,
+      downReceived: {} as Record<string, number>,
+      ordered: {} as Record<string, number>,
+    };
+    const add = (m: Record<string, number>, c: string | null, v: number) => {
+      if (!(v > 0)) return;
+      const k = c ?? "BRL";
+      m[k] = Math.round(((m[k] ?? 0) + v) * 100) / 100;
+    };
+    for (const r of requests) {
+      const display = requestDisplayStatus(r, cancelled);
+      const got = received.get(r.id) ?? 0;
+      add(out.downReceived, r.sellCurrency, got);
+      if (display === "ORDERED")
+        add(out.ordered, r.sellCurrency, r.sellPrice ?? 0);
+      else if (r.status !== "CANCELLED" && display !== "ORDER_CANCELLED")
+        add(out.proposed, r.sellCurrency, r.sellPrice ?? 0);
+      if (r.status === "WAITING_DOWN_PAYMENT")
+        add(
+          out.downDue,
+          r.sellCurrency,
+          Math.max(0, (r.downPaymentAmount ?? 0) - got),
+        );
+    }
+    return out;
+  };
   const ownerName = (id: string | null | undefined) =>
     id ? (team.find((u) => u.id === id)?.name ?? "—") : "—";
   const listQuery = (patch: Record<string, string | null>) => {
@@ -413,6 +552,49 @@ export default async function RequestsPage({
           </TextLink>
         ) : null}
       </div>
+      {filtering && money
+        ? (() => {
+            const m = cardMoney();
+            const cell = (k: keyof typeof m) => (
+              <MoneyLines money={m[k]} t={t} fallback="BRL" />
+            );
+            return (
+              <ColorCards
+                name="requests"
+                items={[
+                  {
+                    key: "proposed",
+                    label: t("reqList.card.proposed"),
+                    hint: t("reqList.card.hint.proposed"),
+                    value: cell("proposed"),
+                    tone: "indigo",
+                  },
+                  {
+                    key: "downDue",
+                    label: t("reqList.card.downDue"),
+                    hint: t("reqList.card.hint.downDue"),
+                    value: cell("downDue"),
+                    tone: "rose",
+                  },
+                  {
+                    key: "downReceived",
+                    label: t("reqList.card.downReceived"),
+                    hint: t("reqList.card.hint.downReceived"),
+                    value: cell("downReceived"),
+                    tone: "emerald",
+                  },
+                  {
+                    key: "ordered",
+                    label: t("reqList.card.ordered"),
+                    hint: t("reqList.card.hint.ordered"),
+                    value: cell("ordered"),
+                    tone: "orange",
+                  },
+                ]}
+              />
+            );
+          })()
+        : null}
       {filtering ? (
         <div className="mb-3 space-y-2" data-request-filters>
           {/* Situação como cartões-filtro (o escolhido fica marcado). */}
@@ -501,20 +683,25 @@ export default async function RequestsPage({
                 </Th>
               ) : null}
               <Th className="w-14">{t("requests.numberShort")}</Th>
-              {wellmix ? <Th>{t("reqList.col.date")}</Th> : null}
+              {wellmix ? (
+                <Th className="w-14">{t("reqList.col.photo")}</Th>
+              ) : null}
               <Th>{t("common.product")}</Th>
-              {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
-              {wellmix ? <Th>{t("reqList.col.owner")}</Th> : null}
               <Th>{t("common.quantity")}</Th>
+              {isWellmix(user) ? <Th>{t("common.customer")}</Th> : null}
               <Th>{t("common.status")}</Th>
+              {wellmix ? <Th>{t("reqList.col.next")}</Th> : null}
               <Th>{t("requests.deadline")}</Th>
+              {wellmix ? <Th>{t("reqList.col.order")}</Th> : null}
               {money ? (
                 <>
                   <Th className="text-right">{t("reqList.col.sell")}</Th>
                   <Th>{t("reqList.col.down")}</Th>
                 </>
               ) : null}
-              {wellmix ? <Th>{t("reqList.col.order")}</Th> : null}
+              {wellmix ? <Th>{t("reqList.col.quotes")}</Th> : null}
+              {wellmix ? <Th>{t("reqList.col.owner")}</Th> : null}
+              {wellmix ? <Th>{t("reqList.col.date")}</Th> : null}
               <Th />
             </tr>
           </thead>
@@ -527,6 +714,24 @@ export default async function RequestsPage({
                 );
                 const deletable = rows.filter((r) => canDeleteRequest(user, r));
                 const names = rows.map((r) => r.productName);
+                // Próximos passos diferentes do lote (o primeiro e quantos mais).
+                const steps = [
+                  ...new Map(
+                    rows
+                      .map((r) => nextOf(r))
+                      .filter((n) => n.key !== "none")
+                      .map((n) => [`${nextText(n)}|${whoText(n)}`, n]),
+                  ).values(),
+                ];
+                const batchQuotes = rows
+                  .map((r) => quotesOf(r))
+                  .reduce(
+                    (a, q) => ({
+                      invited: a.invited + q.invited,
+                      answered: a.answered + q.answered,
+                    }),
+                    { invited: 0, answered: 0 },
+                  );
                 return (
                   <tr key={entry.groupId} className={rowClass} data-batch-row>
                     {!showDeleted && anyDeletable ? (
@@ -555,9 +760,7 @@ export default async function RequestsPage({
                       </span>
                     </Td>
                     {wellmix ? (
-                      <Td className="whitespace-nowrap tabular-nums">
-                        {formatDate(rows[0].createdAt, t)}
-                      </Td>
+                      <Td className="w-14">{photoCell(rows[0])}</Td>
                     ) : null}
                     <Td className="min-w-40 font-medium text-zinc-900">
                       <TextLink
@@ -574,17 +777,6 @@ export default async function RequestsPage({
                         {t("reqBatch.count", { n: rows.length })}
                       </span>
                     </Td>
-                    {isWellmix(user) ? (
-                      <Td className="min-w-32">
-                        {parties.find((p) => p.id === rows[0].customerId)
-                          ?.name ?? "—"}
-                      </Td>
-                    ) : null}
-                    {wellmix ? (
-                      <Td className="whitespace-nowrap">
-                        {ownerName(rows[0].ownerUserId)}
-                      </Td>
-                    ) : null}
                     <Td className="tabular-nums">
                       {/* Mesmos dois primeiros produtos do nome; o resto na página do lote. */}
                       {rows.slice(0, 2).map((r, i) => (
@@ -599,6 +791,12 @@ export default async function RequestsPage({
                         </span>
                       ) : null}
                     </Td>
+                    {isWellmix(user) ? (
+                      <Td className="min-w-32">
+                        {parties.find((p) => p.id === rows[0].customerId)
+                          ?.name ?? "—"}
+                      </Td>
+                    ) : null}
                     <Td>
                       <span className="flex flex-wrap gap-1">
                         {statusCounts(
@@ -611,9 +809,34 @@ export default async function RequestsPage({
                         ))}
                       </span>
                     </Td>
+                    {wellmix ? (
+                      <Td className="min-w-40">
+                        {steps.length ? (
+                          <>
+                            {nextCell(steps[0])}
+                            {steps.length > 1 ? (
+                              <span className="block text-xs text-zinc-500">
+                                +{steps.length - 1}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                    ) : null}
                     <Td className="whitespace-nowrap tabular-nums">
                       {formatDate(earliestDeadline(rows), t)}
                     </Td>
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap">
+                        {rows.some((r) => r.orderId)
+                          ? t("reqList.orders", {
+                              n: rows.filter((r) => r.orderId).length,
+                            })
+                          : "—"}
+                      </Td>
+                    ) : null}
                     {money ? (
                       <>
                         <Td className="whitespace-nowrap text-right tabular-nums">
@@ -635,12 +858,20 @@ export default async function RequestsPage({
                       </>
                     ) : null}
                     {wellmix ? (
+                      <Td className="whitespace-nowrap text-xs text-zinc-600">
+                        {batchQuotes.invited
+                          ? t("reqList.quotes.count", batchQuotes)
+                          : t("reqList.quotes.none")}
+                      </Td>
+                    ) : null}
+                    {wellmix ? (
                       <Td className="whitespace-nowrap">
-                        {rows.some((r) => r.orderId)
-                          ? t("reqList.orders", {
-                              n: rows.filter((r) => r.orderId).length,
-                            })
-                          : "—"}
+                        {ownerName(rows[0].ownerUserId)}
+                      </Td>
+                    ) : null}
+                    {wellmix ? (
+                      <Td className="whitespace-nowrap tabular-nums">
+                        {formatDate(rows[0].createdAt, t)}
                       </Td>
                     ) : null}
                     <Td className="text-right">
@@ -681,6 +912,7 @@ export default async function RequestsPage({
                 status === "ORDER_CANCELLED"
                   ? t("reqStatusLabel.ORDER_CANCELLED")
                   : t("reqDelete.ordered");
+              const qs = quotesOf(r);
               return (
                 <tr key={r.id} className={rowClass}>
                   {!showDeleted && anyDeletable ? (
@@ -708,13 +940,15 @@ export default async function RequestsPage({
                   <Td className="whitespace-nowrap tabular-nums text-zinc-600">
                     <span data-request-number>{r.number ?? "—"}</span>
                   </Td>
-                  {wellmix ? (
-                    <Td className="whitespace-nowrap tabular-nums">
-                      {formatDate(r.createdAt, t)}
-                    </Td>
-                  ) : null}
+                  {wellmix ? <Td className="w-14">{photoCell(r)}</Td> : null}
                   <Td className="min-w-40 font-medium text-zinc-900">
-                    {r.productName}
+                    <TextLink
+                      href={`/app/requests/${r.id}`}
+                      className="text-zinc-900 no-underline hover:underline"
+                      data-request-open
+                    >
+                      {r.productName}
+                    </TextLink>
                     {r.groupId && (groupSize.get(r.groupId) ?? 0) > 1 ? (
                       <TextLink
                         href={batchHref(r.groupId)}
@@ -724,28 +958,42 @@ export default async function RequestsPage({
                         {t("reqBatch.badge", { n: groupSize.get(r.groupId)! })}
                       </TextLink>
                     ) : null}
+                    {r.variant?.name ? (
+                      <span className="block text-xs font-normal text-zinc-500">
+                        {r.variant.name}
+                      </span>
+                    ) : null}
+                  </Td>
+                  <Td className="whitespace-nowrap tabular-nums">
+                    {r.quantity} {r.unit}
                   </Td>
                   {isWellmix(user) ? (
                     <Td className="min-w-32">
                       {parties.find((p) => p.id === r.customerId)?.name ?? "—"}
                     </Td>
                   ) : null}
-                  {wellmix ? (
-                    <Td className="whitespace-nowrap">
-                      {ownerName(r.ownerUserId)}
-                    </Td>
-                  ) : null}
-                  <Td className="whitespace-nowrap tabular-nums">
-                    {r.quantity} {r.unit}
-                  </Td>
                   <Td className="whitespace-nowrap">
                     <Badge tone={requestStatusTone(status)}>
                       {t(`reqStatusLabel.${status}`)}
                     </Badge>
                   </Td>
+                  {wellmix ? (
+                    <Td className="min-w-40">{nextCell(nextOf(r))}</Td>
+                  ) : null}
                   <Td className="whitespace-nowrap tabular-nums">
                     {formatDate(r.deadline, t)}
                   </Td>
+                  {wellmix ? (
+                    <Td className="whitespace-nowrap">
+                      {r.orderId ? (
+                        <TextLink href={`/app/orders/${r.orderId}`}>
+                          #{orderNumber(r.orderId) ?? "?"}
+                        </TextLink>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                  ) : null}
                   {money ? (
                     <>
                       <Td className="whitespace-nowrap text-right tabular-nums">
@@ -784,14 +1032,53 @@ export default async function RequestsPage({
                     </>
                   ) : null}
                   {wellmix ? (
+                    <Td className="whitespace-nowrap text-xs text-zinc-600">
+                      <span
+                        data-request-quotes={`${qs.answered}/${qs.invited}`}
+                      >
+                        {qs.invited
+                          ? t("reqList.quotes.count", {
+                              answered: qs.answered,
+                              invited: qs.invited,
+                            })
+                          : t("reqList.quotes.none")}
+                      </span>
+                      {qs.best ? (
+                        <span className="block">
+                          {money
+                            ? t(
+                                qs.best.selected
+                                  ? "reqList.quotes.chosen"
+                                  : "reqList.quotes.best",
+                                {
+                                  price: formatMoney(
+                                    qs.best.price,
+                                    qs.best.currency,
+                                    t,
+                                  ),
+                                },
+                              )
+                            : null}
+                          {qs.best.leadTimeDays !== null ? (
+                            <>
+                              {money ? " · " : ""}
+                              {t("reqList.quotes.lead", {
+                                n: qs.best.leadTimeDays,
+                              })}
+                            </>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </Td>
+                  ) : null}
+                  {wellmix ? (
                     <Td className="whitespace-nowrap">
-                      {r.orderId ? (
-                        <TextLink href={`/app/orders/${r.orderId}`}>
-                          #{orderNumber(r.orderId) ?? "?"}
-                        </TextLink>
-                      ) : (
-                        "—"
-                      )}
+                      {ownerName(r.ownerUserId)}
+                    </Td>
+                  ) : null}
+                  {wellmix ? (
+                    <Td className="whitespace-nowrap tabular-nums">
+                      {formatDate(r.createdAt, t)}
                     </Td>
                   ) : null}
                   <Td className="text-right">
