@@ -86,7 +86,6 @@ export async function SupplierPaymentCard({
 
   return (
     <Card
-      className="md:col-span-2"
       title={
         <span id="supplier-payment" className="scroll-mt-24">
           {t("supplierTerms.card")}
@@ -270,56 +269,70 @@ export async function SupplierPaymentCard({
             <p className="text-xs text-sky-900/80">
               {t("supplierTerms.pendingHint")}
             </p>
-            <ul className="space-y-2">
-              {view.pending.map((p) => (
-                <li
-                  key={p.id}
-                  className="rounded-lg border border-sky-100 bg-white p-2"
-                  data-pending-payment={p.id}
-                >
-                  <p className="text-sm">
-                    <span className="font-semibold text-zinc-900">
-                      {formatMoney(p.amount, p.currency, t)}
-                    </span>{" "}
-                    <span className="text-xs text-zinc-500">
-                      {p.note ? `${p.note} · ` : ""}
-                      {formatDate(p.createdAt, t)}
-                    </span>
-                  </p>
-                  {/* Também em pedido cancelado: o dinheiro que já saiu fica registrado. */}
+            <Table>
+              <thead>
+                <tr>
+                  <Th className="text-right">
+                    {t("supplierTerms.col.pendingAmount")}
+                  </Th>
+                  <Th>{t("supplierTerms.col.pendingNote")}</Th>
+                  <Th>{t("supplierTerms.col.pendingDate")}</Th>
                   {wellmix ? (
-                    <form
-                      action={markSupplierPaymentPaidAction}
-                      className="mt-1.5 flex flex-wrap items-end gap-2"
-                    >
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <input type="hidden" name="paymentId" value={p.id} />
-                      <div className="w-32 min-w-0">
-                        {/* Câmbio = R$ por 1 unidade da moeda do pagamento (como a PTAX). */}
-                        <Field label={t("finance.fx")}>
-                          <Input
-                            name="fxRate"
-                            type="number"
-                            step="any"
-                            placeholder={t("finance.fx.unitHint", {
-                              currency: p.currency,
-                            })}
-                          />
-                        </Field>
-                      </div>
-                      <div className="min-w-48 flex-1">
-                        <Field label={t("requests.payment.proof")}>
-                          <Input name="proof" type="file" />
-                        </Field>
-                      </div>
-                      <SubmitButton variant="secondary">
-                        {t("supplierTerms.markPaid")}
-                      </SubmitButton>
-                    </form>
+                    <Th>{t("supplierTerms.col.pendingAction")}</Th>
                   ) : null}
-                </li>
-              ))}
-            </ul>
+                </tr>
+              </thead>
+              <tbody>
+                {view.pending.map((p) => (
+                  <tr key={p.id} data-pending-payment={p.id}>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {formatMoney(p.amount, p.currency, t)}
+                    </Td>
+                    <Td className="text-zinc-600">{p.note ?? "—"}</Td>
+                    <Td className="whitespace-nowrap tabular-nums text-zinc-600">
+                      {formatDate(p.createdAt, t)}
+                    </Td>
+                    {/* Também em pedido cancelado: o dinheiro que já saiu fica registrado. */}
+                    {wellmix ? (
+                      <Td className="min-w-80">
+                        <form
+                          action={markSupplierPaymentPaidAction}
+                          className="flex flex-wrap items-end gap-2"
+                        >
+                          <input
+                            type="hidden"
+                            name="orderId"
+                            value={order.id}
+                          />
+                          <input type="hidden" name="paymentId" value={p.id} />
+                          <div className="w-32 min-w-0">
+                            {/* Câmbio = R$ por 1 unidade da moeda do pagamento (como a PTAX). */}
+                            <Field label={t("finance.fx")}>
+                              <Input
+                                name="fxRate"
+                                type="number"
+                                step="any"
+                                placeholder={t("finance.fx.unitHint", {
+                                  currency: p.currency,
+                                })}
+                              />
+                            </Field>
+                          </div>
+                          <div className="min-w-48 flex-1">
+                            <Field label={t("requests.payment.proof")}>
+                              <Input name="proof" type="file" />
+                            </Field>
+                          </div>
+                          <SubmitButton variant="secondary">
+                            {t("supplierTerms.markPaid")}
+                          </SubmitButton>
+                        </form>
+                      </Td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
           </div>
         ) : null}
 

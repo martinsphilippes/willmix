@@ -1,6 +1,7 @@
 import type { Translate } from "@/i18n";
 import type { CargoView } from "@/lib/services/order-cargo";
 import { Card, formatDate } from "./ui";
+import { PairsTable } from "./pairs-table";
 
 /**
  * Cartão "Carga e entrega" do transportador: a mercadoria, a carga prevista
@@ -18,120 +19,113 @@ export function CargoCard({ t, cargo }: { t: Translate; cargo: CargoView }) {
   const pending = (
     <span className="text-zinc-500">{t("orders.cargo.pending")}</span>
   );
-  const dt = "text-xs font-semibold uppercase tracking-wide text-zinc-500";
-  const dd = "mt-0.5 text-sm text-zinc-900";
   return (
     <Card title={t("orders.cargo.title")}>
       <p className="mb-3 text-xs leading-relaxed text-zinc-500">
         {t("orders.cargo.hint")}
       </p>
-      <dl className="space-y-3" data-cargo-card="">
-        <div>
-          <dt className={dt}>{t("orders.cargo.items")}</dt>
-          <dd className={dd}>
-            {cargo.items.length ? (
-              <ul className="space-y-0.5">
-                {cargo.items.map((i, k) => (
-                  <li key={k}>
-                    <span className="font-medium">{i.name}</span>
-                    <span className="text-zinc-600">
-                      {" "}
-                      · {num(i.quantity)} {i.unit}
+      <div data-cargo-card="">
+        <PairsTable
+          perRow={1}
+          items={[
+            [
+              t("orders.cargo.items"),
+              cargo.items.length ? (
+                <span className="block">
+                  {cargo.items.map((i, k) => (
+                    <span key={k} className="block">
+                      <span className="font-medium">{i.name}</span>
+                      <span className="text-zinc-600">
+                        {" "}
+                        · {num(i.quantity)} {i.unit}
+                      </span>
                     </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              "—"
-            )}
-          </dd>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <dt className={dt}>{t("freight.cargo.cartons")}</dt>
-            <dd className={dd} data-cargo-cartons="">
-              {cargo.cartons !== null ? num(cargo.cartons, 0) : pending}
-            </dd>
-          </div>
-          <div>
-            <dt className={dt}>{t("freight.cargo.cbm")}</dt>
-            <dd className={dd}>
-              {cargo.totalCbm !== null
-                ? `${num(cargo.totalCbm, 3)} m³`
-                : pending}
-            </dd>
-          </div>
-          <div>
-            <dt className={dt}>{t("freight.cargo.gross")}</dt>
-            <dd className={dd}>
-              {cargo.grossWeightKg !== null
-                ? `${num(cargo.grossWeightKg)} kg`
-                : pending}
-            </dd>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <dt className={dt}>{t("orders.cargo.arrival")}</dt>
-            <dd className={dd} data-cargo-arrival="">
-              {cargo.eta ? day(cargo.eta) : pending}
-              {cargo.vessel ? (
-                <span className="block text-xs text-zinc-600">
-                  {t("orders.cargo.vessel")}: {cargo.vessel}
+                  ))}
                 </span>
-              ) : null}
-              {cargo.shipDate ? (
-                <span className="block text-xs text-zinc-600">
-                  {t("orders.cargo.shipped")}: {day(cargo.shipDate)}
-                </span>
-              ) : null}
-            </dd>
-          </div>
-          <div>
-            <dt className={dt}>{t("orders.cargo.release")}</dt>
-            <dd className={dd} data-cargo-release="">
-              {cargo.releasedAt ? (
-                formatDate(cargo.releasedAt, t)
               ) : (
-                <span className="text-amber-700">
-                  {t("orders.cargo.releasePending")}
-                </span>
-              )}
-            </dd>
-          </div>
-        </div>
-        <div>
-          <dt className={dt}>{t("orders.cargo.deliverTo")}</dt>
-          <dd className={dd} data-cargo-deliver="">
-            {cargo.deliverTo ? (
-              <>
-                <span className="font-medium">{cargo.deliverTo.name}</span>
-                {cargo.deliverTo.address || cargo.deliverTo.city ? (
-                  <span className="block text-zinc-700">
-                    {[cargo.deliverTo.address, cargo.deliverTo.city]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                ) : (
-                  <span className="block text-xs text-amber-700">
-                    {t("orders.cargo.noAddress")}
-                  </span>
-                )}
-                {cargo.deliverTo.contactName || cargo.deliverTo.phone ? (
+                "—"
+              ),
+            ],
+            [
+              t("freight.cargo.cartons"),
+              <span key="cartons" data-cargo-cartons="">
+                {cargo.cartons !== null ? num(cargo.cartons, 0) : pending}
+              </span>,
+            ],
+            [
+              t("freight.cargo.cbm"),
+              cargo.totalCbm !== null
+                ? `${num(cargo.totalCbm, 3)} m³`
+                : pending,
+            ],
+            [
+              t("freight.cargo.gross"),
+              cargo.grossWeightKg !== null
+                ? `${num(cargo.grossWeightKg)} kg`
+                : pending,
+            ],
+            [
+              t("orders.cargo.arrival"),
+              <span key="arrival" data-cargo-arrival="">
+                {cargo.eta ? day(cargo.eta) : pending}
+                {cargo.vessel ? (
                   <span className="block text-xs text-zinc-600">
-                    {t("orders.cargo.contact")}:{" "}
-                    {[cargo.deliverTo.contactName, cargo.deliverTo.phone]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {t("orders.cargo.vessel")}: {cargo.vessel}
                   </span>
                 ) : null}
-              </>
-            ) : (
-              "—"
-            )}
-          </dd>
-        </div>
-      </dl>
+                {cargo.shipDate ? (
+                  <span className="block text-xs text-zinc-600">
+                    {t("orders.cargo.shipped")}: {day(cargo.shipDate)}
+                  </span>
+                ) : null}
+              </span>,
+            ],
+            [
+              t("orders.cargo.release"),
+              <span key="release" data-cargo-release="">
+                {cargo.releasedAt ? (
+                  formatDate(cargo.releasedAt, t)
+                ) : (
+                  <span className="text-amber-700">
+                    {t("orders.cargo.releasePending")}
+                  </span>
+                )}
+              </span>,
+            ],
+            [
+              t("orders.cargo.deliverTo"),
+              <span key="deliver" data-cargo-deliver="">
+                {cargo.deliverTo ? (
+                  <>
+                    <span className="font-medium">{cargo.deliverTo.name}</span>
+                    {cargo.deliverTo.address || cargo.deliverTo.city ? (
+                      <span className="block text-zinc-700">
+                        {[cargo.deliverTo.address, cargo.deliverTo.city]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    ) : (
+                      <span className="block text-xs text-amber-700">
+                        {t("orders.cargo.noAddress")}
+                      </span>
+                    )}
+                    {cargo.deliverTo.contactName || cargo.deliverTo.phone ? (
+                      <span className="block text-xs text-zinc-600">
+                        {t("orders.cargo.contact")}:{" "}
+                        {[cargo.deliverTo.contactName, cargo.deliverTo.phone]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  "—"
+                )}
+              </span>,
+            ],
+          ]}
+        />
+      </div>
     </Card>
   );
 }
