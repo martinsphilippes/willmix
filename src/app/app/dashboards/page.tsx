@@ -67,6 +67,7 @@ export default async function DashboardsPage({
           <Link
             key={a}
             href={`/app/dashboards?area=${a}`}
+            scroll={false}
             className={`rounded-full border px-3 py-1 text-sm ${
               a === area
                 ? "border-brand-600 bg-brand-600 text-white"

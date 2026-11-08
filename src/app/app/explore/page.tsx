@@ -262,6 +262,7 @@ function CategoryChip({
   return (
     <Link
       href={href}
+      scroll={false}
       aria-current={active ? "page" : undefined}
       className={cx(
         "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition",

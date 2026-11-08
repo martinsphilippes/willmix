@@ -217,7 +217,10 @@ export function IconLink({
   );
 }
 
-/** Aba da ficha (link; a aba escolhida fica sublinhada na cor da marca). */
+/**
+ * Aba da ficha (link; a aba escolhida fica sublinhada na cor da marca). Trocar
+ * de aba muda o conteúdo embaixo sem levar a tela de volta ao topo.
+ */
 export function TabLink({
   href,
   active,
@@ -230,6 +233,7 @@ export function TabLink({
   return (
     <Link
       href={href}
+      scroll={false}
       aria-current={active ? "page" : undefined}
       className={cx(
         "flex-1 border-b-2 px-3 py-2.5 text-center text-sm font-semibold transition sm:text-base",
