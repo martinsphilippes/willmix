@@ -230,6 +230,9 @@ const isDone = (step: ImportStep | undefined) => {
     : step.status === "submitted" || step.status === "validated";
 };
 
+/** Passo concluído: validado (se tem quem valide) ou enviado. Control Tower usa. */
+export const importStepDone = isDone;
+
 /** O passo já pode ser feito (o anterior concluído)? */
 function ready(key: ImportStepKey, steps: ImportStep[]) {
   const after = stepTemplate(key).after;
