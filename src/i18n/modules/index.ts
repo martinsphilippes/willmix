@@ -17,6 +17,7 @@ import * as stock from "./stock";
 import * as owner from "./owner";
 import * as reservations from "./reservations";
 import * as supplierScore from "./supplier-score";
+import * as orderView from "./order-view";
 import * as productPhotos from "./product-photos";
 import * as sheetGenerate from "./sheet-generate";
 import * as notificationsDelete from "./notifications-delete";
@@ -175,6 +176,7 @@ export const modulesPt = {
   ...owner.pt,
   ...reservations.pt,
   ...supplierScore.pt,
+  ...orderView.pt,
   ...productPhotos.pt,
   ...sheetGenerate.pt,
   ...notificationsDelete.pt,
@@ -265,6 +267,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...owner.en,
   ...reservations.en,
   ...supplierScore.en,
+  ...orderView.en,
   ...productPhotos.en,
   ...sheetGenerate.en,
   ...notificationsDelete.en,
@@ -355,6 +358,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...owner.zh,
   ...reservations.zh,
   ...supplierScore.zh,
+  ...orderView.zh,
   ...productPhotos.zh,
   ...sheetGenerate.zh,
   ...notificationsDelete.zh,

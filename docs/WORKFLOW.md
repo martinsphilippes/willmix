@@ -20,18 +20,18 @@ Quem responde a cotação de um produto do catálogo entra na lista de fornecedo
 
 Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked`, `done`), responsável, prazo (`dueAt`, calculado por `stageDueDays`), percentual e requisitos.
 
-| Etapa              | Requisitos obrigatórios (papel)                                                                                                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `ORDER_CREATED`    | Pedido conferido (operador). Opcional: número no Sankhya                                                                           |
-| `PREPARATION`      | Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta                    |
-| `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)            |
-| `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor)       |
-| `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia        |
+| Etapa              | Requisitos obrigatórios (papel)                                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `ORDER_CREATED`    | Pedido conferido (operador). Opcional: número no Sankhya                                                                                |
+| `PREPARATION`      | Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta                         |
+| `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)                 |
+| `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor)            |
+| `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia             |
 | `SHIPPING`         | Embarque confirmado (companhia marítima; operador se não houver designada). Opcionais: data de embarque, previsão de chegada, navio, BL |
-| `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos |
-| `TRANSPORT`        | Placa, previsão de entrega, entrega realizada (transportador; operador se não houver). Opcional: situação                          |
-| `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                 |
-| `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                         |
+| `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos      |
+| `TRANSPORT`        | Placa, previsão de entrega, entrega realizada (transportador; operador se não houver). Opcional: situação                               |
+| `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                      |
+| `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                              |
 
 No Embarque, data de embarque, previsão de chegada, navio e BL são opcionais (dá para avançar sem eles); o item **Embarque confirmado** conclui a etapa. Com a data preenchida, as regras de ordem continuam (chegada depois do embarque); sem ela, o marco de pagamento ao fornecedor é o dia em que o Embarque foi concluído. Pedidos criados antes (com os três obrigatórios) passam para o modelo novo ao abrir a página do pedido ou no job diário (`normalizeShipping`, em `src/lib/services/shipping-stage.ts`).
 
@@ -94,6 +94,14 @@ Wellmix (admin e operador) pode preencher qualquer requisito. Os demais só pree
 ## Quem vê o quê no pedido
 
 A Wellmix vê tudo. Cliente e fornecedor veem o andamento (etapas começadas ou concluídas). Um parceiro (agência, despachante, companhia marítima, transportador) vê só a etapa em que tem o que fazer (mesmo antes de ela começar) e nunca os valores das etapas dos outros (`stageVisibleTo` em `src/lib/order-view.ts`); o despachante também lê o Embarque (BL, navio, chegada), de que precisa para desembaraçar. O cartão do pedido (cliente, fornecedor, valores, data) só aparece ao parceiro se sobrar algo útil (o despachante vê fornecedor, modalidade e NCM; agência e companhia marítima, o fornecedor; o transportador, nada dele). O transportador, em vez dele, vê **Carga e entrega** (`cargoViewForOrder`): mercadoria, caixas, volume e peso previstos na ficha de compra (como na cotação de frete), chegada do navio (com navio e data de embarque), liberação aduaneira e onde entregar (o cliente do pedido: endereço, cidade, contato). O transportador não vê o fornecedor em lugar nenhum (`canSeeSupplier`). Multas: o parceiro vê só as dele.
+
+## Tela do pedido em linhas (`/app/orders/[id]`)
+
+Uma coluna só, cada parte numa tabela (o mesmo visual de Clientes, Fornecedores e do pedido em lista), com um índice "Ir para" no alto que mostra só as partes que o login vê. Ordem: cartões coloridos de valores (cliente: venda, recebido e a receber; administrador: também compra FOB, pago, a pagar e margem — a mesma regra do antigo cartão Financeiro); **Resumo do pedido** numa linha (os mesmos campos do antigo cartão do pedido, por papel); **Itens do pedido** (um produto por linha, com a variação; foto, código e preço FOB só para a Wellmix); **Etapas do pedido** (uma linha por etapa: situação, responsável, prazo, concluída em, andamento e itens feitos). A etapa em andamento, e a que ainda aceita dados (ex.: BL depois do embarque), fica aberta embaixo da tabela com os mesmos formulários de antes; as outras abrem em "Ver detalhes" (`?stage=CHAVE`) e "Abrir todas as etapas" (`?stage=all`). Depois vêm pagamento ao fornecedor, produção, embarque e desembaraço, certificação, recebimento, artes (os mesmos cartões, na largura toda) e as tabelas de containers, financeiro (custo, câmbio, margem e registrar recebimento), pagamentos, documentos (com visualizado/confirmado), multas, parceiros (designar em cada linha), snapshot e cancelamento. As âncoras de sempre continuam valendo (`#payments`, `#supplier-payment`, `#production`, `#import-flow`, `#certification`, `#receiving`, `#artwork`, `#after-sales`, `#followup`, `#snapshot`, `#stage-<id>`).
+
+## Solicitações em linhas (`/app/requests`)
+
+Para a Wellmix, as colunas importantes vêm primeiro: nº, foto, produto (abre a solicitação), quantidade, cliente, situação, **próximo passo** (e com quem está: Wellmix, fornecedores, cliente, diretoria ou o papel da etapa do pedido, com "Etapa atrasada"), prazo e pedido; depois valor ao cliente e sinal (só Finanças), **cotações** (respondidas de enviadas; melhor preço ou o escolhido só para Finanças; dias de produção), analista e data. Quem abre Finanças vê também os cartões coloridos da lista na tela: em proposta, sinal a receber, sinal recebido e viraram pedido. O CSV ganha próximo passo, com quem, cotações e etapa do pedido. Regras puras em `src/lib/services/request-list.ts` (`quoteSummary`, `requestNextStep`).
 
 ## Inspeção cega e comparação comprado × inspecionado
 
