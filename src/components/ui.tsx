@@ -536,18 +536,24 @@ export function Stat({
   value,
   href,
   tone = "neutral",
-  active = false,
+  active: activeProp,
   compact = false,
 }: {
   label: ReactNode;
   value: ReactNode;
   href?: string;
   tone?: Tone;
-  /** Card selecionado (ex.: filtro atual da Control Tower). */
+  /**
+   * Card selecionado (ex.: filtro atual da Control Tower). Passar `active`
+   * marca o card como filtro da própria tela: ao clicar, a lista muda e a
+   * tela fica onde está (não volta ao topo).
+   */
   active?: boolean;
   /** Card menor (ex.: filtros do Painel de SLA): menos espaço e número menor. */
   compact?: boolean;
 }) {
+  const active = activeProp ?? false;
+  const isFilter = activeProp !== undefined;
   const content = (
     <div
       className={cx(
@@ -598,6 +604,7 @@ export function Stat({
   return href ? (
     <Link
       href={href}
+      scroll={isFilter ? false : undefined}
       aria-current={active ? "true" : undefined}
       className={cx("block h-full", compact ? "rounded-xl" : "rounded-2xl")}
     >
