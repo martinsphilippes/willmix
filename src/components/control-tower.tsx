@@ -25,6 +25,7 @@ import {
   Card,
   cx,
   Empty,
+  LinkButton,
   PageHeader,
   Progress,
   Stat,
@@ -228,6 +229,8 @@ export async function ControlTower({
   const wellmix = isWellmix(user);
   const finance = canOpen(user, "finance");
   const operations = canOpen(user, "orders");
+  // Criar solicitação direto da Control Tower (quadrado "Solicitação nova").
+  const newRequestHref = canOpen(user, "requests") ? "/app/requests/new" : null;
   const deniedScreen = (SCREENS as readonly string[]).includes(denied ?? "")
     ? (denied as Screen)
     : null;
@@ -300,6 +303,7 @@ export async function ControlTower({
             board={board}
             t={t}
             selected={boardCard?.key ?? null}
+            newRequestHref={newRequestHref}
             occupancy={
               totals?.containers.avgOccupancyPercent !== null &&
               totals?.containers.avgOccupancyPercent !== undefined
@@ -332,7 +336,21 @@ export async function ControlTower({
           </div>
 
           <div className="mt-4 grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
-            <Card className="min-w-0 lg:col-span-2" title={listTitle}>
+            <Card
+              className="min-w-0 lg:col-span-2"
+              title={listTitle}
+              actions={
+                boardCard?.key === "reqNew" && newRequestHref ? (
+                  <LinkButton
+                    href={newRequestHref}
+                    variant="primary"
+                    data-board-new-request
+                  >
+                    + {t("requests.new")}
+                  </LinkButton>
+                ) : undefined
+              }
+            >
               <div data-tower-list={boardCard?.key ?? selected}>
                 {rows.length === 0 ? (
                   <Empty>{t("common.none")}</Empty>
