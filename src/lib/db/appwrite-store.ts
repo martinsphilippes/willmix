@@ -4,6 +4,12 @@ import type { TableName, Tables } from "./schema";
 import { BUCKET_ID, DATABASE_ID, TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
 import { downloadBytes } from "./download-bytes";
+import {
+  clampRange,
+  parseContentRange,
+  sliceStream,
+  type ByteRange,
+} from "@/lib/http-range";
 
 /**
  * Implementação sobre Appwrite TablesDB e Storage.
@@ -214,26 +220,51 @@ export class AppwriteStore implements Store {
   /**
    * Download em fluxo direto da API REST (o SDK carrega o arquivo inteiro na
    * memória): arquivos grandes (arte da embalagem) descem sem estourar a função.
+   * Com `range`, pede ao Appwrite só aquele pedaço (vídeo no Safari); se ele
+   * devolver o arquivo inteiro ou recusar o pedaço, recorta aqui.
    */
-  async streamFile(key: string) {
+  async streamFile(key: string, range?: ByteRange | null) {
     const meta = await this.statFile(key);
     if (!meta) return null;
-    const res = await fetch(
-      `${this.endpoint}/storage/buckets/${BUCKET_ID}/files/${encodeURIComponent(key)}/download`,
-      {
+    const wanted = clampRange(range, meta.size);
+    const url = `${this.endpoint}/storage/buckets/${BUCKET_ID}/files/${encodeURIComponent(key)}/download`;
+    const get = (extra: Record<string, string> = {}) =>
+      fetch(url, {
         headers: {
           "X-Appwrite-Project": this.projectId,
           "X-Appwrite-Key": this.apiKey,
+          ...extra,
         },
-      },
+      });
+    const file = { name: meta.name, mime: meta.mime, size: meta.size };
+    let res = await get(
+      wanted ? { Range: `bytes=${wanted.start}-${wanted.end}` } : {},
     );
     if (res.status === 404) return null;
+    if (wanted && res.status === 206 && res.body) {
+      const served = parseContentRange(res.headers.get("content-range"));
+      if (served && served.start === wanted.start) {
+        const end = Math.min(served.end, wanted.end);
+        const take = end - wanted.start + 1;
+        return {
+          ...file,
+          body: served.end > end ? sliceStream(res.body, 0, take) : res.body,
+          range: { start: wanted.start, end },
+        };
+      }
+    }
+    if (wanted && res.status !== 200) {
+      // Pedaço recusado (ex.: um byte só) ou resposta inesperada: arquivo inteiro.
+      await res.body?.cancel().catch(() => {});
+      res = await get();
+      if (res.status === 404) return null;
+    }
     if (!res.ok || !res.body) throw new Error(`storage download ${res.status}`);
+    if (!wanted) return { ...file, body: res.body, range: null };
     return {
-      body: res.body,
-      name: meta.name,
-      mime: meta.mime,
-      size: meta.size,
+      ...file,
+      body: sliceStream(res.body, wanted.start, wanted.end - wanted.start + 1),
+      range: wanted,
     };
   }
 

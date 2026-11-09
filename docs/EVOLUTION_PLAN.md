@@ -486,6 +486,28 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Segurança**: o acesso não mudou (o arquivo só abre para quem vê o assunto, conferido antes de gravar). `/api/files` ficou mais rígido para todos os documentos: SVG sempre baixa (nunca abre como página, porque pode trazer código), `X-Content-Type-Options: nosniff` e, menos no PDF, `Content-Security-Policy` com `sandbox` (o arquivo aberto na aba não roda nada como o portal). Foto e PDF continuam abrindo na aba.
 - **Sem mudança no banco**: nenhuma coluna nova.
 
+## Mensagens: vídeo na conversa e resposta a uma mensagem marcada
+
+- **Pedido do dono**: "não estou conseguindo subir vídeos" e "marcar alguma mensagem na conversa, tipo arrastar para o lado, e responder àquela mensagem específica".
+- **Vídeo**:
+  - O botão "Foto" virou **"Foto ou vídeo"** (câmera ou galeria, fotos e vídeos, vários de uma vez). A foto continua reduzida no aparelho e o vídeo vai como está.
+  - **O vídeo toca na própria conversa**, com play, tela cheia e "Baixar vídeo · MOV · 23 MB" embaixo. Formatos: MP4, MOV do iPhone e WebM; 3GP aparece como arquivo. `isPlayableVideo` em `src/lib/file-kinds.ts`; `MessageView.attachment.isVideo`.
+  - **Arquivo em pedaços** (`Range`, `src/lib/http-range.ts`): o Safari (iPhone, iPad, Mac) só toca vídeo se o servidor entregar a parte pedida. `/api/files` responde 206 com `Content-Range`, avisa `Accept-Ranges: bytes`, devolve 416 para pedaço fora do arquivo e limita cada pedaço a 8 MB (o navegador pede o resto).
+  - O armazenamento lê só o pedaço (`streamFile(key, range)`): no Appwrite com o cabeçalho `Range`; se ele mandar o arquivo inteiro ou recusar o pedaço (um byte só), o portal recorta (`sliceStream`).
+  - O acesso ao arquivo é o mesmo de antes. A trilha "visualizou" conta uma vez por vídeo (o pedaço do começo).
+  - **Teto de 50 MB** (limite do plano do Appwrite Cloud), mais ou menos 1 minuto de vídeo. Acima disso aparece "Vídeo grande demais (máximo 50 MB, mais ou menos 1 minuto). Grave um vídeo mais curto ou mande em partes." Para vídeos maiores, o plano do Appwrite precisa subir (decisão do dono, com custo); aí basta aumentar `MAX_DOCUMENT_BYTES` e `BUCKET_MAX_BYTES`.
+- **Responder a uma mensagem marcada** (`src/components/chat-reply.tsx`, regras puras em `src/lib/chat-reply.ts`):
+  - **Marcar:** arrastar a mensagem para a direita (dedo ou mouse; aparece a seta ↩). No computador também há o botão "↩" ao passar o mouse. Vale na tela de Mensagens e no painel lateral.
+  - **Em cima da caixa de texto** aparece "Respondendo a {nome}" com o começo da mensagem e ✕ para desistir. A caixa já fica pronta para digitar.
+  - **A resposta mostra a citação** (quem escreveu e o começo do texto, ou "📷 Foto", "🎬 Vídeo", "📎 nome"). Tocar nela leva à mensagem original e a destaca em amarelo.
+  - **Com arquivo:** a marcação vai junto com o primeiro arquivo.
+  - **Idioma:** a citação aparece no idioma de quem lê quando a mensagem citada já foi traduzida. Uma citação mais antiga que as 200 mensagens da tela também aparece.
+  - **Começar o arraste** em cima da citação ou de um link também vale. Só os controles do vídeo e os campos não arrastam, e um toque parado continua abrindo a foto ou a citação.
+- **Segurança da resposta:**
+  - o serviço só aceita marcar uma mensagem do mesmo assunto (`reply_not_found`), conferido antes de gravar o anexo;
+  - na leitura, a citação só aparece se for do mesmo assunto. Um dado adulterado apontando para outra conversa não mostra nada (teste).
+- **Esquema**: coluna opcional `messages.replyToMessageId` (só gravada nas respostas). Antes de publicar, a resposta vai como mensagem comum, sem a citação e sem perder o texto.
+
 ## Ficha: medidas da caixa master opcionais com CBM
 
 - Com o CBM da caixa master preenchido (ex.: veio na planilha do fornecedor), altura, largura e comprimento da caixa saem do "falta preencher" (`missingForCompletion`); o frete e a cubagem usam o CBM. Sem CBM, as três medidas continuam obrigatórias. Com as três medidas, o CBM continua sendo calculado por elas (`withBoxCbm`).

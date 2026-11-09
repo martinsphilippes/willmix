@@ -4,12 +4,17 @@ import { getStore } from "@/lib/db";
 import { canAccessDocument } from "@/lib/services/documents";
 import { recordAck } from "@/lib/services/acknowledgements";
 import { opensInline } from "@/lib/file-kinds";
+import { parseByteRange } from "@/lib/http-range";
 
 export const dynamic = "force-dynamic";
 
-/** Download controlado: exige sessão e permissão sobre o documento. */
+/**
+ * Download controlado: exige sessão e permissão sobre o documento. Aceita
+ * pedido de um pedaço do arquivo ("Range"): o vídeo da conversa só toca no
+ * Safari assim, e pular para o meio do vídeo também usa isso.
+ */
 export async function GET(
-  _request: Request,
+  request: Request,
   context: RouteContext<"/api/files/[id]">,
 ) {
   const user = await getCurrentUser();
@@ -21,13 +26,24 @@ export async function GET(
   if (!doc || !(await canAccessDocument(user, doc))) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  const range = parseByteRange(request.headers.get("range"), doc.size);
+  if (range === "unsatisfiable")
+    return new NextResponse(null, {
+      status: 416,
+      headers: { "Content-Range": `bytes */${doc.size}` },
+    });
   // Em fluxo: arquivos grandes (arte da embalagem) não passam inteiros pela memória.
-  const file = await store.streamFile(doc.storageKey);
+  const file = await store.streamFile(doc.storageKey, range);
   if (!file) return NextResponse.json({ error: "missing" }, { status: 404 });
   // Trilha: quem abriu o documento e quando ("visualizou" nunca vale como "confirmou").
   // Só documentos do fluxo (pedido/solicitação) e nunca para quem os enviou:
-  // miniaturas de sourcing e catálogo não geram ruído.
-  if ((doc.orderId || doc.requestId) && doc.uploadedByUserId !== user.id) {
+  // miniaturas de sourcing e catálogo não geram ruído. Um vídeo pedido em
+  // pedaços conta uma vez (o pedaço do começo).
+  if (
+    (doc.orderId || doc.requestId) &&
+    doc.uploadedByUserId !== user.id &&
+    (!file.range || file.range.start === 0)
+  ) {
     try {
       await recordAck(user, "document", id, "viewed");
     } catch (error) {
@@ -38,12 +54,21 @@ export async function GET(
   const inline = opensInline(doc.mime);
   const pdf = doc.mime.toLowerCase().startsWith("application/pdf");
   return new NextResponse(file.body, {
+    status: file.range ? 206 : 200,
     headers: {
       "Content-Type": doc.mime,
       "Content-Disposition": `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(doc.name)}`,
       // Arquivo nunca muda (versão nova = documento novo): o navegador guarda
       // por 1 h e não baixa de novo a cada tela. "private": só neste navegador.
       "Cache-Control": "private, max-age=3600",
+      // O navegador pode pedir só um pedaço (vídeo).
+      "Accept-Ranges": "bytes",
+      ...(file.range
+        ? {
+            "Content-Range": `bytes ${file.range.start}-${file.range.end}/${file.size}`,
+            "Content-Length": String(file.range.end - file.range.start + 1),
+          }
+        : {}),
       // O navegador não "adivinha" outro tipo (um texto virar página).
       "X-Content-Type-Options": "nosniff",
       // Aberto na aba, o arquivo fica isolado: nenhum código dele roda como o

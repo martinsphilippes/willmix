@@ -1,4 +1,5 @@
 import type { Translate } from "@/i18n";
+import type { ChatReplyLabels } from "@/lib/chat-reply";
 import type { ChatUploadLabels } from "./chat-upload";
 
 /**
@@ -17,6 +18,7 @@ export function chatUploadLabels(t: Translate): ChatUploadLabels {
     failedFile: t("messages.attach.failedFile"),
     failed: t("messages.attach.failed"),
     tooBig: t("messages.attach.tooBig"),
+    videoTooBig: t("messages.attach.videoTooBig"),
     serverOnly: t("messages.attach.serverOnly"),
     errors: {
       mime: t("messages.error.mime"),
@@ -26,6 +28,21 @@ export function chatUploadLabels(t: Translate): ChatUploadLabels {
       forbidden: t("messages.error.forbidden"),
       not_found: t("messages.error.not_found"),
       message_too_long: t("messages.error.message_too_long"),
+      reply_not_found: t("messages.error.reply_not_found"),
     },
+  };
+}
+
+/** Textos do responder a uma mensagem marcada, no idioma de quem vê. */
+export function chatReplyLabels(t: Translate): ChatReplyLabels {
+  return {
+    reply: t("messages.reply"),
+    to: t("messages.reply.to"),
+    cancel: t("messages.reply.cancel"),
+    hint: t("messages.reply.hint"),
+    photo: t("messages.reply.photo"),
+    video: t("messages.reply.video"),
+    original: t("messages.reply.original"),
+    you: t("messages.you"),
   };
 }

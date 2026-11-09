@@ -26,7 +26,10 @@ import { dataMode } from "@/lib/env";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { ChatDrawer } from "@/components/chat-drawer";
-import { chatUploadLabels } from "@/components/chat-upload-labels";
+import {
+  chatReplyLabels,
+  chatUploadLabels,
+} from "@/components/chat-upload-labels";
 import { SelectOnFocus } from "@/components/select-on-focus";
 import { SubmitTracker } from "@/components/field-errors";
 import { MissingLive } from "@/components/missing-live";
@@ -453,6 +456,8 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           empty: t("messages.empty.thread"),
           intl: t.intl,
           attach: chatUploadLabels(t),
+          reply: chatReplyLabels(t),
+          videoDownload: t("messages.video.download"),
         }}
       />
       <footer className="border-t border-zinc-200 bg-white">

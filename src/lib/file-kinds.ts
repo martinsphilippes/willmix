@@ -21,6 +21,21 @@ export function isPreviewImage(mime: string): boolean {
   return PREVIEW_IMAGE.has(baseMime(mime));
 }
 
+/**
+ * Vídeos que tocam na própria conversa (MP4 e MOV do celular, WebM). 3GP
+ * antigo e outros formatos aparecem como arquivo para baixar.
+ */
+const PLAYABLE_VIDEO = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/x-m4v",
+]);
+
+export function isPlayableVideo(mime: string): boolean {
+  return PLAYABLE_VIDEO.has(baseMime(mime));
+}
+
 /** Abre na aba do navegador (foto e PDF); o resto baixa. SVG sempre baixa. */
 export function opensInline(mime: string): boolean {
   const m = baseMime(mime);

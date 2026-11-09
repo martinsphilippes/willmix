@@ -9,6 +9,7 @@ import {
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { BaseRow, TableName, Tables } from "./schema";
+import { clampRange, type ByteRange } from "@/lib/http-range";
 import { TABLES } from "./schema";
 import {
   matchesFilter,
@@ -198,16 +199,21 @@ export class MemoryStore implements Store {
     return { key, ...meta, size: statSync(path).size };
   }
 
-  async streamFile(key: string) {
+  async streamFile(key: string, range?: ByteRange | null) {
     const meta = await this.statFile(key);
     if (!meta) return null;
     const file = await this.getFile(key);
     if (!file) return null;
+    const served = clampRange(range, file.bytes.byteLength);
+    const bytes = served
+      ? file.bytes.subarray(served.start, served.end + 1)
+      : file.bytes;
     return {
-      body: new Blob([file.bytes as BlobPart]).stream(),
+      body: new Blob([bytes as BlobPart]).stream(),
       name: meta.name,
       mime: meta.mime,
       size: meta.size,
+      range: served,
     };
   }
 

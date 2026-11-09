@@ -1,3 +1,4 @@
+import type { ByteRange } from "@/lib/http-range";
 import type { BaseRow, TableName, Tables } from "./schema";
 
 /**
@@ -52,12 +53,20 @@ export interface Store {
   putFile(bytes: Uint8Array, name: string, mime: string): Promise<StoredFile>;
   /** Metadados de um arquivo já no armazenamento (ex.: enviado direto pelo navegador); null se não existe. */
   statFile(key: string): Promise<StoredFile | null>;
-  /** Conteúdo em fluxo, sem carregar o arquivo inteiro na memória (downloads grandes). */
-  streamFile(key: string): Promise<{
+  /**
+   * Conteúdo em fluxo, sem carregar o arquivo inteiro na memória (downloads
+   * grandes). Com `range`, só aquele pedaço (vídeo no Safari); `range` na
+   * resposta diz o pedaço entregue (null: o arquivo inteiro).
+   */
+  streamFile(
+    key: string,
+    range?: ByteRange | null,
+  ): Promise<{
     body: ReadableStream<Uint8Array>;
     name: string;
     mime: string;
     size: number;
+    range: ByteRange | null;
   } | null>;
   getFile(
     key: string,

@@ -41,7 +41,12 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { MessageAttach } from "@/components/message-attach";
 import { ChatAttachmentView } from "@/components/chat-attachment";
-import { chatUploadLabels } from "@/components/chat-upload-labels";
+import {
+  chatReplyLabels,
+  chatUploadLabels,
+} from "@/components/chat-upload-labels";
+import { ReplyComposer, ReplyQuote, ReplySwipe } from "@/components/chat-reply";
+import { replyTarget } from "@/lib/chat-reply";
 import { MarkTopicRead, MessagesAutoRefresh } from "@/components/messages-live";
 import {
   openTreeTopicAction,
@@ -462,6 +467,7 @@ function Thread({
   aiOn: boolean;
 }) {
   const type = typeLabel(t, view.conversation.type);
+  const replyLabels = chatReplyLabels(t);
   return (
     <Card
       dense
@@ -482,7 +488,7 @@ function Thread({
       ) : null}
       {/* Coluna invertida: a conversa abre já no fim (mensagens mais novas). */}
       <div
-        className="flex max-h-[60vh] min-h-40 flex-col-reverse overflow-y-auto rounded-xl bg-zinc-50 p-2 sm:p-3"
+        className="flex max-h-[60vh] min-h-40 flex-col-reverse overflow-y-auto overflow-x-hidden rounded-xl bg-zinc-50 p-2 sm:p-3"
         data-thread
       >
         {view.messages.length ? (
@@ -490,89 +496,114 @@ function Thread({
             {view.messages.map((m) => (
               <li
                 key={m.id}
-                className={cx("flex", m.mine ? "justify-end" : "justify-start")}
+                id={`m-${m.id}`}
+                className={cx(
+                  "flex rounded-xl",
+                  m.mine ? "justify-end" : "justify-start",
+                )}
                 data-message={m.authorSide}
               >
-                <div
-                  className={cx(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm",
-                    m.mine
-                      ? "bg-brand-600 text-white"
-                      : m.authorSide === "wellmix"
-                        ? "border border-brand-200 bg-white text-zinc-900"
-                        : "border border-zinc-200 bg-white text-zinc-900",
-                  )}
+                {/* Arrastar para a direita (ou "↩"): responder a esta mensagem. */}
+                <ReplySwipe
+                  target={replyTarget(m, replyLabels)}
+                  labels={replyLabels}
+                  mine={m.mine}
+                  className="max-w-[85%]"
                 >
                   <div
                     className={cx(
-                      "mb-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px]",
-                      m.mine ? "text-white/80" : "text-zinc-500",
+                      "rounded-2xl px-3 py-2 text-sm shadow-sm",
+                      m.mine
+                        ? "bg-brand-600 text-white"
+                        : m.authorSide === "wellmix"
+                          ? "border border-brand-200 bg-white text-zinc-900"
+                          : "border border-zinc-200 bg-white text-zinc-900",
                     )}
                   >
-                    <span className="font-semibold">
-                      {m.mine ? t("messages.you") : m.authorName}
-                    </span>
-                    <span>
-                      ·{" "}
-                      {m.authorSide === "wellmix"
-                        ? t("messages.side.wellmix")
-                        : view.conversation.name}
-                    </span>
-                    <span className="tabular-nums">
-                      · {formatWhen(m.createdAt, t.intl)}
-                    </span>
-                  </div>
-                  {m.attachment ? (
-                    <ChatAttachmentView
-                      attachment={m.attachment}
-                      mine={m.mine}
-                      intl={t.intl}
-                    />
-                  ) : null}
-                  {m.attachment &&
-                  m.body === `📎 ${m.attachment.name}` ? null : (
-                    <p
-                      className="whitespace-pre-wrap break-words"
-                      lang={m.tr?.text ? t.locale : undefined}
+                    <div
+                      className={cx(
+                        "mb-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px]",
+                        m.mine ? "text-white/80" : "text-zinc-500",
+                      )}
                     >
-                      {m.tr?.text ?? m.body}
-                    </p>
-                  )}
-                  {m.tr ? (
-                    <MessageTranslationNote
-                      tr={m.tr}
-                      mine={m.mine}
-                      retry={
-                        <form action={translateMessageAction}>
-                          <input
-                            type="hidden"
-                            name="conversationId"
-                            value={view.conversation.id}
-                          />
-                          <input
-                            type="hidden"
-                            name="topicId"
-                            value={view.topic.id}
-                          />
-                          <input type="hidden" name="messageId" value={m.id} />
-                          <SubmitButton
-                            variant="ghost"
-                            pendingText={t("messages.tr.pending")}
-                            className={cx(
-                              "px-1.5 py-0.5 text-[11px] underline underline-offset-2",
-                              m.mine
-                                ? "text-white hover:bg-white/10"
-                                : "text-brand-700",
-                            )}
-                            data-translate-message={m.id}
-                          >
-                            {m.tr.retry}
-                          </SubmitButton>
-                        </form>
-                      }
-                    />
-                  ) : null}
-                </div>
+                      <span className="font-semibold">
+                        {m.mine ? t("messages.you") : m.authorName}
+                      </span>
+                      <span>
+                        ·{" "}
+                        {m.authorSide === "wellmix"
+                          ? t("messages.side.wellmix")
+                          : view.conversation.name}
+                      </span>
+                      <span className="tabular-nums">
+                        · {formatWhen(m.createdAt, t.intl)}
+                      </span>
+                    </div>
+                    {m.replyTo ? (
+                      <ReplyQuote
+                        quote={m.replyTo}
+                        labels={replyLabels}
+                        mine={m.mine}
+                        prefix="m-"
+                      />
+                    ) : null}
+                    {m.attachment ? (
+                      <ChatAttachmentView
+                        attachment={m.attachment}
+                        mine={m.mine}
+                        intl={t.intl}
+                        downloadLabel={t("messages.video.download")}
+                      />
+                    ) : null}
+                    {m.attachment &&
+                    m.body === `📎 ${m.attachment.name}` ? null : (
+                      <p
+                        className="whitespace-pre-wrap break-words"
+                        lang={m.tr?.text ? t.locale : undefined}
+                      >
+                        {m.tr?.text ?? m.body}
+                      </p>
+                    )}
+                    {m.tr ? (
+                      <MessageTranslationNote
+                        tr={m.tr}
+                        mine={m.mine}
+                        retry={
+                          <form action={translateMessageAction}>
+                            <input
+                              type="hidden"
+                              name="conversationId"
+                              value={view.conversation.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="topicId"
+                              value={view.topic.id}
+                            />
+                            <input
+                              type="hidden"
+                              name="messageId"
+                              value={m.id}
+                            />
+                            <SubmitButton
+                              variant="ghost"
+                              pendingText={t("messages.tr.pending")}
+                              className={cx(
+                                "px-1.5 py-0.5 text-[11px] underline underline-offset-2",
+                                m.mine
+                                  ? "text-white hover:bg-white/10"
+                                  : "text-brand-700",
+                              )}
+                              data-translate-message={m.id}
+                            >
+                              {m.tr.retry}
+                            </SubmitButton>
+                          </form>
+                        }
+                      />
+                    ) : null}
+                  </div>
+                </ReplySwipe>
               </li>
             ))}
           </ol>
@@ -589,6 +620,8 @@ function Thread({
           value={view.conversation.id}
         />
         <input type="hidden" name="topicId" value={view.topic.id} />
+        {/* Mensagem marcada para responder ("Respondendo a …"). */}
+        <ReplyComposer key={view.topic.id} labels={replyLabels} />
         <Field
           label={t("messages.body.label")}
           hint={
@@ -616,7 +649,9 @@ function Thread({
             {t("messages.send")}
           </SubmitButton>
         </div>
-        <p className="text-xs text-zinc-500">{t("chat.attachHint")}</p>
+        <p className="text-xs text-zinc-500">
+          {t("chat.attachHint")} {t("messages.reply.hint")}
+        </p>
       </form>
     </Card>
   );

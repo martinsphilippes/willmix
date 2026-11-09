@@ -31,7 +31,7 @@ export const pt = {
     "Nenhuma empresa participante ainda. Designe os parceiros no pedido.",
   "chat.error": "Não foi possível carregar a conversa. Tente de novo.",
   "chat.attachHint":
-    "Fotos e arquivos até 50 MB. No computador, dá para arrastar para cá ou colar uma imagem (Ctrl+V).",
+    "Fotos, vídeos e arquivos até 50 MB. No computador, dá para arrastar para cá ou colar uma imagem (Ctrl+V).",
   "messages.empty.conversations":
     "Nenhuma conversa ainda. Use “Nova conversa” para começar.",
   "messages.empty.thread": "Nenhuma mensagem neste assunto ainda.",
@@ -61,9 +61,9 @@ export const pt = {
   "messages.attach.serverOnly":
     "Neste ambiente o anexo vai até 4 MB. Reduza o arquivo e tente de novo.",
   "messages.attach.failed": "Não foi possível enviar o arquivo. Tente de novo.",
-  "messages.attach.photo": "Foto",
+  "messages.attach.photo": "Foto ou vídeo",
   "messages.attach.photoTitle":
-    "Tirar ou escolher fotos (várias de uma vez). Vão reduzidas, para chegar rápido.",
+    "Tirar ou escolher fotos e vídeos (vários de uma vez). A foto vai reduzida, para chegar rápido; o vídeo vai como está (até 50 MB).",
   "messages.attach.file": "Arquivo",
   "messages.attach.fileTitle":
     "PDF, planilha, Word, vídeo, arte ou foto original (até 50 MB cada, vários de uma vez).",
@@ -71,6 +71,19 @@ export const pt = {
   "messages.attach.progressPercent": "Enviando {done} de {total}… {percent}%",
   "messages.attach.drop": "Solte aqui para enviar na conversa",
   "messages.attach.failedFile": "{name}: {reason}",
+  "messages.attach.videoTooBig":
+    "Vídeo grande demais (máximo 50 MB, mais ou menos 1 minuto). Grave um vídeo mais curto ou mande em partes.",
+  "messages.video.download": "Baixar vídeo",
+  "messages.reply": "Responder",
+  "messages.reply.to": "Respondendo a {name}",
+  "messages.reply.cancel": "Cancelar resposta",
+  "messages.reply.hint":
+    "Para responder a uma mensagem, arraste-a para a direita.",
+  "messages.reply.photo": "Foto",
+  "messages.reply.video": "Vídeo",
+  "messages.reply.original": "Ver a mensagem respondida",
+  "messages.error.reply_not_found":
+    "A mensagem respondida não está nesta conversa. Escolha de novo.",
   "messages.error.too_large": "Arquivo grande demais (máximo 50 MB).",
   "messages.error.mime":
     "Tipo de arquivo não aceito. Envie foto, PDF, planilha, Word, vídeo ou arte.",
@@ -140,7 +153,7 @@ export const en: Record<keyof typeof pt, string> = {
     "No participating company yet. Assign the partners on the order.",
   "chat.error": "Could not load the conversation. Try again.",
   "chat.attachHint":
-    "Photos and files up to 50 MB. On a computer you can drag them here or paste an image (Ctrl+V).",
+    "Photos, videos and files up to 50 MB. On a computer you can drag them here or paste an image (Ctrl+V).",
   "messages.empty.conversations":
     "No conversations yet. Use “New conversation” to start one.",
   "messages.empty.thread": "No messages in this topic yet.",
@@ -170,9 +183,9 @@ export const en: Record<keyof typeof pt, string> = {
   "messages.attach.serverOnly":
     "In this environment attachments are limited to 4 MB. Reduce the file and try again.",
   "messages.attach.failed": "Could not upload the file. Try again.",
-  "messages.attach.photo": "Photo",
+  "messages.attach.photo": "Photo or video",
   "messages.attach.photoTitle":
-    "Take or choose photos (several at once). They are reduced so they arrive fast.",
+    "Take or choose photos and videos (several at once). Photos are reduced so they arrive fast; videos go as they are (up to 50 MB).",
   "messages.attach.file": "File",
   "messages.attach.fileTitle":
     "PDF, spreadsheet, Word, video, artwork or original photo (up to 50 MB each, several at once).",
@@ -180,6 +193,18 @@ export const en: Record<keyof typeof pt, string> = {
   "messages.attach.progressPercent": "Sending {done} of {total}… {percent}%",
   "messages.attach.drop": "Drop here to send in the conversation",
   "messages.attach.failedFile": "{name}: {reason}",
+  "messages.attach.videoTooBig":
+    "Video too large (max 50 MB, about 1 minute). Record a shorter video or send it in parts.",
+  "messages.video.download": "Download video",
+  "messages.reply": "Reply",
+  "messages.reply.to": "Replying to {name}",
+  "messages.reply.cancel": "Cancel reply",
+  "messages.reply.hint": "To reply to a message, swipe it to the right.",
+  "messages.reply.photo": "Photo",
+  "messages.reply.video": "Video",
+  "messages.reply.original": "Show the message replied to",
+  "messages.error.reply_not_found":
+    "The message you replied to is not in this conversation. Choose it again.",
   "messages.error.too_large": "File too large (max 50 MB).",
   "messages.error.mime":
     "File type not accepted. Send a photo, PDF, spreadsheet, Word file, video or artwork.",
@@ -248,7 +273,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "chat.noParticipants": "尚无参与企业。请先在订单中指定合作方。",
   "chat.error": "无法加载对话，请重试。",
   "chat.attachHint":
-    "照片和文件最大 50 MB。在电脑上可以拖到这里，或粘贴图片（Ctrl+V）。",
+    "照片、视频和文件最大 50 MB。在电脑上可以拖到这里，或粘贴图片（Ctrl+V）。",
   "messages.empty.conversations": "还没有对话。点击“新对话”开始。",
   "messages.empty.thread": "此话题还没有消息。",
   "messages.empty.select": "请在列表中选择一个对话。",
@@ -276,9 +301,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "messages.attach.tooBig": "文件过大（最大 50 MB）。",
   "messages.attach.serverOnly": "此环境中附件最大 4 MB。请缩小文件后重试。",
   "messages.attach.failed": "文件上传失败，请重试。",
-  "messages.attach.photo": "照片",
+  "messages.attach.photo": "照片或视频",
   "messages.attach.photoTitle":
-    "拍摄或选择照片（可多选），会自动压缩，发送更快。",
+    "拍摄或选择照片和视频（可多选）。照片会自动压缩，发送更快；视频按原样发送（最大 50 MB）。",
   "messages.attach.file": "文件",
   "messages.attach.fileTitle":
     "PDF、表格、Word、视频、设计稿或原图（每个最大 50 MB，可多选）。",
@@ -287,6 +312,17 @@ export const zh: Record<keyof typeof pt, string> = {
     "正在发送第 {done} 个，共 {total} 个… {percent}%",
   "messages.attach.drop": "松开即可发送到对话",
   "messages.attach.failedFile": "{name}：{reason}",
+  "messages.attach.videoTooBig":
+    "视频过大（最大 50 MB，约 1 分钟）。请录制更短的视频或分段发送。",
+  "messages.video.download": "下载视频",
+  "messages.reply": "回复",
+  "messages.reply.to": "回复 {name}",
+  "messages.reply.cancel": "取消回复",
+  "messages.reply.hint": "要回复某条消息，请把它向右滑动。",
+  "messages.reply.photo": "照片",
+  "messages.reply.video": "视频",
+  "messages.reply.original": "查看被回复的消息",
+  "messages.error.reply_not_found": "被回复的消息不在此对话中，请重新选择。",
   "messages.error.too_large": "文件过大（最大 50 MB）。",
   "messages.error.mime":
     "不支持该文件类型。请发送照片、PDF、表格、Word、视频或设计稿。",

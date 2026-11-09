@@ -25,6 +25,12 @@ import {
   useFileDrop,
   type ChatUploadLabels,
 } from "./chat-upload";
+import { ReplyPreview, ReplyQuote, ReplySwipe } from "./chat-reply";
+import {
+  replyTarget,
+  type ChatReplyLabels,
+  type ReplyTarget,
+} from "@/lib/chat-reply";
 import { CHAT_EVENT, type ChatTargetDetail } from "@/lib/chat-target";
 import { cx } from "./ui";
 
@@ -36,7 +42,9 @@ import { cx } from "./ui";
  * envio. As Server Actions devolvem dados (sem redirecionar) e o serviço
  * confere o acesso. Atualiza a cada 20 s enquanto está aberto. Fotos e
  * arquivos: botões "Foto" e "Arquivo" (vários de uma vez), arrastar para o
- * painel ou colar um print na caixa de texto; a foto aparece na conversa.
+ * painel ou colar um print na caixa de texto; a foto aparece na conversa e o
+ * vídeo toca ali mesmo. Arrastar uma mensagem para a direita (ou "↩")
+ * responde a ela, com a citação na resposta.
  * Cada mensagem do outro lado aparece no idioma de quem lê (tradução
  * automática, com "Ver original").
  */
@@ -62,6 +70,10 @@ export interface ChatDrawerLabels {
   intl: string;
   /** Fotos e arquivos (botões, andamento, erros). */
   attach: ChatUploadLabels;
+  /** Responder a uma mensagem marcada. */
+  reply: ChatReplyLabels;
+  /** "Baixar vídeo". */
+  videoDownload: string;
 }
 
 const REFRESH_MS = 20_000;
@@ -98,6 +110,9 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
   const [loading, setLoading] = useState(false);
   /** Mensagem sendo traduzida pelo botão "Traduzir". */
   const [translating, setTranslating] = useState<string | null>(null);
+  /** Mensagem marcada para responder ("Respondendo a …"). */
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  const boxRef = useRef<HTMLTextAreaElement>(null);
   const readFor = useRef<string | null>(null);
   /** Painel inteiro (fundo incluído): arrastar arquivos para cá envia. */
   const panelRef = useRef<HTMLDivElement>(null);
@@ -127,15 +142,27 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     onSent: async () => {
       if (topicRef.current) await loadThread(topicRef.current);
     },
-    // O texto da caixa foi junto com a foto: limpa (se não mudou depois).
-    onCaptionSent: (caption) => {
-      setBody((b) => (b.trim() === caption ? "" : b));
-      setDraft("");
+    // O texto da caixa e a resposta foram junto com o arquivo: limpa a
+    // caixa (se não mudou depois) e esquece a mensagem marcada.
+    onFirstSent: (caption) => {
+      if (caption) {
+        setBody((b) => (b.trim() === caption ? "" : b));
+        setDraft("");
+      }
+      setReplyTo(null);
     },
   });
   const sendFiles = (files: File[], photo: boolean) => {
     if (!topic) return;
-    void upload.send(topic.topicId, files, { caption: body, photo });
+    void upload.send(topic.topicId, files, {
+      caption: body,
+      photo,
+      replyToMessageId: replyTo?.id ?? null,
+    });
+  };
+  const chooseReply = (target: ReplyTarget) => {
+    setReplyTo(target);
+    boxRef.current?.focus();
   };
   // Enquanto o painel está aberto, o que for solto nele é dele (mesmo antes
   // de a conversa carregar: não cai na tela de baixo nem abre o arquivo).
@@ -168,6 +195,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
         return;
       }
       setTopic(res.data);
+      setReplyTo(null);
       await loadThread(res.data.topicId);
       setLoading(false);
     },
@@ -183,6 +211,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       setCtx(null);
       setTopic(null);
       setView(null);
+      setReplyTo(null);
       setBody(detail.draft ?? "");
       setDraft(detail.draft ?? "");
       setError(null);
@@ -247,11 +276,12 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     if (!topic || !typed || busy) return;
     setBusy(true);
     setError(null);
-    const res = await chatSendAction(topic.topicId, body);
+    const res = await chatSendAction(topic.topicId, body, replyTo?.id ?? null);
     if (!res.ok) setError(labels.error);
     else {
       setBody("");
       setDraft("");
+      setReplyTo(null);
       await loadThread(topic.topicId);
     }
     setBusy(false);
@@ -383,7 +413,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
 
         {/* Mensagens (coluna invertida: abre já no fim). */}
         <div
-          className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto bg-zinc-50 px-3 py-3"
+          className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto overflow-x-hidden bg-zinc-50 px-3 py-3"
           data-chat-thread
         >
           {loading && !view ? (
@@ -395,69 +425,87 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
               {view.messages.map((m) => (
                 <li
                   key={m.id}
+                  id={`dm-${m.id}`}
                   className={cx(
-                    "flex",
+                    "flex rounded-xl",
                     m.mine ? "justify-end" : "justify-start",
                   )}
                   data-chat-message={m.authorSide}
                 >
-                  <div
-                    className={cx(
-                      "max-w-[88%] rounded-2xl px-3 py-2 text-sm shadow-sm",
-                      m.mine
-                        ? "bg-brand-600 text-white"
-                        : "border border-zinc-200 bg-white text-zinc-900",
-                    )}
+                  <ReplySwipe
+                    target={replyTarget(m, labels.reply)}
+                    labels={labels.reply}
+                    mine={m.mine}
+                    onReply={chooseReply}
+                    className="max-w-[88%]"
                   >
                     <div
                       className={cx(
-                        "mb-0.5 text-[11px]",
-                        m.mine ? "text-white/80" : "text-zinc-500",
+                        "rounded-2xl px-3 py-2 text-sm shadow-sm",
+                        m.mine
+                          ? "bg-brand-600 text-white"
+                          : "border border-zinc-200 bg-white text-zinc-900",
                       )}
                     >
-                      <span className="font-semibold">
-                        {m.mine ? labels.you : m.authorName}
-                      </span>{" "}
-                      ·{" "}
-                      {m.authorSide === "wellmix"
-                        ? labels.wellmix
-                        : (view.conversation.name ?? "")}{" "}
-                      · {when(m.createdAt, labels.intl)}
+                      <div
+                        className={cx(
+                          "mb-0.5 text-[11px]",
+                          m.mine ? "text-white/80" : "text-zinc-500",
+                        )}
+                      >
+                        <span className="font-semibold">
+                          {m.mine ? labels.you : m.authorName}
+                        </span>{" "}
+                        ·{" "}
+                        {m.authorSide === "wellmix"
+                          ? labels.wellmix
+                          : (view.conversation.name ?? "")}{" "}
+                        · {when(m.createdAt, labels.intl)}
+                      </div>
+                      {m.replyTo ? (
+                        <ReplyQuote
+                          quote={m.replyTo}
+                          labels={labels.reply}
+                          mine={m.mine}
+                          prefix="dm-"
+                        />
+                      ) : null}
+                      {m.attachment ? (
+                        <ChatAttachmentView
+                          attachment={m.attachment}
+                          mine={m.mine}
+                          intl={labels.intl}
+                          downloadLabel={labels.videoDownload}
+                        />
+                      ) : null}
+                      {m.attachment &&
+                      m.body === `📎 ${m.attachment.name}` ? null : (
+                        <p className="whitespace-pre-wrap break-words">
+                          {m.tr?.text ?? m.body}
+                        </p>
+                      )}
+                      {m.tr ? (
+                        <MessageTranslationNote
+                          tr={m.tr}
+                          mine={m.mine}
+                          retry={
+                            <button
+                              type="button"
+                              onClick={() => void translate(m.id)}
+                              disabled={!!translating}
+                              className={cx(
+                                "rounded px-1 font-semibold underline underline-offset-2 disabled:opacity-60",
+                                m.mine ? "text-white" : "text-brand-700",
+                              )}
+                              data-translate-message={m.id}
+                            >
+                              {translating === m.id ? "…" : m.tr.retry}
+                            </button>
+                          }
+                        />
+                      ) : null}
                     </div>
-                    {m.attachment ? (
-                      <ChatAttachmentView
-                        attachment={m.attachment}
-                        mine={m.mine}
-                        intl={labels.intl}
-                      />
-                    ) : null}
-                    {m.attachment &&
-                    m.body === `📎 ${m.attachment.name}` ? null : (
-                      <p className="whitespace-pre-wrap break-words">
-                        {m.tr?.text ?? m.body}
-                      </p>
-                    )}
-                    {m.tr ? (
-                      <MessageTranslationNote
-                        tr={m.tr}
-                        mine={m.mine}
-                        retry={
-                          <button
-                            type="button"
-                            onClick={() => void translate(m.id)}
-                            disabled={!!translating}
-                            className={cx(
-                              "rounded px-1 font-semibold underline underline-offset-2 disabled:opacity-60",
-                              m.mine ? "text-white" : "text-brand-700",
-                            )}
-                            data-translate-message={m.id}
-                          >
-                            {translating === m.id ? "…" : m.tr.retry}
-                          </button>
-                        }
-                      />
-                    ) : null}
-                  </div>
+                  </ReplySwipe>
                 </li>
               ))}
             </ol>
@@ -476,7 +524,15 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
           }}
           data-chat-composer
         >
+          {replyTo ? (
+            <ReplyPreview
+              target={replyTo}
+              labels={labels.reply}
+              onCancel={() => setReplyTo(null)}
+            />
+          ) : null}
           <textarea
+            ref={boxRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             onKeyDown={(e) => {
@@ -518,7 +574,9 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
             <ChatUploadStatus status={upload.status} error={upload.error} />
           </div>
           <div className="mt-1 text-xs text-zinc-500">
-            <span className="block">{labels.attachHint}</span>
+            <span className="block">
+              {labels.attachHint} {labels.reply.hint}
+            </span>
             {topic ? (
               <Link
                 href={`/app/messages?c=${topic.conversationId}&t=${topic.topicId}`}

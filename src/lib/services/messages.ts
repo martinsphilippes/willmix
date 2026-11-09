@@ -33,7 +33,7 @@ import {
   type TranslationDisplay,
 } from "@/lib/message-translation";
 import { isSchemaMissing } from "./packaging-brief";
-import { isPreviewImage } from "@/lib/file-kinds";
+import { isPlayableVideo, isPreviewImage } from "@/lib/file-kinds";
 import { notify } from "./notifications";
 import {
   isAttachmentOnly,
@@ -606,18 +606,34 @@ export interface MessageView {
   mine: boolean;
   /**
    * Arquivo anexado (abre por /api/files, que confere o acesso). `isImage`:
-   * o navegador mostra (miniatura na conversa); `size` em bytes.
+   * o navegador mostra (miniatura na conversa); `isVideo`: toca na conversa;
+   * `size` em bytes.
    */
   attachment: {
     id: string;
     name: string;
     isImage: boolean;
+    isVideo: boolean;
     size: number;
   } | null;
   /** Tradução para quem vê (só quando a tela informa o idioma). */
   translation: MessageTranslationState | null;
   /** Textos da tradução já montados no idioma da tela (preenchido pela tela). */
   tr?: TranslationDisplay | null;
+  /** Resposta a uma mensagem marcada: a citação (null: não é resposta). */
+  replyTo: MessageQuote | null;
+}
+
+/** Citação da mensagem respondida (sempre do mesmo assunto). */
+export interface MessageQuote {
+  id: string;
+  authorName: string;
+  authorSide: MessageSide;
+  /** Quem vê escreveu a mensagem citada ("Você"). */
+  mine: boolean;
+  /** Começo do texto, no idioma de quem lê quando há tradução; null: só o anexo. */
+  text: string | null;
+  attachment: { name: string; isImage: boolean; isVideo: boolean } | null;
 }
 
 export interface ConversationView {
@@ -629,6 +645,8 @@ export interface ConversationView {
 
 /** Últimas mensagens mostradas no assunto. */
 const THREAD_LIMIT = 200;
+/** Começo do texto citado numa resposta (a tela mostra até duas linhas). */
+const QUOTE_MAX_LENGTH = 240;
 
 /**
  * Conversa aberta: assuntos que o login vê (Geral primeiro, depois os mais
@@ -692,11 +710,29 @@ export async function getConversationView(
       limit: THREAD_LIMIT,
     })
   ).reverse();
-  const authorIds = [...new Set(rows.map((m) => m.authorUserId))];
+  // Respostas: a mensagem citada, sempre deste assunto (a mais antiga que as
+  // da tela vem à parte).
+  const byId = new Map(rows.map((m) => [m.id, m]));
+  const olderIds = [
+    ...new Set(
+      rows
+        .map((m) => m.replyToMessageId)
+        .filter((id): id is string => !!id && !byId.has(id)),
+    ),
+  ];
+  const older = olderIds.length
+    ? (await store.list("messages", { filter: { id: olderIds } })).filter(
+        (m) => m.topicId === selected.id,
+      )
+    : [];
+  for (const m of older) byId.set(m.id, m);
+  const authorIds = [
+    ...new Set([...rows, ...older].map((m) => m.authorUserId)),
+  ];
   const authors = authorIds.length
     ? await store.list("users", { filter: { id: authorIds } })
     : [];
-  const attachmentIds = rows
+  const attachmentIds = [...rows, ...older]
     .map((m) => m.attachmentDocumentId)
     .filter((id): id is string => !!id);
   const attachments = attachmentIds.length
@@ -709,6 +745,7 @@ export async function getConversationView(
           id: doc.id,
           name: doc.name,
           isImage: isPreviewImage(doc.mime),
+          isVideo: isPlayableVideo(doc.mime),
           size: doc.size,
         }
       : null;
@@ -720,6 +757,25 @@ export async function getConversationView(
     authors,
     opts.locale,
   );
+  const authorName = (m: Message) =>
+    authors.find((u) => u.id === m.authorUserId)?.name ?? "—";
+  const quoteOf = (m: Message): MessageQuote | null => {
+    const q = m.replyToMessageId ? byId.get(m.replyToMessageId) : undefined;
+    if (!q || q.topicId !== m.topicId) return null;
+    const file = attachmentOf(q);
+    const state = translationOf(q);
+    const text = state?.state === "translated" ? state.text : q.body;
+    return {
+      id: q.id,
+      authorName: authorName(q),
+      authorSide: q.authorSide,
+      mine: q.authorUserId === user.id,
+      text: isAttachmentOnly(q) ? null : text.slice(0, QUOTE_MAX_LENGTH),
+      attachment: file
+        ? { name: file.name, isImage: file.isImage, isVideo: file.isVideo }
+        : null,
+    };
+  };
   return {
     conversation: {
       id: conversation.id,
@@ -736,11 +792,12 @@ export async function getConversationView(
       id: m.id,
       body: m.body,
       createdAt: m.createdAt,
-      authorName: authors.find((u) => u.id === m.authorUserId)?.name ?? "—",
+      authorName: authorName(m),
       authorSide: m.authorSide,
       mine: m.authorUserId === user.id,
       attachment: attachmentOf(m),
       translation: translationOf(m),
+      replyTo: quoteOf(m),
     })),
   };
 }
@@ -1186,13 +1243,16 @@ export type MessageAttachment = File | { fileKey: string };
  * escreveu e avisa o outro lado (Wellmix escreveu: os logins da empresa que
  * veem o assunto; a empresa escreveu: a equipe Wellmix). Com anexo o texto
  * pode ficar vazio (vale o nome do arquivo). O anexo só abre para quem vê o
- * assunto (documents.conversationTopicId; ver canAccessDocument).
+ * assunto (documents.conversationTopicId; ver canAccessDocument). Resposta a
+ * uma mensagem marcada (`replyToMessageId`): só de uma mensagem do mesmo
+ * assunto; outra conversa nunca aparece na citação.
  */
 export async function postMessage(
   user: User,
   topicId: string,
   body: string,
   attachment?: MessageAttachment | null,
+  options: { replyToMessageId?: string | null } = {},
 ): Promise<Message> {
   const attached =
     attachment instanceof File
@@ -1205,6 +1265,15 @@ export async function postMessage(
   const store = getStore();
   // Acesso antes de qualquer gravação (nem o arquivo sobe sem acesso).
   const { topic, conversation } = await loadTopicFor(user, topicId);
+  // Resposta: a mensagem marcada tem de ser deste assunto (conferido antes de
+  // gravar o anexo).
+  let replyTo: Message | null = null;
+  if (options.replyToMessageId) {
+    const id = options.replyToMessageId;
+    replyTo = await safe(() => store.get("messages", id), null);
+    if (!replyTo || replyTo.topicId !== topic.id)
+      throw new MessageError("reply_not_found");
+  }
   let attachmentDocumentId: string | null = null;
   let fileName = "";
   if (attached) {
@@ -1224,14 +1293,27 @@ export async function postMessage(
     fileName = doc.name;
   }
   const shown = text || `📎 ${fileName}`.slice(0, MESSAGE_MAX_LENGTH);
-  const message = await store.create("messages", {
+  const row = {
     conversationId: conversation.id,
     topicId: topic.id,
     authorUserId: user.id,
     authorSide: sideOf(user),
     body: shown,
     attachmentDocumentId,
-  });
+  };
+  let message: Message;
+  try {
+    // A coluna nova só vai nas respostas (o resto grava antes da publicação).
+    message = await store.create(
+      "messages",
+      replyTo ? { ...row, replyToMessageId: replyTo.id } : row,
+    );
+  } catch (error) {
+    // Esquema ainda sem a coluna: a mensagem vai sem a citação (nada se perde).
+    if (!replyTo || !isSchemaMissing(error)) throw error;
+    console.error("messages.replyToMessageId: publique o esquema do Appwrite");
+    message = await store.create("messages", row);
+  }
   await Promise.all([
     store.update("conversation_topics", topic.id, {
       lastMessageAt: message.createdAt,
