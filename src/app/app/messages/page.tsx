@@ -39,7 +39,9 @@ import {
   cx,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { FileAutoInput } from "@/components/file-auto-input";
+import { MessageAttach } from "@/components/message-attach";
+import { ChatAttachmentView } from "@/components/chat-attachment";
+import { chatUploadLabels } from "@/components/chat-upload-labels";
 import { MarkTopicRead, MessagesAutoRefresh } from "@/components/messages-live";
 import {
   openTreeTopicAction,
@@ -521,30 +523,11 @@ function Thread({
                     </span>
                   </div>
                   {m.attachment ? (
-                    <a
-                      href={`/api/files/${m.attachment.id}`}
-                      target="_blank"
-                      rel="noopener"
-                      className={cx(
-                        "mb-1 block",
-                        m.mine ? "text-white" : "text-brand-700",
-                      )}
-                      data-attachment
-                    >
-                      {m.attachment.isImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão
-                        <img
-                          src={`/api/files/${m.attachment.id}`}
-                          alt={m.attachment.name}
-                          className="max-h-60 rounded-lg object-contain"
-                        />
-                      ) : (
-                        <span className="inline-flex items-center gap-1 font-semibold underline underline-offset-2">
-                          <span aria-hidden>📎</span>
-                          {m.attachment.name}
-                        </span>
-                      )}
-                    </a>
+                    <ChatAttachmentView
+                      attachment={m.attachment}
+                      mine={m.mine}
+                      intl={t.intl}
+                    />
                   ) : null}
                   {m.attachment &&
                   m.body === `📎 ${m.attachment.name}` ? null : (
@@ -626,20 +609,14 @@ function Thread({
           />
         </Field>
         <div className="flex flex-wrap items-start justify-between gap-2">
-          {/* Escolher o arquivo envia na hora, junto com o texto digitado. */}
-          <FileAutoInput
-            name="file"
-            label={t("messages.attach.label")}
-            pendingLabel={t("messages.sending")}
-            uploadingLabel={t("messages.attach.uploading")}
-            tooBigLabel={t("messages.attach.tooBig")}
-            serverOnlyLabel={t("messages.attach.serverOnly")}
-            failedLabel={t("messages.attach.failed")}
-          />
+          {/* Escolher fotos ou arquivos envia na hora (vários de uma vez),
+              junto com o texto digitado. */}
+          <MessageAttach topicId={view.topic.id} labels={chatUploadLabels(t)} />
           <SubmitButton pendingText={t("messages.sending")}>
             {t("messages.send")}
           </SubmitButton>
         </div>
+        <p className="text-xs text-zinc-500">{t("chat.attachHint")}</p>
       </form>
     </Card>
   );

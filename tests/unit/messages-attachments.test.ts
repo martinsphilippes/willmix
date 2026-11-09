@@ -55,6 +55,7 @@ describe("anexo no chat", () => {
       id: documentId,
       name: "proposta.pdf",
       isImage: false,
+      size: 5,
     });
   });
 

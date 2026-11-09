@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { canAccessDocument } from "@/lib/services/documents";
 import { recordAck } from "@/lib/services/acknowledgements";
+import { opensInline } from "@/lib/file-kinds";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +34,9 @@ export async function GET(
       console.error("recordAck(document.viewed) failed", error);
     }
   }
-  const inline =
-    doc.mime.startsWith("image/") || doc.mime === "application/pdf";
+  // Foto e PDF abrem na aba; o resto (SVG inclusive) baixa.
+  const inline = opensInline(doc.mime);
+  const pdf = doc.mime.toLowerCase().startsWith("application/pdf");
   return new NextResponse(file.body, {
     headers: {
       "Content-Type": doc.mime,
@@ -42,6 +44,18 @@ export async function GET(
       // Arquivo nunca muda (versão nova = documento novo): o navegador guarda
       // por 1 h e não baixa de novo a cada tela. "private": só neste navegador.
       "Cache-Control": "private, max-age=3600",
+      // O navegador não "adivinha" outro tipo (um texto virar página).
+      "X-Content-Type-Options": "nosniff",
+      // Aberto na aba, o arquivo fica isolado: nenhum código dele roda como o
+      // portal (arquivo enviado por fornecedor, cliente ou parceiro). O PDF
+      // fica de fora porque o leitor de PDF do Chrome não abre isolado; o
+      // código de um PDF já roda à parte, no próprio leitor.
+      ...(pdf
+        ? {}
+        : {
+            "Content-Security-Policy":
+              "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox",
+          }),
     },
   });
 }

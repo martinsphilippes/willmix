@@ -316,7 +316,11 @@ async function decodeImage(file: File): Promise<{
  * passar de ~1,2 MB, reduz mais um pouco (até 3 tentativas). Foto pequena em
  * JPEG/PNG/WebP fica como está; o que o navegador não decodificar vai original.
  */
-async function shrink(file: File, maxDimension: number, quality: number) {
+export async function shrink(
+  file: File,
+  maxDimension: number,
+  quality: number,
+) {
   if (file.type && !file.type.startsWith("image/")) return file;
   // Vetor (SVG) não vira foto: vai como está (arte da embalagem).
   if (file.type === "image/svg+xml") return file;

@@ -30,7 +30,8 @@ export const pt = {
   "chat.noParticipants":
     "Nenhuma empresa participante ainda. Designe os parceiros no pedido.",
   "chat.error": "Não foi possível carregar a conversa. Tente de novo.",
-  "chat.attachHint": "Para anexar arquivo ou foto, abra em Mensagens.",
+  "chat.attachHint":
+    "Fotos e arquivos até 50 MB. No computador, dá para arrastar para cá ou colar uma imagem (Ctrl+V).",
   "messages.empty.conversations":
     "Nenhuma conversa ainda. Use “Nova conversa” para começar.",
   "messages.empty.thread": "Nenhuma mensagem neste assunto ainda.",
@@ -60,9 +61,19 @@ export const pt = {
   "messages.attach.serverOnly":
     "Neste ambiente o anexo vai até 4 MB. Reduza o arquivo e tente de novo.",
   "messages.attach.failed": "Não foi possível enviar o arquivo. Tente de novo.",
+  "messages.attach.photo": "Foto",
+  "messages.attach.photoTitle":
+    "Tirar ou escolher fotos (várias de uma vez). Vão reduzidas, para chegar rápido.",
+  "messages.attach.file": "Arquivo",
+  "messages.attach.fileTitle":
+    "PDF, planilha, Word, vídeo, arte ou foto original (até 50 MB cada, vários de uma vez).",
+  "messages.attach.progress": "Enviando {done} de {total}…",
+  "messages.attach.progressPercent": "Enviando {done} de {total}… {percent}%",
+  "messages.attach.drop": "Solte aqui para enviar na conversa",
+  "messages.attach.failedFile": "{name}: {reason}",
   "messages.error.too_large": "Arquivo grande demais (máximo 50 MB).",
   "messages.error.mime":
-    "Tipo de arquivo não aceito. Envie PDF, imagem, planilha ou arte.",
+    "Tipo de arquivo não aceito. Envie foto, PDF, planilha, Word, vídeo ou arte.",
   "messages.error.empty": "O arquivo está vazio.",
   "messages.error.upload_missing":
     "O arquivo não chegou. Escolha de novo e envie.",
@@ -128,7 +139,8 @@ export const en: Record<keyof typeof pt, string> = {
   "chat.noParticipants":
     "No participating company yet. Assign the partners on the order.",
   "chat.error": "Could not load the conversation. Try again.",
-  "chat.attachHint": "To attach a file or photo, open in Messages.",
+  "chat.attachHint":
+    "Photos and files up to 50 MB. On a computer you can drag them here or paste an image (Ctrl+V).",
   "messages.empty.conversations":
     "No conversations yet. Use “New conversation” to start one.",
   "messages.empty.thread": "No messages in this topic yet.",
@@ -158,9 +170,19 @@ export const en: Record<keyof typeof pt, string> = {
   "messages.attach.serverOnly":
     "In this environment attachments are limited to 4 MB. Reduce the file and try again.",
   "messages.attach.failed": "Could not upload the file. Try again.",
+  "messages.attach.photo": "Photo",
+  "messages.attach.photoTitle":
+    "Take or choose photos (several at once). They are reduced so they arrive fast.",
+  "messages.attach.file": "File",
+  "messages.attach.fileTitle":
+    "PDF, spreadsheet, Word, video, artwork or original photo (up to 50 MB each, several at once).",
+  "messages.attach.progress": "Sending {done} of {total}…",
+  "messages.attach.progressPercent": "Sending {done} of {total}… {percent}%",
+  "messages.attach.drop": "Drop here to send in the conversation",
+  "messages.attach.failedFile": "{name}: {reason}",
   "messages.error.too_large": "File too large (max 50 MB).",
   "messages.error.mime":
-    "File type not accepted. Send a PDF, image, spreadsheet or artwork.",
+    "File type not accepted. Send a photo, PDF, spreadsheet, Word file, video or artwork.",
   "messages.error.empty": "The file is empty.",
   "messages.error.upload_missing":
     "The file did not arrive. Choose it again and send.",
@@ -225,7 +247,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "chat.loading": "加载中…",
   "chat.noParticipants": "尚无参与企业。请先在订单中指定合作方。",
   "chat.error": "无法加载对话，请重试。",
-  "chat.attachHint": "如需附件，请在消息中打开。",
+  "chat.attachHint":
+    "照片和文件最大 50 MB。在电脑上可以拖到这里，或粘贴图片（Ctrl+V）。",
   "messages.empty.conversations": "还没有对话。点击“新对话”开始。",
   "messages.empty.thread": "此话题还没有消息。",
   "messages.empty.select": "请在列表中选择一个对话。",
@@ -253,8 +276,20 @@ export const zh: Record<keyof typeof pt, string> = {
   "messages.attach.tooBig": "文件过大（最大 50 MB）。",
   "messages.attach.serverOnly": "此环境中附件最大 4 MB。请缩小文件后重试。",
   "messages.attach.failed": "文件上传失败，请重试。",
+  "messages.attach.photo": "照片",
+  "messages.attach.photoTitle":
+    "拍摄或选择照片（可多选），会自动压缩，发送更快。",
+  "messages.attach.file": "文件",
+  "messages.attach.fileTitle":
+    "PDF、表格、Word、视频、设计稿或原图（每个最大 50 MB，可多选）。",
+  "messages.attach.progress": "正在发送第 {done} 个，共 {total} 个…",
+  "messages.attach.progressPercent":
+    "正在发送第 {done} 个，共 {total} 个… {percent}%",
+  "messages.attach.drop": "松开即可发送到对话",
+  "messages.attach.failedFile": "{name}：{reason}",
   "messages.error.too_large": "文件过大（最大 50 MB）。",
-  "messages.error.mime": "不支持该文件类型。请发送 PDF、图片、表格或设计稿。",
+  "messages.error.mime":
+    "不支持该文件类型。请发送照片、PDF、表格、Word、视频或设计稿。",
   "messages.error.empty": "文件为空。",
   "messages.error.upload_missing": "文件未送达，请重新选择并发送。",
   "messages.unread": "{n} 条未读",

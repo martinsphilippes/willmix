@@ -13,6 +13,18 @@ import {
 import type { ChatContext, ConversationView } from "@/lib/services/messages";
 import { ChatIcon } from "./chat-open-button";
 import { MessageTranslationNote } from "./message-translation-note";
+import { ChatAttachmentView } from "./chat-attachment";
+import {
+  ChatAttachButtons,
+  ChatDropOverlay,
+  ChatUploadStatus,
+} from "./chat-attach";
+import {
+  pastedFiles,
+  useChatUpload,
+  useFileDrop,
+  type ChatUploadLabels,
+} from "./chat-upload";
 import { CHAT_EVENT, type ChatTargetDetail } from "@/lib/chat-target";
 import { cx } from "./ui";
 
@@ -22,9 +34,11 @@ import { cx } from "./ui";
  * do pedido/da solicitação; quem é de fora fala só com a Wellmix) e sobre o
  * quê (pedido inteiro ou um item), as mensagens do assunto e o campo de
  * envio. As Server Actions devolvem dados (sem redirecionar) e o serviço
- * confere o acesso. Atualiza a cada 20 s enquanto está aberto. Anexos só na
- * tela de Mensagens (link no rodapé). Cada mensagem do outro lado aparece no
- * idioma de quem lê (tradução automática, com "Ver original").
+ * confere o acesso. Atualiza a cada 20 s enquanto está aberto. Fotos e
+ * arquivos: botões "Foto" e "Arquivo" (vários de uma vez), arrastar para o
+ * painel ou colar um print na caixa de texto; a foto aparece na conversa.
+ * Cada mensagem do outro lado aparece no idioma de quem lê (tradução
+ * automática, com "Ver original").
  */
 
 export interface ChatDrawerLabels {
@@ -46,6 +60,8 @@ export interface ChatDrawerLabels {
   wellmix: string;
   empty: string;
   intl: string;
+  /** Fotos e arquivos (botões, andamento, erros). */
+  attach: ChatUploadLabels;
 }
 
 const REFRESH_MS = 20_000;
@@ -83,6 +99,10 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
   /** Mensagem sendo traduzida pelo botão "Traduzir". */
   const [translating, setTranslating] = useState<string | null>(null);
   const readFor = useRef<string | null>(null);
+  /** Painel inteiro (fundo incluído): arrastar arquivos para cá envia. */
+  const panelRef = useRef<HTMLDivElement>(null);
+  /** Assunto aberto agora (o envio de arquivos recarrega este). */
+  const topicRef = useRef<string | null>(null);
 
   const loadThread = useCallback(
     async (topicId: string) => {
@@ -101,6 +121,30 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     },
     [labels.error],
   );
+
+  const upload = useChatUpload({
+    labels: labels.attach,
+    onSent: async () => {
+      if (topicRef.current) await loadThread(topicRef.current);
+    },
+    // O texto da caixa foi junto com a foto: limpa (se não mudou depois).
+    onCaptionSent: (caption) => {
+      setBody((b) => (b.trim() === caption ? "" : b));
+      setDraft("");
+    },
+  });
+  const sendFiles = (files: File[], photo: boolean) => {
+    if (!topic) return;
+    void upload.send(topic.topicId, files, { caption: body, photo });
+  };
+  // Enquanto o painel está aberto, o que for solto nele é dele (mesmo antes
+  // de a conversa carregar: não cai na tela de baixo nem abre o arquivo).
+  const dragging = useFileDrop(panelRef, open, (files) =>
+    sendFiles(files, false),
+  );
+  useEffect(() => {
+    topicRef.current = topic?.topicId ?? null;
+  }, [topic]);
 
   // Abre (ou acha) o assunto da escolha atual e carrega as mensagens.
   const openTopic = useCallback(
@@ -229,7 +273,11 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     );
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" data-chat-drawer>
+    <div
+      ref={panelRef}
+      className="fixed inset-0 z-50 flex justify-end"
+      data-chat-drawer
+    >
       {/* Fundo: tocar fora fecha. */}
       <button
         type="button"
@@ -243,6 +291,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
         aria-label={labels.title}
         className="relative flex h-full w-full max-w-[30rem] flex-col bg-white shadow-2xl"
       >
+        {dragging ? <ChatDropOverlay label={labels.attach.drop} /> : null}
         <header className="flex items-start justify-between gap-3 border-b border-zinc-200 px-4 py-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
@@ -376,17 +425,11 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
                       · {when(m.createdAt, labels.intl)}
                     </div>
                     {m.attachment ? (
-                      <a
-                        href={`/api/files/${m.attachment.id}`}
-                        target="_blank"
-                        rel="noopener"
-                        className={cx(
-                          "block font-semibold underline underline-offset-2",
-                          m.mine ? "text-white" : "text-brand-700",
-                        )}
-                      >
-                        📎 {m.attachment.name}
-                      </a>
+                      <ChatAttachmentView
+                        attachment={m.attachment}
+                        mine={m.mine}
+                        intl={labels.intl}
+                      />
                     ) : null}
                     {m.attachment &&
                     m.body === `📎 ${m.attachment.name}` ? null : (
@@ -443,6 +486,13 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
                 void send();
               }
             }}
+            onPaste={(e) => {
+              // Print da tela ou imagem copiada: vai como anexo.
+              const files = pastedFiles(e);
+              if (!files.length) return;
+              e.preventDefault();
+              sendFiles(files, false);
+            }}
             rows={2}
             maxLength={4000}
             placeholder={labels.placeholder}
@@ -450,18 +500,11 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-zinc-50"
           />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-xs text-zinc-500">
-              {topic ? (
-                <Link
-                  href={`/app/messages?c=${topic.conversationId}&t=${topic.topicId}`}
-                  className="font-medium text-brand-700 underline underline-offset-2"
-                  data-chat-open-full
-                >
-                  {labels.openFull}
-                </Link>
-              ) : null}
-              <span className="block">{labels.attachHint}</span>
-            </div>
+            <ChatAttachButtons
+              labels={labels.attach}
+              disabled={!topic || upload.busy}
+              onFiles={sendFiles}
+            />
             <button
               type="submit"
               disabled={!topic || busy || !typed}
@@ -470,6 +513,21 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
             >
               {busy ? labels.sending : labels.send}
             </button>
+          </div>
+          <div className="mt-1.5">
+            <ChatUploadStatus status={upload.status} error={upload.error} />
+          </div>
+          <div className="mt-1 text-xs text-zinc-500">
+            <span className="block">{labels.attachHint}</span>
+            {topic ? (
+              <Link
+                href={`/app/messages?c=${topic.conversationId}&t=${topic.topicId}`}
+                className="font-medium text-brand-700 underline underline-offset-2"
+                data-chat-open-full
+              >
+                {labels.openFull}
+              </Link>
+            ) : null}
           </div>
         </form>
       </aside>

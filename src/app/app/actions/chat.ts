@@ -106,6 +106,42 @@ export async function chatSendAction(topicId: unknown, body: unknown) {
   });
 }
 
+/** Id do arquivo que o navegador subiu direto ao armazenamento. */
+const uploadedId = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
+
+/**
+ * Envia um arquivo (foto, PDF, planilha, vídeo…) no assunto, com o texto
+ * digitado (opcional), pelo painel lateral ou pela tela de Mensagens. Uma
+ * mensagem por arquivo, como no WhatsApp. Até ~3,5 MB o arquivo vem no
+ * formulário; maior, o navegador já o subiu direto ao armazenamento e manda
+ * só o id. O serviço confere o acesso ao assunto antes de gravar qualquer
+ * coisa, e o tipo e o tamanho do arquivo.
+ */
+export async function chatSendFileAction(form: FormData) {
+  const user = await requireUser();
+  return guard(async () => {
+    const id = ID.parse(form.get("topicId"));
+    const text = z
+      .string()
+      .trim()
+      .max(MESSAGE_MAX_LENGTH)
+      .parse(form.get("body") ?? "");
+    const file = form.get("file");
+    const uploaded = form.get("uploadedFileId");
+    if (file instanceof File && file.size === 0) throw new Error("empty");
+    const attachment =
+      file instanceof File
+        ? file
+        : typeof uploaded === "string" && uploaded
+          ? { fileKey: uploadedId.parse(uploaded) }
+          : null;
+    if (!attachment) throw new Error("upload_missing");
+    const { postMessage } = await import("@/lib/services/messages");
+    const message = await postMessage(user, id, text, attachment);
+    return { id: message.id };
+  });
+}
+
 /** Marca o assunto como lido (a tela mostrou mensagens novas). */
 export async function chatReadAction(topicId: unknown) {
   const user = await requireUser();
