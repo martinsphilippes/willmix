@@ -106,13 +106,21 @@ export async function markSupplierPaymentPaidAction(form: FormData) {
 
 /**
  * Informa (ou corrige) o câmbio de um pagamento ao fornecedor já feito: o
- * custo desse pagamento deixa de ser estimado no financeiro.
+ * custo desse pagamento deixa de ser estimado no financeiro. Vindo da tela
+ * Financeiro (`back=finance`, botão "Informar câmbio" na linha do pedido),
+ * volta para a mesma linha de lá; senão, para os pagamentos do pedido.
  */
 export async function setSupplierPaymentFxAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");
   const paymentId = str(form, "paymentId");
-  await run(`/app/orders/${orderId}`, async () => {
+  // Só dois destinos fixos (nunca um endereço vindo do formulário).
+  const fromFinance = str(form, "back") === "finance";
+  const row = encodeURIComponent(orderId);
+  const back = fromFinance
+    ? `/app/finance?row=${row}#fx-${row}`
+    : `/app/orders/${orderId}`;
+  await run(back, async () => {
     assertRole(user, ["admin"]);
     // Câmbio vazio, zero ou negativo: mensagem própria (não a genérica).
     const parsed = z.number().positive().safeParse(num(form, "fxRate"));
@@ -121,6 +129,8 @@ export async function setSupplierPaymentFxAction(form: FormData) {
     const { setSupplierPaymentFx } =
       await import("@/lib/services/supplier-payment");
     await setSupplierPaymentFx(user, orderId, paymentId, fxRate);
-    return `/app/orders/${orderId}?fx=saved#payments`;
+    return fromFinance
+      ? `/app/finance?row=${row}&fx=saved#fx-${row}`
+      : `/app/orders/${orderId}?fx=saved#payments`;
   });
 }

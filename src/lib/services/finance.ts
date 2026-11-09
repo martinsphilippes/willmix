@@ -57,6 +57,21 @@ export interface OrderFinance {
   estimateDay: string | null;
   /** Unidades do FOB pagas sem câmbio informado (estimadas pelo câmbio do dia). */
   paidNoFx: number;
+  /**
+   * Pagamentos ao fornecedor já feitos (em moeda estrangeira) sem o câmbio do
+   * banco: o que o Financeiro pede, um a um, com o botão "Informar câmbio".
+   */
+  missingFx: PaymentWithoutFx[];
+  /**
+   * Câmbio do banco já informado nos pagamentos na moeda do FOB (a base do
+   * câmbio médio real): quantos e o dia do último. Nulo se nenhum.
+   */
+  bankFx: { count: number; lastDay: string } | null;
+  /**
+   * Cotação automática do dia usada na estimativa (referência ao lado do campo
+   * do câmbio do banco nos pagamentos). Nula quando a tela não busca câmbio.
+   */
+  fxToday: FxToday | null;
   /** Unidades do FOB ainda não pagas (estimadas pelo câmbio do dia). */
   unpaid: number;
   /** Pagamento em outra moeda convertido em unidades do FOB pelo câmbio do dia. */
@@ -74,6 +89,19 @@ export interface OrderFinance {
   margin: number | null;
   marginPct: number | null;
 }
+
+/** Pagamento ao fornecedor já feito, em moeda estrangeira, sem o câmbio do banco. */
+export interface PaymentWithoutFx {
+  id: string;
+  amount: number;
+  currency: string;
+  /** Dia do pagamento (AAAA-MM-DD). */
+  day: string;
+}
+
+/** Dia do pagamento: o da confirmação ou, sem ela, o do registro. */
+const paymentDay = (p: Payment) =>
+  (p.confirmedAt ?? p.createdAt ?? "").slice(0, 10);
 
 /** Câmbio do dia (R$ por unidade de cada moeda), para estimar o que falta pagar. */
 export interface FxToday {
@@ -214,6 +242,27 @@ export function computeOrderFinance(
       }
     }
   }
+  // O que o Financeiro pede: pagamento em moeda estrangeira sem câmbio do banco.
+  const missingFx: PaymentWithoutFx[] = outbound
+    .filter((p) => fxKey(p.currency) !== "BRL" && !(p.fxRate && p.fxRate > 0))
+    .map((p) => ({
+      id: p.id,
+      amount: p.amount,
+      currency: (p.currency || fobCurrency).toUpperCase(),
+      day: paymentDay(p),
+    }))
+    .sort((a, b) => a.day.localeCompare(b.day));
+  // Câmbio do banco informado na moeda do FOB (o mesmo conjunto do câmbio médio).
+  const banked = outbound.filter(
+    (p) =>
+      inFob(p) && fxKey(p.currency) !== "BRL" && !!p.fxRate && p.fxRate > 0,
+  );
+  const bankFx = banked.length
+    ? {
+        count: banked.length,
+        lastDay: banked.map(paymentDay).sort().at(-1) as string,
+      }
+    : null;
   // Cancelado: o que não foi pago não vai ser; só conta o que saiu.
   const unpaid = cancelled ? 0 : Math.max(0, fob - realUnits - noFxUnits);
   const estUnits = noFxUnits + unpaid;
@@ -315,6 +364,9 @@ export function computeOrderFinance(
     estimateDay:
       estimateFrom && estimateFrom !== "paid" ? (fx.today?.day ?? null) : null,
     paidNoFx: noFxUnits,
+    missingFx,
+    bankFx,
+    fxToday: fx.today ?? null,
     unpaid,
     crossConverted,
     sellRate: sellBrl !== null && sellBrl !== 1 ? sellBrl : null,

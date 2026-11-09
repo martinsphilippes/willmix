@@ -2,10 +2,12 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
- * Margem com câmbio: o que foi pago ao fornecedor usa o câmbio real do
- * pagamento; o que falta pagar (ou tudo, antes do primeiro pagamento) é
- * estimado pelo câmbio do dia ("~", com o câmbio à vista); com o câmbio da
- * venda gravado na proposta, mostra quanto o câmbio mexeu na margem.
+ * Margem com câmbio: o que foi pago ao fornecedor usa o câmbio do banco
+ * informado no pagamento; o que falta pagar (ou tudo, antes do primeiro
+ * pagamento) é estimado pela cotação automática do dia ("~", com a cotação à
+ * vista); com o câmbio da venda gravado na proposta, mostra quanto o câmbio
+ * mexeu na margem. Pagamento feito sem o câmbio do banco é pedido à parte
+ * ("Falta o câmbio do banco…"), com o dia do pagamento.
  */
 withTempStore();
 
@@ -32,14 +34,23 @@ const order = (patch: Partial<Order> = {}) =>
     fobCurrency: "USD",
     ...patch,
   }) as unknown as Order;
-const out = (amount: number, fxRate: number | null, currency = "USD") =>
+let seq = 0;
+const out = (
+  amount: number,
+  fxRate: number | null,
+  currency = "USD",
+  day = "2026-10-10",
+) =>
   ({
+    id: `pay-${++seq}`,
     amount,
     currency,
     direction: "supplier_out",
     status: "confirmed",
     fxRate,
-  }) as Payment;
+    createdAt: `${day}T12:00:00.000Z`,
+    confirmedAt: null,
+  }) as unknown as Payment;
 const today = (
   usd: number,
   status: "today" | "stale" | "manual" = "today",
@@ -217,20 +228,20 @@ describe("textos do câmbio", () => {
     const lines = text.fxRateLines(pt, partial)!;
     expect(lines.main).toBe("5,1000");
     expect(lines.notes).toEqual([
-      "real (pagamentos)",
-      "saldo a ~5,4000 (câmbio de 17/10)",
-      "venda 5,0000",
+      "câmbio do banco, pago em 10/10",
+      "a pagar: ~5,4000 (cotação automática de 17/10)",
+      "câmbio da venda: 5,0000",
     ]);
     // Pago em parte: diz o que é real e o que foi estimado.
     expect(text.costEstimateNote(pt, partial)).toBe(
-      "pago no câmbio real; o resto estimado a 5,4000 (câmbio de 17/10)",
+      "pago no câmbio do banco; o resto estimado a 5,4000 (cotação automática de 17/10)",
     );
     expect(
       text.costEstimateNote(
         pt,
         f.computeOrderFinance(order(), [], names, { today: today(5.4) }),
       ),
-    ).toBe("estimado a 5,4000 (câmbio de 17/10)");
+    ).toBe("estimado a 5,4000 (cotação automática de 17/10)");
     const effect = text.fxEffectText(pt, partial)!;
     expect(effect.negative).toBe(true);
     expect(effect.text).toContain("câmbio desde a venda:");
@@ -247,7 +258,18 @@ describe("textos do câmbio", () => {
     });
     const paid = f.computeOrderFinance(order(), [out(1000, 5)], names);
     expect(text.costEstimateNote(pt, paid)).toBeNull();
-    expect(text.fxRateLines(pt, paid)?.notes).toEqual(["real (pagamentos)"]);
+    expect(text.fxRateLines(pt, paid)?.notes).toEqual([
+      "câmbio do banco, pago em 10/10",
+    ]);
+    // Vários pagamentos com câmbio: a média, com o dia do último.
+    const two = f.computeOrderFinance(
+      order(),
+      [out(400, 5, "USD", "2026-10-02"), out(600, 5.2, "USD", "2026-10-09")],
+      names,
+    );
+    expect(text.fxRateLines(pt, two)?.notes).toEqual([
+      "média do banco (2 pagamentos), o último em 09/10",
+    ]);
 
     for (const locale of ["pt", "en", "zh"] as const) {
       const t = translator(locale);
@@ -324,13 +346,15 @@ describe("achados da revisão", () => {
     expect(x.fxEffect).toBe(0);
     const crossLines = text.fxRateLines(pt, x)!;
     expect(crossLines.notes).toContain(
-      "pagamento em outra moeda convertido pelo câmbio do dia",
+      "pagamento em outra moeda convertido pela cotação automática",
     );
     // Nada pago na moeda do FOB com câmbio: o número principal é estimado,
-    // sem "real (pagamentos)" (depende do câmbio do dia).
+    // sem "câmbio do banco" (depende da cotação do dia).
     expect(x.avgFx).toBeNull();
     expect(crossLines.main.startsWith("~")).toBe(true);
-    expect(crossLines.notes).not.toContain("real (pagamentos)");
+    expect(crossLines.notes.some((n) => n.startsWith("câmbio do banco"))).toBe(
+      false,
+    );
     // Misto: o real é só o pago em dólar com câmbio (5,2), não o do dia.
     const mixed = f.computeOrderFinance(
       order(),
@@ -433,12 +457,24 @@ describe("achados da revisão", () => {
     expect(x.paidNoFx).toBe(700);
     expect(x.unpaid).toBe(0);
     const lines = text.fxRateLines(pt, x)!;
-    // (Intl separa moeda e valor com espaço não separável.)
-    expect(lines.notes.map((n) => n.replace(/\s/g, " "))).toEqual([
-      "real (pagamentos)",
-      "pago sem câmbio: US$ 700,00 a ~5,4000 — informe o câmbio no pagamento",
+    expect(lines.notes).toEqual([
+      "câmbio do banco, pago em 10/10",
+      "pago sem câmbio: ~5,4000 (cotação automática de 17/10)",
     ]);
-    expect(lines.notes.join(" ")).not.toContain("saldo");
+    expect(lines.notes.join(" ")).not.toContain("a pagar");
+    // O pedido do câmbio fica à parte (com o botão), com o valor e o dia.
+    expect(x.missingFx).toEqual([
+      {
+        id: expect.any(String),
+        amount: 700,
+        currency: "USD",
+        day: "2026-10-10",
+      },
+    ]);
+    // (Intl separa moeda e valor com espaço não separável.)
+    expect(text.missingFxText(pt, x)!.replace(/\s/g, " ")).toBe(
+      "Falta o câmbio do banco do pagamento de US$ 700,00 (10/10)",
+    );
   });
 
   it("efeito estimado leva ~; zero não aparece; -0 vira 0", () => {
@@ -483,7 +519,7 @@ describe("achados da revisão", () => {
       today: today(5.4, "stale"),
     });
     expect(text.fxRateLines(pt, x)!.notes).toContain(
-      "saldo a ~5,4000 (último câmbio, 17/10)",
+      "a pagar: ~5,4000 (última cotação automática, 17/10)",
     );
     const zh = text.fxRateLines(translator("zh"), x)!.notes.join(" ");
     expect(zh).toContain("（");
@@ -493,7 +529,7 @@ describe("achados da revisão", () => {
         pt,
         f.computeOrderFinance(order(), [out(500, 5)], names),
       )!.notes,
-    ).toContain("saldo a ~5,0000 (média do câmbio pago)");
+    ).toContain("a pagar: ~5,0000 (média do câmbio do banco)");
   });
 
   it("venda em outra moeda: custo em reais levado à moeda da venda, estimado", () => {
@@ -605,5 +641,114 @@ describe("pedido de verdade", () => {
     expect(
       tower.rows.find((x) => x.order.id === placed.id)!.fxBasis,
     ).toBeNull();
+  });
+});
+
+describe("falta o câmbio do banco", () => {
+  const pt = translator("pt");
+
+  it("lista só o pago em moeda estrangeira sem câmbio, do mais antigo ao mais novo", () => {
+    const x = f.computeOrderFinance(
+      order(),
+      [
+        out(500, null, "USD", "2026-11-05"),
+        out(200, null, "USD", "2026-10-01"),
+        out(100, 5.3, "USD", "2026-10-20"),
+        out(540, null, "BRL", "2026-10-03"),
+      ],
+      names,
+      { today: today(5.4) },
+    );
+    expect(x.missingFx.map((p) => [p.amount, p.day])).toEqual([
+      [200, "2026-10-01"],
+      [500, "2026-11-05"],
+    ]);
+    // Câmbio do banco: o pago na moeda do FOB com câmbio, com o dia do último.
+    expect(x.bankFx).toEqual({ count: 1, lastDay: "2026-10-20" });
+    expect(text.missingFxText(pt, x)!.replace(/\s/g, " ")).toBe(
+      "Falta o câmbio do banco de 2 pagamentos (US$ 700,00)",
+    );
+    expect(
+      text.missingPaymentText(pt, x.missingFx[0]).replace(/\s/g, " "),
+    ).toBe("US$ 200,00, pago em 01/10");
+  });
+
+  it("pago sem câmbio e nada com câmbio: cotação automática no número, pedido à parte", () => {
+    const x = f.computeOrderFinance(
+      order({ fobTotal: 2000 }),
+      [out(680, null, "USD", "2026-11-05")],
+      names,
+      { today: today(5.5037), saleFx: 5.0465 },
+    );
+    expect(x.fxBasis).toBe("estimate");
+    expect(text.fxRateLines(pt, x)).toEqual({
+      main: "~5,5037",
+      notes: ["~ cotação automática de 17/10", "câmbio da venda: 5,0465"],
+    });
+    expect(text.missingFxText(pt, x)!.replace(/\s/g, " ")).toBe(
+      "Falta o câmbio do banco do pagamento de US$ 680,00 (05/11)",
+    );
+    // Câmbio informado: nada a pedir, e o dia do pagamento aparece.
+    const done = f.computeOrderFinance(
+      order({ fobTotal: 680 }),
+      [out(680, 5.21, "USD", "2026-11-05")],
+      names,
+      { today: today(5.5037) },
+    );
+    expect(done.missingFx).toEqual([]);
+    expect(text.missingFxText(pt, done)).toBeNull();
+    expect(text.fxRateLines(pt, done)!.notes).toEqual([
+      "câmbio do banco, pago em 05/11",
+    ]);
+  });
+
+  it("cotação automática só de referência, na moeda do pagamento", () => {
+    const day = today(5.4);
+    expect(text.fxReferenceText(pt, day, "USD")).toBe(
+      "Referência: cotação automática de 17/10, 1 USD = R$ 5,4000",
+    );
+    expect(text.fxReferenceText(pt, day, "CNY")).toBe(
+      "Referência: cotação automática de 17/10, 1 CNY = R$ 0,7500",
+    );
+    expect(text.fxReferenceText(pt, today(5.4, "manual"), "USD")).toBe(
+      "Referência: câmbio manual, 1 USD = R$ 5,4000",
+    );
+    expect(text.fxReferenceText(pt, day, "BRL")).toBeNull();
+    expect(text.fxReferenceText(pt, null, "USD")).toBeNull();
+    // A cotação viaja com o financeiro do pedido (para o campo do pagamento).
+    const x = f.computeOrderFinance(order(), [], names, { today: day });
+    expect(x.fxToday).toBe(day);
+    expect(f.computeOrderFinance(order(), [], names).fxToday).toBeNull();
+  });
+
+  it("textos novos nas três línguas, sem chave crua nem {campo}", () => {
+    const x = f.computeOrderFinance(
+      order(),
+      [out(300, 5.1), out(200, null), out(100, null, "USD", "2026-10-12")],
+      names,
+      { today: today(5.4), saleFx: 5 },
+    );
+    const one = f.computeOrderFinance(order(), [out(200, null)], names, {
+      today: today(5.4),
+    });
+    for (const locale of ["pt", "en", "zh"] as const) {
+      const t = translator(locale);
+      const all = [
+        ...text.fxRateLines(t, x)!.notes,
+        text.missingFxText(t, x)!,
+        text.missingFxText(t, one)!,
+        text.missingPaymentText(t, x.missingFx[0]),
+        text.fxReferenceText(t, today(5.4), "USD")!,
+        text.fxReferenceText(t, today(5.4, "manual"), "EUR")!,
+        t("finance.fx.bankLabel", { currency: "USD" }),
+        t("finance.fx.bankLabelAny"),
+        t("finance.fx.bankHint"),
+        t("finance.fx.savedShort"),
+      ];
+      for (const s of all) {
+        expect(s.startsWith("finance."), s).toBe(false);
+        expect(s, s).not.toMatch(/\{\w+\}/);
+      }
+    }
   });
 });

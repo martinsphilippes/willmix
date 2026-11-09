@@ -7,10 +7,15 @@ import {
   costEstimateNote,
   fxEffectText,
   fxRateLines,
+  missingFxText,
 } from "@/components/finance-fx-text";
+import { FxInform } from "@/components/fx-inform";
 import { getT } from "@/i18n/server";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { fallbackError } from "@/i18n/error-text";
 import type { ReactNode } from "react";
 import {
+  Alert,
   Badge,
   cx,
   Empty,
@@ -36,12 +41,27 @@ function Money({ children }: { children: ReactNode }) {
 }
 
 /** Financeiro: venda, recebimentos, custo, pagamentos e margem por pedido. Só Wellmix. */
-export default async function FinancePage() {
+export default async function FinancePage({
+  searchParams,
+}: PageProps<"/app/finance">) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "finance");
   const t = await getT();
   const { rows, summary } = await loadFinance();
+  // Volta do "Informar câmbio" da linha: ?row=<pedido>&fx=saved ou &error=<código>.
+  const { row, fx: fxSaved, error } = await searchParams;
+  const rowId = typeof row === "string" ? row : null;
+  const errorText =
+    typeof error === "string" && error
+      ? t(`orders.error.${error}` as DictionaryKey) !== `orders.error.${error}`
+        ? t(`orders.error.${error}` as DictionaryKey)
+        : fallbackError(t, error)
+      : null;
+  // Erro de uma linha que não está mais na lista: aviso no alto.
+  const rowShown = rows.some(
+    (r) => r.order.id === rowId && r.order.status !== "CANCELLED",
+  );
   const fmtBy = (map: Record<string, number>) =>
     Object.entries(map)
       .filter(([, v]) => v > 0.005)
@@ -151,6 +171,11 @@ export default async function FinancePage() {
       </div>
 
       <div className="mt-4">
+        {errorText && !rowShown ? (
+          <div className="mb-3">
+            <Alert tone="danger">{errorText}</Alert>
+          </div>
+        ) : null}
         {rows.length === 0 ? (
           <Empty>{t("common.none")}</Empty>
         ) : (
@@ -174,7 +199,12 @@ export default async function FinancePage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.order.id} className={rowClass}>
+                <tr
+                  key={r.order.id}
+                  // Âncora da volta do "Informar câmbio" (#fx-<pedido>).
+                  id={`fx-${r.order.id}`}
+                  className={cx(rowClass, "scroll-mt-24")}
+                >
                   <Td>
                     <TextLink href={`/app/orders/${r.order.id}`}>
                       #{r.order.number}
@@ -242,28 +272,60 @@ export default async function FinancePage() {
                   <Td className="whitespace-nowrap">
                     {(() => {
                       // Cancelado: fora de custo e margem, sem câmbio a mostrar.
-                      const fx =
-                        r.order.status === "CANCELLED"
-                          ? null
-                          : fxRateLines(t, r);
-                      if (!fx) return "—";
+                      const live = r.order.status !== "CANCELLED";
+                      const fx = live ? fxRateLines(t, r) : null;
+                      // Pagamento feito sem o câmbio do banco: pede, com o botão.
+                      const missing = live ? missingFxText(t, r) : null;
+                      const here = rowId === r.order.id && live;
                       return (
                         <>
-                          <span
-                            className="tabular-nums"
-                            data-fx-basis={r.fxBasis ?? "none"}
-                          >
-                            {fx.main}
-                          </span>
-                          {/* Notas quebram linha: não empurram custo e margem para fora. */}
-                          {fx.notes.map((note, i) => (
-                            <div
-                              key={i}
-                              className="max-w-44 whitespace-normal text-xs font-normal text-zinc-500"
+                          {fx ? (
+                            <>
+                              <span
+                                className="tabular-nums"
+                                data-fx-basis={r.fxBasis ?? "none"}
+                              >
+                                {fx.main}
+                              </span>
+                              {/* Notas quebram linha: não empurram custo e margem para fora. */}
+                              {fx.notes.map((note, i) => (
+                                <div
+                                  key={i}
+                                  className="max-w-44 whitespace-normal text-xs font-normal text-zinc-500"
+                                >
+                                  {note}
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                          {missing ? (
+                            <FxInform
+                              t={t}
+                              orderId={r.order.id}
+                              text={missing}
+                              payments={r.missingFx}
+                              open={here && !!errorText}
+                            />
+                          ) : null}
+                          {here && fxSaved === "saved" ? (
+                            <p
+                              className="mt-1 max-w-44 whitespace-normal text-xs font-medium text-emerald-700"
+                              data-fx-saved=""
                             >
-                              {note}
-                            </div>
-                          ))}
+                              {t("finance.fx.savedShort")}
+                            </p>
+                          ) : null}
+                          {here && errorText ? (
+                            <p
+                              className="mt-1 max-w-44 whitespace-normal text-xs font-medium text-red-700"
+                              role="alert"
+                              data-fx-error=""
+                            >
+                              {errorText}
+                            </p>
+                          ) : null}
                         </>
                       );
                     })()}
