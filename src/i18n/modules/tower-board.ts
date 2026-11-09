@@ -66,6 +66,8 @@ export const pt = {
   "board.card.probReviews": "Itens para revisão",
   "board.card.probCertExpiring": "Certificação vencendo",
   "board.card.probCancelRequest": "Pedido de cancelamento",
+  "board.card.ordClosed": "Encerrado",
+  "board.stoppedAt": "Parou em: {step}",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -132,6 +134,8 @@ export const en: Record<keyof typeof pt, string> = {
   "board.card.probReviews": "Items to review",
   "board.card.probCertExpiring": "Certification expiring",
   "board.card.probCancelRequest": "Cancellation request",
+  "board.card.ordClosed": "Closed",
+  "board.stoppedAt": "Stopped at: {step}",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -197,4 +201,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.card.probReviews": "待复核事项",
   "board.card.probCertExpiring": "认证即将到期",
   "board.card.probCancelRequest": "取消申请",
+  "board.card.ordClosed": "已结案",
+  "board.stoppedAt": "停在：{step}",
 };

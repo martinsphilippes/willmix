@@ -11,6 +11,7 @@ import {
   canViewOrder,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { journeyIndex, loadJourneyInput, type JourneyStep } from "./journey";
 
 /*
  * Painel de Pedidos: cada pedido com a etapa em que está (cancelado mostra a
@@ -58,6 +59,11 @@ export interface PipelineRow {
   state: PipelineState;
   /** Quanto da etapa atual foi cumprido (pedidos em andamento). */
   progress: number | null;
+  /**
+   * Passo da viagem, o mesmo dos quadrados da Control Tower (journey.ts):
+   * encerrado no fim; cancelado, onde parou; nulo quando não se sabe.
+   */
+  journey: JourneyStep | null;
   dueAt: string | null;
   updatedAt: string;
   /** Itens do pedido (ou o produto da solicitação). */
@@ -128,6 +134,22 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
         }
       : { groupKey: own, groupHref: null };
   const showSupplier = canSeeSupplier(user) && user.role !== "supplier";
+  // Passo da viagem: pedidos em andamento e cancelados (onde pararam) e as
+  // solicitações abertas, com a regra da Control Tower.
+  const journey = journeyIndex(
+    await loadJourneyInput(
+      visibleOrders
+        .filter(
+          (o) =>
+            o.status !== "CLOSED" &&
+            (o.status !== "CANCELLED" || !!o.cancelStageKey),
+        )
+        .map((o) => o.id),
+      requests
+        .filter((r) => r.status !== "ORDERED" && r.status !== "CANCELLED")
+        .map((r) => r.id),
+    ),
+  );
   const rows: PipelineRow[] = [];
 
   for (const o of visibleOrders) {
@@ -173,6 +195,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
             ? "blocked"
             : "active",
       progress: cancelled ? null : closed ? 100 : (stage?.percent ?? 0),
+      journey: journey.orderStep(o),
       dueAt: cancelled || closed ? null : (stage?.dueAt ?? null),
       updatedAt: o.updatedAt,
     });
@@ -212,6 +235,7 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
       phase: { kind: "request", key: r.status },
       state: r.status === "CANCELLED" ? "cancelled" : "active",
       progress: null,
+      journey: journey.requestStep(r),
       dueAt: r.status === "CANCELLED" ? null : r.deadline,
       updatedAt: r.updatedAt,
     });
