@@ -26,9 +26,9 @@ import type { InstallmentStatus } from "@/lib/supplier-terms";
 import { brazilDay } from "@/lib/supplier-terms";
 import { reviewOrderId, type TowerRow } from "./control-tower";
 import { importStepDone, stepTemplate } from "./import-flow";
+import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "./packaging-brief";
 import { followupsDue, latestByItem } from "./production";
-import { quoteSummary, requestNextStep } from "./request-list";
 
 /*
  * Quadros da operação na Control Tower: o pedido de ponta a ponta, em quatro
@@ -154,19 +154,9 @@ const BEFORE_SHIPPING: StageKey[] = [
   "INSPECTION",
 ];
 
-/** Itens das etapas que dividem os quadrados do bloco 2. */
-export const BOARD_REQUIREMENT_KEYS = [
-  "purchase_sheet",
-  "art",
-  "inspection_review",
-  "ship_date",
-  "vessel",
-  "eta",
-  "plate",
-];
+/** Itens das etapas que dividem os quadrados do bloco 2 (journey.ts). */
+export const BOARD_REQUIREMENT_KEYS = JOURNEY_REQUIREMENT_KEYS;
 
-/** Passos que só acontecem com a carga no porto. */
-const ARRIVAL_STEPS: ImportStep["key"][] = ["cargo_presence", "channel", "di"];
 /** Documentos de embarque validados por alguém (numerário tem quadrado próprio). */
 const NOT_DOCUMENTS: ImportStep["key"][] = ["numerario", "numerario_paid"];
 const CERT_STEPS: ImportStep["key"][] = [
@@ -237,7 +227,6 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   for (const i of input.items)
     if (!firstItem.has(i.orderId)) firstItem.set(i.orderId, i.name);
   const stageOf = new Map(input.activeStages.map((s) => [s.orderId, s]));
-  const stageKeyById = new Map(input.stages.map((s) => [s.id, s.key]));
   const by = <T extends { orderId: string | null }>(rows: T[]) => {
     const map = new Map<string, T[]>();
     for (const row of rows) {
@@ -246,23 +235,13 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     }
     return map;
   };
-  const reqsBy = by(input.requirements);
   const stepsBy = by(input.steps);
   const skusBy = by(input.skus);
   const trackOf = new Map(input.tracks.map((t) => [t.orderId, t]));
   const receivingOf = new Map(input.receivings.map((r) => [r.orderId, r]));
 
-  /** Item da etapa em andamento (ou da etapa pedida). */
-  const req = (
-    o: Order,
-    key: string,
-    stageKey: StageKey = o.status as StageKey,
-  ) =>
-    (reqsBy.get(o.id) ?? []).find(
-      (r) => r.key === key && stageKeyById.get(r.stageId) === stageKey,
-    );
-  const reqDone = (o: Order, key: string, stageKey?: StageKey) =>
-    req(o, key, stageKey)?.status === "done";
+  // Passo da viagem (blocos 1 e 2): a mesma regra do Progresso de Pedidos.
+  const journey = journeyIndex(input);
   const step = (o: Order, key: ImportStep["key"]) =>
     (stepsBy.get(o.id) ?? []).find((s) => s.key === key);
   const informed = (s: ImportStep | undefined) =>
@@ -331,32 +310,11 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   };
 
   /* Bloco 1: a solicitação, pelo próximo passo da tela Solicitações. */
-  const NEXT_CARD: Partial<Record<string, BoardCardKey>> = {
-    rfq: "reqNew",
-    quotes: "reqRfq",
-    choose: "reqChoose",
-    approval: "reqApproval",
-    down: "reqDown",
-  };
   const openRequests = input.requests.filter((r) =>
     OPEN_REQUESTS.includes(r.status),
   );
   for (const r of openRequests) {
-    const next = requestNextStep({
-      status: r.status,
-      display: r.status,
-      quotes: quoteSummary(
-        input.quotes.filter((q) => q.requestId === r.id),
-        r.selectedQuoteId,
-      ),
-      approval:
-        input.approvals.find(
-          (a) => a.requestId === r.id && a.status === "pending",
-        ) ?? null,
-      order: null,
-      today,
-    });
-    const key = NEXT_CARD[next.key];
+    const key = journey.requestCard(r);
     if (!key) continue;
     rows.get(key)!.push(requestRow(r));
     if (r.sellPrice !== null && r.sellCurrency === input.currency)
@@ -370,58 +328,7 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const live = input.orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
-  const openInspectionReview = new Set(
-    input.reviews
-      .filter((r) => r.rule.startsWith("inspection."))
-      .map(reviewOrderId)
-      .filter((id): id is string => !!id),
-  );
-  const mainCard = (o: Order): BoardCardKey => {
-    switch (o.status) {
-      case "ORDER_CREATED":
-        return "ordConference";
-      case "PREPARATION": {
-        const sheet = req(o, "purchase_sheet");
-        return sheet && sheet.status !== "done" ? "ordSheet" : "ordValidation";
-      }
-      // Etapa antiga, fora do fluxo: o pedido segue para a Embalagem sozinho.
-      case "SUPPLIER_PAYMENT":
-        return "ordArt";
-      case "PACKAGING": {
-        const art = req(o, "art");
-        return art && art.status !== "done" ? "ordArt" : "ordArtApproval";
-      }
-      case "INSPECTION": {
-        const review = req(o, "inspection_review");
-        return stageOf.get(o.id)?.status === "blocked" ||
-          openInspectionReview.has(o.id) ||
-          (review && review.status !== "done")
-          ? "ordInspectionIssue"
-          : "ordInspection";
-      }
-      case "SHIPPING":
-        return informed(step(o, "booking")) ||
-          reqDone(o, "vessel") ||
-          reqDone(o, "ship_date")
-          ? "ordWaitingShip"
-          : "ordBooking";
-      case "CUSTOMS": {
-        // Chegou: o comex marcou a presença de carga (ou canal/DI), ou a
-        // data prevista de chegada já passou.
-        const eta = req(o, "eta", "SHIPPING")?.value ?? null;
-        const etaDay = eta ? brazilDay(eta) : null;
-        return ARRIVAL_STEPS.some((k) => informed(step(o, k))) ||
-          (!!etaDay && etaDay <= today)
-          ? "ordPort"
-          : "ordAtSea";
-      }
-      case "TRANSPORT":
-        return reqDone(o, "plate") ? "ordInTransit" : "ordWaitingTruck";
-      default:
-        return "ordDelivered";
-    }
-  };
-  for (const o of live) addOrder(mainCard(o), o);
+  for (const o of live) addOrder(journey.orderCard(o), o);
   for (const o of input.orders) {
     if (o.status === "CLOSED" && brazilDay(o.closedAt)?.slice(0, 7) === month)
       addOrder("ordClosedMonth", o);

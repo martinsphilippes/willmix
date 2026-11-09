@@ -622,7 +622,13 @@ export default async function RequestDetailPage({
                       {t("productSuppliers.rfqHint")}
                     </p>
                   ) : null}
-                  {request.groupId && rfqSiblings.length > 0 ? (
+                  {/* Lote: o atalho só enquanto algum produto ainda não tem
+                      RFQ (depois de aberta, não se abre de novo). */}
+                  {request.groupId &&
+                  rfqSiblings.length > 0 &&
+                  [request, ...rfqSiblings].some(
+                    (r) => r.status === "REQUESTED",
+                  ) ? (
                     <p className="text-sm">
                       <TextLink
                         href={`/app/requests/batch/${encodeURIComponent(request.groupId)}#rfq`}

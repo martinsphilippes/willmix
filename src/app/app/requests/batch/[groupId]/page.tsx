@@ -91,6 +91,10 @@ export default async function RequestBatchPage({
   const rfqRows = wellmix
     ? rows.filter((r) => RFQ_OPEN_STATUSES.includes(r.status))
     : [];
+  /* RFQ já aberta em todos os produtos: o cartão só convida mais fornecedores
+     (não "abre" de novo), como na página da solicitação. */
+  const rfqOpened =
+    rfqRows.length > 0 && rfqRows.every((r) => r.status !== "REQUESTED");
   const [quotes, suppliers, products] = wellmix
     ? await Promise.all([
         store.list("quotes", { filter: { requestId: rows.map((r) => r.id) } }),
@@ -347,7 +351,9 @@ export default async function RequestBatchPage({
       ) : null}
       {rfqRows.length ? (
         <div id="rfq" className="mt-4 max-w-2xl scroll-mt-24" data-batch-rfq>
-          <Card title={t("reqBatch.rfqTitle")}>
+          <Card
+            title={rfqOpened ? t("rfq.inviteMore") : t("reqBatch.rfqTitle")}
+          >
             <form action={openBatchRfqAction} className="space-y-2.5">
               <input type="hidden" name="groupId" value={groupId} />
               {!rfqSuppliers.length ? (
@@ -362,9 +368,11 @@ export default async function RequestBatchPage({
                 <p className="text-sm text-zinc-600">
                   {allInvited
                     ? t("rfq.allInvited")
-                    : rfqRows.length === 1
-                      ? t("reqBatch.rfqHintOne")
-                      : t("reqBatch.rfqHint", { n: rfqRows.length })}
+                    : rfqOpened
+                      ? t("rfq.inviteMoreHint")
+                      : rfqRows.length === 1
+                        ? t("reqBatch.rfqHintOne")
+                        : t("reqBatch.rfqHint", { n: rfqRows.length })}
                 </p>
               )}
               <div className="grid gap-1.5 sm:grid-cols-2">
@@ -411,7 +419,7 @@ export default async function RequestBatchPage({
                   );
                 })}
               </div>
-              {allInvited || !rfqSuppliers.length ? null : (
+              {allInvited || rfqOpened || !rfqSuppliers.length ? null : (
                 <PackagingRfqFields
                   t={t}
                   withBrief={false}
@@ -420,9 +428,11 @@ export default async function RequestBatchPage({
               )}
               {allInvited || !rfqSuppliers.length ? null : (
                 <SubmitButton data-batch-rfq-submit>
-                  {rfqRows.length === 1
-                    ? t("reqBatch.rfqSubmitOne")
-                    : t("reqBatch.rfqSubmit", { n: rfqRows.length })}
+                  {rfqOpened
+                    ? t("rfq.inviteSelected")
+                    : rfqRows.length === 1
+                      ? t("reqBatch.rfqSubmitOne")
+                      : t("reqBatch.rfqSubmit", { n: rfqRows.length })}
                 </SubmitButton>
               )}
             </form>

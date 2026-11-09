@@ -29,6 +29,7 @@ export function TowerBoardView({
   t,
   selected,
   occupancy,
+  newRequestHref,
 }: {
   board: TowerBoard;
   t: Translate;
@@ -36,6 +37,8 @@ export function TowerBoardView({
   selected: string | null;
   /** Ocupação média dos containers abertos (linha pequena do quadrado). */
   occupancy: string | null;
+  /** "+" no quadrado "Solicitação nova" (só quem cria solicitação). */
+  newRequestHref: string | null;
 }) {
   return (
     <div data-tower-board>
@@ -62,6 +65,11 @@ export function TowerBoardView({
                   active={selected === card.key}
                   currency={board.currency}
                   sub={card.key === "parContainers" ? occupancy : null}
+                  add={
+                    card.key === "reqNew" && newRequestHref
+                      ? { href: newRequestHref, label: t("requests.new") }
+                      : null
+                  }
                 />
               ))}
             </div>
@@ -78,12 +86,15 @@ function BoardTile({
   active,
   currency,
   sub,
+  add,
 }: {
   card: BoardCard;
   t: Translate;
   active: boolean;
   currency: string;
   sub: string | null;
+  /** Atalho "+" no canto (ex.: nova solicitação), fora do link do quadrado. */
+  add: { href: string; label: string } | null;
 }) {
   const empty = card.count === 0;
   const label = t(`board.card.${card.key}` as DictionaryKey);
@@ -94,7 +105,7 @@ function BoardTile({
         ? t("board.late.one")
         : t("board.late.many", { n: card.overdue })
       : null;
-  return (
+  const tile = (
     <Link
       href={card.href ?? `/app?card=${card.key}`}
       // Filtro na mesma tela: a lista muda embaixo, sem voltar ao topo.
@@ -138,5 +149,25 @@ function BoardTile({
         {label}
       </span>
     </Link>
+  );
+  if (!add) return tile;
+  // Dois links lado a lado (link dentro de link não vale): o quadrado filtra
+  // a lista; o "+" abre a tela de criar.
+  return (
+    <div className="relative">
+      {tile}
+      <Link
+        href={add.href}
+        title={add.label}
+        aria-label={add.label}
+        className={cx(
+          "absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full text-lg font-bold leading-none shadow-sm transition hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900",
+          empty ? "bg-violet-700 text-white" : "bg-white text-violet-700",
+        )}
+        data-board-add={card.key}
+      >
+        +
+      </Link>
+    </div>
   );
 }

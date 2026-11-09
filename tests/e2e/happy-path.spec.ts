@@ -706,6 +706,21 @@ test("vários produtos numa solicitação: cada um vira uma solicitação do mes
     /0 de 2/,
     /0 de 2/,
   ]);
+  // RFQ aberta nos dois: o lote só convida mais fornecedores (não abre de
+  // novo) e a solicitação não oferece mais abrir a RFQ do lote.
+  await expect(rfq).toContainText("Convidar mais fornecedores");
+  await expect(rfq.locator("[data-batch-rfq-submit]")).toHaveText(
+    /Convidar selecionados/,
+  );
+  await page
+    .locator(
+      "[data-batch-item]:has-text('Copo de vidro') a[href^='/app/requests/']",
+    )
+    .first()
+    .click();
+  await page.waitForURL(/\/app\/requests\/(?!new)[^/?]+$/);
+  await expect(page.getByText("Convidar mais fornecedores")).toBeVisible();
+  await expect(page.locator("[data-rfq-whole-batch]")).toHaveCount(0);
 });
 
 test("sugestão da IA: a opção marcada desmarca e escolher já marca o Aplicar", async ({

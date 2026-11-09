@@ -174,4 +174,29 @@ describe("painel de pedidos", () => {
       });
     }
   });
+  it("progresso pela viagem: o mesmo passo dos quadrados da Control Tower", async () => {
+    const placed = await order("Prato da viagem");
+    const fresh = await request("Garfo novo");
+    const quoting = await request("Faca em cotação");
+    await r.openRfq(admin, quoting.id, ["fornecedor-b"]);
+    const stopped = await order("Prato cancelado na viagem");
+    await cancelOrder(admin, stopped.id, {
+      reason: "other",
+      note: null,
+      settlement: null,
+    });
+
+    const rows = await pipelineFor(admin);
+    const step = (key: string) => rows.find((x) => x.key === key)?.journey;
+    expect(step(`order:${placed.id}`)).toBe("ordConference");
+    expect(step(`request:${fresh.id}`)).toBe("reqNew");
+    expect(step(`request:${quoting.id}`)).toBe("reqRfq");
+    // Cancelado: o passo em que parou (a etapa guardada no cancelamento).
+    expect(step(`order:${stopped.id}`)).toBe("ordConference");
+    // O cliente vê o passo dos pedidos dele.
+    const mine = await pipelineFor(joao);
+    expect(mine.find((x) => x.key === `order:${placed.id}`)?.journey).toBe(
+      "ordConference",
+    );
+  });
 });

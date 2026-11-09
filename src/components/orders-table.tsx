@@ -48,7 +48,11 @@ export interface OrdersTableItem {
   href: string;
   phase: string;
   state: RowState;
+  /** Posição na viagem (0–100), a mesma dos quadrados da Control Tower. */
   progress: number | null;
+  /** Passo da viagem (chave) e o nome dele, no idioma de quem vê. */
+  step: string | null;
+  stepLabel: string | null;
   due: string;
   dueLabel: string;
   /**
@@ -100,7 +104,10 @@ export interface OrdersTableRow {
   /** Ordem da etapa no fluxo (para ordenar e para a lista do filtro). */
   phaseRank: number;
   state: RowState;
+  /** Posição na viagem do produto mais atrasado do grupo (0–100). */
   progress: number | null;
+  step: string | null;
+  stepLabel: string | null;
   /** AAAA-MM-DD (dia) ou vazio. */
   due: string;
   dueLabel: string;
@@ -123,7 +130,15 @@ export interface OrdersTableLabels {
   all: string;
   search: string;
   states: Record<RowState, string>;
-  progressOptions: { none: string; partial: string; full: string };
+  /** Filtro de Progresso: os passos da viagem (valor, texto), na ordem. */
+  journey: {
+    groupRequest: string;
+    groupOrder: string;
+    steps: Array<[string, string]>;
+    cancelled: string;
+    /** "Parou em: {step}" (pedido cancelado). */
+    stoppedAt: string;
+  };
   dueOptions: { overdue: string; week: string; none: string };
   updatedOptions: { today: string; week: string; month: string };
   request: string;
@@ -340,6 +355,8 @@ export function OrdersTable({
       if (showSupplier && !has(r.supplier, filters.s)) return false;
       if (filters.ph && r.phaseKey !== filters.ph) return false;
       if (filters.st && r.state !== filters.st) return false;
+      if (filters.pr === "cancelled" && r.state !== "cancelled") return false;
+      // Links antigos (?pr=none|partial|full) continuam valendo pelo percentual.
       if (filters.pr === "none" && r.progress !== 0) return false;
       if (
         filters.pr === "partial" &&
@@ -347,6 +364,15 @@ export function OrdersTable({
       )
         return false;
       if (filters.pr === "full" && r.progress !== 100) return false;
+      // Passo da viagem: a linha ou algum produto do grupo nesse passo (como
+      // no quadrado da Control Tower, cancelado não conta).
+      if (
+        filters.pr &&
+        !["cancelled", "none", "partial", "full"].includes(filters.pr) &&
+        !(r.state !== "cancelled" && r.step === filters.pr) &&
+        !r.items.some((i) => i.state !== "cancelled" && i.step === filters.pr)
+      )
+        return false;
       if (filters.d === "overdue" && !(r.due && r.due < today)) return false;
       if (filters.d === "week" && !(r.due && r.due >= today && r.due <= week))
         return false;
@@ -366,7 +392,7 @@ export function OrdersTable({
         case "state":
           return STATE_RANK[r.state];
         case "progress":
-          return r.progress ?? -1;
+          return r.state === "cancelled" ? -1 : (r.progress ?? -1);
         case "due":
           return r.due || "9999";
         case "updated":
@@ -483,7 +509,7 @@ export function OrdersTable({
               {showSupplier ? head("supplier", labels.supplier) : null}
               {head("phase", labels.phase)}
               {head("state", labels.state)}
-              {head("progress", labels.progress, "w-36")}
+              {head("progress", labels.progress, "w-44")}
               {head("due", labels.due)}
               {head("updated", labels.updated)}
               <th className="w-10 px-2.5 py-2" />
@@ -502,11 +528,33 @@ export function OrdersTable({
                 ),
               )}
               {filterCell(
-                select("pr", labels.progress, [
-                  ["none", labels.progressOptions.none],
-                  ["partial", labels.progressOptions.partial],
-                  ["full", labels.progressOptions.full],
-                ]),
+                <select
+                  value={filters.pr}
+                  onChange={(e) => setFilter("pr", e.target.value)}
+                  aria-label={labels.progress}
+                  className={control}
+                  data-orders-filter="pr"
+                >
+                  <option value="">{labels.all}</option>
+                  {[
+                    [labels.journey.groupRequest, "req"],
+                    [labels.journey.groupOrder, "ord"],
+                  ].map(([group, prefix]) => {
+                    const options = labels.journey.steps.filter(([value]) =>
+                      value.startsWith(prefix),
+                    );
+                    return options.length ? (
+                      <optgroup key={prefix} label={group}>
+                        {options.map(([value, text]) => (
+                          <option key={value} value={value}>
+                            {text}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null;
+                  })}
+                  <option value="cancelled">{labels.journey.cancelled}</option>
+                </select>,
               )}
               {filterCell(
                 select("d", labels.due, [
@@ -604,21 +652,13 @@ export function OrdersTable({
                       </Badge>
                     </td>
                     <td className="px-2.5 py-2">
-                      {r.progress === null ? (
-                        <span className="text-zinc-400">—</span>
-                      ) : (
-                        <div className="flex h-5 items-center gap-2">
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
-                            <div
-                              className="h-full rounded-full bg-brand-600"
-                              style={{ width: `${r.progress}%` }}
-                            />
-                          </div>
-                          <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
-                            {r.progress}%
-                          </span>
-                        </div>
-                      )}
+                      <JourneyBar
+                        progress={r.progress}
+                        label={r.stepLabel}
+                        step={r.step}
+                        cancelled={r.state === "cancelled"}
+                        stoppedAt={labels.journey.stoppedAt}
+                      />
                     </td>
                     <td
                       className={cx(
@@ -746,6 +786,7 @@ function ItemsPanel({
                 ) : null}
                 <th className="px-2.5 py-2">{labels.ref}</th>
                 <th className="px-2.5 py-2">{labels.phase}</th>
+                <th className="w-40 px-2.5 py-2">{labels.progress}</th>
                 <th className="px-2.5 py-2">{labels.state}</th>
                 <th className="px-2.5 py-2">{labels.due}</th>
                 <th className="w-10 px-2.5 py-2" />
@@ -852,6 +893,15 @@ function ItemsPanel({
                       </Link>
                     </td>
                     <td className={cell}>{item.phase}</td>
+                    <td className="w-40 px-2.5 py-2">
+                      <JourneyBar
+                        progress={item.progress}
+                        label={item.stepLabel}
+                        step={item.step}
+                        cancelled={item.state === "cancelled"}
+                        stoppedAt={labels.journey.stoppedAt}
+                      />
+                    </td>
                     <td className={cell}>
                       <Badge tone={STATE_TONE[item.state]}>
                         {labels.states[item.state]}
@@ -905,7 +955,8 @@ function ItemsPanel({
                       <td className={num}>{dash(row.itemsTotals.amount)}</td>
                     </>
                   ) : null}
-                  <td colSpan={5 + (showSupplier ? 1 : 0)} />
+                  {/* Pedido, etapa, progresso, situação, prazo, conversa (e fornecedor). */}
+                  <td colSpan={6 + (showSupplier ? 1 : 0)} />
                 </tr>
               ) : null}
             </tbody>
@@ -913,5 +964,51 @@ function ItemsPanel({
         </div>
       )}
     </section>
+  );
+}
+
+/** Barra da viagem com o nome do passo; no cancelado, cinza e onde parou. */
+function JourneyBar({
+  progress,
+  label,
+  step,
+  cancelled,
+  stoppedAt,
+}: {
+  progress: number | null;
+  label: string | null;
+  step: string | null;
+  cancelled: boolean;
+  /** "Parou em: {step}" */
+  stoppedAt: string;
+}) {
+  if (progress === null) return <span className="text-zinc-400">—</span>;
+  return (
+    <div className="min-w-0" data-orders-journey={step ?? ""}>
+      <div className="flex h-5 items-center gap-2">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+          <div
+            className={cx(
+              "h-full rounded-full",
+              cancelled ? "bg-zinc-400" : "bg-brand-600",
+            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-zinc-600">
+          {progress}%
+        </span>
+      </div>
+      {label ? (
+        <span
+          className={cx(
+            "block text-[11px] leading-tight",
+            cancelled ? "text-zinc-400" : "text-zinc-600",
+          )}
+        >
+          {cancelled ? stoppedAt.replace("{step}", label) : label}
+        </span>
+      ) : null}
+    </div>
   );
 }

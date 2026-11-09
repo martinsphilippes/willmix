@@ -7,6 +7,11 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { STAGE_KEYS, REQUEST_STATUSES } from "@/lib/db/schema";
 import { getStore, type Product, type ProductPhoto } from "@/lib/db";
 import { pipelineFor, type PipelineItem } from "@/lib/services/pipeline";
+import {
+  JOURNEY_STEPS,
+  journeyPercent,
+  type JourneyStep,
+} from "@/lib/services/journey";
 import { itemLogistics, logisticsTotals } from "@/lib/services/item-logistics";
 import { productPhotoList } from "@/lib/services/product-list";
 import { Empty, PageHeader, formatDate } from "@/components/ui";
@@ -193,6 +198,14 @@ export default async function OrdersPage({
     done: 2,
     cancelled: 3,
   } as const;
+  // Progresso: o passo da viagem (os quadrados da Control Tower), 0% a 100%.
+  const stepLabel = (step: JourneyStep | null) =>
+    step ? t(`board.card.${step}` as DictionaryKey) : null;
+  const stepPercent = (step: JourneyStep | null) =>
+    step ? journeyPercent(step) : null;
+  const stepIndex = (step: JourneyStep | null) =>
+    step ? JOURNEY_STEPS.indexOf(step) : Number.POSITIVE_INFINITY;
+
   const tableRows: OrdersTableRow[] = [...groups.values()].map((members) => {
     const sorted = [...members].sort(
       (a, b) => (a.number ?? 0) - (b.number ?? 0) || a.key.localeCompare(b.key),
@@ -206,9 +219,10 @@ export default async function OrdersPage({
     const state = sorted
       .map((r) => r.state)
       .sort((a, b) => STATE_WEIGHT[a] - STATE_WEIGHT[b])[0];
-    const progresses = sorted
-      .map((r) => r.progress)
-      .filter((p): p is number => p !== null);
+    // Progresso do grupo: o produto mais atrasado na viagem (a mesma regra da Etapa).
+    const journeyLead = [...(live.length ? live : sorted)].sort(
+      (a, b) => stepIndex(a.journey) - stepIndex(b.journey),
+    )[0];
     const dues = live
       .map((r) => r.dueAt)
       .filter((d): d is string => !!d)
@@ -253,7 +267,9 @@ export default async function OrdersPage({
           href: r.href,
           phase: phaseLabel(r),
           state: r.state,
-          progress: r.progress,
+          progress: stepPercent(r.journey),
+          step: r.journey,
+          stepLabel: stepLabel(r.journey),
           dueLabel: formatDate(r.dueAt, t),
           due: brazilDay(r.dueAt),
           detail: itemDetail(i),
@@ -266,9 +282,9 @@ export default async function OrdersPage({
       phaseKey: `${lead.phase.kind}:${lead.phase.key}`,
       phaseRank: rank(lead),
       state,
-      progress: progresses.length
-        ? Math.round(progresses.reduce((a, b) => a + b, 0) / progresses.length)
-        : null,
+      progress: stepPercent(journeyLead.journey),
+      step: journeyLead.journey,
+      stepLabel: stepLabel(journeyLead.journey),
       due: dues.length ? brazilDay(dues[0]) : "",
       dueLabel: dues.length ? formatDate(dues[0], t) : formatDate(null, t),
       updated: brazilDay(updated),
@@ -323,10 +339,18 @@ export default async function OrdersPage({
               done: t("orders.panel.state.done"),
               cancelled: t("orders.panel.state.cancelled"),
             },
-            progressOptions: {
-              none: t("orders.panel.progress.none"),
-              partial: t("orders.panel.progress.partial"),
-              full: t("orders.panel.progress.full"),
+            // Os passos da viagem; quem não vê solicitações, só os do pedido.
+            journey: {
+              groupRequest: t("board.block.request"),
+              groupOrder: t("board.block.order"),
+              steps: JOURNEY_STEPS.filter(
+                (step) => wellmix || step.startsWith("ord"),
+              ).map((step) => [
+                step,
+                `${stepLabel(step)} (${journeyPercent(step)}%)`,
+              ]),
+              cancelled: t("orders.panel.state.cancelled"),
+              stoppedAt: t("board.stoppedAt", { step: "{step}" }),
             },
             dueOptions: {
               overdue: t("orders.panel.due.overdue"),
