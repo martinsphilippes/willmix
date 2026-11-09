@@ -20,18 +20,21 @@ const input = (over: Partial<JourneyInput> = {}): JourneyInput => ({
   reviews: [],
   quotes: [],
   approvals: [],
+  rfqDays: 3,
   ...over,
 });
 
 describe("passos e percentuais", () => {
   it("vai da solicitação nova (0%) ao encerrado (100%)", () => {
     expect(journeyPercent("reqNew")).toBe(0);
-    expect(journeyPercent("reqRfq")).toBe(6);
-    expect(journeyPercent("reqDown")).toBe(22);
-    expect(journeyPercent("ordConference")).toBe(28);
-    expect(journeyPercent("ordInspection")).toBe(56);
-    expect(journeyPercent("ordAtSea")).toBe(72);
-    expect(journeyPercent("ordDelivered")).toBe(94);
+    expect(journeyPercent("reqRfq")).toBe(5);
+    expect(journeyPercent("reqQuotes")).toBe(10);
+    expect(journeyPercent("reqProposal")).toBe(25);
+    expect(journeyPercent("reqDown")).toBe(30);
+    expect(journeyPercent("ordConference")).toBe(35);
+    expect(journeyPercent("ordInspection")).toBe(60);
+    expect(journeyPercent("ordAtSea")).toBe(75);
+    expect(journeyPercent("ordDelivered")).toBe(95);
     expect(journeyPercent("ordClosed")).toBe(100);
   });
 
@@ -40,6 +43,7 @@ describe("passos e percentuais", () => {
       (c) =>
         (c.block === "request" || c.block === "order") &&
         ![
+          "reqDieline",
           "reqPackaging",
           "ordInspectionIssue",
           "ordClosedMonth",
@@ -99,13 +103,25 @@ describe("passo de cada pedido e solicitação", () => {
             currency: null,
             leadTimeDays: null,
             answeredAt: null,
+            createdAt: "2026-11-06T12:00:00.000Z",
           },
         ],
       }),
     );
     expect(j.requestStep(req("new", "REQUESTED"))).toBe("reqNew");
     expect(j.requestStep(req("rfq", "RFQ_OPEN"))).toBe("reqRfq");
-    expect(j.requestStep(req("down", "WAITING_DOWN_PAYMENT"))).toBe("reqDown");
+    // Proposta enviada: o cliente aprova; aprovada, espera o sinal.
+    expect(j.requestStep(req("down", "WAITING_DOWN_PAYMENT"))).toBe(
+      "reqProposal",
+    );
+    expect(
+      j.requestStep({
+        id: "down",
+        status: "WAITING_DOWN_PAYMENT",
+        selectedQuoteId: null,
+        proposalApprovedAt: "2026-11-07T12:00:00.000Z",
+      }),
+    ).toBe("reqDown");
     expect(j.requestStep(req("x", "CANCELLED"))).toBeNull();
   });
 });

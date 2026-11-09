@@ -167,7 +167,14 @@ export function quoteSummary(
 }
 
 export type NextStepKey =
-  "rfq" | "quotes" | "choose" | "approval" | "down" | "order" | "none";
+  | "rfq"
+  | "quotes"
+  | "choose"
+  | "approval"
+  | "proposal"
+  | "down"
+  | "order"
+  | "none";
 
 /** Com quem está a vez: equipe Wellmix, fornecedores, cliente, diretoria ou o papel da etapa. */
 export type NextStepWho =
@@ -195,6 +202,11 @@ export function requestNextStep(input: {
   quotes: Pick<QuoteSummary, "invited" | "answered">;
   /** Aprovação pendente da escolha (se houver). */
   approval: Pick<Approval, "status" | "currentLevel"> | null;
+  /**
+   * O cliente já aprovou a proposta (etapa "Proposta ao cliente"); sem a
+   * aprovação, a vez é dele de aprovar, antes do sinal.
+   */
+  proposalApproved: boolean;
   /** Pedido gerado: etapa atual, quem responde por ela e o prazo. */
   order: {
     status: StageKey | "CANCELLED";
@@ -219,7 +231,9 @@ export function requestNextStep(input: {
     };
   }
   if (status === "WAITING_DOWN_PAYMENT")
-    return { key: "down", who: "customer" };
+    return input.proposalApproved
+      ? { key: "down", who: "customer" }
+      : { key: "proposal", who: "customer" };
   if (input.approval?.status === "pending")
     return {
       key: "approval",

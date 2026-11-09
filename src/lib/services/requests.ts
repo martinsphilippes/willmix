@@ -1072,6 +1072,9 @@ export async function confirmDownPayment(
     requestId,
     "Sinal confirmado (manual)",
   );
+  // Sinal confirmado também conta como aprovação da proposta (etapa 8).
+  const { markProposalApproved } = await import("./proposal-approval");
+  await markProposalApproved(user, request);
   return createOrderFromRequest(user, request);
 }
 

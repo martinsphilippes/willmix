@@ -24,3 +24,24 @@ export async function submitDownPaymentProofAction(form: FormData) {
     return `${back}?proofSent=1#proposal`;
   });
 }
+
+/**
+ * "Aprovar proposta" (cliente) ou "Registrar aprovação do cliente" (Wellmix,
+ * quando o cliente aprovou por telefone, e-mail ou WhatsApp). O serviço
+ * confere quem pode e se a proposta está aguardando aprovação.
+ */
+export async function approveProposalAction(form: FormData) {
+  const user = await requireUser();
+  const requestId = str(form, "requestId").slice(0, 64);
+  const back = `/app/requests/${encodeURIComponent(requestId)}`;
+  await run(`${back}#proposal`, async () => {
+    assertScreen(user, "requests");
+    z.string()
+      .regex(/^[A-Za-z0-9_-]{1,64}$/)
+      .parse(requestId);
+    const { approveProposal } =
+      await import("@/lib/services/proposal-approval");
+    await approveProposal(user, requestId);
+    return `${back}?proposal=approved#proposal`;
+  });
+}

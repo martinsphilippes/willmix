@@ -20,7 +20,9 @@ const pdf = {
 async function showAllSheetSections(page: Page) {
   const one = page.locator("button[data-sheet-sections-mode=one]");
   if (await one.count()) await one.click();
-  await expect(page.locator("button[data-sheet-sections-mode=all]")).toBeVisible();
+  await expect(
+    page.locator("button[data-sheet-sections-mode=all]"),
+  ).toBeVisible();
 }
 
 async function fillQuoteSheet(page: Page, price: string) {
@@ -364,6 +366,10 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.getByText(/Sinal/).first()).toBeVisible();
   await expect(page.getByText("Shenzhen Supplier A")).toHaveCount(0);
   await expect(page.getByText(/FOB/)).toHaveCount(0);
+  // Antes do sinal, o cliente aprova a proposta (etapa "Proposta ao cliente").
+  await page.locator("[data-proposal-approve]").click();
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("[data-proposal-approved-alert]")).toBeVisible();
 
   // 6. O admin confirma o sinal (manual; financeiro é só dele) → pedido criado
   await login(page, "admin@wellmix.com");

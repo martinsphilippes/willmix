@@ -208,6 +208,7 @@ export default async function RequestsPage({
       display: requestDisplayStatus(r, cancelled),
       quotes: quotesOf(r),
       approval: approvals.find((a) => a.requestId === r.id) ?? null,
+      proposalApproved: !!r.proposalApprovedAt,
       order: order
         ? {
             status: order.status,

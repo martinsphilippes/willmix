@@ -153,6 +153,13 @@ describe("sinal da solicitação", () => {
     const request = await waitingRequest();
     const store = getStore();
 
+    // Primeiro o cliente aprova a proposta; depois a pendência é o sinal.
+    expect(
+      (await pendingTasksFor(joao)).some((t) => t.kind === "approve_proposal"),
+    ).toBe(true);
+    const { approveProposal } =
+      await import("@/lib/services/proposal-approval");
+    await approveProposal(joao, request.id);
     expect((await pendingTasksFor(joao)).some((t) => t.kind === "pay")).toBe(
       true,
     );

@@ -1095,6 +1095,22 @@ export async function saveSettingsAction(form: FormData) {
         key === "freightPerCbmAuto"
       )
         continue;
+      if (key === "requestStepDays") {
+        // Um campo por etapa ("requestStepDays.rfq"…), em dias úteis (0 a 60).
+        if (!form.has(`${key}.__form`)) continue;
+        const { DEFAULT_REQUEST_STEP_DAYS } =
+          await import("@/lib/request-stages");
+        const out: Record<string, number> = {};
+        for (const step of Object.keys(DEFAULT_REQUEST_STEP_DAYS)) {
+          const text = String(form.get(`${key}.${step}`) ?? "").trim();
+          const n = Number(text);
+          if (!text || !Number.isInteger(n) || n < 0 || n > 60)
+            throw new Error("request_step_days_invalid");
+          out[step] = n;
+        }
+        pairs.push([key, out]);
+        continue;
+      }
       if (key === "supplierRankingWeights") {
         // Um campo por critério ("supplierRankingWeights.price"…), 0 a 100.
         if (!form.has(`${key}.__form`)) continue;

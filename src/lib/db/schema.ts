@@ -794,6 +794,13 @@ export interface Request extends BaseRow {
    * docs/SLA_PANEL.md). O pedido herda. Nulo = sem responsável.
    */
   ownerUserId?: string | null;
+  /**
+   * O cliente aprovou a proposta (etapa "Proposta ao cliente"); só depois o
+   * sinal é pedido. A Wellmix confirmar o sinal também conta como aprovação.
+   * Nulos enquanto não aprovou (e nas antigas).
+   */
+  proposalApprovedAt?: string | null;
+  proposalApprovedByUserId?: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -2394,6 +2401,9 @@ export const TABLES: Record<TableName, TableDef> = {
       variantId: id(false),
       variant: json(),
       ownerUserId: id(false),
+      // Etapa "Proposta ao cliente" (opcionais; só gravados na aprovação).
+      proposalApprovedAt: datetime(),
+      proposalApprovedByUserId: id(false),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { requestStepDays, type RequestStepDays } from "@/lib/request-stages";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -437,6 +438,32 @@ export default async function SettingsPage({
                       defaultValue={s.quoteSlaBusinessDays}
                     />
                   </Field>
+                </div>
+              </div>
+
+              {/* Prazos das etapas da solicitação (src/lib/request-stages.ts). */}
+              <div className={section} data-request-step-days>
+                <h3 className={h3}>{t("reqStage.settings.title")}</h3>
+                <p className={hintP}>{t("reqStage.settings.hint")}</p>
+                <input type="hidden" name="requestStepDays.__form" value="1" />
+                <div className="grid items-end gap-3 @sm:grid-cols-2 @xl:grid-cols-5">
+                  {(
+                    Object.keys(
+                      requestStepDays(s.requestStepDays),
+                    ) as (keyof RequestStepDays)[]
+                  ).map((step) => (
+                    <Field key={step} label={t(`reqStage.settings.${step}`)}>
+                      <Input
+                        name={`requestStepDays.${step}`}
+                        type="number"
+                        min={0}
+                        max={60}
+                        step="1"
+                        required
+                        defaultValue={requestStepDays(s.requestStepDays)[step]}
+                      />
+                    </Field>
+                  ))}
                 </div>
               </div>
 

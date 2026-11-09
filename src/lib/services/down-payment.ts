@@ -125,6 +125,9 @@ export async function submitDownPaymentProof(
     requestId,
     `Comprovante do sinal enviado pelo cliente: ${doc.name}`,
   );
+  // Quem paga o sinal aprovou a proposta (etapa "Proposta ao cliente").
+  const { markProposalApproved } = await import("./proposal-approval");
+  await markProposalApproved(user, request);
   await notifyWellmix({
     kind: "action",
     subject: `Comprovante do sinal: ${request.productName}`,

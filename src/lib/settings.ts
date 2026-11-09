@@ -1,5 +1,9 @@
 import "server-only";
 import { DEFAULT_RANKING_WEIGHTS } from "@/lib/services/supplier-ranking-calc";
+import {
+  DEFAULT_REQUEST_STEP_DAYS,
+  type RequestStepDays,
+} from "@/lib/request-stages";
 
 import { getStore } from "@/lib/db";
 
@@ -42,6 +46,12 @@ export const DEFAULT_SETTINGS = {
   quotationExpirationDays: 15,
   /** SLA de resposta da cotação: dias úteis para a Wellmix responder uma solicitação. */
   quoteSlaBusinessDays: 5,
+  /**
+   * Prazos das etapas da solicitação, em dias úteis (src/lib/request-stages.ts):
+   * abrir a RFQ, os fornecedores responderem, comparar, cada nível da
+   * aprovação do pré-custo e o cliente aprovar a proposta.
+   */
+  requestStepDays: { ...DEFAULT_REQUEST_STEP_DAYS } as RequestStepDays,
   /** Percentual do sinal cobrado do cliente. */
   downPaymentPercent: 30,
   /** Prazos padrão por etapa, em dias. */

@@ -16,6 +16,7 @@ import {
 } from "@/lib/workflow/stages";
 
 export type TaskKind =
+  | "approve_proposal"
   | "requirement"
   | "quote"
   | "select_supplier"
@@ -511,6 +512,33 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   )) {
     // Comprovante já enviado: agora depende da Wellmix confirmar, não do cliente.
     if (withProof.has(request.id)) continue;
+    // Primeiro o cliente aprova a proposta; o sinal vem depois.
+    if (!request.proposalApprovedAt) {
+      const money = (n: number | null) =>
+        n === null ? "" : `${request.sellCurrency ?? ""} ${n.toFixed(2)}`;
+      tasks.push(
+        finish(
+          {
+            kind: "approve_proposal",
+            title: `Aprovar proposta: ${request.productName}`,
+            detail: `${money(request.sellPrice)} · depois de aprovar, o sinal de ${money(request.downPaymentAmount)}`,
+            text: {
+              title: "tasks.proposal.title",
+              detail: "tasks.proposal.detail",
+              values: {
+                product: request.productName,
+                total: money(request.sellPrice),
+                down: money(request.downPaymentAmount),
+              },
+            },
+            link: `/app/requests/${request.id}#proposal`,
+            dueAt: null,
+          },
+          now,
+        ),
+      );
+      continue;
+    }
     tasks.push(
       finish(
         {
@@ -976,7 +1004,10 @@ function requestTask(request: Request): DraftTask {
       return {
         kind: "confirm_payment",
         title: `Confirmar sinal: ${request.productName}`,
-        detail: "Aguardando pagamento do cliente",
+        // Etapa "Proposta ao cliente": antes do sinal, o cliente aprova.
+        detail: request.proposalApprovedAt
+          ? "Aguardando pagamento do cliente"
+          : "Aguardando o cliente aprovar a proposta",
         ...base,
       };
   }
