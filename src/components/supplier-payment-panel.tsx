@@ -6,6 +6,7 @@ import {
   quickSupplierPaymentAction,
   registerSupplierPaymentAction,
 } from "@/app/app/actions";
+import { BankFxField } from "./bank-fx-field";
 import { CurrencySelect } from "./currency-select";
 import { PaymentActionButton } from "./payment-action-button";
 import { SubmitButton } from "./submit-button";
@@ -23,12 +24,15 @@ export function SupplierPaymentPanel({
   t,
   view,
   manualOnly = false,
+  fxReference = null,
 }: {
   order: Order;
   t: Translate;
   view: SupplierPaymentView;
   /** Só o "Já pagou? Registrar…" (nada a pagar agora, ou FOB desconhecido). */
   manualOnly?: boolean;
+  /** Cotação automática do dia na moeda do pedido, ao lado do câmbio do banco. */
+  fxReference?: string | null;
 }) {
   const hasDue = view.due !== null && view.due > 0;
   /* Já pagou por fora: registra com valor, câmbio e comprovante. Valor, moeda
@@ -68,18 +72,14 @@ export function SupplierPaymentPanel({
             <CurrencySelect name="currency" value={view.currency} t={t} />
           </Field>
         </div>
-        <div className="w-full min-w-0 sm:w-36">
-          {/* Câmbio = R$ por 1 unidade da moeda do pagamento (como a PTAX). */}
-          <Field label={t("finance.fx")}>
-            <Input
-              name="fxRate"
-              type="number"
-              step="any"
-              placeholder={t("finance.fx.unitHintShort")}
-              title={t("finance.fx.unitHintAny")}
-            />
-          </Field>
-        </div>
+        {/* Câmbio do banco em destaque (a moeda pode mudar no campo ao lado:
+            rótulo sem moeda; a referência diz a moeda dela). */}
+        <BankFxField
+          t={t}
+          currency={null}
+          reference={fxReference}
+          className="w-full sm:w-64"
+        />
         <div className="w-full min-w-0 sm:w-auto sm:min-w-56 sm:flex-1">
           <Field label={t("requests.payment.proof")}>
             <Input name="proof" type="file" />

@@ -1,12 +1,21 @@
 import type { Translate } from "@/i18n";
-import type { OrderFinance } from "@/lib/services/finance";
+import { fxKey, rateFor } from "@/lib/pricing";
+import type {
+  FxToday,
+  OrderFinance,
+  PaymentWithoutFx,
+} from "@/lib/services/finance";
 import { formatMoney } from "./ui";
 
 /*
- * Textos do câmbio no financeiro (tela Financeiro e card do pedido): deixa
- * sempre claro o que é real (câmbio informado nos pagamentos) e o que é
- * estimado ("~", câmbio do dia no que foi pago sem câmbio e no que falta
- * pagar), e o efeito do câmbio desde a venda.
+ * Textos do câmbio no financeiro (tela Financeiro e card do pedido): cada
+ * câmbio com o seu nome, para não parecer informado o que não foi:
+ * - câmbio do banco: o informado nos pagamentos (real), com o dia do pagamento;
+ * - cotação automática de dd/mm: buscada sozinha todo dia, só para estimar
+ *   ("~") o que foi pago sem câmbio e o que falta pagar;
+ * - câmbio da venda: o da proposta ao cliente.
+ * Pagamento feito sem o câmbio do banco vira "Falta o câmbio do banco…" (a
+ * tela põe o botão "Informar câmbio" ao lado), fora das notas do câmbio.
  */
 
 const rate = (t: Translate, n: number) =>
@@ -57,9 +66,77 @@ function withSource(t: Translate, text: string, source: string | null) {
   return source ? t("finance.fx.withSource", { text, source }) : text;
 }
 
+/** "câmbio do banco, pago em 05/11" (vários: a média, com o dia do último). */
+function bankText(t: Translate, f: OrderFinance): string {
+  const bank = f.bankFx;
+  if (!bank || !bank.lastDay) return t("finance.fx.paid");
+  const day = shortDay(t, bank.lastDay);
+  return bank.count === 1
+    ? t("finance.fx.bankOne", { day })
+    : t("finance.fx.bankMany", { n: String(bank.count), day });
+}
+
 /**
- * Câmbio do pedido: o número principal e as notas embaixo (real, pago sem
- * câmbio, saldo estimado, conversões, câmbio da venda). Nulo sem câmbio nenhum.
+ * "Falta o câmbio do banco…": pagamentos ao fornecedor já feitos sem o câmbio
+ * do banco (um: valor e dia; vários: quantos e o total por moeda). Nulo
+ * quando não falta nenhum.
+ */
+export function missingFxText(t: Translate, f: OrderFinance): string | null {
+  const list = f.missingFx;
+  if (!list.length) return null;
+  if (list.length === 1)
+    return t("finance.fx.missingOne", {
+      amount: formatMoney(list[0].amount, list[0].currency, t),
+      day: shortDay(t, list[0].day || null),
+    });
+  const total = new Map<string, number>();
+  for (const p of list)
+    total.set(p.currency, (total.get(p.currency) ?? 0) + p.amount);
+  return t("finance.fx.missingMany", {
+    n: String(list.length),
+    amount: [...total]
+      .map(([currency, value]) => formatMoney(value, currency, t))
+      .join(" + "),
+  });
+}
+
+/** Um pagamento sem câmbio no formulário de informar ("US$ 6.800,00, pago em 05/11"). */
+export function missingPaymentText(t: Translate, p: PaymentWithoutFx): string {
+  return t("finance.fx.missingPayment", {
+    amount: formatMoney(p.amount, p.currency, t),
+    day: shortDay(t, p.day || null),
+  });
+}
+
+/**
+ * Referência ao lado do campo do câmbio do banco: a cotação automática do dia
+ * da moeda do pagamento ("cotação automática de 09/11, 1 USD = R$ 5,5037").
+ * Só referência: o campo fica vazio para a pessoa digitar o do banco.
+ */
+export function fxReferenceText(
+  t: Translate,
+  today: FxToday | null,
+  currency: string | null | undefined,
+): string | null {
+  if (!today || fxKey(currency) === null || fxKey(currency) === "BRL")
+    return null;
+  const value = rateFor(today.rates, currency);
+  if (value === null || !(value > 0)) return null;
+  const code = (currency ?? "").toUpperCase();
+  return today.status === "manual"
+    ? t("finance.fx.referenceManual", { currency: code, rate: rate(t, value) })
+    : t("finance.fx.reference", {
+        day: shortDay(t, today.day),
+        currency: code,
+        rate: rate(t, value),
+      });
+}
+
+/**
+ * Câmbio do pedido: o número principal e as notas embaixo (câmbio do banco
+ * com o dia, estimado do que falta pagar e do pago sem câmbio, conversões,
+ * câmbio da venda). Nulo sem câmbio nenhum. O "Falta o câmbio do banco…" é à
+ * parte (`missingFxText`), com o botão de informar.
  */
 export function fxRateLines(
   t: Translate,
@@ -74,14 +151,14 @@ export function fxRateLines(
     case "paid":
       if (f.avgFx === null) return null;
       main = rate(t, f.avgFx);
-      notes.push(t("finance.fx.paid"));
+      notes.push(bankText(t, f));
       break;
     case "partial": {
       if (f.avgFx !== null) {
         // Real (pagamentos na moeda do FOB com câmbio); venda fora de reais
         // depende do câmbio do dia para chegar à moeda da venda: estimado.
         main = approx(rate(t, f.avgFx), f.sellRate !== null);
-        if (f.sellRate === null) notes.push(t("finance.fx.paid"));
+        if (f.sellRate === null) notes.push(bankText(t, f));
       } else {
         // Nada pago na moeda do FOB com câmbio (pago em reais, em outra moeda
         // ou sem câmbio): câmbio médio do custo, estimado.
@@ -90,11 +167,21 @@ export function fxRateLines(
         if (effective === null) return null;
         main = `~${rate(t, effective)}`;
       }
-      if (est !== null && f.unpaid > 0.005)
+      // O estimado: o que falta pagar e/ou o que foi pago sem câmbio do banco.
+      const balance = f.unpaid > 0.005;
+      const noFx = f.paidNoFx > 0.005;
+      if (est !== null && (balance || noFx))
         notes.push(
           withSource(
             t,
-            t("finance.fx.balance", { rate: rate(t, est) }),
+            t(
+              balance
+                ? noFx
+                  ? "finance.fx.balanceNoFx"
+                  : "finance.fx.balance"
+                : "finance.fx.noFx",
+              { rate: rate(t, est) },
+            ),
             sourceText(t, f),
           ),
         );
@@ -108,14 +195,6 @@ export function fxRateLines(
     default:
       return null;
   }
-  // Pago sem câmbio: estimado, e pede o câmbio (não é "saldo").
-  if (est !== null && f.paidNoFx > 0.005)
-    notes.push(
-      t("finance.fx.noFx", {
-        amount: formatMoney(f.paidNoFx, f.fobCurrency, t),
-        rate: rate(t, est),
-      }),
-    );
   if (f.crossConverted) notes.push(t("finance.fx.cross"));
   if (f.sellRate !== null)
     notes.push(

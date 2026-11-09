@@ -9,6 +9,9 @@ import {
   applySupplierTermsAction,
   markSupplierPaymentPaidAction,
 } from "@/app/app/actions/supplier-terms";
+import type { FxToday } from "@/lib/services/finance";
+import { BankFxField } from "./bank-fx-field";
+import { fxReferenceText } from "./finance-fx-text";
 import { SupplierPaymentPanel } from "./supplier-payment-panel";
 import { SubmitButton } from "./submit-button";
 import {
@@ -43,12 +46,15 @@ export async function SupplierPaymentCard({
   t,
   wellmix,
   notice,
+  fxToday = null,
 }: {
   order: Order;
   t: Translate;
   wellmix: boolean;
   /** Aviso de sucesso vindo da ação (pagamento registrado, condição aplicada). */
   notice?: string | null;
+  /** Cotação automática do dia: referência ao lado do câmbio do banco. */
+  fxToday?: FxToday | null;
 }) {
   let view = null;
   if (wellmix) {
@@ -305,19 +311,21 @@ export async function SupplierPaymentCard({
                             value={order.id}
                           />
                           <input type="hidden" name="paymentId" value={p.id} />
-                          <div className="w-32 min-w-0">
-                            {/* Câmbio = R$ por 1 unidade da moeda do pagamento (como a PTAX). */}
-                            <Field label={t("finance.fx")}>
-                              <Input
-                                name="fxRate"
-                                type="number"
-                                step="any"
-                                placeholder={t("finance.fx.unitHint", {
-                                  currency: p.currency,
-                                })}
-                              />
-                            </Field>
-                          </div>
+                          {/* Câmbio do banco primeiro e em destaque, com a
+                              cotação automática do dia só de referência
+                              (pagamento em reais não tem câmbio). */}
+                          {p.currency.toUpperCase() !== "BRL" ? (
+                            <BankFxField
+                              t={t}
+                              currency={p.currency}
+                              reference={fxReferenceText(
+                                t,
+                                fxToday,
+                                p.currency,
+                              )}
+                              className="w-60"
+                            />
+                          ) : null}
                           <div className="min-w-48 flex-1">
                             <Field label={t("requests.payment.proof")}>
                               <Input name="proof" type="file" />
@@ -359,7 +367,12 @@ export async function SupplierPaymentCard({
               ) : null}
             </summary>
             <div className="border-t border-zinc-100 px-3 pb-3">
-              <SupplierPaymentPanel order={order} t={t} view={view} />
+              <SupplierPaymentPanel
+                order={order}
+                t={t}
+                view={view}
+                fxReference={fxReferenceText(t, fxToday, view.currency)}
+              />
             </div>
           </details>
         ) : view && !cancelled ? (
@@ -371,7 +384,13 @@ export async function SupplierPaymentCard({
                 {t("supplierTerms.settled")}
               </p>
             ) : null}
-            <SupplierPaymentPanel order={order} t={t} view={view} manualOnly />
+            <SupplierPaymentPanel
+              order={order}
+              t={t}
+              view={view}
+              manualOnly
+              fxReference={fxReferenceText(t, fxToday, view.currency)}
+            />
           </>
         ) : null}
       </div>

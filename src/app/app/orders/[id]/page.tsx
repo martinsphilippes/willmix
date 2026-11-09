@@ -58,6 +58,8 @@ import {
   costEstimateNote,
   fxEffectText,
   fxRateLines,
+  fxReferenceText,
+  missingFxText,
 } from "@/components/finance-fx-text";
 import {
   ackedByUser,
@@ -1520,6 +1522,7 @@ export default async function OrderPage({
             order={order}
             t={t}
             wellmix={financeAccess}
+            fxToday={financeAccess ? (finance?.fxToday ?? null) : null}
             notice={
               typeof paid === "string" &&
               [
@@ -1779,6 +1782,19 @@ export default async function OrderPage({
               </tr>
             </tbody>
           </Table>
+          {/* Pagamento ao fornecedor feito sem o câmbio do banco: o campo de
+              informar fica na tabela de pagamentos, logo abaixo. */}
+          {!isCancelled && missingFxText(t, finance) ? (
+            <p
+              className="mt-2 text-xs font-semibold text-amber-800"
+              data-fx-missing={finance.missingFx.length}
+            >
+              {missingFxText(t, finance)}{" "}
+              <a href="#payments" className={cx(linkClass, "text-xs")}>
+                {t("finance.fx.setTitle")}
+              </a>
+            </p>
+          ) : null}
           {finance.receivable > 0 ? (
             <details className="mt-3 rounded-xl border border-zinc-200 bg-white">
               <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-brand-700 [&::-webkit-details-marker]:hidden">
@@ -1914,9 +1930,30 @@ export default async function OrderPage({
                                   <Field
                                     label={t("finance.fx.setTitle")}
                                     hint={
-                                      p.fxRate
-                                        ? undefined
-                                        : t("finance.fx.paymentMissing")
+                                      p.fxRate ? undefined : (
+                                        <>
+                                          <span className="block">
+                                            {t("finance.fx.paymentMissing")}
+                                          </span>
+                                          {/* Cotação automática do dia, só de referência. */}
+                                          {fxReferenceText(
+                                            t,
+                                            finance?.fxToday ?? null,
+                                            p.currency,
+                                          ) ? (
+                                            <span
+                                              className="block"
+                                              data-fx-reference=""
+                                            >
+                                              {fxReferenceText(
+                                                t,
+                                                finance?.fxToday ?? null,
+                                                p.currency,
+                                              )}
+                                            </span>
+                                          ) : null}
+                                        </>
+                                      )
                                     }
                                   >
                                     <Input
