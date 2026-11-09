@@ -8,9 +8,10 @@ import { shrink } from "./photo-input";
 /*
  * Envio de fotos e arquivos no chat (painel lateral e tela de Mensagens):
  * vários de uma vez, um por mensagem (como no WhatsApp), na ordem escolhida.
- * O texto digitado vai junto com o primeiro. Fotos do botão "Foto" são
- * reduzidas no aparelho (chegam rápido na rede lenta da fábrica); o botão
- * "Arquivo", arrastar e colar mandam o arquivo como está. Acima de ~3,5 MB o
+ * O texto digitado e a mensagem marcada para responder vão junto com o
+ * primeiro. Fotos do botão "Foto ou vídeo" são reduzidas no aparelho (chegam
+ * rápido na rede lenta da fábrica); vídeos, o botão "Arquivo", arrastar e
+ * colar mandam o arquivo como está. Acima de ~3,5 MB o
  * arquivo sobe direto ao armazenamento e a mensagem leva só o id. O servidor
  * confere acesso, tipo e tamanho de cada um.
  */
@@ -34,6 +35,8 @@ export interface ChatUploadLabels {
   failedFile: string;
   failed: string;
   tooBig: string;
+  /** Vídeo acima do teto (com dica de gravar mais curto). */
+  videoTooBig: string;
   serverOnly: string;
   /** Motivo pelo código de erro do servidor (mime, too_large, empty…). */
   errors: Record<string, string>;
@@ -75,19 +78,24 @@ interface UploadJob {
   topicId: string;
   files: File[];
   caption: string;
+  /** Resposta a uma mensagem marcada (vai com o primeiro arquivo). */
+  replyToMessageId: string | null;
   photo: boolean;
 }
 
 export function useChatUpload({
   labels,
   onSent,
-  onCaptionSent,
+  onFirstSent,
 }: {
   labels: ChatUploadLabels;
   /** Depois de cada arquivo enviado (recarregar a conversa). */
   onSent?: () => void | Promise<void>;
-  /** O texto digitado foi junto com um arquivo (para limpar a caixa). */
-  onCaptionSent?: (caption: string) => void;
+  /**
+   * O texto digitado e a resposta marcada foram junto com um arquivo (para
+   * limpar a caixa e a escolha).
+   */
+  onFirstSent?: (caption: string) => void;
 }) {
   const [progress, setProgress] = useState<{
     done: number;
@@ -113,13 +121,17 @@ export function useChatUpload({
       return;
     }
     if (ready.size > MAX_BYTES) {
-      problem(labels.tooBig);
+      problem(
+        ready.type.startsWith("video/") ? labels.videoTooBig : labels.tooBig,
+      );
       return;
     }
     try {
       const form = new FormData();
       form.set("topicId", job.topicId);
       if (job.caption) form.set("body", job.caption);
+      if (job.replyToMessageId)
+        form.set("replyToMessageId", job.replyToMessageId);
       if (ready.size > SERVER_MAX_BYTES) {
         // Grande demais para a requisição: sobe direto ao armazenamento.
         const ids = await uploadDirect([ready], (percent) =>
@@ -138,9 +150,10 @@ export function useChatUpload({
         problem(labels.errors[res.error] ?? labels.failed);
         return;
       }
-      if (job.caption) {
-        onCaptionSent?.(job.caption);
+      if (job.caption || job.replyToMessageId) {
+        onFirstSent?.(job.caption);
         job.caption = "";
+        job.replyToMessageId = null;
       }
       await onSent?.();
     } catch (err) {
@@ -155,14 +168,19 @@ export function useChatUpload({
   }
 
   /**
-   * Envia os arquivos no assunto, um por mensagem. `caption`: o texto da
-   * caixa, que vai com o primeiro arquivo (só quando nada está sendo enviado;
-   * na fila, os arquivos vão sem texto).
+   * Envia os arquivos no assunto, um por mensagem. `caption` (o texto da
+   * caixa) e `replyToMessageId` (a mensagem marcada) vão com o primeiro
+   * arquivo, só quando nada está sendo enviado; na fila, os arquivos vão
+   * sozinhos.
    */
   async function send(
     topicId: string,
     files: File[],
-    options: { caption?: string; photo?: boolean } = {},
+    options: {
+      caption?: string;
+      photo?: boolean;
+      replyToMessageId?: string | null;
+    } = {},
   ) {
     if (!files.length) return;
     const busy = running.current;
@@ -170,6 +188,7 @@ export function useChatUpload({
       topicId,
       files,
       caption: busy ? "" : (options.caption?.trim() ?? ""),
+      replyToMessageId: busy ? null : (options.replyToMessageId ?? null),
       photo: !!options.photo,
     });
     counts.current.total += files.length;

@@ -56,8 +56,12 @@ export async function postMessageAction(form: FormData) {
     const body = attachment
       ? field(form, "body", z.string().trim().max(MESSAGE_MAX_LENGTH))
       : field(form, "body", bodySchema);
+    // Resposta a uma mensagem marcada (o serviço confere que é deste assunto).
+    const replyTo = str(form, "replyToMessageId");
     const { postMessage } = await import("@/lib/services/messages");
-    await postMessage(user, topicId, body, attachment);
+    await postMessage(user, topicId, body, attachment, {
+      replyToMessageId: replyTo ? ID.parse(replyTo) : null,
+    });
   });
 }
 

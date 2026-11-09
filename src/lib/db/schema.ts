@@ -1852,6 +1852,11 @@ export interface Message extends BaseRow {
    * enquanto não traduziu ou quando não precisa (só números, IA desligada).
    */
   translation?: MessageTranslation | null;
+  /**
+   * Resposta a uma mensagem marcada (citação), sempre do mesmo assunto.
+   * Coluna opcional: só é gravada nas respostas.
+   */
+  replyToMessageId?: string | null;
 }
 
 /**
@@ -3388,6 +3393,8 @@ export const TABLES: Record<TableName, TableDef> = {
       attachmentDocumentId: id(false),
       // Tradução automática (opcional; ver MessageTranslation).
       translation: json(),
+      // Resposta a uma mensagem marcada do mesmo assunto (opcional).
+      replyToMessageId: id(false),
     },
     indexes: [
       { key: "by_topic", type: "key", columns: ["topicId"] },

@@ -95,14 +95,24 @@ export async function chatTranslateAction(messageId: unknown) {
   });
 }
 
-/** Envia uma mensagem de texto no assunto. */
-export async function chatSendAction(topicId: unknown, body: unknown) {
+/**
+ * Envia uma mensagem de texto no assunto; com `replyToMessageId`, é a
+ * resposta a uma mensagem marcada (do mesmo assunto, conferido no serviço).
+ */
+export async function chatSendAction(
+  topicId: unknown,
+  body: unknown,
+  replyToMessageId?: unknown,
+) {
   const user = await requireUser();
   return guard(async () => {
     const id = ID.parse(topicId);
     const text = z.string().trim().min(1).max(MESSAGE_MAX_LENGTH).parse(body);
+    const replyTo = optionalId.parse(replyToMessageId ?? null);
     const { postMessage } = await import("@/lib/services/messages");
-    await postMessage(user, id, text);
+    await postMessage(user, id, text, null, {
+      replyToMessageId: replyTo ?? null,
+    });
   });
 }
 
@@ -111,7 +121,8 @@ const uploadedId = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 
 /**
  * Envia um arquivo (foto, PDF, planilha, vídeo…) no assunto, com o texto
- * digitado (opcional), pelo painel lateral ou pela tela de Mensagens. Uma
+ * digitado e a mensagem marcada para responder (opcionais), pelo painel
+ * lateral ou pela tela de Mensagens. Uma
  * mensagem por arquivo, como no WhatsApp. Até ~3,5 MB o arquivo vem no
  * formulário; maior, o navegador já o subiu direto ao armazenamento e manda
  * só o id. O serviço confere o acesso ao assunto antes de gravar qualquer
@@ -136,8 +147,12 @@ export async function chatSendFileAction(form: FormData) {
           ? { fileKey: uploadedId.parse(uploaded) }
           : null;
     if (!attachment) throw new Error("upload_missing");
+    const replyTo = form.get("replyToMessageId");
     const { postMessage } = await import("@/lib/services/messages");
-    const message = await postMessage(user, id, text, attachment);
+    const message = await postMessage(user, id, text, attachment, {
+      replyToMessageId:
+        typeof replyTo === "string" && replyTo ? ID.parse(replyTo) : null,
+    });
     return { id: message.id };
   });
 }

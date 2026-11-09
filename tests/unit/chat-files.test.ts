@@ -87,6 +87,7 @@ describe("envio de fotos e arquivos pelo chat", () => {
       id: doc.id,
       name: "amostra.jpg",
       isImage: true,
+      isVideo: false,
       size: 5,
     });
   });
@@ -217,5 +218,65 @@ describe("abrir o arquivo (/api/files)", () => {
       params: Promise.resolve({ id }),
     } as never);
     expect(anon.status).toBe(401);
+  });
+});
+
+describe("vídeo na conversa", () => {
+  async function get(user: User, docId: string, range?: string) {
+    h.current = user;
+    return GET(
+      new Request(`http://localhost/api/files/${docId}`, {
+        headers: range ? { Range: range } : {},
+      }),
+      { params: Promise.resolve({ id: docId }) } as never,
+    );
+  }
+
+  it("MP4 e MOV tocam na conversa; 3GP aparece como arquivo", async () => {
+    const bytes = Array.from({ length: 100 }, (_, i) => i);
+    const mp4 = await msg.postMessage(
+      joao,
+      topicId,
+      "",
+      fileOf("amostra.mp4", "video/mp4", bytes),
+    );
+    const old = await msg.postMessage(
+      joao,
+      topicId,
+      "",
+      fileOf("antigo.3gp", "video/3gpp", bytes),
+    );
+    const [own] = await msg.listConversationsFor(joao);
+    const view = (await msg.getConversationView(joao, own.id, topicId))!;
+    expect(
+      view.messages.find((m) => m.id === mp4.id)?.attachment?.isVideo,
+    ).toBe(true);
+    expect(
+      view.messages.find((m) => m.id === old.id)?.attachment?.isVideo,
+    ).toBe(false);
+
+    // O Safari pede pedaços: 206 com o pedaço exato.
+    const id = mp4.attachmentDocumentId!;
+    const probe = await get(admin, id, "bytes=0-1");
+    expect(probe.status).toBe(206);
+    expect(probe.headers.get("Content-Range")).toBe("bytes 0-1/100");
+    expect(probe.headers.get("Content-Length")).toBe("2");
+    expect([...new Uint8Array(await probe.arrayBuffer())]).toEqual([0, 1]);
+    const rest = await get(admin, id, "bytes=90-");
+    expect(rest.status).toBe(206);
+    expect(rest.headers.get("Content-Range")).toBe("bytes 90-99/100");
+    expect([...new Uint8Array(await rest.arrayBuffer())]).toEqual([
+      90, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+    ]);
+    // Fora do arquivo: 416. Sem pedido: o arquivo inteiro, avisando que aceita pedaços.
+    const out = await get(admin, id, "bytes=500-");
+    expect(out.status).toBe(416);
+    expect(out.headers.get("Content-Range")).toBe("bytes */100");
+    const whole = await get(admin, id);
+    expect(whole.status).toBe(200);
+    expect(whole.headers.get("Accept-Ranges")).toBe("bytes");
+    expect((await whole.arrayBuffer()).byteLength).toBe(100);
+    // Quem não vê o assunto continua sem acesso, com ou sem pedaço.
+    expect((await get(supplierA, id, "bytes=0-1")).status).toBe(404);
   });
 });

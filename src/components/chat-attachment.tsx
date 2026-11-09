@@ -3,15 +3,17 @@ import { cx } from "./ui";
 
 /*
  * Anexo dentro de uma mensagem (tela de Mensagens e painel lateral): foto em
- * miniatura (tocar abre grande) ou cartão do arquivo com ícone, nome, tipo e
- * tamanho (vídeo e planilha baixam). O arquivo abre por /api/files, que
- * confere quem pode ver o assunto.
+ * miniatura (tocar abre grande), vídeo que toca ali mesmo (com "Baixar
+ * vídeo") ou cartão do arquivo com ícone, nome, tipo e tamanho. O arquivo
+ * abre por /api/files, que confere quem pode ver o assunto.
  */
 
 export interface ChatAttachment {
   id: string;
   name: string;
   isImage: boolean;
+  /** Toca na conversa (MP4, MOV, WebM). */
+  isVideo?: boolean;
   size: number;
 }
 
@@ -19,13 +21,49 @@ export function ChatAttachmentView({
   attachment,
   mine,
   intl,
+  downloadLabel,
 }: {
   attachment: ChatAttachment;
   /** Mensagem de quem vê (balão escuro): cores claras. */
   mine: boolean;
   intl: string;
+  /** "Baixar vídeo" (link embaixo do vídeo). */
+  downloadLabel: string;
 }) {
   const href = `/api/files/${attachment.id}`;
+  const meta = [
+    fileTypeLabel(attachment.name),
+    fileSizeLabel(attachment.size, intl),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (attachment.isVideo)
+    return (
+      <div className="mb-1" data-attachment="video">
+        {/* "#t=0.1": o Safari mostra o primeiro quadro em vez de um retângulo preto. */}
+        <video
+          src={`${href}#t=0.1`}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={attachment.name}
+          className="max-h-72 w-full max-w-[22rem] rounded-lg bg-black"
+        />
+        <a
+          href={href}
+          download={attachment.name}
+          className={cx(
+            "mt-1 inline-flex items-center gap-1 text-[11px] font-semibold underline underline-offset-2",
+            mine ? "text-white/90" : "text-brand-700",
+          )}
+          data-attachment-download
+        >
+          <span aria-hidden>⬇</span>
+          {downloadLabel}
+          {meta ? <span className="font-normal">· {meta}</span> : null}
+        </a>
+      </div>
+    );
   if (attachment.isImage)
     return (
       <a
@@ -45,12 +83,6 @@ export function ChatAttachmentView({
         />
       </a>
     );
-  const meta = [
-    fileTypeLabel(attachment.name),
-    fileSizeLabel(attachment.size, intl),
-  ]
-    .filter(Boolean)
-    .join(" · ");
   return (
     <a
       href={href}

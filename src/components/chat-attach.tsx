@@ -4,9 +4,9 @@ import type { ChatUploadLabels } from "./chat-upload";
 import { cx } from "./ui";
 
 /**
- * Botões "Foto" e "Arquivo" do chat, vários de uma vez. "Foto" abre a câmera
- * ou a galeria; "Arquivo", qualquer arquivo (PDF, planilha, vídeo, foto
- * original). O campo de arquivo (invisível) cobre o botão inteiro: no
+ * Botões "Foto ou vídeo" e "Arquivo" do chat, vários de uma vez. "Foto ou
+ * vídeo" abre a câmera ou a galeria (fotos e vídeos); "Arquivo", qualquer
+ * arquivo (PDF, planilha, vídeo, foto original). O campo de arquivo (invisível) cobre o botão inteiro: no
  * iPad/iPhone, tocar num rótulo com o campo escondido dentro não abria o
  * seletor.
  */
@@ -34,7 +34,7 @@ export function ChatAttachButtons({
       <input
         type="file"
         multiple
-        accept={photo ? "image/*" : undefined}
+        accept={photo ? "image/*,video/*" : undefined}
         disabled={disabled}
         aria-label={photo ? labels.photo : labels.file}
         title={photo ? labels.photoTitle : labels.fileTitle}

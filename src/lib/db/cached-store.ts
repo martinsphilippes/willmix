@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { TableName, Tables } from "./schema";
 import type { ListOptions, NewRow, Patch, Store } from "./store";
+import type { ByteRange } from "@/lib/http-range";
 
 /**
  * Leituras memorizadas por requisição. Uma página chama o mesmo `get`/`list`
@@ -112,8 +113,8 @@ export class CachedStore implements Store {
     return this.base.statFile(key);
   }
 
-  streamFile(key: string) {
-    return this.base.streamFile(key);
+  streamFile(key: string, range?: ByteRange | null) {
+    return this.base.streamFile(key, range);
   }
 
   removeFile(key: string) {
