@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   Badge,
   cx,
@@ -12,6 +12,7 @@ import {
 } from "./ui";
 import { ChatOpenButton } from "./chat-open-button";
 import { PhotoGallery, type GalleryPhoto } from "./photo-gallery";
+import { RowMoreDetails, RowMoreToggle, oneLine } from "./row-more";
 import { chatTargetFromHref } from "@/lib/chat-target";
 
 /** Textos da galeria de fotos da linha (já no idioma de quem vê). */
@@ -180,6 +181,8 @@ export interface OrdersTableLabels {
   cbm: string;
   amount: string;
   total: string;
+  /** Setinha da linha do item: abre os textos inteiros embaixo. */
+  more: string;
 }
 
 type Filters = Record<FilterKey, string>;
@@ -716,6 +719,15 @@ function ItemsPanel({
 }) {
   const withPrice = !!row?.items.some((i) => i.price !== null);
   const detailed = !!row?.items.some((i) => i.detail);
+  // Colunas da tabela de itens (a faixa do "ver mais" ocupa todas).
+  const columns =
+    3 + // nº, produto, variação
+    (detailed ? 9 : 0) + // imagem, código, cód. do item, especificação, cor, peso, qtd. por caixa, caixas, volume
+    1 + // quantidade
+    (withPrice ? 1 : 0) +
+    (withPrice && detailed ? 1 : 0) +
+    (showSupplier ? 1 : 0) +
+    6; // pedido, etapa, progresso, situação, prazo, conversa
   const cell = "whitespace-nowrap px-2.5 py-2";
   const num = cx(cell, "text-right tabular-nums");
   const dash = (v: string | null | undefined) => v ?? "—";
@@ -800,139 +812,170 @@ function ItemsPanel({
                   (item.state === "active" || item.state === "blocked");
                 const d = item.detail ?? null;
                 return (
-                  <tr
-                    key={i}
-                    className={cx(
-                      rowClass,
-                      detailed && item.state === "cancelled" && "opacity-60",
-                    )}
-                    data-orders-item
-                  >
-                    <td className={cx(cell, "tabular-nums text-zinc-500")}>
-                      {i + 1}
-                    </td>
-                    {detailed ? (
-                      <td className="w-14 px-2.5 py-1.5">
-                        {d ? (
-                          <PhotoGallery
-                            name={item.name}
-                            photos={d.photos}
-                            labels={d.gallery}
-                          />
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    ) : null}
-                    <td className="min-w-40 px-2.5 py-2 font-medium text-zinc-900">
-                      {item.name}
-                    </td>
-                    <td className="px-2.5 py-2 text-zinc-600">
-                      {item.variant ?? "—"}
-                    </td>
-                    {detailed ? (
-                      <>
-                        <td className={cell}>
-                          <span className="font-mono text-xs text-zinc-700">
-                            {dash(d?.sku)}
-                          </span>
-                        </td>
-                        <td className={cell}>
-                          <span className="font-mono text-xs text-zinc-700">
-                            {dash(d?.supplierSku)}
-                          </span>
-                        </td>
-                        <td className="px-2.5 py-2">
-                          <span
-                            className="block max-w-48 truncate"
-                            title={d?.specification ?? undefined}
-                            data-orders-item-spec
-                          >
-                            {dash(d?.specification)}
-                          </span>
-                        </td>
-                        <td className="min-w-24 px-2.5 py-2">
-                          {dash(d?.color)}
-                        </td>
-                        <td className={num} data-orders-item-weight>
-                          {dash(d?.weight)}
-                        </td>
-                      </>
-                    ) : null}
-                    <td
-                      className={cx(num, detailed && "font-semibold")}
-                      data-orders-item-qty
-                    >
-                      {item.quantity}
-                    </td>
-                    {detailed ? (
-                      <>
-                        <td className={num}>{dash(d?.perBox)}</td>
-                        <td className={num} data-orders-item-boxes>
-                          {dash(d?.boxes)}
-                        </td>
-                        <td className={num} data-orders-item-cbm>
-                          {dash(d?.cbm)}
-                        </td>
-                      </>
-                    ) : null}
-                    {withPrice ? (
-                      <td className={num}>{item.price ?? "—"}</td>
-                    ) : null}
-                    {withPrice && detailed ? (
-                      <td className={num}>{dash(d?.amount)}</td>
-                    ) : null}
-                    {showSupplier ? (
-                      <td className="min-w-32 px-2.5 py-2">
-                        {item.supplier || "—"}
-                      </td>
-                    ) : null}
-                    <td className={cell}>
-                      <Link href={item.href} className={linkClass}>
-                        {item.ref}
-                      </Link>
-                    </td>
-                    <td className={cell}>{item.phase}</td>
-                    <td className="w-40 px-2.5 py-2">
-                      <JourneyBar
-                        progress={item.progress}
-                        label={item.stepLabel}
-                        step={item.step}
-                        cancelled={item.state === "cancelled"}
-                        stoppedAt={labels.journey.stoppedAt}
-                      />
-                    </td>
-                    <td className={cell}>
-                      <Badge tone={STATE_TONE[item.state]}>
-                        {labels.states[item.state]}
-                      </Badge>
-                    </td>
-                    <td
+                  <Fragment key={i}>
+                    <tr
                       className={cx(
-                        cell,
-                        "tabular-nums",
-                        late && "font-semibold text-red-700",
+                        rowClass,
+                        detailed && item.state === "cancelled" && "opacity-60",
                       )}
+                      data-orders-item
                     >
-                      {item.dueLabel}
-                    </td>
-                    {/* Conversa do item (desce até o produto): última coluna. */}
-                    <td className={cx(cell, "text-right")}>
-                      {chatTargetFromHref(item.href) ? (
-                        <ChatOpenButton
-                          target={
-                            item.orderItemId
-                              ? {
-                                  ...chatTargetFromHref(item.href)!,
-                                  orderItemId: item.orderItemId,
-                                }
-                              : chatTargetFromHref(item.href)!
-                          }
-                          label={labels.chat}
-                        />
+                      {/* Linha fina: o que não cabe termina em "…"; a setinha abre tudo embaixo. */}
+                      <td className={cx(cell, "tabular-nums text-zinc-500")}>
+                        <RowMoreToggle label={labels.more} />
+                        {i + 1}
+                      </td>
+                      {detailed ? (
+                        <td className="w-14 px-2.5 py-1.5">
+                          {d ? (
+                            <PhotoGallery
+                              name={item.name}
+                              photos={d.photos}
+                              labels={d.gallery}
+                            />
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                       ) : null}
-                    </td>
-                  </tr>
+                      <td className="max-w-56 px-2.5 py-2 font-medium text-zinc-900">
+                        <span className={oneLine}>{item.name}</span>
+                      </td>
+                      <td className="max-w-40 px-2.5 py-2 text-zinc-600">
+                        <span className={oneLine}>{item.variant ?? "—"}</span>
+                      </td>
+                      {detailed ? (
+                        <>
+                          <td className={cell}>
+                            <span className="font-mono text-xs text-zinc-700">
+                              {dash(d?.sku)}
+                            </span>
+                          </td>
+                          <td className={cell}>
+                            <span className="font-mono text-xs text-zinc-700">
+                              {dash(d?.supplierSku)}
+                            </span>
+                          </td>
+                          <td className="px-2.5 py-2">
+                            <span
+                              className="block max-w-48 truncate"
+                              title={d?.specification ?? undefined}
+                              data-orders-item-spec
+                            >
+                              {dash(d?.specification)}
+                            </span>
+                          </td>
+                          <td className="px-2.5 py-2">
+                            <span className={cx(oneLine, "max-w-32")}>
+                              {dash(d?.color)}
+                            </span>
+                          </td>
+                          <td className={num} data-orders-item-weight>
+                            {dash(d?.weight)}
+                          </td>
+                        </>
+                      ) : null}
+                      <td
+                        className={cx(num, detailed && "font-semibold")}
+                        data-orders-item-qty
+                      >
+                        {item.quantity}
+                      </td>
+                      {detailed ? (
+                        <>
+                          <td className={num}>{dash(d?.perBox)}</td>
+                          <td className={num} data-orders-item-boxes>
+                            {dash(d?.boxes)}
+                          </td>
+                          <td className={num} data-orders-item-cbm>
+                            {dash(d?.cbm)}
+                          </td>
+                        </>
+                      ) : null}
+                      {withPrice ? (
+                        <td className={num}>{item.price ?? "—"}</td>
+                      ) : null}
+                      {withPrice && detailed ? (
+                        <td className={num}>{dash(d?.amount)}</td>
+                      ) : null}
+                      {showSupplier ? (
+                        <td className="max-w-40 px-2.5 py-2">
+                          <span className={oneLine}>
+                            {item.supplier || "—"}
+                          </span>
+                        </td>
+                      ) : null}
+                      <td className={cell}>
+                        <Link href={item.href} className={linkClass}>
+                          {item.ref}
+                        </Link>
+                      </td>
+                      <td className={cell}>{item.phase}</td>
+                      <td className="w-40 px-2.5 py-2">
+                        <JourneyBar
+                          progress={item.progress}
+                          label={item.stepLabel}
+                          step={item.step}
+                          cancelled={item.state === "cancelled"}
+                          stoppedAt={labels.journey.stoppedAt}
+                        />
+                      </td>
+                      <td className={cell}>
+                        <Badge tone={STATE_TONE[item.state]}>
+                          {labels.states[item.state]}
+                        </Badge>
+                      </td>
+                      <td
+                        className={cx(
+                          cell,
+                          "tabular-nums",
+                          late && "font-semibold text-red-700",
+                        )}
+                      >
+                        {item.dueLabel}
+                      </td>
+                      {/* Conversa do item (desce até o produto): última coluna. */}
+                      <td className={cx(cell, "text-right")}>
+                        {chatTargetFromHref(item.href) ? (
+                          <ChatOpenButton
+                            target={
+                              item.orderItemId
+                                ? {
+                                    ...chatTargetFromHref(item.href)!,
+                                    orderItemId: item.orderItemId,
+                                  }
+                                : chatTargetFromHref(item.href)!
+                            }
+                            label={labels.chat}
+                          />
+                        ) : null}
+                      </td>
+                    </tr>
+                    <RowMoreDetails
+                      colSpan={columns}
+                      items={[
+                        [labels.product, item.name],
+                        [labels.variant, item.variant],
+                        ...(detailed
+                          ? ([
+                              [labels.code, d?.sku],
+                              [labels.itemCode, d?.supplierSku],
+                              [labels.color, d?.color],
+                            ] as Array<[string, string | null | undefined]>)
+                          : []),
+                        ...(showSupplier
+                          ? ([[labels.supplier, item.supplier]] as Array<
+                              [string, string]
+                            >)
+                          : []),
+                        ...(detailed
+                          ? ([[labels.spec, d?.specification, true]] as Array<
+                              [string, string | null | undefined, boolean]
+                            >)
+                          : []),
+                      ]}
+                    />
+                  </Fragment>
                 );
               })}
               {detailed && row.itemsTotals ? (

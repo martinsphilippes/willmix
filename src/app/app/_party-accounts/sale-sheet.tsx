@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
@@ -29,6 +29,7 @@ import {
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { PrintButton } from "@/components/print-button";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { RowMoreDetails, RowMoreToggle, oneLine } from "@/components/row-more";
 import { galleryProps } from "@/components/photo-gallery-props";
 
 const PAYMENT_TONE = {
@@ -212,120 +213,165 @@ export async function PartySaleSheet({
             </thead>
             <tbody>
               {lines.map((l, i) => (
-                <tr
-                  key={`${l.orderId}-${i}`}
-                  className={cx(
-                    rowClass,
-                    l.orderStatus === "CANCELLED" && "opacity-60",
-                  )}
-                  data-sale-line={l.orderNumber}
-                >
-                  <Td className="text-right tabular-nums">{i + 1}</Td>
-                  <Td className="w-14">
-                    <PhotoGallery
-                      name={l.name}
-                      {...galleryProps(t, l.photos)}
-                    />
-                  </Td>
-                  <Td className="min-w-44 font-medium">
-                    {l.productId ? (
-                      <TextLink
-                        href={`/app/products/${l.productId}`}
-                        className="text-zinc-900"
-                      >
-                        {l.name}
-                      </TextLink>
-                    ) : (
-                      l.name
-                    )}
-                    {l.variantName ? (
-                      <span className="block text-xs font-normal text-zinc-500">
-                        {l.variantName}
-                      </span>
-                    ) : null}
-                  </Td>
-                  <Td>
-                    <span className="whitespace-nowrap font-mono text-xs text-zinc-700">
-                      {l.sku ?? "—"}
-                    </span>
-                  </Td>
-                  <Td>
-                    <span className="whitespace-nowrap font-mono text-xs text-zinc-700">
-                      {l.supplierSku ?? "—"}
-                    </span>
-                  </Td>
-                  <Td>
-                    <span
-                      className="block max-w-48 truncate"
-                      title={l.specification ?? undefined}
-                    >
-                      {l.specification ?? "—"}
-                    </span>
-                  </Td>
-                  <Td>{l.color ?? "—"}</Td>
-                  <Td className="text-right tabular-nums">
-                    {l.weightKg !== null ? num(l.weightKg) : "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
-                    {num(l.quantity, 0)} {l.unit}
-                  </Td>
-                  <Td className="text-right tabular-nums">
-                    {l.unitsPerBox ?? "—"}
-                  </Td>
-                  <Td className="text-right tabular-nums">{num(l.boxes, 0)}</Td>
-                  <Td className="text-right tabular-nums">
-                    {l.cbm !== null ? num(l.cbm, 3) : "—"}
-                  </Td>
-                  {money ? (
-                    <>
-                      <Td className="whitespace-nowrap text-right tabular-nums">
-                        {formatMoney(l.unitPrice, l.currency, t)}
-                      </Td>
-                      <Td className="whitespace-nowrap text-right tabular-nums">
-                        {formatMoney(l.amount, l.currency, t)}
-                      </Td>
-                    </>
-                  ) : null}
-                  <Td
+                <Fragment key={`${l.orderId}-${i}`}>
+                  <tr
                     className={cx(
-                      "text-right tabular-nums",
-                      l.delivered > 0 ? "text-emerald-700" : "text-zinc-400",
+                      rowClass,
+                      l.orderStatus === "CANCELLED" && "opacity-60",
                     )}
+                    data-sale-line={l.orderNumber}
                   >
-                    {num(l.delivered, 0)}
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <TextLink href={`/app/orders/${l.orderId}`}>
-                      #{l.orderNumber}
-                    </TextLink>
-                    <span className="block text-xs text-zinc-500">
-                      {t(`stage.${l.orderStatus}` as DictionaryKey)}
-                    </span>
-                  </Td>
-                  <Td>
-                    <span
-                      className="block max-w-56 truncate"
-                      title={l.notes ?? undefined}
+                    {/* Linha fina: o que não cabe termina em "…"; a setinha abre tudo embaixo. */}
+                    <Td className="whitespace-nowrap text-right tabular-nums">
+                      <RowMoreToggle label={S("more")} />
+                      {i + 1}
+                    </Td>
+                    <Td className="w-14">
+                      <PhotoGallery
+                        name={l.name}
+                        {...galleryProps(t, l.photos)}
+                      />
+                    </Td>
+                    <Td className="max-w-64 font-medium">
+                      {l.productId ? (
+                        <TextLink
+                          href={`/app/products/${l.productId}`}
+                          className={cx(oneLine, "text-zinc-900")}
+                        >
+                          {l.name}
+                        </TextLink>
+                      ) : (
+                        <span className={oneLine}>{l.name}</span>
+                      )}
+                      {l.variantName ? (
+                        <span
+                          className={cx(
+                            oneLine,
+                            "text-xs font-normal text-zinc-500",
+                          )}
+                        >
+                          {l.variantName}
+                        </span>
+                      ) : null}
+                    </Td>
+                    <Td>
+                      <span
+                        className={cx(
+                          oneLine,
+                          "max-w-28 font-mono text-xs text-zinc-700",
+                        )}
+                      >
+                        {l.sku ?? "—"}
+                      </span>
+                    </Td>
+                    <Td>
+                      <span
+                        className={cx(
+                          oneLine,
+                          "max-w-28 font-mono text-xs text-zinc-700",
+                        )}
+                      >
+                        {l.supplierSku ?? "—"}
+                      </span>
+                    </Td>
+                    <Td>
+                      <span
+                        className="block max-w-48 truncate"
+                        title={l.specification ?? undefined}
+                      >
+                        {l.specification ?? "—"}
+                      </span>
+                    </Td>
+                    <Td>
+                      <span className={cx(oneLine, "max-w-32")}>
+                        {l.color ?? "—"}
+                      </span>
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {l.weightKg !== null ? num(l.weightKg) : "—"}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
+                      {num(l.quantity, 0)} {l.unit}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {l.unitsPerBox ?? "—"}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {l.unitsPerBox !== null ? num(l.boxes, 0) : "—"}
+                    </Td>
+                    <Td className="text-right tabular-nums">
+                      {l.cbm !== null ? num(l.cbm, 3) : "—"}
+                    </Td>
+                    {money ? (
+                      <>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {formatMoney(l.unitPrice, l.currency, t)}
+                        </Td>
+                        <Td className="whitespace-nowrap text-right tabular-nums">
+                          {formatMoney(l.amount, l.currency, t)}
+                        </Td>
+                      </>
+                    ) : null}
+                    <Td
+                      className={cx(
+                        "text-right tabular-nums",
+                        l.delivered > 0 ? "text-emerald-700" : "text-zinc-400",
+                      )}
                     >
-                      {l.notes ?? "—"}
-                    </span>
-                  </Td>
-                </tr>
+                      {num(l.delivered, 0)}
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <TextLink href={`/app/orders/${l.orderId}`}>
+                        #{l.orderNumber}
+                      </TextLink>
+                      <span className="block text-xs text-zinc-500">
+                        {t(`stage.${l.orderStatus}` as DictionaryKey)}
+                      </span>
+                    </Td>
+                    <Td>
+                      <span
+                        className="block max-w-56 truncate"
+                        title={l.notes ?? undefined}
+                      >
+                        {l.notes ?? "—"}
+                      </span>
+                    </Td>
+                  </tr>
+                  <RowMoreDetails
+                    colSpan={money ? 17 : 15}
+                    items={[
+                      [
+                        S("col.product"),
+                        l.variantName ? `${l.name} · ${l.variantName}` : l.name,
+                      ],
+                      [S("col.code"), l.sku],
+                      [S("col.supplierSku"), l.supplierSku],
+                      [S("col.color"), l.color],
+                      [S("col.spec"), l.specification, true],
+                      [S("col.notes"), l.notes, true],
+                    ]}
+                  />
+                </Fragment>
               ))}
               <tr className="bg-amber-50/60 font-semibold" data-sale-total>
                 <Td colSpan={7}>{S("total")}</Td>
+                {/* Total sem o dado em nenhum produto: "—", não um 0. */}
                 <Td className="text-right tabular-nums">
-                  {num(totals.weightKg)}
+                  {lines.some((l) => l.weightKg !== null)
+                    ? num(totals.weightKg)
+                    : "—"}
                 </Td>
                 <Td className="text-right tabular-nums">
                   {num(totals.quantity, 0)}
                 </Td>
                 <Td />
                 <Td className="text-right tabular-nums">
-                  {num(totals.boxes, 0)}
+                  {lines.some((l) => l.unitsPerBox !== null)
+                    ? num(totals.boxes, 0)
+                    : "—"}
                 </Td>
                 <Td className="text-right tabular-nums">
-                  {num(totals.cbm, 3)}
+                  {lines.some((l) => l.cbm !== null) ? num(totals.cbm, 3) : "—"}
                 </Td>
                 {money ? (
                   <>

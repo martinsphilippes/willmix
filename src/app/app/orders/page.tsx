@@ -398,6 +398,7 @@ export default async function OrdersPage({
             cbm: t("sale.col.cbm"),
             amount: t("supp.sale.col.amount"),
             total: t("sale.total"),
+            more: t("sale.more"),
           }}
         />
       )}
