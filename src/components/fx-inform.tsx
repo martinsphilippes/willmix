@@ -35,7 +35,7 @@ export function FxInform({
         {text}
       </p>
       <details className="mt-1" open={open} data-fx-inform>
-        <summary className="inline-flex cursor-pointer select-none list-none items-center rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-300 transition hover:bg-amber-200 [&::-webkit-details-marker]:hidden">
+        <summary className="inline-flex cursor-pointer select-none list-none items-center whitespace-nowrap rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-300 transition hover:bg-amber-200 [&::-webkit-details-marker]:hidden">
           {t("finance.fx.setTitle")}
         </summary>
         <div className="mt-1.5 space-y-2">
