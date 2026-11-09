@@ -36,6 +36,8 @@ const ALLOWED_MIME = [
   "application/xml",
   "text/xml",
   "application/zip",
+  // O mesmo .zip, como o Windows o identifica.
+  "application/x-zip-compressed",
   "application/octet-stream",
   "application/postscript",
   "image/svg+xml",
@@ -48,6 +50,36 @@ const ALLOWED_MIME = [
   "image/x-cdr",
   "image/tiff",
 ];
+
+/**
+ * Só no chat (anexo da conversa): Word, PowerPoint, texto, GIF e vídeo, que
+ * fornecedores e clientes mandam no dia a dia. Os documentos do processo
+ * (pedido, solicitação, cadastro) seguem só com os tipos de cima.
+ */
+const CHAT_EXTRA_MIME = [
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "image/gif",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  "video/3gpp",
+];
+
+/** Tipos aceitos para o destino do arquivo (o chat aceita alguns a mais). */
+function acceptsMime(
+  mime: string,
+  input?: Pick<UploadInput, "conversationTopicId">,
+): boolean {
+  const m = mime.toLowerCase();
+  return (
+    ALLOWED_MIME.includes(m) ||
+    (!!input?.conversationTopicId && CHAT_EXTRA_MIME.includes(m))
+  );
+}
 
 export class DocumentError extends Error {}
 
@@ -70,12 +102,15 @@ export interface UploadInput {
 
 /** Upload com versionamento: um novo arquivo para o mesmo requisito mantém o anterior. */
 /** Mesma checagem do upload, sem gravar: para validar antes de criar o que o arquivo acompanha. */
-export function assertUploadable(file: File): void {
+export function assertUploadable(
+  file: File,
+  input?: Pick<UploadInput, "conversationTopicId">,
+): void {
   if (file.size === 0) throw new DocumentError("empty");
   if (file.size > MAX_BYTES) throw new DocumentError("too_large");
   // Sem diferenciar maiúsculas: o navegador manda "macroEnabled" no .xlsm.
   const mime = (file.type || "application/octet-stream").toLowerCase();
-  if (!ALLOWED_MIME.includes(mime)) throw new DocumentError("mime");
+  if (!acceptsMime(mime, input)) throw new DocumentError("mime");
 }
 
 export async function uploadDocument(
@@ -83,7 +118,7 @@ export async function uploadDocument(
   file: File,
   input: UploadInput,
 ): Promise<Document> {
-  assertUploadable(file);
+  assertUploadable(file, input);
   const mime = file.type || "application/octet-stream";
 
   const store = getStore();
@@ -112,7 +147,7 @@ export async function registerUploadedDocument(
     throw new DocumentError("too_large");
   }
   const mime = stored.mime || "application/octet-stream";
-  if (!ALLOWED_MIME.includes(mime)) {
+  if (!acceptsMime(mime, input)) {
     await store.removeFile(fileKey);
     throw new DocumentError("mime");
   }

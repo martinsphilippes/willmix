@@ -33,6 +33,7 @@ import {
   type TranslationDisplay,
 } from "@/lib/message-translation";
 import { isSchemaMissing } from "./packaging-brief";
+import { isPreviewImage } from "@/lib/file-kinds";
 import { notify } from "./notifications";
 import {
   isAttachmentOnly,
@@ -603,8 +604,16 @@ export interface MessageView {
   authorName: string;
   authorSide: MessageSide;
   mine: boolean;
-  /** Arquivo anexado (abre por /api/files, que confere o acesso). */
-  attachment: { id: string; name: string; isImage: boolean } | null;
+  /**
+   * Arquivo anexado (abre por /api/files, que confere o acesso). `isImage`:
+   * o navegador mostra (miniatura na conversa); `size` em bytes.
+   */
+  attachment: {
+    id: string;
+    name: string;
+    isImage: boolean;
+    size: number;
+  } | null;
   /** Tradução para quem vê (só quando a tela informa o idioma). */
   translation: MessageTranslationState | null;
   /** Textos da tradução já montados no idioma da tela (preenchido pela tela). */
@@ -696,7 +705,12 @@ export async function getConversationView(
   const attachmentOf = (m: Message): MessageView["attachment"] => {
     const doc = attachments.find((d) => d.id === m.attachmentDocumentId);
     return doc
-      ? { id: doc.id, name: doc.name, isImage: doc.mime.startsWith("image/") }
+      ? {
+          id: doc.id,
+          name: doc.name,
+          isImage: isPreviewImage(doc.mime),
+          size: doc.size,
+        }
       : null;
   };
   const company = await companiesOf([conversation]);
