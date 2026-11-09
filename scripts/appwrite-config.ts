@@ -10,7 +10,9 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  BUCKET_EXTENSIONS,
   BUCKET_ID,
+  BUCKET_MAX_BYTES,
   DATABASE_ID,
   TABLES,
   type ColumnDef,
@@ -88,29 +90,8 @@ const config = {
       // Usuário logado cria arquivo (envio direto do navegador, com JWT da
       // sessão); leitura continua só pelo servidor (/api/files, API key).
       $permissions: ['create("users")'],
-      maximumFileSize: 50000000,
-      allowedFileExtensions: [
-        "pdf",
-        "png",
-        "jpg",
-        "jpeg",
-        "webp",
-        "heic",
-        "heif",
-        "xlsx",
-        "xlsm",
-        "xls",
-        "csv",
-        "json",
-        "zip",
-        "ai",
-        "svg",
-        "psd",
-        "eps",
-        "cdr",
-        "tif",
-        "tiff",
-      ],
+      maximumFileSize: BUCKET_MAX_BYTES,
+      allowedFileExtensions: [...BUCKET_EXTENSIONS],
       compression: "gzip",
       encryption: true,
       antivirus: true,

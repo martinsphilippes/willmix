@@ -4,16 +4,18 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { chatSendFileAction } from "@/app/app/actions/chat";
 import { SERVER_MAX_BYTES, uploadDirect } from "./direct-upload";
 import { shrink } from "./photo-input";
+import { isVideoFile, prepareVideo } from "./video-shrink";
 
 /*
  * Envio de fotos e arquivos no chat (painel lateral e tela de Mensagens):
  * vários de uma vez, um por mensagem (como no WhatsApp), na ordem escolhida.
  * O texto digitado e a mensagem marcada para responder vão junto com o
- * primeiro. Fotos do botão "Foto ou vídeo" são reduzidas no aparelho (chegam
- * rápido na rede lenta da fábrica); vídeos, o botão "Arquivo", arrastar e
- * colar mandam o arquivo como está. Acima de ~3,5 MB o
- * arquivo sobe direto ao armazenamento e a mensagem leva só o id. O servidor
- * confere acesso, tipo e tamanho de cada um.
+ * primeiro. Fotos e vídeos do botão "Foto ou vídeo" são reduzidos no
+ * aparelho (chegam rápido na rede lenta da fábrica; vídeo em 720p, ver
+ * video-shrink.ts); o botão "Arquivo", arrastar e colar mandam o arquivo como
+ * está, menos o vídeo acima de 50 MB, que é reduzido para caber. Acima de
+ * ~3,5 MB o arquivo sobe direto ao armazenamento e a mensagem leva só o id.
+ * O servidor confere acesso, tipo e tamanho de cada um.
  */
 
 /** Teto por arquivo (o mesmo do servidor). */
@@ -37,6 +39,12 @@ export interface ChatUploadLabels {
   tooBig: string;
   /** Vídeo acima do teto (com dica de gravar mais curto). */
   videoTooBig: string;
+  /** Redução do vídeo no aparelho; com {done}, {total} e {percent}. */
+  preparing: string;
+  /** Vídeo longo demais mesmo reduzido; com {minutes}. */
+  videoTooLong: string;
+  /** O aparelho não conseguiu reduzir e o vídeo passa do teto. */
+  videoNoReduce: string;
   serverOnly: string;
   /** Motivo pelo código de erro do servidor (mime, too_large, empty…). */
   errors: Record<string, string>;
@@ -101,6 +109,8 @@ export function useChatUpload({
     done: number;
     total: number;
     percent: number | null;
+    /** Reduzindo o vídeo (antes de enviar). */
+    preparing?: boolean;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Fila: o que chega durante um envio (arrastar ou colar mais) vai depois.
@@ -115,7 +125,40 @@ export function useChatUpload({
     const name = file.name || "—";
     const problem = (reason: string) =>
       problems.push(fill(labels.failedFile, { name, reason }));
-    const ready = await prepare(file, job.photo);
+    let ready = file;
+    if (isVideoFile(file)) {
+      const video = await prepareVideo(file, {
+        maxBytes: MAX_BYTES,
+        photoButton: job.photo,
+        onProgress: (percent) =>
+          setProgress({
+            done,
+            total: counts.current.total,
+            percent,
+            preparing: true,
+          }),
+      });
+      setProgress({ done, total: counts.current.total, percent: null });
+      if (video.status === "too_long") {
+        problem(
+          fill(labels.videoTooLong, {
+            minutes: Math.max(1, Math.floor(video.maxDurationSec / 60)),
+          }),
+        );
+        return;
+      }
+      // Reduzido e menor: vai o reduzido; senão, o original (se couber).
+      if (video.status === "reduced" && video.file.size < file.size)
+        ready = video.file;
+      else if (file.size > MAX_BYTES) {
+        problem(
+          video.status === "unsupported"
+            ? labels.videoNoReduce
+            : labels.videoTooBig,
+        );
+        return;
+      }
+    } else ready = await prepare(file, job.photo);
     if (ready.size === 0) {
       problem(labels.errors.empty ?? labels.failed);
       return;
@@ -215,13 +258,19 @@ export function useChatUpload({
   }
 
   const status = progress
-    ? progress.percent !== null
-      ? fill(labels.progressPercent, {
+    ? progress.preparing
+      ? fill(labels.preparing, {
           done: progress.done,
           total: progress.total,
-          percent: progress.percent,
+          percent: progress.percent ?? 0,
         })
-      : fill(labels.progress, { done: progress.done, total: progress.total })
+      : progress.percent !== null
+        ? fill(labels.progressPercent, {
+            done: progress.done,
+            total: progress.total,
+            percent: progress.percent,
+          })
+        : fill(labels.progress, { done: progress.done, total: progress.total })
     : null;
   return { send, busy: progress !== null, status, error, setError };
 }

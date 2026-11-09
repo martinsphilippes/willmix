@@ -21,7 +21,7 @@ import { imageHashOf } from "./image-hash";
 /** Teto por documento. Acima de ~4 MB o navegador envia direto ao armazenamento (`registerUploadedDocument`). */
 export const MAX_DOCUMENT_BYTES = 50_000_000;
 const MAX_BYTES = MAX_DOCUMENT_BYTES;
-const ALLOWED_MIME = [
+export const ALLOWED_MIME = [
   "application/pdf",
   "image/png",
   "image/jpeg",
@@ -56,7 +56,7 @@ const ALLOWED_MIME = [
  * fornecedores e clientes mandam no dia a dia. Os documentos do processo
  * (pedido, solicitação, cadastro) seguem só com os tipos de cima.
  */
-const CHAT_EXTRA_MIME = [
+export const CHAT_EXTRA_MIME = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.ms-powerpoint",

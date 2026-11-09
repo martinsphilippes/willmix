@@ -4,6 +4,7 @@ import type { TableName, Tables } from "./schema";
 import { BUCKET_ID, DATABASE_ID, TABLES } from "./schema";
 import type { ListOptions, NewRow, Patch, Store, StoredFile } from "./store";
 import { downloadBytes } from "./download-bytes";
+import { storageFileName } from "../file-kinds";
 import {
   clampRange,
   parseContentRange,
@@ -167,7 +168,8 @@ export class AppwriteStore implements Store {
     const file = await this.storage.createFile({
       bucketId: BUCKET_ID,
       fileId: ID.unique(),
-      file: InputFile.fromBuffer(Buffer.from(bytes), name),
+      // Extensão em minúsculas: a lista do bucket é em minúsculas.
+      file: InputFile.fromBuffer(Buffer.from(bytes), storageFileName(name)),
     });
     return { key: file.$id, name, mime, size: bytes.byteLength };
   }
