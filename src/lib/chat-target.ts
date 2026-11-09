@@ -10,6 +10,11 @@ export interface ChatTargetDetail {
   requestId?: string | null;
   orderItemId?: string | null;
   partyId?: string | null;
+  /**
+   * Começo da mensagem já escrito no campo (ex.: "Etapa Preparação: "), para
+   * quem recebe saber do que se trata. Só enviar o começo não vale.
+   */
+  draft?: string | null;
 }
 
 export const CHAT_EVENT = "wellmix:chat";

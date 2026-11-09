@@ -25,6 +25,7 @@ import {
 import { stageVisibleTo } from "@/lib/order-view";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
+import { stageChat } from "@/lib/stage-chat";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -1213,7 +1214,61 @@ export default async function OrderPage({
                     </Badge>
                   </Td>
                   <Td className="whitespace-nowrap text-zinc-700">
-                    {visible ? t(`role.${s.responsibleRole}`) : "—"}
+                    {visible ? (
+                      <span className="inline-flex items-center gap-1">
+                        {t(`role.${s.responsibleRole}`)}
+                        {(() => {
+                          // Mensagem para o responsável da etapa (Wellmix: a
+                          // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
+                          const chat = stageChat(
+                            order,
+                            s.responsibleRole,
+                            wellmix,
+                          );
+                          const draft = t("orderView.stage.chatDraft", {
+                            stage: t(`stage.${s.key}`),
+                          });
+                          if (!chat) return null;
+                          if (chat.kind === "unassigned")
+                            return (
+                              <a
+                                href="#order-partners"
+                                className="text-xs font-medium text-brand-700 underline underline-offset-2"
+                                title={t("orderView.stage.chatAssignTitle", {
+                                  role: t(`role.${s.responsibleRole}`),
+                                })}
+                                data-stage-chat-assign={s.key}
+                              >
+                                {t("orderView.stage.chatAssign")}
+                              </a>
+                            );
+                          return (
+                            <span data-stage-chat={s.key}>
+                              <ChatOpenButton
+                                target={
+                                  chat.kind === "party"
+                                    ? {
+                                        orderId: order.id,
+                                        partyId: chat.partyId,
+                                        draft,
+                                      }
+                                    : { orderId: order.id, draft }
+                                }
+                                label={
+                                  chat.kind === "party"
+                                    ? t("orderView.stage.chat", {
+                                        who: `${t(`role.${s.responsibleRole}`)} (${partyName(chat.partyId)})`,
+                                      })
+                                    : t("orderView.stage.chatWellmix")
+                                }
+                              />
+                            </span>
+                          );
+                        })()}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </Td>
                   <Td
                     className={cx(
