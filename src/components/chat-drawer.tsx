@@ -72,6 +72,8 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
   } | null>(null);
   const [view, setView] = useState<ConversationView | null>(null);
   const [body, setBody] = useState("");
+  /** Começo já escrito (da linha que abriu o painel). */
+  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -132,7 +134,8 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       setCtx(null);
       setTopic(null);
       setView(null);
-      setBody("");
+      setBody(detail.draft ?? "");
+      setDraft(detail.draft ?? "");
       setError(null);
       setLoading(true);
       // Item: o contexto é o do pedido dele (o serviço resolve pelo item).
@@ -189,14 +192,17 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
     setItemId(item);
     if (ctx) void openTopic(ctx, party, item);
   };
+  // Só o começo já escrito (sem nada digitado depois) não conta como mensagem.
+  const typed = !!body.trim() && body.trim() !== draft.trim();
   const send = async () => {
-    if (!topic || !body.trim() || busy) return;
+    if (!topic || !typed || busy) return;
     setBusy(true);
     setError(null);
     const res = await chatSendAction(topic.topicId, body);
     if (!res.ok) setError(labels.error);
     else {
       setBody("");
+      setDraft("");
       await loadThread(topic.topicId);
     }
     setBusy(false);
@@ -425,7 +431,7 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
             </div>
             <button
               type="submit"
-              disabled={!topic || busy || !body.trim()}
+              disabled={!topic || busy || !typed}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-50"
               data-chat-send
             >
