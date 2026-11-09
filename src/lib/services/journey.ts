@@ -13,6 +13,9 @@ import {
   type StageKey,
 } from "@/lib/db";
 import { brazilDay } from "@/lib/supplier-terms";
+import { addBusinessDays } from "@/lib/sla";
+import { getSettings } from "@/lib/settings";
+import { requestStepDays } from "@/lib/request-stages";
 import { reviewOrderId } from "./control-tower";
 import { isSchemaMissing } from "./packaging-brief";
 import { quoteSummary, requestNextStep } from "./request-list";
@@ -28,8 +31,10 @@ import { quoteSummary, requestNextStep } from "./request-list";
 export const JOURNEY_STEPS = [
   "reqNew",
   "reqRfq",
+  "reqQuotes",
   "reqChoose",
   "reqApproval",
+  "reqProposal",
   "reqDown",
   "ordConference",
   "ordSheet",
@@ -53,7 +58,13 @@ export const isJourneyStep = (v: string | undefined): v is JourneyStep =>
 
 /** Quadrado da solicitação aberta (bloco 1). */
 export type RequestCard =
-  "reqNew" | "reqRfq" | "reqChoose" | "reqApproval" | "reqDown";
+  | "reqNew"
+  | "reqRfq"
+  | "reqQuotes"
+  | "reqChoose"
+  | "reqApproval"
+  | "reqProposal"
+  | "reqDown";
 /** Quadrado do pedido em andamento (bloco 2): inspeção com problema é o mesmo passo. */
 export type OrderCard =
   Exclude<JourneyStep, RequestCard | "ordClosed"> | "ordInspectionIssue";
@@ -84,6 +95,7 @@ const NEXT_CARD: Partial<Record<string, RequestCard>> = {
   quotes: "reqRfq",
   choose: "reqChoose",
   approval: "reqApproval",
+  proposal: "reqProposal",
   down: "reqDown",
 };
 
@@ -109,8 +121,11 @@ export interface JourneyInput {
     | "currency"
     | "leadTimeDays"
     | "answeredAt"
+    | "createdAt"
   >[];
   approvals: Pick<Approval, "requestId" | "status" | "currentLevel">[];
+  /** Prazo da RFQ em dias úteis (Configurações → requestStepDays.rfq). */
+  rfqDays: number;
 }
 
 /** Regras da viagem sobre os dados lidos (função pura). */
@@ -206,23 +221,38 @@ export function journeyIndex(input: JourneyInput) {
 
   /** Quadrado do bloco 1: o próximo passo da tela Solicitações. */
   const requestCard = (
-    r: Pick<Request, "id" | "status" | "selectedQuoteId">,
+    r: Pick<
+      Request,
+      "id" | "status" | "selectedQuoteId" | "proposalApprovedAt"
+    >,
   ): RequestCard | null => {
     if (r.status === "ORDERED" || r.status === "CANCELLED") return null;
+    const quotes = input.quotes.filter((q) => q.requestId === r.id);
+    const summary = quoteSummary(quotes, r.selectedQuoteId);
     const next = requestNextStep({
       status: r.status,
       display: r.status,
-      quotes: quoteSummary(
-        input.quotes.filter((q) => q.requestId === r.id),
-        r.selectedQuoteId,
-      ),
+      quotes: summary,
       approval:
         input.approvals.find(
           (a) => a.requestId === r.id && a.status === "pending",
         ) ?? null,
+      proposalApproved: !!r.proposalApprovedAt,
       order: null,
       today,
     });
+    // Já chegou cotação, mas ainda faltam outras dentro do prazo da RFQ:
+    // "Cotações recebidas" (a comparação começa quando todas chegam ou o
+    // prazo vence).
+    if (next.key === "choose" && summary.answered < summary.invited) {
+      const opened = quotes
+        .map((q) => q.createdAt)
+        .filter(Boolean)
+        .sort()[0];
+      const day = opened ? brazilDay(opened) : null;
+      const due = day ? addBusinessDays(day, input.rfqDays) : null;
+      if (due && due >= today) return "reqQuotes";
+    }
     return NEXT_CARD[next.key] ?? null;
   };
 
@@ -240,7 +270,10 @@ export function journeyIndex(input: JourneyInput) {
   };
 
   const requestStep = (
-    r: Pick<Request, "id" | "status" | "selectedQuoteId">,
+    r: Pick<
+      Request,
+      "id" | "status" | "selectedQuoteId" | "proposalApprovedAt"
+    >,
   ): JourneyStep | null => {
     const card = requestCard(r);
     return card ? stepOfCard(card) : null;
@@ -310,5 +343,6 @@ export async function loadJourneyInput(
     reviews,
     quotes,
     approvals,
+    rfqDays: requestStepDays((await getSettings()).requestStepDays).rfq,
   };
 }

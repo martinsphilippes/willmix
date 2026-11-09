@@ -44,6 +44,7 @@ function input(over: Partial<BoardInput> = {}): BoardInput {
     requests: [],
     quotes: [],
     approvals: [],
+    rfqDays: 3,
     briefRequestIds: [],
     steps: [],
     tracks: [],
@@ -258,27 +259,49 @@ describe("bloco 1: antes de virar pedido", () => {
     const fresh = request("REQUESTED");
     const quoting = request("RFQ_OPEN");
     const answered = request("RFQ_OPEN");
+    // 1 de 2 respondeu, dentro do prazo da RFQ: ainda chegando cotações.
+    const partial = request("QUOTATION_RECEIVED");
     const approving = request("QUOTATION_RECEIVED");
+    // Proposta enviada, sem aprovação do cliente: "Proposta ao cliente".
+    const proposing = request("WAITING_DOWN_PAYMENT", {
+      selectedQuoteId: "q-sel",
+    });
     const down = request("WAITING_DOWN_PAYMENT", {
       sellPrice: 1000,
       sellCurrency: "BRL",
+      proposalApprovedAt: PAST,
     });
-    const quote = (r: { id: string }, status: string) => ({
+    const quote = (
+      r: { id: string },
+      status: string,
+      createdAt = "2026-11-06T12:00:00.000Z",
+    ) => ({
       id: `q-${++seq}`,
       requestId: r.id,
       status,
       price: status === "answered" ? 2 : null,
       currency: "USD",
       leadTimeDays: null,
-      answeredAt: null,
+      answeredAt: status === "answered" ? createdAt : null,
+      createdAt,
     });
     const board = buildTowerBoard(
       input({
         finance: true,
-        requests: [fresh, quoting, answered, approving, down],
+        requests: [
+          fresh,
+          quoting,
+          answered,
+          partial,
+          approving,
+          proposing,
+          down,
+        ],
         quotes: [
           quote(quoting, "invited"),
           quote(answered, "answered"),
+          quote(partial, "answered"),
+          quote(partial, "invited"),
           quote(approving, "answered"),
         ] as BoardInput["quotes"],
         approvals: [
@@ -289,15 +312,42 @@ describe("bloco 1: antes de virar pedido", () => {
           },
         ] as BoardInput["approvals"],
         briefRequestIds: [quoting.id],
+        dielineRequestIds: [proposing.id, quoting.id],
       }),
     );
     expect(ids(board, "reqNew")).toEqual([fresh.id]);
     expect(ids(board, "reqRfq")).toEqual([quoting.id]);
+    expect(ids(board, "reqQuotes")).toEqual([partial.id]);
     expect(ids(board, "reqChoose")).toEqual([answered.id]);
     expect(ids(board, "reqApproval")).toEqual([approving.id]);
+    expect(ids(board, "reqProposal")).toEqual([proposing.id]);
     expect(ids(board, "reqDown")).toEqual([down.id]);
+    // Faca só depois da escolha do fornecedor (a de cotação não entra).
+    expect(ids(board, "reqDieline")).toEqual([proposing.id]);
     expect(ids(board, "reqPackaging")).toEqual([quoting.id]);
     expect(board.cards.find((c) => c.key === "reqDown")!.value).toBe(1000);
+  });
+
+  it("prazo da RFQ vencido com cotação: vai para a comparação", () => {
+    const late = request("QUOTATION_RECEIVED");
+    const q = (status: string) => ({
+      id: `q-${++seq}`,
+      requestId: late.id,
+      status,
+      price: status === "answered" ? 2 : null,
+      currency: "USD",
+      leadTimeDays: null,
+      answeredAt: status === "answered" ? "2026-10-20T12:00:00.000Z" : null,
+      createdAt: "2026-10-20T12:00:00.000Z",
+    });
+    const board = buildTowerBoard(
+      input({
+        requests: [late],
+        quotes: [q("answered"), q("invited")] as BoardInput["quotes"],
+      }),
+    );
+    expect(ids(board, "reqChoose")).toEqual([late.id]);
+    expect(ids(board, "reqQuotes")).toEqual([]);
   });
 });
 

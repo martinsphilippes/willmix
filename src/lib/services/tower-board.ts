@@ -29,6 +29,8 @@ import { importStepDone, stepTemplate } from "./import-flow";
 import { JOURNEY_REQUIREMENT_KEYS, journeyIndex } from "./journey";
 import { isSchemaMissing } from "./packaging-brief";
 import { followupsDue, latestByItem } from "./production";
+import { getSettings } from "@/lib/settings";
+import { requestStepDays } from "@/lib/request-stages";
 
 /*
  * Quadros da operação na Control Tower: o pedido de ponta a ponta, em quatro
@@ -64,9 +66,13 @@ interface CardDef {
 export const BOARD_CARDS = [
   { key: "reqNew", block: "request" },
   { key: "reqRfq", block: "request" },
+  { key: "reqQuotes", block: "request" },
   { key: "reqChoose", block: "request" },
   { key: "reqApproval", block: "request" },
+  { key: "reqProposal", block: "request" },
   { key: "reqDown", block: "request" },
+  // Correm ao lado (a mesma solicitação também está num dos de cima).
+  { key: "reqDieline", block: "request" },
   { key: "reqPackaging", block: "request" },
   { key: "ordConference", block: "order" },
   { key: "ordSheet", block: "order" },
@@ -192,10 +198,15 @@ export interface BoardInput {
     | "currency"
     | "leadTimeDays"
     | "answeredAt"
+    | "createdAt"
   >[];
   approvals: Pick<Approval, "requestId" | "status" | "currentLevel">[];
+  /** Prazo da RFQ em dias úteis (Configurações → requestStepDays.rfq). */
+  rfqDays: number;
   /** Briefings de embalagem abertos (ainda sendo feitos). */
   briefRequestIds: string[];
+  /** Solicitações cuja faca (die-cut) obrigatória ainda não chegou. */
+  dielineRequestIds?: string[];
   steps: ImportStep[];
   tracks: ProductionTrack[];
   skus: SkuInspection[];
@@ -323,6 +334,11 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const briefs = new Set(input.briefRequestIds);
   for (const r of openRequests)
     if (briefs.has(r.id)) rows.get("reqPackaging")!.push(requestRow(r));
+  // Faca (die-cut): depois da escolha, o fornecedor escolhido envia.
+  const dielines = new Set(input.dielineRequestIds ?? []);
+  for (const r of openRequests)
+    if (r.selectedQuoteId && dielines.has(r.id))
+      rows.get("reqDieline")!.push(requestRow(r));
 
   /* Bloco 2: cada pedido em andamento num quadrado só. */
   const live = input.orders.filter(
@@ -631,7 +647,12 @@ export async function loadTowerBoard(options: {
     requests,
     quotes,
     approvals,
+    rfqDays: requestStepDays((await getSettings()).requestStepDays).rfq,
     briefRequestIds: briefs.map((b) => b.requestId),
+    // Faca obrigatória ainda não enviada (o fornecedor escolhido manda).
+    dielineRequestIds: briefs
+      .filter((b) => b.requiredKeys.includes("dieline") && !b.dielineDocumentId)
+      .map((b) => b.requestId),
     steps,
     tracks,
     skus,

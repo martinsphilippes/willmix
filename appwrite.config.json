@@ -1034,6 +1034,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "proposalApprovedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "proposalApprovedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [

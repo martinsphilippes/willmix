@@ -70,7 +70,11 @@ import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
 import { PixCopy } from "@/components/pix-copy";
 import { pixForRequest } from "@/lib/services/down-payment";
-import { submitDownPaymentProofAction } from "../../actions/payments";
+import {
+  approveProposalAction,
+  submitDownPaymentProofAction,
+} from "../../actions/payments";
+import { proposalApproved } from "@/lib/services/proposal-approval";
 import {
   answerQuoteAction,
   confirmDownPaymentAction,
@@ -91,6 +95,7 @@ import {
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ApprovalCard } from "@/components/approval-card";
+import { RequestStagesCard } from "@/components/request-stages-card";
 import { approvalsFor } from "@/lib/services/approvals";
 
 export default async function RequestDetailPage({
@@ -253,8 +258,15 @@ export default async function RequestDetailPage({
   const variance = pricingRecord
     ? fxVariance(pricingRecord, await getFxRates())
     : null;
-  const { refreshed, ncmConfirmed, ncmSuggested, ncmAi, approval, decided } =
-    await searchParams;
+  const {
+    refreshed,
+    ncmConfirmed,
+    ncmSuggested,
+    ncmAi,
+    approval,
+    decided,
+    proposal: proposalFlag,
+  } = await searchParams;
   // Aprovação do pré-custo (só a Wellmix): a em aberto e as anteriores.
   const approvalList = wellmix ? await approvalsFor(request.id) : [];
   const approvalPending = approvalList.some((a) => a.status === "pending");
@@ -304,6 +316,14 @@ export default async function RequestDetailPage({
   const proofDoc = downPayment?.proofDocumentId
     ? documents.find((d) => d.id === downPayment.proofDocumentId)
     : undefined;
+  // Etapa "Proposta ao cliente": o cliente aprova antes de ver o Pix do sinal
+  // (comprovante já enviado ou sinal confirmado contam como aprovação).
+  const awaitingApproval =
+    request.status === "WAITING_DOWN_PAYMENT" &&
+    !proposalApproved(request, !!downPayment?.proofDocumentId);
+  const approvedBy = request.proposalApprovedByUserId
+    ? await getStore().get("users", request.proposalApprovedByUserId)
+    : null;
   // Anexos da solicitação: os arquivos do briefing de embalagem têm cartão próprio
   // (e o cliente nunca os vê).
   const attachments = documents.filter((d) => !d.packagingBriefId);
@@ -595,6 +615,9 @@ export default async function RequestDetailPage({
             </ol>
           </Card>
         </div>
+
+        {/* Etapas da solicitação (Wellmix): rastreio até o sinal, com prazos. */}
+        {wellmix ? <RequestStagesCard t={t} request={request} /> : null}
 
         {actionCards > 0 ? (
           <div
@@ -1087,6 +1110,15 @@ export default async function RequestDetailPage({
                 <Alert tone="success">{t("pricing.refreshed")}</Alert>
               </div>
             ) : null}
+            {proposalFlag === "approved" && !awaitingApproval ? (
+              <div className="mb-3" data-proposal-approved-alert>
+                <Alert tone="success">
+                  {wellmix
+                    ? t("proposal.approve.recorded")
+                    : t("proposal.approve.saved")}
+                </Alert>
+              </div>
+            ) : null}
             {variance && !downPayment?.proofDocumentId ? (
               <div className="mb-3 space-y-2">
                 <Alert tone="warning">
@@ -1174,7 +1206,68 @@ export default async function RequestDetailPage({
                   ]}
                 />
               </div>
-              {request.status === "WAITING_DOWN_PAYMENT" ? (
+              {/* Proposta ainda sem aprovação: o cliente aprova (e só então
+                  vê o Pix); a Wellmix vê que espera e pode registrar a
+                  aprovação dada fora do portal. */}
+              {awaitingApproval ? (
+                <div
+                  className="min-w-0 space-y-2 rounded-xl border border-brand-200 bg-brand-50/60 p-3 lg:col-start-1"
+                  data-proposal-approval={wellmix ? "wellmix" : "customer"}
+                >
+                  {wellmix ? (
+                    <>
+                      <p className="text-sm font-semibold text-zinc-900">
+                        {t("proposal.approve.waiting")}
+                      </p>
+                      <form
+                        action={approveProposalAction}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <input
+                          type="hidden"
+                          name="requestId"
+                          value={request.id}
+                        />
+                        <SubmitButton variant="secondary" data-proposal-record>
+                          {t("proposal.approve.record")}
+                        </SubmitButton>
+                        <span className="text-xs text-zinc-600">
+                          {t("proposal.approve.recordHint")}
+                        </span>
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-zinc-800">
+                        {t("proposal.approve.hint")}
+                      </p>
+                      <form action={approveProposalAction}>
+                        <input
+                          type="hidden"
+                          name="requestId"
+                          value={request.id}
+                        />
+                        <SubmitButton data-proposal-approve>
+                          {t("proposal.approve.button")}
+                        </SubmitButton>
+                      </form>
+                    </>
+                  )}
+                </div>
+              ) : request.proposalApprovedAt &&
+                request.status === "WAITING_DOWN_PAYMENT" ? (
+                <p
+                  className="min-w-0 text-xs text-emerald-800 lg:col-start-1"
+                  data-proposal-approved
+                >
+                  {t("proposal.approve.done", {
+                    date: formatDate(request.proposalApprovedAt, t),
+                    name: approvedBy?.name ?? "—",
+                  })}
+                </p>
+              ) : null}
+              {request.status === "WAITING_DOWN_PAYMENT" &&
+              (wellmix || !awaitingApproval) ? (
                 <>
                   <div className="min-w-0 border-t border-zinc-100 pt-3 lg:col-start-1">
                     <Alert tone="warning">

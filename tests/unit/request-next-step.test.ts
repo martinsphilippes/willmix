@@ -83,6 +83,7 @@ describe("próximo passo da solicitação", () => {
     display: "RFQ_OPEN" as never,
     quotes: { invited: 0, answered: 0 },
     approval: null,
+    proposalApproved: true,
     order: null,
     today: "2026-11-08",
   };
@@ -120,6 +121,15 @@ describe("próximo passo da solicitação", () => {
       who: "approvers",
       level: "purchasing_director",
     });
+    // Proposta enviada: primeiro o cliente aprova; depois, o sinal.
+    expect(
+      requestNextStep({
+        ...base,
+        status: "WAITING_DOWN_PAYMENT",
+        display: "WAITING_DOWN_PAYMENT" as never,
+        proposalApproved: false,
+      }),
+    ).toMatchObject({ key: "proposal", who: "customer" });
     expect(
       requestNextStep({
         ...base,

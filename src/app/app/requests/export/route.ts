@@ -132,6 +132,7 @@ export async function GET(request: NextRequest) {
             display: requestDisplayStatus(r, cancelled),
             quotes: qs,
             approval: approvals.find((a) => a.requestId === r.id) ?? null,
+            proposalApproved: !!r.proposalApprovedAt,
             order: order
               ? {
                   status: order.status,

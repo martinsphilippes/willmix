@@ -44,7 +44,7 @@ export const pt = {
     "O pedido foi criado. Complete a preparação para a produção começar.",
   "notif.proposal.subject": "Proposta pronta: {product}",
   "notif.proposal.body":
-    "{qty} {unit} por {total}. Sinal de {down} para iniciar o pedido.",
+    "{qty} {unit} por {total}. Aprove a proposta no portal; depois, o sinal de {down} inicia o pedido.",
   "notif.proposalUpdated.subject": "Proposta atualizada: {product}",
   "notif.proposalUpdated.body":
     "Novo valor {total} (câmbio do dia). Sinal: {down}.",
@@ -133,7 +133,7 @@ export const en = {
     "The order was created. Complete the preparation checklist so production can start.",
   "notif.proposal.subject": "Proposal ready: {product}",
   "notif.proposal.body":
-    "{qty} {unit} for {total}. Down payment of {down} to start the order.",
+    "{qty} {unit} for {total}. Approve the proposal in the portal; then the down payment of {down} starts the order.",
   "notif.proposalUpdated.subject": "Proposal updated: {product}",
   "notif.proposalUpdated.body":
     "New total {total} (today's exchange rate). Down payment: {down}.",
@@ -219,7 +219,7 @@ export const zh = {
     "订单已创建。请完成备产清单，以便开始生产。",
   "notif.proposal.subject": "报价已就绪：{product}",
   "notif.proposal.body":
-    "{qty} {unit}，合计 {total}。支付定金 {down} 即可下单。",
+    "{qty} {unit}，合计 {total}。请在门户中确认报价，之后支付定金 {down} 即可下单。",
   "notif.proposalUpdated.subject": "报价已更新：{product}",
   "notif.proposalUpdated.body": "新金额 {total}（按当日汇率）。定金：{down}。",
   "notif.quoteSelected.subject": "报价已中选：{product}",
