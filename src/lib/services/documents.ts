@@ -268,14 +268,19 @@ export async function canAccessDocument(
   }
   if (doc.packagingBriefId) {
     // Briefing de embalagem (faca, arte, gráfica, foto): a agência dona sempre;
-    // o fornecedor só o do pedido, depois que o pedido existe; cliente e
-    // concorrentes nunca. Decidido aqui, antes do pedido/solicitação, para que
-    // a solicitação não conceda nada a quem não é dono.
+    // o fornecedor só o do pedido, depois que o pedido existe (a faca, que é
+    // dele, desde a escolha da cotação); cliente e concorrentes nunca.
+    // Decidido aqui, antes do pedido/solicitação, para que a solicitação não
+    // conceda nada a quem não é dono.
     const brief = await store.get("packaging_briefs", doc.packagingBriefId);
     if (!brief) return false;
     if (user.role === "agency")
       return !!user.partyId && brief.agencyId === user.partyId;
     if (user.role === "supplier") {
+      if (doc.type === "dieline" && doc.id === brief.dielineDocumentId) {
+        const { isBriefSupplier } = await import("./packaging-brief");
+        if (await isBriefSupplier(user, brief)) return true;
+      }
       if (!brief.orderId) return false;
       const order = await store.get("orders", brief.orderId);
       return !!order && canViewOrder(user, order);

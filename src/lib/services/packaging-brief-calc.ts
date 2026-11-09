@@ -82,6 +82,40 @@ export function packagingDimsChanged(
   );
 }
 
+/**
+ * Quem envia cada entregável: a faca (die-cut) é do fornecedor escolhido,
+ * depois da comparação das cotações (ele fabrica a caixa); a arte, os
+ * arquivos para a gráfica e a foto são do dono do briefing (agência ou
+ * marketing da Wellmix). A Wellmix pode enviar qualquer um no lugar de quem é.
+ */
+export const ITEM_RESPONSIBLE = {
+  dieline: "supplier",
+  art: "owner",
+  print_ready: "owner",
+  packaging_sample: "owner",
+} as const satisfies Record<PackagingItemKey, "supplier" | "owner">;
+
+/** Obrigatórios que faltam e são do dono do briefing (sem a faca, que é do fornecedor). */
+export function missingOwnerItems(
+  brief: Record<ItemColumn, string | null> & {
+    requiredKeys: PackagingItemKey[];
+  },
+): PackagingItemKey[] {
+  return missingPackagingItems(brief).filter(
+    (key) => ITEM_RESPONSIBLE[key] === "owner",
+  );
+}
+
+/** A faca é obrigatória e ainda não chegou (é do fornecedor escolhido). */
+export function dielineMissing(
+  brief: Pick<
+    Record<ItemColumn, string | null> & { requiredKeys: PackagingItemKey[] },
+    "dielineDocumentId" | "requiredKeys"
+  >,
+): boolean {
+  return brief.requiredKeys.includes("dieline") && !brief.dielineDocumentId;
+}
+
 /** Entregáveis obrigatórios que ainda não têm arquivo. */
 export function missingPackagingItems(
   brief: Record<ItemColumn, string | null> & {

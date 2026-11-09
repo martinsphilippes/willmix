@@ -26,6 +26,7 @@ import { stageVisibleTo } from "@/lib/order-view";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { stageChat } from "@/lib/stage-chat";
+import { SupplierDielineCard } from "@/components/supplier-dieline-card";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -183,6 +184,7 @@ export default async function OrderPage({
     receiving: receivingNotice,
     artwork: artworkNotice,
     stage: stageQuery,
+    dieline: dielineNotice,
   } = await searchParams;
   // Etapa aberta na tabela de etapas (?stage=CHAVE ou ?stage=all).
   const stageParam = typeof stageQuery === "string" ? stageQuery : null;
@@ -1570,6 +1572,14 @@ export default async function OrderPage({
       ) : null}
 
       <div className="mt-6 flex min-w-0 flex-col gap-6">
+        {/* Faca (die-cut) da embalagem: o fornecedor do pedido envia (ou troca). */}
+        <SupplierDielineCard
+          t={t}
+          user={user}
+          from={{ orderId: order.id }}
+          back={`/app/orders/${order.id}`}
+          justSent={dielineNotice === "sent"}
+        />
         {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
             fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}
         {showSupplierPayment ? (

@@ -5,6 +5,7 @@ import { getStore, type PackagingBrief, type Request } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import {
   briefForRequest,
+  briefSupplierId,
   suggestedPackagingOwner,
 } from "@/lib/services/packaging-brief";
 import {
@@ -191,6 +192,11 @@ export async function PackagingBriefCard({
         ?.status === "done"
     : false;
   if (orderArtDone) missing.delete("art");
+  // A faca é do fornecedor escolhido (depois da comparação das cotações).
+  const supplierId = live ? await briefSupplierId(live) : null;
+  const supplier = supplierId
+    ? await getStore().get("parties", supplierId)
+    : null;
 
   return (
     <div data-packaging-card className="min-w-0">
@@ -258,6 +264,18 @@ export async function PackagingBriefCard({
                           ({t("packBrief.item.optional")})
                         </span>
                       )}
+                      {key === "dieline" ? (
+                        <span
+                          className="block text-[11px] text-zinc-500"
+                          data-packaging-dieline-owner
+                        >
+                          {supplier
+                            ? t("packBrief.item.bySupplierNamed", {
+                                name: supplier.name,
+                              })
+                            : t("packBrief.item.supplierAfterChoice")}
+                        </span>
+                      ) : null}
                     </span>
                   </li>
                 );

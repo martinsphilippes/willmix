@@ -67,6 +67,35 @@ export async function uploadPackagingItemAction(form: FormData) {
   });
 }
 
+/**
+ * Fornecedor escolhido envia a faca (die-cut) pela cotação ou pelo pedido
+ * (não tem a tela de embalagem). O serviço confere se é o fornecedor da
+ * embalagem (ou a Wellmix); volta para a tela de onde veio.
+ */
+export async function uploadDielineAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "briefId");
+  const fallback = "/app";
+  const target = returnTarget(form, fallback);
+  await run(target, async () => {
+    const id = briefId.parse(raw);
+    const file = form.get("file");
+    const uploadedFileId = str(form, "uploadedFileId");
+    const uploadedPhotoId = str(form, "uploadedPhotoId");
+    const source =
+      file instanceof File && file.size > 0
+        ? file
+        : uploadedFileId
+          ? { fileKey: uploadedId.parse(uploadedFileId) }
+          : uploadedPhotoId
+            ? { fileKey: uploadedId.parse(uploadedPhotoId), photo: true }
+            : null;
+    if (!source) throw new Error("document_required");
+    await uploadPackagingItem(user, id, "dieline", source, null);
+    return withQuery(target, "dieline", "sent");
+  });
+}
+
 export async function clearPackagingItemAction(form: FormData) {
   const user = await requireUser();
   const brief = briefFrom(form);
