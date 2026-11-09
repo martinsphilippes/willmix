@@ -1,6 +1,17 @@
 "use client";
 
 import { createUploadTokenAction } from "@/app/app/actions/uploads";
+import { storageFileName } from "@/lib/file-kinds";
+
+function lowerExtension(file: File): File {
+  const name = storageFileName(file.name);
+  return name === file.name
+    ? file
+    : new File([file], name, {
+        type: file.type,
+        lastModified: file.lastModified,
+      });
+}
 
 /**
  * Teto do corpo da requisição na Vercel (~4,5 MB) com folga para os outros
@@ -31,7 +42,8 @@ export async function uploadDirect(
     const created = await storage.createFile({
       bucketId: token.bucket,
       fileId: ID.unique(),
-      file: files[i],
+      // Extensão em minúsculas ("IMG_1.MOV"): a lista do bucket é em minúsculas.
+      file: lowerExtension(files[i]),
       onProgress: (p) =>
         onProgress(
           Math.min(

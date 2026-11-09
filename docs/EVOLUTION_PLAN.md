@@ -508,6 +508,16 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
   - na leitura, a citação só aparece se for do mesmo assunto. Um dado adulterado apontando para outra conversa não mostra nada (teste).
 - **Esquema**: coluna opcional `messages.replyToMessageId` (só gravada nas respostas). Antes de publicar, a resposta vai como mensagem comum, sem a citação e sem perder o texto.
 
+## Mensagens: vídeo de 1 minuto ou mais (reduzido no aparelho) e extensões do armazenamento
+
+- **Pedido do dono**: vídeo do iPad recusado com "Não foi possível enviar o arquivo" (`File extension not allowed`) e "receber vídeos de pelo menos 1 minuto".
+- **Causa**: o armazenamento (bucket `arquivos` do Appwrite) só aceita a lista de extensões dele, e vídeo (.mp4, .mov), Word, PowerPoint, texto, GIF e XML (DI/DUIMP) ficaram fora quando o portal passou a aceitá-los. A lista agora mora em um lugar só (`BUCKET_EXTENSIONS`, `src/lib/db/schema.ts`), usada pelo `appwrite:push` e pelo `appwrite.config.json`; o teste `bucket-extensions` falha se um tipo aceito no portal ficar sem extensão no bucket. O nome guardado no armazenamento leva a extensão em minúsculas (`IMG_1.MOV` → `IMG_1.mov`); o nome mostrado continua o original. Vale depois de publicar o esquema.
+- **Vídeo reduzido no aparelho, como no WhatsApp** (`src/components/video-shrink.ts`, conta em `src/lib/video-plan.ts`): o teto continua 50 MB por arquivo (plano do Appwrite), e um minuto de vídeo do iPhone/iPad passa disso. Antes de enviar, o navegador converte o vídeo para MP4 H.264 em até 720p e até 30 quadros por segundo, com a taxa ajustada à duração (2,5 Mbit/s em 720p; vídeo longo desce a taxa e depois para 960 e 640 px) e o som copiado como está. Um minuto fica com ~20 MB; cabem até uns 10 minutos. Usa o WebCodecs do navegador (Safari 16.4+, Chrome 94+, Firefox 130+) pela biblioteca `mediabunny` (MPL-2.0, carregada só quando um vídeo precisa ser reduzido).
+- **Quando reduz**: pelo "Foto ou vídeo", todo vídeo bem mais pesado que a versão reduzida (envio rápido, como a foto); pelo "Arquivo", arrastar ou colar, só o vídeo acima de 50 MB (o que cabe vai como está, com a qualidade original). Andamento "Reduzindo o vídeo 1 de 1… 42%" e depois "Enviando…".
+- **Quando não dá**: aparelho que não consegue reduzir manda o original se couber; se passar de 50 MB, avisa para atualizar o navegador, mandar pelo computador ou gravar mais curto. Vídeo longo demais (mais de ~11 minutos) pede para mandar em partes. Imagem ou som que o aparelho não lê nunca vira vídeo mudo: manda o original.
+- **Conferido**: vídeo de 70 s em 1080p com 80 MB virou 22,8 MB (720p, 30 fps, H.264 + AAC, 70 s) em 16 s no Chrome; vídeo girado (em pé) sai na mesma posição; na tela de Mensagens, vídeo de 53 MB foi reduzido, enviado e tocou na conversa.
+- **Sem mudança no banco**: só o bucket ganha extensões (publicar o esquema).
+
 ## Superplan: viabilidade do produto e preço de venda
 
 - **Pedido do dono**: uma tela Superplan em Pedidos, no lugar da planilha SuperPlan, para avaliar se um produto é viável e por quanto a Wellmix deve vender. Especificação completa em `docs/SUPERPLAN.md`.

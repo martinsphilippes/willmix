@@ -20,7 +20,9 @@ import {
   TablesDBIndexType,
 } from "node-appwrite";
 import {
+  BUCKET_EXTENSIONS,
   BUCKET_ID,
+  BUCKET_MAX_BYTES,
   DATABASE_ID,
   TABLES,
   type ColumnDef,
@@ -361,30 +363,8 @@ async function ensureIndexes(tableId: TableName) {
   if (created) console.log(`  ${tableId}: ${created} índice(s)`);
 }
 
-const BUCKET_EXTENSIONS = [
-  "pdf",
-  "png",
-  "jpg",
-  "jpeg",
-  "webp",
-  "heic",
-  "heif",
-  "xlsx",
-  "xlsm",
-  "xls",
-  "csv",
-  "json",
-  "zip",
-  "ai",
-  "svg",
-  "psd",
-  "eps",
-  "cdr",
-  "tif",
-  "tiff",
-];
-/** 50 MB (teto do Appwrite Cloud): arte da embalagem sobe direto do navegador. */
-const BUCKET_MAX_BYTES = 50_000_000;
+// Extensões e teto do bucket: BUCKET_EXTENSIONS e BUCKET_MAX_BYTES em
+// src/lib/db/schema.ts (os mesmos do appwrite.config.json).
 /** Usuário logado cria arquivo (envio direto com JWT); leitura só pelo servidor. */
 const BUCKET_PERMISSIONS = [Permission.create(Role.users())];
 
@@ -429,7 +409,7 @@ async function ensureBucket() {
       fileSecurity: false,
       enabled: true,
       maximumFileSize: BUCKET_MAX_BYTES,
-      allowedFileExtensions: BUCKET_EXTENSIONS,
+      allowedFileExtensions: [...BUCKET_EXTENSIONS],
       compression: Compression.Gzip,
       encryption: true,
       antivirus: true,

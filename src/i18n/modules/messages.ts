@@ -31,7 +31,7 @@ export const pt = {
     "Nenhuma empresa participante ainda. Designe os parceiros no pedido.",
   "chat.error": "Não foi possível carregar a conversa. Tente de novo.",
   "chat.attachHint":
-    "Fotos, vídeos e arquivos até 50 MB. No computador, dá para arrastar para cá ou colar uma imagem (Ctrl+V).",
+    "Fotos, vídeos e arquivos até 50 MB; vídeo maior é reduzido no aparelho antes de enviar. No computador, dá para arrastar para cá ou colar uma imagem (Ctrl+V).",
   "messages.empty.conversations":
     "Nenhuma conversa ainda. Use “Nova conversa” para começar.",
   "messages.empty.thread": "Nenhuma mensagem neste assunto ainda.",
@@ -63,16 +63,22 @@ export const pt = {
   "messages.attach.failed": "Não foi possível enviar o arquivo. Tente de novo.",
   "messages.attach.photo": "Foto ou vídeo",
   "messages.attach.photoTitle":
-    "Tirar ou escolher fotos e vídeos (vários de uma vez). A foto vai reduzida, para chegar rápido; o vídeo vai como está (até 50 MB).",
+    "Tirar ou escolher fotos e vídeos (vários de uma vez). Foto e vídeo vão reduzidos, para chegar rápido (vídeo de até uns 10 minutos).",
   "messages.attach.file": "Arquivo",
   "messages.attach.fileTitle":
-    "PDF, planilha, Word, vídeo, arte ou foto original (até 50 MB cada, vários de uma vez).",
+    "PDF, planilha, Word, vídeo, arte ou foto original (até 50 MB cada, vários de uma vez; vídeo maior é reduzido para caber).",
   "messages.attach.progress": "Enviando {done} de {total}…",
   "messages.attach.progressPercent": "Enviando {done} de {total}… {percent}%",
   "messages.attach.drop": "Solte aqui para enviar na conversa",
   "messages.attach.failedFile": "{name}: {reason}",
   "messages.attach.videoTooBig":
-    "Vídeo grande demais (máximo 50 MB, mais ou menos 1 minuto). Grave um vídeo mais curto ou mande em partes.",
+    "Vídeo grande demais mesmo reduzido (máximo 50 MB). Grave um vídeo mais curto ou mande em partes.",
+  "messages.attach.preparing":
+    "Reduzindo o vídeo {done} de {total}… {percent}%",
+  "messages.attach.videoTooLong":
+    "Vídeo longo demais para enviar (até uns {minutes} minutos). Mande em partes.",
+  "messages.attach.videoNoReduce":
+    "Este aparelho não conseguiu reduzir o vídeo, e ele passa de 50 MB. Atualize o navegador, mande pelo computador ou grave um vídeo mais curto.",
   "messages.video.download": "Baixar vídeo",
   "messages.reply": "Responder",
   "messages.reply.to": "Respondendo a {name}",
@@ -153,7 +159,7 @@ export const en: Record<keyof typeof pt, string> = {
     "No participating company yet. Assign the partners on the order.",
   "chat.error": "Could not load the conversation. Try again.",
   "chat.attachHint":
-    "Photos, videos and files up to 50 MB. On a computer you can drag them here or paste an image (Ctrl+V).",
+    "Photos, videos and files up to 50 MB; larger videos are reduced on the device before sending. On a computer you can drag them here or paste an image (Ctrl+V).",
   "messages.empty.conversations":
     "No conversations yet. Use “New conversation” to start one.",
   "messages.empty.thread": "No messages in this topic yet.",
@@ -185,16 +191,21 @@ export const en: Record<keyof typeof pt, string> = {
   "messages.attach.failed": "Could not upload the file. Try again.",
   "messages.attach.photo": "Photo or video",
   "messages.attach.photoTitle":
-    "Take or choose photos and videos (several at once). Photos are reduced so they arrive fast; videos go as they are (up to 50 MB).",
+    "Take or choose photos and videos (several at once). Photos and videos are reduced so they arrive fast (videos up to about 10 minutes).",
   "messages.attach.file": "File",
   "messages.attach.fileTitle":
-    "PDF, spreadsheet, Word, video, artwork or original photo (up to 50 MB each, several at once).",
+    "PDF, spreadsheet, Word, video, artwork or original photo (up to 50 MB each, several at once; larger videos are reduced to fit).",
   "messages.attach.progress": "Sending {done} of {total}…",
   "messages.attach.progressPercent": "Sending {done} of {total}… {percent}%",
   "messages.attach.drop": "Drop here to send in the conversation",
   "messages.attach.failedFile": "{name}: {reason}",
   "messages.attach.videoTooBig":
-    "Video too large (max 50 MB, about 1 minute). Record a shorter video or send it in parts.",
+    "Video too large even after reducing (max 50 MB). Record a shorter video or send it in parts.",
+  "messages.attach.preparing": "Reducing video {done} of {total}… {percent}%",
+  "messages.attach.videoTooLong":
+    "Video too long to send (up to about {minutes} minutes). Send it in parts.",
+  "messages.attach.videoNoReduce":
+    "This device could not reduce the video, and it is over 50 MB. Update the browser, send it from a computer or record a shorter video.",
   "messages.video.download": "Download video",
   "messages.reply": "Reply",
   "messages.reply.to": "Replying to {name}",
@@ -273,7 +284,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "chat.noParticipants": "尚无参与企业。请先在订单中指定合作方。",
   "chat.error": "无法加载对话，请重试。",
   "chat.attachHint":
-    "照片、视频和文件最大 50 MB。在电脑上可以拖到这里，或粘贴图片（Ctrl+V）。",
+    "照片、视频和文件最大 50 MB；较大的视频会先在设备上压缩再发送。在电脑上可以拖到这里，或粘贴图片（Ctrl+V）。",
   "messages.empty.conversations": "还没有对话。点击“新对话”开始。",
   "messages.empty.thread": "此话题还没有消息。",
   "messages.empty.select": "请在列表中选择一个对话。",
@@ -303,17 +314,23 @@ export const zh: Record<keyof typeof pt, string> = {
   "messages.attach.failed": "文件上传失败，请重试。",
   "messages.attach.photo": "照片或视频",
   "messages.attach.photoTitle":
-    "拍摄或选择照片和视频（可多选）。照片会自动压缩，发送更快；视频按原样发送（最大 50 MB）。",
+    "拍摄或选择照片和视频（可多选）。照片和视频会自动压缩，发送更快（视频最长约 10 分钟）。",
   "messages.attach.file": "文件",
   "messages.attach.fileTitle":
-    "PDF、表格、Word、视频、设计稿或原图（每个最大 50 MB，可多选）。",
+    "PDF、表格、Word、视频、设计稿或原图（每个最大 50 MB，可多选；较大的视频会压缩到可发送的大小）。",
   "messages.attach.progress": "正在发送第 {done} 个，共 {total} 个…",
   "messages.attach.progressPercent":
     "正在发送第 {done} 个，共 {total} 个… {percent}%",
   "messages.attach.drop": "松开即可发送到对话",
   "messages.attach.failedFile": "{name}：{reason}",
   "messages.attach.videoTooBig":
-    "视频过大（最大 50 MB，约 1 分钟）。请录制更短的视频或分段发送。",
+    "视频压缩后仍然过大（最大 50 MB）。请录制更短的视频或分段发送。",
+  "messages.attach.preparing":
+    "正在压缩第 {done} 个视频，共 {total} 个… {percent}%",
+  "messages.attach.videoTooLong":
+    "视频太长，无法发送（最长约 {minutes} 分钟）。请分段发送。",
+  "messages.attach.videoNoReduce":
+    "此设备无法压缩该视频，且视频超过 50 MB。请更新浏览器、用电脑发送，或录制更短的视频。",
   "messages.video.download": "下载视频",
   "messages.reply": "回复",
   "messages.reply.to": "回复 {name}",

@@ -3708,3 +3708,52 @@ export const DOCUMENT_EXTRA_DEFAULTS = {
  */
 export const DATABASE_ID = "willmix";
 export const BUCKET_ID = "arquivos";
+
+/**
+ * Extensões que o armazenamento (bucket `arquivos`) aceita. O Appwrite recusa
+ * qualquer outra ("File extension not allowed"), então todo tipo aceito nos
+ * documentos e no chat (`src/lib/services/documents.ts`) precisa estar aqui
+ * (o teste bucket-extensions confere). Publicar o esquema só acrescenta.
+ */
+export const BUCKET_EXTENSIONS = [
+  "pdf",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "heic",
+  "heif",
+  "xlsx",
+  "xlsm",
+  "xls",
+  "csv",
+  "json",
+  "zip",
+  "ai",
+  "svg",
+  "psd",
+  "eps",
+  "cdr",
+  "tif",
+  "tiff",
+  // XML da DI/DUIMP, foto .jfif do Windows e PostScript.
+  "xml",
+  "jfif",
+  "ps",
+  // Só do chat: GIF, Word, PowerPoint, texto e vídeo.
+  "gif",
+  "doc",
+  "docx",
+  "ppt",
+  "pptx",
+  "txt",
+  "mp4",
+  "m4v",
+  "mov",
+  "qt",
+  "webm",
+  "3gp",
+] as const;
+
+/** 50 MB por arquivo (teto do plano do Appwrite Cloud); vídeo maior é reduzido no aparelho. */
+export const BUCKET_MAX_BYTES = 50_000_000;

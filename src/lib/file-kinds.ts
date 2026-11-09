@@ -85,3 +85,12 @@ export function fileIcon(name: string): string {
     return "🖼️";
   return "📎";
 }
+
+/**
+ * Nome do arquivo no armazenamento com a extensão em minúsculas ("IMG_1.MOV"
+ * → "IMG_1.mov"): a lista de extensões do Appwrite é em minúsculas. O nome
+ * que aparece no portal continua o original.
+ */
+export function storageFileName(name: string): string {
+  return name.replace(/\.([^./\\]+)$/, (ext) => ext.toLowerCase());
+}

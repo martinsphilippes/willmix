@@ -19,6 +19,9 @@ export function chatUploadLabels(t: Translate): ChatUploadLabels {
     failed: t("messages.attach.failed"),
     tooBig: t("messages.attach.tooBig"),
     videoTooBig: t("messages.attach.videoTooBig"),
+    preparing: t("messages.attach.preparing"),
+    videoTooLong: t("messages.attach.videoTooLong"),
+    videoNoReduce: t("messages.attach.videoNoReduce"),
     serverOnly: t("messages.attach.serverOnly"),
     errors: {
       mime: t("messages.error.mime"),
