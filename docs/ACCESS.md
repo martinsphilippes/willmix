@@ -23,27 +23,27 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 
 ## 4. Matriz função → telas (operador Wellmix)
 
-| Tela                                                              | Comprador | Ger. produto | Planner | Cadastro | Dir. compras | Dir. executiva | Designer |
-| ----------------------------------------------------------------- | :-------: | :----------: | :-----: | :------: | :----------: | :------------: | :------: |
-| Solicitações (e cotações)                                         |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
-| Pedidos                                                           |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
-| Sourcing                                                          |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
-| Fila de revisão                                                   |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
-| Fretes e Tarifário de frete                                       |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
-| Embalagem (briefings)                                             |     ✓     |      ✓       |         |          |      ✓       |       ✓        |    ✓     |
-| Containers                                                        |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
-| Cadastros (clientes, fornecedores, parceiros)                     |     ✓     |              |         |    ✓     |      ✓       |       ✓        |          |
-| Produtos (e importar ficha)                                       |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |    ✓     |
-| Linhas de produto                                                 |           |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
-| Vitrine do cliente                                                |           |      ✓       |         |    ✓     |      ✓       |       ✓        |    ✓     |
-| Importar planilha (CSV)                                           |           |              |         |    ✓     |      ✓       |       ✓        |          |
-| Painéis por área (sem o Financeiro)                               |           |              |    ✓    |          |      ✓       |       ✓        |          |
-| Multas                                                            |           |              |         |          |      ✓       |       ✓        |          |
-| Pós-venda                                                         |     ✓     |      ✓       |         |          |      ✓       |       ✓        |          |
-| Marketing (kits, tabela de preços)                                |           |      ✓       |         |          |      ✓       |       ✓        |    ✓     |
-| Histórico comercial                                               |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
-| Auditoria                                                         |           |              |         |          |      ✓       |       ✓        |          |
-| Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe | só admin  |              |         |          |              |                |          |
+| Tela                                                                         | Comprador | Ger. produto | Planner | Cadastro | Dir. compras | Dir. executiva | Designer |
+| ---------------------------------------------------------------------------- | :-------: | :----------: | :-----: | :------: | :----------: | :------------: | :------: |
+| Solicitações (e cotações)                                                    |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
+| Pedidos                                                                      |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
+| Sourcing                                                                     |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
+| Fila de revisão                                                              |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
+| Fretes e Tarifário de frete                                                  |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
+| Embalagem (briefings)                                                        |     ✓     |      ✓       |         |          |      ✓       |       ✓        |    ✓     |
+| Containers                                                                   |     ✓     |              |    ✓    |          |      ✓       |       ✓        |          |
+| Cadastros (clientes, fornecedores, parceiros)                                |     ✓     |              |         |    ✓     |      ✓       |       ✓        |          |
+| Produtos (e importar ficha)                                                  |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |    ✓     |
+| Linhas de produto                                                            |           |      ✓       |         |    ✓     |      ✓       |       ✓        |          |
+| Vitrine do cliente                                                           |           |      ✓       |         |    ✓     |      ✓       |       ✓        |    ✓     |
+| Importar planilha (CSV)                                                      |           |              |         |    ✓     |      ✓       |       ✓        |          |
+| Painéis por área (sem o Financeiro)                                          |           |              |    ✓    |          |      ✓       |       ✓        |          |
+| Multas                                                                       |           |              |         |          |      ✓       |       ✓        |          |
+| Pós-venda                                                                    |     ✓     |      ✓       |         |          |      ✓       |       ✓        |          |
+| Marketing (kits, tabela de preços)                                           |           |      ✓       |         |          |      ✓       |       ✓        |    ✓     |
+| Histórico comercial                                                          |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
+| Auditoria                                                                    |           |              |         |          |      ✓       |       ✓        |          |
+| Financeiro, Contas a pagar, Conta corrente, Configurações, Equipe, Superplan | só admin  |              |         |          |              |                |          |
 
 A função **financeiro** não aparece na tabela: abre só Pedidos (regra 3).
 
