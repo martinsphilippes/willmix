@@ -81,6 +81,24 @@ export const pt = {
   "messages.error.not_found": "Conversa ou assunto não encontrado.",
   "messages.error.no_company": "Escolha a empresa da conversa.",
   "messages.error.forbidden": "Você não tem acesso a esta conversa.",
+  "messages.tr.from": "Traduzido automaticamente do {lang}",
+  "messages.tr.fromMock": "Tradução de exemplo (modo de teste) do {lang}",
+  "messages.tr.to": "Traduzido automaticamente para {langs}",
+  "messages.tr.toMock": "Tradução de exemplo (modo de teste) para {langs}",
+  "messages.tr.showOriginal": "Ver original",
+  "messages.tr.showTranslation": "Ver tradução",
+  "messages.tr.pending": "Traduzindo…",
+  "messages.tr.failed": "Não foi possível traduzir agora.",
+  "messages.tr.failedMine":
+    "Não foi possível traduzir: quem recebe vê o texto original.",
+  "messages.tr.retry": "Tentar de novo",
+  "messages.tr.translate": "Traduzir",
+  "messages.tr.hint":
+    "Escreva no seu idioma: a mensagem é traduzida automaticamente para quem recebe.",
+  "messages.bar.new": "Nova mensagem",
+  "messages.bar.many": "{n} mensagens novas",
+  "messages.bar.open": "Abrir e responder",
+  "messages.bar.all": "Ver todas",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -161,6 +179,24 @@ export const en: Record<keyof typeof pt, string> = {
   "messages.error.not_found": "Conversation or topic not found.",
   "messages.error.no_company": "Choose the company for the conversation.",
   "messages.error.forbidden": "You do not have access to this conversation.",
+  "messages.tr.from": "Automatically translated from {lang}",
+  "messages.tr.fromMock": "Sample translation (test mode) from {lang}",
+  "messages.tr.to": "Automatically translated into {langs}",
+  "messages.tr.toMock": "Sample translation (test mode) into {langs}",
+  "messages.tr.showOriginal": "Show original",
+  "messages.tr.showTranslation": "Show translation",
+  "messages.tr.pending": "Translating…",
+  "messages.tr.failed": "Could not translate right now.",
+  "messages.tr.failedMine":
+    "Could not translate: the recipient sees the original text.",
+  "messages.tr.retry": "Try again",
+  "messages.tr.translate": "Translate",
+  "messages.tr.hint":
+    "Write in your own language: the message is translated automatically for the recipient.",
+  "messages.bar.new": "New message",
+  "messages.bar.many": "{n} new messages",
+  "messages.bar.open": "Open and reply",
+  "messages.bar.all": "See all",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -234,4 +270,20 @@ export const zh: Record<keyof typeof pt, string> = {
   "messages.error.not_found": "未找到对话或话题。",
   "messages.error.no_company": "请选择对话的公司。",
   "messages.error.forbidden": "您无权访问此对话。",
+  "messages.tr.from": "已自动翻译（原文为{lang}）",
+  "messages.tr.fromMock": "示例翻译（测试模式，原文为{lang}）",
+  "messages.tr.to": "已自动翻译为{langs}",
+  "messages.tr.toMock": "示例翻译（测试模式）：{langs}",
+  "messages.tr.showOriginal": "查看原文",
+  "messages.tr.showTranslation": "查看译文",
+  "messages.tr.pending": "正在翻译…",
+  "messages.tr.failed": "暂时无法翻译。",
+  "messages.tr.failedMine": "无法翻译：对方看到的是原文。",
+  "messages.tr.retry": "重试",
+  "messages.tr.translate": "翻译",
+  "messages.tr.hint": "请用您的语言书写：消息会自动翻译给对方。",
+  "messages.bar.new": "新消息",
+  "messages.bar.many": "{n} 条新消息",
+  "messages.bar.open": "打开并回复",
+  "messages.bar.all": "查看全部",
 };

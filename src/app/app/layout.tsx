@@ -6,7 +6,14 @@ import { getLocale, getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
 import { LOCALES, type Locale } from "@/lib/db/schema";
 import { flattenNav, isNavGroup, navFor, type NavLink } from "@/lib/nav";
-import { unreadCountFor } from "@/lib/services/messages";
+import { isWellmix } from "@/lib/auth/permissions";
+import {
+  topicLabel,
+  unreadCountFor,
+  unreadDigest,
+  type UnreadDigest,
+} from "@/lib/services/messages";
+import { UnreadMessagesBar } from "@/components/unread-messages-bar";
 import { AppNav, MobileNav } from "@/components/app-nav";
 import { UserMenu } from "@/components/user-menu";
 import { WellmixLogo } from "@/components/brand";
@@ -113,6 +120,95 @@ function NotificationsBell({
 }
 
 /**
+ * Mensagens no cabeçalho, ao lado do sino: o balão com o número de mensagens
+ * não lidas leva direto à conversa (o assunto com novidade abre sozinho).
+ */
+function MessagesLink({
+  unread,
+  label,
+  unreadLabel,
+}: {
+  unread: number;
+  label: string;
+  unreadLabel: string;
+}) {
+  return (
+    <Link
+      href="/app/messages"
+      aria-label={unread > 0 ? `${label}: ${unreadLabel}` : label}
+      title={unread > 0 ? `${label}: ${unreadLabel}` : label}
+      data-messages-link={unread}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 focus-visible:outline-white"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+        className="h-5 w-5"
+      >
+        <path d="M4 5h16v11H9l-5 4V5Z" />
+      </svg>
+      {unread > 0 ? (
+        <span
+          aria-hidden
+          className="absolute -right-0.5 -top-0.5 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-amber-300 px-1 text-[10px] font-bold leading-none text-zinc-900 ring-2 ring-brand-700"
+        >
+          {unread > 99 ? "99+" : unread}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+/** "09/11 11:29" no idioma da tela (mesmo fuso das outras telas). */
+function shortWhen(value: string, intl: string) {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleString(intl, {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Sao_Paulo",
+      });
+}
+
+/** Faixa de mensagem nova de quem é de fora (null = nada a mostrar). */
+function unreadBar(t: Translate, digest: UnreadDigest | null) {
+  const latest = digest?.latest;
+  if (!digest || !latest || digest.total <= 0) return null;
+  const title =
+    digest.total > 1
+      ? t("messages.bar.many", { n: digest.total })
+      : latest.authorSide === "wellmix"
+        ? t("messages.notify.fromWellmix")
+        : t("messages.bar.new");
+  const meta = [
+    latest.authorName,
+    topicLabel(t, latest.topic),
+    shortWhen(latest.createdAt, t.intl),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <UnreadMessagesBar
+      count={digest.total}
+      title={title}
+      meta={meta}
+      text={latest.text}
+      href={latest.href}
+      openLabel={t("messages.bar.open")}
+      allLabel={digest.topics > 1 ? t("messages.bar.all") : null}
+    />
+  );
+}
+
+/**
  * Só as contas que existem no banco (um papel novo só entra depois de criado
  * em Configurações). Quem está logado aparece sempre, mesmo sem ser conta de
  * demonstração: o seletor mostra quem é, em vez de "escolher" a primeira.
@@ -139,11 +235,21 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   if (!user) redirect("/login?next=/app");
   const t = await getT();
   const locale = await getLocale();
-  // Mensagens não lidas (selo do item "Mensagens"); falha aqui não derruba o portal.
-  const unreadMessages = await unreadCountFor(user).catch((error: unknown) => {
-    console.error("unreadCountFor failed", error);
-    return 0;
-  });
+  // Mensagens não lidas (selo do item "Mensagens" e do balão do cabeçalho);
+  // quem é de fora também ganha a faixa com a mais recente. Falha aqui não
+  // derruba o portal.
+  const digest = isWellmix(user)
+    ? null
+    : await unreadDigest(user, locale).catch((error: unknown) => {
+        console.error("unreadDigest failed", error);
+        return null;
+      });
+  const unreadMessages = digest
+    ? digest.total
+    : await unreadCountFor(user).catch((error: unknown) => {
+        console.error("unreadCountFor failed", error);
+        return 0;
+      });
   const link = (l: NavLink) => ({
     href: l.href,
     label: t(l.key),
@@ -189,6 +295,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
       unreadLabel={t("nav.notifications.unread", { n: String(unread) })}
     />
   );
+  const hasMessages = flattenNav(nav).some((l) => l.href === "/app/messages");
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -229,6 +336,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
                   }}
                 />
               </div>
+            ) : null}
+            {hasMessages ? (
+              <MessagesLink
+                unread={unreadMessages}
+                label={t("nav.messages")}
+                unreadLabel={t("messages.unread", { n: unreadMessages })}
+              />
             ) : null}
             {bell}
             <div className="hidden md:block">
@@ -300,6 +414,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           </div>
         </div>
       </header>
+      {unreadBar(t, digest)}
       {dataMode() === "memory" && process.env.NODE_ENV === "production" ? (
         <div className="bg-amber-100 px-4 py-1 text-center text-xs text-amber-900">
           {t("app.demoBanner")}

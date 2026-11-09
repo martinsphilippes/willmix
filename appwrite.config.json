@@ -7393,6 +7393,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "translation",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [

@@ -62,6 +62,21 @@ export async function postMessageAction(form: FormData) {
 }
 
 /**
+ * "Traduzir" / "Tentar de novo" numa mensagem da conversa aberta: traduz na
+ * hora (quem tocou espera a IA) e a conversa se atualiza no lugar. O serviço
+ * confere se o login vê o assunto da mensagem.
+ */
+export async function translateMessageAction(form: FormData) {
+  const user = await requireUser();
+  const back = threadBack(str(form, "conversationId"), str(form, "topicId"));
+  await runInPlace(back, async () => {
+    const id = ID.parse(str(form, "messageId"));
+    const { translateMessageFor } = await import("@/lib/services/messages");
+    await translateMessageFor(user, id);
+  });
+}
+
+/**
  * Marca o assunto aberto como lido. Chamada pela tela de Mensagens quando
  * mostra mensagens novas (a página em si não marca nada ao ser montada), e
  * atualiza o selo do menu e o sino.

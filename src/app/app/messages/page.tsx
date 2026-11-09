@@ -14,10 +14,14 @@ import {
   listConversationsFor,
   topicLabel,
   topicTree,
+  translateShown,
   type ConversationSummary,
   type ConversationView,
   type TopicNode,
 } from "@/lib/services/messages";
+import { translationOn } from "@/lib/services/message-translation";
+import { withTranslationText } from "@/lib/message-translation";
+import { MessageTranslationNote } from "@/components/message-translation-note";
 import { getT } from "@/i18n/server";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -41,6 +45,7 @@ import {
   openTreeTopicAction,
   postMessageAction,
   startConversationAction,
+  translateMessageAction,
 } from "../actions/messages";
 
 /*
@@ -116,12 +121,24 @@ export default async function MessagesPage({
   let view: ConversationView | null = null;
   if (selectedId) {
     try {
-      view = await getConversationView(user, selectedId, param(sp.t));
+      // No idioma da tela: cada um lê a mensagem do outro lado traduzida.
+      view = await getConversationView(user, selectedId, param(sp.t), {
+        locale: t.locale,
+      });
     } catch (e) {
       if (e instanceof ForbiddenError) notFound();
       throw e;
     }
   }
+  if (view) {
+    // Mensagem antiga sem tradução: traduz agora (aparece na próxima atualização).
+    const shown = translateShown(view);
+    view = {
+      ...shown,
+      messages: withTranslationText(t, shown.messages, wellmix),
+    };
+  }
+  const aiOn = view ? await translationOn() : false;
   const directory = wellmix ? await chatDirectory(user) : null;
   const tree = view ? await topicTree(t, view.topics) : [];
   const errorText = !error
@@ -230,7 +247,13 @@ export default async function MessagesPage({
         </div>
         <div className="min-w-0">
           {view ? (
-            <Thread t={t} view={view} tree={tree} wellmix={wellmix} />
+            <Thread
+              t={t}
+              view={view}
+              tree={tree}
+              wellmix={wellmix}
+              aiOn={aiOn}
+            />
           ) : (
             <Empty>
               {wellmix
@@ -427,11 +450,14 @@ function Thread({
   view,
   tree,
   wellmix,
+  aiOn,
 }: {
   t: Translate;
   view: ConversationView;
   tree: TopicNode[];
   wellmix: boolean;
+  /** Tradução automática ligada (a dica aparece no campo de envio). */
+  aiOn: boolean;
 }) {
   const type = typeLabel(t, view.conversation.type);
   return (
@@ -522,8 +548,47 @@ function Thread({
                   ) : null}
                   {m.attachment &&
                   m.body === `📎 ${m.attachment.name}` ? null : (
-                    <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                    <p
+                      className="whitespace-pre-wrap break-words"
+                      lang={m.tr?.text ? t.locale : undefined}
+                    >
+                      {m.tr?.text ?? m.body}
+                    </p>
                   )}
+                  {m.tr ? (
+                    <MessageTranslationNote
+                      tr={m.tr}
+                      mine={m.mine}
+                      retry={
+                        <form action={translateMessageAction}>
+                          <input
+                            type="hidden"
+                            name="conversationId"
+                            value={view.conversation.id}
+                          />
+                          <input
+                            type="hidden"
+                            name="topicId"
+                            value={view.topic.id}
+                          />
+                          <input type="hidden" name="messageId" value={m.id} />
+                          <SubmitButton
+                            variant="ghost"
+                            pendingText={t("messages.tr.pending")}
+                            className={cx(
+                              "px-1.5 py-0.5 text-[11px] underline underline-offset-2",
+                              m.mine
+                                ? "text-white hover:bg-white/10"
+                                : "text-brand-700",
+                            )}
+                            data-translate-message={m.id}
+                          >
+                            {m.tr.retry}
+                          </SubmitButton>
+                        </form>
+                      }
+                    />
+                  ) : null}
                 </div>
               </li>
             ))}
@@ -543,9 +608,15 @@ function Thread({
         <input type="hidden" name="topicId" value={view.topic.id} />
         <Field
           label={t("messages.body.label")}
-          hint={t("messages.body.hint", {
-            max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
-          })}
+          hint={
+            aiOn
+              ? `${t("messages.tr.hint")} ${t("messages.body.hint", {
+                  max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
+                })}`
+              : t("messages.body.hint", {
+                  max: MESSAGE_MAX_LENGTH.toLocaleString(t.intl),
+                })
+          }
         >
           <Textarea
             name="body"

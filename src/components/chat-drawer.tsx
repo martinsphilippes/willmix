@@ -8,9 +8,11 @@ import {
   chatReadAction,
   chatSendAction,
   chatThreadAction,
+  chatTranslateAction,
 } from "@/app/app/actions/chat";
 import type { ChatContext, ConversationView } from "@/lib/services/messages";
 import { ChatIcon } from "./chat-open-button";
+import { MessageTranslationNote } from "./message-translation-note";
 import { CHAT_EVENT, type ChatTargetDetail } from "@/lib/chat-target";
 import { cx } from "./ui";
 
@@ -21,7 +23,8 @@ import { cx } from "./ui";
  * quê (pedido inteiro ou um item), as mensagens do assunto e o campo de
  * envio. As Server Actions devolvem dados (sem redirecionar) e o serviço
  * confere o acesso. Atualiza a cada 20 s enquanto está aberto. Anexos só na
- * tela de Mensagens (link no rodapé).
+ * tela de Mensagens (link no rodapé). Cada mensagem do outro lado aparece no
+ * idioma de quem lê (tradução automática, com "Ver original").
  */
 
 export interface ChatDrawerLabels {
@@ -77,6 +80,8 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Mensagem sendo traduzida pelo botão "Traduzir". */
+  const [translating, setTranslating] = useState<string | null>(null);
   const readFor = useRef<string | null>(null);
 
   const loadThread = useCallback(
@@ -206,6 +211,14 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
       await loadThread(topic.topicId);
     }
     setBusy(false);
+  };
+  const translate = async (messageId: string) => {
+    if (!topic || translating) return;
+    setTranslating(messageId);
+    const res = await chatTranslateAction(messageId);
+    if (!res.ok) setError(labels.error);
+    await loadThread(topic.topicId);
+    setTranslating(null);
   };
   const chip = (active: boolean) =>
     cx(
@@ -378,9 +391,29 @@ export function ChatDrawer({ labels }: { labels: ChatDrawerLabels }) {
                     {m.attachment &&
                     m.body === `📎 ${m.attachment.name}` ? null : (
                       <p className="whitespace-pre-wrap break-words">
-                        {m.body}
+                        {m.tr?.text ?? m.body}
                       </p>
                     )}
+                    {m.tr ? (
+                      <MessageTranslationNote
+                        tr={m.tr}
+                        mine={m.mine}
+                        retry={
+                          <button
+                            type="button"
+                            onClick={() => void translate(m.id)}
+                            disabled={!!translating}
+                            className={cx(
+                              "rounded px-1 font-semibold underline underline-offset-2 disabled:opacity-60",
+                              m.mine ? "text-white" : "text-brand-700",
+                            )}
+                            data-translate-message={m.id}
+                          >
+                            {translating === m.id ? "…" : m.tr.retry}
+                          </button>
+                        }
+                      />
+                    ) : null}
                   </div>
                 </li>
               ))}

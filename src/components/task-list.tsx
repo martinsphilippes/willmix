@@ -250,13 +250,17 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
       <tbody>
         {tasks.map((task, i) => {
           // Requisito de etapa: etapa traduzida (o serviço guarda a chave).
-          const title =
-            task.stageKey && task.orderNumber
+          const title = task.text
+            ? t(task.text.title, task.text.values)
+            : task.stageKey && task.orderNumber
               ? t("tasks.orderStage", {
                   n: task.orderNumber,
                   stage: t(`stage.${task.stageKey}` as DictionaryKey),
                 })
               : task.title;
+          const detail = task.text
+            ? t(task.text.detail, task.text.values)
+            : task.detail;
           const relative = dueLabel(task, t);
           return (
             <tr
@@ -281,7 +285,7 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
                   </span>
                 ) : null}
               </Td>
-              <Td className="min-w-32 text-zinc-600">{task.detail || "—"}</Td>
+              <Td className="min-w-32 text-zinc-600">{detail || "—"}</Td>
               <Td className="whitespace-nowrap text-zinc-700">
                 {groupLabel(task.group, !!task.stageKey, t)}
               </Td>

@@ -33,7 +33,7 @@ Para ativar cada integração real é preciso fornecer:
 4. **E-mail**: provedor (Resend, SES, SendGrid) e chave. Trocar `sendEmail` em `notifications.ts`.
 5. **WhatsApp**: conta WhatsApp Business API (Meta ou BSP), número, token e templates aprovados. Trocar `sendWhatsapp`.
 6. **Vercel**: `SESSION_SECRET`, `CRON_SECRET` e as variáveis do Appwrite no projeto; cron de lembretes já está em `vercel.json`.
-7. **IA**: na Vercel funciona sem chave pelo AI Gateway do projeto (token OIDC), desde que o AI Gateway esteja disponível/ativado na conta (créditos). Alternativas: `AI_GATEWAY_API_KEY` ou `ANTHROPIC_API_KEY`. Use Configurações → Testar IA para confirmar. A busca por foto compara a foto do cliente com as fotos do catálogo (até 20 produtos, 2 fotos cada, reduzidas); acima disso, a pré-seleção fica para uma busca por similaridade (embeddings) futura.
+7. **IA**: na Vercel funciona sem chave pelo AI Gateway do projeto (token OIDC), desde que o AI Gateway esteja disponível/ativado na conta (créditos). Alternativas: `AI_GATEWAY_API_KEY` ou `ANTHROPIC_API_KEY`. Use Configurações → Testar IA para confirmar. A mesma IA traduz as mensagens do chat (pt/en/zh) logo depois do envio, sempre com o original visível; sem IA, todos leem o original e nada é inventado. A busca por foto compara a foto do cliente com as fotos do catálogo (até 20 produtos, 2 fotos cada, reduzidas); acima disso, a pré-seleção fica para uma busca por similaridade (embeddings) futura.
 8. **Tabela fiscal**: links oficiais da planilha da TEC (Camex) e da TIPI (Receita Federal) em Configurações; se o site do governo bloquear a Vercel, a Wellmix sobe a planilha à mão (o sistema avisa). ICMS: alíquota do estado do desembaraço em Configurações.
 
 ## Google Sheets (link da planilha da ficha técnica)

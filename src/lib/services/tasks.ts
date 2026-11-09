@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   getStore,
   type Order,
@@ -51,6 +52,16 @@ export interface Task {
   orderNumber?: number;
   /** Requisito de etapa: a etapa (a tela traduz). */
   stageKey?: StageKey;
+  /**
+   * Título e detalhe traduzidos na tela (chave e valores), para pendência de
+   * quem usa outro idioma (ex.: fornecedor chinês); sem isto valem `title` e
+   * `detail`, em português.
+   */
+  text?: {
+    title: DictionaryKey;
+    detail: DictionaryKey;
+    values: Record<string, string | number>;
+  };
   /** Filtro "tipo": a etapa (requisito) ou o tipo da pendência. */
   group: string;
   /** Filtro "prazo". */
@@ -896,6 +907,18 @@ async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
         {
           kind: "packaging_brief",
           title: `Faca (die-cut) da embalagem: ${request.productName}`,
+          text: {
+            title: "tasks.dieline.title",
+            detail: order
+              ? "tasks.dieline.detailOrder"
+              : request.number
+                ? "tasks.dieline.detailRequest"
+                : "tasks.dieline.detail",
+            values: {
+              product: request.productName,
+              n: order?.number ?? request.number ?? "",
+            },
+          },
           detail: [
             order
               ? `Pedido #${order.number}`
