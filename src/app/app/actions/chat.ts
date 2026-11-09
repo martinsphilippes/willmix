@@ -1,8 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { ForbiddenError } from "@/lib/auth/permissions";
+import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { MESSAGE_MAX_LENGTH } from "@/lib/db/schema";
+import { getT } from "@/i18n/server";
+import { withTranslationText } from "@/lib/message-translation";
 import { errorCode, requireUser } from "./helpers";
 
 /*
@@ -61,13 +63,35 @@ export async function chatOpenAction(input: unknown) {
   });
 }
 
-/** As mensagens do assunto (e os outros assuntos da conversa). */
+/**
+ * As mensagens do assunto (e os outros assuntos da conversa), cada uma com a
+ * tradução para o idioma da tela de quem lê.
+ */
 export async function chatThreadAction(topicId: unknown) {
   const user = await requireUser();
   return guard(async () => {
     const id = ID.parse(topicId);
-    const { topicThread } = await import("@/lib/services/messages");
-    return topicThread(user, id);
+    const t = await getT();
+    const { topicThread, translateShown } =
+      await import("@/lib/services/messages");
+    // Mensagem antiga sem tradução: traduz agora (vem na próxima atualização).
+    const view = translateShown(
+      await topicThread(user, id, { locale: t.locale }),
+    );
+    return {
+      ...view,
+      messages: withTranslationText(t, view.messages, isWellmix(user)),
+    };
+  });
+}
+
+/** "Traduzir" / "Tentar de novo" numa mensagem (o serviço confere o acesso). */
+export async function chatTranslateAction(messageId: unknown) {
+  const user = await requireUser();
+  return guard(async () => {
+    const id = ID.parse(messageId);
+    const { translateMessageFor } = await import("@/lib/services/messages");
+    await translateMessageFor(user, id);
   });
 }
 

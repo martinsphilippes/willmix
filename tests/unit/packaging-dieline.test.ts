@@ -134,6 +134,18 @@ describe("faca (die-cut) com o fornecedor escolhido", () => {
     expect(tasks.some((t) => t.link === `/app/quotes/${qa.id}#die-cut`)).toBe(
       true,
     );
+    // Título e detalhe no idioma do fornecedor (a tela traduz pela chave).
+    const dielineTask = tasks.find(
+      (t) => t.link === `/app/quotes/${qa.id}#die-cut`,
+    )!;
+    const { translator } = await import("@/i18n");
+    expect(dielineTask.group).toBe("packaging_brief");
+    expect(translator("zh")("tasks.group.packaging_brief")).toBe(
+      "包装（刀模与设计稿）",
+    );
+    expect(
+      translator("zh")(dielineTask.text!.title, dielineTask.text!.values),
+    ).toBe(`包装刀模：${request.productName}`);
     const view = await pb.supplierDielineView(supplierA, { quoteId: qa.id });
     expect(view?.briefId).toBe(brief.id);
     expect(view?.document).toBeNull();

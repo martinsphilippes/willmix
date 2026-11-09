@@ -29,11 +29,21 @@ export interface AiResult {
   json: Record<string, unknown> | null;
 }
 
+/** Ajustes de uma chamada (o padrão serve para as sugestões curtas). */
+export interface AiCallOptions {
+  /** Limite da resposta em tokens (padrão 1.500; a tradução de uma mensagem longa precisa de mais). */
+  maxTokens?: number;
+}
+
 export interface AiAdapter {
   readonly mode: AiMode;
   readonly model: string | null;
   /** Envia o prompt (e as imagens, se houver) e devolve o texto e o JSON extraído. null = modo manual. */
-  complete(prompt: string, images?: AiImages): Promise<AiResult | null>;
+  complete(
+    prompt: string,
+    images?: AiImages,
+    options?: AiCallOptions,
+  ): Promise<AiResult | null>;
 }
 
 export class ManualAiAdapter implements AiAdapter {
@@ -44,12 +54,37 @@ export class ManualAiAdapter implements AiAdapter {
   }
 }
 
+/**
+ * Tradução de exemplo do modo mock: o idioma vem só do tipo de letra
+ * (ideogramas = chinês; senão português) e cada "tradução" é o próprio texto
+ * com o rótulo do idioma e "exemplo mock". Nunca passa por tradução real.
+ */
+function mockTranslation(prompt: string): Record<string, unknown> {
+  // A caixa da mensagem é a última do pedido.
+  const start = prompt.lastIndexOf("<message>");
+  const end = prompt.lastIndexOf("</message>");
+  const text =
+    start >= 0 && end > start
+      ? prompt.slice(start + "<message>".length, end).trim()
+      : "";
+  const lang = /[\u3400-\u9fff]/.test(text) ? "zh" : "pt";
+  const translations: Record<string, string> = {};
+  for (const target of ["pt", "en", "zh"])
+    if (target !== lang)
+      translations[target] = `[${target} · exemplo mock] ${text}`;
+  return { lang, translations };
+}
+
 /** Exemplo rotulado "(exemplo mock)" em todos os campos: nunca passa por dado real. */
 export class MockAiAdapter implements AiAdapter {
   readonly mode = "mock" as const;
   readonly model = "mock";
   async complete(prompt: string, images?: AiImages): Promise<AiResult> {
     const image = asList(images)[0] ?? null;
+    if (prompt.includes('"translations"')) {
+      const json = mockTranslation(prompt);
+      return { text: JSON.stringify(json), json };
+    }
     const json: Record<string, unknown> = prompt.includes('"cardFields"')
       ? {
           cardFields: {
@@ -245,7 +280,10 @@ export class AnthropicAiAdapter implements AiAdapter {
     this.model = provider === "gateway" ? toGatewayModel(model) : model;
   }
 
-  private async send(content: Array<Record<string, unknown>>) {
+  private async send(
+    content: Array<Record<string, unknown>>,
+    maxTokens = 1500,
+  ) {
     let auth: Record<string, string>;
     try {
       auth = await this.auth();
@@ -262,14 +300,19 @@ export class AnthropicAiAdapter implements AiAdapter {
       },
       body: JSON.stringify({
         model: this.model,
-        max_tokens: 1500,
+        max_tokens: maxTokens,
         messages: [{ role: "user", content }],
       }),
       signal: AbortSignal.timeout(this.timeoutMs),
     });
   }
 
-  async complete(prompt: string, images?: AiImages): Promise<AiResult> {
+  async complete(
+    prompt: string,
+    images?: AiImages,
+    options?: AiCallOptions,
+  ): Promise<AiResult> {
+    const maxTokens = options?.maxTokens;
     const content: Array<Record<string, unknown>> = [];
     for (const image of asList(images)) {
       if (image.label) content.push({ type: "text", text: image.label });
@@ -283,7 +326,7 @@ export class AnthropicAiAdapter implements AiAdapter {
       });
     }
     content.push({ type: "text", text: prompt });
-    let response = await this.send(content);
+    let response = await this.send(content, maxTokens);
     // Gateway: nome de modelo desconhecido → usa o Sonnet mais novo disponível.
     if (
       !response.ok &&
@@ -294,7 +337,7 @@ export class AnthropicAiAdapter implements AiAdapter {
       if (fallback && fallback !== this.model) {
         console.warn("ai model fallback", this.model, "→", fallback);
         this.model = fallback;
-        response = await this.send(content);
+        response = await this.send(content, maxTokens);
       }
     }
     if (!response.ok) {

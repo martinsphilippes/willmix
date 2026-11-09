@@ -1,10 +1,12 @@
 import "server-only";
 
+import { after } from "next/server";
 import {
   getStore,
   MESSAGE_MAX_LENGTH,
   type Conversation,
   type ConversationTopic,
+  type Locale,
   type Message,
   type MessageSide,
   type Order,
@@ -24,8 +26,19 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import type { Translate } from "@/i18n";
+import {
+  WELLMIX_LOCALE,
+  translationState,
+  type MessageTranslationState,
+  type TranslationDisplay,
+} from "@/lib/message-translation";
 import { isSchemaMissing } from "./packaging-brief";
 import { notify } from "./notifications";
+import {
+  isAttachmentOnly,
+  translateMessage,
+  translationOn,
+} from "./message-translation";
 
 /*
  * Mensagens: chat interno da Wellmix com as empresas parceiras (cliente,
@@ -40,7 +53,13 @@ import { notify } from "./notifications";
  * em) assuntos de solicitações e pedidos que ele mesmo pode ver.
  *
  * Aviso de mensagem nova só no sino do portal (sem e-mail nem WhatsApp) e no
- * máximo um aviso não lido por assunto e destinatário, até ele ler.
+ * máximo um aviso não lido por assunto e destinatário, até ele ler. Quem é de
+ * fora também vê, em toda tela, a faixa "Nova mensagem da Wellmix" com o
+ * texto (unreadDigest).
+ *
+ * Tradução automática: depois do envio, a mensagem é traduzida para os
+ * idiomas do portal (message-translation.ts); cada um lê no próprio idioma,
+ * com o original a um toque.
  *
  * Banco sem as tabelas novas (esquema não publicado): as leituras voltam
  * vazias em vez de derrubar a tela.
@@ -586,6 +605,10 @@ export interface MessageView {
   mine: boolean;
   /** Arquivo anexado (abre por /api/files, que confere o acesso). */
   attachment: { id: string; name: string; isImage: boolean } | null;
+  /** Tradução para quem vê (só quando a tela informa o idioma). */
+  translation: MessageTranslationState | null;
+  /** Textos da tradução já montados no idioma da tela (preenchido pela tela). */
+  tr?: TranslationDisplay | null;
 }
 
 export interface ConversationView {
@@ -608,6 +631,8 @@ export async function getConversationView(
   user: User,
   conversationId: string,
   topicId?: string | null,
+  /** Idioma da tela de quem vê: liga a tradução das mensagens. */
+  opts: { locale?: Locale } = {},
 ): Promise<ConversationView | null> {
   const store = getStore();
   const conversation = await safe(
@@ -675,6 +700,12 @@ export async function getConversationView(
       : null;
   };
   const company = await companiesOf([conversation]);
+  const translationOf = await translationReader(
+    user,
+    conversation,
+    authors,
+    opts.locale,
+  );
   return {
     conversation: {
       id: conversation.id,
@@ -695,8 +726,51 @@ export async function getConversationView(
       authorSide: m.authorSide,
       mine: m.authorUserId === user.id,
       attachment: attachmentOf(m),
+      translation: translationOf(m),
     })),
   };
+}
+
+/**
+ * Leitor da tradução das mensagens para quem vê a conversa (sem idioma da
+ * tela: sem tradução). Do outro lado: a Wellmix lê em português; a empresa,
+ * nos idiomas dos logins dela.
+ */
+async function translationReader(
+  user: User,
+  conversation: Conversation,
+  authors: User[],
+  locale: Locale | undefined,
+): Promise<(m: Message) => MessageTranslationState | null> {
+  if (!locale) return () => null;
+  const aiOn = await translationOn();
+  let counterpartLocales: Locale[] = [WELLMIX_LOCALE];
+  if (isWellmix(user)) {
+    const logins = conversation.partyId
+      ? await getStore().list("users", {
+          filter: { partyId: conversation.partyId, active: true },
+        })
+      : await conversationOwner(conversation).then((u) => (u ? [u] : []));
+    counterpartLocales = [
+      ...new Set(
+        logins.filter((u) => !isWellmix(u)).map((u) => u.locale ?? "pt"),
+      ),
+    ];
+  }
+  const now = Date.now();
+  return (m) =>
+    translationState(
+      {
+        body: m.body,
+        translation: m.translation,
+        createdAt: m.createdAt,
+        mine: m.authorUserId === user.id,
+        authorLocale:
+          authors.find((u) => u.id === m.authorUserId)?.locale ?? null,
+        attachmentOnly: isAttachmentOnly(m),
+      },
+      { locale, aiOn, now, counterpartLocales },
+    );
 }
 
 /**
@@ -736,6 +810,84 @@ export async function unreadCountFor(user: User): Promise<number> {
     }
     return total;
   }, 0);
+}
+
+/** Faixa "Nova mensagem da Wellmix" de quem é de fora (em toda tela). */
+export interface UnreadDigest {
+  /** Mensagens não lidas (o mesmo número do selo de Mensagens). */
+  total: number;
+  /** Assuntos com mensagem não lida. */
+  topics: number;
+  /** A mais recente: assunto, quem escreveu e o começo, no idioma de quem lê. */
+  latest: {
+    href: string;
+    topic: Pick<ConversationTopic, "kind" | "title">;
+    authorName: string;
+    authorSide: MessageSide;
+    text: string;
+    createdAt: string;
+  } | null;
+}
+
+/**
+ * Não lidas de quem é de fora, com a mensagem mais recente já traduzida para
+ * o idioma da tela (quando há tradução). A Wellmix tem a Controladoria de
+ * mensagens: aqui volta vazio para ela. Não cria nada.
+ */
+export async function unreadDigest(
+  user: User,
+  locale: Locale,
+): Promise<UnreadDigest> {
+  const empty: UnreadDigest = { total: 0, topics: 0, latest: null };
+  if (isWellmix(user)) return empty;
+  return safe(async () => {
+    const store = getStore();
+    const own = await findConversation(ownKey(user));
+    if (!own) return empty;
+    const topics = await store.list("conversation_topics", {
+      filter: { conversationId: own.id },
+    });
+    const unread = await unreadByTopic(user, topics);
+    if (!unread.size) return empty;
+    // Só assuntos que ele vê (só os com novidade são conferidos).
+    const withNews: ConversationTopic[] = [];
+    let total = 0;
+    for (const topic of topics) {
+      const n = unread.get(topic.id);
+      if (n && (await canSeeTopic(user, topic))) {
+        total += n;
+        withNews.push(topic);
+      }
+    }
+    if (!withNews.length) return empty;
+    const newest = [...withNews].sort(
+      (a, b) => time(b.lastMessageAt) - time(a.lastMessageAt),
+    )[0];
+    const recent = await store.list("messages", {
+      filter: { topicId: newest.id },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 20,
+    });
+    const message = recent.find((m) => m.authorUserId !== user.id);
+    if (!message) return { total, topics: withNews.length, latest: null };
+    const author = await store.get("users", message.authorUserId);
+    const tr = message.translation;
+    const translated =
+      tr?.status === "done" && tr.lang !== locale ? tr.texts[locale] : null;
+    return {
+      total,
+      topics: withNews.length,
+      latest: {
+        href: topicHref(own.id, newest.id),
+        topic: { kind: newest.kind, title: newest.title },
+        authorName: author?.name ?? "—",
+        authorSide: message.authorSide,
+        text: previewOf(translated || message.body, 200),
+        createdAt: message.createdAt,
+      },
+    };
+  }, empty);
 }
 
 /** Empresas e logins sem empresa com quem a Wellmix pode abrir conversa. */
@@ -994,9 +1146,10 @@ export async function chatContext(
 export async function topicThread(
   user: User,
   topicId: string,
+  opts: { locale?: Locale } = {},
 ): Promise<ConversationView> {
   const { topic, conversation } = await loadTopicFor(user, topicId);
-  const view = await getConversationView(user, conversation.id, topic.id);
+  const view = await getConversationView(user, conversation.id, topic.id, opts);
   if (!view) throw new MessageError("not_found");
   return view;
 }
@@ -1076,7 +1229,72 @@ export async function postMessage(
   ]);
   await saveRead(user.id, topic.id);
   await notifyOtherSide(user, conversation, topic, shown);
+  if (!isAttachmentOnly(message)) scheduleTranslations([message.id]);
   return message;
+}
+
+/**
+ * Tradução automática logo depois que a tela responde (quem envia não espera
+ * a IA), uma mensagem por vez. Fora de uma requisição (testes, scripts) não
+ * há "depois": a mensagem fica sem tradução e o botão "Traduzir" continua.
+ * Devolve se ficou agendada.
+ */
+function scheduleTranslations(messageIds: string[]): boolean {
+  if (!messageIds.length) return false;
+  try {
+    after(async () => {
+      for (const id of messageIds) {
+        try {
+          await translateMessage(id);
+        } catch (error) {
+          console.error(
+            "message_translation_failed",
+            id,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
+    });
+    return true;
+  } catch {
+    // Sem requisição em andamento: sem tradução automática.
+    return false;
+  }
+}
+
+/** Mensagens sem tradução traduzidas a cada tela aberta (as mais recentes). */
+const AUTO_TRANSLATE_LIMIT = 10;
+
+/**
+ * Mensagens que a tela mostrou sem tradução (enviadas antes da tradução
+ * automática, ou cujo envio não chegou a traduzir): traduz depois da resposta
+ * e mostra "Traduzindo…" no lugar do botão. A próxima atualização da conversa
+ * já traz o texto traduzido (ou "Tentar de novo", se a IA falhar).
+ */
+export function translateShown(view: ConversationView): ConversationView {
+  const ids = view.messages
+    .filter((m) => m.translation?.state === "available")
+    .slice(-AUTO_TRANSLATE_LIMIT)
+    .map((m) => m.id);
+  if (!scheduleTranslations(ids)) return view;
+  const scheduled = new Set(ids);
+  return {
+    ...view,
+    messages: view.messages.map((m) =>
+      scheduled.has(m.id) ? { ...m, translation: { state: "pending" } } : m,
+    ),
+  };
+}
+
+/**
+ * "Traduzir" / "Tentar de novo" numa mensagem: só quem vê o assunto dela.
+ * Já traduzida: nada a fazer. IA desligada: continua sem tradução.
+ */
+export async function translateMessageFor(user: User, messageId: string) {
+  const message = await getStore().get("messages", messageId);
+  if (!message) throw new MessageError("not_found");
+  await loadTopicFor(user, message.topicId);
+  return translateMessage(message.id);
 }
 
 /** Grava até onde o login leu o assunto (uma linha por login e assunto). */
@@ -1155,6 +1373,9 @@ async function notifyOtherSide(
   const company = fromWellmix
     ? null
     : (await companiesOf([conversation]))(conversation).name;
+  // O começo da mensagem só vai no aviso de quem lê no mesmo idioma de quem
+  // escreveu; os outros abrem a conversa e leem a tradução.
+  const written = author.locale ?? WELLMIX_LOCALE;
   await notify(
     { userIds: fresh.map((u) => u.id) },
     {
@@ -1166,7 +1387,10 @@ async function notifyOtherSide(
         subject: company
           ? t("messages.notify.fromCompany", { company })
           : t("messages.notify.fromWellmix"),
-        body: `${topicLabel(t, topic)}: ${previewOf(text, 140)}`,
+        body:
+          t.locale === written
+            ? `${topicLabel(t, topic)}: ${previewOf(text, 140)}`
+            : topicLabel(t, topic),
       }),
     },
   );

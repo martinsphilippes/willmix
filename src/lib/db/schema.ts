@@ -1839,7 +1839,31 @@ export interface Message extends BaseRow {
   body: string;
   /** Anexo (documents, com conversationTopicId); null sem anexo. */
   attachmentDocumentId: string | null;
+  /**
+   * Tradução automática (coluna opcional, preenchida depois do envio): o
+   * idioma em que foi escrita e o texto nos outros idiomas do portal. Nula
+   * enquanto não traduziu ou quando não precisa (só números, IA desligada).
+   */
+  translation?: MessageTranslation | null;
 }
+
+/**
+ * Tradução automática de uma mensagem (src/lib/services/message-translation.ts).
+ * "done": `lang` é o idioma original (código ISO, ex.: "zh") e `texts` traz
+ * a mensagem nos idiomas do portal diferentes dele; `by` diz se veio da IA
+ * real ("api") ou do exemplo rotulado ("mock"). "failed": a IA não traduziu
+ * (motivo em `error`, um AiErrorCode); quem lê vê o original e pode tentar
+ * de novo.
+ */
+export type MessageTranslation =
+  | {
+      status: "done";
+      lang: string;
+      texts: Partial<Record<Locale, string>>;
+      by: "api" | "mock";
+      at: string;
+    }
+  | { status: "failed"; error: string; at: string };
 
 /** Até onde cada login leu cada assunto (uma linha por login e assunto). */
 /** Uma decisão de um nível da aprovação. */
@@ -3352,6 +3376,8 @@ export const TABLES: Record<TableName, TableDef> = {
       authorSide: enumOf(MESSAGE_SIDES),
       body: text(true),
       attachmentDocumentId: id(false),
+      // Tradução automática (opcional; ver MessageTranslation).
+      translation: json(),
     },
     indexes: [
       { key: "by_topic", type: "key", columns: ["topicId"] },

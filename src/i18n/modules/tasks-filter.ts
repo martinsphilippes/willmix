@@ -32,6 +32,14 @@ export const pt = {
   "tasks.group.review": "Revisão",
   "tasks.group.sourcing_demand": "Sourcing sob demanda",
   "tasks.group.after_sales": "Pós-venda",
+  "tasks.group.packaging_brief": "Embalagem (faca e arte)",
+  "tasks.dieline.title": "Faca (die-cut) da embalagem: {product}",
+  "tasks.dieline.detailOrder":
+    "Pedido #{n} · envie a faca da caixa: a agência faz a arte em cima dela",
+  "tasks.dieline.detailRequest":
+    "Solicitação nº {n} · envie a faca da caixa: a agência faz a arte em cima dela",
+  "tasks.dieline.detail":
+    "Envie a faca da caixa: a agência faz a arte em cima dela",
   "tasks.col.task": "Pendência",
   "tasks.col.detail": "Detalhe",
 };
@@ -66,6 +74,14 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.review": "Review",
   "tasks.group.sourcing_demand": "Sourcing on demand",
   "tasks.group.after_sales": "After-sales",
+  "tasks.group.packaging_brief": "Packaging (die-cut and artwork)",
+  "tasks.dieline.title": "Packaging die-cut: {product}",
+  "tasks.dieline.detailOrder":
+    "Order #{n} · send the box die-cut: the agency designs the artwork on it",
+  "tasks.dieline.detailRequest":
+    "Request no. {n} · send the box die-cut: the agency designs the artwork on it",
+  "tasks.dieline.detail":
+    "Send the box die-cut: the agency designs the artwork on it",
   "tasks.col.task": "Task",
   "tasks.col.detail": "Detail",
 };
@@ -100,6 +116,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.review": "复核",
   "tasks.group.sourcing_demand": "按需寻源",
   "tasks.group.after_sales": "售后",
+  "tasks.group.packaging_brief": "包装（刀模与设计稿）",
+  "tasks.dieline.title": "包装刀模：{product}",
+  "tasks.dieline.detailOrder":
+    "订单 #{n} · 请上传纸箱刀模：设计公司将据此制作设计稿",
+  "tasks.dieline.detailRequest":
+    "询价单 {n} 号 · 请上传纸箱刀模：设计公司将据此制作设计稿",
+  "tasks.dieline.detail": "请上传纸箱刀模：设计公司将据此制作设计稿",
   "tasks.col.task": "待办",
   "tasks.col.detail": "详情",
 };
