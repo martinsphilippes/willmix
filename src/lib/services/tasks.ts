@@ -409,8 +409,10 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     const request = quoteRequests.find((r) => r.id === brief.requestId);
     if (!request || request.status === "CANCELLED") continue;
     if (brief.status === "open" && request.status === "ORDERED") continue;
-    const { missingPackagingItems } = await import("./packaging-brief-calc");
-    const missing = missingPackagingItems(brief).map(
+    // A faca é do fornecedor escolhido: a agência é cobrada só do que é dela.
+    const { missingOwnerItems, dielineMissing } =
+      await import("./packaging-brief-calc");
+    const missing = missingOwnerItems(brief).map(
       (k) => PACKAGING_ITEM_LABEL[k],
     );
     const inOrder = brief.status === "transferred";
@@ -423,6 +425,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             missing.length
               ? `Faltam: ${missing.join(", ")}`
               : "Obrigatórios enviados",
+            ...(dielineMissing(brief)
+              ? ["faca (die-cut): com o fornecedor escolhido"]
+              : []),
             `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
             inOrder
               ? "pedido criado: a arte é pedida antes de a etapa Arte e embalagem começar"
@@ -441,6 +446,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       ),
     );
   }
+  // Faca (die-cut) da embalagem: é do fornecedor escolhido, depois da
+  // comparação das cotações (envia pela cotação escolhida ou pelo pedido).
+  if (supplier) tasks.push(...(await supplierDielineTasks(user, now)));
   const withProof = new Set(
     pendingPayments
       .filter((p) => p.requestId && p.proofDocumentId)
@@ -842,6 +850,76 @@ const APPROVAL_LEVEL_LABEL: Record<string, string> = {
 };
 
 /** Entregáveis do briefing de embalagem (pendências saem em português, como as demais). */
+/** Pendências "Faca (die-cut) da embalagem" do fornecedor escolhido. */
+async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
+  const store = getStore();
+  const selected = await store.list("quotes", {
+    filter: { supplierId: user.partyId!, status: "selected" },
+  });
+  if (!selected.length) return [];
+  const { dielineMissing } = await import("./packaging-brief-calc");
+  const briefs = (
+    await store
+      .list("packaging_briefs", {
+        filter: {
+          requestId: [...new Set(selected.map((q) => q.requestId))],
+          status: ["open", "ready", "transferred"],
+        },
+      })
+      .catch(() => [])
+  ).filter(dielineMissing);
+  if (!briefs.length) return [];
+  const orderIds = briefs
+    .map((b) => b.orderId)
+    .filter((id): id is string => !!id);
+  const [requests, orders] = await Promise.all([
+    store.list("requests", {
+      filter: { id: [...new Set(briefs.map((b) => b.requestId))] },
+    }),
+    orderIds.length
+      ? store.list("orders", { filter: { id: orderIds } })
+      : Promise.resolve([]),
+  ]);
+  const out: Task[] = [];
+  for (const brief of briefs) {
+    const request = requests.find((r) => r.id === brief.requestId);
+    if (!request || request.status === "CANCELLED") continue;
+    // Só a cotação escolhida desta solicitação (e o pedido dela) cobra a faca.
+    if (!selected.some((q) => q.id === request.selectedQuoteId)) continue;
+    const order = brief.orderId
+      ? orders.find((o) => o.id === brief.orderId)
+      : null;
+    if (brief.orderId && (!order || order.supplierId !== user.partyId))
+      continue;
+    out.push(
+      finish(
+        {
+          kind: "packaging_brief",
+          title: `Faca (die-cut) da embalagem: ${request.productName}`,
+          detail: [
+            order
+              ? `Pedido #${order.number}`
+              : request.number
+                ? `Solicitação nº ${request.number}`
+                : null,
+            "envie a faca da caixa: a agência faz a arte em cima dela",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          link: order
+            ? `/app/orders/${order.id}#die-cut`
+            : `/app/quotes/${request.selectedQuoteId}#die-cut`,
+          chat: order ? { orderId: order.id } : { requestId: request.id },
+          dueAt: brief.dueAt,
+          orderNumber: order?.number,
+        },
+        now,
+      ),
+    );
+  }
+  return out;
+}
+
 const PACKAGING_ITEM_LABEL: Record<string, string> = {
   dieline: "faca (die-cut)",
   art: "arte",

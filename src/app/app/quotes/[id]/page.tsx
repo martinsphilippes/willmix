@@ -4,6 +4,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
+import { SupplierDielineCard } from "@/components/supplier-dieline-card";
 import type { PurchaseSheet } from "@/lib/db";
 import { canReleaseDumping } from "@/lib/services/purchase-flow";
 import {
@@ -88,6 +89,7 @@ export default async function QuotePage({
     fields: invalidFields,
     board,
     card: cardNotice,
+    dieline: dielineNotice,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -364,6 +366,18 @@ export default async function QuotePage({
             )}
           </div>
         </Card>
+        {/* Cotação escolhida: o fornecedor envia a faca (die-cut) da embalagem. */}
+        {quote.status === "selected" ? (
+          <div className="lg:col-span-2">
+            <SupplierDielineCard
+              t={t}
+              user={user}
+              from={{ quoteId: quote.id }}
+              back={`/app/quotes/${quote.id}`}
+              justSent={dielineNotice === "sent"}
+            />
+          </div>
+        ) : null}
       </div>
       {/* Ordem da ficha: campos, fotos e, por último, a resposta com os botões.
           O card de fotos tem formulários próprios (cada foto sobe na hora, no

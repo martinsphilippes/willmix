@@ -338,7 +338,8 @@ describe("entregáveis, medidas e isolamento", () => {
     const beforeAdmin = (await notificationsOf(admin)).length;
 
     const d1 = await pb.uploadPackagingItem(
-      agency,
+      // A faca é do fornecedor escolhido; a Wellmix envia no lugar dele.
+      admin,
       brief.id,
       "dieline",
       pdf("faca.pdf"),
@@ -347,7 +348,7 @@ describe("entregáveis, medidas e isolamento", () => {
     expect(d1.document.packagingBriefId).toBe(brief.id);
     expect(d1.brief.status).toBe("open");
     const d2 = await pb.uploadPackagingItem(
-      agency,
+      admin,
       brief.id,
       "dieline",
       pdf("faca2.pdf"),
@@ -454,7 +455,7 @@ describe("entregáveis, medidas e isolamento", () => {
     expect((await pb.briefForRequest(request.id))!.dims?.lengthCm).toBe(60);
 
     // Faca e arte prontas com as provisórias.
-    await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca.pdf"));
+    await pb.uploadPackagingItem(admin, brief.id, "dieline", pdf("faca.pdf"));
     await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
     expect((await pb.briefForRequest(request.id))!.status).toBe("ready");
 
@@ -563,7 +564,7 @@ describe("pedido criado", () => {
     const request = await newRequest();
     await r.openRfq(admin, request.id, ["fornecedor-a"]);
     const brief = (await pb.briefForRequest(request.id))!;
-    await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca.pdf"));
+    await pb.uploadPackagingItem(admin, brief.id, "dieline", pdf("faca.pdf"));
     const art = await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
     const order = await toOrder(request);
     expect(order.agencyId).toBe("agencia");
@@ -953,7 +954,7 @@ describe("correções da revisão", () => {
     expect(fresh.dimsProvisional).toBe(false);
     expect(fresh.dimsSource).toBe("manual");
     // Pronto → medidas à mão diferentes → em preparação com aviso → conferência → pronto de novo.
-    await pb.uploadPackagingItem(agency, brief.id, "dieline", pdf("faca.pdf"));
+    await pb.uploadPackagingItem(admin, brief.id, "dieline", pdf("faca.pdf"));
     await pb.uploadPackagingItem(agency, brief.id, "art", pdf());
     expect((await pb.briefForRequest(request.id))!.status).toBe("ready");
     await pb.savePackagingDims(admin, brief.id, {

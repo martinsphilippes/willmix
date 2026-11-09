@@ -74,6 +74,8 @@ export default async function PackagingBriefPage({
     items,
     missing,
     canEdit,
+    canSendDieline,
+    supplierName,
     wellmix,
     presale,
     order,
@@ -480,13 +482,25 @@ export default async function PackagingBriefPage({
                   justSaved={saved === item.key}
                   missing={missing.includes(item.key)}
                   canEdit={
-                    canEdit &&
-                    // Arte com a etapa do pedido aberta: pelo pedido (um caminho só);
-                    // etapa concluída: a arte aprovada fica como está.
-                    !(
-                      item.key === "art" &&
-                      (!!orderArt?.stageOpen || !!orderArt?.artLocked)
-                    )
+                    item.key === "dieline"
+                      ? // Faca: é do fornecedor escolhido; a Wellmix envia no lugar dele.
+                        canSendDieline
+                      : canEdit &&
+                        // Arte com a etapa do pedido aberta: pelo pedido (um caminho só);
+                        // etapa concluída: a arte aprovada fica como está.
+                        !(
+                          item.key === "art" &&
+                          (!!orderArt?.stageOpen || !!orderArt?.artLocked)
+                        )
+                  }
+                  bySupplier={
+                    item.key === "dieline"
+                      ? supplierName
+                        ? t("packBrief.item.bySupplierNamed", {
+                            name: supplierName,
+                          })
+                        : t("packBrief.item.supplierAfterChoice")
+                      : null
                   }
                   artInOrder={item.key === "art" && !!orderArt?.stageOpen}
                   artLocked={item.key === "art" && !!orderArt?.artLocked}
@@ -540,10 +554,13 @@ function ItemRow({
   artInOrder,
   artLocked,
   orderId,
+  bySupplier = null,
 }: {
   t: Translate;
   briefId: string;
   item: PackagingItemView;
+  /** Faca: quem envia (o fornecedor escolhido), no lugar do dono do briefing. */
+  bySupplier?: string | null;
   /** Acabou de ser enviado: a confirmação aparece aqui, onde a tela rola. */
   justSaved: boolean;
   missing: boolean;
@@ -601,6 +618,14 @@ function ItemRow({
             </span>
           ) : null}
         </p>
+        {bySupplier ? (
+          <p
+            className="mt-0.5 text-xs font-medium text-zinc-600"
+            data-packaging-dieline-owner
+          >
+            {bySupplier}
+          </p>
+        ) : null}
         {doc ? (
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-zinc-600">
             <a
@@ -638,7 +663,9 @@ function ItemRow({
               missing ? "text-amber-700" : "text-zinc-500",
             )}
           >
-            {t("packBrief.item.missing")}
+            {bySupplier && !canEdit
+              ? t("packBrief.item.supplierPending")
+              : t("packBrief.item.missing")}
           </p>
         )}
         {artInOrder && orderId ? (
