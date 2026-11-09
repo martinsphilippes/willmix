@@ -9,8 +9,8 @@ import { ForbiddenError, isAdmin, isWellmix } from "./permissions";
  * (assertScreen) leem daqui. Admin abre tudo; operador da Wellmix abre o
  * básico mais a união das telas das suas funções (Gestão → Equipe e
  * divisões); cliente, fornecedor e parceiros têm a lista fixa do papel.
- * Financeiro (Financeiro, Contas a pagar, conta corrente do fornecedor) é só
- * do administrador: nenhuma função o libera. O administrador pode, porém,
+ * Financeiro (Financeiro, Contas a pagar, conta corrente do fornecedor) e o
+ * Superplan são só do administrador: nenhuma função os libera. O administrador pode, porém,
  * marcar as telas de um login uma a uma (users.screens), inclusive essas.
  */
 
@@ -29,6 +29,7 @@ export const SCREENS = [
   "freightTariff",
   "packaging",
   "containers",
+  "superplan",
   "parties",
   "products",
   "lines",
@@ -61,6 +62,7 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/reviews", "reviews"],
   ["/app/packaging", "packaging"],
   ["/app/containers", "containers"],
+  ["/app/superplan", "superplan"],
   ["/app/parties", "parties"],
   ["/app/customers", "parties"],
   ["/app/suppliers", "parties"],
@@ -108,6 +110,7 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   freightTariff: "nav.freightTariff",
   packaging: "nav.packaging",
   containers: "nav.containers",
+  superplan: "nav.superplan",
   parties: "nav.parties",
   products: "nav.products",
   lines: "nav.lines",
@@ -135,13 +138,17 @@ export const WELLMIX_BASE: readonly Screen[] = [
   "messages",
 ];
 
-/** Só o administrador, seja qual for a função: financeiro, configurações e equipe. */
+/**
+ * Só o administrador, seja qual for a função: financeiro, configurações,
+ * equipe e o Superplan (custo, preço mínimo e margem de cada produto).
+ */
 export const ADMIN_ONLY: readonly Screen[] = [
   "finance",
   "payables",
   "account",
   "settings",
   "team",
+  "superplan",
 ];
 
 const PARTNER_BASE: readonly Screen[] = [
@@ -270,6 +277,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
       "freightTariff",
       "packaging",
       "containers",
+      "superplan",
     ],
   },
   {

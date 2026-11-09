@@ -26,6 +26,7 @@ import {
   LinkButton,
   PageHeader,
   Select,
+  TextLink,
   Textarea,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
@@ -741,7 +742,15 @@ export default async function SettingsPage({
                 fx={fx}
               />
               {/* Tributos: PIS, COFINS, ICMS, seguro e links da tabela fiscal. */}
-              <TaxRateFields t={t} s={s} />
+              <div id="tributos" className="scroll-mt-24 space-y-2">
+                <TaxRateFields t={t} s={s} />
+                {/* Tipos de negócio, despesas e impostos da venda: na tela do Superplan. */}
+                <p className="text-xs">
+                  <TextLink href="/app/superplan#parametros">
+                    {t("superplan.settingsLink")}
+                  </TextLink>
+                </p>
+              </div>
               {/* Disputa de fornecedores: peso de cada critério na nota. */}
               <div
                 id="ranking"

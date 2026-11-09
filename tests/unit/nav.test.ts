@@ -55,6 +55,7 @@ describe("menu principal", () => {
       "/app/freight/tariff",
       "/app/packaging",
       "/app/containers",
+      "/app/superplan",
       "/app/parties",
       "/app/products",
       "/app/lines",
@@ -99,6 +100,8 @@ describe("menu principal", () => {
             "/app/payables",
             "/app/settings",
             "/app/team",
+            // Superplan: custo e margem de cada produto, só do admin.
+            "/app/superplan",
             // Painel do dono: números de Finanças, só do admin.
             "/app/dashboards/owner",
             "/app/dashboards/cashflow",

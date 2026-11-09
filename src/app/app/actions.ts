@@ -1092,7 +1092,9 @@ export async function saveSettingsAction(form: FormData) {
         key === "fiscalLastError" ||
         // Gravados pelo tarifário de frete (destino escolhido e atualização automática).
         key === "freightTariffDestination" ||
-        key === "freightPerCbmAuto"
+        key === "freightPerCbmAuto" ||
+        // Gravado pela tela do Superplan, com validação própria.
+        key === "superplan"
       )
         continue;
       if (key === "requestStepDays") {

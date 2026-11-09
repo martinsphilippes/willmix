@@ -88,6 +88,9 @@ export function navFor(
           // Briefings de embalagem (faca e arte) abertos com a RFQ.
           ["packaging", { href: "/app/packaging", key: "nav.packaging" }],
           ["containers", { href: "/app/containers", key: "nav.containers" }],
+          // Viabilidade de um produto: custo do container, preço mínimo e
+          // lucro contra a meta do tipo de negócio (só o administrador).
+          ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
         ]),
       ),
       ...group(
