@@ -415,6 +415,7 @@ export async function syncOrderItems(
             QTDNEG: item.quantity,
             VLRUNIT: item.unitPrice ?? Number(r.VLRUNIT),
             CODVOL: erp.codVol || "UN",
+            CODEMP: erp.codEmp,
           });
       } else {
         changes.push({
@@ -422,6 +423,7 @@ export async function syncOrderItems(
           QTDNEG: item.quantity,
           VLRUNIT: item.unitPrice ?? 0,
           CODVOL: erp.codVol || "UN",
+          CODEMP: erp.codEmp,
         });
       }
     }

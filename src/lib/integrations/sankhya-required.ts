@@ -5,15 +5,18 @@ import { partnerValues, productValues } from "./sankhya-sync";
 import { buildTestNote, type SankhyaErpSettings } from "./sankhya-settings";
 
 /*
- * O que o Sankhya exige para incluir cada entidade que o portal cria lá
- * (Parceiro, Produto, Cabeçalho e Item da nota), comparado com o que o portal
- * envia. "Exige" = coluna NOT NULL sem valor padrão no banco do ERP, lida do
+ * O que o Sankhya exige para incluir cada entidade da integração, comparado
+ * com o que o portal envia (as que o portal inclui: Parceiro, Produto,
+ * Cabeçalho e Item da nota = pedido/cotação) ou com o que o portal tem (as
+ * que o portal só lê: grupos, condições de pagamento, locais, estoque e
+ * financeiro). "Exige" = coluna NOT NULL sem valor padrão no banco do ERP, lida do
  * catálogo do banco (SQL Server: INFORMATION_SCHEMA; Oracle: ALL_TAB_COLUMNS).
  * O Sankhya ainda preenche algumas pelo dicionário dele ao incluir; o teste
  * de inclusão (parte 5 da Integração) é a prova final.
  */
 
-export type RequiredStatus = "portal" | "fixed" | "generated" | "missing";
+export type RequiredStatus =
+  "portal" | "fixed" | "generated" | "auto" | "missing";
 
 export interface RequiredRow {
   column: string;
@@ -23,18 +26,56 @@ export interface RequiredRow {
 export interface RequiredCheck {
   table: string;
   entity: string;
+  /** create = o portal inclui no Sankhya; read = só lê (decisão da Wellmix). */
+  mode: "create" | "read";
   /** De onde veio a lista (catálogo do banco) ou o erro. */
   source: string | null;
   error: string | null;
   rows: RequiredRow[];
 }
 
-const TABLES = [
-  { table: "TGFPAR", entity: "Parceiro", generated: ["CODPARC"] },
-  { table: "TGFPRO", entity: "Produto", generated: ["CODPROD"] },
-  { table: "TGFCAB", entity: "CabecalhoNota", generated: ["NUNOTA"] },
-  { table: "TGFITE", entity: "ItemNota", generated: ["NUNOTA", "SEQUENCIA"] },
-] as const;
+const TABLES: Array<{
+  table: string;
+  entity: string;
+  mode: "create" | "read";
+  generated: string[];
+}> = [
+  {
+    table: "TGFPAR",
+    entity: "Parceiro",
+    mode: "create",
+    generated: ["CODPARC"],
+  },
+  {
+    table: "TGFPRO",
+    entity: "Produto",
+    mode: "create",
+    generated: ["CODPROD"],
+  },
+  {
+    table: "TGFCAB",
+    entity: "CabecalhoNota",
+    mode: "create",
+    generated: ["NUNOTA"],
+  },
+  {
+    table: "TGFITE",
+    entity: "ItemNota",
+    mode: "create",
+    generated: ["NUNOTA", "SEQUENCIA"],
+  },
+  { table: "TGFGRU", entity: "GrupoProduto", mode: "read", generated: [] },
+  { table: "TGFTPV", entity: "TipoNegociacao", mode: "read", generated: [] },
+  { table: "TGFLOC", entity: "LocalEstoque", mode: "read", generated: [] },
+  { table: "TGFEST", entity: "Estoque", mode: "read", generated: [] },
+  { table: "TGFFIN", entity: "Financeiro", mode: "read", generated: ["NUFIN"] },
+];
+
+/**
+ * Preenchidas pelo próprio Sankhya ao incluir (datas de controle e a versão
+ * da TOP). O pedido de teste (parte 5) é a prova.
+ */
+const AUTO = new Set(["DTALTER", "DTCAD", "DHTIPOPER", "DHALTER"]);
 
 /** Colunas NOT NULL sem padrão: tenta SQL Server e depois Oracle. */
 async function requiredColumns(
@@ -145,6 +186,36 @@ export function providedKeys(erp: SankhyaErpSettings) {
       portal: new Set(keys(note.items[0] ?? {})),
       fixed: new Set<string>(),
     },
+    // Só leitura: o que o portal tem (para um dia incluir, se a Wellmix pedir).
+    TGFGRU: {
+      portal: new Set(["CODGRUPOPROD", "DESCRGRUPOPROD", "ATIVO"]),
+      fixed: new Set<string>(),
+    },
+    TGFTPV: {
+      portal: new Set(["CODTIPVENDA", "DESCRTIPVENDA", "ATIVO"]),
+      fixed: new Set<string>(),
+    },
+    TGFLOC: {
+      portal: new Set(["CODLOCAL", "DESCRLOCAL", "ATIVO"]),
+      fixed: new Set<string>(),
+    },
+    TGFEST: {
+      portal: new Set(["CODEMP", "CODPROD", "CODLOCAL", "ESTOQUE"]),
+      fixed: new Set<string>(),
+    },
+    TGFFIN: {
+      portal: new Set([
+        "NUNOTA",
+        "CODEMP",
+        "CODPARC",
+        "RECDESP",
+        "VLRDESDOB",
+        "DTVENC",
+        "CODTIPTIT",
+        "CODNAT",
+      ]),
+      fixed: new Set<string>(),
+    },
   } as Record<string, { portal: Set<string>; fixed: Set<string> }>;
 }
 
@@ -160,17 +231,20 @@ export async function checkRequired(
         return {
           table: t.table,
           entity: t.entity,
+          mode: t.mode,
           source,
           error: null,
           rows: columns.map((column) => ({
             column,
-            status: (t.generated as readonly string[]).includes(column)
+            status: t.generated.includes(column)
               ? "generated"
               : p.portal.has(column)
                 ? "portal"
                 : p.fixed.has(column)
                   ? "fixed"
-                  : "missing",
+                  : AUTO.has(column)
+                    ? "auto"
+                    : "missing",
           })) as RequiredRow[],
         };
       } catch (error) {
@@ -178,6 +252,7 @@ export async function checkRequired(
         return {
           table: t.table,
           entity: t.entity,
+          mode: t.mode,
           source: null,
           error: String(e.detail ?? e.message ?? error).slice(0, 400),
           rows: [],
