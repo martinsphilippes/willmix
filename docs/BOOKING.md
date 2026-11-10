@@ -17,6 +17,33 @@ Onde está cada parte:
 | Telas                                                     | `src/app/app/booking/`                                                  |
 | Textos                                                    | `src/i18n/modules/booking.ts`, `booking-screen.ts`, `booking-detail.ts` |
 
+## 0. Booking por planilha (decisão do dono, 10/11/2026)
+
+A tela **Booking** (`/app/booking`) passou a ser a lista dos **bookings**: cada booking é a planilha que um fornecedor mandou, com status, origem, fornecedor e data, e uma lista de itens. A fila de produtos descrita nas seções seguintes continua existindo, em **`/app/booking/products`** (botão "Fila de produtos"; endereço antigo `/app/booking?…` com filtros é encaminhado para lá).
+
+**Os itens do booking não são produtos.** Nada entra no cadastro de produtos nem no Sankhya ao subir ou fechar um booking. Mais à frente, na **Seleção de itens** (etapa seguinte, ainda não construída), o analista compara itens iguais de vários bookings, escolhe o melhor, dá o nome certo, cria o produto no portal e no Sankhya e liga a ele os itens iguais (`booking_items.productId`, vazio até lá).
+
+Decisões:
+
+1. **Status do booking**: Rascunho → Fechado (importação concluída, análise do Superplan feita) → Em andamento → Concluído; e Cancelado. Só o rascunho é editável. À mão: Rascunho → Cancelado; Fechado → Em andamento, Concluído ou Cancelado; Em andamento → Fechado, Concluído ou Cancelado; Concluído → Em andamento; Cancelado → Rascunho (`bookingLotMoves`, `src/lib/booking-lots.ts`).
+2. **Origem** é a cidade do fornecedor (`parties.city`). Sem fornecedor no booking, vale a cidade da planilha (coluna LOCAL).
+3. **Um fornecedor por booking**, estimado pela planilha (o nome mais frequente na coluna SUPPLIER NAME) e ajustado pelo usuário. A planilha casa com o cadastro pelo nome (sem pontuação nem "Co., Ltd."), senão pelo telefone (8 últimos dígitos), senão, só quando a planilha não traz nome, pelo nº da loja (`matchSheetSupplier`). Sem correspondência, o detalhamento sugere cadastrar o fornecedor com nome, nº da loja, telefone e cidade da planilha (Cadastros → Fornecedores, sem login).
+4. **Data** do booking: a da coluna DATE (a mais frequente), ajustável. A data como veio fica guardada para conferência (`sheetDate`).
+5. **Colunas**. Lidas com campo próprio: product number list, SKU/factory item code, description, FOB/EXW\*, coin US$/RMB\*, price\*, qty/box\*, qty/inner\*, N.W./pc\*, G.W./pc\*, CBM\*, size (cm) length\*, width\* e height\*, capacity (ml)\*, package\*, material\*, MOQ\* (\* = obrigatório para fechar, `BOOKING_ITEM_REQUIRED`). Informativas: color assortment, function/battery/110/220, purchase schedule, departure interval in days, purchase qty in pcs, TT PCS, foto e supplier business card. **Qualquer outra coluna** fica guardada no item (`extras`, cabeçalho → valor) e não aparece na tela; os nomes dessas colunas ficam em `booking_lots.extraHeaders`. Linhas seguidas iguais com só a cor diferente continuam sendo um item só (regra 4 da seção 3).
+6. **Fechar** confere fornecedor, data e os campos obrigatórios de todos os itens e roda o **Superplan em todos os itens** com os valores padrão (câmbio do dia, container e frete padrão, preço mínimo), gravando o retrato em `booking_items.analysis` (mesmo formato de `bookings.analysis`). O item não tem NCM: II e IPI contam 0 (`ncmFound` falso). Um seletor acima do botão escolhe o **tipo de negócio** do Superplan (vazio = o padrão dos parâmetros). Num booking fechado, "Refazer a análise" roda de novo (câmbio ou parâmetros mudaram).
+
+Telas:
+
+- **`/app/booking`**: tabela dos bookings (nº, status, origem, fornecedor, data, planilha, itens, incompletos, sinais do Superplan, responsável, carregado em). Clicar no cabeçalho ordena (de novo inverte); a busca filtra por qualquer campo enquanto se digita. Tudo no navegador (`searchBookingLots`, `sortBookingLots`). Botão **Importar booking**.
+- **`/app/booking/import`**: arquivo (.xlsx/.xls, até 80 itens, subido direto ao armazenamento quando grande) ou link do Google Sheets, e a moeda dos preços sem moeda. Usa o mesmo leitor da ficha técnica (`parseProductSheet`); os erros de leitura têm os mesmos textos.
+- **`/app/booking/lots/[id]`**: dados do booking (fornecedor e data gravam sozinhos no rascunho), sugestão de cadastro do fornecedor, fechar (tipo de negócio), status, observação e a tabela dos itens com todos os campos (no rascunho, cada campo grava sozinho ao sair dele; obrigatório vazio fica destacado), a conferência do que falta e o resultado do Superplan (sinal, preço mínimo, lucro e o que faltou).
+
+Onde está: regras puras em `src/lib/booking-lots.ts`; serviço em `src/lib/services/booking-lots.ts`; análise dos itens em `analyzeBookingItems` (`src/lib/services/superplan-analysis.ts`); ações em `src/app/app/actions/booking-lots.ts`; campos que gravam sozinhos em `src/components/booking-lot-fields.tsx`; textos em `src/i18n/modules/booking-lots.ts`; testes em `tests/unit/booking-lots.test.ts`.
+
+Banco: tabelas `booking_lots` e `booking_items` (docs/APPWRITE.md). Antes da publicação (`npm run appwrite:push`), a lista avisa "esquema desatualizado" e não oferece a importação.
+
+Permissões: só a Wellmix com a tela Booking (como a fila de produtos). Cadastrar o fornecedor sugerido também é dessa tela. Cliente, fornecedor e parceiros não veem bookings, itens, fotos nem a planilha guardada (documentos internos).
+
 ## 1. Problema
 
 - A ficha técnica importada virava **um produto com variações** (uma variação por linha). Para o dono, cada linha é um **produto diferente**.

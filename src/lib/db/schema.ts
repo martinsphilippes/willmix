@@ -361,6 +361,21 @@ export const BOOKING_STATUSES = [
 ] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
+/**
+ * Booking como planilha (docs/BOOKING.md, "Booking por planilha"): a lista de
+ * itens que um fornecedor mandou, antes de existir produto. Rascunho
+ * (editável) → Fechado (importação concluída, análise do Superplan feita) →
+ * Em andamento (algum item já foi escolhido) → Concluído; e Cancelado.
+ */
+export const BOOKING_LOT_STATUSES = [
+  "draft",
+  "closed",
+  "in_progress",
+  "done",
+  "cancelled",
+] as const;
+export type BookingLotStatus = (typeof BOOKING_LOT_STATUSES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -2257,6 +2272,109 @@ export interface Booking extends BaseRow {
   createdByUserId: string | null;
 }
 
+/**
+ * Fornecedor como a planilha do booking escreveu (nome, loja, telefone e
+ * cidade): base da sugestão de cadastro quando ele ainda não existe.
+ */
+export interface BookingLotSupplierHint {
+  name: string | null;
+  store: string | null;
+  phone: string | null;
+  city: string | null;
+}
+
+/**
+ * Booking (a planilha de um fornecedor): status, origem (a cidade do
+ * fornecedor), fornecedor e data. Fornecedor e data vêm estimados da
+ * planilha e o usuário confirma ou ajusta antes de fechar. Os itens ficam em
+ * `booking_items`; nenhum produto do cadastro nasce aqui.
+ */
+export interface BookingLot extends BaseRow {
+  /** Número sequencial (contador `booking_lot_number`). */
+  number: number;
+  status: BookingLotStatus;
+  supplierId: string | null;
+  /** Fornecedor lido da planilha (sugestão de cadastro). */
+  supplierHint: BookingLotSupplierHint | null;
+  /** Cidade do fornecedor (ou a da planilha enquanto não há fornecedor). */
+  origin: string | null;
+  /** Data do booking (ISO, meia-noite UTC). */
+  bookingDate: string | null;
+  /** Data como a planilha trouxe, para conferência. */
+  sheetDate: string | null;
+  fileName: string;
+  fileDocumentId: string | null;
+  sheetName: string | null;
+  /** Cabeçalhos da planilha que não têm campo próprio (guardados nos itens). */
+  extraHeaders: string[] | null;
+  itemCount: number;
+  /** Tipo de negócio do Superplan escolhido ao fechar (vazio = o padrão). */
+  businessType: string | null;
+  closedAt: string | null;
+  closedByUserId: string | null;
+  analyzedAt: string | null;
+  statusChangedAt: string | null;
+  statusChangedByUserId: string | null;
+  note: string | null;
+  ownerUserId: string | null;
+  createdByUserId: string;
+}
+
+/**
+ * Item de um booking: uma linha (ou linhas seguidas da mesma peça em cores
+ * diferentes) da planilha. Não é produto: um analista cria o produto depois,
+ * na seleção de itens, e liga a ele os itens iguais de vários bookings
+ * (`productId`, vazio até lá).
+ */
+export interface BookingItem extends BaseRow {
+  lotId: string;
+  /** Ordem na planilha (0, 1, 2…). */
+  position: number;
+  sourceRows: string | null;
+  /** PRODUCT NUMBER LIST: o número do item na planilha. */
+  itemNumber: string | null;
+  /** SKU / FACTORY ITEM CODE. */
+  factoryItemCode: string | null;
+  productName: string | null;
+  description: string | null;
+  incoterm: SheetIncoterm | null;
+  currency: SheetCurrency | null;
+  price: number | null;
+  /** QTY/BOX: peças por caixa master. */
+  masterCartonQty: number | null;
+  innerQty: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+  /** CBM da caixa master. */
+  cbmPerCarton: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  capacityMl: number | null;
+  packageType: string | null;
+  material: string | null;
+  moq: number | null;
+  /* Informativos (não obrigatórios). */
+  colorAssortment: string | null;
+  /** FUNCTION / BATTERY / 110 / 220. */
+  powerDetail: string | null;
+  purchaseSchedule: string | null;
+  departureIntervalDays: string | null;
+  purchaseQty: number | null;
+  /** TT PCS: peças planejadas. */
+  plannedQty: number | null;
+  sizeText: string | null;
+  photoDocumentId: string | null;
+  cardDocumentId: string | null;
+  /** Colunas da planilha sem campo próprio: cabeçalho → valor. Não aparecem na tela. */
+  extras: Record<string, string> | null;
+  /** Retrato da análise do Superplan (o mesmo formato da linha do Booking). */
+  analysis: BookingAnalysis | null;
+  /** Produto do cadastro a que o item foi ligado (seleção de itens, depois). */
+  productId: string | null;
+  updatedByUserId: string | null;
+}
+
 export interface StockReservation extends BaseRow {
   productId: string;
   customerId: string;
@@ -2332,6 +2450,8 @@ export interface Tables {
   stock_count_items: StockCountItem;
   stock_reservations: StockReservation;
   bookings: Booking;
+  booking_lots: BookingLot;
+  booking_items: BookingItem;
 }
 export type TableName = keyof Tables;
 
@@ -3795,6 +3915,80 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "product_unique", type: "unique", columns: ["productId"] },
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_batch", type: "key", columns: ["importBatchId"] },
+    ],
+  },
+  booking_lots: {
+    label: "Bookings (planilhas de fornecedor)",
+    columns: {
+      number: int(true),
+      status: enumOf(BOOKING_LOT_STATUSES),
+      supplierId: id(false),
+      supplierHint: json(),
+      origin: str(80),
+      bookingDate: datetime(),
+      sheetDate: str(40),
+      fileName: str(255, true),
+      fileDocumentId: id(false),
+      sheetName: str(120),
+      extraHeaders: json(),
+      itemCount: int(true),
+      businessType: str(80),
+      closedAt: datetime(),
+      closedByUserId: id(false),
+      analyzedAt: datetime(),
+      statusChangedAt: datetime(),
+      statusChangedByUserId: id(false),
+      note: str(500),
+      ownerUserId: id(false),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  booking_items: {
+    label: "Itens do booking",
+    columns: {
+      lotId: id(),
+      position: int(true),
+      sourceRows: str(40),
+      itemNumber: str(40),
+      factoryItemCode: str(60),
+      productName: str(160),
+      description: text(),
+      incoterm: enumOf(SHEET_INCOTERMS, false),
+      currency: enumOf(SHEET_CURRENCIES, false),
+      price: float(),
+      masterCartonQty: int(),
+      innerQty: int(),
+      netWeightPcKg: float(),
+      grossWeightPcKg: float(),
+      cbmPerCarton: float(),
+      lengthCm: float(),
+      widthCm: float(),
+      heightCm: float(),
+      capacityMl: float(),
+      packageType: str(120),
+      material: str(200),
+      moq: int(),
+      colorAssortment: str(200),
+      powerDetail: str(60),
+      purchaseSchedule: str(80),
+      departureIntervalDays: str(40),
+      purchaseQty: int(),
+      plannedQty: int(),
+      sizeText: str(60),
+      photoDocumentId: id(false),
+      cardDocumentId: id(false),
+      extras: json(),
+      analysis: json(),
+      productId: id(false),
+      updatedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_lot", type: "key", columns: ["lotId"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
 };

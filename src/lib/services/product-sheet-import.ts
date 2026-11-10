@@ -101,7 +101,8 @@ export type SheetColumn =
   | "schedule"
   | "interval"
   | "purchaseQty"
-  | "plannedQty";
+  | "plannedQty"
+  | "itemNumber";
 
 /**
  * Sinônimos de cabeçalho por coluna (comparados sem acento, sem caixa e só
@@ -167,7 +168,11 @@ const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
   ],
   ["incoterm", ["FOB EXW", "INCOTERM", "FOB", "EXW"]],
   ["price", ["PRICE", "PRECO", "UNIT PRICE", "单价", "价格"]],
-  ["currency", ["CURRENCY", "MOEDA", "币种"]],
+  [
+    "currency",
+    // "CONI US $/RMB": a moeda na planilha de booking do fornecedor.
+    ["CURRENCY", "MOEDA", "币种", "CONI US RMB", "COIN US RMB", "CONI", "COIN"],
+  ],
   [
     "masterCartonQty",
     [
@@ -195,9 +200,12 @@ const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
     ["G W PC", "GW PC", "G W", "GW", "GROSS WEIGHT", "PESO BRUTO", "毛重"],
   ],
   ["cbmPerCarton", ["CBM", "CBM CTN", "CBM BOX", "CBM CAIXA", "体积"]],
-  ["lengthCm", ["SIZE LENGTH", "LENGTH", "COMPRIMENTO", "长"]],
-  ["widthCm", ["SIZE WIDTH", "WIDTH", "LARGURA", "宽"]],
-  ["heightCm", ["SIZE HEIGHT", "HEIGHT", "ALTURA", "高"]],
+  [
+    "lengthCm",
+    ["SIZE LENGTH", "SIZE CM LENGTH", "LENGTH", "COMPRIMENTO", "长"],
+  ],
+  ["widthCm", ["SIZE WIDTH", "SIZE CM WIDTH", "WIDTH", "LARGURA", "宽"]],
+  ["heightCm", ["SIZE HEIGHT", "SIZE CM HEIGHT", "HEIGHT", "ALTURA", "高"]],
   ["sizeText", ["SIZE", "TAMANHO", "MEDIDAS", "DIMENSIONS", "尺寸"]],
   ["capacityMl", ["CAPACITY ML", "CAPACITY", "CAPACIDADE", "容量"]],
   ["packageType", ["PACKAGE", "PACKING", "PACKAGING", "EMBALAGEM", "包装"]],
@@ -256,6 +264,22 @@ const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
     "plannedQty",
     ["TT PCS", "TOTAL PCS", "TT ORDER PCS", "TOTAL DE PECAS", "TOTAL PECAS"],
   ],
+  // Número do item na planilha do booking (PRODUCT NUMBER LIST). Por último e
+  // só por igualdade: "NO" no começo de outro cabeçalho ("NO OF CTN") não é ele.
+  [
+    "itemNumber",
+    [
+      "PRODUCT NUMBER LIST",
+      "PRODUCT NUMBER",
+      "PRODUCT NO",
+      "ITEM NUMBER",
+      "NO",
+      "NR",
+      "NUMERO",
+      "SEQ",
+      "序号",
+    ],
+  ],
 ];
 
 /** Colunas que, preenchidas, dizem que a linha é um produto. */
@@ -298,7 +322,7 @@ function matchColumn(header: string): SheetColumn | null {
   )
     return null;
   for (const [column, synonyms] of HEADERS) {
-    if (column === "incoterm") continue;
+    if (column === "incoterm" || column === "itemNumber") continue;
     for (const syn of synonyms) if (h.startsWith(`${syn} `)) return column;
   }
   return null;
@@ -365,6 +389,8 @@ export interface ParsedRow {
   /** Linha da aba como no Excel (1 = primeira). */
   row: number;
   values: Partial<Record<SheetColumn, string>>;
+  /** Colunas sem campo próprio (cabeçalho original → valor), para guardar como informação. */
+  extras?: Record<string, string>;
 }
 
 export interface ProductGroup {
@@ -388,6 +414,14 @@ export interface ProductGroup {
   plannedQty: number | null;
   photo: SheetImage | null;
   card: SheetImage | null;
+  /** PRODUCT NUMBER LIST da primeira linha do grupo. */
+  itemNumber?: string | null;
+  /** Programação, intervalo de saída e quantidade de compra, como a planilha escreveu. */
+  schedule?: string | null;
+  interval?: string | null;
+  purchaseQty?: number | null;
+  /** Colunas sem campo próprio, das linhas do grupo (valores diferentes juntos com " / "). */
+  extras?: Record<string, string>;
 }
 
 export interface ParsedSheet {
@@ -402,6 +436,8 @@ export interface ParsedSheet {
   rows: ParsedRow[];
   groups: ProductGroup[];
   warnings: string[];
+  /** Cabeçalhos sem campo próprio (guardados em `extras`). */
+  extraHeaders?: string[];
 }
 
 const OLE_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0];
@@ -557,6 +593,23 @@ export function parseProductSheet(
       if (h2 && !(row1[c] ?? "").trim()) take(matchColumn(h2), c, h2);
     }
   const dataStart = headerIndex + (secondIsHeader ? 2 : 1);
+  // Colunas sem campo próprio: guardadas como informação (cabeçalho original,
+  // com a subcoluna quando o cabeçalho tem duas linhas). Repetido ganha "(2)".
+  const taken = new Set(Object.values(columns));
+  const extraColumns: Array<[number, string]> = [];
+  const extraNames = new Set<string>();
+  for (let c = 0; c < width; c++) {
+    if (taken.has(c)) continue;
+    const h1 = (row1[c] ?? "").replace(/\s+/g, " ").trim();
+    const h2 = secondIsHeader
+      ? (row2[c] ?? "").replace(/\s+/g, " ").trim()
+      : "";
+    let label = [h1, h2].filter(Boolean).join(" ").slice(0, 80);
+    if (!label) continue;
+    for (let n = 2; extraNames.has(label); n++) label = `${label} (${n})`;
+    extraNames.add(label);
+    extraColumns.push([c, label]);
+  }
   const priceHeader = headers.price ?? "";
   const currency = currencyInHeader(priceHeader);
   const incoterm = incotermInHeader(priceHeader);
@@ -578,7 +631,16 @@ export function parseProductSheet(
       truncated = true;
       break;
     }
-    rows.push({ row: r + 1, values });
+    const extras: Record<string, string> = {};
+    for (const [index, label] of extraColumns) {
+      const v = (line[index] ?? "").replace(/\s+/g, " ").trim();
+      if (v) extras[label] = v.slice(0, 300);
+    }
+    rows.push({
+      row: r + 1,
+      values,
+      ...(Object.keys(extras).length ? { extras } : {}),
+    });
   }
   if (!rows.length) throw new SheetImportError("no_rows");
   if (truncated) warnings.push(`rows_truncated:${MAX_SHEET_ROWS}`);
@@ -613,6 +675,7 @@ export function parseProductSheet(
     rows,
     groups,
     warnings,
+    extraHeaders: extraColumns.map(([, label]) => label),
   };
 }
 
@@ -638,7 +701,7 @@ function groupRows(
 ): ProductGroup[] {
   const groups: ProductGroup[] = [];
   let lastKey: string | null = null;
-  for (const { row, values } of rows) {
+  for (const { row, values, extras } of rows) {
     const raw: Record<string, unknown> = {};
     for (const field of READING_FIELDS)
       if (values[field] !== undefined) raw[field] = values[field];
@@ -707,10 +770,26 @@ function groupRows(
       plannedRaw !== null && plannedRaw > 0 && plannedRaw <= 1e9
         ? Math.round(plannedRaw)
         : null;
+    const purchaseRaw = num(values.purchaseQty);
+    const purchaseQty =
+      purchaseRaw !== null && purchaseRaw <= 1e9
+        ? Math.round(purchaseRaw)
+        : null;
     const last = groups[groups.length - 1];
     if (last && key === lastKey) {
       last.lastRow = row;
       if (planned !== null) last.plannedQty = (last.plannedQty ?? 0) + planned;
+      if (purchaseQty !== null)
+        last.purchaseQty = (last.purchaseQty ?? 0) + purchaseQty;
+      if (extras) {
+        const merged = { ...(last.extras ?? {}) };
+        for (const [k, v] of Object.entries(extras)) {
+          const parts = (merged[k] ?? "").split(" / ").filter(Boolean);
+          if (!parts.includes(v))
+            merged[k] = [...parts, v].join(" / ").slice(0, 300);
+        }
+        last.extras = merged;
+      }
       if (
         color &&
         !last.colors.some((c) => c.toLowerCase() === color.toLowerCase())
@@ -735,6 +814,11 @@ function groupRows(
       plannedQty: planned,
       photo: null,
       card: null,
+      itemNumber: text(values.itemNumber, 40),
+      schedule: text(values.schedule, 80),
+      interval: text(values.interval, 40),
+      purchaseQty,
+      ...(extras ? { extras: { ...extras } } : {}),
     });
   }
   // Fotos: a imagem ancorada na coluna PHOTO dentro das linhas do grupo.
@@ -1023,7 +1107,7 @@ async function attachPhoto(
 }
 
 /** Bytes e nome da planilha: do formulário ou do arquivo já subido direto. */
-async function sheetBytes(source: SheetSource) {
+export async function sheetBytes(source: SheetSource) {
   if (source instanceof File) {
     if (source.size === 0) throw new SheetImportError("file_required");
     return {

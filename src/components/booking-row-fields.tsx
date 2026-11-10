@@ -87,7 +87,7 @@ function RowNote({
 }
 
 /** Lista que grava ao escolher; recusada, volta para o que está gravado. */
-function SaveSelect({
+export function SaveSelect({
   send,
   current,
   options,
@@ -156,7 +156,7 @@ function SaveSelect({
  * ler, abaixo do pedido mínimo...), o que foi digitado fica para corrigir.
  * Gravado, o campo passa a mostrar o valor como ficou no servidor.
  */
-function SaveInput({
+export function SaveInput({
   send,
   saved,
   labels,
