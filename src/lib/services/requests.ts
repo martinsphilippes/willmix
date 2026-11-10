@@ -674,6 +674,12 @@ export async function openRfq(
     });
     invited.push(quote);
     options.collect?.push(quote);
+    // Cartão do fabricante que veio na planilha do Booking: já entra
+    // confirmado na cotação do fornecedor do produto (ninguém envia de novo).
+    if (request.productId) {
+      const { bringCardToQuote } = await import("./manufacturer-cards");
+      await bringCardToQuote(user, quote, request.productId);
+    }
     if (options.notify !== false)
       await notify(
         { role: "supplier", partyId: supplierId },
