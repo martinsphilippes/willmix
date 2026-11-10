@@ -649,3 +649,10 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - Especificação em `docs/ACCESS.md`. Uma lista só de telas (`src/lib/auth/screens.ts`) e uma regra só (`screensFor`): admin vê tudo; operador vê o básico (Control Tower, Pendências, SLA, Notificações, Mensagens) mais as telas das funções marcadas em Equipe e divisões; cliente, fornecedor e parceiros têm a lista fixa do papel (as mesmas telas de antes). **Financeiro é só do administrador** (Financeiro, Contas a pagar, conta corrente, totais em dinheiro do Control Tower, painel Financeiro, pagamentos e margem no pedido, confirmação do sinal, condição de pagamento do fornecedor).
 - Menu (`navFor(user)`), guarda das páginas (`requireScreen`, volta ao início com aviso), Server Actions (`assertScreen`/`assertAnyScreen`; as de pagamento, `assertRole(["admin"])`), Control Tower (faixa Financeiro e valores só com a tela Financeiro; aviso de acesso negado e de login sem função) e Equipe e divisões (coluna "Telas" calculada, aviso de login sem função).
 - Nada removido: toda rota continua existindo; quem não a abre volta ao início com `?denied=tela`. Operadores já cadastrados veem só o básico até o admin marcar as funções.
+
+## Solicitação: sai a tabela de comparação de cotações
+
+- **Pedido do dono** (10/11/2026): a tabela "Comparação de cotações" (uma linha por fornecedor, com preço, prazo, condições, situação e os campos "Registrar cotação" pelo fornecedor) sai da tela da solicitação, para toda a equipe Wellmix.
+- **Fica**: o cartão "Comparação de cotações" (âncora `#quotes-compare`, usada pelo Booking) com o ranking dos fornecedores e o formulário de escolha (valor ao cliente e sinal). Ele aparece quando há ranking ou cotação respondida para escolher.
+- **Onde ver o que estava na tabela**: preço, prazo, condições, negociação e frete de cada cotação continuam na página da cotação (`/app/quotes/{id}`) e na tela Cotações; a Wellmix registra a resposta no lugar do fornecedor pela ficha da cotação. A Server Action `answerQuoteAction` continua (nada saiu do servidor).
+

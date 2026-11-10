@@ -323,12 +323,6 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(requestUrl);
   await expect(page.getByText("Shenzhen Supplier A").first()).toBeVisible();
   await expect(page.getByText("Guangzhou Supplier B").first()).toBeVisible();
-  // Prazo de produção chega pela programação 1 da ficha (30 dias), sem digitar.
-  await expect(
-    page
-      .locator("tr", { hasText: "Shenzhen Supplier A" })
-      .locator("[data-quote-lead]"),
-  ).toHaveAttribute("data-quote-lead", "30");
   // Disputa: A é mais barato (o resto empata) e vence, com o motivo.
   const ranking = page.locator("[data-supplier-ranking]");
   await expect(ranking).toBeVisible();
