@@ -82,6 +82,13 @@ export async function buildPortalNote(
   const tipMov = String(tops.rows[0]?.TIPMOV ?? "").trim();
   if (!tipMov) return { ok: false, reason: `TOP ${top} não encontrada` };
 
+  // Condição de pagamento, Incoterm e câmbio do pedido (quando o portal tem);
+  // senão, os da Integração.
+  const condition = order?.paymentConditionId
+    ? await store.get("payment_conditions", order.paymentConditionId)
+    : null;
+  const cifFob =
+    order?.incoterm === "CIF" ? "C" : order?.incoterm === "FOB" ? "F" : null;
   const ref = order
     ? `pedido #${order.number}`
     : `solicitação ${request?.number ?? request?.id ?? ""}`;
@@ -93,12 +100,14 @@ export async function buildPortalNote(
         CODPARC: supplier.sankhyaCode,
         CODTIPOPER: top,
         TIPMOV: tipMov,
-        CODTIPVENDA: erp.codTipVenda,
+        CODTIPVENDA: condition?.code ?? erp.codTipVenda,
         CODVEND: erp.codVend ?? 0,
         CODNAT: erp.codNat,
         CODCENCUS: erp.codCenCus,
         CODPROJ: erp.codProj ?? 0,
         CODMOEDA: erp.codMoeda ?? undefined,
+        ...(order?.fxRate ? { VLRMOEDA: order.fxRate } : {}),
+        ...(cifFob ? { CIF_FOB: cifFob } : {}),
         DTNEG: todayBr(),
         OBSERVACAO: `Portal Wellmix: ${ref}`,
       },

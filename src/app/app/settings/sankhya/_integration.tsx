@@ -11,6 +11,7 @@ import {
   TextLink,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { RequiredCard } from "./_required";
 import { getStore } from "@/lib/db";
 import {
   executeQuery,
@@ -903,6 +904,9 @@ export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
           <p className="text-sm text-zinc-500">{t("sankhyaInt.needConfig")}</p>
         )}
       </Card>
+
+      {/* 6. O que o Sankhya exige para incluir */}
+      <RequiredCard t={t} q={q} ready={ready} />
     </div>
   );
 }

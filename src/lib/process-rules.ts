@@ -59,6 +59,11 @@ export interface ProcessRule {
   /** TOP de destino (create_note e advance). */
   top: number | null;
   note: string | null;
+  /**
+   * Local de estoque (CODLOCAL) das entradas/saídas da regra; vazio = sem
+   * local (só no total do Brasil).
+   */
+  location?: number | null;
 }
 
 /**

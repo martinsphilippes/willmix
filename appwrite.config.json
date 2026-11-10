@@ -436,6 +436,13 @@
           "default": null,
           "type": "varchar",
           "size": 2
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -814,6 +821,21 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "brand",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
         },
         {
           "key": "minStock",
@@ -1763,6 +1785,13 @@
           "array": false,
           "default": null,
           "type": "double"
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -1892,6 +1921,21 @@
         },
         {
           "key": "variant",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaRefs",
           "required": false,
           "array": false,
           "default": null,
@@ -2581,6 +2625,13 @@
           "default": null,
           "type": "varchar",
           "size": 40
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -8537,7 +8588,8 @@
             "count_loss",
             "count_gain",
             "process_in",
-            "process_out"
+            "process_out",
+            "sankhya_balance"
           ]
         },
         {
@@ -8596,6 +8648,14 @@
         },
         {
           "key": "processEventId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "locationId",
           "required": false,
           "array": false,
           "default": null,
@@ -9170,6 +9230,65 @@
           "type": "key",
           "columns": [
             "importBatchId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "stock_locations",
+      "databaseId": "willmix",
+      "name": "Locais de estoque (Sankhya TGFLOC)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "code",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        }
+      ],
+      "indexes": [
+        {
+          "key": "code_unique",
+          "type": "unique",
+          "columns": [
+            "code"
           ],
           "orders": [
             "ASC"

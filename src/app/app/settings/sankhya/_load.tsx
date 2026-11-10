@@ -17,6 +17,7 @@ import {
   ENTITY_MAPS,
   SANKHYA_ENTITIES,
   TOP_STAGES,
+  isRefColumn,
   type SankhyaEntityKey,
 } from "@/lib/integrations/sankhya-mapping";
 import { sankhyaImportSampleAction } from "../../actions/sankhya-integration";
@@ -163,11 +164,16 @@ function SampleTable({ t, sample }: { t: Translate; sample: EntitySample }) {
  */
 function AllColumns({ t, sample }: { t: Translate; sample: EntitySample }) {
   if (!sample.records.length) return null;
-  const target = new Map(
+  const mapped = new Map(
     ENTITY_MAPS[sample.entity].fields
       .filter((f) => !f.via)
       .map((f) => [f.sankhya.toUpperCase(), f.portal]),
   );
+  // Códigos (COD*, NU*, endereço) sem campo próprio ficam em sankhyaRefs.
+  const target = {
+    get: (c: string) =>
+      mapped.get(c) ?? (isRefColumn(c) ? "sankhyaRefs" : null),
+  };
   const columns = sample.columns.length
     ? sample.columns
     : Object.keys(sample.records[0].raw);

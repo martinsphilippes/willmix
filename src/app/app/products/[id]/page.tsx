@@ -621,6 +621,14 @@ export default async function ProductSheetPage({
                   dense
                 />
               </FieldRow>
+              <FieldRow label={t("catalog.brand")} size="md">
+                <Input
+                  name="brand"
+                  maxLength={80}
+                  defaultValue={product.brand ?? ""}
+                  dense
+                />
+              </FieldRow>
               <FieldRow
                 label={t("catalog.pantone")}
                 size="full"

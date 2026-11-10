@@ -34,6 +34,7 @@ const KIND_TONE = {
   count_gain: "success",
   process_in: "success",
   process_out: "warning",
+  sankhya_balance: "neutral",
 } as const;
 
 type Tab = "all" | StockMovement["kind"];
@@ -78,6 +79,10 @@ export default async function StockMovementsPage({
     store.list("users"),
     safeList("stock_counts"),
   ]);
+  // Locais de estoque (CODLOCAL); banco sem a tabela = nenhum.
+  const locations = await store.list("stock_locations").catch(() => []);
+  const locationOf = (id: string | null | undefined) =>
+    id ? locations.find((l) => l.id === id) : undefined;
   const product = (id: string) => products.find((p) => p.id === id) ?? null;
   const sortedCounts = [...counts].sort((a, b) => a.number - b.number);
   const countOf = (id: string | null) =>
@@ -116,6 +121,7 @@ export default async function StockMovementsPage({
           {money ? (
             <Th className="text-right">{t("stockMov.col.value")}</Th>
           ) : null}
+          <Th>{t("stockMov.col.location")}</Th>
           <Th>{t("stockMov.col.ref")}</Th>
           <Th>{t("stockMov.col.by")}</Th>
           <Th>{t("stockMov.col.note")}</Th>
@@ -167,6 +173,12 @@ export default async function StockMovementsPage({
                   {value(m)}
                 </Td>
               ) : null}
+              <Td className="whitespace-nowrap text-xs">
+                {(() => {
+                  const l = locationOf(m.locationId);
+                  return l ? `${l.code} · ${l.name}` : "—";
+                })()}
+              </Td>
               <Td className="whitespace-nowrap">
                 {c ? (
                   <TextLink href={`/app/inventory/counts/${c.id}`}>

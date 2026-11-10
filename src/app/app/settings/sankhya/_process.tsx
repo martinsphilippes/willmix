@@ -70,6 +70,12 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
       .catch(() => []),
     listPendingSync().catch(() => null),
   ]);
+  // Locais de estoque (CODLOCAL, da carga do Sankhya); sem a tabela = nenhum.
+  const locations = (
+    await getStore()
+      .list("stock_locations")
+      .catch(() => [])
+  ).sort((a, b) => a.code - b.code);
   const count = (list: Array<{ kind: string }> | undefined, kind: string) =>
     (list ?? []).filter((p) => p.kind === kind).length;
   const syncRan = one(q.sync);
@@ -231,6 +237,7 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
                 <Th>{t("processes.col.event")}</Th>
                 <Th>{t("processes.col.active")}</Th>
                 <Th>{t("processes.col.stock")}</Th>
+                <Th>{t("processes.col.location")}</Th>
                 <Th>{t("processes.col.sankhya")}</Th>
                 <Th>TOP</Th>
                 <Th>{t("processes.col.note")}</Th>
@@ -275,6 +282,28 @@ export async function ProcessTab({ t, q }: { t: Translate; q: Params }) {
                             {t(`processes.stock.${a}` as DictionaryKey)}
                           </option>
                         ))}
+                      </Select>
+                    </Td>
+                    <Td>
+                      <Select
+                        name={`rules.${i}.location`}
+                        defaultValue={
+                          rule.location == null ? "" : String(rule.location)
+                        }
+                        dense
+                      >
+                        <option value="">—</option>
+                        {locations.map((l) => (
+                          <option key={l.id} value={String(l.code)}>
+                            {l.code} · {l.name}
+                          </option>
+                        ))}
+                        {rule.location != null &&
+                        !locations.some((l) => l.code === rule.location) ? (
+                          <option value={String(rule.location)}>
+                            {rule.location}
+                          </option>
+                        ) : null}
                       </Select>
                     </Td>
                     <Td>
