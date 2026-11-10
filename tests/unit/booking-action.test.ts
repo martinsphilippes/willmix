@@ -366,9 +366,12 @@ describe("cliente escolhido direto na linha da tabela", () => {
       customerId: joao.partyId,
       reservedQty: 120,
     });
+    // Tirar o cliente de uma linha reservada: ela passa para o estoque da
+    // Wellmix (a coluna Cliente saiu da tela; sem cliente é estoque).
     const removed = await setBookingCustomerAction(reserved.id, "-");
-    expect(removed.ok).toBe(false);
-    expect((await fresh(reserved.id)).customerId).toBe(joao.partyId);
+    expect(removed.ok).toBe(true);
+    const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+    expect((await fresh(reserved.id)).customerId).toBe(STOCK_PARTY_ID);
     // Linha que não existe.
     expect((await setBookingCustomerAction("sumiu", "-")).ok).toBe(false);
   });
@@ -629,21 +632,16 @@ describe("achados da revisão (segunda leva)", () => {
     expect(last()).toBe("/app/booking?status=analysis&owners=1");
   });
 
-  it("gerar solicitação sem cliente responde com o texto próprio, na linha", async () => {
+  it("gerar solicitação sem cliente: nasce para o estoque da Wellmix", async () => {
     const a = await row("approved");
     h.current = buyer;
     await bulkBookingAction(bulk({ op: "request" }, [a.id]));
-    const q = query(last());
-    expect([q.get("error"), q.get("row")]).toEqual([
-      "booking_request_customer",
-      a.id,
-    ]);
-    const { translator } = await import("@/i18n");
-    for (const lang of ["pt", "en", "zh"] as const) {
-      const text = translator(lang)("booking.error.booking_request_customer");
-      expect(text).not.toBe("booking.error.booking_request_customer");
-      expect(text.length).toBeGreaterThan(10);
-    }
-    expect((await fresh(a.id)).status).toBe("approved");
+    expect(query(last()).get("error")).toBeNull();
+    const after = await fresh(a.id);
+    expect(after.status).toBe("requested");
+    const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+    expect(
+      (await getStore().get("requests", after.requestId!))?.customerId,
+    ).toBe(STOCK_PARTY_ID);
   });
 });

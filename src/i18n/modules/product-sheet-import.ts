@@ -10,6 +10,16 @@ export const pt = {
   "sheetImport.file": "Planilha (.xlsx ou .xls)",
   "sheetImport.fileHint":
     "O modelo com as colunas PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL e MOQ. Aceita o Excel atual (.xlsx) e o antigo (.xls). Com fotos a planilha fica grande: o envio é feito direto ao armazenamento (até 50 MB).",
+  "sheetImport.supplier": "Fornecedor",
+  "sheetImport.supplierNone": "Selecione o fornecedor",
+  "sheetImport.supplierHint":
+    "Todos os produtos desta planilha ficam ligados a este fornecedor, e é ele quem vai analisar o Booking. O fornecedor não está na lista? Cadastre antes em Cadastros → Fornecedores.",
+  "sheetImport.supplierHintOptional":
+    "Em branco vale o nome do fornecedor escrito na planilha.",
+  "sheetImport.error.supplier_required":
+    "Escolha o fornecedor: cada Booking que sobe precisa estar ligado a um fornecedor.",
+  "sheetImport.error.supplier_invalid":
+    "O fornecedor escolhido não existe mais ou está inativo. Escolha outro.",
   "sheetImport.line": "Linha do produto",
   "sheetImport.lineHint":
     "A planilha não diz a linha: todos os produtos desta importação entram nela.",
@@ -32,7 +42,7 @@ export const pt = {
   "sheetImport.how.photos":
     "A foto da coluna PHOTO entra como foto do fornecedor: é a imagem do produto no catálogo até a equipe tirar a foto original, que continua pendente na ficha. A foto do cartão vira o cartão do fornecedor.",
   "sheetImport.how.supplier":
-    "Fornecedor que ainda não existe é cadastrado com nome, nº da loja e telefone.",
+    "Os produtos ficam ligados ao fornecedor escolhido no formulário. Sem escolha (quem não usa o Booking), vale o nome da planilha: fornecedor que ainda não existe é cadastrado com nome, nº da loja e telefone.",
   "sheetImport.how.missing":
     "No fim, cada produto mostra o que ainda falta na ficha mestre (medidas da caixa, as outras fotos da ficha…).",
   "sheetImport.previous": "Importações anteriores",
@@ -159,6 +169,16 @@ export const en = {
   "sheetImport.file": "Spreadsheet (.xlsx or .xls)",
   "sheetImport.fileHint":
     "The template with the columns PHOTO, DATE, SUPPLIER NAME, SKU, PRICE, QTY/BOX, N.W, G.W, CBM, SIZE, COLOR, MATERIAL and MOQ. Current Excel (.xlsx) and the old format (.xls) are accepted. With photos the file gets big: it is uploaded straight to storage (up to 50 MB).",
+  "sheetImport.supplier": "Supplier",
+  "sheetImport.supplierNone": "Select the supplier",
+  "sheetImport.supplierHint":
+    "Every product in this spreadsheet is linked to this supplier, and they are the one who will review the Booking. Supplier not in the list? Register it first in Records → Suppliers.",
+  "sheetImport.supplierHintOptional":
+    "Blank means the supplier name written in the spreadsheet.",
+  "sheetImport.error.supplier_required":
+    "Choose the supplier: every Booking uploaded must be linked to a supplier.",
+  "sheetImport.error.supplier_invalid":
+    "The chosen supplier no longer exists or is inactive. Choose another one.",
   "sheetImport.line": "Product line",
   "sheetImport.lineHint":
     "The sheet does not say the line: every product in this import goes into it.",
@@ -181,7 +201,7 @@ export const en = {
   "sheetImport.how.photos":
     "The picture in the PHOTO column comes in as the supplier's photo: it is the product's catalog image until the team takes the original photo, which stays pending on the product's master sheet. The card picture becomes the supplier's business card.",
   "sheetImport.how.supplier":
-    "A supplier that does not exist yet is registered with name, store number and phone.",
+    "Products are linked to the supplier chosen in the form. With no choice (for those who do not use the Booking), the spreadsheet name applies: a supplier that does not exist yet is registered with name, store number and phone.",
   "sheetImport.how.missing":
     "At the end, each product shows what is still missing in the master sheet (carton size, the other sheet photos…).",
   "sheetImport.previous": "Previous imports",
@@ -307,6 +327,14 @@ export const zh = {
   "sheetImport.file": "表格（.xlsx 或 .xls）",
   "sheetImport.fileHint":
     "包含 PHOTO、DATE、SUPPLIER NAME、SKU、PRICE、QTY/BOX、N.W、G.W、CBM、SIZE、COLOR、MATERIAL 和 MOQ 列的模板。支持新版 Excel（.xlsx）和旧版（.xls）。含照片的文件较大：将直接上传到存储（最大 50 MB）。",
+  "sheetImport.supplier": "供应商",
+  "sheetImport.supplierNone": "请选择供应商",
+  "sheetImport.supplierHint":
+    "此表格中的所有产品都归属该供应商，由该供应商分析 Booking。列表里没有该供应商？请先在“资料 → 供应商”中登记。",
+  "sheetImport.supplierHintOptional": "留空则使用表格中填写的供应商名称。",
+  "sheetImport.error.supplier_required":
+    "请选择供应商：每个上传的 Booking 都必须关联一个供应商。",
+  "sheetImport.error.supplier_invalid": "所选供应商已不存在或已停用，请另选。",
   "sheetImport.line": "产品线",
   "sheetImport.lineHint":
     "表格中没有产品线：本次导入的所有产品都归入所选产品线。",
@@ -329,7 +357,7 @@ export const zh = {
   "sheetImport.how.photos":
     "PHOTO 列的图片作为供应商照片导入：在团队拍摄原始照片之前，它是产品在目录中的图片；原始照片在产品主表中仍为待办。名片图片成为供应商名片。",
   "sheetImport.how.supplier":
-    "尚未建档的供应商将按名称、店铺号和电话自动建档。",
+    "产品归属表单中选择的供应商。未选择时（不使用 Booking 的用户）以表格中的名称为准：尚未建档的供应商将按名称、店铺号和电话自动建档。",
   "sheetImport.how.missing":
     "最后，每个产品都会显示主表还缺什么（外箱尺寸、主表其他照片等）。",
   "sheetImport.previous": "历史导入",
