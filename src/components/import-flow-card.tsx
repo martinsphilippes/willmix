@@ -49,7 +49,7 @@ export function ImportFlowCard({
   title,
   anchor = "import-flow",
   hints = [],
-  featured,
+  featured = [],
   featuredHint,
 }: {
   t: Translate;
@@ -64,8 +64,8 @@ export function ImportFlowCard({
   anchor?: "import-flow" | "certification";
   /** Explicações do cartão (ex.: como anda o selo de certificação). */
   hints?: ReactNode[];
-  /** Passo com quadro em destaque no alto (o envio dele sai da tabela). */
-  featured?: string;
+  /** Passos com quadro em destaque no alto (o envio deles sai da tabela). */
+  featured?: string[];
   /** O que acontece ao enviar o passo em destaque. */
   featuredHint?: ReactNode;
 }) {
@@ -157,10 +157,9 @@ export function ImportFlowCard({
     </form>
   );
   // Passo em destaque no alto do cartão (ex.: o selo, "Memorial (selo)").
-  const top = featured
-    ? (steps.find((s) => s.template.key === featured) ?? null)
-    : null;
-
+  const tops = featured
+    .map((key) => steps.find((s) => s.template.key === key))
+    .filter((v): v is StepView => !!v);
   return (
     <Card
       title={title ?? t("importFlow.title")}
@@ -184,42 +183,53 @@ export function ImportFlowCard({
           <Alert tone="danger">{error}</Alert>
         </div>
       ) : null}
-      {top ? (
+      {tops.length ? (
         <div
           id={`${anchor}-featured`}
           className={cx(
             "mb-3 scroll-mt-24 rounded-xl border-2 p-3",
-            top.done
+            tops[0].done
               ? "border-emerald-300 bg-emerald-50/60"
               : "border-brand-400 bg-brand-50/60",
           )}
-          data-import-featured={top.template.key}
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-base font-semibold text-zinc-900">
-              {label(top.template.key)}
-            </p>
-            <Badge tone={top.done ? "success" : "warning"}>
-              {t(
-                `importFlow.status.${top.done ? "done" : (top.step?.status ?? "pending")}` as DictionaryKey,
-              )}
-            </Badge>
-            {top.step?.documentId ? (
-              <a
-                href={`/api/files/${top.step.documentId}`}
-                className="text-sm text-brand-700 underline"
-                data-import-featured-file
-              >
-                {t("importFlow.file")}
-              </a>
-            ) : null}
-          </div>
           {featuredHint ? (
-            <p className="mt-1 text-sm text-zinc-700">{featuredHint}</p>
+            <p className="mb-2 text-sm text-zinc-700">{featuredHint}</p>
           ) : null}
-          {top.canSubmit ? (
-            <div className="mt-2">{submitForm(top.template, top.step)}</div>
-          ) : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {tops.map((top) => (
+              <div
+                key={top.template.key}
+                className="rounded-lg border border-zinc-200 bg-white p-3"
+                data-import-featured={top.template.key}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-base font-semibold text-zinc-900">
+                    {label(top.template.key)}
+                  </p>
+                  <Badge tone={top.done ? "success" : "warning"}>
+                    {t(
+                      `importFlow.status.${top.done ? "done" : (top.step?.status ?? "pending")}` as DictionaryKey,
+                    )}
+                  </Badge>
+                  {top.step?.documentId ? (
+                    <a
+                      href={`/api/files/${top.step.documentId}`}
+                      className="text-sm text-brand-700 underline"
+                      data-import-featured-file
+                    >
+                      {t("importFlow.file")}
+                    </a>
+                  ) : null}
+                </div>
+                {top.canSubmit ? (
+                  <div className="mt-2">
+                    {submitForm(top.template, top.step)}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
       {hints.map((hint, i) => (
@@ -366,10 +376,10 @@ export function ImportFlowCard({
                       {t("importFlow.invoice.generate")}
                     </a>
                   ) : null}
-                  {canSubmit && tpl.key !== featured
+                  {canSubmit && !featured.includes(tpl.key)
                     ? submitForm(tpl, step)
                     : null}
-                  {canSubmit && tpl.key === featured ? (
+                  {canSubmit && featured.includes(tpl.key) ? (
                     <a
                       href={`#${anchor}-featured`}
                       className="text-brand-700 underline"

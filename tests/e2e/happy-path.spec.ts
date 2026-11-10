@@ -459,7 +459,15 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(`${orderUrl}#certification`);
   // O envio do selo fica no quadro em destaque do alto: "Memorial (selo)".
   const sealBox = page.locator("[data-import-featured=cert_seal]");
-  await expect(sealBox).toContainText(/Memorial \(selo\)/);
+  await expect(page.locator("#certification-featured")).toContainText(
+    /Memorial \(selo\)/,
+  );
+  // No mesmo quadro, o memorial em PDF (opcional) também pode ser anexado.
+  await expect(
+    page.locator("[data-import-featured=cert_memorial] input[type=file]"),
+  ).toBeVisible();
+  // Laudo e registro saíram da tela.
+  await expect(page.locator("[data-import-step=cert_lab]")).toHaveCount(0);
   await sealBox.locator("input[type=file]").setInputFiles(png);
   await sealBox.locator("[data-import-submit=cert_seal]").click();
   await page.waitForURL(/[?&]certStep=submitted/);
