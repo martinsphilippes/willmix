@@ -92,6 +92,8 @@ import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
 import * as superplan from "./superplan";
+import * as sankhya from "./sankhya";
+import * as sankhyaIntegration from "./sankhya-integration";
 import * as superplanRfq from "./superplan-rfq";
 import * as booking from "./booking";
 import * as bookingScreen from "./booking-screen";
@@ -195,6 +197,8 @@ export const modulesPt = {
   ...productSpec.pt,
   ...freightTariff.pt,
   ...superplan.pt,
+  ...sankhya.pt,
+  ...sankhyaIntegration.pt,
   ...superplanRfq.pt,
   ...booking.pt,
   ...bookingScreen.pt,
@@ -294,6 +298,8 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...productSpec.en,
   ...freightTariff.en,
   ...superplan.en,
+  ...sankhya.en,
+  ...sankhyaIntegration.en,
   ...superplanRfq.en,
   ...booking.en,
   ...bookingScreen.en,
@@ -393,6 +399,8 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...productSpec.zh,
   ...freightTariff.zh,
   ...superplan.zh,
+  ...sankhya.zh,
+  ...sankhyaIntegration.zh,
   ...superplanRfq.zh,
   ...booking.zh,
   ...bookingScreen.zh,

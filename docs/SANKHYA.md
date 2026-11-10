@@ -1,0 +1,79 @@
+# Sankhya (ERP)
+
+Integração com o Sankhya Om pela **API Gateway oficial** (https://developer.sankhya.com.br). Código: `src/lib/integrations/sankhya-client.ts` (cliente), `src/lib/integrations/sankhya-dictionary.ts` (dicionário de dados), `src/app/app/actions/sankhya.ts` (escritas) e a tela **Configurações → Sankhya** (`/app/settings/sankhya`, só o administrador).
+
+## Credenciais (3 + 1 opcional)
+
+| Variável                | De onde vem                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `SANKHYA_CLIENT_ID`     | Área do Desenvolvedor da Sankhya (a aplicação criada lá)                                |
+| `SANKHYA_CLIENT_SECRET` | Área do Desenvolvedor da Sankhya                                                        |
+| `SANKHYA_X_TOKEN`       | No Sankhya Om da empresa: tela **Configurações Gateway** (token da integração)          |
+| `SANKHYA_BASE_URL`      | Opcional. `https://api.sankhya.com.br` (padrão) ou `https://api.sandbox.sankhya.com.br` |
+
+Dois jeitos de informar: na tela **Configurações → Integração Sankhya** (tem prioridade) ou nas variáveis acima na Vercel (Production e Preview, e publicar de novo). Na tela, cada campo vazio mantém o valor gravado; sem nada gravado, vale a variável. Os segredos gravados pela tela ficam cifrados (AES-256-GCM) na tabela `settings` (chave `sankhya.credentials`), com a chave derivada de `SANKHYA_ENCRYPTION_KEY` ou, na falta, de `SESSION_SECRET` / `APPWRITE_API_KEY`; trocar esse segredo invalida o que foi gravado (a tela avisa "não decifra" e pede para gravar de novo). A tela nunca mostra os valores, só os 4 últimos caracteres; a auditoria registra só quais campos mudaram. Em produção sem nenhum desses segredos, a tela não grava credenciais. O cliente só aceita os dois endereços oficiais (o segredo não vai para outro host). As permissões no ERP são as do usuário vinculado ao token do gateway: o que ele não pode ver ou gravar no Sankhya, a API também recusa.
+
+## Teste por curl
+
+```bash
+export SANKHYA_CLIENT_ID=...
+export SANKHYA_CLIENT_SECRET=...
+export SANKHYA_X_TOKEN=...
+bash scripts/sankhya-curl.sh
+```
+
+Para não deixar os segredos no histórico do terminal, leia-os sem eco. No zsh (padrão do macOS): `read -rs "SANKHYA_CLIENT_SECRET?Client Secret: "`; no bash: `read -rsp "Client Secret: " SANKHYA_CLIENT_SECRET`; depois `export` as três. O X-Token da tela "Configurações Gateway" do Sankhya Om é de produção: contra o sandbox ele devolve `invalid_client`.
+
+Autentica, lê 5 empresas (loadRecords), produtos (REST), busca tabelas no dicionário (SQL) e mostra as colunas de TDDLIG e TDDINS (para confirmar os nomes usados em `sankhya-dictionary.ts`). Mostra a resposta de cada passo; credencial errada para no passo 1 com o texto do Sankhya (`invalid_client`).
+
+## Autenticação
+
+`POST {BASE}/authenticate`, `Content-Type: application/x-www-form-urlencoded`, cabeçalho `X-Token`, corpo `grant_type=client_credentials&client_id=…&client_secret=…`. Devolve `access_token` (Bearer) com `expires_in` (≈ 300 s). O portal guarda o token em memória por instância até 30 s antes de vencer; um 401 renova uma vez. O login antigo (`/login` com usuário, senha, appkey e token) é legado e não é usado.
+
+## O que o cliente faz
+
+| Necessidade                                   | Como (serviço do Sankhya)                                                                                                                                                           |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Consultar qualquer entidade, com ligações     | `loadRecords` → `CRUDServiceProvider.loadRecords` (entidade, campos ou `*`, ligações por `path`, critério com `?`, paginação `hasMoreResult`)                                       |
+| Ver todas as tabelas, campos e relações       | `searchTables` / `describeTable` → SQL nas tabelas do dicionário: `TDDTAB` (tabelas), `TDDINS` (entidades), `TDDCAM` (campos), `TDDLIG` (ligações). Inclui as personalizadas `AD_*` |
+| SQL livre somente leitura                     | `executeQuery` → `DbExplorerSP.executeQuery` (só `SELECT`/`WITH`; o portal recusa o resto). Exige o usuário do gateway com acesso ao Explorador de banco                            |
+| Incluir/alterar registro de qualquer entidade | `datasetSave` → `DatasetSP.save` (sem `pk` inclui, com `pk` altera)                                                                                                                 |
+| Pedido de venda/compra, orçamento, cotação    | `createNote` → `CACSP.incluirNota` (módulo `mgecom`). O tipo da nota vem da **TOP** (`CODTIPOPER`) e do `TIPMOV` do ERP                                                             |
+| Editar itens do pedido/cotação                | `upsertNoteItems` → `CACSP.incluirAlterarItemNota` (com `SEQUENCIA` altera o item); cabeçalho por `DatasetSP.save` na entidade `CabecalhoNota` com `pk` `NUNOTA`                    |
+| Cancelar                                      | `cancelNotes` → `CACSP.cancelarNota` (faturadas não cancelam)                                                                                                                       |
+| Faturar (pedido → nota)                       | `invoiceNotes` → `SelecaoDocumentoSP.faturar` (TOP de destino)                                                                                                                      |
+| Sincronizar só o que mudou                    | `tableChanges` → `GatewayServiceProviderSP.logAlteracoesTabelas`; ou `modifiedSince` no loadRecords (exige o log de alterações ligado no ERP)                                       |
+| API REST v1                                   | `rest("GET", "/v1/produtos")`, `/v1/vendas/pedidos` (incluir, alterar, consultar, cancelar), estoque, preços, parceiros, financeiro                                                 |
+
+Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedores), `CabecalhoNota` (TGFCAB) e `ItemNota` (TGFITE) para pedidos e cotações, `Estoque` (TGFEST), `TipoOperacao` (TGFTOP), `TipoNegociacao` (TGFTPV), `Vendedor` (TGFVEN), `Empresa` (TSIEMP), `Financeiro` (TGFFIN).
+
+## Tela Configurações → Integração Sankhya
+
+`/app/settings/sankhya` (aba padrão; só o administrador; código em `src/app/app/settings/sankhya/_integration.tsx`, ações em `src/app/app/actions/sankhya-integration.ts`, configuração em `src/lib/integrations/sankhya-settings.ts`):
+
+1. **Credenciais**: ambiente, Client ID, Client Secret e X-Token (ver acima), com a origem de cada um (tela ou variável).
+2. **Teste de autenticação**: token novo + leitura das empresas; mostra tempos, validade e tamanho do token (nunca o token).
+3. **Códigos do ERP** (chave `sankhya.erp` em `settings`): empresa (CODEMP), TOP do pedido e da cotação, tipo de negociação (e se vale o prazo do fornecedor), comprador (CODVEND), local (CODLOCAL), volume (do produto ou fixo) e se o portal liga fornecedor/produto ao Sankhya. Sugestões iniciais: TOP 1101 (pedido) e 1002 (cotação), tipo 33 (IMPORTAÇÃO), vendedor 0; as listas vêm do ERP. `ordersEnabled` (envio automático dos pedidos do portal) ainda não aparece na tela: fica desligado até o pedido de teste funcionar.
+4. **Consultas de exemplo**: empresas, produto pela referência do fornecedor (REFFORN), parceiro pelo nome, TOPs de pedido/cotação e últimas notas das TOPs gravadas; mostra o pedido feito ao Sankhya, a tabela e o JSON.
+5. **Pedido ou cotação de teste**: pré-visualização (confere no ERP parceiro, produto e TOP, lê TIPMOV e o volume, e mostra o JSON do `CACSP.incluirNota`), envio, o que ficou gravado (CabecalhoNota e ItemNota) e o cancelamento. Tudo na auditoria (`sankhya.note.test`, `sankhya.note.cancel`).
+
+## Tela Configurações → Sankhya: explorar dados
+
+`/app/settings/sankhya?tab=explore`. Teste de conexão, busca no dicionário (tabela → entidades, campos e ligações, com link para a tabela ligada), consulta de entidade com ligações e paginação, SQL somente leitura, e as escritas: registro (DatasetSP.save), pedido/orçamento/cotação (CACSP) e cancelamento. Leituras rodam no servidor por GET; escritas são Server Actions do admin, com zod e registro na auditoria (`sankhya.*`). Erros mostram o código e o texto do Sankhya.
+
+## Validado contra o ERP da Wellmix (10/11/2026, produção)
+
+- Autenticação em `https://api.sankhya.com.br` (o X-Token do Sankhya Om é de produção; no sandbox dá `invalid_client`). Token de ~2300 caracteres, `expires_in` 300.
+- `loadRecords`: `entities.total`, `hasMoreResult`, `metadata.fields.field[].name` e células `f0`, `f1`… no formato `{"$": "valor"}` (37 empresas; 1 = WELLMIX - MTZ, 2 = WELLMIX - SP, 3 = WELLMIX - SC).
+- REST `GET /v1/produtos`: `{"produtos": [...]}` com `codigoProduto`, `nome`, `referencia` (EAN), `referenciaFornecedor`, `volume`, `ncm`, `pesoBruto` etc. Atenção: a chave da data vem como `"dataAlteracao:"` (com dois-pontos no nome).
+- `DbExplorerSP.executeQuery`: `fieldsMetadata[].name` + `rows` (matriz).
+- Dicionário: TDDLIG tem `NUINSTORIG`, `NUINSTDEST`, `TIPLIGACAO`, `EXPRESSAO`, `NOMELIGACAO`…; TDDINS tem `NUINSTANCIA`, `NOMETAB`, `NOMEINSTANCIA`, `DESCRINSTANCIA`, `NUINSTANCIAPAI`… (os nomes usados em `sankhya-dictionary.ts` conferem).
+- Tabelas personalizadas de importação existentes: `AD_NFIMPORTACAO` (Notas Importação Wellmix), `AD_NFIMPORTACAOFILHA` (Notas Filha), `DEV_VW_NOTANACIO` (Notas Nacionalização).
+
+`bash scripts/sankhya-curl.sh codigos` lista os códigos para o pedido (TOPs de compra, tipos de negociação, vendedores/compradores, locais) e as colunas de `AD_NFIMPORTACAO`.
+
+## Pendências (decisões com a Wellmix)
+
+1. Códigos do ERP para os pedidos do portal: empresa (`CODEMP`), TOP de pedido e de cotação (`CODTIPOPER`), tipo de negociação (`CODTIPVENDA`), vendedor, local e volume padrão. Com eles, `getSankhyaAdapter().createOrder` (hoje `MockSankhyaAdapter`, número manual) passa a enviar o pedido.
+2. Ligação cadastro do portal ↔ Sankhya: `CODPARC` de cada cliente/fornecedor e `CODPROD` de cada produto (casar por CNPJ e SKU/referência e guardar o código).
+3. Automatizações candidatas: importar/atualizar produtos, parceiros, estoque e preços do Sankhya (com `logAlteracoesTabelas`); criar no ERP o pedido de compra/venda quando o pedido nasce no portal; enviar a tabela de frete (AD_FREINT, hoje CSV) por `DatasetSP.save`; ler títulos financeiros (a receber/pagar, boletos) e NF-e emitidas para conciliar com o portal.
