@@ -845,6 +845,13 @@ export interface Quote extends BaseRow {
    * Coluna opcional: só vai ao banco nesse fluxo.
    */
   moq?: number | null;
+  /**
+   * Negociação (docs/QUOTE_FLOW.md): rodadas de "devolver com comentário" da
+   * Wellmix e a resposta do fornecedor. Opcional: só gravada nesse fluxo.
+   */
+  negotiation?: import("@/lib/quote-flow").NegotiationRound[] | null;
+  /** Proposta de embalagem enviada ao fornecedor e o OK dele. Opcional. */
+  packagingProposal?: import("@/lib/quote-flow").PackagingProposal | null;
 }
 
 export interface Order extends BaseRow {
@@ -978,6 +985,11 @@ export interface Document extends BaseRow {
    * (a empresa da conversa e a Wellmix). Opcional: documentos antigos ficam sem.
    */
   conversationTopicId?: string | null;
+  /**
+   * Arquivo de uma cotação (imagem da proposta de embalagem): só a Wellmix e
+   * o fornecedor daquela cotação abrem. Opcional: documentos antigos ficam sem.
+   */
+  quoteId?: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -2560,6 +2572,8 @@ export const TABLES: Record<TableName, TableDef> = {
       manufacturerCardConfirmedAt: datetime(),
       manufacturerCardConfirmedByUserId: id(false),
       moq: int(),
+      negotiation: json(),
+      packagingProposal: json(),
     },
     indexes: [
       { key: "by_request", type: "key", columns: ["requestId"] },
@@ -2694,6 +2708,7 @@ export const TABLES: Record<TableName, TableDef> = {
       imageHash: str(32),
       packagingBriefId: id(false),
       conversationTopicId: id(false),
+      quoteId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },

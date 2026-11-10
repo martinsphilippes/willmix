@@ -947,6 +947,10 @@ export async function selectQuote(
   // Aberta do Superplan: a proposta espera faca, MOQ, prazo e foto em alta.
   const { assertSuperplanItems } = await import("./superplan-rfq");
   await assertSuperplanItems(request, quote);
+  // Devolução esperando resposta, ou proposta de embalagem sem o OK do
+  // fornecedor: a escolha espera (docs/QUOTE_FLOW.md).
+  const { assertQuoteFlowSettled } = await import("./quote-flow");
+  await assertQuoteFlowSettled(request, quote);
   // Antes de qualquer gravação: a ficha não pode ter mudado depois da conta.
   const current = quotedQuantity(request, await getQuoteSheet(quote.id));
   if (

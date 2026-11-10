@@ -176,6 +176,9 @@ export async function submitForApproval(
   // Aberta do Superplan: a aprovação espera faca, MOQ, prazo e foto em alta.
   const { assertSuperplanItems } = await import("./superplan-rfq");
   await assertSuperplanItems(request, quote);
+  // Negociação em aberto ou embalagem sem o OK do fornecedor: espera.
+  const { assertQuoteFlowSettled } = await import("./quote-flow");
+  await assertQuoteFlowSettled(request, quote);
   const settings = await getSettings();
   const valueBrl = valueInBrl(input);
   const levels = levelsFor(valueBrl, settings.approvalExecutiveThresholdBrl);
