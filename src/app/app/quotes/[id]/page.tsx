@@ -65,10 +65,12 @@ import {
   isPiecesUnit,
   leadTimeFromLots,
 } from "@/lib/services/purchase-sheet-calc";
-import { LeadTimeAuto } from "@/components/lead-time-auto";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { QuoteManufacturerCard } from "@/components/manufacturer-cards";
-import { quoteCardsView } from "@/lib/services/manufacturer-cards";
+import {
+  bringCardToQuote,
+  quoteCardsView,
+} from "@/lib/services/manufacturer-cards";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import {
@@ -118,6 +120,10 @@ export default async function QuotePage({
     isWellmix(user) ||
     (user.role === "supplier" && user.partyId === quote.supplierId);
   const offer = flowSide ? await quoteOfferFor(quote, request) : null;
+  // Produto que veio do Booking: para o fornecedor é a análise do Booking
+  // dele (um fornecedor só, sem disputa; docs/RFQ_STANDBY.md).
+  const { isBookingRequest } = await import("@/lib/services/requests");
+  const fromBooking = flowSide ? await isBookingRequest(request.id) : false;
   // Botão das mensagens dentro dos cartões (preço não aceito ou diferente).
   const flowChat = (
     <ChatButtons
@@ -153,7 +159,15 @@ export default async function QuotePage({
   const dumpingReleaser = dumpingInfo?.dumpingReleasedByUserId
     ? await store.get("users", dumpingInfo.dumpingReleasedByUserId)
     : null;
-  const cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
+  let cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
+  // Cotação aberta sem cartão: o que veio na planilha do Booking (ou o último
+  // já apresentado para o produto) entra sozinho, já confirmado.
+  if (
+    cardsView?.canEdit &&
+    !cardsView.selectedId &&
+    (await bringCardToQuote(user, quote, request.productId))
+  )
+    cardsView = await quoteCardsView(user, quote.id);
   const errorCode = typeof error === "string" ? error : "";
   // Envio recusado: o que falta na ficha. O prazo de produção não é mais
   // digitado (vem da programação 1, que já está na lista do que falta).
@@ -191,7 +205,11 @@ export default async function QuotePage({
       <PageHeader
         help={{ body: "help.quote.body", steps: "help.quote.steps" }}
         t={t}
-        title={`${t("quotes.title")}: ${request.productName}`}
+        title={
+          fromBooking
+            ? t("bookingAnalysis.title", { product: request.productName })
+            : `${t("quotes.title")}: ${request.productName}`
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {request.number ? (
@@ -244,6 +262,11 @@ export default async function QuotePage({
           fields={invalidFields}
           token={saveToken}
         />
+        {fromBooking && user.role === "supplier" ? (
+          <div data-booking-analysis>
+            <Alert tone="info">{t("bookingAnalysis.hint")}</Alert>
+          </div>
+        ) : null}
         {typeof adopted === "string" && adopted ? (
           <Alert tone="success">{t("productSheet.adopted")}</Alert>
         ) : null}
@@ -520,6 +543,8 @@ export default async function QuotePage({
             </div>
             <PurchaseSheetFields
               t={t}
+              // A programação de compra saiu da cotação (é do pedido).
+              hideSchedule
               sheet={sheetView.sheet}
               plan={sheetView.plan}
               containerType={sheetView.containerType}
@@ -632,19 +657,25 @@ export default async function QuotePage({
           >
             {/* Prazo (curto) e condições lado a lado em telas grandes. */}
             <div className="grid gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-4">
-              {/* Prazo de produção: vem da programação 1 (não é digitado). */}
+              {/* Prazo de produção: informado direto, em dias (a programação
+                  de compra saiu da cotação; ela é do pedido). */}
               <FieldRow
-                label={t("quoteSheet.leadTimeLabel")}
+                label={t("quoteSheet.leadTime")}
                 size="full"
                 anchor="leadTimeDays"
+                hint={t("quoteSheet.leadTimeDaysHint")}
               >
-                <LeadTimeAuto
-                  initial={leadTimeFromLots(sheetView.sheet.lots)}
-                  labels={{
-                    days: t("quoteSheet.leadTimeAuto", { days: "{days}" }),
-                    pending: t("quoteSheet.leadTimePending"),
-                    hint: t("quoteSheet.leadTimeHint"),
-                  }}
+                <input
+                  form="quote-sheet"
+                  name="leadTimeDays"
+                  inputMode="numeric"
+                  defaultValue={
+                    quote.leadTimeDays ??
+                    leadTimeFromLots(sheetView.sheet.lots) ??
+                    ""
+                  }
+                  className={cx(inputDenseClass, "w-28")}
+                  data-lead-time-days
                 />
               </FieldRow>
               <FieldRow

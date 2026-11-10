@@ -401,7 +401,23 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     );
   }
 
-  // Fase de solicitação.
+  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): o que veio do
+  // Booking é "analisar o Booking" para o fornecedor, e a Wellmix "envia ao
+  // fornecedor" em vez de abrir a RFQ.
+  const { getSettings } = await import("@/lib/settings");
+  const rfqOn = (await getSettings()).rfqEnabled;
+  const fromBooking = new Set(
+    quotes.length
+      ? (
+          await store
+            .list("bookings", {
+              filter: { requestId: quotes.map((q) => q.requestId) },
+            })
+            // Tabela ainda não publicada: nenhum veio do Booking.
+            .catch(() => [])
+        ).map((b) => b.requestId)
+      : [],
+  );
   for (const quote of quotes) {
     const request = quoteRequests.find((r) => r.id === quote.requestId);
     if (!request) continue;
@@ -409,7 +425,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       finish(
         {
           kind: "quote",
-          title: `RFQ: ${request.productName}`,
+          title: fromBooking.has(request.id)
+            ? `Analisar o Booking: ${request.productName}`
+            : `RFQ: ${request.productName}`,
           detail: `${request.quantity} ${request.unit}`,
           link: `/app/quotes/${quote.id}`,
           chat: { requestId: request.id },
@@ -506,7 +524,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
   for (const request of wellmixRequests) {
     if (awaitingApproval.has(request.id)) continue;
-    const task = requestTask(request);
+    const task = requestTask(request, rfqOn);
     if (task.kind === "confirm_payment" && withProof.has(request.id))
       task.detail = "Comprovante enviado pelo cliente: conferir e confirmar";
     tasks.push(finish(task, now));
@@ -1060,9 +1078,13 @@ const PACKAGING_ITEM_LABEL: Record<string, string> = {
   packaging_sample: "foto da embalagem física",
 };
 
-function requestTask(request: Request): DraftTask {
+function requestTask(request: Request, rfqOn = true): DraftTask {
   const base = {
-    link: `/app/requests/${request.id}`,
+    // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
+    link:
+      !rfqOn && request.status === "REQUESTED"
+        ? `/app/rfq#req-${request.id}`
+        : `/app/requests/${request.id}`,
     dueAt: request.deadline,
     customerId: request.customerId,
     ownerUserId: request.ownerUserId ?? null,
@@ -1071,8 +1093,12 @@ function requestTask(request: Request): DraftTask {
     case "REQUESTED":
       return {
         kind: "rfq",
-        title: `Abrir RFQ: ${request.productName}`,
-        detail: "Selecione fornecedores",
+        title: rfqOn
+          ? `Abrir RFQ: ${request.productName}`
+          : `Enviar ao fornecedor: ${request.productName}`,
+        detail: rfqOn
+          ? "Selecione fornecedores"
+          : "Escolha o fornecedor que vai analisar o produto",
         ...base,
       };
     case "QUOTATION_RECEIVED":

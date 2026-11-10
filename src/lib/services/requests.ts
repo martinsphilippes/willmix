@@ -654,6 +654,10 @@ export async function openRfq(
   validUntil.setDate(validUntil.getDate() + settings.quotationExpirationDays);
 
   const existing = await store.list("quotes", { filter: { requestId } });
+  // Produto que veio do Booking: o fornecedor recebe como "Booking para
+  // analisar" (é o Booking dele, não uma disputa de preço).
+  const fromBooking =
+    options.notify !== false ? await isBookingRequest(requestId) : false;
   const invited: Quote[] = [];
   for (const supplierId of new Set(supplierIds)) {
     if (existing.some((q) => q.supplierId === supplierId)) continue;
@@ -670,6 +674,12 @@ export async function openRfq(
     });
     invited.push(quote);
     options.collect?.push(quote);
+    // Cartão do fabricante que veio na planilha do Booking: já entra
+    // confirmado na cotação do fornecedor do produto (ninguém envia de novo).
+    if (request.productId) {
+      const { bringCardToQuote } = await import("./manufacturer-cards");
+      await bringCardToQuote(user, quote, request.productId);
+    }
     if (options.notify !== false)
       await notify(
         { role: "supplier", partyId: supplierId },
@@ -677,14 +687,19 @@ export async function openRfq(
           kind: "action",
           link: `/app/quotes/${quote.id}`,
           text: (t) => ({
-            subject: t("notif.rfq.subject", {
-              product: request.productName,
-              ref: "",
-            }),
-            body: t("notif.rfq.body", {
-              qty: request.quantity.toLocaleString(t.intl),
-              unit: request.unit,
-            }),
+            subject: t(
+              fromBooking
+                ? "notif.bookingAnalysis.subject"
+                : "notif.rfq.subject",
+              { product: request.productName, ref: "" },
+            ),
+            body: t(
+              fromBooking ? "notif.bookingAnalysis.body" : "notif.rfq.body",
+              {
+                qty: request.quantity.toLocaleString(t.intl),
+                unit: request.unit,
+              },
+            ),
           }),
         },
       );
@@ -707,6 +722,43 @@ export async function openRfq(
       notify: options.notify !== false && packaging.notify !== false,
     });
   return invited;
+}
+
+/** A solicitação nasceu de uma linha do Booking (tabela opcional: sem ela, não). */
+export async function isBookingRequest(requestId: string): Promise<boolean> {
+  try {
+    const rows = await getStore().list("bookings", {
+      filter: { requestId },
+      limit: 1,
+    });
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * RFQ em espera (`settings.rfqEnabled` desligado, docs/RFQ_STANDBY.md): cada
+ * produto vai para um fornecedor só, sem disputa. Recusa mais de um
+ * fornecedor de uma vez e um segundo fornecedor em solicitação que já foi
+ * enviada a outro. Com a RFQ ligada não faz nada. As ações da tela chamam
+ * isto antes de `openRfq`/`openBatchRfq` (o Superplan e o Booking já mandam
+ * um fornecedor só).
+ */
+export async function assertRfqStandby(
+  requestIds: string[],
+  supplierIds: string[],
+): Promise<void> {
+  const settings = await getSettings();
+  if (settings.rfqEnabled) return;
+  const ids = [...new Set(supplierIds.filter(Boolean))];
+  if (ids.length > 1) throw new RequestError("rfq_standby_one");
+  if (!ids.length || !requestIds.length) return;
+  const quotes = await getStore().list("quotes", {
+    filter: { requestId: requestIds },
+  });
+  if (quotes.some((q) => q.supplierId !== ids[0]))
+    throw new RequestError("rfq_standby_sent");
 }
 
 /** Situações em que a RFQ pode ser aberta ou receber mais fornecedores. */

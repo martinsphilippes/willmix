@@ -26,10 +26,12 @@ import {
   type BookingColumn,
   type BookingColumnKey,
   type BookingFilters,
+  type BookingNextStep,
   type BookingRow,
   type BookingSignal,
 } from "@/lib/booking";
 import { SHEET_CURRENCIES, type BookingStatus } from "@/lib/db/schema";
+import { getSettings } from "@/lib/settings";
 import {
   BOOKING_STOCK_OPTION,
   listBookingRows,
@@ -157,6 +159,14 @@ export default async function BookingPage({
   const t = await getT();
   const query = await searchParams;
   const data = await listBookingRows(user, { intl: t.intl });
+  // RFQ em espera: a linha que ainda não foi ao fornecedor diz "Enviar ao
+  // fornecedor" em vez de "Abrir RFQ" (docs/RFQ_STANDBY.md).
+  const rfqOn = (await getSettings()).rfqEnabled;
+  const nextKey = (step: BookingNextStep) =>
+    !rfqOn && step === "open_rfq" ? ("send_supplier" as const) : step;
+  const canRfqScreen = canOpen(user, "rfq");
+  const sendHere = (step: BookingNextStep) =>
+    !rfqOn && step === "open_rfq" && canRfqScreen;
   const superplan = data.canApprove;
   const canRequest = canOpen(user, "requests");
   const filters = parseBookingFilters(query, { superplan });
@@ -399,14 +409,18 @@ export default async function BookingPage({
                   )
                 : undefined
               : filters.dates[key]
-                ? range(
-                    filters.dates[key]?.from
-                      ? day(filters.dates[key]!.from!)
-                      : undefined,
-                    filters.dates[key]?.to
-                      ? day(filters.dates[key]!.to!)
-                      : undefined,
-                  )
+                ? filters.dates[key]!.from &&
+                  filters.dates[key]!.from === filters.dates[key]!.to
+                  ? // Um dia só (o campo único da coluna).
+                    day(filters.dates[key]!.from!)
+                  : range(
+                      filters.dates[key]?.from
+                        ? day(filters.dates[key]!.from!)
+                        : undefined,
+                      filters.dates[key]?.to
+                        ? day(filters.dates[key]!.to!)
+                        : undefined,
+                    )
                 : undefined;
       return value ? [{ key, text: `${label(key)}: ${value}` }] : [];
     }),
@@ -484,29 +498,58 @@ export default async function BookingPage({
           />
         </span>
       );
-    if (c.kind === "date")
+    if (c.kind === "date") {
+      // Um campo só: o dia escolhido. O "×" ao lado zera o filtro da coluna.
+      // Período vindo de um endereço antigo (de/até diferentes) continua
+      // valendo, guardado em campos escondidos, até ser zerado ou trocado.
+      const active = filters.dates[key];
+      const single = active && active.from === active.to ? active.from : "";
       return (
-        <span className="flex gap-1">
+        <span className="flex items-center gap-1" data-date-filter={key}>
           <input
-            key={`from:${filters.dates[key]?.from ?? ""}`}
+            key={`on:${single ?? ""}`}
             form={FILTER_FORM}
             type="date"
-            name={`${key}_from`}
-            defaultValue={filters.dates[key]?.from ?? ""}
-            aria-label={`${aria}: ${t("booking.filter.min")}`}
-            className={cx(inputDenseClass, "w-32 min-w-32 px-1.5")}
+            name={`${key}_on`}
+            defaultValue={single ?? ""}
+            aria-label={aria}
+            className={cx(inputDenseClass, "w-36 min-w-36 px-1.5")}
           />
-          <input
-            key={`to:${filters.dates[key]?.to ?? ""}`}
-            form={FILTER_FORM}
-            type="date"
-            name={`${key}_to`}
-            defaultValue={filters.dates[key]?.to ?? ""}
-            aria-label={`${aria}: ${t("booking.filter.max")}`}
-            className={cx(inputDenseClass, "w-32 min-w-32 px-1.5")}
-          />
+          {active && !single ? (
+            <>
+              {active.from ? (
+                <input
+                  form={FILTER_FORM}
+                  type="hidden"
+                  name={`${key}_from`}
+                  value={active.from}
+                />
+              ) : null}
+              {active.to ? (
+                <input
+                  form={FILTER_FORM}
+                  type="hidden"
+                  name={`${key}_to`}
+                  value={active.to}
+                />
+              ) : null}
+            </>
+          ) : null}
+          {active ? (
+            <Link
+              href={`${BASE}${q({ drop: key })}`}
+              scroll={false}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-sm font-semibold text-zinc-600 transition hover:border-brand-300 hover:text-brand-700"
+              aria-label={t("booking.filter.reset", { col: label(key) })}
+              title={t("booking.filter.reset", { col: label(key) })}
+              data-date-filter-clear={key}
+            >
+              ×
+            </Link>
+          ) : null}
         </span>
       );
+    }
     const chosen = filters.options[key] ?? [];
     // Mais de uma opção (o "Ver no Booking" de uma importação, ou o endereço
     // com várias): o seletor leva todas, para refinar a lista sem perdê-las.
@@ -866,12 +909,12 @@ export default async function BookingPage({
                         : "warning"
                   }
                 >
-                  {t(`booking.next.label.${row.next.step}`)}
+                  {t(`booking.next.label.${nextKey(row.next.step)}`)}
                 </Badge>
               </span>
             </div>
             <p className="whitespace-normal text-xs leading-snug text-zinc-700">
-              {t(`booking.next.${row.next.step}`)}
+              {t(`booking.next.${nextKey(row.next.step)}`)}
               {row.next.total > 1 &&
               (row.next.step === "wait_supplier" ||
                 row.next.step === "supplier_draft" ||
@@ -883,7 +926,12 @@ export default async function BookingPage({
                 : ""}
             </p>
             <LinkButton
-              href={row.next.href}
+              href={
+                // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
+                sendHere(row.next.step) && row.requestId
+                  ? `/app/rfq#req-${row.requestId}`
+                  : row.next.href
+              }
               variant={
                 BOOKING_NEXT_WAITING.includes(row.next.step)
                   ? "secondary"
@@ -892,7 +940,10 @@ export default async function BookingPage({
               className="h-7 px-2.5 py-0! text-xs! whitespace-nowrap"
               data-booking-next-go=""
             >
-              {t(`booking.next.go.${row.next.target}`)} →
+              {sendHere(row.next.step)
+                ? t("rfqStandby.send.submit")
+                : t(`booking.next.go.${row.next.target}`)}{" "}
+              →
             </LinkButton>
           </div>
         ) : (

@@ -93,6 +93,8 @@ export function navFor(
           // Viabilidade de um produto: custo do container, preço mínimo e
           // lucro contra a meta do tipo de negócio (só o administrador).
           ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
+          // RFQ guardada, em espera: tela própria com o interruptor (admin).
+          ["rfq", { href: "/app/rfq", key: "nav.rfq" }],
         ]),
       ),
       ...group(

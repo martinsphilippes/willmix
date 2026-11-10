@@ -168,6 +168,98 @@ export async function addCardToQuote(
   return card;
 }
 
+/** Origem do cartão que veio da planilha da ficha técnica (Booking). */
+export const SHEET_CARD_SOURCE = "sheet";
+
+/**
+ * Cartão que veio na planilha da ficha técnica (coluna do cartão, guardada no
+ * produto como foto "business_card"): vira o cartão do fabricante do produto
+ * para o fornecedor DELE. Nunca para outro fornecedor (numa disputa, o cartão
+ * de um não aparece para o concorrente). Não repete: a mesma foto vira um
+ * cartão só. Os dados (empresa, loja, telefone) vêm das colunas da planilha.
+ */
+async function cardFromSheet(
+  user: User,
+  productId: string,
+  supplierId: string,
+): Promise<ManufacturerCard | null> {
+  const store = getStore();
+  const product = await store.get("products", productId);
+  if (!product || product.supplierId !== supplierId) return null;
+  const photos = await store.list("product_photos", {
+    filter: { productId, kind: "business_card" },
+    orderBy: "createdAt",
+    direction: "desc",
+    limit: 1,
+  });
+  const photo = photos[0];
+  if (!photo) return null;
+  const { getProductSheet } = await import("./product-sheet");
+  const sheet = await getProductSheet(productId);
+  const card = await store.create("manufacturer_cards", {
+    productId,
+    supplierId,
+    documentId: photo.documentId,
+    companyName: clip(sheet?.supplierName, 160),
+    contactName: null,
+    phone: clip(sheet?.supplierPhone, 60),
+    email: null,
+    storeAddress: clip(sheet?.supplierStore, 2000),
+    factoryAddress: null,
+    isFactory: null,
+    notes: null,
+    source: SHEET_CARD_SOURCE,
+    quoteId: null,
+    createdByUserId: user.id,
+  });
+  return card;
+}
+
+/**
+ * Cotação sem cartão confirmado: traz sozinha o cartão do produto para este
+ * fornecedor (o mais recente já apresentado ou, sem nenhum, o que veio na
+ * planilha do Booking) e já o deixa confirmado. O fornecedor continua podendo
+ * trocar. Só em cotação ainda não respondida; quem chama é a Wellmix (ao
+ * mandar ao fornecedor) ou quem abre a cotação (a Wellmix ou o fornecedor
+ * dela). Nunca falha a operação de quem chamou: sem cartão, devolve nulo.
+ */
+export async function bringCardToQuote(
+  user: User,
+  quote: Quote,
+  productId: string | null,
+): Promise<ManufacturerCard | null> {
+  if (quote.manufacturerCardId || quote.status !== "invited" || !productId)
+    return null;
+  if (!isWellmix(user) && user.partyId !== quote.supplierId) return null;
+  try {
+    const [known] = await getStore().list("manufacturer_cards", {
+      filter: { supplierId: quote.supplierId, productId },
+      orderBy: "createdAt",
+      direction: "desc",
+      limit: 1,
+    });
+    const card =
+      known ?? (await cardFromSheet(user, productId, quote.supplierId));
+    if (!card) return null;
+    await confirm(user, quote, card.id);
+    await audit(
+      user,
+      "card.auto",
+      "quote",
+      quote.id,
+      `Cartão do fabricante trazido sozinho para a cotação${
+        card.source === SHEET_CARD_SOURCE ? " (planilha do Booking)" : ""
+      }${card.companyName ? `: ${card.companyName}` : ""}`,
+      null,
+      { cardId: card.id, productId },
+    );
+    return card;
+  } catch (error) {
+    console.error("[manufacturer-card] trazer para a cotação", quote.id, error);
+    return null;
+  }
+}
+
 /** Confirma, nesta negociação, um cartão já apresentado antes para o produto. */
 export async function confirmCardForQuote(
   user: User,

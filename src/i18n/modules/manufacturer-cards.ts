@@ -19,6 +19,9 @@ export const pt = {
   "card.middleman": "Possível intermediário (sem endereço de fábrica)",
   "card.unread": "Não lido: confira os dados",
   "card.mock": "Exemplo (mock): o cartão não foi lido",
+  "card.fromSheet": "Veio da planilha do Booking",
+  "card.fromSheetHint":
+    "Este cartão veio sozinho da planilha do Booking. Se o fabricante mudou, envie outro cartão abaixo.",
   "card.view": "Ver o cartão",
   "card.company": "Empresa",
   "card.contact": "Contato",
@@ -36,7 +39,7 @@ export const pt = {
   "card.quotes": "Confirmado em {n} cotação(ões)",
   "card.productTitle": "Cartões do fabricante",
   "card.productHint":
-    "Quem fabrica este produto, por fornecedor. A cada cotação o fornecedor confirma qual cartão vale.",
+    "Quem fabrica este produto, por fornecedor. O cartão que vem na planilha do Booking entra sozinho na cotação; o fornecedor pode trocar.",
   "card.productNone": "Nenhum cartão enviado ainda.",
   "quoteSheet.error.manufacturer_card_required":
     "Falta o cartão do fabricante: envie ou escolha um no quadro “Cartão do fabricante” para enviar a cotação.",
@@ -59,6 +62,9 @@ export const en: Record<keyof typeof pt, string> = {
   "card.middleman": "Possible middleman (no factory address)",
   "card.unread": "Not read: check the details",
   "card.mock": "Example (mock): the card was not read",
+  "card.fromSheet": "Came from the Booking spreadsheet",
+  "card.fromSheetHint":
+    "This card came automatically from the Booking spreadsheet. If the manufacturer changed, send another card below.",
   "card.view": "See the card",
   "card.company": "Company",
   "card.contact": "Contact",
@@ -76,7 +82,7 @@ export const en: Record<keyof typeof pt, string> = {
   "card.quotes": "Confirmed in {n} quotation(s)",
   "card.productTitle": "Manufacturer's cards",
   "card.productHint":
-    "Who makes this product, per supplier. In each quotation the supplier confirms which card applies.",
+    "Who makes this product, per supplier. The card that comes in the Booking spreadsheet enters the quotation automatically; the supplier can change it.",
   "card.productNone": "No card sent yet.",
   "quoteSheet.error.manufacturer_card_required":
     "The manufacturer's card is missing: send or choose one in the “Manufacturer's card” box to send the quotation.",
@@ -98,6 +104,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "card.middleman": "可能是中间商（无工厂地址）",
   "card.unread": "未读取：请核对信息",
   "card.mock": "示例（mock）：并未读取名片",
+  "card.fromSheet": "来自 Booking 表格",
+  "card.fromSheetHint":
+    "此名片由 Booking 表格自动带入。如工厂有变更，请在下方上传新的名片。",
   "card.view": "查看名片",
   "card.company": "公司",
   "card.contact": "联系人",
@@ -115,7 +124,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "card.quotes": "已在 {n} 次报价中确认",
   "card.productTitle": "工厂名片",
   "card.productHint":
-    "按供应商列出生产该产品的工厂。每次报价时由供应商确认使用哪张名片。",
+    "按供应商列出生产该产品的工厂。Booking 表格中的名片会自动带入报价，供应商可以更换。",
   "card.productNone": "尚未上传名片。",
   "quoteSheet.error.manufacturer_card_required":
     "缺少工厂名片：请在“工厂名片”中上传或选择一张后再提交报价。",

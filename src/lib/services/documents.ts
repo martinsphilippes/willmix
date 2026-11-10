@@ -386,6 +386,16 @@ export async function canAccessDocument(
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
+    // Cartão do fabricante: além da Wellmix e de quem enviou, só o fornecedor
+    // dono do cartão (o que veio na planilha do Booking foi guardado pela
+    // Wellmix). Outro fornecedor e o cliente nunca.
+    if (user.role === "supplier" && user.partyId) {
+      const [ownCard] = await store.list("manufacturer_cards", {
+        filter: { documentId: doc.id, supplierId: user.partyId },
+        limit: 1,
+      });
+      if (ownCard) return true;
+    }
     // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
     if (doc.productId || doc.sourcingItemId) {
       if (doc.visibility !== "all" || !doc.productId) return false;

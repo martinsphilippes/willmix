@@ -68,8 +68,18 @@ export async function openBatchRfqAction(form: FormData) {
     // Código próprio: "invalid_input" na página do lote fala do formulário de produtos.
     if (!parsed.success) throw new Error("invalid_supplier");
     const supplierIds = parsed.data;
-    const { openBatchRfq } = await import("@/lib/services/requests");
+    const { openBatchRfq, assertRfqStandby } =
+      await import("@/lib/services/requests");
     const { packagingOptionsFrom } = await import("./helpers");
+    // RFQ em espera: um fornecedor só por produto, sem disputa.
+    const { getStore } = await import("@/lib/db");
+    const rows = await getStore().list("requests", {
+      filter: { groupId: groupId.data },
+    });
+    await assertRfqStandby(
+      rows.map((r) => r.id),
+      supplierIds,
+    );
     const result = await openBatchRfq(user, groupId.data, supplierIds, {
       packaging: packagingOptionsFrom(form),
     });

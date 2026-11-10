@@ -11,8 +11,8 @@ import type { StageKey } from "@/lib/db/schema";
 
 export const ORDER_PART_KEYS = [
   "document",
-  "sheet",
   "certification",
+  "sheet",
   "artwork",
   "supplier_payment",
   "production",
@@ -24,9 +24,10 @@ export type OrderPartKey = (typeof ORDER_PART_KEYS)[number];
 /** Etapa debaixo da qual a parte aparece (a ordem de ORDER_PART_KEYS vale dentro dela). */
 export const ORDER_PART_STAGE: Record<OrderPartKey, StageKey> = {
   document: "ORDER_CREATED",
+  // A certificadora recebe o pedido quando ele nasce (decisão do dono,
+  // docs/CERTIFICATION.md): o selo corre ao mesmo tempo que o resto.
+  certification: "ORDER_CREATED",
   sheet: "PREPARATION",
-  // Corre ao mesmo tempo que a faca, o MOQ, o prazo e a foto do fornecedor.
-  certification: "PREPARATION",
   artwork: "PACKAGING",
   supplier_payment: "PACKAGING",
   production: "PACKAGING",
