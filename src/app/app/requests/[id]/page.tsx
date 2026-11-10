@@ -98,6 +98,7 @@ import {
 } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
+import { quoteFlowChips } from "@/components/quote-flow-cards";
 import { ApprovalCard } from "@/components/approval-card";
 import { RequestStagesCard } from "@/components/request-stages-card";
 import { approvalsFor } from "@/lib/services/approvals";
@@ -932,6 +933,26 @@ export default async function RequestDetailPage({
                       >
                         {t(`quoteStatus.${q.status}`)}
                       </Badge>
+                      {/* Negociação e proposta de embalagem desta cotação. */}
+                      {wellmix
+                        ? quoteFlowChips(t, q).map((chip) => (
+                            <span
+                              key={chip.key}
+                              className="mt-1 block"
+                              data-quote-flow-chip={chip.key}
+                            >
+                              <Badge tone={chip.tone}>{chip.text}</Badge>
+                            </span>
+                          ))
+                        : null}
+                      {wellmix && q.status === "answered" ? (
+                        <Link
+                          href={`/app/quotes/${q.id}#negotiation`}
+                          className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
+                        >
+                          {t("quoteFlow.chip.open")}
+                        </Link>
+                      ) : null}
                       {(freights.get(q.id) ?? []).map((f) => (
                         <Link
                           key={f.id}

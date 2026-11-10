@@ -6,6 +6,10 @@ import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
 import { SupplierDielineCard } from "@/components/supplier-dieline-card";
 import { SuperplanItemsCard } from "@/components/superplan-items-card";
+import {
+  QuoteNegotiationCard,
+  QuotePackagingProposalCard,
+} from "@/components/quote-flow-cards";
 import type { PurchaseSheet } from "@/lib/db";
 import { canReleaseDumping } from "@/lib/services/purchase-flow";
 import {
@@ -92,6 +96,8 @@ export default async function QuotePage({
     card: cardNotice,
     dieline: dielineNotice,
     superplan: superplanNotice,
+    negotiation: negotiationNotice,
+    proposal: proposalNotice,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -269,6 +275,27 @@ export default async function QuotePage({
           />
         ) : null}
       </div>
+      {/* Negociação e proposta de embalagem (docs/QUOTE_FLOW.md): a Wellmix
+          e o fornecedor desta cotação. */}
+      {isWellmix(user) ||
+      (user.role === "supplier" && user.partyId === quote.supplierId) ? (
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+          <QuoteNegotiationCard
+            t={t}
+            quote={quote}
+            wellmix={isWellmix(user)}
+            notice={
+              typeof negotiationNotice === "string" ? negotiationNotice : ""
+            }
+          />
+          <QuotePackagingProposalCard
+            t={t}
+            quote={quote}
+            wellmix={isWellmix(user)}
+            notice={typeof proposalNotice === "string" ? proposalNotice : ""}
+          />
+        </div>
+      ) : null}
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <Card title={t("requests.title")} className="lg:col-span-2">
           {/* Uma linha, cada coluna uma informação (inclusive cada item da

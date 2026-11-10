@@ -96,6 +96,8 @@ export interface UploadInput {
   packagingBriefId?: string | null;
   /** Anexo do chat: o acesso segue o assunto da conversa. */
   conversationTopicId?: string | null;
+  /** Arquivo de uma cotação (proposta de embalagem): acesso só do fornecedor dela. */
+  quoteId?: string | null;
   type: DocumentType;
   visibility?: Visibility;
 }
@@ -243,6 +245,7 @@ async function createDocumentRow(
     ...(input.conversationTopicId
       ? { conversationTopicId: input.conversationTopicId }
       : {}),
+    ...(input.quoteId ? { quoteId: input.quoteId } : {}),
     // Fotos de catálogo já nascem com a impressão digital (busca por foto).
     imageHash:
       bytes &&
@@ -294,6 +297,18 @@ export async function canAccessDocument(
     // de solicitação/pedido, só quem vê a solicitação/o pedido).
     const { canOpenTopic } = await import("./messages");
     return canOpenTopic(user, doc.conversationTopicId);
+  }
+  if (doc.quoteId) {
+    // Arquivo de uma cotação (proposta de embalagem): além da Wellmix, só o
+    // fornecedor daquela cotação. Outros fornecedores da mesma RFQ, o
+    // cliente e os demais parceiros nunca.
+    const quote = await store.get("quotes", doc.quoteId);
+    return (
+      !!quote &&
+      user.role === "supplier" &&
+      !!user.partyId &&
+      quote.supplierId === user.partyId
+    );
   }
   if (doc.kitId) {
     // Kit de marketing: prévia a partir da oferta, arquivo final só depois de liberado.
