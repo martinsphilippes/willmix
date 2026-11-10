@@ -253,6 +253,7 @@ function rowOf(
     estimatedWeightKg: estimate.kg,
     weightEstimated: estimate.estimated,
     averageUsd: positive(master.averagePrice),
+    averageWeightKg: positive(master.averageWeightPcKg),
     cbm: view?.cbmPerCarton ?? null,
     size: product ? sizeText(product, ctx.intl) : null,
     colors: text(master.colorAssortment) ?? text(product?.color),

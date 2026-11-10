@@ -5891,6 +5891,13 @@
           "type": "double"
         },
         {
+          "key": "averageWeightPcKg",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
           "key": "certificationRequired",
           "required": false,
           "array": false,

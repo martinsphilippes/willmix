@@ -600,6 +600,8 @@ export default async function BookingPage({
         return num("netWeightPcKg");
       case "grossWeight":
         return num("grossWeightPcKg");
+      case "averageWeight":
+        return num("averageWeightPcKg");
       case "average":
         return num("averagePrice");
       case "cbm":
@@ -769,6 +771,8 @@ export default async function BookingPage({
         ) : (
           number(row.estimatedWeightKg, 4)
         );
+      case "averageWeight":
+        return number(row.averageWeightKg, 4);
       case "average":
         return number(row.averageUsd, 4);
       case "cbm":

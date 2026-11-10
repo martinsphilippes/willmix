@@ -149,8 +149,12 @@ describe("o que a simulação recebe do sistema", () => {
 });
 
 describe("dados do produto para a simulação", () => {
-  it("ficha mestre: preço, caixa, os dois pesos, volume, NCM e a média (só informação)", async () => {
-    const p = await withSheet({ ...JAR, averagePrice: 3.2 });
+  it("ficha mestre: preço, caixa, os pesos, volume, NCM e a média (só informação)", async () => {
+    const p = await withSheet({
+      ...JAR,
+      averagePrice: 3.2,
+      averageWeightPcKg: 1.05,
+    });
     const prefill = (await superplanPrefillsFor([p.id])).get(p.id)!;
     expect(prefill).toEqual({
       productId: p.id,
@@ -168,6 +172,8 @@ describe("dados do produto para a simulação", () => {
       ipiPct: 9.75,
       ncmFound: true,
       averageUsd: 3.2,
+      // Peso médio: mostrado na tela, fora da conta.
+      averageWeightKg: 1.05,
     });
   });
 

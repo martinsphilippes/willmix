@@ -70,7 +70,10 @@ Tudo continua editável na tela para a simulação. A simulação não grava nad
 8. **Preço para a meta**: o lucro é uma reta no preço; o preço que dá exatamente a meta % sai dela (arredondado para cima no centavo). Markup necessário = esse preço ÷ custo por peça. Sem solução (impostos e despesas maiores que a margem): a tela avisa.
 9. **Sinal**: verde com lucro ≥ meta; amarelo com lucro positivo abaixo da meta; vermelho com prejuízo.
 
-### 5.1 Os três "pesos": líquido, bruto e média
+### 5.1 Os "pesos": líquido, bruto, médio e a média
+
+O **peso médio por peça** (`purchase_sheets.averageWeightPcKg`, kg) aparece na Compra, ao lado do bruto, **só para leitura**: vem da ficha do produto e muda-se lá ou no Booking. Não entra na conta (o container continua limitado pelo bruto ou pelo bruto estimado).
+
 
 A ficha técnica traz o **peso líquido** (N.W PC) e o **peso bruto** (G.W PC) por peça; a maioria das planilhas só preenche o líquido. A tela tem os dois campos, lado a lado, e cada um lê só a sua coluna: **o líquido nunca é lido como bruto**.
 

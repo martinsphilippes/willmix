@@ -33,6 +33,7 @@ import {
   containerCapacity,
   CUSTOMS_FIELDS,
   OPTIONAL_SHEET_FIELDS,
+  dropUnsavedEmptyOptional,
   getSheetPhotos,
   SHEET_PHOTO_KINDS,
   SUPPLIER_FIELDS,
@@ -397,6 +398,7 @@ export async function saveQuoteSheet(
     if (allowed.has(key) && value !== undefined) patch[key] = value;
   if ("lots" in patch) patch.lots = normalizeLots(patch.lots as never);
   const existing = await getQuoteSheet(quoteId);
+  dropUnsavedEmptyOptional(patch, existing);
   // CBM da caixa: com as três medidas, o calculado (como no cadastro).
   if (allowed.has("cbmPerCarton")) withBoxCbm(patch, existing);
   let sheet: PurchaseSheet;

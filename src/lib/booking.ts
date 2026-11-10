@@ -308,6 +308,8 @@ export interface BookingRow {
   weightEstimated: boolean;
   /** Média do despachante (US$), da ficha mestre. */
   averageUsd: number | null;
+  /** Peso médio por peça (kg), da ficha mestre: o terceiro peso. */
+  averageWeightKg: number | null;
   /** Volume da caixa master (m³). */
   cbm: number | null;
   /** Medidas da peça ("33,5 × 24,8 × 1,5 cm") ou o tamanho escrito na ficha. */
@@ -396,6 +398,11 @@ export const BOOKING_COLUMNS = [
     key: "estimatedWeight",
     kind: "number",
     value: (r) => r.estimatedWeightKg,
+  },
+  {
+    key: "averageWeight",
+    kind: "number",
+    value: (r) => r.averageWeightKg,
   },
   { key: "average", kind: "number", value: (r) => r.averageUsd },
   { key: "cbm", kind: "number", value: (r) => r.cbm },

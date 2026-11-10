@@ -103,6 +103,10 @@ export function parseSheet(form: FormData): {
       num(form, "masterCartonQty", { int: true }),
     ),
     innerQty: safe("innerQty", () => num(form, "innerQty", { int: true })),
+    // Peso médio (coluna nova): vazio só apaga o que já estava gravado.
+    averageWeightPcKg: safe("averageWeightPcKg", () =>
+      num(form, "averageWeightPcKg"),
+    ),
     netWeightPcKg: safe("netWeightPcKg", () => num(form, "netWeightPcKg")),
     grossWeightPcKg: safe("grossWeightPcKg", () =>
       num(form, "grossWeightPcKg"),
@@ -184,7 +188,11 @@ export function parseSheet(form: FormData): {
     );
   // CBM da caixa pelas medidas (C × L × A), como o serviço grava: com as três
   // medidas, um CBM digitado ilegível não impede salvar.
-  const boxCbm = cbmFromDimensions(input.lengthCm, input.widthCm, input.heightCm);
+  const boxCbm = cbmFromDimensions(
+    input.lengthCm,
+    input.widthCm,
+    input.heightCm,
+  );
   if (boxCbm !== null) {
     input.cbmPerCarton = boxCbm;
     const at = invalid.indexOf("cbmPerCarton");

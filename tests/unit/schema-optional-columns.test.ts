@@ -17,6 +17,7 @@ describe("colunas acrescentadas depois são opcionais", () => {
     ["orders", "erpSyncStatus"],
     ["purchase_sheets", "dumping"],
     ["purchase_sheets", "certificationRequired"],
+    ["purchase_sheets", "averageWeightPcKg"],
     ["parties", "ownerUserId"],
     ["products", "minStock"],
   ] as const)("%s.%s", (table, column) => {
