@@ -1,5 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { isStockCustomer } from "@/lib/services/purchase-flow";
+import {
+  superplanQuoteOf,
+  superplanQuoteView,
+} from "@/lib/services/superplan-rfq";
 import { ActionError } from "@/components/action-error";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
@@ -112,6 +116,7 @@ export default async function RequestDetailPage({
     fields: invalidFields,
     at: errorToken,
     fromCart,
+    superplan: superplanNotice,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
@@ -123,6 +128,14 @@ export default async function RequestDetailPage({
     canViewRequest(user, r),
   );
   const wellmix = isWellmix(user);
+  // Aberta do Superplan: os quatro itens do fornecedor ganho (só a Wellmix).
+  const superplanQuote =
+    wellmix && request.origin === "superplan"
+      ? await superplanQuoteOf(request.id)
+      : null;
+  const superplanItems = superplanQuote
+    ? await superplanQuoteView(user, superplanQuote.id)
+    : null;
   // Valores da variação pedida (cópia feita na solicitação), só para a Wellmix.
   const variantSummary =
     wellmix && request.variant
@@ -428,6 +441,33 @@ export default async function RequestDetailPage({
             {t("reqCancelled.banner", { n: order.number })}{" "}
             <TextLink href={`/app/orders/${order.id}`}>
               {t("reqCancelled.open")}
+            </TextLink>
+          </Alert>
+        </div>
+      ) : null}
+      {superplanItems ? (
+        <div className="mb-4" data-superplan-request>
+          <Alert
+            tone={
+              superplanItems.missing.length
+                ? superplanNotice === "opened"
+                  ? "success"
+                  : "warning"
+                : "success"
+            }
+          >
+            {superplanNotice === "opened" ? `${t("spRfq.opened")} ` : null}
+            {t("spRfq.request", {
+              state: superplanItems.missing.length
+                ? t("spRfq.missing", {
+                    list: superplanItems.missing
+                      .map((k) => t(`spRfq.item.${k}`))
+                      .join(", "),
+                  })
+                : t("spRfq.complete"),
+            })}{" "}
+            <TextLink href={`/app/quotes/${superplanItems.quoteId}#superplan`}>
+              {t("spRfq.openQuote")}
             </TextLink>
           </Alert>
         </div>

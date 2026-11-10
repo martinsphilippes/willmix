@@ -526,6 +526,14 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Parâmetros** (embaixo da tela, só o administrador grava; `saveSuperplanParamsAction`): os 30 tipos de negócio da planilha, despesas padrão por container (THC e CE marcados "no valor aduaneiro"), frete e frete rodoviário padrão, dólar futuro (oficial + R$ 0,25), câmbio do frete (+3,02%), AFRMM (8% + R$ 700), fatores de preço e impostos da venda (ICMS efetivo 1,5%, PIS 1,65%, COFINS 7,6%, IR 2,6%, CSLL 1,08%, para acertar com o contador). Linha sem nome sai; linha vazia do fim cria uma nova; valor inválido não grava nada e aponta o campo; antes e depois na auditoria (`settings.superplan`). Configurações → Tributos ganhou o link para eles.
 - **Sem mudança no banco**: chave nova `superplan` na tabela `settings` (lida com `superplanParams`, que completa o que faltar). Nenhuma tela, rota ou campo saiu.
 
+## Superplan: faca, MOQ, prazo e foto em alta logo depois da viabilidade
+
+- **Pedido do dono**: a faca (die-cut) vem logo depois da análise de viabilidade no Superplan. Do próprio Superplan abre-se a faca para o fornecedor e, no mesmo ato, a RFQ com o fornecedor ganho, a partir da simulação. O fornecedor envia faca, MOQ, prazo e foto em alta; a proposta espera os quatro. Fluxo novo, ao lado da solicitação comum, que não muda. Especificação em `docs/SUPERPLAN.md`, seção 11.
+- **Superplan**: cartão "Viável? Abrir faca e RFQ com o fornecedor" (só o administrador, com produto do cadastro): fornecedor ganho (os do produto primeiro), cliente ou compra para estoque e quantidade (padrão: as peças do container). Com prejuízo ou conta incompleta, não abre. O servidor refaz a conta com os parâmetros do sistema (`openSuperplanRfq`, `src/lib/services/superplan-rfq.ts`).
+- **Cotação**: cartão "Superplan: faca, MOQ, prazo e foto em alta" (`#superplan`) para o fornecedor ganho e a Wellmix. MOQ e prazo vêm sugeridos (cadastro e últimas cotações) e só contam depois de confirmados; faca vai para o briefing da embalagem (versões, aviso à agência) e a foto em alta para as fotos da cotação (`hd`). Com os quatro, a cotação fica respondida e a Wellmix é avisada (alerta se MOQ ou prazo mudaram).
+- **Bloqueio**: `selectQuote` e `submitForApproval` recusam (`superplan_items_missing`) enquanto faltar algum item. Etapas da solicitação: a faca vem logo depois da "Solicitação nova".
+- **Banco (aditivo)**: `requests.origin` ganhou `superplan`; `quotes.moq` (inteiro, opcional, só gravado nesse fluxo). Publicar o esquema (`npm run appwrite:push`). Nenhuma tela, rota ou campo saiu.
+
 ## Ficha: medidas da caixa master opcionais com CBM
 
 - Com o CBM da caixa master preenchido (ex.: veio na planilha do fornecedor), altura, largura e comprimento da caixa saem do "falta preencher" (`missingForCompletion`); o frete e a cubagem usam o CBM. Sem CBM, as três medidas continuam obrigatórias. Com as três medidas, o CBM continua sendo calculado por elas (`withBoxCbm`).
@@ -612,6 +620,15 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 
 - Unificar `checkWeightDivergence` (peso declarado × medido) dentro de `compareInspection` quando todos os pedidos abertos tiverem snapshot.
 - Reduzir as 3 notificações por evento (in-app, e-mail e WhatsApp mock) quando houver provedor real.
+
+## Booking: os produtos antes da solicitação
+
+- **Pedido do dono**: uma tela Booking, alimentada pela ficha técnica importada, em que cada linha da ficha é um produto (não uma variação), com filtro em qualquer coluna; é o que acontece antes da solicitação. Especificação completa em `docs/BOOKING.md`.
+- **Tela** `/app/booking` (Pedidos → Booking; Wellmix com as funções comprador, gerente de produto, planner, cadastro e diretorias) e `/app/booking/[id]`: uma linha por produto com tudo o que veio da planilha, cartões das etapas (Novo, Em análise, Aprovado, Oferecido, Reservado, Virou solicitação, Descartado), filtro e ordenação em toda coluna (o filtro mora no endereço), 100 por página, e a barra de ações para as linhas marcadas (cliente e quantidades, mover, responsável, analisar no Superplan, gerar solicitação).
+- **Importação**: a ficha técnica ganhou a opção "Mandar para o Booking (um produto por linha)", que passa a ser a primeira e a marcada para quem abre o Booking; as outras duas continuam. Linhas com o mesmo código e só a cor diferente são um produto. O resultado de uma importação antiga ganhou "Mandar para o Booking" (relê o arquivo guardado; o produto com variações fica como está).
+- **Vitrine**: produto que a planilha criou fica fora de tudo o que o cliente vê (vitrine, página do produto, carrinho, nova solicitação, busca por foto, fotos e documentos, kit novo) até ser aprovado no Booking. Produto que já existia entra como Aprovado (continua na vitrine). Só acrescenta restrição; produto sem linha no Booking segue igual.
+- **Superplan**: ganhou o peso líquido ao lado do bruto, o peso bruto estimado (líquido + folga da embalagem, parâmetro novo, 8%) quando a ficha não traz o bruto, a Média do despachante como informação (não entra em conta nenhuma) e "Gravar no Booking". A mesma função monta a simulação na tela e na análise de várias linhas.
+- **Banco**: tabela nova `bookings` (aditiva). Nenhuma coluna nova nas tabelas que já existiam; nenhuma tela, rota, campo ou dado saiu.
 
 ## Adicionar produto a uma solicitação antes do pedido
 

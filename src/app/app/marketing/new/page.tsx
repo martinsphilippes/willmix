@@ -4,6 +4,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
 import { getStore } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
 import { getT } from "@/i18n/server";
 import {
   Alert,
@@ -39,14 +40,18 @@ export default async function NewMarketingKitPage({
     typeof params.customerId === "string" ? params.customerId : "";
   const t = await getT();
   const store = getStore();
-  const [settings, products, customers] = await Promise.all([
-    getSettings(),
-    store.list("products", { filter: { active: true }, orderBy: "name" }),
-    store.list("parties", {
-      filter: { type: "customer", active: true },
-      orderBy: "name",
-    }),
-  ]);
+  const [settings, activeProducts, customers, hiddenByBooking] =
+    await Promise.all([
+      getSettings(),
+      store.list("products", { filter: { active: true }, orderBy: "name" }),
+      store.list("parties", {
+        filter: { type: "customer", active: true },
+        orderBy: "name",
+      }),
+      hiddenBookingProductIds(),
+    ]);
+  // Produto ainda em análise no Booking não vira kit (o cliente ainda não o vê).
+  const products = activeProducts.filter((p) => !hiddenByBooking.has(p.id));
   const errorText = marketingError(t, params.error);
   // Em caso de erro a ação volta para cá mantendo produto e cliente pré-selecionados.
   const backQuery = new URLSearchParams();

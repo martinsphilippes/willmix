@@ -20,6 +20,8 @@ import { brazilDay } from "@/lib/supplier-terms";
  *  6. Aprovação do pré-custo → último nível aprova              (aprovadores)
  *  7. Faca (die-cut)         → o fornecedor escolhido envia;
  *                              corre junto com 8 e 9            (fornecedor)
+ *                              Aberta do Superplan: vem logo depois da 1,
+ *                              começa com a RFQ (o fornecedor já ganhou)
  *  8. Proposta ao cliente    → o cliente aprova (ou a Wellmix
  *                              confirma o sinal)                (cliente)
  *  9. Sinal                  → sinal confirmado: vira pedido    (cliente)
@@ -109,6 +111,8 @@ export interface RequestStageRow {
   answered?: { done: number; total: number };
   /** Aprovação: o nível que decide agora. */
   level?: ApprovalLevel | null;
+  /** Faca da solicitação aberta do Superplan (vem logo depois da viabilidade). */
+  superplan?: boolean;
 }
 
 export interface RequestStagesInput {
@@ -131,6 +135,11 @@ export interface RequestStagesInput {
   selectedAt: string | null;
   /** Faca obrigatória no briefing da embalagem (nulo = sem faca). */
   dieline: { dueAt: string | null; doneAt: string | null } | null;
+  /**
+   * Aberta do Superplan: o fornecedor já ganhou e a faca (com MOQ, prazo e
+   * foto em alta) começa com a RFQ, logo depois da viabilidade.
+   */
+  superplan?: boolean;
   /** O cliente aprovou a proposta. */
   proposalApprovedAt: string | null;
   /** Sinal confirmado pela Wellmix. */
@@ -254,7 +263,9 @@ export function requestStages(i: RequestStagesInput): RequestStageRow[] {
             ? i.selectedAt
               ? "cancelled"
               : "pending"
-            : i.selectedAt || progress >= reached("approval")
+            : i.selectedAt ||
+                progress >= reached("approval") ||
+                (i.superplan && !!rfqOpenedAt)
               ? "active"
               : "pending";
     } else if (key === "approval" && approvalSkipped) {
@@ -283,7 +294,15 @@ export function requestStages(i: RequestStagesInput): RequestStageRow[] {
       row.answered = { done: answers.length, total: i.quotes.length };
     if (key === "approval" && approval)
       row.level = approval.status === "pending" ? approval.currentLevel : null;
+    if (key === "dieline" && i.superplan) row.superplan = true;
     rows.push(row);
+  }
+  // Superplan: a faca vem logo depois da solicitação nova (a viabilidade já
+  // foi feita), antes das cotações e da proposta.
+  if (i.superplan) {
+    const at = rows.findIndex((row) => row.key === "dieline");
+    const [dieline] = rows.splice(at, 1);
+    rows.splice(1, 0, dieline);
   }
   return rows;
 }

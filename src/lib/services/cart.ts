@@ -12,6 +12,10 @@ import {
 import { ForbiddenError } from "@/lib/auth/permissions";
 import { effectiveMoq } from "@/lib/moq";
 import { audit } from "./audit";
+import {
+  hiddenBookingProductIds,
+  isHiddenByBooking,
+} from "./booking-visibility";
 import { getProductSheet } from "./product-sheet";
 import type { CatalogEstimate } from "./catalog-price-calc";
 import {
@@ -41,6 +45,11 @@ import { createRequestBatch, type RequestBatchItem } from "./requests";
  * exige a variação (`cart_variant_required`), que tem de ser dele e estar
  * ativa (`cart_variant_invalid`); o mínimo é o da variação; a solicitação
  * nasce com "Produto · Variação" no nome e o `variantId`.
+ *
+ * Booking (docs/BOOKING.md): produto ainda não aprovado no Booking vale como
+ * produto fora do catálogo: não entra no carrinho nem no "solicitar agora"
+ * (`cart_product_unavailable`) e a linha que já estava lá fica avisada e fora
+ * do envio.
  */
 
 /** Teto de unidades por item (evita número absurdo digitado por engano). */
@@ -187,7 +196,9 @@ export async function addToCart(
   const customerId = await assertBuyer(user);
   const store = getStore();
   const product = await store.get("products", productId);
-  if (!product?.active) throw new Error("cart_product_unavailable");
+  // Inativo, inexistente ou ainda escondido pelo Booking: a mesma recusa.
+  if (!product?.active || (await isHiddenByBooking(product.id)))
+    throw new Error("cart_product_unavailable");
   const variant = await resolveVariant(productId, variantId);
   const q = validQuantity(quantity);
   await assertMoq(product, q, variant);
@@ -272,6 +283,8 @@ export async function cartView(user: User): Promise<CartView> {
   const items = await ownLines(user);
   if (!items.length) return empty;
   const ids = [...new Set(items.map((i) => i.productId))];
+  // Uma consulta só ao Booking para a tela toda (a conta de preço reaproveita).
+  const hidden = await hiddenBookingProductIds();
   const [products, photos, variants, estimates] = await Promise.all([
     store.list("products", { filter: { id: ids } }),
     catalogShowcasePhotos(ids),
@@ -283,11 +296,14 @@ export async function cartView(user: User): Promise<CartView> {
         variantId: i.variantId ?? null,
         quantity: i.quantity,
       })),
+      hidden,
     ),
   ]);
   const lines: CartLine[] = items.map((item) => {
     const product = products.find((p) => p.id === item.productId);
-    const unavailable = !product?.active;
+    // Saiu do catálogo, ou voltou a ficar escondido pelo Booking depois de
+    // entrar no carrinho: o mesmo aviso, sem foto nem preço.
+    const unavailable = !product?.active || hidden.has(item.productId);
     const { ok: variantOk, variant } = lineVariant(item, variants);
     const priced = estimates.get(lineKey(item.productId, item.variantId));
     const estimate: CatalogEstimate =
@@ -401,8 +417,9 @@ function checkoutNotes(
 /**
  * Envia o carrinho: cada item (produto + variação) vira uma solicitação de
  * orçamento (lote com 2 ou mais), com a quantidade e a personalização do
- * item. Produtos que saíram do catálogo e itens cuja variação sumiu ficam de
- * fora (e continuam no carrinho, avisados).
+ * item. Produtos que saíram do catálogo (ou que o Booking voltou a esconder)
+ * e itens cuja variação sumiu ficam de fora (e continuam no carrinho,
+ * avisados).
  */
 export async function checkoutCart(
   user: User,
@@ -414,13 +431,15 @@ export async function checkoutCart(
   const items = await ownLines(user);
   if (!items.length) throw new Error("cart_empty");
   const ids = [...new Set(items.map((i) => i.productId))];
-  const [products, variants] = await Promise.all([
+  const [products, variants, hidden] = await Promise.all([
     store.list("products", { filter: { id: ids } }),
     variantsByProduct(ids),
+    hiddenBookingProductIds(),
   ]);
   const sendable = items.filter(
     (i) =>
       products.find((p) => p.id === i.productId)?.active &&
+      !hidden.has(i.productId) &&
       lineVariant(i, variants).ok,
   );
   if (!sendable.length) throw new Error("cart_product_unavailable");
@@ -472,7 +491,9 @@ export async function requestProductNow(
 ): Promise<Request> {
   const customerId = await assertBuyer(user);
   const product = await getStore().get("products", productId);
-  if (!product?.active) throw new Error("cart_product_unavailable");
+  // Inativo, inexistente ou ainda escondido pelo Booking: a mesma recusa.
+  if (!product?.active || (await isHiddenByBooking(product.id)))
+    throw new Error("cart_product_unavailable");
   const variant = await resolveVariant(productId, variantId);
   await assertMoq(product, validQuantity(quantity), variant);
   const [created] = await createRequestBatch(
