@@ -271,17 +271,24 @@ describe("documento do pedido com duas assinaturas", () => {
     );
     const view = (await sig.getOrderSignatureView(supplierA, order.id))!;
     expect(view.status).toBe("sent_to_supplier");
-    // O PDF traz o pedido, o fornecedor, o total e a versão do documento.
-    const pdf = Buffer.from(await sig.renderOrderDocumentPdf(view)).toString(
-      "latin1",
-    );
+    // O PDF (no modelo de pedido da Wellmix) traz o pedido, o fornecedor, o
+    // total, a versão do documento e os procedimentos.
+    const pdf = Buffer.from(
+      await sig.renderOrderDocumentPdf(view, { printedBy: supplierA.name }),
+    ).toString("latin1");
     expect(pdf.startsWith("%PDF-1.4")).toBe(true);
     expect(pdf.trimEnd().endsWith("%%EOF")).toBe(true);
-    expect(pdf).toContain(`#${order.number}`);
+    expect(pdf).toContain("WELLMIX Number:");
+    expect(pdf).toContain(`(${order.number})`);
     expect(pdf).toContain("Quadro em PDF");
-    expect(pdf).toContain("USD 3,600.00");
+    // Números como no modelo: vírgula decimal e ponto de milhar.
+    expect(pdf).toContain("(3.600,0000)");
+    expect(pdf).toContain("Total Value - US$");
     expect(pdf).toContain(view.hash);
     expect(pdf).toContain("Ana Admin");
+    expect(pdf).toContain("WELLMIX PROCEDURES");
+    // Folha deitada (A4 em paisagem).
+    expect(pdf).toContain("/MediaBox [0 0 841.89 595.28]");
     // Arquivo que não é PDF nem foto é recusado.
     await expect(
       sig.signOrderDocument(supplierA, order.id, {
