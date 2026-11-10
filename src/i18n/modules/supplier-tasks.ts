@@ -13,6 +13,9 @@ export const pt = {
   "supplierTasks.steps.title": "Etapas que chegam até você",
   "supplierTasks.steps.all": "Todas as etapas",
   "supplierTasks.steps.none": "nada agora",
+  "supplierTasks.legend.danger": "Atrasado",
+  "supplierTasks.legend.warning": "A fazer, no prazo",
+  "supplierTasks.legend.success": "Concluído ou nada a fazer",
   "supplierTasks.steps.count1": "1 pendência",
   "supplierTasks.steps.count": "{n} pendências",
   "supplierTasks.after":
@@ -60,6 +63,9 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierTasks.steps.title": "Steps that reach you",
   "supplierTasks.steps.all": "All steps",
   "supplierTasks.steps.none": "nothing now",
+  "supplierTasks.legend.danger": "Overdue",
+  "supplierTasks.legend.warning": "To do, on time",
+  "supplierTasks.legend.success": "Done or nothing to do",
   "supplierTasks.steps.count1": "1 pending",
   "supplierTasks.steps.count": "{n} pending",
   "supplierTasks.after":
@@ -107,6 +113,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierTasks.steps.title": "需要您处理的环节",
   "supplierTasks.steps.all": "全部环节",
   "supplierTasks.steps.none": "暂无",
+  "supplierTasks.legend.danger": "已逾期",
+  "supplierTasks.legend.warning": "待办，未逾期",
+  "supplierTasks.legend.success": "已完成或无待办",
   "supplierTasks.steps.count1": "1 项待办",
   "supplierTasks.steps.count": "{n} 项待办",
   "supplierTasks.after":

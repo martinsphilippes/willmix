@@ -159,6 +159,27 @@ function SupplierSteps({
   const counts = new Map<string, number>();
   for (const task of tasks)
     counts.set(task.group, (counts.get(task.group) ?? 0) + 1);
+  // Etapa com alguma pendência atrasada fica vermelha; com pendência no
+  // prazo, amarela; sem nada a fazer, verde (as cores dos selos do sistema).
+  const late = new Set(tasks.filter((x) => x.overdue).map((x) => x.group));
+  const toneOf = (key: string, n: number) =>
+    late.has(key) ? "danger" : n ? "warning" : "success";
+  const TONE = {
+    danger: {
+      box: "border-red-300 bg-red-50 hover:border-red-500",
+      dot: "bg-red-600 text-white",
+    },
+    warning: {
+      box: "border-amber-300 bg-amber-50 hover:border-amber-500",
+      dot: "bg-amber-500 text-white",
+    },
+    success: {
+      box: "border-emerald-200 bg-emerald-50 hover:border-emerald-400",
+      dot: "bg-emerald-600 text-white",
+    },
+  } as const;
+  const activeStep =
+    SUPPLIER_STEPS.find((step) => supplierGroup(step) === group) ?? null;
   return (
     <section className="mb-4" data-supplier-steps>
       <p className="mb-3 text-sm text-zinc-600">{t("supplierTasks.intro")}</p>
@@ -180,64 +201,90 @@ function SupplierSteps({
           {t("supplierTasks.steps.all")} · {tasks.length}
         </Link>
       </div>
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+      {/* Fluxo do processo: quadrados pequenos, um ao lado do outro, na
+          ordem das etapas (pedido do dono). Em tela estreita a faixa rola
+          para o lado. O que fazer em cada etapa aparece ao escolher. */}
+      <ol
+        className="flex items-stretch gap-1 overflow-x-auto pb-1"
+        data-supplier-flow
+      >
         {SUPPLIER_STEPS.map((step, i) => {
           const key = supplierGroup(step);
           const n = counts.get(key) ?? 0;
           const active = group === key;
+          const tone = toneOf(key, n);
           return (
-            <li key={step} className="min-w-0">
+            <li key={step} className="flex shrink-0 items-center gap-1">
+              {i > 0 ? (
+                <span aria-hidden className="text-sm text-zinc-400">
+                  →
+                </span>
+              ) : null}
               <Link
                 href={tasksHref(due, active ? null : key)}
                 aria-pressed={active}
+                title={t(`supplierTasks.help.${step}` as DictionaryKey)}
                 data-task-filter={`type:${key}`}
                 data-supplier-step={step}
                 data-supplier-step-count={n}
                 className={cx(
-                  "flex h-full flex-col gap-1 rounded-xl border p-2.5 transition",
-                  active
-                    ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
-                    : n
-                      ? "border-zinc-300 bg-white hover:border-brand-300 hover:bg-brand-50/50"
-                      : "border-zinc-200 bg-zinc-50 hover:border-zinc-300",
+                  "flex h-full items-center gap-1.5 rounded-lg border px-2 py-1.5 transition",
+                  TONE[tone].box,
+                  active && "ring-2 ring-zinc-900",
                 )}
+                data-supplier-step-tone={tone}
               >
-                <span className="flex items-start gap-1.5">
-                  <span
-                    aria-hidden
-                    className={cx(
-                      "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                      n
-                        ? "bg-brand-600 text-white"
-                        : "bg-zinc-200 text-zinc-600",
-                    )}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 text-sm font-semibold leading-tight text-zinc-900">
-                    {t(`tasks.group.${key}` as DictionaryKey)}
-                  </span>
-                </span>
-                <span className="text-xs leading-snug text-zinc-600">
-                  {t(`supplierTasks.help.${step}` as DictionaryKey)}
-                </span>
                 <span
+                  aria-hidden
                   className={cx(
-                    "mt-auto pt-1 text-xs font-semibold",
-                    n ? "text-brand-700" : "text-zinc-400",
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                    TONE[tone].dot,
                   )}
                 >
-                  {n === 0
-                    ? t("supplierTasks.steps.none")
-                    : n === 1
-                      ? t("supplierTasks.steps.count1")
-                      : t("supplierTasks.steps.count", { n })}
+                  {i + 1}
                 </span>
+                <span className="whitespace-nowrap text-xs font-semibold text-zinc-900">
+                  {t(`tasks.group.${key}` as DictionaryKey)}
+                </span>
+                {n ? (
+                  <span
+                    className={cx(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+                      TONE[tone].dot,
+                    )}
+                    aria-label={
+                      n === 1
+                        ? t("supplierTasks.steps.count1")
+                        : t("supplierTasks.steps.count", { n })
+                    }
+                  >
+                    {n}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );
         })}
       </ol>
+      <p
+        className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600"
+        data-supplier-flow-legend
+      >
+        {(["danger", "warning", "success"] as const).map((tone) => (
+          <span key={tone} className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={cx("h-2.5 w-2.5 rounded-full", TONE[tone].dot)}
+            />
+            {t(`supplierTasks.legend.${tone}`)}
+          </span>
+        ))}
+      </p>
+      {activeStep ? (
+        <p className="mt-1 text-sm text-zinc-700" data-supplier-step-help>
+          {t(`supplierTasks.help.${activeStep}` as DictionaryKey)}
+        </p>
+      ) : null}
       <p className="mt-2 text-xs text-zinc-500">{t("supplierTasks.after")}</p>
     </section>
   );

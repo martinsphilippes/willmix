@@ -43,7 +43,8 @@ export type TaskKind =
   | "cert_step"
   | "cert_validate"
   | "message_reply"
-  | "ncm_classify";
+  | "ncm_classify"
+  | "purchase_schedule";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -1040,6 +1041,55 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             dueAt: m.dueAt,
             customerId: m.customerId,
             ownerUserId: m.analystId,
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Programação de compra (lotes, caixas, container): quem faz é a Wellmix,
+  // o administrador (dono, 10/11/2026). Pedido na Preparação, com ficha de
+  // compra e ainda sem o 1º lote, vira pendência dele.
+  if (isAdmin(user)) {
+    const { normalizeLots } = await import("./purchase-sheet-calc");
+    const stages = await store.list("stages", {
+      filter: { key: "PREPARATION", status: ["active", "blocked"] },
+    });
+    const orderIds = stages.map((s) => s.orderId);
+    const [sheets, orders] = orderIds.length
+      ? await Promise.all([
+          store.list("purchase_sheets", { filter: { orderId: orderIds } }),
+          store.list("orders", { filter: { id: orderIds } }),
+        ])
+      : [[], []];
+    for (const stage of stages) {
+      const order = orders.find((o) => o.id === stage.orderId);
+      const sheet = sheets.find((x) => x.orderId === stage.orderId);
+      if (!order || !sheet) continue;
+      if (order.status === "CANCELLED" || order.status === "CLOSED") continue;
+      const first = normalizeLots(sheet.lots)[0];
+      const done =
+        typeof first.masterCartons === "number" &&
+        first.masterCartons > 0 &&
+        typeof first.departureIntervalDays === "number";
+      if (done) continue;
+      tasks.push(
+        finish(
+          {
+            kind: "purchase_schedule",
+            title: `Fazer a programação de compra: pedido #${order.number}`,
+            detail:
+              "Informe os lotes (caixas e dias de saída) na ficha de compra do pedido",
+            text: {
+              title: "tasks.schedule.title",
+              detail: "tasks.schedule.detail",
+              values: { n: order.number },
+            },
+            link: `/app/orders/${order.id}/purchase-sheet`,
+            dueAt: stage.dueAt,
+            orderNumber: order.number,
+            customerId: order.customerId,
+            ownerUserId: order.ownerUserId,
           },
           now,
         ),

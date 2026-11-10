@@ -754,3 +754,14 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): a primeira etapa do pedido e a situação da solicitação que virou pedido se chamavam "Pedido criado", mas o pedido só está de fato criado depois das assinaturas do documento, quando vai para a produção. O nome passa a ser "Pedido pré-aprovado" (en "Order pre-approved", zh "订单预批准").
 - **Onde mudou** (só texto): etapa `ORDER_CREATED`, situação `ORDERED` da solicitação, programação de compra do catálogo, próximo passo do Booking, aviso ao fornecedor, ajuda da tela de solicitações, recusa da assinatura, pendência da arte e o item de revisão "sem valor FOB". As chaves do código e do banco (`ORDER_CREATED`, `ORDERED`) não mudaram: nenhum dado foi alterado.
+
+## Programação de compra vira pendência do administrador
+
+- **Decisão do dono** (10/11/2026): quem faz a Programação de compra é a Wellmix, o administrador. Pedido na Preparação, com ficha de compra e ainda sem o 1º lote, aparece em "Minhas pendências" do administrador como "Fazer a programação de compra: pedido #N", com o atalho para a ficha e o prazo da etapa. Some quando o 1º lote é gravado.
+- Pendência derivada (não é item de etapa): `pendingTasksFor` em `src/lib/services/tasks.ts`, tipo `purchase_schedule`. A trava na validação da ficha (`schedule_required`) continua.
+- Teste: `tests/unit/purchase-sheet.test.ts`.
+
+## Pendências do fornecedor: etapas em faixa de fluxo
+
+- **Pedido do dono** (10/11/2026): os quadrados das etapas em "Minhas pendências" do fornecedor ficam pequenos, um ao lado do outro, com seta entre eles, como um fluxo de processo (`SupplierSteps` em `src/components/task-list.tsx`). Cada um mostra o número da etapa, o nome e a contagem quando há pendência; o texto do que fazer aparece ao escolher a etapa (e na dica do quadrado). Em tela estreita a faixa rola para o lado. Filtros e contagens não mudaram.
+- **Cores por situação** (dono, 10/11/2026): cada etapa da faixa usa as cores dos selos do sistema: vermelha com alguma pendência atrasada, amarela com pendência no prazo, verde concluída ou sem nada a fazer. Legenda logo abaixo da faixa; a etapa escolhida ganha um contorno escuro.
