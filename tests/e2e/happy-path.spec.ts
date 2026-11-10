@@ -263,6 +263,17 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.locator("[data-rfq-switch=on]").click();
   await page.waitForURL(/\/app\/rfq\?saved=on/);
   await expect(page.locator("[data-rfq-state=on]")).toBeVisible();
+  // Sourcing também em espera (pedido do dono): a tela guarda tudo, mostra a
+  // situação e o interruptor do administrador (liga e volta para espera).
+  await page.goto("/app/sourcing");
+  await expect(page.locator("[data-sourcing-state=off]")).toBeVisible();
+  await expect(page.locator("[data-sourcing-standby]")).toBeVisible();
+  await page.locator("[data-sourcing-switch=on]").click();
+  await page.waitForURL(/\/app\/sourcing\?saved=on/);
+  await expect(page.locator("[data-sourcing-state=on]")).toBeVisible();
+  await page.locator("[data-sourcing-switch=off]").click();
+  await page.waitForURL(/\/app\/sourcing\?saved=off/);
+  await expect(page.locator("[data-sourcing-state=off]")).toBeVisible();
 
   // Wellmix abre RFQ para dois fornecedores
   await login(page, "operador@wellmix.com");

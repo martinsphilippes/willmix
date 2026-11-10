@@ -80,7 +80,6 @@ export function navFor(
           ["booking", { href: "/app/booking", key: "nav.booking" }],
           ["requests", { href: "/app/requests", key: "nav.requests" }],
           ["orders", { href: "/app/orders", key: "nav.orders" }],
-          ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
           ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
           ["freight", { href: "/app/freight", key: "nav.freight" }],
           [
@@ -95,6 +94,8 @@ export function navFor(
           ["superplan", { href: "/app/superplan", key: "nav.superplan" }],
           // RFQ guardada, em espera: tela própria com o interruptor (admin).
           ["rfq", { href: "/app/rfq", key: "nav.rfq" }],
+          // Sourcing guardado, em espera, como a RFQ (interruptor na tela).
+          ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],
         ]),
       ),
       ...group(

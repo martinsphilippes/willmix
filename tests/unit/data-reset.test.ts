@@ -32,6 +32,9 @@ let supplierA: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
+  // Com o Sourcing ativo: a limpeza também trata o item de Sourcing que a
+  // solicitação de teste criou.
+  await setSetting("sourcingEnabled", true);
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   operator = users.find((u) => u.role === "operator")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
