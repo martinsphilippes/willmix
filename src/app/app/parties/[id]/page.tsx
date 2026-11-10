@@ -46,7 +46,13 @@ import { SubmitButton } from "@/components/submit-button";
 import { listCertifications } from "@/lib/services/compliance";
 import { radarProblem } from "@/lib/services/operations";
 import { createUserAction } from "../../actions";
-import { PORTAL_MIN_PASSWORD } from "@/lib/services/portal-access";
+import {
+  PORTAL_MIN_PASSWORD,
+  suggestPassword,
+} from "@/lib/services/portal-access";
+import { loginLabel, suggestLoginName } from "@/lib/auth/login-id";
+import { PartyProfile } from "@/components/party-profile";
+import { AccessCopy } from "@/components/access-copy";
 import { updatePartyExtraAction } from "../../actions/catalog";
 import { saveCustomerOperationAction } from "../../actions/vision";
 import { CertificationsSection } from "../../products/_components/certifications-section";
@@ -91,7 +97,7 @@ export default async function PartyPage({
   if (!user) redirect("/login");
   requireScreen(user, "parties");
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const { error, saved, login: savedLogin } = await searchParams;
   const store = getStore();
   const party = await store.get("parties", id);
   if (!party) notFound();
@@ -179,6 +185,27 @@ export default async function PartyPage({
     : null;
   // Função do acesso: a do tipo deste cadastro (o servidor recusa as outras);
   // as da Wellmix continuam só para o administrador.
+  // Perfil: cartão do fabricante mais recente e o responsável na Wellmix.
+  const [profileCard] = isSupplier
+    ? await store
+        .list("manufacturer_cards", {
+          filter: { supplierId: id },
+          orderBy: "createdAt",
+          direction: "desc",
+          limit: 1,
+        })
+        .catch(() => [])
+    : [];
+  const ownerName = party.ownerUserId
+    ? (allUsers.find((u) => u.id === party.ownerUserId)?.name ?? null)
+    : null;
+  // Criar acesso: login sugerido pelo nome (sem e-mail) e senha sugerida.
+  const loginSuggestion = suggestLoginName(
+    party.name,
+    party.storeNumber,
+    allUsers.map((u) => u.email),
+  );
+  const passwordSuggestion = suggestPassword();
   const roles = [
     ...ROLES.filter((r) => r === party.type),
     ...ROLES.filter(
@@ -225,6 +252,14 @@ export default async function PartyPage({
         </Alert>
       ) : null}
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      <PartyProfile
+        party={party}
+        users={users}
+        ownerName={ownerName}
+        productCount={isSupplier ? supplierProducts.length : null}
+        card={profileCard ?? null}
+        t={t}
+      />
       {/* Dois cartões por linha no iPad/desktop: cadastro e usuários à esquerda; modalidade e sourcing/banco à direita. */}
       <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
         <div className="min-w-0 space-y-4">
@@ -238,7 +273,12 @@ export default async function PartyPage({
               {saved === "user" ? (
                 <div className="mb-3" data-party-access-saved>
                   <Alert tone="success">
-                    {t("portalAccess.saved", { name: party.name })}
+                    {typeof savedLogin === "string" && savedLogin
+                      ? t("portalAccess.saved.login", {
+                          name: party.name,
+                          login: savedLogin.slice(0, 254),
+                        })
+                      : t("portalAccess.saved", { name: party.name })}
                   </Alert>
                 </div>
               ) : null}
@@ -265,7 +305,9 @@ export default async function PartyPage({
                       <span className="font-medium text-zinc-900">
                         {u.name}
                       </span>{" "}
-                      <span className="text-zinc-500">· {u.email}</span>
+                      <span className="text-zinc-500">
+                        · {loginLabel(u.email)}
+                      </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-1">
                       {u.active ? null : (
@@ -294,18 +336,25 @@ export default async function PartyPage({
                       <Input
                         name="name"
                         defaultValue={
-                          users.length ? "" : (party.contactName ?? "")
+                          users.length ? "" : (party.contactName ?? party.name)
                         }
                         required
                       />
                     </Field>
                   </div>
                   <div className="min-w-0 @lg:col-span-3">
-                    <Field label={t("common.email")}>
+                    <Field
+                      label={t("portalAccess.login.label")}
+                      hint={t("portalAccess.login.hint")}
+                    >
                       <Input
-                        name="email"
-                        type="email"
-                        defaultValue={users.length ? "" : (party.email ?? "")}
+                        name="login"
+                        defaultValue={loginSuggestion}
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        autoComplete="off"
+                        maxLength={254}
                         required
                       />
                     </Field>
@@ -349,15 +398,32 @@ export default async function PartyPage({
                         name="password"
                         type="text"
                         minLength={PORTAL_MIN_PASSWORD}
+                        maxLength={128}
+                        defaultValue={passwordSuggestion}
                         autoComplete="off"
                         required
                       />
                     </Field>
                   </div>
                 </div>
-                <SubmitButton variant="secondary" data-party-access-create="">
-                  + {t("portalAccess.create")}
-                </SubmitButton>
+                <p className="text-xs text-zinc-500">
+                  {t("portalAccess.copy.hint")}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <AccessCopy
+                    labels={{
+                      copy: t("portalAccess.copy"),
+                      copied: t("portalAccess.copied"),
+                      empty: t("portalAccess.copy.empty"),
+                      portal: t("portalAccess.copy.portal"),
+                      login: t("portalAccess.login.label"),
+                      password: t("login.password"),
+                    }}
+                  />
+                  <SubmitButton variant="primary" data-party-access-create="">
+                    + {t("portalAccess.create")}
+                  </SubmitButton>
+                </div>
               </form>
             </Card>
           </div>

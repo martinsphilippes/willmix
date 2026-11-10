@@ -9,11 +9,7 @@ import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
-import {
-  assertRole,
-  assertWellmix,
-  isWellmix,
-} from "@/lib/auth/permissions";
+import { assertRole, assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
@@ -51,6 +47,7 @@ import {
 import { audit } from "@/lib/services/audit";
 import { requesterTarget, notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
+import { loginLabel } from "@/lib/auth/login-id";
 import {
   createPortalLogin,
   PORTAL_MIN_PASSWORD,
@@ -946,22 +943,25 @@ export async function createUserAction(form: FormData) {
     assertScreen(user, "parties");
     const parsed = z
       .object({
-        email: z.string().email(),
+        // Nome de usuário ou e-mail: o formato é conferido no serviço.
+        email: z.string().min(3).max(254),
         name: z.string().min(2),
         role: z.enum(ROLES),
         locale: z.enum(LOCALES),
-        password: z.string().min(PORTAL_MIN_PASSWORD),
+        password: z.string().min(PORTAL_MIN_PASSWORD).max(128),
       })
       .parse({
-        email: str(form, "email").toLowerCase(),
+        email: (str(form, "login") || str(form, "email")).toLowerCase(),
         name: str(form, "name"),
         role: str(form, "role"),
         locale: str(form, "locale") || "pt",
         password: str(form, "password"),
       });
     // O login nasce preso ao cadastro (docs/ARQUITETURA.md, "Acesso ao portal").
-    await createPortalLogin(user, { ...parsed, partyId });
-    return `${back}?saved=user#access`;
+    const created = await createPortalLogin(user, { ...parsed, partyId });
+    // O login (não a senha) volta na confirmação, para conferir o que passar.
+    const login = encodeURIComponent(loginLabel(created.email));
+    return `${back}?saved=user&login=${login}#access`;
   });
 }
 

@@ -115,7 +115,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           <LoginForm
             next={target}
             labels={{
-              email: t("login.email"),
+              email: t("portalAccess.login.field"),
               password: t("login.password"),
               submit: t("login.submit"),
               pending: t("login.pending"),

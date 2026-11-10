@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import type { NewRow } from "@/lib/db/store";
 import { WELLMIX_ROLES } from "@/lib/auth/permissions";
+import { isLoginName } from "@/lib/auth/login-id";
 import { isLocale, translator, type Translate } from "@/i18n";
 
 export interface NotifyTarget {
@@ -52,7 +53,11 @@ export type NotifyMessage = {
   inAppOnly?: boolean;
 } & (
   | { subject: string; body: string; text?: undefined }
-  | { text: (t: Translate) => NotifyText; subject?: undefined; body?: undefined }
+  | {
+      text: (t: Translate) => NotifyText;
+      subject?: undefined;
+      body?: undefined;
+    }
 );
 
 /**
@@ -137,7 +142,10 @@ async function createNotification(row: NewRow<Notification>) {
   }
 }
 
-function createLegacy(store: ReturnType<typeof getStore>, row: NewRow<Notification>) {
+function createLegacy(
+  store: ReturnType<typeof getStore>,
+  row: NewRow<Notification>,
+) {
   const legacy: Record<string, unknown> = { ...row };
   delete legacy.kind;
   delete legacy.actor;
@@ -197,6 +205,8 @@ async function sendEmail(
   user: User,
   message: NotifyText,
 ): Promise<"sent" | "mock" | "failed"> {
+  // Login sem e-mail (nome de usuário): não há para onde enviar.
+  if (isLoginName(user.email)) return "mock";
   // EXTERNAL DEPENDENCY PENDING: provedor de e-mail (ex.: Resend). Sem chave, modo mock.
   if (process.env.NODE_ENV !== "test") {
     console.info(`[email:mock] para ${user.email}: ${message.subject}`);
