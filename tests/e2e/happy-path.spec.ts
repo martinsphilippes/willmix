@@ -250,9 +250,27 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   const requestUrl = page.url();
   await expect(page.getByText(/Solicitado/).first()).toBeVisible();
 
-  // 2. Wellmix abre RFQ para dois fornecedores
+  // 2. A RFQ está em espera (docs/RFQ_STANDBY.md): a solicitação oferece
+  // "Enviar ao fornecedor", um só. O administrador liga a RFQ na tela
+  // Pedidos → RFQ, e este teste segue pelo caminho da disputa (que continua
+  // guardado e funcionando).
   await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
+  await expect(page.locator("[data-rfq-card=standby]")).toBeVisible();
+  await expect(
+    page.locator("[data-rfq-card=standby] input[type=radio]").first(),
+  ).toBeVisible();
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/rfq");
+  await expect(page.locator("[data-rfq-state=off]")).toBeVisible();
+  await page.locator("[data-rfq-switch=on]").click();
+  await page.waitForURL(/\/app\/rfq\?saved=on/);
+  await expect(page.locator("[data-rfq-state=on]")).toBeVisible();
+
+  // Wellmix abre RFQ para dois fornecedores
+  await login(page, "operador@wellmix.com");
+  await page.goto(requestUrl);
+  await expect(page.locator("[data-rfq-card=rfq]")).toBeVisible();
   await page.getByLabel(/Shenzhen Supplier A/).check();
   await page.getByLabel(/Guangzhou Supplier B/).check();
   await page.getByRole("button", { name: /Abrir RFQ/ }).click();

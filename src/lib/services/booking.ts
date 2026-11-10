@@ -1409,5 +1409,92 @@ export async function generateRequestFromBooking(
   );
   if (!kept.length)
     throw refuse("booking_not_requestable", planned[0].booking.id);
+  await sendToBookingSuppliers(
+    user,
+    kept,
+    new Map(planned.map((p) => [p.requestId, p.product])),
+  );
   return kept;
+}
+
+/**
+ * RFQ em espera (docs/RFQ_STANDBY.md): a solicitação que nasce do Booking vai
+ * na hora para o fornecedor do produto (o escolhido ao subir a ficha), um só,
+ * para ele analisar: preço, prazo, pedido mínimo, fotos. Cada fornecedor
+ * recebe um aviso só, com a lista. Produto sem fornecedor fica esperando na
+ * solicitação ("Enviar ao fornecedor"). Uma falha aqui não desfaz a
+ * solicitação: fica no log e o envio pode ser feito pela solicitação.
+ */
+async function sendToBookingSuppliers(
+  user: User,
+  requests: Request[],
+  productOf: Map<string, Product>,
+): Promise<void> {
+  if ((await getSettings()).rfqEnabled) return;
+  const { openRfq } = await import("./requests");
+  const sent = new Map<string, { request: Request; quoteId: string }[]>();
+  for (const request of requests) {
+    const supplierId = productOf.get(request.id)?.supplierId;
+    if (!supplierId) continue;
+    try {
+      const [quote] = await openRfq(user, request.id, [supplierId], {
+        notify: false,
+      });
+      if (!quote) continue;
+      sent.set(supplierId, [
+        ...(sent.get(supplierId) ?? []),
+        { request, quoteId: quote.id },
+      ]);
+    } catch (error) {
+      console.error(
+        "[booking] envio ao fornecedor do Booking falhou",
+        request.id,
+        error,
+      );
+    }
+  }
+  const { notify } = await import("./notifications");
+  for (const [supplierId, items] of sent) {
+    try {
+      const number = items.find((i) => i.request.number)?.request.number;
+      await notify(
+        { role: "supplier", partyId: supplierId },
+        {
+          kind: "action",
+          link:
+            items.length === 1
+              ? `/app/quotes/${items[0].quoteId}`
+              : "/app/quotes",
+          text: (t) => {
+            const ref = number ? t("notif.ref", { number }) : "";
+            return items.length === 1
+              ? {
+                  subject: t("notif.bookingAnalysis.subject", {
+                    product: items[0].request.productName,
+                    ref,
+                  }),
+                  body: t("notif.bookingAnalysis.body", {
+                    qty: items[0].request.quantity.toLocaleString(t.intl),
+                    unit: items[0].request.unit,
+                  }),
+                }
+              : {
+                  subject: t("notif.bookingAnalysis.many.subject", {
+                    count: items.length,
+                    ref,
+                  }),
+                  body: t("notif.bookingAnalysis.many.body", {
+                    items: items
+                      .map((i) => i.request.productName)
+                      .join("; ")
+                      .slice(0, 400),
+                  }),
+                };
+          },
+        },
+      );
+    } catch (error) {
+      console.error("[booking] aviso ao fornecedor falhou", supplierId, error);
+    }
+  }
 }

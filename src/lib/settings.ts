@@ -15,6 +15,13 @@ import { getStore } from "@/lib/db";
  */
 export const DEFAULT_SETTINGS = {
   customerCanCreateRequest: true,
+  /**
+   * RFQ (pedido de preço a vários fornecedores, comparação e disputa). Em
+   * espera por decisão do dono (10/11/2026): cada produto vai direto para o
+   * fornecedor dele (o do Booking), um só, sem disputa. A RFQ continua
+   * guardada e volta ao ligar aqui (tela Pedidos → RFQ, docs/RFQ_STANDBY.md).
+   */
+  rfqEnabled: false,
   /* ---- Aprovação do pré-custo (docs/APPROVALS.md) ---- */
   /** A escolha do fornecedor só vale depois de aprovada (planner → diretoria de compras → diretoria executiva). */
   approvalsEnabled: true,

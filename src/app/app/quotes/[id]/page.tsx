@@ -118,6 +118,10 @@ export default async function QuotePage({
     isWellmix(user) ||
     (user.role === "supplier" && user.partyId === quote.supplierId);
   const offer = flowSide ? await quoteOfferFor(quote, request) : null;
+  // Produto que veio do Booking: para o fornecedor é a análise do Booking
+  // dele (um fornecedor só, sem disputa; docs/RFQ_STANDBY.md).
+  const { isBookingRequest } = await import("@/lib/services/requests");
+  const fromBooking = flowSide ? await isBookingRequest(request.id) : false;
   // Botão das mensagens dentro dos cartões (preço não aceito ou diferente).
   const flowChat = (
     <ChatButtons
@@ -191,7 +195,11 @@ export default async function QuotePage({
       <PageHeader
         help={{ body: "help.quote.body", steps: "help.quote.steps" }}
         t={t}
-        title={`${t("quotes.title")}: ${request.productName}`}
+        title={
+          fromBooking
+            ? t("bookingAnalysis.title", { product: request.productName })
+            : `${t("quotes.title")}: ${request.productName}`
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {request.number ? (
@@ -244,6 +252,11 @@ export default async function QuotePage({
           fields={invalidFields}
           token={saveToken}
         />
+        {fromBooking && user.role === "supplier" ? (
+          <div data-booking-analysis>
+            <Alert tone="info">{t("bookingAnalysis.hint")}</Alert>
+          </div>
+        ) : null}
         {typeof adopted === "string" && adopted ? (
           <Alert tone="success">{t("productSheet.adopted")}</Alert>
         ) : null}

@@ -26,10 +26,12 @@ import {
   type BookingColumn,
   type BookingColumnKey,
   type BookingFilters,
+  type BookingNextStep,
   type BookingRow,
   type BookingSignal,
 } from "@/lib/booking";
 import { SHEET_CURRENCIES, type BookingStatus } from "@/lib/db/schema";
+import { getSettings } from "@/lib/settings";
 import {
   BOOKING_STOCK_OPTION,
   listBookingRows,
@@ -157,6 +159,11 @@ export default async function BookingPage({
   const t = await getT();
   const query = await searchParams;
   const data = await listBookingRows(user, { intl: t.intl });
+  // RFQ em espera: a linha que ainda não foi ao fornecedor diz "Enviar ao
+  // fornecedor" em vez de "Abrir RFQ" (docs/RFQ_STANDBY.md).
+  const rfqOn = (await getSettings()).rfqEnabled;
+  const nextKey = (step: BookingNextStep) =>
+    !rfqOn && step === "open_rfq" ? ("send_supplier" as const) : step;
   const superplan = data.canApprove;
   const canRequest = canOpen(user, "requests");
   const filters = parseBookingFilters(query, { superplan });
@@ -866,12 +873,12 @@ export default async function BookingPage({
                         : "warning"
                   }
                 >
-                  {t(`booking.next.label.${row.next.step}`)}
+                  {t(`booking.next.label.${nextKey(row.next.step)}`)}
                 </Badge>
               </span>
             </div>
             <p className="whitespace-normal text-xs leading-snug text-zinc-700">
-              {t(`booking.next.${row.next.step}`)}
+              {t(`booking.next.${nextKey(row.next.step)}`)}
               {row.next.total > 1 &&
               (row.next.step === "wait_supplier" ||
                 row.next.step === "supplier_draft" ||

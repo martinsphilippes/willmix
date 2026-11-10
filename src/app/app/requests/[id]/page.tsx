@@ -338,9 +338,13 @@ export default async function RequestDetailPage({
   // (e o cliente nunca os vê).
   const attachments = documents.filter((d) => !d.packagingBriefId);
   /* RFQ: Wellmix escolhe fornecedores (antes da proposta). */
+  /* RFQ em espera (docs/RFQ_STANDBY.md): o produto vai para um fornecedor só
+     (o do Booking, já marcado), sem "convidar mais" depois de enviado. */
+  const rfqOn = settings.rfqEnabled;
   const showRfq =
     wellmix &&
-    ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
+    ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
+    (rfqOn || !rfqOpened);
   /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
   const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
   /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
@@ -666,25 +670,38 @@ export default async function RequestDetailPage({
             {/* RFQ: Wellmix escolhe fornecedores */}
             {showRfq ? (
               <Card
-                title={rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
+                title={
+                  !rfqOn
+                    ? t("rfqStandby.send.title")
+                    : rfqOpened
+                      ? t("rfq.inviteMore")
+                      : t("requests.rfq.open")
+                }
               >
-                <form action={openRfqAction} className="space-y-2.5">
+                <form
+                  action={openRfqAction}
+                  className="space-y-2.5"
+                  data-rfq-card={rfqOn ? "rfq" : "standby"}
+                >
                   <input type="hidden" name="requestId" value={request.id} />
                   <p className="text-sm text-zinc-600">
-                    {allInvited
-                      ? t("rfq.allInvited")
-                      : rfqOpened
-                        ? t("rfq.inviteMoreHint")
-                        : t("requests.rfq.select")}
+                    {!rfqOn
+                      ? t("rfqStandby.send.hint")
+                      : allInvited
+                        ? t("rfq.allInvited")
+                        : rfqOpened
+                          ? t("rfq.inviteMoreHint")
+                          : t("requests.rfq.select")}
                   </p>
-                  {supplying.size ? (
+                  {supplying.size && rfqOn ? (
                     <p className="text-xs text-zinc-500">
                       {t("productSuppliers.rfqHint")}
                     </p>
                   ) : null}
                   {/* Lote: o atalho só enquanto algum produto ainda não tem
                       RFQ (depois de aberta, não se abre de novo). */}
-                  {request.groupId &&
+                  {rfqOn &&
+                  request.groupId &&
                   rfqSiblings.length > 0 &&
                   [request, ...rfqSiblings].some(
                     (r) => r.status === "REQUESTED",
@@ -712,11 +729,18 @@ export default async function RequestDetailPage({
                         )}
                       >
                         <input
-                          type="checkbox"
+                          // RFQ em espera: um fornecedor só (o do produto já
+                          // vem marcado); com a RFQ ligada, vários.
+                          type={rfqOn ? "checkbox" : "radio"}
                           name="supplierIds"
                           value={s.id}
+                          required={!rfqOn}
                           disabled={invited.has(s.id)}
-                          defaultChecked={invited.has(s.id)}
+                          defaultChecked={
+                            rfqOn
+                              ? invited.has(s.id)
+                              : s.id === productForRfq?.supplierId
+                          }
                           className="h-4 w-4 shrink-0 accent-brand-600"
                         />
                         <span>
@@ -739,9 +763,11 @@ export default async function RequestDetailPage({
                   )}
                   {allInvited ? null : (
                     <SubmitButton>
-                      {rfqOpened
-                        ? t("rfq.inviteSelected")
-                        : t("requests.rfq.open")}
+                      {!rfqOn
+                        ? t("rfqStandby.send.submit")
+                        : rfqOpened
+                          ? t("rfq.inviteSelected")
+                          : t("requests.rfq.open")}
                     </SubmitButton>
                   )}
                 </form>
