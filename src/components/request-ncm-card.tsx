@@ -10,9 +10,10 @@ import {
 import { Alert, Badge, Card, Input } from "@/components/ui";
 
 /*
- * Classificação fiscal da solicitação (só Wellmix): NCM do cadastro ou
- * confirmado, com II/IPI da tabela; sem NCM, as sugestões (IA e palavras-chave)
- * para confirmar com um clique, ou digitar outro.
+ * Classificação fiscal da solicitação: NCM do cadastro ou confirmado, com
+ * II/IPI da tabela; sem NCM, as sugestões (IA e palavras-chave) para confirmar
+ * com um clique, ou digitar outro. Quem classifica é o despachante (na tela
+ * só do NCM); a Wellmix vê o mesmo cartão na solicitação e também pode.
  */
 
 const pct = (n: number | null, intl: string) =>
@@ -43,6 +44,9 @@ export function RequestNcmCard({
   editable,
   notice,
   aiNotice,
+  confirmedBy = null,
+  queue = null,
+  outsider = false,
 }: {
   t: Translate;
   requestId: string;
@@ -55,6 +59,15 @@ export function RequestNcmCard({
   editable: boolean;
   notice: string | null;
   aiNotice: string | null;
+  /** Quem confirmou ("Nome (Despachante)"), quando se sabe. */
+  confirmedBy?: string | null;
+  /**
+   * Só na solicitação (Wellmix), enquanto falta o NCM: "broker" = está na
+   * fila do despachante; "none" = não há despachante com login.
+   */
+  queue?: "broker" | "none" | null;
+  /** Tela do despachante: ele não carrega a tabela fiscal (o aviso muda). */
+  outsider?: boolean;
 }) {
   const confirmForm = (
     <form
@@ -86,7 +99,11 @@ export function RequestNcmCard({
         <p className="text-xs leading-relaxed text-zinc-500">{t("ncm.hint")}</p>
         {notice ? <Alert tone="success">{notice}</Alert> : null}
         {aiNotice ? <Alert tone="warning">{aiNotice}</Alert> : null}
-        {!hasTable ? <Alert tone="warning">{t("ncm.noTable")}</Alert> : null}
+        {!hasTable ? (
+          <Alert tone="warning">
+            {t(outsider ? "ncm.noTable.outsider" : "ncm.noTable")}
+          </Alert>
+        ) : null}
 
         {ncm.ncm ? (
           <div className="rounded-xl border border-zinc-200 p-2.5">
@@ -111,6 +128,11 @@ export function RequestNcmCard({
             <div className="mt-1">
               <RatesLine t={t} rates={ncm.rates} />
             </div>
+            {confirmedBy && ncm.status === "confirmed" ? (
+              <p className="mt-1 text-xs text-zinc-500" data-ncm-by>
+                {t("ncm.confirmedBy", { name: confirmedBy })}
+              </p>
+            ) : null}
             {editable ? (
               <details className="mt-2">
                 <summary className="cursor-pointer text-xs font-medium text-brand-700">
@@ -123,6 +145,11 @@ export function RequestNcmCard({
         ) : (
           <>
             <Alert tone="warning">{t("ncm.pending")}</Alert>
+            {queue ? (
+              <p className="text-xs text-zinc-600" data-ncm-queue={queue}>
+                {t(queue === "broker" ? "ncm.queue.broker" : "ncm.queue.none")}
+              </p>
+            ) : null}
             <p className="text-sm font-medium text-zinc-900">
               {t("ncm.suggestions")}
             </p>
