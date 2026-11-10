@@ -377,6 +377,31 @@ describe("filtros do Booking: toda coluna filtra", () => {
     ).toEqual(["b1", "b2"]);
   });
 
+  it("data: um campo só (o dia escolhido); o endereço guarda o dia e zerar tira o filtro", () => {
+    expect(run({ sheetDate_on: "2026-10-13" })).toEqual(["b1", "b2"]);
+    // Dia inválido não filtra; o período antigo (de/até) continua valendo.
+    expect(run({ sheetDate_on: "ontem" })).toEqual(["b1", "b2", "b3"]);
+    const filters = parseBookingFilters(
+      { sheetDate_on: "2026-10-13" },
+      { superplan: false },
+    );
+    expect(filters.dates.sheetDate).toEqual({
+      from: "2026-10-13",
+      to: "2026-10-13",
+    });
+    expect(bookingQuery(filters)).toBe("?sheetDate_on=2026-10-13");
+    expect(bookingQuery(filters, { drop: "sheetDate" })).toBe("");
+    // Período de endereço antigo: segue como de/até.
+    expect(
+      bookingQuery(
+        parseBookingFilters(
+          { enteredAt_from: "2026-11-01", enteredAt_to: "2026-11-05" },
+          { superplan: false },
+        ),
+      ),
+    ).toBe("?enteredAt_from=2026-11-01&enteredAt_to=2026-11-05");
+  });
+
   it("vários filtros valem juntos; a busca geral procura em tudo", () => {
     expect(run({ name: "porta", status: "approved" })).toEqual(["b2"]);
     expect(run({ name: "porta", price_min: "3,9", colors: "bege" })).toEqual([

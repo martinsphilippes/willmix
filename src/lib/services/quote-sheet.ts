@@ -258,11 +258,23 @@ export async function saveQuoteTermsDraft(
 
 /** Campos obrigatórios da ficha que faltam para responder a RFQ (sem fotos nem lotes). */
 /** O que falta para enviar a cotação: a ficha completa, como a Preparação exige. */
+/**
+ * A programação de compra (início da produção, lotes) saiu da cotação (pedido
+ * do dono): é do pedido, onde a compra está confirmada. Na cotação ela não é
+ * exigida; o prazo de produção é informado direto, em dias.
+ */
+export const QUOTE_UNREQUIRED: readonly SheetMissing[] = [
+  "productionStartAt",
+  "lot1",
+];
+
 export function missingForQuote(
   sheet: Partial<PurchaseSheet> | null,
   photoKinds: readonly string[],
 ): SheetMissing[] {
-  return missingForCompletion(sheet, photoKinds);
+  return missingForCompletion(sheet, photoKinds).filter(
+    (m) => !QUOTE_UNREQUIRED.includes(m),
+  );
 }
 
 const photoKindsOf = (photos: Array<{ kind: string }>) => [

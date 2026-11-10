@@ -74,6 +74,7 @@ import * as freight from "./freight";
 import * as importTaxes from "./import-taxes";
 import * as errors from "./errors";
 import * as rfq from "./rfq";
+import * as rfqStandby from "./rfq-standby";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
@@ -160,6 +161,7 @@ export const modulesPt = {
   ...importTaxes.pt,
   ...errors.pt,
   ...rfq.pt,
+  ...rfqStandby.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
@@ -263,6 +265,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...importTaxes.en,
   ...errors.en,
   ...rfq.en,
+  ...rfqStandby.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
   ...sheetPhotos.en,
@@ -366,6 +369,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...importTaxes.zh,
   ...errors.zh,
   ...rfq.zh,
+  ...rfqStandby.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
   ...sheetPhotos.zh,

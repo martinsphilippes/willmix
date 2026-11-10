@@ -10,6 +10,7 @@ import {
 } from "@/lib/services/purchase-sheet";
 import { invalidTarget, parseSheet } from "./sheet-form";
 import { leadTimeFromLots } from "@/lib/services/purchase-sheet-calc";
+import { parseNumberInput } from "@/lib/number-input";
 import {
   files,
   requireUser,
@@ -87,14 +88,27 @@ export async function answerQuoteWithSheetAction(form: FormData) {
       await import("@/lib/services/quote-sheet");
     const { input, invalid } = parseSheet(form);
     const { sheet, missing } = await saveQuoteSheet(user, quoteId, input);
-    // Prazo de produção: o "Saída em (dias)" da programação 1 da ficha
-    // gravada (dias entre o início da produção e a 1ª saída). Não é mais
-    // digitado; um valor que chegue no formulário é ignorado.
-    const leadTimeDays = leadTimeFromLots(sheet.lots);
+    // Prazo de produção: informado direto, em dias (a programação de compra
+    // saiu da cotação; ela é do pedido). Formulário sem o campo (ficha de
+    // antes): vale o "Saída em (dias)" da programação 1 já gravada.
+    let leadTimeDays = leadTimeFromLots(sheet.lots);
+    let leadTimeInvalid = false;
+    if (form.has("leadTimeDays")) {
+      const raw = str(form, "leadTimeDays").trim();
+      const n = raw ? parseNumberInput(raw, { int: true }) : null;
+      if (!raw) leadTimeDays = null;
+      else if (n !== null && Number.isInteger(n) && n >= 1 && n <= 3650)
+        leadTimeDays = n;
+      else {
+        leadTimeDays = null;
+        leadTimeInvalid = true;
+      }
+    }
     // Condições (quebra de linha conta como no navegador).
     const conditions = str(form, "conditions").replace(/\r\n/g, "\n");
     const unreadable = [
       ...invalid,
+      ...(leadTimeInvalid ? ["leadTimeDays"] : []),
       ...(conditions.length > 2000 ? ["conditions"] : []),
     ];
     // Rascunho: prazo e condições ficam guardados na cotação não enviada.
@@ -107,10 +121,11 @@ export async function answerQuoteWithSheetAction(form: FormData) {
     if (unreadable.length) return invalidTarget(back, unreadable);
     if (str(form, "intent") !== "send")
       return `${back}?saved=${missing.length ? `partial&at=${Date.now()}` : "complete"}`;
-    // Cada recusa leva de novo até o primeiro campo vazio (token novo). Sem a
-    // programação 1 a ficha já está incompleta ("lot1" no que falta).
-    if (missing.length || leadTimeDays === null)
+    // Cada recusa leva de novo até o primeiro campo vazio (token novo).
+    if (missing.length)
       return `${back}?error=sheet_incomplete&at=${Date.now()}`;
+    if (leadTimeDays === null)
+      return `${back}?error=lead_time_required&at=${Date.now()}#leadTimeDays`;
     // Cartão do fabricante confirmado nesta negociação: sem ele não envia.
     const { getStore } = await import("@/lib/db");
     const quoteRow = await getStore().get("quotes", quoteId);
