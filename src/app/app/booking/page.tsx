@@ -11,10 +11,12 @@ import {
   BOOKING_BULK_MAX,
   BOOKING_PAGE_SIZE,
   BOOKING_REQUEST_MAX,
+  BOOKING_REQUESTABLE,
   BOOKING_SIGNALS,
   activeBookingFilters,
   bookingColumnsFor,
   bookingQuery,
+  bookingRequestQuantity,
   bookingSignal,
   filterBookingRows,
   pageOfBookingRows,
@@ -74,6 +76,15 @@ import { BookingEnhancer, BulkButton } from "./_components/booking-client";
 
 const FILTER_FORM = "booking-filter";
 const BULK_FORM = "booking-bulk";
+/** Recusas do "Gerar solicitação" que ganham o passo a passo de como resolver. */
+const REQUEST_GUIDE_CODES: readonly string[] = [
+  "booking_not_requestable",
+  "booking_request_customer",
+  "booking_customer_mismatch",
+  "booking_qty_missing",
+  "booking_qty_below_moq",
+  "below_moq",
+];
 /** Barra de ações: grupo (rótulo + lista + botão) e botão pequeno. */
 const BULK_GROUP =
   "flex flex-col gap-0.5 rounded-lg border border-zinc-200 bg-zinc-50/70 px-1.5 py-1";
@@ -250,6 +261,65 @@ export default async function BookingPage({
   const errorRow = errorRowId
     ? data.rows.find((r) => r.id === errorRowId)
     : undefined;
+  /*
+   * "Gerar solicitação" recusado: os três requisitos de cada linha (etapa,
+   * cliente, quantidade), o que a linha apontada já tem e como resolver o
+   * que falta. Sem linha apontada, a lista vale como orientação geral.
+   */
+  const requestGuide = REQUEST_GUIDE_CODES.includes(errorCode)
+    ? (() => {
+        const row = errorRow ?? null;
+        const stageOk = row ? BOOKING_REQUESTABLE.includes(row.status) : false;
+        const qty = row
+          ? bookingRequestQuantity({
+              reservedQty: row.reservedQty,
+              plannedQty: row.plannedQty,
+              moq: row.moq,
+            })
+          : null;
+        const qtyOk =
+          qty !== null && (row?.moq == null || qty >= (row?.moq ?? 0));
+        return [
+          {
+            key: "stage",
+            label: t("booking.guide.stage"),
+            ok: stageOk,
+            text: stageOk
+              ? t("booking.guide.stage.ok", {
+                  stage: statusLabel(row!.status),
+                })
+              : row
+                ? t(
+                    data.canApprove
+                      ? "booking.guide.stage.fix"
+                      : "booking.guide.stage.fixAdmin",
+                    { stage: statusLabel(row.status) },
+                  )
+                : t("booking.guide.stage.rule"),
+          },
+          {
+            key: "customer",
+            label: t("booking.guide.customer"),
+            ok: !!row?.customerId,
+            text: row?.customerId
+              ? t("booking.guide.customer.ok", {
+                  name: row.customerName ?? "",
+                })
+              : t("booking.guide.customer.fix"),
+          },
+          {
+            key: "qty",
+            label: t("booking.guide.qty"),
+            ok: qtyOk,
+            text: qtyOk
+              ? t("booking.guide.qty.ok", { n: number(qty) })
+              : row?.moq
+                ? t("booking.guide.qty.fixMoq", { moq: number(row.moq) })
+                : t("booking.guide.qty.fix"),
+          },
+        ];
+      })()
+    : null;
   const done = (
     [
       ["moved", "booking.done.moved"],
@@ -963,6 +1033,43 @@ export default async function BookingPage({
                   name: errorRow.name || t("booking.productMissing"),
                 })}
               </span>
+            ) : null}
+            {/* Recusa do "Gerar solicitação": o que cada linha precisa e o
+                que falta na linha apontada, com o caminho para resolver. */}
+            {requestGuide ? (
+              <div
+                className="mt-2 rounded-lg bg-white/70 p-2 text-sm text-zinc-800"
+                data-request-guide
+              >
+                <p className="font-semibold">{t("booking.guide.title")}</p>
+                <ol className="mt-1 space-y-1">
+                  {requestGuide.map((step) => (
+                    <li
+                      key={step.key}
+                      className="flex items-start gap-2"
+                      data-guide-step={step.key}
+                      data-guide-ok={step.ok ? "yes" : "no"}
+                    >
+                      <span
+                        aria-hidden
+                        className={cx(
+                          "mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white",
+                          step.ok ? "bg-emerald-600" : "bg-red-600",
+                        )}
+                      >
+                        {step.ok ? "✓" : "!"}
+                      </span>
+                      <span>
+                        <span className="font-medium">{step.label}: </span>
+                        {step.text}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-1.5 text-zinc-600">
+                  {t("booking.guide.then")}
+                </p>
+              </div>
             ) : null}
           </Alert>
         ) : null}
