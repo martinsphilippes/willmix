@@ -166,6 +166,8 @@ export const PREPARATION_VALIDATIONS: RequirementTemplate[] = [
  * Preparação. São itens do tipo "confirm", mas só a assinatura do documento
  * (nome digitado e aceite, com a versão do documento) os conclui.
  */
+/** "Pedido conferido e liberado ao fornecedor" (etapa Pedido criado). */
+export const ORDER_CONFIRMED = "order_confirmed";
 export const ORDER_SIGNED_WELLMIX = "order_signed_wellmix";
 export const ORDER_SIGNED_SUPPLIER = "order_signed_supplier";
 export const ORDER_SIGNATURE_KEYS: readonly string[] = [
@@ -201,7 +203,7 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     partyField: null,
     requirements: () => [
       {
-        key: "order_confirmed",
+        key: ORDER_CONFIRMED,
         label: "Pedido conferido e liberado ao fornecedor",
         type: "confirm",
         required: true,
