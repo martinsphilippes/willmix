@@ -349,6 +349,11 @@ export interface BookingRow {
    * `missing` = a criação parou no meio (a linha pode ser devolvida).
    */
   requestState: "pending" | "missing" | null;
+  /**
+   * Linha que virou solicitação: o próximo passo e para onde ir (nulo nas
+   * outras etapas e para quem não abre Solicitações).
+   */
+  next: BookingNext | null;
   /** Medidas da peça (cm), para editar na tabela. */
   pieceLengthCm: number | null;
   pieceWidthCm: number | null;
@@ -854,4 +859,93 @@ export function bookingCanRequest(
 ): boolean {
   if (BOOKING_REQUESTABLE.includes(status)) return true;
   return canApprove && (status === "new" || status === "analysis");
+}
+
+/* ------------------------------------------------------------------------ */
+/* Depois de "Virou solicitação": o próximo passo                            */
+/* ------------------------------------------------------------------------ */
+
+/** Onde a solicitação da linha está, dito como "o que fazer agora". */
+export const BOOKING_NEXT_STEPS = [
+  /** Solicitação criada: falta abrir a RFQ (convidar o fornecedor). */
+  "open_rfq",
+  /** RFQ aberta: o fornecedor ainda não respondeu. */
+  "wait_supplier",
+  /** O fornecedor não aceitou o preço desejado: conversar. */
+  "offer_declined",
+  /** Cotação devolvida com comentário: esperando o fornecedor. */
+  "negotiating",
+  /** O fornecedor respondeu: escolher a cotação e o valor de venda. */
+  "choose_quote",
+  /** Fornecedor escolhido: falta o sinal (ou a aprovação). */
+  "wait_down_payment",
+  /** Virou pedido: segue no pedido. */
+  "ordered",
+  "cancelled",
+] as const;
+export type BookingNextStep = (typeof BOOKING_NEXT_STEPS)[number];
+
+export interface BookingNext {
+  step: BookingNextStep;
+  /** Para onde o botão leva (solicitação, cotação ou pedido). */
+  href: string;
+  /** O que o botão abre (o texto dele). */
+  target: "request" | "quote" | "order";
+}
+
+/**
+ * O próximo passo de uma linha que virou solicitação, a partir da situação
+ * da solicitação, das cotações dela e do pedido (quando já nasceu).
+ * `openQuotes`: quem vê abre a tela Cotações (senão o botão leva à
+ * solicitação).
+ */
+export function bookingNextStep(
+  request: { id: string; status: string },
+  quotes: Array<{
+    id: string;
+    status: string;
+    negotiation?: Array<{ kind: string }> | null;
+  }>,
+  order: { id: string } | null,
+  openQuotes: boolean,
+): BookingNext {
+  const toRequest = {
+    href: `/app/requests/${request.id}`,
+    target: "request" as const,
+  };
+  // Uma cotação só: o botão vai direto nela.
+  const toQuote = (quote: { id: string } | undefined) =>
+    quote && openQuotes
+      ? { href: `/app/quotes/${quote.id}`, target: "quote" as const }
+      : toRequest;
+  const lastKind = (q: { negotiation?: Array<{ kind: string }> | null }) =>
+    q.negotiation?.length ? q.negotiation[q.negotiation.length - 1].kind : null;
+  if (request.status === "CANCELLED")
+    return { step: "cancelled", ...toRequest };
+  if (request.status === "ORDERED")
+    return order
+      ? { step: "ordered", href: `/app/orders/${order.id}`, target: "order" }
+      : { step: "ordered", ...toRequest };
+  if (
+    request.status === "WAITING_DOWN_PAYMENT" ||
+    request.status === "SUPPLIER_SELECTED"
+  )
+    return { step: "wait_down_payment", ...toRequest };
+  if (request.status === "QUOTATION_RECEIVED") {
+    const returned = quotes.find(
+      (q) => q.status === "answered" && lastKind(q) === "return",
+    );
+    if (returned) return { step: "negotiating", ...toQuote(returned) };
+    return { step: "choose_quote", ...toRequest };
+  }
+  if (request.status === "RFQ_OPEN") {
+    const invited = quotes.filter((q) => q.status === "invited");
+    const declined = invited.find((q) => lastKind(q) === "decline");
+    if (declined) return { step: "offer_declined", ...toQuote(declined) };
+    return {
+      step: "wait_supplier",
+      ...toQuote(invited.length === 1 ? invited[0] : undefined),
+    };
+  }
+  return { step: "open_rfq", ...toRequest };
 }

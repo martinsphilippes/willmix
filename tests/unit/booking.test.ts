@@ -10,6 +10,8 @@ import {
   bookingMoveError,
   bookingMoveOptions,
   bookingQuery,
+  BOOKING_NEXT_STEPS,
+  bookingNextStep,
   bookingSignal,
   bookingStatusRequirementError,
   filterBookingRows,
@@ -101,6 +103,7 @@ const row = (patch: Partial<BookingRow> = {}): BookingRow => ({
   requestGroupId: null,
   requestNumber: null,
   requestState: null,
+  next: null,
   pieceLengthCm: null,
   pieceWidthCm: null,
   pieceHeightCm: null,
@@ -617,5 +620,106 @@ describe("sair de 'Virou solicitação'", () => {
     expect(bookingMoveError("approved", "requested", ADMIN, "missing")).toBe(
       "booking_request_only",
     );
+  });
+});
+
+describe("depois de virar solicitação: o próximo passo", () => {
+  const req = (status: string) => ({ id: "r1", status });
+  const quote = (status: string, kinds: string[] = [], id = "q1") => ({
+    id,
+    status,
+    negotiation: kinds.map((kind) => ({ kind })),
+  });
+
+  it("cada situação da solicitação diz o que fazer e para onde ir", () => {
+    // Criada: abrir a RFQ, na solicitação.
+    expect(bookingNextStep(req("REQUESTED"), [], null, true)).toEqual({
+      step: "open_rfq",
+      href: "/app/requests/r1",
+      target: "request",
+    });
+    // RFQ aberta com uma cotação: o botão vai direto na cotação.
+    expect(
+      bookingNextStep(req("RFQ_OPEN"), [quote("invited")], null, true),
+    ).toEqual({
+      step: "wait_supplier",
+      href: "/app/quotes/q1",
+      target: "quote",
+    });
+    // Várias cotações: a solicitação (lá se vê todas).
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("invited"), quote("invited", [], "q2")],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "wait_supplier", target: "request" });
+    // O fornecedor não aceitou o preço: a cotação dele.
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("invited"), quote("invited", ["offer", "decline"], "q2")],
+        null,
+        true,
+      ),
+    ).toEqual({
+      step: "offer_declined",
+      href: "/app/quotes/q2",
+      target: "quote",
+    });
+    // Respondida: escolher; devolvida esperando resposta: negociando.
+    expect(
+      bookingNextStep(
+        req("QUOTATION_RECEIVED"),
+        [quote("answered", ["offer", "confirm"])],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "choose_quote", target: "request" });
+    expect(
+      bookingNextStep(
+        req("QUOTATION_RECEIVED"),
+        [quote("answered", ["offer", "counter", "return"])],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "negotiating", href: "/app/quotes/q1" });
+    expect(
+      bookingNextStep(req("WAITING_DOWN_PAYMENT"), [], null, true).step,
+    ).toBe("wait_down_payment");
+    // Virou pedido: o pedido.
+    expect(bookingNextStep(req("ORDERED"), [], { id: "o1" }, true)).toEqual({
+      step: "ordered",
+      href: "/app/orders/o1",
+      target: "order",
+    });
+    expect(bookingNextStep(req("ORDERED"), [], null, true)).toMatchObject({
+      step: "ordered",
+      target: "request",
+    });
+    expect(bookingNextStep(req("CANCELLED"), [], null, true).step).toBe(
+      "cancelled",
+    );
+  });
+
+  it("quem não abre Cotações é levado à solicitação; cada passo tem texto nas três línguas", async () => {
+    expect(
+      bookingNextStep(req("RFQ_OPEN"), [quote("invited")], null, false),
+    ).toEqual({
+      step: "wait_supplier",
+      href: "/app/requests/r1",
+      target: "request",
+    });
+    const { translator } = await import("@/i18n");
+    for (const lang of ["pt", "en", "zh"] as const) {
+      const tr = translator(lang);
+      for (const step of BOOKING_NEXT_STEPS)
+        expect(tr(`booking.next.${step}`)).not.toBe(`booking.next.${step}`);
+      for (const target of ["request", "quote", "order"] as const)
+        expect(tr(`booking.next.go.${target}`)).not.toBe(
+          `booking.next.go.${target}`,
+        );
+    }
   });
 });

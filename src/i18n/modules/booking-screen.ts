@@ -121,6 +121,23 @@ export const pt = {
     "Não deu para ler este valor (número, data ou nome com menos de 2 letras). Nada foi gravado.",
   "booking.row.autosave":
     "Os campos da tabela gravam sozinhos: escolha na lista ou digite e saia do campo. Aparece “Gravado ✓” embaixo; se não puder gravar, o motivo aparece em vermelho.",
+  "booking.next.open_rfq":
+    "Próximo passo: abrir a RFQ, que envia o pedido de preço ao fornecedor.",
+  "booking.next.wait_supplier":
+    "Esperando o fornecedor confirmar o preço. Se ele já respondeu por fora, registre a resposta na cotação.",
+  "booking.next.offer_declined":
+    "O fornecedor não aceitou o preço. Converse com ele ou mude o preço aqui na tabela.",
+  "booking.next.negotiating":
+    "Cotação devolvida: esperando a resposta do fornecedor.",
+  "booking.next.choose_quote":
+    "O fornecedor respondeu. Próximo passo: escolher a cotação e definir o valor de venda.",
+  "booking.next.wait_down_payment":
+    "Fornecedor escolhido. Próximo passo: confirmar o sinal (ou a aprovação) na solicitação.",
+  "booking.next.ordered": "Já virou pedido. Daqui em diante, siga pelo pedido.",
+  "booking.next.cancelled": "A solicitação foi cancelada.",
+  "booking.next.go.request": "Abrir solicitação",
+  "booking.next.go.quote": "Abrir cotação",
+  "booking.next.go.order": "Abrir pedido",
   "booking.row.qty": "Quantidade reservada de {name}",
   "booking.row.qtyMin": "mín. {moq}",
   "booking.row.rows": "linhas {rows}",
@@ -252,6 +269,24 @@ export const en: Record<keyof typeof pt, string> = {
     "This value could not be read (number, date or a name shorter than 2 letters). Nothing was saved.",
   "booking.row.autosave":
     "The table fields save by themselves: choose from the list, or type and leave the field. “Saved ✓” shows below; if it cannot be saved, the reason shows in red.",
+  "booking.next.open_rfq":
+    "Next step: open the RFQ, which sends the price request to the supplier.",
+  "booking.next.wait_supplier":
+    "Waiting for the supplier to confirm the price. If they already answered elsewhere, record the answer in the quote.",
+  "booking.next.offer_declined":
+    "The supplier did not accept the price. Talk to them or change the price here in the table.",
+  "booking.next.negotiating":
+    "Quote returned: waiting for the supplier's answer.",
+  "booking.next.choose_quote":
+    "The supplier answered. Next step: choose the quote and set the sale price.",
+  "booking.next.wait_down_payment":
+    "Supplier chosen. Next step: confirm the down payment (or the approval) in the request.",
+  "booking.next.ordered":
+    "It is already an order. From here on, follow the order.",
+  "booking.next.cancelled": "The request was cancelled.",
+  "booking.next.go.request": "Open request",
+  "booking.next.go.quote": "Open quote",
+  "booking.next.go.order": "Open order",
   "booking.row.qty": "Reserved quantity of {name}",
   "booking.row.qtyMin": "min. {moq}",
   "booking.row.rows": "rows {rows}",
@@ -375,6 +410,20 @@ export const zh: Record<keyof typeof pt, string> = {
     "无法读取该值（数字、日期，或名称少于 2 个字）。未保存任何内容。",
   "booking.row.autosave":
     "表格中的字段会自动保存：从列表中选择，或输入后离开该字段。下方显示“已保存 ✓”；无法保存时，原因以红色显示。",
+  "booking.next.open_rfq": "下一步：开启询价（RFQ），向供应商发送报价请求。",
+  "booking.next.wait_supplier":
+    "等待供应商确认价格。如对方已通过其他方式回复，请在报价中登记。",
+  "booking.next.offer_declined":
+    "供应商未接受该价格。请与对方沟通，或在此表格中修改价格。",
+  "booking.next.negotiating": "报价已退回：等待供应商回复。",
+  "booking.next.choose_quote": "供应商已回复。下一步：选择报价并确定销售价格。",
+  "booking.next.wait_down_payment":
+    "已选定供应商。下一步：在询价单中确认定金（或审批）。",
+  "booking.next.ordered": "已转为订单。之后请在订单中跟进。",
+  "booking.next.cancelled": "询价单已取消。",
+  "booking.next.go.request": "打开询价单",
+  "booking.next.go.quote": "打开报价",
+  "booking.next.go.order": "打开订单",
   "booking.row.qty": "{name} 的预订数量",
   "booking.row.qtyMin": "最少 {moq}",
   "booking.row.rows": "第 {rows} 行",

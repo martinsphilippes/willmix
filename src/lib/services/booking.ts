@@ -26,6 +26,7 @@ import {
   bookingStatusRequirementError,
   reservedQtyError,
   bookingCanRequest,
+  bookingNextStep,
   bookingRequestQuantity,
   forecastTotalOf,
   type BookingActor,
@@ -285,6 +286,8 @@ function rowOf(
     requestGroupId: absent ? null : booking.requestGroupId,
     requestNumber: absent ? null : booking.requestNumber,
     requestState: absent === "none" ? null : absent,
+    // Preenchido depois, com a solicitação lida (buildRows).
+    next: null,
     pieceLengthCm: positive(product?.lengthCm),
     pieceWidthCm: positive(product?.widthCm),
     pieceHeightCm: positive(product?.heightCm),
@@ -339,6 +342,35 @@ async function buildRows(
       intl,
     }),
   );
+
+  // Linhas que viraram solicitação: o próximo passo de cada uma (a situação
+  // da solicitação, as cotações e o pedido), só para quem abre Solicitações.
+  const requestIds = canOpen(user, "requests")
+    ? distinct(
+        rows
+          .filter((r) => r.status === "requested" && r.requestId)
+          .map((r) => r.requestId as string),
+      )
+    : [];
+  if (requestIds.length) {
+    const [requests, quotes, orders] = await Promise.all([
+      store.list("requests", { filter: { id: requestIds } }),
+      store.list("quotes", { filter: { requestId: requestIds } }),
+      store.list("orders", { filter: { requestId: requestIds } }),
+    ]);
+    const requestOf = new Map(requests.map((r) => [r.id, r]));
+    const openQuotes = canOpen(user, "quotes");
+    for (const row of rows) {
+      const request = row.requestId ? requestOf.get(row.requestId) : null;
+      if (!request || row.status !== "requested") continue;
+      row.next = bookingNextStep(
+        request,
+        quotes.filter((q) => q.requestId === request.id),
+        orders.find((o) => o.requestId === request.id) ?? null,
+        openQuotes,
+      );
+    }
+  }
 
   const usedCustomers = new Set(rows.map((r) => r.customerId));
   const usedOwners = new Set(rows.map((r) => r.ownerUserId));
