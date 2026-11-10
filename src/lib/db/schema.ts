@@ -356,12 +356,18 @@ export type InspectionResult = (typeof INSPECTION_RESULTS)[number];
 
 /* ---- Segunda Onda: NCM, certificações, pós-venda, reposição, sourcing sob demanda ---- */
 
-/** Origem de uma solicitação: manual (padrão), recompra, nova proposta ou produto ainda não catalogado. */
+/**
+ * Origem de uma solicitação: manual (padrão), recompra, nova proposta,
+ * produto ainda não catalogado ou aberta do Superplan (viabilidade feita: a
+ * RFQ vai direto ao fornecedor ganho, que manda faca, MOQ, prazo e foto em
+ * alta; docs/SUPERPLAN.md).
+ */
 export const REQUEST_ORIGINS = [
   "manual",
   "replenishment",
   "proposal",
   "sourcing_demand",
+  "superplan",
 ] as const;
 export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
 
@@ -817,6 +823,11 @@ export interface Quote extends BaseRow {
   manufacturerCardId?: string | null;
   manufacturerCardConfirmedAt?: string | null;
   manufacturerCardConfirmedByUserId?: string | null;
+  /**
+   * Pedido mínimo confirmado pelo fornecedor (RFQ aberta do Superplan).
+   * Coluna opcional: só vai ao banco nesse fluxo.
+   */
+  moq?: number | null;
 }
 
 export interface Order extends BaseRow {
@@ -2433,6 +2444,7 @@ export const TABLES: Record<TableName, TableDef> = {
       manufacturerCardId: id(false),
       manufacturerCardConfirmedAt: datetime(),
       manufacturerCardConfirmedByUserId: id(false),
+      moq: int(),
     },
     indexes: [
       { key: "by_request", type: "key", columns: ["requestId"] },

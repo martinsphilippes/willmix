@@ -173,6 +173,9 @@ export async function submitForApproval(
   const { dumpingHold } = await import("./purchase-flow");
   if (await dumpingHold(quote.id))
     throw new ApprovalError("dumping_release_required");
+  // Aberta do Superplan: a aprovação espera faca, MOQ, prazo e foto em alta.
+  const { assertSuperplanItems } = await import("./superplan-rfq");
+  await assertSuperplanItems(request, quote);
   const settings = await getSettings();
   const valueBrl = valueInBrl(input);
   const levels = levelsFor(valueBrl, settings.approvalExecutiveThresholdBrl);

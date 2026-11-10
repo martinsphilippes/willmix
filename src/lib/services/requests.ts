@@ -503,6 +503,8 @@ export async function createRequest(
       link: `/app/sourcing?tab=items&status=draft`,
     });
   }
+  // Do Superplan a RFQ abre no mesmo ato: não há "abra a RFQ" a avisar.
+  if (request.origin === "superplan") return request;
   await notifyWellmix({
     kind: "action",
     subject: `Nova solicitação${request.number ? ` nº ${request.number}` : ""}: ${request.productName}`,
@@ -905,6 +907,9 @@ export async function selectQuote(
   const { dumpingHold } = await import("./purchase-flow");
   if (await dumpingHold(quote.id))
     throw new RequestError("dumping_release_required");
+  // Aberta do Superplan: a proposta espera faca, MOQ, prazo e foto em alta.
+  const { assertSuperplanItems } = await import("./superplan-rfq");
+  await assertSuperplanItems(request, quote);
   // Antes de qualquer gravação: a ficha não pode ter mudado depois da conta.
   const current = quotedQuantity(request, await getQuoteSheet(quote.id));
   if (

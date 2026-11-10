@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { openSuperplanRfqAction } from "@/app/app/actions/superplan-rfq";
 import type { pt as superplanTexts } from "@/i18n/modules/superplan";
 import { parseNumberInput } from "@/lib/number-input";
+import type { SuperplanSimulation } from "@/lib/superplan-rfq";
 import {
   businessTypeOf,
   computeSuperplan,
@@ -21,6 +23,7 @@ import {
   cx,
   formatMoney,
 } from "./ui";
+import { SubmitButton } from "./submit-button";
 
 /*
  * Simulação do Superplan (docs/SUPERPLAN.md): os campos vêm preenchidos (o
@@ -55,6 +58,15 @@ export interface SuperplanPrefill {
   /** II e IPI do NCM na tabela fiscal; nulos quando o NCM não foi achado. */
   iiPct: number | null;
   ipiPct: number | null;
+}
+
+/**
+ * Abrir a faca e a RFQ com o fornecedor ganho (só o administrador, com um
+ * produto do cadastro): fornecedores (os do produto primeiro) e clientes.
+ */
+export interface SuperplanRfqOptions {
+  suppliers: Array<{ id: string; name: string; linked: boolean }>;
+  customers: Array<{ id: string; name: string }>;
 }
 
 /** O que vem do sistema: parâmetros, containers, câmbio e tributos da importação. */
@@ -143,6 +155,7 @@ export function SuperplanCalculator({
   products,
   prefill,
   ctx,
+  rfq = null,
 }: {
   labels: SuperplanLabels;
   /** Tag do idioma para os números (pt-BR, en-US, zh-CN). */
@@ -150,6 +163,8 @@ export function SuperplanCalculator({
   products: SuperplanProductOption[];
   prefill: SuperplanPrefill;
   ctx: SuperplanContext;
+  /** Nulo: sem o cartão de abrir a faca e a RFQ. */
+  rfq?: SuperplanRfqOptions | null;
 }) {
   const router = useRouter();
   const L = (key: LabelKey, params?: Record<string, string | number>) =>
@@ -282,6 +297,37 @@ export function SuperplanCalculator({
     salePrice: num("salePrice"),
   };
   const r = computeSuperplan(input);
+  // Os números da tela para abrir a RFQ (o servidor refaz a conta com eles).
+  const simulation: SuperplanSimulation = {
+    unitPrice: input.unitPrice,
+    currency: input.currency,
+    pcsPerCarton: input.pcsPerCarton,
+    grossWeightPcKg: input.grossWeightPcKg,
+    cbmPerCarton: input.cbmPerCarton,
+    container: f.container || null,
+    containerCbm: input.containerCbm,
+    containerMaxKg: input.containerMaxKg,
+    iiPct: input.iiPct,
+    ipiPct: input.ipiPct,
+    freightUsd: input.freightUsd,
+    roadFreightBrl: input.roadFreightBrl,
+    deliveryFreightBrl: input.deliveryFreightBrl,
+    officialRate: input.officialRate,
+    futureRate: input.futureRate,
+    rmbPerUsd: input.rmbPerUsd,
+    tradingCommissionPct: input.tradingCommissionPct,
+    chinaChargesRmb: input.chinaChargesRmb,
+    expenses: Object.fromEntries(
+      input.expenses.map((e) => [e.key, e.amountBrl]),
+    ),
+    businessType: f.businessType || null,
+    markup: input.markup,
+    commissionPct: input.commissionPct,
+    adminExpensesPct: input.adminExpensesPct,
+    targetProfitPct: input.targetProfitPct,
+    wdPct: input.wdPct,
+    salePrice: input.salePrice,
+  };
 
   const nf = (v: number, digits = 2) =>
     new Intl.NumberFormat(intl, { maximumFractionDigits: digits }).format(v);
@@ -569,6 +615,16 @@ export function SuperplanCalculator({
               ) : null}
             </div>
           </Card>
+          {rfq ? (
+            <RfqCard
+              key={prefill.productId ?? "none"}
+              L={L}
+              r={r}
+              rfq={rfq}
+              productId={prefill.productId}
+              simulation={simulation}
+            />
+          ) : null}
         </div>
 
         <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
@@ -954,5 +1010,108 @@ function Results({
         </Card>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Viabilidade feita: abre a solicitação e a RFQ só com o fornecedor ganho
+ * (docs/SUPERPLAN.md, seção 11). Com prejuízo ou conta incompleta, o botão
+ * fica desligado e a tela diz por quê; o servidor confere de novo.
+ */
+function RfqCard({
+  L,
+  r,
+  rfq,
+  productId,
+  simulation,
+}: {
+  L: Lbl;
+  r: SuperplanResult;
+  rfq: SuperplanRfqOptions;
+  productId: string | null;
+  simulation: SuperplanSimulation;
+}) {
+  const pieces = r.container?.pieces ?? null;
+  // A quantidade acompanha o container até a pessoa digitar outra.
+  const [quantity, setQuantity] = useState<string | null>(null);
+  const shown = quantity ?? (pieces ? String(pieces) : "");
+  const blocked = !productId
+    ? L("superplan.rfq.needProduct")
+    : r.missing.length || !r.verdict
+      ? L("superplan.rfq.needResult")
+      : r.verdict === "loss"
+        ? L("superplan.rfq.loss")
+        : !rfq.suppliers.length
+          ? L("superplan.rfq.noSuppliers")
+          : null;
+  return (
+    <div id="superplan-rfq" className="scroll-mt-4" data-superplan-rfq>
+      <Card dense title={L("superplan.rfq.title")}>
+        <p className="-mt-1 mb-3 text-sm text-zinc-600">
+          {L("superplan.rfq.hint")}
+        </p>
+        {blocked ? (
+          <Alert tone={r.verdict === "loss" ? "danger" : "neutral"}>
+            {blocked}
+          </Alert>
+        ) : (
+          <form action={openSuperplanRfqAction} className="space-y-3">
+            <input type="hidden" name="productId" value={productId ?? ""} />
+            <input
+              type="hidden"
+              name="simulation"
+              value={JSON.stringify(simulation)}
+            />
+            {r.verdict === "below" ? (
+              <Alert tone="warning">{L("superplan.rfq.below")}</Alert>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field label={L("superplan.rfq.supplier")}>
+                <Select name="supplierId" required data-sp="rfq.supplier">
+                  {rfq.suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.linked
+                        ? `${s.name} (${L("superplan.rfq.linked")})`
+                        : s.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={L("superplan.rfq.customer")}>
+                <Select name="customerId" data-sp="rfq.customer">
+                  <option value="__stock">{L("superplan.rfq.stock")}</option>
+                  {rfq.customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label={L("superplan.rfq.quantity")}
+                hint={L("superplan.rfq.quantity.hint")}
+              >
+                <Input
+                  name="quantity"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  value={shown}
+                  data-sp="rfq.quantity"
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </Field>
+            </div>
+            <SubmitButton
+              pendingText={L("superplan.rfq.sending")}
+              data-superplan-rfq-submit
+            >
+              {L("superplan.rfq.submit")}
+            </SubmitButton>
+          </form>
+        )}
+      </Card>
+    </div>
   );
 }

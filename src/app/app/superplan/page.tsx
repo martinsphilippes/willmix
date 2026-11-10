@@ -8,6 +8,8 @@ import { getFxRates } from "@/lib/services/fx";
 import { lookupNcm } from "@/lib/services/fiscal";
 import { boxCbm } from "@/lib/logistics/cbm";
 import { superplanParams } from "@/lib/superplan";
+import { superplanSupplierOptions } from "@/lib/services/superplan-rfq";
+import { STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
@@ -101,8 +103,23 @@ export default async function SuperplanPage({
   const fxDate = fxDay ? formatDate(`${fxDay}T12:00:00Z`, t) : null;
   const decimal = t.intl.startsWith("pt") ? "," : ".";
   const admin = isAdmin(user);
+  // Abrir a faca e a RFQ com o fornecedor ganho: só o administrador.
+  const rfq = admin
+    ? {
+        suppliers: await superplanSupplierOptions(product?.id ?? null),
+        customers: (
+          await store.list("parties", {
+            filter: { type: "customer", active: true },
+            orderBy: "name",
+          })
+        )
+          .filter((c) => c.id !== STOCK_PARTY_ID)
+          .map((c) => ({ id: c.id, name: c.name })),
+      }
+    : null;
 
   const errorCode = typeof query.error === "string" ? query.error : "";
+  const fromRfq = query.rfq === "1";
   const errorText = !errorCode
     ? null
     : errorCode === "invalid_input"
@@ -125,6 +142,12 @@ export default async function SuperplanPage({
         title={t("superplan.title")}
         subtitle={t("superplan.subtitle")}
       />
+      {/* Recusa ao abrir a faca e a RFQ: em cima, perto do botão. */}
+      {errorText && fromRfq ? (
+        <div className="mb-4" data-superplan-error>
+          <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
       <SuperplanCalculator
         key={`${prefill.productId ?? "none"}:${hash(JSON.stringify(params))}`}
         labels={labelsFor(t)}
@@ -134,6 +157,7 @@ export default async function SuperplanPage({
           label: [p.sku, p.name].filter(Boolean).join(" · "),
         }))}
         prefill={prefill}
+        rfq={rfq}
         ctx={{
           params,
           containers,
@@ -191,8 +215,8 @@ export default async function SuperplanPage({
           </div>
           <ActionError
             t={t}
-            code={errorCode}
-            text={errorText}
+            code={fromRfq ? "" : errorCode}
+            text={fromRfq ? null : errorText}
             fields={query.fields}
             token={query.at}
           />
@@ -201,7 +225,7 @@ export default async function SuperplanPage({
           ) : null}
           <SuperplanParamsForm t={t} params={params} decimal={decimal} />
         </section>
-      ) : errorText ? (
+      ) : errorText && !fromRfq ? (
         <Card className="mt-6">
           <Alert tone="danger">{errorText}</Alert>
         </Card>

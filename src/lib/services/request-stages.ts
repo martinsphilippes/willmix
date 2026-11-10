@@ -99,6 +99,7 @@ export async function loadRequestStages(
       : null,
     selectedAt: request.selectedQuoteId ? lastAudit("quote.select") : null,
     dieline,
+    superplan: request.origin === "superplan",
     proposalApprovedAt: request.proposalApprovedAt ?? null,
     downConfirmedAt: lastAudit("payment.confirm"),
     days: requestStepDays(settings.requestStepDays),
