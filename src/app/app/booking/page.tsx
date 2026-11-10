@@ -56,6 +56,10 @@ import {
   rowClass,
   type Tone,
 } from "@/components/ui";
+import {
+  BookingCustomerSelect,
+  BookingQuantityInput,
+} from "@/components/booking-row-fields";
 import { FormDraftGuard } from "@/components/form-draft-guard";
 import { SelectAllCheckbox } from "@/components/select-all-checkbox";
 import { SubmitButton } from "@/components/submit-button";
@@ -732,6 +736,22 @@ export default async function BookingPage({
     }
   };
 
+  /** A lista de clientes de cada linha (a mesma da barra de cima). */
+  const customerOptions = [
+    ...(data.options.stockOption
+      ? [{ value: BOOKING_STOCK_OPTION, label: t("booking.bulk.stock") }]
+      : []),
+    ...data.options.customers.map((c) => ({ value: c.id, label: c.label })),
+  ];
+
+  /** Avisos das células que gravam sozinhas (cliente e quantidade). */
+  const rowLabels = (field: string) => ({
+    field,
+    saving: t("booking.row.saving"),
+    saved: t("booking.row.saved"),
+    failed: t("booking.row.failed"),
+  });
+
   /** O conteúdo de uma célula. */
   const cell = (row: BookingRow, key: BookingColumnKey): ReactNode => {
     if (editing && row.name && key !== "name") {
@@ -878,26 +898,43 @@ export default async function BookingPage({
         return number(row.forecastEcommerce);
       case "forecastTotal":
         return number(row.forecastTotal);
-      case "customer":
-        return textCell(row.customerName, "max-w-40");
+      case "customer": {
+        // Já virou solicitação ou foi descartada: o cliente não muda aqui.
+        if (row.status === "requested" || row.status === "discarded")
+          return textCell(row.customerName, "max-w-40");
+        const current = row.customerId ?? BOOKING_EMPTY;
+        return (
+          <BookingCustomerSelect
+            bookingId={row.id}
+            current={current}
+            options={[
+              { value: BOOKING_EMPTY, label: "—" },
+              ...(row.customerId &&
+              !customerOptions.some((o) => o.value === row.customerId)
+                ? [{ value: row.customerId, label: row.customerName ?? "?" }]
+                : []),
+              ...customerOptions,
+            ]}
+            labels={rowLabels(
+              t("booking.row.customer", { name: row.name || row.productId }),
+            )}
+          />
+        );
+      }
       case "reservedQty": {
         if (row.status === "requested" || row.status === "discarded")
           return number(row.reservedQty);
         return (
-          <input
-            form={BULK_FORM}
-            name={`qty_${row.id}`}
-            defaultValue={row.reservedQty ?? ""}
-            inputMode="numeric"
-            autoComplete="off"
+          <BookingQuantityInput
+            bookingId={row.id}
+            formId={BULK_FORM}
+            saved={row.reservedQty === null ? "" : String(row.reservedQty)}
             placeholder={
               row.moq ? t("booking.row.qtyMin", { moq: number(row.moq) }) : ""
             }
-            aria-label={t("booking.row.qty", {
-              name: row.name || row.productId,
-            })}
-            data-booking-qty={row.id}
-            className={cx(inputDenseClass, "w-24 min-w-24 text-right")}
+            labels={rowLabels(
+              t("booking.row.qty", { name: row.name || row.productId }),
+            )}
           />
         );
       }

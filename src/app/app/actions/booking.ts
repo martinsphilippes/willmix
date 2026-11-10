@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -12,7 +13,9 @@ import {
 } from "@/lib/booking";
 import { BOOKING_STATUSES } from "@/lib/db/schema";
 import { parseNumberInput } from "@/lib/number-input";
-import { requireUser, run, str } from "./helpers";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { fallbackError } from "@/i18n/error-text";
+import { errorCode, requireUser, run, str } from "./helpers";
 
 /*
  * Booking (docs/BOOKING.md): as ações da tela. Só a Wellmix com a tela
@@ -266,6 +269,79 @@ export async function saveBookingRowAction(form: FormData) {
       return withParams(back, { saved: 1 });
     }),
   );
+}
+
+/** O que as gravações direto na linha devolvem (não redirecionam). */
+type InlineResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Gravação direto na linha da tabela (cliente e quantidade): grava na hora,
+ * sem recarregar a tela (o que estava digitado nas outras linhas fica onde
+ * está). Devolve o resultado em vez de redirecionar; a recusa volta já com o
+ * texto de quem está na tela. Quem pode e as regras são os mesmos de "Salvar
+ * uma linha" (o serviço confere).
+ */
+async function inline(
+  save: (user: Awaited<ReturnType<typeof requireUser>>) => Promise<void>,
+): Promise<InlineResult> {
+  const user = await requireUser();
+  try {
+    assertWellmix(user);
+    assertScreen(user, "booking");
+    await save(user);
+  } catch (error) {
+    const { getT } = await import("@/i18n/server");
+    const t = await getT();
+    const code = errorCode("/app/booking", error);
+    const message =
+      [`booking.error.${code}`, `common.${code}`]
+        .map((k) => [k, t(k as DictionaryKey)] as const)
+        .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, code);
+    return { ok: false, message };
+  }
+  revalidatePath("/app/booking");
+  return { ok: true };
+}
+
+/** Cliente escolhido na linha: "-" tira, "__stock" é a empresa de estoque. */
+export async function setBookingCustomerAction(
+  id: string,
+  customer: string,
+): Promise<InlineResult> {
+  return inline(async (user) => {
+    const input = z
+      .object({
+        id: ID,
+        // Vazio aqui não existe: a lista da linha manda "-" para tirar.
+        customer: CUSTOMER.refine((v) => v !== ""),
+      })
+      .parse({ id, customer });
+    const { saveBookingRow } = await import("@/lib/services/booking");
+    await saveBookingRow(user, input.id, {
+      customerId: input.customer === BOOKING_EMPTY ? null : input.customer,
+    });
+  });
+}
+
+/** Quantidade reservada digitada na linha: vazio tira a quantidade. */
+export async function setBookingQuantityAction(
+  id: string,
+  typed: string,
+): Promise<InlineResult> {
+  return inline(async (user) => {
+    const input = z
+      .object({ id: ID, typed: z.string().max(40) })
+      .parse({ id, typed });
+    const raw = input.typed.trim();
+    const qty = raw ? parseNumberInput(raw, { int: true }) : null;
+    const service = await import("@/lib/services/booking");
+    if (
+      qty !== null &&
+      (!Number.isInteger(qty) || qty <= 0 || qty > 100_000_000)
+    )
+      throw new service.BookingRefusal("booking_qty_required", input.id);
+    await service.saveBookingRow(user, input.id, { reservedQty: qty });
+  });
 }
 
 /**
