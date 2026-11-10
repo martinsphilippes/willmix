@@ -194,7 +194,13 @@ function rowOf(
 ): BookingRow {
   const link = ctx.links.get(booking.id) ?? null;
   // Solicitação que não existe (sendo criada, ou não nasceu): sem link.
-  const absent = link === "pending" || link === "missing" ? link : null;
+  // Fora de "Virou solicitação" a linha não mostra solicitação nenhuma.
+  const absent =
+    link === "pending" || link === "missing"
+      ? link
+      : booking.status !== "requested"
+        ? ("none" as const)
+        : null;
   const product = ctx.joined.products.get(booking.productId) ?? null;
   const supplier = product?.supplierId
     ? (ctx.parties.get(product.supplierId) ?? null)
@@ -267,7 +273,7 @@ function rowOf(
     requestId: absent ? null : booking.requestId,
     requestGroupId: absent ? null : booking.requestGroupId,
     requestNumber: absent ? null : booking.requestNumber,
-    requestState: absent,
+    requestState: absent === "none" ? null : absent,
   };
 }
 
@@ -589,6 +595,17 @@ async function commit(
   const before: Record<string, unknown> = {};
   for (const key of Object.keys(write) as (keyof BookingWrite)[])
     before[key] = booking[key];
+  // Relê logo antes de gravar: se a linha mudou desde a conferência (virou
+  // solicitação, foi descartada, trocou de cliente), não grava por cima.
+  const now = await getStore().get("bookings", booking.id);
+  if (
+    !now ||
+    now.status !== booking.status ||
+    now.requestId !== booking.requestId ||
+    now.customerId !== booking.customerId ||
+    now.reservedQty !== booking.reservedQty
+  )
+    throw refuse("booking_changed", booking.id);
   const saved = await getStore().update("bookings", booking.id, write);
   const what = moved
     ? `etapa ${STATUS_PT[booking.status]} → ${STATUS_PT[saved.status]}`
@@ -1124,7 +1141,12 @@ export async function generateRequestFromBooking(
       throw refuse("booking_not_requestable", booking.id);
   }
   try {
-    for (const { booking, quantity, requestId } of planned)
+    for (const { booking, quantity, requestId } of planned) {
+      // Confere cada linha logo antes de tomá-la (a última não espera atrás
+      // das outras com uma leitura velha).
+      const now = await store.get("bookings", booking.id);
+      if (!now || now.status !== booking.status || now.requestId)
+        throw refuse("booking_not_requestable", booking.id);
       await store.update("bookings", booking.id, {
         status: "requested",
         statusChangedAt: stamp,
@@ -1135,11 +1157,18 @@ export async function generateRequestFromBooking(
         requestGroupId: null,
         requestNumber: null,
       });
+    }
   } catch (error) {
     await release();
     throw error;
   }
-  const claimed = await store.list("bookings", { filter: { id: rowIds } });
+  let claimed: Booking[];
+  try {
+    claimed = await store.list("bookings", { filter: { id: rowIds } });
+  } catch (error) {
+    await release();
+    throw error;
+  }
   const lost = planned.find(
     ({ booking }) => !mine(claimed.find((c) => c.id === booking.id)),
   );

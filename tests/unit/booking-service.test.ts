@@ -1815,3 +1815,113 @@ describe("gerar solicitação: corridas e falhas (releitura própria)", () => {
     ).toHaveLength(1);
   });
 });
+
+describe("quarta revisão: gravação que não passa por cima", () => {
+  it("linha que virou solicitação enquanto a ação em várias linhas rodava é recusada, não sobrescrita", async () => {
+    const a = await row("approved");
+    const b = await row("approved");
+    const store = getStore();
+    const update = store.update.bind(store);
+    let done = false;
+    const spy = vi
+      .spyOn(store, "update")
+      .mockImplementation(async (table, id, patch) => {
+        // Logo antes da 1ª gravação da ação, outro login gera a solicitação de b.
+        if (!done && table === "bookings" && id === a.booking.id) {
+          done = true;
+          spy.mockRestore();
+          await booking.generateRequestFromBooking(
+            admin,
+            { ids: [b.booking.id], customer: joao.partyId! },
+            t,
+          );
+        }
+        return update(table, id, patch as never);
+      });
+    let refused = "";
+    try {
+      refused = await code(() =>
+        booking.moveBookings(buyer, {
+          ids: [a.booking.id, b.booking.id],
+          status: "offered",
+          customer: joao.partyId!,
+        }),
+      );
+    } finally {
+      spy.mockRestore();
+    }
+    expect(refused).toBe("booking_changed");
+    const rowB = await fresh(b.booking.id);
+    expect(rowB.status).toBe("requested");
+    expect(rowB.requestId).toBeTruthy();
+    expect(
+      (await store.list("requests")).filter(
+        (r) => r.productId === b.product.id && r.status !== "CANCELLED",
+      ),
+    ).toHaveLength(1);
+    for (const lang of ["pt", "en", "zh"] as const)
+      expect(translator(lang)("booking.error.booking_changed")).not.toBe(
+        "booking.error.booking_changed",
+      );
+  });
+
+  it("gerar solicitação confere cada linha logo antes de tomá-la; falha na releitura devolve as linhas", async () => {
+    const a = await row("approved");
+    const b = await row("approved");
+    const store = getStore();
+    const get = store.get.bind(store);
+    let discarded = false;
+    const spy = vi.spyOn(store, "get").mockImplementation(async (table, id) => {
+      // Entre a conferência geral e a tomada de b, quem analisa descarta b.
+      if (!discarded && table === "bookings" && id === b.booking.id) {
+        discarded = true;
+        await store.update("bookings", b.booking.id, { status: "discarded" });
+      }
+      return get(table, id as never) as never;
+    });
+    try {
+      expect(
+        await code(() =>
+          booking.generateRequestFromBooking(
+            buyer,
+            { ids: [a.booking.id, b.booking.id], customer: joao.partyId! },
+            t,
+          ),
+        ),
+      ).toBe("booking_not_requestable");
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await fresh(b.booking.id)).status).toBe("discarded");
+    const rowA = await fresh(a.booking.id);
+    expect([rowA.status, rowA.requestId, rowA.customerId]).toEqual([
+      "approved",
+      null,
+      null,
+    ]);
+  });
+
+  it("pesos: os do cadastro primeiro, cada um do seu campo; zero não esconde o da ficha", async () => {
+    const a = await row(
+      "new",
+      {},
+      { netWeightPcKg: 1.4, grossWeightPcKg: 1.5 },
+    );
+    await getStore().update("products", a.product.id, {
+      netWeightKg: 2.8,
+      grossWeightKg: 3,
+    });
+    const shown = async (id: string) => {
+      const line = (await booking.listBookingRows(admin)).rows.find(
+        (r) => r.id === id,
+      )!;
+      return [line.netWeightKg, line.grossWeightKg];
+    };
+    expect(await shown(a.booking.id)).toEqual([2.8, 3]);
+    await getStore().update("products", a.product.id, {
+      netWeightKg: 0,
+      grossWeightKg: null,
+    });
+    expect(await shown(a.booking.id)).toEqual([1.4, 1.5]);
+  });
+});

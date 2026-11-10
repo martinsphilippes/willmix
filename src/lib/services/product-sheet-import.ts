@@ -1382,13 +1382,9 @@ async function leftHalfBorn(product: Product): Promise<boolean> {
     filter: { productId: product.id },
     limit: 1,
   });
-  if (!row || row.status !== "new" || !row.importBatchId) return false;
-  const batch = await store.get("import_batches", row.importBatchId);
-  if (!batch) return true;
-  return Object.values(batch.decisions ?? {}).some((d) => {
-    const decision = batchDecision(d);
-    return decision.status === "error" && decision.productId === product.id;
-  });
+  // Pelo que o produto tem (e não pelo lote da linha, que muda a cada
+  // importação que passa por ela): veio de importação e segue em Novo.
+  return !!row && row.status === "new";
 }
 
 /** Quanto tempo uma linha sem produto espera antes de ser varrida (ms). */

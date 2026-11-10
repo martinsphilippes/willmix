@@ -205,8 +205,8 @@ export async function masterSheetInput(
  *   fonte só entra quando a do preço escolhido está vazia.
  * - Peças por caixa e volume da caixa: os do cadastro; sem eles, os da ficha.
  * - Valor zero ou negativo numa fonte não conta: vale o da outra.
- * - Pesos: os da ficha mestre (N.W e G.W, cada um no seu campo), completados
- *   pelas colunas do cadastro. O líquido nunca vira bruto.
+ * - Pesos: os do cadastro e, sem eles, os da ficha mestre, cada um do seu
+ *   campo (líquido e bruto). O líquido nunca vira bruto.
  */
 export function productPurchaseView(
   product: Product,
@@ -253,8 +253,8 @@ export function productPurchaseView(
         widthCm: sheet?.widthCm,
         heightCm: sheet?.heightCm,
       }),
-    netWeightPcKg: pos(master.netWeightPcKg),
-    grossWeightPcKg: pos(master.grossWeightPcKg),
+    netWeightPcKg: pos(product.netWeightKg) ?? pos(sheet?.netWeightPcKg),
+    grossWeightPcKg: pos(product.grossWeightKg) ?? pos(sheet?.grossWeightPcKg),
   };
 }
 

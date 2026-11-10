@@ -91,6 +91,8 @@ export const pt = {
     "Observação longa demais (até 500 caracteres).",
   "booking.error.booking_locked":
     "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação.",
+  "booking.error.booking_changed":
+    "Esta linha mudou enquanto a ação rodava (outra pessoa mexeu nela). As linhas anteriores a ela já foram gravadas; atualize a página e confira.",
   "booking.error.booking_request_pending":
     "A solicitação desta linha está sendo criada agora. Espere um instante e atualize a página.",
   "booking.error.booking_reopen_forbidden":
@@ -200,6 +202,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Note too long (up to 500 characters).",
   "booking.error.booking_locked":
     "This row already became a request: customer and quantity change in the request.",
+  "booking.error.booking_changed":
+    "This row changed while the action was running (someone else touched it). The rows before it were already saved; refresh the page and check.",
   "booking.error.booking_request_pending":
     "The request of this row is being created right now. Wait a moment and refresh the page.",
   "booking.error.booking_reopen_forbidden":
@@ -304,6 +308,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.error.booking_note_too_long": "备注过长（最多 500 个字符）。",
   "booking.error.booking_locked":
     "该行已生成询价单：客户和数量请在询价单中修改。",
+  "booking.error.booking_changed":
+    "操作进行时该行已被他人修改。它之前的行已保存；请刷新页面后核对。",
   "booking.error.booking_request_pending":
     "该行的询价单正在创建中。请稍等片刻后刷新页面。",
   "booking.error.booking_reopen_forbidden":
