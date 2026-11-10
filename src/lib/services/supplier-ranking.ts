@@ -61,16 +61,22 @@ export async function supplierRanking(
     if (!quote) continue;
     const sheet = await getQuoteSheet(quote.id);
     const qty = p.input.quantity;
-    const lot1 = leadTimeFromLots(sheet?.lots);
+    // Prazo de produção: o informado na cotação; nas de antes, o "Saída em
+    // (dias)" da programação 1 da ficha.
+    const lot1 = quote.leadTimeDays ?? leadTimeFromLots(sheet?.lots);
     // Início da produção é um dia (gravado à meia-noite UTC): conta em dias
     // civis, não em horas, para "amanhã" não virar 0 no meio da tarde.
     const startDay = sheet?.productionStartAt?.slice(0, 10) ?? null;
     timing.push({
       quoteId: quote.id,
+      // Sem data de início (a programação de compra saiu da cotação): a
+      // produção conta a partir de hoje, e a entrega é o prazo em dias.
       wait:
         startDay && /^\d{4}-\d{2}-\d{2}$/.test(startDay)
           ? daysBetween(todayDay, startDay)
-          : null,
+          : lot1 !== null
+            ? 0
+            : null,
       lot1,
       transit: p.shippingFreight.transitDays ?? null,
     });

@@ -77,18 +77,10 @@ async function fillQuoteSheet(page: Page, price: string) {
   );
   await page.fill("input[name=colorAssortment]", "WHITE / PANTONE 185 C");
   await page.fill("input[name=material]", "GLASS");
-  await page.fill("input[name=productionStartAt]", "2026-11-02");
-  await page.locator("[data-sheet-schedule][data-ready]").waitFor();
-  await page.fill("input[name=lot1Interval]", "30");
-  await page.fill("input[name=lot1Cartons]", "50");
-  // Conta ao vivo e sugestão para fechar o container (sem aplicar).
-  // O fornecedor chinês vê "1,200" (zh-CN); em português seria "1.200".
-  await expect(page.locator("[data-sheet-totals]")).toContainText(/1[.,]200/);
-  await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
-    "data-fill-suggestion",
-    "partial",
-  );
-  await expect(page.locator("[data-fill-apply=add]")).toBeVisible();
+  // A "Programação de compra" saiu da cotação (pedido do dono): é do pedido.
+  await expect(page.locator("[data-sheet-section=schedule]")).toHaveCount(0);
+  await expect(page.locator("input[name=productionStartAt]")).toHaveCount(0);
+  await expect(page.locator("input[name=lot1Cartons]")).toHaveCount(0);
   // Salva o rascunho (os botões ficam no fim, depois das fotos; o `form` liga ao formulário).
   await Promise.all([
     page.waitForURL(/saved=/),
@@ -290,9 +282,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.35");
-  // Prazo de produção não é digitado: vem da programação 1 (30 dias).
-  await expect(page.locator('[data-lead-time-auto="30"]')).toBeVisible();
-  await expect(page.locator("input[name=leadTimeDays]")).toHaveCount(0);
+  // Prazo de produção: informado direto, em dias (sem a programação).
+  await page.fill("input[name=leadTimeDays]", "30");
   await page.fill("textarea[name=conditions]", "FOB Shenzhen, 30/70");
   await page
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
@@ -319,7 +310,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.6");
-  await expect(page.locator('[data-lead-time-auto="30"]')).toBeVisible();
+  await page.fill("input[name=leadTimeDays]", "30");
   await page
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
     .click();
@@ -489,10 +480,32 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Embarque e desembaraço (Fase D): os passos aparecem para a Wellmix.
   await expect(page.locator("[data-import-step=booking]")).toBeVisible();
 
-  // 8. PREPARATION: a ficha completa (com fotos) veio da cotação, então a etapa
-  // se concluiu sozinha. O pagamento ao fornecedor saiu do fluxo (segue a
-  // condição do cadastro do fornecedor): o pedido já está na embalagem.
+  // 8. PREPARATION: a ficha (com fotos) veio da cotação; falta só a
+  // "Programação de compra", que saiu da cotação e é preenchida aqui, no
+  // pedido. O pagamento ao fornecedor saiu do fluxo (segue a condição do
+  // cadastro do fornecedor).
   await login(page, "supplier.a@china.com");
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  // O bloco com pendência (Programação de compra) já vem aberto.
+  await expect(page.locator("[data-sheet-section=schedule]")).toBeVisible();
+  await page.fill("input[name=productionStartAt]", "2026-11-02");
+  await page.locator("[data-sheet-schedule][data-ready]").waitFor();
+  await page.fill("input[name=lot1Interval]", "30");
+  await page.fill("input[name=lot1Cartons]", "50");
+  // Conta ao vivo e sugestão para fechar o container (sem aplicar).
+  // O fornecedor chinês vê "1,200" (zh-CN); em português seria "1.200".
+  await expect(page.locator("[data-sheet-totals]")).toContainText(/1[.,]200/);
+  await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
+    "data-fill-suggestion",
+    "partial",
+  );
+  await expect(page.locator("[data-fill-apply=add]")).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/saved=complete/),
+    page
+      .getByRole("button", { name: /保存采购单|Save sheet|Salvar ficha/ })
+      .click(),
+  ]);
   // O fornecedor assina o documento do pedido (a segunda assinatura): só
   // então a Preparação conclui.
   // Ele baixa o documento em PDF, assina e anexa o arquivo de volta.
