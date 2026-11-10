@@ -1007,6 +1007,17 @@ export default async function RequestDetailPage({
                     )
                   }
                   canEditWeights={user.role === "admin"}
+                  decideWith={
+                    // Escolha ainda aberta: "Escolher" na linha seleciona no
+                    // formulário de baixo, onde a decisão é concluída.
+                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                      request.status,
+                    ) && quotes.some((q) => q.status === "answered")
+                      ? settings.approvalsEnabled
+                        ? t("approvals.submit")
+                        : t("requests.quotes.select")
+                      : null
+                  }
                 />
               </div>
             ) : null}
