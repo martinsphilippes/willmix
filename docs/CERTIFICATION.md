@@ -53,12 +53,24 @@ A arte não espera o selo: o briefing de embalagem continua nascendo na RFQ. Na 
 ### 6. Papéis e o que cada um vê
 | Papel | Vê | Faz |
 |---|---|---|
-| OCP | cartão Certificação inteiro; o arquivo da arte com o selo | envia o selo |
+| OCP | o **pedido completo** (abaixo); o cartão Certificação inteiro; o arquivo da arte com o selo | envia o selo |
 | Agência | só as duas linhas do selo e os dois arquivos | envia a arte com o selo |
 | Wellmix | tudo | valida a arte com o selo; pode agir no lugar de quem falta |
 | Fornecedor, cliente, comex, demais | nada do selo | — |
 
 O cliente e o preço continuam invisíveis para OCP e agência.
+
+#### O que a certificadora vê: o pedido completo (decisão do dono, 10/11/2026)
+Para gerar o selo ela precisa de tudo o que é do produto e do pedido. No pedido em que é a certificadora, ela vê, só para ler:
+
+- **Resumo**: fornecedor, data do pedido e o atalho "Ver ficha de compra".
+- **Itens**: foto, nome, código, variação e quantidade. As fotos são as de vitrine do cadastro do produto mais as enviadas na ficha do pedido.
+- **Ficha de compra do pedido** inteira, com todos os blocos abertos: fornecedor (nome, cidade, loja, telefone, código na fábrica), produto (pesos, capacidade, cores Pantone, material, energia), caixa e embalagem (medidas, CBM), programação, **fotos** (balança, medidas, ângulos, original, HD, faca), despachante (NCM, II, IPI, dumping, certificação pedida) e descrição/observações.
+- **Certificações já registradas** do produto e do fornecedor (tipo, número, emissor, situação, validade e o arquivo).
+- **Documentos** do pedido que já eram dela: artes, faca, etiquetas, manual, BL, inspeção e fotos.
+- A **certificação pedida na ficha** aparece no cartão Certificação só para a Wellmix e para ela (não para a agência nem para o comex).
+
+O que **não** vai para a certificadora: preço (o bloco Preço da ficha não aparece e os valores não saem do servidor: condição, moeda, preço, pedido mínimo e a média do despachante), pagamentos, margem, valores do pedido e o nome do cliente. Cartão do fabricante e foto de referência do cadastro também não. Ela não edita nada na ficha.
 
 ### 7. Dados
 Sem tabela e sem coluna nova: dois valores novos no enum `import_steps.key` (`cert_seal`, `cert_seal_art`). O arquivo é um documento `import_step` do pedido (visibilidade interna; abre só para quem vê o passo). **O esquema precisa ser publicado no Appwrite antes do primeiro envio** (GitHub Actions → "Publicar esquema Appwrite"); sem isso o envio avisa "passo ainda não liberado no banco de dados".
@@ -94,10 +106,11 @@ Na ordem do fluxo, o selo já fica depois dela: Booking e Superplan → solicita
 1. **Todo pedido precisa de selo**: feito (regra da seção 4).
 2. **Sem trava na aprovação da arte por enquanto**: travas ficam para depois.
 3. **Booking**: aguardando a tela nova (acima).
+4. **Quem confere o selo na arte**: a Wellmix (confirmado).
+5. **A certificadora vê o pedido completo**, fotos e tudo o mais: feito (seção 6).
 
 ### 11.2 Ainda em aberto
-1. **Quem confere o selo na arte**: hoje a Wellmix. Alternativa: a própria certificadora.
-2. **O que a certificadora precisa ver do produto** para gerar o selo (hoje: nome, variação, quantidade, fornecedor e a certificação pedida na ficha).
+1. **Preço e cliente para a certificadora**: ficaram de fora por segurança (preço de compra, valores e o nome do cliente). Se a certificadora precisar do cliente (por exemplo, como titular do certificado) ou de algum valor, é uma liberação de uma linha.
 
 ### 12. Melhorias futuras
 - Prazo (SLA) para a certificadora e para a agência, com lembrete e atraso no Painel de SLA.

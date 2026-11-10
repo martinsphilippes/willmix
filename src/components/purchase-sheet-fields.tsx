@@ -111,9 +111,10 @@ export function PurchaseSheetFields({
   /**
    * Quem está preenchendo. Fornecedor: só o que é dele (sem Despachante nem
    * E-commerce, que são da Wellmix; o container do cálculo é escolha da
-   * Wellmix e fica só para ver).
+   * Wellmix e fica só para ver). Certificadora (OCP): só leitura, todos os
+   * blocos abertos de uma vez e sem o bloco Preço nem a média do despachante.
    */
-  audience?: "wellmix" | "supplier";
+  audience?: "wellmix" | "supplier" | "certifier";
   /** Alíquotas da tabela pelo NCM da ficha ("II 20% · IPI 0%"): valem com II/IPI vazios. */
   ncmRates?: string | null;
   /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
@@ -143,6 +144,7 @@ export function PurchaseSheetFields({
   // pendência (os outros nascem escondidos); a tabela troca o bloco aberto e
   // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
   const supplierOnly = audience === "supplier";
+  const certifier = audience === "certifier";
   const nav = sheetSectionsView(t, sectionsMissing, {
     master,
     photosHref,
@@ -152,17 +154,21 @@ export function PurchaseSheetFields({
   const Section = SheetSection;
   return (
     <>
-      <div className="lg:col-span-2">
-        <SheetSectionsNav
-          sections={nav.sections}
-          labels={nav.labels}
-          initial={open}
-        />
-      </div>
+      {/* Quem só lê para certificar vê a ficha inteira de uma vez (sem a
+          tabela de blocos, que serve a quem preenche). */}
+      {certifier ? null : (
+        <div className="lg:col-span-2">
+          <SheetSectionsNav
+            sections={nav.sections}
+            labels={nav.labels}
+            initial={open}
+          />
+        </div>
+      )}
       {/* Fornecedor e Produto lado a lado: primeiro quem vende, depois o que se compra.
           Na ficha do pedido/cotação a página é uma grade de 2 colunas (o <form> é
           display: contents): daí as classes de ordem e de largura dos blocos. */}
-      <Section open={open} k="supplier" order="lg:order-1">
+      <Section open={open} all={certifier} k="supplier" order="lg:order-1">
         <Card title={t("sheet.section.supplier")} dense>
           <Rows>
             <F t={t} m={missing} k="sheetDate" size="sm">
@@ -307,7 +313,7 @@ export function PurchaseSheetFields({
           ) : null}
         </Card>
       </Section>
-      <Section open={open} k="product" order="lg:order-1">
+      <Section open={open} all={certifier} k="product" order="lg:order-1">
         <Card title={t("sheet.section.product")} dense>
           <Rows>
             <F t={t} m={missing} k="netWeightPcKg" size="xs" req>
@@ -413,7 +419,7 @@ export function PurchaseSheetFields({
       </Section>
 
       {/* Caixa e embalagem à esquerda, preço e condições à direita. */}
-      <Section open={open} k="carton" order="lg:order-2">
+      <Section open={open} all={certifier} k="carton" order="lg:order-2">
         <Card title={t("sheet.section.carton")} dense>
           <Rows>
             <F t={t} m={missing} k="masterCartonQty" size="xs" req>
@@ -558,58 +564,65 @@ export function PurchaseSheetFields({
           </Rows>
         </Card>
       </Section>
-      <Section open={open} k="price" order="lg:order-2">
-        <Card title={t("sheet.section.price")} dense>
-          <Rows>
-            <F t={t} m={missing} k="incoterm" size="xs" req>
-              <select
-                name="incoterm"
-                defaultValue={sheet.incoterm ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              >
-                <option value="">—</option>
-                {SHEET_INCOTERMS.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </F>
-            <F t={t} m={missing} k="currency" size="sm" req>
-              <select
-                name="currency"
-                defaultValue={sheet.currency ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              >
-                <option value="">—</option>
-                {SHEET_CURRENCIES.map((v) => (
-                  <option key={v} value={v}>
-                    {t(`currency.name.${v}` as DictionaryKey)}
-                  </option>
-                ))}
-              </select>
-            </F>
-            <F t={t} m={missing} k="price" size="sm" req>
-              <MoneyInput
-                locale={t.intl}
-                name="price"
-                watchField="currency"
-                defaultAmount={numValue(sheet.price) || null}
-                disabled={sup}
-                decimals={4}
-                size="sm"
-              />
-            </F>
-            <F t={t} m={missing} k="moq" size="xs" req>
-              <Num name="moq" value={numValue(sheet.moq)} disabled={sup} int />
-            </F>
-          </Rows>
-        </Card>
-      </Section>
+      {certifier ? null : (
+        <Section open={open} all={certifier} k="price" order="lg:order-2">
+          <Card title={t("sheet.section.price")} dense>
+            <Rows>
+              <F t={t} m={missing} k="incoterm" size="xs" req>
+                <select
+                  name="incoterm"
+                  defaultValue={sheet.incoterm ?? ""}
+                  disabled={sup}
+                  className={inputDenseClass}
+                >
+                  <option value="">—</option>
+                  {SHEET_INCOTERMS.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </F>
+              <F t={t} m={missing} k="currency" size="sm" req>
+                <select
+                  name="currency"
+                  defaultValue={sheet.currency ?? ""}
+                  disabled={sup}
+                  className={inputDenseClass}
+                >
+                  <option value="">—</option>
+                  {SHEET_CURRENCIES.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`currency.name.${v}` as DictionaryKey)}
+                    </option>
+                  ))}
+                </select>
+              </F>
+              <F t={t} m={missing} k="price" size="sm" req>
+                <MoneyInput
+                  locale={t.intl}
+                  name="price"
+                  watchField="currency"
+                  defaultAmount={numValue(sheet.price) || null}
+                  disabled={sup}
+                  decimals={4}
+                  size="sm"
+                />
+              </F>
+              <F t={t} m={missing} k="moq" size="xs" req>
+                <Num
+                  name="moq"
+                  value={numValue(sheet.moq)}
+                  disabled={sup}
+                  int
+                />
+              </F>
+            </Rows>
+          </Card>
+        </Section>
+      )}
 
-      <Section open={open} k="schedule" order="lg:order-3">
+      <Section open={open} all={certifier} k="schedule" order="lg:order-3">
         <Card title={t("sheet.section.schedule")} dense>
           <Rows>
             {!master ? (
@@ -790,7 +803,7 @@ export function PurchaseSheetFields({
       {/* Despachante e e-commerce lado a lado (menos rolagem); são da Wellmix:
           o fornecedor não os vê. */}
       {supplierOnly ? null : (
-        <Section open={open} k="customs" order="lg:order-5">
+        <Section open={open} all={certifier} k="customs" order="lg:order-5">
           <Card title={t("sheet.section.customs")} dense>
             <Rows>
               <F
@@ -900,13 +913,15 @@ export function PurchaseSheetFields({
                   className={inputDenseClass}
                 />
               </F>
-              <F t={t} m={missing} k="averagePrice" size="xs">
-                <Num
-                  name="averagePrice"
-                  value={numValue(sheet.averagePrice ?? null)}
-                  disabled={!access.editCustoms}
-                />
-              </F>
+              {certifier ? null : (
+                <F t={t} m={missing} k="averagePrice" size="xs">
+                  <Num
+                    name="averagePrice"
+                    value={numValue(sheet.averagePrice ?? null)}
+                    disabled={!access.editCustoms}
+                  />
+                </F>
+              )}
               <F t={t} m={missing} k="certificationRequired" size="xs">
                 <select
                   name="certificationRequired"
@@ -934,7 +949,7 @@ export function PurchaseSheetFields({
         </Section>
       )}
       {supplierOnly ? null : (
-        <Section open={open} k="ecommerce" order="lg:order-6">
+        <Section open={open} all={certifier} k="ecommerce" order="lg:order-6">
           <Card title={t("sheet.section.ecommerce")} dense>
             <Rows>
               <F t={t} m={missing} k="ecommerceDescription" size="full">
@@ -969,11 +984,14 @@ export function PurchaseSheetFields({
 function SheetSection({
   k,
   open,
+  all = false,
   order,
   children,
 }: {
   k: SheetSectionKey;
   open: SheetSectionKey;
+  /** Todos os blocos abertos (quem só lê a ficha inteira). */
+  all?: boolean;
   /** Ordem na grade de 2 colunas da página (lg:order-…). */
   order: string;
   children: React.ReactNode;
@@ -981,8 +999,8 @@ function SheetSection({
   return (
     <div
       data-sheet-section={k}
-      hidden={k !== open}
-      className={cx(order, k === open && "lg:col-span-2")}
+      hidden={!all && k !== open}
+      className={cx(order, !all && k === open && "lg:col-span-2")}
     >
       {children}
     </div>

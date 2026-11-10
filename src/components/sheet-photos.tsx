@@ -24,8 +24,11 @@ export function SheetPhotosCard({
   coveredKinds = [],
   className = "mt-4",
   missing = [],
+  open = false,
   kinds: SHEET_PHOTO_KINDS = ADDABLE_SHEET_PHOTO_KINDS,
 }: {
+  /** Sempre aberto (quem só lê a ficha inteira, sem a tabela de blocos). */
+  open?: boolean;
   /** Tipos que se pode adicionar aqui (fornecedor: só as 5 obrigatórias). */
   kinds?: readonly string[];
   /** Fotos obrigatórias que faltam (scalePhoto…): ficam em vermelho e o aviso leva até elas. */
@@ -48,7 +51,7 @@ export function SheetPhotosCard({
     // escondido, como os outros blocos que não são o primeiro com pendência.
     <div
       data-sheet-section="photos"
-      hidden={initialSheetSection(missing) !== "photos"}
+      hidden={!open && initialSheetSection(missing) !== "photos"}
       className={className}
     >
       <Card title={t("sheet.section.photos")} dense>

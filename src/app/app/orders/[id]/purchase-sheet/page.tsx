@@ -17,6 +17,7 @@ import {
   QUANTITY_FOLLOWS_SHEET,
   SHEET_PHOTO_KINDS,
   getSheetForUser,
+  isSheetCertifier,
   supplierPaymentRegistered,
 } from "@/lib/services/purchase-sheet";
 import {
@@ -76,6 +77,9 @@ export default async function PurchaseSheetPage({
     limit: 1,
   });
   const { sheet, access, plan, missing } = view;
+  // Certificadora do pedido: a ficha inteira para ler (gerar o selo), sem
+  // preço e sem os avisos de quem preenche.
+  const certifier = isSheetCertifier(user, view.order);
   // Quantidade acompanha as caixas até a embalagem; com pagamento ao
   // fornecedor registrado, a Wellmix aplica à mão (botão abaixo).
   const quantityFollows =
@@ -137,7 +141,7 @@ export default async function PurchaseSheetPage({
               number: String(view.order.number),
               product: item?.name ?? "—",
             })}
-            {missing.length === 0 ? (
+            {missing.length === 0 && !certifier ? (
               <Badge tone="success">{t("sheet.complete")}</Badge>
             ) : null}
           </span>
@@ -147,12 +151,12 @@ export default async function PurchaseSheetPage({
         }
       />
       <p className="mb-3 max-w-3xl text-sm leading-relaxed text-zinc-600">
-        {t("sheet.intro")}
+        {t(certifier ? "certFlow.sheet.intro" : "sheet.intro")}
       </p>
       <div className="mb-3 space-y-2">
         {saved === "complete" ? (
           <Alert tone="success">{t("sheet.saved.complete")}</Alert>
-        ) : missing.length ? (
+        ) : missing.length && !certifier ? (
           <MissingFields
             // Cada salvamento com pendência remonta o aviso e leva de novo ao campo.
             key={typeof saveToken === "string" ? saveToken : "idle"}
@@ -287,7 +291,7 @@ export default async function PurchaseSheetPage({
                   }
                 : null
             }
-            records={view.records}
+            records={certifier ? null : view.records}
             ncmRates={await ncmRatesText(t, view.sheet.ncm)}
             ncmHelpLink={
               access.editCustoms && request
@@ -296,7 +300,13 @@ export default async function PurchaseSheetPage({
             }
             missing={shownMissing}
             sectionsMissing={missing}
-            audience={user.role === "supplier" ? "supplier" : "wellmix"}
+            audience={
+              certifier
+                ? "certifier"
+                : user.role === "supplier"
+                  ? "supplier"
+                  : "wellmix"
+            }
             ncmSuggestions={
               access.editCustoms
                 ? ncmChipsView(
@@ -321,6 +331,8 @@ export default async function PurchaseSheetPage({
           removeAction={removePurchaseSheetPhotoAction}
           coveredKinds={view.catalogPhotoKinds}
           className="lg:order-4"
+          open={certifier}
+          hint={certifier ? t("certFlow.sheet.photosHint") : undefined}
           missing={shownMissing}
           kinds={
             user.role === "supplier"

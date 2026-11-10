@@ -28,6 +28,13 @@ export const pt = {
   "certFlow.sealHint":
     "Selo de certificação: a certificadora (OCP) envia o selo do pedido. Quem faz a arte da embalagem (a agência do pedido ou a Wellmix) baixa o selo, aplica na arte e envia a arte com o selo. A Wellmix confere.",
   "certFlow.sheetNote": "Certificação pedida na ficha: {note}",
+  "certFlow.sheet.intro":
+    "Ficha de compra do pedido, para a certificação: fornecedor, produto, caixa, programação, fotos e classificação fiscal. Só leitura; o preço não aparece.",
+  "certFlow.sheet.photosHint": "Fotos do produto e da caixa enviadas na ficha.",
+  "certFlow.dossier.hint":
+    "Para gerar o selo, o pedido completo está aqui: os itens com foto e código, a ficha de compra (dados técnicos e fotos, sem preço) e os arquivos do pedido.",
+  "certFlow.dossier.certs":
+    "Certificações já registradas do produto e do fornecedor:",
   "certFlow.sealReplaced":
     "A certificadora enviou um selo novo. Aplique o selo novo na arte e envie de novo.",
   "certFlow.notify.sealRequested.subject":
@@ -141,6 +148,14 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.sealHint":
     "Certification seal: the certification body (OCP) sends the seal for the order. Whoever makes the packaging artwork (the order's agency or Wellmix) downloads the seal, applies it to the artwork and sends the artwork with the seal. Wellmix checks it.",
   "certFlow.sheetNote": "Certification requested on the sheet: {note}",
+  "certFlow.sheet.intro":
+    "Purchase sheet of the order, for certification: supplier, product, carton, schedule, photos and tax classification. Read only; the price is not shown.",
+  "certFlow.sheet.photosHint":
+    "Photos of the product and the carton sent on the sheet.",
+  "certFlow.dossier.hint":
+    "To issue the seal, the complete order is here: the items with photo and code, the purchase sheet (technical data and photos, without price) and the order files.",
+  "certFlow.dossier.certs":
+    "Certifications already registered for the product and the supplier:",
   "certFlow.sealReplaced":
     "The certification body sent a new seal. Apply the new seal to the artwork and send it again.",
   "certFlow.notify.sealRequested.subject":
@@ -258,6 +273,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "certFlow.sealHint":
     "认证标志：认证机构（OCP）提交该订单的认证标志。负责包装设计稿的一方（订单的设计公司或 Wellmix）下载标志，放入设计稿，并提交带标志的设计稿。由 Wellmix 核对。",
   "certFlow.sheetNote": "采购单要求的认证：{note}",
+  "certFlow.sheet.intro":
+    "订单采购单（供认证使用）：供应商、产品、外箱、排期、照片和税则归类。仅可查看，不显示价格。",
+  "certFlow.sheet.photosHint": "采购单中上传的产品和外箱照片。",
+  "certFlow.dossier.hint":
+    "出具标志所需的完整订单资料都在这里：带照片和编码的产品明细、采购单（技术数据和照片，不含价格）以及订单文件。",
+  "certFlow.dossier.certs": "产品和供应商已登记的认证：",
   "certFlow.sealReplaced":
     "认证机构提交了新的认证标志。请在设计稿中换用新标志并重新提交。",
   "certFlow.notify.sealRequested.subject": "订单 #{n}：请出具认证标志",

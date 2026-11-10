@@ -178,6 +178,24 @@ describe("pedido novo: cai no login da certificadora", () => {
     await getStore().update("orders", order.id, { status: "ORDER_CREATED" });
   });
 
+  it("memorial começado pelo cartão com o pedido recém-criado: validar e o passo seguinte viram pendência", async () => {
+    const other = await newOrder();
+    expect(other.status).toBe("ORDER_CREATED");
+    await f.submitStep(admin, other.id, "cert_memorial", {
+      documentId: (await doc(admin, other, "memorial.pdf")).id,
+    });
+    expect((await certTasks(ocp, other)).map((t) => t.kind).sort()).toEqual([
+      "cert_step",
+      "cert_validate",
+    ]);
+    await f.validateStep(ocp, other.id, "cert_memorial", "validated", null);
+    // Selo e laudo: os dois passos da certificadora.
+    expect((await certTasks(ocp, other)).map((t) => t.kind)).toEqual([
+      "cert_step",
+      "cert_step",
+    ]);
+  });
+
   it("pedido cancelado ou encerrado não deixa pendência", async () => {
     for (const status of ["CANCELLED", "CLOSED"] as const) {
       await getStore().update("orders", order.id, { status });
@@ -216,7 +234,10 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     expect(await certTasks(ocp, order)).toHaveLength(0);
     const notes = await inbox(agency, order);
     expect(notes).toHaveLength(before + 1);
-    expect(notes.some((n) => n.link === sealLink(order))).toBe(true);
+    const handOver = notes.find((n) => n.link === sealLink(order))!;
+    // "Agora é com você": quem recebe é quem age (não a certificadora).
+    expect(handOver.kind).toBe("action");
+    expect(handOver.actor).toBe("recipient");
     const tasks = await certTasks(agency, order);
     expect(tasks).toHaveLength(1);
     expect(tasks[0].kind).toBe("cert_step");
@@ -348,6 +369,11 @@ describe("selo trocado depois da arte", () => {
     expect(applied.canSubmit).toBe(true);
     expect(await inbox(agency, order)).toHaveLength(before + 1);
     expect(await certTasks(agency, order)).toHaveLength(1);
+    // A arte antiga (com o selo antigo) não volta: o reenvio pede arquivo novo.
+    expect(applied.step?.documentId).toBeNull();
+    await expect(
+      f.submitStep(agency, order.id, "cert_seal_art", {}),
+    ).rejects.toThrow("file_required");
   });
 });
 
@@ -371,9 +397,18 @@ describe("pedido sem agência: a Wellmix aplica o selo", () => {
   });
 
   it("quem enviou a arte não valida a própria (exceto o administrador)", async () => {
+    // O analista do pedido envia: o aviso de validar vai para o resto da
+    // equipe, não só para ele (que não valida o próprio passo).
+    order = await getStore().update("orders", order.id, {
+      ownerUserId: operator.id,
+    });
+    const adminBefore = (await inbox(admin, order)).length;
+    const operatorBefore = (await inbox(operator, order)).length;
     await f.submitStep(operator, order.id, "cert_seal_art", {
       documentId: (await doc(operator, order, "arte.pdf")).id,
     });
+    expect(await inbox(admin, order)).toHaveLength(adminBefore + 1);
+    expect(await inbox(operator, order)).toHaveLength(operatorBefore);
     await expect(
       f.validateStep(operator, order.id, "cert_seal_art", "validated", null),
     ).rejects.toThrow("own_step");
@@ -400,6 +435,23 @@ describe("arte feita pela Wellmix nas configurações", () => {
       expect((await certTasks(admin, order)).map((t) => t.kind)).toEqual([
         "cert_step",
       ]);
+      // A agência do pedido só acompanha: não envia a arte com o selo.
+      const view = await f.importFlowView(agency, order, "certification");
+      expect(view.every((v) => !v.canSubmit)).toBe(true);
+      expect(await f.sealStateFor(agency, order)).toBeNull();
+      await expect(
+        f.submitStep(agency, order.id, "cert_seal_art", {
+          documentId: (await doc(agency, order, "arte-agencia.pdf")).id,
+        }),
+      ).rejects.toThrow();
+      // Trocar a agência não muda quem faz a arte: ninguém é avisado de novo.
+      const adminBefore = (await inbox(admin, order)).length;
+      await f.notifySealPartner(
+        { ...order, agencyId: null },
+        "agencyId",
+        order.agencyId,
+      );
+      expect(await inbox(admin, order)).toHaveLength(adminBefore);
     } finally {
       await setSetting("agencyValidationEnabled", true);
     }
@@ -525,5 +577,145 @@ describe("painel de certificação", () => {
     expect(await count()).toBe(base + 1);
     await f.validateStep(admin, order.id, "cert_seal_art", "validated", null);
     expect(await count()).toBe(base);
+  });
+});
+
+describe("certificadora vê o pedido completo", () => {
+  let order: Order;
+  const otherOcp = () =>
+    ({ ...ocp, id: "outra", partyId: "outra-ocp" }) as User;
+
+  beforeAll(async () => {
+    order = await newOrder();
+  });
+
+  it("lê a ficha de compra inteira, sem preço, e não edita", async () => {
+    const ps = await import("@/lib/services/purchase-sheet");
+    await ps.saveSheet(admin, order.id, {
+      supplierName: "Fábrica A",
+      material: "GLASS",
+      masterCartonQty: 24,
+      incoterm: "FOB",
+      currency: "USD",
+      price: 2.5,
+      moq: 500,
+      averagePrice: 3.1,
+      certificationNote: "Inmetro",
+    } as never);
+    expect(ps.sheetAccess(ocp, order)).toEqual({
+      view: true,
+      editSupplier: false,
+      editCustoms: false,
+      addPhotos: false,
+    });
+    const view = (await ps.getSheetForUser(ocp, order.id))!;
+    expect(view.sheet.supplierName).toBe("Fábrica A");
+    expect(view.sheet.material).toBe("GLASS");
+    expect(view.sheet.masterCartonQty).toBe(24);
+    expect(view.sheet.certificationNote).toBe("Inmetro");
+    for (const field of ps.CERTIFIER_HIDDEN_FIELDS)
+      expect(view.sheet[field] ?? null).toBeNull();
+    // A Wellmix continua vendo o preço; a ficha gravada não muda.
+    const full = (await ps.getSheetForUser(admin, order.id))!;
+    expect(full.sheet.price).toBe(2.5);
+    expect(full.sheet.averagePrice).toBe(3.1);
+    await expect(
+      ps.saveSheet(ocp, order.id, { material: "PLASTIC" } as never),
+    ).rejects.toThrow("forbidden");
+    // Agência, comex e outra certificadora não abrem a ficha.
+    for (const user of [agency, comex, otherOcp()])
+      expect(await ps.getSheetForUser(user, order.id)).toBeNull();
+  });
+
+  it("abre as fotos de vitrine do produto, não o cartão do fabricante", async () => {
+    const photo = async (name: string, kind: string) => {
+      const d = await getStore().create("documents", {
+        orderId: null,
+        requestId: null,
+        requirementId: null,
+        productId: "prod-jarra",
+        type: "photo",
+        name,
+        mime: "image/png",
+        size: 3,
+        storageKey: `k-${name}`,
+        version: 1,
+        previousDocumentId: null,
+        uploadedByUserId: admin.id,
+        visibility: "internal",
+      } as never);
+      await getStore().create("product_photos", {
+        productId: "prod-jarra",
+        sourcingItemId: null,
+        orderId: null,
+        documentId: d.id,
+        kind,
+        caption: null,
+        takenAt: null,
+        takenByUserId: admin.id,
+        derivedFromPhotoId: null,
+        isPrimary: false,
+      } as never);
+      return d;
+    };
+    const original = await photo("jarra.png", "original");
+    const card = await photo("cartao.png", "business_card");
+    expect(await canAccessDocument(ocp, original)).toBe(true);
+    expect(await canAccessDocument(ocp, card)).toBe(false);
+    // Certificadora sem pedido com este produto, comex e fornecedor: nada.
+    for (const user of [otherOcp(), comex, supplierA])
+      expect(await canAccessDocument(user, original)).toBe(false);
+  });
+
+  it("abre os certificados já registrados do produto e do fornecedor do pedido", async () => {
+    const certDoc = async (name: string, productId: string | null) =>
+      getStore().create("documents", {
+        orderId: null,
+        requestId: null,
+        requirementId: null,
+        productId,
+        type: "other",
+        name,
+        mime: "application/pdf",
+        size: 3,
+        storageKey: `k-${name}`,
+        version: 1,
+        previousDocumentId: null,
+        uploadedByUserId: admin.id,
+        visibility: "supplier",
+      } as never);
+    const cert = async (
+      entity: "product" | "party",
+      entityId: string,
+      documentId: string,
+    ) =>
+      getStore().create("certifications", {
+        entity,
+        entityId,
+        kind: "Inmetro",
+        name: null,
+        issuer: null,
+        number: "001",
+        validUntil: null,
+        documentId,
+        status: "valid",
+        notes: null,
+        createdByUserId: admin.id,
+        validatedByUserId: admin.id,
+        validatedAt: new Date().toISOString(),
+      } as never);
+    const ofProduct = await certDoc("cert-produto.pdf", "prod-jarra");
+    await cert("product", "prod-jarra", ofProduct.id);
+    const ofSupplier = await certDoc("cert-fornecedor.pdf", null);
+    await cert("party", order.supplierId, ofSupplier.id);
+    const ofOtherSupplier = await certDoc("cert-outro.pdf", null);
+    await cert("party", "fornecedor-b", ofOtherSupplier.id);
+    expect(await canAccessDocument(ocp, ofProduct)).toBe(true);
+    expect(await canAccessDocument(ocp, ofSupplier)).toBe(true);
+    expect(await canAccessDocument(ocp, ofOtherSupplier)).toBe(false);
+    for (const d of [ofProduct, ofSupplier]) {
+      expect(await canAccessDocument(otherOcp(), d)).toBe(false);
+      expect(await canAccessDocument(agency, d)).toBe(false);
+    }
   });
 });

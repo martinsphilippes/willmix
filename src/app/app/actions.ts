@@ -626,7 +626,8 @@ export async function assignPartnerAction(form: FormData) {
         const updated = await store.get("orders", orderId);
         const { notifySealPartner } =
           await import("@/lib/services/import-flow");
-        if (updated) await notifySealPartner(updated, field);
+        if (updated)
+          await notifySealPartner(updated, field, order[field] ?? null);
       } catch (error) {
         console.error("[certification] aviso do selo ao parceiro novo", error);
       }

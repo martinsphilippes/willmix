@@ -253,6 +253,22 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
 }
 
+/**
+ * Pode enviar o passo: quem age por ele. O passo da agência só é dela quando
+ * é ela quem faz a arte; com a arte feita pela Wellmix nas configurações, a
+ * agência do pedido só acompanha (a mesma regra do item "Arte" da etapa).
+ */
+export async function canSubmitStep(
+  user: User,
+  order: Order,
+  key: ImportStepKey,
+): Promise<boolean> {
+  const tpl = stepTemplate(key);
+  if (!actsAs(user, order, tpl.actor)) return false;
+  if (tpl.actor === "agency" && !isWellmix(user)) return agencyDoesArt(order);
+  return true;
+}
+
 /** Vê o passo: Wellmix sempre; o parceiro, se o passo é visível ao papel dele. */
 export function canSeeStep(user: User, order: Order, key: ImportStepKey) {
   if (isWellmix(user)) return true;
@@ -372,7 +388,7 @@ export async function submitStep(
 ) {
   const order = await loadOrder(orderId);
   const tpl = stepTemplate(key);
-  if (!actsAs(user, order, tpl.actor)) throw new ForbiddenError();
+  if (!(await canSubmitStep(user, order, key))) throw new ForbiddenError();
   const store = getStore();
   const steps = await stepsOf(orderId);
   if (!ready(key, steps)) throw new ImportFlowError("previous_step");
@@ -438,7 +454,7 @@ export async function submitStep(
   );
   const link = `/app/orders/${orderId}#${anchorOf(tpl)}`;
   if (tpl.validator)
-    await notify(await targetFor(order, tpl.validator), {
+    await notify(await validatorTarget(order, tpl.validator, user), {
       link,
       kind: "action",
       text: (t) => ({
@@ -467,6 +483,27 @@ export async function submitStep(
   if (key === "cert_seal")
     await handOverSeal(user, order, steps, current ?? null, step);
   return step;
+}
+
+/**
+ * Quem valida recebe o aviso. Quando a própria Wellmix enviou o passo que a
+ * Wellmix valida e o aviso iria só para quem enviou (o analista do pedido),
+ * ele vai para o resto da equipe: quem enviou não valida o próprio passo.
+ */
+async function validatorTarget(
+  order: Order,
+  validator: StepActor,
+  submitter: User,
+): Promise<NotifyTarget> {
+  const target = await targetFor(order, validator);
+  if (validator !== "wellmix" || !isWellmix(submitter)) return target;
+  if (!target.userIds?.length) return target;
+  if (target.userIds.some((id) => id !== submitter.id)) return target;
+  const team = await getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  const others = team.filter((u) => u.id !== submitter.id);
+  return others.length ? { userIds: others.map((u) => u.id) } : target;
 }
 
 /** Valor novo de enum ainda não publicado no Appwrite (esquema desatualizado). */
@@ -511,6 +548,9 @@ async function handOverSeal(
       status: "rejected",
       validatedByUserId: null,
       validatedAt: null,
+      // A arte antiga leva o selo antigo: sai do passo, para o reenvio pedir
+      // um arquivo novo (o antigo continua nos documentos do pedido).
+      documentId: null,
       // Texto gravado no passo (quem aplica o selo lê em português).
       rejectReason: translator("pt")("certFlow.sealReplaced"),
     });
@@ -525,7 +565,6 @@ async function handOverSeal(
   await notify(await targetFor(order, "agency"), {
     link,
     kind: "action",
-    actor: "ocp",
     text: (t) => ({
       subject: t(
         replaced
@@ -586,6 +625,8 @@ export async function notifySealRequested(order: Order): Promise<void> {
 export async function notifySealPartner(
   order: Order,
   field: "ocpId" | "agencyId",
+  /** Quem estava no campo antes da troca (para não avisar de novo quem já fazia a arte). */
+  previousPartyId?: string | null,
 ): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
   const steps = await stepsOf(order.id);
@@ -594,13 +635,20 @@ export async function notifySealPartner(
     if (order.ocpId && !sealDone) await notifySealRequested(order);
     return;
   }
+  if (previousPartyId !== undefined) {
+    // Quem faz a arte não mudou (ex.: arte feita pela Wellmix nas
+    // configurações e só a agência do pedido trocou): nada a avisar.
+    const byAgency = (await getSettings()).agencyValidationEnabled;
+    const maker = (agencyId: string | null) =>
+      artRole({ agencyId }, byAgency) === "agency" ? agencyId : null;
+    if (maker(previousPartyId) === maker(order.agencyId ?? null)) return;
+  }
   const art = steps.find((s) => s.key === "cert_seal_art");
   const artOpen = !art || art.status === "pending" || art.status === "rejected";
   if (!sealDone || !artOpen) return;
   await notify(await targetFor(order, "agency"), {
     link: `/app/orders/${order.id}#certification`,
     kind: "action",
-    actor: "ocp",
     text: (t) => ({
       subject: t("certFlow.notify.sealReady.subject", {
         n: String(order.number),
@@ -624,6 +672,8 @@ export async function sealStateFor(
 ): Promise<SealState | null> {
   if (order.status === "CANCELLED") return null;
   if (!canSeeStep(user, order, "cert_seal")) return null;
+  // Agência do pedido com a arte feita pela Wellmix: não é ela quem aplica.
+  if (!isWellmix(user) && !(await agencyDoesArt(order))) return null;
   const steps = await stepsOf(order.id);
   if (!isDone(steps.find((s) => s.key === "cert_seal"))) return "pending";
   const art = steps.find((s) => s.key === "cert_seal_art");
@@ -720,9 +770,15 @@ export async function importFlowView(
   const steps = await stepsOf(order.id);
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
-  return IMPORT_STEPS.filter(
+  const shown = IMPORT_STEPS.filter(
     (tpl) => groupOf(tpl) === group && canSeeStep(user, order, tpl.key),
-  ).map((tpl) => {
+  );
+  // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir).
+  const agencyActs =
+    isWellmix(user) ||
+    !shown.some((tpl) => tpl.actor === "agency") ||
+    (await agencyDoesArt(order));
+  return shown.map((tpl) => {
     const step = steps.find((s) => s.key === tpl.key) ?? null;
     const isReady = ready(tpl.key, steps);
     const done = isDone(step ?? undefined);
@@ -735,7 +791,8 @@ export async function importFlowView(
         open &&
         isReady &&
         !(tpl.validator && step?.status === "validated") &&
-        actsAs(user, order, tpl.actor),
+        actsAs(user, order, tpl.actor) &&
+        (tpl.actor !== "agency" || agencyActs),
       canValidate:
         open &&
         !!tpl.validator &&
@@ -811,21 +868,20 @@ export async function importTasks(
     const steps = rows.filter((r) => r.orderId === order.id);
     const importLive = IMPORT_LIVE.includes(order.status);
     // Memorial, laudo e registro: com OCP designado ou passo deles começado.
+    // Com o pedido recém-criado ninguém ganha a pendência de começar, mas o
+    // que já começou pelo cartão segue (validar, passo seguinte).
+    const classicStarted = steps.some((s) => {
+      const tpl = stepTemplate(s.key);
+      return groupOf(tpl) === "certification" && !tpl.seal;
+    });
     const classicCert =
-      !!order.ocpId ||
-      steps.some((s) => {
-        const tpl = stepTemplate(s.key);
-        return groupOf(tpl) === "certification" && !tpl.seal;
-      });
+      order.status === "ORDER_CREATED"
+        ? classicStarted
+        : !!order.ocpId || classicStarted;
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
-      if (
-        cert &&
-        !tpl.seal &&
-        (!classicCert || order.status === "ORDER_CREATED")
-      )
-        continue;
+      if (cert && !tpl.seal && !classicCert) continue;
       const step = steps.find((s) => s.key === tpl.key);
       // Validar o que foi enviado.
       if (

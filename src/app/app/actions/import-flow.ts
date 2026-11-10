@@ -50,7 +50,7 @@ export async function submitImportStepAction(form: FormData) {
     const order = await getStore().get("orders", orderId);
     if (!order) throw new Error("not_found");
     // Confere antes de subir o arquivo: quem não faz o passo não grava nada.
-    if (!svc.actsAs(user, order, svc.stepTemplate(key).actor))
+    if (!(await svc.canSubmitStep(user, order, key)))
       throw new Error("forbidden");
     assertScreen(user, "orders");
     const [file] = files(form, "file");

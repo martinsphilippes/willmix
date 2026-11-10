@@ -569,6 +569,7 @@ export async function assignPackagingBrief(
         await notifySealPartner(
           { ...order, agencyId: owner.agencyId },
           "agencyId",
+          order.agencyId ?? null,
         );
       } catch (error) {
         console.error("[certification] aviso do selo ao novo dono", error);

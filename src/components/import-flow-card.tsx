@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Order } from "@/lib/db";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { CUSTOMS_CHANNELS } from "@/lib/db/schema";
@@ -54,7 +55,7 @@ export function ImportFlowCard({
   title?: string;
   anchor?: "import-flow" | "certification";
   /** Explicações do cartão (ex.: como anda o selo de certificação). */
-  hints?: string[];
+  hints?: ReactNode[];
 }) {
   if (!steps.length) return null;
   const name = (id: string | null) => (id ? (names.get(id) ?? "—") : "—");
@@ -80,14 +81,14 @@ export function ImportFlowCard({
           <Alert tone="success">{notice}</Alert>
         </div>
       ) : null}
-      {hints.map((hint) => (
-        <p
-          key={hint}
+      {hints.map((hint, i) => (
+        <div
+          key={i}
           className="mb-3 text-sm text-zinc-600"
           data-import-hint={anchor}
         >
           {hint}
-        </p>
+        </div>
       ))}
       {/* Um passo por linha: situação, quem faz e valida, o que foi
           informado, quem enviou e a ação (enviar ou validar). */}

@@ -399,6 +399,16 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.waitForURL(/\/app\/orders\/[^/]+#certification$/);
   const sealRow = page.locator("[data-import-step=cert_seal]");
   await expect(sealRow).toHaveAttribute("data-import-status", "pending");
+  // A certificadora vê o pedido completo para gerar o selo: os itens com
+  // foto e código e a ficha de compra inteira para ler, sem o bloco de preço.
+  await expect(page.locator("[data-certifier-dossier]")).toBeVisible();
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  await expect(page.locator("[data-sheet-section=product]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=customs]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=price]")).toHaveCount(0);
+  await expect(page.locator("input[name=price]")).toHaveCount(0);
+  await expect(page.locator("input[name=material]")).toBeDisabled();
+  await page.goto(`${orderUrl}#certification`);
   await sealRow.locator("input[type=file]").setInputFiles(png);
   await sealRow.locator("[data-import-submit=cert_seal]").click();
   await page.waitForURL(/[?&]certStep=submitted/);
