@@ -871,33 +871,63 @@ export const BOOKING_NEXT_STEPS = [
   "open_rfq",
   /** RFQ aberta: o fornecedor ainda não respondeu. */
   "wait_supplier",
+  /** RFQ aberta: a ficha já foi preenchida em parte, mas a cotação não foi enviada. */
+  "supplier_draft",
   /** O fornecedor não aceitou o preço desejado: conversar. */
   "offer_declined",
   /** Cotação devolvida com comentário: esperando o fornecedor. */
   "negotiating",
-  /** O fornecedor respondeu: escolher a cotação e o valor de venda. */
+  /** Cotação enviada pelo fornecedor: a Wellmix confere e confirma. */
   "choose_quote",
   /** Fornecedor escolhido: falta o sinal (ou a aprovação). */
   "wait_down_payment",
-  /** Virou pedido: segue no pedido. */
+  /** Virou pedido (pedido antigo, sem o documento com assinaturas). */
   "ordered",
+  /** Pedido criado: falta a Wellmix assinar o documento do pedido. */
+  "sign_wellmix",
+  /** Documento enviado: o fornecedor baixa, assina e anexa de volta. */
+  "sign_supplier",
+  /** Documento do pedido assinado pelos dois. */
+  "signed",
   "cancelled",
 ] as const;
 export type BookingNextStep = (typeof BOOKING_NEXT_STEPS)[number];
 
+/** Passos em que a bola não está com a Wellmix (o botão é só para acompanhar). */
+export const BOOKING_NEXT_WAITING: readonly BookingNextStep[] = [
+  "wait_supplier",
+  "negotiating",
+  "sign_supplier",
+  "signed",
+  "cancelled",
+];
+
 export interface BookingNext {
   step: BookingNextStep;
-  /** Para onde o botão leva (solicitação, cotação ou pedido). */
+  /** Para onde o botão leva (solicitação, cotação, pedido ou documento). */
   href: string;
-  /** O que o botão abre (o texto dele). */
-  target: "request" | "quote" | "order";
+  /**
+   * O que o botão abre (o texto dele): "confirm" = a comparação de cotações
+   * da solicitação, onde a Wellmix confirma; "document" = o documento do
+   * pedido (baixar, assinar, anexar e conferir).
+   */
+  target: "request" | "quote" | "order" | "confirm" | "document";
+  /** Cotações da solicitação: quantas foram enviadas, de quantas. */
+  answered: number;
+  total: number;
 }
+
+/** Em que ponto está o documento do pedido (docs/ORDER_SIGNATURE.md). */
+export type BookingOrderDocument =
+  "awaiting_wellmix" | "sent_to_supplier" | "signed" | null;
 
 /**
  * O próximo passo de uma linha que virou solicitação, a partir da situação
  * da solicitação, das cotações dela e do pedido (quando já nasceu).
  * `openQuotes`: quem vê abre a tela Cotações (senão o botão leva à
- * solicitação).
+ * solicitação). `draft` na cotação: a ficha dela já foi gravada (rascunho) e
+ * ela ainda não foi enviada. `document` no pedido: o ponto do documento com
+ * as duas assinaturas (nulo em pedido antigo, sem ele).
  */
 export function bookingNextStep(
   request: { id: string; status: string },
@@ -905,43 +935,84 @@ export function bookingNextStep(
     id: string;
     status: string;
     negotiation?: Array<{ kind: string }> | null;
+    draft?: boolean;
   }>,
-  order: { id: string } | null,
+  order: { id: string; document?: BookingOrderDocument } | null,
   openQuotes: boolean,
 ): BookingNext {
+  const sent = quotes.filter(
+    (q) => q.status === "answered" || q.status === "selected",
+  );
+  const counts = { answered: sent.length, total: quotes.length };
   const toRequest = {
     href: `/app/requests/${request.id}`,
     target: "request" as const,
+    ...counts,
   };
   // Uma cotação só: o botão vai direto nela.
   const toQuote = (quote: { id: string } | undefined) =>
     quote && openQuotes
-      ? { href: `/app/quotes/${quote.id}`, target: "quote" as const }
+      ? { href: `/app/quotes/${quote.id}`, target: "quote" as const, ...counts }
       : toRequest;
   const lastKind = (q: { negotiation?: Array<{ kind: string }> | null }) =>
     q.negotiation?.length ? q.negotiation[q.negotiation.length - 1].kind : null;
   if (request.status === "CANCELLED")
     return { step: "cancelled", ...toRequest };
-  if (request.status === "ORDERED")
-    return order
-      ? { step: "ordered", href: `/app/orders/${order.id}`, target: "order" }
-      : { step: "ordered", ...toRequest };
+  if (request.status === "ORDERED") {
+    if (!order) return { step: "ordered", ...toRequest };
+    if (!order.document)
+      return {
+        step: "ordered",
+        href: `/app/orders/${order.id}`,
+        target: "order",
+        ...counts,
+      };
+    return {
+      step:
+        order.document === "awaiting_wellmix"
+          ? "sign_wellmix"
+          : order.document === "sent_to_supplier"
+            ? "sign_supplier"
+            : "signed",
+      href: `/app/orders/${order.id}/purchase-order`,
+      target: "document",
+      ...counts,
+    };
+  }
   if (
     request.status === "WAITING_DOWN_PAYMENT" ||
     request.status === "SUPPLIER_SELECTED"
   )
     return { step: "wait_down_payment", ...toRequest };
-  if (request.status === "QUOTATION_RECEIVED") {
+  // Cotação enviada com a solicitação ainda em "RFQ aberta" (gravação
+  // interrompida no meio): vale a cotação, a linha não fica "esperando".
+  if (
+    request.status === "QUOTATION_RECEIVED" ||
+    (request.status === "RFQ_OPEN" && sent.length > 0)
+  ) {
     const returned = quotes.find(
       (q) => q.status === "answered" && lastKind(q) === "return",
     );
     if (returned) return { step: "negotiating", ...toQuote(returned) };
-    return { step: "choose_quote", ...toRequest };
+    return {
+      step: "choose_quote",
+      href: `/app/requests/${request.id}#quotes-compare`,
+      target: "confirm",
+      ...counts,
+    };
   }
   if (request.status === "RFQ_OPEN") {
     const invited = quotes.filter((q) => q.status === "invited");
     const declined = invited.find((q) => lastKind(q) === "decline");
     if (declined) return { step: "offer_declined", ...toQuote(declined) };
+    const drafts = invited.filter((q) => q.draft);
+    if (drafts.length)
+      return {
+        step: "supplier_draft",
+        ...toQuote(
+          drafts.length === 1 || invited.length === 1 ? drafts[0] : undefined,
+        ),
+      };
     return {
       step: "wait_supplier",
       ...toQuote(invited.length === 1 ? invited[0] : undefined),

@@ -11,6 +11,7 @@ import {
   bookingMoveOptions,
   bookingQuery,
   BOOKING_NEXT_STEPS,
+  BOOKING_NEXT_WAITING,
   bookingNextStep,
   bookingSignal,
   bookingStatusRequirementError,
@@ -637,6 +638,8 @@ describe("depois de virar solicitação: o próximo passo", () => {
       step: "open_rfq",
       href: "/app/requests/r1",
       target: "request",
+      answered: 0,
+      total: 0,
     });
     // RFQ aberta com uma cotação: o botão vai direto na cotação.
     expect(
@@ -645,6 +648,8 @@ describe("depois de virar solicitação: o próximo passo", () => {
       step: "wait_supplier",
       href: "/app/quotes/q1",
       target: "quote",
+      answered: 0,
+      total: 1,
     });
     // Várias cotações: a solicitação (lá se vê todas).
     expect(
@@ -667,6 +672,8 @@ describe("depois de virar solicitação: o próximo passo", () => {
       step: "offer_declined",
       href: "/app/quotes/q2",
       target: "quote",
+      answered: 0,
+      total: 2,
     });
     // Respondida: escolher; devolvida esperando resposta: negociando.
     expect(
@@ -676,7 +683,14 @@ describe("depois de virar solicitação: o próximo passo", () => {
         null,
         true,
       ),
-    ).toMatchObject({ step: "choose_quote", target: "request" });
+    ).toEqual({
+      // "Cotação enviada": o botão leva à comparação, onde a Wellmix confirma.
+      step: "choose_quote",
+      href: "/app/requests/r1#quotes-compare",
+      target: "confirm",
+      answered: 1,
+      total: 1,
+    });
     expect(
       bookingNextStep(
         req("QUOTATION_RECEIVED"),
@@ -693,6 +707,8 @@ describe("depois de virar solicitação: o próximo passo", () => {
       step: "ordered",
       href: "/app/orders/o1",
       target: "order",
+      answered: 0,
+      total: 0,
     });
     expect(bookingNextStep(req("ORDERED"), [], null, true)).toMatchObject({
       step: "ordered",
@@ -703,6 +719,65 @@ describe("depois de virar solicitação: o próximo passo", () => {
     );
   });
 
+  it("rascunho do fornecedor, cotação enviada e o documento do pedido aparecem na linha", () => {
+    // A ficha foi gravada mas a cotação não foi enviada: não é "esperando".
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [{ ...quote("invited"), draft: true }],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "supplier_draft", href: "/app/quotes/q1" });
+    // Dois convidados, um com rascunho: vai na cotação dele.
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("invited"), { ...quote("invited", [], "q2"), draft: true }],
+        null,
+        true,
+      ),
+    ).toMatchObject({
+      step: "supplier_draft",
+      href: "/app/quotes/q2",
+      total: 2,
+    });
+    // Cotação enviada com a solicitação ainda em "RFQ aberta" (gravação
+    // interrompida): a linha mostra a cotação enviada, não fica esperando.
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("answered"), quote("invited", [], "q2")],
+        null,
+        true,
+      ),
+    ).toMatchObject({
+      step: "choose_quote",
+      target: "confirm",
+      answered: 1,
+      total: 2,
+    });
+    // Pedido com o documento das duas assinaturas: cada ponto dele.
+    const doc = (
+      document: "awaiting_wellmix" | "sent_to_supplier" | "signed",
+    ) => bookingNextStep(req("ORDERED"), [], { id: "o1", document }, true);
+    expect(doc("awaiting_wellmix")).toMatchObject({
+      step: "sign_wellmix",
+      href: "/app/orders/o1/purchase-order",
+      target: "document",
+    });
+    expect(doc("sent_to_supplier").step).toBe("sign_supplier");
+    expect(doc("signed").step).toBe("signed");
+    // Só os passos em que a bola está com outro ficam "em espera".
+    expect(BOOKING_NEXT_WAITING).toEqual([
+      "wait_supplier",
+      "negotiating",
+      "sign_supplier",
+      "signed",
+      "cancelled",
+    ]);
+  });
+
   it("quem não abre Cotações é levado à solicitação; cada passo tem texto nas três línguas", async () => {
     expect(
       bookingNextStep(req("RFQ_OPEN"), [quote("invited")], null, false),
@@ -710,13 +785,25 @@ describe("depois de virar solicitação: o próximo passo", () => {
       step: "wait_supplier",
       href: "/app/requests/r1",
       target: "request",
+      answered: 0,
+      total: 1,
     });
     const { translator } = await import("@/i18n");
     for (const lang of ["pt", "en", "zh"] as const) {
       const tr = translator(lang);
-      for (const step of BOOKING_NEXT_STEPS)
+      for (const step of BOOKING_NEXT_STEPS) {
         expect(tr(`booking.next.${step}`)).not.toBe(`booking.next.${step}`);
-      for (const target of ["request", "quote", "order"] as const)
+        expect(tr(`booking.next.label.${step}`)).not.toBe(
+          `booking.next.label.${step}`,
+        );
+      }
+      for (const target of [
+        "request",
+        "quote",
+        "order",
+        "confirm",
+        "document",
+      ] as const)
         expect(tr(`booking.next.go.${target}`)).not.toBe(
           `booking.next.go.${target}`,
         );

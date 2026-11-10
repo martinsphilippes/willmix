@@ -15,6 +15,7 @@ import {
   bookingCanRequest,
   activeBookingFilters,
   bookingColumnsFor,
+  BOOKING_NEXT_WAITING,
   bookingQuery,
   bookingRequestQuantity,
   bookingSignal,
@@ -842,19 +843,42 @@ export default async function BookingPage({
           // Virou solicitação: o próximo passo, em palavras, e o botão que
           // leva direto para lá.
           <div className="max-w-64 space-y-1" data-booking-next={row.next.step}>
-            <Badge tone={STATUS_TONE[row.status]}>
-              {statusLabel(row.status)}
-              {row.requestNumber ? ` nº ${row.requestNumber}` : ""}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-1">
+              <Badge tone={STATUS_TONE[row.status]}>
+                {statusLabel(row.status)}
+                {row.requestNumber ? ` nº ${row.requestNumber}` : ""}
+              </Badge>
+              {/* A situação de agora, em uma palavra (ex.: "Cotação enviada"). */}
+              <span data-booking-next-label="">
+                <Badge
+                  tone={
+                    row.next.step === "cancelled"
+                      ? "neutral"
+                      : BOOKING_NEXT_WAITING.includes(row.next.step)
+                        ? "info"
+                        : "warning"
+                  }
+                >
+                  {t(`booking.next.label.${row.next.step}`)}
+                </Badge>
+              </span>
+            </div>
             <p className="whitespace-normal text-xs leading-snug text-zinc-700">
               {t(`booking.next.${row.next.step}`)}
+              {row.next.total > 1 &&
+              (row.next.step === "wait_supplier" ||
+                row.next.step === "supplier_draft" ||
+                row.next.step === "choose_quote")
+                ? ` ${t("booking.next.count", {
+                    answered: row.next.answered,
+                    total: row.next.total,
+                  })}`
+                : ""}
             </p>
             <LinkButton
               href={row.next.href}
               variant={
-                row.next.step === "wait_supplier" ||
-                row.next.step === "negotiating" ||
-                row.next.step === "cancelled"
+                BOOKING_NEXT_WAITING.includes(row.next.step)
                   ? "secondary"
                   : "primary"
               }
