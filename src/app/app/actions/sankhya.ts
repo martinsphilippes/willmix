@@ -22,8 +22,9 @@ import { requireUser, str } from "./helpers";
 
 const BACK = "/app/settings/sankhya";
 
+/** Volta para a aba Explorar (a aba Integração tem as próprias ações). */
 function back(params: Record<string, string>, hash = "") {
-  return `${BACK}?${new URLSearchParams(params).toString()}${hash}`;
+  return `${BACK}?${new URLSearchParams({ tab: "explore", ...params }).toString()}${hash}`;
 }
 
 function failure(error: unknown, hash: string) {

@@ -12,6 +12,7 @@ import {
   normalizeWeights,
 } from "@/lib/services/supplier-ranking-calc";
 import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
+import { SettingsTabs } from "./_tabs";
 import { fiscalStatus } from "@/lib/services/fiscal";
 import { formatContainerTypes } from "@/lib/services/containers";
 import { aiStatus } from "@/lib/integrations/ai";
@@ -224,6 +225,7 @@ export default async function SettingsPage({
           </>
         }
       />
+      <SettingsTabs t={t} active="general" admin={user.role === "admin"} />
       {ok ? <Alert tone="success">{t("settings.saved")}</Alert> : null}
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
       <Card className="mt-3">

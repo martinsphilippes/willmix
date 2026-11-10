@@ -17,8 +17,10 @@ import "server-only";
  *
  * Variáveis: SANKHYA_CLIENT_ID, SANKHYA_CLIENT_SECRET, SANKHYA_X_TOKEN e,
  * opcional, SANKHYA_BASE_URL (padrão produção; sandbox:
- * https://api.sandbox.sankhya.com.br). Sem elas, `sankhyaConfig()` é null e
- * as telas dizem o que falta (nada é inventado).
+ * https://api.sandbox.sankhya.com.br), ou os mesmos valores gravados na tela
+ * Configurações → Integração Sankhya (têm prioridade; sankhya-settings.ts).
+ * Sem eles, as chamadas falham com "sankhya_not_configured" e as telas dizem o
+ * que falta (nada é inventado).
  */
 
 export interface SankhyaConfig {
@@ -181,13 +183,24 @@ export interface SankhyaClientOptions {
   fetch?: Fetch;
 }
 
-function requireConfig(options: SankhyaClientOptions = {}) {
-  const config =
-    options.config === undefined ? sankhyaConfig() : options.config;
+/**
+ * Configuração em uso: a passada nas opções ou, sem ela, a gravada na tela
+ * Configurações → Integração Sankhya, com as variáveis de ambiente como reserva
+ * (sankhya-settings.ts).
+ */
+async function requireConfig(options: SankhyaClientOptions = {}) {
+  let config = options.config;
+  let missing = "";
+  if (config === undefined) {
+    const { getSankhyaConfigStatus } = await import("./sankhya-settings");
+    const status = await getSankhyaConfigStatus();
+    config = status.config;
+    missing = status.missing.map((f) => status.envNames[f]).join(", ");
+  }
   if (!config)
     throw new SankhyaError(
       "sankhya_not_configured",
-      sankhyaMissingEnv().join(", ") || "SANKHYA_BASE_URL",
+      missing || sankhyaMissingEnv().join(", ") || "SANKHYA_BASE_URL",
     );
   return { config, fetcher: options.fetch ?? fetch };
 }
@@ -198,7 +211,7 @@ async function authorized(
   path: string,
   init: RequestInit,
 ) {
-  const { config, fetcher } = requireConfig(options);
+  const { config, fetcher } = await requireConfig(options);
   const send = async (fresh: boolean) =>
     timedFetch(fetcher, `${config.baseUrl}${path}`, {
       ...init,
@@ -704,17 +717,22 @@ export async function tableChanges(
 
 /** Teste de conexão: autentica e lê um registro de Empresa. */
 export async function pingSankhya(options: SankhyaClientOptions = {}) {
-  const { config, fetcher } = requireConfig(options);
+  const { config, fetcher } = await requireConfig(options);
   const started = Date.now();
-  const { expiresIn } = await authenticate(config, fetcher);
+  const { token, expiresIn } = await authenticate(config, fetcher);
+  const authMs = Date.now() - started;
   const sample = await loadRecords(
     { entity: "Empresa", fields: "CODEMP, NOMEFANTASIA" },
-    options,
+    { ...options, config, fetch: fetcher },
   );
   return {
     baseUrl: config.baseUrl,
     expiresIn,
+    /** Só o tamanho: o token nunca vai para a tela. */
+    tokenLength: token.length,
+    authMs,
     ms: Date.now() - started,
     companies: sample.rows.slice(0, 5),
+    totalCompanies: sample.total ?? sample.rows.length,
   };
 }

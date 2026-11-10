@@ -11,7 +11,7 @@ Integração com o Sankhya Om pela **API Gateway oficial** (https://developer.sa
 | `SANKHYA_X_TOKEN`       | No Sankhya Om da empresa: tela **Configurações Gateway** (token da integração)          |
 | `SANKHYA_BASE_URL`      | Opcional. `https://api.sankhya.com.br` (padrão) ou `https://api.sandbox.sankhya.com.br` |
 
-Cadastrar na Vercel (Production e Preview) e publicar de novo. O cliente só aceita os dois endereços oficiais (o segredo não vai para outro host). As permissões no ERP são as do usuário vinculado ao token do gateway: o que ele não pode ver ou gravar no Sankhya, a API também recusa.
+Dois jeitos de informar: na tela **Configurações → Integração Sankhya** (tem prioridade) ou nas variáveis acima na Vercel (Production e Preview, e publicar de novo). Na tela, cada campo vazio mantém o valor gravado; sem nada gravado, vale a variável. Os segredos gravados pela tela ficam cifrados (AES-256-GCM) na tabela `settings` (chave `sankhya.credentials`), com a chave derivada de `SANKHYA_ENCRYPTION_KEY` ou, na falta, de `SESSION_SECRET` / `APPWRITE_API_KEY`; trocar esse segredo invalida o que foi gravado (a tela avisa "não decifra" e pede para gravar de novo). A tela nunca mostra os valores, só os 4 últimos caracteres; a auditoria registra só quais campos mudaram. Em produção sem nenhum desses segredos, a tela não grava credenciais. O cliente só aceita os dois endereços oficiais (o segredo não vai para outro host). As permissões no ERP são as do usuário vinculado ao token do gateway: o que ele não pode ver ou gravar no Sankhya, a API também recusa.
 
 ## Teste por curl
 
@@ -47,9 +47,19 @@ Autentica, lê 5 empresas (loadRecords), produtos (REST), busca tabelas no dicio
 
 Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedores), `CabecalhoNota` (TGFCAB) e `ItemNota` (TGFITE) para pedidos e cotações, `Estoque` (TGFEST), `TipoOperacao` (TGFTOP), `TipoNegociacao` (TGFTPV), `Vendedor` (TGFVEN), `Empresa` (TSIEMP), `Financeiro` (TGFFIN).
 
-## Tela Configurações → Sankhya
+## Tela Configurações → Integração Sankhya
 
-Teste de conexão, busca no dicionário (tabela → entidades, campos e ligações, com link para a tabela ligada), consulta de entidade com ligações e paginação, SQL somente leitura, e as escritas: registro (DatasetSP.save), pedido/orçamento/cotação (CACSP) e cancelamento. Leituras rodam no servidor por GET; escritas são Server Actions do admin, com zod e registro na auditoria (`sankhya.*`). Erros mostram o código e o texto do Sankhya.
+`/app/settings/sankhya` (aba padrão; só o administrador; código em `src/app/app/settings/sankhya/_integration.tsx`, ações em `src/app/app/actions/sankhya-integration.ts`, configuração em `src/lib/integrations/sankhya-settings.ts`):
+
+1. **Credenciais**: ambiente, Client ID, Client Secret e X-Token (ver acima), com a origem de cada um (tela ou variável).
+2. **Teste de autenticação**: token novo + leitura das empresas; mostra tempos, validade e tamanho do token (nunca o token).
+3. **Códigos do ERP** (chave `sankhya.erp` em `settings`): empresa (CODEMP), TOP do pedido e da cotação, tipo de negociação (e se vale o prazo do fornecedor), comprador (CODVEND), local (CODLOCAL), volume (do produto ou fixo) e se o portal liga fornecedor/produto ao Sankhya. Sugestões iniciais: TOP 1101 (pedido) e 1002 (cotação), tipo 33 (IMPORTAÇÃO), vendedor 0; as listas vêm do ERP. `ordersEnabled` (envio automático dos pedidos do portal) ainda não aparece na tela: fica desligado até o pedido de teste funcionar.
+4. **Consultas de exemplo**: empresas, produto pela referência do fornecedor (REFFORN), parceiro pelo nome, TOPs de pedido/cotação e últimas notas das TOPs gravadas; mostra o pedido feito ao Sankhya, a tabela e o JSON.
+5. **Pedido ou cotação de teste**: pré-visualização (confere no ERP parceiro, produto e TOP, lê TIPMOV e o volume, e mostra o JSON do `CACSP.incluirNota`), envio, o que ficou gravado (CabecalhoNota e ItemNota) e o cancelamento. Tudo na auditoria (`sankhya.note.test`, `sankhya.note.cancel`).
+
+## Tela Configurações → Sankhya: explorar dados
+
+`/app/settings/sankhya?tab=explore`. Teste de conexão, busca no dicionário (tabela → entidades, campos e ligações, com link para a tabela ligada), consulta de entidade com ligações e paginação, SQL somente leitura, e as escritas: registro (DatasetSP.save), pedido/orçamento/cotação (CACSP) e cancelamento. Leituras rodam no servidor por GET; escritas são Server Actions do admin, com zod e registro na auditoria (`sankhya.*`). Erros mostram o código e o texto do Sankhya.
 
 ## Validado contra o ERP da Wellmix (10/11/2026, produção)
 

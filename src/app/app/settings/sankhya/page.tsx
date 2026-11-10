@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
-import type { Translate } from "@/i18n";
 import {
   Alert,
   Card,
@@ -10,21 +9,19 @@ import {
   Input,
   PageHeader,
   Select,
-  Table,
-  Td,
   TextLink,
   Textarea,
-  Th,
 } from "@/components/ui";
+import { Failure, Outcome, ResultTable, attempt, one } from "./_shared";
 import { SubmitButton } from "@/components/submit-button";
 import {
   executeQuery,
   loadRecords,
-  sankhyaConfig,
-  sankhyaMissingEnv,
   type LoadRecordsInput,
-  type SankhyaTable,
 } from "@/lib/integrations/sankhya-client";
+import { getSankhyaConfigStatus } from "@/lib/integrations/sankhya-settings";
+import { SettingsTabs } from "../_tabs";
+import { IntegrationTab } from "./_integration";
 import {
   describeTable,
   searchTables,
@@ -40,118 +37,14 @@ import {
 export const maxDuration = 60;
 
 /*
- * Configurações → Sankhya (só o administrador; docs/SANKHYA.md): teste da
- * conexão, dicionário de dados (tabelas, entidades, campos e ligações), consulta
+ * Configurações → Sankhya (só o administrador; docs/SANKHYA.md), em duas abas:
+ * - Integração (padrão; _integration.tsx): credenciais, códigos do ERP e
+ *   testes de autenticação, consultas e pedido;
+ * - Explorar (?tab=explore): teste da conexão, dicionário de dados (tabelas, entidades, campos e ligações), consulta
  * de qualquer entidade com ligações, SQL somente leitura e escrita no ERP
  * (registro, pedido/orçamento/cotação, cancelamento). Leituras são GET (o
  * servidor consulta e desenha); escritas são Server Actions auditadas.
  */
-
-const MAX_ROWS = 300;
-
-const one = (v: unknown) => (typeof v === "string" ? v : "");
-
-type Outcome =
-  | { data: SankhyaTable; error: null }
-  | { data: null; error: string };
-
-async function attempt<T>(job: () => Promise<T>) {
-  try {
-    return { data: await job(), error: null } as const;
-  } catch (error) {
-    const e = error as { code?: string; detail?: string; message?: string };
-    return {
-      data: null,
-      error: `${e.code ?? "error"}: ${e.detail ?? e.message ?? String(error)}`,
-    } as const;
-  }
-}
-
-function ResultTable({
-  t,
-  table,
-  linkColumn,
-}: {
-  t: Translate;
-  table: SankhyaTable;
-  /** Coluna cujo valor vira link para o detalhe da tabela. */
-  linkColumn?: string;
-}) {
-  if (!table.rows.length)
-    return <p className="text-sm text-zinc-500">{t("sankhya.rows.none")}</p>;
-  const rows = table.rows.slice(0, MAX_ROWS);
-  return (
-    <>
-      {table.rows.length > MAX_ROWS ? (
-        <p className="mb-2 text-xs text-zinc-500">
-          {t("sankhya.rows.limited", {
-            shown: MAX_ROWS,
-            total: table.rows.length,
-          })}
-        </p>
-      ) : null}
-      <Table className="max-h-[32rem] overflow-y-auto">
-        <thead>
-          <tr>
-            {table.columns.map((c) => (
-              <Th key={c} className="whitespace-nowrap">
-                {c}
-              </Th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              {table.columns.map((c) => {
-                const v = row[c];
-                const text = v == null ? "" : String(v);
-                return (
-                  <Td key={c} className="whitespace-nowrap font-mono text-xs">
-                    {linkColumn === c && text ? (
-                      <TextLink
-                        href={`/app/settings/sankhya?table=${encodeURIComponent(text)}#table`}
-                      >
-                        {text}
-                      </TextLink>
-                    ) : (
-                      text
-                    )}
-                  </Td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </Table>
-    </>
-  );
-}
-
-function Failure({ t, text }: { t: Translate; text: string }) {
-  const [code, ...rest] = text.split(": ");
-  return (
-    <Alert tone="danger">
-      {t("sankhya.error", { code, detail: rest.join(": ") })}
-    </Alert>
-  );
-}
-
-function Outcome({
-  t,
-  result,
-  linkColumn,
-}: {
-  t: Translate;
-  result: Outcome;
-  linkColumn?: string;
-}) {
-  return result.error !== null ? (
-    <Failure t={t} text={result.error} />
-  ) : (
-    <ResultTable t={t} table={result.data} linkColumn={linkColumn} />
-  );
-}
 
 /** "tipo:valor" por linha → parâmetros do critério. */
 function parseParams(raw: string): LoadRecordsInput["params"] {
@@ -202,8 +95,36 @@ export default async function SankhyaPage({
   if (user.role !== "admin") notFound();
   const t = await getT();
   const q = await searchParams;
-  const config = sankhyaConfig();
-  const missing = sankhyaMissingEnv();
+
+  // Aba: Explorar quando pedida ou quando a URL traz uma consulta/resultado dela.
+  const exploreSk = ["ping", "saved", "note", "cancelled"];
+  const tab =
+    one(q.tab) === "explore" ||
+    ["q", "table", "entity", "sql"].some((k) => q[k] !== undefined) ||
+    exploreSk.includes(one(q.sk))
+      ? "explore"
+      : "integration";
+
+  if (tab === "integration")
+    return (
+      <>
+        <PageHeader
+          title={t("sankhyaInt.title")}
+          subtitle={t("sankhyaInt.subtitle")}
+          actions={
+            <TextLink href="/app/settings" className="text-sm">
+              {t("sankhya.back")}
+            </TextLink>
+          }
+        />
+        <SettingsTabs t={t} active="integration" admin />
+        <IntegrationTab t={t} q={q} />
+      </>
+    );
+
+  const status = await getSankhyaConfigStatus();
+  const config = status.config;
+  const missing = status.missing.map((f) => status.envNames[f]);
 
   const dictQuery = one(q.q);
   const table = one(q.table);
@@ -260,6 +181,7 @@ export default async function SankhyaPage({
 
   const pageLink = (target: number) => {
     const u = new URLSearchParams({
+      tab: "explore",
       entity,
       fields,
       joins,
@@ -281,6 +203,7 @@ export default async function SankhyaPage({
           </TextLink>
         }
       />
+      <SettingsTabs t={t} active="explore" admin />
       {notice("any", null)}
 
       <div className="grid gap-4">
@@ -331,6 +254,7 @@ export default async function SankhyaPage({
                 action="/app/settings/sankhya#dict"
                 className="flex flex-wrap items-end gap-2"
               >
+                <input type="hidden" name="tab" value="explore" />
                 <Field label={t("sankhya.dict.search")}>
                   <Input
                     name="q"
@@ -357,7 +281,7 @@ export default async function SankhyaPage({
                   detail.instances.rows[0]?.NOMEINSTANCIA ? (
                     <TextLink
                       className="text-sm"
-                      href={`/app/settings/sankhya?entity=${encodeURIComponent(String(detail.instances.rows[0].NOMEINSTANCIA))}#records`}
+                      href={`/app/settings/sankhya?tab=explore&entity=${encodeURIComponent(String(detail.instances.rows[0].NOMEINSTANCIA))}#records`}
                     >
                       {t("sankhya.table.query")}
                     </TextLink>
@@ -404,6 +328,7 @@ export default async function SankhyaPage({
                 action="/app/settings/sankhya#records"
                 className="grid gap-2 md:grid-cols-2"
               >
+                <input type="hidden" name="tab" value="explore" />
                 <Field label={t("sankhya.records.entity")}>
                   <Input
                     name="entity"
@@ -483,6 +408,7 @@ export default async function SankhyaPage({
                 action="/app/settings/sankhya#sql"
                 className="grid gap-2"
               >
+                <input type="hidden" name="tab" value="explore" />
                 <Textarea
                   name="sql"
                   defaultValue={sql}

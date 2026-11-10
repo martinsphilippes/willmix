@@ -28,7 +28,7 @@ Regra: toda integração externa crítica tem modo manual ou mock para o fluxo f
 Para ativar cada integração real é preciso fornecer:
 
 1. **Appwrite**: feito. Falta cadastrar as três variáveis na Vercel e trocar a chave de API (a usada na publicação passou pelo chat).
-2. **Sankhya**: cliente da API pronto (docs/SANKHYA.md). Falta cadastrar `SANKHYA_CLIENT_ID`, `SANKHYA_CLIENT_SECRET` e `SANKHYA_X_TOKEN` na Vercel e definir os códigos do ERP (empresa, TOP, tipo de negociação, vendedor) para `SankhyaAdapter.createOrder` enviar os pedidos do portal.
+2. **Sankhya**: cliente da API pronto (docs/SANKHYA.md). Credenciais e códigos do ERP (empresa, TOP, tipo de negociação, vendedor, local) se gravam em Configurações → Integração Sankhya, que também testa autenticação, consultas e um pedido/cotação de teste. Falta `SankhyaAdapter.createOrder` enviar os pedidos do portal com esses códigos (depois do pedido de teste dar certo).
 3. **Boleto/PIX com confirmação automática**: gateway ou banco escolhido, credenciais e webhook de confirmação. Hoje o Pix é estático (código com valor e referência, sem banco): a Wellmix confere o extrato ou o comprovante e confirma. Implementar `PaymentProvider.createCharge` e um route handler de webhook que chame `confirmDownPayment`.
 4. **E-mail**: provedor (Resend, SES, SendGrid) e chave. Trocar `sendEmail` em `notifications.ts`.
 5. **WhatsApp**: conta WhatsApp Business API (Meta ou BSP), número, token e templates aprovados. Trocar `sendWhatsapp`.

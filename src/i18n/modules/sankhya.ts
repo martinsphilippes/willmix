@@ -14,7 +14,7 @@ export const pt = {
   "sankhya.status": "Conexão",
   "sankhya.status.configured": "Configurado: {base}",
   "sankhya.status.missing":
-    "Faltam as variáveis de ambiente: {vars}. Cadastre na Vercel (Production e Preview) e publique de novo.",
+    "Faltam credenciais: {vars}. Grave-as na aba Integração Sankhya (ou nas variáveis de ambiente da Vercel).",
   "sankhya.status.test": "Testar conexão",
   "sankhya.status.ok": "Conectado em {ms} ms ({base}). Empresas: {companies}",
   "sankhya.status.help":
@@ -75,7 +75,7 @@ export const pt = {
   "sankhya.cancel.submit": "Cancelar no Sankhya",
   "sankhya.cancel.ok": "Cancelado no Sankhya: {nunota}",
   "sankhya.notConfigured":
-    "Configure as variáveis do Sankhya para usar esta parte.",
+    "Grave as credenciais na aba Integração Sankhya para usar esta parte.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -89,7 +89,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhya.status": "Connection",
   "sankhya.status.configured": "Configured: {base}",
   "sankhya.status.missing":
-    "Missing environment variables: {vars}. Add them in Vercel (Production and Preview) and redeploy.",
+    "Missing credentials: {vars}. Save them in the Sankhya integration tab (or in the Vercel environment variables).",
   "sankhya.status.test": "Test connection",
   "sankhya.status.ok": "Connected in {ms} ms ({base}). Companies: {companies}",
   "sankhya.status.help":
@@ -149,7 +149,8 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhya.cancel.justification": "Justification",
   "sankhya.cancel.submit": "Cancel in Sankhya",
   "sankhya.cancel.ok": "Cancelled in Sankhya: {nunota}",
-  "sankhya.notConfigured": "Set the Sankhya variables to use this part.",
+  "sankhya.notConfigured":
+    "Save the credentials in the Sankhya integration tab to use this part.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -162,7 +163,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhya.status": "连接",
   "sankhya.status.configured": "已配置：{base}",
   "sankhya.status.missing":
-    "缺少环境变量：{vars}。请在 Vercel（Production 和 Preview）中添加并重新部署。",
+    "缺少凭证：{vars}。请在“Sankhya 集成”标签中保存（或在 Vercel 环境变量中设置）。",
   "sankhya.status.test": "测试连接",
   "sankhya.status.ok": "已连接，用时 {ms} 毫秒（{base}）。公司：{companies}",
   "sankhya.status.help":
@@ -220,5 +221,5 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhya.cancel.justification": "理由",
   "sankhya.cancel.submit": "在 Sankhya 中取消",
   "sankhya.cancel.ok": "已在 Sankhya 中取消：{nunota}",
-  "sankhya.notConfigured": "请先配置 Sankhya 变量再使用此部分。",
+  "sankhya.notConfigured": "请先在“Sankhya 集成”标签中保存凭证。",
 };

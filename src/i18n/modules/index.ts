@@ -93,6 +93,7 @@ import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
 import * as superplan from "./superplan";
 import * as sankhya from "./sankhya";
+import * as sankhyaIntegration from "./sankhya-integration";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
@@ -193,6 +194,7 @@ export const modulesPt = {
   ...freightTariff.pt,
   ...superplan.pt,
   ...sankhya.pt,
+  ...sankhyaIntegration.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -289,6 +291,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.en,
   ...superplan.en,
   ...sankhya.en,
+  ...sankhyaIntegration.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -385,4 +388,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.zh,
   ...superplan.zh,
   ...sankhya.zh,
+  ...sankhyaIntegration.zh,
 };
