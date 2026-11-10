@@ -56,6 +56,7 @@ Nada disso é feito agora; a regra é só não tomar decisões que tornem isso i
 - Nunca ler dados no browser: Server Components recebem dados já filtrados por papel.
 - Esquema em `src/lib/db/schema.ts`; `appwrite.config.json` é gerado (`npm run appwrite:config`), nunca editado à mão.
 - Português na interface e docs; inglês em identificadores.
+- Acesso ao portal (login de parceiro): nasce só dentro de um cadastro (Cadastros → abrir o cadastro → quadro "Usuários", âncora `#access`), preso a ele por `users.partyId` e com o papel do tipo do cadastro. `createPortalLogin` (`src/lib/services/portal-access.ts`) recusa login de parceiro sem cadastro (`user_party_required`), papel de outro tipo (`user_role_mismatch`), e-mail repetido (`user_email_taken`) e senha com menos de 8 caracteres (o mesmo mínimo do login); papel da Wellmix continua só para o admin. No Appwrite, se a linha do portal não gravar, a conta recém-criada é desfeita (não fica conta sem cadastro). Toda criação grava `user.create` na auditoria com o nome do cadastro.
 
 ## 6. Identidade visual
 

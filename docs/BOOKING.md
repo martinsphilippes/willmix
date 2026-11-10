@@ -208,6 +208,7 @@ Toda mudança grava em `audit_log` (entidade `booking`): `booking.create` (impor
 
 - Página com `requireScreen("booking")`; toda ação e todo serviço conferem papel Wellmix e a tela; aprovar e analisar conferem a tela Superplan; gerar solicitação confere a tela Solicitações.
 - Cliente, fornecedor e parceiros não recebem nada do Booking.
+- Fornecedor sem login: a planilha cadastra o fornecedor (Cadastros → Fornecedores) sem login. O Booking mostra o aviso "Fornecedor do Booking sem acesso ao portal" e o selo "Sem acesso" na coluna Fornecedor (`options.suppliersWithoutLogin`, só logins ativos contam), com o atalho para o quadro de acesso do cadastro. O login criado ali fica preso ao cadastro (`docs/ARQUITETURA.md`, Convenções) e enxerga o que já tinha sido enviado, porque cotações e pendências são do cadastro, não do login.
 - Produto escondido não abre para o cliente nem pelo endereço direto: vitrine, página do produto, carrinho, nova solicitação (lista, envio e nome do produto), busca por foto (o produto nem vai para a IA), fotos da vitrine e documentos do produto (`/api/files`), kit de marketing novo. A recusa é a mesma para "não existe", "desativado" e "escondido" (não dá para descobrir se um produto existe).
 - Entradas validadas no servidor (zod): ids, quantidade, etapa, texto com tamanho máximo, simulação do Superplan (números com limite).
 - Nada foi afrouxado: todas as mudanças nas telas do cliente só acrescentam restrição.
