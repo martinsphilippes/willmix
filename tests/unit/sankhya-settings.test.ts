@@ -219,6 +219,9 @@ describe("códigos do ERP e nota de teste", () => {
       CODVEND: 0,
       TIPMOV: "O",
       DTNEG: "10/11/2026",
+      // Obrigatórias no TGFCAB (conferência da parte 6).
+      CODEMPNEGOC: 3,
+      NUMNOTA: 0,
     });
     expect(note.items).toEqual([
       {
@@ -227,6 +230,8 @@ describe("códigos do ERP e nota de teste", () => {
         CODVOL: "UN",
         VLRUNIT: 9.5,
         PERCDESC: 0,
+        // Obrigatória no TGFITE.
+        CODEMP: 3,
       },
     ]);
     expect(note.informPrice).toBe(true);

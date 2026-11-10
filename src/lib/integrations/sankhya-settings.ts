@@ -412,6 +412,8 @@ export function buildTestNote(
   return {
     header: {
       CODEMP: erp.codEmp,
+      CODEMPNEGOC: erp.codEmp,
+      NUMNOTA: 0,
       CODPARC: input.codParc,
       CODTIPOPER: input.kind === "order" ? erp.topOrder : erp.topQuote,
       CODTIPVENDA: erp.codTipVenda,
@@ -431,6 +433,7 @@ export function buildTestNote(
         CODVOL: codVol,
         VLRUNIT: input.unitPrice,
         PERCDESC: 0,
+        CODEMP: erp.codEmp,
       },
     ],
     informPrice: true,
