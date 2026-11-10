@@ -514,12 +514,21 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(accepted.method).toBe("accept");
   });
 
-  it("contrato assinado: o início da produção entra sozinho, com o prazo das Configurações", async () => {
+  it("contrato assinado: o início da produção entra sozinho, com o prazo do fornecedor", async () => {
     const { setSetting } = await import("@/lib/settings");
     const ps = await import("@/lib/services/purchase-sheet");
     const pr = await import("@/lib/services/production");
-    await setSetting("productionStartDays", 3);
+    await setSetting("productionStartDays", 9);
     const order = await newOrder("Quadro com prazo");
+    // O prazo é do fornecedor: só o administrador grava; sem ele, o padrão.
+    expect((await sig.productionStartFor(order.id)).days).toBe(9);
+    await expect(
+      sig.setSupplierProductionStartDays(operator, order.supplierId, 3),
+    ).rejects.toThrow();
+    await expect(
+      sig.setSupplierProductionStartDays(supplierA, order.supplierId, 3),
+    ).rejects.toThrow();
+    await sig.setSupplierProductionStartDays(admin, order.supplierId, 3);
     await ps.saveSheet(supplierA, order.id, { material: "GLASS" } as never);
     // Antes da assinatura: automático, ainda sem data; digitar não vale.
     expect(await sig.productionStartFor(order.id)).toEqual({
@@ -554,6 +563,9 @@ describe("documento do pedido com duas assinaturas", () => {
     const view = await pr.productionView(order);
     expect(view.track?.productionStartAt).toBe(expected.toISOString());
     expect(view.startAuto).toEqual({ days: 3, signed: true });
+    // Vazio volta ao padrão das Configurações.
+    await sig.setSupplierProductionStartDays(admin, order.supplierId, null);
+    expect((await sig.productionStartFor(order.id)).days).toBe(9);
     await setSetting("productionStartDays", 0);
   });
 

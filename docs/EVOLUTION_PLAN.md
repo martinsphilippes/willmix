@@ -720,3 +720,11 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - Nenhuma tela ou campo saiu: a programação continua na ficha, agora só para a Wellmix (e para a certificadora ler). A ficha mestre do produto não mudou.
 - **Em aberto**: programação que o fornecedor já tinha gravado em pedidos em andamento continua lá (a Wellmix confere); se o despachante ou outro parceiro deve ver a programação.
 - Testes: `tests/unit/purchase-sheet.test.ts`, `tests/unit/sheet-prefill.test.ts`, `tests/unit/sheet-quantity.test.ts`, `tests/unit/workflow.test.ts`; o E2E faz a programação como Wellmix.
+
+## Início da produção: prazo por fornecedor (só o administrador)
+
+- **Decisão do dono** (10/11/2026): o prazo "dias depois do contrato assinado" é de **cada fornecedor**, e quem informa é o administrador. Sem ajuste manual da data no pedido.
+- **Onde**: no cadastro do fornecedor (`/app/parties/<id>`), cartão "Início da produção" (só o administrador vê e grava; `saveSupplierProductionStartAction`, `setSupplierProductionStartDays`, com auditoria). Em branco, vale o padrão das Configurações (`productionStartDays`).
+- **Dado**: guardado em Configurações, na chave `productionStartDaysBySupplier` (fornecedor → dias), para não exigir publicação de esquema. `productionStartFor` usa o prazo do fornecedor do pedido e, sem ele, o padrão.
+- Vale para as próximas assinaturas: pedido já assinado, com a data gravada, não muda quando o prazo muda.
+- Teste: `tests/unit/order-signature.test.ts`.

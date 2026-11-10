@@ -82,6 +82,12 @@ export const DEFAULT_SETTINGS = {
    * e no acompanhamento da produção; ninguém digita.
    */
   productionStartDays: 0,
+  /**
+   * O mesmo prazo, por fornecedor (id do fornecedor → dias): quem tem valor
+   * aqui usa o dele; os outros, o padrão acima. Só o administrador grava,
+   * no cadastro do fornecedor.
+   */
+  productionStartDaysBySupplier: {} as Record<string, number>,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */

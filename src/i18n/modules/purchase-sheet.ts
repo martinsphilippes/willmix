@@ -64,9 +64,9 @@ export const pt = {
   "sheet.field.powerDetail": "Detalhe (ex.: 12V, 2 pilhas AA)",
   "sheet.field.productionStartAt": "Início da produção",
   "sheet.productionStart.auto":
-    "Automático: dia do contrato assinado mais {days} dia(s) (Configurações).",
+    "Automático: dia do contrato assinado mais {days} dia(s) (prazo do fornecedor).",
   "sheet.productionStart.waiting":
-    "Entra sozinho quando o contrato for assinado ({days} dia(s) depois, conforme as Configurações). Até lá, as datas de saída ficam em branco.",
+    "Entra sozinho quando o contrato for assinado ({days} dia(s) depois, conforme o prazo do fornecedor). Até lá, as datas de saída ficam em branco.",
   "sheet.field.containerType": "Container para o cálculo",
   "sheet.field.ncm": "NCM",
   "sheet.field.importTaxPercent": "I.I. (%)",
@@ -193,9 +193,9 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.field.powerDetail": "Detail (e.g. 12V, 2 AA batteries)",
   "sheet.field.productionStartAt": "Production start",
   "sheet.productionStart.auto":
-    "Automatic: the day the contract was signed plus {days} day(s) (Settings).",
+    "Automatic: the day the contract was signed plus {days} day(s) (supplier lead time).",
   "sheet.productionStart.waiting":
-    "Filled in automatically when the contract is signed ({days} day(s) later, per Settings). Until then, departure dates stay blank.",
+    "Filled in automatically when the contract is signed ({days} day(s) later, per the supplier lead time). Until then, departure dates stay blank.",
   "sheet.field.containerType": "Container for the calculation",
   "sheet.field.ncm": "NCM",
   "sheet.field.importTaxPercent": "Import tax I.I. (%)",
@@ -319,9 +319,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.field.powerSource": "功能 / 电源",
   "sheet.field.powerDetail": "详情（例如 12V、2 节 AA 电池）",
   "sheet.field.productionStartAt": "开始生产",
-  "sheet.productionStart.auto": "自动：合同签署日加 {days} 天（设置）。",
+  "sheet.productionStart.auto": "自动：合同签署日加 {days} 天（供应商期限）。",
   "sheet.productionStart.waiting":
-    "合同签署后自动填入（按设置为签署后 {days} 天）。在此之前，出货日期留空。",
+    "合同签署后自动填入（按供应商期限为签署后 {days} 天）。在此之前，出货日期留空。",
   "sheet.field.containerType": "计算用集装箱",
   "sheet.field.ncm": "NCM",
   "sheet.field.importTaxPercent": "进口税 I.I.（%）",

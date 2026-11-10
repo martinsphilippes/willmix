@@ -10,7 +10,7 @@ const settingsPt = {
   packagingBriefRequired: "Entregáveis obrigatórios da embalagem",
   packagingBriefDueDays: "Prazo do briefing de embalagem (dias)",
   productionStartDays:
-    "Início da produção: dias depois do contrato assinado (0 = no dia da assinatura)",
+    "Início da produção: dias depois do contrato assinado, padrão para fornecedor sem prazo próprio (0 = no dia)",
   packagingDefaultAgencyId: "Agência padrão da embalagem",
   agencyShowsCustomer: "Agência vê o nome do cliente",
   deliveryConfirmationMode: "Quem confirma a entrega",
@@ -46,7 +46,7 @@ const settingsEn: Record<keyof typeof settingsPt, string> = {
   packagingBriefRequired: "Required packaging deliverables",
   packagingBriefDueDays: "Packaging brief due (days)",
   productionStartDays:
-    "Production start: days after the contract is signed (0 = on the signing day)",
+    "Production start: days after the contract is signed, default for suppliers without their own (0 = same day)",
   packagingDefaultAgencyId: "Default packaging agency",
   agencyShowsCustomer: "Agency sees the customer name",
   deliveryConfirmationMode: "Who confirms delivery",
@@ -81,7 +81,8 @@ const settingsZh: Record<keyof typeof settingsPt, string> = {
   packagingBriefAt: "包装（刀模与设计稿）何时开始",
   packagingBriefRequired: "包装必交交付物",
   packagingBriefDueDays: "包装任务期限（天）",
-  productionStartDays: "开始生产：合同签署后的天数（0 = 签署当天）",
+  productionStartDays:
+    "开始生产：合同签署后的天数，未单独设置的供应商使用（0 = 当天）",
   packagingDefaultAgencyId: "默认包装设计公司",
   agencyShowsCustomer: "设计公司可见客户名称",
   deliveryConfirmationMode: "由谁确认交付",

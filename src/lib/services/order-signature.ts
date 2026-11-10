@@ -600,23 +600,63 @@ export interface ProductionStart {
 /**
  * Início da produção do pedido (decisão do dono, 10/11/2026): ninguém digita.
  * É o dia em que o contrato fica assinado (a assinatura do fornecedor, a
- * segunda) mais o prazo das Configurações (`productionStartDays`). Pedido
+ * segunda) mais o prazo do fornecedor (cadastro dele; sem valor, o padrão
+ * das Configurações, `productionStartDays`). Pedido
  * antigo, sem documento para assinar, continua com a data informada à mão.
  */
 export async function productionStartFor(
   orderId: string,
 ): Promise<ProductionStart> {
   const { getSettings } = await import("@/lib/settings");
-  const [reqs, settings] = await Promise.all([
+  const [reqs, settings, order] = await Promise.all([
     signatureRequirements(orderId),
     getSettings(),
+    getStore().get("orders", orderId),
   ]);
-  const days = settings.productionStartDays;
+  // O prazo do fornecedor do pedido; sem ele, o padrão das Configurações.
+  const own = order
+    ? settings.productionStartDaysBySupplier?.[order.supplierId]
+    : undefined;
+  const days = typeof own === "number" ? own : settings.productionStartDays;
   const signed = parseSignature(reqs.supplier);
   if (!signed) return { auto: !!reqs.supplier, days, at: null };
   const start = new Date(`${dayInBrazil(signed.at)}T00:00:00.000Z`);
   start.setUTCDate(start.getUTCDate() + days);
   return { auto: true, days, at: start.toISOString() };
+}
+
+/**
+ * Prazo de início da produção de um fornecedor (dias depois do contrato
+ * assinado). Só o administrador grava; vazio volta ao padrão das
+ * Configurações. Vale para as próximas assinaturas.
+ */
+export async function setSupplierProductionStartDays(
+  user: User,
+  supplierId: string,
+  days: number | null,
+) {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const supplier = await getStore().get("parties", supplierId);
+  if (!supplier || supplier.type !== "supplier")
+    throw new OrderSignatureError("order_not_found");
+  if (days !== null && (!Number.isInteger(days) || days < 0 || days > 365))
+    throw new OrderSignatureError("production_days_invalid");
+  const { getSettings, setSetting } = await import("@/lib/settings");
+  const map = {
+    ...((await getSettings()).productionStartDaysBySupplier ?? {}),
+  };
+  if (days === null) delete map[supplierId];
+  else map[supplierId] = days;
+  await setSetting("productionStartDaysBySupplier", map);
+  await audit(
+    user,
+    "supplier.production_start_days",
+    "party",
+    supplierId,
+    days === null
+      ? `Início da produção de ${supplier.name}: volta ao padrão das Configurações`
+      : `Início da produção de ${supplier.name}: ${days} dia(s) depois do contrato assinado`,
+  );
 }
 
 /**
