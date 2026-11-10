@@ -100,7 +100,8 @@ export type SheetColumn =
   | "businessCard"
   | "schedule"
   | "interval"
-  | "purchaseQty";
+  | "purchaseQty"
+  | "plannedQty";
 
 /**
  * Sinônimos de cabeçalho por coluna (comparados sem acento, sem caixa e só
@@ -250,6 +251,11 @@ const HEADERS: ReadonlyArray<[SheetColumn, string[]]> = [
   ["schedule", ["PURCHASE SCHEDULE", "PROGRAMACAO"]],
   ["interval", ["DEPARTURE INTERVAL IN DAYS", "DEPARTURE INTERVAL"]],
   ["purchaseQty", ["PURCHASE QTY IN PCS", "PURCHASE QTY"]],
+  // Plano de compra da Wellmix na planilha da feira: total de peças da linha.
+  [
+    "plannedQty",
+    ["TT PCS", "TOTAL PCS", "TT ORDER PCS", "TOTAL DE PECAS", "TOTAL PECAS"],
+  ],
 ];
 
 /** Colunas que, preenchidas, dizem que a linha é um produto. */
@@ -375,6 +381,11 @@ export interface ProductGroup {
   widthCm: number | null;
   heightCm: number | null;
   notes: string | null;
+  /**
+   * Peças planejadas pela Wellmix na planilha (coluna "TT PCS"), somadas nas
+   * linhas do grupo (cada cor tem a sua). Nulo: a planilha não traz.
+   */
+  plannedQty: number | null;
   photo: SheetImage | null;
   card: SheetImage | null;
 }
@@ -691,9 +702,15 @@ function groupRows(
       reading.packageType ?? "",
       reading.incoterm ?? "",
     ]);
+    const plannedRaw = num(values.plannedQty);
+    const planned =
+      plannedRaw !== null && plannedRaw > 0 && plannedRaw <= 1e9
+        ? Math.round(plannedRaw)
+        : null;
     const last = groups[groups.length - 1];
     if (last && key === lastKey) {
       last.lastRow = row;
+      if (planned !== null) last.plannedQty = (last.plannedQty ?? 0) + planned;
       if (
         color &&
         !last.colors.some((c) => c.toLowerCase() === color.toLowerCase())
@@ -715,6 +732,7 @@ function groupRows(
       widthCm,
       heightCm,
       notes: noteParts.length ? noteParts.join("; ") : null,
+      plannedQty: planned,
       photo: null,
       card: null,
     });
@@ -1310,6 +1328,7 @@ async function enterBooking(
       sourceRows: bookingSourceRows(group),
       sourceOrder: group.firstRow,
       productExisted: existed,
+      plannedQty: group.plannedQty,
     });
     if (created) ctx.summary.bookingCreated++;
     else ctx.summary.bookingKept++;

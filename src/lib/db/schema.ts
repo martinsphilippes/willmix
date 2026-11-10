@@ -2195,6 +2195,18 @@ export interface BookingAnalysis {
  * Linha do Booking: um produto do cadastro que chegou pela ficha técnica,
  * com a etapa, a reserva e a análise. Uma por produto.
  */
+/**
+ * Plano da linha do Booking (docs/BOOKING.md, "Quantidade e previsão"): as
+ * peças planejadas (vêm da planilha, coluna "TT PCS", e podem ser digitadas)
+ * e a previsão de vendas por canal, digitada pela equipe.
+ */
+export interface BookingPlan {
+  plannedQty?: number | null;
+  forecastOrder?: number | null;
+  forecastDistribution?: number | null;
+  forecastEcommerce?: number | null;
+}
+
 export interface Booking extends BaseRow {
   productId: string;
   status: BookingStatus;
@@ -2212,6 +2224,8 @@ export interface Booking extends BaseRow {
   ownerUserId: string | null;
   note: string | null;
   analysis: BookingAnalysis | null;
+  /** Peças planejadas e previsão de vendas. Opcional: linhas antigas ficam sem. */
+  plan?: BookingPlan | null;
   /** Solicitação gerada a partir desta linha (uma por produto do lote). */
   requestId: string | null;
   requestGroupId: string | null;
@@ -3742,6 +3756,7 @@ export const TABLES: Record<TableName, TableDef> = {
       ownerUserId: id(false),
       note: str(500),
       analysis: json(),
+      plan: json(),
       requestId: id(false),
       requestGroupId: id(false),
       requestNumber: int(),

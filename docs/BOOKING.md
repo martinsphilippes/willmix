@@ -48,6 +48,16 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
 - **Peso estimado (kg)**: o peso bruto da ficha quando ela traz; senão o peso líquido mais a folga da embalagem (8% por padrão; a planilha da feira usa `N.W × 1,08`).
 - **Média (US$)**: a média informada pelo despachante na ficha mestre (`purchase_sheets.averagePrice`), que já existia.
 
+### Quantidade planejada e previsão de vendas (racional do dono, 10/11/2026)
+
+A decisão de selecionar o produto parte do custo real (Superplan) e aponta para a **quantidade**. Para isso a linha do Booking guarda um plano (`bookings.plan`, JSON opcional):
+
+- **Qtd. planejada (pç)**: vem sozinha da planilha, coluna **"TT PCS"** (o plano de compra da Wellmix na planilha da feira), somada nas linhas de cor do produto. Planilha sem a coluna: fica vazia (nada é inventado). Reimportar numa linha ainda em Novo atualiza a planejada e mantém a previsão digitada.
+- **Previsão encomenda / distribuição / e-commerce (pç)**: digitadas pela equipe (nenhuma planilha lida até hoje traz a venda por canal). **Previsão total** é a soma.
+- Todos são digitáveis em "Editar dados dos produtos" e têm filtro e ordenação como as outras colunas.
+- **Gerar solicitação** usa: a quantidade digitada na linha; senão a reservada; senão a **planejada** (quando não fica abaixo do pedido mínimo); senão o pedido mínimo (`bookingRequestQuantity`).
+- Antes de o esquema ser publicado, a importação grava a linha sem o plano (a linha nunca deixa de nascer por causa dele).
+
 ## 4. Requisitos funcionais
 
 - **Entrada**: na importação da ficha técnica, a opção "Mandar para o Booking (um produto por linha)" é a primeira e já vem marcada para quem abre o Booking. Cada grupo de linhas vira um produto (como o modo "um produto por linha") e uma linha do Booking, ligada à planilha de origem. As outras duas opções continuam.

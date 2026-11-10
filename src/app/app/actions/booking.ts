@@ -3,7 +3,13 @@
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
-import { BOOKING_BULK_MAX, BOOKING_EMPTY } from "@/lib/booking";
+import {
+  BOOKING_BULK_MAX,
+  BOOKING_EMPTY,
+  BOOKING_PLAN_FIELDS,
+  BOOKING_PLAN_MAX,
+  type BookingPlanField,
+} from "@/lib/booking";
 import { BOOKING_STATUSES } from "@/lib/db/schema";
 import { parseNumberInput } from "@/lib/number-input";
 import { requireUser, run, str } from "./helpers";
@@ -385,8 +391,21 @@ export async function saveBookingProductsAction(form: FormData) {
             widthCm?: number | null;
             heightCm?: number | null;
             sheet: typeof sheet;
+            plan?: Partial<Record<BookingPlanField, number | null>>;
             invalid: string[];
           } = { productId, sheet, invalid };
+          // Plano da linha: peças planejadas e previsão por canal (inteiros).
+          for (const key of BOOKING_PLAN_FIELDS) {
+            if (!fields.has(key)) continue;
+            const raw = fields.get(key)!.trim();
+            const n = raw ? parseNumberInput(raw, { int: true }) : null;
+            if (
+              n !== null &&
+              (Number.isNaN(n) || n < 0 || n > BOOKING_PLAN_MAX)
+            )
+              invalid.push(key);
+            else (edit.plan ??= {})[key] = n === null || n === 0 ? null : n;
+          }
           if (fields.has("supplierId")) {
             const id = fields.get("supplierId")!.trim();
             if (id && !ID.safeParse(id).success) invalid.push("supplierId");

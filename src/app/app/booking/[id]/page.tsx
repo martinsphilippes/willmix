@@ -171,6 +171,11 @@ export default async function BookingRowPage({
     [col("colors"), row.colors ?? "—"],
     [col("material"), row.material ?? "—"],
     [col("packageType"), row.packageType ?? "—"],
+    [col("plannedQty"), number(row.plannedQty)],
+    [col("forecastOrder"), number(row.forecastOrder)],
+    [col("forecastDistribution"), number(row.forecastDistribution)],
+    [col("forecastEcommerce"), number(row.forecastEcommerce)],
+    [col("forecastTotal"), number(row.forecastTotal)],
     [t("booking.detail.ncm"), row.ncm ?? "—"],
     [
       t("booking.detail.source"),

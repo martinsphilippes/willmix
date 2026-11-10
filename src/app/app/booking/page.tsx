@@ -602,6 +602,11 @@ export default async function BookingPage({
         return num("grossWeightPcKg");
       case "averageWeight":
         return num("averageWeightPcKg");
+      case "plannedQty":
+      case "forecastOrder":
+      case "forecastDistribution":
+      case "forecastEcommerce":
+        return num(key);
       case "average":
         return num("averagePrice");
       case "cbm":
@@ -785,6 +790,16 @@ export default async function BookingPage({
         return textCell(row.material, "max-w-40");
       case "packageType":
         return textCell(row.packageType, "max-w-40");
+      case "plannedQty":
+        return number(row.plannedQty);
+      case "forecastOrder":
+        return number(row.forecastOrder);
+      case "forecastDistribution":
+        return number(row.forecastDistribution);
+      case "forecastEcommerce":
+        return number(row.forecastEcommerce);
+      case "forecastTotal":
+        return number(row.forecastTotal);
       case "customer":
         return textCell(row.customerName, "max-w-40");
       case "reservedQty": {
