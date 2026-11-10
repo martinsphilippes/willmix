@@ -104,6 +104,13 @@ import { ApprovalCard } from "@/components/approval-card";
 import { RequestStagesCard } from "@/components/request-stages-card";
 import { approvalsFor } from "@/lib/services/approvals";
 
+/*
+ * As ações desta página que criam o pedido (aprovar o último nível, escolher
+ * o fornecedor na compra para estoque, confirmar o sinal) gravam dezenas de
+ * linhas no banco: precisam de mais tempo do que o padrão da função.
+ */
+export const maxDuration = 120;
+
 export default async function RequestDetailPage({
   params,
   searchParams,

@@ -34,6 +34,11 @@ export const pt = {
     "Escolha enviada para aprovação. A proposta só vai ao cliente depois de aprovada.",
   "approvals.submit": "Enviar para aprovação",
   "approvals.decided.approved": "Aprovação registrada.",
+  "approvals.retry.hint":
+    "Todos os níveis aprovaram, mas a gravação da escolha foi interrompida. Tente concluir de novo: o sistema retoma de onde parou, sem pedir outra aprovação.",
+  "approvals.retry.submit": "Tentar concluir de novo",
+  "approvals.retry.failed":
+    "Ainda não foi possível gravar a escolha. Veja o motivo no histórico abaixo.",
   "approvals.decided.rejected":
     "Reprovação registrada. O comprador foi avisado.",
   "approvals.blocked":
@@ -105,6 +110,11 @@ export const en: Record<keyof typeof pt, string> = {
     "Choice sent for approval. The proposal only goes to the customer once approved.",
   "approvals.submit": "Send for approval",
   "approvals.decided.approved": "Approval recorded.",
+  "approvals.retry.hint":
+    "Every level approved, but saving the choice was interrupted. Try to finish again: the system resumes where it stopped, without asking for another approval.",
+  "approvals.retry.submit": "Try to finish again",
+  "approvals.retry.failed":
+    "The choice still could not be saved. See the reason in the history below.",
   "approvals.decided.rejected": "Rejection recorded. The buyer was notified.",
   "approvals.blocked":
     "A choice is awaiting approval. Sending another replaces it.",
@@ -174,6 +184,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "approvals.sent": "已提交审批。批准后报价才会发给客户。",
   "approvals.submit": "提交审批",
   "approvals.decided.approved": "已记录批准。",
+  "approvals.retry.hint":
+    "所有级别均已批准，但保存选择时被中断。请再次尝试完成：系统会从中断处继续，无需重新审批。",
+  "approvals.retry.submit": "再次尝试完成",
+  "approvals.retry.failed": "仍无法保存选择。原因见下方历史记录。",
   "approvals.decided.rejected": "已记录驳回，已通知采购员。",
   "approvals.blocked": "有一个选择正在等待审批。再次提交将替换它。",
   "approvals.task.title": "审批预成本（{level}）：{product}",

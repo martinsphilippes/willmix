@@ -45,3 +45,18 @@ export async function cancelApprovalAction(form: FormData) {
     return `${to}#approval`;
   });
 }
+
+/** Aprovação que falhou ao gravar a escolha: tenta concluir de novo. */
+export async function retryApprovalAction(form: FormData) {
+  const user = await requireUser();
+  const to = back(form);
+  await run(`${to}#approval`, async () => {
+    assertScreen(user, "requests");
+    const approvalId = ID.parse(str(form, "approvalId"));
+    const { retryApproval } = await import("@/lib/services/approvals");
+    const result = await retryApproval(user, approvalId);
+    return result.status === "approved"
+      ? `${to}?decided=approved#approval`
+      : `${to}?decided=retry_failed#approval`;
+  });
+}

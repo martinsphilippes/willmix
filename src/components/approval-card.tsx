@@ -1,10 +1,11 @@
 import type { Approval, User } from "@/lib/db";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { APPROVAL_LEVELS } from "@/lib/db/schema";
-import { canDecide } from "@/lib/services/approvals";
+import { canDecide, canRetryApproval } from "@/lib/services/approvals";
 import {
   decideApprovalAction,
   cancelApprovalAction,
+  retryApprovalAction,
 } from "@/app/app/actions/approvals";
 import {
   Alert,
@@ -157,6 +158,11 @@ export function ApprovalCard({
           <Alert tone="success">{t("approvals.sent")}</Alert>
         </div>
       ) : null}
+      {decided === "retry_failed" ? (
+        <div className="mb-3">
+          <Alert tone="danger">{t("approvals.retry.failed")}</Alert>
+        </div>
+      ) : null}
       {decided === "approved" || decided === "rejected" ? (
         <div className="mb-3">
           <Alert tone="success">
@@ -239,6 +245,23 @@ export function ApprovalCard({
                   <p className="mt-1 text-sm text-red-700">
                     {t("approvals.reasonLabel", { reason: a.reason })}
                   </p>
+                ) : null}
+                {/* Aprovada por todos, mas a gravação da escolha parou no
+                    meio: quem pode tenta concluir de novo (retoma de onde
+                    parou, sem pedir outra aprovação). */}
+                {canRetryApproval(user, a, a === approvals[0]) ? (
+                  <form
+                    action={retryApprovalAction}
+                    className="mt-2 space-y-1"
+                    data-approval-retry={a.id}
+                  >
+                    <input type="hidden" name="requestId" value={requestId} />
+                    <input type="hidden" name="approvalId" value={a.id} />
+                    <p className="text-sm text-zinc-700">
+                      {t("approvals.retry.hint")}
+                    </p>
+                    <SubmitButton>{t("approvals.retry.submit")}</SubmitButton>
+                  </form>
                 ) : null}
               </li>
             ))}
