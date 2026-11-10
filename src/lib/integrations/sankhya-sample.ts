@@ -340,7 +340,15 @@ export async function fetchImportSet(size: number) {
   const n = Math.min(5, Math.max(1, Math.trunc(size) || 1));
   const orders = await fetchEntity("orders", [], true);
   if (!orders.table) throw new Error(orders.error ?? "sankhya_orders");
-  const orderRows = firstN(orders.table.rows, n);
+  return fetchImportSetFor(firstN(orders.table.rows, n));
+}
+
+/**
+ * Tudo o que as notas usam (itens, produtos, grupos, parceiros, empresas,
+ * transportadoras e títulos): usado pela amostra e pela carga completa dos
+ * pedidos (um lote de notas por vez).
+ */
+export async function fetchImportSetFor(orderRows: SankhyaRow[]) {
   const nunotas = orderRows.map((r) => r.NUNOTA as number);
   const all = (rows: SankhyaRow[], column: string) =>
     distinct(rows, column, Number.MAX_SAFE_INTEGER);
@@ -386,6 +394,6 @@ export async function fetchImportSet(size: number) {
 
 /** `carriers` (transportadoras) é opcional: conjuntos antigos não têm. */
 export type ImportSet = Omit<
-  Awaited<ReturnType<typeof fetchImportSet>>,
+  Awaited<ReturnType<typeof fetchImportSetFor>>,
   "carriers"
 > & { carriers?: SankhyaRow[] };

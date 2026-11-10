@@ -46,6 +46,10 @@ const ruleSchema = z.object({
     .trim()
     .max(200)
     .transform((v) => v || null),
+  location: z.preprocess(
+    (v) => (v === "" || v == null ? null : Number(v)),
+    z.number().int().min(0).max(99999999).nullable(),
+  ),
 });
 
 export async function saveProcessRulesAction(form: FormData) {
@@ -63,6 +67,7 @@ export async function saveProcessRulesAction(form: FormData) {
           sankhya: str(form, `rules.${i}.sankhya`) || "none",
           top: str(form, `rules.${i}.top`),
           note: str(form, `rules.${i}.note`),
+          location: str(form, `rules.${i}.location`),
         }),
       );
     }

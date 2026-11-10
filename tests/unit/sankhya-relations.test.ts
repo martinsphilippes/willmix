@@ -281,7 +281,8 @@ describe("carga com ligações", () => {
       currency: "USD",
       masterBoxQty: 48,
       innerBoxQty: 12,
-      notes: "Vidro 300 ml\nMarca: WELLMIX",
+      notes: "Vidro 300 ml",
+      brand: "WELLMIX",
     });
 
     const [order] = await store.list("orders", {

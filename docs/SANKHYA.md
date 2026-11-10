@@ -83,6 +83,26 @@ A amostra (1 a 5 por entidade) é coerente: as últimas notas das TOPs de import
   - Título: forma de pagamento (CODTIPTIT → TGFTIT) e o câmbio do pedido.
 - Colunas novas (aditivas): `parties.legalName`, `parties.stateRegistration`, `parties.personType`, `orders.incoterm`, `orders.paymentConditionId`, `orders.fxRate`. Publicar o esquema antes de usar. A ficha do parceiro mostra razão social e inscrição estadual; o pedido mostra Incoterm, condição de pagamento e câmbio (só a Wellmix).
 
+### Migração (10/11/2026)
+
+Decisão da Wellmix: o que hoje está no portal (vendas e cadastros equivalentes aos do Sankhya) é teste; o Sankhya passa a ser a fonte de todo o histórico.
+
+1. **Configurações → Limpar dados de teste**: apaga as vendas (como antes; agora também os eventos de processo).
+2. **Mesma tela, "Apagar também os cadastros que vêm do Sankhya"** (`src/lib/services/catalog-reset.ts`, ação `resetCatalogDataAction`, palavra APAGAR): só com as vendas já apagadas. Apaga fornecedores, clientes e transportadoras, produtos (com fotos, variações, fornecedores do produto, classificação fiscal), linhas, condições de pagamento e locais de estoque. Mantém usuários, os outros tipos de parceiro, o cliente "Estoque Wellmix" e as configurações. O que fica e apontava para um cadastro apagado: coluna obrigatória → sai junto; opcional → perde a ligação. Usuário de parceiro apagado é desativado. Zera os cursores da carga (`sankhya.load.*`).
+3. **Carga do Sankhya → Carga completa**, nesta ordem: condições de pagamento, fornecedores e clientes, produtos, locais de estoque, saldos por local, histórico de pedidos. "Rodar até o fim" reenvia sozinho enquanto a página estiver aberta.
+
+O que a carga guarda para não perder vínculos:
+
+- `sankhyaCode` em parceiro (CODPARC), produto (CODPROD), linha (CODGRUPOPROD), pedido (NUNOTA), item do pedido (SEQUENCIA, novo), pagamento (NUFIN) e local (CODLOCAL).
+- `sankhyaRefs` (JSON, novo) em parceiro, produto, pedido, item e pagamento: todas as colunas COD* e NU*, SEQUENCIA e as de endereço (NUMEND, COMPLEMENTO, CEP, TIPPESSOA, TIPMOV, CIF_FOB, STATUSNOTA) do registro de origem. Guarda as ligações que o portal não tem como campo (empresa, vendedor, natureza, centro de resultado, cidade, bairro, logradouro, local do item...). Na carga completa de parceiros e produtos a consulta pede todas as colunas para isso.
+- Marca: `products.brand` (MARCA), no cadastro do produto.
+
+**Locais de estoque** (CODLOCAL): tabela `stock_locations` (TGFLOC). Saldos: TGFEST da empresa da Integração (CODEMP), somados por produto e local (os lotes/CONTROLE juntos). A carga grava a diferença entre o saldo do Sankhya e o do portal naquele local como movimentação `sankhya_balance` com `locationId`; rodar de novo só grava o que mudou. A tela Estoque mostra, abaixo de "No Brasil", a quantidade por local; Movimentações tem a coluna Local. As regras de Processos ganharam "Local de estoque": as entradas e saídas da regra vão para aquele local. Pedidos do histórico não contam no estoque (o estoque vem dos saldos).
+
+**Histórico de pedidos**: TGFCAB das TOPs de importação por faixa de NUNOTA, em lotes de 3 a 10 notas (cada uma vira solicitação, pedido, itens, etapas e títulos, como na amostra). Já carregada = pulada.
+
+**Incluir no Sankhya a partir do portal**: parceiro leva razão social, tipo de pessoa, inscrição estadual e os códigos de endereço (de `sankhyaRefs`; nascido no portal, o CODCID é procurado pela cidade "Nome - UF" em TSICID/TSIUFS); produto leva a marca; a nota leva a condição de pagamento do pedido (senão a da Integração), o Incoterm (CIF_FOB) e o câmbio (VLRMOEDA). Integração → **6. O que o Sankhya exige para incluir** (`sankhya-required.ts`) lê do catálogo do banco do ERP (SQL Server ou Oracle) as colunas NOT NULL sem padrão de TGFPAR, TGFPRO, TGFCAB e TGFITE e mostra, para cada uma, se o portal envia (cadastro, valor fixo, gerada pelo Sankhya) ou se falta. Faltando, o valor fixo vai em Processos → valores fixos dos cadastros.
+
 ### Gravar a amostra no portal
 
 Botão **Gravar no portal** na mesma aba (`src/lib/integrations/sankhya-import.ts`, ação `sankhyaImportSampleAction`, auditoria `sankhya.import`). Decisões da Wellmix (10/11/2026): os pedidos do Sankhya entram como **pedidos normais**, a **TOP define a etapa** e os **valores ficam em R$**.

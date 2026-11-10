@@ -18,7 +18,7 @@ import { DEFAULT_PREPARATION_REQUIREMENTS } from "@/lib/workflow/stages";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { audit } from "@/lib/services/audit";
 import type { SankhyaRow } from "./sankhya-client";
-import { convert, sankhyaDate, TOP_STAGES } from "./sankhya-mapping";
+import { convert, refsOf, sankhyaDate, TOP_STAGES } from "./sankhya-mapping";
 import type { ImportSet } from "./sankhya-sample";
 import {
   partnerExtras,
@@ -59,6 +59,8 @@ export type ImportEntity =
   | "customers"
   | "companies"
   | "carriers"
+  | "stockLocations"
+  | "stockBalances"
   | "orders"
   | "financial"
   | "paymentConditions";
@@ -219,6 +221,8 @@ function productFields(row: SankhyaRow) {
     widthCm: cm("LARGURA"),
     lengthCm: cm("ESPESSURA"),
     minStock: number(row, "ESTMIN"),
+    brand: text(row, "MARCA"),
+    sankhyaRefs: refsOf(row),
     active: convert("sn", row.ATIVO, row) !== false,
   };
 }
@@ -246,10 +250,7 @@ function productExtraFields(
         ? round(extra.lastPrice / fx)
         : extra.lastPrice
       : null;
-  const brand = text(row, "MARCA");
-  const notes = [text(row, "COMPLDESC"), brand && `Marca: ${brand}`]
-    .filter(Boolean)
-    .join("\n");
+  const notes = text(row, "COMPLDESC");
   return {
     supplierId: supplier?.id ?? null,
     price,
@@ -362,6 +363,7 @@ interface PartyData {
   city?: string | null;
   country?: string | null;
   address?: string | null;
+  sankhyaRefs?: Record<string, string | number> | null;
   active: boolean;
 }
 
@@ -392,6 +394,10 @@ export async function upsertParty(
       city: data.city,
       country: data.country,
       address: data.address,
+      sankhyaRefs:
+        data.sankhyaRefs && Object.keys(data.sankhyaRefs).length
+          ? data.sankhyaRefs
+          : null,
     }),
   };
   if (party && ctx.update) {
@@ -456,6 +462,7 @@ export function partnerData(
     city: extra?.city ?? null,
     country: extra?.country ?? null,
     address: extra?.address ?? null,
+    sankhyaRefs: refsOf(row),
     active: convert("sn", row.ATIVO, row) !== false,
   };
 }
@@ -553,6 +560,8 @@ export async function importSankhyaSet(
   user: User,
   set: ImportSet,
   erp: SankhyaErpSettings = DEFAULT_SANKHYA_ERP,
+  /** Rótulo da auditoria; null = quem chamou audita (carga completa). */
+  auditLabel: string | null = "sample",
 ): Promise<ImportLine[]> {
   const store = getStore();
   const ctx = await importContext(user, false);
@@ -750,6 +759,7 @@ export async function importSankhyaSet(
       paymentConditionId:
         conditionByCode.get(code(row.CODTIPVENDA))?.id ?? null,
       fxRate: fx,
+      sankhyaRefs: refsOf(row),
     });
     await store.update("requests", request.id, { orderId: order.id });
     for (const item of items) {
@@ -764,6 +774,8 @@ export async function importSankhyaSet(
         quantity: number(item, "QTDNEG") ?? 0,
         unit: text(item, "CODVOL") ?? "UN",
         unitPrice: inCurrency(number(item, "VLRUNIT")),
+        sankhyaCode: code(item.SEQUENCIA) || null,
+        sankhyaRefs: refsOf(item),
       });
     }
     await createStagesForOrder(order);
@@ -839,6 +851,7 @@ export async function importSankhyaSet(
         .filter(Boolean)
         .join(" · "),
       sankhyaCode: key,
+      sankhyaRefs: refsOf(row),
     });
     out.push({
       entity: "financial",
@@ -849,8 +862,153 @@ export async function importSankhyaSet(
     });
   }
 
-  await auditImport(user, "sample", out);
+  if (auditLabel) await auditImport(user, auditLabel, out);
   return out;
+}
+
+/* ---- Locais de estoque (TGFLOC) ---- */
+
+export async function upsertStockLocations(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+) {
+  const store = getStore();
+  const existing = await store.list("stock_locations");
+  for (const row of rows) {
+    const key = code(row.CODLOCAL);
+    const codeNum = Number(key);
+    if (!Number.isInteger(codeNum)) continue;
+    const name =
+      text(row, "DESCRLOCAL") ?? text(row, "DESCRICAO") ?? `Local ${key}`;
+    const active = convert("sn", row.ATIVO, row) !== false;
+    const found = existing.find((l) => l.code === codeNum);
+    if (found) {
+      await store.update("stock_locations", found.id, {
+        name,
+        active,
+        sankhyaCode: key,
+      });
+      ctx.out.push({
+        entity: "stockLocations",
+        code: key,
+        outcome: "updated",
+        id: found.id,
+        label: `${key} ${name}`,
+      });
+    } else {
+      const created = await store.create("stock_locations", {
+        code: codeNum,
+        name,
+        active,
+        notes: null,
+        sankhyaCode: key,
+      });
+      existing.push(created);
+      ctx.out.push({
+        entity: "stockLocations",
+        code: key,
+        outcome: "created",
+        id: created.id,
+        label: `${key} ${name}`,
+      });
+    }
+  }
+}
+
+/* ---- Saldos de estoque por local (TGFEST) ---- */
+
+/**
+ * Deixa o saldo do portal igual ao do Sankhya em cada produto e local: grava
+ * a diferença como movimentação "Saldo do Sankhya". Rodar de novo só grava o
+ * que mudou. Produto sem vínculo é pulado; local sem cadastro é criado.
+ */
+export async function applyStockBalances(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+) {
+  const store = getStore();
+  const locations = await store.list("stock_locations");
+  const productIds = new Map(
+    ctx.products.filter((p) => p.sankhyaCode).map((p) => [p.sankhyaCode!, p]),
+  );
+  const ids = [
+    ...new Set(
+      rows
+        .map((r) => productIds.get(code(r.CODPROD))?.id)
+        .filter(Boolean) as string[],
+    ),
+  ];
+  const movements = ids.length
+    ? await store.list("stock_movements", { filter: { productId: ids } })
+    : [];
+  for (const row of rows) {
+    const prod = code(row.CODPROD);
+    const loc = code(row.CODLOCAL);
+    const product = productIds.get(prod);
+    const label = `CODPROD ${prod} · local ${loc}`;
+    if (!product) {
+      ctx.out.push({
+        entity: "stockBalances",
+        code: `${prod}/${loc}`,
+        outcome: "skipped",
+        id: null,
+        label,
+        reason: "produto não carregado",
+      });
+      continue;
+    }
+    let location = locations.find((l) => String(l.code) === loc);
+    if (!location && Number.isInteger(Number(loc))) {
+      location = await store.create("stock_locations", {
+        code: Number(loc),
+        name: `Local ${loc}`,
+        active: true,
+        notes: "Criado pela carga de saldos",
+        sankhyaCode: loc,
+      });
+      locations.push(location);
+    }
+    const target = number(row, "ESTOQUE") ?? 0;
+    const current = movements
+      .filter(
+        (m) =>
+          m.productId === product.id &&
+          (m.locationId ?? null) === (location?.id ?? null),
+      )
+      .reduce((sum, m) => sum + m.quantity, 0);
+    const delta = round(target - current, 6);
+    if (Math.abs(delta) < 1e-6) {
+      ctx.out.push({
+        entity: "stockBalances",
+        code: `${prod}/${loc}`,
+        outcome: "existing",
+        id: product.id,
+        label: `${product.name} · ${loc}: ${target}`,
+      });
+      continue;
+    }
+    const movement = await store.create("stock_movements", {
+      productId: product.id,
+      kind: "sankhya_balance",
+      quantity: delta,
+      unit: "UN",
+      orderId: null,
+      countId: null,
+      countItemId: null,
+      note: `Saldo do Sankhya: local ${loc} = ${target}`,
+      createdByUserId: ctx.user.id,
+      processEventId: null,
+      locationId: location?.id ?? null,
+    });
+    movements.push(movement);
+    ctx.out.push({
+      entity: "stockBalances",
+      code: `${prod}/${loc}`,
+      outcome: current ? "updated" : "created",
+      id: product.id,
+      label: `${product.name} · ${loc}: ${target}`,
+    });
+  }
 }
 
 export async function auditImport(

@@ -113,7 +113,11 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         portal: null,
         note: "Nº do pedido/nota no ERP: vai para erpNumber quando escolhido na Integração",
       },
-      { sankhya: "CODEMP", portal: null, note: "Empresa que emitiu" },
+      {
+        sankhya: "CODEMP",
+        portal: "sankhyaRefs",
+        note: "Empresa que emitiu (guardada nos códigos do Sankhya)",
+      },
       {
         sankhya: "CODTIPOPER",
         portal: "status",
@@ -179,7 +183,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     portalTable: "parties",
     key_: "CODPARC",
     fields: [
-      { sankhya: "CODPARC", portal: null, note: "Vínculo com o Sankhya" },
+      {
+        sankhya: "CODPARC",
+        portal: "sankhyaCode",
+        transform: "text",
+        note: "Vínculo com o Sankhya",
+      },
       { sankhya: "NOMEPARC", portal: "name", transform: "text" },
       { sankhya: "RAZAOSOCIAL", portal: "legalName", transform: "text" },
       { sankhya: "CGC_CPF", portal: "taxId", transform: "digits" },
@@ -256,7 +265,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         transform: "int",
         note: "Pelo vínculo da nota",
       },
-      { sankhya: "SEQUENCIA", portal: null },
+      {
+        sankhya: "SEQUENCIA",
+        portal: "sankhyaCode",
+        transform: "text",
+        note: "Vínculo do item (a nota é o vínculo do pedido)",
+      },
       {
         sankhya: "CODPROD",
         portal: "productId",
@@ -286,7 +300,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     portalTable: "products",
     key_: "CODPROD",
     fields: [
-      { sankhya: "CODPROD", portal: null, note: "Vínculo com o Sankhya" },
+      {
+        sankhya: "CODPROD",
+        portal: "sankhyaCode",
+        transform: "text",
+        note: "Vínculo com o Sankhya",
+      },
       { sankhya: "DESCRPROD", portal: "name", transform: "text" },
       {
         sankhya: "REFFORN",
@@ -322,12 +341,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         portal: null,
         note: "Unidade padrão (vai para o item do pedido)",
       },
-      { sankhya: "MARCA", portal: null, note: "Vai nas observações (notes)" },
+      { sankhya: "MARCA", portal: "brand", transform: "text" },
       {
         sankhya: "COMPLDESC",
         portal: "notes",
         transform: "text",
-        note: "Descrição complementar (com a marca)",
+        note: "Descrição complementar (só se vazio)",
       },
       {
         sankhya: "TGFCAB.CODPARC (última compra)",
@@ -364,7 +383,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     portalTable: "product_lines",
     key_: "CODGRUPOPROD",
     fields: [
-      { sankhya: "CODGRUPOPROD", portal: null, note: "Vínculo com o Sankhya" },
+      {
+        sankhya: "CODGRUPOPROD",
+        portal: "sankhyaCode",
+        transform: "text",
+        note: "Vínculo com o Sankhya",
+      },
       { sankhya: "DESCRGRUPOPROD", portal: "name", transform: "text" },
       { sankhya: "ATIVO", portal: "active", transform: "sn" },
     ],
@@ -373,23 +397,36 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     key: "stock",
     table: "TGFEST",
     sankhyaEntity: "Estoque",
-    portalTable: null,
+    portalTable: "stock_movements",
     key_: "CODEMP, CODPROD, CODLOCAL, CONTROLE",
     fields: [
-      { sankhya: "CODEMP", portal: null },
+      {
+        sankhya: "CODEMP",
+        portal: null,
+        note: "A carga lê só a empresa da Integração (CODEMP)",
+      },
       {
         sankhya: "CODPROD",
         portal: "productId",
         transform: "int",
         note: "Pelo vínculo do produto",
       },
-      { sankhya: "CODLOCAL", portal: null, note: "Local de estoque" },
-      { sankhya: "CONTROLE", portal: null, note: "Lote/controle" },
+      {
+        sankhya: "CODLOCAL",
+        portal: "locationId",
+        transform: "int",
+        note: "Local de estoque (TGFLOC → stock_locations)",
+      },
+      {
+        sankhya: "CONTROLE",
+        portal: null,
+        note: "Lote/controle: somado por produto e local",
+      },
       {
         sankhya: "ESTOQUE",
         portal: "quantity",
         transform: "number",
-        note: "O portal calcula o saldo (recebimentos − saídas): entra como saldo inicial",
+        note: 'Saldo por produto e local: a carga grava a diferença como movimentação "Saldo do Sankhya"',
       },
       { sankhya: "RESERVADO", portal: null },
     ],
@@ -401,7 +438,12 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     portalTable: "payments",
     key_: "NUFIN",
     fields: [
-      { sankhya: "NUFIN", portal: null, note: "Vínculo com o Sankhya" },
+      {
+        sankhya: "NUFIN",
+        portal: "sankhyaCode",
+        transform: "text",
+        note: "Vínculo com o Sankhya",
+      },
       {
         sankhya: "NUNOTA",
         portal: "orderId",
@@ -604,11 +646,14 @@ export const FULL_LOAD_ENTITIES = [
   "paymentConditions",
   "partners",
   "products",
+  "stockLocations",
+  "stockBalances",
+  "orders",
 ] as const;
 export type FullLoadEntity = (typeof FULL_LOAD_ENTITIES)[number];
 
 const FULL_LOAD_TABLE: Record<
-  Exclude<FullLoadEntity, "paymentConditions">,
+  "partners" | "products",
   {
     entity: SankhyaEntityKey;
     table: string;
@@ -645,7 +690,16 @@ export function fullLoadSql(
   after: number,
   upTo: number,
   star = false,
+  codEmp: number | null = null,
 ): string {
+  const range = (col: string) =>
+    `${col} > ${int0(after)} AND ${col} <= ${int0(upTo)}`;
+  if (entity === "stockLocations")
+    return `SELECT * FROM TGFLOC WHERE ${range("CODLOCAL")} ORDER BY CODLOCAL`;
+  if (entity === "stockBalances")
+    return `SELECT E.CODPROD, E.CODLOCAL, SUM(E.ESTOQUE) AS ESTOQUE, SUM(E.RESERVADO) AS RESERVADO FROM TGFEST E WHERE ${empFilter("E", codEmp)}${range("E.CODPROD")} GROUP BY E.CODPROD, E.CODLOCAL ORDER BY E.CODPROD, E.CODLOCAL`;
+  if (entity === "orders")
+    return `SELECT C.* FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND ${range("C.NUNOTA")} ORDER BY C.NUNOTA`;
   if (entity === "paymentConditions")
     return `SELECT CODTIPVENDA, MAX(DESCRTIPVENDA) AS DESCRTIPVENDA FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)} AND CODTIPVENDA <= ${int0(upTo)} GROUP BY CODTIPVENDA ORDER BY CODTIPVENDA`;
   const t = FULL_LOAD_TABLE[entity];
@@ -653,8 +707,23 @@ export function fullLoadSql(
   return `SELECT ${star ? `${a}.*` : cols(t.entity, a)} FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)} AND ${a}.${t.key} <= ${int0(upTo)} ORDER BY ${a}.${t.key}`;
 }
 
+const empFilter = (alias: string, codEmp: number | null) =>
+  codEmp != null && Number.isInteger(codEmp) && codEmp > 0
+    ? `${alias}.CODEMP = ${codEmp} AND `
+    : "";
+
 /** Próximo código (para pular buracos) e total de registros da carga. */
-export function fullLoadProbeSql(entity: FullLoadEntity, after: number) {
+export function fullLoadProbeSql(
+  entity: FullLoadEntity,
+  after: number,
+  codEmp: number | null = null,
+) {
+  if (entity === "stockLocations")
+    return `SELECT MIN(CODLOCAL) AS NEXTCODE, COUNT(*) AS REMAINING FROM TGFLOC WHERE CODLOCAL > ${int0(after)}`;
+  if (entity === "stockBalances")
+    return `SELECT MIN(E.CODPROD) AS NEXTCODE, COUNT(DISTINCT E.CODPROD) AS REMAINING FROM TGFEST E WHERE ${empFilter("E", codEmp)}E.CODPROD > ${int0(after)}`;
+  if (entity === "orders")
+    return `SELECT MIN(C.NUNOTA) AS NEXTCODE, COUNT(*) AS REMAINING FROM TGFCAB C WHERE C.CODTIPOPER IN (${IMPORT_TOPS}) AND C.NUNOTA > ${int0(after)}`;
   if (entity === "paymentConditions")
     return `SELECT MIN(CODTIPVENDA) AS NEXTCODE, COUNT(DISTINCT CODTIPVENDA) AS REMAINING FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)}`;
   const t = FULL_LOAD_TABLE[entity];
@@ -666,7 +735,49 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   paymentConditions: "CODTIPVENDA",
   partners: "CODPARC",
   products: "CODPROD",
+  stockLocations: "CODLOCAL",
+  stockBalances: "CODPROD",
+  orders: "NUNOTA",
 };
+
+/* ---- Códigos do Sankhya guardados no registro (sankhyaRefs) ---- */
+
+/** Colunas de endereço que também vão nos códigos (para incluir no Sankhya). */
+const REF_EXTRA = new Set([
+  "NUMEND",
+  "COMPLEMENTO",
+  "CEP",
+  "TIPPESSOA",
+  "TIPMOV",
+  "CIF_FOB",
+  "STATUSNOTA",
+]);
+
+/** Coluna que é código/ligação do Sankhya (COD*, NU*, chaves e endereço). */
+export function isRefColumn(column: string) {
+  const c = column.toUpperCase();
+  return (
+    c.startsWith("COD") ||
+    c.startsWith("NU") ||
+    c === "SEQUENCIA" ||
+    REF_EXTRA.has(c)
+  );
+}
+
+/**
+ * Todos os códigos do registro do Sankhya (colunas COD*, NU*, SEQUENCIA e
+ * endereço), sem os vazios: guardam as ligações com outras entidades do ERP
+ * mesmo quando o portal não tem campo para elas.
+ */
+export function refsOf(row: Row): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(row)) {
+    if (!isRefColumn(k) || blank(v)) continue;
+    out[k.toUpperCase()] =
+      typeof v === "number" ? v : String(v).trim().slice(0, 200);
+  }
+  return out;
+}
 
 /* ---- Ligações (valores de outras tabelas; sankhya-relations.ts) ---- */
 

@@ -3,6 +3,10 @@
  * registro de perdas): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "stockMov.kind.sankhya_balance": "Saldo do Sankhya",
+  "stockMov.tab.sankhya_balance": "Saldos do Sankhya",
+  "stockMov.col.location": "Local",
+  "inv.locations": "Por local",
   "stockOut.title": "Baixa por venda",
   "stockOut.open": "− Baixa por venda",
   "stockOut.hint":
@@ -114,6 +118,10 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "stockMov.kind.sankhya_balance": "Sankhya balance",
+  "stockMov.tab.sankhya_balance": "Sankhya balances",
+  "stockMov.col.location": "Location",
+  "inv.locations": "By location",
   "stockOut.title": "Sale write-off",
   "stockOut.open": "− Sale write-off",
   "stockOut.hint":
@@ -224,6 +232,10 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "stockMov.kind.sankhya_balance": "Sankhya 结存",
+  "stockMov.tab.sankhya_balance": "Sankhya 结存",
+  "stockMov.col.location": "库位",
+  "inv.locations": "按库位",
   "stockOut.title": "销售出库",
   "stockOut.open": "− 销售出库",
   "stockOut.hint": "从巴西库存中扣除已售出的数量，不能超过现有库存。",

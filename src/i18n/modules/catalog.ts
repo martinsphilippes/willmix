@@ -1,5 +1,6 @@
 /** Dicionário do módulo "catalog": mesmas chaves em pt, en e zh. */
 export const pt = {
+  "catalog.brand": "Marca",
   /* Lista de produtos */
   "catalog.sheet": "Ficha do produto",
   "catalog.open": "Abrir ficha",
@@ -288,6 +289,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "catalog.brand": "Brand",
   "catalog.sheet": "Product sheet",
   "catalog.open": "Open sheet",
   "catalog.supplierSku": "Supplier code",
@@ -564,6 +566,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "catalog.brand": "品牌",
   "catalog.sheet": "产品档案",
   "catalog.open": "打开档案",
   "catalog.supplierSku": "供应商货号",

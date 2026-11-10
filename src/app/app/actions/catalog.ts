@@ -66,6 +66,7 @@ const sheetSchema = z.object({
   moq: optionalInt,
   negotiatedAt: z.string().nullable(),
   material: optionalText(120),
+  brand: optionalText(80),
   color: optionalText(60),
   pantone: optionalText(40),
   lengthCm: optionalNumber,
@@ -108,6 +109,10 @@ export async function updateProductSheetAction(form: FormData) {
       moq: num(form, "moq"),
       negotiatedAt: dateToIso(str(form, "negotiatedAt")),
       material: str(form, "material") || null,
+      // Marca (TGFPRO.MARCA): sem o campo no envio, fica como estava.
+      brand: form.has("brand")
+        ? str(form, "brand") || null
+        : (product.brand ?? null),
       color: str(form, "color") || null,
       pantone: str(form, "pantone") || null,
       lengthCm: num(form, "lengthCm"),

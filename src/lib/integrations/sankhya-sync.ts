@@ -12,7 +12,9 @@ import {
   loadRecords,
   upsertNoteItems,
   type NoteInput,
+  executeQuery,
 } from "./sankhya-client";
+import { sqlTerm } from "./sankhya-dictionary";
 import {
   getSankhyaErpSettings,
   type SankhyaErpSettings,
@@ -65,18 +67,48 @@ const SYNC_PARTY_TYPES = new Set<Party["type"]>(["supplier", "customer"]);
 
 const digits = (v: string | null | undefined) => (v ?? "").replace(/\D/g, "");
 
+/** Colunas de endereço do Parceiro guardadas nos códigos (sankhyaRefs). */
+const ADDRESS_REFS = [
+  "CODCID",
+  "CODEND",
+  "CODBAI",
+  "NUMEND",
+  "COMPLEMENTO",
+  "CEP",
+] as const;
+
 /** Puro: campos do Parceiro (TGFPAR) a partir do cadastro do portal. */
 export function partnerValues(
   party: Party,
   erp: SankhyaErpSettings,
   kind: SyncKind,
+  /** Códigos achados no Sankhya na hora (ex.: CODCID pela cidade). */
+  resolved: Record<string, string | number> = {},
 ): Record<string, string | number | null> {
   const doc = digits(party.taxId);
+  // Endereço: os códigos que vieram do Sankhya (carga) ou achados agora.
+  const refs = party.sankhyaRefs ?? {};
+  const address = Object.fromEntries(
+    ADDRESS_REFS.filter((k) => refs[k] != null || resolved[k] != null).map(
+      (k) => [k, resolved[k] ?? refs[k]],
+    ),
+  );
   return {
     ...(kind === "create" ? (erp.partnerDefaults ?? {}) : {}),
+    ...(kind === "create" ? address : {}),
     NOMEPARC: party.name,
-    ...(kind === "create" ? { RAZAOSOCIAL: party.name } : {}),
-    TIPPESSOA: doc.length === 11 ? "F" : "J",
+    ...(kind === "create" || party.legalName
+      ? { RAZAOSOCIAL: party.legalName || party.name }
+      : {}),
+    TIPPESSOA:
+      party.personType === "F" || party.personType === "J"
+        ? party.personType
+        : doc.length === 11
+          ? "F"
+          : "J",
+    ...(party.stateRegistration
+      ? { IDENTINSCESTAD: party.stateRegistration }
+      : {}),
     CGC_CPF: doc || null,
     EMAIL: party.email,
     TELEFONE: party.phone,
@@ -108,6 +140,7 @@ export function productValues(
     ALTURA: meters(product.heightCm),
     LARGURA: meters(product.widthCm),
     ESPESSURA: meters(product.lengthCm),
+    ...(product.brand ? { MARCA: product.brand } : {}),
     ATIVO: product.active ? "S" : "N",
   };
 }
@@ -195,9 +228,13 @@ export async function syncParty(
     if (kind === "create") {
       code = await findPartner(party);
       if (!code) {
+        // Cadastro nascido no portal: acha o CODCID pela cidade "Nome - UF".
+        const resolved = party.sankhyaRefs?.CODCID
+          ? {}
+          : await cityCode(party.city);
         await datasetSave({
           entity: "Parceiro",
-          values: partnerValues(party, erp, "create"),
+          values: partnerValues(party, erp, "create", resolved),
         });
         code = await findPartner(party);
         if (!code) throw new Error("incluído, mas não achei o CODPARC");
@@ -243,6 +280,28 @@ export async function syncParty(
   }
   await log(user, "party", party.id, kind, result);
   return result;
+}
+
+/**
+ * CODCID da cidade do portal ("Itajaí - SC" ou só "Itajaí") no Sankhya
+ * (TSICID + TSIUFS). Nada achado (ou consulta recusada) = vazio.
+ */
+export async function cityCode(
+  city: string | null | undefined,
+): Promise<Record<string, number>> {
+  const [name, uf] = (city ?? "").split(/\s+-\s+/);
+  const n = sqlTerm(name ?? "");
+  const u = sqlTerm(uf ?? "").slice(0, 2);
+  if (!n) return {};
+  try {
+    const table = await executeQuery(
+      `SELECT C.CODCID FROM TSICID C${u ? " JOIN TSIUFS U ON U.CODUF = C.UF" : ""} WHERE UPPER(C.NOMECID) = '${n}'${u ? ` AND U.UF = '${u}'` : ""}`,
+    );
+    const code = Number(table.rows[0]?.CODCID);
+    return Number.isInteger(code) && code > 0 ? { CODCID: code } : {};
+  } catch {
+    return {};
+  }
 }
 
 /** Produto → Produto no Sankhya (inclui, vincula pelo REFFORN ou altera). */

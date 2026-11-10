@@ -3,6 +3,7 @@
  * Sankhya) e do faturamento do pedido: mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "processes.col.location": "Local de estoque",
   "processes.sync": "Sincronização com o Sankhya",
   "processes.sync.hint":
     "Fornecedores, clientes e produtos novos no portal são incluídos no Sankhya (antes, o portal procura lá pelo CNPJ/nome ou pelo SKU e só vincula se já existir); alterações vão para lá; quantidade e preço dos itens do pedido ligado também. Roda logo depois das telas de cadastro gravarem, todo dia no job do portal e aqui no botão. Só com a execução no Sankhya ligada.",
@@ -89,6 +90,7 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "processes.col.location": "Stock location",
   "processes.sync": "Sync with Sankhya",
   "processes.sync.hint":
     "New suppliers, customers and products in the portal are created in Sankhya (first the portal looks there by CNPJ/name or SKU and only links if it already exists); changes go there; quantity and price of the linked order's items too. Runs right after the master-data screens save, daily in the portal job and here with the button. Only with execution in Sankhya on.",
@@ -173,6 +175,7 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "processes.col.location": "库位",
   "processes.sync": "与 Sankhya 同步",
   "processes.sync.hint":
     "门户中新增的供应商、客户和产品会在 Sankhya 中新建（门户先按 CNPJ/名称或 SKU 在 Sankhya 中查找，已存在则只关联）；修改会同步过去；已关联订单的明细数量和价格也会同步。在档案页面保存后立即运行、每天随门户任务运行，也可在此点击按钮运行。仅在开启 Sankhya 执行时运行。",
