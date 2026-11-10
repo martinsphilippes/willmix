@@ -291,6 +291,184 @@ describe("seleção de itens e solicitação ao fornecedor", () => {
   });
 });
 
+describe("produto da solicitação aprovada", () => {
+  /** Dois bookings fechados com um copo cada; solicitação ao A aprovada com o B de alternativa. */
+  async function approvedWithAlternative(code: string) {
+    const store = getStore();
+    const lotA = await closedLot("Shenzhen Supplier A", [
+      row("Shenzhen Supplier A", `${code}-A`, `Bottle ${code} 500ml`, "2000"),
+    ]);
+    const lotB = await closedLot("Guangzhou Supplier B", [
+      row("Guangzhou Supplier B", `${code}-B`, `Bottle ${code} slim`),
+    ]);
+    const [itemA] = await store.list("booking_items", {
+      filter: { lotId: lotA.id },
+    });
+    const [itemB] = await store.list("booking_items", {
+      filter: { lotId: lotB.id },
+    });
+    const request = await svc.openSupplierRequest(admin, {
+      itemId: itemA.id,
+      alternativeIds: [itemB.id],
+      quantity: null,
+      needs: "Tampa azul",
+      searchQuery: null,
+    });
+    await svc.answerSupplierRequest(supplierA, request.id, {
+      canDo: "yes",
+      price: 2.1,
+      currency: "USD",
+      moq: 1500,
+      leadTimeDays: 40,
+      note: null,
+    });
+    await svc.decideSupplierRequest(admin, request.id, "approved", null);
+    return { request, itemA, itemB, lotA, lotB };
+  }
+
+  it("cria o produto fora da vitrine, com a resposta do fornecedor, e liga os itens", async () => {
+    const store = getStore();
+    const product = await import("@/lib/services/supplier-request-product");
+    const { hiddenBookingProductIds, isHiddenByBooking } =
+      await import("@/lib/services/booking-visibility");
+    const { request, itemA, itemB, lotA, lotB } =
+      await approvedWithAlternative("PX");
+    const lineId = (await store.list("product_lines"))[0].id;
+
+    // Só aprovada ganha produto.
+    const open = await svc.openSupplierRequest(admin, {
+      itemId: (
+        await store.list("booking_items", { filter: { lotId: lotB.id } })
+      )[0].id,
+      alternativeIds: [],
+      quantity: 10,
+      needs: null,
+      searchQuery: null,
+    });
+    await expect(
+      product.createProductFromRequest(admin, open.id, {
+        name: "X",
+        lineId,
+        itemIds: [],
+      }),
+    ).rejects.toThrow("request_product_not_approved");
+    await svc.decideSupplierRequest(admin, open.id, "cancelled", null);
+    // Fornecedor não cria produto.
+    await expect(
+      product.createProductFromRequest(supplierA, request.id, {
+        name: "X",
+        lineId,
+        itemIds: [],
+      }),
+    ).rejects.toThrow();
+
+    const created = await product.createProductFromRequest(admin, request.id, {
+      name: "Garrafa térmica 500 ml",
+      lineId,
+      itemIds: [itemB.id],
+    });
+    expect(created).toMatchObject({
+      name: "Garrafa térmica 500 ml",
+      supplierId: lotA.supplierId,
+      supplierSku: "PX-A",
+      active: true,
+    });
+    // Ficha mestre com preço, moeda e MOQ da resposta.
+    const [master] = await store.list("purchase_sheets", {
+      filter: { orderId: created.id },
+    });
+    expect(master).toMatchObject({ price: 2.1, currency: "USD", moq: 1500 });
+    // Itens ligados; fornecedores das alternativas na lista do produto.
+    expect((await store.get("booking_items", itemA.id))!.productId).toBe(
+      created.id,
+    );
+    expect((await store.get("booking_items", itemB.id))!.productId).toBe(
+      created.id,
+    );
+    const links = await store.list("product_suppliers", {
+      filter: { productId: created.id },
+    });
+    expect(links.map((l) => l.supplierId).sort()).toEqual(
+      [lotA.supplierId, lotB.supplierId].sort(),
+    );
+    expect(links.find((l) => l.supplierId === lotA.supplierId)).toMatchObject({
+      price: 2.1,
+      moq: 1500,
+      leadTimeDays: 40,
+    });
+    // Fora da vitrine até liberar.
+    expect((await hiddenBookingProductIds()).has(created.id)).toBe(true);
+    expect(await isHiddenByBooking(created.id)).toBe(true);
+    await expect(
+      product.createProductFromRequest(admin, request.id, {
+        name: "Outro",
+        lineId,
+        itemIds: [],
+      }),
+    ).rejects.toThrow("request_product_exists");
+    await product.releaseRequestProduct(admin, request.id);
+    expect(await isHiddenByBooking(created.id)).toBe(false);
+    expect((await hiddenBookingProductIds()).has(created.id)).toBe(false);
+
+    // CODPROD: sem Sankhya configurado, grava sem conferir; inválido recusa.
+    await expect(
+      product.setRequestProductErpCode(admin, request.id, "12a"),
+    ).rejects.toThrow("request_erp_code_invalid");
+    const res = await product.setRequestProductErpCode(
+      admin,
+      request.id,
+      "40123",
+    );
+    expect(res.checked).toBe(false);
+    expect((await store.get("products", created.id))!.erpCode).toBe("40123");
+    expect(
+      (await store.get("supplier_requests", request.id))!.erpCheckedAt,
+    ).toBeNull();
+  });
+
+  it("associa a um produto existente sem esconder e não toma item de outro produto", async () => {
+    const store = getStore();
+    const product = await import("@/lib/services/supplier-request-product");
+    const { isHiddenByBooking } =
+      await import("@/lib/services/booking-visibility");
+    const { request, itemB } = await approvedWithAlternative("QZ");
+    const existing = (await store.list("products")).find((p) => p.active)!;
+    const other = (await store.list("products")).find(
+      (p) => p.active && p.id !== existing.id,
+    )!;
+    await store.update("booking_items", itemB.id, { productId: other.id });
+    await expect(
+      product.linkRequestToProduct(admin, request.id, {
+        productId: existing.id,
+        itemIds: [itemB.id],
+      }),
+    ).rejects.toThrow("request_product_item_taken");
+    await store.update("booking_items", itemB.id, { productId: null });
+    await store.update("supplier_requests", request.id, {
+      productId: null,
+      productAction: null,
+    });
+    const linked = await product.linkRequestToProduct(admin, request.id, {
+      productId: existing.id,
+      itemIds: [],
+    });
+    expect(linked.id).toBe(existing.id);
+    expect(
+      (await store.get("supplier_requests", request.id))!.productAction,
+    ).toBe("linked");
+    expect(await isHiddenByBooking(existing.id)).toBe(false);
+    // Busca no catálogo pelo nome.
+    const found = await product.searchCatalogProducts(
+      existing.name.split(" ")[0],
+    );
+    expect(found.some((p) => p.id === existing.id)).toBe(true);
+    // Sem credencial do Sankhya, a busca diz que não está configurado.
+    expect((await product.searchSankhyaProducts("copo")).status).toBe(
+      "not_configured",
+    );
+  });
+});
+
 describe("regras puras", () => {
   it("busca por parte das palavras e sugere parecidos", () => {
     const text = lib.itemSearchText({

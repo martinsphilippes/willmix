@@ -114,3 +114,94 @@ export async function decideSupplierRequestAction(form: FormData) {
     return withQuery(back, "decided", input.decision);
   });
 }
+
+/* ---- Produto da solicitação aprovada (docs/SUPPLIER_REQUESTS.md, "Produto") ---- */
+
+/** Itens marcados no formulário (ids). */
+function itemIds(form: FormData): string[] {
+  return z
+    .array(ID)
+    .max(60)
+    .parse(
+      form.getAll("itemIds").filter((v): v is string => typeof v === "string"),
+    );
+}
+
+/** Um formulário, dois botões: criar o produto novo ou associar ao escolhido. */
+export async function requestProductAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const back = ID.safeParse(raw).success
+    ? detail(raw)
+    : "/app/supplier-requests";
+  await run(back, async () => {
+    const id = ID.parse(raw);
+    const mode = z.enum(["create", "link"]).parse(str(form, "mode"));
+    const svc = await import("@/lib/services/supplier-request-product");
+    if (mode === "create") {
+      const input = z
+        .object({ name: z.string().max(160), lineId: ID })
+        .parse({ name: str(form, "name"), lineId: str(form, "lineId") });
+      await svc.createProductFromRequest(user, id, {
+        ...input,
+        itemIds: itemIds(form),
+      });
+      return withQuery(back, "product", "created");
+    }
+    const productId = str(form, "productId");
+    if (!productId) throw new Error("request_product_choose");
+    await svc.linkRequestToProduct(user, id, {
+      productId: ID.parse(productId),
+      itemIds: itemIds(form),
+    });
+    return withQuery(back, "product", "linked");
+  });
+}
+
+export async function linkMoreRequestItemsAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const back = ID.safeParse(raw).success
+    ? detail(raw)
+    : "/app/supplier-requests";
+  await run(back, async () => {
+    const svc = await import("@/lib/services/supplier-request-product");
+    await svc.linkMoreItems(user, ID.parse(raw), itemIds(form));
+    return withQuery(back, "product", "items");
+  });
+}
+
+export async function releaseRequestProductAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const back = ID.safeParse(raw).success
+    ? detail(raw)
+    : "/app/supplier-requests";
+  await run(back, async () => {
+    const svc = await import("@/lib/services/supplier-request-product");
+    await svc.releaseRequestProduct(user, ID.parse(raw));
+    return withQuery(back, "product", "released");
+  });
+}
+
+export async function setRequestErpCodeAction(form: FormData) {
+  const user = await requireUser();
+  const raw = str(form, "id");
+  const back = ID.safeParse(raw).success
+    ? detail(raw)
+    : "/app/supplier-requests";
+  await run(back, async () => {
+    const code = z.string().max(20).parse(str(form, "erpCode"));
+    const svc = await import("@/lib/services/supplier-request-product");
+    const { checked } = await svc.setRequestProductErpCode(
+      user,
+      ID.parse(raw),
+      code,
+    );
+    return withQuery(
+      back,
+      "erp",
+      code ? (checked ? "checked" : "unchecked") : "cleared",
+    );
+  });
+}

@@ -753,6 +753,14 @@
           "array": false,
           "default": null,
           "type": "double"
+        },
+        {
+          "key": "erpCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -9678,6 +9686,63 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "productId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "productAction",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "created",
+            "linked"
+          ]
+        },
+        {
+          "key": "productLinkedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "productLinkedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "showcaseReleasedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "showcaseReleasedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "erpCheckedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -9706,6 +9771,16 @@
           "type": "key",
           "columns": [
             "status"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_product",
+          "type": "key",
+          "columns": [
+            "productId"
           ],
           "orders": [
             "ASC"

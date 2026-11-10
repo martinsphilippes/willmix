@@ -40,7 +40,7 @@ A Seleção de itens **substitui a fila de produtos** do Booking: o botão da te
 
 ## Banco
 
-Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`) e `createdByUserId`; índice `by_status`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
+Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`); índice `by_status`. `products` ganhou `erpCode` (CODPROD do Sankhya), opcional e só gravado quando informado. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
 
 ## Onde está
 
@@ -53,6 +53,26 @@ Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_requ
 | Textos                                                      | `src/i18n/modules/supplier-requests.ts`                            |
 | Testes                                                      | `tests/unit/supplier-requests.test.ts`                             |
 
-## Próximo passo
+## Produto (depois de aprovada; decisão do dono, 10/11/2026)
 
-Solicitação aprovada → criar o produto no portal (nome correto dado pelo analista) ou associar a um existente, ligar a ele os itens iguais de vários bookings (`booking_items.productId`) e refletir no Sankhya (ligar ao CODPROD que já existe; criar no ERP fica para quando a gravação no Sankhya estiver validada).
+Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bloco **Produto**, no próprio detalhe da solicitação.
+
+1. **Criar produto novo**: o analista dá o **nome correto** e escolhe a **linha de produto**. O resto vem preenchido:
+   - **Preço, moeda e MOQ da resposta do fornecedor** (os negociados). Sem preço na resposta, valem os do booking.
+   - Código da fábrica, medidas, caixa, pesos, CBM, capacidade, embalagem, material, cores e função vêm do item. A ficha mestre é gravada com esses valores (`sheetFromRequest`).
+   - O fornecedor da solicitação entra como **principal**. A foto do item é copiada para o produto ("foto do fornecedor").
+   - O que a Wellmix pediu ("needs") vai para as observações da ficha.
+2. **Associar a um produto existente**: busca no catálogo por nome, código, código da fábrica ou CODPROD, e escolha de um produto ativo. O cadastro dele não muda.
+3. **Itens iguais**: o item escolhido sempre entra. As alternativas da solicitação já vêm marcadas, e a busca acha mais itens nos bookings fechados que ainda não têm produto.
+   - Todos ficam ligados ao produto (`booking_items.productId`).
+   - O fornecedor de cada item entra na lista de fornecedores do produto (`product_suppliers`): o da solicitação com preço, moeda, MOQ e prazo da resposta (`source` "quote"); o de uma alternativa com código e preço do booking ("manual").
+   - Item já ligado a outro produto recusa (`request_product_item_taken`).
+   - Depois de criado ou associado, "Ligar mais itens" acrescenta outros.
+4. **Vitrine**: o produto **criado** nasce **fora da vitrine do cliente** (vitrine, página do produto, carrinho, nova solicitação e kit de marketing) até "Liberar na vitrine". O produto **associado** já existia e não muda. A regra fica em `booking-visibility.ts`, junto com a do Booking.
+5. **Sankhya**: só **ligar ao CODPROD que já existe**; o produto não é criado no ERP.
+   - A busca usa a descrição (parte) ou a referência do fornecedor (`Produto`: CODPROD, DESCRPROD, REFFORN) e um botão "Usar" em cada resultado.
+   - O código também pode ser digitado. Ele é gravado em `products.erpCode`.
+   - Com o Sankhya configurado, o código é **conferido** no ERP (inexistente recusa). Sem credencial, ou com o ERP fora do ar, fica gravado como **não conferido**, e a tela diz isso.
+6. **Depois**: o pedido de compra ao fornecedor é outra etapa (ainda não construída).
+
+Tudo fica na auditoria: `product.create`, `product.link_booking`, `product.showcase_release` e `product.erp_code`.

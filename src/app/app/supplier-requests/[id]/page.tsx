@@ -35,6 +35,12 @@ import {
   decideSupplierRequestAction,
 } from "../../actions/supplier-requests";
 import { STATUS_TONE, answerText } from "../_components/status";
+import {
+  RequestProductCard,
+  type RequestProductData,
+} from "../_components/request-product";
+import { canOpen } from "@/lib/auth/screens";
+import { getStore } from "@/lib/db";
 
 /*
  * Uma solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md). O fornecedor vê
@@ -102,6 +108,52 @@ export default async function SupplierRequestPage({
     notices.push(
       t(`supplierRequests.detail.decided.${decided}` as DictionaryKey),
     );
+  const productNotice = one("product");
+  if (["created", "linked", "items", "released"].includes(productNotice))
+    notices.push(t(`srProduct.notice.${productNotice}` as DictionaryKey));
+  const erpNotice = one("erp");
+  if (["checked", "unchecked", "cleared"].includes(erpNotice))
+    notices.push(t(`srProduct.notice.erp.${erpNotice}` as DictionaryKey));
+
+  // Bloco "Produto": a Wellmix que abre Produtos, na solicitação aprovada.
+  let productData: RequestProductData | null = null;
+  if (wellmix && r.status === "approved" && canOpen(user, "products")) {
+    const svc = await import("@/lib/services/supplier-request-product");
+    const store = getStore();
+    const q = {
+      items: one("iq").slice(0, 80),
+      products: one("pq").slice(0, 80),
+      erp: one("eq").slice(0, 80),
+    };
+    const [product, lines, choices, catalog, erp] = await Promise.all([
+      r.productId ? store.get("products", r.productId) : null,
+      store.list("product_lines", {
+        filter: { active: true },
+        orderBy: "name",
+      }),
+      svc.requestItemChoices(r, q.items),
+      r.productId ? Promise.resolve([]) : svc.searchCatalogProducts(q.products),
+      r.productId && q.erp ? svc.searchSankhyaProducts(q.erp) : null,
+    ]);
+    const linkedCount = product
+      ? (
+          await store.list("booking_items", {
+            filter: { productId: product.id },
+          })
+        ).length
+      : 0;
+    productData = {
+      request: r,
+      product,
+      linkedCount,
+      lines,
+      choices,
+      catalog,
+      erp,
+      query: q,
+      suggestedName: (it.productName ?? it.description ?? "").slice(0, 160),
+    };
+  }
 
   const canAnswer = supplierCanAnswer(r.status);
   const decisions = wellmix
@@ -514,6 +566,11 @@ export default async function SupplierRequestPage({
           ) : null}
         </div>
       </div>
+      {productData ? (
+        <div className="mt-4" data-request-product>
+          <RequestProductCard data={productData} t={t} />
+        </div>
+      ) : null}
     </>
   );
 }

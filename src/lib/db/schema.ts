@@ -783,6 +783,12 @@ export interface Product extends BaseRow {
   priceTiers: PriceTier[] | null;
   /** Estoque mínimo (limite): abaixo dele a tela Estoque pede reposição e o admin é avisado. Nulo = sem limite. */
   minStock?: number | null;
+  /**
+   * Código do produto no Sankhya (CODPROD), ligado na solicitação ao
+   * fornecedor aprovada (docs/SUPPLIER_REQUESTS.md). Opcional: só gravado
+   * quando informado.
+   */
+  erpCode?: string | null;
 }
 
 export interface PriceTier {
@@ -2452,6 +2458,18 @@ export interface SupplierRequest extends BaseRow {
   decidedByUserId: string | null;
   decisionNote: string | null;
   createdByUserId: string;
+  /*
+   * Produto (depois de aprovada): criado a partir do item ou associado a um
+   * que já existia. O criado fica fora da vitrine até ser liberado.
+   */
+  productId?: string | null;
+  productAction?: "created" | "linked" | null;
+  productLinkedAt?: string | null;
+  productLinkedByUserId?: string | null;
+  showcaseReleasedAt?: string | null;
+  showcaseReleasedByUserId?: string | null;
+  /** Quando o CODPROD do produto foi conferido no Sankhya (nulo: digitado sem conferir). */
+  erpCheckedAt?: string | null;
 }
 
 export interface StockReservation extends BaseRow {
@@ -2715,6 +2733,7 @@ export const TABLES: Record<TableName, TableDef> = {
       ncm: str(10),
       priceTiers: json(),
       minStock: float(),
+      erpCode: str(40),
     },
     indexes: [
       { key: "by_line", type: "key", columns: ["lineId"] },
@@ -4097,11 +4116,19 @@ export const TABLES: Record<TableName, TableDef> = {
       decidedByUserId: id(false),
       decisionNote: str(500),
       createdByUserId: id(),
+      productId: id(false),
+      productAction: enumOf(["created", "linked"], false),
+      productLinkedAt: datetime(),
+      productLinkedByUserId: id(false),
+      showcaseReleasedAt: datetime(),
+      showcaseReleasedByUserId: id(false),
+      erpCheckedAt: datetime(),
     },
     indexes: [
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
       { key: "by_item", type: "key", columns: ["bookingItemId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
     ],
   },
 };

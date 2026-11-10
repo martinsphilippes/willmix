@@ -85,7 +85,7 @@ export const pt = {
     "Solicitação aberta. O fornecedor foi avisado e responde no portal.",
   "supplierRequests.detail.answered": "Resposta registrada.",
   "supplierRequests.detail.decided.approved":
-    "Solicitação aprovada. O produto é criado ou associado na etapa seguinte.",
+    "Solicitação aprovada. Crie o produto ou associe a um existente no bloco Produto, logo abaixo.",
   "supplierRequests.detail.decided.declined": "Solicitação recusada.",
   "supplierRequests.detail.decided.cancelled": "Solicitação cancelada.",
   "supplierRequests.detail.request": "O que a Wellmix pede",
@@ -256,7 +256,7 @@ export const en: typeof pt = {
     "Request opened. The supplier was notified and answers in the portal.",
   "supplierRequests.detail.answered": "Answer recorded.",
   "supplierRequests.detail.decided.approved":
-    "Request approved. The product is created or linked in the next step.",
+    "Request approved. Create the product or link an existing one in the Product block below.",
   "supplierRequests.detail.decided.declined": "Request declined.",
   "supplierRequests.detail.decided.cancelled": "Request cancelled.",
   "supplierRequests.detail.request": "What Wellmix asks",
@@ -425,7 +425,7 @@ export const zh: typeof pt = {
     "询单已发起。已通知供应商，供应商在门户中回复。",
   "supplierRequests.detail.answered": "回复已记录。",
   "supplierRequests.detail.decided.approved":
-    "询单已批准。产品将在下一步创建或关联。",
+    "询单已批准。请在下方“产品”区域创建产品或关联到已有产品。",
   "supplierRequests.detail.decided.declined": "询单已拒绝。",
   "supplierRequests.detail.decided.cancelled": "询单已取消。",
   "supplierRequests.detail.request": "Wellmix 的要求",
