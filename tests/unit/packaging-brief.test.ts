@@ -96,7 +96,7 @@ async function reachPackaging(orderId: string) {
       filter: { stageId: stage.id, status: "pending" },
     }))
       if ((await store.get("stages", stage.id))?.status === "active")
-        await submitRequirement(admin, req.id, { value: "1" });
+        await submitRequirement(admin, req.id, { value: "1", signature: true });
   }
   return (await store.get("orders", orderId))!;
 }

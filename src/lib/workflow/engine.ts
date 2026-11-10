@@ -25,6 +25,7 @@ import {
   artRole,
   canCompleteLater,
   isOffFlowStage,
+  isOrderSignatureKey,
   nextStageKey,
 } from "./stages";
 import {
@@ -262,6 +263,11 @@ export interface SubmitInput {
   value?: string | null;
   documentId?: string | null;
   note?: string | null;
+  /**
+   * Só o serviço da assinatura do documento do pedido marca: os itens de
+   * assinatura não são concluídos pelo "Confirmar" comum.
+   */
+  signature?: boolean;
 }
 
 /** Quem pode preencher: Wellmix sempre; o papel do requisito quando vinculado ao parceiro certo. */
@@ -293,6 +299,9 @@ export async function submitRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  // Assinatura do documento do pedido: só pela página do documento.
+  if (isOrderSignatureKey(requirement.key) && !input.signature)
+    throw new WorkflowError("signature_required");
   if (
     stage.status !== "active" &&
     stage.status !== "blocked" &&
@@ -908,8 +917,7 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
     required.length === 0
       ? 0
       : Math.round(
-          ((required.length - pendingRequired.length) / required.length) *
-            100,
+          ((required.length - pendingRequired.length) / required.length) * 100,
         );
 
   await store.update("stages", stage.id, {

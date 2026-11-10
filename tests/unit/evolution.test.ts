@@ -195,14 +195,24 @@ describe("comparação comprado × inspecionado", () => {
             kitId: null,
             imageHash: null,
           });
-          await submitRequirement(admin, r.id, { documentId: doc.id });
+          await submitRequirement(admin, r.id, {
+            documentId: doc.id,
+            signature: true,
+          });
         } else if (r.type === "number")
           await submitRequirement(admin, r.id, {
             value: r.key === "weight" ? "2.4" : "1",
           });
         else if (r.type === "date")
-          await submitRequirement(admin, r.id, { value: "2026-10-01" });
-        else await submitRequirement(admin, r.id, { value: "ok" });
+          await submitRequirement(admin, r.id, {
+            value: "2026-10-01",
+            signature: true,
+          });
+        else
+          await submitRequirement(admin, r.id, {
+            value: "ok",
+            signature: true,
+          });
       }
     }
     let progress = (await loadOrderProgress(orderId))!;

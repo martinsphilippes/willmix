@@ -20,18 +20,18 @@ Quem responde a cotação de um produto do catálogo entra na lista de fornecedo
 
 Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked`, `done`), responsável, prazo (`dueAt`, calculado por `stageDueDays`), percentual e requisitos.
 
-| Etapa              | Requisitos obrigatórios (papel)                                                                                                         |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `ORDER_CREATED`    | Pedido conferido (operador). Opcional: número no Sankhya                                                                                |
-| `PREPARATION`      | Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta                         |
-| `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)                 |
-| `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor)            |
-| `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia             |
-| `SHIPPING`         | Embarque confirmado (companhia marítima; operador se não houver designada). Opcionais: data de embarque, previsão de chegada, navio, BL |
-| `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos      |
-| `TRANSPORT`        | Placa, previsão de entrega, entrega realizada (transportador; operador se não houver). Opcional: situação                               |
-| `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                      |
-| `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                              |
+| Etapa              | Requisitos obrigatórios (papel)                                                                                                                                               |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ORDER_CREATED`    | Pedido conferido (operador) e documento do pedido assinado pela Wellmix (docs/ORDER_SIGNATURE.md). Opcional: número no Sankhya                                                |
+| `PREPARATION`      | Documento do pedido assinado pelo fornecedor (primeiro item). Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta |
+| `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)                                                       |
+| `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor)                                                  |
+| `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia                                                   |
+| `SHIPPING`         | Embarque confirmado (companhia marítima; operador se não houver designada). Opcionais: data de embarque, previsão de chegada, navio, BL                                       |
+| `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos                                            |
+| `TRANSPORT`        | Placa, previsão de entrega, entrega realizada (transportador; operador se não houver). Opcional: situação                                                                     |
+| `DELIVERED`        | Recebimento confirmado (cliente; operador se `deliveryConfirmationMode = WELLMIX`)                                                                                            |
+| `CLOSED`           | Sem requisitos; conclui automaticamente e grava `closedAt`                                                                                                                    |
 
 No Embarque, data de embarque, previsão de chegada, navio e BL são opcionais (dá para avançar sem eles); o item **Embarque confirmado** conclui a etapa. Com a data preenchida, as regras de ordem continuam (chegada depois do embarque); sem ela, o marco de pagamento ao fornecedor é o dia em que o Embarque foi concluído. Pedidos criados antes (com os três obrigatórios) passam para o modelo novo ao abrir a página do pedido ou no job diário (`normalizeShipping`, em `src/lib/services/shipping-stage.ts`).
 
