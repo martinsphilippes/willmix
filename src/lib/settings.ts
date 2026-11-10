@@ -22,6 +22,14 @@ export const DEFAULT_SETTINGS = {
    * guardada e volta ao ligar aqui (tela Pedidos → RFQ, docs/RFQ_STANDBY.md).
    */
   rfqEnabled: false,
+  /**
+   * Sourcing (visitas, itens encontrados, sourcing sob demanda). Em espera
+   * por decisão do dono (10/11/2026), como a RFQ: os produtos chegam pela
+   * ficha técnica do Booking. Em espera, o pedido de produto fora do
+   * catálogo vira só a solicitação (sem item de Sourcing nem pendência). As
+   * telas e os dados ficam; volta ao ligar na tela Pedidos → Sourcing.
+   */
+  sourcingEnabled: false,
   /* ---- Aprovação do pré-custo (docs/APPROVALS.md) ---- */
   /** A escolha do fornecedor só vale depois de aprovada (planner → diretoria de compras → diretoria executiva). */
   approvalsEnabled: true,

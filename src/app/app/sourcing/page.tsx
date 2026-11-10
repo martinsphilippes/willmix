@@ -9,10 +9,16 @@ import {
   type VisitStatus,
 } from "@/lib/db";
 import { loadSourcingLists } from "@/lib/services/sourcing";
+import { getSettings } from "@/lib/settings";
+import { isAdmin } from "@/lib/auth/permissions";
 import { getT } from "@/i18n/server";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { SubmitButton } from "@/components/submit-button";
+import { setSourcingEnabledAction } from "../actions/sourcing";
 import {
   Alert,
   Badge,
+  Card,
   Empty,
   LinkButton,
   PageHeader,
@@ -57,7 +63,12 @@ export default async function SourcingPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "sourcing");
-  const { tab: tabParam, status: statusParam, error } = await searchParams;
+  const {
+    tab: tabParam,
+    status: statusParam,
+    error,
+    saved,
+  } = await searchParams;
   const tab = tabParam === "visits" ? "visits" : "items";
   const itemStatus =
     tab === "items" &&
@@ -72,6 +83,9 @@ export default async function SourcingPage({
       ? (statusParam as VisitStatus)
       : null;
   const t = await getT();
+  // Sourcing em espera (decisão do dono, como a RFQ): a tela guarda tudo e
+  // mostra a situação e o interruptor.
+  const on = (await getSettings()).sourcingEnabled;
   const { items, visits, suppliers } = await loadSourcingLists({
     itemStatus,
     visitStatus,
@@ -91,6 +105,13 @@ export default async function SourcingPage({
         subtitle={t("sourcing.subtitle")}
         actions={
           <>
+            <span data-sourcing-state={on ? "on" : "off"}>
+              <Badge tone={on ? "success" : "warning"}>
+                {t(
+                  on ? "sourcingStandby.state.on" : "sourcingStandby.state.off",
+                )}
+              </Badge>
+            </span>
             <LinkButton
               href="/app/sourcing/visits/new"
               className="py-2.5 text-base sm:py-1.5 sm:text-sm"
@@ -108,6 +129,60 @@ export default async function SourcingPage({
         }
       />
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      {saved === "on" || saved === "off" ? (
+        <div className="mb-3">
+          <Alert tone="success">
+            {t(`sourcingStandby.saved.${saved}` as DictionaryKey)}
+          </Alert>
+        </div>
+      ) : null}
+      {/* Situação do Sourcing e o interruptor (só o administrador). */}
+      <div
+        className="mb-4 grid gap-4 lg:grid-cols-3 lg:items-start"
+        data-sourcing-standby
+      >
+        <Card title={t("sourcingStandby.now.title")} className="lg:col-span-2">
+          <p className="text-sm text-zinc-700" data-sourcing-now>
+            {t(on ? "sourcingStandby.now.on" : "sourcingStandby.now.off")}
+          </p>
+          <h3 className="mt-4 text-sm font-semibold text-zinc-900">
+            {t("sourcingStandby.kept.title")}
+          </h3>
+          <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-zinc-700">
+            {(["1", "2", "3"] as const).map((n) => (
+              <li key={n}>{t(`sourcingStandby.kept.${n}` as DictionaryKey)}</li>
+            ))}
+          </ul>
+        </Card>
+        <Card title={t("rfqStandby.switch.title")}>
+          <p className="text-sm text-zinc-600">
+            {t(
+              on
+                ? "sourcingStandby.switch.hintOn"
+                : "sourcingStandby.switch.hintOff",
+            )}
+          </p>
+          {isAdmin(user) ? (
+            <form action={setSourcingEnabledAction} className="mt-3">
+              <input type="hidden" name="enabled" value={on ? "off" : "on"} />
+              <SubmitButton
+                variant={on ? "secondary" : "primary"}
+                data-sourcing-switch={on ? "off" : "on"}
+              >
+                {t(
+                  on
+                    ? "sourcingStandby.switch.off"
+                    : "sourcingStandby.switch.on",
+                )}
+              </SubmitButton>
+            </form>
+          ) : (
+            <p className="mt-3 text-xs text-zinc-500">
+              {t("sourcingStandby.switch.adminOnly")}
+            </p>
+          )}
+        </Card>
+      </div>
 
       {/* Abas e filtros de situação na mesma linha a partir do tablet. */}
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:gap-3">

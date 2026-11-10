@@ -492,7 +492,13 @@ export async function createRequest(
     `Solicitação: ${request.productName}`,
   );
   // Sourcing sob demanda: produto ainda não catalogado vira item de sourcing para o time na China.
-  if (request.origin === "sourcing_demand" && !request.productId) {
+  // Sourcing em espera (decisão do dono): a solicitação nasce igual, mas não
+  // abre item de Sourcing nem o aviso "Sourcing sob demanda".
+  if (
+    request.origin === "sourcing_demand" &&
+    !request.productId &&
+    (await getSettings()).sourcingEnabled
+  ) {
     const customer = await store.get("parties", request.customerId);
     await store.create("sourcing_items", {
       visitId: null,

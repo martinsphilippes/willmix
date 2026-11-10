@@ -624,7 +624,12 @@ export default async function NewRequestPage({
                 noStock: t("reqProduct.noStock"),
                 change: t("reqProduct.change"),
                 notInCatalog: t("requests.sourcingDemand.label"),
-                notInCatalogHint: t("requests.sourcingDemand.hint"),
+                // Sourcing em espera: o pedido vira só a solicitação.
+                notInCatalogHint: t(
+                  settings.sourcingEnabled
+                    ? "requests.sourcingDemand.hint"
+                    : "requests.sourcingDemand.hintStandby",
+                ),
                 product: t("common.product"),
                 select: t("common.select"),
                 variant: t("reqProduct.variant"),

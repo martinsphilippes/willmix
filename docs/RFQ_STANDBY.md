@@ -80,3 +80,21 @@ Saíram da tela da solicitação, como cartões:
 
 - **RFQ**: com a RFQ em espera não há cartão (nem na solicitação, nem no lote). O cartão "Abrir RFQ" só volta com a RFQ ligada.
 - **Solicitante do cliente**: virou uma linha no cartão da solicitação (lista e "Salvar"), e só aparece quando a compra é de um cliente com login. Compra para o Estoque Wellmix não tem solicitante. A regra não mudou: só o login escolhido vê a solicitação e o pedido (docs de acesso).
+
+## Sourcing em espera (10/11/2026)
+
+Decisão do dono: o Sourcing fica em espera, igual à RFQ. Os produtos chegam pela ficha técnica do Booking, já com o fornecedor; o Sourcing (visitas, itens encontrados, sourcing sob demanda) sai do dia a dia e fica guardado.
+
+|                                         | Sourcing em espera (padrão)                                                                                                  | Sourcing ativo                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Configuração                            | `settings.sourcingEnabled = false`                                                                                           | `true`                                                                |
+| Menu                                    | "Sourcing (em espera)", no fim do grupo Pedidos, junto da RFQ                                                                | o mesmo item                                                          |
+| Pedido de produto fora do catálogo      | A solicitação nasce igual (origem `sourcing_demand` guardada), mas **não** abre item de Sourcing nem o aviso "Sourcing sob demanda" | Abre o item de Sourcing em rascunho e avisa a equipe (como antes)     |
+| Pendência "Sourcing sob demanda"        | Não aparece                                                                                                                  | Aparece                                                               |
+| Tela Pedidos → Sourcing                 | Quadro no alto com a situação, o que está guardado e o interruptor; as visitas e os itens continuam embaixo, utilizáveis     | igual, com a situação "Ativo"                                         |
+
+- O interruptor é só do administrador (`setSourcingEnabledAction`, `src/app/app/actions/sourcing.ts`): grava `settings.sourcingEnabled` e registra na auditoria (`settings.sourcing`).
+- Nada foi removido: telas, rotas, tabelas e dados do Sourcing continuam. Busca por foto ou link, promoção de item a produto e os atalhos nas páginas de produto não mudam.
+- Solicitação fora do catálogo criada em espera não ganha item de Sourcing depois, ao ativar (o item pode ser cadastrado à mão na tela).
+- Textos em `src/i18n/modules/sourcing-standby.ts`; o nome no menu, em `dictionaries.ts` (`nav.sourcing`).
+

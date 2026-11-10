@@ -450,7 +450,8 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   // Booking é "analisar o Booking" para o fornecedor, e a Wellmix "envia ao
   // fornecedor" em vez de abrir a RFQ.
   const { getSettings } = await import("@/lib/settings");
-  const rfqOn = (await getSettings()).rfqEnabled;
+  const flowSettings = await getSettings();
+  const rfqOn = flowSettings.rfqEnabled;
   const fromBooking = new Set(
     quotes.length
       ? (
@@ -643,7 +644,10 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
 
   // Sourcing sob demanda: produto pedido por cliente ainda sem fornecedor.
-  const withRequest = demands.filter((x) => x.requestId);
+  // Com o Sourcing em espera (decisão do dono) não é pendência de ninguém.
+  const withRequest = flowSettings.sourcingEnabled
+    ? demands.filter((x) => x.requestId)
+    : [];
   const demandRequests = withRequest.length
     ? await store.list("requests", {
         filter: { id: [...new Set(withRequest.map((d) => d.requestId!))] },

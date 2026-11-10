@@ -376,3 +376,32 @@ export async function discardSourcingItemAction(form: FormData) {
     await setSourcingItemStatus(user, itemId, "discarded");
   });
 }
+
+/**
+ * Sourcing em espera (docs/RFQ_STANDBY.md, seção do Sourcing): ligar ou
+ * colocar em espera. Só o administrador; a mudança fica na auditoria.
+ */
+export async function setSourcingEnabledAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/sourcing", async () => {
+    assertScreen(user, "sourcing");
+    const { assertRole } = await import("@/lib/auth/permissions");
+    assertRole(user, ["admin"]);
+    const enabled = z.enum(["on", "off"]).parse(str(form, "enabled")) === "on";
+    const { getSettings, setSetting } = await import("@/lib/settings");
+    const before = (await getSettings()).sourcingEnabled;
+    if (before !== enabled) {
+      await setSetting("sourcingEnabled", enabled);
+      await audit(
+        user,
+        "settings.sourcing",
+        "setting",
+        "sourcingEnabled",
+        enabled ? "Sourcing ativado" : "Sourcing colocado em espera",
+        { sourcingEnabled: before },
+        { sourcingEnabled: enabled },
+      );
+    }
+    return `/app/sourcing?saved=${enabled ? "on" : "off"}`;
+  });
+}
