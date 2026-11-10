@@ -73,6 +73,16 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 
 A amostra (1 a 5 por entidade) é coerente: as últimas notas das TOPs de importação (descrição com "IMP") e, delas, os parceiros, itens e financeiro; dos itens, os produtos; dos produtos, os grupos e o estoque. Tudo por SQL somente leitura com listas de inteiros. Se uma coluna do mapeamento não existir no ERP, a tela refaz a consulta com `*`, mostra as colunas que faltam e as que a tabela tem. Para cada registro, a tela mostra o valor convertido (e o original quando muda) e se já existe um cadastro equivalente no portal.
 
+### Todas as colunas e ligações (10/11/2026)
+
+- **Todas as colunas**: a amostra pede `SELECT *` (poucos registros) e cada entidade tem o bloco "Todas as colunas do Sankhya": coluna, destino no portal e o valor de cada registro. As colunas com valor e **sem destino** aparecem primeiro (campos `AD_` no topo); as vazias em todos os registros ficam numa linha no fim. É dali que se escolhe o que ainda mapear.
+- **Ligações** (`src/lib/integrations/sankhya-relations.ts`): valores de outras tabelas, buscados à parte com `SELECT *` e tolerantes (tabela ou coluna que não existe deixa só aquele valor vazio). No mapeamento, são os campos com `via`.
+  - Parceiro: cidade "Cidade - UF" (TSICID + TSIUFS), país (TSIPAI), endereço (TSIEND + NUMEND + COMPLEMENTO + TSIBAI + CEP), contato (primeiro de TGFCTT; o e-mail e o telefone dele quando o parceiro não tem). Do próprio TGFPAR: razão social (`legalName`), inscrição estadual (`stateRegistration`) e tipo de pessoa F/J (`personType`).
+  - Produto: fornecedor e preço da última nota de importação com o produto (TGFITE + TGFCAB; preço ÷ câmbio da nota, na moeda do pedido), caixas master e interna pelos volumes alternativos (TGFVOA: o maior volume é a master; com dois ou mais, o menor acima de 1 é a interna), observações = COMPLDESC + marca. Só preenchem o que estiver vazio no portal.
+  - Pedido: condição de pagamento (CODTIPVENDA → `paymentConditionId`, pela tabela Condições de pagamento), Incoterm (CIF_FOB: C → CIF, F → FOB; `incoterm`), câmbio (`fxRate`), transportadora (CODPARCTRANSP → parceiro do tipo transportadora, `carrierId`), previsão de entrega (DTPREVENT, nas observações).
+  - Título: forma de pagamento (CODTIPTIT → TGFTIT) e o câmbio do pedido.
+- Colunas novas (aditivas): `parties.legalName`, `parties.stateRegistration`, `parties.personType`, `orders.incoterm`, `orders.paymentConditionId`, `orders.fxRate`. Publicar o esquema antes de usar. A ficha do parceiro mostra razão social e inscrição estadual; o pedido mostra Incoterm, condição de pagamento e câmbio (só a Wellmix).
+
 ### Gravar a amostra no portal
 
 Botão **Gravar no portal** na mesma aba (`src/lib/integrations/sankhya-import.ts`, ação `sankhyaImportSampleAction`, auditoria `sankhya.import`). Decisões da Wellmix (10/11/2026): os pedidos do Sankhya entram como **pedidos normais**, a **TOP define a etapa** e os **valores ficam em R$**.

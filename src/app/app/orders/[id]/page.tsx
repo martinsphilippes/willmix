@@ -623,6 +623,36 @@ export default async function OrderPage({
       </span>
     );
   };
+  /* Condição de pagamento, Incoterm e câmbio (vêm do Sankhya; só a Wellmix). */
+  const paymentCondition =
+    wellmix && order.paymentConditionId
+      ? await store.get("payment_conditions", order.paymentConditionId)
+      : null;
+  const commercialItems: Array<[string, ReactNode]> = wellmix
+    ? [
+        ...(order.incoterm
+          ? [[t("orders.incoterm"), order.incoterm] as [string, ReactNode]]
+          : []),
+        ...(paymentCondition
+          ? [
+              [
+                t("orders.paymentCondition"),
+                `${paymentCondition.code} · ${paymentCondition.name}`,
+              ] as [string, ReactNode],
+            ]
+          : []),
+        ...(order.fxRate
+          ? [
+              [
+                t("orders.fxRate"),
+                new Intl.NumberFormat(t.intl, {
+                  maximumFractionDigits: 4,
+                }).format(order.fxRate),
+              ] as [string, ReactNode],
+            ]
+          : []),
+      ]
+    : [];
   /* Resumo do pedido (uma linha): o que este papel pode ver (vazio = não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
     ...(user.role !== "customer" &&
@@ -695,6 +725,7 @@ export default async function OrderPage({
               </form>
             ),
           ] as [string, ReactNode],
+          ...commercialItems,
         ]
       : []),
     // Parceiro: a data do pedido não diz nada a ele (menos à certificadora).

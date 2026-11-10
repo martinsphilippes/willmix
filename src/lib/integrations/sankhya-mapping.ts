@@ -22,7 +22,8 @@ export type Transform =
   | "date" // data do Sankhya → AAAA-MM-DD
   | "partyType" // FORNECEDOR/CLIENTE → supplier/customer
   | "recDesp" // 1 receita / -1 despesa → customer_in / supplier_out
-  | "paidAt"; // DHBAIXA preenchida → confirmed/received; vazia → pending
+  | "paidAt" // DHBAIXA preenchida → confirmed/received; vazia → pending
+  | "incoterm"; // CIF_FOB: C → CIF, F → FOB
 
 export interface FieldMap {
   /** Coluna no Sankhya (com o alias da tabela no SQL, quando houver). */
@@ -34,6 +35,12 @@ export interface FieldMap {
   uses?: string[];
   /** Observação curta sobre a conversão. */
   note?: string;
+  /**
+   * Valor que vem de outra tabela (ligação): não entra no SQL da entidade;
+   * é buscado à parte (sankhya-relations.ts) e, se a tabela ou coluna não
+   * existir, só aquele valor fica vazio.
+   */
+  via?: string;
 }
 
 export const SANKHYA_ENTITIES = [
@@ -85,7 +92,7 @@ export const TOP_STAGES: Record<
   1403: { stage: "CLOSED", closed: true, label: "(IMP) FINALIZADO" },
 };
 
-const IMPORT_TOPS = Object.keys(TOP_STAGES).join(", ");
+export const IMPORT_TOPS = Object.keys(TOP_STAGES).join(", ");
 
 export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
   orders: {
@@ -129,8 +136,33 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
       { sankhya: "CODMOEDA", portal: null, note: "Moeda da nota (TSIMOE)" },
       {
         sankhya: "VLRMOEDA",
+        portal: "fxRate",
+        transform: "number",
+        note: "Taxa de câmbio do pedido (ex.: 5,16); com ela os valores vão na moeda do pedido",
+      },
+      {
+        sankhya: "CODTIPVENDA",
+        portal: "paymentConditionId",
+        transform: "int",
+        note: "Ligação com Condições de pagamento (pelo código)",
+      },
+      {
+        sankhya: "CIF_FOB",
+        portal: "incoterm",
+        transform: "incoterm",
+        note: "C → CIF, F → FOB; outros valores ficam vazios",
+      },
+      {
+        sankhya: "CODPARCTRANSP",
+        portal: "carrierId",
+        transform: "int",
+        note: "Transportadora → parceiro do tipo transportadora (pelo vínculo)",
+      },
+      {
+        sankhya: "DTPREVENT",
         portal: null,
-        note: "Taxa de câmbio do pedido (ex.: 5,16)",
+        transform: "date",
+        note: "Previsão de entrega: vai nas observações do pedido",
       },
       {
         sankhya: "STATUSNOTA",
@@ -149,13 +181,19 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     fields: [
       { sankhya: "CODPARC", portal: null, note: "Vínculo com o Sankhya" },
       { sankhya: "NOMEPARC", portal: "name", transform: "text" },
-      {
-        sankhya: "RAZAOSOCIAL",
-        portal: "contactName",
-        transform: "text",
-        note: "Razão social (o portal não tem campo próprio)",
-      },
+      { sankhya: "RAZAOSOCIAL", portal: "legalName", transform: "text" },
       { sankhya: "CGC_CPF", portal: "taxId", transform: "digits" },
+      {
+        sankhya: "IDENTINSCESTAD",
+        portal: "stateRegistration",
+        transform: "text",
+      },
+      {
+        sankhya: "TIPPESSOA",
+        portal: "personType",
+        transform: "text",
+        note: "F = física, J = jurídica",
+      },
       { sankhya: "EMAIL", portal: "email", transform: "text" },
       { sankhya: "TELEFONE", portal: "phone", transform: "text" },
       {
@@ -167,7 +205,42 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
       },
       { sankhya: "CLIENTE", portal: null },
       { sankhya: "ATIVO", portal: "active", transform: "sn" },
-      { sankhya: "CODCID", portal: null, note: "Código da cidade (TSICID)" },
+      {
+        sankhya: "CODCID",
+        portal: null,
+        note: "Cidade (TSICID) → city e country",
+      },
+      {
+        sankhya: "CODEND",
+        portal: null,
+        note: "Logradouro (TSIEND) → address",
+      },
+      { sankhya: "NUMEND", portal: null, note: "Número → address" },
+      { sankhya: "COMPLEMENTO", portal: null, note: "→ address" },
+      { sankhya: "CODBAI", portal: null, note: "Bairro (TSIBAI) → address" },
+      { sankhya: "CEP", portal: null, note: "→ address" },
+      {
+        sankhya: "TSICID.NOMECID / TSIUFS.UF",
+        portal: "city",
+        via: "TSICID, TSIUFS",
+        note: "Cidade - UF",
+      },
+      {
+        sankhya: "TSIPAI.DESCRICAO",
+        portal: "country",
+        via: "TSICID → TSIUFS → TSIPAI",
+      },
+      {
+        sankhya: "TSIEND + NUMEND + COMPLEMENTO + TSIBAI + CEP",
+        portal: "address",
+        via: "TSIEND, TSIBAI",
+      },
+      {
+        sankhya: "TGFCTT.NOMECONTATO",
+        portal: "contactName",
+        via: "TGFCTT",
+        note: "Primeiro contato do parceiro (e-mail e telefone dele quando o parceiro não tem)",
+      },
     ],
   },
   orderItems: {
@@ -249,7 +322,37 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         portal: null,
         note: "Unidade padrão (vai para o item do pedido)",
       },
-      { sankhya: "MARCA", portal: null },
+      { sankhya: "MARCA", portal: null, note: "Vai nas observações (notes)" },
+      {
+        sankhya: "COMPLDESC",
+        portal: "notes",
+        transform: "text",
+        note: "Descrição complementar (com a marca)",
+      },
+      {
+        sankhya: "TGFCAB.CODPARC (última compra)",
+        portal: "supplierId",
+        via: "TGFITE + TGFCAB",
+        note: "Fornecedor da última nota de importação com o produto (só se o produto não tiver fornecedor)",
+      },
+      {
+        sankhya: "TGFITE.VLRUNIT ÷ TGFCAB.VLRMOEDA",
+        portal: "price",
+        via: "TGFITE + TGFCAB",
+        note: "Preço da última compra na moeda do pedido (só se vazio)",
+      },
+      {
+        sankhya: "TGFVOA.QUANTIDADE (maior)",
+        portal: "masterBoxQty",
+        via: "TGFVOA",
+        note: "Volumes alternativos: o maior vira a caixa master (só se vazio)",
+      },
+      {
+        sankhya: "TGFVOA.QUANTIDADE (menor > 1)",
+        portal: "innerBoxQty",
+        via: "TGFVOA",
+        note: "Com dois ou mais volumes, o menor vira a caixa interna (só se vazio)",
+      },
       { sankhya: "ESTMIN", portal: "minStock", transform: "number" },
       { sankhya: "ATIVO", portal: "active", transform: "sn" },
     ],
@@ -312,7 +415,23 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         transform: "number",
         note: "Em R$",
       },
-      { sankhya: "DTVENC", portal: null, note: "Vencimento" },
+      {
+        sankhya: "DTVENC",
+        portal: null,
+        note: "Vencimento (vai na observação)",
+      },
+      { sankhya: "CODPARC", portal: null, note: "Parceiro do título" },
+      {
+        sankhya: "CODTIPTIT",
+        portal: null,
+        note: "Tipo de título (TGFTIT) → method",
+      },
+      {
+        sankhya: "TGFTIT.DESCRTIPTIT",
+        portal: "method",
+        via: "TGFTIT",
+        note: "Forma de pagamento (boleto, câmbio...)",
+      },
       {
         sankhya: "DHBAIXA",
         portal: "status",
@@ -338,6 +457,7 @@ const ints = (values: Array<number | string | null | undefined>) => {
 
 const cols = (entity: SankhyaEntityKey, alias: string) =>
   ENTITY_MAPS[entity].fields
+    .filter((f) => !f.via)
     .filter((f) => f.sankhya !== "DESCRPROD" || entity !== "orderItems")
     .map((f) => `${alias}.${f.sankhya}`)
     .join(", ");
@@ -359,7 +479,7 @@ export function sampleSql(
     case "partners":
       return `SELECT ${star ? "P.*" : cols("partners", "P")} FROM TGFPAR P WHERE P.CODPARC IN (${list}) ORDER BY P.CODPARC`;
     case "orderItems":
-      return `SELECT ${star ? "I.*" : `${cols("orderItems", "I")}, P.DESCRPROD`} FROM TGFITE I${star ? "" : " JOIN TGFPRO P ON P.CODPROD = I.CODPROD"} WHERE I.NUNOTA IN (${list}) ORDER BY I.NUNOTA DESC, I.SEQUENCIA`;
+      return `SELECT ${star ? "I.*" : cols("orderItems", "I")}, P.DESCRPROD FROM TGFITE I JOIN TGFPRO P ON P.CODPROD = I.CODPROD WHERE I.NUNOTA IN (${list}) ORDER BY I.NUNOTA DESC, I.SEQUENCIA`;
     case "products":
       return `SELECT ${star ? "P.*" : cols("products", "P")} FROM TGFPRO P WHERE P.CODPROD IN (${list}) ORDER BY P.CODPROD`;
     case "productGroups":
@@ -432,6 +552,12 @@ export function convert(
       const n = num(value);
       return n === 1 ? "customer_in" : n === -1 ? "supplier_out" : null;
     }
+    case "incoterm": {
+      const v = String(value ?? "")
+        .trim()
+        .toUpperCase();
+      return v === "C" ? "CIF" : v === "F" ? "FOB" : null;
+    }
     case "paidAt": {
       if (blank(value)) return "pending";
       return num(row.RECDESP) === 1 ? "received" : "confirmed";
@@ -449,7 +575,9 @@ export interface MappedValue {
 /** Valores do portal a partir de uma linha do Sankhya (só campos com destino). */
 export function mapRow(entity: SankhyaEntityKey, row: Row): MappedValue[] {
   return ENTITY_MAPS[entity].fields
-    .filter((f): f is FieldMap & { portal: string } => f.portal !== null)
+    .filter(
+      (f): f is FieldMap & { portal: string } => f.portal !== null && !f.via,
+    )
     .map((f) => ({
       portal: f.portal,
       sankhya: f.sankhya,
@@ -465,6 +593,7 @@ export function missingColumns(
 ): string[] {
   const have = new Set(columns.map((c) => c.toUpperCase()));
   return ENTITY_MAPS[entity].fields
+    .filter((f) => !f.via)
     .map((f) => f.sankhya)
     .filter((c) => !have.has(c.toUpperCase()));
 }
@@ -538,3 +667,62 @@ export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
   partners: "CODPARC",
   products: "CODPROD",
 };
+
+/* ---- Ligações (valores de outras tabelas; sankhya-relations.ts) ---- */
+
+/** Primeiro valor preenchido entre colunas candidatas (nomes variam por versão). */
+export function pick(row: Row | undefined, ...columns: string[]) {
+  if (!row) return null;
+  for (const c of columns) {
+    const v = row[c];
+    if (!blank(v)) return String(v).trim();
+  }
+  return null;
+}
+
+/** "Itajaí - SC". */
+export function cityLabel(city: Row | undefined, state: Row | undefined) {
+  const name = pick(city, "NOMECID", "DESCRICAO");
+  const uf = pick(state, "UF", "SIGLA");
+  return name ? (uf ? `${name} - ${uf}` : name) : null;
+}
+
+/** "Rua X, 120 - Sala 3 - Centro - CEP 88300-000". */
+export function addressLine(
+  partner: Row,
+  street: Row | undefined,
+  district: Row | undefined,
+) {
+  const kind = pick(street, "TIPO");
+  const name = pick(street, "NOMEEND", "DESCRICAO");
+  const number = pick(partner, "NUMEND");
+  const cep = String(partner.CEP ?? "").replace(/\D/g, "");
+  const parts = [
+    name
+      ? [kind, name].filter(Boolean).join(" ") + (number ? `, ${number}` : "")
+      : null,
+    pick(partner, "COMPLEMENTO"),
+    pick(district, "NOMEBAI", "DESCRICAO"),
+    cep.length === 8 ? `CEP ${cep.slice(0, 5)}-${cep.slice(5)}` : cep || null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" - ").slice(0, 255) : null;
+}
+
+/**
+ * Volumes alternativos do produto (TGFVOA: CX = 24 UN...): o maior vira a
+ * caixa master; com dois ou mais, o menor acima de 1 vira a caixa interna.
+ */
+export function boxQuantities(rows: Row[]) {
+  const qty = [
+    ...new Set(
+      rows
+        .filter((r) => String(r.DIVIDEMULTIPLICA ?? "M").toUpperCase() !== "D")
+        .map((r) => num(r.QUANTIDADE))
+        .filter((n): n is number => n != null && n > 1),
+    ),
+  ].sort((a, b) => a - b);
+  return {
+    masterBoxQty: qty.length ? qty[qty.length - 1] : null,
+    innerBoxQty: qty.length > 1 ? qty[0] : null,
+  };
+}

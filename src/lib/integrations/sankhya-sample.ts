@@ -2,6 +2,12 @@ import "server-only";
 import { getStore } from "@/lib/db";
 import { executeQuery, type SankhyaRow } from "./sankhya-client";
 import {
+  partnerExtras,
+  partnersByCode,
+  productExtras,
+  titleTypeNames,
+} from "./sankhya-relations";
+import {
   ENTITY_MAPS,
   SANKHYA_ENTITIES,
   convert,
@@ -48,11 +54,30 @@ const errorText = (error: unknown) => {
   return `${e.code ?? "error"}: ${e.detail ?? e.message ?? String(error)}`;
 };
 
-/** Roda o SQL do mapeamento; se faltar coluna, refaz com * para mostrar o que existe. */
+/**
+ * Roda o SQL do mapeamento; se faltar coluna, refaz com * para mostrar o que
+ * existe. Com `all`, já pede todas as colunas (amostra: poucos registros, e
+ * a tela mostra tudo o que o ERP tem, inclusive os campos AD_).
+ */
 export async function fetchEntity(
   entity: SankhyaEntityKey,
   ids: Array<number | string | null | undefined>,
+  all = false,
 ) {
+  if (all) {
+    const star = sampleSql(entity, ids, true);
+    try {
+      const table = await executeQuery(star);
+      return {
+        sql: star,
+        table,
+        missing: missingColumns(entity, table.columns),
+        error: null,
+      };
+    } catch {
+      // Sem permissão para * (ou outro erro): cai no SQL do mapeamento.
+    }
+  }
   const sql = sampleSql(entity, ids);
   try {
     const table = await executeQuery(sql);
@@ -182,11 +207,16 @@ async function portalMatches(entity: SankhyaEntityKey, rows: SankhyaRow[]) {
   return out;
 }
 
+/** Valores que vêm de outras tabelas (campos `via`), por registro. */
+type ViaValues = (row: SankhyaRow) => Record<string, unknown>;
+
 async function build(
   entity: SankhyaEntityKey,
   fetched: Awaited<ReturnType<typeof fetchEntity>>,
   n: number,
+  via?: ViaValues,
 ): Promise<EntitySample> {
+  const viaFields = ENTITY_MAPS[entity].fields.filter((f) => f.via && f.portal);
   const rows = firstN(fetched.table?.rows ?? [], n);
   const matches = await portalMatches(entity, rows).catch(
     () => new Map<SankhyaRow, PortalMatch | null>(),
@@ -204,7 +234,20 @@ async function build(
     records: rows.map((row) => ({
       key: keyOf(entity, row),
       raw: row,
-      mapped: mapRow(entity, row),
+      mapped: [
+        ...mapRow(entity, row),
+        ...(via
+          ? (() => {
+              const values = via(row);
+              return viaFields.map((f) => ({
+                portal: f.portal!,
+                sankhya: f.sankhya,
+                raw: null,
+                value: values[f.portal!] ?? null,
+              }));
+            })()
+          : []),
+      ],
       match: matches.get(row) ?? null,
     })),
   };
@@ -213,23 +256,28 @@ async function build(
 /** Amostra coerente de 1 a 5 registros por entidade. */
 export async function loadSankhyaSample(size: number): Promise<EntitySample[]> {
   const n = Math.min(5, Math.max(1, Math.trunc(size) || 1));
-  const orders = await fetchEntity("orders", []);
+  const orders = await fetchEntity("orders", [], true);
   const orderRows = firstN(orders.table?.rows ?? [], n);
   const nunotas = orderRows.map((r) => r.NUNOTA as number);
 
   const [partners, items, financial] = await Promise.all([
-    fetchEntity("partners", distinct(orderRows, "CODPARC", n)),
-    fetchEntity("orderItems", nunotas),
-    fetchEntity("financial", nunotas),
+    fetchEntity("partners", distinct(orderRows, "CODPARC", n), true),
+    fetchEntity("orderItems", nunotas, true),
+    fetchEntity("financial", nunotas, true),
   ]);
   const itemRows = firstN(items.table?.rows ?? [], n);
   const products = await fetchEntity(
     "products",
     distinct(itemRows, "CODPROD", n),
+    true,
   );
   const productRows = firstN(products.table?.rows ?? [], n);
   const [groups, stock] = await Promise.all([
-    fetchEntity("productGroups", distinct(productRows, "CODGRUPOPROD", n)),
+    fetchEntity(
+      "productGroups",
+      distinct(productRows, "CODGRUPOPROD", n),
+      true,
+    ),
     fetchEntity(
       "stock",
       productRows.map((r) => r.CODPROD as number),
@@ -248,8 +296,39 @@ export async function loadSankhyaSample(size: number): Promise<EntitySample[]> {
     stock,
     financial,
   };
+  const [partnerX, productX, titles] = await Promise.all([
+    partnerExtras(firstN(partners.table?.rows ?? [], n)).catch(() => new Map()),
+    productExtras(productRows).catch(() => new Map()),
+    titleTypeNames(financial.table?.rows ?? []).catch(() => new Map()),
+  ]);
+  const via: Partial<Record<SankhyaEntityKey, ViaValues>> = {
+    partners: (row) => partnerX.get(String(row.CODPARC)) ?? {},
+    products: (row) => {
+      const x = productX.get(String(row.CODPROD));
+      if (!x) return {};
+      const fx = x.lastFx && x.lastFx > 0 ? x.lastFx : null;
+      return {
+        supplierId: x.supplierCode
+          ? `CODPARC ${x.supplierCode} (NUNOTA ${x.lastNunota})`
+          : null,
+        price:
+          x.lastPrice == null
+            ? null
+            : fx
+              ? Math.round((x.lastPrice / fx) * 10000) / 10000
+              : x.lastPrice,
+        masterBoxQty: x.masterBoxQty,
+        innerBoxQty: x.innerBoxQty,
+      };
+    },
+    financial: (row) => ({
+      method: titles.get(String(row.CODTIPTIT)) ?? null,
+    }),
+  };
   return Promise.all(
-    SANKHYA_ENTITIES.map((entity) => build(entity, byEntity[entity], n)),
+    SANKHYA_ENTITIES.map((entity) =>
+      build(entity, byEntity[entity], n, via[entity]),
+    ),
   );
 }
 
@@ -259,16 +338,16 @@ export async function loadSankhyaSample(size: number): Promise<EntitySample[]> {
  */
 export async function fetchImportSet(size: number) {
   const n = Math.min(5, Math.max(1, Math.trunc(size) || 1));
-  const orders = await fetchEntity("orders", []);
+  const orders = await fetchEntity("orders", [], true);
   if (!orders.table) throw new Error(orders.error ?? "sankhya_orders");
   const orderRows = firstN(orders.table.rows, n);
   const nunotas = orderRows.map((r) => r.NUNOTA as number);
   const all = (rows: SankhyaRow[], column: string) =>
     distinct(rows, column, Number.MAX_SAFE_INTEGER);
   const [partners, items, financial, companies] = await Promise.all([
-    fetchEntity("partners", all(orderRows, "CODPARC")),
-    fetchEntity("orderItems", nunotas),
-    fetchEntity("financial", nunotas),
+    fetchEntity("partners", all(orderRows, "CODPARC"), true),
+    fetchEntity("orderItems", nunotas, true),
+    fetchEntity("financial", nunotas, true),
     executeQuery(
       `SELECT CODEMP, NOMEFANTASIA FROM TSIEMP WHERE CODEMP IN (${
         all(orderRows, "CODEMP")
@@ -279,11 +358,19 @@ export async function fetchImportSet(size: number) {
     ).catch(() => null),
   ]);
   const itemRows = items.table?.rows ?? [];
-  const products = await fetchEntity("products", all(itemRows, "CODPROD"));
+  const products = await fetchEntity(
+    "products",
+    all(itemRows, "CODPROD"),
+    true,
+  );
   const productRows = products.table?.rows ?? [];
+  const carriers = await partnersByCode(
+    all(orderRows, "CODPARCTRANSP").filter((c) => Number(c) > 0),
+  );
   const groups = await fetchEntity(
     "productGroups",
     all(productRows, "CODGRUPOPROD"),
+    true,
   );
   return {
     orders: orderRows,
@@ -293,7 +380,12 @@ export async function fetchImportSet(size: number) {
     groups: groups.table?.rows ?? [],
     financial: financial.table?.rows ?? [],
     companies: companies?.rows ?? [],
+    carriers,
   };
 }
 
-export type ImportSet = Awaited<ReturnType<typeof fetchImportSet>>;
+/** `carriers` (transportadoras) é opcional: conjuntos antigos não têm. */
+export type ImportSet = Omit<
+  Awaited<ReturnType<typeof fetchImportSet>>,
+  "carriers"
+> & { carriers?: SankhyaRow[] };
