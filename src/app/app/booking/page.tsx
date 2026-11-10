@@ -56,13 +56,15 @@ import {
   rowClass,
   type Tone,
 } from "@/components/ui";
+import {
+  BookingCustomerSelect,
+  BookingProductInput,
+  BookingProductSelect,
+  BookingQuantityInput,
+} from "@/components/booking-row-fields";
 import { FormDraftGuard } from "@/components/form-draft-guard";
 import { SelectAllCheckbox } from "@/components/select-all-checkbox";
-import { SubmitButton } from "@/components/submit-button";
-import {
-  bulkBookingAction,
-  saveBookingProductsAction,
-} from "../actions/booking";
+import { bulkBookingAction } from "../actions/booking";
 import { BookingEnhancer, BulkButton } from "./_components/booking-client";
 
 /*
@@ -92,7 +94,6 @@ const BULK_LABEL =
   "px-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500";
 const BULK_BUTTON = "h-7 px-2.5 py-0! text-xs! whitespace-nowrap";
 /** "Editar dados": os campos das células pertencem a este formulário. */
-const DATA_FORM = "booking-data";
 const BASE = "/app/booking";
 
 const STATUS_TONE: Record<BookingStatus, Tone> = {
@@ -554,33 +555,45 @@ export default async function BookingPage({
   /** Número como a pessoa digita (vírgula no português). */
   const raw = (n: number | null) =>
     n === null ? "" : String(n).replace(".", decimal);
-  /** Campo de "Editar dados" (formulário DATA_FORM; nome d.<produto>.<campo>). */
+  /** Avisos das células que gravam sozinhas (cliente, quantidade e dados do produto). */
+  const rowLabels = (field: string) => ({
+    field,
+    saving: t("booking.row.saving"),
+    saved: t("booking.row.saved"),
+    failed: t("booking.row.failed"),
+  });
+
+  /** Campo de um dado do produto: grava sozinho ao sair dele. */
   const editBox = (
     row: BookingRow,
     field: string,
     value: string,
-    opts: { width?: string; numeric?: boolean; type?: string; what: string },
+    opts: {
+      width?: string;
+      numeric?: boolean;
+      type?: string;
+      what: string;
+      /** Vários campos na mesma célula. */
+      inline?: boolean;
+    },
   ) => (
-    <input
-      form={DATA_FORM}
-      name={`d.${row.productId}.${field}`}
-      defaultValue={value}
-      type={opts.type ?? "text"}
-      inputMode={opts.numeric ? "decimal" : undefined}
-      autoComplete="off"
-      aria-label={t("booking.edit.field", {
-        field: opts.what,
-        name: row.name || row.productId,
-      })}
-      data-booking-edit=""
-      className={cx(
-        inputDenseClass,
-        opts.width ?? "w-24",
-        opts.numeric && "text-right",
+    <BookingProductInput
+      productId={row.productId}
+      field={field}
+      saved={value}
+      type={opts.type}
+      numeric={opts.numeric}
+      width={opts.width}
+      wrap={!opts.inline}
+      labels={rowLabels(
+        t("booking.edit.field", {
+          field: opts.what,
+          name: row.name || row.productId,
+        }),
       )}
     />
   );
-  /** Editor da célula no modo "Editar dados" (nulo: a célula é só leitura). */
+  /** O campo da célula, para quem edita produtos (nulo: só leitura). */
   const editor = (row: BookingRow, key: BookingColumnKey): ReactNode => {
     const num = (field: string) =>
       editBox(row, field, raw(numberOf(row, key)), {
@@ -597,39 +610,39 @@ export default async function BookingPage({
         const list = data.options.allSuppliers;
         const current = row.supplierId ?? "";
         return (
-          <select
-            form={DATA_FORM}
-            name={`d.${row.productId}.supplierId`}
-            defaultValue={current}
-            aria-label={t("booking.edit.field", {
-              field: label(key),
-              name: row.name || row.productId,
-            })}
-            data-booking-edit=""
-            className={cx(inputDenseClass, "w-44")}
-          >
-            {current ? null : <option value="">—</option>}
-            {current && !list.some((o) => o.id === current) ? (
-              <option value={current}>{row.supplierName ?? current}</option>
-            ) : null}
-            {list.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <BookingProductSelect
+            productId={row.productId}
+            field="supplierId"
+            current={current}
+            width="w-44"
+            options={[
+              ...(current ? [] : [{ value: "", label: "—" }]),
+              ...(current && !list.some((o) => o.id === current)
+                ? [{ value: current, label: row.supplierName ?? current }]
+                : []),
+              ...list.map((o) => ({ value: o.id, label: o.label })),
+            ]}
+            labels={rowLabels(
+              t("booking.edit.field", {
+                field: label(key),
+                name: row.name || row.productId,
+              }),
+            )}
+          />
         );
       }
       case "location":
         return (
-          <span className="flex gap-1">
+          <span className="flex items-start gap-1">
             {editBox(row, "location", row.location ?? "", {
               width: "w-28",
               what: t("booking.edit.location"),
+              inline: true,
             })}
             {editBox(row, "supplierStore", row.supplierStore ?? "", {
               width: "w-24",
               what: t("booking.edit.store"),
+              inline: true,
             })}
           </span>
         );
@@ -645,27 +658,25 @@ export default async function BookingPage({
         const current = row.currency ?? "";
         const known = (SHEET_CURRENCIES as readonly string[]).includes(current);
         return (
-          <select
-            form={DATA_FORM}
-            name={`d.${row.productId}.currency`}
-            defaultValue={current}
-            aria-label={t("booking.edit.field", {
-              field: label(key),
-              name: row.name || row.productId,
-            })}
-            data-booking-edit=""
-            className={cx(inputDenseClass, "w-24")}
-          >
-            <option value="">—</option>
-            {current && !known ? (
-              <option value={current}>{current}</option>
-            ) : null}
-            {SHEET_CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <BookingProductSelect
+            productId={row.productId}
+            field="currency"
+            current={current}
+            width="w-24"
+            options={[
+              { value: "", label: "—" },
+              ...(current && !known
+                ? [{ value: current, label: current }]
+                : []),
+              ...SHEET_CURRENCIES.map((c) => ({ value: c, label: c })),
+            ]}
+            labels={rowLabels(
+              t("booking.edit.field", {
+                field: label(key),
+                name: row.name || row.productId,
+              }),
+            )}
+          />
         );
       }
       case "moq":
@@ -691,23 +702,26 @@ export default async function BookingPage({
         return num("cbmPerCarton");
       case "size":
         return (
-          <span className="flex items-center gap-1 text-xs text-zinc-500">
+          <span className="flex items-start gap-1 text-xs leading-7 text-zinc-500">
             {editBox(row, "pieceLengthCm", raw(row.pieceLengthCm), {
               numeric: true,
               width: "w-16",
               what: t("booking.edit.length"),
+              inline: true,
             })}
             ×
             {editBox(row, "pieceWidthCm", raw(row.pieceWidthCm), {
               numeric: true,
               width: "w-16",
               what: t("booking.edit.width"),
+              inline: true,
             })}
             ×
             {editBox(row, "pieceHeightCm", raw(row.pieceHeightCm), {
               numeric: true,
               width: "w-16",
               what: t("booking.edit.height"),
+              inline: true,
             })}
             cm
           </span>
@@ -732,9 +746,17 @@ export default async function BookingPage({
     }
   };
 
+  /** A lista de clientes de cada linha (a mesma da barra de cima). */
+  const customerOptions = [
+    ...(data.options.stockOption
+      ? [{ value: BOOKING_STOCK_OPTION, label: t("booking.bulk.stock") }]
+      : []),
+    ...data.options.customers.map((c) => ({ value: c.id, label: c.label })),
+  ];
+
   /** O conteúdo de uma célula. */
   const cell = (row: BookingRow, key: BookingColumnKey): ReactNode => {
-    if (editing && row.name && key !== "name") {
+    if (canEdit && row.name && key !== "name") {
       const box = editor(row, key);
       if (box) return box;
     }
@@ -773,7 +795,7 @@ export default async function BookingPage({
               />
             )}
             <div className="min-w-0">
-              {editing && row.name ? (
+              {canEdit && row.name ? (
                 editBox(row, "name", row.name, {
                   width: "w-52",
                   what: label("name"),
@@ -796,6 +818,15 @@ export default async function BookingPage({
                 ]
                   .filter(Boolean)
                   .join(" · ")}
+                {canEdit && row.name ? (
+                  <Link
+                    href={`${BASE}/${row.id}`}
+                    className={cx(linkClass, "ml-1.5")}
+                    data-booking-open=""
+                  >
+                    {t("booking.row.open")}
+                  </Link>
+                ) : null}
                 {row.productMissing && row.name ? (
                   <span className="ml-1 font-semibold text-red-700">
                     {t("booking.productMissing")}
@@ -878,26 +909,43 @@ export default async function BookingPage({
         return number(row.forecastEcommerce);
       case "forecastTotal":
         return number(row.forecastTotal);
-      case "customer":
-        return textCell(row.customerName, "max-w-40");
+      case "customer": {
+        // Já virou solicitação ou foi descartada: o cliente não muda aqui.
+        if (row.status === "requested" || row.status === "discarded")
+          return textCell(row.customerName, "max-w-40");
+        const current = row.customerId ?? BOOKING_EMPTY;
+        return (
+          <BookingCustomerSelect
+            bookingId={row.id}
+            current={current}
+            options={[
+              { value: BOOKING_EMPTY, label: "—" },
+              ...(row.customerId &&
+              !customerOptions.some((o) => o.value === row.customerId)
+                ? [{ value: row.customerId, label: row.customerName ?? "?" }]
+                : []),
+              ...customerOptions,
+            ]}
+            labels={rowLabels(
+              t("booking.row.customer", { name: row.name || row.productId }),
+            )}
+          />
+        );
+      }
       case "reservedQty": {
         if (row.status === "requested" || row.status === "discarded")
           return number(row.reservedQty);
         return (
-          <input
-            form={BULK_FORM}
-            name={`qty_${row.id}`}
-            defaultValue={row.reservedQty ?? ""}
-            inputMode="numeric"
-            autoComplete="off"
+          <BookingQuantityInput
+            bookingId={row.id}
+            formId={BULK_FORM}
+            saved={row.reservedQty === null ? "" : String(row.reservedQty)}
             placeholder={
               row.moq ? t("booking.row.qtyMin", { moq: number(row.moq) }) : ""
             }
-            aria-label={t("booking.row.qty", {
-              name: row.name || row.productId,
-            })}
-            data-booking-qty={row.id}
-            className={cx(inputDenseClass, "w-24 min-w-24 text-right")}
+            labels={rowLabels(
+              t("booking.row.qty", { name: row.name || row.productId }),
+            )}
           />
         );
       }
@@ -1366,70 +1414,11 @@ export default async function BookingPage({
         </p>
       </form>
 
-      {/* "Editar dados dos produtos": as células da tabela viram campos e
-          um só "Salvar dados" grava o que mudou (cadastro e ficha mestre). */}
-      {canEdit ? (
-        <>
-          <FormDraftGuard
-            formId={DATA_FORM}
-            storageKey="booking-data"
-            userId={user.id}
-            failed={!!errorCode}
-            saved={!errorCode}
-            token={`${errorCode}:${errorRowId}:${answeredDraft}`}
-            answers={answeredDraft || null}
-            message={t("booking.draftRestored")}
-            discardLabel={t("booking.draftDiscard")}
-          />
-          <form
-            id={DATA_FORM}
-            action={saveBookingProductsAction}
-            className={cx(
-              "mb-2 flex flex-wrap items-center gap-2 rounded-xl border p-2.5 shadow-sm",
-              editing
-                ? "border-amber-300 bg-amber-50"
-                : "border-zinc-200/80 bg-white",
-            )}
-            data-booking-data
-          >
-            <input type="hidden" name="back" value={back} />
-            <input type="hidden" name="draftId" defaultValue="" />
-            {editing ? (
-              <>
-                <SubmitButton
-                  pendingText={t("booking.edit.saving")}
-                  data-booking-data-save=""
-                >
-                  {t("booking.edit.save")}
-                </SubmitButton>
-                <LinkButton
-                  href={`${BASE}${bookingQuery(filters)}`}
-                  variant="secondary"
-                  data-booking-edit-stop=""
-                >
-                  {t("booking.edit.stop")}
-                </LinkButton>
-                <p className="min-w-0 flex-1 text-xs text-amber-900">
-                  {t("booking.edit.hint")}
-                </p>
-              </>
-            ) : (
-              <>
-                <LinkButton
-                  href={`${BASE}${bookingQuery(filters)}${bookingQuery(filters) ? "&" : "?"}edit=1`}
-                  variant="secondary"
-                  data-booking-edit-start=""
-                >
-                  {t("booking.edit.start")}
-                </LinkButton>
-                <p className="min-w-0 flex-1 text-xs text-zinc-500">
-                  {t("booking.edit.startHint")}
-                </p>
-              </>
-            )}
-          </form>
-        </>
-      ) : null}
+      {/* Os campos da tabela gravam sozinhos, um a um (cliente, quantidade
+          e, para quem edita produtos, os dados do cadastro e da ficha). */}
+      <p className="mb-2 text-xs text-zinc-500" data-booking-autosave="">
+        {t("booking.row.autosave")}
+      </p>
 
       <div
         className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border"
@@ -1591,11 +1580,7 @@ export default async function BookingPage({
         </div>
       ) : null}
 
-      <BookingEnhancer
-        filterFormId={FILTER_FORM}
-        bulkFormId={BULK_FORM}
-        dataFormId={DATA_FORM}
-      />
+      <BookingEnhancer filterFormId={FILTER_FORM} bulkFormId={BULK_FORM} />
     </>
   );
 }

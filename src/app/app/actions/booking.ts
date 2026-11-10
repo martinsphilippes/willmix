@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -12,7 +13,9 @@ import {
 } from "@/lib/booking";
 import { BOOKING_STATUSES } from "@/lib/db/schema";
 import { parseNumberInput } from "@/lib/number-input";
-import { requireUser, run, str } from "./helpers";
+import type { DictionaryKey } from "@/i18n/dictionaries";
+import { fallbackError } from "@/i18n/error-text";
+import { errorCode, requireUser, run, str } from "./helpers";
 
 /*
  * Booking (docs/BOOKING.md): as ações da tela. Só a Wellmix com a tela
@@ -268,6 +271,82 @@ export async function saveBookingRowAction(form: FormData) {
   );
 }
 
+/** O que as gravações direto na linha devolvem (não redirecionam). */
+type InlineResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Gravação direto na linha da tabela (cliente e quantidade): grava na hora,
+ * sem recarregar a tela (o que estava digitado nas outras linhas fica onde
+ * está). Devolve o resultado em vez de redirecionar; a recusa volta já com o
+ * texto de quem está na tela. Quem pode e as regras são os mesmos de "Salvar
+ * uma linha" (o serviço confere).
+ */
+async function inline(
+  save: (user: Awaited<ReturnType<typeof requireUser>>) => Promise<void>,
+  /** Texto próprio da célula para um código (em vez do texto da lista). */
+  own: Record<string, DictionaryKey> = {},
+): Promise<InlineResult> {
+  const user = await requireUser();
+  try {
+    assertWellmix(user);
+    assertScreen(user, "booking");
+    await save(user);
+  } catch (error) {
+    const { getT } = await import("@/i18n/server");
+    const t = await getT();
+    const code = errorCode("/app/booking", error);
+    const message = own[code]
+      ? t(own[code])
+      : ([`booking.error.${code}`, `common.${code}`]
+          .map((k) => [k, t(k as DictionaryKey)] as const)
+          .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, code));
+    return { ok: false, message };
+  }
+  revalidatePath("/app/booking");
+  return { ok: true };
+}
+
+/** Cliente escolhido na linha: "-" tira, "__stock" é a empresa de estoque. */
+export async function setBookingCustomerAction(
+  id: string,
+  customer: string,
+): Promise<InlineResult> {
+  return inline(async (user) => {
+    const input = z
+      .object({
+        id: ID,
+        // Vazio aqui não existe: a lista da linha manda "-" para tirar.
+        customer: CUSTOMER.refine((v) => v !== ""),
+      })
+      .parse({ id, customer });
+    const { saveBookingRow } = await import("@/lib/services/booking");
+    await saveBookingRow(user, input.id, {
+      customerId: input.customer === BOOKING_EMPTY ? null : input.customer,
+    });
+  });
+}
+
+/** Quantidade reservada digitada na linha: vazio tira a quantidade. */
+export async function setBookingQuantityAction(
+  id: string,
+  typed: string,
+): Promise<InlineResult> {
+  return inline(async (user) => {
+    const input = z
+      .object({ id: ID, typed: z.string().max(40) })
+      .parse({ id, typed });
+    const raw = input.typed.trim();
+    const qty = raw ? parseNumberInput(raw, { int: true }) : null;
+    const service = await import("@/lib/services/booking");
+    if (
+      qty !== null &&
+      (!Number.isInteger(qty) || qty <= 0 || qty > 100_000_000)
+    )
+      throw new service.BookingRefusal("booking_qty_required", input.id);
+    await service.saveBookingRow(user, input.id, { reservedQty: qty });
+  });
+}
+
 /**
  * "Gravar no Booking" a partir do Superplan: a simulação que está na tela é
  * refeita no servidor (o resultado nunca vem do navegador) e o retrato fica
@@ -344,6 +423,56 @@ const PIECE_FIELDS = {
 /** `d.<id do produto>.<campo>`: o que a tela mandou (só o que mudou). */
 const EDIT_KEY = /^d\.([A-Za-z0-9_-]{1,64})\.([A-Za-z]{1,40})$/;
 
+/** O que a tela mandou de um produto, lido e conferido campo a campo. */
+async function readProductEdit(productId: string, fields: Map<string, string>) {
+  const { parseSheet } = await import("./sheet-form");
+  const invalid: string[] = [];
+  const sheetForm = new FormData();
+  for (const key of SHEET_EDIT_FIELDS)
+    if (fields.has(key)) sheetForm.set(key, fields.get(key)!);
+  const { input, invalid: bad } = parseSheet(sheetForm);
+  invalid.push(...bad);
+  const sheet = Object.fromEntries(
+    Object.entries(input).filter(([, v]) => v !== undefined),
+  );
+  const edit: {
+    productId: string;
+    supplierId?: string;
+    name?: string;
+    lengthCm?: number | null;
+    widthCm?: number | null;
+    heightCm?: number | null;
+    sheet: typeof sheet;
+    plan?: Partial<Record<BookingPlanField, number | null>>;
+    invalid: string[];
+  } = { productId, sheet, invalid };
+  // Plano da linha: peças planejadas e previsão por canal (inteiros).
+  for (const key of BOOKING_PLAN_FIELDS) {
+    if (!fields.has(key)) continue;
+    const raw = fields.get(key)!.trim();
+    const n = raw ? parseNumberInput(raw, { int: true }) : null;
+    // Peças são inteiras: "1,5" não é lido como 1,5 peça.
+    if (n !== null && (!Number.isInteger(n) || n < 0 || n > BOOKING_PLAN_MAX))
+      invalid.push(key);
+    else (edit.plan ??= {})[key] = n === null || n === 0 ? null : n;
+  }
+  if (fields.has("supplierId")) {
+    const id = fields.get("supplierId")!.trim();
+    if (id && !ID.safeParse(id).success) invalid.push("supplierId");
+    else if (id) edit.supplierId = id;
+  }
+  if (fields.has("name")) edit.name = fields.get("name")!;
+  for (const [formKey, column] of Object.entries(PIECE_FIELDS)) {
+    if (!fields.has(formKey)) continue;
+    const raw = fields.get(formKey)!.trim();
+    const n = raw ? parseNumberInput(raw) : null;
+    if (n !== null && (Number.isNaN(n) || n < 0 || n > 100_000))
+      invalid.push(formKey);
+    else edit[column] = n === null || n === 0 ? null : n;
+  }
+  return edit;
+}
+
 /**
  * "Editar dados" do Booking: os dados dos produtos mudados direto na
  * tabela. A tela manda só os campos que mudaram (`d.<produto>.<campo>`); os
@@ -361,7 +490,6 @@ export async function saveBookingProductsAction(form: FormData) {
         assertWellmix(user);
         assertScreen(user, "booking");
         assertScreen(user, "products");
-        const { parseSheet } = await import("./sheet-form");
         const byProduct = new Map<string, Map<string, string>>();
         for (const [key, value] of form.entries()) {
           const m = EDIT_KEY.exec(key);
@@ -373,59 +501,59 @@ export async function saveBookingProductsAction(form: FormData) {
         if (byProduct.size > BOOKING_BULK_MAX) throw new Error("invalid_input");
         const { saveBookingProductEdits } =
           await import("@/lib/services/booking-product-edit");
-        const edits = [...byProduct.entries()].map(([productId, fields]) => {
-          const invalid: string[] = [];
-          const sheetForm = new FormData();
-          for (const key of SHEET_EDIT_FIELDS)
-            if (fields.has(key)) sheetForm.set(key, fields.get(key)!);
-          const { input, invalid: bad } = parseSheet(sheetForm);
-          invalid.push(...bad);
-          const sheet = Object.fromEntries(
-            Object.entries(input).filter(([, v]) => v !== undefined),
-          );
-          const edit: {
-            productId: string;
-            supplierId?: string;
-            name?: string;
-            lengthCm?: number | null;
-            widthCm?: number | null;
-            heightCm?: number | null;
-            sheet: typeof sheet;
-            plan?: Partial<Record<BookingPlanField, number | null>>;
-            invalid: string[];
-          } = { productId, sheet, invalid };
-          // Plano da linha: peças planejadas e previsão por canal (inteiros).
-          for (const key of BOOKING_PLAN_FIELDS) {
-            if (!fields.has(key)) continue;
-            const raw = fields.get(key)!.trim();
-            const n = raw ? parseNumberInput(raw, { int: true }) : null;
-            if (
-              n !== null &&
-              (Number.isNaN(n) || n < 0 || n > BOOKING_PLAN_MAX)
-            )
-              invalid.push(key);
-            else (edit.plan ??= {})[key] = n === null || n === 0 ? null : n;
-          }
-          if (fields.has("supplierId")) {
-            const id = fields.get("supplierId")!.trim();
-            if (id && !ID.safeParse(id).success) invalid.push("supplierId");
-            else if (id) edit.supplierId = id;
-          }
-          if (fields.has("name")) edit.name = fields.get("name")!;
-          for (const [formKey, column] of Object.entries(PIECE_FIELDS)) {
-            if (!fields.has(formKey)) continue;
-            const raw = fields.get(formKey)!.trim();
-            const n = raw ? parseNumberInput(raw) : null;
-            if (n !== null && (Number.isNaN(n) || n < 0 || n > 100_000))
-              invalid.push(formKey);
-            else edit[column] = n === null || n === 0 ? null : n;
-          }
-          return edit;
-        });
+        const edits = await Promise.all(
+          [...byProduct.entries()].map(([productId, fields]) =>
+            readProductEdit(productId, fields),
+          ),
+        );
         const saved = await saveBookingProductEdits(user, edits);
         return withParams(back, { edited: saved });
       },
       draftId,
     ),
+  );
+}
+
+/** Os campos de produto que a tabela grava um a um. */
+const PRODUCT_FIELDS: ReadonlySet<string> = new Set([
+  ...SHEET_EDIT_FIELDS,
+  ...BOOKING_PLAN_FIELDS,
+  ...Object.keys(PIECE_FIELDS),
+  "supplierId",
+  "name",
+]);
+
+/**
+ * Um dado do produto mudado direto na célula da tabela (preço, MOQ, pesos,
+ * medidas, fornecedor...): grava na hora e devolve o resultado, como o
+ * cliente e a quantidade. Passa pelo mesmo leitor e pelo mesmo serviço do
+ * "Salvar dados" (Wellmix com as telas Booking e Produtos; cadastro e ficha
+ * mestre gravados pelos caminhos de sempre, com auditoria).
+ */
+export async function setBookingProductFieldAction(
+  productId: string,
+  field: string,
+  value: string,
+): Promise<InlineResult> {
+  return inline(
+    async (user) => {
+      assertScreen(user, "products");
+      const input = z
+        .object({
+          productId: ID,
+          field: z.string().refine((f) => PRODUCT_FIELDS.has(f)),
+          value: z.string().max(4000),
+        })
+        .parse({ productId, field, value });
+      const { saveBookingProductEdits } =
+        await import("@/lib/services/booking-product-edit");
+      const edit = await readProductEdit(
+        input.productId,
+        new Map([[input.field, input.value]]),
+      );
+      await saveBookingProductEdits(user, [edit]);
+      // Na célula não há "linha destacada": o texto fala do próprio valor.
+    },
+    { booking_data_invalid: "booking.row.invalid" },
   );
 }

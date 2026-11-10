@@ -75,7 +75,7 @@ export const pt = {
   "booking.bulk.request.confirm":
     "Gerar uma solicitação com {n} linha(s) marcada(s)? (até {max} por vez)",
   "booking.bulk.hint":
-    "Para gerar a solicitação: marque as linhas, escolha o cliente e toque em Gerar solicitação. A quantidade é a digitada na linha (sem ela, a planejada ou o pedido mínimo). Até {max} linhas por vez.",
+    "Para gerar a solicitação: escolha o cliente na própria linha (grava sozinho) ou na barra, marque as linhas e toque em Gerar solicitação. A quantidade é a digitada na linha (sem ela, a planejada ou o pedido mínimo). Até {max} linhas por vez.",
   "booking.bulk.working": "Gravando…",
   "booking.done.moved": "{n} linha(s) movida(s) de etapa.",
   "booking.done.edited":
@@ -113,6 +113,14 @@ export const pt = {
   "booking.row.open": "Abrir",
   "booking.row.superplan": "Superplan",
   "booking.row.estimated": "Estimado: líquido + {pct}%",
+  "booking.row.customer": "Cliente de {name}",
+  "booking.row.saving": "Gravando…",
+  "booking.row.saved": "Gravado ✓",
+  "booking.row.failed": "Não gravou. Tente de novo.",
+  "booking.row.invalid":
+    "Não deu para ler este valor (número, data ou nome com menos de 2 letras). Nada foi gravado.",
+  "booking.row.autosave":
+    "Os campos da tabela gravam sozinhos: escolha na lista ou digite e saia do campo. Aparece “Gravado ✓” embaixo; se não puder gravar, o motivo aparece em vermelho.",
   "booking.row.qty": "Quantidade reservada de {name}",
   "booking.row.qtyMin": "mín. {moq}",
   "booking.row.rows": "linhas {rows}",
@@ -198,7 +206,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "Create a request with {n} ticked row(s)? (up to {max} at a time)",
   "booking.bulk.hint":
-    "To create the request: tick the rows, choose the customer and tap Create request. The quantity is the one typed in the row (without it, the planned one or the minimum order). Up to {max} rows at a time.",
+    "To create the request: choose the customer in the row itself (it saves by itself) or in the bar, tick the rows and tap Create request. The quantity is the one typed in the row (without it, the planned one or the minimum order). Up to {max} rows at a time.",
   "booking.bulk.working": "Saving…",
   "booking.done.moved": "{n} row(s) moved to another stage.",
   "booking.done.edited":
@@ -236,6 +244,14 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.row.open": "Open",
   "booking.row.superplan": "Superplan",
   "booking.row.estimated": "Estimated: net + {pct}%",
+  "booking.row.customer": "Customer of {name}",
+  "booking.row.saving": "Saving…",
+  "booking.row.saved": "Saved ✓",
+  "booking.row.failed": "Not saved. Try again.",
+  "booking.row.invalid":
+    "This value could not be read (number, date or a name shorter than 2 letters). Nothing was saved.",
+  "booking.row.autosave":
+    "The table fields save by themselves: choose from the list, or type and leave the field. “Saved ✓” shows below; if it cannot be saved, the reason shows in red.",
   "booking.row.qty": "Reserved quantity of {name}",
   "booking.row.qtyMin": "min. {moq}",
   "booking.row.rows": "rows {rows}",
@@ -317,7 +333,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "用勾选的 {n} 行生成一张询价单？（每次最多 {max} 行）",
   "booking.bulk.hint":
-    "生成询价单：勾选行，选择客户，然后点击“生成询价单”。数量取行内填写的数量（没有则用计划数量或起订量）。每次最多 {max} 行。",
+    "生成询价单：在行内直接选择客户（自动保存）或在上方栏选择，勾选行，然后点击“生成询价单”。数量取行内填写的数量（没有则用计划数量或起订量）。每次最多 {max} 行。",
   "booking.bulk.working": "保存中…",
   "booking.done.moved": "已移动 {n} 行的阶段。",
   "booking.done.edited": "已保存 {n} 个产品的数据（目录和主表）。",
@@ -351,6 +367,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.row.open": "打开",
   "booking.row.superplan": "Superplan",
   "booking.row.estimated": "估算：净重 + {pct}%",
+  "booking.row.customer": "{name} 的客户",
+  "booking.row.saving": "保存中…",
+  "booking.row.saved": "已保存 ✓",
+  "booking.row.failed": "未保存，请重试。",
+  "booking.row.invalid":
+    "无法读取该值（数字、日期，或名称少于 2 个字）。未保存任何内容。",
+  "booking.row.autosave":
+    "表格中的字段会自动保存：从列表中选择，或输入后离开该字段。下方显示“已保存 ✓”；无法保存时，原因以红色显示。",
   "booking.row.qty": "{name} 的预订数量",
   "booking.row.qtyMin": "最少 {moq}",
   "booking.row.rows": "第 {rows} 行",
