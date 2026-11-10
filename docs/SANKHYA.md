@@ -51,6 +51,17 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 
 Teste de conexão, busca no dicionário (tabela → entidades, campos e ligações, com link para a tabela ligada), consulta de entidade com ligações e paginação, SQL somente leitura, e as escritas: registro (DatasetSP.save), pedido/orçamento/cotação (CACSP) e cancelamento. Leituras rodam no servidor por GET; escritas são Server Actions do admin, com zod e registro na auditoria (`sankhya.*`). Erros mostram o código e o texto do Sankhya.
 
+## Validado contra o ERP da Wellmix (10/11/2026, produção)
+
+- Autenticação em `https://api.sankhya.com.br` (o X-Token do Sankhya Om é de produção; no sandbox dá `invalid_client`). Token de ~2300 caracteres, `expires_in` 300.
+- `loadRecords`: `entities.total`, `hasMoreResult`, `metadata.fields.field[].name` e células `f0`, `f1`… no formato `{"$": "valor"}` (37 empresas; 1 = WELLMIX - MTZ, 2 = WELLMIX - SP, 3 = WELLMIX - SC).
+- REST `GET /v1/produtos`: `{"produtos": [...]}` com `codigoProduto`, `nome`, `referencia` (EAN), `referenciaFornecedor`, `volume`, `ncm`, `pesoBruto` etc. Atenção: a chave da data vem como `"dataAlteracao:"` (com dois-pontos no nome).
+- `DbExplorerSP.executeQuery`: `fieldsMetadata[].name` + `rows` (matriz).
+- Dicionário: TDDLIG tem `NUINSTORIG`, `NUINSTDEST`, `TIPLIGACAO`, `EXPRESSAO`, `NOMELIGACAO`…; TDDINS tem `NUINSTANCIA`, `NOMETAB`, `NOMEINSTANCIA`, `DESCRINSTANCIA`, `NUINSTANCIAPAI`… (os nomes usados em `sankhya-dictionary.ts` conferem).
+- Tabelas personalizadas de importação existentes: `AD_NFIMPORTACAO` (Notas Importação Wellmix), `AD_NFIMPORTACAOFILHA` (Notas Filha), `DEV_VW_NOTANACIO` (Notas Nacionalização).
+
+`bash scripts/sankhya-curl.sh codigos` lista os códigos para o pedido (TOPs de compra, tipos de negociação, vendedores/compradores, locais) e as colunas de `AD_NFIMPORTACAO`.
+
 ## Pendências (decisões com a Wellmix)
 
 1. Códigos do ERP para os pedidos do portal: empresa (`CODEMP`), TOP de pedido e de cotação (`CODTIPOPER`), tipo de negociação (`CODTIPVENDA`), vendedor, local e volume padrão. Com eles, `getSankhyaAdapter().createOrder` (hoje `MockSankhyaAdapter`, número manual) passa a enviar o pedido.

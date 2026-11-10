@@ -13,6 +13,7 @@ import {
  * - TDDCAM: campos de cada tabela (nome, descrição, tipo);
  * - TDDLIG: ligações entre instâncias (de onde para onde), que viram os
  *   "path" das ligações no loadRecords.
+ * Colunas de TDDINS e TDDLIG conferidas no ERP da Wellmix (docs/SANKHYA.md).
  * Inclui as tabelas e campos personalizados (AD_). Os termos vão no SQL só
  * depois de reduzidos a letras, números, "_" e espaço.
  */
