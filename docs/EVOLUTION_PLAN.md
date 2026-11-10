@@ -775,3 +775,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): com a conta do administrador, dá para aprovar todas as etapas da aprovação do pré-custo num clique. No cartão "Aprovação do pré-custo", quando ainda há mais de um nível pela frente, o administrador vê o botão "Aprovar todos os níveis" (o "Aprovar" continua, para um nível só). Cada nível fica registrado no nome dele e na auditoria; o último segue o caminho normal (grava a escolha do fornecedor). Só o administrador pode (`decideApproval` com `allLevels`, `decideAllLevelsAction`).
 - Teste: `tests/unit/approval-deferred.test.ts`.
+
+## Certificação: quadro em destaque "Memorial (selo)"
+
+- **Pedido do dono** (10/11/2026): no cartão Certificação do pedido, o envio do selo ganha um quadro em destaque no alto, com o nome **Memorial (selo)** (o passo `cert_seal` mudou de rótulo; o dado é o mesmo). O quadro diz que, ao anexar, o arquivo fica vinculado ao pedido, o pedido segue e a agência passa a ver o selo. Depois de enviado, o quadro fica verde, com o link do arquivo; a certificadora ainda pode enviar de novo. Na tabela, as linhas do selo vêm primeiro e a linha do passo aponta para o quadro.
+- `ImportFlowCard` ganhou `featured` e `featuredHint`. O texto da certificadora que ainda dizia "sem preço" foi corrigido (ela vê o preço desde a decisão anterior).
+- O E2E envia o selo pelo quadro.

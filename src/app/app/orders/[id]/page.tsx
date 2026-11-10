@@ -1926,10 +1926,16 @@ export default async function OrderPage({
         <ImportFlowCard
           t={t}
           order={order}
-          steps={certSteps}
+          // O selo e a arte com o selo vêm primeiro (é o que libera o pedido).
+          steps={[
+            ...certSteps.filter((v) => v.template.key.startsWith("cert_seal")),
+            ...certSteps.filter((v) => !v.template.key.startsWith("cert_seal")),
+          ]}
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
+          featured="cert_seal"
+          featuredHint={t("certFlow.featured.hint")}
           error={stepCard === "certification" ? stepError : null}
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")

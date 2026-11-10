@@ -457,13 +457,23 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.locator("input[name=price]")).toBeDisabled();
   await expect(page.locator("input[name=material]")).toBeDisabled();
   await page.goto(`${orderUrl}#certification`);
-  await sealRow.locator("input[type=file]").setInputFiles(png);
-  await sealRow.locator("[data-import-submit=cert_seal]").click();
+  // O envio do selo fica no quadro em destaque do alto: "Memorial (selo)".
+  const sealBox = page.locator("[data-import-featured=cert_seal]");
+  await expect(sealBox).toContainText(/Memorial \(selo\)/);
+  await sealBox.locator("input[type=file]").setInputFiles(png);
+  await sealBox.locator("[data-import-submit=cert_seal]").click();
   await page.waitForURL(/[?&]certStep=submitted/);
   await expect(sealRow).toHaveAttribute("data-import-status", "submitted");
   await login(page, "agencia@design.com");
   await page.goto("/app");
-  await expect(sealTask.first()).toBeVisible();
+  // A agência filtra pelas etapas dela: o selo é a etapa "Selo na arte".
+  await expect(
+    page
+      .locator('[data-task-row][data-task-group="agency.seal"]', {
+        hasText: new RegExp(`#${orderNumber}\\b`),
+      })
+      .first(),
+  ).toBeVisible();
   await page.goto(orderUrl);
   // A agência vê só as linhas do selo, com o arquivo para baixar.
   await expect(page.locator("[data-import-step=cert_memorial]")).toHaveCount(0);

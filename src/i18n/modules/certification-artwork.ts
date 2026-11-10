@@ -16,7 +16,10 @@ export const pt = {
   "importFlow.ph.cert_memorial": "",
   "importFlow.ph.cert_lab": "Laboratório / nº do laudo",
   "importFlow.ph.cert_registration": "Nº de registro",
-  "importFlow.step.cert_seal": "Selo de certificação",
+  "importFlow.step.cert_seal": "Memorial (selo)",
+  "certFlow.featured.hint":
+    "Anexe aqui o memorial (selo) do pedido. Ao enviar, ele fica vinculado ao pedido, o pedido segue para a próxima etapa e a agência passa a ver o selo para aplicar na arte.",
+  "certFlow.featured.goto": "Enviar no quadro do alto",
   "importFlow.step.cert_seal_art": "Selo aplicado na arte",
   "importFlow.actor.agency": "agência",
   "importFlow.ph.cert_seal": "Nº do selo ou do registro (opcional)",
@@ -29,10 +32,10 @@ export const pt = {
     "Selo de certificação: a certificadora (OCP) envia o selo do pedido. Quem faz a arte da embalagem (a agência do pedido ou a Wellmix) baixa o selo, aplica na arte e envia a arte com o selo. A Wellmix confere.",
   "certFlow.sheetNote": "Certificação pedida na ficha: {note}",
   "certFlow.sheet.intro":
-    "Ficha de compra do pedido, para a certificação: fornecedor, produto, caixa, programação, fotos e classificação fiscal. Só leitura; o preço não aparece.",
+    "Ficha de compra do pedido, para a certificação: fornecedor, produto, caixa, programação, fotos, preço e classificação fiscal. Só leitura.",
   "certFlow.sheet.photosHint": "Fotos do produto e da caixa enviadas na ficha.",
   "certFlow.dossier.hint":
-    "Para gerar o selo, o pedido completo está aqui: os itens com foto e código, a ficha de compra (dados técnicos e fotos, sem preço) e os arquivos do pedido.",
+    "Para gerar o selo, o pedido completo está aqui: os itens com foto e código, a ficha de compra (dados técnicos, preço e fotos) e os arquivos do pedido.",
   "certFlow.dossier.certs":
     "Certificações já registradas do produto e do fornecedor:",
   "certFlow.sealReplaced":
@@ -139,7 +142,10 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.ph.cert_memorial": "",
   "importFlow.ph.cert_lab": "Lab / report no.",
   "importFlow.ph.cert_registration": "Registration no.",
-  "importFlow.step.cert_seal": "Certification seal",
+  "importFlow.step.cert_seal": "Memorial (seal)",
+  "certFlow.featured.hint":
+    "Attach the order's memorial (seal) here. Once sent, it is linked to the order, the order moves to the next step and the agency can see the seal to apply it to the artwork.",
+  "certFlow.featured.goto": "Send in the box at the top",
   "importFlow.step.cert_seal_art": "Seal applied to the artwork",
   "importFlow.actor.agency": "agency",
   "importFlow.ph.cert_seal": "Seal or registration no. (optional)",
@@ -152,11 +158,11 @@ export const en: Record<keyof typeof pt, string> = {
     "Certification seal: the certification body (OCP) sends the seal for the order. Whoever makes the packaging artwork (the order's agency or Wellmix) downloads the seal, applies it to the artwork and sends the artwork with the seal. Wellmix checks it.",
   "certFlow.sheetNote": "Certification requested on the sheet: {note}",
   "certFlow.sheet.intro":
-    "Purchase sheet of the order, for certification: supplier, product, carton, schedule, photos and tax classification. Read only; the price is not shown.",
+    "Purchase sheet of the order, for certification: supplier, product, carton, schedule, photos, price and tax classification. Read only.",
   "certFlow.sheet.photosHint":
     "Photos of the product and the carton sent on the sheet.",
   "certFlow.dossier.hint":
-    "To issue the seal, the complete order is here: the items with photo and code, the purchase sheet (technical data and photos, without price) and the order files.",
+    "To issue the seal, the complete order is here: the items with photo and code, the purchase sheet (technical data, price and photos) and the order files.",
   "certFlow.dossier.certs":
     "Certifications already registered for the product and the supplier:",
   "certFlow.sealReplaced":
@@ -267,7 +273,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.ph.cert_memorial": "",
   "importFlow.ph.cert_lab": "实验室 / 报告编号",
   "importFlow.ph.cert_registration": "注册号",
-  "importFlow.step.cert_seal": "认证标志",
+  "importFlow.step.cert_seal": "说明书（认证标志）",
+  "certFlow.featured.hint":
+    "请在此上传订单的说明书（认证标志）。上传后即关联到订单，订单进入下一环节，设计机构即可看到该标志并用于设计稿。",
+  "certFlow.featured.goto": "在顶部方框中上传",
   "importFlow.step.cert_seal_art": "认证标志已用于设计稿",
   "importFlow.actor.agency": "设计公司",
   "importFlow.ph.cert_seal": "标志或注册编号（选填）",
@@ -279,10 +288,10 @@ export const zh: Record<keyof typeof pt, string> = {
     "认证标志：认证机构（OCP）提交该订单的认证标志。负责包装设计稿的一方（订单的设计公司或 Wellmix）下载标志，放入设计稿，并提交带标志的设计稿。由 Wellmix 核对。",
   "certFlow.sheetNote": "采购单要求的认证：{note}",
   "certFlow.sheet.intro":
-    "订单采购单（供认证使用）：供应商、产品、外箱、排期、照片和税则归类。仅可查看，不显示价格。",
+    "订单采购单（供认证使用）：供应商、产品、外箱、排期、照片和价格和税则归类。仅可查看。",
   "certFlow.sheet.photosHint": "采购单中上传的产品和外箱照片。",
   "certFlow.dossier.hint":
-    "出具标志所需的完整订单资料都在这里：带照片和编码的产品明细、采购单（技术数据和照片，不含价格）以及订单文件。",
+    "出具标志所需的完整订单资料都在这里：带照片和编码的产品明细、采购单（技术数据、价格和照片）以及订单文件。",
   "certFlow.dossier.certs": "产品和供应商已登记的认证：",
   "certFlow.sealReplaced":
     "认证机构更换了认证标志（文件或编号）。请在设计稿中使用当前标志，并重新提交设计稿。",

@@ -1226,7 +1226,7 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   cert_memorial: "Memorial descritivo (certificação)",
   cert_lab: "Ensaio em laboratório (laudo)",
   cert_registration: "Número de registro (certificado)",
-  cert_seal: "Selo de certificação",
+  cert_seal: "Memorial (selo)",
   cert_seal_art: "Selo aplicado na arte",
 };
 

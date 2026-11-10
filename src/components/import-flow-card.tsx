@@ -49,6 +49,8 @@ export function ImportFlowCard({
   title,
   anchor = "import-flow",
   hints = [],
+  featured,
+  featuredHint,
 }: {
   t: Translate;
   order: Order;
@@ -62,12 +64,102 @@ export function ImportFlowCard({
   anchor?: "import-flow" | "certification";
   /** Explicações do cartão (ex.: como anda o selo de certificação). */
   hints?: ReactNode[];
+  /** Passo com quadro em destaque no alto (o envio dele sai da tabela). */
+  featured?: string;
+  /** O que acontece ao enviar o passo em destaque. */
+  featuredHint?: ReactNode;
 }) {
   if (!steps.length) return null;
   const name = (id: string | null) => (id ? (names.get(id) ?? "—") : "—");
   const label = (key: string) => t(`importFlow.step.${key}` as DictionaryKey);
   const actorLabel = (a: string) => t(`importFlow.actor.${a}` as DictionaryKey);
   const done = steps.filter((s) => s.done).length;
+  /* Formulário de envio de um passo (na linha da tabela ou no quadro em
+     destaque do alto). */
+  const submitForm = (tpl: StepView["template"], step: StepView["step"]) => (
+    <form
+      action={submitImportStepAction}
+      className="flex flex-wrap items-end gap-2"
+    >
+      <input type="hidden" name="orderId" value={order.id} />
+      <input type="hidden" name="key" value={tpl.key} />
+      <input type="hidden" name="anchor" value={anchor} />
+      {tpl.input === "text" || tpl.input === "text_file" ? (
+        <Input
+          name="value"
+          required
+          maxLength={200}
+          defaultValue={step?.value ?? ""}
+          placeholder={t(`importFlow.ph.${tpl.key}` as DictionaryKey)}
+        />
+      ) : null}
+      {tpl.input === "file_text" ? (
+        <Input
+          name="value"
+          maxLength={200}
+          defaultValue={step?.value ?? ""}
+          placeholder={t(`importFlow.ph.${tpl.key}` as DictionaryKey)}
+        />
+      ) : null}
+      {tpl.input === "date" ? (
+        <Input
+          type="date"
+          name="value"
+          required
+          defaultValue={step?.value?.slice(0, 10) ?? ""}
+        />
+      ) : null}
+      {tpl.input === "channel" ? (
+        <Select name="value" defaultValue={step?.value ?? "green"}>
+          {CUSTOMS_CHANNELS.map((c) => (
+            <option key={c} value={c}>
+              {t(`importFlow.channel.${c}`)}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+      {tpl.input === "money_file" ? (
+        <>
+          <Input
+            name="amount"
+            inputMode="decimal"
+            required
+            placeholder={t("importFlow.amount")}
+            defaultValue={step?.amount ?? ""}
+          />
+          <input type="hidden" name="currency" value="BRL" />
+        </>
+      ) : null}
+      {["file", "text_file", "file_text", "money_file"].includes(tpl.input) ? (
+        // Arquivo grande (ex.: a arte com o selo) sobe direto
+        // ao armazenamento; o formulário leva só o id.
+        <DirectFileInput
+          name="file"
+          required={!step?.documentId}
+          className={fileClass}
+          label={t("importFlow.file")}
+          uploadingLabel={t("requirement.file.uploading")}
+          failedLabel={t("requirement.file.failed")}
+          tooBigLabel={t("requirement.file.tooBig")}
+          chosenLabel={t("importFlow.fileReady")}
+        />
+      ) : null}
+      <SubmitButton
+        className="px-2.5 py-1 text-xs"
+        data-import-submit={tpl.key}
+      >
+        {t(
+          step?.status === "rejected" || step?.status === "submitted"
+            ? "importFlow.resubmit"
+            : "importFlow.submit",
+        )}
+      </SubmitButton>
+    </form>
+  );
+  // Passo em destaque no alto do cartão (ex.: o selo, "Memorial (selo)").
+  const top = featured
+    ? (steps.find((s) => s.template.key === featured) ?? null)
+    : null;
 
   return (
     <Card
@@ -90,6 +182,44 @@ export function ImportFlowCard({
       {error ? (
         <div className="mb-3" data-import-error={anchor}>
           <Alert tone="danger">{error}</Alert>
+        </div>
+      ) : null}
+      {top ? (
+        <div
+          id={`${anchor}-featured`}
+          className={cx(
+            "mb-3 scroll-mt-24 rounded-xl border-2 p-3",
+            top.done
+              ? "border-emerald-300 bg-emerald-50/60"
+              : "border-brand-400 bg-brand-50/60",
+          )}
+          data-import-featured={top.template.key}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-semibold text-zinc-900">
+              {label(top.template.key)}
+            </p>
+            <Badge tone={top.done ? "success" : "warning"}>
+              {t(
+                `importFlow.status.${top.done ? "done" : (top.step?.status ?? "pending")}` as DictionaryKey,
+              )}
+            </Badge>
+            {top.step?.documentId ? (
+              <a
+                href={`/api/files/${top.step.documentId}`}
+                className="text-sm text-brand-700 underline"
+                data-import-featured-file
+              >
+                {t("importFlow.file")}
+              </a>
+            ) : null}
+          </div>
+          {featuredHint ? (
+            <p className="mt-1 text-sm text-zinc-700">{featuredHint}</p>
+          ) : null}
+          {top.canSubmit ? (
+            <div className="mt-2">{submitForm(top.template, top.step)}</div>
+          ) : null}
         </div>
       ) : null}
       {hints.map((hint, i) => (
@@ -236,98 +366,16 @@ export function ImportFlowCard({
                       {t("importFlow.invoice.generate")}
                     </a>
                   ) : null}
-                  {canSubmit ? (
-                    <form
-                      action={submitImportStepAction}
-                      className="flex flex-wrap items-end gap-2"
+                  {canSubmit && tpl.key !== featured
+                    ? submitForm(tpl, step)
+                    : null}
+                  {canSubmit && tpl.key === featured ? (
+                    <a
+                      href={`#${anchor}-featured`}
+                      className="text-brand-700 underline"
                     >
-                      <input type="hidden" name="orderId" value={order.id} />
-                      <input type="hidden" name="key" value={tpl.key} />
-                      <input type="hidden" name="anchor" value={anchor} />
-                      {tpl.input === "text" || tpl.input === "text_file" ? (
-                        <Input
-                          name="value"
-                          required
-                          maxLength={200}
-                          defaultValue={step?.value ?? ""}
-                          placeholder={t(
-                            `importFlow.ph.${tpl.key}` as DictionaryKey,
-                          )}
-                        />
-                      ) : null}
-                      {tpl.input === "file_text" ? (
-                        <Input
-                          name="value"
-                          maxLength={200}
-                          defaultValue={step?.value ?? ""}
-                          placeholder={t(
-                            `importFlow.ph.${tpl.key}` as DictionaryKey,
-                          )}
-                        />
-                      ) : null}
-                      {tpl.input === "date" ? (
-                        <Input
-                          type="date"
-                          name="value"
-                          required
-                          defaultValue={step?.value?.slice(0, 10) ?? ""}
-                        />
-                      ) : null}
-                      {tpl.input === "channel" ? (
-                        <Select
-                          name="value"
-                          defaultValue={step?.value ?? "green"}
-                        >
-                          {CUSTOMS_CHANNELS.map((c) => (
-                            <option key={c} value={c}>
-                              {t(`importFlow.channel.${c}`)}
-                            </option>
-                          ))}
-                        </Select>
-                      ) : null}
-                      {tpl.input === "money_file" ? (
-                        <>
-                          <Input
-                            name="amount"
-                            inputMode="decimal"
-                            required
-                            placeholder={t("importFlow.amount")}
-                            defaultValue={step?.amount ?? ""}
-                          />
-                          <input type="hidden" name="currency" value="BRL" />
-                        </>
-                      ) : null}
-                      {[
-                        "file",
-                        "text_file",
-                        "file_text",
-                        "money_file",
-                      ].includes(tpl.input) ? (
-                        // Arquivo grande (ex.: a arte com o selo) sobe direto
-                        // ao armazenamento; o formulário leva só o id.
-                        <DirectFileInput
-                          name="file"
-                          required={!step?.documentId}
-                          className={fileClass}
-                          label={t("importFlow.file")}
-                          uploadingLabel={t("requirement.file.uploading")}
-                          failedLabel={t("requirement.file.failed")}
-                          tooBigLabel={t("requirement.file.tooBig")}
-                          chosenLabel={t("importFlow.fileReady")}
-                        />
-                      ) : null}
-                      <SubmitButton
-                        className="px-2.5 py-1 text-xs"
-                        data-import-submit={tpl.key}
-                      >
-                        {t(
-                          step?.status === "rejected" ||
-                            step?.status === "submitted"
-                            ? "importFlow.resubmit"
-                            : "importFlow.submit",
-                        )}
-                      </SubmitButton>
-                    </form>
+                      {t("certFlow.featured.goto")}
+                    </a>
                   ) : null}
                   {canValidate ? (
                     <form
