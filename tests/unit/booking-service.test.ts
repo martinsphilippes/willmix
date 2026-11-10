@@ -695,12 +695,13 @@ describe("gerar solicitação", () => {
     const { signOrderAs } = await import("./setup");
     await signOrderAs(admin, order.id);
     expect((await nextOf())?.step).toBe("sign_supplier");
-    // "Pedido criado" concluído: a Preparação abre e o fornecedor assina.
-    const { submitRequirement } = await import("@/lib/workflow/engine");
+    // A assinatura da Wellmix já libera o pedido ("Pedido conferido e
+    // liberado ao fornecedor" conclui junto): a Preparação abre e o
+    // fornecedor assina.
     const [confirmed] = await getStore().list("requirements", {
       filter: { orderId: order.id, key: "order_confirmed" },
     });
-    await submitRequirement(admin, confirmed.id, { value: "confirmed" });
+    expect(confirmed.status).toBe("done");
     const supplier = (await getStore().list("users")).find(
       (u) => u.role === "supplier" && u.partyId === "fornecedor-a",
     )!;
