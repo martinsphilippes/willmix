@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import type {
@@ -10,9 +11,9 @@ import { cx, formatMoney } from "./ui";
 
 /*
  * Quadros da operação na Control Tower (o pedido de ponta a ponta em quatro
- * blocos). Cada quadrado é um link: tocar mostra os pedidos dele na lista de
- * baixo sem a tela pular (scroll={false}); containers e revisão levam às
- * telas deles. Zero fica cinza (não some), para a tela ficar sempre igual.
+ * blocos). Cada quadrado é um link: tocar mostra os pedidos dele numa lista
+ * logo abaixo do bloco dele, sem a tela pular (scroll={false}); tocar de novo
+ * fecha a lista; containers e revisão levam às telas deles. Zero fica cinza (não some), para a tela ficar sempre igual.
  */
 
 const BLOCKS: BoardBlock[] = ["request", "order", "parallel", "problem"];
@@ -30,6 +31,7 @@ export function TowerBoardView({
   selected,
   occupancy,
   newRequestHref,
+  detail = null,
 }: {
   board: TowerBoard;
   t: Translate;
@@ -39,6 +41,8 @@ export function TowerBoardView({
   occupancy: string | null;
   /** "+" no quadrado "Solicitação nova" (só quem cria solicitação). */
   newRequestHref: string | null;
+  /** Lista do quadrado escolhido: aparece logo abaixo do bloco dele. */
+  detail?: ReactNode;
 }) {
   return (
     <div data-tower-board>
@@ -73,6 +77,7 @@ export function TowerBoardView({
                 />
               ))}
             </div>
+            {detail && cards.some((c) => c.key === selected) ? detail : null}
           </div>
         );
       })}
@@ -107,7 +112,8 @@ function BoardTile({
       : null;
   const tile = (
     <Link
-      href={card.href ?? `/app?card=${card.key}`}
+      // Tocar no escolhido fecha a lista.
+      href={card.href ?? (active ? "/app" : `/app?card=${card.key}`)}
       // Filtro na mesma tela: a lista muda embaixo, sem voltar ao topo.
       scroll={card.href ? undefined : false}
       aria-current={active ? "true" : undefined}
