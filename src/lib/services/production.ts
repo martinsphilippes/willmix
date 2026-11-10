@@ -67,6 +67,42 @@ export async function getTrack(
   }
 }
 
+/**
+ * A fábrica quando o próprio fornecedor fabrica: o nome do cadastro dele e o
+ * endereço da fábrica (o do cartão do fabricante confirmado na cotação;
+ * senão, o endereço do cadastro). Entra sozinho no cartão Produção.
+ */
+export async function supplierFactory(
+  order: Pick<Order, "supplierId" | "requestId">,
+): Promise<{ name: string | null; address: string | null }> {
+  const store = getStore();
+  const party = await store.get("parties", order.supplierId);
+  let cardAddress: string | null = null;
+  try {
+    const request = order.requestId
+      ? await store.get("requests", order.requestId)
+      : null;
+    const quote = request?.selectedQuoteId
+      ? await store.get("quotes", request.selectedQuoteId)
+      : null;
+    const card = quote?.manufacturerCardId
+      ? await store.get("manufacturer_cards", quote.manufacturerCardId)
+      : null;
+    cardAddress = card?.factoryAddress?.trim() || null;
+  } catch (error) {
+    if (!isSchemaMissing(error)) throw error;
+  }
+  const registered =
+    [party?.address, party?.city, party?.country]
+      .map((v) => v?.trim())
+      .filter(Boolean)
+      .join(", ") || null;
+  return {
+    name: party?.name?.trim() || null,
+    address: cardAddress ?? registered,
+  };
+}
+
 async function ensureTrack(user: User, orderId: string) {
   const existing = await getTrack(orderId);
   if (existing) return existing;
@@ -121,6 +157,28 @@ export async function savePlan(user: User, orderId: string, input: PlanInput) {
   if (input.factoryName !== undefined) patch.factoryName = input.factoryName;
   if (input.factoryAddress !== undefined)
     patch.factoryAddress = input.factoryAddress;
+  // Fornecedor é a fábrica: nome e endereço entram sozinhos do cadastro
+  // (e do cartão do fabricante) quando ficaram em branco.
+  const mode = patch.mode ?? track.mode;
+  const name =
+    patch.factoryName !== undefined ? patch.factoryName : track.factoryName;
+  const address =
+    patch.factoryAddress !== undefined
+      ? patch.factoryAddress
+      : track.factoryAddress;
+  if (mode === "factory") {
+    if (!name?.trim() || !address?.trim()) {
+      const own = await supplierFactory(order);
+      if (!name?.trim() && own.name) patch.factoryName = own.name;
+      if (!address?.trim() && own.address) patch.factoryAddress = own.address;
+    }
+  } else if (mode === "trade" && track.mode !== "trade") {
+    // Passou a trade: o que era do próprio fornecedor sai (a fábrica é
+    // outra empresa e tem de ser informada).
+    const own = await supplierFactory(order);
+    if (name && name === own.name) patch.factoryName = null;
+    if (address && address === own.address) patch.factoryAddress = null;
+  }
   // Início automático (contrato assinado): o que vier do formulário não vale.
   if (input.productionStartAt !== undefined) {
     const { productionStartFor } = await import("./order-signature");
@@ -457,6 +515,8 @@ export interface ProductionView {
   allApproved: boolean;
   /** Início da produção automático (contrato assinado + Configurações): não se digita. */
   startAuto: { days: number; signed: boolean } | null;
+  /** Nome e endereço do fornecedor como fábrica (entram sozinhos no cartão). */
+  supplierFactory: { name: string | null; address: string | null };
 }
 
 /** Tudo o que o cartão "Produção" mostra. */
@@ -483,6 +543,7 @@ export async function productionView(order: Order): Promise<ProductionView> {
   return {
     track: shown,
     startAuto: start.auto ? { days: start.days, signed: !!start.at } : null,
+    supplierFactory: await supplierFactory(order),
     items: view,
     due: followupsDue(shown),
     allApproved:
