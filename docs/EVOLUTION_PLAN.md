@@ -702,3 +702,8 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 ## Solicitação: a linha do tempo resumida sai também para o cliente
 
 - **Pedido do dono** (10/11/2026): o cartão "Linha do tempo" da solicitação sai para todos os logins (antes, só para a Wellmix). A situação continua no selo do alto da tela; a Wellmix acompanha pelas "Etapas da solicitação".
+
+## Control Tower: a lista do quadrado aparece logo abaixo dele
+
+- **Pedido do dono** (10/11/2026): a lista de pedidos de um quadrado ficava no fim da tela, longe do quadrado. Agora nenhuma lista aparece ao abrir a Control Tower; tocar num quadrado mostra a lista logo abaixo do bloco dele ("Antes de virar pedido", "Onde o pedido está agora", "Acontece ao mesmo tempo", "Problemas") ou, nas "Visões gerais", logo abaixo delas. Tocar de novo no quadrado escolhido fecha a lista.
+- "Exceções" fica na largura toda, abaixo das visões gerais. `TowerBoardView` ganhou `detail` (a lista do quadrado escolhido); a visão geral "Pedidos ativos" não vem mais escolhida por padrão.
