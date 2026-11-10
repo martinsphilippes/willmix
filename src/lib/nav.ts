@@ -79,6 +79,15 @@ export function navFor(
           // Produtos que chegaram pela ficha técnica, antes da solicitação.
           ["booking", { href: "/app/booking", key: "nav.booking" }],
           ["requests", { href: "/app/requests", key: "nav.requests" }],
+          // Itens dos bookings comparados e a solicitação ao fornecedor do escolhido.
+          [
+            "booking",
+            { href: "/app/booking/selection", key: "nav.bookingSelection" },
+          ],
+          [
+            "quotes",
+            { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+          ],
           ["orders", { href: "/app/orders", key: "nav.orders" }],
           ["reviews", { href: "/app/reviews", key: "nav.reviews" }],
           ["freight", { href: "/app/freight", key: "nav.freight" }],
@@ -180,6 +189,11 @@ export function navFor(
       pick(has, [
         // Cotações primeiro: é por onde o fornecedor começa (e volta às enviadas).
         ["quotes", { href: "/app/quotes", key: "nav.quotes" }],
+        // O que a Wellmix pergunta sobre um item do booking dele.
+        [
+          "quotes",
+          { href: "/app/supplier-requests", key: "nav.supplierRequests" },
+        ],
         ["freight", { href: "/app/freight", key: "nav.freight" }],
         // A companhia envia a própria tabela de fretes (só vê as dela).
         [

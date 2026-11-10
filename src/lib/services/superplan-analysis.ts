@@ -1,6 +1,11 @@
 import "server-only";
 
-import { getStore, type Product, type PurchaseSheet } from "@/lib/db";
+import {
+  getStore,
+  type BookingItem,
+  type Product,
+  type PurchaseSheet,
+} from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { computeSuperplan, superplanParams } from "@/lib/superplan";
 import {
@@ -203,4 +208,79 @@ export async function analyzeProductsWithDefaults(
     out.set(id, snapshot);
   }
   return out;
+}
+
+/**
+ * Dados de um item de booking (docs/BOOKING.md, "Booking por planilha") para
+ * a simulação. O item não é produto e não tem NCM: II e IPI ficam fora
+ * (`ncmFound` falso, a conta usa 0, como num produto sem NCM).
+ */
+export function bookingItemPrefill(item: BookingItem): SuperplanProductPrefill {
+  const currency = (item.currency ?? "").toUpperCase();
+  const known = currency === "USD" || currency === "RMB";
+  const price = positive(item.price);
+  return {
+    productId: null,
+    productName:
+      [item.factoryItemCode, item.description ?? item.productName]
+        .filter(Boolean)
+        .join(" · ") || null,
+    unitPrice: known ? price : null,
+    currency: currency === "USD" ? "USD" : "RMB",
+    otherCurrency: price !== null && currency && !known ? currency : null,
+    pcsPerCarton: positive(item.masterCartonQty),
+    netWeightPcKg: positive(item.netWeightPcKg),
+    grossWeightPcKg: positive(item.grossWeightPcKg),
+    cbmPerCarton: positive(item.cbmPerCarton),
+    ncm: null,
+    iiPct: null,
+    ipiPct: null,
+    ncmFound: false,
+    averageUsd: null,
+    averageWeightKg: null,
+  };
+}
+
+/**
+ * Análise dos itens de um booking com os valores padrão do Superplan (a
+ * mesma conta de `analyzeProductsWithDefaults`); `businessType` vazio ou
+ * desconhecido = o padrão dos parâmetros.
+ */
+export async function analyzeBookingItems(
+  items: BookingItem[],
+  options: { businessType?: string | null } = {},
+): Promise<Map<string, SuperplanSnapshot>> {
+  const ctx = await loadSuperplanContext();
+  const out = new Map<string, SuperplanSnapshot>();
+  for (const item of items) {
+    const prefill = bookingItemPrefill(item);
+    const { input, businessType, container } = defaultSuperplanInput(
+      prefill,
+      ctx,
+      { businessType: options.businessType ?? undefined },
+    );
+    const snapshot = snapshotOf(input, computeSuperplan(input), {
+      businessType,
+      container,
+      ncmFound: false,
+    });
+    if (prefill.otherCurrency)
+      snapshot.missing = snapshot.missing.map((m) =>
+        m === "price" ? "currency" : m,
+      );
+    out.set(item.id, snapshot);
+  }
+  return out;
+}
+
+/** Nomes dos tipos de negócio do Superplan e o padrão (seletor ao fechar o booking). */
+export async function superplanBusinessTypes(): Promise<{
+  names: string[];
+  defaultName: string;
+}> {
+  const params = superplanParams((await getSettings()).superplan);
+  return {
+    names: params.businessTypes.map((t) => t.name),
+    defaultName: params.defaultBusinessType,
+  };
 }

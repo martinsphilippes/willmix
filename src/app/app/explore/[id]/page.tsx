@@ -116,7 +116,7 @@ export default async function ExploreProductPage({
             {canOpen(user, "booking") ? (
               <>
                 {" "}
-                <TextLink href="/app/booking">
+                <TextLink href="/app/booking/products">
                   {t("explore.booking.open")}
                 </TextLink>
               </>

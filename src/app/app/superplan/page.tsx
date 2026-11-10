@@ -182,7 +182,7 @@ export default async function SuperplanPage({
           ) : (
             <Alert tone="warning">
               {t("booking.superplan.missing")}{" "}
-              <TextLink href="/app/booking">
+              <TextLink href="/app/booking/products">
                 {t("booking.detail.back")}
               </TextLink>
             </Alert>

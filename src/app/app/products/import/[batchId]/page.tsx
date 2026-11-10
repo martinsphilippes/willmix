@@ -101,7 +101,7 @@ export default async function ProductSheetImportResultPage({
    * Novo), então um lote reimportado pode não ser o lote de nenhuma linha:
    * o filtro vai pelas planilhas em que as linhas destes produtos estão.
    */
-  let bookingHref = "/app/booking";
+  let bookingHref = "/app/booking/products";
   if (inBooking && canBooking && ids.length) {
     try {
       const rows = await store.list("bookings", { filter: { productId: ids } });
@@ -111,7 +111,7 @@ export default async function ProductSheetImportResultPage({
         ),
       ];
       if (sources.length)
-        bookingHref = `/app/booking?source=${sources
+        bookingHref = `/app/booking/products?source=${sources
           .slice(0, 30)
           .map(encodeURIComponent)
           .join(",")}`;

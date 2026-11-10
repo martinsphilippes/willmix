@@ -364,6 +364,13 @@ export default async function ProductSheetPage({
               </span>
             ) : null}
             {line ? <Badge>{line.name}</Badge> : null}
+            {/* Código do produto no Sankhya (gravado na solicitação ao
+                fornecedor aprovada; docs/SUPPLIER_REQUESTS.md). */}
+            <span data-product-erp-code={product.sankhyaCode ?? ""}>
+              <Badge tone={product.sankhyaCode ? "info" : "neutral"}>
+                {t("srProduct.erp.code")} {product.sankhyaCode ?? "—"}
+              </Badge>
+            </span>
             {product.source ? (
               <Badge tone={sourceTone[product.source]}>
                 {t("catalog.source")}:{" "}
