@@ -32,7 +32,8 @@ Pedido do dono (10/11/2026): pelo Booking, o lançamento já tem o preço que a 
    - **Confirmar**: a cotação fica **respondida** com o preço desejado e o prazo, pelo mesmo `answerQuote` de sempre (situação da solicitação, vínculo do fornecedor com o produto, auditoria, aviso à Wellmix). A ficha da cotação continua disponível, mas não é exigida.
    - **Enviar outro preço**: a cotação fica respondida com o preço **dele**; a Wellmix recebe o aviso "Preço diferente do desejado" e os dois lados veem, no cartão da negociação, a diferença e o botão das mensagens. A Wellmix pode **devolver com comentário**, e o campo do preço proposto já vem com o **preço desejado** (em vez dos 10% a menos). Daí em diante é a negociação da seção 3.
    - Outro preço igual ao desejado conta como confirmação.
-5. **Histórico**: duas rodadas em `quotes.negotiation`: `offer` (Wellmix, com `targetPrice`) e `confirm` ou `counter` (fornecedor, com `previousPrice` e `price`). Auditoria `quote.offer_reply`.
+   - **Não aceito este preço** (um toque, sem pedir prazo nem preço; o comentário é opcional): a cotação **continua sem resposta** (nenhum preço gravado), a recusa fica no histórico (rodada `decline`) e a Wellmix recebe o aviso "Preço desejado não aceito". O cartão continua na cotação, com o aviso da recusa e o botão das mensagens: depois da conversa o fornecedor ainda pode confirmar ou mandar o preço dele. Se a Wellmix mudar o preço do produto no Booking, é o novo valor que aparece, e ele pode responder de novo (inclusive recusar outra vez); o mesmo preço não é recusado duas vezes (`offer_already_declined`). Na lista de cotações, a etiqueta "Preço desejado: fornecedor não aceitou".
+5. **Histórico**: duas rodadas por resposta em `quotes.negotiation`: `offer` (Wellmix, com `targetPrice`) e `confirm`, `counter` ou `decline` (fornecedor, com `previousPrice` e `price`). Depois de um `decline`, a resposta seguinte acrescenta as rodadas dela. Auditoria `quote.offer_reply`.
 6. **Erros**: `offer_none` (não há preço desejado esperando), `offer_lead_time_required`, `offer_price_required`.
 7. **Código**: `quoteOfferFor` e `replyQuoteOffer` (`src/lib/services/quote-flow.ts`), `replyQuoteOfferAction`, `QuoteOfferCard` (`src/components/quote-flow-cards.tsx`), `offerRoundOf` e `suggestedReturnPrice` (`src/lib/quote-flow.ts`). Sem coluna nova.
 
@@ -62,7 +63,7 @@ Pedido do dono (10/11/2026): na cotação que nasce do Booking, as fotos também
 
 ## 6. Dados (aditivo)
 
-- `quotes.negotiation` (JSON): rodadas `{at, byUserId, byName, side, kind: return|accept|counter|keep|offer|confirm, comment, currency, targetPrice, previousPrice, price}`.
+- `quotes.negotiation` (JSON): rodadas `{at, byUserId, byName, side, kind: return|accept|counter|keep|offer|confirm|decline, comment, currency, targetPrice, previousPrice, price}`.
 - `quotes.packagingProposal` (JSON): `{version, prompt, imageDocumentId, sentAt, sentBy…, decision: ok|no|null, decidedAt, decidedBy…, comment, history[]}`.
 - `documents.quoteId` (opcional): só gravado nos arquivos da cotação.
 - Antes de o esquema ser publicado, as ações novas voltam "esquema desatualizado"; o resto da cotação funciona.

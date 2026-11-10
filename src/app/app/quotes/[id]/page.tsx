@@ -99,6 +99,7 @@ export default async function QuotePage({
     dieline: dielineNotice,
     superplan: superplanNotice,
     negotiation: negotiationNotice,
+    offer: offerNotice,
     proposal: proposalNotice,
   } = await searchParams;
   const store = getStore();
@@ -117,6 +118,18 @@ export default async function QuotePage({
     isWellmix(user) ||
     (user.role === "supplier" && user.partyId === quote.supplierId);
   const offer = flowSide ? await quoteOfferFor(quote, request) : null;
+  // Botão das mensagens dentro dos cartões (preço não aceito ou diferente).
+  const flowChat = (
+    <ChatButtons
+      back={`/app/quotes/${quote.id}`}
+      requestId={request.id}
+      targets={[
+        isWellmix(user)
+          ? { partyId: quote.supplierId, label: t("messages.chatSupplier") }
+          : { label: t("messages.chatWellmix") },
+      ]}
+    />
+  );
   // Resposta pela ficha de compra (fotos opcionais nesta fase).
   const sheetView = await getQuoteSheetForUser(user, quote.id);
   // Quem preenche vê o que falta em vermelho e o aviso leva até cada campo.
@@ -295,6 +308,8 @@ export default async function QuotePage({
             offer={offer}
             quantity={`${request.quantity.toLocaleString(t.intl)} ${request.unit}`}
             wellmix={isWellmix(user)}
+            notice={typeof offerNotice === "string" ? offerNotice : ""}
+            chat={flowChat}
           />
         </div>
       ) : null}
@@ -307,20 +322,7 @@ export default async function QuotePage({
             notice={
               typeof negotiationNotice === "string" ? negotiationNotice : ""
             }
-            chat={
-              <ChatButtons
-                back={`/app/quotes/${quote.id}`}
-                requestId={request.id}
-                targets={[
-                  isWellmix(user)
-                    ? {
-                        partyId: quote.supplierId,
-                        label: t("messages.chatSupplier"),
-                      }
-                    : { label: t("messages.chatWellmix") },
-                ]}
-              />
-            }
+            chat={flowChat}
           />
           <QuotePackagingProposalCard
             t={t}

@@ -18,21 +18,33 @@ export const NEGOTIATION_DISCOUNT_PCT = 10;
 export const NEGOTIATION_MAX_ROUNDS = 30;
 
 /**
- * "offer" e "confirm" são do preço desejado (solicitação que nasce do
- * Booking): a Wellmix já diz quanto quer pagar ("offer") e o fornecedor
- * confirma ("confirm") ou manda o preço dele ("counter").
+ * "offer", "confirm" e "decline" são do preço desejado (solicitação que
+ * nasce do Booking): a Wellmix já diz quanto quer pagar ("offer") e o
+ * fornecedor confirma ("confirm"), manda o preço dele ("counter") ou não
+ * aceita ("decline": a cotação continua sem resposta e a conversa segue).
  */
 export type NegotiationKind =
-  "return" | "accept" | "counter" | "keep" | "offer" | "confirm";
-/** Resposta ao preço desejado: confirma ou manda outro preço. */
-export const OFFER_REPLIES = ["confirm", "counter"] as const;
+  "return" | "accept" | "counter" | "keep" | "offer" | "confirm" | "decline";
+/** Resposta ao preço desejado: confirma, manda outro preço ou não aceita. */
+export const OFFER_REPLIES = ["confirm", "counter", "decline"] as const;
 export type OfferReply = (typeof OFFER_REPLIES)[number];
 
-/** O preço desejado enviado ao fornecedor (a rodada "offer"), se houve. */
+/** O último preço desejado enviado ao fornecedor (a rodada "offer"), se houve. */
 export function offerRoundOf(
   rounds: NegotiationRound[] | null | undefined,
 ): NegotiationRound | null {
-  return rounds?.find((r) => r.kind === "offer") ?? null;
+  return [...(rounds ?? [])].reverse().find((r) => r.kind === "offer") ?? null;
+}
+
+/**
+ * O fornecedor não aceitou o preço desejado e ainda não respondeu de outro
+ * jeito: a última rodada é a recusa (ou nulo).
+ */
+export function declinedOffer(
+  rounds: NegotiationRound[] | null | undefined,
+): NegotiationRound | null {
+  const last = rounds?.length ? rounds[rounds.length - 1] : null;
+  return last && last.kind === "decline" ? last : null;
 }
 
 /**

@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth/permissions";
 import {
   NEGOTIATION_MAX_ROUNDS,
+  declinedOffer,
   packagingProposalState,
   pendingReturn,
   type NegotiationReply,
@@ -254,6 +255,12 @@ export interface QuoteOffer {
   currency: string;
   /** Prazo de produção que já se conhece deste fornecedor (ele confirma). */
   leadTimeDays: number | null;
+  /**
+   * O fornecedor já disse que não aceita (quando, o motivo e a que preço):
+   * o preço continua à espera, para ele confirmar ou mandar outro depois de
+   * conversar; se a Wellmix mudar o preço no Booking, é o novo que aparece.
+   */
+  declined: { at: string; comment: string | null; price: number | null } | null;
 }
 
 const LEAD_TIME_MAX = 3650;
@@ -303,7 +310,9 @@ export async function quoteOfferFor(
   request: Pick<Request, "id" | "productId">,
 ): Promise<QuoteOffer | null> {
   if (quote.status !== "invited" || !request.productId) return null;
-  if (quote.negotiation?.length) return null;
+  // Sem resposta ainda, ou a última foi "não aceito" (a conversa segue).
+  const declined = declinedOffer(quote.negotiation);
+  if (quote.negotiation?.length && !declined) return null;
   const product = await bookingProductOf(quote, request);
   if (!product) return null;
   const { getProductSheet } = await import("./product-sheet");
@@ -315,15 +324,26 @@ export async function quoteOfferFor(
   const link = (await listProductSuppliers(product.id)).find(
     (l) => l.supplierId === quote.supplierId,
   );
-  return { price, currency, leadTimeDays: link?.leadTimeDays ?? null };
+  return {
+    price,
+    currency,
+    leadTimeDays: link?.leadTimeDays ?? null,
+    declined: declined
+      ? {
+          at: declined.at,
+          comment: declined.comment,
+          price: declined.previousPrice ?? null,
+        }
+      : null,
+  };
 }
 
 export interface ReplyQuoteOfferInput {
   decision: OfferReply;
   /** O preço do fornecedor (só em "counter"). */
   price: number | null;
-  /** Prazo de produção, em dias. */
-  leadTimeDays: number;
+  /** Prazo de produção, em dias (não é pedido em "decline"). */
+  leadTimeDays: number | null;
   comment: string | null;
 }
 
@@ -343,7 +363,10 @@ export async function replyQuoteOffer(
   assertSupplierSide(user, quote);
   const offer = await quoteOfferFor(quote, request);
   if (!offer) throw new QuoteFlowError("offer_none");
+  if (input.decision === "decline")
+    return declineQuoteOffer(user, quote, request, offer, input.comment);
   if (
+    input.leadTimeDays === null ||
     !Number.isInteger(input.leadTimeDays) ||
     input.leadTimeDays < 1 ||
     input.leadTimeDays > LEAD_TIME_MAX
@@ -394,7 +417,10 @@ export async function replyQuoteOffer(
     },
   ];
   const updated = await store.update("quotes", quote.id, {
-    negotiation: rounds,
+    // Depois de um "não aceito", as rodadas anteriores ficam no histórico.
+    negotiation: [...(quote.negotiation ?? []), ...rounds].slice(
+      -NEGOTIATION_MAX_ROUNDS,
+    ),
   });
   await audit(
     user,
@@ -420,6 +446,77 @@ export async function replyQuoteOffer(
         .trim(),
       link: `/app/quotes/${quote.id}#negotiation`,
     });
+  return updated;
+}
+
+/**
+ * "Não aceito": o fornecedor recusa o preço desejado sem mandar outro. A
+ * cotação continua sem resposta (nada de preço gravado), a recusa fica no
+ * histórico e a Wellmix é avisada para conversar. O preço continua à espera:
+ * ele ainda pode confirmar ou mandar o dele, e uma mudança de preço no
+ * Booking aparece para ele como o novo preço desejado.
+ */
+async function declineQuoteOffer(
+  user: User,
+  quote: Quote,
+  request: Request,
+  offer: QuoteOffer,
+  rawComment: string | null,
+): Promise<Quote> {
+  // Já recusou este mesmo preço: não há o que registrar de novo.
+  if (offer.declined && offer.declined.price === offer.price)
+    throw new QuoteFlowError("offer_already_declined");
+  const comment = cleanComment(rawComment, false);
+  const at = new Date().toISOString();
+  const rounds: NegotiationRound[] = [
+    {
+      at,
+      byUserId: "",
+      byName: "Wellmix",
+      side: "wellmix",
+      kind: "offer",
+      comment: null,
+      currency: offer.currency,
+      targetPrice: offer.price,
+      previousPrice: null,
+      price: null,
+    },
+    {
+      at,
+      byUserId: user.id,
+      byName: user.name,
+      side: "supplier",
+      kind: "decline",
+      comment,
+      currency: offer.currency,
+      previousPrice: offer.price,
+      price: null,
+    },
+  ];
+  const updated = await getStore().update("quotes", quote.id, {
+    negotiation: [...(quote.negotiation ?? []), ...rounds].slice(
+      -NEGOTIATION_MAX_ROUNDS,
+    ),
+  });
+  await audit(
+    user,
+    "quote.offer_reply",
+    "quote",
+    quote.id,
+    `Preço desejado ${money(offer.price, offer.currency)}: o fornecedor não aceitou${
+      comment ? `: ${comment}` : ""
+    }${isWellmix(user) ? " (registrado pela Wellmix)" : ""}`,
+    { offered: offer.price },
+    { decision: "decline" },
+  );
+  await notifyWellmix({
+    kind: "action",
+    subject: `Preço desejado não aceito: ${request.productName}`,
+    body: `O fornecedor não aceitou ${money(offer.price, offer.currency)}. ${comment ?? ""} Converse com ele pelas mensagens. Se você mudar o preço do produto no Booking, ele recebe o novo valor na cotação.`
+      .replace(/\s+/g, " ")
+      .trim(),
+    link: `/app/quotes/${quote.id}#offer`,
+  });
   return updated;
 }
 

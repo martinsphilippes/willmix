@@ -59,6 +59,17 @@ export const pt = {
     "Informe o prazo de produção em dias (número inteiro).",
   "purchaseFlow.error.offer_price_required":
     "Para enviar outro preço, digite o preço por peça.",
+  "quoteFlow.neg.round.decline": "Fornecedor não aceitou o preço desejado",
+  "quoteFlow.offer.decline": "Não aceito este preço",
+  "quoteFlow.offer.done.declined":
+    "Registrado: o preço não foi aceito. A Wellmix foi avisada; use as mensagens para conversar.",
+  "quoteFlow.offer.declined.supplier":
+    "Você informou em {date} que não aceita {price}. Depois de conversar com a Wellmix, ainda pode confirmar o preço abaixo ou enviar o seu.",
+  "quoteFlow.offer.declined.wellmix":
+    "O fornecedor informou em {date} que não aceita {price}. Converse com ele pelas mensagens. Se você mudar o preço do produto no Booking, ele vê o novo valor aqui e pode responder de novo.",
+  "quoteFlow.chip.offerDeclined": "Preço desejado: fornecedor não aceitou",
+  "purchaseFlow.error.offer_already_declined":
+    "Este preço já foi recusado. Use as mensagens para conversar, ou confirme ou envie outro preço.",
   "quoteFlow.neg.round.return": "Wellmix devolveu",
   "quoteFlow.neg.round.accept": "Fornecedor aceitou",
   "quoteFlow.neg.round.counter": "Fornecedor mandou outro preço",
@@ -194,6 +205,17 @@ export const en: Record<keyof typeof pt, string> = {
     "Enter the production lead time in days (whole number).",
   "purchaseFlow.error.offer_price_required":
     "To send another price, type the price per piece.",
+  "quoteFlow.neg.round.decline": "Supplier did not accept the wanted price",
+  "quoteFlow.offer.decline": "I do not accept this price",
+  "quoteFlow.offer.done.declined":
+    "Recorded: the price was not accepted. Wellmix was notified; use the messages to talk.",
+  "quoteFlow.offer.declined.supplier":
+    "On {date} you said you do not accept {price}. After talking to Wellmix, you can still confirm the price below or send yours.",
+  "quoteFlow.offer.declined.wellmix":
+    "On {date} the supplier said they do not accept {price}. Talk to them through the messages. If you change the product price in Booking, they see the new value here and can answer again.",
+  "quoteFlow.chip.offerDeclined": "Wanted price: supplier did not accept",
+  "purchaseFlow.error.offer_already_declined":
+    "This price was already declined. Use the messages to talk, or confirm or send another price.",
   "quoteFlow.neg.round.return": "Wellmix returned",
   "quoteFlow.neg.round.accept": "Supplier accepted",
   "quoteFlow.neg.round.counter": "Supplier sent another price",
@@ -324,6 +346,17 @@ export const zh: Record<keyof typeof pt, string> = {
   "purchaseFlow.error.offer_none": "此报价没有等待回复的期望价格。请刷新页面。",
   "purchaseFlow.error.offer_lead_time_required": "请填写生产周期（天，整数）。",
   "purchaseFlow.error.offer_price_required": "如需发送其他价格，请填写单价。",
+  "quoteFlow.neg.round.decline": "供应商未接受期望价格",
+  "quoteFlow.offer.decline": "不接受此价格",
+  "quoteFlow.offer.done.declined":
+    "已登记：未接受该价格。已通知 Wellmix；请通过消息沟通。",
+  "quoteFlow.offer.declined.supplier":
+    "您已于 {date} 表示不接受 {price}。与 Wellmix 沟通后，仍可确认下方价格或发送您的价格。",
+  "quoteFlow.offer.declined.wellmix":
+    "供应商已于 {date} 表示不接受 {price}。请通过消息与对方沟通。如您在 Booking 中修改产品价格，对方会在此看到新价格并可再次回复。",
+  "quoteFlow.chip.offerDeclined": "期望价格：供应商未接受",
+  "purchaseFlow.error.offer_already_declined":
+    "该价格已被拒绝。请通过消息沟通，或确认价格、发送其他价格。",
   "quoteFlow.neg.round.return": "Wellmix 退回",
   "quoteFlow.neg.round.accept": "供应商已接受",
   "quoteFlow.neg.round.counter": "供应商另报新价",

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import {
   NEGOTIATION_DISCOUNT_PCT,
+  declinedOffer,
   offerRoundOf,
   packagingProposalState,
   pendingReturn,
@@ -76,8 +77,8 @@ export function QuoteNegotiationCard({
   // Fornecedor sem nada para ver: o cartão não aparece.
   if (!rounds.length && !(wellmix && open)) return null;
   const currency = quote.currency ?? "USD";
-  const money = (n: number | null | undefined) =>
-    typeof n === "number" ? formatMoney(n, currency, t) : "—";
+  const money = (n: number | null | undefined, cur: string = currency) =>
+    typeof n === "number" ? formatMoney(n, cur, t) : "—";
   const { price: suggested, fromOffer } = suggestedReturnPrice(
     quote.price,
     rounds,
@@ -254,18 +255,26 @@ export function QuoteNegotiationCard({
                       {r.byName} · {formatDate(r.at, t)}
                     </span>
                     <span className="block text-zinc-700">
-                      {r.kind === "return" || r.kind === "offer"
-                        ? typeof r.targetPrice === "number"
-                          ? t("quoteFlow.neg.round.target", {
-                              price: money(r.targetPrice),
-                            })
-                          : null
-                        : r.price !== r.previousPrice
-                          ? t("quoteFlow.neg.round.price", {
-                              from: money(r.previousPrice),
-                              to: money(r.price),
-                            })
-                          : money(r.price)}
+                      {r.kind === "decline"
+                        ? money(r.previousPrice, r.currency ?? currency)
+                        : r.kind === "return" || r.kind === "offer"
+                          ? typeof r.targetPrice === "number"
+                            ? t("quoteFlow.neg.round.target", {
+                                price: money(
+                                  r.targetPrice,
+                                  r.currency ?? currency,
+                                ),
+                              })
+                            : null
+                          : r.price !== r.previousPrice
+                            ? t("quoteFlow.neg.round.price", {
+                                from: money(
+                                  r.previousPrice,
+                                  r.currency ?? currency,
+                                ),
+                                to: money(r.price, r.currency ?? currency),
+                              })
+                            : money(r.price, r.currency ?? currency)}
                       {r.comment ? (
                         <span className="block whitespace-pre-wrap">
                           {r.comment}
@@ -294,21 +303,70 @@ export function QuoteOfferCard({
   offer,
   quantity,
   wellmix,
+  notice,
+  chat,
 }: {
   t: Translate;
   quoteId: string;
-  offer: { price: number; currency: string; leadTimeDays: number | null };
+  offer: {
+    price: number;
+    currency: string;
+    leadTimeDays: number | null;
+    /** O fornecedor já disse que não aceita (a conversa segue). */
+    declined?: {
+      at: string;
+      comment: string | null;
+      price: number | null;
+    } | null;
+  };
   /** Quantidade pedida, já com a unidade ("2.400 un"). */
   quantity: string;
   wellmix: boolean;
+  notice?: string;
+  /** Botão das mensagens, mostrado depois de um "não aceito". */
+  chat?: ReactNode;
 }) {
   const price = formatMoney(offer.price, offer.currency, t);
+  const declined = offer.declined ?? null;
+  // Recusou este mesmo preço: não há por que recusar de novo. Se a Wellmix
+  // mudou o preço no Booking depois, o botão volta (é outro preço).
+  const canDecline = !declined || declined.price !== offer.price;
   return (
     <div id="offer" className="scroll-mt-24" data-quote-offer>
       <Card
         title={t("quoteFlow.offer.title")}
         className="border-brand-300! ring-4 ring-brand-50"
       >
+        {/* Fora do formulário: o botão das mensagens tem o formulário dele. */}
+        <div className="mb-4 space-y-3 empty:hidden">
+          {notice === "declined" ? (
+            <Alert tone="success">{t("quoteFlow.offer.done.declined")}</Alert>
+          ) : null}
+          {declined ? (
+            <Alert tone="warning">
+              <span data-offer-declined>
+                {t(
+                  wellmix
+                    ? "quoteFlow.offer.declined.wellmix"
+                    : "quoteFlow.offer.declined.supplier",
+                  {
+                    date: formatDate(declined.at, t),
+                    price:
+                      typeof declined.price === "number"
+                        ? formatMoney(declined.price, offer.currency, t)
+                        : price,
+                  },
+                )}
+              </span>
+              {declined.comment ? (
+                <span className="mt-1 block whitespace-pre-wrap font-medium">
+                  {declined.comment}
+                </span>
+              ) : null}
+              {chat ? <span className="mt-2 block">{chat}</span> : null}
+            </Alert>
+          ) : null}
+        </div>
         <form action={replyQuoteOfferAction} className="space-y-4">
           <input type="hidden" name="quoteId" value={quoteId} />
           <p className="text-sm leading-relaxed text-zinc-700">
@@ -364,6 +422,19 @@ export function QuoteOfferCard({
             <SubmitButton name="decision" value="counter" variant="secondary">
               {t("quoteFlow.offer.counter")}
             </SubmitButton>
+            {/* Não aceitar não pede prazo nem preço: o botão não valida os
+                campos do formulário. */}
+            {canDecline ? (
+              <SubmitButton
+                name="decision"
+                value="decline"
+                variant="danger"
+                formNoValidate
+                data-offer-decline=""
+              >
+                {t("quoteFlow.offer.decline")}
+              </SubmitButton>
+            ) : null}
           </div>
           <p className="text-xs text-zinc-500">{t("quoteFlow.offer.after")}</p>
         </form>
@@ -600,6 +671,12 @@ export function quoteFlowChips(
       key: "returned",
       text: t("quoteFlow.chip.returned"),
       tone: "warning",
+    });
+  if (declinedOffer(quote.negotiation))
+    chips.push({
+      key: "offerDeclined",
+      text: t("quoteFlow.chip.offerDeclined"),
+      tone: "danger",
     });
   const state = packagingProposalState(quote.packagingProposal);
   if (state === "waiting")
