@@ -115,6 +115,8 @@ export interface BookingOptions {
   currencies: string[];
   /** A empresa de estoque ainda não existe: oferecer "Estoque Wellmix". */
   stockOption: boolean;
+  /** Todos os fornecedores ativos (para trocar o fornecedor na edição). */
+  allSuppliers: BookingOption[];
 }
 
 export interface BookingListData {
@@ -274,6 +276,9 @@ function rowOf(
     requestGroupId: absent ? null : booking.requestGroupId,
     requestNumber: absent ? null : booking.requestNumber,
     requestState: absent === "none" ? null : absent,
+    pieceLengthCm: positive(product?.lengthCm),
+    pieceWidthCm: positive(product?.widthCm),
+    pieceHeightCm: positive(product?.heightCm),
   };
 }
 
@@ -358,6 +363,10 @@ async function buildRows(
         .filter((c): c is string => !!c)
         .sort(),
       stockOption: !customers.some((c) => c.id === STOCK_PARTY_ID),
+      allSuppliers: suppliers
+        .filter((p) => p.active)
+        .map((p) => ({ id: p.id, label: p.name }))
+        .sort(byLabel),
     },
   };
 }

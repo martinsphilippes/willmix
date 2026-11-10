@@ -16,9 +16,12 @@ import { Button } from "@/components/ui";
 export function BookingEnhancer({
   filterFormId,
   bulkFormId,
+  dataFormId,
 }: {
   filterFormId: string;
   bulkFormId: string;
+  /** "Editar dados": só os campos que mudaram vão no envio. */
+  dataFormId?: string;
 }) {
   useEffect(() => {
     const filter = document.getElementById(filterFormId);
@@ -75,17 +78,45 @@ export function BookingEnhancer({
       )
         event.preventDefault();
     };
+    // "Editar dados": campo igual ao que veio do servidor não vai no envio
+    // (só o que a pessoa mudou é gravado; o resto fica como está no banco).
+    const data = dataFormId ? document.getElementById(dataFormId) : null;
+    const onDataSubmit = () => {
+      if (!(data instanceof HTMLFormElement)) return;
+      const same: Array<HTMLInputElement | HTMLSelectElement> = [];
+      for (const el of Array.from(data.elements)) {
+        if (el instanceof HTMLInputElement) {
+          if (el.type === "hidden" || el.disabled) continue;
+          if (el.value === el.defaultValue) same.push(el);
+        } else if (el instanceof HTMLSelectElement && !el.disabled) {
+          if (
+            Array.from(el.options).every(
+              (o) => o.selected === o.defaultSelected,
+            )
+          )
+            same.push(el);
+        }
+      }
+      for (const el of same) el.disabled = true;
+      window.setTimeout(() => {
+        for (const el of same) el.disabled = false;
+      }, 0);
+    };
+    if (data instanceof HTMLFormElement)
+      data.addEventListener("submit", onDataSubmit);
     filter.addEventListener("submit", onSubmit);
     document.addEventListener("change", onChange);
     document.addEventListener("input", onInput);
     document.addEventListener("keydown", onKeyDown);
     return () => {
       filter.removeEventListener("submit", onSubmit);
+      if (data instanceof HTMLFormElement)
+        data.removeEventListener("submit", onDataSubmit);
       document.removeEventListener("change", onChange);
       document.removeEventListener("input", onInput);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [filterFormId, bulkFormId]);
+  }, [filterFormId, bulkFormId, dataFormId]);
   return null;
 }
 

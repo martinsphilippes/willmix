@@ -39,6 +39,7 @@ const FLASH = [
   "kept",
   "norates",
   "draft",
+  "edited",
 ];
 
 /** Volta para a lista mantendo os filtros (só endereço do próprio Booking). */
@@ -307,4 +308,104 @@ export async function saveBookingAnalysisAction(form: FormData) {
     await saveBookingAnalysis(user, bookingId, snapshot);
     return `/app/booking/${bookingId}?analysis=1`;
   });
+}
+
+/** Campos da tabela do Booking que são da ficha mestre (nome no formulário = campo). */
+const SHEET_EDIT_FIELDS = [
+  "factoryItemCode",
+  "location",
+  "supplierStore",
+  "sheetDate",
+  "price",
+  "currency",
+  "moq",
+  "masterCartonQty",
+  "innerQty",
+  "netWeightPcKg",
+  "grossWeightPcKg",
+  "averagePrice",
+  "cbmPerCarton",
+  "colorAssortment",
+  "material",
+  "packageType",
+] as const;
+const PIECE_FIELDS = {
+  pieceLengthCm: "lengthCm",
+  pieceWidthCm: "widthCm",
+  pieceHeightCm: "heightCm",
+} as const;
+/** `d.<id do produto>.<campo>`: o que a tela mandou (só o que mudou). */
+const EDIT_KEY = /^d\.([A-Za-z0-9_-]{1,64})\.([A-Za-z]{1,40})$/;
+
+/**
+ * "Editar dados" do Booking: os dados dos produtos mudados direto na
+ * tabela. A tela manda só os campos que mudaram (`d.<produto>.<campo>`); os
+ * da ficha mestre são lidos pelo mesmo leitor da ficha do produto.
+ */
+export async function saveBookingProductsAction(form: FormData) {
+  const user = await requireUser();
+  const back = listBack(form);
+  const sent = str(form, "draftId");
+  const draftId = /^[a-z0-9]{1,32}$/.test(sent) ? sent : "";
+  await run(back, () =>
+    guarded(
+      back,
+      async () => {
+        assertWellmix(user);
+        assertScreen(user, "booking");
+        assertScreen(user, "products");
+        const { parseSheet } = await import("./sheet-form");
+        const byProduct = new Map<string, Map<string, string>>();
+        for (const [key, value] of form.entries()) {
+          const m = EDIT_KEY.exec(key);
+          if (!m || typeof value !== "string") continue;
+          const fields = byProduct.get(m[1]) ?? new Map<string, string>();
+          fields.set(m[2], value.slice(0, 4000));
+          byProduct.set(m[1], fields);
+        }
+        if (byProduct.size > BOOKING_BULK_MAX) throw new Error("invalid_input");
+        const { saveBookingProductEdits } =
+          await import("@/lib/services/booking-product-edit");
+        const edits = [...byProduct.entries()].map(([productId, fields]) => {
+          const invalid: string[] = [];
+          const sheetForm = new FormData();
+          for (const key of SHEET_EDIT_FIELDS)
+            if (fields.has(key)) sheetForm.set(key, fields.get(key)!);
+          const { input, invalid: bad } = parseSheet(sheetForm);
+          invalid.push(...bad);
+          const sheet = Object.fromEntries(
+            Object.entries(input).filter(([, v]) => v !== undefined),
+          );
+          const edit: {
+            productId: string;
+            supplierId?: string;
+            name?: string;
+            lengthCm?: number | null;
+            widthCm?: number | null;
+            heightCm?: number | null;
+            sheet: typeof sheet;
+            invalid: string[];
+          } = { productId, sheet, invalid };
+          if (fields.has("supplierId")) {
+            const id = fields.get("supplierId")!.trim();
+            if (id && !ID.safeParse(id).success) invalid.push("supplierId");
+            else if (id) edit.supplierId = id;
+          }
+          if (fields.has("name")) edit.name = fields.get("name")!;
+          for (const [formKey, column] of Object.entries(PIECE_FIELDS)) {
+            if (!fields.has(formKey)) continue;
+            const raw = fields.get(formKey)!.trim();
+            const n = raw ? parseNumberInput(raw) : null;
+            if (n !== null && (Number.isNaN(n) || n < 0 || n > 100_000))
+              invalid.push(formKey);
+            else edit[column] = n === null || n === 0 ? null : n;
+          }
+          return edit;
+        });
+        const saved = await saveBookingProductEdits(user, edits);
+        return withParams(back, { edited: saved });
+      },
+      draftId,
+    ),
+  );
 }

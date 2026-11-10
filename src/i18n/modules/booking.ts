@@ -91,6 +91,8 @@ export const pt = {
     "Observação longa demais (até 500 caracteres).",
   "booking.error.booking_locked":
     "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação.",
+  "booking.error.booking_data_invalid":
+    "Algum valor digitado não deu para ler (número, data, fornecedor ou nome com menos de 2 letras). Nada foi gravado: confira a linha destacada.",
   "booking.error.booking_changed":
     "Esta linha mudou enquanto a ação rodava (outra pessoa mexeu nela). As linhas anteriores a ela já foram gravadas; atualize a página e confira.",
   "booking.error.booking_request_pending":
@@ -202,6 +204,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Note too long (up to 500 characters).",
   "booking.error.booking_locked":
     "This row already became a request: customer and quantity change in the request.",
+  "booking.error.booking_data_invalid":
+    "A typed value could not be read (number, date, supplier, or a name shorter than 2 letters). Nothing was saved: check the highlighted row.",
   "booking.error.booking_changed":
     "This row changed while the action was running (someone else touched it). The rows before it were already saved; refresh the page and check.",
   "booking.error.booking_request_pending":
@@ -308,6 +312,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.error.booking_note_too_long": "备注过长（最多 500 个字符）。",
   "booking.error.booking_locked":
     "该行已生成询价单：客户和数量请在询价单中修改。",
+  "booking.error.booking_data_invalid":
+    "有输入的值无法识别（数字、日期、供应商，或名称少于 2 个字）。没有保存任何内容：请检查标出的那一行。",
   "booking.error.booking_changed":
     "操作进行时该行已被他人修改。它之前的行已保存；请刷新页面后核对。",
   "booking.error.booking_request_pending":

@@ -78,6 +78,8 @@ export const BOOKING_ERRORS = [
   "booking_note_too_long",
   /** Linha que já virou solicitação: cliente e quantidade não mudam aqui. */
   "booking_locked",
+  /** Editar dados: algum valor digitado não deu para ler. */
+  "booking_data_invalid",
   /** A linha mudou (outra pessoa, outra aba) entre a conferência e a gravação. */
   "booking_changed",
   /** Linha com solicitação em andamento: só volta quando a solicitação é excluída. */
@@ -338,6 +340,10 @@ export interface BookingRow {
    * `missing` = a criação parou no meio (a linha pode ser devolvida).
    */
   requestState: "pending" | "missing" | null;
+  /** Medidas da peça (cm), para editar na tabela. */
+  pieceLengthCm: number | null;
+  pieceWidthCm: number | null;
+  pieceHeightCm: number | null;
 }
 
 /* ------------------------------------------------------------------------ */
