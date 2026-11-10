@@ -4,15 +4,17 @@ import { useState, useSyncExternalStore, useTransition } from "react";
 import { cx, inputDenseClass } from "@/components/ui";
 import {
   setBookingCustomerAction,
+  setBookingProductFieldAction,
   setBookingQuantityAction,
 } from "@/app/app/actions/booking";
 
 /*
- * Booking: o cliente e a quantidade reservada direto na linha da tabela.
- * Gravam sozinhos (escolheu o cliente; digitou a quantidade e saiu do campo),
- * sem marcar a linha nem ir à barra de cima, e avisam na própria célula:
- * gravando, gravado ou por que não gravou. A tela é só atualizada, não
- * recarregada: o que a pessoa digitou nas outras linhas continua lá.
+ * Booking: os campos direto na tabela (cliente, quantidade reservada e os
+ * dados do produto: preço, MOQ, pesos, medidas, fornecedor...). Cada um grava
+ * sozinho (escolheu na lista; digitou e saiu do campo, ou Enter), sem marcar
+ * a linha nem ir à barra de cima, e avisa na própria célula: gravando,
+ * gravado ou por que não gravou. A tela é só atualizada, não recarregada: o
+ * que a pessoa digitou nas outras linhas continua lá.
  */
 
 export interface BookingRowFieldLabels {
@@ -24,6 +26,7 @@ export interface BookingRowFieldLabels {
   failed: string;
 }
 
+type Result = { ok: true } | { ok: false; message: string };
 type Note = { text: string; ok: boolean } | null;
 
 const subscribeNothing = () => () => {};
@@ -32,13 +35,10 @@ const subscribeNothing = () => () => {};
 function useRowSave(labels: BookingRowFieldLabels) {
   const [note, setNote] = useState<Note>(null);
   const [pending, start] = useTransition();
-  const save = (
-    send: () => Promise<{ ok: true } | { ok: false; message: string }>,
-    onRefused: () => void,
-  ) => {
+  const save = (send: () => Promise<Result>, onRefused: () => void) => {
     setNote(null);
     start(async () => {
-      let result: Awaited<ReturnType<typeof send>>;
+      let result: Result;
       try {
         result = await send();
       } catch {
@@ -72,7 +72,7 @@ function RowNote({
     <span
       role="status"
       className={cx(
-        "mt-0.5 block text-[11px] leading-tight whitespace-normal",
+        "mt-0.5 block text-left text-[11px] leading-tight whitespace-normal",
         pending
           ? "text-zinc-500"
           : note?.ok
@@ -86,18 +86,23 @@ function RowNote({
   );
 }
 
-export function BookingCustomerSelect({
-  bookingId,
+/** Lista que grava ao escolher; recusada, volta para o que está gravado. */
+function SaveSelect({
+  send,
   current,
   options,
   labels,
+  width,
+  ...data
 }: {
-  bookingId: string;
-  /** Cliente gravado na linha ("-" quando não há). */
+  send: (value: string) => Promise<Result>;
+  /** O que está gravado. */
   current: string;
   /** Na ordem da lista; o valor é o que a ação recebe. */
   options: { value: string; label: string }[];
   labels: BookingRowFieldLabels;
+  width: string;
+  [data: `data-${string}`]: string;
 }) {
   const [value, setValue] = useState(current);
   // O que o servidor diz que está gravado mudou (esta gravação ou a de outra
@@ -120,21 +125,20 @@ export function BookingCustomerSelect({
     if (next === value) return;
     setValue(next);
     save(
-      () => setBookingCustomerAction(bookingId, next),
-      // Não gravou: a lista volta para o que está gravado.
+      () => send(next),
       () => setValue(current),
     );
   }
 
   return (
-    <span className="block w-40" data-booking-customer={bookingId}>
+    <span className={cx("block", width)} {...data}>
       <select
         value={value}
         onChange={(e) => choose(e.target.value)}
         disabled={pending || !ready}
         aria-busy={pending}
         aria-label={labels.field}
-        className={cx(inputDenseClass, "w-40", pending && "opacity-60")}
+        className={cx(inputDenseClass, width, pending && "opacity-60")}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -148,24 +152,37 @@ export function BookingCustomerSelect({
 }
 
 /**
- * A quantidade reservada da linha. Continua sendo um campo do formulário da
- * barra (`qty_<id>`): numa ação em várias linhas, vale o que está digitado.
- * Sozinha, grava ao sair do campo ou no Enter. Recusada (abaixo do pedido
- * mínimo, por exemplo), o número digitado fica para a pessoa corrigir.
+ * Campo que grava ao sair dele ou no Enter. Recusado (valor que não dá para
+ * ler, abaixo do pedido mínimo...), o que foi digitado fica para corrigir.
+ * Gravado, o campo passa a mostrar o valor como ficou no servidor.
  */
-export function BookingQuantityInput({
-  bookingId,
-  formId,
+function SaveInput({
+  send,
   saved,
-  placeholder,
   labels,
+  width,
+  numeric,
+  type,
+  placeholder,
+  form,
+  name,
+  wrap = true,
+  ...data
 }: {
-  bookingId: string;
-  formId: string;
-  /** Quantidade gravada na linha ("" quando não há). */
+  send: (value: string) => Promise<Result>;
+  /** O que está gravado, como a pessoa digita ("" quando não há). */
   saved: string;
-  placeholder: string;
   labels: BookingRowFieldLabels;
+  width: string;
+  numeric?: boolean;
+  type?: string;
+  placeholder?: string;
+  /** Quando o campo também vai no envio de um formulário da tela. */
+  form?: string;
+  name?: string;
+  /** Falso: vários campos na mesma célula (o aviso fica embaixo de cada). */
+  wrap?: boolean;
+  [data: `data-${string}`]: string;
 }) {
   const { note, pending, save } = useRowSave(labels);
   // O último valor mandado gravar: sair do campo de novo sem mexer não regrava.
@@ -181,34 +198,158 @@ export function BookingQuantityInput({
     if (next === sent) return;
     setSent(next);
     save(
-      () => setBookingQuantityAction(bookingId, next),
+      () => send(next),
       // Não gravou: sair do campo de novo tenta outra vez.
       () => setSent(saved),
     );
   }
 
   return (
-    <span className="block w-24 min-w-24" data-booking-qty-cell={bookingId}>
+    <span className={cx(wrap ? "block" : "inline-block align-top", width)}>
       <input
-        form={formId}
-        name={`qty_${bookingId}`}
+        // O valor gravado mudou (esta gravação, a troca do fornecedor que
+        // traz os dados dele, outra pessoa): o campo mostra o novo.
+        key={saved}
+        form={form}
+        name={name}
         defaultValue={saved}
-        inputMode="numeric"
+        type={type ?? "text"}
+        inputMode={numeric ? "decimal" : undefined}
         autoComplete="off"
         placeholder={placeholder}
         aria-label={labels.field}
         aria-busy={pending}
-        data-booking-qty={bookingId}
         onBlur={(e) => commit(e.currentTarget.value)}
         onKeyDown={(e) => {
-          // Enter grava a linha (em vez de acionar o primeiro botão da barra).
+          // Enter grava o campo (em vez de enviar um formulário da tela).
           if (e.key !== "Enter") return;
           e.preventDefault();
           commit(e.currentTarget.value);
         }}
-        className={cx(inputDenseClass, "w-24 min-w-24 text-right")}
+        className={cx(inputDenseClass, width, numeric && "text-right")}
+        {...data}
       />
       <RowNote note={note} pending={pending} saving={labels.saving} />
     </span>
+  );
+}
+
+export function BookingCustomerSelect({
+  bookingId,
+  current,
+  options,
+  labels,
+}: {
+  bookingId: string;
+  /** Cliente gravado na linha ("-" quando não há). */
+  current: string;
+  options: { value: string; label: string }[];
+  labels: BookingRowFieldLabels;
+}) {
+  return (
+    <SaveSelect
+      send={(value) => setBookingCustomerAction(bookingId, value)}
+      current={current}
+      options={options}
+      labels={labels}
+      width="w-40"
+      data-booking-customer={bookingId}
+    />
+  );
+}
+
+/**
+ * A quantidade reservada da linha. Continua sendo um campo do formulário da
+ * barra (`qty_<id>`): numa ação em várias linhas, vale o que está digitado.
+ */
+export function BookingQuantityInput({
+  bookingId,
+  formId,
+  saved,
+  placeholder,
+  labels,
+}: {
+  bookingId: string;
+  formId: string;
+  /** Quantidade gravada na linha ("" quando não há). */
+  saved: string;
+  placeholder: string;
+  labels: BookingRowFieldLabels;
+}) {
+  return (
+    <SaveInput
+      send={(value) => setBookingQuantityAction(bookingId, value)}
+      saved={saved}
+      labels={labels}
+      width="w-24 min-w-24"
+      numeric
+      placeholder={placeholder}
+      form={formId}
+      name={`qty_${bookingId}`}
+      data-booking-qty={bookingId}
+    />
+  );
+}
+
+/** Um dado do produto (preço, MOQ, pesos, medidas, código, cores...). */
+export function BookingProductInput({
+  productId,
+  field,
+  saved,
+  labels,
+  width = "w-24",
+  numeric,
+  type,
+  wrap,
+}: {
+  productId: string;
+  /** Nome do campo que a ação recebe (os mesmos do "Salvar dados"). */
+  field: string;
+  saved: string;
+  labels: BookingRowFieldLabels;
+  width?: string;
+  numeric?: boolean;
+  type?: string;
+  wrap?: boolean;
+}) {
+  return (
+    <SaveInput
+      send={(value) => setBookingProductFieldAction(productId, field, value)}
+      saved={saved}
+      labels={labels}
+      width={width}
+      numeric={numeric}
+      type={type}
+      wrap={wrap}
+      data-booking-edit={field}
+    />
+  );
+}
+
+/** Um dado do produto escolhido em lista (fornecedor, moeda). */
+export function BookingProductSelect({
+  productId,
+  field,
+  current,
+  options,
+  labels,
+  width,
+}: {
+  productId: string;
+  field: string;
+  current: string;
+  options: { value: string; label: string }[];
+  labels: BookingRowFieldLabels;
+  width: string;
+}) {
+  return (
+    <SaveSelect
+      send={(value) => setBookingProductFieldAction(productId, field, value)}
+      current={current}
+      options={options}
+      labels={labels}
+      width={width}
+      data-booking-edit={field}
+    />
   );
 }

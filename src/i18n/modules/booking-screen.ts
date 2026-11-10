@@ -117,6 +117,10 @@ export const pt = {
   "booking.row.saving": "Gravando…",
   "booking.row.saved": "Gravado ✓",
   "booking.row.failed": "Não gravou. Tente de novo.",
+  "booking.row.invalid":
+    "Não deu para ler este valor (número, data ou nome com menos de 2 letras). Nada foi gravado.",
+  "booking.row.autosave":
+    "Os campos da tabela gravam sozinhos: escolha na lista ou digite e saia do campo. Aparece “Gravado ✓” embaixo; se não puder gravar, o motivo aparece em vermelho.",
   "booking.row.qty": "Quantidade reservada de {name}",
   "booking.row.qtyMin": "mín. {moq}",
   "booking.row.rows": "linhas {rows}",
@@ -244,6 +248,10 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.row.saving": "Saving…",
   "booking.row.saved": "Saved ✓",
   "booking.row.failed": "Not saved. Try again.",
+  "booking.row.invalid":
+    "This value could not be read (number, date or a name shorter than 2 letters). Nothing was saved.",
+  "booking.row.autosave":
+    "The table fields save by themselves: choose from the list, or type and leave the field. “Saved ✓” shows below; if it cannot be saved, the reason shows in red.",
   "booking.row.qty": "Reserved quantity of {name}",
   "booking.row.qtyMin": "min. {moq}",
   "booking.row.rows": "rows {rows}",
@@ -363,6 +371,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.row.saving": "保存中…",
   "booking.row.saved": "已保存 ✓",
   "booking.row.failed": "未保存，请重试。",
+  "booking.row.invalid":
+    "无法读取该值（数字、日期，或名称少于 2 个字）。未保存任何内容。",
+  "booking.row.autosave":
+    "表格中的字段会自动保存：从列表中选择，或输入后离开该字段。下方显示“已保存 ✓”；无法保存时，原因以红色显示。",
   "booking.row.qty": "{name} 的预订数量",
   "booking.row.qtyMin": "最少 {moq}",
   "booking.row.rows": "第 {rows} 行",
