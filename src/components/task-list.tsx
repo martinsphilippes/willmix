@@ -159,6 +159,8 @@ function SupplierSteps({
   const counts = new Map<string, number>();
   for (const task of tasks)
     counts.set(task.group, (counts.get(task.group) ?? 0) + 1);
+  const activeStep =
+    SUPPLIER_STEPS.find((step) => supplierGroup(step) === group) ?? null;
   return (
     <section className="mb-4" data-supplier-steps>
       <p className="mb-3 text-sm text-zinc-600">{t("supplierTasks.intro")}</p>
@@ -180,21 +182,33 @@ function SupplierSteps({
           {t("supplierTasks.steps.all")} · {tasks.length}
         </Link>
       </div>
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+      {/* Fluxo do processo: quadrados pequenos, um ao lado do outro, na
+          ordem das etapas (pedido do dono). Em tela estreita a faixa rola
+          para o lado. O que fazer em cada etapa aparece ao escolher. */}
+      <ol
+        className="flex items-stretch gap-1 overflow-x-auto pb-1"
+        data-supplier-flow
+      >
         {SUPPLIER_STEPS.map((step, i) => {
           const key = supplierGroup(step);
           const n = counts.get(key) ?? 0;
           const active = group === key;
           return (
-            <li key={step} className="min-w-0">
+            <li key={step} className="flex shrink-0 items-center gap-1">
+              {i > 0 ? (
+                <span aria-hidden className="text-sm text-zinc-400">
+                  →
+                </span>
+              ) : null}
               <Link
                 href={tasksHref(due, active ? null : key)}
                 aria-pressed={active}
+                title={t(`supplierTasks.help.${step}` as DictionaryKey)}
                 data-task-filter={`type:${key}`}
                 data-supplier-step={step}
                 data-supplier-step-count={n}
                 className={cx(
-                  "flex h-full flex-col gap-1 rounded-xl border p-2.5 transition",
+                  "flex h-full items-center gap-1.5 rounded-lg border px-2 py-1.5 transition",
                   active
                     ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
                     : n
@@ -202,42 +216,40 @@ function SupplierSteps({
                       : "border-zinc-200 bg-zinc-50 hover:border-zinc-300",
                 )}
               >
-                <span className="flex items-start gap-1.5">
-                  <span
-                    aria-hidden
-                    className={cx(
-                      "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                      n
-                        ? "bg-brand-600 text-white"
-                        : "bg-zinc-200 text-zinc-600",
-                    )}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 text-sm font-semibold leading-tight text-zinc-900">
-                    {t(`tasks.group.${key}` as DictionaryKey)}
-                  </span>
-                </span>
-                <span className="text-xs leading-snug text-zinc-600">
-                  {t(`supplierTasks.help.${step}` as DictionaryKey)}
-                </span>
                 <span
+                  aria-hidden
                   className={cx(
-                    "mt-auto pt-1 text-xs font-semibold",
-                    n ? "text-brand-700" : "text-zinc-400",
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                    n ? "bg-brand-600 text-white" : "bg-zinc-200 text-zinc-600",
                   )}
                 >
-                  {n === 0
-                    ? t("supplierTasks.steps.none")
-                    : n === 1
-                      ? t("supplierTasks.steps.count1")
-                      : t("supplierTasks.steps.count", { n })}
+                  {i + 1}
                 </span>
+                <span className="whitespace-nowrap text-xs font-semibold text-zinc-900">
+                  {t(`tasks.group.${key}` as DictionaryKey)}
+                </span>
+                {n ? (
+                  <span
+                    className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white"
+                    aria-label={
+                      n === 1
+                        ? t("supplierTasks.steps.count1")
+                        : t("supplierTasks.steps.count", { n })
+                    }
+                  >
+                    {n}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );
         })}
       </ol>
+      {activeStep ? (
+        <p className="mt-1 text-sm text-zinc-700" data-supplier-step-help>
+          {t(`supplierTasks.help.${activeStep}` as DictionaryKey)}
+        </p>
+      ) : null}
       <p className="mt-2 text-xs text-zinc-500">{t("supplierTasks.after")}</p>
     </section>
   );

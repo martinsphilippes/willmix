@@ -760,3 +760,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Decisão do dono** (10/11/2026): quem faz a Programação de compra é a Wellmix, o administrador. Pedido na Preparação, com ficha de compra e ainda sem o 1º lote, aparece em "Minhas pendências" do administrador como "Fazer a programação de compra: pedido #N", com o atalho para a ficha e o prazo da etapa. Some quando o 1º lote é gravado.
 - Pendência derivada (não é item de etapa): `pendingTasksFor` em `src/lib/services/tasks.ts`, tipo `purchase_schedule`. A trava na validação da ficha (`schedule_required`) continua.
 - Teste: `tests/unit/purchase-sheet.test.ts`.
+
+## Pendências do fornecedor: etapas em faixa de fluxo
+
+- **Pedido do dono** (10/11/2026): os quadrados das etapas em "Minhas pendências" do fornecedor ficam pequenos, um ao lado do outro, com seta entre eles, como um fluxo de processo (`SupplierSteps` em `src/components/task-list.tsx`). Cada um mostra o número da etapa, o nome e a contagem quando há pendência; o texto do que fazer aparece ao escolher a etapa (e na dica do quadrado). Em tela estreita a faixa rola para o lado. Filtros e contagens não mudaram.
