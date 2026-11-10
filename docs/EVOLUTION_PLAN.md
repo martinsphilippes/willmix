@@ -745,3 +745,7 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Dado**: guardado em Configurações, na chave `productionStartDaysBySupplier` (fornecedor → dias), para não exigir publicação de esquema. `productionStartFor` usa o prazo do fornecedor do pedido e, sem ele, o padrão.
 - Vale para as próximas assinaturas: pedido já assinado, com a data gravada, não muda quando o prazo muda.
 - Teste: `tests/unit/order-signature.test.ts`.
+
+## Control Tower: Exceções e Visão comercial por container abrem por quadrado
+
+- **Pedido do dono** (10/11/2026): os cartões "Exceções" e "Visão comercial por container" deixam de ficar abertos no fim do painel. Cada um ganhou um quadrado em "Visões gerais" (com a contagem); tocar abre o cartão logo abaixo (`/app?filter=exceptions` e `/app?filter=commercial`), tocar de novo fecha. Nada saiu: o conteúdo e as permissões são os mesmos (a visão comercial continua só para quem tem o Financeiro). Código em `src/components/control-tower.tsx`.
