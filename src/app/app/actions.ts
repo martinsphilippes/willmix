@@ -329,12 +329,10 @@ export async function selectQuoteAction(form: FormData) {
         downPaymentAmount: num(form, "downPaymentAmount"),
         downPaymentPercent: parseNumberInput(str(form, "downPaymentPercent")),
       });
-    const carrierBrl = z
-      .number()
-      .nonnegative()
-      .max(100_000_000)
-      .nullable()
-      .parse(num(form, "freightCarrierBrl"));
+    // Frete marítimo: quem informa é a companhia marítima, no pedido de
+    // frete dela; sem a resposta, a conta usa o estimado. Nada digitado no
+    // formulário da escolha entra na conta (um valor enviado é ignorado).
+    const carrierBrl = null;
     // Memória do cálculo refeita no servidor (não confia no navegador).
     const pricing = await pricingRecordFor(
       requestId,

@@ -205,7 +205,9 @@ export async function quotePricing(
       marginPercent: margin.percent,
       fx: fx.rates,
       freight: {
-        // Digitado pelo operador > informado pela companhia marítima > por CBM.
+        // Informado pela companhia marítima (fixado) > estimado por CBM. Na
+        // escolha do fornecedor ninguém digita o frete; `carrierBrl` nas opções
+        // fica para contas internas (ex.: simulação).
         carrierBrl: options.carrierBrl ?? shippingFreight.brl,
         perCbm: settings.freightPerCbm,
         perCbmCurrency: settings.freightCurrency,

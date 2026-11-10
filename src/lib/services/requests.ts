@@ -880,6 +880,15 @@ export async function answerQuote(
     quoteId,
     `${input.currency} ${input.price}, ${input.leadTimeDays} dias`,
   );
+  // A companhia marítima recebe o pedido de frete com a carga desta cotação
+  // (quem informa o frete é ela; sem resposta, a conta segue com o estimado).
+  // Falha aqui não derruba a resposta da cotação.
+  try {
+    const { inviteFreightForQuote } = await import("./freight");
+    await inviteFreightForQuote(user, quoteId);
+  } catch (error) {
+    console.error("[requests] pedido de frete da cotação falhou", error);
+  }
   if (request) {
     await notifyWellmix({
       kind: "action",
