@@ -230,6 +230,26 @@ export const pt = {
     "Medidas da embalagem a confirmar: {product}",
   "notif.packBrief.dimsUnknown.body":
     "O fornecedor escolhido ainda não informou as medidas da caixa; as atuais vieram de outra cotação e continuam provisórias. A Wellmix confirma ou informa à mão.",
+  "packBrief.artPrompt.title": "Prompt para criar a arte (ChatGPT)",
+  "packBrief.artPrompt.hint":
+    "Escreva o que a arte deve ter e toque em Gerar prompt. O texto sai com os dados deste briefing, pronto para copiar e colar no ChatGPT junto com as fotos do produto. A imagem é criada lá; depois envie em Arte da embalagem.",
+  "packBrief.artPrompt.wish": "O que você quer na arte",
+  "packBrief.artPrompt.wishPlaceholder":
+    "Estilo, cores, textos da frente e do verso, marca, público, referências…",
+  "packBrief.artPrompt.generate": "Gerar prompt",
+  "packBrief.artPrompt.result": "Prompt pronto (pode ajustar antes de copiar)",
+  "packBrief.artPrompt.copy": "Copiar prompt",
+  "packBrief.artPrompt.copied": "Copiado",
+  "packBrief.artPrompt.copyFailed":
+    "Não deu para copiar sozinho: selecione o texto e copie.",
+  "packBrief.artPrompt.open": "Abrir o ChatGPT",
+  "packBrief.artPrompt.intro":
+    "Crie a arte da embalagem do produto abaixo, pronta para impressão.",
+  "packBrief.artPrompt.closing":
+    "Regras: respeite a proporção das medidas informadas; alta resolução; deixe espaço para o código de barras e para as informações obrigatórias; não invente dados técnicos que não estão acima; use as fotos do produto que vou anexar como referência fiel do produto.",
+  "packBrief.artPrompt.fact.carton": "Caixa master (C × L × A)",
+  "packBrief.artPrompt.fact.instructions": "Instruções da Wellmix",
+  "packBrief.artPrompt.fact.notes": "Observações da agência",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -456,6 +476,27 @@ export const en: Record<keyof typeof pt, string> = {
     "Packaging dimensions to confirm: {product}",
   "notif.packBrief.dimsUnknown.body":
     "The chosen supplier has not given the carton dimensions yet; the current ones came from another quote and remain provisional. Wellmix confirms them or enters them manually.",
+  "packBrief.artPrompt.title": "Prompt to create the artwork (ChatGPT)",
+  "packBrief.artPrompt.hint":
+    "Write what the artwork must have and tap Generate prompt. The text comes with this brief's data, ready to copy and paste into ChatGPT together with the product photos. The image is created there; then upload it under Packaging artwork.",
+  "packBrief.artPrompt.wish": "What you want in the artwork",
+  "packBrief.artPrompt.wishPlaceholder":
+    "Style, colors, front and back texts, brand, audience, references…",
+  "packBrief.artPrompt.generate": "Generate prompt",
+  "packBrief.artPrompt.result":
+    "Prompt ready (you can adjust it before copying)",
+  "packBrief.artPrompt.copy": "Copy prompt",
+  "packBrief.artPrompt.copied": "Copied",
+  "packBrief.artPrompt.copyFailed":
+    "Could not copy automatically: select the text and copy it.",
+  "packBrief.artPrompt.open": "Open ChatGPT",
+  "packBrief.artPrompt.intro":
+    "Create the packaging artwork for the product below, ready for printing.",
+  "packBrief.artPrompt.closing":
+    "Rules: keep the proportions of the given dimensions; high resolution; leave room for the barcode and mandatory information; do not invent technical data that is not above; use the product photos I will attach as a faithful reference of the product.",
+  "packBrief.artPrompt.fact.carton": "Master carton (L × W × H)",
+  "packBrief.artPrompt.fact.instructions": "Wellmix instructions",
+  "packBrief.artPrompt.fact.notes": "Agency notes",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -653,4 +694,22 @@ export const zh: Record<keyof typeof pt, string> = {
   "notif.packBrief.dimsUnknown.subject": "包装尺寸待确认：{product}",
   "notif.packBrief.dimsUnknown.body":
     "已选供应商尚未提供外箱尺寸；当前尺寸来自其他报价，仍为临时数据。由 Wellmix 确认或手动填写。",
+  "packBrief.artPrompt.title": "生成包装设计的提示词（ChatGPT）",
+  "packBrief.artPrompt.hint":
+    "写下设计需要包含的内容，然后点击“生成提示词”。文本会带上本简报的数据，可直接复制粘贴到 ChatGPT，并附上产品照片。图片在那里生成，之后在“包装设计”处上传。",
+  "packBrief.artPrompt.wish": "您希望设计包含什么",
+  "packBrief.artPrompt.wishPlaceholder":
+    "风格、颜色、正反面文字、品牌、受众、参考……",
+  "packBrief.artPrompt.generate": "生成提示词",
+  "packBrief.artPrompt.result": "提示词已生成（复制前可修改）",
+  "packBrief.artPrompt.copy": "复制提示词",
+  "packBrief.artPrompt.copied": "已复制",
+  "packBrief.artPrompt.copyFailed": "无法自动复制：请选中文本后手动复制。",
+  "packBrief.artPrompt.open": "打开 ChatGPT",
+  "packBrief.artPrompt.intro": "请为以下产品制作可直接印刷的包装设计。",
+  "packBrief.artPrompt.closing":
+    "要求：保持所给尺寸的比例；高分辨率；为条形码和必填信息留出位置；不要编造上面没有的技术数据；以我附上的产品照片作为产品的准确参考。",
+  "packBrief.artPrompt.fact.carton": "外箱（长 × 宽 × 高）",
+  "packBrief.artPrompt.fact.instructions": "Wellmix 的说明",
+  "packBrief.artPrompt.fact.notes": "设计公司备注",
 };

@@ -514,7 +514,10 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
       value: 1500,
     });
     expect(open.cards.find((c) => c.key === "ordBooking")!.value).toBe(5000);
-    expect(open.cards.map((c) => c.key)).toEqual(BOARD_CARDS.map((c) => c.key));
+    // Com o Booking, "Solicitação nova" só aparece quando há alguma.
+    expect(open.cards.map((c) => c.key)).toEqual(
+      BOARD_CARDS.filter((c) => c.key !== "reqNew").map((c) => c.key),
+    );
   });
 });
 
@@ -591,6 +594,25 @@ describe("bloco do Booking", () => {
     expect(card("bkNew").count).toBe(0);
     // O bloco vem antes das solicitações.
     expect(board.cards[0].block).toBe("booking");
+  });
+
+  it("com o Booking, Solicitação nova só aparece enquanto houver alguma", () => {
+    const request = {
+      id: "r1",
+      status: "REQUESTED",
+      customerId: "c1",
+      productName: "Copo",
+      deadline: null,
+      sellPrice: null,
+      sellCurrency: null,
+      selectedQuoteId: null,
+    } as unknown as BoardInput["requests"][number];
+    const keys = (over: Partial<BoardInput>) =>
+      buildTowerBoard(input(over)).cards.map((c) => c.key);
+    expect(keys({ bookings: {} })).not.toContain("reqNew");
+    expect(keys({ bookings: {}, requests: [request] })).toContain("reqNew");
+    // Quem não abre o Booking continua com ela, mesmo zerada.
+    expect(keys({})).toContain("reqNew");
   });
 
   it("some para quem não abre o Booking", () => {
