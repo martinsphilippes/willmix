@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import type { Translate } from "@/i18n";
 import {
   NEGOTIATION_DISCOUNT_PCT,
+  offerRoundOf,
   packagingProposalState,
   pendingReturn,
-  suggestedTargetPrice,
+  suggestedReturnPrice,
   type NegotiationRound,
   type PackagingProposal,
   type PackagingProposalVersion,
@@ -12,6 +13,7 @@ import {
 import {
   decidePackagingProposalAction,
   replyNegotiationAction,
+  replyQuoteOfferAction,
   returnQuoteAction,
   sendPackagingProposalAction,
 } from "@/app/app/actions/quote-flow";
@@ -58,12 +60,15 @@ export function QuoteNegotiationCard({
   quote,
   wellmix,
   notice,
+  chat,
 }: {
   t: Translate;
   quote: QuoteView;
   /** Quem vê é da Wellmix (senão, o fornecedor da cotação). */
   wellmix: boolean;
   notice?: string;
+  /** Botão das mensagens, mostrado quando o preço difere do desejado. */
+  chat?: ReactNode;
 }) {
   const rounds = quote.negotiation ?? [];
   const pending = pendingReturn(rounds);
@@ -73,7 +78,13 @@ export function QuoteNegotiationCard({
   const currency = quote.currency ?? "USD";
   const money = (n: number | null | undefined) =>
     typeof n === "number" ? formatMoney(n, currency, t) : "—";
-  const suggested = suggestedTargetPrice(quote.price);
+  const { price: suggested, fromOffer } = suggestedReturnPrice(
+    quote.price,
+    rounds,
+  );
+  // Preço desejado enviado e o fornecedor respondeu com outro: negociar.
+  const wanted = offerRoundOf(rounds)?.targetPrice;
+  const differs = open && typeof wanted === "number" && quote.price !== wanted;
   return (
     <div id="negotiation" className="scroll-mt-24" data-quote-negotiation>
       <Card title={t("quoteFlow.neg.title")} dense>
@@ -82,6 +93,21 @@ export function QuoteNegotiationCard({
             <Alert tone="success">{t("quoteFlow.neg.done.returned")}</Alert>
           ) : notice === "replied" ? (
             <Alert tone="success">{t("quoteFlow.neg.done.replied")}</Alert>
+          ) : notice === "confirmed" ? (
+            <Alert tone="success">{t("quoteFlow.neg.done.confirmed")}</Alert>
+          ) : notice === "countered" ? (
+            <Alert tone="success">{t("quoteFlow.neg.done.countered")}</Alert>
+          ) : null}
+          {differs ? (
+            <Alert tone="warning">
+              <span data-negotiation-differs>
+                {t("quoteFlow.neg.differs", {
+                  price: money(quote.price),
+                  wanted: money(wanted),
+                })}
+              </span>
+              {chat ? <span className="mt-2 block">{chat}</span> : null}
+            </Alert>
           ) : null}
           {wellmix && open && !pending ? (
             <p className="text-sm text-zinc-600">
@@ -128,12 +154,16 @@ export function QuoteNegotiationCard({
               <Field
                 label={t("quoteFlow.neg.target", { currency })}
                 hint={
-                  suggested !== null
-                    ? t("quoteFlow.neg.targetHint", {
-                        pct: NEGOTIATION_DISCOUNT_PCT,
-                        suggested: money(suggested),
-                      })
-                    : undefined
+                  suggested === null
+                    ? undefined
+                    : fromOffer
+                      ? t("quoteFlow.neg.targetHintOffer", {
+                          suggested: money(suggested),
+                        })
+                      : t("quoteFlow.neg.targetHint", {
+                          pct: NEGOTIATION_DISCOUNT_PCT,
+                          suggested: money(suggested),
+                        })
                 }
               >
                 <Input
@@ -224,7 +254,7 @@ export function QuoteNegotiationCard({
                       {r.byName} · {formatDate(r.at, t)}
                     </span>
                     <span className="block text-zinc-700">
-                      {r.kind === "return"
+                      {r.kind === "return" || r.kind === "offer"
                         ? typeof r.targetPrice === "number"
                           ? t("quoteFlow.neg.round.target", {
                               price: money(r.targetPrice),
@@ -248,6 +278,95 @@ export function QuoteNegotiationCard({
             </details>
           ) : null}
         </div>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Preço desejado (solicitação que nasce do Booking): o fornecedor confirma o
+ * preço ou manda o dele, sem preencher a ficha inteira. A Wellmix vê o que
+ * foi enviado e pode registrar a resposta que ele deu por fora.
+ */
+export function QuoteOfferCard({
+  t,
+  quoteId,
+  offer,
+  quantity,
+  wellmix,
+}: {
+  t: Translate;
+  quoteId: string;
+  offer: { price: number; currency: string; leadTimeDays: number | null };
+  /** Quantidade pedida, já com a unidade ("2.400 un"). */
+  quantity: string;
+  wellmix: boolean;
+}) {
+  const price = formatMoney(offer.price, offer.currency, t);
+  return (
+    <div id="offer" className="scroll-mt-24" data-quote-offer>
+      <Card
+        title={t("quoteFlow.offer.title")}
+        className="border-brand-300! ring-4 ring-brand-50"
+      >
+        <form action={replyQuoteOfferAction} className="space-y-4">
+          <input type="hidden" name="quoteId" value={quoteId} />
+          <p className="text-sm leading-relaxed text-zinc-700">
+            {wellmix
+              ? t("quoteFlow.offer.intro.wellmix")
+              : t("quoteFlow.offer.intro")}
+          </p>
+          <dl className="flex flex-wrap gap-x-10 gap-y-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {t("quoteFlow.offer.price")}
+              </dt>
+              <dd
+                className="text-2xl font-semibold text-zinc-900"
+                data-offer-price
+              >
+                {price}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                {t("quoteFlow.offer.quantity")}
+              </dt>
+              <dd className="text-2xl font-semibold text-zinc-900">
+                {quantity}
+              </dd>
+            </div>
+          </dl>
+          <div className="grid gap-3 sm:grid-cols-[14rem_14rem_1fr]">
+            <Field label={t("quoteFlow.offer.leadTime")}>
+              <Input
+                name="leadTimeDays"
+                inputMode="numeric"
+                autoComplete="off"
+                required
+                defaultValue={offer.leadTimeDays ?? ""}
+              />
+            </Field>
+            <Field
+              label={t("quoteFlow.offer.other", { currency: offer.currency })}
+              hint={t("quoteFlow.offer.otherHint")}
+            >
+              <Input name="price" inputMode="decimal" autoComplete="off" />
+            </Field>
+            <Field label={t("quoteFlow.offer.comment")}>
+              <Textarea name="comment" rows={2} maxLength={1000} />
+            </Field>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <SubmitButton name="decision" value="confirm">
+              {t("quoteFlow.offer.confirm", { price })}
+            </SubmitButton>
+            <SubmitButton name="decision" value="counter" variant="secondary">
+              {t("quoteFlow.offer.counter")}
+            </SubmitButton>
+          </div>
+          <p className="text-xs text-zinc-500">{t("quoteFlow.offer.after")}</p>
+        </form>
       </Card>
     </div>
   );

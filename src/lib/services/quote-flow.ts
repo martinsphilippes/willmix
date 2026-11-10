@@ -12,6 +12,7 @@ import {
   pendingReturn,
   type NegotiationReply,
   type NegotiationRound,
+  type OfferReply,
   type PackagingDecision,
   type PackagingProposal,
   type PackagingProposalVersion,
@@ -234,6 +235,170 @@ export async function replyNegotiation(
         : `Preço novo: ${money(price, quote.currency)} (antes ${money(quote.price, quote.currency)}). ${comment ?? ""}`.trim(),
     link: `/app/requests/${request.id}`,
   });
+  return updated;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Preço desejado (solicitação que nasce do Booking)                         */
+/* ------------------------------------------------------------------------ */
+
+/** O preço que a Wellmix quer pagar, na moeda da cotação. */
+export interface QuoteOffer {
+  price: number;
+  currency: string;
+  /** Prazo de produção que já se conhece deste fornecedor (ele confirma). */
+  leadTimeDays: number | null;
+}
+
+const LEAD_TIME_MAX = 3650;
+
+/** Moeda da ficha ("RMB") na moeda da cotação ("CNY"). */
+const quoteCurrency = (c: string | null | undefined) => {
+  const v = (c ?? "").toUpperCase();
+  if (v === "RMB" || v === "CNY") return "CNY";
+  return v === "USD" || v === "EUR" || v === "BRL" ? v : null;
+};
+
+/**
+ * Solicitação gerada pelo Booking: o lançamento já tem o preço que a Wellmix
+ * quer pagar (o da ficha do produto, que a equipe ajusta na tabela do
+ * Booking). O fornecedor do produto, em vez de preencher a cotação inteira,
+ * recebe esse preço e confirma ou manda o dele.
+ *
+ * Vale só enquanto a cotação espera a primeira resposta, e só para o
+ * fornecedor principal do produto: o preço é o da ficha dele, e não é
+ * mostrado aos outros convidados (isolamento entre fornecedores). É lido na
+ * hora (nada é gravado até ele responder), então a RFQ aberta antes desta
+ * regra também ganha o preço.
+ */
+export async function quoteOfferFor(
+  quote: Pick<Quote, "status" | "supplierId" | "negotiation">,
+  request: Pick<Request, "id" | "productId">,
+): Promise<QuoteOffer | null> {
+  if (quote.status !== "invited" || !request.productId) return null;
+  if (quote.negotiation?.length) return null;
+  const store = getStore();
+  const [product, bookings] = await Promise.all([
+    store.get("products", request.productId),
+    store.list("bookings", { filter: { requestId: request.id }, limit: 1 }),
+  ]);
+  if (!product || !bookings.length) return null;
+  if (!product.supplierId || product.supplierId !== quote.supplierId)
+    return null;
+  const { getProductSheet } = await import("./product-sheet");
+  const sheet = await getProductSheet(product.id);
+  const price = sheet?.price ?? product.price ?? null;
+  const currency = quoteCurrency(sheet?.currency ?? product.currency);
+  if (!validPrice(price) || !currency) return null;
+  const { listProductSuppliers } = await import("./product-suppliers");
+  const link = (await listProductSuppliers(product.id)).find(
+    (l) => l.supplierId === quote.supplierId,
+  );
+  return { price, currency, leadTimeDays: link?.leadTimeDays ?? null };
+}
+
+export interface ReplyQuoteOfferInput {
+  decision: OfferReply;
+  /** O preço do fornecedor (só em "counter"). */
+  price: number | null;
+  /** Prazo de produção, em dias. */
+  leadTimeDays: number;
+  comment: string | null;
+}
+
+/**
+ * Resposta do fornecedor ao preço desejado: confirma (a cotação fica
+ * respondida com esse preço, sem a ficha inteira) ou manda o preço dele (a
+ * cotação fica respondida com o dele e a Wellmix é avisada para conversar e
+ * negociar: chat e "devolver com comentário"). O fornecedor da cotação, ou a
+ * Wellmix registrando por ele.
+ */
+export async function replyQuoteOffer(
+  user: User,
+  quoteId: string,
+  input: ReplyQuoteOfferInput,
+): Promise<Quote> {
+  const { store, quote, request } = await loadQuote(quoteId);
+  assertSupplierSide(user, quote);
+  const offer = await quoteOfferFor(quote, request);
+  if (!offer) throw new QuoteFlowError("offer_none");
+  if (
+    !Number.isInteger(input.leadTimeDays) ||
+    input.leadTimeDays < 1 ||
+    input.leadTimeDays > LEAD_TIME_MAX
+  )
+    throw new QuoteFlowError("offer_lead_time_required");
+  let price = offer.price;
+  if (input.decision === "counter") {
+    if (!validPrice(input.price))
+      throw new QuoteFlowError("offer_price_required");
+    price = input.price;
+  }
+  // Outro preço igual ao desejado é uma confirmação.
+  const decision: OfferReply = price === offer.price ? "confirm" : "counter";
+  const comment = cleanComment(input.comment, false);
+  // A resposta da cotação pelos caminhos de sempre (situação, vínculo do
+  // fornecedor com o produto, auditoria e aviso à Wellmix).
+  const { answerQuote } = await import("./requests");
+  await answerQuote(user, quote.id, {
+    price,
+    currency: offer.currency,
+    leadTimeDays: input.leadTimeDays,
+    conditions: comment,
+  });
+  const at = new Date().toISOString();
+  const rounds: NegotiationRound[] = [
+    {
+      at,
+      byUserId: "",
+      byName: "Wellmix",
+      side: "wellmix",
+      kind: "offer",
+      comment: null,
+      currency: offer.currency,
+      targetPrice: offer.price,
+      previousPrice: null,
+      price: null,
+    },
+    {
+      at,
+      byUserId: user.id,
+      byName: user.name,
+      side: "supplier",
+      kind: decision,
+      comment,
+      currency: offer.currency,
+      previousPrice: offer.price,
+      price,
+    },
+  ];
+  const updated = await store.update("quotes", quote.id, {
+    negotiation: rounds,
+  });
+  await audit(
+    user,
+    "quote.offer_reply",
+    "quote",
+    quote.id,
+    `Preço desejado ${money(offer.price, offer.currency)}: ${
+      decision === "confirm"
+        ? "confirmado pelo fornecedor"
+        : `o fornecedor mandou ${money(price, offer.currency)}`
+    }, prazo ${input.leadTimeDays} dias${comment ? `: ${comment}` : ""}${
+      isWellmix(user) ? " (registrado pela Wellmix)" : ""
+    }`,
+    { offered: offer.price },
+    { price, decision, leadTimeDays: input.leadTimeDays },
+  );
+  if (decision === "counter")
+    await notifyWellmix({
+      kind: "action",
+      subject: `Preço diferente do desejado: ${request.productName}`,
+      body: `O fornecedor mandou ${money(price, offer.currency)} (o desejado era ${money(offer.price, offer.currency)}). ${comment ?? ""} Converse com ele pelas mensagens ou devolva a cotação com o preço que propõe.`
+        .replace(/\s+/g, " ")
+        .trim(),
+      link: `/app/quotes/${quote.id}#negotiation`,
+    });
   return updated;
 }
 

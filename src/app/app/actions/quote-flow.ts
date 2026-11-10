@@ -4,7 +4,7 @@ import { z } from "zod";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import { parseNumberInput } from "@/lib/number-input";
-import { NEGOTIATION_REPLIES } from "@/lib/quote-flow";
+import { NEGOTIATION_REPLIES, OFFER_REPLIES } from "@/lib/quote-flow";
 import { files, requireUser, run, str } from "./helpers";
 
 /*
@@ -61,6 +61,34 @@ export async function replyNegotiationAction(form: FormData) {
       comment: text(form, "comment", 1000) || null,
     });
     return `/app/quotes/${id}?negotiation=replied#negotiation`;
+  });
+}
+
+/**
+ * Fornecedor (ou a Wellmix por ele): confirma o preço desejado ou manda o
+ * dele. O botão apertado diz qual (`decision`).
+ */
+export async function replyQuoteOfferAction(form: FormData) {
+  const user = await requireUser();
+  const quoteId = str(form, "quoteId");
+  await run(backOf(quoteId, "offer"), async () => {
+    assertScreen(user, "quotes");
+    const id = z.string().regex(ID).parse(quoteId);
+    const decision = z.enum(OFFER_REPLIES).parse(str(form, "decision"));
+    const days = parseNumberInput(str(form, "leadTimeDays"), { int: true });
+    if (days === null || !Number.isInteger(days))
+      throw new Error("offer_lead_time_required");
+    const { replyQuoteOffer } = await import("@/lib/services/quote-flow");
+    const quote = await replyQuoteOffer(user, id, {
+      decision,
+      price: decision === "counter" ? price(form, "price") : null,
+      leadTimeDays: days,
+      comment: text(form, "comment", 1000) || null,
+    });
+    const last = quote.negotiation?.at(-1)?.kind;
+    return `/app/quotes/${id}?negotiation=${
+      last === "confirm" ? "confirmed" : "countered"
+    }#negotiation`;
   });
 }
 
