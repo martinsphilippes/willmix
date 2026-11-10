@@ -312,6 +312,42 @@ export default async function PurchaseOrderPage({
           </a>
         </div>
       ) : null}
+      {/* Fornecedor: baixar, assinar e enviar de volta, logo no alto (o
+          formulário completo, com o aceite no portal, continua no fim). */}
+      {view.canSign === "supplier" ? (
+        <form
+          action={signOrderDocumentAction}
+          className="space-y-2 rounded-xl border border-brand-300 bg-brand-50/60 p-3 print:hidden"
+          data-order-signed-upload
+        >
+          <input type="hidden" name="orderId" value={order.id} />
+          <input type="hidden" name="hash" value={hash} />
+          <input type="hidden" name="name" value={user.name} />
+          <input type="hidden" name="agree" value="on" />
+          <p className="text-sm font-semibold text-zinc-900">
+            {t("orderSign.upload.title")}
+          </p>
+          <p className="text-sm text-zinc-700">{t("orderSign.upload.hint")}</p>
+          <div className="flex flex-wrap items-end gap-2">
+            <a
+              href={`/api/orders/${order.id}/purchase-order`}
+              download
+              className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+            >
+              {t("orderSign.download")}
+            </a>
+            <Input
+              type="file"
+              name="signedFile"
+              required
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              aria-label={t("orderSign.file.label")}
+              className="max-w-xs"
+            />
+            <SubmitButton>{t("orderSign.upload.submit")}</SubmitButton>
+          </div>
+        </form>
+      ) : null}
       {!view.applies ? (
         <Alert tone="info">{t("orderSign.notApplicable")}</Alert>
       ) : view.waitingWellmix ? (

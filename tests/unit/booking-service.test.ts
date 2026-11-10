@@ -689,8 +689,8 @@ describe("gerar solicitação", () => {
     // Pedido criado: o lugar da troca do documento, com a Wellmix primeiro.
     expect(await nextOf()).toMatchObject({
       step: "sign_wellmix",
-      href: `/app/orders/${order.id}/purchase-order`,
-      target: "document",
+      href: `/app/orders/${order.id}`,
+      target: "order",
     });
     const { signOrderAs } = await import("./setup");
     await signOrderAs(admin, order.id);

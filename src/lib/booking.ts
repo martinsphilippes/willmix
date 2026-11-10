@@ -984,8 +984,10 @@ export function bookingNextStep(
           : order.document === "sent_to_supplier"
             ? "sign_supplier"
             : "signed",
-      href: `/app/orders/${order.id}/purchase-order`,
-      target: "document",
+      // Vai para o pedido (a tela de gestão da Wellmix); o documento abre
+      // de lá, na linha "Documento do pedido" (pedido do dono).
+      href: `/app/orders/${order.id}`,
+      target: "order",
       ...counts,
     };
   }

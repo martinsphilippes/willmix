@@ -788,8 +788,8 @@ describe("depois de virar solicitação: o próximo passo", () => {
     ) => bookingNextStep(req("ORDERED"), [], { id: "o1", document }, true);
     expect(doc("awaiting_wellmix")).toMatchObject({
       step: "sign_wellmix",
-      href: "/app/orders/o1/purchase-order",
-      target: "document",
+      href: "/app/orders/o1",
+      target: "order",
     });
     expect(doc("sent_to_supplier").step).toBe("sign_supplier");
     expect(doc("signed").step).toBe("signed");
