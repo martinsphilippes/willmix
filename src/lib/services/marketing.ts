@@ -14,6 +14,7 @@ import {
 import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
+import { isHiddenByBooking } from "./booking-visibility";
 import { uploadDocument } from "./documents";
 import { notify, notifyWellmix } from "./notifications";
 
@@ -24,8 +25,18 @@ import { notify, notifyWellmix } from "./notifications";
  * Pantone, fotos); os textos podem vir de sugestão de IA, sempre confirmados.
  * Preço vem das configurações (marketingKitDefaultPrice), editável por kit.
  * Pagamento reutiliza `payments` (customer_in, kitId) em modo manual.
+ *
+ * Booking (docs/BOOKING.md): produto ainda não aprovado no Booking não ganha
+ * kit nem tem kit oferecido (`product_in_booking`): o kit mostraria ao
+ * cliente um produto que ele ainda não pode ver.
  */
 export class MarketingError extends Error {}
+
+/** Produto ainda escondido pelo Booking: o kit não pode chegar ao cliente. */
+async function assertOutOfBooking(productId: string) {
+  if (await isHiddenByBooking(productId))
+    throw new MarketingError("product_in_booking");
+}
 
 /** Cliente vê o kit a partir da oferta; a Wellmix vê tudo. */
 export function canViewKit(user: User, kit: MarketingKit) {
@@ -82,6 +93,7 @@ export async function createKit(
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product) throw new MarketingError("not_found");
+  await assertOutOfBooking(product.id);
   if (input.customerId) {
     const customer = await store.get("parties", input.customerId);
     if (!customer || customer.type !== "customer")
@@ -202,6 +214,9 @@ export async function offerKit(user: User, id: string) {
   if (!["draft", "preview"].includes(kit.status))
     throw new MarketingError("invalid_status");
   if (!kit.customerId) throw new MarketingError("customer_required");
+  // Kit criado antes de o produto voltar a ficar escondido pelo Booking: a
+  // oferta é o momento em que o cliente passa a vê-lo.
+  await assertOutOfBooking(kit.productId);
   const updated = await store.update("marketing_kits", id, {
     status: "offered",
     offeredAt: new Date().toISOString(),

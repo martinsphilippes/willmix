@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { getStore, SHEET_CURRENCIES } from "@/lib/db";
 import {
   SHEET_IMPORT_ENTITY,
   SHEET_IMPORT_MODES,
+  importBatchKeptExisting,
+  importBatchMode,
 } from "@/lib/services/product-sheet-import";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
@@ -12,6 +15,7 @@ import { dictionaries } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import {
   Alert,
+  Badge,
   Card,
   Empty,
   Field,
@@ -44,6 +48,13 @@ export default async function ProductSheetImportPage({
   requireScreen(user, "products");
   const { error } = await searchParams;
   const t = await getT();
+  // "Mandar para o Booking" só é oferecido (e já vem marcado) a quem abre a
+  // tela Booking; para os demais, as duas opções de sempre e o mesmo padrão.
+  const canBooking = canOpen(user, "booking");
+  const modes = SHEET_IMPORT_MODES.filter(
+    (mode) => mode !== "booking" || canBooking,
+  );
+  const defaultMode = canBooking ? "booking" : "variants";
   const store = getStore();
   const [lines, batches] = await Promise.all([
     store.list("product_lines", { orderBy: "name" }),
@@ -137,7 +148,7 @@ export default async function ProductSheetImportPage({
                 </Select>
               </Field>
             </div>
-            {/* Resultado: um produto com variações (padrão) ou um produto por linha (como antes). */}
+            {/* Resultado: produtos no Booking (padrão de quem abre a tela Booking), um produto com variações ou um produto por linha (como antes). */}
             <fieldset
               className="space-y-1.5 rounded-lg border border-zinc-200 p-3"
               data-sheet-import-mode
@@ -145,7 +156,7 @@ export default async function ProductSheetImportPage({
               <legend className="px-1 text-xs font-medium text-zinc-700">
                 {t("sheetImport.mode")}
               </legend>
-              {SHEET_IMPORT_MODES.map((mode) => (
+              {modes.map((mode) => (
                 <label
                   key={mode}
                   className="flex items-start gap-2 text-sm text-zinc-800"
@@ -154,7 +165,7 @@ export default async function ProductSheetImportPage({
                     type="radio"
                     name="mode"
                     value={mode}
-                    defaultChecked={mode === "variants"}
+                    defaultChecked={mode === defaultMode}
                     className="mt-1"
                   />
                   <span>
@@ -214,12 +225,24 @@ export default async function ProductSheetImportPage({
                     {formatDate(b.createdAt, t.locale)}
                   </span>
                 </span>
-                <span className="text-xs text-zinc-600">
-                  {t("sheetImport.previous.line", {
-                    created: b.summary?.created ?? 0,
-                    updated: b.summary?.updated ?? 0,
-                    errors: b.summary?.errors ?? 0,
-                  })}
+                <span className="flex flex-wrap items-center gap-2 text-xs text-zinc-600">
+                  {/* Lote que foi para o Booking (na importação ou relendo uma planilha antiga). */}
+                  {importBatchMode(b) === "booking" ? (
+                    <Badge tone="brand">
+                      {t("sheetImport.previous.booking")}
+                    </Badge>
+                  ) : null}
+                  {/* Planilha antiga relida: quem já existia não foi alterado. */}
+                  {t(
+                    importBatchKeptExisting(b)
+                      ? "sheetImport.previous.lineKept"
+                      : "sheetImport.previous.line",
+                    {
+                      created: b.summary?.created ?? 0,
+                      updated: b.summary?.updated ?? 0,
+                      errors: b.summary?.errors ?? 0,
+                    },
+                  )}
                 </span>
               </li>
             ))}

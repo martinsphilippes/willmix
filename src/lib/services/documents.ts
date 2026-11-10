@@ -361,8 +361,15 @@ export async function canAccessDocument(
     )
       return true;
     // Foto de produto/sourcing: só a Wellmix, salvo quando marcada como pública ("all").
-    if (doc.productId || doc.sourcingItemId)
-      return doc.visibility === "all" && !!doc.productId;
+    if (doc.productId || doc.sourcingItemId) {
+      if (doc.visibility !== "all" || !doc.productId) return false;
+      // Produto ainda escondido pelo Booking (não aprovado): nem o arquivo
+      // "público" abre para quem não é Wellmix. Só o fornecedor do próprio
+      // produto continua abrindo, como antes.
+      const { isHiddenByBooking } = await import("./booking-visibility");
+      if (!(await isHiddenByBooking(doc.productId))) return true;
+      return isSupplierOfProduct(user, doc.productId);
+    }
     return false;
   }
   if (doc.visibility === "all") return true;
@@ -382,6 +389,19 @@ async function canViewCertificationDocument(
   if (cert.entity === "party") return cert.entityId === user.partyId;
   const product = await getStore().get("products", cert.entityId);
   return !!product && product.supplierId === user.partyId;
+}
+
+/** Fornecedor do produto: o principal do cadastro ou um dos ligados a ele. */
+async function isSupplierOfProduct(
+  user: User,
+  productId: string,
+): Promise<boolean> {
+  if (user.role !== "supplier" || !user.partyId) return false;
+  const product = await getStore().get("products", productId);
+  if (!product) return false;
+  if (product.supplierId === user.partyId) return true;
+  const { productSupplierLink } = await import("./product-suppliers");
+  return !!(await productSupplierLink(productId, user.partyId));
 }
 
 /** Tipos de foto do cadastro que o cliente nunca vê no catálogo. */
@@ -453,7 +473,8 @@ export async function catalogShowcasePhotos(
  * cliente pode ver? Qualquer tipo que não seja escondido (cartão, prompt)
  * conta, mesmo além das 8 da vitrine (ex.: a foto de cada variação); a
  * original que ganhou versão comercial continua fechada (a comercial é o
- * que a Wellmix quer mostrar).
+ * que a Wellmix quer mostrar). Produto ainda escondido pelo Booking (não
+ * aprovado) não tem foto de vitrine: fica fechado como o inativo.
  */
 async function isCatalogShowcasePhoto(
   productId: string,
@@ -462,6 +483,8 @@ async function isCatalogShowcasePhoto(
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product?.active) return false;
+  const { isHiddenByBooking } = await import("./booking-visibility");
+  if (await isHiddenByBooking(productId)) return false;
   const photos = await store.list("product_photos", { filter: { productId } });
   const replaced = new Set(
     photos

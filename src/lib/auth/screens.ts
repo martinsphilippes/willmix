@@ -20,6 +20,7 @@ export const SCREENS = [
   "sla",
   "notifications",
   "messages",
+  "booking",
   "requests",
   "quotes",
   "orders",
@@ -55,6 +56,7 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/freight", "freight"],
   ["/app/products", "products"],
   ["/app/inventory", "products"],
+  ["/app/booking", "booking"],
   ["/app/requests", "requests"],
   ["/app/quotes", "quotes"],
   ["/app/orders", "orders"],
@@ -101,6 +103,7 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   sla: "nav.sla",
   notifications: "nav.notifications",
   messages: "nav.messages",
+  booking: "nav.booking",
   requests: "nav.requests",
   quotes: "nav.quotes",
   orders: "nav.orders",
@@ -199,6 +202,7 @@ const DIRECTOR: readonly Screen[] = SCREENS.filter(
  */
 export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   buyer: [
+    "booking",
     "requests",
     "quotes",
     "orders",
@@ -214,6 +218,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "afterSales",
   ],
   product_manager: [
+    "booking",
     "requests",
     "quotes",
     "orders",
@@ -228,6 +233,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "history",
   ],
   planner: [
+    "booking",
     "requests",
     "quotes",
     "orders",
@@ -238,6 +244,7 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
     "history",
   ],
   catalog: [
+    "booking",
     "orders",
     "sourcing",
     "reviews",
@@ -268,6 +275,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
   {
     key: "nav.group.orders",
     screens: [
+      "booking",
       "requests",
       "quotes",
       "orders",

@@ -21,6 +21,10 @@ import {
   type CatalogPriceContext,
   type CatalogPriceInput,
 } from "./catalog-price-calc";
+import {
+  hiddenBookingProductIds,
+  isHiddenByBooking,
+} from "./booking-visibility";
 import { availableStockByProduct } from "./containers";
 import { catalogShowcasePhotos } from "./documents";
 import { lookupNcm } from "./fiscal";
@@ -40,6 +44,12 @@ import { variantsByProduct } from "./product-variants";
  * produto), o cartão mostra "a partir de" (a menor) e a página lista as
  * variações para o cliente escolher. O preço do produto em si continua o da
  * variação de referência (a fase 1 espelha nas colunas e na ficha mestre).
+ *
+ * Booking (docs/BOOKING.md): produto que chegou pela ficha técnica e ainda não
+ * foi aprovado no Booking (Novo, Em análise ou Descartado) fica fora da grade,
+ * da busca, das contagens e do carrinho, para o cliente e para a Wellmix (a
+ * grade é "como o cliente vê"). Pelo endereço, o cliente recebe "não
+ * encontrado"; a Wellmix abre a página com o aviso (`hiddenByBooking`).
  */
 
 export const EXPLORE_SORTS = [
@@ -302,10 +312,14 @@ export async function exploreCatalog(
 ): Promise<{ items: ExploreProduct[]; lines: ExploreLine[]; total: number }> {
   if (!canExplore(user)) return { items: [], lines: [], total: 0 };
   const store = getStore();
-  const [products, lines] = await Promise.all([
+  const [active, lines, hidden] = await Promise.all([
     store.list("products", { filter: { active: true }, orderBy: "name" }),
     store.list("product_lines", { orderBy: "name" }),
+    hiddenBookingProductIds(),
   ]);
+  // Ainda no Booking (não aprovado): fora da grade, da busca e das contagens,
+  // também para a Wellmix (a grade é a visão do cliente).
+  const products = active.filter((p) => !hidden.has(p.id));
   const customerId = user.role === "customer" ? user.partyId : null;
   const ids = products.map((p) => p.id);
   // Variações ativas de todos os produtos numa consulta só (nunca por produto).
@@ -407,6 +421,11 @@ export interface ExploreProductDetail extends ExploreProduct {
   /** Data limite da proposta da Wellmix (prazo de cotação). */
   proposalBy: string;
   variants: ExploreVariantDetail[];
+  /**
+   * Só para a Wellmix: o produto ainda está no Booking sem aprovação e o
+   * cliente não o vê (para o cliente a página nem abre). A tela avisa.
+   */
+  hiddenByBooking: boolean;
 }
 
 /** Especificação do cadastro, ou montada das colunas (como na solicitação). */
@@ -488,6 +507,10 @@ export async function exploreProduct(
   const store = getStore();
   const product = await store.get("products", productId);
   if (!product?.active) return null;
+  // Ainda no Booking (não aprovado): para o cliente é como se não existisse;
+  // a Wellmix abre pelo endereço e a página avisa.
+  const hiddenByBooking = await isHiddenByBooking(product.id);
+  if (hiddenByBooking && !isWellmix(user)) return null;
   const customerId = user.role === "customer" ? user.partyId : null;
   const [variants, showcase, stock, bought, line, settings] = await Promise.all(
     [
@@ -530,6 +553,7 @@ export async function exploreProduct(
     tiers: tierEstimates(input, ctx),
     specification: specificationLines(product, t),
     proposalBy: quoteSlaDeadline(settings.quoteSlaBusinessDays),
+    hiddenByBooking,
   };
 }
 
@@ -538,17 +562,25 @@ export async function exploreProduct(
  * específicas (carrinho): a faixa de preço vale pela quantidade de cada
  * linha. Junto, o pedido mínimo da mesma fonte da vitrine (variação, ficha
  * mestre ou cadastro). O resultado é por `lineKey(productId, variantId)`;
- * linha cuja variação sumiu ou foi desativada fica sem preço.
+ * linha cuja variação sumiu ou foi desativada fica sem preço, e também a de
+ * produto ainda escondido pelo Booking (sem preço nem mínimo). Quem já
+ * consultou o Booking passa `hiddenByBooking` (uma consulta só por tela).
  */
 export async function estimateForQuantities(
   user: User,
   lines: { productId: string; variantId?: string | null; quantity: number }[],
+  hiddenByBooking?: Set<string>,
 ): Promise<Map<string, { estimate: CatalogEstimate; moq: number | null }>> {
   const store = getStore();
   const ids = [...new Set(lines.map((l) => l.productId))];
-  const products = ids.length
-    ? await store.list("products", { filter: { id: ids } })
-    : [];
+  const [found, hidden] = ids.length
+    ? await Promise.all([
+        store.list("products", { filter: { id: ids } }),
+        hiddenByBooking ?? hiddenBookingProductIds(),
+      ])
+    : [[], new Set<string>()];
+  // Escondido pelo Booking: como produto que não existe (sem preço nem mínimo).
+  const products = found.filter((p) => !hidden.has(p.id));
   const customerId = user.role === "customer" ? user.partyId : null;
   const variants = await variantsByProduct(products.map((p) => p.id));
   const pricing = await pricingData(products, customerId, variants);

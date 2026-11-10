@@ -621,6 +621,15 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - Unificar `checkWeightDivergence` (peso declarado × medido) dentro de `compareInspection` quando todos os pedidos abertos tiverem snapshot.
 - Reduzir as 3 notificações por evento (in-app, e-mail e WhatsApp mock) quando houver provedor real.
 
+## Booking: os produtos antes da solicitação
+
+- **Pedido do dono**: uma tela Booking, alimentada pela ficha técnica importada, em que cada linha da ficha é um produto (não uma variação), com filtro em qualquer coluna; é o que acontece antes da solicitação. Especificação completa em `docs/BOOKING.md`.
+- **Tela** `/app/booking` (Pedidos → Booking; Wellmix com as funções comprador, gerente de produto, planner, cadastro e diretorias) e `/app/booking/[id]`: uma linha por produto com tudo o que veio da planilha, cartões das etapas (Novo, Em análise, Aprovado, Oferecido, Reservado, Virou solicitação, Descartado), filtro e ordenação em toda coluna (o filtro mora no endereço), 100 por página, e a barra de ações para as linhas marcadas (cliente e quantidades, mover, responsável, analisar no Superplan, gerar solicitação).
+- **Importação**: a ficha técnica ganhou a opção "Mandar para o Booking (um produto por linha)", que passa a ser a primeira e a marcada para quem abre o Booking; as outras duas continuam. Linhas com o mesmo código e só a cor diferente são um produto. O resultado de uma importação antiga ganhou "Mandar para o Booking" (relê o arquivo guardado; o produto com variações fica como está).
+- **Vitrine**: produto que a planilha criou fica fora de tudo o que o cliente vê (vitrine, página do produto, carrinho, nova solicitação, busca por foto, fotos e documentos, kit novo) até ser aprovado no Booking. Produto que já existia entra como Aprovado (continua na vitrine). Só acrescenta restrição; produto sem linha no Booking segue igual.
+- **Superplan**: ganhou o peso líquido ao lado do bruto, o peso bruto estimado (líquido + folga da embalagem, parâmetro novo, 8%) quando a ficha não traz o bruto, a Média do despachante como informação (não entra em conta nenhuma) e "Gravar no Booking". A mesma função monta a simulação na tela e na análise de várias linhas.
+- **Banco**: tabela nova `bookings` (aditiva). Nenhuma coluna nova nas tabelas que já existiam; nenhuma tela, rota, campo ou dado saiu.
+
 ## Adicionar produto a uma solicitação antes do pedido
 
 - Wellmix (só ela, decisão do dono) tem "Adicionar produto" na solicitação e no lote enquanto a solicitação não virou pedido nem foi cancelada (`REQUESTED`, `RFQ_OPEN`, `QUOTATION_RECEIVED`, `SUPPLIER_SELECTED`, `WAITING_DOWN_PAYMENT`). Abre o formulário de nova solicitação em modo `?addTo=<id>`: sem escolher cliente, solicitante, prazo ou observação (vêm da solicitação; prazo = SLA) e sem a busca por foto.

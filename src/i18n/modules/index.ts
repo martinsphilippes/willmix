@@ -93,6 +93,9 @@ import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
 import * as superplan from "./superplan";
 import * as superplanRfq from "./superplan-rfq";
+import * as booking from "./booking";
+import * as bookingScreen from "./booking-screen";
+import * as bookingDetail from "./booking-detail";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
@@ -193,6 +196,9 @@ export const modulesPt = {
   ...freightTariff.pt,
   ...superplan.pt,
   ...superplanRfq.pt,
+  ...booking.pt,
+  ...bookingScreen.pt,
+  ...bookingDetail.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -289,6 +295,9 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.en,
   ...superplan.en,
   ...superplanRfq.en,
+  ...booking.en,
+  ...bookingScreen.en,
+  ...bookingDetail.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -385,4 +394,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...freightTariff.zh,
   ...superplan.zh,
   ...superplanRfq.zh,
+  ...booking.zh,
+  ...bookingScreen.zh,
+  ...bookingDetail.zh,
 };

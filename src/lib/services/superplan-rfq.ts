@@ -17,11 +17,7 @@ import {
   type SuperplanResult,
 } from "@/lib/superplan";
 import { formatAmount } from "@/lib/workflow/money";
-import {
-  superplanMissing,
-  type SuperplanItem,
-  type SuperplanSimulation,
-} from "@/lib/superplan-rfq";
+import { superplanMissing, type SuperplanItem } from "@/lib/superplan-rfq";
 import { audit } from "./audit";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import { notify, notifyWellmix } from "./notifications";
@@ -46,44 +42,26 @@ export interface OpenSuperplanRfqInput {
   customerId: string | null;
   /** Peças pedidas (padrão da tela: as do container da simulação). */
   quantity: number;
-  simulation: SuperplanSimulation;
+  /** A simulação da tela (o mesmo formato do "Gravar no Booking"). */
+  input: SuperplanInput;
+  businessType: string | null;
+  container: string | null;
 }
 
-/** A conta refeita no servidor com os parâmetros e tributos do sistema. */
-async function recompute(sim: SuperplanSimulation): Promise<{
+/**
+ * A conta refeita no servidor. Os números da simulação (preço, caixa, fretes,
+ * câmbio, despesas, tipo de negócio) vêm da tela; os parâmetros do sistema
+ * (tributos da importação, AFRMM, fatores de preço, impostos da venda) vêm
+ * sempre das Configurações, nunca do navegador.
+ */
+async function recompute(sent: SuperplanInput): Promise<{
   input: SuperplanInput;
   result: SuperplanResult;
 }> {
   const settings = await getSettings();
   const params = superplanParams(settings.superplan);
   const input: SuperplanInput = {
-    unitPrice: sim.unitPrice,
-    currency: sim.currency,
-    pcsPerCarton: sim.pcsPerCarton,
-    grossWeightPcKg: sim.grossWeightPcKg,
-    cbmPerCarton: sim.cbmPerCarton,
-    containerCbm: sim.containerCbm,
-    containerMaxKg: sim.containerMaxKg,
-    iiPct: sim.iiPct,
-    ipiPct: sim.ipiPct,
-    freightUsd: sim.freightUsd,
-    roadFreightBrl: sim.roadFreightBrl,
-    deliveryFreightBrl: sim.deliveryFreightBrl,
-    officialRate: sim.officialRate,
-    futureRate: sim.futureRate,
-    rmbPerUsd: sim.rmbPerUsd,
-    tradingCommissionPct: sim.tradingCommissionPct,
-    chinaChargesRmb: sim.chinaChargesRmb,
-    // Despesas do sistema, com os valores digitados na tela (pela chave).
-    expenses: params.expenses.map((e) => ({
-      ...e,
-      amountBrl: sim.expenses[e.key] ?? e.amountBrl,
-    })),
-    markup: sim.markup,
-    commissionPct: sim.commissionPct,
-    adminExpensesPct: sim.adminExpensesPct,
-    targetProfitPct: sim.targetProfitPct,
-    wdPct: sim.wdPct,
+    ...sent,
     insurancePct: settings.insurancePercent ?? 0,
     pisImportPct: settings.pisImportPercent ?? 0,
     cofinsImportPct: settings.cofinsImportPercent ?? 0,
@@ -91,9 +69,9 @@ async function recompute(sim: SuperplanSimulation): Promise<{
     freightFxPct: params.freightFxPct,
     afrmmPct: params.afrmmPct,
     afrmmFixedBrl: params.afrmmFixedBrl,
+    grossEstimatePct: params.grossEstimatePct,
     priceFactors: params.priceFactors,
     saleTaxes: params.saleTaxes,
-    salePrice: sim.salePrice,
   };
   return { input, result: computeSuperplan(input) };
 }
@@ -109,7 +87,8 @@ const VERDICT_TEXT = {
 
 /** Resumo da viabilidade que fica nas observações da solicitação. */
 function summaryText(
-  sim: SuperplanSimulation,
+  input: SuperplanInput,
+  meta: { businessType: string | null; container: string | null },
   result: SuperplanResult,
 ): string {
   const { cost, prices, sale, target, verdict, container } = result;
@@ -118,10 +97,10 @@ function summaryText(
   });
   return [
     `Superplan (${day}): viabilidade ${verdict ? VERDICT_TEXT[verdict] : "—"}.`,
-    sim.businessType ? `Tipo de negócio: ${sim.businessType}.` : null,
-    `Preço do fornecedor: ${sim.unitPrice?.toLocaleString("pt-BR")} ${sim.currency} por peça.`,
+    meta.businessType ? `Tipo de negócio: ${meta.businessType}.` : null,
+    `Preço do fornecedor: ${input.unitPrice?.toLocaleString("pt-BR")} ${input.currency} por peça.`,
     container
-      ? `${container.cartons.toLocaleString("pt-BR")} caixas, ${container.pieces.toLocaleString("pt-BR")} peças${sim.container ? ` no ${sim.container}` : ""}.`
+      ? `${container.cartons.toLocaleString("pt-BR")} caixas, ${container.pieces.toLocaleString("pt-BR")} peças${meta.container ? ` no ${meta.container}` : ""}.`
       : null,
     cost ? `Custo por peça: ${brl(cost.perPiece)}.` : null,
     prices ? `Preço mínimo: ${brl(prices.minimum)}.` : null,
@@ -198,7 +177,7 @@ export async function openSuperplanRfq(
   const store = getStore();
   const product = await store.get("products", input.productId);
   if (!product) throw new SuperplanRfqError("product_not_found");
-  const { input: calcInput, result } = await recompute(input.simulation);
+  const { input: calcInput, result } = await recompute(input.input);
   // Conta incompleta ou com prejuízo: não há viabilidade para abrir.
   if (result.missing.length || !result.verdict)
     throw new SuperplanRfqError("simulation_incomplete");
@@ -218,7 +197,7 @@ export async function openSuperplanRfq(
   }
 
   const { createRequest, openRfq } = await import("./requests");
-  const summary = summaryText(input.simulation, result);
+  const summary = summaryText(calcInput, input, result);
   const request = await createRequest(user, {
     customerId,
     productId: product.id,
@@ -259,8 +238,8 @@ export async function openSuperplanRfq(
       quoteId: quote.id,
       supplierId: input.supplierId,
       quantity: input.quantity,
-      businessType: input.simulation.businessType,
-      container: input.simulation.container,
+      businessType: input.businessType,
+      container: input.container,
       input: calcInput,
       result: {
         verdict: result.verdict,

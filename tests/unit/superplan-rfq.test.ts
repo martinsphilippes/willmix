@@ -19,9 +19,10 @@ const pb = await import("@/lib/services/packaging-brief");
 const { submitForApproval } = await import("@/lib/services/approvals");
 const { requestStages, DEFAULT_REQUEST_STEP_DAYS } =
   await import("@/lib/request-stages");
-const { DEFAULT_SUPERPLAN, businessTypeOf } = await import("@/lib/superplan");
+const { DEFAULT_SUPERPLAN, DEFAULT_EXPENSES, businessTypeOf } =
+  await import("@/lib/superplan");
 type User = import("@/lib/db").User;
-type Simulation = import("@/lib/superplan-rfq").SuperplanSimulation;
+type Input = import("@/lib/superplan").SuperplanInput;
 
 let admin: User;
 let supplierA: User;
@@ -29,15 +30,19 @@ let supplierB: User;
 
 const UD = businessTypeOf(DEFAULT_SUPERPLAN, "WELLMIX - UD - CHINA - MERCADO");
 
-/** O exemplo da planilha (jarra a 24,90 RMB): amarelo, lucro de 16%. */
-function simulation(patch: Partial<Simulation> = {}): Simulation {
+/**
+ * O exemplo da planilha (jarra a 24,90 RMB): amarelo, lucro de 16%. Os
+ * parâmetros do sistema mandados aqui são de mentira de propósito: o
+ * servidor usa os dele.
+ */
+function simulation(patch: Partial<Input> = {}): Input {
   return {
     unitPrice: 24.9,
     currency: "RMB",
     pcsPerCarton: 12,
+    netWeightPcKg: null,
     grossWeightPcKg: 1.13,
     cbmPerCarton: 0.069,
-    container: "40HC",
     containerCbm: 67.5,
     containerMaxKg: 28000,
     iiPct: 20,
@@ -50,17 +55,28 @@ function simulation(patch: Partial<Simulation> = {}): Simulation {
     rmbPerUsd: 6.75,
     tradingCommissionPct: 0,
     chinaChargesRmb: 0,
-    expenses: {},
-    businessType: UD.name,
+    expenses: DEFAULT_EXPENSES,
     markup: UD.markup,
     commissionPct: UD.commissionPct,
     adminExpensesPct: UD.adminExpensesPct,
     targetProfitPct: UD.targetProfitPct,
     wdPct: UD.wdPct,
+    insurancePct: 0,
+    pisImportPct: 0,
+    cofinsImportPct: 0,
+    icmsImportPct: 0,
+    freightFxPct: 0,
+    afrmmPct: 0,
+    afrmmFixedBrl: 0,
+    grossEstimatePct: DEFAULT_SUPERPLAN.grossEstimatePct,
+    priceFactors: DEFAULT_SUPERPLAN.priceFactors,
+    saleTaxes: { icmsPct: 0, pisPct: 0, cofinsPct: 0, irPct: 0, csllPct: 0 },
     salePrice: null,
     ...patch,
   };
 }
+
+const meta = { businessType: UD.name, container: "40HC" };
 
 const pdf = () =>
   new File([new Uint8Array([37, 80, 68, 70, 45, 49])], "faca.pdf", {
@@ -77,7 +93,8 @@ async function open() {
     supplierId: "fornecedor-a",
     customerId: null,
     quantity: 11736,
-    simulation: simulation(),
+    input: simulation(),
+    ...meta,
   });
 }
 
@@ -152,7 +169,8 @@ describe("Superplan → faca e RFQ com o fornecedor ganho", () => {
         supplierId: "fornecedor-a",
         customerId: null,
         quantity: 100,
-        simulation: simulation(),
+        input: simulation(),
+        ...meta,
       }),
     ).rejects.toThrow();
     await expect(
@@ -161,7 +179,8 @@ describe("Superplan → faca e RFQ com o fornecedor ganho", () => {
         supplierId: "fornecedor-a",
         customerId: null,
         quantity: 1000,
-        simulation: simulation({ markup: 0.5 }),
+        input: simulation({ markup: 0.5 }),
+        ...meta,
       }),
     ).rejects.toThrow("not_viable");
     await expect(
@@ -170,7 +189,8 @@ describe("Superplan → faca e RFQ com o fornecedor ganho", () => {
         supplierId: "fornecedor-a",
         customerId: null,
         quantity: 1000,
-        simulation: simulation({ unitPrice: null }),
+        input: simulation({ unitPrice: null }),
+        ...meta,
       }),
     ).rejects.toThrow("simulation_incomplete");
   });

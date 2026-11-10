@@ -13,6 +13,7 @@ import { assertWellmix } from "@/lib/auth/permissions";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { translator } from "@/i18n";
+import { boxCbm, resolveCbm } from "@/lib/logistics/cbm";
 import {
   buildProductSpec,
   productSpecLabels,
@@ -190,6 +191,71 @@ export async function masterSheetInput(
   for (const k of MASTER_PRODUCT_FIELDS)
     if (master[k] !== undefined && master[k] !== null) out[k] = master[k];
   return { ...out, ...fromVariant } as SheetInput;
+}
+
+/**
+ * O que se compra, lido de um jeito só. O Booking mostra estes números na
+ * linha e o Superplan faz a conta com eles: os dois leem daqui, para a linha
+ * nunca mostrar um preço e a análise usar outro.
+ *
+ * - Preço e moeda andam juntos, da MESMA fonte: os do cadastro do produto;
+ *   cadastro sem preço, os da ficha mestre. O cadastro vem primeiro porque é
+ *   o gravado por último: salvar a ficha mestre espelha no cadastro, e a
+ *   importação de produtos e o sourcing gravam só nele. A moeda da outra
+ *   fonte só entra quando a do preço escolhido está vazia.
+ * - Peças por caixa e volume da caixa: os do cadastro; sem eles, os da ficha.
+ * - Valor zero ou negativo numa fonte não conta: vale o da outra.
+ * - Pesos: os do cadastro e, sem eles, os da ficha mestre, cada um do seu
+ *   campo (líquido e bruto). O líquido nunca vira bruto.
+ */
+export function productPurchaseView(
+  product: Product,
+  sheet: PurchaseSheet | null | undefined,
+): {
+  master: Partial<PurchaseSheet>;
+  price: number | null;
+  /** RMB, USD, BRL, EUR ou a moeda escrita no cadastro (em maiúsculas). */
+  currency: string | null;
+  pcsPerCarton: number | null;
+  cbmPerCarton: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+} {
+  const pos = (n: number | null | undefined) =>
+    typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
+  const written = (c: string | null | undefined) =>
+    sheetCurrency(c) ?? (c?.trim().toUpperCase() || null);
+  const master = withProductColumns<Partial<PurchaseSheet>>(
+    sheet ?? {},
+    productSheetDraft(product, null),
+  );
+  const columnPrice = pos(product.price);
+  const sheetPrice = pos(sheet?.price);
+  const price = columnPrice ?? sheetPrice;
+  // A moeda acompanha a fonte do preço. Sem preço em nenhuma das duas, vale
+  // a do cadastro (é a que a tela do Superplan sempre trouxe marcada).
+  const fromSheet = columnPrice === null && sheetPrice !== null;
+  const currency = fromSheet
+    ? (written(sheet?.currency) ?? written(product.currency))
+    : (written(product.currency) ?? written(sheet?.currency));
+  return {
+    master,
+    price,
+    currency,
+    pcsPerCarton: pos(product.masterBoxQty) ?? pos(sheet?.masterCartonQty),
+    // Volume da caixa master: o do cadastro (informado ou das medidas da
+    // caixa); sem ele, o da ficha mestre.
+    cbmPerCarton:
+      boxCbm(product) ??
+      resolveCbm({
+        cbm: sheet?.cbmPerCarton,
+        lengthCm: sheet?.lengthCm,
+        widthCm: sheet?.widthCm,
+        heightCm: sheet?.heightCm,
+      }),
+    netWeightPcKg: pos(product.netWeightKg) ?? pos(sheet?.netWeightPcKg),
+    grossWeightPcKg: pos(product.grossWeightKg) ?? pos(sheet?.grossWeightPcKg),
+  };
 }
 
 const filled = (v: unknown) =>

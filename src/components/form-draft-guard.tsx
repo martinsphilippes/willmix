@@ -22,8 +22,20 @@ import { Alert } from "./ui";
  */
 const PREFIX = "wellmix-draft:";
 const MAX_AGE_MS = 30 * 60 * 1000;
+/**
+ * Campo oculto opcional do formulário: a cada envio recebe um id novo, que a
+ * ação devolve no endereço da recusa (`answers`). Assim a tela só restaura o
+ * rascunho do envio que ela mesma responde.
+ */
+export const DRAFT_ID_FIELD = "draftId";
 /** Evento na <form>: componentes com estado próprio (programação, Pantone) se restauram. */
 export const DRAFT_RESTORE_EVENT = "wellmix:draft-restore";
+/**
+ * Marca na <form> enquanto a restauração devolve os valores: quem reage a
+ * digitação (ex.: marcar a linha ao digitar a quantidade) ignora os eventos
+ * que a própria restauração dispara.
+ */
+export const DRAFT_RESTORING_ATTR = "data-draft-restoring";
 
 interface Draft {
   v: 2;
@@ -32,6 +44,8 @@ interface Draft {
   pending: boolean;
   /** Só os campos que mudaram desde que a tela abriu. */
   values: Record<string, string>;
+  /** Id deste envio, quando o formulário tem o campo `draftId`. */
+  id?: string;
 }
 
 /**
@@ -71,6 +85,7 @@ export function FormDraftGuard({
   token,
   message,
   discardLabel,
+  answers = null,
 }: {
   formId: string;
   /** Uma ficha por chave (ex.: "quote:<id>"). */
@@ -85,6 +100,14 @@ export function FormDraftGuard({
   token: string;
   message: string;
   discardLabel: string;
+  /**
+   * O id do envio que esta tela responde (a ação o devolve no endereço da
+   * recusa; o formulário precisa do campo oculto `draftId`). Com ele, só
+   * volta o rascunho daquele envio: o de um envio posterior (que deu certo e
+   * levou a outra tela) não é devolvido quando a pessoa volta a esta com o
+   * botão Voltar do navegador.
+   */
+  answers?: string | null;
 }) {
   const key = `${PREFIX}${userId}:${storageKey}`;
   const [restored, setRestored] = useState(false);
@@ -159,7 +182,21 @@ export function FormDraftGuard({
       // menos linhas): vai vazio, senão a linha voltaria na restauração.
       for (const k of Object.keys(base))
         if (!(k in now) && base[k] !== "") values[k] = "";
-      write(key, { v: 2, at: Date.now(), pending: true, values });
+      // Formulário com o campo do id do envio: um id novo a cada envio (vai
+      // junto no envio, porque isto roda antes de o React ler o formulário).
+      const idField = form.elements.namedItem(DRAFT_ID_FIELD);
+      let id: string | undefined;
+      if (idField instanceof HTMLInputElement) {
+        id = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+        idField.value = id;
+      }
+      write(key, {
+        v: 2,
+        at: Date.now(),
+        pending: true,
+        values,
+        ...(id ? { id } : {}),
+      });
     };
     // Captura: antes de o React tratar o envio (ação do servidor).
     document.addEventListener("submit", onSubmit, true);
@@ -181,6 +218,9 @@ export function FormDraftGuard({
         return;
       }
       if (!draft.pending || Date.now() - draft.at > MAX_AGE_MS) return;
+      // Rascunho de outro envio (a pessoa voltou a uma recusa antiga depois
+      // de um envio que deu certo): não é desta volta.
+      if (answers && draft.id && draft.id !== answers) return;
       write(key, { ...draft, pending: false });
       const values = draft.values;
       if (!Object.keys(values).length) return;
@@ -189,7 +229,12 @@ export function FormDraftGuard({
       );
       // Segunda passada: linhas e campos que o evento acabou de abrir.
       second = window.setTimeout(() => {
-        apply(form, values);
+        form.setAttribute(DRAFT_RESTORING_ATTR, "1");
+        try {
+          apply(form, values);
+        } finally {
+          form.removeAttribute(DRAFT_RESTORING_ATTR);
+        }
         // Aviso só se algo voltou de fato (diferente do que o servidor mostrou).
         const after = collect(form);
         const base = initial.current ?? {};
@@ -203,7 +248,7 @@ export function FormDraftGuard({
       window.clearTimeout(first);
       window.clearTimeout(second);
     };
-  }, [failed, saved, token, formId, key]);
+  }, [failed, saved, token, formId, key, answers]);
 
   if (!restored || !message) return null;
   return (

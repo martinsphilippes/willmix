@@ -36,12 +36,14 @@ describe("menu principal", () => {
     const hrefs = flattenNav(entries).map((l) => l.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
     // O dia a dia continua no começo do menu (celular mostra na ordem).
-    expect(hrefs.slice(0, 6)).toEqual([
+    // Em Pedidos, o Booking vem antes de Solicitações (acontece antes dela).
+    expect(hrefs.slice(0, 7)).toEqual([
       "/app",
       "/app/tasks",
       "/app/sla",
       "/app/notifications",
       "/app/messages",
+      "/app/booking",
       "/app/requests",
     ]);
     for (const href of [
