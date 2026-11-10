@@ -148,7 +148,7 @@ export async function superplanSupplierOptions(productId: string | null) {
 }
 
 /** MOQ e prazo conhecidos do fornecedor no produto (para ele só confirmar). */
-async function knownTerms(productId: string, supplierId: string) {
+export async function knownTerms(productId: string, supplierId: string) {
   const store = getStore();
   const [product, links] = await Promise.all([
     store.get("products", productId),
@@ -304,7 +304,7 @@ export interface SuperplanQuoteView {
 }
 
 /** HD da cotação (fotos "hd" guardadas na ficha da cotação). */
-async function hdPhotosOf(quoteId: string) {
+export async function hdPhotosOf(quoteId: string) {
   const store = getStore();
   const photos = await store.list("product_photos", {
     filter: { orderId: quoteId, kind: "hd" },
