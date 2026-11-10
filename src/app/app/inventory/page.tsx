@@ -70,6 +70,14 @@ export default async function InventoryPage({
   const { situation, q } = filter;
   const money = canOpen(user, "finance");
   const { lines, counts, hasAny } = await inventoryData(filter);
+  // Locais de estoque (CODLOCAL do Sankhya); banco sem a tabela = nenhum.
+  const locations = await getStore()
+    .list("stock_locations")
+    .catch(() => []);
+  const locationLabel = (id: string) => {
+    const l = locations.find((x) => x.id === id);
+    return l ? `${l.code} ${l.name}` : "?";
+  };
   const photos = lines.length
     ? await getStore().list("product_photos", {
         filter: { productId: lines.map((l) => l.productId) },
@@ -374,7 +382,23 @@ export default async function InventoryPage({
                     </span>
                   </Td>
                   <Td className="text-right tabular-nums">{num(l.boxes)}</Td>
-                  <Td className="text-right tabular-nums">{qty(l.brazil)}</Td>
+                  <Td className="text-right tabular-nums">
+                    {qty(l.brazil)}
+                    {l.locations
+                      ? Object.entries(l.locations)
+                          .filter(([, n]) => n !== 0)
+                          .map(([id, n]) => (
+                            <span
+                              key={id}
+                              className="block whitespace-nowrap text-[11px] font-normal text-zinc-500"
+                              title={t("inv.locations")}
+                              data-stock-location={id}
+                            >
+                              {locationLabel(id)}: {num(n)}
+                            </span>
+                          ))
+                      : null}
+                  </Td>
                   <Td className="whitespace-nowrap text-right tabular-nums">
                     {l.reserved ? (
                       <TextLink

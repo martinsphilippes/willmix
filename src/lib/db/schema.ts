@@ -361,6 +361,36 @@ export const BOOKING_STATUSES = [
 ] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
+/**
+ * Booking como planilha (docs/BOOKING.md, "Booking por planilha"): a lista de
+ * itens que um fornecedor mandou, antes de existir produto. Rascunho
+ * (editável) → Fechado (importação concluída, análise do Superplan feita) →
+ * Em andamento (algum item já foi escolhido) → Concluído; e Cancelado.
+ */
+export const BOOKING_LOT_STATUSES = [
+  "draft",
+  "closed",
+  "in_progress",
+  "done",
+  "cancelled",
+] as const;
+export type BookingLotStatus = (typeof BOOKING_LOT_STATUSES)[number];
+
+/**
+ * Solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md): nasce na Seleção de
+ * itens. Aberta (esperando o fornecedor) → Respondida (ele disse se faz e em
+ * que condições) → Aprovada (a Wellmix segue com ele; o produto nasce depois)
+ * ou Recusada; Cancelada pela Wellmix antes da decisão.
+ */
+export const SUPPLIER_REQUEST_STATUSES = [
+  "open",
+  "answered",
+  "approved",
+  "declined",
+  "cancelled",
+] as const;
+export type SupplierRequestStatus = (typeof SUPPLIER_REQUEST_STATUSES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -686,6 +716,12 @@ export interface Party extends BaseRow {
   stateRegistration?: string | null;
   /** Pessoa física (F) ou jurídica (J) (TGFPAR.TIPPESSOA). */
   personType?: string | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface RequirementTemplate {
@@ -763,6 +799,14 @@ export interface Product extends BaseRow {
   ncm: string | null;
   /** Faixas de preço por quantidade negociadas: [{ minQty, price }]. Base da análise de oportunidade. */
   priceTiers: PriceTier[] | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
+  /** Marca (TGFPRO.MARCA). */
+  brand?: string | null;
   /** Estoque mínimo (limite): abaixo dele a tela Estoque pede reposição e o admin é avisado. Nulo = sem limite. */
   minStock?: number | null;
   /** Código do produto (CODPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
@@ -946,6 +990,12 @@ export interface Order extends BaseRow {
   paymentConditionId?: string | null;
   /** Câmbio do pedido (moeda do pedido → R$; TGFCAB.VLRMOEDA). */
   fxRate?: number | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -958,6 +1008,14 @@ export interface OrderItem extends BaseRow {
   /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
+  /** SEQUENCIA do item na nota do Sankhya (a nota é o sankhyaCode do pedido). */
+  sankhyaCode?: string | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface Stage extends BaseRow {
@@ -1047,6 +1105,12 @@ export interface Payment extends BaseRow {
   kitId: string | null;
   /** Título do financeiro (NUFIN) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface Notification extends BaseRow {
@@ -2126,6 +2190,8 @@ export const STOCK_MOVEMENT_KINDS = [
   /** Entrada e saída por regra de processo (Configurações → Processos). */
   "process_in",
   "process_out",
+  /** Ajuste para o saldo do Sankhya (TGFEST) por local, na carga. */
+  "sankhya_balance",
 ] as const;
 export type StockMovementKind = (typeof STOCK_MOVEMENT_KINDS)[number];
 
@@ -2144,6 +2210,8 @@ export interface StockMovement extends BaseRow {
   createdByUserId: string;
   /** Evento de processo que gerou a movimentação (kind process_in/out). */
   processEventId?: string | null;
+  /** Local de estoque (stock_locations; CODLOCAL no Sankhya). */
+  locationId?: string | null;
 }
 
 export const STOCK_COUNT_STATUSES = ["open", "closed"] as const;
@@ -2297,6 +2365,185 @@ export interface Booking extends BaseRow {
   createdByUserId: string | null;
 }
 
+/**
+ * Fornecedor como a planilha do booking escreveu (nome, loja, telefone e
+ * cidade): base da sugestão de cadastro quando ele ainda não existe.
+ */
+export interface BookingLotSupplierHint {
+  name: string | null;
+  store: string | null;
+  phone: string | null;
+  city: string | null;
+}
+
+/**
+ * Booking (a planilha de um fornecedor): status, origem (a cidade do
+ * fornecedor), fornecedor e data. Fornecedor e data vêm estimados da
+ * planilha e o usuário confirma ou ajusta antes de fechar. Os itens ficam em
+ * `booking_items`; nenhum produto do cadastro nasce aqui.
+ */
+export interface BookingLot extends BaseRow {
+  /** Número sequencial (contador `booking_lot_number`). */
+  number: number;
+  status: BookingLotStatus;
+  supplierId: string | null;
+  /** Fornecedor lido da planilha (sugestão de cadastro). */
+  supplierHint: BookingLotSupplierHint | null;
+  /** Cidade do fornecedor (ou a da planilha enquanto não há fornecedor). */
+  origin: string | null;
+  /** Data do booking (ISO, meia-noite UTC). */
+  bookingDate: string | null;
+  /** Data como a planilha trouxe, para conferência. */
+  sheetDate: string | null;
+  fileName: string;
+  fileDocumentId: string | null;
+  sheetName: string | null;
+  /** Cabeçalhos da planilha que não têm campo próprio (guardados nos itens). */
+  extraHeaders: string[] | null;
+  itemCount: number;
+  /** Tipo de negócio do Superplan escolhido ao fechar (vazio = o padrão). */
+  businessType: string | null;
+  closedAt: string | null;
+  closedByUserId: string | null;
+  analyzedAt: string | null;
+  statusChangedAt: string | null;
+  statusChangedByUserId: string | null;
+  note: string | null;
+  ownerUserId: string | null;
+  createdByUserId: string;
+}
+
+/**
+ * Item de um booking: uma linha (ou linhas seguidas da mesma peça em cores
+ * diferentes) da planilha. Não é produto: um analista cria o produto depois,
+ * na seleção de itens, e liga a ele os itens iguais de vários bookings
+ * (`productId`, vazio até lá).
+ */
+export interface BookingItem extends BaseRow {
+  lotId: string;
+  /** Ordem na planilha (0, 1, 2…). */
+  position: number;
+  sourceRows: string | null;
+  /** PRODUCT NUMBER LIST: o número do item na planilha. */
+  itemNumber: string | null;
+  /** SKU / FACTORY ITEM CODE. */
+  factoryItemCode: string | null;
+  productName: string | null;
+  description: string | null;
+  incoterm: SheetIncoterm | null;
+  currency: SheetCurrency | null;
+  price: number | null;
+  /** QTY/BOX: peças por caixa master. */
+  masterCartonQty: number | null;
+  innerQty: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+  /** CBM da caixa master. */
+  cbmPerCarton: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  capacityMl: number | null;
+  packageType: string | null;
+  material: string | null;
+  moq: number | null;
+  /* Informativos (não obrigatórios). */
+  colorAssortment: string | null;
+  /** FUNCTION / BATTERY / 110 / 220. */
+  powerDetail: string | null;
+  purchaseSchedule: string | null;
+  departureIntervalDays: string | null;
+  purchaseQty: number | null;
+  /** TT PCS: peças planejadas. */
+  plannedQty: number | null;
+  sizeText: string | null;
+  photoDocumentId: string | null;
+  cardDocumentId: string | null;
+  /** Colunas da planilha sem campo próprio: cabeçalho → valor. Não aparecem na tela. */
+  extras: Record<string, string> | null;
+  /** Retrato da análise do Superplan (o mesmo formato da linha do Booking). */
+  analysis: BookingAnalysis | null;
+  /** Produto do cadastro a que o item foi ligado (seleção de itens, depois). */
+  productId: string | null;
+  updatedByUserId: string | null;
+}
+
+/** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
+export interface SupplierRequestItem {
+  itemNumber: string | null;
+  factoryItemCode: string | null;
+  productName: string | null;
+  description: string | null;
+  incoterm: SheetIncoterm | null;
+  currency: SheetCurrency | null;
+  price: number | null;
+  masterCartonQty: number | null;
+  innerQty: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+  cbmPerCarton: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  capacityMl: number | null;
+  packageType: string | null;
+  material: string | null;
+  moq: number | null;
+  colorAssortment: string | null;
+  powerDetail: string | null;
+  photoDocumentId: string | null;
+}
+
+/**
+ * Solicitação ao fornecedor: a Wellmix escolheu um item de um booking (e
+ * guardou os parecidos como alternativas) e pergunta ao fornecedor se ele
+ * faz o que ela precisa, em que quantidade e condições. O fornecedor vê e
+ * responde no portal; nada de produto, cliente ou estoque nasce aqui.
+ */
+export interface SupplierRequest extends BaseRow {
+  /** Número sequencial (contador `supplier_request_number`). */
+  number: number;
+  status: SupplierRequestStatus;
+  supplierId: string;
+  bookingItemId: string;
+  bookingLotId: string;
+  /** Itens parecidos de outros bookings (só a Wellmix vê). */
+  alternativeItemIds: string[] | null;
+  item: SupplierRequestItem;
+  quantity: number;
+  unit: string;
+  /** O que a Wellmix precisa no produto (cor, embalagem, ajuste…). */
+  needs: string | null;
+  /** Busca usada na seleção (para refazer a comparação). */
+  searchQuery: string | null;
+  /* Resposta do fornecedor */
+  supplierCanDo: YesNo | null;
+  supplierPrice: number | null;
+  supplierCurrency: SheetCurrency | null;
+  supplierMoq: number | null;
+  supplierLeadTimeDays: number | null;
+  supplierNote: string | null;
+  respondedAt: string | null;
+  respondedByUserId: string | null;
+  /* Decisão da Wellmix */
+  decidedAt: string | null;
+  decidedByUserId: string | null;
+  decisionNote: string | null;
+  createdByUserId: string;
+  /*
+   * Produto (depois de aprovada): criado a partir do item ou associado a um
+   * que já existia. O criado fica fora da vitrine até ser liberado.
+   */
+  productId?: string | null;
+  productAction?: "created" | "linked" | null;
+  productLinkedAt?: string | null;
+  productLinkedByUserId?: string | null;
+  showcaseReleasedAt?: string | null;
+  showcaseReleasedByUserId?: string | null;
+  /** Quando o CODPROD do produto foi conferido no Sankhya (nulo: digitado sem conferir). */
+  erpCheckedAt?: string | null;
+}
+
 export interface StockReservation extends BaseRow {
   productId: string;
   customerId: string;
@@ -2333,6 +2580,16 @@ export interface ProcessEvent extends BaseRow {
   /** Sincronização de cadastro (fase 3): tabela e id do registro do portal. */
   entity?: string | null;
   entityId?: string | null;
+}
+
+/** Local de estoque (Sankhya TGFLOC; CODLOCAL). */
+export interface StockLocation extends BaseRow {
+  /** CODLOCAL no Sankhya (único). */
+  code: number;
+  name: string;
+  active: boolean;
+  notes: string | null;
+  sankhyaCode: string | null;
 }
 
 export interface PaymentCondition extends BaseRow {
@@ -2406,7 +2663,11 @@ export interface Tables {
   stock_count_items: StockCountItem;
   stock_reservations: StockReservation;
   bookings: Booking;
+  booking_lots: BookingLot;
+  booking_items: BookingItem;
+  supplier_requests: SupplierRequest;
   payment_conditions: PaymentCondition;
+  stock_locations: StockLocation;
   process_events: ProcessEvent;
 }
 export type TableName = keyof Tables;
@@ -2541,6 +2802,7 @@ export const TABLES: Record<TableName, TableDef> = {
       legalName: str(160),
       stateRegistration: str(30),
       personType: str(2),
+      sankhyaRefs: json(),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
@@ -2598,6 +2860,8 @@ export const TABLES: Record<TableName, TableDef> = {
       primaryPhotoDocumentId: id(false),
       ncm: str(10),
       priceTiers: json(),
+      sankhyaRefs: json(),
+      brand: str(80),
       minStock: float(),
       sankhyaCode: str(40),
       ean: str(20),
@@ -2727,6 +2991,7 @@ export const TABLES: Record<TableName, TableDef> = {
       incoterm: str(10),
       paymentConditionId: id(false),
       fxRate: float(),
+      sankhyaRefs: json(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -2748,6 +3013,8 @@ export const TABLES: Record<TableName, TableDef> = {
       unitPrice: float(),
       variantId: id(false),
       variant: json(),
+      sankhyaCode: str(40),
+      sankhyaRefs: json(),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
@@ -2846,6 +3113,7 @@ export const TABLES: Record<TableName, TableDef> = {
       note: text(),
       kitId: id(false),
       sankhyaCode: str(40),
+      sankhyaRefs: json(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
@@ -3801,6 +4069,7 @@ export const TABLES: Record<TableName, TableDef> = {
       note: text(),
       createdByUserId: id(),
       processEventId: id(false),
+      locationId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
@@ -3896,6 +4165,132 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_batch", type: "key", columns: ["importBatchId"] },
     ],
+  },
+  booking_lots: {
+    label: "Bookings (planilhas de fornecedor)",
+    columns: {
+      number: int(true),
+      status: enumOf(BOOKING_LOT_STATUSES),
+      supplierId: id(false),
+      supplierHint: json(),
+      origin: str(80),
+      bookingDate: datetime(),
+      sheetDate: str(40),
+      fileName: str(255, true),
+      fileDocumentId: id(false),
+      sheetName: str(120),
+      extraHeaders: json(),
+      itemCount: int(true),
+      businessType: str(80),
+      closedAt: datetime(),
+      closedByUserId: id(false),
+      analyzedAt: datetime(),
+      statusChangedAt: datetime(),
+      statusChangedByUserId: id(false),
+      note: str(500),
+      ownerUserId: id(false),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+    ],
+  },
+  booking_items: {
+    label: "Itens do booking",
+    columns: {
+      lotId: id(),
+      position: int(true),
+      sourceRows: str(40),
+      itemNumber: str(40),
+      factoryItemCode: str(60),
+      productName: str(160),
+      description: text(),
+      incoterm: enumOf(SHEET_INCOTERMS, false),
+      currency: enumOf(SHEET_CURRENCIES, false),
+      price: float(),
+      masterCartonQty: int(),
+      innerQty: int(),
+      netWeightPcKg: float(),
+      grossWeightPcKg: float(),
+      cbmPerCarton: float(),
+      lengthCm: float(),
+      widthCm: float(),
+      heightCm: float(),
+      capacityMl: float(),
+      packageType: str(120),
+      material: str(200),
+      moq: int(),
+      colorAssortment: str(200),
+      powerDetail: str(60),
+      purchaseSchedule: str(80),
+      departureIntervalDays: str(40),
+      purchaseQty: int(),
+      plannedQty: int(),
+      sizeText: str(60),
+      photoDocumentId: id(false),
+      cardDocumentId: id(false),
+      extras: json(),
+      analysis: json(),
+      productId: id(false),
+      updatedByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_lot", type: "key", columns: ["lotId"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  supplier_requests: {
+    label: "Solicitações ao fornecedor",
+    columns: {
+      number: int(true),
+      status: enumOf(SUPPLIER_REQUEST_STATUSES),
+      supplierId: id(),
+      bookingItemId: id(),
+      bookingLotId: id(),
+      alternativeItemIds: json(),
+      item: json(),
+      quantity: int(true),
+      unit: str(20, true),
+      needs: text(),
+      searchQuery: str(200),
+      supplierCanDo: enumOf(YES_NO, false),
+      supplierPrice: float(),
+      supplierCurrency: enumOf(SHEET_CURRENCIES, false),
+      supplierMoq: int(),
+      supplierLeadTimeDays: int(),
+      supplierNote: text(),
+      respondedAt: datetime(),
+      respondedByUserId: id(false),
+      decidedAt: datetime(),
+      decidedByUserId: id(false),
+      decisionNote: str(500),
+      createdByUserId: id(),
+      productId: id(false),
+      productAction: enumOf(["created", "linked"], false),
+      productLinkedAt: datetime(),
+      productLinkedByUserId: id(false),
+      showcaseReleasedAt: datetime(),
+      showcaseReleasedByUserId: id(false),
+      erpCheckedAt: datetime(),
+    },
+    indexes: [
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      { key: "by_item", type: "key", columns: ["bookingItemId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  stock_locations: {
+    label: "Locais de estoque (Sankhya TGFLOC)",
+    columns: {
+      code: int(true),
+      name: str(120, true),
+      active: bool(),
+      notes: text(),
+      sankhyaCode: str(40),
+    },
+    indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
   },
   payment_conditions: {
     label: "Condições de pagamento (Sankhya TGFTPV)",

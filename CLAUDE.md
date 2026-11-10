@@ -7,10 +7,25 @@ Portal Operacional de Importações. Next.js 16 na Vercel; Appwrite em produçã
 - `docs/SCOPE.md`, `docs/WORKFLOW.md`, `docs/OPEN_DECISIONS.md`: o que o sistema faz e as regras.
 - `docs/ARQUITETURA.md`: decisões, módulos e convenções.
 - `docs/APPWRITE.md` e `docs/AMBIENTE.md`: esquema, permissões, variáveis e limitações da sessão cloud.
-- `docs/BOOKING.md`, `docs/SUPERPLAN.md`, `docs/QUOTE_FLOW.md` e `docs/ORDER_SIGNATURE.md`: do Booking ao pedido (análise, RFQ, negociação, embalagem, documento com as duas assinaturas).
+- `docs/BOOKING.md`, `docs/SUPPLIER_REQUESTS.md`, `docs/SUPERPLAN.md`, `docs/QUOTE_FLOW.md` e `docs/ORDER_SIGNATURE.md`: do Booking ao pedido (bookings por planilha, seleção de itens e solicitação ao fornecedor, análise, RFQ, negociação, embalagem, documento com as duas assinaturas).
 - `docs/INTEGRATIONS.md`: adaptadores mock/manual e dependências externas pendentes; `docs/SANKHYA.md` para o ERP.
 - Skills `.claude/skills/appwrite-cli` e `.claude/skills/appwrite-typescript` antes de rodar o CLI ou escrever código com o SDK.
 
 Regras fixas: toda escrita passa por Server Action em `src/app/app/actions.ts` ou `src/app/app/actions/*.ts` (helpers em `actions/helpers.ts`) com zod e checagem de papel; textos novos em `src/i18n/modules/*.ts` (pt/en/zh, mesmas chaves); evolução aditiva conforme `docs/EVOLUTION_PLAN.md` (não remover telas, rotas, campos ou dados); leitura só no servidor; esquema em `src/lib/db/schema.ts` e `appwrite.config.json` gerado por `npm run appwrite:config`; use `TablesDB` (não `Databases`) e parâmetros por objeto no SDK. Antes de commitar: `npm run lint && npm run typecheck && npm test`. O E2E (`npm run test:e2e`) é o teste do caminho principal; mantenha-o passando.
 
 Velocidade: prefira a solução simples que funciona hoje; integrações sem credencial ganham modo manual/mock, nunca dados falsos apresentados como reais.
+## Entrega sem perguntar (autorização do dono)
+
+Ao terminar uma tarefa, sem pedir confirmação:
+
+1. Rodar `npm run lint && npm run typecheck && npm test` e o E2E (`npm run test:e2e`).
+2. Abrir o PR para `wellmix`.
+3. Esperar o CI (`verify`) ficar verde e mesclar o PR.
+4. Se o PR mexeu em `src/lib/db/schema.ts`, publicar o esquema: Actions → "Publicar esquema Appwrite" (a publicação só adiciona, nunca apaga).
+
+Exceções (parar e avisar o dono em vez de mesclar):
+
+- CI ou E2E falhando.
+- Conflito com a base ou outro PR aberto mexendo na mesma tela ou regra.
+- Decisão de negócio tomada sem confirmação do dono.
+- Mudança que apaga ou altera dados, telas, rotas ou campos existentes.

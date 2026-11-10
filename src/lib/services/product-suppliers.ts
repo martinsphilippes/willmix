@@ -698,3 +698,34 @@ export async function fillLinkCode(
     return false;
   }
 }
+
+/**
+ * Fornecedor de um item de booking ligado ao produto (docs/SUPPLIER_REQUESTS.md):
+ * o da solicitação aprovada entra com o preço, a moeda, o MOQ e o prazo que
+ * respondeu (`source` "quote"); o de uma alternativa, com o preço do booking
+ * ("manual"). O que já existe ganha só o que foi informado.
+ */
+export async function linkSupplierFromBooking(
+  user: User,
+  productId: string,
+  supplierId: string,
+  values: {
+    supplierSku: string | null;
+    price: number | null;
+    currency: string | null;
+    moq: number | null;
+    leadTimeDays: number | null;
+  },
+  source: ProductSupplierSource,
+): Promise<ProductSupplier> {
+  const { link } = await upsertLink(user, productId, supplierId, source, () =>
+    definedOnly({
+      supplierSku: values.supplierSku?.slice(0, 60) ?? undefined,
+      price: values.price ?? undefined,
+      currency: values.currency ?? undefined,
+      moq: values.moq ?? undefined,
+      leadTimeDays: values.leadTimeDays ?? undefined,
+    }),
+  );
+  return link;
+}

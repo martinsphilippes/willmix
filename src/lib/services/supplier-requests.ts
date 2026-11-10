@@ -1,0 +1,520 @@
+import "server-only";
+
+import { assertWellmix, isWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
+import {
+  getStore,
+  type BookingItem,
+  type BookingLot,
+  type Party,
+  type SheetCurrency,
+  type SupplierRequest,
+  type User,
+  type YesNo,
+} from "@/lib/db";
+import {
+  itemSearchText,
+  matchesItemSearch,
+  searchWords,
+  sheetQuantity,
+  supplierCanAnswer,
+  supplierRequestActive,
+  supplierRequestDecisions,
+  supplierRequestItemOf,
+} from "@/lib/supplier-requests";
+import { audit } from "./audit";
+
+/*
+ * Seleção de itens e solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md).
+ * A Wellmix compara itens parecidos dos bookings fechados, escolhe um e abre
+ * a solicitação ao fornecedor dele (os parecidos ficam como alternativas). O
+ * fornecedor vê só as próprias solicitações, sem as alternativas nem a
+ * análise do Superplan, e responde se faz o que a Wellmix precisa e em que
+ * condições. Nenhum produto, cliente ou estoque nasce aqui.
+ */
+
+export class SupplierRequestError extends Error {}
+
+const COUNTER = "supplier_request_number";
+/** Bookings cujos itens entram na seleção (fechados ou já em andamento). */
+const SELECTABLE_LOTS = ["closed", "in_progress", "done"] as const;
+/** Itens mostrados de uma vez na seleção. */
+export const SELECTION_MAX = 200;
+const MAX_ALTERNATIVES = 30;
+
+const clip = (s: string | null | undefined, max: number) => {
+  const v = (s ?? "").trim();
+  return v ? v.slice(0, max) : null;
+};
+
+async function withSchema<T>(fn: () => Promise<T>): Promise<T> {
+  const { isSchemaMissing } = await import("./packaging-brief");
+  try {
+    return await fn();
+  } catch (error) {
+    if (isSchemaMissing(error))
+      throw new SupplierRequestError("schema_outdated");
+    throw error;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Seleção de itens                                                          */
+/* ------------------------------------------------------------------------ */
+
+export interface SelectionRow {
+  item: BookingItem;
+  lot: BookingLot;
+  supplier: Party | null;
+  /** Solicitação em andamento (aberta ou respondida) deste item. */
+  activeRequest: SupplierRequest | null;
+}
+
+export interface SelectionResult {
+  rows: SelectionRow[];
+  /** Itens que combinam com a busca (pode passar do que é mostrado). */
+  total: number;
+}
+
+/**
+ * Itens dos bookings fechados que combinam com a busca (cada palavra em
+ * algum lugar: descrição, nome, código, material…), ordenados pela
+ * descrição para os parecidos ficarem juntos. `null`: tabelas sem publicar.
+ */
+export async function listSelectionItems(
+  user: User,
+  query: string,
+): Promise<SelectionResult | null> {
+  assertWellmix(user);
+  assertScreen(user, "booking");
+  const store = getStore();
+  let lots: BookingLot[];
+  let items: BookingItem[];
+  let requests: SupplierRequest[];
+  try {
+    lots = await store.list("booking_lots", {
+      filter: { status: [...SELECTABLE_LOTS] },
+    });
+    items = lots.length
+      ? await store.list("booking_items", {
+          filter: { lotId: lots.map((l) => l.id) },
+        })
+      : [];
+    requests = items.length
+      ? await store.list("supplier_requests", {
+          filter: { status: ["open", "answered"] },
+        })
+      : [];
+  } catch (error) {
+    const { isSchemaMissing } = await import("./packaging-brief");
+    if (isSchemaMissing(error)) return null;
+    throw error;
+  }
+  const lotOf = new Map(lots.map((l) => [l.id, l]));
+  const supplierIds = [
+    ...new Set(lots.map((l) => l.supplierId).filter((s): s is string => !!s)),
+  ];
+  const suppliers = supplierIds.length
+    ? await store.list("parties", { filter: { id: supplierIds } })
+    : [];
+  const partyOf = new Map(suppliers.map((p) => [p.id, p]));
+  const activeOf = new Map(requests.map((r) => [r.bookingItemId, r]));
+  const words = searchWords(query);
+  const matched = items
+    .filter((item) => matchesItemSearch(itemSearchText(item), words))
+    .sort(
+      (a, b) =>
+        (a.description ?? a.productName ?? "").localeCompare(
+          b.description ?? b.productName ?? "",
+          "pt",
+          { sensitivity: "base", numeric: true },
+        ) || a.position - b.position,
+    );
+  return {
+    total: matched.length,
+    rows: matched.slice(0, SELECTION_MAX).map((item) => {
+      const lot = lotOf.get(item.lotId)!;
+      return {
+        item,
+        lot,
+        supplier: lot.supplierId ? (partyOf.get(lot.supplierId) ?? null) : null,
+        activeRequest: activeOf.get(item.id) ?? null,
+      };
+    }),
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Abrir                                                                     */
+/* ------------------------------------------------------------------------ */
+
+export interface OpenSupplierRequestInput {
+  itemId: string;
+  alternativeIds: string[];
+  /** Vazio: a quantidade da planilha do item. */
+  quantity: number | null;
+  needs: string | null;
+  searchQuery: string | null;
+}
+
+/**
+ * Abre a solicitação ao fornecedor do item escolhido (uma por item; o item
+ * com solicitação em andamento recusa). O booking fechado passa a "Em
+ * andamento" e os logins do fornecedor recebem o aviso.
+ */
+export async function openSupplierRequest(
+  user: User,
+  input: OpenSupplierRequestInput,
+): Promise<SupplierRequest> {
+  assertWellmix(user);
+  assertScreen(user, "booking");
+  const store = getStore();
+  const item = await withSchema(() => store.get("booking_items", input.itemId));
+  if (!item) throw new SupplierRequestError("not_found");
+  const lot = await store.get("booking_lots", item.lotId);
+  if (!lot || !(SELECTABLE_LOTS as readonly string[]).includes(lot.status))
+    throw new SupplierRequestError("supplier_request_lot_not_closed");
+  if (!lot.supplierId)
+    throw new SupplierRequestError("supplier_request_no_supplier");
+  const supplier = await store.get("parties", lot.supplierId);
+  if (!supplier || supplier.type !== "supplier" || !supplier.active)
+    throw new SupplierRequestError("supplier_invalid");
+  const existing = await withSchema(() =>
+    store.list("supplier_requests", { filter: { bookingItemId: item.id } }),
+  );
+  if (existing.some((r) => supplierRequestActive(r.status)))
+    throw new SupplierRequestError("supplier_request_exists");
+
+  const quantity = input.quantity ?? sheetQuantity(item);
+  if (
+    quantity === null ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    quantity > 1e9
+  )
+    throw new SupplierRequestError("supplier_request_qty_required");
+
+  const altIds = [...new Set(input.alternativeIds)]
+    .filter((id) => id && id !== item.id)
+    .slice(0, MAX_ALTERNATIVES);
+  const alternatives = altIds.length
+    ? await store.list("booking_items", { filter: { id: altIds } })
+    : [];
+
+  const number = await store.nextNumber(COUNTER);
+  const request = await store.create("supplier_requests", {
+    number,
+    status: "open",
+    supplierId: supplier.id,
+    bookingItemId: item.id,
+    bookingLotId: lot.id,
+    alternativeItemIds: alternatives.length
+      ? alternatives.map((a) => a.id)
+      : null,
+    item: supplierRequestItemOf(item),
+    quantity: Math.round(quantity),
+    unit: "pcs",
+    needs: clip(input.needs, 4000),
+    searchQuery: clip(input.searchQuery, 200),
+    supplierCanDo: null,
+    supplierPrice: null,
+    supplierCurrency: null,
+    supplierMoq: null,
+    supplierLeadTimeDays: null,
+    supplierNote: null,
+    respondedAt: null,
+    respondedByUserId: null,
+    decidedAt: null,
+    decidedByUserId: null,
+    decisionNote: null,
+    createdByUserId: user.id,
+  });
+  if (lot.status === "closed")
+    await store.update("booking_lots", lot.id, {
+      status: "in_progress",
+      statusChangedAt: new Date().toISOString(),
+      statusChangedByUserId: user.id,
+    });
+  await audit(
+    user,
+    "supplier_request.open",
+    "supplier_request",
+    request.id,
+    `Solicitação ao fornecedor nº ${number}: ${supplier.name}, ${request.quantity} pcs (booking nº ${lot.number})`,
+  );
+  const { notify } = await import("./notifications");
+  await notify(
+    { role: "supplier", partyId: supplier.id },
+    {
+      link: `/app/supplier-requests/${request.id}`,
+      kind: "action",
+      text: (t) => ({
+        subject: t("supplierRequests.notify.open.subject", { n: number }),
+        body: t("supplierRequests.notify.open.body", {
+          n: number,
+          code: request.item.factoryItemCode ?? request.item.description ?? "",
+          qty: request.quantity,
+        }),
+      }),
+    },
+  ).catch((error) => console.error("notify(supplier_request.open)", error));
+  return request;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Leitura                                                                   */
+/* ------------------------------------------------------------------------ */
+
+/** Quem vê: a Wellmix (tela Cotações) todas; o fornecedor só as do próprio cadastro. */
+function canSee(user: User, request: SupplierRequest) {
+  if (isWellmix(user)) return true;
+  return (
+    user.role === "supplier" &&
+    !!user.partyId &&
+    request.supplierId === user.partyId
+  );
+}
+
+export interface SupplierRequestListEntry {
+  request: SupplierRequest;
+  supplier: Party | null;
+}
+
+export async function listSupplierRequests(
+  user: User,
+): Promise<SupplierRequestListEntry[] | null> {
+  assertScreen(user, "quotes");
+  const store = getStore();
+  let rows: SupplierRequest[];
+  try {
+    if (isWellmix(user)) rows = await store.list("supplier_requests");
+    else if (user.role === "supplier" && user.partyId)
+      rows = await store.list("supplier_requests", {
+        filter: { supplierId: user.partyId },
+      });
+    else rows = [];
+  } catch (error) {
+    const { isSchemaMissing } = await import("./packaging-brief");
+    if (isSchemaMissing(error)) return null;
+    throw error;
+  }
+  rows.sort((a, b) => b.number - a.number);
+  const ids = [...new Set(rows.map((r) => r.supplierId))];
+  const parties = ids.length
+    ? await store.list("parties", { filter: { id: ids } })
+    : [];
+  const partyOf = new Map(parties.map((p) => [p.id, p]));
+  return rows.map((request) => ({
+    request,
+    supplier: partyOf.get(request.supplierId) ?? null,
+  }));
+}
+
+export interface SupplierRequestDetail {
+  request: SupplierRequest;
+  supplier: Party | null;
+  /** Só para a Wellmix: o booking e os itens alternativos com o fornecedor de cada um. */
+  lot: BookingLot | null;
+  chosen: BookingItem | null;
+  alternatives: Array<{
+    item: BookingItem;
+    lot: BookingLot | null;
+    supplier: Party | null;
+  }>;
+}
+
+export async function getSupplierRequest(
+  user: User,
+  id: string,
+): Promise<SupplierRequestDetail | null> {
+  assertScreen(user, "quotes");
+  const store = getStore();
+  const request = await withSchema(() => store.get("supplier_requests", id));
+  if (!request || !canSee(user, request)) return null;
+  const supplier = await store.get("parties", request.supplierId);
+  if (!isWellmix(user))
+    return { request, supplier, lot: null, chosen: null, alternatives: [] };
+  const altIds = request.alternativeItemIds ?? [];
+  const [lot, chosen, alts] = await Promise.all([
+    store.get("booking_lots", request.bookingLotId),
+    store.get("booking_items", request.bookingItemId),
+    altIds.length
+      ? store.list("booking_items", { filter: { id: altIds } })
+      : Promise.resolve([] as BookingItem[]),
+  ]);
+  const lotIds = [...new Set(alts.map((a) => a.lotId))];
+  const lots = lotIds.length
+    ? await store.list("booking_lots", { filter: { id: lotIds } })
+    : [];
+  const lotOf = new Map(lots.map((l) => [l.id, l]));
+  const partyIds = [
+    ...new Set(lots.map((l) => l.supplierId).filter((s): s is string => !!s)),
+  ];
+  const parties = partyIds.length
+    ? await store.list("parties", { filter: { id: partyIds } })
+    : [];
+  const partyOf = new Map(parties.map((p) => [p.id, p]));
+  return {
+    request,
+    supplier,
+    lot,
+    chosen,
+    alternatives: alts.map((item) => {
+      const l = lotOf.get(item.lotId) ?? null;
+      return {
+        item,
+        lot: l,
+        supplier: l?.supplierId ? (partyOf.get(l.supplierId) ?? null) : null,
+      };
+    }),
+  };
+}
+
+/**
+ * O fornecedor dono da solicitação vê a foto do item dela (o documento é
+ * interno: sem isto só a Wellmix abriria).
+ */
+export async function supplierSeesRequestPhoto(
+  user: User,
+  documentId: string,
+): Promise<boolean> {
+  if (user.role !== "supplier" || !user.partyId) return false;
+  try {
+    const rows = await getStore().list("supplier_requests", {
+      filter: { supplierId: user.partyId },
+    });
+    return rows.some((r) => r.item?.photoDocumentId === documentId);
+  } catch {
+    return false;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Resposta do fornecedor                                                    */
+/* ------------------------------------------------------------------------ */
+
+export interface SupplierAnswerInput {
+  canDo: YesNo;
+  price: number | null;
+  currency: SheetCurrency | null;
+  moq: number | null;
+  leadTimeDays: number | null;
+  note: string | null;
+}
+
+/**
+ * Resposta do fornecedor (ou registrada pela Wellmix em nome dele): se faz o
+ * que foi pedido e as condições. Muda enquanto a Wellmix não decidiu.
+ */
+export async function answerSupplierRequest(
+  user: User,
+  id: string,
+  input: SupplierAnswerInput,
+): Promise<SupplierRequest> {
+  assertScreen(user, "quotes");
+  const store = getStore();
+  const request = await withSchema(() => store.get("supplier_requests", id));
+  if (!request || !canSee(user, request))
+    throw new SupplierRequestError("not_found");
+  if (!supplierCanAnswer(request.status))
+    throw new SupplierRequestError("supplier_request_closed");
+  if (input.canDo === "yes" && input.price === null)
+    throw new SupplierRequestError("supplier_request_price_required");
+  const updated = await store.update("supplier_requests", request.id, {
+    status: "answered",
+    supplierCanDo: input.canDo,
+    supplierPrice: input.price,
+    supplierCurrency: input.price === null ? null : (input.currency ?? "USD"),
+    supplierMoq: input.moq,
+    supplierLeadTimeDays: input.leadTimeDays,
+    supplierNote: clip(input.note, 4000),
+    respondedAt: new Date().toISOString(),
+    respondedByUserId: user.id,
+  });
+  await audit(
+    user,
+    "supplier_request.answer",
+    "supplier_request",
+    request.id,
+    `Solicitação ao fornecedor nº ${request.number}: ${input.canDo === "yes" ? "faz" : "não faz"}`,
+  );
+  if (!isWellmix(user)) {
+    const { notify } = await import("./notifications");
+    await notify(
+      { userIds: [request.createdByUserId] },
+      {
+        link: `/app/supplier-requests/${request.id}`,
+        kind: "action",
+        actor: "wellmix",
+        text: (t) => ({
+          subject: t("supplierRequests.notify.answer.subject", {
+            n: request.number,
+          }),
+          body: t(
+            input.canDo === "yes"
+              ? "supplierRequests.notify.answer.yes"
+              : "supplierRequests.notify.answer.no",
+            { n: request.number },
+          ),
+        }),
+      },
+    ).catch((error) => console.error("notify(supplier_request.answer)", error));
+  }
+  return updated;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Decisão da Wellmix                                                        */
+/* ------------------------------------------------------------------------ */
+
+export async function decideSupplierRequest(
+  user: User,
+  id: string,
+  decision: "approved" | "declined" | "cancelled",
+  note: string | null,
+): Promise<SupplierRequest> {
+  assertWellmix(user);
+  assertScreen(user, "quotes");
+  const store = getStore();
+  const request = await withSchema(() => store.get("supplier_requests", id));
+  if (!request) throw new SupplierRequestError("not_found");
+  if (
+    !supplierRequestDecisions(request.status, request.supplierCanDo).includes(
+      decision,
+    )
+  )
+    throw new SupplierRequestError("supplier_request_decision_invalid");
+  const updated = await store.update("supplier_requests", request.id, {
+    status: decision,
+    decidedAt: new Date().toISOString(),
+    decidedByUserId: user.id,
+    decisionNote: clip(note, 500),
+  });
+  await audit(
+    user,
+    `supplier_request.${decision}`,
+    "supplier_request",
+    request.id,
+    `Solicitação ao fornecedor nº ${request.number}: ${request.status} → ${decision}`,
+    { status: request.status },
+    { status: decision },
+  );
+  const { notify } = await import("./notifications");
+  await notify(
+    { role: "supplier", partyId: request.supplierId },
+    {
+      link: `/app/supplier-requests/${request.id}`,
+      kind: decision === "approved" ? "done" : "info",
+      actor: null,
+      text: (t) => ({
+        subject: t(`supplierRequests.notify.${decision}.subject`, {
+          n: request.number,
+        }),
+        body: t(`supplierRequests.notify.${decision}.body`, {
+          n: request.number,
+        }),
+      }),
+    },
+  ).catch((error) => console.error("notify(supplier_request.decide)", error));
+  return updated;
+}

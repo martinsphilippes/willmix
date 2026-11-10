@@ -337,6 +337,7 @@ export async function sankhyaImportSampleAction(form: FormData) {
 const fullLoadSchema = z.object({
   entity: z.enum(FULL_LOAD_ENTITIES),
   reset: z.boolean(),
+  auto: z.boolean(),
 });
 
 /**
@@ -352,6 +353,7 @@ export async function sankhyaFullLoadAction(form: FormData) {
     const input = fullLoadSchema.parse({
       entity: str(form, "entity"),
       reset: str(form, "reset") === "1",
+      auto: str(form, "auto") === "1",
     });
     if (input.reset) {
       await resetFullLoad(input.entity);
@@ -362,6 +364,8 @@ export async function sankhyaFullLoadAction(form: FormData) {
         tab: "load",
         full: input.entity,
         ran: progress.done ? "done" : "partial",
+        // "Até o fim": a tela envia de novo sozinha enquanto faltar.
+        ...(input.auto && !progress.done ? { auto: "1" } : {}),
       }).toString()}#${hash}`;
     }
   } catch (error) {

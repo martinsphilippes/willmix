@@ -551,7 +551,10 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
   const cards = BOARD_CARDS.filter(
     (c) =>
       (input.finance || !("finance" in c && c.finance)) &&
-      (c.block !== "booking" || !!input.bookings),
+      (c.block !== "booking" || !!input.bookings) &&
+      // Quem abre o Booking começa por ele (pedido do dono, 10/11/2026):
+      // "Solicitação nova" só aparece enquanto houver alguma.
+      (c.key !== "reqNew" || !input.bookings || rows.get("reqNew")!.length > 0),
   ).map((c): BoardCard => {
     const list = rows.get(c.key)!;
     const href = "href" in c ? c.href : null;

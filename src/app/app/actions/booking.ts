@@ -64,7 +64,13 @@ function listBack(form: FormData) {
   } catch {
     return "/app/booking";
   }
-  if (url.origin !== "http://x" || url.pathname !== "/app/booking")
+  // A fila de produtos mora em /app/booking/products; o endereço antigo
+  // (/app/booking com filtros) é encaminhado para lá pela tela.
+  if (
+    url.origin !== "http://x" ||
+    (url.pathname !== "/app/booking" &&
+      url.pathname !== "/app/booking/products")
+  )
     return "/app/booking";
   for (const key of FLASH) url.searchParams.delete(key);
   return url.pathname + url.search;
@@ -303,6 +309,7 @@ async function inline(
     return { ok: false, message };
   }
   revalidatePath("/app/booking");
+  revalidatePath("/app/booking/products");
   return { ok: true };
 }
 

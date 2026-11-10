@@ -71,7 +71,7 @@ export default async function BookingRowPage({
 }: PageProps<"/app/booking/[id]">) {
   const user = await getCurrentUser();
   const { id } = await params;
-  if (!user) redirect(`/login?next=/app/booking`);
+  if (!user) redirect(`/login?next=/app/booking/products`);
   requireScreen(user, "booking");
   if (!ID.test(id)) notFound();
   const t = await getT();
@@ -209,7 +209,7 @@ export default async function BookingRowPage({
         }
         actions={
           <>
-            <LinkButton href="/app/booking">
+            <LinkButton href="/app/booking/products">
               {t("booking.detail.back")}
             </LinkButton>
             {canOpen(user, "products") && !row.productMissing ? (

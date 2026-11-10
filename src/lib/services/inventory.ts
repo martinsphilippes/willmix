@@ -58,6 +58,11 @@ export interface InventoryRow {
   idleDays?: number | null;
   /** Reservado para clientes (reservas valendo hoje); sai do livre, não do físico. */
   reserved?: number;
+  /**
+   * Quantidade por local de estoque (id em stock_locations), pelas
+   * movimentações com local (saldo do Sankhya, regras de processo).
+   */
+  locations?: Record<string, number>;
 }
 
 /** Produto parado: estoque no Brasil sem venda há este número de dias ou mais. */
@@ -109,7 +114,10 @@ export function buildInventory(input: {
   movements?: (Pick<
     StockMovement,
     "productId" | "quantity" | "unit" | "updatedAt"
-  > & { kind?: StockMovement["kind"] })[];
+  > & {
+    kind?: StockMovement["kind"];
+    locationId?: string | null;
+  })[];
   /** Hoje (AAAA-MM-DD) para calcular os dias parado; sem ele, não calcula. */
   today?: string;
   /** Reservas para clientes; só contam as valendo em `today`. */
@@ -195,6 +203,11 @@ export function buildInventory(input: {
     if (!m.productId || !m.quantity) continue;
     const r = row(m.productId, m.unit ?? "un");
     r.brazil = Math.max(0, r.brazil + m.quantity);
+    if (m.locationId) {
+      r.locations ??= {};
+      r.locations[m.locationId] =
+        Math.round(((r.locations[m.locationId] ?? 0) + m.quantity) * 1e6) / 1e6;
+    }
     touch(r, m.updatedAt);
     if (m.kind === "sale_out") r.lastSaleAt = later(r.lastSaleAt, m.updatedAt);
   }

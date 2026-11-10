@@ -192,6 +192,13 @@ async function moveStock(
   if (!usable.length)
     return { status: "skipped", detail: "estoque: sem produto do catálogo" };
   const sign = rule.stock === "entry" ? 1 : -1;
+  // Local de estoque da regra (CODLOCAL → stock_locations).
+  const location =
+    rule.location != null
+      ? ((await store.list("stock_locations").catch(() => [])).find(
+          (x) => x.code === rule.location,
+        ) ?? null)
+      : null;
   for (const l of usable)
     await store.create("stock_movements", {
       productId: l.productId!,
@@ -204,6 +211,7 @@ async function moveStock(
       note: `Regra de processo: ${rule.event}`,
       createdByUserId: user?.id ?? "system",
       processEventId: eventId,
+      locationId: location?.id ?? null,
     });
   return {
     status: "done",

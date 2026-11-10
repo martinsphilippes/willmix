@@ -16,20 +16,39 @@ import { isSchemaMissing } from "./packaging-brief";
  * (as telas seguem como antes).
  */
 
-/** Ids dos produtos que o cliente ainda não pode ver. */
-export async function hiddenBookingProductIds(): Promise<Set<string>> {
+/**
+ * Produtos criados por uma solicitação ao fornecedor aprovada que ainda não
+ * foram liberados na vitrine (docs/SUPPLIER_REQUESTS.md, "Produto"). Tabela
+ * ainda não publicada: nenhum.
+ */
+async function unreleasedFromRequests(): Promise<Set<string>> {
   try {
-    const rows = await getStore().list("bookings", {
-      filter: { status: [...BOOKING_HIDDEN] },
-    });
-    return new Set(rows.map((row) => row.productId));
+    const { unreleasedRequestProductIds } =
+      await import("./supplier-request-product");
+    return await unreleasedRequestProductIds();
   } catch (error) {
     if (isSchemaMissing(error)) return new Set();
     throw error;
   }
 }
 
-/** Este produto está escondido do cliente pelo Booking? */
+/** Ids dos produtos que o cliente ainda não pode ver. */
+export async function hiddenBookingProductIds(): Promise<Set<string>> {
+  let hidden: Set<string>;
+  try {
+    const rows = await getStore().list("bookings", {
+      filter: { status: [...BOOKING_HIDDEN] },
+    });
+    hidden = new Set(rows.map((row) => row.productId));
+  } catch (error) {
+    if (!isSchemaMissing(error)) throw error;
+    hidden = new Set();
+  }
+  for (const id of await unreleasedFromRequests()) hidden.add(id);
+  return hidden;
+}
+
+/** Este produto está escondido do cliente pelo Booking (ou pela solicitação ao fornecedor)? */
 export async function isHiddenByBooking(productId: string): Promise<boolean> {
   if (!productId) return false;
   try {
@@ -37,9 +56,9 @@ export async function isHiddenByBooking(productId: string): Promise<boolean> {
       filter: { productId },
       limit: 1,
     });
-    return !!row && hidesFromShowcase(row.status);
+    if (row && hidesFromShowcase(row.status)) return true;
   } catch (error) {
-    if (isSchemaMissing(error)) return false;
-    throw error;
+    if (!isSchemaMissing(error)) throw error;
   }
+  return (await unreleasedFromRequests()).has(productId);
 }

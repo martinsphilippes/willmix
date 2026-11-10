@@ -64,7 +64,9 @@ describe("conversões", () => {
       heightCm: 8.2,
       active: true,
     });
-    expect(mapped.some((v) => v.sankhya === "CODPROD")).toBe(false);
+    // O código vira o vínculo; coluna sem destino (CODVOL) não aparece.
+    expect(byPortal.sankhyaCode).toBe("50");
+    expect(mapped.some((v) => v.sankhya === "CODVOL")).toBe(false);
   });
 });
 

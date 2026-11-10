@@ -6,6 +6,7 @@ import { FULL_LOAD_ENTITIES } from "@/lib/integrations/sankhya-mapping";
 import { getFullLoadProgress } from "@/lib/integrations/sankhya-full-load";
 import { sankhyaFullLoadAction } from "../../actions/sankhya-integration";
 import { one } from "./_shared";
+import { AutoContinue } from "./_auto";
 
 /*
  * Carga completa dos cadastros (aba Carga do Sankhya): condições de pagamento,
@@ -24,6 +25,7 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
   );
   const ran = one(q.ran);
   const full = one(q.full);
+  const auto = one(q.auto) === "1" && ran === "partial";
   const fmt = (iso: string | null) =>
     iso
       ? new Date(iso).toLocaleString(t.intl, { timeZone: "America/Sao_Paulo" })
@@ -104,6 +106,29 @@ export async function FullLoadCard({ t, q }: { t: Translate; q: Params }) {
                           : t("sankhyaLoad.full.start")}
                       </SubmitButton>
                     </form>
+                  ) : null}
+                  {!p.done ? (
+                    <form
+                      id={`full-auto-${entity}`}
+                      action={sankhyaFullLoadAction}
+                    >
+                      <input type="hidden" name="entity" value={entity} />
+                      <input type="hidden" name="auto" value="1" />
+                      <SubmitButton variant="secondary" pendingText="…">
+                        {t("sankhyaLoad.full.auto")}
+                      </SubmitButton>
+                    </form>
+                  ) : null}
+                  {auto && full === entity && !p.done ? (
+                    <>
+                      <AutoContinue formId={`full-auto-${entity}`} />
+                      <a
+                        href="/app/settings/sankhya?tab=load#full"
+                        className="self-center text-xs font-semibold text-red-700 underline"
+                      >
+                        {t("sankhyaLoad.full.stop")}
+                      </a>
+                    </>
                   ) : null}
                   {p.startedAt ? (
                     <form action={sankhyaFullLoadAction}>
