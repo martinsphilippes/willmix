@@ -62,13 +62,11 @@ import {
   LinkButton,
   PageHeader,
   Select,
-  StepDot,
   TextLink,
   cx,
   formatDate,
   formatMoney,
   linkClass,
-  type StepState,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
@@ -564,8 +562,8 @@ export default async function RequestDetailPage({
       {/* Dados da solicitação em linha (cada coluna uma informação, como nas
           outras telas), na largura toda; depois os cartões de ação da Wellmix
           lado a lado; cotações e proposta na largura toda. A linha do tempo
-          resumida fica só para quem não é da Wellmix (cliente): a Wellmix
-          acompanha pelas Etapas da solicitação. */}
+          resumida saiu para todos (decisão do dono): a situação fica no
+          selo do alto e a Wellmix acompanha pelas Etapas da solicitação. */}
       <div className="mt-4 flex flex-col gap-4">
         <div className="contents">
           <Card title={t("requests.title")}>
@@ -663,67 +661,6 @@ export default async function RequestDetailPage({
               </form>
             ) : null}
           </Card>
-          {wellmix ? null : (
-            <Card
-              title={t("orders.timeline")}
-              className="order-2 md:order-none"
-            >
-              <ol className="-mx-2 space-y-0.5 text-sm">
-                {(
-                  [
-                    "REQUESTED",
-                    "RFQ_OPEN",
-                    "QUOTATION_RECEIVED",
-                    "WAITING_DOWN_PAYMENT",
-                    "ORDERED",
-                  ] as const
-                ).map((s, i, arr) => {
-                  const idx = arr.indexOf(
-                    request.status as (typeof arr)[number],
-                  );
-                  const done = idx >= i;
-                  const current = idx === i;
-                  // Pedido cancelado: o passo "Pedido criado" aparece cancelado.
-                  const cancelledStep =
-                    s === "ORDERED" && displayStatus === "ORDER_CANCELLED";
-                  const state: StepState = cancelledStep
-                    ? "cancelled"
-                    : done
-                      ? current && s !== "ORDERED"
-                        ? "active"
-                        : "done"
-                      : "pending";
-                  return (
-                    <li
-                      key={s}
-                      aria-current={state === "active" ? "step" : undefined}
-                      className={cx(
-                        "flex items-center gap-3 rounded-lg px-2 py-1",
-                        state === "active" && "bg-brand-50",
-                      )}
-                    >
-                      <StepDot state={state}>{i + 1}</StepDot>
-                      <span
-                        className={cx(
-                          state === "active"
-                            ? "font-semibold text-brand-800"
-                            : state === "cancelled"
-                              ? "font-medium text-red-700"
-                              : state === "done"
-                                ? "text-zinc-900"
-                                : "text-zinc-500",
-                        )}
-                      >
-                        {t(
-                          `reqStatusLabel.${cancelledStep ? "ORDER_CANCELLED" : s}`,
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </Card>
-          )}
         </div>
 
         {/* Etapas da solicitação (Wellmix): rastreio até o sinal, com prazos. */}
