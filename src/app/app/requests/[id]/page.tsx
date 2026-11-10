@@ -5,6 +5,11 @@ import {
   superplanQuoteView,
 } from "@/lib/services/superplan-rfq";
 import { ActionError } from "@/components/action-error";
+import {
+  RequestInfoTable,
+  specificationColumns,
+  type InfoColumn,
+} from "@/components/request-info-table";
 import { fallbackError } from "@/i18n/error-text";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
 import { SupplierRankingCard } from "@/components/supplier-ranking-card";
@@ -539,15 +544,17 @@ export default async function RequestDetailPage({
         <Alert tone="success">{t("access.requesterSaved")}</Alert>
       ) : null}
 
-      {/* Telas médias e grandes: dados | andamento lado a lado, depois os cartões
-          de ação da Wellmix lado a lado; cotações e proposta na largura toda.
-          No celular (uma coluna) a ordem segue a de antes: solicitante e
-          andamento por último (order-*). */}
+      {/* Dados da solicitação em linha (cada coluna uma informação, como nas
+          outras telas), na largura toda; depois os cartões de ação da Wellmix
+          lado a lado; cotações e proposta na largura toda. A linha do tempo
+          resumida fica só para quem não é da Wellmix (cliente): a Wellmix
+          acompanha pelas Etapas da solicitação. */}
       <div className="mt-4 flex flex-col gap-4">
-        <div className="contents md:grid md:grid-cols-3 md:items-start md:gap-4">
-          <Card title={t("requests.title")} className="md:col-span-2">
-            <DescriptionList
-              items={[
+        <div className="contents">
+          <Card title={t("requests.title")}>
+            <RequestInfoTable
+              rowKey={request.id}
+              columns={[
                 // Variação pedida: o nome para todos; os valores da cópia
                 // (preço, MOQ, caixa, CBM) só para a Wellmix.
                 ...(request.variant
@@ -562,21 +569,17 @@ export default async function RequestDetailPage({
                             </span>
                           ) : null}
                         </span>,
-                      ] as [string, React.ReactNode],
+                      ] as InfoColumn,
                     ]
                   : []),
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
                 [t("requests.deadline"), formatDate(request.deadline, t)],
                 [t("requests.description"), request.description],
-                [
+                // Cada item da especificação na sua coluna.
+                ...specificationColumns(
+                  request.specification,
                   t("requests.specification"),
-                  // Uma informação por linha (como a especificação é montada).
-                  request.specification ? (
-                    <span className="whitespace-pre-line">
-                      {request.specification}
-                    </span>
-                  ) : null,
-                ],
+                ),
                 [t("common.note"), request.notes],
               ]}
             />
@@ -597,60 +600,67 @@ export default async function RequestDetailPage({
               </ul>
             ) : null}
           </Card>
-          <Card title={t("orders.timeline")} className="order-2 md:order-none">
-            <ol className="-mx-2 space-y-0.5 text-sm">
-              {(
-                [
-                  "REQUESTED",
-                  "RFQ_OPEN",
-                  "QUOTATION_RECEIVED",
-                  "WAITING_DOWN_PAYMENT",
-                  "ORDERED",
-                ] as const
-              ).map((s, i, arr) => {
-                const idx = arr.indexOf(request.status as (typeof arr)[number]);
-                const done = idx >= i;
-                const current = idx === i;
-                // Pedido cancelado: o passo "Pedido criado" aparece cancelado.
-                const cancelledStep =
-                  s === "ORDERED" && displayStatus === "ORDER_CANCELLED";
-                const state: StepState = cancelledStep
-                  ? "cancelled"
-                  : done
-                    ? current && s !== "ORDERED"
-                      ? "active"
-                      : "done"
-                    : "pending";
-                return (
-                  <li
-                    key={s}
-                    aria-current={state === "active" ? "step" : undefined}
-                    className={cx(
-                      "flex items-center gap-3 rounded-lg px-2 py-1",
-                      state === "active" && "bg-brand-50",
-                    )}
-                  >
-                    <StepDot state={state}>{i + 1}</StepDot>
-                    <span
+          {wellmix ? null : (
+            <Card
+              title={t("orders.timeline")}
+              className="order-2 md:order-none"
+            >
+              <ol className="-mx-2 space-y-0.5 text-sm">
+                {(
+                  [
+                    "REQUESTED",
+                    "RFQ_OPEN",
+                    "QUOTATION_RECEIVED",
+                    "WAITING_DOWN_PAYMENT",
+                    "ORDERED",
+                  ] as const
+                ).map((s, i, arr) => {
+                  const idx = arr.indexOf(
+                    request.status as (typeof arr)[number],
+                  );
+                  const done = idx >= i;
+                  const current = idx === i;
+                  // Pedido cancelado: o passo "Pedido criado" aparece cancelado.
+                  const cancelledStep =
+                    s === "ORDERED" && displayStatus === "ORDER_CANCELLED";
+                  const state: StepState = cancelledStep
+                    ? "cancelled"
+                    : done
+                      ? current && s !== "ORDERED"
+                        ? "active"
+                        : "done"
+                      : "pending";
+                  return (
+                    <li
+                      key={s}
+                      aria-current={state === "active" ? "step" : undefined}
                       className={cx(
-                        state === "active"
-                          ? "font-semibold text-brand-800"
-                          : state === "cancelled"
-                            ? "font-medium text-red-700"
-                            : state === "done"
-                              ? "text-zinc-900"
-                              : "text-zinc-500",
+                        "flex items-center gap-3 rounded-lg px-2 py-1",
+                        state === "active" && "bg-brand-50",
                       )}
                     >
-                      {t(
-                        `reqStatusLabel.${cancelledStep ? "ORDER_CANCELLED" : s}`,
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </Card>
+                      <StepDot state={state}>{i + 1}</StepDot>
+                      <span
+                        className={cx(
+                          state === "active"
+                            ? "font-semibold text-brand-800"
+                            : state === "cancelled"
+                              ? "font-medium text-red-700"
+                              : state === "done"
+                                ? "text-zinc-900"
+                                : "text-zinc-500",
+                        )}
+                      >
+                        {t(
+                          `reqStatusLabel.${cancelledStep ? "ORDER_CANCELLED" : s}`,
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Card>
+          )}
         </div>
 
         {/* Etapas da solicitação (Wellmix): rastreio até o sinal, com prazos. */}

@@ -674,3 +674,7 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - **Fica**: o cartão "Comparação de cotações" (âncora `#quotes-compare`, usada pelo Booking) com o ranking dos fornecedores e o formulário de escolha (valor ao cliente e sinal). Ele aparece quando há ranking ou cotação respondida para escolher.
 - **Onde ver o que estava na tabela**: preço, prazo, condições, negociação e frete de cada cotação continuam na página da cotação (`/app/quotes/{id}`) e na tela Cotações; a Wellmix registra a resposta no lugar do fornecedor pela ficha da cotação. A Server Action `answerQuoteAction` continua (nada saiu do servidor).
 
+## Solicitação: dados em linha e sem a linha do tempo resumida (Wellmix)
+
+- **Pedido do dono** (10/11/2026): na tela da solicitação, o cartão "Solicitações" mostra os dados em linha (uma coluna por informação, inclusive cada item da especificação), com `RequestInfoTable`, o mesmo padrão da cotação, na largura toda.
+- O cartão "Linha do tempo" (5 passos resumidos) sai para a equipe Wellmix, que acompanha pelas "Etapas da solicitação". O cliente não tem as Etapas, por isso continua vendo a linha do tempo resumida.
