@@ -920,64 +920,6 @@ export default async function OrderPage({
             : []),
         ]
       : [];
-  /* Índice: atalhos só para as partes que este login vê. */
-  const indexLinks: Array<[string, string]> = [
-    ...(!cargo && orderInfoItems.length
-      ? [["#order-summary", t("orderView.summary")] as [string, string]]
-      : []),
-    ...(!cargo
-      ? [["#order-items", t("orderView.items")] as [string, string]]
-      : []),
-    ["#order-stages", t("orderView.stages")],
-    ...(showAfterSales
-      ? [["#after-sales", t("orders.afterSales.title")] as [string, string]]
-      : []),
-    ...(showFollowUp
-      ? [["#followup", t("orders.followup.title")] as [string, string]]
-      : []),
-    ...(showSupplierPayment
-      ? [["#supplier-payment", t("supplierTerms.card")] as [string, string]]
-      : []),
-    ...(productionView
-      ? [["#production", t("production.title")] as [string, string]]
-      : []),
-    ...(importSteps.length
-      ? [["#import-flow", t("importFlow.title")] as [string, string]]
-      : []),
-    ...(certSteps.length
-      ? [["#certification", t("certFlow.title")] as [string, string]]
-      : []),
-    ...(receivingView
-      ? [["#receiving", t("receiving.title")] as [string, string]]
-      : []),
-    ...(artworkView
-      ? [["#artwork", t("artwork.title")] as [string, string]]
-      : []),
-    ...(wellmix || containers.length > 0
-      ? [
-          ["#order-containers", t("orders.containers.title")] as [
-            string,
-            string,
-          ],
-        ]
-      : []),
-    ...(finance && financeAccess
-      ? [["#order-finance", t("orderView.finance")] as [string, string]]
-      : []),
-    ...(visiblePayments.length > 0
-      ? [["#payments", t("orders.payments")] as [string, string]]
-      : []),
-    ["#order-documents", t("orders.documents")],
-    ...(wellmix || user.role === "legal" || visiblePenalties.length > 0
-      ? [["#order-penalties", t("orders.penalties")] as [string, string]]
-      : []),
-    ...(wellmix
-      ? [
-          ["#order-partners", t("orders.partners")] as [string, string],
-          ["#snapshot", t("orders.snapshot.title")] as [string, string],
-        ]
-      : []),
-  ];
 
   return (
     <>
@@ -1152,21 +1094,9 @@ export default async function OrderPage({
       ) : null}
 
       {/* Tela em linhas: uma coluna só, cada parte numa tabela (como as
-          telas de Clientes, Fornecedores e o pedido em lista). Índice com
-          atalhos para as partes que este login vê. */}
-      <nav
-        className="mb-4 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 print:hidden"
-        data-order-index
-      >
-        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {t("orderView.index")}
-        </span>
-        {indexLinks.map(([href, label]) => (
-          <a key={href} href={href} className={cx(linkClass, "text-sm")}>
-            {label}
-          </a>
-        ))}
-      </nav>
+          telas de Clientes, Fornecedores e o pedido em lista). O índice
+          "Ir para" saiu por decisão do dono: a tabela Etapas do pedido já
+          leva a cada parte. */}
 
       {moneyCards.length ? (
         <ColorCards name="order" items={moneyCards} />
