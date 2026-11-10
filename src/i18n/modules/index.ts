@@ -92,6 +92,7 @@ import * as i18nSweep from "./i18n-sweep";
 import * as requestSchedule from "./request-schedule";
 import * as freightTariff from "./freight-tariff";
 import * as superplan from "./superplan";
+import * as sankhya from "./sankhya";
 import * as notifications from "./notifications";
 import * as productSheetImport from "./product-sheet-import";
 import * as productVariants from "./product-variants";
@@ -191,6 +192,7 @@ export const modulesPt = {
   ...productSpec.pt,
   ...freightTariff.pt,
   ...superplan.pt,
+  ...sankhya.pt,
 };
 export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...messages.en,
@@ -286,6 +288,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...productSpec.en,
   ...freightTariff.en,
   ...superplan.en,
+  ...sankhya.en,
 };
 export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...messages.zh,
@@ -381,4 +384,5 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...productSpec.zh,
   ...freightTariff.zh,
   ...superplan.zh,
+  ...sankhya.zh,
 };

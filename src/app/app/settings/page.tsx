@@ -213,9 +213,15 @@ export default async function SettingsPage({
         title={t("settings.title")}
         actions={
           // Só admin chega aqui: apagar as vendas de teste e recomeçar.
-          <LinkButton href="/app/settings/reset" variant="danger">
-            {t("reset.link")}
-          </LinkButton>
+          <>
+            {/* ERP Sankhya: conexão, dicionário, consultas e envio de pedidos. */}
+            <LinkButton href="/app/settings/sankhya" variant="secondary">
+              {t("sankhya.open")}
+            </LinkButton>
+            <LinkButton href="/app/settings/reset" variant="danger">
+              {t("reset.link")}
+            </LinkButton>
+          </>
         }
       />
       {ok ? <Alert tone="success">{t("settings.saved")}</Alert> : null}
