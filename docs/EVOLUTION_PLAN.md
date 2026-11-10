@@ -765,3 +765,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): os quadrados das etapas em "Minhas pendências" do fornecedor ficam pequenos, um ao lado do outro, com seta entre eles, como um fluxo de processo (`SupplierSteps` em `src/components/task-list.tsx`). Cada um mostra o número da etapa, o nome e a contagem quando há pendência; o texto do que fazer aparece ao escolher a etapa (e na dica do quadrado). Em tela estreita a faixa rola para o lado. Filtros e contagens não mudaram.
 - **Cores por situação** (dono, 10/11/2026): cada etapa da faixa usa as cores dos selos do sistema: vermelha com alguma pendência atrasada, amarela com pendência no prazo, verde concluída ou sem nada a fazer. Legenda logo abaixo da faixa; a etapa escolhida ganha um contorno escuro.
+
+## Produção: nome e endereço da fábrica entram sozinhos
+
+- **Pedido do dono** (10/11/2026): no cartão Produção do pedido, quando o fornecedor é a fábrica, o nome e o endereço da fábrica não precisam ser digitados: só o ETD. O nome vem do cadastro do fornecedor; o endereço, do cartão do fabricante confirmado na cotação e, sem ele, do cadastro (endereço, cidade, país). `supplierFactory` em `src/lib/services/production.ts`.
+- Os campos já aparecem preenchidos na tela e continuam editáveis; salvar como "Fábrica" com eles em branco grava os do fornecedor. Passar a "Trade" limpa o que era do próprio fornecedor (a fábrica é outra empresa e tem de ser informada; a inspeção continua exigindo o endereço).
