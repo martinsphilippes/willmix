@@ -172,6 +172,15 @@ export function PhotoInput({
   /* O campo de arquivo (invisível) cobre o botão inteiro: o toque cai direto
      nele. No iPad/iPhone, tocar num rótulo com o campo escondido dentro não
      abria o seletor. */
+  /* Segundo caminho: se o toque (ou o clique do trackpad do iPad) cair no
+     botão e não no campo invisível, o próprio botão abre o seletor. Quando o
+     toque já caiu no campo, o navegador abre sozinho e isto não faz nada. */
+  const openFromButton = (event: React.MouseEvent<HTMLElement>) => {
+    const field = inputRef.current;
+    if (!field || field.disabled || working) return;
+    if (event.target === field) return;
+    field.click();
+  };
   const input = (
     <input
       ref={inputRef}
@@ -196,6 +205,7 @@ export function PhotoInput({
         aria-disabled={disabled || working || undefined}
         aria-busy={working || undefined}
         data-photo-button=""
+        onClick={openFromButton}
         className={`relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-semibold shadow-sm transition focus-within:ring-2 focus-within:ring-brand-200 ${
           dense
             ? "min-h-7 px-2.5 py-0.5 text-xs"
@@ -233,6 +243,7 @@ export function PhotoInput({
       <div
         aria-disabled={disabled || undefined}
         data-photo-button=""
+        onClick={openFromButton}
         className={
           disabled
             ? "relative flex cursor-not-allowed flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 px-3 py-2.5 text-center text-[13px] text-zinc-400 opacity-70"
