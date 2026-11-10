@@ -52,15 +52,15 @@ Motivos (das especificações já escritas): comprador abre RFQ, escolhe fornece
 
 ## 5. Papéis de fora da Wellmix (sem mudança de conteúdo)
 
-| Papel                                      | Telas                                                                                                                                              |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cliente                                    | Explorar (vitrine e carrinho), Solicitações, Pedidos, Pendências, Notificações, Mensagens, Histórico, Marketing                                    |
-| Fornecedor                                 | Pendências, Notificações, Mensagens, Cotações, Pedidos, Conta corrente                                                                             |
-| Agência                                    | Pendências, Notificações, Mensagens, Embalagem, Pedidos                                                                                            |
-| Despachante                                | Pendências, Notificações, Mensagens, Pedidos (e a classificação fiscal do produto a partir do pedido)                                              |
-| Companhia marítima                         | Pendências, Notificações, Mensagens, Fretes, Tarifário (o seu), Pedidos                                                                            |
+| Papel                                      | Telas                                                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Cliente                                    | Explorar (vitrine e carrinho), Solicitações, Pedidos, Pendências, Notificações, Mensagens, Histórico, Marketing |
+| Fornecedor                                 | Pendências, Notificações, Mensagens, Cotações, Pedidos, Conta corrente                                          |
+| Agência                                    | Pendências, Notificações, Mensagens, Embalagem, Pedidos                                                         |
+| Despachante                                | Pendências, Notificações, Mensagens, Pedidos (e a classificação fiscal do produto a partir do pedido)           |
+| Companhia marítima                         | Pendências, Notificações, Mensagens, Fretes, Tarifário (o seu), Pedidos                                         |
 | Transportador, Comex, Agente de carga, OCP | Pendências, Notificações, Mensagens, Pedidos (a OCP abre também a ficha de compra e o documento do pedido dos pedidos dela, só leitura, com preço) |
-| Jurídico                                   | Pendências, Notificações, Mensagens, Pedidos, Multas                                                                                               |
+| Jurídico                                   | Pendências, Notificações, Mensagens, Pedidos, Multas                                                            |
 
 ## 6. Onde fica no código
 

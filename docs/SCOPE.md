@@ -18,17 +18,17 @@ A evolução incremental (sourcing, ficha completa, importação de planilhas, s
 
 ## Papéis
 
-| Papel              | Faz                                                                                                                                 | Não vê                                                                  |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Admin Wellmix      | Tudo, inclusive configurações e usuários internos                                                                                   |                                                                         |
-| Operador           | Só as telas das suas funções (docs/ACCESS.md): cadastros, RFQ, seleção, designação de parceiros, produção, embarque, recebimento…   | Financeiro (valores, pagamentos, contas a pagar), Configurações, Equipe |
-| Cliente            | Cria e acompanha solicitação, vê proposta e sinal, timeline, confirma recebimento                                                   | Fornecedor, FOB, margem, cotações                                       |
-| Fornecedor         | Responde RFQ, cumpre checklists, aprova a arte, envia fotos e peso, confirma pagamentos                                             | Cliente final, valor de venda                                           |
-| Agência            | Já na RFQ, prepara faca (die-cut), arte, arquivos para a gráfica e foto da embalagem no briefing; refaz quando o fornecedor reprova | Valores; cotações; cliente; etapas dos outros                           |
-| Despachante        | Número do processo, documentos, custos, liberação (lê o Embarque: BL, navio, chegada)                                               | Valores comerciais; etapas dos outros                                   |
-| Companhia marítima | Confirma o embarque (data, previsão, navio e BL opcionais); envia a própria tabela de frete                                         | Valores comerciais; tabelas das outras companhias; etapas dos outros    |
-| Transportador      | Placa, previsão, situação, entrega; vê a carga e onde entregar ("Carga e entrega")                                                  | Valores comerciais; fornecedor; etapas dos outros                       |
-| Jurídico           | Visualiza e muda status de multas                                                                                                   |                                                                         |
+| Papel              | Faz                                                                                      | Não vê                            |
+| ------------------ | ---------------------------------------------------------------------------------------- | --------------------------------- |
+| Admin Wellmix      | Tudo, inclusive configurações e usuários internos                                        |                                   |
+| Operador           | Só as telas das suas funções (docs/ACCESS.md): cadastros, RFQ, seleção, designação de parceiros, produção, embarque, recebimento… | Financeiro (valores, pagamentos, contas a pagar), Configurações, Equipe |
+| Cliente            | Cria e acompanha solicitação, vê proposta e sinal, timeline, confirma recebimento        | Fornecedor, FOB, margem, cotações |
+| Fornecedor         | Responde RFQ, cumpre checklists, aprova a arte, envia fotos e peso, confirma pagamentos  | Cliente final, valor de venda     |
+| Agência            | Já na RFQ, prepara faca (die-cut), arte, arquivos para a gráfica e foto da embalagem no briefing; refaz quando o fornecedor reprova | Valores; cotações; cliente; etapas dos outros |
+| Despachante        | Número do processo, documentos, custos, liberação (lê o Embarque: BL, navio, chegada)    | Valores comerciais; etapas dos outros |
+| Companhia marítima | Confirma o embarque (data, previsão, navio e BL opcionais); envia a própria tabela de frete | Valores comerciais; tabelas das outras companhias; etapas dos outros |
+| Transportador      | Placa, previsão, situação, entrega; vê a carga e onde entregar ("Carga e entrega")       | Valores comerciais; fornecedor; etapas dos outros |
+| Jurídico           | Visualiza e muda status de multas                                                        |                                   |
 
 ## Vertical slice 1 (entregue)
 

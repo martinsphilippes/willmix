@@ -3,7 +3,6 @@
 Cartão **Embarque e desembaraço** no pedido (a partir da Preparação). Cada passo tem quem faz, quem valida e quem vê. Recusar exige motivo e devolve o passo a quem fez. Quem enviou não valida o próprio passo (exceto admin).
 
 ## Novos logins
-
 - **Comex (assessoria)**: papel `comex`, empresa do tipo Comex, designada no pedido em "Parceiros" (`orders.comexId`).
 - **Agente de carga**: papel `logistics` (`orders.logisticsId`).
 
@@ -13,21 +12,21 @@ O **financeiro** é uma função da Wellmix (Equipe → Funções). Só ele (ou 
 
 ## Passos
 
-| Passo                            | Faz             | Valida     | Vê (além da Wellmix)                   | Depois de |
-| -------------------------------- | --------------- | ---------- | -------------------------------------- | --------- |
-| Booking (nº)                     | agente de carga | Wellmix    | agente, comex, fornecedor              | —         |
-| Draft do BL (arquivo)            | agente de carga | comex      | agente, comex, fornecedor              | booking   |
-| Invoice e packing list (arquivo) | comex           | fornecedor | comex, fornecedor, agente              | —         |
-| Invoice e packing assinados      | fornecedor      | comex      | comex, fornecedor, agente              | invoice   |
-| BL original (nº + arquivo)       | agente de carga | comex      | agente, comex, fornecedor, despachante | draft BL  |
-| Presença de carga (data)         | comex           | —          | comex, agente                          | BL        |
-| Numerário (R$ + demonstrativo)   | comex           | financeiro | comex                                  | —         |
-| Numerário pago (comprovante)     | financeiro      | —          | comex                                  | numerário |
-| Canal de parametrização          | comex           | —          | comex, agente                          | —         |
-| DI/DUIMP (nº + XML)              | comex           | —          | comex                                  | —         |
-| CE Mercante (nº)                 | comex           | —          | comex, agente                          | —         |
-| Comprovante de importação (CI)   | comex           | —          | comex                                  | —         |
-| DANFE (nº + arquivo)             | Wellmix         | —          | comex, agente                          | DI        |
+| Passo | Faz | Valida | Vê (além da Wellmix) | Depois de |
+|---|---|---|---|---|
+| Booking (nº) | agente de carga | Wellmix | agente, comex, fornecedor | — |
+| Draft do BL (arquivo) | agente de carga | comex | agente, comex, fornecedor | booking |
+| Invoice e packing list (arquivo) | comex | fornecedor | comex, fornecedor, agente | — |
+| Invoice e packing assinados | fornecedor | comex | comex, fornecedor, agente | invoice |
+| BL original (nº + arquivo) | agente de carga | comex | agente, comex, fornecedor, despachante | draft BL |
+| Presença de carga (data) | comex | — | comex, agente | BL |
+| Numerário (R$ + demonstrativo) | comex | financeiro | comex | — |
+| Numerário pago (comprovante) | financeiro | — | comex | numerário |
+| Canal de parametrização | comex | — | comex, agente | — |
+| DI/DUIMP (nº + XML) | comex | — | comex | — |
+| CE Mercante (nº) | comex | — | comex, agente | — |
+| Comprovante de importação (CI) | comex | — | comex | — |
+| DANFE (nº + arquivo) | Wellmix | — | comex, agente | DI |
 
 - **Invoice e packing list gerados**: o link "Gerar invoice e packing list" abre uma página com a invoice comercial e o packing list montados com os itens, o preço da cotação e a ficha de compra (caixas, pesos e CBM). O comex confere, salva em PDF e envia no passo. O fornecedor valida e devolve assinado.
 - **Canal vermelho ou cinza**: alerta à Wellmix (prazo de liberação e armazenagem).
@@ -39,7 +38,6 @@ O **financeiro** é uma função da Wellmix (Equipe → Funções). Só ele (ou 
   - a recusa de um envio ou de uma validação aparece dentro do cartão de onde a ação veio (além do aviso no alto da página).
 
 ## Pendências
-
 - O parceiro vê os passos dele que já podem ser feitos, e os que recusaram.
 - Quem valida vê os passos enviados.
 - O financeiro vê o numerário.
@@ -47,5 +45,4 @@ O **financeiro** é uma função da Wellmix (Equipe → Funções). Só ele (ou 
 - Certificação (docs/CERTIFICATION.md): as pendências saem com o tipo "Certificação"; o passo "selo aplicado na arte" é de quem faz a arte (a agência do pedido ou, sem ela, a Wellmix).
 
 ## Limites
-
 O cartão não substitui as etapas Embarque e Desembaraço do pedido. O BL e os custos continuam também nelas, por enquanto. Juntar os dois fica para quando o fluxo for usado de verdade.

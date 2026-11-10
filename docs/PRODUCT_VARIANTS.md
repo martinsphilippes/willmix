@@ -14,29 +14,29 @@ Um produto por planilha; cada linha (grupo de linhas com as mesmas medidas/preç
 
 ### Tabela nova `product_variants`
 
-| Coluna                            | Tipo                 | Observação                                                                                                                                                                                 |
-| --------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `productId`                       | id, obrigatório      | produto dono; índice `by_product`                                                                                                                                                          |
-| `name`                            | str 160, obrigatório | "GRECIE 4X6 / 10 X 15" (descrição/OBS + tamanho, ou a coluna NAME)                                                                                                                         |
-| `key`                             | str 80, obrigatório  | chave normalizada (código de fábrica + nome, minúsculas, sem acentos/espaços repetidos) para a reimportação achar a mesma variação; índice único `product_key_unique` (`productId`, `key`) |
-| `sortOrder`                       | int                  | ordem da planilha                                                                                                                                                                          |
-| `active`                          | bool                 | desativar em vez de apagar                                                                                                                                                                 |
-| `factoryItemCode`                 | str 60               | SKU/código na fábrica                                                                                                                                                                      |
-| `sizeText`                        | str 60               | texto do tamanho ("8X10 / 20X25")                                                                                                                                                          |
-| `price`                           | float                | preço do fornecedor de referência                                                                                                                                                          |
-| `currency`                        | str 3                | USD/CNY/BRL/EUR                                                                                                                                                                            |
-| `moq`                             | int                  | pedido mínimo da variação                                                                                                                                                                  |
-| `masterBoxQty`, `innerBoxQty`     | int                  |                                                                                                                                                                                            |
-| `netWeightKg`, `grossWeightKg`    | float                | por peça                                                                                                                                                                                   |
-| `lengthCm`, `widthCm`, `heightCm` | float                | medidas da peça                                                                                                                                                                            |
-| `cbm`                             | float                | CBM por caixa master                                                                                                                                                                       |
-| `colorAssortment`                 | str 200              | cores juntas ("White / Gray / bege")                                                                                                                                                       |
-| `material`                        | str 200              |                                                                                                                                                                                            |
-| `packageType`                     | str 120              |                                                                                                                                                                                            |
-| `capacityMl`                      | float                |                                                                                                                                                                                            |
-| `notes`                           | text                 |                                                                                                                                                                                            |
-| `photoDocumentId`                 | id (nulo)            | foto da variação (documento)                                                                                                                                                               |
-| `importBatchId`                   | id (nulo)            | lote que criou/atualizou                                                                                                                                                                   |
+| Coluna | Tipo | Observação |
+| --- | --- | --- |
+| `productId` | id, obrigatório | produto dono; índice `by_product` |
+| `name` | str 160, obrigatório | "GRECIE 4X6 / 10 X 15" (descrição/OBS + tamanho, ou a coluna NAME) |
+| `key` | str 80, obrigatório | chave normalizada (código de fábrica + nome, minúsculas, sem acentos/espaços repetidos) para a reimportação achar a mesma variação; índice único `product_key_unique` (`productId`, `key`) |
+| `sortOrder` | int | ordem da planilha |
+| `active` | bool | desativar em vez de apagar |
+| `factoryItemCode` | str 60 | SKU/código na fábrica |
+| `sizeText` | str 60 | texto do tamanho ("8X10 / 20X25") |
+| `price` | float | preço do fornecedor de referência |
+| `currency` | str 3 | USD/CNY/BRL/EUR |
+| `moq` | int | pedido mínimo da variação |
+| `masterBoxQty`, `innerBoxQty` | int | |
+| `netWeightKg`, `grossWeightKg` | float | por peça |
+| `lengthCm`, `widthCm`, `heightCm` | float | medidas da peça |
+| `cbm` | float | CBM por caixa master |
+| `colorAssortment` | str 200 | cores juntas ("White / Gray / bege") |
+| `material` | str 200 | |
+| `packageType` | str 120 | |
+| `capacityMl` | float | |
+| `notes` | text | |
+| `photoDocumentId` | id (nulo) | foto da variação (documento) |
+| `importBatchId` | id (nulo) | lote que criou/atualizou |
 
 ### Colunas novas (todas opcionais; linhas antigas ficam nulas)
 
