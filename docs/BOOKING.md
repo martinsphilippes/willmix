@@ -57,6 +57,8 @@ Cada Booking que sobe é de **um fornecedor específico**, escolhido na hora de 
 - **Coluna "Local / Porto"** (antes "Local / loja"): é o local/porto **de onde a mercadoria sai no marítimo** (o mesmo campo `location` da ficha, que já é a origem na cotação de frete), não o endereço da loja. O nº da loja continua na segunda caixa da coluna.
 - O fornecedor ainda não tem tela própria de Booking: a "análise do Booking" pelo fornecedor e a RFQ em espera são a etapa seguinte desta decisão.
 
+**Cartão do fabricante (10/11/2026).** A coluna do cartão da planilha (`SUPPLIER BUSINESS CARD`, coluna AG do modelo) entra sozinha: a foto fica no produto e, quando a linha vai ao fornecedor, a cotação dele já nasce com o cartão do fabricante confirmado (selo "Veio da planilha do Booking"). Ninguém envia de novo; o fornecedor pode trocar. Só o fornecedor do produto recebe. Linha da planilha sem cartão: a cotação continua pedindo o envio.
+
 ### Quantidade planejada e previsão de vendas (racional do dono, 10/11/2026)
 
 A decisão de selecionar o produto parte do custo real (Superplan) e aponta para a **quantidade**. Para isso a linha do Booking guarda um plano (`bookings.plan`, JSON opcional):

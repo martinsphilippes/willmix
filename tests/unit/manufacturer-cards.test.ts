@@ -110,16 +110,19 @@ describe("cartão do fabricante", () => {
     );
   });
 
-  it("na negociação seguinte do mesmo produto, o fornecedor confirma o cartão que já enviou", async () => {
+  it("na negociação seguinte do mesmo produto, o cartão já enviado entra sozinho, confirmado", async () => {
     const { of } = await rfq("prod-jarra", ["fornecedor-a"]);
     const quote = of("fornecedor-a");
     const view = (await cards.quoteCardsView(supplierA, quote.id))!;
-    expect(view.selectedId).toBeNull();
     expect(view.cards).toHaveLength(1);
-    await cards.confirmCardForQuote(supplierA, quote.id, view.cards[0].id);
+    // Pedido do dono: o cartão vem sozinho todas as vezes (sem enviar de novo).
+    expect(view.selectedId).toBe(view.cards[0].id);
+    expect(view.confirmedAt).toBeTruthy();
     expect((await getStore().get("quotes", quote.id))!.manufacturerCardId).toBe(
       view.cards[0].id,
     );
+    // Escolher de novo o mesmo cartão continua valendo.
+    await cards.confirmCardForQuote(supplierA, quote.id, view.cards[0].id);
     // O fornecedor corrige o que foi lido.
     await cards.updateCardInfo(supplierA, view.cards[0].id, {
       companyName: "Min Yan Photo Frame",

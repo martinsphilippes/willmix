@@ -29,6 +29,10 @@ function CardBadges({ t, card }: { t: Translate; card: ManufacturerCard }) {
       ) : null}
       {card.source === "mock" ? (
         <Badge tone="warning">{t("card.mock")}</Badge>
+      ) : card.source === "sheet" ? (
+        <Badge tone="neutral">
+          <span data-card-from-sheet="">{t("card.fromSheet")}</span>
+        </Badge>
       ) : !card.source && !card.companyName ? (
         <Badge tone="neutral">{t("card.unread")}</Badge>
       ) : null}
@@ -214,6 +218,11 @@ export function QuoteManufacturerCard({
               {t("card.current")}
             </p>
             <CardSummary t={t} card={selected} />
+            {selected.source === "sheet" && view.canEdit ? (
+              <p className="mt-2 text-xs text-zinc-600">
+                {t("card.fromSheetHint")}
+              </p>
+            ) : null}
             {view.canEdit ? (
               <CardEdit t={t} card={selected} back={back} />
             ) : null}

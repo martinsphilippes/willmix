@@ -67,7 +67,10 @@ import {
 } from "@/lib/services/purchase-sheet-calc";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { QuoteManufacturerCard } from "@/components/manufacturer-cards";
-import { quoteCardsView } from "@/lib/services/manufacturer-cards";
+import {
+  bringCardToQuote,
+  quoteCardsView,
+} from "@/lib/services/manufacturer-cards";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import {
@@ -156,7 +159,15 @@ export default async function QuotePage({
   const dumpingReleaser = dumpingInfo?.dumpingReleasedByUserId
     ? await store.get("users", dumpingInfo.dumpingReleasedByUserId)
     : null;
-  const cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
+  let cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
+  // Cotação aberta sem cartão: o que veio na planilha do Booking (ou o último
+  // já apresentado para o produto) entra sozinho, já confirmado.
+  if (
+    cardsView?.canEdit &&
+    !cardsView.selectedId &&
+    (await bringCardToQuote(user, quote, request.productId))
+  )
+    cardsView = await quoteCardsView(user, quote.id);
   const errorCode = typeof error === "string" ? error : "";
   // Envio recusado: o que falta na ficha. O prazo de produção não é mais
   // digitado (vem da programação 1, que já está na lista do que falta).
