@@ -34,6 +34,7 @@ import {
   formatMoney,
   type Tone,
 } from "@/components/ui";
+import { FormDraftGuard } from "@/components/form-draft-guard";
 import { SubmitButton } from "@/components/submit-button";
 import { saveBookingRowAction } from "../../actions/booking";
 
@@ -59,6 +60,7 @@ const SIGNAL_TONE: Record<BookingSignal, Tone> = {
   viable: "success",
   below: "warning",
   loss: "danger",
+  minimum: "neutral",
   missing: "info",
   none: "neutral",
 };
@@ -87,7 +89,13 @@ export default async function BookingRowPage({
   const statusLabel = (s: string) => t(`booking.status.${s}` as DictionaryKey);
   const col = (key: string) => t(`booking.col.${key}` as DictionaryKey);
   const name = row.name || t("booking.productMissing");
-  const locked = row.status === "requested";
+  // Tomada para virar solicitação e sem solicitação ligada (a criação parou
+  // no meio): a linha pode voltar; o serviço oferece as etapas de volta.
+  const unlinked =
+    row.status === "requested" &&
+    !row.requestId &&
+    detail.moveOptions.length > 1;
+  const locked = row.status === "requested" && !unlinked;
   const hidden = hidesFromShowcase(row.status);
 
   const errorCode = typeof query.error === "string" ? query.error : "";
@@ -237,6 +245,11 @@ export default async function BookingRowPage({
             <h2 className="mb-3 text-base font-semibold text-zinc-900">
               {t("booking.detail.edit.title")}
             </h2>
+            {unlinked ? (
+              <div className="mb-3">
+                <Alert tone="warning">{t("booking.detail.unlinked")}</Alert>
+              </div>
+            ) : null}
             {locked ? (
               <div className="mb-3">
                 <Alert tone="info">
@@ -254,7 +267,19 @@ export default async function BookingRowPage({
                 </Alert>
               </div>
             ) : null}
+            {/* Recusa: o que estava digitado volta (o Next remonta a página). */}
+            <FormDraftGuard
+              formId="booking-edit"
+              storageKey={`booking-edit:${row.id}`}
+              userId={user.id}
+              failed={!!errorCode}
+              saved={!errorCode}
+              token={errorCode}
+              message={t("booking.draftRestored")}
+              discardLabel={t("booking.draftDiscard")}
+            />
             <form
+              id="booking-edit"
               action={saveBookingRowAction}
               className="space-y-3"
               data-booking-edit
@@ -452,6 +477,16 @@ export default async function BookingRowPage({
                       <p className="mb-1 font-semibold uppercase tracking-wide text-zinc-500">
                         {t("booking.detail.analysis.assumptions")}
                       </p>
+                      {a.inputs.unitPrice != null ? (
+                        <p>
+                          {t("booking.detail.analysis.used", {
+                            price: number(a.inputs.unitPrice, 4),
+                            currency: a.inputs.currency ?? "",
+                            pcs: number(a.inputs.pcsPerCarton),
+                            cbm: number(a.inputs.cbmPerCarton, 4),
+                          })}
+                        </p>
+                      ) : null}
                       <p>
                         {t("booking.detail.analysis.rates", {
                           official: number(a.inputs.officialRate, 4),
@@ -480,6 +515,16 @@ export default async function BookingRowPage({
                         </p>
                       ) : null}
                     </div>
+                  ) : null}
+                  {signal === "minimum" ? (
+                    <Alert tone="info">
+                      {t("booking.detail.analysis.atMinimum")}
+                    </Alert>
+                  ) : null}
+                  {a.manual ? (
+                    <p className="text-xs font-medium text-zinc-600">
+                      {t("booking.detail.analysis.manual")}
+                    </p>
                   ) : null}
                   <p className="text-xs text-zinc-500">
                     {t("booking.detail.analysis.when", {

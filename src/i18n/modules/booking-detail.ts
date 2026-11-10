@@ -12,7 +12,7 @@ export const pt = {
   "booking.detail.edit.title": "Etapa, cliente e reserva",
   "booking.detail.status": "Etapa",
   "booking.detail.status.hint":
-    "Aprovar, tirar da vitrine ou reabrir é de quem analisa no Superplan.",
+    "Aprovar ou tirar da vitrine é de quem analisa no Superplan.",
   "booking.detail.customer": "Cliente",
   "booking.detail.customer.none": "Sem cliente",
   "booking.detail.qty": "Quantidade reservada (peças)",
@@ -23,7 +23,7 @@ export const pt = {
   "booking.detail.save": "Salvar",
   "booking.detail.saving": "Salvando…",
   "booking.detail.locked":
-    "Esta linha já virou solicitação. Cliente e quantidade mudam na solicitação.",
+    "Esta linha já virou solicitação. Cliente e quantidade mudam na solicitação; para a linha voltar, exclua a solicitação.",
   "booking.detail.hidden":
     "O cliente ainda não vê este produto. Ele entra na vitrine quando for aprovado.",
   "booking.detail.visible": "Este produto já aparece na vitrine do cliente.",
@@ -51,7 +51,7 @@ export const pt = {
     "Dólar oficial {official} · dólar futuro {future} · RMB por dólar {rmb}",
   "booking.detail.analysis.taxes": "II {ii}% · IPI {ipi}%",
   "booking.detail.analysis.noNcm":
-    "Sem NCM na tabela fiscal: II e IPI entraram como 0 (o sinal sai otimista). Ajuste no Superplan e grave de novo.",
+    "II ou IPI não informado (produto sem NCM na tabela fiscal): entrou como 0, então o custo real é maior. Ajuste no Superplan e grave de novo.",
   "booking.detail.analysis.container":
     "Container {container} · frete US$ {freight}",
   "booking.detail.analysis.grossEstimated":
@@ -61,6 +61,16 @@ export const pt = {
   "booking.detail.history.title": "Histórico",
   "booking.detail.history.empty": "Sem histórico.",
   "booking.detail.request": "Solicitação gerada",
+  "booking.detail.unlinked":
+    "A solicitação não ficou ligada a esta linha (a criação parou no meio). Confira em Solicitações; se ela não existir, mova a linha de volta para Aprovado, Oferecido ou Reservado.",
+  "booking.detail.analysis.used":
+    "Preço {price} {currency} · {pcs} peças por caixa · {cbm} m³ por caixa",
+  "booking.detail.analysis.manual":
+    "Simulação gravada à mão: a análise em várias linhas não a substitui.",
+  "booking.detail.analysis.atMinimum":
+    "Sem preço de venda testado: no preço mínimo o lucro depende só do tipo de negócio. Teste um preço no Superplan para ver o sinal.",
+  "booking.superplan.invalid":
+    "Algum campo da simulação tem valor fora do permitido (negativo ou grande demais). Confira e grave de novo.",
   "booking.superplan.banner":
     "Analisando para o Booking: {name}. Ajuste o que precisar e toque em “Gravar no Booking”.",
   "booking.superplan.back": "Voltar à linha do Booking",
@@ -81,7 +91,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.detail.edit.title": "Stage, customer and reservation",
   "booking.detail.status": "Stage",
   "booking.detail.status.hint":
-    "Approving, removing from the showcase or reopening is for whoever analyzes in Superplan.",
+    "Approving or removing from the showcase is for whoever analyzes in Superplan.",
   "booking.detail.customer": "Customer",
   "booking.detail.customer.none": "No customer",
   "booking.detail.qty": "Reserved quantity (pieces)",
@@ -92,7 +102,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.detail.save": "Save",
   "booking.detail.saving": "Saving…",
   "booking.detail.locked":
-    "This row already became a request. Customer and quantity change in the request.",
+    "This row already became a request. Customer and quantity change in the request; for the row to come back, delete the request.",
   "booking.detail.hidden":
     "The customer does not see this product yet. It enters the showcase when it is approved.",
   "booking.detail.visible":
@@ -121,7 +131,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Official dollar {official} · future dollar {future} · RMB per dollar {rmb}",
   "booking.detail.analysis.taxes": "II {ii}% · IPI {ipi}%",
   "booking.detail.analysis.noNcm":
-    "No NCM in the tax table: II and IPI were counted as 0 (the signal is optimistic). Adjust in Superplan and save again.",
+    "II or IPI not informed (product without NCM in the tax table): counted as 0, so the real cost is higher. Adjust in Superplan and save again.",
   "booking.detail.analysis.container":
     "Container {container} · freight US$ {freight}",
   "booking.detail.analysis.grossEstimated":
@@ -131,6 +141,16 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.detail.history.title": "History",
   "booking.detail.history.empty": "No history.",
   "booking.detail.request": "Request created",
+  "booking.detail.unlinked":
+    "The request was not linked to this row (its creation stopped midway). Check in Requests; if it does not exist, move the row back to Approved, Offered or Reserved.",
+  "booking.detail.analysis.used":
+    "Price {price} {currency} · {pcs} pieces per carton · {cbm} m³ per carton",
+  "booking.detail.analysis.manual":
+    "Simulation saved by hand: the analysis of several rows does not replace it.",
+  "booking.detail.analysis.atMinimum":
+    "No sale price tested: at the minimum price the profit depends only on the business type. Test a price in Superplan to see the signal.",
+  "booking.superplan.invalid":
+    "A simulation field has a value out of range (negative or too large). Check it and save again.",
   "booking.superplan.banner":
     "Analyzing for the Booking: {name}. Adjust what you need and tap “Save to Booking”.",
   "booking.superplan.back": "Back to the Booking row",
@@ -151,7 +171,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.detail.edit.title": "阶段、客户和预订",
   "booking.detail.status": "阶段",
   "booking.detail.status.hint":
-    "批准、从展示页撤下或重新打开，只能由在 Superplan 中分析的人操作。",
+    "批准或从展示页撤下，只能由在 Superplan 中分析的人操作。",
   "booking.detail.customer": "客户",
   "booking.detail.customer.none": "无客户",
   "booking.detail.qty": "预订数量（件）",
@@ -161,7 +181,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.detail.note": "备注",
   "booking.detail.save": "保存",
   "booking.detail.saving": "保存中…",
-  "booking.detail.locked": "该行已生成询价单。客户和数量请在询价单中修改。",
+  "booking.detail.locked":
+    "该行已生成询价单。客户和数量请在询价单中修改；要让该行回来，请删除询价单。",
   "booking.detail.hidden": "客户暂时看不到该产品。批准后才进入展示页。",
   "booking.detail.visible": "该产品已出现在客户的展示页中。",
   "booking.detail.sheet.title": "技术表数据",
@@ -188,7 +209,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "官方美元 {official} · 远期美元 {future} · 每美元兑人民币 {rmb}",
   "booking.detail.analysis.taxes": "II {ii}% · IPI {ipi}%",
   "booking.detail.analysis.noNcm":
-    "税表中没有 NCM：II 和 IPI 按 0 计算（信号偏乐观）。请在 Superplan 中调整后重新保存。",
+    "未填写 II 或 IPI（税表中没有该产品的 NCM）：按 0 计算，实际成本更高。请在 Superplan 中调整后重新保存。",
   "booking.detail.analysis.container":
     "集装箱 {container} · 运费 US$ {freight}",
   "booking.detail.analysis.grossEstimated": "毛重为估算值（净重 + 包装余量）。",
@@ -197,6 +218,15 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.detail.history.title": "历史记录",
   "booking.detail.history.empty": "暂无历史记录。",
   "booking.detail.request": "已生成的询价单",
+  "booking.detail.unlinked":
+    "询价单没有关联到该行（创建过程中断）。请在“询价单”中确认；如果不存在，请把该行移回“已批准”“已推荐”或“已预订”。",
+  "booking.detail.analysis.used":
+    "价格 {price} {currency} · 每箱 {pcs} 件 · 每箱 {cbm} m³",
+  "booking.detail.analysis.manual": "手动保存的模拟：批量分析不会替换它。",
+  "booking.detail.analysis.atMinimum":
+    "尚未测试售价：按最低价时利润只取决于业务类型。请在 Superplan 中测试一个价格以查看信号。",
+  "booking.superplan.invalid":
+    "模拟中有字段的值超出允许范围（负数或过大）。请检查后重新保存。",
   "booking.superplan.banner":
     "正在为 Booking 分析：{name}。按需调整后点击“保存到 Booking”。",
   "booking.superplan.back": "返回 Booking 的该行",

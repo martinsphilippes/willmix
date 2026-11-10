@@ -7,7 +7,7 @@ export const pt = {
   "booking.help.body":
     "Aqui ficam os produtos que chegaram pela ficha técnica, antes de existir solicitação. Cada linha é um produto. Enquanto está em Novo, Em análise ou Descartado, o cliente não vê o produto; ele entra na vitrine quando é aprovado.",
   "booking.help.steps":
-    "Entrada: importe a ficha técnica com a opção “Mandar para o Booking”. As linhas chegam em Novo.\nAnalisar: marque as linhas e toque em “Analisar no Superplan” (custo, preço mínimo, lucro e sinal).\nAprovar: mova para Aprovado as que valem a pena; descarte as outras.\nOferecer e reservar: escolha o cliente, digite a quantidade na linha e mova para Oferecido ou Reservado.\nGerar solicitação: marque as linhas do cliente e toque em “Gerar solicitação”.\nFiltros: cada coluna tem o seu filtro logo abaixo do título; toque no título para ordenar.",
+    "Entrada: importe a ficha técnica com a opção “Mandar para o Booking”. As linhas chegam em Novo.\nAnalisar: marque as linhas e toque em “Analisar no Superplan” (custo, preço mínimo e preço para a meta). O sinal verde, amarelo ou vermelho aparece quando você testa um preço de venda no Superplan, pela linha, e grava.\nAprovar: mova para Aprovado as que valem a pena; descarte as outras.\nOferecer e reservar: escolha o cliente, digite a quantidade na linha e mova para Oferecido ou Reservado.\nGerar solicitação: marque as linhas do cliente e toque em “Gerar solicitação”.\nFiltros: cada coluna tem o seu filtro logo abaixo do título; toque no título para ordenar.",
   "booking.import": "Importar ficha técnica",
   "booking.schemaMissing":
     "O banco ainda não tem a tabela do Booking. Publique o esquema (Configurações) para a tela funcionar.",
@@ -43,13 +43,14 @@ export const pt = {
   "booking.bulk.assign": "Salvar cliente e quantidades",
   "booking.bulk.status": "Mover para…",
   "booking.bulk.move": "Mover",
+  "booking.bulk.move.confirm": "Mover {n} linha(s) para “{stage}”?",
   "booking.bulk.owner.keep": "Responsável…",
   "booking.bulk.owner.none": "Sem responsável",
   "booking.bulk.setOwner": "Trocar responsável",
   "booking.bulk.analyze": "Analisar no Superplan",
   "booking.bulk.request": "Gerar solicitação",
   "booking.bulk.request.confirm":
-    "Gerar uma solicitação com as linhas marcadas (até {max} por vez)?",
+    "Gerar uma solicitação com {n} linha(s) marcada(s)? (até {max} por vez)",
   "booking.bulk.hint":
     "A quantidade digitada na linha e o cliente escolhido aqui valem para as linhas marcadas. Gerar solicitação usa a quantidade da linha (sem ela, o pedido mínimo) e aceita até {max} linhas por vez.",
   "booking.bulk.working": "Gravando…",
@@ -60,6 +61,16 @@ export const pt = {
   "booking.done.skipped":
     "{n} linha(s) ficaram de fora: o produto saiu do cadastro.",
   "booking.done.none": "Nada mudou: as linhas já estavam assim.",
+  "booking.done.kept":
+    "{n} linha(s) com simulação gravada à mão ficaram como estavam. Para refazer, abra a linha no Superplan e grave de novo.",
+  "booking.done.norates":
+    "{n} analisada(s) sem II ou IPI (produto sem NCM na tabela fiscal): contaram 0 e o custo sai menor que o real.",
+  "booking.draftRestored":
+    "A ação não foi concluída. O que você tinha digitado e marcado voltou.",
+  "booking.draftDiscard": "Descartar e ver o que está salvo",
+  "booking.row.noRates": "II/IPI 0",
+  "booking.row.noRatesHint":
+    "Sem II ou IPI informado: entrou como 0. O custo real é maior.",
   "booking.row.open": "Abrir",
   "booking.row.superplan": "Superplan",
   "booking.row.estimated": "Estimado: líquido + {pct}%",
@@ -78,7 +89,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.help.body":
     "This is where products that arrived through the technical sheet stay before a request exists. Each row is a product. While it is in New, Under analysis or Discarded the customer does not see the product; it enters the showcase when it is approved.",
   "booking.help.steps":
-    "Entry: import the technical sheet with the “Send to Booking” option. Rows arrive in New.\nAnalyze: tick the rows and tap “Analyze in Superplan” (cost, minimum price, profit and signal).\nApprove: move the worthwhile ones to Approved; discard the others.\nOffer and reserve: choose the customer, type the quantity in the row and move to Offered or Reserved.\nCreate request: tick the customer's rows and tap “Create request”.\nFilters: every column has its own filter right below the title; tap the title to sort.",
+    "Entry: import the technical sheet with the “Send to Booking” option. Rows arrive in New.\nAnalyze: tick the rows and tap “Analyze in Superplan” (cost, minimum price and price for the target). The green, yellow or red signal appears when you test a sale price in Superplan, from the row, and save.\nApprove: move the worthwhile ones to Approved; discard the others.\nOffer and reserve: choose the customer, type the quantity in the row and move to Offered or Reserved.\nCreate request: tick the customer's rows and tap “Create request”.\nFilters: every column has its own filter right below the title; tap the title to sort.",
   "booking.import": "Import technical sheet",
   "booking.schemaMissing":
     "The database does not have the Booking table yet. Publish the schema (Settings) for this screen to work.",
@@ -114,13 +125,14 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.bulk.assign": "Save customer and quantities",
   "booking.bulk.status": "Move to…",
   "booking.bulk.move": "Move",
+  "booking.bulk.move.confirm": "Move {n} row(s) to “{stage}”?",
   "booking.bulk.owner.keep": "Owner…",
   "booking.bulk.owner.none": "No owner",
   "booking.bulk.setOwner": "Change owner",
   "booking.bulk.analyze": "Analyze in Superplan",
   "booking.bulk.request": "Create request",
   "booking.bulk.request.confirm":
-    "Create a request with the ticked rows (up to {max} at a time)?",
+    "Create a request with {n} ticked row(s)? (up to {max} at a time)",
   "booking.bulk.hint":
     "The quantity typed in the row and the customer chosen here apply to the ticked rows. Create request uses the row's quantity (without it, the minimum order) and takes up to {max} rows at a time.",
   "booking.bulk.working": "Saving…",
@@ -131,6 +143,16 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.done.skipped":
     "{n} row(s) were left out: the product is no longer in the catalog.",
   "booking.done.none": "Nothing changed: the rows were already like that.",
+  "booking.done.kept":
+    "{n} row(s) with a simulation saved by hand stayed as they were. To redo one, open the row in Superplan and save again.",
+  "booking.done.norates":
+    "{n} analyzed without II or IPI (product without NCM in the tax table): they counted as 0 and the cost is lower than the real one.",
+  "booking.draftRestored":
+    "The action was not completed. What you had typed and ticked is back.",
+  "booking.draftDiscard": "Discard and show what is saved",
+  "booking.row.noRates": "II/IPI 0",
+  "booking.row.noRatesHint":
+    "No II or IPI informed: counted as 0. The real cost is higher.",
   "booking.row.open": "Open",
   "booking.row.superplan": "Superplan",
   "booking.row.estimated": "Estimated: net + {pct}%",
@@ -149,7 +171,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.help.body":
     "通过技术表进入的产品，在生成询价单之前都在这里。每一行是一个产品。处于“新增”“分析中”或“已放弃”时，客户看不到该产品；批准后才进入展示页。",
   "booking.help.steps":
-    "进入：导入技术表时选择“发送到 Booking”。新行处于“新增”。\n分析：勾选行并点击“在 Superplan 中分析”（成本、最低价、利润和信号）。\n批准：把值得做的移到“已批准”；其余的放弃。\n推荐和预订：选择客户，在行内填写数量，然后移到“已推荐”或“已预订”。\n生成询价单：勾选该客户的行并点击“生成询价单”。\n筛选：每一列的标题下方都有自己的筛选；点击标题可排序。",
+    "进入：导入技术表时选择“发送到 Booking”。新行处于“新增”。\n分析：勾选行并点击“在 Superplan 中分析”（成本、最低价和达标价格）。在 Superplan 中从该行测试售价并保存后，才会出现绿、黄、红信号。\n批准：把值得做的移到“已批准”；其余的放弃。\n推荐和预订：选择客户，在行内填写数量，然后移到“已推荐”或“已预订”。\n生成询价单：勾选该客户的行并点击“生成询价单”。\n筛选：每一列的标题下方都有自己的筛选；点击标题可排序。",
   "booking.import": "导入技术表",
   "booking.schemaMissing":
     "数据库中还没有 Booking 表。请发布数据结构（设置）后再使用此页面。",
@@ -183,13 +205,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.bulk.assign": "保存客户和数量",
   "booking.bulk.status": "移到…",
   "booking.bulk.move": "移动",
+  "booking.bulk.move.confirm": "把 {n} 行移到“{stage}”？",
   "booking.bulk.owner.keep": "负责人…",
   "booking.bulk.owner.none": "无负责人",
   "booking.bulk.setOwner": "更换负责人",
   "booking.bulk.analyze": "在 Superplan 中分析",
   "booking.bulk.request": "生成询价单",
   "booking.bulk.request.confirm":
-    "用勾选的行生成一张询价单（每次最多 {max} 行）？",
+    "用勾选的 {n} 行生成一张询价单？（每次最多 {max} 行）",
   "booking.bulk.hint":
     "行内填写的数量和这里选择的客户只对勾选的行生效。生成询价单使用该行的数量（没有则用起订量），每次最多 {max} 行。",
   "booking.bulk.working": "保存中…",
@@ -199,6 +222,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.done.analyzed": "已在 Superplan 中分析 {n} 行。",
   "booking.done.skipped": "有 {n} 行未处理：产品已不在目录中。",
   "booking.done.none": "没有变化：这些行本来就是这样。",
+  "booking.done.kept":
+    "有 {n} 行保留了手动保存的模拟。如需重做，请在 Superplan 中打开该行并重新保存。",
+  "booking.done.norates":
+    "有 {n} 行在没有 II 或 IPI 的情况下分析（税表中没有该产品的 NCM）：按 0 计算，成本低于实际。",
+  "booking.draftRestored": "操作未完成。您填写和勾选的内容已恢复。",
+  "booking.draftDiscard": "放弃并显示已保存的内容",
+  "booking.row.noRates": "II/IPI 0",
+  "booking.row.noRatesHint": "未填写 II 或 IPI：按 0 计算。实际成本更高。",
   "booking.row.open": "打开",
   "booking.row.superplan": "Superplan",
   "booking.row.estimated": "估算：净重 + {pct}%",

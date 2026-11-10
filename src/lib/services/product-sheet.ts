@@ -13,6 +13,7 @@ import { assertWellmix } from "@/lib/auth/permissions";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { translator } from "@/i18n";
+import { resolveCbm } from "@/lib/logistics/cbm";
 import {
   buildProductSpec,
   productSpecLabels,
@@ -190,6 +191,51 @@ export async function masterSheetInput(
   for (const k of MASTER_PRODUCT_FIELDS)
     if (master[k] !== undefined && master[k] !== null) out[k] = master[k];
   return { ...out, ...fromVariant } as SheetInput;
+}
+
+/**
+ * O que se compra, lido de um jeito só: a ficha mestre com o que falta
+ * completado pelas colunas do produto (a ficha vale primeiro). O Booking
+ * mostra estes números na linha e o Superplan faz a conta com eles: os dois
+ * leem daqui, para a linha nunca mostrar um preço e a análise usar outro.
+ */
+export function productPurchaseView(
+  product: Product,
+  sheet: PurchaseSheet | null | undefined,
+): {
+  master: Partial<PurchaseSheet>;
+  price: number | null;
+  /** RMB, USD, BRL, EUR ou a moeda escrita no cadastro (em maiúsculas). */
+  currency: string | null;
+  pcsPerCarton: number | null;
+  cbmPerCarton: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+} {
+  const pos = (n: number | null | undefined) =>
+    typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
+  const master = withProductColumns<Partial<PurchaseSheet>>(
+    sheet ?? {},
+    productSheetDraft(product, null),
+  );
+  return {
+    master,
+    price: pos(master.price),
+    currency:
+      master.currency ??
+      sheetCurrency(product.currency) ??
+      (product.currency?.trim().toUpperCase() || null),
+    pcsPerCarton: pos(master.masterCartonQty),
+    // Volume da caixa master: informado; senão, das medidas da caixa.
+    cbmPerCarton: resolveCbm({
+      cbm: master.cbmPerCarton,
+      lengthCm: master.lengthCm,
+      widthCm: master.widthCm,
+      heightCm: master.heightCm,
+    }),
+    netWeightPcKg: pos(master.netWeightPcKg),
+    grossWeightPcKg: pos(master.grossWeightPcKg),
+  };
 }
 
 const filled = (v: unknown) =>

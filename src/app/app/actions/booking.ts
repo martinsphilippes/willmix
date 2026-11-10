@@ -36,6 +36,8 @@ const FLASH = [
   "owners",
   "analyzed",
   "skipped",
+  "kept",
+  "norates",
 ];
 
 /** Volta para a lista mantendo os filtros (só endereço do próprio Booking). */
@@ -150,14 +152,20 @@ export async function bulkBookingAction(form: FormData) {
           user,
           input.ids,
           input.ownerUserId === BOOKING_EMPTY ? null : input.ownerUserId,
+          quantities,
         );
         return withParams(back, { owners });
       }
       if (input.op === "analyze") {
+        // A quantidade digitada nas linhas marcadas vale em toda ação.
+        if (Object.keys(quantities).length)
+          await service.assignBookings(user, { ids: input.ids, quantities });
         const result = await service.analyzeBookings(user, input.ids);
         return withParams(back, {
           analyzed: result.analyzed,
           ...(result.skipped ? { skipped: result.skipped } : {}),
+          ...(result.kept ? { kept: result.kept } : {}),
+          ...(result.noRates ? { norates: result.noRates } : {}),
         });
       }
       const { getT } = await import("@/i18n/server");

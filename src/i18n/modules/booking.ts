@@ -40,6 +40,8 @@ export const pt = {
   "booking.col.customer": "Cliente",
   "booking.col.reservedQty": "Qtd. reservada",
   "booking.col.salePrice": "Preço de venda",
+  "booking.col.cost": "Custo (R$)",
+  "booking.col.targetPrice": "Preço p/ meta",
   "booking.col.signal": "Superplan",
   "booking.col.owner": "Responsável",
   "booking.col.enteredAt": "Entrada",
@@ -49,13 +51,14 @@ export const pt = {
   "booking.signal.viable": "Viável",
   "booking.signal.below": "Abaixo da meta",
   "booking.signal.loss": "Prejuízo",
+  "booking.signal.minimum": "No preço mínimo",
   "booking.signal.missing": "Falta dado",
   "booking.signal.none": "Sem análise",
   "booking.error.booking_not_found": "Linha do Booking não encontrada.",
   "booking.error.booking_request_only":
     "A etapa “Virou solicitação” é marcada sozinha quando você usa “Gerar solicitação”.",
   "booking.error.booking_approver_required":
-    "Aprovar, tirar um produto da vitrine ou reabrir uma linha é de quem analisa no Superplan (hoje, o administrador).",
+    "Aprovar ou tirar um produto da vitrine é de quem analisa no Superplan (hoje, o administrador).",
   "booking.error.booking_customer_required":
     "Escolha o cliente antes de marcar como oferecido ou reservado.",
   "booking.error.booking_customer_invalid":
@@ -87,8 +90,12 @@ export const pt = {
   "booking.error.booking_note_too_long":
     "Observação longa demais (até 500 caracteres).",
   "booking.error.booking_locked":
-    "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação. Para mexer aqui, quem analisa precisa reabrir a linha.",
+    "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação. Para a linha voltar, exclua a solicitação.",
   "booking.productMissing": "Produto fora do cadastro",
+  "booking.error.booking_request_alive":
+    "Esta linha tem uma solicitação em andamento. Para a linha voltar, exclua a solicitação (em Solicitações): ela volta sozinha para Reservado ou Aprovado.",
+  "booking.error.booking_request_customer":
+    "Escolha o cliente na barra antes de gerar a solicitação: há linha marcada sem cliente.",
   "booking.error.booking_status_required":
     "Escolha a etapa em “Mover para…” antes de tocar em Mover.",
   "booking.error.booking_owner_required":
@@ -138,6 +145,8 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.col.customer": "Customer",
   "booking.col.reservedQty": "Reserved qty",
   "booking.col.salePrice": "Sale price",
+  "booking.col.cost": "Cost (R$)",
+  "booking.col.targetPrice": "Price for target",
   "booking.col.signal": "Superplan",
   "booking.col.owner": "Owner",
   "booking.col.enteredAt": "Entered",
@@ -147,13 +156,14 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.signal.viable": "Viable",
   "booking.signal.below": "Below target",
   "booking.signal.loss": "Loss",
+  "booking.signal.minimum": "At the minimum price",
   "booking.signal.missing": "Missing data",
   "booking.signal.none": "Not analyzed",
   "booking.error.booking_not_found": "Booking row not found.",
   "booking.error.booking_request_only":
     "The “Became a request” stage is set automatically when you use “Create request”.",
   "booking.error.booking_approver_required":
-    "Approving, removing a product from the showcase or reopening a row is for whoever analyzes in Superplan (today, the administrator).",
+    "Approving or removing a product from the showcase is for whoever analyzes in Superplan (today, the administrator).",
   "booking.error.booking_customer_required":
     "Choose the customer before marking as offered or reserved.",
   "booking.error.booking_customer_invalid":
@@ -185,8 +195,12 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.error.booking_note_too_long":
     "Note too long (up to 500 characters).",
   "booking.error.booking_locked":
-    "This row already became a request: customer and quantity change in the request. To edit it here, whoever analyzes must reopen the row.",
+    "This row already became a request: customer and quantity change in the request. For the row to come back, delete the request.",
   "booking.productMissing": "Product no longer in the catalog",
+  "booking.error.booking_request_alive":
+    "This row has a request in progress. For the row to come back, delete the request (in Requests): it returns by itself to Reserved or Approved.",
+  "booking.error.booking_request_customer":
+    "Choose the customer in the bar before creating the request: a ticked row has no customer.",
   "booking.error.booking_status_required":
     "Choose the stage in “Move to…” before tapping Move.",
   "booking.error.booking_owner_required":
@@ -236,6 +250,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.col.customer": "客户",
   "booking.col.reservedQty": "预订数量",
   "booking.col.salePrice": "售价",
+  "booking.col.cost": "成本（R$）",
+  "booking.col.targetPrice": "达标价格",
   "booking.col.signal": "Superplan",
   "booking.col.owner": "负责人",
   "booking.col.enteredAt": "进入日期",
@@ -245,13 +261,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.signal.viable": "可行",
   "booking.signal.below": "低于目标",
   "booking.signal.loss": "亏损",
+  "booking.signal.minimum": "按最低价",
   "booking.signal.missing": "缺少数据",
   "booking.signal.none": "未分析",
   "booking.error.booking_not_found": "未找到该 Booking 行。",
   "booking.error.booking_request_only":
     "“已生成询价单”阶段在使用“生成询价单”时自动标记。",
   "booking.error.booking_approver_required":
-    "批准、将产品从展示页撤下或重新打开一行，只能由在 Superplan 中分析的人操作（目前为管理员）。",
+    "批准或将产品从展示页撤下，只能由在 Superplan 中分析的人操作（目前为管理员）。",
   "booking.error.booking_customer_required":
     "标记为已推荐或已预订之前，请先选择客户。",
   "booking.error.booking_customer_invalid":
@@ -278,8 +295,12 @@ export const zh: Record<keyof typeof pt, string> = {
     "Superplan 分析仅限可打开 Superplan 的人（目前为管理员）。",
   "booking.error.booking_note_too_long": "备注过长（最多 500 个字符）。",
   "booking.error.booking_locked":
-    "该行已生成询价单：客户和数量请在询价单中修改。如需在此修改，须由分析人员重新打开该行。",
+    "该行已生成询价单：客户和数量请在询价单中修改。要让该行回来，请删除询价单。",
   "booking.productMissing": "产品已不在目录中",
+  "booking.error.booking_request_alive":
+    "该行有一张进行中的询价单。要让该行回来，请删除询价单（在“询价单”中）：它会自动回到“已预订”或“已批准”。",
+  "booking.error.booking_request_customer":
+    "生成询价单之前请先在操作栏选择客户：有勾选的行没有客户。",
   "booking.error.booking_status_required":
     "点击“移动”之前，请先在“移到…”中选择阶段。",
   "booking.error.booking_owner_required":

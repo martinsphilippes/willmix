@@ -2149,8 +2149,18 @@ export interface BookingAnalysis {
   targetPriceBrl: number | null;
   /** O que faltou para calcular (chaves do Superplan: price, fx, cbm…). */
   missing: string[];
+  /**
+   * Simulação gravada à mão pelo Superplan ("Gravar no Booking"): a análise
+   * em várias linhas não a substitui.
+   */
+  manual?: boolean;
   /** Pressupostos da conta, para conferência. */
   inputs?: {
+    /** O que a conta usou do produto (para conferir com a linha). */
+    unitPrice?: number | null;
+    currency?: string | null;
+    pcsPerCarton?: number | null;
+    cbmPerCarton?: number | null;
     officialRate: number | null;
     futureRate: number | null;
     rmbPerUsd: number | null;

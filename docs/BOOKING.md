@@ -51,28 +51,34 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
 ## 4. Requisitos funcionais
 
 - **Entrada**: na importação da ficha técnica, a opção "Mandar para o Booking (um produto por linha)" é a primeira e já vem marcada para quem abre o Booking. Cada grupo de linhas vira um produto (como o modo "um produto por linha") e uma linha do Booking, ligada à planilha de origem. As outras duas opções continuam.
-- **Reimportar uma planilha antiga**: no resultado de uma importação antiga, "Mandar para o Booking" relê o arquivo guardado e cria os produtos e as linhas. O produto antigo com variações não é alterado.
+- **Reimportar uma planilha antiga**: no resultado de uma importação antiga, "Mandar para o Booking" relê o arquivo guardado e cria os produtos e as linhas. O produto antigo com variações não é alterado. **O produto que já existe também não**: a planilha é antiga, então preço, pedido mínimo, caixa, pesos, cores e fotos dele ficam como estão hoje; ele só ganha a linha do Booking (o resultado mostra "Já existia (não alterado)"). Só a planilha enviada de novo, como arquivo novo, atualiza o produto.
 - **Lista**: uma linha por produto, 100 por página, com cartões das etapas (contagem; tocar filtra), busca geral, filtro em toda coluna (logo abaixo do título), ordenação por qualquer coluna e o filtro guardado no endereço. A coluna do produto fica parada ao rolar para o lado.
-- **Ações em várias linhas** (barra acima da tabela): salvar cliente e quantidades, mover de etapa, trocar o responsável, analisar no Superplan, gerar solicitação.
+- **Ações em várias linhas** (barra acima da tabela): salvar cliente e quantidades, mover de etapa, trocar o responsável, analisar no Superplan, gerar solicitação. Mover e gerar solicitação pedem confirmação dizendo quantas linhas e para onde. Se a ação for recusada, o que estava digitado e marcado **volta para a tela** (quantidades, linhas marcadas e escolhas da barra), com o aviso e o botão "Descartar".
 - **Página da linha** (`/app/booking/[id]`): etapa, cliente, quantidade reservada, responsável e observação num formulário; dados da ficha; análise do Superplan; histórico. Só o que a pessoa mudou é gravado: salvar uma observação numa página aberta há tempo não desfaz a etapa, o cliente ou a reserva que alguém mudou nesse meio-tempo.
-- **Superplan**: aberto a partir da linha (`/app/superplan?booking=<id>`), já com o produto; "Gravar no Booking" guarda o tipo de negócio, o preço testado e o resultado. Também há "Analisar no Superplan" para várias linhas de uma vez (com os valores padrão).
+- **Superplan**: aberto a partir da linha (`/app/superplan?booking=<id>`), já com o produto; "Gravar no Booking" guarda o tipo de negócio, o preço testado e o resultado. Também há "Analisar no Superplan" para várias linhas de uma vez (com os valores padrão), que dá o **custo**, o **preço mínimo** e o **preço para a meta** de cada produto; o sinal verde/amarelo/vermelho só existe depois que alguém testa um preço de venda (regra 9).
 - **Vitrine**: produto em Novo, Em análise ou Descartado não aparece para o cliente (vitrine, página do produto, carrinho, nova solicitação, busca por foto, fotos e documentos do produto, kits de marketing).
 
 ## 5. Regras de negócio
 
 1. Uma linha do Booking por produto (índice único). Reimportar a mesma planilha atualiza o produto e **não** cria outra linha nem muda a etapa.
-2. **Entrada**: o produto que a planilha **criou** entra em **Novo** (fora da vitrine). O produto que **já existia** no cadastro (a planilha só o atualizou) entra em **Aprovado**: ele já estava na vitrine e a importação não tira da vitrine o que já se vende.
+2. **Entrada**: o produto que a planilha **criou** entra em **Novo** (fora da vitrine). O produto que **já existia** no cadastro (a planilha só o atualizou) entra em **Aprovado**: ele já estava na vitrine e a importação não tira da vitrine o que já se vende. O produto que já existia mas está **excluído** (desativado) entra em **Novo**: a importação não o restaura e, se alguém o restaurar depois, ele não volta à vitrine sem aprovação.
 3. **Etapas** (`BOOKING_FLOW` + `discarded`):
    - "Virou solicitação" só é gravada pelo "Gerar solicitação".
    - Mudança que **põe o produto na vitrine ou tira dela** (aprovar; voltar um aprovado para Novo ou Em análise; descartar um aprovado; recuperar um descartado direto para aprovado) é de quem **analisa**: quem abre a tela Superplan (hoje, o administrador; ele pode liberar a tela a outro login em Equipe).
-   - Reabrir uma linha que já virou solicitação: também de quem analisa. A ligação com a solicitação antiga sai da linha (fica no histórico).
+   - Linha que já virou solicitação **não é reaberta à mão enquanto a solicitação existe**: reabrir deixaria a solicitação viva e a linha livre para gerar outra. O caminho é excluir a solicitação (a linha volta sozinha, regra 8). Só quando a solicitação ligada foi cancelada ou não existe mais quem analisa reabre; a ligação antiga sai da linha (fica no histórico).
+   - Linha em "Virou solicitação" **sem solicitação ligada** há mais de 2 minutos (a criação caiu no meio): qualquer login com a tela a devolve para Aprovado, Oferecido ou Reservado. A página da linha avisa.
    - O resto (Novo ↔ Em análise; descartar ou recuperar antes de aprovar; Aprovado ↔ Oferecido ↔ Reservado): qualquer login com a tela.
 4. **O que a etapa exige**: Oferecido precisa de cliente; Reservado, de cliente e quantidade. A quantidade reservada é inteira, positiva e **nunca abaixo do pedido mínimo** do produto (ficha mestre, senão cadastro).
 5. **Cliente**: empresa cliente ativa, ou "Estoque Wellmix" (compra para estoque, a mesma empresa interna da Nova solicitação). Oferecer ou reservar confere de novo: cliente que deixou de estar ativo é recusado, com a linha. **Responsável**: login ativo da Wellmix; quem importou a planilha, até alguém trocar.
 6. **Várias linhas**: tudo ou nada. Primeiro todas são conferidas; a primeira recusa cancela a ação inteira e a tela destaca a linha. No máximo 100 linhas por ação. A quantidade digitada na linha e o cliente escolhido na barra valem só para as linhas marcadas.
 7. **Vitrine**: escondem o produto as etapas Novo, Em análise e Descartado. Aprovado em diante aparece. Produto sem linha no Booking nunca é escondido.
-8. **Gerar solicitação**: só linhas em Aprovado, Oferecido ou Reservado, no máximo 30 por vez, e só para quem também abre Solicitações. Todas viram um lote do cliente escolhido (sem escolha, o cliente das linhas, se for um só). Linha reservada para **outro** cliente recusa o envio inteiro (nada é criado). Quantidade: a digitada na linha, senão a reservada, senão o pedido mínimo do produto; sem nenhuma, recusa dizendo qual linha. Produto com variações recusa (use a Nova solicitação, que pede a variação). Depois: as linhas vão para "Virou solicitação" com o cliente, a quantidade e o número da solicitação, e ficam travadas (cliente e quantidade mudam na solicitação). As linhas são tomadas (vão para "Virou solicitação") **antes** de a solicitação nascer e relidas: duas chamadas juntas para a mesma linha não criam duas solicitações, e se a criação falhar as linhas voltam para onde estavam. **Excluir a solicitação** gerada solta a linha: ela volta para Reservado (ou Aprovado, sem cliente e quantidade), sem a ligação, e pode gerar de novo.
+8. **Gerar solicitação**: só linhas em Aprovado, Oferecido ou Reservado, no máximo 30 por vez, e só para quem também abre Solicitações. Todas viram um lote do cliente escolhido (sem escolha, o cliente das linhas, se for um só). Sem cliente na barra nem nas linhas, a recusa diz isso e aponta a linha sem cliente. Linha reservada para **outro** cliente recusa o envio inteiro (nada é criado). Quantidade: a digitada na linha, senão a reservada, senão o pedido mínimo do produto; sem nenhuma, recusa dizendo qual linha. Produto com variações recusa (use a Nova solicitação, que pede a variação). Depois: as linhas vão para "Virou solicitação" com o cliente, a quantidade e o número da solicitação, e ficam travadas (cliente e quantidade mudam na solicitação). As linhas são tomadas (vão para "Virou solicitação") **antes** de a solicitação nascer e relidas: duas chamadas juntas para a mesma linha não criam duas solicitações, e se a criação falhar as linhas voltam para onde estavam **e a solicitação que tiver nascido pela metade é cancelada** (tentar de novo não deixa duas). **Excluir a solicitação** gerada solta a linha: ela volta para Reservado (ou Aprovado, sem cliente e quantidade), sem a ligação, e pode gerar de novo.
 9. **Análise do Superplan** (só quem abre o Superplan): guarda um retrato (`analysis`): tipo de negócio, preço de venda, custo por peça, preço mínimo, lucro %, meta, sinal, preço para a meta, o que faltou e o que foi considerado (câmbio, II/IPI, container, frete, peso estimado). O resultado é sempre refeito no servidor; nunca vem do navegador. A lista mostra o retrato com a data; não recalcula sozinha. Analisar uma linha em Novo leva para Em análise.
+   - **Sinal só com preço testado.** A análise em várias linhas não tem preço de venda: ela calcula no preço mínimo, e nesse preço o lucro depende quase só dos parâmetros (todo produto daria o mesmo sinal). Por isso a linha analisada em lote mostra "No preço mínimo" (neutro) com o custo e o preço para a meta, que são os números que mudam de produto para produto. Verde, amarelo ou vermelho aparecem quando alguém testa um preço no Superplan e grava.
+   - **A simulação gravada à mão fica.** "Analisar no Superplan" em várias linhas não substitui a análise que alguém gravou pelo Superplan (o preço testado e o tipo de negócio escolhidos ali não se recuperam de outro lugar); a tela diz quantas foram mantidas. Gravar de novo pelo Superplan substitui.
+   - **Os mesmos números na linha e na conta.** Preço, moeda, peças por caixa, CBM e pesos vêm de uma leitura só (`productPurchaseView`: ficha mestre primeiro; o cadastro do produto completa o que faltar), usada pela linha do Booking e pelo Superplan. O retrato guarda o que foi usado (preço, moeda, peças por caixa e CBM), e a página da linha mostra.
+   - **Sem II/IPI conhecidos** (produto sem NCM na tabela fiscal ou só com uma das alíquotas): a conta usa 0 no que falta e o custo sai menor. A lista marca a linha com "II/IPI 0", a análise em lote diz quantas ficaram assim, e a página diz qual alíquota faltou.
+   - **Preço em outra moeda** (EUR, BRL): a análise diz que falta o preço em RMB ou US$ (e não "falta o preço").
 10. **Pesos**: peso líquido e peso bruto por peça, cada um na sua coluna, do jeito que a planilha traz (N.W e G.W). **Peso bruto vazio fica vazio**: o líquido nunca é lido como bruto. O peso estimado (regra da decisão 5) é só uma conta, marcada com "≈", e nunca é gravado como peso bruto do produto.
 11. **Média (US$)**: só informação. Não entra em nenhuma conta de imposto ou custo; os impostos são sempre sobre o valor real da compra (ver `docs/SUPERPLAN.md`).
 
@@ -82,9 +88,12 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
 - Produto apagado ou desativado no cadastro: a linha continua, marcada "produto fora do cadastro", fica de fora da análise em lote e não gera solicitação. Excluir o produto de vez apaga a linha dele.
 - Limpeza dos dados de venda (Configurações): a linha fica; a que tinha virado solicitação volta para Reservado (ou Aprovado, sem reserva), sem a ligação.
 - Planilha com mais de 80 produtos: a importação recusa, como hoje (dividir a planilha).
-- Importação interrompida ou com falha: a linha do Booking de um produto novo nasce **antes** do próprio produto (com o id que ele vai ter), então em nenhum momento existe produto novo no cadastro sem a linha que o mantém fora da vitrine. Se a criação do produto falhar, a linha sai junto. Se a importação cair entre a linha e o produto, sobra uma linha em Novo sem produto: a importação seguinte a retira (depois de 10 minutos, para não mexer numa importação ainda rodando). Reimportar completa o que faltou; produto que nasceu numa importação com falha continua em Novo (não é tratado como "já estava no cadastro").
+- Importação interrompida ou com falha: a linha do Booking de um produto novo nasce **antes** do próprio produto (com o id que ele vai ter), então em nenhum momento existe produto novo no cadastro sem a linha que o mantém fora da vitrine. Se a criação do produto falhar, a linha sai junto; antes de tirar a linha, a importação confere se o produto foi gravado mesmo assim (resposta perdida no caminho): se foi, ele fica com a linha, em Novo. Se a linha foi gravada e o registro dela falhou, ela também sai (não sobra linha em branco). Se a importação cair entre a linha e o produto, sobra uma linha em Novo sem produto: a importação seguinte a retira (depois de 10 minutos, para não mexer numa importação ainda rodando). Reimportar completa o que faltou; produto que nasceu numa importação com falha continua em Novo (não é tratado como "já estava no cadastro").
 - Sem câmbio do dia, sem volume da caixa ou sem preço: a análise fica "falta dado" e diz o quê.
-- Produto sem NCM na tabela fiscal: a análise usa II e IPI 0 e avisa "sem NCM" (o sinal sai otimista; ajustar no Superplan e gravar).
+- Produto sem NCM na tabela fiscal: a análise usa II e IPI 0, a lista marca "II/IPI 0" e a página avisa (o custo sai menor; ajustar no Superplan e gravar).
+- Produto "um por linha" que ganhou variação **à mão** (na página do produto): continua sendo o mesmo produto para a importação (entra no Booking, sem duplicar). Só o produto único de uma importação "com variações" fica de fora.
+- Produto sem fornecedor com o mesmo nome de linhas de dois fornecedores na planilha: a primeira linha fica com ele e a outra vira o produto do outro fornecedor; reimportar dá os mesmos dois produtos.
+- "Ver no Booking" no resultado de uma importação: abre as linhas dos produtos daquele lote, mesmo quando a linha guarda outra planilha de origem (a linha só troca de planilha enquanto está em Novo).
 - Cliente inativo ou que não é cliente: recusado.
 - Filtro com endereço estragado: o que não dá para ler é ignorado.
 - Recompra pelo pedido ("comprar de novo"): continua como era, mesmo que o produto esteja escondido ou desativado (o produto vem do pedido que o cliente já tem, não do formulário).
@@ -94,7 +103,7 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
 
 1. Cadastros → Produtos → Importar ficha técnica → envia a planilha (opção "Mandar para o Booking" já marcada).
 2. Pedidos → Booking: as linhas aparecem em **Novo**.
-3. Marca as linhas → "Analisar no Superplan": cada uma ganha custo, preço mínimo, lucro e sinal, e vai para **Em análise**. Para ajustar uma, abre o Superplan pela linha, testa o preço e "Gravar no Booking".
+3. Marca as linhas → "Analisar no Superplan": cada uma ganha custo, preço mínimo e preço para a meta, e vai para **Em análise**. Para ter o sinal de uma, abre o Superplan pela linha, testa o preço de venda e "Gravar no Booking".
 4. Aprova as que valem a pena (**Aprovado**): entram na vitrine. Descarta as outras.
 5. Escolhe o cliente na barra, digita a quantidade nas linhas e move para **Oferecido** ou **Reservado**.
 6. Marca as linhas do cliente → "Gerar solicitação": nasce o lote; as linhas vão para **Virou solicitação** com o link.
@@ -105,10 +114,10 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
 | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Administrador                                                                                      | Tudo.                                                                                                                                                             |
 | Operador com a tela Booking (funções comprador, gerente de produto, planner, cadastro; diretorias) | Ver, filtrar, editar cliente, quantidade, responsável e observação, mover entre etapas que não mexem na vitrine, gerar solicitação (se também abre Solicitações). |
-| Quem abre o Superplan (hoje só o administrador)                                                    | Além disso: analisar, ver preço de venda, custo e sinal, aprovar, tirar da vitrine, reabrir.                                                                      |
+| Quem abre o Superplan (hoje só o administrador)                                                    | Além disso: analisar, ver custo, preço de venda, preço para a meta e sinal, aprovar, tirar da vitrine, reabrir (linha cuja solicitação foi cancelada).            |
 | Cliente, fornecedor, parceiros                                                                     | Nada: não veem a tela nem os produtos escondidos.                                                                                                                 |
 
-Colunas e filtros de preço de venda e sinal só existem para quem abre o Superplan (a análise nem sai do servidor para os outros).
+Colunas e filtros de custo, preço de venda, preço para a meta e sinal só existem para quem abre o Superplan (a análise nem sai do servidor para os outros).
 
 ## 9. Estrutura do banco de dados
 
@@ -126,7 +135,7 @@ Tabela nova `bookings` (aditiva):
 | `reservedQty`                              | inteiro         |                                                                                                    |
 | `ownerUserId`                              | id              | responsável                                                                                        |
 | `note`                                     | texto 500       | observação                                                                                         |
-| `analysis`                                 | JSON            | retrato da análise do Superplan                                                                    |
+| `analysis`                                 | JSON            | retrato da análise do Superplan (`manual`: gravada à mão; `inputs`: o que foi usado)               |
 | `requestId`, `requestGroupId`              | id              | solicitação gerada                                                                                 |
 | `requestNumber`                            | inteiro         |                                                                                                    |
 | `statusChangedAt`, `statusChangedByUserId` | data, id        | última mudança de etapa                                                                            |
@@ -153,11 +162,11 @@ Sem integração externa. Server Actions (todas conferem papel Wellmix e a tela 
 
 ## 12. Relatórios, 13. Dashboards, 14. Indicadores
 
-Na própria tela: cartões com a contagem por etapa (viram filtro), total filtrado e, para quem abre o Superplan, o filtro "sinal" (viável, abaixo da meta, prejuízo, falta dado, sem análise).
+Na própria tela: cartões com a contagem por etapa (viram filtro), total filtrado e, para quem abre o Superplan, o filtro "sinal" (viável, abaixo da meta, prejuízo, no preço mínimo, falta dado, sem análise).
 
 ## 15. Auditoria
 
-Toda mudança grava em `audit_log` (entidade `booking`): `booking.create` (importação), `booking.move` (etapa), `booking.update` (cliente, quantidade, responsável, observação), `booking.analysis`, `booking.request`, `booking.release` (a solicitação foi excluída e a linha voltou) e `booking.sweep` (linha sem produto retirada), com o antes e o depois. A página da linha mostra o histórico. O registro de `booking.analysis` guarda só a etapa, o sinal e a data: **custo, preço e lucro não vão para a auditoria**, porque a tela Auditoria é aberta por quem não abre o Superplan.
+Toda mudança grava em `audit_log` (entidade `booking`): `booking.create` (importação), `booking.move` (etapa), `booking.update` (cliente, quantidade, responsável, observação), `booking.analysis`, `booking.request`, `booking.release` (a solicitação foi excluída e a linha voltou) e `booking.sweep` (linha sem produto retirada), com o antes e o depois. A página da linha mostra o histórico. O registro de `booking.analysis` guarda só a etapa e a data: **custo, preço, lucro e sinal não vão para a auditoria**, porque a tela Auditoria é aberta por quem não abre o Superplan. A solicitação que nasceu pela metade e foi cancelada fica como `request.batch_rollback`.
 
 ## 16. Segurança
 
@@ -170,7 +179,10 @@ Toda mudança grava em `audit_log` (entidade `booking`): `booking.create` (impor
 ## 17. Limites conhecidos
 
 - A lista lê todas as linhas e filtra em memória (como as outras telas). O armazenamento devolve até 10.000 linhas por leitura; muito antes disso vale arquivar os descartados.
-- A marcação das linhas vale para a página atual (100 linhas) e se perde ao filtrar ou trocar de página.
+- A marcação das linhas vale para a página atual (100 linhas) e se perde ao filtrar ou trocar de página. Depois de uma recusa ela volta (guardada no navegador, por login).
+- A linha tomada sem solicitação ligada só pode ser devolvida depois de 2 minutos (antes disso pode ser uma chamada ainda em andamento).
+- Resposta perdida ao criar o produto: se o servidor ainda estiver gravando quando a importação confere, a linha sai e o produto pode nascer sem ela; é uma janela de milissegundos numa falha rara de rede.
+- "Gravar no Booking" recusado por número fora do limite: a mensagem diz que há um valor inválido na simulação, mas a calculadora ainda não marca qual campo.
 - O armazenamento não tem "trocar só se ainda estiver como li". O "Gerar solicitação" toma as linhas e relê antes de criar, o que cobre o toque duplo, duas abas e dois logins; sobra uma janela de poucos milissegundos em que duas chamadas simultâneas ainda poderiam passar juntas.
 - Nos filtros de número, colunas de peças e caixas leem "1.200" como mil e duzentos; preço, peso e CBM leem o ponto como decimal.
 - A foto da linha é o arquivo original (o `/api/files` não gera miniatura).

@@ -77,6 +77,8 @@ export const pt = {
     "Câmbio de {date} (o último obtido). Dólar futuro = oficial + R$ {spread}.",
   "superplan.cost.base": "base, não soma",
   "superplan.missing.price": "preço por peça",
+  "superplan.missing.currency":
+    "preço em RMB ou US$ (o cadastro está em outra moeda)",
   "superplan.missing.carton": "peças por caixa",
   "superplan.missing.cbm": "volume da caixa",
   "superplan.missing.container": "capacidade do container",
@@ -268,6 +270,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Rate from {date} (the last one obtained). Forward dollar = official + R$ {spread}.",
   "superplan.cost.base": "base, not added",
   "superplan.missing.price": "price per piece",
+  "superplan.missing.currency":
+    "price in RMB or US$ (the product is registered in another currency)",
   "superplan.missing.carton": "pieces per carton",
   "superplan.missing.cbm": "carton volume",
   "superplan.missing.container": "container capacity",
@@ -456,6 +460,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "{date} 的汇率（最近一次获取）。远期美元 = 官方 + R$ {spread}。",
   "superplan.cost.base": "税基，不计入合计",
   "superplan.missing.price": "单价",
+  "superplan.missing.currency":
+    "以人民币或美元计的价格（产品登记的是其他币种）",
   "superplan.missing.carton": "每箱件数",
   "superplan.missing.cbm": "箱体积",
   "superplan.missing.container": "货柜容量",

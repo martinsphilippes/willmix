@@ -421,6 +421,10 @@ describe("análise de vários produtos com os valores padrão", () => {
       targetPriceBrl: Math.ceil(r.target!.price! * 100 - 1e-6) / 100,
       missing: [],
       inputs: {
+        unitPrice: 24.9,
+        currency: "RMB",
+        pcsPerCarton: 12,
+        cbmPerCarton: 0.069,
         officialRate: 5,
         futureRate: 5.25,
         rmbPerUsd: 6.25,
@@ -605,6 +609,10 @@ describe("retrato de uma conta", () => {
     expect(snapshot.profitPct!.toFixed(1)).toBe("16.0");
     expect(Number(snapshot.profitPct!.toFixed(2))).toBe(snapshot.profitPct);
     expect(snapshot.inputs).toEqual({
+      unitPrice: input.unitPrice,
+      currency: input.currency,
+      pcsPerCarton: input.pcsPerCarton,
+      cbmPerCarton: input.cbmPerCarton,
       officialRate: 5.15,
       futureRate: 5.4,
       rmbPerUsd: 6.75,

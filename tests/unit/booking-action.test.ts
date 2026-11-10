@@ -447,3 +447,97 @@ describe("achados da revisão", () => {
     expect((await fresh(b.id)).reservedQty).toBe(360);
   });
 });
+
+describe("achados da revisão (segunda leva)", () => {
+  it("a quantidade digitada vale em toda ação: trocar responsável e analisar também a gravam", async () => {
+    const a = await row("approved");
+    const b = await row("approved");
+    h.current = buyer;
+    await bulkBookingAction(
+      bulk({ op: "owner", ownerUserId: buyer.id, [`qty_${a.id}`]: "480" }, [
+        a.id,
+      ]),
+    );
+    expect(query(last()).get("owners")).toBe("1");
+    const first = await fresh(a.id);
+    expect([first.ownerUserId, first.reservedQty]).toEqual([buyer.id, 480]);
+    h.current = admin;
+    await bulkBookingAction(
+      bulk({ op: "analyze", [`qty_${b.id}`]: "1.200" }, [b.id]),
+    );
+    expect(query(last()).get("analyzed")).toBe("1");
+    const second = await fresh(b.id);
+    expect(second.reservedQty).toBe(1200);
+    expect(second.analysis?.byUserId).toBe(admin.id);
+    // Quantidade que não é número inteiro: recusa na linha, sem analisar.
+    const c = await row();
+    await bulkBookingAction(
+      bulk({ op: "analyze", [`qty_${c.id}`]: "doze" }, [c.id]),
+    );
+    expect(query(last()).get("error")).toBe("booking_qty_required");
+    expect(query(last()).get("row")).toBe(c.id);
+    expect((await fresh(c.id)).analysis ?? null).toBeNull();
+  });
+
+  it("analisar várias linhas: a simulação gravada à mão fica e a tela é avisada (mantidas e sem II/IPI)", async () => {
+    const manual = await row();
+    const plain = await row();
+    const { loadSuperplanContext, superplanPrefillsFor } =
+      await import("@/lib/services/superplan-analysis");
+    const { defaultSuperplanInput } = await import("@/lib/superplan-defaults");
+    const ctx = await loadSuperplanContext();
+    const prefill = (await superplanPrefillsFor([manual.productId])).get(
+      manual.productId,
+    )!;
+    const built = defaultSuperplanInput(prefill, ctx);
+    const form = new FormData();
+    form.set("bookingId", manual.id);
+    form.set("input", JSON.stringify({ ...built.input, salePrice: 19.9 }));
+    form.set("businessType", built.businessType);
+    form.set("container", built.container ?? "");
+    form.set("ncmFound", "1");
+    h.current = admin;
+    await saveBookingAnalysisAction(form);
+    const saved = await fresh(manual.id);
+    expect(saved.analysis?.manual).toBe(true);
+    expect(saved.analysis?.salePriceBrl).toBe(19.9);
+
+    await bulkBookingAction(bulk({ op: "analyze" }, [manual.id, plain.id]));
+    const q = query(last());
+    expect([q.get("analyzed"), q.get("kept")]).toEqual(["1", "1"]);
+    // O produto do teste não tem NCM: a análise entrou com II e IPI 0.
+    expect(q.get("norates")).toBe("1");
+    expect((await fresh(manual.id)).analysis).toEqual(saved.analysis);
+    expect((await fresh(plain.id)).analysis?.manual ?? false).toBe(false);
+    // Avisos de uma ida anterior não voltam grudados no endereço.
+    await bulkBookingAction(
+      bulk(
+        {
+          op: "owner",
+          ownerUserId: buyer.id,
+          back: "/app/booking?status=analysis&kept=1&norates=1&analyzed=1",
+        },
+        [plain.id],
+      ),
+    );
+    expect(last()).toBe("/app/booking?status=analysis&owners=1");
+  });
+
+  it("gerar solicitação sem cliente responde com o texto próprio, na linha", async () => {
+    const a = await row("approved");
+    h.current = buyer;
+    await bulkBookingAction(bulk({ op: "request" }, [a.id]));
+    const q = query(last());
+    expect([q.get("error"), q.get("row")]).toEqual([
+      "booking_request_customer",
+      a.id,
+    ]);
+    const { translator } = await import("@/i18n");
+    for (const lang of ["pt", "en", "zh"] as const) {
+      const text = translator(lang)("booking.error.booking_request_customer");
+      expect(text).not.toBe("booking.error.booking_request_customer");
+      expect(text.length).toBeGreaterThan(10);
+    }
+    expect((await fresh(a.id)).status).toBe("approved");
+  });
+});

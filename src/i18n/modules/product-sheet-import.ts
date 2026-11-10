@@ -56,6 +56,11 @@ export const pt = {
   "sheetImport.result.goList": "Ver produtos",
   "sheetImport.status.created": "Criado",
   "sheetImport.status.updated": "Atualizado",
+  "sheetImport.status.kept": "Já existia (não alterado)",
+  "sheetImport.result.summaryKept":
+    "{created} produto(s) criado(s), {updated} que já existia(m) e não foi(ram) alterado(s), {errors} com erro · {suppliers} fornecedor(es) novo(s) · {photos} foto(s)",
+  "sheetImport.result.bookingNoteKept":
+    "Os produtos desta planilha estão no Booking. Como a planilha é de uma importação antiga, o produto que já existia não foi alterado por ela (preço, pedido mínimo, cores e fotos ficam como estão hoje): ele só ganhou a linha do Booking, como Aprovado. Os novos só aparecem na vitrine do cliente depois de aprovados lá.",
   "sheetImport.status.error": "Erro",
   "sheetImport.error.xls_format":
     "Arquivo .xls muito antigo (Excel 95 ou anterior): abra no Excel e salve como .xlsx.",
@@ -114,21 +119,21 @@ export const pt = {
     'A tabela de variações ainda não foi publicada no Appwrite (Action "Publicar esquema Appwrite"). O produto ficou cadastrado sem variações; publique o esquema e importe de novo, ou use "Um produto por linha".',
   "sheetImport.mode.booking": "Mandar para o Booking (um produto por linha)",
   "sheetImport.mode.bookingHint":
-    "Cada grupo de linhas vira um produto do cadastro, com ficha mestre e fotos, e entra no Booking na etapa Novo. O produto novo fica fora da vitrine do cliente até ser aprovado no Booking. Produto que já estava no cadastro entra como Aprovado e continua na vitrine. Reimportar a mesma planilha atualiza os mesmos produtos, sem duplicar e sem mudar a etapa.",
+    "Cada grupo de linhas vira um produto do cadastro, com ficha mestre e fotos, e entra no Booking na etapa Novo. O produto novo fica fora da vitrine do cliente até ser aprovado no Booking. Produto que já estava no cadastro entra como Aprovado e continua na vitrine (o que estava excluído entra como Novo). Reimportar a mesma planilha atualiza os mesmos produtos, sem duplicar e sem mudar a etapa.",
   "sheetImport.previous.booking": "No Booking",
   "sheetImport.result.goBooking": "Ver no Booking",
   "sheetImport.result.bookingSummary":
     "{created} produto(s) novo(s) no Booking, {kept} que já estava(m) lá (a etapa deles não muda)",
   "sheetImport.result.bookingNote":
-    "Os produtos desta planilha estão no Booking. Os novos só aparecem na vitrine do cliente depois de aprovados lá; os que já estavam no cadastro entraram como Aprovado.",
+    "Os produtos desta planilha estão no Booking. Os novos só aparecem na vitrine do cliente depois de aprovados lá; os que já estavam no cadastro entraram como Aprovado (os que estavam excluídos, como Novo).",
   "sheetImport.toBooking.submit": "Mandar para o Booking",
   "sheetImport.toBooking.pending": "Lendo a planilha guardada…",
   "sheetImport.toBooking.hint":
-    "Lê de novo a planilha guardada desta importação e cria um produto por linha no Booking. O produto com variações fica como está.",
+    "Lê de novo a planilha guardada desta importação e cria um produto por linha no Booking. O produto com variações fica como está, e o produto que já existe com o mesmo nome não é alterado: só ganha a linha do Booking.",
   "sheetImport.toBooking.hintProducts":
-    "Lê de novo a planilha guardada e coloca os produtos desta importação no Booking. Como eles já estão no cadastro, entram como Aprovado e continuam na vitrine do cliente.",
+    "Coloca os produtos desta importação no Booking. Eles não são alterados (preço, pedido mínimo, cores e fotos ficam como estão hoje): só ganham a linha do Booking, como Aprovado, e continuam na vitrine do cliente. O que estiver excluído entra como Novo.",
   "sheetImport.toBooking.confirmProducts":
-    "Os produtos desta importação vão para o Booking como Aprovado (continuam na vitrine do cliente). Continuar?",
+    "Os produtos desta importação vão para o Booking como Aprovado (continuam na vitrine do cliente) e não são alterados. Continuar?",
   "sheetImport.toBooking.noFile":
     'A planilha desta importação não ficou guardada. Para mandar ao Booking, importe a planilha de novo com a opção "Mandar para o Booking".',
   "sheetImport.error.booking_schema_outdated":
@@ -198,6 +203,11 @@ export const en = {
   "sheetImport.result.goList": "See products",
   "sheetImport.status.created": "Created",
   "sheetImport.status.updated": "Updated",
+  "sheetImport.status.kept": "Already existed (not changed)",
+  "sheetImport.result.summaryKept":
+    "{created} product(s) created, {updated} already existed and were not changed, {errors} with errors · {suppliers} new supplier(s) · {photos} photo(s)",
+  "sheetImport.result.bookingNoteKept":
+    "The products from this sheet are in the Booking. As the sheet comes from an old import, a product that already existed was not changed by it (price, minimum order, colours and photos stay as they are today): it only got its Booking row, as Approved. New ones only show in the customer showcase after being approved there.",
   "sheetImport.status.error": "Error",
   "sheetImport.error.xls_format":
     "Very old .xls file (Excel 95 or earlier): open it in Excel and save as .xlsx.",
@@ -255,21 +265,21 @@ export const en = {
     'The variations table has not been published to Appwrite yet ("Publish Appwrite schema" Action). The product was registered without variations; publish the schema and import again, or use "One product per row".',
   "sheetImport.mode.booking": "Send to Booking (one product per row)",
   "sheetImport.mode.bookingHint":
-    "Each group of rows becomes a registered product, with master sheet and photos, and enters the Booking at the New stage. A new product stays out of the customer showcase until it is approved in the Booking. A product that was already registered enters as Approved and stays in the showcase. Importing the same sheet again updates the same products, without duplicates and without changing the stage.",
+    "Each group of rows becomes a registered product, with master sheet and photos, and enters the Booking at the New stage. A new product stays out of the customer showcase until it is approved in the Booking. A product that was already registered enters as Approved and stays in the showcase (one that was excluded enters as New). Importing the same sheet again updates the same products, without duplicates and without changing the stage.",
   "sheetImport.previous.booking": "In the Booking",
   "sheetImport.result.goBooking": "See in the Booking",
   "sheetImport.result.bookingSummary":
     "{created} new product(s) in the Booking, {kept} already there (their stage does not change)",
   "sheetImport.result.bookingNote":
-    "The products from this sheet are in the Booking. New ones only show in the customer showcase after being approved there; those already registered entered as Approved.",
+    "The products from this sheet are in the Booking. New ones only show in the customer showcase after being approved there; those already registered entered as Approved (excluded ones, as New).",
   "sheetImport.toBooking.submit": "Send to Booking",
   "sheetImport.toBooking.pending": "Reading the stored spreadsheet…",
   "sheetImport.toBooking.hint":
-    "Reads the stored spreadsheet of this import again and creates one product per row in the Booking. The product with variations stays as it is.",
+    "Reads the stored spreadsheet of this import again and creates one product per row in the Booking. The product with variations stays as it is, and a product that already exists with the same name is not changed: it only gets its Booking row.",
   "sheetImport.toBooking.hintProducts":
-    "Reads the stored spreadsheet again and puts this import's products in the Booking. As they are already registered, they enter as Approved and stay in the customer showcase.",
+    "Puts this import's products in the Booking. They are not changed (price, minimum order, colours and photos stay as they are today): they only get their Booking row, as Approved, and stay in the customer showcase. An excluded product enters as New.",
   "sheetImport.toBooking.confirmProducts":
-    "This import's products go to the Booking as Approved (they stay in the customer showcase). Continue?",
+    "This import's products go to the Booking as Approved (they stay in the customer showcase) and are not changed. Continue?",
   "sheetImport.toBooking.noFile":
     'The spreadsheet of this import was not kept. To send it to the Booking, import the spreadsheet again with the "Send to Booking" option.',
   "sheetImport.error.booking_schema_outdated":
@@ -338,6 +348,11 @@ export const zh = {
   "sheetImport.result.goList": "查看产品",
   "sheetImport.status.created": "已新建",
   "sheetImport.status.updated": "已更新",
+  "sheetImport.status.kept": "已存在（未改动）",
+  "sheetImport.result.summaryKept":
+    "新建 {created} 个产品，{updated} 个已存在且未改动，{errors} 个出错 · 新增供应商 {suppliers} 个 · 照片 {photos} 张",
+  "sheetImport.result.bookingNoteKept":
+    "本表格中的产品已进入 Booking。由于表格来自旧的导入，已存在的产品不会被它改动（价格、起订量、颜色和照片保持现状）：只是以“已批准”获得 Booking 行。新产品在那里获批后才会出现在客户展示页。",
   "sheetImport.status.error": "错误",
   "sheetImport.error.xls_format":
     "过旧的 .xls 文件（Excel 95 或更早）：请在 Excel 中打开并另存为 .xlsx。",
@@ -389,21 +404,21 @@ export const zh = {
     "款式表尚未发布到 Appwrite（“发布 Appwrite 架构”Action）。产品已建档但没有款式；请发布架构后重新导入，或使用“每行一个产品”。",
   "sheetImport.mode.booking": "发送到 Booking（每行一个产品）",
   "sheetImport.mode.bookingHint":
-    "每组行生成一个已登记的产品（含主表和照片），并以“新增”阶段进入 Booking。新产品在 Booking 中获批之前不会出现在客户展示页。目录中已有的产品以“已批准”进入，继续留在展示页。再次导入同一表格只会更新相同的产品，不会重复，也不会改变阶段。",
+    "每组行生成一个已登记的产品（含主表和照片），并以“新增”阶段进入 Booking。新产品在 Booking 中获批之前不会出现在客户展示页。目录中已有的产品以“已批准”进入，继续留在展示页（已删除的产品以“新增”进入）。再次导入同一表格只会更新相同的产品，不会重复，也不会改变阶段。",
   "sheetImport.previous.booking": "在 Booking 中",
   "sheetImport.result.goBooking": "在 Booking 中查看",
   "sheetImport.result.bookingSummary":
     "Booking 中新增 {created} 个产品，{kept} 个原本已在其中（它们的阶段不变）",
   "sheetImport.result.bookingNote":
-    "本表格中的产品已进入 Booking。新产品在那里获批后才会出现在客户展示页；目录中已有的产品以“已批准”进入。",
+    "本表格中的产品已进入 Booking。新产品在那里获批后才会出现在客户展示页；目录中已有的产品以“已批准”进入（已删除的以“新增”进入）。",
   "sheetImport.toBooking.submit": "发送到 Booking",
   "sheetImport.toBooking.pending": "正在读取已保存的表格…",
   "sheetImport.toBooking.hint":
-    "重新读取本次导入保存的表格，并在 Booking 中每行创建一个产品。带款式的产品保持不变。",
+    "重新读取本次导入保存的表格，并在 Booking 中每行创建一个产品。带款式的产品保持不变；同名的已有产品不会被改动，只获得 Booking 行。",
   "sheetImport.toBooking.hintProducts":
-    "重新读取已保存的表格，并把本次导入的产品放入 Booking。由于它们已在目录中，会以“已批准”进入，继续留在客户展示页。",
+    "把本次导入的产品放入 Booking。它们不会被改动（价格、起订量、颜色和照片保持现状）：只是以“已批准”获得 Booking 行，继续留在客户展示页。已删除的产品以“新增”进入。",
   "sheetImport.toBooking.confirmProducts":
-    "本次导入的产品将以“已批准”进入 Booking（继续留在客户展示页）。是否继续？",
+    "本次导入的产品将以“已批准”进入 Booking（继续留在客户展示页），且不会被改动。是否继续？",
   "sheetImport.toBooking.noFile":
     "本次导入的表格没有保存。如需发送到 Booking，请选择“发送到 Booking”选项重新导入表格。",
   "sheetImport.error.booking_schema_outdated":

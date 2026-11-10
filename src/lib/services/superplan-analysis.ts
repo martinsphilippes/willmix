@@ -1,7 +1,6 @@
 import "server-only";
 
 import { getStore, type Product, type PurchaseSheet } from "@/lib/db";
-import { boxCbm, resolveCbm } from "@/lib/logistics/cbm";
 import { getSettings } from "@/lib/settings";
 import { computeSuperplan, superplanParams } from "@/lib/superplan";
 import {
@@ -13,7 +12,7 @@ import {
 } from "@/lib/superplan-defaults";
 import { lookupNcm, type NcmRates } from "./fiscal";
 import { getFxRates } from "./fx";
-import { productSheetDraft, withProductColumns } from "./product-sheet";
+import { productPurchaseView } from "./product-sheet";
 
 /*
  * Superplan no servidor (docs/SUPERPLAN.md): o que a tela recebe do sistema
@@ -90,22 +89,12 @@ function prefillOf(
   sheet: PurchaseSheet | null,
   rates: NcmRates | null,
 ): SuperplanProductPrefill {
-  // Ficha mestre com o que falta completado pelas colunas do produto: a mesma
-  // visão da tela do produto e do Booking. Os pesos saem dela, cada um do seu
-  // campo (o líquido nunca vira bruto).
-  const master = withProductColumns<Partial<PurchaseSheet>>(
-    sheet ?? {},
-    productSheetDraft(product, null),
-  );
-  // Preço e moeda andam juntos: os do cadastro; cadastro sem preço, os da
-  // ficha mestre.
-  const columnPrice = positive(product.price);
-  const price = columnPrice ?? positive(sheet?.price);
-  const currency = (
-    (columnPrice !== null
-      ? (text(product.currency) ?? sheet?.currency)
-      : (sheet?.currency ?? text(product.currency))) ?? ""
-  ).toUpperCase();
+  // O que se compra, lido do mesmo jeito que a linha do Booking mostra
+  // (ficha mestre primeiro; o que falta, das colunas do produto): preço,
+  // moeda, peças por caixa, volume e os pesos (o líquido nunca vira bruto).
+  const view = productPurchaseView(product, sheet);
+  const price = view.price;
+  const currency = (view.currency ?? "").toUpperCase();
   const known = currency === "USD" || currency === "CNY" || currency === "RMB";
   // II e IPI: o que a Wellmix digitou na ficha mestre; senão a tabela fiscal
   // pelo NCM (IPI "NT" = 0%), como no preço da vitrine e da proposta.
@@ -119,20 +108,10 @@ function prefillOf(
     unitPrice: known ? price : null,
     currency: currency === "USD" ? "USD" : "RMB",
     otherCurrency: price !== null && currency && !known ? currency : null,
-    pcsPerCarton:
-      positive(product.masterBoxQty) ?? positive(sheet?.masterCartonQty),
-    netWeightPcKg: positive(master.netWeightPcKg),
-    grossWeightPcKg: positive(master.grossWeightPcKg),
-    // Volume da caixa master: o do cadastro (informado ou das medidas da
-    // caixa); sem ele, o da ficha mestre.
-    cbmPerCarton:
-      boxCbm(product) ??
-      resolveCbm({
-        cbm: sheet?.cbmPerCarton,
-        lengthCm: sheet?.lengthCm,
-        widthCm: sheet?.widthCm,
-        heightCm: sheet?.heightCm,
-      }),
+    pcsPerCarton: view.pcsPerCarton,
+    netWeightPcKg: view.netWeightPcKg,
+    grossWeightPcKg: view.grossWeightPcKg,
+    cbmPerCarton: view.cbmPerCarton,
     ncm: ncmOf(product, sheet),
     iiPct,
     ipiPct,
@@ -206,14 +185,18 @@ export async function analyzeProductsWithDefaults(
       prefill,
       ctx,
     );
-    out.set(
-      id,
-      snapshotOf(input, computeSuperplan(input), {
-        businessType,
-        container,
-        ncmFound: prefill.ncmFound,
-      }),
-    );
+    const snapshot = snapshotOf(input, computeSuperplan(input), {
+      businessType,
+      container,
+      ncmFound: prefill.ncmFound,
+    });
+    // Preço do cadastro em outra moeda (EUR, BRL): o que falta não é o
+    // preço, é informá-lo em RMB ou US$; a tela diz isso.
+    if (prefill.otherCurrency)
+      snapshot.missing = snapshot.missing.map((m) =>
+        m === "price" ? "currency" : m,
+      );
+    out.set(id, snapshot);
   }
   return out;
 }

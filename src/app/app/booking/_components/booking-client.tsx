@@ -2,6 +2,7 @@
 
 import { useEffect, type ComponentProps } from "react";
 import { useFormStatus } from "react-dom";
+import { useFormDoneSignal } from "@/components/submit-button";
 import { Button } from "@/components/ui";
 
 /*
@@ -82,7 +83,10 @@ export function BookingEnhancer({
 
 /**
  * Botão da barra de ações: manda qual ação (`op`). Enquanto grava, todos
- * ficam desativados e só o apertado mostra "Gravando…".
+ * ficam desativados e só o apertado mostra "Gravando…". Com `confirmText`,
+ * pergunta antes, dizendo quantas linhas estão marcadas e a etapa escolhida
+ * (`{n}` e `{stage}`); sem linha marcada (ou sem etapa, quando o texto a
+ * usa) não pergunta: o servidor responde com o aviso certo.
  */
 export function BulkButton({
   op,
@@ -97,6 +101,9 @@ export function BulkButton({
 }) {
   const { pending, data } = useFormStatus();
   const mine = pending && data?.get("op") === op;
+  // A barra do topo para quando o envio termina, mesmo que o endereço de
+  // volta seja igual ao de agora (duas ações seguidas com o mesmo aviso).
+  useFormDoneSignal(pending);
   return (
     <Button
       {...props}
@@ -106,7 +113,26 @@ export function BulkButton({
       aria-busy={mine}
       disabled={pending || !!props.disabled}
       onClick={(event) => {
-        if (confirmText && !window.confirm(confirmText)) event.preventDefault();
+        if (!confirmText) return;
+        const form = event.currentTarget.form;
+        if (!form) return;
+        const ticked = Array.from(form.elements).filter(
+          (el) =>
+            el instanceof HTMLInputElement &&
+            el.type === "checkbox" &&
+            el.name === "ids" &&
+            el.checked,
+        ).length;
+        const select = form.elements.namedItem("status");
+        const stage =
+          select instanceof HTMLSelectElement && select.value
+            ? (select.selectedOptions[0]?.textContent ?? "").trim()
+            : "";
+        if (!ticked || (confirmText.includes("{stage}") && !stage)) return;
+        const question = confirmText
+          .replaceAll("{n}", String(ticked))
+          .replaceAll("{stage}", stage);
+        if (!window.confirm(question)) event.preventDefault();
       }}
     >
       {mine ? pendingText : children}

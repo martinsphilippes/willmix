@@ -403,6 +403,10 @@ export function snapshotOf(
     targetPriceBrl: targetPriceCents(result),
     missing: [...result.missing],
     inputs: {
+      unitPrice: rounded(input.unitPrice, 4),
+      currency: input.currency,
+      pcsPerCarton: rounded(input.pcsPerCarton, 0),
+      cbmPerCarton: rounded(input.cbmPerCarton, 4),
       officialRate: rounded(input.officialRate, 4),
       futureRate: rounded(input.futureRate, 4),
       rmbPerUsd: rounded(input.rmbPerUsd, 4),

@@ -54,6 +54,7 @@ import {
   rowClass,
   type Tone,
 } from "@/components/ui";
+import { FormDraftGuard } from "@/components/form-draft-guard";
 import { SelectAllCheckbox } from "@/components/select-all-checkbox";
 import { bulkBookingAction } from "../actions/booking";
 import { BookingEnhancer, BulkButton } from "./_components/booking-client";
@@ -84,6 +85,7 @@ const SIGNAL_TONE: Record<BookingSignal, Tone> = {
   viable: "success",
   below: "warning",
   loss: "danger",
+  minimum: "neutral",
   missing: "info",
   none: "neutral",
 };
@@ -98,7 +100,9 @@ const FIRST: BookingColumnKey[] = [
   "status",
   "customer",
   "reservedQty",
+  "cost",
   "salePrice",
+  "targetPrice",
   "signal",
 ];
 const ORDER: BookingColumnKey[] = [
@@ -237,7 +241,11 @@ export default async function BookingPage({
       return n > 0 ? t(key, { n }) : t("booking.done.none");
     })
     .filter((v): v is string => !!v);
-  const skipped = /^\d{1,4}$/.test(one("skipped")) ? Number(one("skipped")) : 0;
+  const count = (param: string) =>
+    /^\d{1,4}$/.test(one(param)) ? Number(one(param)) : 0;
+  const skipped = count("skipped");
+  const kept = count("kept");
+  const noRates = count("norates");
 
   /*
    * Filtros ligados, um por etiqueta, com o "tirar" de cada um: o filtro de
@@ -574,6 +582,31 @@ export default async function BookingPage({
           />
         );
       }
+      case "cost":
+        return row.analysis?.costBrl == null ? (
+          muted
+        ) : (
+          <span className="whitespace-nowrap">
+            {formatMoney(row.analysis.costBrl, "BRL", t)}
+            {row.analysis.inputs && !row.analysis.inputs.ncmFound ? (
+              <span
+                className="ml-1 rounded bg-amber-50 px-1 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200"
+                title={t("booking.row.noRatesHint")}
+                data-booking-norates=""
+              >
+                {t("booking.row.noRates")}
+              </span>
+            ) : null}
+          </span>
+        );
+      case "targetPrice":
+        return row.analysis?.targetPriceBrl == null ? (
+          muted
+        ) : (
+          <span className="whitespace-nowrap">
+            {formatMoney(row.analysis.targetPriceBrl, "BRL", t)}
+          </span>
+        );
       case "salePrice": {
         const a = row.analysis;
         if (!a || a.salePriceBrl === null) return muted;
@@ -685,6 +718,14 @@ export default async function BookingPage({
             {t("booking.done.skipped", { n: skipped })}
           </Alert>
         ) : null}
+        {kept ? (
+          <Alert tone="info">{t("booking.done.kept", { n: kept })}</Alert>
+        ) : null}
+        {noRates ? (
+          <Alert tone="warning">
+            {t("booking.done.norates", { n: noRates })}
+          </Alert>
+        ) : null}
       </div>
 
       {/* Cartões das etapas: tocar filtra; tocar de novo tira o filtro. */}
@@ -789,6 +830,20 @@ export default async function BookingPage({
         </div>
       ) : null}
 
+      {/* Recusa (tudo ou nada) ou falha: o que estava digitado e marcado
+          volta, em vez de a pessoa refazer 25 linhas. Ação concluída ou
+          simples troca de filtro: o rascunho é apagado. */}
+      <FormDraftGuard
+        formId={BULK_FORM}
+        storageKey="booking-bulk"
+        userId={user.id}
+        failed={!!errorCode}
+        saved={!errorCode}
+        token={`${errorCode}:${errorRowId}`}
+        message={t("booking.draftRestored")}
+        discardLabel={t("booking.draftDiscard")}
+      />
+
       {/* Ações nas linhas marcadas: as caixas e as quantidades da tabela
           pertencem a este formulário. */}
       <form
@@ -854,6 +909,7 @@ export default async function BookingPage({
             op="move"
             variant="secondary"
             pendingText={t("booking.bulk.working")}
+            confirmText={t("booking.bulk.move.confirm")}
           >
             {t("booking.bulk.move")}
           </BulkButton>

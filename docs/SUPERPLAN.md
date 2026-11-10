@@ -32,8 +32,8 @@ Em segundos, para qualquer produto: custo por peça, preço mínimo, lucro e um 
 
 | Dado                                                                                                             | Origem                                                                                                                                    |
 | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Preço por peça e moeda (RMB ou US$)                                                                              | Cadastro do produto (`price`, `currency`; CNY = RMB); cadastro sem preço: ficha mestre do produto                                         |
-| Peças por caixa e volume da caixa                                                                                | Cadastro (`masterBoxQty`, `cbm` ou medidas da caixa); coluna vazia: ficha mestre                                                          |
+| Preço por peça e moeda (RMB ou US$)                                                                              | Ficha mestre do produto (`price`, `currency`); ficha sem preço: cadastro do produto (CNY = RMB). Leitura única: `productPurchaseView`     |
+| Peças por caixa e volume da caixa                                                                                | Ficha mestre (`masterCartonQty`, `cbmPerCarton` ou medidas da caixa); campo vazio: cadastro. A mesma leitura (`productPurchaseView`)      |
 | Peso líquido e peso bruto por peça                                                                               | Ficha mestre do produto (N.W e G.W, cada um no seu campo), completada pelas colunas do cadastro                                           |
 | Média do despachante (US$)                                                                                       | Ficha mestre (`averagePrice`): **só informação na tela**, não entra na conta (seção 5.1)                                                  |
 | NCM                                                                                                              | Cadastro; sem ele, o da ficha mestre                                                                                                      |
@@ -88,7 +88,7 @@ A simulação que a tela mostra ao abrir um produto, antes de qualquer edição,
 - `defaultSuperplanForm(prefill, ctx, overrides?, decimal?)`: os campos da tela (tipo de negócio padrão, container padrão, frete padrão, câmbio do dia com dólar futuro = oficial + diferença, despesas e fatores dos parâmetros, preço de venda vazio = o preço mínimo).
 - `superplanInputOf(form, ctx)`: os campos da tela viram a conta (`SuperplanInput`). É a função que a calculadora usa a cada tecla.
 - `defaultSuperplanInput(prefill, ctx, overrides?)`: as duas juntas; devolve a conta, o tipo de negócio e o container. `overrides` troca só o tipo de negócio e o preço de venda.
-- `snapshotOf(input, result, meta)`: o retrato de uma conta (tipo, preço analisado, custo, mínimo, lucro, meta, sinal, preço para a meta, o que faltou e os pressupostos). Dinheiro em centavos, percentuais com 2 casas; o preço da meta é arredondado para cima no centavo, como na tela.
+- `snapshotOf(input, result, meta)`: o retrato de uma conta (tipo, preço analisado, custo, mínimo, lucro, meta, sinal, preço para a meta, o que faltou e os pressupostos, incluindo o que foi usado do produto: preço, moeda, peças por caixa e CBM). Dinheiro em centavos, percentuais com 2 casas; o preço da meta é arredondado para cima no centavo, como na tela. `usesMinimum` diz que nenhum preço de venda foi testado (a conta foi feita no preço mínimo).
 - `superplanInputSchema`: confere uma conta vinda do navegador (todo número finito e dentro de uma faixa, listas e textos com tamanho máximo, campo desconhecido descartado).
 
 No servidor, `src/lib/services/superplan-analysis.ts` (só leitura; quem chama confere a permissão):
@@ -97,7 +97,13 @@ No servidor, `src/lib/services/superplan-analysis.ts` (só leitura; quem chama c
 - `superplanPrefillsFor(ids)`: os dados de vários produtos de uma vez (uma consulta de produtos, uma de fichas mestre e uma busca na tabela fiscal por NCM distinto). Produto desativado ou que não existe fica fora; a tela do Superplan pede `includeInactive` para continuar abrindo um produto desativado pelo endereço;
 - `analyzeProductsWithDefaults(ids)`: para cada produto, o retrato da simulação padrão. É o "Analisar no Superplan" em várias linhas do Booking (`docs/BOOKING.md`).
 
-A página do Superplan usa as mesmas duas primeiras funções: um caminho só, os números da tela e os da análise em lote batem (teste em `tests/unit/superplan-analysis.test.ts`). `ncmFound` no retrato quer dizer "II e IPI conhecidos" (ficha mestre ou tabela fiscal); sem eles a conta usa 0 e o sinal sai otimista.
+A página do Superplan usa as mesmas duas primeiras funções: um caminho só, os números da tela e os da análise em lote batem (teste em `tests/unit/superplan-analysis.test.ts`). `ncmFound` no retrato quer dizer "II e IPI conhecidos" (ficha mestre ou tabela fiscal); sem eles a conta usa 0 no que falta e o custo sai menor (o Booking marca a linha com "II/IPI 0").
+
+**Um jeito só de ler o produto.** Preço, moeda, peças por caixa, CBM e pesos saem de `productPurchaseView` (`src/lib/services/product-sheet.ts`): a ficha mestre vale primeiro e o cadastro do produto completa o que faltar. O Superplan faz a conta com esses números e o Booking mostra os mesmos na linha (teste em `tests/unit/booking-service.test.ts`).
+
+**Preço em outra moeda.** A conta só aceita RMB ou US$. Produto com preço em EUR ou BRL: a análise em lote diz que falta o preço em RMB ou US$ (`missing: ["currency"]`), e não que falta o preço.
+
+**Sinal só com preço testado.** Sem preço de venda a conta é feita no preço mínimo (custo × fator do tipo de negócio); nesse preço o lucro depende quase só dos parâmetros, e todo produto daria o mesmo sinal. Por isso a análise em lote do Booking não mostra verde/amarelo/vermelho: mostra "No preço mínimo", com o custo e o preço para a meta. O sinal aparece quando alguém testa um preço e grava.
 
 ### 5.3 Gravar a simulação (opcional)
 
@@ -123,7 +129,9 @@ Jarra a 24,90 RMB, 12 peças por caixa, 1,13 kg por peça, 0,069 m³ por caixa, 
 - Só o peso líquido na ficha: peso bruto estimado (líquido + folga), marcado como estimado; o campo do bruto fica vazio.
 - Sem peso líquido e sem peso bruto: só o volume limita o container.
 - Média do despachante vazia: a tela diz "ainda não informada" (é só informação).
-- Cadastro sem preço, caixa ou volume: vêm da ficha mestre do produto, quando ela tem.
+- Ficha mestre sem preço, caixa ou volume: vêm do cadastro do produto, quando ele tem (e o contrário).
+- Preço em EUR ou BRL: "falta o preço em RMB ou US$".
+- "Gravar no Booking" recusado (número fora do limite): a mensagem diz que há um valor inválido na simulação; a calculadora ainda não marca qual campo.
 - Frete zero vale (produto já posto no Brasil).
 - Falta dado: a tela diz o quê e não mostra conta pela metade.
 

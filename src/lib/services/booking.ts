@@ -28,15 +28,14 @@ import {
 } from "@/lib/booking";
 import { estimatedGrossKg } from "@/lib/weights";
 import { effectiveMoq } from "@/lib/moq";
-import { boxCbm } from "@/lib/logistics/cbm";
 import { superplanParams } from "@/lib/superplan";
 import { getSettings } from "@/lib/settings";
 import type { Translate } from "@/i18n";
 import { audit } from "./audit";
 import { isSchemaMissing } from "./packaging-brief";
 import {
+  productPurchaseView,
   productSheetDraft,
-  sheetCurrency,
   withProductColumns,
 } from "./product-sheet";
 import { productThumbId } from "./product-list";
@@ -198,8 +197,12 @@ function rowOf(
         productSheetDraft(product, supplier),
       )
     : {};
-  const net = positive(master.netWeightPcKg);
-  const gross = positive(master.grossWeightPcKg);
+  // Preço, moeda, caixa, volume e pesos: a mesma leitura que o Superplan usa.
+  const view = product
+    ? productPurchaseView(product, ctx.joined.sheets.get(product.id) ?? null)
+    : null;
+  const net = view?.netWeightPcKg ?? null;
+  const gross = view?.grossWeightPcKg ?? null;
   const estimate = estimatedGrossKg(net, gross, ctx.allowancePct);
   const customer = booking.customerId
     ? (ctx.parties.get(booking.customerId) ?? null)
@@ -207,11 +210,6 @@ function rowOf(
   const owner = booking.ownerUserId
     ? (ctx.users.get(booking.ownerUserId) ?? null)
     : null;
-  const currency =
-    master.currency ??
-    sheetCurrency(product?.currency) ??
-    text(product?.currency)?.toUpperCase() ??
-    null;
   return {
     id: booking.id,
     productId: booking.productId,
@@ -228,17 +226,17 @@ function rowOf(
     location: text(master.location),
     sheetDate: master.sheetDate ?? null,
     incoterm: master.incoterm ?? null,
-    price: positive(master.price) ?? positive(product?.price),
-    currency,
+    price: view?.price ?? null,
+    currency: view?.currency ?? null,
     moq: ctx.joined.moq.get(booking.productId) ?? null,
-    masterQty: positive(master.masterCartonQty),
+    masterQty: view?.pcsPerCarton ?? null,
     innerQty: positive(master.innerQty),
     netWeightKg: net,
     grossWeightKg: gross,
     estimatedWeightKg: estimate.kg,
     weightEstimated: estimate.estimated,
     averageUsd: positive(master.averagePrice),
-    cbm: positive(master.cbmPerCarton) ?? (product ? boxCbm(product) : null),
+    cbm: view?.cbmPerCarton ?? null,
     size: product ? sizeText(product, ctx.intl) : null,
     colors: text(master.colorAssortment) ?? text(product?.color),
     material: text(master.material) ?? text(product?.material),
@@ -408,7 +406,12 @@ export async function getBookingDetail(
   const names = new Map(users.map((u) => [u.id, u.name]));
   return {
     row: built.rows[0],
-    moveOptions: bookingMoveOptions(booking.status, bookingActor(user)),
+    moveOptions: isUnlinkedRequest(booking)
+      ? distinct([
+          ...bookingMoveOptions(booking.status, bookingActor(user)),
+          ...BOOKING_REQUESTABLE,
+        ])
+      : bookingMoveOptions(booking.status, bookingActor(user)),
     history: log.map((l) => ({
       id: l.id,
       at: l.createdAt,
@@ -471,8 +474,15 @@ function plan(
 ): Planned | null {
   const status = patch.status ?? booking.status;
   const moved = status !== booking.status;
+  // Tomada para virar solicitação e a solicitação não ficou ligada (falha no
+  // meio): quem tem a tela devolve a linha para Aprovado, Oferecido ou
+  // Reservado, sem depender de quem analisa.
+  const unlinked = isUnlinkedRequest(booking);
   if (moved) {
-    const error = bookingMoveError(booking.status, status, actor);
+    const error =
+      unlinked && BOOKING_REQUESTABLE.includes(status)
+        ? null
+        : bookingMoveError(booking.status, status, actor);
     if (error) throw refuse(error, booking.id);
   }
   const customerId =
@@ -484,6 +494,7 @@ function plan(
   // Já virou solicitação: cliente e quantidade são os da solicitação.
   if (
     booking.status === "requested" &&
+    !unlinked &&
     !moved &&
     (customerChanged || qtyChanged)
   )
@@ -524,6 +535,42 @@ function plan(
   if (ownerUserId !== booking.ownerUserId) write.ownerUserId = ownerUserId;
   if (note !== booking.note) write.note = note;
   return Object.keys(write).length ? { booking, write, moved } : null;
+}
+
+/** Quanto tempo uma linha tomada espera pela ligação antes de poder voltar (ms). */
+const UNLINKED_AFTER_MS = 2 * 60_000;
+
+/**
+ * "Virou solicitação" sem solicitação ligada, há mais de dois minutos: a
+ * criação falhou no meio (ou a ligação não foi gravada). Não é uma chamada
+ * ainda em andamento.
+ */
+function isUnlinkedRequest(booking: Booking): boolean {
+  if (booking.status !== "requested" || booking.requestId) return false;
+  const since = Date.parse(booking.statusChangedAt ?? "");
+  return !Number.isFinite(since) || Date.now() - since > UNLINKED_AFTER_MS;
+}
+
+/**
+ * Linha com solicitação em andamento não sai de "Virou solicitação" à mão:
+ * reabrir deixaria a solicitação viva e a linha livre para gerar outra. O
+ * caminho é excluir a solicitação (a linha volta sozinha). Só quando a
+ * solicitação ligada não existe mais (ou foi cancelada) quem analisa reabre.
+ */
+async function assertNoLiveRequest(planned: Planned[]): Promise<void> {
+  const leaving = planned.filter(
+    (p) => p.moved && p.booking.status === "requested" && p.booking.requestId,
+  );
+  if (!leaving.length) return;
+  const requests = await getStore().list("requests", {
+    filter: { id: distinct(leaving.map((p) => p.booking.requestId as string)) },
+  });
+  const alive = new Set(
+    requests.filter((r) => r.status !== "CANCELLED").map((r) => r.id),
+  );
+  for (const p of leaving)
+    if (alive.has(p.booking.requestId as string))
+      throw refuse("booking_request_alive", p.booking.id);
 }
 
 async function commit(
@@ -659,6 +706,7 @@ export async function saveBookingRow(
   );
   if (!planned) return booking;
   await assertRowCustomers([planned]);
+  await assertNoLiveRequest([planned]);
   return commit(
     user,
     planned,
@@ -711,6 +759,7 @@ async function applyBulk(
     if (p) planned.push(p);
   }
   await assertRowCustomers(planned);
+  await assertNoLiveRequest(planned);
   for (const p of planned)
     await commit(user, p, joined.products.get(p.booking.productId)?.name ?? "");
   return planned.length;
@@ -737,10 +786,11 @@ export async function setBookingsOwner(
   user: User,
   ids: string[],
   ownerUserId: string | null,
+  quantities?: Record<string, number>,
 ): Promise<number> {
   assertBookingUser(user);
   const owner = ownerUserId ? await resolveOwner(ownerUserId) : null;
-  return applyBulk(user, { ids }, () => ({ ownerUserId: owner }));
+  return applyBulk(user, { ids, quantities }, () => ({ ownerUserId: owner }));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -784,38 +834,49 @@ async function storeAnalysis(
       toAnalysis ? " (Novo → Em análise)" : ""
     }`,
     /*
-     * Sem custo, preço nem lucro: a tela Auditoria é aberta por quem não abre
-     * o Superplan. Fica só o que a lista do Booking já mostra a todos (a
-     * etapa) e o sinal; o retrato inteiro mora na linha, para quem analisa.
+     * Sem custo, preço, lucro nem sinal: a tela Auditoria é aberta por quem
+     * não abre o Superplan. Fica só o que a lista do Booking mostra a todos
+     * (a etapa) e quando foi; o retrato inteiro mora na linha, para quem
+     * analisa.
      */
-    {
-      status: booking.status,
-      verdict: booking.analysis?.verdict ?? null,
-      analyzedAt: booking.analysis?.at ?? null,
-    },
-    { status: saved.status, verdict: analysis.verdict, analyzedAt: now },
+    { status: booking.status, analyzedAt: booking.analysis?.at ?? null },
+    { status: saved.status, analyzedAt: now },
   );
   return saved;
+}
+
+export interface BookingAnalyzeResult {
+  analyzed: number;
+  /** Produto fora do cadastro: a linha fica sem análise. */
+  skipped: number;
+  /** Simulação gravada à mão pelo Superplan: fica como está. */
+  kept: number;
+  /** Analisadas sem II/IPI conhecidos (contaram 0; o custo sai menor). */
+  noRates: number;
 }
 
 /**
  * "Analisar no Superplan" em várias linhas, com os valores padrão (câmbio do
  * dia, container e tipo de negócio padrão, II/IPI do NCM). Linha cujo
- * produto saiu do cadastro fica de fora (`skipped`).
+ * produto saiu do cadastro fica de fora (`skipped`). Linha com simulação
+ * gravada à mão ("Gravar no Booking") não é substituída (`kept`): o preço
+ * testado e o tipo de negócio escolhidos ali não se recuperam de outro lugar.
  */
 export async function analyzeBookings(
   user: User,
   ids: string[],
-): Promise<{ analyzed: number; skipped: number }> {
+): Promise<BookingAnalyzeResult> {
   assertAnalyst(user);
   const bookings = await loadBookings(ids, BOOKING_BULK_MAX);
+  const open = bookings.filter((b) => !b.analysis?.manual);
   const { analyzeProductsWithDefaults } = await import("./superplan-analysis");
   const [snapshots, joined] = await Promise.all([
-    analyzeProductsWithDefaults(distinct(bookings.map((b) => b.productId))),
-    joinProducts(bookings.map((b) => b.productId)),
+    analyzeProductsWithDefaults(distinct(open.map((b) => b.productId))),
+    joinProducts(open.map((b) => b.productId)),
   ]);
   let analyzed = 0;
-  for (const booking of bookings) {
+  let noRates = 0;
+  for (const booking of open) {
     const snapshot = snapshots.get(booking.productId);
     if (!snapshot) continue;
     await storeAnalysis(
@@ -825,8 +886,14 @@ export async function analyzeBookings(
       joined.products.get(booking.productId)?.name ?? "",
     );
     analyzed++;
+    if (snapshot.inputs && !snapshot.inputs.ncmFound) noRates++;
   }
-  return { analyzed, skipped: bookings.length - analyzed };
+  return {
+    analyzed,
+    skipped: open.length - analyzed,
+    kept: bookings.length - open.length,
+    noRates,
+  };
 }
 
 /** "Gravar no Booking" a partir da simulação aberta no Superplan. */
@@ -839,12 +906,57 @@ export async function saveBookingAnalysis(
   const booking = await getStore().get("bookings", id);
   if (!booking) throw refuse("booking_not_found", id);
   const product = await getStore().get("products", booking.productId);
-  return storeAnalysis(user, booking, snapshot, product?.name ?? "");
+  // Feita à mão: a análise em várias linhas não a substitui.
+  return storeAnalysis(
+    user,
+    booking,
+    { ...snapshot, manual: true },
+    product?.name ?? "",
+  );
 }
 
 /* ------------------------------------------------------------------------ */
 /* Gerar solicitação                                                         */
 /* ------------------------------------------------------------------------ */
+
+/**
+ * Solicitações que nasceram desta chamada (deste login, para este cliente e
+ * estes produtos, depois do carimbo) e ficaram vivas depois de uma falha:
+ * são canceladas, como o lote faz com as dele.
+ */
+async function cancelHalfBorn(
+  user: User,
+  scope: { customerId: string; productIds: string[]; since: string },
+): Promise<void> {
+  const store = getStore();
+  try {
+    const since = Date.parse(scope.since) - 1000;
+    const born = (
+      await store.list("requests", {
+        filter: { customerId: scope.customerId, productId: scope.productIds },
+      })
+    ).filter(
+      (r) =>
+        r.createdByUserId === user.id &&
+        r.status !== "CANCELLED" &&
+        Date.parse(r.createdAt) >= since,
+    );
+    for (const r of born) {
+      await store.update("requests", r.id, { status: "CANCELLED" });
+      await audit(
+        user,
+        "request.batch_rollback",
+        "request",
+        r.id,
+        `Solicitação pelo Booking interrompida (${r.productName}): cancelada`,
+        { status: r.status },
+        { status: "CANCELLED" },
+      );
+    }
+  } catch (rollbackError) {
+    console.error("[booking] cancelar solicitação pela metade", rollbackError);
+  }
+}
 
 let lastClaim = 0;
 /**
@@ -887,8 +999,21 @@ export async function generateRequestFromBooking(
   if (chosen && chosen !== BOOKING_EMPTY) {
     customerId = await resolveCustomer(user, chosen);
   } else {
-    const own = distinct(bookings.map((b) => b.customerId));
-    if (own.length !== 1 || !own[0]) throw refuse("booking_customer_required");
+    const own = distinct(
+      bookings.map((b) => b.customerId).filter((id): id is string => !!id),
+    );
+    // Linhas de clientes diferentes: a recusa aponta a primeira que destoa.
+    if (own.length > 1)
+      throw refuse(
+        "booking_customer_mismatch",
+        bookings.find((b) => b.customerId && b.customerId !== own[0])?.id,
+      );
+    // Nenhuma linha tem cliente e nenhum foi escolhido na barra.
+    if (!own.length || bookings.some((b) => !b.customerId))
+      throw refuse(
+        "booking_request_customer",
+        bookings.find((b) => !b.customerId)?.id,
+      );
     customerId = await resolveCustomer(user, own[0]);
   }
   for (const booking of bookings)
@@ -1005,7 +1130,17 @@ export async function generateRequestFromBooking(
       }),
     );
   } catch (error) {
-    // Nada nasceu (o lote desfaz o que criou): as linhas voltam.
+    /*
+     * O lote desfaz o que criou, menos num caso: uma solicitação só (sem
+     * lote) cuja gravação passou e um passo seguinte falhou (auditoria,
+     * aviso). Ela ficaria viva e a linha, devolvida, geraria outra. Antes de
+     * devolver as linhas, o que nasceu desta chamada é cancelado.
+     */
+    await cancelHalfBorn(user, {
+      customerId,
+      productIds: lines.map((l) => l.product.id),
+      since: stamp,
+    });
     await release();
     throw error;
   }

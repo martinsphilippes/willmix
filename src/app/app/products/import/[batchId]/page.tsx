@@ -9,8 +9,10 @@ import {
   batchDecision,
   batchProductIds,
   batchVariantDecisions,
+  importBatchKeptExisting,
   importBatchMode,
 } from "@/lib/services/product-sheet-import";
+import { isSchemaMissing } from "@/lib/services/packaging-brief";
 import { getProductVariants } from "@/lib/services/product-variants";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
@@ -93,6 +95,31 @@ export default async function ProductSheetImportResultPage({
       : t("sheetImport.result.error", { code });
   };
   const ids = batchProductIds(batch);
+  /*
+   * "Ver no Booking": as linhas dos produtos deste lote. A linha guarda a
+   * planilha em que entrou (e só troca para a mais nova enquanto está em
+   * Novo), então um lote reimportado pode não ser o lote de nenhuma linha:
+   * o filtro vai pelas planilhas em que as linhas destes produtos estão.
+   */
+  let bookingHref = "/app/booking";
+  if (inBooking && canBooking && ids.length) {
+    try {
+      const rows = await store.list("bookings", { filter: { productId: ids } });
+      const sources = [
+        ...new Set(
+          rows.map((r) => r.importBatchId).filter((id): id is string => !!id),
+        ),
+      ];
+      if (sources.length)
+        bookingHref = `/app/booking?source=${sources
+          .slice(0, 30)
+          .map(encodeURIComponent)
+          .join(",")}`;
+    } catch (error) {
+      // Tabela do Booking ainda não publicada: o link abre a tela (que avisa).
+      if (!isSchemaMissing(error)) throw error;
+    }
+  }
   const variantDecisions =
     mode === "variants" ? batchVariantDecisions(batch) : [];
   const [products, sheets, photos, suppliers, variants] = await Promise.all([
@@ -158,13 +185,20 @@ export default async function ProductSheetImportResultPage({
   ).length;
   const failed = rows.filter((r) => r.status === "error").length;
   const variantsFailed = variantRows.filter((v) => v.status === "error").length;
-  const summaryText = t("sheetImport.result.summary", {
-    created: s.created ?? 0,
-    updated: s.updated ?? 0,
-    errors: s.errors ?? 0,
-    suppliers: s.suppliersCreated ?? 0,
-    photos: s.photos ?? 0,
-  });
+  // Planilha antiga relida: quem já existia só ganhou a linha do Booking.
+  const keptExisting = inBooking && importBatchKeptExisting(batch);
+  const summaryText = t(
+    keptExisting
+      ? "sheetImport.result.summaryKept"
+      : "sheetImport.result.summary",
+    {
+      created: s.created ?? 0,
+      updated: s.updated ?? 0,
+      errors: s.errors ?? 0,
+      suppliers: s.suppliersCreated ?? 0,
+      photos: s.photos ?? 0,
+    },
+  );
 
   return (
     <>
@@ -200,7 +234,7 @@ export default async function ProductSheetImportResultPage({
             </LinkButton>
             {inBooking && canBooking ? (
               <LinkButton
-                href={`/app/booking?source=${encodeURIComponent(batch.id)}`}
+                href={bookingHref}
                 variant="primary"
                 data-sheet-import-booking-link
               >
@@ -213,7 +247,13 @@ export default async function ProductSheetImportResultPage({
       <div className="mb-3 space-y-2">
         {actionError ? <Alert tone="danger">{actionError}</Alert> : null}
         {inBooking ? (
-          <Alert tone="info">{t("sheetImport.result.bookingNote")}</Alert>
+          <Alert tone="info">
+            {t(
+              keptExisting
+                ? "sheetImport.result.bookingNoteKept"
+                : "sheetImport.result.bookingNote",
+            )}
+          </Alert>
         ) : null}
         {/* Planilha antiga (variações ou um produto por linha) direto no Booking. */}
         {canSendToBooking ? (
@@ -336,7 +376,11 @@ export default async function ProductSheetImportResultPage({
                     </Td>
                     <Td>
                       <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>
-                        {t(`sheetImport.status.${r.status}` as DictionaryKey)}
+                        {keptExisting && r.status === "updated"
+                          ? t("sheetImport.status.kept")
+                          : t(
+                              `sheetImport.status.${r.status}` as DictionaryKey,
+                            )}
                       </Badge>
                     </Td>
                   </tr>

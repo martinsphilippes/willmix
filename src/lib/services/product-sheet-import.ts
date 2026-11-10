@@ -768,6 +768,13 @@ export interface SheetImportOptions {
   sheet?: string | null;
   /** Padrão "variants". */
   mode?: SheetImportMode | null;
+  /**
+   * Planilha antiga relida do arquivo guardado ("Mandar para o Booking" numa
+   * importação antiga): o produto que já existe só ganha a linha do Booking.
+   * Preço, pedido mínimo, caixa, pesos, cores e fotos dele ficam como estão
+   * hoje (a planilha antiga não os reescreve).
+   */
+  keepExisting?: boolean;
 }
 
 /** Planilha enviada no formulário ou já subida direto ao armazenamento. */
@@ -1180,6 +1187,8 @@ export async function importProductSheet(
       __namePrefix: options.namePrefix?.trim() || "",
       __currency: parsed.currency ?? currency ?? "",
       __mode: mode,
+      // Planilha antiga relida: a tela de resultado diz "não alterado".
+      ...(options.keepExisting ? { __keep: "1" } : {}),
       ...Object.fromEntries(
         (Object.entries(parsed.headers) as Array<[SheetColumn, string]>).map(
           ([col, h]) => [h, col],
@@ -1243,7 +1252,14 @@ async function bookingCandidates(
     const variants = await store.list("product_variants", {
       filter: { productId: ids },
     });
-    parents = [...new Set(variants.map((v) => v.productId))];
+    // Só o produto único de uma importação "com variações" (as variações
+    // dele têm o lote da importação). Produto por linha que ganhou variações
+    // à mão continua sendo o mesmo produto.
+    parents = [
+      ...new Set(
+        variants.filter((v) => !!v.importBatchId).map((v) => v.productId),
+      ),
+    ];
   } catch (error) {
     // Tabela das variações ainda não publicada: nenhum produto tem variação.
     if (!isSchemaMissing(error)) throw error;
@@ -1300,12 +1316,15 @@ async function enterBooking(
 async function dropBookingRow(
   ctx: ImportContext,
   productId: string,
+  /** A linha já tinha entrado na contagem do resultado. */
+  counted: boolean,
 ): Promise<void> {
   const store = getStore();
   try {
     for (const row of await store.list("bookings", { filter: { productId } }))
       await store.remove("bookings", row.id);
-    ctx.summary.bookingCreated = Math.max(0, ctx.summary.bookingCreated - 1);
+    if (counted)
+      ctx.summary.bookingCreated = Math.max(0, ctx.summary.bookingCreated - 1);
   } catch (error) {
     console.error("[sheet-import] desfazer linha do Booking", productId, error);
   }
@@ -1507,6 +1526,15 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       namesUsed.add(norm(name));
       result.name = name;
       let product: Product;
+      if (booking && options.keepExisting && existing) {
+        // Planilha antiga relida: o que já existe não volta aos valores dela.
+        result.status = "updated";
+        summary.updated++;
+        result.productId = existing.id;
+        await enterBooking(ctx, existing.id, group, existing.active);
+        decisions[String(group.index)] = `updated:${existing.id}`;
+        continue;
+      }
       if (existing) {
         const patch: Partial<Product> = {};
         if (supplierId) patch.supplierId = supplierId;
@@ -1518,6 +1546,10 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         product = Object.keys(patch).length
           ? await store.update("products", existing.id, patch)
           : existing;
+        // A lista da importação acompanha: o próximo grupo vê o fornecedor
+        // que este acabou de pôr (senão reimportar daria outros nomes).
+        const at = products.indexOf(existing);
+        if (at >= 0) products[at] = product;
         if (supplierId)
           await syncMainSupplierLink(
             user,
@@ -1534,7 +1566,15 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         // Booking: a linha nasce antes do produto, com o id que ele vai ter
         // (o produto novo nunca existe no cadastro sem ela).
         const newId = booking ? randomUUID() : null;
-        if (newId) await enterBooking(ctx, newId, group, false);
+        if (newId) {
+          try {
+            await enterBooking(ctx, newId, group, false);
+          } catch (error) {
+            // A linha pode ter sido gravada antes da falha: não fica sem produto.
+            await dropBookingRow(ctx, newId, false);
+            throw error;
+          }
+        }
         try {
           product = await store.create("products", {
             ...(newId ? { id: newId } : {}),
@@ -1554,8 +1594,16 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
             source: "import",
           });
         } catch (error) {
-          if (newId) await dropBookingRow(ctx, newId);
-          throw error;
+          // A resposta pode ter se perdido com o produto já gravado: confere
+          // antes de desfazer a linha (produto gravado fica com a linha dele).
+          const born = newId
+            ? await store.get("products", newId).catch(() => null)
+            : null;
+          if (!born) {
+            if (newId) await dropBookingRow(ctx, newId, true);
+            throw error;
+          }
+          product = born;
         }
         products.push(product);
         if (supplierId)
@@ -1576,10 +1624,12 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         summary.created++;
       }
       result.productId = product.id;
-      // Booking: o produto que já existia ganha a linha aqui (Aprovado: ele
-      // já estava na vitrine). O novo já a ganhou antes de nascer.
+      // Booking: o produto que já existia ganha a linha aqui. Ativo: Aprovado
+      // (ele já estava na vitrine). Excluído (desativado): Novo, para não
+      // voltar à vitrine sem aprovação quando for restaurado. O novo já
+      // ganhou a linha antes de nascer.
       if (booking && result.status === "updated")
-        await enterBooking(ctx, product.id, group, true);
+        await enterBooking(ctx, product.id, group, product.active);
       const saved = await saveProductSheet(
         user,
         product.id,
@@ -1946,6 +1996,11 @@ export function importBatchMode(batch: ImportBatch): SheetImportMode {
   return mode === "variants" || mode === "booking" ? mode : "products";
 }
 
+/** Lote relido de um arquivo guardado: o produto que já existia não foi alterado. */
+export function importBatchKeptExisting(batch: ImportBatch): boolean {
+  return batch.mapping?.__keep === "1";
+}
+
 /**
  * Planilha de uma importação anterior (com variações ou um produto por linha)
  * direto no Booking: relê o arquivo guardado do lote e importa no modo
@@ -1985,6 +2040,8 @@ export async function reimportSheetToBooking(
       defaultCurrency: currency,
       sheet: batch.sheetName,
       mode: "booking",
+      // A planilha é antiga: o que já existe no cadastro não volta a ela.
+      keepExisting: true,
     },
   );
 }

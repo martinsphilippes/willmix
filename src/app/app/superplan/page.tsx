@@ -105,7 +105,10 @@ export default async function SuperplanPage({
   const errorText = !errorCode
     ? null
     : errorCode === "invalid_input"
-      ? t("superplan.error.invalid")
+      ? // Pela linha do Booking, a recusa é da simulação, não dos parâmetros.
+        bookingRow
+        ? t("booking.superplan.invalid")
+        : t("superplan.error.invalid")
       : ([
           `superplan.error.${errorCode}`,
           `booking.error.${errorCode}`,

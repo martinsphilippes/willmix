@@ -1011,3 +1011,353 @@ describe("pesos: o líquido nunca é lido como bruto", () => {
     expect(both).toMatchObject({ netWeightKg: 0.186, grossWeightKg: 0.2 });
   });
 });
+
+describe("achados da revisão (segunda leva)", () => {
+  /** Planilha com um fornecedor por linha (o `sheet` usa um só para todas). */
+  const mixed = (
+    lines: Array<Line & { supplier: [name: string, store: string] }>,
+  ) =>
+    xlsxBytes([
+      {
+        name: "SUPPLIER INFO",
+        cells: [
+          HEADER,
+          ...lines.map((l) => [
+            l.sku,
+            l.supplier[0],
+            l.supplier[1],
+            l.desc,
+            l.price,
+            l.box ?? "12",
+            l.nw ?? "0.225",
+            l.gw ?? "",
+            l.cbm ?? "0.0183",
+            l.color,
+            "1200",
+          ]),
+        ],
+      },
+    ]);
+
+  it("planilha antiga relida do arquivo guardado não reescreve o produto que já existe: ele só ganha a linha", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Kapa Bandejas", "K4-400"],
+        [
+          { sku: "B1", desc: "BANDEJA OVAL", price: "4", color: "Preta" },
+          { sku: "B2", desc: "BANDEJA RETA", price: "6", color: "Branca" },
+        ],
+      );
+    // Importação antiga, um produto por linha (os produtos já se vendem).
+    const old = await svc.importProductSheet(
+      admin,
+      file(bytes(), "velha.xlsx"),
+      {
+        lineId,
+        mode: "products",
+      },
+    );
+    const [ovalId, retaId] = old.results.map((r) => r.productId!);
+    // Meses depois, o cadastro foi corrigido à mão.
+    await store.update("products", ovalId, { price: 9.5, moq: 300 });
+    const sheetBefore = await getProductSheet(ovalId);
+    const ovalBefore = (await store.get("products", ovalId))!;
+    const retaBefore = (await store.get("products", retaId))!;
+    const photosBefore = (
+      await store.list("product_photos", { filter: { productId: ovalId } })
+    ).length;
+
+    const result = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(result.results.map((r) => [r.status, r.productId])).toEqual([
+      ["updated", ovalId],
+      ["updated", retaId],
+    ]);
+    expect(result.summary).toMatchObject({
+      created: 0,
+      updated: 2,
+      errors: 0,
+      bookingCreated: 2,
+      bookingKept: 0,
+    });
+    // Nada do produto mudou: nem o preço corrigido, nem a ficha, nem as fotos.
+    expect(await store.get("products", ovalId)).toEqual(ovalBefore);
+    expect(await store.get("products", retaId)).toEqual(retaBefore);
+    expect(await getProductSheet(ovalId)).toEqual(sheetBefore);
+    expect(
+      (await store.list("product_photos", { filter: { productId: ovalId } }))
+        .length,
+    ).toBe(photosBefore);
+    // Só a linha do Booking, como Aprovado (continua na vitrine).
+    expect((await bookingOf(ovalId))!.status).toBe("approved");
+    expect((await bookingOf(retaId))!.status).toBe("approved");
+    expect((await hiddenBookingProductIds()).has(ovalId)).toBe(false);
+    // O lote diz que nada foi alterado (a tela mostra "Já existia").
+    const batch = (await store.get("import_batches", result.batchId))!;
+    expect(svc.importBatchKeptExisting(batch)).toBe(true);
+    expect(
+      svc.importBatchKeptExisting(
+        (await store.get("import_batches", old.batchId))!,
+      ),
+    ).toBe(false);
+
+    // Já a planilha enviada de novo (arquivo novo) atualiza, como sempre.
+    const fresh = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(fresh.results[0]).toMatchObject({
+      status: "updated",
+      productId: ovalId,
+    });
+    expect((await store.get("products", ovalId))!.price).toBe(4);
+    expect(
+      svc.importBatchKeptExisting(
+        (await store.get("import_batches", fresh.batchId))!,
+      ),
+    ).toBe(false);
+  });
+
+  it("produto excluído (desativado) com o mesmo nome entra como Novo: restaurar não o devolve à vitrine sem aprovação", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Lambda Jarras", "L5-500"],
+        [{ sku: "J1", desc: "JARRA ALTA", price: "7", color: "Verde" }],
+      );
+    const old = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "products",
+    });
+    const id = old.results[0].productId!;
+    await store.update("products", id, { active: false });
+
+    const result = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(result.results[0]).toMatchObject({
+      status: "updated",
+      productId: id,
+    });
+    expect((await bookingOf(id))!.status).toBe("new");
+    // A importação não restaura o produto; quando restaurado, segue escondido.
+    expect((await store.get("products", id))!.active).toBe(false);
+    await store.update("products", id, { active: true });
+    expect((await hiddenBookingProductIds()).has(id)).toBe(true);
+  });
+
+  it("resposta perdida ao criar o produto (ele foi gravado): fica com a linha em Novo, escondido, e reimportar não o aprova", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Mi Xícaras", "M6-600"],
+        [
+          { sku: "X1", desc: "XICARA CURTA", price: "2", color: "Azul" },
+          { sku: "X2", desc: "XICARA LONGA", price: "3", color: "Azul" },
+        ],
+      );
+    const original = store.create.bind(store);
+    let lost = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        const made = await original(table, data as never);
+        // O servidor gravou; a resposta se perdeu no caminho.
+        if (!lost && table === "products") {
+          lost = true;
+          throw new TypeError("fetch failed");
+        }
+        return made;
+      });
+    const before = await count();
+    let result: Awaited<ReturnType<typeof svc.importProductSheet>>;
+    try {
+      result = await svc.importProductSheet(admin, file(bytes()), {
+        lineId,
+        mode: "booking",
+      });
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(lost).toBe(true);
+    // O produto gravado é assumido (não vira erro nem perde a linha).
+    expect(result.results.map((r) => r.status)).toEqual(["created", "created"]);
+    expect(result.summary).toMatchObject({
+      created: 2,
+      errors: 0,
+      bookingCreated: 2,
+    });
+    const after = await count();
+    expect(after.products).toBe(before.products + 2);
+    expect(after.bookings).toBe(before.bookings + 2);
+    const id = result.results[0].productId!;
+    expect((await store.get("products", id))!.name).toBe("XICARA CURTA");
+    expect((await bookingOf(id))!.status).toBe("new");
+    expect((await hiddenBookingProductIds()).has(id)).toBe(true);
+
+    const again = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(again.results.map((r) => [r.status, r.productId])).toEqual(
+      result.results.map((r) => ["updated", r.productId]),
+    );
+    expect((await bookingOf(id))!.status).toBe("new");
+    expect((await hiddenBookingProductIds()).has(id)).toBe(true);
+  });
+
+  it("a linha foi gravada e o registro dela falhou: a linha sai junto (não sobra linha em branco) e reimportar conserta", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Ni Bules", "N7-700"],
+        [{ sku: "U1", desc: "BULE BAIXO", price: "8", color: "Azul" }],
+      );
+    const original = store.create.bind(store);
+    let failed = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (
+          !failed &&
+          table === "audit_log" &&
+          (data as { action?: string }).action === "booking.create"
+        ) {
+          failed = true;
+          throw new Error("audit down");
+        }
+        return original(table, data as never);
+      });
+    const before = await count();
+    let result: Awaited<ReturnType<typeof svc.importProductSheet>>;
+    try {
+      result = await svc.importProductSheet(admin, file(bytes()), {
+        lineId,
+        mode: "booking",
+      });
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(failed).toBe(true);
+    expect(result.results[0]).toMatchObject({
+      status: "error",
+      error: "booking_failed",
+      productId: null,
+    });
+    expect(result.summary).toMatchObject({ created: 0, bookingCreated: 0 });
+    const after = await count();
+    expect(after.products).toBe(before.products);
+    expect(after.bookings).toBe(before.bookings);
+    const again = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(again.results[0].status).toBe("created");
+    expect((await count()).bookings).toBe(before.bookings + 1);
+  });
+
+  it("produto por linha que ganhou variação à mão continua sendo o mesmo: entra no Booking, sem duplicar", async () => {
+    const bytes = () =>
+      sheet(
+        ["Xi Cestos", "X8-800"],
+        [
+          { sku: "C1", desc: "CESTO FUNDO", price: "5", color: "Palha" },
+          { sku: "C2", desc: "CESTO RASO", price: "4", color: "Palha" },
+        ],
+      );
+    const old = await svc.importProductSheet(
+      admin,
+      file(bytes(), "cestos.xlsx"),
+      {
+        lineId,
+        mode: "products",
+      },
+    );
+    const [fundoId, rasoId] = old.results.map((r) => r.productId!);
+    // Variação cadastrada à mão na página do produto (sem lote de importação).
+    await pv.upsertProductVariant(admin, fundoId, { name: "Grande" });
+    await pv.syncProductFromVariants(fundoId, admin);
+    expect(await bookingOf(fundoId)).toBeNull();
+
+    const before = await count();
+    const result = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(result.results.map((r) => [r.status, r.productId])).toEqual([
+      ["updated", fundoId],
+      ["updated", rasoId],
+    ]);
+    const after = await count();
+    expect(after.products).toBe(before.products);
+    expect(after.bookings).toBe(before.bookings + 2);
+    expect((await bookingOf(fundoId))!.status).toBe("approved");
+    expect(await pv.listProductVariants(fundoId)).toHaveLength(1);
+    // E no modo Booking comum (arquivo novo) também cai no mesmo produto.
+    const fresh = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(fresh.results.map((r) => r.productId)).toEqual([fundoId, rasoId]);
+    expect((await count()).products).toBe(before.products);
+  });
+
+  it("produto sem fornecedor com o nome de duas linhas de fornecedores diferentes: reimportar dá os mesmos produtos", async () => {
+    const store = getStore();
+    const [model] = await store.list("products", { filter: { lineId } });
+    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = model;
+    void _id;
+    void _c;
+    void _u;
+    const loose = await store.create("products", {
+      ...rest,
+      name: "C1 FRAME A4",
+      supplierId: null,
+      supplierSku: null,
+      sku: null,
+      active: true,
+    });
+    const bytes = () =>
+      mixed([
+        {
+          supplier: ["Fabrica Y", "Y1-100"],
+          sku: "Y-1",
+          desc: "FRAME A4",
+          price: "2",
+          color: "Preta",
+        },
+        {
+          supplier: ["Fabrica X", "X1-100"],
+          sku: "X-9",
+          desc: "FRAME A4",
+          price: "3",
+          color: "Preta",
+        },
+      ]);
+    const options = { lineId, namePrefix: "C1", mode: "booking" as const };
+    const first = await svc.importProductSheet(admin, file(bytes()), options);
+    expect(first.results.map((r) => r.status)).toEqual(["updated", "created"]);
+    expect(first.results[0].productId).toBe(loose.id);
+    const before = await count();
+    const second = await svc.importProductSheet(admin, file(bytes()), options);
+    const third = await svc.importProductSheet(admin, file(bytes()), options);
+    // Os mesmos dois produtos, com os mesmos nomes, nas três vezes.
+    for (const run of [second, third])
+      expect(run.results.map((r) => [r.name, r.status, r.productId])).toEqual(
+        first.results.map((r) => [r.name, "updated", r.productId]),
+      );
+    const after = await count();
+    expect(after.products).toBe(before.products);
+    expect(after.bookings).toBe(before.bookings);
+    // Cada produto ficou com o preço da sua linha.
+    expect(
+      await Promise.all(
+        first.results.map(
+          async (r) => (await store.get("products", r.productId!))!.price,
+        ),
+      ),
+    ).toEqual([2, 3]);
+  });
+});

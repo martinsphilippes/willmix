@@ -78,6 +78,10 @@ export const BOOKING_ERRORS = [
   "booking_note_too_long",
   /** Linha que já virou solicitação: cliente e quantidade não mudam aqui. */
   "booking_locked",
+  /** Linha com solicitação em andamento: só volta quando a solicitação é excluída. */
+  "booking_request_alive",
+  /** Gerar solicitação: faltou o cliente (linhas sem cliente e nenhum escolhido). */
+  "booking_request_customer",
   /** Barra de ações: faltou escolher a etapa ou o responsável. */
   "booking_status_required",
   "booking_owner_required",
@@ -170,16 +174,26 @@ export const BOOKING_SIGNALS = [
   "viable",
   "below",
   "loss",
+  "minimum",
   "missing",
   "none",
 ] as const;
 export type BookingSignal = (typeof BOOKING_SIGNALS)[number];
 
+/**
+ * O sinal verde/amarelo/vermelho só existe com um preço de venda testado.
+ * No preço mínimo (custo × markup do tipo de negócio) o lucro depende só da
+ * tabela de parâmetros, não do produto: seria a mesma cor em todas as linhas.
+ * Aí o sinal é "no preço mínimo" e o que diferencia os produtos são o custo,
+ * o preço mínimo e o preço para a meta.
+ */
 export function bookingSignal(
   analysis: BookingAnalysis | null | undefined,
 ): BookingSignal {
   if (!analysis) return "none";
-  return analysis.verdict ?? "missing";
+  if (!analysis.verdict) return "missing";
+  if (analysis.usesMinimum) return "minimum";
+  return analysis.verdict;
 }
 
 /**
@@ -320,10 +334,22 @@ export const BOOKING_COLUMNS = [
     value: (r) => r.reservedQty,
   },
   {
+    key: "cost",
+    kind: "number",
+    superplanOnly: true,
+    value: (r) => r.analysis?.costBrl ?? null,
+  },
+  {
     key: "salePrice",
     kind: "number",
     superplanOnly: true,
     value: (r) => r.analysis?.salePriceBrl ?? null,
+  },
+  {
+    key: "targetPrice",
+    kind: "number",
+    superplanOnly: true,
+    value: (r) => r.analysis?.targetPriceBrl ?? null,
   },
   {
     key: "signal",

@@ -470,7 +470,7 @@ describe("análise do Superplan", () => {
       b.booking.id,
       gone.booking.id,
     ]);
-    expect(result).toEqual({ analyzed: 2, skipped: 1 });
+    expect(result).toEqual({ analyzed: 2, skipped: 1, kept: 0, noRates: 2 });
     const first = await fresh(a.booking.id);
     expect(first.status).toBe("analysis");
     expect(first.analysis?.businessType).toBeTruthy();
@@ -576,7 +576,7 @@ describe("gerar solicitação", () => {
       "booking_customer_mismatch",
     );
     expect(await ask([ok.booking.id], { customer: "" })).toBe(
-      "booking_customer_required",
+      "booking_request_customer",
     );
     expect(await ask([ok.booking.id, noMoq.booking.id])).toBe(
       "booking_qty_missing",
@@ -626,18 +626,37 @@ describe("gerar solicitação", () => {
     expect((await fresh(a.booking.id)).status).toBe("approved");
   });
 
-  it("reabrir (quem analisa): a linha volta e a ligação com a solicitação sai", async () => {
+  it("linha com solicitação em andamento não é reaberta à mão; excluir a solicitação é o caminho", async () => {
     const a = await row("approved");
-    await booking.generateRequestFromBooking(
+    const [request] = await booking.generateRequestFromBooking(
       buyer,
       { ids: [a.booking.id], customer: joao.partyId! },
       t,
     );
+    // Nem o comprador nem quem analisa: a solicitação ficaria viva e a linha
+    // livre para gerar outra.
     expect(
       await code(() =>
         booking.saveBookingRow(buyer, a.booking.id, { status: "reserved" }),
       ),
     ).toBe("booking_approver_required");
+    for (const status of ["reserved", "approved", "discarded"] as const) {
+      expect(
+        await code(() =>
+          booking.saveBookingRow(admin, a.booking.id, { status }),
+        ),
+      ).toBe("booking_request_alive");
+      expect(
+        await code(() =>
+          booking.moveBookings(admin, { ids: [a.booking.id], status }),
+        ),
+      ).toBe("booking_request_alive");
+    }
+    const still = await fresh(a.booking.id);
+    expect([still.status, still.requestId]).toEqual(["requested", request.id]);
+    // Solicitação cancelada por outro caminho (sem a exclusão): quem analisa
+    // reabre, e a ligação sai.
+    await getStore().update("requests", request.id, { status: "CANCELLED" });
     await booking.saveBookingRow(admin, a.booking.id, { status: "reserved" });
     const reopened = await fresh(a.booking.id);
     expect(reopened.status).toBe("reserved");
@@ -777,8 +796,11 @@ describe("achados da revisão", () => {
       ])
         expect(text).not.toContain(secret);
     }
-    // O sinal e a etapa ficam (a lista já os mostra a quem analisa).
-    expect(JSON.stringify(analysis.map((e) => e.after))).toContain("viable");
+    // Nem o sinal: a coluna do sinal também é só de quem abre o Superplan.
+    const all = JSON.stringify(analysis.map((e) => [e.before, e.after]));
+    for (const secret of ["verdict", "viable", "below"])
+      expect(all).not.toContain(secret);
+    expect(all).toContain("analyzedAt");
   });
 
   it("oferecer ou reservar para um cliente que deixou de estar ativo é recusado, com a linha", async () => {
@@ -944,5 +966,206 @@ describe("achados da revisão", () => {
     expect(again[0].quantity).toBe(360);
     const detail = await booking.getBookingDetail(buyer, a.booking.id);
     expect(detail!.history.map((h) => h.action)).toContain("booking.release");
+  });
+});
+
+describe("achados da revisão (segunda leva)", () => {
+  const snapshot = {
+    businessType: "ENCOMENDA",
+    salePriceBrl: 9.9,
+    usesMinimum: false,
+    costBrl: 5,
+    minimumBrl: 9,
+    profitPct: 21.5,
+    targetPct: 22,
+    verdict: "below" as const,
+    targetPriceBrl: 10,
+    missing: [],
+  };
+
+  it("uma linha só: a solicitação que nasceu pela metade é cancelada, e tentar de novo não cria duas", async () => {
+    const a = await row("approved");
+    const store = getStore();
+    const original = store.create.bind(store);
+    let failed = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        // A solicitação já foi gravada; o aviso seguinte falha.
+        if (!failed && table === "notifications") {
+          failed = true;
+          throw new Error("notifications down");
+        }
+        return original(table, data as never);
+      });
+    let first = "ok";
+    try {
+      first = await code(() =>
+        booking.generateRequestFromBooking(
+          buyer,
+          { ids: [a.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      );
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(failed).toBe(true);
+    expect(first).not.toBe("ok");
+    const back = await fresh(a.booking.id);
+    expect([back.status, back.requestId]).toEqual(["approved", null]);
+    const ofProduct = async () =>
+      (await store.list("requests")).filter(
+        (r) => r.productId === a.product.id,
+      );
+    // O que tinha nascido foi cancelado: nada vivo ficou para trás.
+    expect((await ofProduct()).filter((r) => r.status !== "CANCELLED")).toEqual(
+      [],
+    );
+    await booking.generateRequestFromBooking(
+      buyer,
+      { ids: [a.booking.id], customer: joao.partyId! },
+      t,
+    );
+    expect(
+      (await ofProduct()).filter((r) => r.status !== "CANCELLED"),
+    ).toHaveLength(1);
+  });
+
+  it("linha tomada sem solicitação ligada: depois de 2 minutos quem tem a tela a devolve; antes disso, não", async () => {
+    const a = await row("approved");
+    const now = Date.now();
+    // Recém-tomada (pode ser uma chamada ainda em andamento).
+    await getStore().update("bookings", a.booking.id, {
+      status: "requested",
+      statusChangedAt: new Date(now - 30_000).toISOString(),
+      requestId: null,
+    });
+    expect(
+      await code(() =>
+        booking.saveBookingRow(buyer, a.booking.id, { status: "approved" }),
+      ),
+    ).toBe("booking_approver_required");
+    expect(
+      (await booking.getBookingDetail(buyer, a.booking.id))!.moveOptions,
+    ).toEqual(["requested"]);
+    // Parada há mais de 2 minutos: a criação caiu no meio.
+    await getStore().update("bookings", a.booking.id, {
+      statusChangedAt: new Date(now - 5 * 60_000).toISOString(),
+    });
+    const detail = await booking.getBookingDetail(buyer, a.booking.id);
+    expect(detail!.moveOptions).toEqual(
+      expect.arrayContaining(["approved", "offered", "reserved"]),
+    );
+    // Não vira "descartado" nem "novo" por quem não analisa.
+    expect(
+      await code(() =>
+        booking.saveBookingRow(buyer, a.booking.id, { status: "new" }),
+      ),
+    ).toBe("booking_approver_required");
+    await booking.saveBookingRow(buyer, a.booking.id, { status: "approved" });
+    expect((await fresh(a.booking.id)).status).toBe("approved");
+  });
+
+  it("análise em várias linhas não substitui a simulação gravada à mão", async () => {
+    const manual = await row("analysis");
+    const plain = await row("new");
+    await booking.saveBookingAnalysis(admin, manual.booking.id, snapshot);
+    const saved = await fresh(manual.booking.id);
+    expect(saved.analysis?.manual).toBe(true);
+    const result = await booking.analyzeBookings(admin, [
+      manual.booking.id,
+      plain.booking.id,
+    ]);
+    expect(result).toMatchObject({ analyzed: 1, kept: 1, skipped: 0 });
+    const after = await fresh(manual.booking.id);
+    expect(after.analysis).toEqual(saved.analysis);
+    expect(after.analysis?.businessType).toBe("ENCOMENDA");
+    expect((await fresh(plain.booking.id)).analysis?.manual ?? false).toBe(
+      false,
+    );
+    // Gravar de novo à mão continua substituindo (é a mesma pessoa refazendo).
+    await booking.saveBookingAnalysis(admin, manual.booking.id, {
+      ...snapshot,
+      salePriceBrl: 12,
+    });
+    expect((await fresh(manual.booking.id)).analysis?.salePriceBrl).toBe(12);
+  });
+
+  it("gerar solicitação sem cliente: recusa própria, com a linha; clientes diferentes apontam a que destoa", async () => {
+    const none = await row("approved");
+    const withJoao = await row("offered", { customerId: joao.partyId });
+    const other = await getStore().create("parties", {
+      ...(await getStore().get("parties", joao.partyId!))!,
+      id: undefined,
+      name: "Cliente B",
+    } as never);
+    const withOther = await row("offered", { customerId: other.id });
+    const refusal = async (ids: string[]) => {
+      try {
+        await booking.generateRequestFromBooking(buyer, { ids }, t);
+      } catch (error) {
+        const r = error as InstanceType<typeof booking.BookingRefusal>;
+        return [r.message, r.bookingId];
+      }
+      return ["ok", null];
+    };
+    expect(await refusal([none.booking.id])).toEqual([
+      "booking_request_customer",
+      none.booking.id,
+    ]);
+    expect(await refusal([withJoao.booking.id, none.booking.id])).toEqual([
+      "booking_request_customer",
+      none.booking.id,
+    ]);
+    expect(await refusal([withJoao.booking.id, withOther.booking.id])).toEqual([
+      "booking_customer_mismatch",
+      withOther.booking.id,
+    ]);
+  });
+
+  it("a linha e a análise leem os mesmos números do produto (ficha mestre primeiro)", async () => {
+    // Colunas do cadastro diferentes da ficha mestre (ex.: planilha genérica
+    // reimportada depois de a ficha ser corrigida).
+    const a = await row(
+      "new",
+      {},
+      { price: 3.1, currency: "USD", masterCartonQty: 24, cbmPerCarton: 0.05 },
+    );
+    await getStore().update("products", a.product.id, {
+      price: 2.35,
+      currency: "USD",
+      masterBoxQty: 48,
+      cbm: 0.09,
+    });
+    const line = (await booking.listBookingRows(admin)).rows.find(
+      (r) => r.id === a.booking.id,
+    )!;
+    expect([line.price, line.currency, line.masterQty, line.cbm]).toEqual([
+      3.1,
+      "USD",
+      24,
+      0.05,
+    ]);
+    await booking.analyzeBookings(admin, [a.booking.id]);
+    const used = (await fresh(a.booking.id)).analysis!.inputs!;
+    expect([
+      used.unitPrice,
+      used.currency,
+      used.pcsPerCarton,
+      used.cbmPerCarton,
+    ]).toEqual([line.price, line.currency, line.masterQty, line.cbm]);
+  });
+
+  it("preço em outra moeda (EUR): a análise diz que falta o preço em RMB ou US$, não o preço", async () => {
+    const a = await row("new", {}, { price: 10, currency: "EUR" });
+    await booking.analyzeBookings(admin, [a.booking.id]);
+    const analysis = (await fresh(a.booking.id)).analysis!;
+    expect(analysis.verdict).toBeNull();
+    expect(analysis.missing).toContain("currency");
+    expect(analysis.missing).not.toContain("price");
+    expect(t("superplan.missing.currency")).toContain("RMB");
   });
 });

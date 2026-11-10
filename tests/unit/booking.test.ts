@@ -224,10 +224,18 @@ describe("etapas do Booking", () => {
     expect(reservedQtyError(2400, 2400)).toBeNull();
   });
 
-  it("sinal do Superplan: veredito da análise, falta de dado ou sem análise", () => {
+  it("sinal do Superplan: só com preço de venda testado; no preço mínimo é 'no preço mínimo'", () => {
     expect(bookingSignal(null)).toBe("none");
-    expect(bookingSignal(analysis({ verdict: "viable" }))).toBe("viable");
-    expect(bookingSignal(analysis({ verdict: "loss" }))).toBe("loss");
+    // Preço testado no Superplan: verde, amarelo ou vermelho.
+    for (const verdict of ["viable", "below", "loss"] as const)
+      expect(bookingSignal(analysis({ verdict, usesMinimum: false }))).toBe(
+        verdict,
+      );
+    // No preço mínimo o lucro só depende do tipo de negócio: não é sinal.
+    for (const verdict of ["viable", "below", "loss"] as const)
+      expect(bookingSignal(analysis({ verdict, usesMinimum: true }))).toBe(
+        "minimum",
+      );
     expect(bookingSignal(analysis({ verdict: null, missing: ["fx"] }))).toBe(
       "missing",
     );
@@ -254,7 +262,11 @@ describe("filtros do Booking: toda coluna filtra", () => {
       reservedQty: 4800,
       sourceRows: "6-8",
       sourceOrder: 6,
-      analysis: analysis({ verdict: "viable", salePriceBrl: 62.89 }),
+      analysis: analysis({
+        verdict: "viable",
+        salePriceBrl: 62.89,
+        usesMinimum: false,
+      }),
       ownerUserId: "ana",
       ownerName: "Ana",
       note: "Cliente pediu amostra",
