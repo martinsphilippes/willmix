@@ -56,7 +56,7 @@ export const helpPt = {
   "help.stage.SUPPLIER_PAYMENT":
     "Não segura mais o pedido: conclui sozinha. O pagamento segue a condição combinada com o fornecedor (cadastro do fornecedor) e fica em Contas a pagar, no card Pagamento ao fornecedor do pedido e na conta corrente do fornecedor, onde ele confirma o recebimento.",
   "help.stage.PACKAGING":
-    "A agência de marketing faz a arte da embalagem e envia (sem agência no pedido, a Wellmix envia). O fornecedor confere e aprova para produzir, ou reprova com observação: a arte volta para quem a fez refazer e reenviar.",
+    "A agência de marketing faz a arte da embalagem e envia (sem agência no pedido, a Wellmix envia). O fornecedor confere e aprova para produzir, ou reprova com observação: a arte volta para quem a fez refazer e reenviar. Com a arte enviada e o selo da certificadora aplicado nela, quem fez a arte aperta “Enviar para assinatura”: a Wellmix assina o documento do pedido e o fornecedor assina em seguida.",
   "help.stage.INSPECTION":
     "Fornecedor envia foto sem embalagem, com embalagem, na balança e o peso medido. Divergência acima da tolerância bloqueia a etapa até a Wellmix revisar.",
   "help.stage.SHIPPING":
@@ -152,7 +152,7 @@ export const helpEn: Record<HelpKey, string> = {
   "help.stage.SUPPLIER_PAYMENT":
     "No longer holds the order: it completes on its own. Payment follows the terms agreed with the supplier (supplier record) and lives in Payables, on the order's Supplier payment card and in the supplier's account, where they confirm receipt.",
   "help.stage.PACKAGING":
-    "The marketing agency makes and uploads the packaging artwork (with no agency on the order, Wellmix uploads it). The supplier checks it and approves it for production, or rejects it with a note: the artwork goes back to whoever made it to redo and resend.",
+    "The marketing agency makes and uploads the packaging artwork (with no agency on the order, Wellmix uploads it). The supplier checks it and approves it for production, or rejects it with a note: the artwork goes back to whoever made it to redo and resend. With the artwork sent and the certifier's seal applied to it, whoever made the artwork presses “Send for signature”: Wellmix signs the order document and the supplier signs next.",
   "help.stage.INSPECTION":
     "Supplier sends photos without packaging, with packaging, on the scale and the measured weight. Divergence above tolerance blocks the stage until Wellmix reviews.",
   "help.stage.SHIPPING":
@@ -245,7 +245,7 @@ export const helpZh: Record<HelpKey, string> = {
   "help.stage.SUPPLIER_PAYMENT":
     "不再影响订单进度：此阶段自动完成。付款按与供应商约定的条件（供应商资料）执行，显示在应付账款、订单的“供应商付款”卡片以及供应商的往来账中，供应商在往来账中确认收款。",
   "help.stage.PACKAGING":
-    "设计公司制作并上传包装设计稿（订单没有设计公司时由 Wellmix 上传）。供应商审核后批准生产，或附备注驳回：设计稿退回制作方修改后重新提交。",
+    "设计公司制作并上传包装设计稿（订单没有设计公司时由 Wellmix 上传）。供应商审核后批准生产，或附备注驳回：设计稿退回制作方修改后重新提交。设计稿已上传且认证标志已加上后，由制作方点击“发送签署”：Wellmix 先签署订单文件，供应商随后签署。",
   "help.stage.INSPECTION":
     "供应商提交无包装照片、带包装照片、称重照片和实测重量。超出容差将阻塞阶段，直到 Wellmix 复核。",
   "help.stage.SHIPPING":

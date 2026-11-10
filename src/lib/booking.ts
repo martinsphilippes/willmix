@@ -893,7 +893,12 @@ export const BOOKING_NEXT_STEPS = [
   "wait_down_payment",
   /** Virou pedido (pedido antigo, sem o documento com assinaturas). */
   "ordered",
-  /** Pedido criado: falta a Wellmix assinar o documento do pedido. */
+  /**
+   * Pedido criado: a arte e o selo vêm antes; o documento ainda não foi
+   * enviado para assinatura.
+   */
+  "prepare_document",
+  /** Documento enviado para assinatura: falta a Wellmix assinar. */
   "sign_wellmix",
   /** Documento enviado: o fornecedor baixa, assina e anexa de volta. */
   "sign_supplier",
@@ -907,6 +912,7 @@ export type BookingNextStep = (typeof BOOKING_NEXT_STEPS)[number];
 export const BOOKING_NEXT_WAITING: readonly BookingNextStep[] = [
   "wait_supplier",
   "negotiating",
+  "prepare_document",
   "sign_supplier",
   "signed",
   "cancelled",
@@ -929,7 +935,7 @@ export interface BookingNext {
 
 /** Em que ponto está o documento do pedido (docs/ORDER_SIGNATURE.md). */
 export type BookingOrderDocument =
-  "awaiting_wellmix" | "sent_to_supplier" | "signed" | null;
+  "awaiting_send" | "awaiting_wellmix" | "sent_to_supplier" | "signed" | null;
 
 /**
  * O próximo passo de uma linha que virou solicitação, a partir da situação
@@ -979,11 +985,13 @@ export function bookingNextStep(
       };
     return {
       step:
-        order.document === "awaiting_wellmix"
-          ? "sign_wellmix"
-          : order.document === "sent_to_supplier"
-            ? "sign_supplier"
-            : "signed",
+        order.document === "awaiting_send"
+          ? "prepare_document"
+          : order.document === "awaiting_wellmix"
+            ? "sign_wellmix"
+            : order.document === "sent_to_supplier"
+              ? "sign_supplier"
+              : "signed",
       // Vai para o pedido (a tela de gestão da Wellmix); o documento abre
       // de lá, na linha "Documento do pedido" (pedido do dono).
       href: `/app/orders/${order.id}`,

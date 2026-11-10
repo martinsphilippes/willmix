@@ -11,10 +11,11 @@ import {
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
   ORDER_CONFIRMED,
+  ORDER_SIGN_SEND,
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
-import { submitRequirement } from "@/lib/workflow/engine";
+import { canSubmitRequirement, submitRequirement } from "@/lib/workflow/engine";
 import { packagingProposalState } from "@/lib/quote-flow";
 import { audit } from "./audit";
 import { notify, notifyWellmix } from "./notifications";
@@ -197,6 +198,15 @@ export interface OrderSignatureView {
    */
   canRegisterSupplier: boolean;
   /**
+   * Pedido novo: o documento ainda não foi enviado para assinatura (falta a
+   * arte, o selo ou o aperto do botão). Enquanto isso ninguém assina.
+   */
+  awaitingSend: boolean;
+  /** O que falta para o envio (vazio = já pode enviar). */
+  sendBlockers: SignSendBlocker[];
+  /** Este login pode apertar "Enviar para assinatura" agora. */
+  canSend: boolean;
+  /**
    * A Wellmix já assinou, o fornecedor ainda não, e a etapa dele não abriu
    * (o pedido não foi liberado): ninguém consegue assinar por ele ainda.
    */
@@ -216,6 +226,7 @@ export interface OrderSignatureView {
 }
 
 export const ORDER_DOCUMENT_STATUSES = [
+  "awaiting_send",
   "awaiting_wellmix",
   "sent_to_supplier",
   "signed",
@@ -228,7 +239,58 @@ async function signatureRequirements(orderId: string) {
   return {
     wellmix: all.find((r) => r.key === ORDER_SIGNED_WELLMIX) ?? null,
     supplier: all.find((r) => r.key === ORDER_SIGNED_SUPPLIER) ?? null,
+    // "Enviar para assinatura" (pedidos novos): antes dele ninguém assina.
+    send: all.find((r) => r.key === ORDER_SIGN_SEND) ?? null,
   };
+}
+
+/** O que falta para o documento poder ir para assinatura. */
+export type SignSendBlocker = "art" | "seal";
+
+/**
+ * "Enviar para assinatura" só libera com a arte da embalagem enviada e o
+ * selo da certificadora já aplicado nela (a arte com o selo enviada e não
+ * recusada). Devolve o que falta, na ordem em que se faz.
+ */
+export async function signSendBlockers(
+  orderId: string,
+  stageId: string,
+): Promise<SignSendBlocker[]> {
+  const store = getStore();
+  const missing: SignSendBlocker[] = [];
+  const [art] = await store.list("requirements", {
+    filter: { stageId, key: "art" },
+    limit: 1,
+  });
+  if (!art || art.status !== "done") missing.push("art");
+  // Falha ao ler os passos do selo (tabela ainda não publicada): conta como
+  // selo não aplicado, sem derrubar a tela do pedido.
+  const steps = await store
+    .list("import_steps", { filter: { orderId } })
+    .catch(() => []);
+  const sealArt = steps.find((s) => s.key === "cert_seal_art");
+  if (
+    !sealArt ||
+    (sealArt.status !== "submitted" && sealArt.status !== "validated")
+  )
+    missing.push("seal");
+  return missing;
+}
+
+/**
+ * Quem fez a arte (ou a Wellmix) manda o documento do pedido para as duas
+ * assinaturas. Papel, etapa aberta e o que falta (arte, selo) são conferidos
+ * pela regra das etapas.
+ */
+export async function sendOrderForSignature(
+  user: User,
+  orderId: string,
+): Promise<void> {
+  const { send } = await signatureRequirements(orderId);
+  if (!send) throw new OrderSignatureError("signature_not_applicable");
+  if (send.status === "done")
+    throw new OrderSignatureError("sign_send_already_done");
+  await submitRequirement(user, send.id, { value: "confirmed" });
 }
 
 export async function getOrderSignatureView(
@@ -251,12 +313,24 @@ export async function getOrderSignatureView(
   let canSign: OrderSignatureView["canSign"] = null;
   let canRegisterSupplier = false;
   let supplierBlocked = false;
+  // Pedido novo: antes do "Enviar para assinatura" ninguém assina.
+  const awaitingSend = !!reqs.send && reqs.send.status !== "done" && !wellmix;
+  let sendBlockers: SignSendBlocker[] = [];
+  let canSend = false;
+  if (open && awaitingSend && reqs.send) {
+    sendBlockers = await signSendBlockers(order.id, reqs.send.stageId);
+    canSend =
+      sendBlockers.length === 0 &&
+      (await stageActive(reqs.send)) &&
+      canSubmitRequirement(user, order, reqs.send);
+  }
   if (open) {
     const supplierOpen = !!wellmix && (await stageActive(reqs.supplier));
     supplierBlocked =
       !!wellmix && !!reqs.supplier && !supplier && !supplierOpen;
     if (isWellmix(user)) {
-      if (await stageActive(reqs.wellmix)) canSign = "wellmix";
+      if (!awaitingSend && (await stageActive(reqs.wellmix)))
+        canSign = "wellmix";
       canRegisterSupplier = supplierOpen && isAdmin(user);
     } else if (supplierOpen) {
       canSign = "supplier";
@@ -266,13 +340,15 @@ export async function getOrderSignatureView(
     ? await store.get("stages", reqs.supplier.stageId)
     : null;
   return {
-    status: !wellmix
-      ? "awaiting_wellmix"
-      : !supplier
-        ? "sent_to_supplier"
-        : order.erpNumber
-          ? "in_erp"
-          : "signed",
+    status: awaitingSend
+      ? "awaiting_send"
+      : !wellmix
+        ? "awaiting_wellmix"
+        : !supplier
+          ? "sent_to_supplier"
+          : order.erpNumber
+            ? "in_erp"
+            : "signed",
     canReopenSupplier:
       open &&
       isAdmin(user) &&
@@ -287,6 +363,9 @@ export async function getOrderSignatureView(
     canSign,
     canRegisterSupplier,
     supplierBlocked,
+    awaitingSend,
+    sendBlockers,
+    canSend,
     waitingWellmix: !isWellmix(user) && !!reqs.wellmix && !wellmix,
   };
 }
@@ -383,6 +462,9 @@ export async function signOrderDocument(
     throw new OrderSignatureError("signature_already_done");
   if (side === "supplier" && !parseSignature(reqs.wellmix))
     throw new OrderSignatureError("signature_wellmix_first");
+  // Pedido novo: primeiro a arte e o selo, depois "Enviar para assinatura".
+  if (reqs.send && reqs.send.status !== "done")
+    throw new OrderSignatureError("signature_not_sent");
   const document = await buildOrderDocument(order);
   const hash = orderDocumentHash(document);
   if (input.hash !== hash)
