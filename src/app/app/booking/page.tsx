@@ -26,7 +26,7 @@ import {
   type BookingRow,
   type BookingSignal,
 } from "@/lib/booking";
-import type { BookingStatus } from "@/lib/db/schema";
+import { SHEET_CURRENCIES, type BookingStatus } from "@/lib/db/schema";
 import {
   BOOKING_STOCK_OPTION,
   listBookingRows,
@@ -56,7 +56,11 @@ import {
 } from "@/components/ui";
 import { FormDraftGuard } from "@/components/form-draft-guard";
 import { SelectAllCheckbox } from "@/components/select-all-checkbox";
-import { bulkBookingAction } from "../actions/booking";
+import { SubmitButton } from "@/components/submit-button";
+import {
+  bulkBookingAction,
+  saveBookingProductsAction,
+} from "../actions/booking";
 import { BookingEnhancer, BulkButton } from "./_components/booking-client";
 
 /*
@@ -70,6 +74,8 @@ import { BookingEnhancer, BulkButton } from "./_components/booking-client";
 
 const FILTER_FORM = "booking-filter";
 const BULK_FORM = "booking-bulk";
+/** "Editar dados": os campos das células pertencem a este formulário. */
+const DATA_FORM = "booking-data";
 const BASE = "/app/booking";
 
 const STATUS_TONE: Record<BookingStatus, Tone> = {
@@ -185,7 +191,15 @@ export default async function BookingPage({
     forCards.filter((r) => r.status === s).length;
   const activeStatus = filters.options.status ?? [];
   const active = activeBookingFilters(filters);
-  const back = `${BASE}${bookingQuery(filters)}`;
+  // "Editar dados" (quem também abre Produtos): as células viram campos. O
+  // modo mora no endereço e acompanha filtros, ordem e páginas.
+  const canEdit = canOpen(user, "products");
+  const editing = canEdit && query.edit === "1";
+  const q = (opts?: Parameters<typeof bookingQuery>[1]) => {
+    const base = bookingQuery(filters, opts);
+    return editing ? (base ? `${base}&edit=1` : "?edit=1") : base;
+  };
+  const back = `${BASE}${q()}`;
 
   const intl = t.intl;
   const number = (n: number | null, digits = 0) =>
@@ -236,6 +250,7 @@ export default async function BookingPage({
       ["saved", "booking.done.saved"],
       ["owners", "booking.done.owners"],
       ["analyzed", "booking.done.analyzed"],
+      ["edited", "booking.done.edited"],
     ] as const
   )
     .map(([param, key]) => {
@@ -318,7 +333,7 @@ export default async function BookingPage({
         : current === "asc"
           ? ({ key, dir: "desc" } as const)
           : null;
-    return `${BASE}${bookingQuery(filters, { sort: next })}`;
+    return `${BASE}${q({ sort: next })}`;
   };
 
   const optionsOf = (key: BookingColumnKey): BookingOption[] =>
@@ -453,8 +468,191 @@ export default async function BookingPage({
       muted
     );
 
+  /** O número de uma coluna numérica da linha. */
+  const numberOf = (row: BookingRow, key: BookingColumnKey) => {
+    const v = byKey.get(key)?.value(row);
+    return typeof v === "number" ? v : null;
+  };
+  /** Número como a pessoa digita (vírgula no português). */
+  const raw = (n: number | null) =>
+    n === null ? "" : String(n).replace(".", decimal);
+  /** Campo de "Editar dados" (formulário DATA_FORM; nome d.<produto>.<campo>). */
+  const editBox = (
+    row: BookingRow,
+    field: string,
+    value: string,
+    opts: { width?: string; numeric?: boolean; type?: string; what: string },
+  ) => (
+    <input
+      form={DATA_FORM}
+      name={`d.${row.productId}.${field}`}
+      defaultValue={value}
+      type={opts.type ?? "text"}
+      inputMode={opts.numeric ? "decimal" : undefined}
+      autoComplete="off"
+      aria-label={t("booking.edit.field", {
+        field: opts.what,
+        name: row.name || row.productId,
+      })}
+      data-booking-edit=""
+      className={cx(
+        inputDenseClass,
+        opts.width ?? "w-24",
+        opts.numeric && "text-right",
+      )}
+    />
+  );
+  /** Editor da célula no modo "Editar dados" (nulo: a célula é só leitura). */
+  const editor = (row: BookingRow, key: BookingColumnKey): ReactNode => {
+    const num = (field: string) =>
+      editBox(row, field, raw(numberOf(row, key)), {
+        numeric: true,
+        what: label(key),
+      });
+    switch (key) {
+      case "code":
+        return editBox(row, "factoryItemCode", row.code ?? "", {
+          width: "w-32",
+          what: label(key),
+        });
+      case "supplier": {
+        const list = data.options.allSuppliers;
+        const current = row.supplierId ?? "";
+        return (
+          <select
+            form={DATA_FORM}
+            name={`d.${row.productId}.supplierId`}
+            defaultValue={current}
+            aria-label={t("booking.edit.field", {
+              field: label(key),
+              name: row.name || row.productId,
+            })}
+            data-booking-edit=""
+            className={cx(inputDenseClass, "w-44")}
+          >
+            {current ? null : <option value="">—</option>}
+            {current && !list.some((o) => o.id === current) ? (
+              <option value={current}>{row.supplierName ?? current}</option>
+            ) : null}
+            {list.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        );
+      }
+      case "location":
+        return (
+          <span className="flex gap-1">
+            {editBox(row, "location", row.location ?? "", {
+              width: "w-28",
+              what: t("booking.edit.location"),
+            })}
+            {editBox(row, "supplierStore", row.supplierStore ?? "", {
+              width: "w-24",
+              what: t("booking.edit.store"),
+            })}
+          </span>
+        );
+      case "sheetDate":
+        return editBox(row, "sheetDate", row.sheetDate?.slice(0, 10) ?? "", {
+          type: "date",
+          width: "w-36",
+          what: label(key),
+        });
+      case "price":
+        return num("price");
+      case "currency": {
+        const current = row.currency ?? "";
+        const known = (SHEET_CURRENCIES as readonly string[]).includes(current);
+        return (
+          <select
+            form={DATA_FORM}
+            name={`d.${row.productId}.currency`}
+            defaultValue={current}
+            aria-label={t("booking.edit.field", {
+              field: label(key),
+              name: row.name || row.productId,
+            })}
+            data-booking-edit=""
+            className={cx(inputDenseClass, "w-24")}
+          >
+            <option value="">—</option>
+            {current && !known ? (
+              <option value={current}>{current}</option>
+            ) : null}
+            {SHEET_CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        );
+      }
+      case "moq":
+        return num("moq");
+      case "masterQty":
+        return num("masterCartonQty");
+      case "innerQty":
+        return num("innerQty");
+      case "netWeight":
+        return num("netWeightPcKg");
+      case "grossWeight":
+        return num("grossWeightPcKg");
+      case "average":
+        return num("averagePrice");
+      case "cbm":
+        return num("cbmPerCarton");
+      case "size":
+        return (
+          <span className="flex items-center gap-1 text-xs text-zinc-500">
+            {editBox(row, "pieceLengthCm", raw(row.pieceLengthCm), {
+              numeric: true,
+              width: "w-16",
+              what: t("booking.edit.length"),
+            })}
+            ×
+            {editBox(row, "pieceWidthCm", raw(row.pieceWidthCm), {
+              numeric: true,
+              width: "w-16",
+              what: t("booking.edit.width"),
+            })}
+            ×
+            {editBox(row, "pieceHeightCm", raw(row.pieceHeightCm), {
+              numeric: true,
+              width: "w-16",
+              what: t("booking.edit.height"),
+            })}
+            cm
+          </span>
+        );
+      case "colors":
+        return editBox(row, "colorAssortment", row.colors ?? "", {
+          width: "w-48",
+          what: label(key),
+        });
+      case "material":
+        return editBox(row, "material", row.material ?? "", {
+          width: "w-40",
+          what: label(key),
+        });
+      case "packageType":
+        return editBox(row, "packageType", row.packageType ?? "", {
+          width: "w-40",
+          what: label(key),
+        });
+      default:
+        return null;
+    }
+  };
+
   /** O conteúdo de uma célula. */
   const cell = (row: BookingRow, key: BookingColumnKey): ReactNode => {
+    if (editing && row.name && key !== "name") {
+      const box = editor(row, key);
+      if (box) return box;
+    }
     switch (key) {
       case "name": {
         const name = row.name || t("booking.productMissing");
@@ -490,13 +688,20 @@ export default async function BookingPage({
               />
             )}
             <div className="min-w-0">
-              <Link
-                href={`${BASE}/${row.id}`}
-                className={cx(linkClass, "block max-w-52 truncate")}
-                title={name}
-              >
-                {name}
-              </Link>
+              {editing && row.name ? (
+                editBox(row, "name", row.name, {
+                  width: "w-52",
+                  what: label("name"),
+                })
+              ) : (
+                <Link
+                  href={`${BASE}/${row.id}`}
+                  className={cx(linkClass, "block max-w-52 truncate")}
+                  title={name}
+                >
+                  {name}
+                </Link>
+              )}
               <span className="block max-w-52 truncate text-xs text-zinc-500">
                 {[
                   row.sku,
@@ -765,7 +970,7 @@ export default async function BookingPage({
           compact
           label={t("booking.cards.all")}
           value={forCards.length}
-          href={`${BASE}${bookingQuery(filters, { option: { key: "status", values: [] } })}`}
+          href={`${BASE}${q({ option: { key: "status", values: [] } })}`}
           active={activeStatus.length === 0}
         />
         {[...BOOKING_FLOW, "discarded" as const].map((s) => {
@@ -776,7 +981,7 @@ export default async function BookingPage({
               compact
               label={statusLabel(s)}
               value={countOf(s)}
-              href={`${BASE}${bookingQuery(filters, {
+              href={`${BASE}${q({
                 option: { key: "status", values: on ? [] : [s] },
               })}`}
               active={on}
@@ -797,6 +1002,7 @@ export default async function BookingPage({
         className="mb-2 flex flex-wrap items-center gap-2"
         data-booking-filter
       >
+        {editing ? <input type="hidden" name="edit" value="1" /> : null}
         {filters.sort ? (
           <>
             <input type="hidden" name="sort" value={filters.sort.key} />
@@ -843,7 +1049,7 @@ export default async function BookingPage({
           {chips.map((chip) => (
             <Link
               key={chip.key}
-              href={`${BASE}${bookingQuery(filters, { drop: chip.key })}`}
+              href={`${BASE}${q({ drop: chip.key })}`}
               scroll={false}
               title={t("booking.filter.remove")}
               className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-800 transition hover:border-brand-400 hover:bg-brand-100"
@@ -1001,6 +1207,71 @@ export default async function BookingPage({
         </p>
       </form>
 
+      {/* "Editar dados dos produtos": as células da tabela viram campos e
+          um só "Salvar dados" grava o que mudou (cadastro e ficha mestre). */}
+      {canEdit ? (
+        <>
+          <FormDraftGuard
+            formId={DATA_FORM}
+            storageKey="booking-data"
+            userId={user.id}
+            failed={!!errorCode}
+            saved={!errorCode}
+            token={`${errorCode}:${errorRowId}:${answeredDraft}`}
+            answers={answeredDraft || null}
+            message={t("booking.draftRestored")}
+            discardLabel={t("booking.draftDiscard")}
+          />
+          <form
+            id={DATA_FORM}
+            action={saveBookingProductsAction}
+            className={cx(
+              "mb-2 flex flex-wrap items-center gap-2 rounded-xl border p-2.5 shadow-sm",
+              editing
+                ? "border-amber-300 bg-amber-50"
+                : "border-zinc-200/80 bg-white",
+            )}
+            data-booking-data
+          >
+            <input type="hidden" name="back" value={back} />
+            <input type="hidden" name="draftId" defaultValue="" />
+            {editing ? (
+              <>
+                <SubmitButton
+                  pendingText={t("booking.edit.saving")}
+                  data-booking-data-save=""
+                >
+                  {t("booking.edit.save")}
+                </SubmitButton>
+                <LinkButton
+                  href={`${BASE}${bookingQuery(filters)}`}
+                  variant="secondary"
+                  data-booking-edit-stop=""
+                >
+                  {t("booking.edit.stop")}
+                </LinkButton>
+                <p className="min-w-0 flex-1 text-xs text-amber-900">
+                  {t("booking.edit.hint")}
+                </p>
+              </>
+            ) : (
+              <>
+                <LinkButton
+                  href={`${BASE}${bookingQuery(filters)}${bookingQuery(filters) ? "&" : "?"}edit=1`}
+                  variant="secondary"
+                  data-booking-edit-start=""
+                >
+                  {t("booking.edit.start")}
+                </LinkButton>
+                <p className="min-w-0 flex-1 text-xs text-zinc-500">
+                  {t("booking.edit.startHint")}
+                </p>
+              </>
+            )}
+          </form>
+        </>
+      ) : null}
+
       <div
         className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border"
         data-booking-table
@@ -1146,9 +1417,7 @@ export default async function BookingPage({
           data-booking-pages
         >
           {page.page > 1 ? (
-            <TextLink
-              href={`${BASE}${bookingQuery(filters, { page: page.page - 1 })}`}
-            >
+            <TextLink href={`${BASE}${q({ page: page.page - 1 })}`}>
               ← {t("booking.page.prev")}
             </TextLink>
           ) : null}
@@ -1156,16 +1425,18 @@ export default async function BookingPage({
             {page.page} / {page.pages}
           </span>
           {page.page < page.pages ? (
-            <TextLink
-              href={`${BASE}${bookingQuery(filters, { page: page.page + 1 })}`}
-            >
+            <TextLink href={`${BASE}${q({ page: page.page + 1 })}`}>
               {t("booking.page.next")} →
             </TextLink>
           ) : null}
         </div>
       ) : null}
 
-      <BookingEnhancer filterFormId={FILTER_FORM} bulkFormId={BULK_FORM} />
+      <BookingEnhancer
+        filterFormId={FILTER_FORM}
+        bulkFormId={BULK_FORM}
+        dataFormId={DATA_FORM}
+      />
     </>
   );
 }

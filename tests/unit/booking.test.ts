@@ -95,6 +95,9 @@ const row = (patch: Partial<BookingRow> = {}): BookingRow => ({
   requestGroupId: null,
   requestNumber: null,
   requestState: null,
+  pieceLengthCm: null,
+  pieceWidthCm: null,
+  pieceHeightCm: null,
   ...patch,
 });
 
