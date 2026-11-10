@@ -64,7 +64,7 @@ export const pt = {
   "booking.done.kept":
     "{n} linha(s) com simulação gravada à mão ficaram como estavam. Para refazer, abra a linha no Superplan e grave de novo.",
   "booking.done.norates":
-    "{n} analisada(s) sem II ou IPI (produto sem NCM na tabela fiscal): contaram 0 e o custo sai menor que o real.",
+    "{n} analisada(s) sem II ou IPI informado (em geral, produto sem NCM na tabela fiscal): o que faltou contou 0 e o custo sai menor que o real.",
   "booking.draftRestored":
     "A ação não foi concluída. O que você tinha digitado e marcado voltou.",
   "booking.draftDiscard": "Descartar e ver o que está salvo",
@@ -146,7 +146,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.done.kept":
     "{n} row(s) with a simulation saved by hand stayed as they were. To redo one, open the row in Superplan and save again.",
   "booking.done.norates":
-    "{n} analyzed without II or IPI (product without NCM in the tax table): they counted as 0 and the cost is lower than the real one.",
+    "{n} analyzed without II or IPI informed (usually a product without NCM in the tax table): the missing one counted as 0 and the cost is lower than the real one.",
   "booking.draftRestored":
     "The action was not completed. What you had typed and ticked is back.",
   "booking.draftDiscard": "Discard and show what is saved",
@@ -225,7 +225,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.done.kept":
     "有 {n} 行保留了手动保存的模拟。如需重做，请在 Superplan 中打开该行并重新保存。",
   "booking.done.norates":
-    "有 {n} 行在没有 II 或 IPI 的情况下分析（税表中没有该产品的 NCM）：按 0 计算，成本低于实际。",
+    "有 {n} 行在未填写 II 或 IPI 的情况下分析（通常是税表中没有该产品的 NCM）：缺少的一项按 0 计算，成本低于实际。",
   "booking.draftRestored": "操作未完成。您填写和勾选的内容已恢复。",
   "booking.draftDiscard": "放弃并显示已保存的内容",
   "booking.row.noRates": "II/IPI 0",

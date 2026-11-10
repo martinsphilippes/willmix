@@ -1546,9 +1546,10 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         product = Object.keys(patch).length
           ? await store.update("products", existing.id, patch)
           : existing;
-        // A lista da importação acompanha: o próximo grupo vê o fornecedor
-        // que este acabou de pôr (senão reimportar daria outros nomes).
-        const at = products.indexOf(existing);
+        // Booking: a lista da importação acompanha, e o próximo grupo vê o
+        // fornecedor que este acabou de pôr (senão reimportar daria outros
+        // nomes). O modo "um produto por linha" segue dando os nomes de antes.
+        const at = booking ? products.indexOf(existing) : -1;
         if (at >= 0) products[at] = product;
         if (supplierId)
           await syncMainSupplierLink(

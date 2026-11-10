@@ -152,15 +152,17 @@ export async function bulkBookingAction(form: FormData) {
           user,
           input.ids,
           input.ownerUserId === BOOKING_EMPTY ? null : input.ownerUserId,
-          quantities,
+          { customer: input.customer, quantities },
         );
         return withParams(back, { owners });
       }
       if (input.op === "analyze") {
-        // A quantidade digitada nas linhas marcadas vale em toda ação.
-        if (Object.keys(quantities).length)
-          await service.assignBookings(user, { ids: input.ids, quantities });
-        const result = await service.analyzeBookings(user, input.ids);
+        // O cliente da barra e a quantidade digitada valem em toda ação; o
+        // serviço confere antes quem analisa (nada é gravado numa recusa).
+        const result = await service.analyzeBookings(user, input.ids, {
+          customer: input.customer,
+          quantities,
+        });
         return withParams(back, {
           analyzed: result.analyzed,
           ...(result.skipped ? { skipped: result.skipped } : {}),

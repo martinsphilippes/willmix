@@ -781,16 +781,23 @@ export function assignBookings(
   return applyBulk(user, input, () => ({}));
 }
 
-/** Trocar o responsável de várias linhas (vazio tira). */
+/** O cliente da barra e as quantidades digitadas, que valem em toda ação. */
+export type BookingTyped = Pick<BookingBulkInput, "customer" | "quantities">;
+
+/**
+ * Trocar o responsável de várias linhas (vazio tira). O cliente escolhido na
+ * barra e as quantidades digitadas nas linhas marcadas são gravados junto,
+ * na mesma conferência (tudo ou nada).
+ */
 export async function setBookingsOwner(
   user: User,
   ids: string[],
   ownerUserId: string | null,
-  quantities?: Record<string, number>,
+  typed: BookingTyped = {},
 ): Promise<number> {
   assertBookingUser(user);
   const owner = ownerUserId ? await resolveOwner(ownerUserId) : null;
-  return applyBulk(user, { ids, quantities }, () => ({ ownerUserId: owner }));
+  return applyBulk(user, { ids, ...typed }, () => ({ ownerUserId: owner }));
 }
 
 /* ------------------------------------------------------------------------ */
@@ -865,8 +872,16 @@ export interface BookingAnalyzeResult {
 export async function analyzeBookings(
   user: User,
   ids: string[],
+  typed: BookingTyped = {},
 ): Promise<BookingAnalyzeResult> {
   assertAnalyst(user);
+  // O cliente da barra e as quantidades digitadas valem em toda ação: são
+  // gravados antes (depois de conferir quem analisa), tudo ou nada.
+  if (
+    (typed.customer ?? "").trim() ||
+    Object.keys(typed.quantities ?? {}).length
+  )
+    await applyBulk(user, { ids, ...typed }, () => ({}));
   const bookings = await loadBookings(ids, BOOKING_BULK_MAX);
   const open = bookings.filter((b) => !b.analysis?.manual);
   const { analyzeProductsWithDefaults } = await import("./superplan-analysis");
@@ -921,25 +936,26 @@ export async function saveBookingAnalysis(
 
 /**
  * Solicitações que nasceram desta chamada (deste login, para este cliente e
- * estes produtos, depois do carimbo) e ficaram vivas depois de uma falha:
- * são canceladas, como o lote faz com as dele.
+ * estes produtos, e que não existiam antes dela: `known`) e ficaram vivas
+ * depois de uma falha: são canceladas, como o lote faz com as dele. A conta
+ * é pelo que existia antes, e não pela hora: o relógio deste servidor e o do
+ * banco podem não bater.
  */
 async function cancelHalfBorn(
   user: User,
-  scope: { customerId: string; productIds: string[]; since: string },
+  scope: { customerId: string; productIds: string[]; known: Set<string> },
 ): Promise<void> {
   const store = getStore();
   try {
-    const since = Date.parse(scope.since) - 1000;
     const born = (
       await store.list("requests", {
         filter: { customerId: scope.customerId, productId: scope.productIds },
       })
     ).filter(
       (r) =>
+        !scope.known.has(r.id) &&
         r.createdByUserId === user.id &&
-        r.status !== "CANCELLED" &&
-        Date.parse(r.createdAt) >= since,
+        r.status !== "CANCELLED",
     );
     for (const r of born) {
       await store.update("requests", r.id, { status: "CANCELLED" });
@@ -1049,6 +1065,16 @@ export async function generateRequestFromBooking(
    * falhar, as linhas voltam para onde estavam.
    */
   const store = getStore();
+  // O que já existe para este cliente e estes produtos, lido antes de tomar
+  // as linhas: depois de uma falha, o que aparecer a mais nasceu daqui.
+  const productIds = lines.map((l) => l.product.id);
+  const known = new Set(
+    (
+      await store.list("requests", {
+        filter: { customerId, productId: productIds },
+      })
+    ).map((r) => r.id),
+  );
   const stamp = claimStamp();
   const mine = (b: Booking) =>
     b.status === "requested" &&
@@ -1136,11 +1162,7 @@ export async function generateRequestFromBooking(
      * aviso). Ela ficaria viva e a linha, devolvida, geraria outra. Antes de
      * devolver as linhas, o que nasceu desta chamada é cancelado.
      */
-    await cancelHalfBorn(user, {
-      customerId,
-      productIds: lines.map((l) => l.product.id),
-      since: stamp,
-    });
+    await cancelHalfBorn(user, { customerId, productIds, known });
     await release();
     throw error;
   }

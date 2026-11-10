@@ -51,7 +51,7 @@ export const pt = {
     "Dólar oficial {official} · dólar futuro {future} · RMB por dólar {rmb}",
   "booking.detail.analysis.taxes": "II {ii}% · IPI {ipi}%",
   "booking.detail.analysis.noNcm":
-    "II ou IPI não informado (produto sem NCM na tabela fiscal): entrou como 0, então o custo real é maior. Ajuste no Superplan e grave de novo.",
+    "II ou IPI não informado: o que faltou entrou como 0, então o custo real é maior. Confira os dois no Superplan e grave de novo.",
   "booking.detail.analysis.container":
     "Container {container} · frete US$ {freight}",
   "booking.detail.analysis.grossEstimated":
@@ -131,7 +131,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Official dollar {official} · future dollar {future} · RMB per dollar {rmb}",
   "booking.detail.analysis.taxes": "II {ii}% · IPI {ipi}%",
   "booking.detail.analysis.noNcm":
-    "II or IPI not informed (product without NCM in the tax table): counted as 0, so the real cost is higher. Adjust in Superplan and save again.",
+    "II or IPI not informed: the missing one was counted as 0, so the real cost is higher. Check both in Superplan and save again.",
   "booking.detail.analysis.container":
     "Container {container} · freight US$ {freight}",
   "booking.detail.analysis.grossEstimated":
@@ -209,7 +209,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "官方美元 {official} · 远期美元 {future} · 每美元兑人民币 {rmb}",
   "booking.detail.analysis.taxes": "II {ii}% · IPI {ipi}%",
   "booking.detail.analysis.noNcm":
-    "未填写 II 或 IPI（税表中没有该产品的 NCM）：按 0 计算，实际成本更高。请在 Superplan 中调整后重新保存。",
+    "未填写 II 或 IPI：缺少的一项按 0 计算，实际成本更高。请在 Superplan 中核对这两项后重新保存。",
   "booking.detail.analysis.container":
     "集装箱 {container} · 运费 US$ {freight}",
   "booking.detail.analysis.grossEstimated": "毛重为估算值（净重 + 包装余量）。",

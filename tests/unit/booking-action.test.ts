@@ -454,13 +454,24 @@ describe("achados da revisão (segunda leva)", () => {
     const b = await row("approved");
     h.current = buyer;
     await bulkBookingAction(
-      bulk({ op: "owner", ownerUserId: buyer.id, [`qty_${a.id}`]: "480" }, [
-        a.id,
-      ]),
+      bulk(
+        {
+          op: "owner",
+          ownerUserId: buyer.id,
+          customer: joao.partyId!,
+          [`qty_${a.id}`]: "480",
+        },
+        [a.id],
+      ),
     );
     expect(query(last()).get("owners")).toBe("1");
     const first = await fresh(a.id);
-    expect([first.ownerUserId, first.reservedQty]).toEqual([buyer.id, 480]);
+    // O cliente escolhido na barra também vale ao trocar o responsável.
+    expect([first.ownerUserId, first.customerId, first.reservedQty]).toEqual([
+      buyer.id,
+      joao.partyId,
+      480,
+    ]);
     h.current = admin;
     await bulkBookingAction(
       bulk({ op: "analyze", [`qty_${b.id}`]: "1.200" }, [b.id]),

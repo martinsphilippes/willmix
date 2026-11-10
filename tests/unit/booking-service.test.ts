@@ -1169,3 +1169,116 @@ describe("achados da revisão (segunda leva)", () => {
     expect(t("superplan.missing.currency")).toContain("RMB");
   });
 });
+
+describe("ajustes da segunda revisão", () => {
+  it("solicitação pela metade: só a que nasceu nesta chamada é cancelada; a que já existia para o mesmo cliente e produto fica", async () => {
+    const a = await row("approved");
+    const store = getStore();
+    const { createRequestBatch } = await import("@/lib/services/requests");
+    // Pedida agora há pouco, por outro caminho (Nova solicitação), pelo mesmo login.
+    const [older] = await createRequestBatch(
+      buyer,
+      {
+        customerId: joao.partyId!,
+        deadline: null,
+        notes: null,
+        requestedForUserId: null,
+      },
+      [
+        {
+          productId: a.product.id,
+          productName: a.product.name,
+          description: a.product.name,
+          specification: null,
+          quantity: 240,
+          unit: "un",
+          sourcingDemand: false,
+        },
+      ],
+    );
+    const original = store.create.bind(store);
+    let failed = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (!failed && table === "notifications") {
+          failed = true;
+          throw new Error("notifications down");
+        }
+        return original(table, data as never);
+      });
+    try {
+      await code(() =>
+        booking.generateRequestFromBooking(
+          buyer,
+          { ids: [a.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      );
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(failed).toBe(true);
+    const ofProduct = (await store.list("requests")).filter(
+      (r) => r.productId === a.product.id,
+    );
+    expect(ofProduct).toHaveLength(2);
+    // A antiga continua viva; a que nasceu pela metade foi cancelada.
+    expect(ofProduct.find((r) => r.id === older.id)!.status).not.toBe(
+      "CANCELLED",
+    );
+    expect(ofProduct.find((r) => r.id !== older.id)!.status).toBe("CANCELLED");
+    expect((await fresh(a.booking.id)).status).toBe("approved");
+  });
+
+  it("trocar responsável e analisar gravam também o cliente da barra e as quantidades, tudo ou nada", async () => {
+    const a = await row("approved");
+    const b = await row("approved");
+    await booking.setBookingsOwner(buyer, [a.booking.id], buyer.id, {
+      customer: joao.partyId!,
+      quantities: { [a.booking.id]: 480 },
+    });
+    const first = await fresh(a.booking.id);
+    expect([first.ownerUserId, first.customerId, first.reservedQty]).toEqual([
+      buyer.id,
+      joao.partyId,
+      480,
+    ]);
+    // Uma quantidade abaixo do mínimo recusa tudo: nem o responsável muda.
+    expect(
+      await code(() =>
+        booking.setBookingsOwner(buyer, [a.booking.id, b.booking.id], null, {
+          quantities: { [b.booking.id]: 1 },
+        }),
+      ),
+    ).toBe("booking_qty_below_moq");
+    expect((await fresh(a.booking.id)).ownerUserId).toBe(buyer.id);
+    expect((await fresh(b.booking.id)).reservedQty).toBeNull();
+
+    // Analisar: quem não abre o Superplan é recusado antes de qualquer gravação.
+    expect(
+      await code(() =>
+        booking.analyzeBookings(buyer, [b.booking.id], {
+          customer: joao.partyId!,
+          quantities: { [b.booking.id]: 600 },
+        }),
+      ),
+    ).toBe("booking_analysis_forbidden");
+    const untouched = await fresh(b.booking.id);
+    expect([untouched.customerId, untouched.reservedQty]).toEqual([null, null]);
+    // Quem analisa: cliente e quantidade gravados e a análise feita.
+    const result = await booking.analyzeBookings(admin, [b.booking.id], {
+      customer: joao.partyId!,
+      quantities: { [b.booking.id]: 600 },
+    });
+    expect(result.analyzed).toBe(1);
+    const second = await fresh(b.booking.id);
+    expect([second.customerId, second.reservedQty]).toEqual([
+      joao.partyId,
+      600,
+    ]);
+    expect(second.analysis?.byUserId).toBe(admin.id);
+  });
+});
