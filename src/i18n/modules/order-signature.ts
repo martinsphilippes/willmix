@@ -69,6 +69,27 @@ export const pt = {
     "O pedido mudou enquanto você lia. Confira o documento de novo e assine.",
   "orderSign.error.stage_not_active":
     "Ainda não é a hora desta assinatura: a etapa dela não está aberta.",
+  "orderSign.turn.title": "Sua vez de assinar",
+  "orderSign.turn.hint.supplier":
+    "A Wellmix já assinou. Confira o documento abaixo e assine de uma destas duas formas:",
+  "orderSign.turn.hint.wellmix":
+    "Confira o documento abaixo e assine. Ao assinar, o pedido é liberado ao fornecedor, que assina em seguida.",
+  "orderSign.option.portal": "Opção 1: assinar aqui no portal",
+  "orderSign.option.portal.hint":
+    "Digite o seu nome, marque que leu e concorda e toque em Assinar.",
+  "orderSign.option.file": "Opção 2: enviar o documento assinado",
+  "orderSign.option.file.hint":
+    "Baixe o PDF, assine e carimbe, e envie aqui o arquivo assinado (PDF ou foto).",
+  "orderSign.option.file.name": "Nome de quem assinou",
+  "orderSign.option.file.send": "Enviar o documento assinado (PDF ou foto)",
+  "orderSign.option.file.note":
+    "Ao escolher o arquivo, a assinatura já fica registrada com o arquivo guardado no pedido.",
+  "orderSign.blocked.supplier":
+    "A Wellmix já assinou, mas ainda não liberou o pedido para a sua assinatura. Avise a Wellmix.",
+  "orderSign.blocked.wellmix":
+    "O fornecedor ainda não consegue assinar: falta concluir, no pedido, o item “Pedido conferido e liberado ao fornecedor” da etapa Pedido criado.",
+  "orderSign.error.signature_file_missing":
+    "O arquivo assinado não chegou. Envie de novo.",
   "orderSign.moq": "Pedido mínimo (MOQ)",
   "orderSign.moq.value": "{n} peças",
   "orderSign.status.awaiting_wellmix":
@@ -79,10 +100,6 @@ export const pt = {
     "Assinado pelos dois: pedido autorizado, falta gerar no Sankhya",
   "orderSign.status.in_erp": "Pedido gerado no Sankhya: {n}",
   "orderSign.download": "Baixar o documento em PDF",
-  "orderSign.upload.title": "Sua vez: assine e envie de volta",
-  "orderSign.upload.hint":
-    "Baixe o documento, assine e carimbe, e envie aqui o arquivo assinado (PDF ou foto).",
-  "orderSign.upload.submit": "Enviar o documento assinado",
   "orderSign.sheet.title": "Folha do pedido (modelo Wellmix)",
   "orderSign.sheet.hint":
     "É assim que o documento sai no PDF: o fornecedor baixa, assina no quadro do canto e anexa de volta. Campo em branco é dado que ainda não está no portal.",
@@ -177,6 +194,27 @@ export const en: Record<keyof typeof pt, string> = {
     "The order changed while you were reading. Check the document again and sign.",
   "orderSign.error.stage_not_active":
     "It is not time for this signature yet: its stage is not open.",
+  "orderSign.turn.title": "Your turn to sign",
+  "orderSign.turn.hint.supplier":
+    "Wellmix has already signed. Check the document below and sign in one of these two ways:",
+  "orderSign.turn.hint.wellmix":
+    "Check the document below and sign. When you sign, the order is released to the supplier, who signs next.",
+  "orderSign.option.portal": "Option 1: sign here in the portal",
+  "orderSign.option.portal.hint":
+    "Type your name, tick that you have read and agree, and tap Sign.",
+  "orderSign.option.file": "Option 2: send the signed document",
+  "orderSign.option.file.hint":
+    "Download the PDF, sign and stamp it, and send the signed file here (PDF or photo).",
+  "orderSign.option.file.name": "Name of who signed",
+  "orderSign.option.file.send": "Send the signed document (PDF or photo)",
+  "orderSign.option.file.note":
+    "When you choose the file, the signature is recorded with the file kept in the order.",
+  "orderSign.blocked.supplier":
+    "Wellmix has already signed, but has not yet released the order for your signature. Please tell Wellmix.",
+  "orderSign.blocked.wellmix":
+    "The supplier cannot sign yet: in the order, conclude the item “Order checked and released to the supplier” of the Order created stage.",
+  "orderSign.error.signature_file_missing":
+    "The signed file did not arrive. Send it again.",
   "orderSign.moq": "Minimum order (MOQ)",
   "orderSign.moq.value": "{n} pcs",
   "orderSign.status.awaiting_wellmix": "Ready to sign: waiting for Wellmix",
@@ -186,10 +224,6 @@ export const en: Record<keyof typeof pt, string> = {
     "Signed by both: order authorized, still to be created in Sankhya",
   "orderSign.status.in_erp": "Order created in Sankhya: {n}",
   "orderSign.download": "Download the document as PDF",
-  "orderSign.upload.title": "Your turn: sign and send it back",
-  "orderSign.upload.hint":
-    "Download the document, sign and stamp it, and send the signed file here (PDF or photo).",
-  "orderSign.upload.submit": "Send the signed document",
   "orderSign.sheet.title": "Order sheet (Wellmix template)",
   "orderSign.sheet.hint":
     "This is how the document looks in the PDF: the supplier downloads it, signs in the corner box and attaches it back. A blank field is data that is not in the portal yet.",
@@ -271,6 +305,25 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.error.signature_document_changed":
     "在您阅读期间订单有变更。请重新核对文件后签署。",
   "orderSign.error.stage_not_active": "还未到此签署的时间：对应阶段尚未开启。",
+  "orderSign.turn.title": "轮到您签署",
+  "orderSign.turn.hint.supplier":
+    "Wellmix 已签署。请核对下方文件，并用以下两种方式之一签署：",
+  "orderSign.turn.hint.wellmix":
+    "请核对下方文件并签署。签署后订单即发给供应商，由供应商接着签署。",
+  "orderSign.option.portal": "方式一：在平台上直接签署",
+  "orderSign.option.portal.hint":
+    "填写您的姓名，勾选已阅读并同意，然后点击签署。",
+  "orderSign.option.file": "方式二：上传已签署的文件",
+  "orderSign.option.file.hint":
+    "下载 PDF，签字盖章后，在这里上传已签署的文件（PDF 或照片）。",
+  "orderSign.option.file.name": "签署人姓名",
+  "orderSign.option.file.send": "上传已签署的文件（PDF 或照片）",
+  "orderSign.option.file.note": "选择文件后，签署即被记录，文件保存在订单中。",
+  "orderSign.blocked.supplier":
+    "Wellmix 已签署，但尚未将订单发给您签署。请通知 Wellmix。",
+  "orderSign.blocked.wellmix":
+    "供应商暂时无法签署：请在订单的“订单已创建”阶段完成“订单已核对并发给供应商”一项。",
+  "orderSign.error.signature_file_missing": "未收到已签署的文件，请重新上传。",
   "orderSign.moq": "最小起订量（MOQ）",
   "orderSign.moq.value": "{n} 件",
   "orderSign.status.awaiting_wellmix": "待签署：等待 Wellmix",
@@ -278,10 +331,6 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.status.signed": "双方已签署：订单已授权，尚待在 Sankhya 生成",
   "orderSign.status.in_erp": "订单已在 Sankhya 生成：{n}",
   "orderSign.download": "下载 PDF 文件",
-  "orderSign.upload.title": "轮到您：签字后传回",
-  "orderSign.upload.hint":
-    "请下载文件，签字盖章，然后在这里上传已签字的文件（PDF 或照片）。",
-  "orderSign.upload.submit": "上传已签字的文件",
   "orderSign.sheet.title": "订单表（Wellmix 模板）",
   "orderSign.sheet.hint":
     "PDF 文件即为此格式：供应商下载后，在右上角方框内签字盖章并上传。空白栏为系统中尚无的数据。",

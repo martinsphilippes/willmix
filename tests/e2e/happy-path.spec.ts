@@ -136,12 +136,20 @@ async function signOrderDocument(
   signedFile?: { name: string; mimeType: string; buffer: Buffer },
 ) {
   await page.goto(`${orderUrl}/purchase-order`);
-  const form = page.locator("[data-order-sign-form=own]");
-  // Fornecedor: anexa o PDF baixado e assinado.
-  if (signedFile)
-    await form.locator("input[name=signedFile]").setInputFiles(signedFile);
-  await form.locator("input[name=agree]").check();
-  await form.locator("button[type=submit]").click();
+  // As duas formas de assinar ficam no topo, no quadro "Sua vez de assinar".
+  await expect(page.locator("[data-order-sign-turn]")).toBeVisible();
+  if (signedFile) {
+    // Fornecedor, opção 2: envia o PDF baixado e assinado. Escolher o
+    // arquivo já registra a assinatura (a opção 1, no portal, fica ao lado).
+    await expect(page.locator("[data-order-sign-form=own]")).toBeVisible();
+    await page
+      .locator("[data-order-sign-file] input[type=file]")
+      .setInputFiles(signedFile);
+  } else {
+    const form = page.locator("[data-order-sign-form=own]");
+    await form.locator("input[name=agree]").check();
+    await form.locator("button[type=submit]").click();
+  }
   await page.waitForURL(/signed=1/);
 }
 
@@ -469,7 +477,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     page.locator("[data-order-signature=supplier][data-signed=no]"),
   ).toBeVisible();
-  await fillMyRequirements(page, orderUrl, {}, 1);
+  // Assinar é conferir e liberar: o item "Pedido conferido e liberado ao
+  // fornecedor" conclui junto e a Preparação abre (sem outro clique).
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
   // A Wellmix valida a ficha/imagens (comprador) e o cadastro do produto.
