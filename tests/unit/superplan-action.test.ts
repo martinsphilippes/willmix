@@ -70,6 +70,7 @@ function formOf(patch: Record<string, string> = {}) {
   f.set("freightFxPct", "3,02");
   f.set("afrmmPct", "8");
   f.set("afrmmFixedBrl", "700");
+  f.set("grossEstimatePct", "8");
   f.set("priceFactors.table", "1,25");
   f.set("priceFactors.wholesale", "1,6");
   f.set("priceFactors.retail", "1,8");
@@ -209,5 +210,42 @@ describe("parâmetros do Superplan", () => {
       "invalid_input",
     );
     expect(await stored()).toEqual(before);
+  });
+
+  it("folga da embalagem no peso: grava de 0 a 100, com antes e depois na auditoria", async () => {
+    h.current = admin;
+    const previous = (await stored()).grossEstimatePct;
+    expect(previous).toBe(8);
+    await saveSuperplanParamsAction(formOf({ grossEstimatePct: "12,5" }));
+    expect(last()).toBe("/app/superplan?saved=1#parametros");
+    expect((await stored()).grossEstimatePct).toBe(12.5);
+    const entry = (await getStore().list("audit_log")).find(
+      (a) =>
+        a.action === "settings.superplan" &&
+        (a.after as { grossEstimatePct?: number }).grossEstimatePct === 12.5,
+    )!;
+    expect(entry.userId).toBe(admin.id);
+    expect(
+      (entry.before as { grossEstimatePct: number }).grossEstimatePct,
+    ).toBe(8);
+    // Fora da faixa, texto ou campo faltando: recusado, apontando o campo.
+    const saved = await stored();
+    const missing = formOf();
+    missing.delete("grossEstimatePct");
+    for (const form of [
+      formOf({ grossEstimatePct: "150" }),
+      formOf({ grossEstimatePct: "-1" }),
+      formOf({ grossEstimatePct: "oito" }),
+      missing,
+    ]) {
+      await saveSuperplanParamsAction(form);
+      const url = new URL(last()!, "http://x");
+      expect(url.searchParams.get("error")).toBe("invalid_input");
+      expect(url.searchParams.get("fields")).toBe("grossEstimatePct");
+    }
+    expect(await stored()).toEqual(saved);
+    // Zero vale (peso estimado = o próprio líquido).
+    await saveSuperplanParamsAction(formOf({ grossEstimatePct: "0" }));
+    expect((await stored()).grossEstimatePct).toBe(0);
   });
 });

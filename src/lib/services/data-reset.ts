@@ -86,6 +86,7 @@ const OPTIONAL_TABLES = new Set<TableName>([
   "stock_count_items",
   "stock_counts",
   "stock_reservations",
+  "bookings",
 ]);
 
 /** Entidades de venda no histórico (auditoria) e nas medições/revisões. */
@@ -226,6 +227,7 @@ async function buildWork(): Promise<Work> {
     counters,
     readings,
     cards,
+    bookings,
   ] = await Promise.all([
     Promise.all(SALES_TABLES.map((t) => list(t))),
     list("documents"),
@@ -245,6 +247,7 @@ async function buildWork(): Promise<Work> {
     list("counters"),
     list("sheet_readings"),
     list("manufacturer_cards"),
+    list("bookings"),
   ]);
 
   const deletes: Work["deletes"] = [];
@@ -458,6 +461,24 @@ async function buildWork(): Promise<Work> {
           ...((ps.requestId && ps.status === "confirmed") ||
           (ps.orderId && (ps.status === "ordered" || ps.status === "cancelled"))
             ? { status: "planned" }
+            : {}),
+        },
+      });
+  // Booking (docs/BOOKING.md): a linha fica (é do catálogo); a que tinha
+  // virado solicitação de teste volta para a etapa anterior, sem a ligação.
+  for (const b of bookings)
+    if (b.requestId || b.requestGroupId || b.status === "requested")
+      updates.push({
+        table: "bookings",
+        id: b.id,
+        patch: {
+          requestId: null,
+          requestGroupId: null,
+          requestNumber: null,
+          ...(b.status === "requested"
+            ? {
+                status: b.customerId && b.reservedQty ? "reserved" : "approved",
+              }
             : {}),
         },
       });

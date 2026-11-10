@@ -69,6 +69,9 @@ export const pt = {
   "explore.noPhoto": "Sem foto",
   "explore.preview.banner":
     "Você está vendo a vitrine como o cliente vê (com a margem padrão). Só o cliente adiciona produtos ao carrinho.",
+  "explore.booking.hidden":
+    "Em Booking: o cliente ainda não vê este produto. Ele entra na vitrine quando for aprovado no Booking.",
+  "explore.booking.open": "Abrir o Booking",
   "explore.missing.title": "Para o preço aparecer, falta:",
   "explore.missing.price": "preço do fornecedor",
   "explore.missing.fx": "câmbio da moeda",
@@ -148,7 +151,8 @@ export const pt = {
     "Algum campo está inválido: confira a quantidade e a data.",
   "explore.error.cart_below_moq":
     "Quantidade abaixo do pedido mínimo deste produto.",
-  "explore.cart.belowMoq": "Abaixo do pedido mínimo ({n} un). Ao alterar a quantidade, ela sobe pelo menos até o mínimo.",
+  "explore.cart.belowMoq":
+    "Abaixo do pedido mínimo ({n} un). Ao alterar a quantidade, ela sobe pelo menos até o mínimo.",
   "explore.variant.label": "Variação",
   "explore.variant.choose": "Escolha a variação",
   "explore.variant.chooseLink": "Escolher variação",
@@ -229,6 +233,9 @@ export const en: Record<keyof typeof pt, string> = {
   "explore.noPhoto": "No photo",
   "explore.preview.banner":
     "You are seeing the storefront as the customer sees it (with the default margin). Only the customer adds products to the cart.",
+  "explore.booking.hidden":
+    "In Booking: the customer does not see this product yet. It enters the storefront when it is approved in Booking.",
+  "explore.booking.open": "Open Booking",
   "explore.missing.title": "For the price to show, missing:",
   "explore.missing.price": "supplier price",
   "explore.missing.fx": "currency exchange rate",
@@ -308,7 +315,8 @@ export const en: Record<keyof typeof pt, string> = {
     "A field is invalid: check the quantity and the date.",
   "explore.error.cart_below_moq":
     "Quantity below this product's minimum order.",
-  "explore.cart.belowMoq": "Below the minimum order ({n}). When you change the quantity, it goes up to at least the minimum.",
+  "explore.cart.belowMoq":
+    "Below the minimum order ({n}). When you change the quantity, it goes up to at least the minimum.",
   "explore.variant.label": "Variation",
   "explore.variant.choose": "Choose the variation",
   "explore.variant.chooseLink": "Choose variation",
@@ -380,6 +388,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.noPhoto": "无图片",
   "explore.preview.banner":
     "您正在以客户视角查看商品橱窗（默认利润率）。只有客户可以加入购物车。",
+  "explore.booking.hidden":
+    "在 Booking 中：客户还看不到该产品。在 Booking 中批准后，它才会进入商品橱窗。",
+  "explore.booking.open": "打开 Booking",
   "explore.missing.title": "显示价格还缺少：",
   "explore.missing.price": "供应商价格",
   "explore.missing.fx": "汇率",
@@ -448,7 +459,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "explore.error.forbidden": "只有客户可以使用购物车。",
   "explore.error.invalid_input": "有字段无效：请检查数量和日期。",
   "explore.error.cart_below_moq": "数量低于该产品的起订量。",
-  "explore.cart.belowMoq": "低于起订量（{n} 件）。修改数量时，将至少提升至起订量。",
+  "explore.cart.belowMoq":
+    "低于起订量（{n} 件）。修改数量时，将至少提升至起订量。",
   "explore.variant.label": "款式",
   "explore.variant.choose": "请选择款式",
   "explore.variant.chooseLink": "选择款式",

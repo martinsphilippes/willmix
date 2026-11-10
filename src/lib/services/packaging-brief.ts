@@ -1544,10 +1544,20 @@ export async function getPackagingBriefView(
   const docs = ids.length
     ? await store.list("documents", { filter: { id: ids } })
     : [];
-  const photos = brief.productId
-    ? ((await catalogShowcasePhotos([brief.productId])).get(brief.productId) ??
-      [])
-    : [];
+  // Produto ainda escondido pelo Booking (docs/BOOKING.md): fora da Wellmix,
+  // as fotos da vitrine não abrem; a lista vem vazia em vez de imagem quebrada.
+  const photosHidden =
+    !!brief.productId &&
+    !wellmix &&
+    (await (
+      await import("./booking-visibility")
+    ).isHiddenByBooking(brief.productId));
+  const photos =
+    brief.productId && !photosHidden
+      ? ((await catalogShowcasePhotos([brief.productId])).get(
+          brief.productId,
+        ) ?? [])
+      : [];
   const order = brief.orderId ? await store.get("orders", brief.orderId) : null;
   let orderArt: PackagingBriefView["orderArt"] = null;
   if (order) {

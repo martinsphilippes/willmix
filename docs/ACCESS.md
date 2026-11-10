@@ -25,6 +25,7 @@ Uma única lista de **telas** e uma única regra que diz quais telas cada login 
 
 | Tela                                                                         | Comprador | Ger. produto | Planner | Cadastro | Dir. compras | Dir. executiva | Designer |
 | ---------------------------------------------------------------------------- | :-------: | :----------: | :-----: | :------: | :----------: | :------------: | :------: |
+| Booking (produtos antes da solicitação)                                      |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |          |
 | Solicitações (e cotações)                                                    |     ✓     |      ✓       |    ✓    |          |      ✓       |       ✓        |          |
 | Pedidos                                                                      |     ✓     |      ✓       |    ✓    |    ✓     |      ✓       |       ✓        |    ✓     |
 | Sourcing                                                                     |     ✓     |      ✓       |         |    ✓     |      ✓       |       ✓        |          |

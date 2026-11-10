@@ -25,6 +25,7 @@ import {
 import { buildPrompt } from "@/lib/ai/prompts";
 import { keywordMatches, NCM_HINTS } from "./taxes";
 import { audit } from "./audit";
+import { hiddenBookingProductIds } from "./booking-visibility";
 import { uploadDocument } from "./documents";
 import {
   hashDistance,
@@ -54,7 +55,13 @@ const MAX_HASH_BACKFILL = 200;
 /** Produtos com foto enviados à IA para comparação visual (até 2 fotos cada). */
 const MAX_VISUAL_PRODUCTS = 20;
 /** Fotos que mostram o produto (as de medida/balança costumam mostrar só um detalhe). */
-const VISUAL_KINDS = new Set(["original", "commercial", "supplier", "packaging", "other"]);
+const VISUAL_KINDS = new Set([
+  "original",
+  "commercial",
+  "supplier",
+  "packaging",
+  "other",
+]);
 
 const fold = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -347,8 +354,14 @@ export async function runProductLookup(
   if (!aiImage && preview?.image)
     aiImage = { bytes: preview.image.bytes, mime: preview.image.mime };
 
-  // 1) Catálogo.
-  const products = await store.list("products", { filter: { active: true } });
+  // 1) Catálogo. Produto ainda escondido pelo Booking (não aprovado) fica de
+  // fora dos candidatos: nome e fotos dele não vão à IA nem voltam como
+  // correspondência ou sugestão.
+  const [active, hidden] = await Promise.all([
+    store.list("products", { filter: { active: true } }),
+    hiddenBookingProductIds(),
+  ]);
+  const products = active.filter((p) => !hidden.has(p.id));
   const catalog = await catalogPhotoHashes(products);
   const matches = new Map<string, LookupMatch>();
   photoMatches(matches, imageHash, catalog, "photo");
