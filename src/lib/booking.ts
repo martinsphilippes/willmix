@@ -82,7 +82,7 @@ export const BOOKING_ERRORS = [
   "booking_request_alive",
   /** Linha recém-tomada: a solicitação dela ainda está sendo criada. */
   "booking_request_pending",
-  /** Reabrir uma linha cuja solicitação virou pedido ou foi cancelada: só quem analisa. */
+  /** Reabrir uma linha cuja solicitação virou pedido: só quem analisa. */
   "booking_reopen_forbidden",
   /** Gerar solicitação: faltou o cliente (linhas sem cliente e nenhum escolhido). */
   "booking_request_customer",
@@ -123,7 +123,7 @@ export const BOOKING_LINK_WAIT_MS = 2 * 60_000;
  * - `pending`: a linha foi tomada há pouco e a solicitação ainda não existe
  *   (o "Gerar solicitação" está rodando);
  * - `alive`: a solicitação existe e ainda pode ser excluída;
- * - `closed`: a solicitação virou pedido ou foi cancelada;
+ * - `closed`: a solicitação virou pedido;
  * - `missing`: passaram 2 minutos e a solicitação não existe (a criação
  *   caiu no meio).
  */
@@ -137,7 +137,13 @@ export function bookingLinkState(
 ): BookingLinkState | null {
   if (row.status !== "requested") return null;
   if (request)
-    return BOOKING_OPEN_REQUEST.includes(request.status) ? "alive" : "closed";
+    return BOOKING_OPEN_REQUEST.includes(request.status)
+      ? "alive"
+      : // Cancelada (excluída, ou desfeita depois de uma falha): para a linha
+        // é como se não existisse. O resto é pedido.
+        request.status === "CANCELLED"
+        ? "missing"
+        : "closed";
   const since = Date.parse(row.statusChangedAt ?? "");
   return Number.isFinite(since) && now - since <= BOOKING_LINK_WAIT_MS
     ? "pending"

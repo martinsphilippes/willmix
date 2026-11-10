@@ -94,7 +94,7 @@ export const pt = {
   "booking.error.booking_request_pending":
     "A solicitação desta linha está sendo criada agora. Espere um instante e atualize a página.",
   "booking.error.booking_reopen_forbidden":
-    "A solicitação desta linha virou pedido ou foi cancelada. Reabrir a linha é de quem analisa no Superplan (hoje, o administrador).",
+    "A solicitação desta linha já virou pedido. Reabrir a linha é de quem analisa no Superplan (hoje, o administrador).",
   "booking.productMissing": "Produto fora do cadastro",
   "booking.error.booking_request_alive":
     "Esta linha tem uma solicitação em andamento (ainda não virou pedido). Para a linha voltar, exclua a solicitação (em Solicitações): ela volta sozinha para Reservado ou Aprovado.",
@@ -203,7 +203,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.error.booking_request_pending":
     "The request of this row is being created right now. Wait a moment and refresh the page.",
   "booking.error.booking_reopen_forbidden":
-    "The request of this row became an order or was cancelled. Reopening the row is for whoever analyzes in Superplan (today, the administrator).",
+    "The request of this row already became an order. Reopening the row is for whoever analyzes in Superplan (today, the administrator).",
   "booking.productMissing": "Product no longer in the catalog",
   "booking.error.booking_request_alive":
     "This row has a request in progress (not an order yet). For the row to come back, delete the request (in Requests): it returns by itself to Reserved or Approved.",
@@ -307,7 +307,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.error.booking_request_pending":
     "该行的询价单正在创建中。请稍等片刻后刷新页面。",
   "booking.error.booking_reopen_forbidden":
-    "该行的询价单已转为订单或已取消。重新打开该行只能由在 Superplan 中分析的人操作（目前为管理员）。",
+    "该行的询价单已转为订单。重新打开该行只能由在 Superplan 中分析的人操作（目前为管理员）。",
   "booking.productMissing": "产品已不在目录中",
   "booking.error.booking_request_alive":
     "该行有一张进行中的询价单（尚未转为订单）。要让该行回来，请删除询价单（在“询价单”中）：它会自动回到“已预订”或“已批准”。",

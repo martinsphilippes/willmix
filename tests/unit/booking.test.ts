@@ -557,8 +557,14 @@ describe("sair de 'Virou solicitação'", () => {
     ).toBe("missing");
     for (const status of BOOKING_OPEN_REQUEST)
       expect(bookingLinkState(taken(1), { status }, now)).toBe("alive");
-    for (const status of ["ORDERED", "CANCELLED"])
-      expect(bookingLinkState(taken(600), { status }, now)).toBe("closed");
+    // Virou pedido: encerrada. Cancelada: para a linha, não existe mais (na
+    // hora, sem esperar os 2 minutos).
+    expect(bookingLinkState(taken(600), { status: "ORDERED" }, now)).toBe(
+      "closed",
+    );
+    expect(bookingLinkState(taken(0), { status: "CANCELLED" }, now)).toBe(
+      "missing",
+    );
     expect(
       bookingLinkState({ status: "approved", statusChangedAt: null }, null),
     ).toBeNull();

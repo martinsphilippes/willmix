@@ -1661,3 +1661,157 @@ describe("solicitação ligada antes de nascer (terceira revisão)", () => {
     }
   });
 });
+
+describe("gerar solicitação: corridas e falhas (releitura própria)", () => {
+  it("duas chamadas passam juntas pela tomada: no fecho, a que perdeu a linha cancela a própria solicitação e sobra uma só", async () => {
+    const a = await row("approved");
+    const store = getStore();
+    const update = store.update.bind(store);
+    const create = store.create.bind(store);
+    let bAtClaim!: () => void;
+    const bReachedClaim = new Promise<void>((r) => (bAtClaim = r));
+    let letBClaim!: () => void;
+    const bMayClaim = new Promise<void>((r) => (letBClaim = r));
+    let bDidClaim!: () => void;
+    const bClaimed = new Promise<void>((r) => (bDidClaim = r));
+    let firstRequest = true;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const updateSpy = vi
+      .spyOn(store, "update")
+      .mockImplementation(async (table, id, patch) => {
+        const p = patch as { status?: string; statusChangedByUserId?: string };
+        // A chamada B (admin) já conferiu a linha e para logo antes de tomá-la.
+        if (
+          table === "bookings" &&
+          p.status === "requested" &&
+          p.statusChangedByUserId === admin.id
+        ) {
+          bAtClaim();
+          await bMayClaim;
+          const saved = await update(table, id, patch as never);
+          bDidClaim();
+          return saved;
+        }
+        return update(table, id, patch as never);
+      });
+    const createSpy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        // A chamada A (comprador) tomou a linha, releu e começa a criar: só
+        // então B grava a tomada dela por cima.
+        if (table === "requests" && firstRequest) {
+          firstRequest = false;
+          letBClaim();
+          await bClaimed;
+        }
+        return create(table, data as never);
+      });
+    let results: PromiseSettledResult<unknown>[];
+    try {
+      const callB = booking.generateRequestFromBooking(
+        admin,
+        { ids: [a.booking.id], customer: joao.partyId! },
+        t,
+      );
+      await bReachedClaim;
+      const callA = booking.generateRequestFromBooking(
+        buyer,
+        { ids: [a.booking.id], customer: joao.partyId! },
+        t,
+      );
+      results = await Promise.allSettled([callA, callB]);
+    } finally {
+      updateSpy.mockRestore();
+      createSpy.mockRestore();
+      log.mockRestore();
+    }
+    // A perdeu a linha: recusa, e a solicitação que ela criou foi cancelada.
+    expect(results[0].status).toBe("rejected");
+    expect(
+      ((results[0] as PromiseRejectedResult).reason as Error).message,
+    ).toBe("booking_not_requestable");
+    expect(results[1].status).toBe("fulfilled");
+    const ofProduct = (await store.list("requests")).filter(
+      (r) => r.productId === a.product.id,
+    );
+    expect(ofProduct).toHaveLength(2);
+    const live = ofProduct.filter((r) => r.status !== "CANCELLED");
+    expect(live).toHaveLength(1);
+    expect(live[0].createdByUserId).toBe(admin.id);
+    // A linha ficou com a solicitação que sobrou.
+    const saved = await fresh(a.booking.id);
+    expect([saved.status, saved.requestId]).toEqual(["requested", live[0].id]);
+  });
+
+  it("criação falha e nem dá para devolver a linha: ela não fica presa (a solicitação foi cancelada e quem tem a tela devolve a linha)", async () => {
+    const a = await row("approved");
+    const store = getStore();
+    const update = store.update.bind(store);
+    const create = store.create.bind(store);
+    let down = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const createSpy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (table === "notifications") {
+          // A solicitação já foi gravada; daqui em diante o banco cai.
+          down = true;
+          throw new Error("store down");
+        }
+        return create(table, data as never);
+      });
+    const updateSpy = vi
+      .spyOn(store, "update")
+      .mockImplementation(async (table, id, patch) => {
+        // Com o banco fora, a linha não volta (a solicitação ainda é cancelada).
+        if (down && table === "bookings") throw new Error("store down");
+        return update(table, id, patch as never);
+      });
+    try {
+      expect(
+        await code(() =>
+          booking.generateRequestFromBooking(
+            buyer,
+            { ids: [a.booking.id], customer: joao.partyId! },
+            t,
+          ),
+        ),
+      ).toBe("store down");
+    } finally {
+      createSpy.mockRestore();
+      updateSpy.mockRestore();
+      log.mockRestore();
+    }
+    // A linha ficou tomada, apontando para uma solicitação cancelada.
+    const stuck = await fresh(a.booking.id);
+    expect(stuck.status).toBe("requested");
+    expect(stuck.requestId).toBeTruthy();
+    const request = (await store.get("requests", stuck.requestId!))!;
+    expect(request.status).toBe("CANCELLED");
+    // Cancelada = não existe mais: quem tem a tela (sem precisar de quem
+    // analisa) devolve a linha na hora.
+    const detail = (await booking.getBookingDetail(buyer, a.booking.id))!;
+    expect(detail.link).toBe("missing");
+    expect(detail.row.requestState).toBe("missing");
+    expect(detail.moveOptions).toEqual([
+      "approved",
+      "offered",
+      "reserved",
+      "requested",
+    ]);
+    await booking.saveBookingRow(buyer, a.booking.id, { status: "approved" });
+    const back = await fresh(a.booking.id);
+    expect([back.status, back.requestId]).toEqual(["approved", null]);
+    // E gera de novo, com uma solicitação viva só.
+    await booking.generateRequestFromBooking(
+      buyer,
+      { ids: [a.booking.id], customer: joao.partyId! },
+      t,
+    );
+    expect(
+      (await store.list("requests")).filter(
+        (r) => r.productId === a.product.id && r.status !== "CANCELLED",
+      ),
+    ).toHaveLength(1);
+  });
+});

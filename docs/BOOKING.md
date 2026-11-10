@@ -68,8 +68,8 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
    - Sair de "Virou solicitação" depende da **solicitação da linha** (a linha guarda o id dela desde que é tomada, regra 8):
      - **sendo criada** (a linha foi tomada há menos de 2 minutos e a solicitação ainda não existe): ninguém mexe, nem quem analisa. A tela diz "criando…";
      - **em andamento** (existe e ainda não virou pedido): ninguém reabre à mão, porque reabrir deixaria a solicitação viva e a linha livre para gerar outra. O caminho é excluir a solicitação (a linha volta sozinha, regra 8);
-     - **virou pedido ou foi cancelada**: só quem analisa reabre (por exemplo, para oferecer o produto de novo). A ligação antiga sai da linha e fica no histórico; o pedido não é tocado;
-     - **não chegou a nascer** (passaram 2 minutos e a solicitação não existe: a criação caiu no meio): qualquer login com a tela devolve a linha para Aprovado, Oferecido ou Reservado. A página da linha avisa.
+     - **virou pedido**: só quem analisa reabre (por exemplo, para oferecer o produto de novo). A ligação antiga sai da linha e fica no histórico; o pedido não é tocado;
+     - **não existe** (passaram 2 minutos e a solicitação não nasceu, porque a criação caiu no meio; ou ela foi cancelada e a linha não voltou sozinha): qualquer login com a tela devolve a linha para Aprovado, Oferecido ou Reservado. A página da linha avisa.
    - O resto (Novo ↔ Em análise; descartar ou recuperar antes de aprovar; Aprovado ↔ Oferecido ↔ Reservado): qualquer login com a tela.
 4. **O que a etapa exige**: Oferecido precisa de cliente; Reservado, de cliente e quantidade. A quantidade reservada é inteira, positiva e **nunca abaixo do pedido mínimo** do produto (ficha mestre, senão cadastro).
 5. **Cliente**: empresa cliente ativa, ou "Estoque Wellmix" (compra para estoque, a mesma empresa interna da Nova solicitação). Oferecer ou reservar confere de novo: cliente que deixou de estar ativo é recusado, com a linha. **Responsável**: login ativo da Wellmix; quem importou a planilha, até alguém trocar.
