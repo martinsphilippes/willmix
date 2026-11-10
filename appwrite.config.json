@@ -6269,6 +6269,21 @@
           "type": "text"
         },
         {
+          "key": "agencyItemPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "agencyItemCurrency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
+        },
+        {
           "key": "dueAt",
           "required": false,
           "array": false,
