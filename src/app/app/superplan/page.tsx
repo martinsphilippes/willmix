@@ -23,6 +23,8 @@ import {
   type SuperplanLabels,
 } from "@/components/superplan-calculator";
 import { saveBookingAnalysisAction } from "../actions/booking";
+import { superplanSupplierOptions } from "@/lib/services/superplan-rfq";
+import { STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
 import { SuperplanParamsForm } from "./_components/params-form";
 
 /*
@@ -38,6 +40,9 @@ import { SuperplanParamsForm } from "./_components/params-form";
  * Aberto por uma linha do Booking (`?booking=<id>`, docs/BOOKING.md): a tela
  * já vem com o produto da linha e ganha "Gravar no Booking", que guarda a
  * simulação na linha (o resultado é refeito no servidor).
+ *
+ * Viabilidade feita: o administrador abre, daqui, a faca e a RFQ com o
+ * fornecedor ganho (docs/SUPERPLAN.md, "Da viabilidade à faca e à RFQ").
  */
 
 const PRODUCT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/;
@@ -100,8 +105,26 @@ export default async function SuperplanPage({
   const prefill: SuperplanPrefill = loaded ?? EMPTY_SUPERPLAN_PREFILL;
   const decimal = t.intl.startsWith("pt") ? "," : ".";
   const admin = isAdmin(user);
+  // Abrir a faca e a RFQ com o fornecedor ganho: só o administrador, com um
+  // produto do cadastro.
+  const rfq =
+    admin && loaded
+      ? {
+          suppliers: await superplanSupplierOptions(loaded.productId),
+          customers: (
+            await getStore().list("parties", {
+              filter: { type: "customer", active: true },
+              orderBy: "name",
+            })
+          )
+            .filter((c) => c.id !== STOCK_PARTY_ID)
+            .map((c) => ({ id: c.id, name: c.name })),
+        }
+      : null;
 
   const errorCode = typeof query.error === "string" ? query.error : "";
+  // Recusa ao abrir a faca e a RFQ (mostrada em cima, perto da simulação).
+  const fromRfq = query.rfq === "1";
   const errorText = !errorCode
     ? null
     : errorCode === "invalid_input"
@@ -132,6 +155,11 @@ export default async function SuperplanPage({
         title={t("superplan.title")}
         subtitle={t("superplan.subtitle")}
       />
+      {errorText && fromRfq && !bookingId ? (
+        <div className="mb-4" data-superplan-error>
+          <Alert tone="danger">{errorText}</Alert>
+        </div>
+      ) : null}
       {bookingId ? (
         <div className="mb-4 space-y-2" data-superplan-booking>
           {booking ? (
@@ -168,6 +196,7 @@ export default async function SuperplanPage({
         // Média do despachante (ficha mestre): só informação na tela.
         averageUsd={loaded ? loaded.averageUsd : undefined}
         ctx={ctx}
+        rfq={rfq}
         save={
           booking
             ? {
@@ -219,7 +248,7 @@ export default async function SuperplanPage({
             </p>
           </div>
           {/* Recusa do "Gravar no Booking": já aparece em cima, junto da simulação. */}
-          {booking ? null : (
+          {booking || fromRfq ? null : (
             <ActionError
               t={t}
               code={errorCode}
@@ -233,7 +262,7 @@ export default async function SuperplanPage({
           ) : null}
           <SuperplanParamsForm t={t} params={params} decimal={decimal} />
         </section>
-      ) : errorText && !booking ? (
+      ) : errorText && !booking && !fromRfq ? (
         <Card className="mt-6">
           <Alert tone="danger">{errorText}</Alert>
         </Card>

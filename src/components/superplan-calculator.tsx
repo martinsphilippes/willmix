@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { openSuperplanRfqAction } from "@/app/app/actions/superplan-rfq";
 import type { pt as superplanTexts } from "@/i18n/modules/superplan";
 import { parseNumberInput } from "@/lib/number-input";
 import {
@@ -59,6 +60,10 @@ import {
  * `save` (opcional): quem monta a tela pode pedir um botão que envia a
  * simulação que está na tela a uma Server Action (a ação refaz a conta no
  * servidor). O componente não sabe para que a simulação será gravada.
+ *
+ * `rfq` (opcional, só o administrador): cartão "Viável? Abrir faca e RFQ com
+ * o fornecedor" (docs/SUPERPLAN.md). Envia a simulação do mesmo jeito que o
+ * `save`; o servidor refaz a conta com os parâmetros do sistema.
  */
 
 export type SuperplanLabels = Record<keyof typeof superplanTexts, string>;
@@ -86,6 +91,15 @@ export interface SuperplanSave {
   submit: string;
 }
 
+/**
+ * Abrir a faca e a RFQ com o fornecedor ganho (só o administrador, com um
+ * produto do cadastro): fornecedores (os do produto primeiro) e clientes.
+ */
+export interface SuperplanRfqOptions {
+  suppliers: Array<{ id: string; name: string; linked: boolean }>;
+  customers: Array<{ id: string; name: string }>;
+}
+
 /** Campos escondidos que a calculadora manda (os de `save.hidden` não os trocam). */
 const SAVE_FIELDS = ["input", "businessType", "container", "ncmFound"];
 
@@ -105,6 +119,7 @@ export function SuperplanCalculator({
   ctx,
   averageUsd,
   save,
+  rfq = null,
 }: {
   labels: SuperplanLabels;
   /** Tag do idioma para os números (pt-BR, en-US, zh-CN). */
@@ -119,6 +134,8 @@ export function SuperplanCalculator({
    */
   averageUsd?: number | null;
   save?: SuperplanSave;
+  /** Nulo: sem o cartão de abrir a faca e a RFQ. */
+  rfq?: SuperplanRfqOptions | null;
 }) {
   const router = useRouter();
   const L = (key: LabelKey, params?: Record<string, string | number>) =>
@@ -528,6 +545,17 @@ export function SuperplanCalculator({
               ) : null}
             </div>
           </Card>
+          {rfq ? (
+            <RfqCard
+              L={L}
+              r={r}
+              rfq={rfq}
+              productId={prefill.productId}
+              input={input}
+              businessType={f.businessType}
+              container={f.container}
+            />
+          ) : null}
         </div>
 
         <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
@@ -932,5 +960,110 @@ function Results({
         </Card>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Viabilidade feita: abre a solicitação e a RFQ só com o fornecedor ganho
+ * (docs/SUPERPLAN.md). Com prejuízo ou conta incompleta, o botão não aparece
+ * e a tela diz por quê; o servidor confere de novo.
+ */
+function RfqCard({
+  L,
+  r,
+  rfq,
+  productId,
+  input,
+  businessType,
+  container,
+}: {
+  L: Lbl;
+  r: SuperplanResult;
+  rfq: SuperplanRfqOptions;
+  productId: string | null;
+  input: SuperplanInput;
+  businessType: string;
+  container: string;
+}) {
+  const pieces = r.container?.pieces ?? null;
+  // A quantidade acompanha o container até a pessoa digitar outra.
+  const [quantity, setQuantity] = useState<string | null>(null);
+  const shown = quantity ?? (pieces ? String(pieces) : "");
+  const blocked = !productId
+    ? L("superplan.rfq.needProduct")
+    : r.missing.length || !r.verdict
+      ? L("superplan.rfq.needResult")
+      : r.verdict === "loss"
+        ? L("superplan.rfq.loss")
+        : !rfq.suppliers.length
+          ? L("superplan.rfq.noSuppliers")
+          : null;
+  return (
+    <div id="superplan-rfq" className="scroll-mt-4" data-superplan-rfq>
+      <Card dense title={L("superplan.rfq.title")}>
+        <p className="-mt-1 mb-3 text-sm text-zinc-600">
+          {L("superplan.rfq.hint")}
+        </p>
+        {blocked ? (
+          <Alert tone={r.verdict === "loss" ? "danger" : "neutral"}>
+            {blocked}
+          </Alert>
+        ) : (
+          <form action={openSuperplanRfqAction} className="space-y-3">
+            <input type="hidden" name="productId" value={productId ?? ""} />
+            <input type="hidden" name="input" value={JSON.stringify(input)} />
+            <input type="hidden" name="businessType" value={businessType} />
+            <input type="hidden" name="container" value={container} />
+            {r.verdict === "below" ? (
+              <Alert tone="warning">{L("superplan.rfq.below")}</Alert>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field label={L("superplan.rfq.supplier")}>
+                <Select name="supplierId" required data-sp="rfq.supplier">
+                  {rfq.suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.linked
+                        ? `${s.name} (${L("superplan.rfq.linked")})`
+                        : s.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={L("superplan.rfq.customer")}>
+                <Select name="customerId" data-sp="rfq.customer">
+                  <option value="__stock">{L("superplan.rfq.stock")}</option>
+                  {rfq.customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label={L("superplan.rfq.quantity")}
+                hint={L("superplan.rfq.quantity.hint")}
+              >
+                <Input
+                  name="quantity"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  value={shown}
+                  data-sp="rfq.quantity"
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </Field>
+            </div>
+            <SubmitButton
+              pendingText={L("superplan.rfq.sending")}
+              data-superplan-rfq-submit
+            >
+              {L("superplan.rfq.submit")}
+            </SubmitButton>
+          </form>
+        )}
+      </Card>
+    </div>
   );
 }

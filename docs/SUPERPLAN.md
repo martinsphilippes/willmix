@@ -44,7 +44,7 @@ Em segundos, para qualquer produto: custo por peça, preço mínimo, lucro e um 
 | Dólar futuro                                                                                                     | Oficial + diferença dos parâmetros (R$ 0,25)                                                                                              |
 | Tipos de negócio, despesas por container, fretes, AFRMM, folga da embalagem no peso, fatores e impostos da venda | Parâmetros do Superplan (setting `superplan`)                                                                                             |
 
-Tudo continua editável na tela para a simulação. A simulação não grava nada (o botão opcional de gravar a simulação está na seção 5.3).
+Tudo continua editável na tela para a simulação. A simulação não grava nada (o botão opcional de gravar a simulação está na seção 5.3); o botão "Abrir faca e RFQ" cria a solicitação (seção "Da viabilidade à faca e à RFQ").
 
 ## 5. Como calcula
 
@@ -157,10 +157,27 @@ Sem tabela nova e sem coluna nova: os parâmetros ficam na tabela `settings`, ch
 - **PIS/COFINS-importação, ICMS da importação e seguro**: em Configurações → Tributos (valem também para a proposta ao cliente).
 - **Regime ou forma de cálculo** (ex.: lucro presumido em vez de real, benefício fiscal do estado, crédito diferente): mudança na função `saleAt` de `src/lib/superplan.ts`, com teste novo em `tests/unit/superplan.test.ts` e o contador validando os números. A base dos impostos continua sendo o valor real da compra e da venda: declarar valor menor que o pago é subfaturamento, por isso não existe chave para isso.
 
-## 11. Melhorias futuras
+## 11. Da viabilidade à faca e à RFQ (fornecedor ganho)
+
+Pedido do dono: a faca (die-cut) vem **logo depois da análise de viabilidade**. É um fluxo novo, ao lado da solicitação comum (que não muda): do próprio Superplan abre-se a faca para o fornecedor e a RFQ com o fornecedor ganho, a partir da simulação.
+
+1. **No Superplan** (só o administrador, com um produto do cadastro): cartão **Viável? Abrir faca e RFQ com o fornecedor**. Escolhe o fornecedor ganho (os do produto primeiro, o principal no topo), para quem é (cliente ou compra para estoque, o padrão) e a quantidade (padrão: as peças que cabem no container). Com **prejuízo** (vermelho) ou conta incompleta, não abre; com lucro **abaixo da meta** (amarelo), abre com aviso.
+2. **O que o sistema cria**: a solicitação (origem "Superplan", com o resumo da viabilidade nas observações), a RFQ **só com o fornecedor ganho**, já com o **preço da simulação**, e o briefing da embalagem com a faca obrigatória. A conta é refeita no servidor com os parâmetros e tributos do sistema; a auditoria `superplan.rfq_open` guarda os números usados e o resultado.
+3. **O fornecedor** recebe "Superplan: envie faca, MOQ, prazo e foto em alta" e, na cotação (`/app/quotes/{id}#superplan`), envia os quatro itens, aos poucos se quiser:
+   - **Faca (die-cut)**: arquivo ou foto; vai para o briefing da embalagem (versões, e quem faz a arte é avisado na hora);
+   - **MOQ** e **prazo de produção**: vêm sugeridos (cadastro do produto e últimas cotações desse fornecedor) e **só contam depois que ele confirma ou corrige**;
+   - **Foto em alta (HD)**: fica nas fotos da cotação (tipo `hd`).
+4. **Com os quatro**, a cotação fica respondida e a Wellmix é avisada; se MOQ ou prazo mudaram em relação ao sugerido, o aviso é de atenção e mostra o antes. Cada envio fica na auditoria (`superplan.items`, com antes e depois).
+5. **Bloqueio**: enquanto faltar algum item, escolher o fornecedor (proposta ao cliente) e enviar para aprovação do pré-custo são recusados (`superplan_items_missing`). A Wellmix pode enviar no lugar do fornecedor.
+6. **Etapas da solicitação**: na aberta do Superplan, a etapa "Faca (die-cut)" vem logo depois da "Solicitação nova" e começa com a RFQ.
+
+Dados (aditivo): `requests.origin` ganhou `superplan`; `quotes.moq` (inteiro, opcional, só gravado nesse fluxo). Código: `src/lib/superplan-rfq.ts` (regra pura), `src/lib/services/superplan-rfq.ts`, `src/app/app/actions/superplan-rfq.ts`, `src/components/superplan-items-card.tsx`; testes em `tests/unit/superplan-rfq.test.ts`.
+
+## 12. Melhorias futuras
 
 - Puxar o frete do Tarifário de frete vigente (40HC, destino escolhido) em vez do padrão.
 - Salvar simulações por produto (histórico de custo e preço) e comparar cotações de fornecedores lado a lado.
 - Aviso quando câmbio ou frete fazem um produto passar de verde para amarelo ou vermelho.
 - Usar as variações do produto (tamanho, acabamento) e levar o preço do Superplan para a proposta ao cliente.
+- Abrir do Superplan produto com variações (hoje a tela pede para abrir pela solicitação) e lembrete por prazo dos quatro itens do fornecedor.
 - Exportar a simulação em PDF ou planilha.

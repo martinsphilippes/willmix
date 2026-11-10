@@ -99,7 +99,9 @@ export const canEditPackagingBrief = canViewPackagingBrief;
 
 /**
  * Fornecedor da embalagem: o do pedido (depois do sinal) ou o da cotação
- * escolhida. Nulo antes da escolha. É ele quem envia a faca (die-cut).
+ * escolhida. Nulo antes da escolha, menos na solicitação aberta do Superplan:
+ * lá o fornecedor já ganhou e manda a faca junto com a resposta da RFQ.
+ * É ele quem envia a faca (die-cut).
  */
 export async function briefSupplierId(
   brief: Pick<PackagingBrief, "orderId" | "requestId">,
@@ -110,9 +112,22 @@ export async function briefSupplierId(
     if (order) return order.supplierId;
   }
   const request = await store.get("requests", brief.requestId);
-  if (!request?.selectedQuoteId) return null;
+  if (!request) return null;
+  if (!request.selectedQuoteId)
+    return request.origin === "superplan"
+      ? ((await superplanQuote(request.id))?.supplierId ?? null)
+      : null;
   const quote = await store.get("quotes", request.selectedQuoteId);
   return quote?.supplierId ?? null;
+}
+
+/** A cotação do fornecedor ganho na RFQ do Superplan (a única não recusada). */
+async function superplanQuote(requestId: string): Promise<Quote | null> {
+  const quotes = await getStore().list("quotes", {
+    filter: { requestId },
+    orderBy: "createdAt",
+  });
+  return quotes.find((q) => q.status !== "rejected") ?? null;
 }
 
 /** O login é do fornecedor escolhido para esta embalagem? */
@@ -153,9 +168,12 @@ async function dielineLinkFor(
 ): Promise<string> {
   if (brief.orderId) return `/app/orders/${brief.orderId}#die-cut`;
   const request = await getStore().get("requests", brief.requestId);
-  return request?.selectedQuoteId
-    ? `/app/quotes/${request.selectedQuoteId}#die-cut`
-    : "/app";
+  if (request?.selectedQuoteId)
+    return `/app/quotes/${request.selectedQuoteId}#die-cut`;
+  // Superplan: a faca vai junto com MOQ, prazo e foto em alta, na cotação.
+  const superplan =
+    request?.origin === "superplan" ? await superplanQuote(request.id) : null;
+  return superplan ? `/app/quotes/${superplan.id}#superplan` : "/app";
 }
 
 /**

@@ -111,7 +111,9 @@ export async function RequestStagesCard({
                     <span className="block text-xs text-zinc-500">
                       {row.answered && row.answered.total > 0
                         ? t("reqStage.answered", row.answered)
-                        : t(`reqStage.${row.key}.hint`)}
+                        : row.superplan
+                          ? t("reqStage.dieline.hint.superplan")
+                          : t(`reqStage.${row.key}.hint`)}
                     </span>
                   </Td>
                   <Td className="whitespace-nowrap">

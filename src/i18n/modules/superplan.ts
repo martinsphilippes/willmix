@@ -194,6 +194,38 @@ export const pt = {
     "Algum valor dos parâmetros não é um número válido. Confira e salve de novo.",
   "superplan.settingsLink":
     "Parâmetros do Superplan (tipos de negócio, despesas e impostos da venda)",
+  "superplan.rfq.title": "Viável? Abrir faca e RFQ com o fornecedor",
+  "superplan.rfq.hint":
+    "Cria a solicitação e a RFQ só com o fornecedor ganho, com o preço e a quantidade desta simulação. Ele envia a faca (die-cut), o MOQ, o prazo e a foto em alta; a proposta espera esses quatro itens.",
+  "superplan.rfq.supplier": "Fornecedor ganho",
+  "superplan.rfq.linked": "do produto",
+  "superplan.rfq.customer": "Para quem",
+  "superplan.rfq.stock": "Compra para estoque (sem cliente)",
+  "superplan.rfq.quantity": "Quantidade (peças)",
+  "superplan.rfq.quantity.hint": "Padrão: as peças que cabem no container.",
+  "superplan.rfq.submit": "Abrir faca e RFQ",
+  "superplan.rfq.sending": "Abrindo…",
+  "superplan.rfq.needProduct":
+    "Escolha um produto do cadastro para abrir a faca e a RFQ.",
+  "superplan.rfq.needResult": "Complete a simulação para abrir a faca e a RFQ.",
+  "superplan.rfq.loss":
+    "Com prejuízo não dá para abrir: ajuste o preço ou os números.",
+  "superplan.rfq.below":
+    "Lucro abaixo da meta: dá para abrir, mas confira antes.",
+  "superplan.rfq.noSuppliers": "Nenhum fornecedor ativo no cadastro.",
+  "superplan.error.simulation_incomplete":
+    "A simulação está incompleta: preencha o que falta e tente de novo.",
+  "superplan.error.not_viable":
+    "Com prejuízo não dá para abrir: ajuste o preço ou os números.",
+  "superplan.error.invalid_quantity":
+    "Quantidade: use um número inteiro de peças.",
+  "superplan.error.invalid_customer": "Cliente inválido ou inativo.",
+  "superplan.error.product_not_found": "Produto não encontrado no cadastro.",
+  "superplan.error.quote_not_created": "A RFQ não foi criada: tente de novo.",
+  "superplan.error.variant_required":
+    "Produto com variações: abra a solicitação pela tela de solicitações, escolhendo a variação.",
+  "superplan.error.below_moq": "Quantidade abaixo do pedido mínimo do produto.",
+  "superplan.error.invalid_supplier": "Fornecedor inválido ou inativo.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -387,6 +419,39 @@ export const en: Record<keyof typeof pt, string> = {
     "A parameter value is not a valid number. Check it and save again.",
   "superplan.settingsLink":
     "Superplan parameters (business types, expenses and sale taxes)",
+  "superplan.rfq.title": "Viable? Open die-cut and RFQ with the supplier",
+  "superplan.rfq.hint":
+    "Creates the request and the RFQ only with the winning supplier, with this simulation's price and quantity. The supplier sends the die-cut, the MOQ, the lead time and the high-res photo; the proposal waits for those four items.",
+  "superplan.rfq.supplier": "Winning supplier",
+  "superplan.rfq.linked": "of the product",
+  "superplan.rfq.customer": "For",
+  "superplan.rfq.stock": "Stock purchase (no customer)",
+  "superplan.rfq.quantity": "Quantity (pieces)",
+  "superplan.rfq.quantity.hint":
+    "Default: the pieces that fit in the container.",
+  "superplan.rfq.submit": "Open die-cut and RFQ",
+  "superplan.rfq.sending": "Opening…",
+  "superplan.rfq.needProduct":
+    "Choose a product from the catalog to open the die-cut and the RFQ.",
+  "superplan.rfq.needResult":
+    "Complete the simulation to open the die-cut and the RFQ.",
+  "superplan.rfq.loss":
+    "With a loss it cannot be opened: adjust the price or the numbers.",
+  "superplan.rfq.below":
+    "Profit below the target: it can be opened, but check first.",
+  "superplan.rfq.noSuppliers": "No active supplier in the registry.",
+  "superplan.error.simulation_incomplete":
+    "The simulation is incomplete: fill in what is missing and try again.",
+  "superplan.error.not_viable":
+    "With a loss it cannot be opened: adjust the price or the numbers.",
+  "superplan.error.invalid_quantity": "Quantity: use a whole number of pieces.",
+  "superplan.error.invalid_customer": "Invalid or inactive customer.",
+  "superplan.error.product_not_found": "Product not found in the catalog.",
+  "superplan.error.quote_not_created": "The RFQ was not created: try again.",
+  "superplan.error.variant_required":
+    "Product with variants: open the request from the requests screen, choosing the variant.",
+  "superplan.error.below_moq": "Quantity below the product's minimum order.",
+  "superplan.error.invalid_supplier": "Invalid or inactive supplier.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -573,4 +638,30 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.params.saved": "参数已保存。",
   "superplan.error.invalid": "某个参数不是有效数字。请检查后重新保存。",
   "superplan.settingsLink": "Superplan 参数（业务类型、费用和销售税）",
+  "superplan.rfq.title": "可行？向供应商开启刀版和询价",
+  "superplan.rfq.hint":
+    "只向中标供应商创建需求和询价，使用本次模拟的价格和数量。供应商发送刀版、起订量、交期和高清照片；报价方案需等待这四项。",
+  "superplan.rfq.supplier": "中标供应商",
+  "superplan.rfq.linked": "本产品",
+  "superplan.rfq.customer": "用于",
+  "superplan.rfq.stock": "备货采购（无客户）",
+  "superplan.rfq.quantity": "数量（件）",
+  "superplan.rfq.quantity.hint": "默认：一个货柜可装的件数。",
+  "superplan.rfq.submit": "开启刀版和询价",
+  "superplan.rfq.sending": "正在开启…",
+  "superplan.rfq.needProduct": "请从产品目录选择产品，以开启刀版和询价。",
+  "superplan.rfq.needResult": "请完成模拟，以开启刀版和询价。",
+  "superplan.rfq.loss": "亏损时无法开启：请调整价格或数字。",
+  "superplan.rfq.below": "利润低于目标：可以开启，但请先核对。",
+  "superplan.rfq.noSuppliers": "目录中没有启用的供应商。",
+  "superplan.error.simulation_incomplete": "模拟不完整：请补全后重试。",
+  "superplan.error.not_viable": "亏损时无法开启：请调整价格或数字。",
+  "superplan.error.invalid_quantity": "数量：请填写整数件数。",
+  "superplan.error.invalid_customer": "客户无效或未启用。",
+  "superplan.error.product_not_found": "产品目录中找不到该产品。",
+  "superplan.error.quote_not_created": "询价未创建：请重试。",
+  "superplan.error.variant_required":
+    "此产品有规格变体：请在需求页面选择变体后开启需求。",
+  "superplan.error.below_moq": "数量低于产品的最低起订量。",
+  "superplan.error.invalid_supplier": "供应商无效或未启用。",
 };

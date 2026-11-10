@@ -927,7 +927,8 @@
             "manual",
             "replenishment",
             "proposal",
-            "sourcing_demand"
+            "sourcing_demand",
+            "superplan"
           ]
         },
         {
@@ -1207,6 +1208,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "moq",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
         }
       ],
       "indexes": [

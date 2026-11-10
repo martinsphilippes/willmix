@@ -5,6 +5,7 @@ import { canOpen } from "@/lib/auth/screens";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
 import { SupplierDielineCard } from "@/components/supplier-dieline-card";
+import { SuperplanItemsCard } from "@/components/superplan-items-card";
 import type { PurchaseSheet } from "@/lib/db";
 import { canReleaseDumping } from "@/lib/services/purchase-flow";
 import {
@@ -90,6 +91,7 @@ export default async function QuotePage({
     board,
     card: cardNotice,
     dieline: dielineNotice,
+    superplan: superplanNotice,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -132,6 +134,7 @@ export default async function QuotePage({
     errorCode === "sheet_incomplete" || errorCode === "lead_time_required";
   const shownMissing = sheetView?.missing ?? [];
   const errorKeys = [
+    `spRfq.error.${errorCode}`,
     `quoteSheet.error.${errorCode}`,
     `purchaseFlow.error.${errorCode}`,
     `sheet.error.${errorCode}`,
@@ -329,6 +332,17 @@ export default async function QuotePage({
             </ul>
           ) : null}
         </Card>
+        {/* Aberta do Superplan: faca, MOQ, prazo e foto em alta do fornecedor ganho. */}
+        {request.origin === "superplan" ? (
+          <div className="lg:col-span-2">
+            <SuperplanItemsCard
+              t={t}
+              user={user}
+              quoteId={quote.id}
+              notice={superplanNotice}
+            />
+          </div>
+        ) : null}
         <Card
           title={t("quotes.answer")}
           className={cx(
@@ -367,7 +381,7 @@ export default async function QuotePage({
           </div>
         </Card>
         {/* Cotação escolhida: o fornecedor envia a faca (die-cut) da embalagem. */}
-        {quote.status === "selected" ? (
+        {quote.status === "selected" && request.origin !== "superplan" ? (
           <div className="lg:col-span-2">
             <SupplierDielineCard
               t={t}
