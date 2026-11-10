@@ -88,10 +88,7 @@ import { MoneyInput } from "@/components/money-input";
 import { DownPaymentInput } from "@/components/down-payment-input";
 import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
-import {
-  PackagingBriefCard,
-  PackagingRfqFields,
-} from "@/components/packaging-brief-card";
+import { PackagingRfqFields } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ApprovalCard } from "@/components/approval-card";
@@ -774,14 +771,9 @@ export default async function RequestDetailPage({
           </div>
         ) : null}
 
-        {/* Embalagem (faca e arte) preparada em paralelo com a cotação (só Wellmix) */}
-        {wellmix && request.status !== "REQUESTED" ? (
-          <PackagingBriefCard
-            t={t}
-            request={request}
-            saved={typeof saved === "string" ? saved : undefined}
-          />
-        ) : null}
+        {/* Embalagem (faca e arte): saiu da tela da solicitação (pedido do
+            dono); o briefing segue em Embalagem (/app/packaging), com a
+            agência, e a faca com o fornecedor escolhido. */}
 
         {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
         {wellmix && quotes.length > 0 ? (

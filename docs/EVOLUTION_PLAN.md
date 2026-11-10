@@ -532,6 +532,10 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Nada removido**: os três passos antigos, as âncoras e os avisos continuam iguais. Memorial, laudo e registro sem OCP designado mas já começados agora também geram pendência (como o cartão já mostrava).
 - **Esquema**: dois valores novos em `import_steps.key` (`cert_seal`, `cert_seal_art`); **publicar o esquema** antes do primeiro envio em produção.
 
+## Solicitação sem o cartão "Embalagem (faca e arte)"
+
+- **Pedido do dono**: o cartão da embalagem saiu da tela da solicitação da Wellmix. O briefing continua nascendo com a RFQ e é acompanhado em Embalagem (`/app/packaging`), pela agência e pela Wellmix; a faca segue com o fornecedor escolhido e a escolha da agência continua no formulário "Abrir RFQ". Nenhuma rota, dado ou regra mudou: só o cartão deixou de aparecer nessa tela.
+
 ## Superplan: viabilidade do produto e preço de venda
 
 - **Pedido do dono**: uma tela Superplan em Pedidos, no lugar da planilha SuperPlan, para avaliar se um produto é viável e por quanto a Wellmix deve vender. Especificação completa em `docs/SUPERPLAN.md`.
