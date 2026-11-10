@@ -3,6 +3,7 @@ import "server-only";
 import { getStore, type Order, type User } from "@/lib/db";
 import type { TableName, Tables } from "@/lib/db/schema";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
+import { IMPORT_STEPS, groupOf, importStepDone } from "./import-flow";
 import { isSchemaMissing } from "./packaging-brief";
 import { followupsDue } from "./production";
 
@@ -309,8 +310,22 @@ export async function areaPanel(
       const registered = cert.filter(
         (s) => s.key === "cert_registration" && s.status === "validated",
       );
+      // Em andamento: algum passo enviado ainda sem concluir, ou o passo
+      // seguinte de um concluído ainda por fazer (ex.: selo enviado e a arte
+      // com o selo pendente). Passo sem validação conclui ao ser enviado.
+      const certTemplates = IMPORT_STEPS.filter(
+        (tpl) => groupOf(tpl) === "certification",
+      );
       const inProgress = new Set(
-        cert.filter((s) => s.status !== "validated").map((s) => s.orderId),
+        [...new Set(cert.map((s) => s.orderId))].filter((orderId) => {
+          const of = (key: string) =>
+            cert.find((s) => s.orderId === orderId && s.key === key);
+          return certTemplates.some((tpl) => {
+            const own = of(tpl.key);
+            if (own) return !importStepDone(own);
+            return !!tpl.after && importStepDone(of(tpl.after));
+          });
+        }),
       );
       const open = issues.filter((i) => i.status === "open");
       const fixed = issues.filter((i) => i.status !== "open" && i.fixedAt);

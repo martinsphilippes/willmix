@@ -169,6 +169,9 @@ const CERT_STEPS: ImportStep["key"][] = [
   "cert_memorial",
   "cert_lab",
   "cert_registration",
+  // Selo de certificação e o selo aplicado na arte.
+  "cert_seal",
+  "cert_seal_art",
 ];
 const ALERT_CHANNELS = ["yellow", "red", "grey"];
 

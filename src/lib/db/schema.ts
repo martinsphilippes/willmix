@@ -538,6 +538,10 @@ export const IMPORT_STEP_KEYS = [
   "cert_memorial",
   "cert_lab",
   "cert_registration",
+  // Selo de certificação: a certificadora envia o selo do pedido e a agência
+  // aplica na arte da embalagem (docs/CERTIFICATION.md).
+  "cert_seal",
+  "cert_seal_art",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [

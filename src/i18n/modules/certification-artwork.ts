@@ -16,6 +16,55 @@ export const pt = {
   "importFlow.ph.cert_memorial": "",
   "importFlow.ph.cert_lab": "Laboratório / nº do laudo",
   "importFlow.ph.cert_registration": "Nº de registro",
+  "importFlow.step.cert_seal": "Selo de certificação",
+  "importFlow.step.cert_seal_art": "Selo aplicado na arte",
+  "importFlow.actor.agency": "agência",
+  "importFlow.ph.cert_seal": "Nº do selo ou do registro (opcional)",
+  "importFlow.ph.cert_seal_art": "",
+  "importFlow.fileReady":
+    "Arquivo pronto: {name} ({size}). Agora clique em Enviar.",
+  "importFlow.error.schema_pending":
+    "Este passo ainda não foi liberado no banco de dados. Avise a Wellmix (falta publicar o esquema) e envie de novo.",
+  "certFlow.sealHint":
+    "Selo de certificação: a certificadora (OCP) envia o selo do pedido. Quem faz a arte da embalagem (a agência do pedido ou a Wellmix) baixa o selo, aplica na arte e envia a arte com o selo. A Wellmix confere.",
+  "certFlow.sheetNote": "Certificação pedida na ficha: {note}",
+  "certFlow.sealReplaced":
+    "A certificadora enviou um selo novo. Aplique o selo novo na arte e envie de novo.",
+  "certFlow.notify.sealRequested.subject":
+    "Pedido #{n}: gerar o selo de certificação",
+  "certFlow.notify.sealRequested.body":
+    "Um pedido novo chegou para certificação. Gere o selo de certificação e envie o arquivo no pedido. Quem faz a arte da embalagem recebe o selo para aplicar.",
+  "certFlow.notify.sealReady.subject":
+    "Pedido #{n}: selo de certificação disponível",
+  "certFlow.notify.sealReady.body":
+    "A certificadora enviou o selo de certificação. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo.",
+  "certFlow.notify.sealChanged.subject":
+    "Pedido #{n}: selo de certificação trocado",
+  "certFlow.notify.sealChanged.body":
+    "A certificadora enviou um selo novo. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo de novo.",
+  "certFlow.notify.noOcp.subject": "Pedido #{n}: sem certificadora para o selo",
+  "certFlow.notify.noOcp.body":
+    "Há mais de uma certificadora (OCP) ativa. Designe a certificadora em Parceiros do pedido para o pedido chegar a ela e o selo ser gerado.",
+  "certFlow.brief.sealPending":
+    "Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte.",
+  "certFlow.brief.sealReady":
+    "Selo de certificação disponível: baixe no pedido, aplique na arte e envie a arte com o selo.",
+  "certFlow.brief.sealSent": "Arte com o selo enviada; a Wellmix confere.",
+  "certFlow.brief.sealDone":
+    "Selo de certificação aplicado na arte e conferido.",
+  "certFlow.brief.open": "Abrir o selo no pedido",
+  "tasks.group.cert_step": "Certificação",
+  "tasks.group.cert_validate": "Validar certificação",
+  "tasks.seal.issue.title": "Gerar o selo de certificação: pedido #{n}",
+  "tasks.seal.issue.detail":
+    "Envie o arquivo do selo no pedido. Quem faz a arte recebe para aplicar na embalagem.",
+  "tasks.seal.apply.title":
+    "Aplicar o selo de certificação na arte: pedido #{n}",
+  "tasks.seal.apply.detail":
+    "Baixe o selo no pedido e envie a arte com o selo aplicado.",
+  "tasks.seal.validate.title": "Validar o selo aplicado na arte: pedido #{n}",
+  "tasks.seal.validate.detail":
+    "Confira o selo na arte e valide, ou recuse com o motivo.",
   "artwork.title": "Artes",
   "artwork.downloadAll": "Baixar todas as artes",
   "artwork.designer": "Designer",
@@ -78,6 +127,57 @@ export const en: Record<keyof typeof pt, string> = {
   "importFlow.ph.cert_memorial": "",
   "importFlow.ph.cert_lab": "Lab / report no.",
   "importFlow.ph.cert_registration": "Registration no.",
+  "importFlow.step.cert_seal": "Certification seal",
+  "importFlow.step.cert_seal_art": "Seal applied to the artwork",
+  "importFlow.actor.agency": "agency",
+  "importFlow.ph.cert_seal": "Seal or registration no. (optional)",
+  "importFlow.ph.cert_seal_art": "",
+  "importFlow.fileReady": "File ready: {name} ({size}). Now click Send.",
+  "importFlow.error.schema_pending":
+    "This step has not been released in the database yet. Tell Wellmix (the schema must be published) and send it again.",
+  "certFlow.sealHint":
+    "Certification seal: the certification body (OCP) sends the seal for the order. Whoever makes the packaging artwork (the order's agency or Wellmix) downloads the seal, applies it to the artwork and sends the artwork with the seal. Wellmix checks it.",
+  "certFlow.sheetNote": "Certification requested on the sheet: {note}",
+  "certFlow.sealReplaced":
+    "The certification body sent a new seal. Apply the new seal to the artwork and send it again.",
+  "certFlow.notify.sealRequested.subject":
+    "Order #{n}: issue the certification seal",
+  "certFlow.notify.sealRequested.body":
+    "A new order arrived for certification. Issue the certification seal and send the file on the order. Whoever makes the packaging artwork receives the seal to apply it.",
+  "certFlow.notify.sealReady.subject":
+    "Order #{n}: certification seal available",
+  "certFlow.notify.sealReady.body":
+    "The certification body sent the certification seal. Download the seal on the order, apply it to the packaging artwork and send the artwork with the seal.",
+  "certFlow.notify.sealChanged.subject":
+    "Order #{n}: certification seal replaced",
+  "certFlow.notify.sealChanged.body":
+    "The certification body sent a new seal. Download the seal on the order, apply it to the packaging artwork and send the artwork with the seal again.",
+  "certFlow.notify.noOcp.subject":
+    "Order #{n}: no certification body for the seal",
+  "certFlow.notify.noOcp.body":
+    "There is more than one active certification body (OCP). Assign one under Order partners so the order reaches it and the seal is issued.",
+  "certFlow.brief.sealPending":
+    "Certification seal: waiting for the certification body. Leave room for the seal in the artwork.",
+  "certFlow.brief.sealReady":
+    "Certification seal available: download it on the order, apply it to the artwork and send the artwork with the seal.",
+  "certFlow.brief.sealSent":
+    "Artwork with the seal sent; Wellmix is checking it.",
+  "certFlow.brief.sealDone":
+    "Certification seal applied to the artwork and checked.",
+  "certFlow.brief.open": "Open the seal on the order",
+  "tasks.group.cert_step": "Certification",
+  "tasks.group.cert_validate": "Validate certification",
+  "tasks.seal.issue.title": "Issue the certification seal: order #{n}",
+  "tasks.seal.issue.detail":
+    "Send the seal file on the order. Whoever makes the artwork receives it to apply to the packaging.",
+  "tasks.seal.apply.title":
+    "Apply the certification seal to the artwork: order #{n}",
+  "tasks.seal.apply.detail":
+    "Download the seal on the order and send the artwork with the seal applied.",
+  "tasks.seal.validate.title":
+    "Validate the seal applied to the artwork: order #{n}",
+  "tasks.seal.validate.detail":
+    "Check the seal on the artwork and validate it, or reject it with the reason.",
   "artwork.title": "Artwork",
   "artwork.downloadAll": "Download all artwork",
   "artwork.designer": "Designer",
@@ -140,6 +240,48 @@ export const zh: Record<keyof typeof pt, string> = {
   "importFlow.ph.cert_memorial": "",
   "importFlow.ph.cert_lab": "实验室 / 报告编号",
   "importFlow.ph.cert_registration": "注册号",
+  "importFlow.step.cert_seal": "认证标志",
+  "importFlow.step.cert_seal_art": "认证标志已用于设计稿",
+  "importFlow.actor.agency": "设计公司",
+  "importFlow.ph.cert_seal": "标志或注册编号（选填）",
+  "importFlow.ph.cert_seal_art": "",
+  "importFlow.fileReady": "文件已就绪：{name}（{size}）。现在请点击“提交”。",
+  "importFlow.error.schema_pending":
+    "此步骤尚未在数据库中开通。请通知 Wellmix（需要发布数据结构）后重新提交。",
+  "certFlow.sealHint":
+    "认证标志：认证机构（OCP）提交该订单的认证标志。负责包装设计稿的一方（订单的设计公司或 Wellmix）下载标志，放入设计稿，并提交带标志的设计稿。由 Wellmix 核对。",
+  "certFlow.sheetNote": "采购单要求的认证：{note}",
+  "certFlow.sealReplaced":
+    "认证机构提交了新的认证标志。请在设计稿中换用新标志并重新提交。",
+  "certFlow.notify.sealRequested.subject": "订单 #{n}：请出具认证标志",
+  "certFlow.notify.sealRequested.body":
+    "有新订单需要认证。请出具认证标志并在订单中提交文件。负责包装设计稿的一方会收到标志并放入设计稿。",
+  "certFlow.notify.sealReady.subject": "订单 #{n}：认证标志已可用",
+  "certFlow.notify.sealReady.body":
+    "认证机构已提交认证标志。请在订单中下载标志，放入包装设计稿，并提交带标志的设计稿。",
+  "certFlow.notify.sealChanged.subject": "订单 #{n}：认证标志已更换",
+  "certFlow.notify.sealChanged.body":
+    "认证机构提交了新的认证标志。请在订单中下载标志，放入包装设计稿，并重新提交带标志的设计稿。",
+  "certFlow.notify.noOcp.subject": "订单 #{n}：尚未指定出具标志的认证机构",
+  "certFlow.notify.noOcp.body":
+    "有多个启用的认证机构（OCP）。请在“订单合作方”中指定认证机构，订单才会到达该机构并出具标志。",
+  "certFlow.brief.sealPending":
+    "认证标志：等待认证机构提交。请在设计稿中预留标志位置。",
+  "certFlow.brief.sealReady":
+    "认证标志已可用：请在订单中下载，放入设计稿，并提交带标志的设计稿。",
+  "certFlow.brief.sealSent": "带标志的设计稿已提交，Wellmix 正在核对。",
+  "certFlow.brief.sealDone": "认证标志已放入设计稿并核对通过。",
+  "certFlow.brief.open": "在订单中打开认证标志",
+  "tasks.group.cert_step": "认证",
+  "tasks.group.cert_validate": "审核认证",
+  "tasks.seal.issue.title": "出具认证标志：订单 #{n}",
+  "tasks.seal.issue.detail":
+    "请在订单中提交标志文件。负责设计稿的一方会收到并用于包装。",
+  "tasks.seal.apply.title": "将认证标志放入设计稿：订单 #{n}",
+  "tasks.seal.apply.detail": "请在订单中下载标志，并提交带标志的设计稿。",
+  "tasks.seal.validate.title": "审核设计稿中的认证标志：订单 #{n}",
+  "tasks.seal.validate.detail":
+    "请核对设计稿中的标志并审核通过，或填写原因后退回。",
   "artwork.title": "设计稿",
   "artwork.downloadAll": "下载全部设计稿",
   "artwork.designer": "设计师",

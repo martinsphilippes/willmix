@@ -12,10 +12,16 @@ import { field, files, requireUser, run, str } from "./helpers";
  */
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
+/** Arquivo que o navegador já subiu direto ao armazenamento (acima do teto da requisição). */
+const UPLOADED_ID = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
 
 /** Cartão de onde veio (embarque ou certificação). */
 const anchorOf = (form: FormData) =>
   str(form, "anchor") === "certification" ? "certification" : "import-flow";
+
+/** Aviso de "feito" no cartão de onde a ação veio (cada cartão lê o seu). */
+const doneParam = (form: FormData) =>
+  anchorOf(form) === "certification" ? "certStep" : "importStep";
 
 function back(form: FormData) {
   const orderId = ID.safeParse(str(form, "orderId"));
@@ -48,15 +54,27 @@ export async function submitImportStepAction(form: FormData) {
       throw new Error("forbidden");
     assertScreen(user, "orders");
     const [file] = files(form, "file");
+    const uploadedFileId = str(form, "uploadedFileId");
+    const target = {
+      orderId,
+      type: "import_step",
+      visibility: "internal",
+    } as const;
     let documentId: string | null = null;
     if (file) {
       const { uploadDocument } = await import("@/lib/services/documents");
-      const doc = await uploadDocument(user, file, {
-        orderId,
-        type: "import_step",
-        visibility: "internal",
-      });
-      documentId = doc.id;
+      documentId = (await uploadDocument(user, file, target)).id;
+    } else if (uploadedFileId) {
+      // Arquivo grande (ex.: a arte com o selo): já está no armazenamento.
+      const { registerUploadedDocument } =
+        await import("@/lib/services/documents");
+      documentId = (
+        await registerUploadedDocument(
+          user,
+          UPLOADED_ID.parse(uploadedFileId),
+          target,
+        )
+      ).id;
     }
     await svc.submitStep(user, orderId, key, {
       value,
@@ -64,7 +82,7 @@ export async function submitImportStepAction(form: FormData) {
       currency,
       documentId,
     });
-    return `${to}?importStep=submitted#${anchorOf(form)}`;
+    return `${to}?${doneParam(form)}=submitted#${anchorOf(form)}`;
   });
 }
 
@@ -81,6 +99,6 @@ export async function validateImportStepAction(form: FormData) {
     const reason = field(form, "reason", z.string().trim().max(1000)) || null;
     const { validateStep } = await import("@/lib/services/import-flow");
     await validateStep(user, orderId, key, decision, reason);
-    return `${to}?importStep=${decision}#${anchorOf(form)}`;
+    return `${to}?${doneParam(form)}=${decision}#${anchorOf(form)}`;
   });
 }

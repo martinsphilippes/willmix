@@ -616,6 +616,21 @@ export async function assignPartnerAction(form: FormData) {
       orderId,
       `${field} = ${partyId ?? "—"}`,
     );
+    // Selo de certificação: o OCP novo é avisado do selo a emitir; quem
+    // passa a fazer a arte, do selo que já chegou. Só quando mudou de fato.
+    if (
+      (field === "ocpId" || field === "agencyId") &&
+      (order[field] ?? null) !== partyId
+    ) {
+      try {
+        const updated = await store.get("orders", orderId);
+        const { notifySealPartner } =
+          await import("@/lib/services/import-flow");
+        if (updated) await notifySealPartner(updated, field);
+      } catch (error) {
+        console.error("[certification] aviso do selo ao parceiro novo", error);
+      }
+    }
   });
 }
 

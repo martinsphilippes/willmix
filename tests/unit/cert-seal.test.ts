@@ -1,0 +1,507 @@
+import { beforeAll, describe, expect, it } from "vitest";
+import { withTempStore } from "./setup";
+
+/*
+ * Selo de certificação (docs/CERTIFICATION.md): o pedido nasce na mão da
+ * certificadora (OCP), que envia o selo; o selo vai para quem faz a arte da
+ * embalagem (a agência do pedido ou, sem ela, a Wellmix), que envia a arte
+ * com o selo; a Wellmix confere.
+ */
+withTempStore();
+
+const { getStore } = await import("@/lib/db");
+const { seedDemo } = await import("@/lib/seed");
+const r = await import("@/lib/services/requests");
+const f = await import("@/lib/services/import-flow");
+const art = await import("@/lib/services/artwork");
+const { pendingTasksFor } = await import("@/lib/services/tasks");
+const { canAccessDocument } = await import("@/lib/services/documents");
+const { areaPanel } = await import("@/lib/services/dashboards");
+const { getPackagingBriefView } =
+  await import("@/lib/services/packaging-brief");
+const { setSetting } = await import("@/lib/settings");
+type User = import("@/lib/db").User;
+type Order = import("@/lib/db").Order;
+
+let admin: User;
+let operator: User;
+let joao: User;
+let supplierA: User;
+let ocp: User;
+let comex: User;
+let agency: User;
+
+/** Pedido novo pelo caminho real: solicitação → RFQ → cotação → escolha → sinal. */
+async function newOrder(): Promise<Order> {
+  const req = await r.createRequest(joao, {
+    customerId: "cliente-joao",
+    productId: "prod-jarra",
+    productName: "Jarra",
+    description: "Jarra",
+    specification: null,
+    quantity: 10000,
+    unit: "un",
+    deadline: null,
+    notes: null,
+  });
+  await r.openRfq(admin, req.id, ["fornecedor-a"]);
+  const [quote] = await getStore().list("quotes", {
+    filter: { requestId: req.id },
+  });
+  await r.answerQuote(supplierA, quote.id, {
+    price: 2,
+    currency: "USD",
+    leadTimeDays: 10,
+    conditions: null,
+  });
+  await r.selectQuote(admin, quote.id, {
+    sellPrice: 50_000,
+    sellCurrency: "BRL",
+  });
+  return r.confirmDownPayment(admin, req.id);
+}
+
+async function doc(user: User, order: Order, name: string) {
+  return getStore().create("documents", {
+    orderId: order.id,
+    requestId: null,
+    requirementId: null,
+    type: "import_step",
+    name,
+    mime: "application/pdf",
+    size: 3,
+    storageKey: `k-${order.id}-${name}`,
+    version: 1,
+    previousDocumentId: null,
+    uploadedByUserId: user.id,
+    visibility: "internal",
+  } as never);
+}
+
+/** Avisos na tela (um por aviso; e-mail e WhatsApp são cópias). */
+async function inbox(user: User, order: Order) {
+  const rows = await getStore().list("notifications", {
+    filter: { userId: user.id, channel: "inapp" },
+  });
+  return rows.filter((n) => n.link?.startsWith(`/app/orders/${order.id}`));
+}
+
+const sealLink = (order: Order) => `/app/orders/${order.id}#certification`;
+
+async function certTasks(user: User, order: Order) {
+  return (await pendingTasksFor(user)).filter(
+    (t) => t.link === sealLink(order),
+  );
+}
+
+const fresh = async (order: Order) =>
+  (await getStore().get("orders", order.id))!;
+
+beforeAll(async () => {
+  const { users } = await seedDemo();
+  const by = (email: string) => users.find((u) => u.email === email)!;
+  admin = by("admin@wellmix.com");
+  operator = by("operador@wellmix.com");
+  joao = by("joao@lojista.com");
+  supplierA = by("supplier.a@china.com");
+  ocp = by("ocp@certifica.com");
+  comex = by("comex@assessoria.com");
+  agency = users.find((u) => u.role === "agency")!;
+  await setSetting("approvalsEnabled", false);
+});
+
+describe("pedido novo: cai no login da certificadora", () => {
+  let order: Order;
+  beforeAll(async () => {
+    order = await newOrder();
+  });
+
+  it("nasce com a certificadora designada, avisada e com a pendência do selo", async () => {
+    expect(order.status).toBe("ORDER_CREATED");
+    expect(order.ocpId).toBe(ocp.partyId);
+    const notes = await inbox(ocp, order);
+    expect(notes).toHaveLength(1);
+    expect(notes[0].link).toBe(sealLink(order));
+    expect(notes[0].kind).toBe("action");
+    expect(notes[0].subject).toContain(`#${order.number}`);
+    const tasks = await certTasks(ocp, order);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].kind).toBe("cert_step");
+    expect(tasks[0].group).toBe("cert_step");
+    expect(tasks[0].text?.title).toBe("tasks.seal.issue.title");
+    expect(tasks[0].title).toContain(`#${order.number}`);
+  });
+
+  it("a certificadora vê o cartão no pedido recém-criado e só ela envia o selo", async () => {
+    const view = await f.importFlowView(ocp, order, "certification");
+    const seal = view.find((v) => v.template.key === "cert_seal")!;
+    const applied = view.find((v) => v.template.key === "cert_seal_art")!;
+    expect(seal.canSubmit).toBe(true);
+    expect(applied.ready).toBe(false);
+    expect(applied.canSubmit).toBe(false);
+    for (const user of [agency, supplierA, joao, comex])
+      await expect(
+        f.submitStep(user, order.id, "cert_seal", {
+          documentId: (await doc(user, order, `x-${user.role}.pdf`)).id,
+        }),
+      ).rejects.toThrow();
+  });
+
+  it("antes do selo, quem faz a arte só acompanha: sem aviso e sem pendência", async () => {
+    expect(await certTasks(agency, order)).toHaveLength(0);
+    expect(
+      (await inbox(agency, order)).filter((n) => n.link === sealLink(order)),
+    ).toHaveLength(0);
+    // A agência vê só as duas linhas do selo (não memorial, laudo ou registro).
+    const view = await f.importFlowView(agency, order, "certification");
+    expect(view.map((v) => v.template.key)).toEqual([
+      "cert_seal",
+      "cert_seal_art",
+    ]);
+    expect(view.every((v) => !v.canSubmit && !v.canValidate)).toBe(true);
+    for (const key of [
+      "cert_memorial",
+      "cert_lab",
+      "cert_registration",
+    ] as const)
+      expect(f.canSeeStep(agency, order, key)).toBe(false);
+  });
+
+  it("pedido recém-criado: a Wellmix não ganha pendência de certificação; o memorial só a partir da Preparação", async () => {
+    expect(await certTasks(admin, order)).toHaveLength(0);
+    await getStore().update("orders", order.id, { status: "PREPARATION" });
+    const tasks = await certTasks(admin, order);
+    expect(tasks.map((t) => t.kind)).toEqual(["cert_step"]);
+    expect(tasks[0].title).toContain("Memorial");
+    // A pendência do selo continua com a certificadora.
+    expect(await certTasks(ocp, order)).toHaveLength(1);
+    await getStore().update("orders", order.id, { status: "ORDER_CREATED" });
+  });
+
+  it("pedido cancelado ou encerrado não deixa pendência", async () => {
+    for (const status of ["CANCELLED", "CLOSED"] as const) {
+      await getStore().update("orders", order.id, { status });
+      expect(await certTasks(ocp, order)).toHaveLength(0);
+      await expect(
+        f.submitStep(ocp, order.id, "cert_seal", {
+          documentId: (await doc(ocp, order, `late-${status}.pdf`)).id,
+        }),
+      ).rejects.toThrow("order_cancelled");
+    }
+    await getStore().update("orders", order.id, { status: "ORDER_CREATED" });
+  });
+});
+
+describe("selo enviado: vai para a agência aplicar na arte", () => {
+  let order: Order;
+  let sealDocId: string;
+  beforeAll(async () => {
+    order = await newOrder();
+  });
+
+  it("a certificadora envia o selo (número opcional) e a agência recebe", async () => {
+    const before = (await inbox(agency, order)).length;
+    // O arquivo é obrigatório; o número não.
+    await expect(
+      f.submitStep(ocp, order.id, "cert_seal", { value: "INMETRO 001" }),
+    ).rejects.toThrow("file_required");
+    const sealDoc = await doc(ocp, order, "selo.pdf");
+    sealDocId = sealDoc.id;
+    const step = await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: sealDoc.id,
+    });
+    expect(step.status).toBe("submitted");
+    expect(step.value).toBeNull();
+    // A certificadora não tem mais o que fazer; a agência ganha o aviso e a pendência.
+    expect(await certTasks(ocp, order)).toHaveLength(0);
+    const notes = await inbox(agency, order);
+    expect(notes).toHaveLength(before + 1);
+    expect(notes.some((n) => n.link === sealLink(order))).toBe(true);
+    const tasks = await certTasks(agency, order);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].kind).toBe("cert_step");
+    expect(tasks[0].text?.title).toBe("tasks.seal.apply.title");
+    // A Wellmix não ganha a pendência da agência.
+    expect(await certTasks(admin, order)).toHaveLength(0);
+  });
+
+  it("o arquivo do selo abre para a Wellmix, a certificadora e a agência; para mais ninguém", async () => {
+    const sealDoc = (await getStore().get("documents", sealDocId))!;
+    for (const user of [admin, operator, ocp, agency])
+      expect(await canAccessDocument(user, sealDoc)).toBe(true);
+    for (const user of [supplierA, joao, comex])
+      expect(await canAccessDocument(user, sealDoc)).toBe(false);
+  });
+
+  it("o zip das artes leva o selo para quem pode abrir", async () => {
+    const forAgency = await art.artworkDocuments(agency, order);
+    expect(forAgency.some((d) => d.id === sealDocId)).toBe(true);
+    const forSupplier = await art.artworkDocuments(supplierA, order);
+    expect(forSupplier.some((d) => d.id === sealDocId)).toBe(false);
+  });
+
+  it("a tela do briefing da agência mostra em que pé está o selo", async () => {
+    const [brief] = await getStore().list("packaging_briefs", {
+      filter: { orderId: order.id },
+    });
+    expect(brief).toBeTruthy();
+    expect((await getPackagingBriefView(agency, brief.id))?.orderSeal).toBe(
+      "ready",
+    );
+  });
+
+  it("a agência envia a arte com o selo; só a Wellmix valida; recusa volta para a agência", async () => {
+    await expect(
+      f.submitStep(ocp, order.id, "cert_seal_art", {
+        documentId: (await doc(ocp, order, "arte-ocp.pdf")).id,
+      }),
+    ).rejects.toThrow();
+    await f.submitStep(agency, order.id, "cert_seal_art", {
+      documentId: (await doc(agency, order, "arte-com-selo.pdf")).id,
+    });
+    expect(await certTasks(agency, order)).toHaveLength(0);
+    const validate = await certTasks(admin, order);
+    expect(validate.map((t) => t.kind)).toEqual(["cert_validate"]);
+    expect(validate[0].text?.title).toBe("tasks.seal.validate.title");
+    expect((await certTasks(operator, order)).map((t) => t.kind)).toEqual([
+      "cert_validate",
+    ]);
+    for (const user of [agency, ocp])
+      await expect(
+        f.validateStep(user, order.id, "cert_seal_art", "validated", null),
+      ).rejects.toThrow();
+    await expect(
+      f.validateStep(admin, order.id, "cert_seal_art", "rejected", null),
+    ).rejects.toThrow("reason_required");
+    const before = (await inbox(agency, order)).length;
+    await f.validateStep(
+      admin,
+      order.id,
+      "cert_seal_art",
+      "rejected",
+      "Selo pequeno demais",
+    );
+    expect(await inbox(agency, order)).toHaveLength(before + 1);
+    expect(await certTasks(agency, order)).toHaveLength(1);
+  });
+
+  it("arte reenviada e validada: tudo concluído, sem pendência para ninguém", async () => {
+    await f.submitStep(agency, order.id, "cert_seal_art", {
+      documentId: (await doc(agency, order, "arte-com-selo-v2.pdf")).id,
+    });
+    await f.validateStep(
+      operator,
+      order.id,
+      "cert_seal_art",
+      "validated",
+      null,
+    );
+    const view = await f.importFlowView(admin, order, "certification");
+    expect(
+      view
+        .filter((v) => v.template.key.startsWith("cert_seal"))
+        .every((v) => v.done),
+    ).toBe(true);
+    for (const user of [admin, operator, ocp, agency])
+      expect(await certTasks(user, order)).toHaveLength(0);
+    const [brief] = await getStore().list("packaging_briefs", {
+      filter: { orderId: order.id },
+    });
+    expect((await getPackagingBriefView(agency, brief.id))?.orderSeal).toBe(
+      "done",
+    );
+  });
+});
+
+describe("selo trocado depois da arte", () => {
+  let order: Order;
+  beforeAll(async () => {
+    order = await newOrder();
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      value: "INMETRO 001",
+      documentId: (await doc(ocp, order, "selo-v1.pdf")).id,
+    });
+    await f.submitStep(agency, order.id, "cert_seal_art", {
+      documentId: (await doc(agency, order, "arte-v1.pdf")).id,
+    });
+    await f.validateStep(admin, order.id, "cert_seal_art", "validated", null);
+  });
+
+  it("reenviar sem mudar nada não reabre a arte nem avisa de novo", async () => {
+    const before = (await inbox(agency, order)).length;
+    await f.submitStep(ocp, order.id, "cert_seal", { value: "INMETRO 001" });
+    expect(await inbox(agency, order)).toHaveLength(before);
+    expect(await certTasks(agency, order)).toHaveLength(0);
+  });
+
+  it("selo novo reabre a arte (leva o selo antigo) e avisa a agência", async () => {
+    const before = (await inbox(agency, order)).length;
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      value: "INMETRO 002",
+      documentId: (await doc(ocp, order, "selo-v2.pdf")).id,
+    });
+    const view = await f.importFlowView(agency, order, "certification");
+    const applied = view.find((v) => v.template.key === "cert_seal_art")!;
+    expect(applied.step?.status).toBe("rejected");
+    expect(applied.step?.rejectReason).toBeTruthy();
+    expect(applied.done).toBe(false);
+    expect(applied.canSubmit).toBe(true);
+    expect(await inbox(agency, order)).toHaveLength(before + 1);
+    expect(await certTasks(agency, order)).toHaveLength(1);
+  });
+});
+
+describe("pedido sem agência: a Wellmix aplica o selo", () => {
+  let order: Order;
+  beforeAll(async () => {
+    order = await newOrder();
+    order = await getStore().update("orders", order.id, { agencyId: null });
+  });
+
+  it("selo enviado: o aviso e a pendência de aplicar vão para a Wellmix", async () => {
+    const before = (await inbox(admin, order)).length;
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: (await doc(ocp, order, "selo.pdf")).id,
+    });
+    expect((await inbox(admin, order)).length).toBeGreaterThan(before);
+    const tasks = await certTasks(admin, order);
+    expect(tasks.map((t) => t.kind)).toEqual(["cert_step"]);
+    expect(tasks[0].text?.title).toBe("tasks.seal.apply.title");
+    expect(await certTasks(agency, order)).toHaveLength(0);
+  });
+
+  it("quem enviou a arte não valida a própria (exceto o administrador)", async () => {
+    await f.submitStep(operator, order.id, "cert_seal_art", {
+      documentId: (await doc(operator, order, "arte.pdf")).id,
+    });
+    await expect(
+      f.validateStep(operator, order.id, "cert_seal_art", "validated", null),
+    ).rejects.toThrow("own_step");
+    expect((await certTasks(admin, order)).map((t) => t.kind)).toEqual([
+      "cert_validate",
+    ]);
+    await f.validateStep(admin, order.id, "cert_seal_art", "validated", null);
+    expect(await certTasks(admin, order)).toHaveLength(0);
+  });
+});
+
+describe("arte feita pela Wellmix nas configurações", () => {
+  it("com agência no pedido, o passo do selo na arte fica com a Wellmix", async () => {
+    const order = await newOrder();
+    expect(order.agencyId).toBe(agency.partyId);
+    await setSetting("agencyValidationEnabled", false);
+    try {
+      const before = (await inbox(agency, order)).length;
+      await f.submitStep(ocp, order.id, "cert_seal", {
+        documentId: (await doc(ocp, order, "selo.pdf")).id,
+      });
+      expect(await inbox(agency, order)).toHaveLength(before);
+      expect(await certTasks(agency, order)).toHaveLength(0);
+      expect((await certTasks(admin, order)).map((t) => t.kind)).toEqual([
+        "cert_step",
+      ]);
+    } finally {
+      await setSetting("agencyValidationEnabled", true);
+    }
+    // De volta à agência: a pendência é dela.
+    expect(await certTasks(agency, order)).toHaveLength(1);
+    expect(await certTasks(admin, order)).toHaveLength(0);
+  });
+});
+
+describe("parceiro designado depois", () => {
+  it("certificadora designada depois é avisada; com o selo já enviado, não", async () => {
+    let order = await newOrder();
+    const before = (await inbox(ocp, order)).length;
+    // Mesmo OCP de novo no pedido ainda sem selo: avisa.
+    await f.notifySealPartner(order, "ocpId");
+    expect(await inbox(ocp, order)).toHaveLength(before + 1);
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: (await doc(ocp, order, "selo.pdf")).id,
+    });
+    order = await fresh(order);
+    await f.notifySealPartner(order, "ocpId");
+    expect(await inbox(ocp, order)).toHaveLength(before + 1);
+  });
+
+  it("agência designada depois do selo é avisada de que há selo a aplicar", async () => {
+    let order = await newOrder();
+    order = await getStore().update("orders", order.id, { agencyId: null });
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: (await doc(ocp, order, "selo.pdf")).id,
+    });
+    const before = (await inbox(agency, order)).length;
+    order = await getStore().update("orders", order.id, {
+      agencyId: agency.partyId,
+    });
+    await f.notifySealPartner(order, "agencyId");
+    expect(await inbox(agency, order)).toHaveLength(before + 1);
+    expect(await certTasks(agency, order)).toHaveLength(1);
+    // Com a arte já enviada, nada a avisar.
+    await f.submitStep(agency, order.id, "cert_seal_art", {
+      documentId: (await doc(agency, order, "arte.pdf")).id,
+    });
+    await f.notifySealPartner(order, "agencyId");
+    expect(await inbox(agency, order)).toHaveLength(before + 1);
+  });
+
+  it("pedido sem certificadora: com mais de uma ativa, a Wellmix é avisada para designar", async () => {
+    let order = await newOrder();
+    order = await getStore().update("orders", order.id, { ocpId: null });
+    const before = (await inbox(admin, order)).length;
+    // Uma só certificadora ativa: nada (ela já teria sido designada sozinha).
+    await f.notifySealRequested(order);
+    expect(await inbox(admin, order)).toHaveLength(before);
+    const second = await getStore().create("parties", {
+      type: "ocp",
+      name: "Outra Certificadora",
+      country: "BR",
+      email: "contato@outra-ocp.com",
+      active: true,
+    } as never);
+    try {
+      await f.notifySealRequested(order);
+      const notes = await inbox(admin, order);
+      expect(notes).toHaveLength(before + 1);
+      expect(notes.some((n) => n.link?.endsWith("#order-partners"))).toBe(true);
+      // Sem certificadora no pedido, ninguém ganha pendência de selo.
+      expect(await certTasks(ocp, order)).toHaveLength(0);
+    } finally {
+      await getStore().update("parties", second.id, { active: false });
+    }
+  });
+
+  it("a Wellmix envia o selo no lugar da certificadora: a agência recebe do mesmo jeito", async () => {
+    let order = await newOrder();
+    order = await getStore().update("orders", order.id, { ocpId: null });
+    await f.submitStep(admin, order.id, "cert_seal", {
+      documentId: (await doc(admin, order, "selo-por-email.pdf")).id,
+    });
+    expect(await certTasks(agency, order)).toHaveLength(1);
+  });
+});
+
+describe("painel de certificação", () => {
+  it("em andamento enquanto falta aplicar ou conferir o selo; sai quando conclui", async () => {
+    const count = async () =>
+      Number(
+        (await areaPanel(admin, "certification")).metrics.find(
+          (m) => m.key === "certInProgress",
+        )!.value,
+      );
+    const base = await count();
+    const order = await newOrder();
+    // Pedido novo, nada enviado: ainda não conta.
+    expect(await count()).toBe(base);
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: (await doc(ocp, order, "selo.pdf")).id,
+    });
+    expect(await count()).toBe(base + 1);
+    await f.submitStep(agency, order.id, "cert_seal_art", {
+      documentId: (await doc(agency, order, "arte.pdf")).id,
+    });
+    expect(await count()).toBe(base + 1);
+    await f.validateStep(admin, order.id, "cert_seal_art", "validated", null);
+    expect(await count()).toBe(base);
+  });
+});

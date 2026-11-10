@@ -352,5 +352,12 @@ export async function artworkDocuments(
     seen.add(doc.id);
     if (await canAccessDocument(user, doc)) out.push(doc);
   }
+  // Selo de certificação (o arquivo atual do passo): vai junto com as artes
+  // para quem vê o passo (a Wellmix, a agência e a certificadora).
+  const { sealDocumentId } = await import("./import-flow");
+  const sealId = await sealDocumentId(order.id);
+  const seal = sealId ? all.find((d) => d.id === sealId) : null;
+  if (seal && !seen.has(seal.id) && (await canAccessDocument(user, seal)))
+    out.push(seal);
   return out;
 }

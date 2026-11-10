@@ -21,6 +21,7 @@ import {
   rowClass,
 } from "./ui";
 import { SubmitButton } from "./submit-button";
+import { DirectFileInput } from "./sheet-file-input";
 import type { getT } from "@/i18n/server";
 
 /*
@@ -42,6 +43,7 @@ export function ImportFlowCard({
   names,
   title,
   anchor = "import-flow",
+  hints = [],
 }: {
   t: Translate;
   order: Order;
@@ -51,6 +53,8 @@ export function ImportFlowCard({
   /** Certificação (Fase F) usa o mesmo cartão com outro título e âncora. */
   title?: string;
   anchor?: "import-flow" | "certification";
+  /** Explicações do cartão (ex.: como anda o selo de certificação). */
+  hints?: string[];
 }) {
   if (!steps.length) return null;
   const name = (id: string | null) => (id ? (names.get(id) ?? "—") : "—");
@@ -76,6 +80,15 @@ export function ImportFlowCard({
           <Alert tone="success">{notice}</Alert>
         </div>
       ) : null}
+      {hints.map((hint) => (
+        <p
+          key={hint}
+          className="mb-3 text-sm text-zinc-600"
+          data-import-hint={anchor}
+        >
+          {hint}
+        </p>
+      ))}
       {/* Um passo por linha: situação, quem faz e valida, o que foi
           informado, quem enviou e a ação (enviar ou validar). */}
       <Table>
@@ -227,6 +240,16 @@ export function ImportFlowCard({
                           )}
                         />
                       ) : null}
+                      {tpl.input === "file_text" ? (
+                        <Input
+                          name="value"
+                          maxLength={200}
+                          defaultValue={step?.value ?? ""}
+                          placeholder={t(
+                            `importFlow.ph.${tpl.key}` as DictionaryKey,
+                          )}
+                        />
+                      ) : null}
                       {tpl.input === "date" ? (
                         <Input
                           type="date"
@@ -259,15 +282,22 @@ export function ImportFlowCard({
                           <input type="hidden" name="currency" value="BRL" />
                         </>
                       ) : null}
-                      {["file", "text_file", "money_file"].includes(
-                        tpl.input,
-                      ) ? (
-                        <input
-                          type="file"
+                      {[
+                        "file",
+                        "text_file",
+                        "file_text",
+                        "money_file",
+                      ].includes(tpl.input) ? (
+                        // Arquivo grande (ex.: a arte com o selo) sobe direto
+                        // ao armazenamento; o formulário leva só o id.
+                        <DirectFileInput
                           name="file"
                           required={!step?.documentId}
                           className={fileClass}
-                          aria-label={t("importFlow.file")}
+                          label={t("importFlow.file")}
+                          uploadingLabel={t("requirement.file.uploading")}
+                          failedLabel={t("requirement.file.failed")}
+                          chosenLabel={t("importFlow.fileReady")}
                         />
                       ) : null}
                       <SubmitButton

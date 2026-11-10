@@ -4,29 +4,60 @@ import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { SERVER_MAX_BYTES, uploadDirect } from "./direct-upload";
 
-/**
- * Campo da planilha (.xlsx ou .xls). Planilha com fotos passa do teto da requisição
- * na Vercel (~4 MB): nesse caso sobe direto ao armazenamento e o formulário
- * leva só o id (`uploadedFileId`); menor, segue no próprio formulário. Em
- * desenvolvimento (modo memória) vai sempre pelo formulário.
- */
-export function SheetFileInput({
-  name = "file",
-  label,
-  uploadingLabel,
-  failedLabel,
-  chosenLabel,
-  required = true,
-}: {
+const SHEET_ACCEPT =
+  ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
+const SHEET_CLASS =
+  "block w-full text-sm text-zinc-700 file:mr-3 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-800 disabled:opacity-60";
+
+interface DirectFileInputProps {
   name?: string;
   label: string;
-  /** Falso quando há outro jeito de informar a planilha (ex.: link do Google Sheets). */
+  /** Falso quando há outro jeito de informar (ex.: link do Google Sheets) ou já há arquivo. */
   required?: boolean;
   /** Com {percent}: progresso do envio direto. */
   uploadingLabel: string;
   failedLabel: string;
   /** Com {name} e {size}: arquivo escolhido (já subido direto). */
   chosenLabel: string;
+}
+
+/**
+ * Campo da planilha (.xlsx ou .xls). Planilha com fotos passa do teto da requisição
+ * na Vercel (~4 MB): nesse caso sobe direto ao armazenamento e o formulário
+ * leva só o id (`uploadedFileId`); menor, segue no próprio formulário. Em
+ * desenvolvimento (modo memória) vai sempre pelo formulário.
+ */
+export function SheetFileInput(props: DirectFileInputProps) {
+  return (
+    <DirectFileInput
+      {...props}
+      accept={SHEET_ACCEPT}
+      className={SHEET_CLASS}
+      marker="sheet-import"
+    />
+  );
+}
+
+/**
+ * Campo de arquivo de um formulário com botão de enviar (ex.: passo de
+ * embarque ou de certificação, como a arte com o selo): o mesmo envio direto
+ * da planilha para arquivo acima do teto da requisição, sem restringir o tipo.
+ */
+export function DirectFileInput({
+  name = "file",
+  label,
+  uploadingLabel,
+  failedLabel,
+  chosenLabel,
+  required = true,
+  accept,
+  className,
+  marker = "direct",
+}: DirectFileInputProps & {
+  accept?: string;
+  className?: string;
+  /** Prefixo dos atributos data-* (os testes da planilha usam "sheet-import"). */
+  marker?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const hiddenRef = useRef<HTMLInputElement | null>(null);
@@ -102,13 +133,13 @@ export function SheetFileInput({
         type="file"
         name={name}
         required={required}
-        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        accept={accept}
         disabled={working}
         onChange={onChange}
         aria-label={label}
         aria-busy={working || undefined}
-        className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-800 disabled:opacity-60"
-        data-sheet-import-file
+        className={className}
+        {...{ [`data-${marker}-file`]: "" }}
       />
       {busy && progress !== null ? (
         <p className="text-xs text-zinc-600" role="status">
@@ -119,7 +150,7 @@ export function SheetFileInput({
         <p
           className="text-xs text-emerald-800"
           role="status"
-          data-sheet-import-uploaded
+          {...{ [`data-${marker}-uploaded`]: "" }}
         >
           {chosen}
         </p>

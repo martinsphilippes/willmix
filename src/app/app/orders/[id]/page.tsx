@@ -181,6 +181,7 @@ export default async function OrderPage({
     tariffOrigin,
     production: productionNotice,
     importStep: importNotice,
+    certStep: certNotice,
     receiving: receivingNotice,
     artwork: artworkNotice,
     stage: stageQuery,
@@ -251,9 +252,10 @@ export default async function OrderPage({
       ? await importFlow.importFlowView(user, order)
       : [];
   /* Certificação (Fase F): com OCP designado, ficha pedindo certificação
-     ou passo já começado. */
+     ou passo já começado. Vale desde o pedido recém-criado: o selo de
+     certificação já nasce na mão da certificadora. */
   const certAll =
-    order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
+    order.status !== "CANCELLED"
       ? await importFlow.importFlowView(user, order, "certification")
       : [];
   const [certSheet] = certAll.length
@@ -1637,7 +1639,8 @@ export default async function OrderPage({
               : null
           }
         />
-        {/* Certificação (Fase F): memorial, laboratório e registro com o OCP. */}
+        {/* Certificação (Fase F): memorial, laboratório e registro com o OCP,
+            e o selo de certificação que a agência aplica na arte. */}
         <ImportFlowCard
           t={t}
           order={order}
@@ -1645,7 +1648,24 @@ export default async function OrderPage({
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
-          notice={null}
+          hints={[
+            ...(certSteps.some((v) => v.template.key === "cert_seal")
+              ? [t("certFlow.sealHint")]
+              : []),
+            ...(certSheet?.certificationNote?.trim()
+              ? [
+                  t("certFlow.sheetNote", {
+                    note: certSheet.certificationNote.trim(),
+                  }),
+                ]
+              : []),
+          ]}
+          notice={
+            typeof certNotice === "string" &&
+            ["submitted", "validated", "rejected"].includes(certNotice)
+              ? t(`importFlow.done.${certNotice}` as DictionaryKey)
+              : null
+          }
         />
 
         {/* Recebimento (Fase E): lacre, checklist, divergência por SKU, RIC, fechamento. */}

@@ -40,6 +40,7 @@ O **financeiro** é uma função da Wellmix (Equipe → Funções). Só ele (ou 
 - Quem valida vê os passos enviados.
 - O financeiro vê o numerário.
 - A Wellmix só recebe a pendência quando valida, quando o passo é dela (DANFE) ou quando valida no lugar de um parceiro não designado.
+- Certificação (docs/CERTIFICATION.md): as pendências saem com o tipo "Certificação"; o passo "selo aplicado na arte" é de quem faz a arte (a agência do pedido ou, sem ela, a Wellmix).
 
 ## Limites
 O cartão não substitui as etapas Embarque e Desembaraço do pedido. O BL e os custos continuam também nelas, por enquanto. Juntar os dois fica para quando o fluxo for usado de verdade.

@@ -427,6 +427,33 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
     expect(ids(board, "parContainerReturn")).toEqual([receiving.id]);
   });
 
+  it("selo de certificação: fica em Certificação pendente até a arte com o selo ser conferida, e não vira documento para validar", () => {
+    const born = order("ORDER_CREATED", { ocpId: "ocp1" });
+    const sealed = order("PACKAGING", { ocpId: "ocp1" });
+    const done = order("PACKAGING", { ocpId: "ocp1" });
+    const s = [stage(born), stage(sealed), stage(done)];
+    const board = buildTowerBoard(
+      input({
+        orders: [born, sealed, done],
+        activeStages: s.map((x) => x.active),
+        stages: s.map((x) => x.stage),
+        steps: [
+          // Selo enviado; a arte com o selo aguarda a conferência da Wellmix.
+          step(sealed, "cert_seal"),
+          step(sealed, "cert_seal_art"),
+          // Tudo da certificação concluído.
+          step(done, "cert_memorial", "validated"),
+          step(done, "cert_lab"),
+          step(done, "cert_registration", "validated"),
+          step(done, "cert_seal"),
+          step(done, "cert_seal_art", "validated"),
+        ],
+      }),
+    );
+    expect(ids(board, "parCertification")).toEqual([born.id, sealed.id]);
+    expect(ids(board, "parDocsToValidate")).toEqual([]);
+  });
+
   it("parcelas, a receber e valores: só para quem abre Finanças", () => {
     const o = order("SHIPPING");
     const s = stage(o);

@@ -44,6 +44,14 @@ const num = (intl: string, n: number | null | undefined, digits = 1) =>
     ? null
     : n.toLocaleString(intl, { maximumFractionDigits: digits });
 
+/** Selo de certificação do pedido, na situação em que está. */
+const SEAL_HINT = {
+  pending: "certFlow.brief.sealPending",
+  ready: "certFlow.brief.sealReady",
+  sent: "certFlow.brief.sealSent",
+  done: "certFlow.brief.sealDone",
+} as const satisfies Record<string, DictionaryKey>;
+
 /**
  * Tela do briefing de embalagem para a agência (ou o marketing da Wellmix):
  * o que é (produto, quantidade, fotos, medidas, instruções) e os entregáveis
@@ -80,6 +88,7 @@ export default async function PackagingBriefPage({
     presale,
     order,
     orderArt,
+    orderSeal,
     photos,
   } = view;
   const errorCode = typeof error === "string" ? error : "";
@@ -183,6 +192,21 @@ export default async function PackagingBriefPage({
                       ? t("packBrief.orderArt.rejected")
                       : t("packBrief.orderArt.approved")
                     : t("packBrief.orderArt.pending")}
+              </span>
+            ) : null}
+            {/* Selo de certificação do pedido: quem faz a arte vê daqui. */}
+            {orderSeal ? (
+              <span
+                className="block text-xs"
+                data-packaging-order-seal={orderSeal}
+              >
+                {t(SEAL_HINT[orderSeal])}{" "}
+                <Link
+                  href={`/app/orders/${order.id}#certification`}
+                  className={linkClass}
+                >
+                  {t("certFlow.brief.open")} →
+                </Link>
               </span>
             ) : null}
           </Alert>

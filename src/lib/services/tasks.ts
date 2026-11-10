@@ -1,5 +1,6 @@
 import "server-only";
 
+import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   getStore,
@@ -36,6 +37,8 @@ export type TaskKind =
   | "sku_fix"
   | "import_step"
   | "import_validate"
+  | "cert_step"
+  | "cert_validate"
   | "message_reply";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
@@ -773,9 +776,13 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         ),
       );
   }
-  // Embarque e desembaraço (Fase D): passos a fazer e a validar.
+  // Embarque e desembaraço (Fase D) e certificação (Fase F): passos a fazer
+  // e a validar. A agência entra pelo selo de certificação a aplicar na arte.
   const importRole =
-    user.role === "comex" || user.role === "logistics" || user.role === "ocp"
+    user.role === "comex" ||
+    user.role === "logistics" ||
+    user.role === "ocp" ||
+    user.role === "agency"
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
@@ -790,12 +797,16 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
                 ? "comexId"
                 : importRole === "ocp"
                   ? "ocpId"
-                  : "logisticsId"]: user.partyId!,
+                  : importRole === "agency"
+                    ? "agencyId"
+                    : "logisticsId"]: user.partyId!,
             }
           : supplier
             ? { supplierId: user.partyId! }
             : {
                 status: [
+                  // Pedido recém-criado: só o selo de certificação já vale.
+                  "ORDER_CREATED",
                   "PREPARATION",
                   "PACKAGING",
                   "INSPECTION",
@@ -809,18 +820,27 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       // Coluna nova ainda não publicada no Appwrite: sem pendências.
       if (!isSchemaMissing(error)) throw error;
     }
+    const ptText = translator("pt");
     for (const p of await importTasks(user, orders)) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
+      const cert = p.kind === "cert_step" || p.kind === "cert_validate";
+      const validate =
+        p.kind === "import_validate" || p.kind === "cert_validate";
+      // Selo de certificação: texto próprio, traduzido na tela.
+      const seal = SEAL_TASK_TEXT[`${p.kind}:${p.key}`];
+      const values = { n: p.order.number };
       tasks.push(
         finish(
           {
             kind: p.kind,
-            title:
-              p.kind === "import_validate"
+            title: seal
+              ? ptText(seal.title, values)
+              : validate
                 ? `Validar ${step}: pedido #${p.order.number}`
                 : `${step}: pedido #${p.order.number}`,
-            detail: "",
-            link: `/app/orders/${p.order.id}#import-flow`,
+            detail: seal ? ptText(seal.detail, values) : "",
+            ...(seal ? { text: { ...seal, values } } : {}),
+            link: `/app/orders/${p.order.id}#${cert ? "certification" : "import-flow"}`,
             dueAt: null,
             orderNumber: p.order.number,
             customerId: p.order.customerId,
@@ -879,6 +899,27 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   cert_memorial: "Memorial descritivo (certificação)",
   cert_lab: "Ensaio em laboratório (laudo)",
   cert_registration: "Número de registro (certificado)",
+  cert_seal: "Selo de certificação",
+  cert_seal_art: "Selo aplicado na arte",
+};
+
+/** Pendências do selo de certificação (tipo da pendência + passo): título e detalhe traduzidos. */
+const SEAL_TASK_TEXT: Record<
+  string,
+  { title: DictionaryKey; detail: DictionaryKey } | undefined
+> = {
+  "cert_step:cert_seal": {
+    title: "tasks.seal.issue.title",
+    detail: "tasks.seal.issue.detail",
+  },
+  "cert_step:cert_seal_art": {
+    title: "tasks.seal.apply.title",
+    detail: "tasks.seal.apply.detail",
+  },
+  "cert_validate:cert_seal_art": {
+    title: "tasks.seal.validate.title",
+    detail: "tasks.seal.validate.detail",
+  },
 };
 
 /** Nível da aprovação do pré-custo (pendências saem em português, como as demais). */
