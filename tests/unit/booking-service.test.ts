@@ -470,7 +470,8 @@ describe("análise do Superplan", () => {
       b.booking.id,
       gone.booking.id,
     ]);
-    expect(result).toEqual({ analyzed: 2, skipped: 1, kept: 0, noRates: 2 });
+    // Sem câmbio do dia não há custo: a conta "sem II/IPI" não conta essas.
+    expect(result).toEqual({ analyzed: 2, skipped: 1, kept: 0, noRates: 0 });
     const first = await fresh(a.booking.id);
     expect(first.status).toBe("analysis");
     expect(first.analysis?.businessType).toBeTruthy();
@@ -634,12 +635,13 @@ describe("gerar solicitação", () => {
       t,
     );
     // Nem o comprador nem quem analisa: a solicitação ficaria viva e a linha
-    // livre para gerar outra.
+    // livre para gerar outra. A recusa é a mesma para os dois (o caminho é
+    // excluir a solicitação).
     expect(
       await code(() =>
         booking.saveBookingRow(buyer, a.booking.id, { status: "reserved" }),
       ),
-    ).toBe("booking_approver_required");
+    ).toBe("booking_request_alive");
     for (const status of ["reserved", "approved", "discarded"] as const) {
       expect(
         await code(() =>
@@ -864,7 +866,7 @@ describe("achados da revisão", () => {
     expect([saved.status, saved.requestId]).toEqual(["requested", live[0].id]);
   });
 
-  it("falha ao ligar a linha à solicitação não deixa gerar de novo (a linha já está tomada)", async () => {
+  it("falha ao gravar o número da solicitação na linha não desfaz nada: a ligação já existe", async () => {
     const a = await row("approved");
     const store = getStore();
     const original = store.update.bind(store);
@@ -872,11 +874,10 @@ describe("achados da revisão", () => {
     const spy = vi
       .spyOn(store, "update")
       .mockImplementation(async (table, id, patch) => {
-        if (
-          table === "bookings" &&
-          (patch as { requestId?: string | null }).requestId
-        )
-          throw new Error("store down");
+        if (table === "bookings" && "requestNumber" in (patch as object)) {
+          // Só o fecho (número e lote) falha; tomar a linha passa.
+          if (!("status" in (patch as object))) throw new Error("store down");
+        }
         return original(table, id, patch as never);
       });
     let created: Awaited<ReturnType<typeof booking.generateRequestFromBooking>>;
@@ -891,7 +892,20 @@ describe("achados da revisão", () => {
       log.mockRestore();
     }
     expect(created).toHaveLength(1);
-    expect((await fresh(a.booking.id)).status).toBe("requested");
+    const linked = await fresh(a.booking.id);
+    expect([linked.status, linked.requestId, linked.requestNumber]).toEqual([
+      "requested",
+      created[0].id,
+      null,
+    ]);
+    // A tela conhece a solicitação mesmo sem o número.
+    const shown = (await booking.listBookingRows(buyer)).rows.find(
+      (r) => r.id === a.booking.id,
+    )!;
+    expect([shown.requestId, shown.requestState]).toEqual([
+      created[0].id,
+      null,
+    ]);
     expect(
       await code(() =>
         booking.generateRequestFromBooking(
@@ -1034,39 +1048,60 @@ describe("achados da revisão (segunda leva)", () => {
     ).toHaveLength(1);
   });
 
-  it("linha tomada sem solicitação ligada: depois de 2 minutos quem tem a tela a devolve; antes disso, não", async () => {
+  it("linha tomada cuja solicitação não nasceu: ninguém mexe nos 2 primeiros minutos; depois, quem tem a tela a devolve", async () => {
     const a = await row("approved");
     const now = Date.now();
-    // Recém-tomada (pode ser uma chamada ainda em andamento).
+    // Recém-tomada: o "Gerar solicitação" ainda pode estar criando.
     await getStore().update("bookings", a.booking.id, {
       status: "requested",
       statusChangedAt: new Date(now - 30_000).toISOString(),
-      requestId: null,
+      requestId: "solicitacao-que-ainda-nao-existe",
     });
+    for (const who of [buyer, admin]) {
+      expect(
+        await code(() =>
+          booking.saveBookingRow(who, a.booking.id, { status: "approved" }),
+        ),
+      ).toBe("booking_request_pending");
+      const detail = (await booking.getBookingDetail(who, a.booking.id))!;
+      expect([detail.link, detail.moveOptions]).toEqual([
+        "pending",
+        ["requested"],
+      ]);
+      // Sem link para uma solicitação que não existe.
+      expect([detail.row.requestId, detail.row.requestState]).toEqual([
+        null,
+        "pending",
+      ]);
+    }
+    // Cliente e quantidade também ficam travados enquanto cria.
     expect(
       await code(() =>
-        booking.saveBookingRow(buyer, a.booking.id, { status: "approved" }),
+        booking.saveBookingRow(buyer, a.booking.id, { reservedQty: 480 }),
       ),
-    ).toBe("booking_approver_required");
-    expect(
-      (await booking.getBookingDetail(buyer, a.booking.id))!.moveOptions,
-    ).toEqual(["requested"]);
+    ).toBe("booking_locked");
     // Parada há mais de 2 minutos: a criação caiu no meio.
     await getStore().update("bookings", a.booking.id, {
       statusChangedAt: new Date(now - 5 * 60_000).toISOString(),
     });
-    const detail = await booking.getBookingDetail(buyer, a.booking.id);
-    expect(detail!.moveOptions).toEqual(
-      expect.arrayContaining(["approved", "offered", "reserved"]),
-    );
+    const detail = (await booking.getBookingDetail(buyer, a.booking.id))!;
+    expect(detail.link).toBe("missing");
+    expect(detail.row.requestState).toBe("missing");
+    expect(detail.moveOptions).toEqual([
+      "approved",
+      "offered",
+      "reserved",
+      "requested",
+    ]);
     // Não vira "descartado" nem "novo" por quem não analisa.
     expect(
       await code(() =>
         booking.saveBookingRow(buyer, a.booking.id, { status: "new" }),
       ),
-    ).toBe("booking_approver_required");
+    ).toBe("booking_reopen_forbidden");
     await booking.saveBookingRow(buyer, a.booking.id, { status: "approved" });
-    expect((await fresh(a.booking.id)).status).toBe("approved");
+    const back = await fresh(a.booking.id);
+    expect([back.status, back.requestId]).toEqual(["approved", null]);
   });
 
   it("análise em várias linhas não substitui a simulação gravada à mão", async () => {
@@ -1280,5 +1315,291 @@ describe("ajustes da segunda revisão", () => {
       600,
     ]);
     expect(second.analysis?.byUserId).toBe(admin.id);
+  });
+});
+
+describe("solicitação ligada antes de nascer (terceira revisão)", () => {
+  const taken = async () => {
+    const a = await row("approved");
+    const [request] = await booking.generateRequestFromBooking(
+      buyer,
+      { ids: [a.booking.id], customer: joao.partyId! },
+      t,
+    );
+    return { ...a, request };
+  };
+
+  it("a linha é tomada já com o id da solicitação, o cliente e a quantidade, antes de a solicitação existir", async () => {
+    const a = await row("approved");
+    const store = getStore();
+    const original = store.create.bind(store);
+    const seen: Array<Record<string, unknown>> = [];
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (table === "requests") {
+          const now = await fresh(a.booking.id);
+          seen.push({
+            status: now.status,
+            requestId: now.requestId,
+            customerId: now.customerId,
+            reservedQty: now.reservedQty,
+            id: (data as { id?: string }).id,
+          });
+        }
+        return original(table, data as never);
+      });
+    let created: Awaited<ReturnType<typeof booking.generateRequestFromBooking>>;
+    try {
+      created = await booking.generateRequestFromBooking(
+        buyer,
+        {
+          ids: [a.booking.id],
+          customer: joao.partyId!,
+          quantities: { [a.booking.id]: 480 },
+        },
+        t,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+    expect(seen).toEqual([
+      {
+        status: "requested",
+        requestId: created[0].id,
+        customerId: joao.partyId,
+        reservedQty: 480,
+        id: created[0].id,
+      },
+    ]);
+    const saved = await fresh(a.booking.id);
+    expect([saved.requestId, saved.requestNumber]).toEqual([
+      created[0].id,
+      created[0].number ?? null,
+    ]);
+  });
+
+  it("criação que falha: só a solicitação desta chamada é cancelada (pelo id) e a linha volta inteira", async () => {
+    const a = await row("offered", {
+      customerId: joao.partyId,
+      reservedQty: 360,
+    });
+    const store = getStore();
+    const { createRequestBatch } = await import("@/lib/services/requests");
+    const item = {
+      productId: a.product.id,
+      productName: a.product.name,
+      description: a.product.name,
+      specification: null,
+      quantity: 240,
+      unit: "un",
+      sourcingDemand: false,
+    };
+    const base = {
+      customerId: joao.partyId!,
+      deadline: null,
+      notes: null,
+      requestedForUserId: null,
+    };
+    const [older] = await createRequestBatch(buyer, base, [item]);
+    const original = store.create.bind(store);
+    let failed = false;
+    let other: string | null = null;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (!failed && table === "notifications") {
+          failed = true;
+          // No mesmo instante, o mesmo login cria outra solicitação do
+          // mesmo cliente e produto por outra tela.
+          spy.mockRestore();
+          other = (await createRequestBatch(buyer, base, [item]))[0].id;
+          throw new Error("notifications down");
+        }
+        return original(table, data as never);
+      });
+    try {
+      expect(
+        await code(() =>
+          booking.generateRequestFromBooking(
+            buyer,
+            { ids: [a.booking.id], quantities: { [a.booking.id]: 600 } },
+            t,
+          ),
+        ),
+      ).toBe("notifications down");
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    const ofProduct = (await store.list("requests")).filter(
+      (r) => r.productId === a.product.id,
+    );
+    expect(ofProduct).toHaveLength(3);
+    const status = (id: string) => ofProduct.find((r) => r.id === id)!.status;
+    // As duas que não nasceram desta chamada continuam vivas.
+    expect([status(older.id), status(other!)]).toEqual([
+      "REQUESTED",
+      "REQUESTED",
+    ]);
+    expect(
+      ofProduct.filter((r) => r.status === "CANCELLED").map((r) => r.id),
+    ).toHaveLength(1);
+    // A linha volta como estava: etapa, cliente, quantidade e sem ligação.
+    const back = await fresh(a.booking.id);
+    expect([
+      back.status,
+      back.customerId,
+      back.reservedQty,
+      back.requestId,
+    ]).toEqual(["offered", joao.partyId, 360, null]);
+  });
+
+  it("linha devolvida enquanto a solicitação era criada: a solicitação desta chamada é cancelada no fecho", async () => {
+    const a = await row("approved");
+    const b = await row("approved");
+    const store = getStore();
+    const original = store.create.bind(store);
+    let returned = false;
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        const made = await original(table, data as never);
+        // Chamada longa: depois de a 1ª solicitação nascer, alguém devolve a
+        // linha da 2ª (a espera de 2 minutos já tinha passado para ela).
+        if (!returned && table === "requests") {
+          returned = true;
+          await store.update("bookings", b.booking.id, {
+            status: "approved",
+            requestId: null,
+          });
+        }
+        return made;
+      });
+    let created: Awaited<ReturnType<typeof booking.generateRequestFromBooking>>;
+    try {
+      created = await booking.generateRequestFromBooking(
+        buyer,
+        { ids: [a.booking.id, b.booking.id], customer: joao.partyId! },
+        t,
+      );
+    } finally {
+      spy.mockRestore();
+    }
+    // Só a solicitação da linha que continuou tomada fica.
+    expect(created.map((r) => r.productId)).toEqual([a.product.id]);
+    const live = (await store.list("requests")).filter(
+      (r) =>
+        [a.product.id, b.product.id].includes(r.productId ?? "") &&
+        r.status !== "CANCELLED",
+    );
+    expect(live.map((r) => r.productId)).toEqual([a.product.id]);
+    const rowB = await fresh(b.booking.id);
+    expect([rowB.status, rowB.requestId]).toEqual(["approved", null]);
+    // A linha devolvida gera de novo, e fica uma solicitação viva só.
+    await booking.generateRequestFromBooking(
+      buyer,
+      { ids: [b.booking.id], customer: joao.partyId! },
+      t,
+    );
+    expect(
+      (await store.list("requests")).filter(
+        (r) => r.productId === b.product.id && r.status !== "CANCELLED",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("solicitação que virou pedido: quem analisa reabre a linha; antes disso ninguém; o comprador nunca", async () => {
+    const a = await taken();
+    const store = getStore();
+    // Em andamento, em qualquer situação antes do pedido: ninguém reabre.
+    for (const status of ["RFQ_OPEN", "WAITING_DOWN_PAYMENT"] as const) {
+      await store.update("requests", a.request.id, { status });
+      for (const who of [buyer, admin])
+        expect(
+          await code(() =>
+            booking.saveBookingRow(who, a.booking.id, { status: "approved" }),
+          ),
+        ).toBe("booking_request_alive");
+    }
+    // Virou pedido (não dá mais para excluir a solicitação).
+    await store.update("requests", a.request.id, { status: "ORDERED" });
+    const forBuyer = (await booking.getBookingDetail(buyer, a.booking.id))!;
+    expect([forBuyer.link, forBuyer.moveOptions]).toEqual([
+      "closed",
+      ["requested"],
+    ]);
+    expect(
+      await code(() =>
+        booking.saveBookingRow(buyer, a.booking.id, { status: "approved" }),
+      ),
+    ).toBe("booking_reopen_forbidden");
+    // Cliente e quantidade continuam os da solicitação.
+    expect(
+      await code(() =>
+        booking.saveBookingRow(admin, a.booking.id, { reservedQty: 999 }),
+      ),
+    ).toBe("booking_locked");
+    const forAdmin = (await booking.getBookingDetail(admin, a.booking.id))!;
+    expect(forAdmin.link).toBe("closed");
+    expect(forAdmin.moveOptions).toEqual(
+      expect.arrayContaining(["approved", "offered", "reserved"]),
+    );
+    // A linha continua com o link do pedido até ser reaberta.
+    expect(forAdmin.row.requestId).toBe(a.request.id);
+    await booking.moveBookings(admin, {
+      ids: [a.booking.id],
+      status: "approved",
+    });
+    const reopened = await fresh(a.booking.id);
+    expect([reopened.status, reopened.requestId]).toEqual(["approved", null]);
+    // O pedido não é tocado.
+    expect((await store.get("requests", a.request.id))!.status).toBe("ORDERED");
+  });
+
+  it("as situações em que a solicitação ainda pode ser excluída são as mesmas nas duas listas", async () => {
+    const { DELETABLE_REQUEST_STATUSES } =
+      await import("@/lib/services/requests");
+    const { BOOKING_OPEN_REQUEST } = await import("@/lib/booking");
+    expect([...BOOKING_OPEN_REQUEST].sort()).toEqual(
+      [...DELETABLE_REQUEST_STATUSES].sort(),
+    );
+  });
+
+  it("excluir a solicitação solta a linha, mesmo sem o número gravado na linha", async () => {
+    const a = await taken();
+    await getStore().update("bookings", a.booking.id, {
+      requestNumber: null,
+      requestGroupId: null,
+    });
+    const { deleteRequests } = await import("@/lib/services/requests");
+    await deleteRequests(admin, [a.request.id]);
+    const back = await fresh(a.booking.id);
+    expect(back.requestId).toBeNull();
+    expect(["approved", "reserved"]).toContain(back.status);
+  });
+
+  it("'sem II/IPI' só conta a linha que teve custo calculado", async () => {
+    const { setSetting } = await import("@/lib/settings");
+    const withCost = await row("new");
+    // Sem preço: "falta dado", nenhum custo.
+    const noPrice = await row("new", {}, { price: null });
+    await setSetting("fxManualRates", { USD: 5.15, RMB: 0.72, EUR: null });
+    try {
+      const result = await booking.analyzeBookings(admin, [
+        withCost.booking.id,
+        noPrice.booking.id,
+      ]);
+      expect(result).toMatchObject({ analyzed: 2, noRates: 1 });
+      const first = (await fresh(withCost.booking.id)).analysis!;
+      expect(first.costBrl).toBeGreaterThan(0);
+      expect(first.inputs?.ncmFound).toBe(false);
+      expect((await fresh(noPrice.booking.id)).analysis!.costBrl ?? null).toBe(
+        null,
+      );
+    } finally {
+      await setSetting("fxManualRates", { USD: null, RMB: null, EUR: null });
+    }
   });
 });

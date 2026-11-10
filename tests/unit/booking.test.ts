@@ -5,6 +5,8 @@ import {
   BOOKING_FLOW,
   activeBookingFilters,
   bookingColumnsFor,
+  BOOKING_OPEN_REQUEST,
+  bookingLinkState,
   bookingMoveError,
   bookingMoveOptions,
   bookingQuery,
@@ -92,6 +94,7 @@ const row = (patch: Partial<BookingRow> = {}): BookingRow => ({
   requestId: null,
   requestGroupId: null,
   requestNumber: null,
+  requestState: null,
   ...patch,
 });
 
@@ -154,7 +157,7 @@ describe("etapas do Booking", () => {
     expect(bookingMoveError("reserved", "approved", BUYER)).toBeNull();
     // Reabrir o que já virou solicitação: só quem analisa.
     expect(bookingMoveError("requested", "approved", BUYER)).toBe(
-      "booking_approver_required",
+      "booking_reopen_forbidden",
     );
     expect(bookingMoveError("requested", "approved", ADMIN)).toBeNull();
     // A mesma etapa não é mudança.
@@ -535,5 +538,69 @@ describe("filtro de número inteiro", () => {
     expect(
       filterBookingRows(rows, onlyMoq, { superplan: true }).map((r) => r.id),
     ).toEqual(["b", "c"]);
+  });
+});
+
+describe("sair de 'Virou solicitação'", () => {
+  it("depende da solicitação da linha", () => {
+    const now = Date.parse("2026-11-10T12:00:00Z");
+    const taken = (minutesAgo: number) => ({
+      status: "requested" as const,
+      statusChangedAt: new Date(now - minutesAgo * 60_000).toISOString(),
+    });
+    // Estado: sendo criada (2 min), não nasceu, em andamento, pedido/cancelada.
+    expect(bookingLinkState(taken(1), null, now)).toBe("pending");
+    expect(bookingLinkState(taken(2), null, now)).toBe("pending");
+    expect(bookingLinkState(taken(3), null, now)).toBe("missing");
+    expect(
+      bookingLinkState({ status: "requested", statusChangedAt: null }, null),
+    ).toBe("missing");
+    for (const status of BOOKING_OPEN_REQUEST)
+      expect(bookingLinkState(taken(1), { status }, now)).toBe("alive");
+    for (const status of ["ORDERED", "CANCELLED"])
+      expect(bookingLinkState(taken(600), { status }, now)).toBe("closed");
+    expect(
+      bookingLinkState({ status: "approved", statusChangedAt: null }, null),
+    ).toBeNull();
+
+    for (const actor of [BUYER, ADMIN]) {
+      // Sendo criada ou em andamento: ninguém move, nem quem analisa.
+      for (const to of ["approved", "reserved", "discarded", "new"] as const) {
+        expect(bookingMoveError("requested", to, actor, "pending")).toBe(
+          "booking_request_pending",
+        );
+        expect(bookingMoveError("requested", to, actor, "alive")).toBe(
+          "booking_request_alive",
+        );
+      }
+      expect(bookingMoveOptions("requested", actor, "pending")).toEqual([
+        "requested",
+      ]);
+      expect(bookingMoveOptions("requested", actor, "alive")).toEqual([
+        "requested",
+      ]);
+      // Não nasceu: quem tem a tela devolve para onde ela podia estar.
+      for (const to of ["approved", "offered", "reserved"] as const)
+        expect(bookingMoveError("requested", to, actor, "missing")).toBeNull();
+    }
+    // Não nasceu, para fora da vitrine: só quem analisa.
+    expect(bookingMoveError("requested", "new", BUYER, "missing")).toBe(
+      "booking_reopen_forbidden",
+    );
+    expect(bookingMoveError("requested", "new", ADMIN, "missing")).toBeNull();
+    // Virou pedido ou foi cancelada: só quem analisa reabre.
+    expect(bookingMoveError("requested", "approved", BUYER, "closed")).toBe(
+      "booking_reopen_forbidden",
+    );
+    expect(
+      bookingMoveError("requested", "approved", ADMIN, "closed"),
+    ).toBeNull();
+    expect(bookingMoveOptions("requested", BUYER, "closed")).toEqual([
+      "requested",
+    ]);
+    // "Virou solicitação" nunca à mão, em estado nenhum.
+    expect(bookingMoveError("approved", "requested", ADMIN, "missing")).toBe(
+      "booking_request_only",
+    );
   });
 });

@@ -80,6 +80,10 @@ export const BOOKING_ERRORS = [
   "booking_locked",
   /** Linha com solicitação em andamento: só volta quando a solicitação é excluída. */
   "booking_request_alive",
+  /** Linha recém-tomada: a solicitação dela ainda está sendo criada. */
+  "booking_request_pending",
+  /** Reabrir uma linha cuja solicitação virou pedido ou foi cancelada: só quem analisa. */
+  "booking_reopen_forbidden",
   /** Gerar solicitação: faltou o cliente (linhas sem cliente e nenhum escolhido). */
   "booking_request_customer",
   /** Barra de ações: faltou escolher a etapa ou o responsável. */
@@ -99,11 +103,57 @@ export interface BookingActor {
 }
 
 /**
+ * Situações da solicitação em que ela ainda pode ser excluída (antes de virar
+ * pedido). As mesmas de `DELETABLE_REQUEST_STATUSES` (services/requests.ts);
+ * um teste confere que as duas listas batem.
+ */
+export const BOOKING_OPEN_REQUEST: readonly string[] = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+  "SUPPLIER_SELECTED",
+  "WAITING_DOWN_PAYMENT",
+];
+
+/** Quanto tempo a linha tomada espera a solicitação nascer (ms). */
+export const BOOKING_LINK_WAIT_MS = 2 * 60_000;
+
+/**
+ * Como está a solicitação de uma linha em "Virou solicitação":
+ * - `pending`: a linha foi tomada há pouco e a solicitação ainda não existe
+ *   (o "Gerar solicitação" está rodando);
+ * - `alive`: a solicitação existe e ainda pode ser excluída;
+ * - `closed`: a solicitação virou pedido ou foi cancelada;
+ * - `missing`: passaram 2 minutos e a solicitação não existe (a criação
+ *   caiu no meio).
+ */
+export type BookingLinkState = "pending" | "alive" | "closed" | "missing";
+
+export function bookingLinkState(
+  row: { status: BookingStatus; statusChangedAt: string | null },
+  /** A solicitação ligada, se existe. */
+  request: { status: string } | null | undefined,
+  now: number = Date.now(),
+): BookingLinkState | null {
+  if (row.status !== "requested") return null;
+  if (request)
+    return BOOKING_OPEN_REQUEST.includes(request.status) ? "alive" : "closed";
+  const since = Date.parse(row.statusChangedAt ?? "");
+  return Number.isFinite(since) && now - since <= BOOKING_LINK_WAIT_MS
+    ? "pending"
+    : "missing";
+}
+
+/**
  * Pode mover de uma etapa para outra? Devolve o código da recusa ou null.
  * - "Virou solicitação" nunca à mão (sai do "Gerar solicitação").
  * - Toda mudança que põe o produto na vitrine ou tira dela (aprovar, voltar
  *   para análise, descartar um aprovado) é de quem analisa.
- * - Reabrir uma linha que já virou solicitação também.
+ * - Sair de "Virou solicitação" depende da solicitação ligada (`link`):
+ *   sendo criada, ninguém mexe; em andamento, ninguém reabre (o caminho é
+ *   excluir a solicitação, e a linha volta sozinha); que não chegou a nascer,
+ *   quem tem a tela devolve para Aprovado, Oferecido ou Reservado; que virou
+ *   pedido ou foi cancelada, só quem analisa reabre.
  * - O resto (Novo ↔ Em análise, descartar/recuperar antes de aprovar,
  *   Aprovado ↔ Oferecido ↔ Reservado) é de quem tem a tela.
  */
@@ -111,11 +161,17 @@ export function bookingMoveError(
   from: BookingStatus,
   to: BookingStatus,
   actor: BookingActor,
+  link: BookingLinkState | null = null,
 ): BookingErrorCode | null {
   if (from === to) return null;
   if (to === "requested") return "booking_request_only";
+  if (from === "requested") {
+    if (link === "pending") return "booking_request_pending";
+    if (link === "alive") return "booking_request_alive";
+    if (link === "missing" && BOOKING_REQUESTABLE.includes(to)) return null;
+    return actor.canApprove ? null : "booking_reopen_forbidden";
+  }
   if (actor.canApprove) return null;
-  if (from === "requested") return "booking_approver_required";
   if (hidesFromShowcase(from) !== hidesFromShowcase(to))
     return "booking_approver_required";
   return null;
@@ -125,10 +181,11 @@ export function bookingMoveError(
 export function bookingMoveOptions(
   from: BookingStatus,
   actor: BookingActor,
+  link: BookingLinkState | null = null,
 ): BookingStatus[] {
   const all: BookingStatus[] = [...BOOKING_FLOW, "discarded"];
   return all.filter(
-    (to) => to === from || bookingMoveError(from, to, actor) === null,
+    (to) => to === from || bookingMoveError(from, to, actor, link) === null,
   );
 }
 
@@ -264,9 +321,15 @@ export interface BookingRow {
   sourceRows: string | null;
   sourceOrder: number | null;
   note: string | null;
+  /** A solicitação da linha, quando ela existe (dá para abrir). */
   requestId: string | null;
   requestGroupId: string | null;
   requestNumber: number | null;
+  /**
+   * "Virou solicitação" sem solicitação: `pending` = sendo criada agora;
+   * `missing` = a criação parou no meio (a linha pode ser devolvida).
+   */
+  requestState: "pending" | "missing" | null;
 }
 
 /* ------------------------------------------------------------------------ */

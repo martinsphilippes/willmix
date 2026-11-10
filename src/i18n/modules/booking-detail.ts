@@ -24,6 +24,10 @@ export const pt = {
   "booking.detail.saving": "Salvando…",
   "booking.detail.locked":
     "Esta linha já virou solicitação. Cliente e quantidade mudam na solicitação; para a linha voltar, exclua a solicitação.",
+  "booking.detail.pending":
+    "A solicitação desta linha está sendo criada agora. Espere um instante e atualize a página.",
+  "booking.detail.closed":
+    "A solicitação desta linha já virou pedido ou foi cancelada. Para oferecer o produto de novo, quem analisa no Superplan (hoje, o administrador) reabre a linha, movendo-a para outra etapa.",
   "booking.detail.hidden":
     "O cliente ainda não vê este produto. Ele entra na vitrine quando for aprovado.",
   "booking.detail.visible": "Este produto já aparece na vitrine do cliente.",
@@ -62,7 +66,7 @@ export const pt = {
   "booking.detail.history.empty": "Sem histórico.",
   "booking.detail.request": "Solicitação gerada",
   "booking.detail.unlinked":
-    "A solicitação não ficou ligada a esta linha (a criação parou no meio). Confira em Solicitações; se ela não existir, mova a linha de volta para Aprovado, Oferecido ou Reservado.",
+    "A solicitação desta linha não chegou a ser criada (a criação parou no meio). Mova a linha de volta para Aprovado, Oferecido ou Reservado e gere a solicitação de novo.",
   "booking.detail.analysis.used":
     "Preço {price} {currency} · {pcs} peças por caixa · {cbm} m³ por caixa",
   "booking.detail.analysis.manual":
@@ -103,6 +107,10 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.detail.saving": "Saving…",
   "booking.detail.locked":
     "This row already became a request. Customer and quantity change in the request; for the row to come back, delete the request.",
+  "booking.detail.pending":
+    "The request of this row is being created right now. Wait a moment and refresh the page.",
+  "booking.detail.closed":
+    "The request of this row already became an order or was cancelled. To offer the product again, whoever analyzes in Superplan (today, the administrator) reopens the row by moving it to another stage.",
   "booking.detail.hidden":
     "The customer does not see this product yet. It enters the showcase when it is approved.",
   "booking.detail.visible":
@@ -142,7 +150,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.detail.history.empty": "No history.",
   "booking.detail.request": "Request created",
   "booking.detail.unlinked":
-    "The request was not linked to this row (its creation stopped midway). Check in Requests; if it does not exist, move the row back to Approved, Offered or Reserved.",
+    "The request of this row was never created (its creation stopped midway). Move the row back to Approved, Offered or Reserved and create the request again.",
   "booking.detail.analysis.used":
     "Price {price} {currency} · {pcs} pieces per carton · {cbm} m³ per carton",
   "booking.detail.analysis.manual":
@@ -183,6 +191,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.detail.saving": "保存中…",
   "booking.detail.locked":
     "该行已生成询价单。客户和数量请在询价单中修改；要让该行回来，请删除询价单。",
+  "booking.detail.pending": "该行的询价单正在创建中。请稍等片刻后刷新页面。",
+  "booking.detail.closed":
+    "该行的询价单已转为订单或已取消。若要再次推荐该产品，由在 Superplan 中分析的人（目前为管理员）把该行移到其他阶段来重新打开。",
   "booking.detail.hidden": "客户暂时看不到该产品。批准后才进入展示页。",
   "booking.detail.visible": "该产品已出现在客户的展示页中。",
   "booking.detail.sheet.title": "技术表数据",
@@ -219,7 +230,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.detail.history.empty": "暂无历史记录。",
   "booking.detail.request": "已生成的询价单",
   "booking.detail.unlinked":
-    "询价单没有关联到该行（创建过程中断）。请在“询价单”中确认；如果不存在，请把该行移回“已批准”“已推荐”或“已预订”。",
+    "该行的询价单没有创建成功（创建过程中断）。请把该行移回“已批准”“已推荐”或“已预订”，然后重新生成询价单。",
   "booking.detail.analysis.used":
     "价格 {price} {currency} · 每箱 {pcs} 件 · 每箱 {cbm} m³",
   "booking.detail.analysis.manual": "手动保存的模拟：批量分析不会替换它。",

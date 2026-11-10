@@ -82,6 +82,8 @@ export const pt = {
   "booking.row.minimum": "mínimo",
   "booking.row.request": "Solicitação #{n}",
   "booking.row.requestOpen": "Abrir solicitação",
+  "booking.row.requestPending": "criando…",
+  "booking.row.requestMissing": "não foi criada",
   "booking.col.actions": "Ações",
 };
 
@@ -164,6 +166,8 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.row.minimum": "minimum",
   "booking.row.request": "Request #{n}",
   "booking.row.requestOpen": "Open request",
+  "booking.row.requestPending": "creating…",
+  "booking.row.requestMissing": "was not created",
   "booking.col.actions": "Actions",
 };
 
@@ -241,5 +245,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.row.minimum": "最低价",
   "booking.row.request": "询价单 #{n}",
   "booking.row.requestOpen": "打开询价单",
+  "booking.row.requestPending": "创建中…",
+  "booking.row.requestMissing": "未创建",
   "booking.col.actions": "操作",
 };

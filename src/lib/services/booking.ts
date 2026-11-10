@@ -11,19 +11,23 @@ import {
   type Request,
   type User,
 } from "@/lib/db";
+import { randomUUID } from "node:crypto";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen, canOpen } from "@/lib/auth/screens";
 import {
   BOOKING_BULK_MAX,
   BOOKING_EMPTY,
+  BOOKING_OPEN_REQUEST,
   BOOKING_REQUESTABLE,
   BOOKING_REQUEST_MAX,
+  bookingLinkState,
   bookingMoveError,
   bookingMoveOptions,
   bookingStatusRequirementError,
   reservedQtyError,
   type BookingActor,
   type BookingErrorCode,
+  type BookingLinkState,
   type BookingRow,
 } from "@/lib/booking";
 import { estimatedGrossKg } from "@/lib/weights";
@@ -184,8 +188,13 @@ function rowOf(
     canApprove: boolean;
     allowancePct: number;
     intl: string;
+    /** Linhas em "Virou solicitação" cuja solicitação foi conferida. */
+    links: Map<string, BookingLinkState>;
   },
 ): BookingRow {
+  const link = ctx.links.get(booking.id) ?? null;
+  // Solicitação que não existe (sendo criada, ou não nasceu): sem link.
+  const absent = link === "pending" || link === "missing" ? link : null;
   const product = ctx.joined.products.get(booking.productId) ?? null;
   const supplier = product?.supplierId
     ? (ctx.parties.get(product.supplierId) ?? null)
@@ -255,9 +264,10 @@ function rowOf(
     sourceRows: booking.sourceRows,
     sourceOrder: booking.sourceOrder,
     note: booking.note,
-    requestId: booking.requestId,
-    requestGroupId: booking.requestGroupId,
-    requestNumber: booking.requestNumber,
+    requestId: absent ? null : booking.requestId,
+    requestGroupId: absent ? null : booking.requestGroupId,
+    requestNumber: absent ? null : booking.requestNumber,
+    requestState: absent,
   };
 }
 
@@ -291,8 +301,15 @@ async function buildRows(
   );
   const userMap = new Map(users.map((u) => [u.id, u]));
   const allowancePct = superplanParams(settings.superplan).grossEstimatePct;
+  // Só as linhas ainda sem o número da solicitação são conferidas (sendo
+  // criada, criação interrompida, ou o número não chegou a ser gravado): as
+  // outras têm solicitação com certeza.
+  const links = await linkStates(
+    bookings.filter((b) => b.status === "requested" && !b.requestNumber),
+  );
   const rows = bookings.map((booking) =>
     rowOf(booking, {
+      links,
       joined,
       parties,
       users: userMap,
@@ -372,6 +389,8 @@ export interface BookingDetail {
   row: BookingRow;
   /** Etapas para as quais quem vê pode mover esta linha. */
   moveOptions: BookingStatus[];
+  /** Linha em "Virou solicitação": como está a solicitação dela. */
+  link: BookingLinkState | null;
   history: BookingHistoryEntry[];
   options: BookingOptions;
   canApprove: boolean;
@@ -404,14 +423,11 @@ export async function getBookingDetail(
     ? await store.list("users", { filter: { id: userIds } })
     : [];
   const names = new Map(users.map((u) => [u.id, u.name]));
+  const link = (await linkStates([booking])).get(booking.id) ?? null;
   return {
     row: built.rows[0],
-    moveOptions: isUnlinkedRequest(booking)
-      ? distinct([
-          ...bookingMoveOptions(booking.status, bookingActor(user)),
-          ...BOOKING_REQUESTABLE,
-        ])
-      : bookingMoveOptions(booking.status, bookingActor(user)),
+    moveOptions: bookingMoveOptions(booking.status, bookingActor(user), link),
+    link,
     history: log.map((l) => ({
       id: l.id,
       at: l.createdAt,
@@ -471,18 +487,13 @@ function plan(
   moq: number | null,
   actor: BookingActor,
   user: User,
+  /** Linha em "Virou solicitação": como está a solicitação dela. */
+  link: BookingLinkState | null,
 ): Planned | null {
   const status = patch.status ?? booking.status;
   const moved = status !== booking.status;
-  // Tomada para virar solicitação e a solicitação não ficou ligada (falha no
-  // meio): quem tem a tela devolve a linha para Aprovado, Oferecido ou
-  // Reservado, sem depender de quem analisa.
-  const unlinked = isUnlinkedRequest(booking);
   if (moved) {
-    const error =
-      unlinked && BOOKING_REQUESTABLE.includes(status)
-        ? null
-        : bookingMoveError(booking.status, status, actor);
+    const error = bookingMoveError(booking.status, status, actor, link);
     if (error) throw refuse(error, booking.id);
   }
   const customerId =
@@ -491,10 +502,11 @@ function plan(
     patch.reservedQty !== undefined ? patch.reservedQty : booking.reservedQty;
   const customerChanged = customerId !== booking.customerId;
   const qtyChanged = reservedQty !== booking.reservedQty;
-  // Já virou solicitação: cliente e quantidade são os da solicitação.
+  // Já virou solicitação: cliente e quantidade são os da solicitação (só a
+  // linha cuja solicitação não chegou a nascer volta a ser editável).
   if (
     booking.status === "requested" &&
-    !unlinked &&
+    link !== "missing" &&
     !moved &&
     (customerChanged || qtyChanged)
   )
@@ -537,40 +549,35 @@ function plan(
   return Object.keys(write).length ? { booking, write, moved } : null;
 }
 
-/** Quanto tempo uma linha tomada espera pela ligação antes de poder voltar (ms). */
-const UNLINKED_AFTER_MS = 2 * 60_000;
-
 /**
- * "Virou solicitação" sem solicitação ligada, há mais de dois minutos: a
- * criação falhou no meio (ou a ligação não foi gravada). Não é uma chamada
- * ainda em andamento.
+ * Linhas em "Virou solicitação": como está a solicitação de cada uma
+ * (`bookingLinkState`). A linha guarda o id da solicitação desde que é
+ * tomada, antes de a solicitação nascer; por isso "não existe" quer dizer
+ * "ainda sendo criada" (nos 2 primeiros minutos) ou "não chegou a nascer".
  */
-function isUnlinkedRequest(booking: Booking): boolean {
-  if (booking.status !== "requested" || booking.requestId) return false;
-  const since = Date.parse(booking.statusChangedAt ?? "");
-  return !Number.isFinite(since) || Date.now() - since > UNLINKED_AFTER_MS;
-}
-
-/**
- * Linha com solicitação em andamento não sai de "Virou solicitação" à mão:
- * reabrir deixaria a solicitação viva e a linha livre para gerar outra. O
- * caminho é excluir a solicitação (a linha volta sozinha). Só quando a
- * solicitação ligada não existe mais (ou foi cancelada) quem analisa reabre.
- */
-async function assertNoLiveRequest(planned: Planned[]): Promise<void> {
-  const leaving = planned.filter(
-    (p) => p.moved && p.booking.status === "requested" && p.booking.requestId,
+async function linkStates(
+  bookings: Booking[],
+): Promise<Map<string, BookingLinkState>> {
+  const taken = bookings.filter((b) => b.status === "requested");
+  const out = new Map<string, BookingLinkState>();
+  if (!taken.length) return out;
+  const ids = distinct(
+    taken.map((b) => b.requestId).filter((id): id is string => !!id),
   );
-  if (!leaving.length) return;
-  const requests = await getStore().list("requests", {
-    filter: { id: distinct(leaving.map((p) => p.booking.requestId as string)) },
-  });
-  const alive = new Set(
-    requests.filter((r) => r.status !== "CANCELLED").map((r) => r.id),
-  );
-  for (const p of leaving)
-    if (alive.has(p.booking.requestId as string))
-      throw refuse("booking_request_alive", p.booking.id);
+  const requests = ids.length
+    ? await getStore().list("requests", { filter: { id: ids } })
+    : [];
+  const byId = new Map(requests.map((r) => [r.id, r]));
+  const now = Date.now();
+  for (const b of taken) {
+    const state = bookingLinkState(
+      b,
+      b.requestId ? byId.get(b.requestId) : null,
+      now,
+    );
+    if (state) out.set(b.id, state);
+  }
+  return out;
 }
 
 async function commit(
@@ -696,17 +703,20 @@ export async function saveBookingRow(
         ? booking.ownerUserId
         : await resolveOwner(patch.ownerUserId, id);
   else if (patch.ownerUserId !== undefined) resolved.ownerUserId = null;
-  const joined = await joinProducts([booking.productId]);
+  const [joined, links] = await Promise.all([
+    joinProducts([booking.productId]),
+    linkStates([booking]),
+  ]);
   const planned = plan(
     booking,
     resolved,
     joined.moq.get(booking.productId) ?? null,
     bookingActor(user),
     user,
+    links.get(booking.id) ?? null,
   );
   if (!planned) return booking;
   await assertRowCustomers([planned]);
-  await assertNoLiveRequest([planned]);
   return commit(
     user,
     planned,
@@ -740,7 +750,10 @@ async function applyBulk(
       : customer === BOOKING_EMPTY
         ? null
         : await resolveCustomer(user, customer);
-  const joined = await joinProducts(bookings.map((b) => b.productId));
+  const [joined, links] = await Promise.all([
+    joinProducts(bookings.map((b) => b.productId)),
+    linkStates(bookings),
+  ]);
   const actor = bookingActor(user);
   const planned: Planned[] = [];
   for (const booking of bookings) {
@@ -755,11 +768,11 @@ async function applyBulk(
       joined.moq.get(booking.productId) ?? null,
       actor,
       user,
+      links.get(booking.id) ?? null,
     );
     if (p) planned.push(p);
   }
   await assertRowCustomers(planned);
-  await assertNoLiveRequest(planned);
   for (const p of planned)
     await commit(user, p, joined.products.get(p.booking.productId)?.name ?? "");
   return planned.length;
@@ -901,7 +914,14 @@ export async function analyzeBookings(
       joined.products.get(booking.productId)?.name ?? "",
     );
     analyzed++;
-    if (snapshot.inputs && !snapshot.inputs.ncmFound) noRates++;
+    // Só conta quando houve custo: linha com "falta dado" não tem conta.
+    if (
+      snapshot.costBrl !== null &&
+      snapshot.costBrl !== undefined &&
+      snapshot.inputs &&
+      !snapshot.inputs.ncmFound
+    )
+      noRates++;
   }
   return {
     analyzed,
@@ -935,27 +955,20 @@ export async function saveBookingAnalysis(
 /* ------------------------------------------------------------------------ */
 
 /**
- * Solicitações que nasceram desta chamada (deste login, para este cliente e
- * estes produtos, e que não existiam antes dela: `known`) e ficaram vivas
- * depois de uma falha: são canceladas, como o lote faz com as dele. A conta
- * é pelo que existia antes, e não pela hora: o relógio deste servidor e o do
- * banco podem não bater.
+ * Cancela (sem apagar) solicitações que uma chamada do Booking criou e não
+ * pôde manter. Pelos ids que aquela chamada escolheu: nunca toca solicitação
+ * que não nasceu dela (nem outra do mesmo login, cliente e produto).
  */
-async function cancelHalfBorn(
+async function cancelOwnRequests(
   user: User,
-  scope: { customerId: string; productIds: string[]; known: Set<string> },
+  ids: string[],
+  why: string,
 ): Promise<void> {
+  if (!ids.length) return;
   const store = getStore();
   try {
-    const born = (
-      await store.list("requests", {
-        filter: { customerId: scope.customerId, productId: scope.productIds },
-      })
-    ).filter(
-      (r) =>
-        !scope.known.has(r.id) &&
-        r.createdByUserId === user.id &&
-        r.status !== "CANCELLED",
+    const born = (await store.list("requests", { filter: { id: ids } })).filter(
+      (r) => BOOKING_OPEN_REQUEST.includes(r.status),
     );
     for (const r of born) {
       await store.update("requests", r.id, { status: "CANCELLED" });
@@ -964,25 +977,17 @@ async function cancelHalfBorn(
         "request.batch_rollback",
         "request",
         r.id,
-        `Solicitação pelo Booking interrompida (${r.productName}): cancelada`,
+        `${why} (${r.productName}): solicitação cancelada`,
         { status: r.status },
         { status: "CANCELLED" },
       );
     }
   } catch (rollbackError) {
-    console.error("[booking] cancelar solicitação pela metade", rollbackError);
+    console.error(
+      "[booking] cancelar solicitação desta chamada",
+      rollbackError,
+    );
   }
-}
-
-let lastClaim = 0;
-/**
- * Carimbo de quem toma as linhas para gerar a solicitação: a hora, nunca
- * repetida neste servidor (duas chamadas no mesmo milissegundo ganham
- * carimbos diferentes).
- */
-function claimStamp(): string {
-  lastClaim = Math.max(Date.now(), lastClaim + 1);
-  return new Date(lastClaim).toISOString();
 }
 
 /**
@@ -1058,36 +1063,52 @@ export async function generateRequestFromBooking(
   });
 
   /*
-   * As linhas são tomadas ANTES de qualquer solicitação nascer: cada uma vai
-   * para "Virou solicitação" com um carimbo desta chamada e é relida. Quem
-   * chegou junto (outra aba, outro login) vê a linha já tomada e é recusado,
-   * em vez de as duas chamadas criarem a mesma solicitação. Se a criação
-   * falhar, as linhas voltam para onde estavam.
+   * As linhas são tomadas ANTES de qualquer solicitação nascer, e já com o id
+   * que a solicitação de cada uma vai ter (escolhido aqui): a ligação existe
+   * antes da solicitação. Com isso:
+   * - quem chegou junto (outra aba, outro login) vê a linha tomada e é
+   *   recusado, em vez de as duas chamadas criarem a mesma solicitação;
+   * - enquanto a solicitação é criada ninguém move a linha (o id aponta para
+   *   uma solicitação que ainda não existe: "sendo criada", por 2 minutos);
+   * - se a criação falhar, o que nasceu desta chamada é cancelado pelo id e
+   *   as linhas voltam para onde estavam;
+   * - se o servidor cair no meio, a linha cuja solicitação nasceu já está
+   *   ligada a ela, e a que ficou sem solicitação pode ser devolvida depois
+   *   de 2 minutos.
    */
   const store = getStore();
-  // O que já existe para este cliente e estes produtos, lido antes de tomar
-  // as linhas: depois de uma falha, o que aparecer a mais nasceu daqui.
-  const productIds = lines.map((l) => l.product.id);
-  const known = new Set(
-    (
-      await store.list("requests", {
-        filter: { customerId, productId: productIds },
-      })
-    ).map((r) => r.id),
-  );
-  const stamp = claimStamp();
-  const mine = (b: Booking) =>
-    b.status === "requested" &&
-    b.statusChangedByUserId === user.id &&
-    Date.parse(b.statusChangedAt ?? "") === Date.parse(stamp);
-  const release = async (only?: Set<string>) => {
-    for (const { booking } of lines) {
-      if (only && !only.has(booking.id)) continue;
+  const stamp = new Date().toISOString();
+  const planned = lines.map((line) => ({ ...line, requestId: randomUUID() }));
+  const rowIds = planned.map((p) => p.booking.id);
+  const requestIds = planned.map((p) => p.requestId);
+  const plannedOf = new Map(planned.map((p) => [p.booking.id, p.requestId]));
+  /** A linha ainda é desta chamada: guarda o id que esta chamada escolheu. */
+  const mine = (b: Booking | undefined) =>
+    !!b && b.status === "requested" && b.requestId === plannedOf.get(b.id);
+  /** Devolve para onde estavam as linhas que ainda são desta chamada. */
+  const release = async () => {
+    let current: Booking[];
+    try {
+      current = await store.list("bookings", { filter: { id: rowIds } });
+    } catch (error) {
+      console.error(
+        "[booking] releitura para devolver as linhas falhou",
+        error,
+      );
+      return;
+    }
+    for (const { booking } of planned) {
+      if (!mine(current.find((c) => c.id === booking.id))) continue;
       try {
         await store.update("bookings", booking.id, {
           status: booking.status,
           statusChangedAt: booking.statusChangedAt,
           statusChangedByUserId: booking.statusChangedByUserId,
+          customerId: booking.customerId,
+          reservedQty: booking.reservedQty,
+          requestId: null,
+          requestGroupId: null,
+          requestNumber: null,
         });
       } catch (error) {
         console.error("[booking] devolver a linha falhou", booking.id, error);
@@ -1096,38 +1117,35 @@ export async function generateRequestFromBooking(
   };
   // Releitura na hora de tomar: quem já foi tomado por outra chamada (ou
   // mudou de etapa) enquanto esta conferia as linhas recusa aqui.
-  const fresh = await store.list("bookings", {
-    filter: { id: lines.map((l) => l.booking.id) },
-  });
-  for (const { booking } of lines) {
+  const fresh = await store.list("bookings", { filter: { id: rowIds } });
+  for (const { booking } of planned) {
     const now = fresh.find((f) => f.id === booking.id);
     if (!now || now.status !== booking.status)
       throw refuse("booking_not_requestable", booking.id);
   }
-  const taken = new Set<string>();
   try {
-    for (const { booking } of lines) {
+    for (const { booking, quantity, requestId } of planned)
       await store.update("bookings", booking.id, {
         status: "requested",
         statusChangedAt: stamp,
         statusChangedByUserId: user.id,
+        customerId,
+        reservedQty: quantity,
+        requestId,
+        requestGroupId: null,
+        requestNumber: null,
       });
-      taken.add(booking.id);
-    }
   } catch (error) {
-    await release(taken);
+    await release();
     throw error;
   }
-  const claimed = await store.list("bookings", {
-    filter: { id: lines.map((l) => l.booking.id) },
-  });
-  const lost = lines.find(({ booking }) => {
-    const now = claimed.find((c) => c.id === booking.id);
-    return !now || !mine(now);
-  });
+  const claimed = await store.list("bookings", { filter: { id: rowIds } });
+  const lost = planned.find(
+    ({ booking }) => !mine(claimed.find((c) => c.id === booking.id)),
+  );
   if (lost) {
     // Só as que ainda são desta chamada voltam; a outra chamada cuida das dela.
-    await release(new Set(claimed.filter(mine).map((c) => c.id)));
+    await release();
     throw refuse("booking_not_requestable", lost.booking.id);
   }
 
@@ -1137,7 +1155,7 @@ export async function generateRequestFromBooking(
     created = await createRequestBatch(
       user,
       { customerId, deadline: null, notes: null, requestedForUserId: null },
-      lines.map(({ product, quantity }) => {
+      planned.map(({ product, quantity }) => {
         const spec = [
           product.category
             ? `${t("catalog.category")}: ${product.category}`
@@ -1154,37 +1172,50 @@ export async function generateRequestFromBooking(
           sourcingDemand: false,
         };
       }),
+      { ids: requestIds },
     );
   } catch (error) {
-    /*
-     * O lote desfaz o que criou, menos num caso: uma solicitação só (sem
-     * lote) cuja gravação passou e um passo seguinte falhou (auditoria,
-     * aviso). Ela ficaria viva e a linha, devolvida, geraria outra. Antes de
-     * devolver as linhas, o que nasceu desta chamada é cancelado.
-     */
-    await cancelHalfBorn(user, { customerId, productIds, known });
+    // O que nasceu desta chamada (inclusive a solicitação gravada cujo passo
+    // seguinte falhou) é cancelado pelo id; depois as linhas voltam.
+    await cancelOwnRequests(
+      user,
+      requestIds,
+      "Solicitação pelo Booking interrompida",
+    );
     await release();
     throw error;
   }
 
-  // A solicitação existe e a linha já está tomada: falta só a ligação. Uma
-  // falha aqui não desfaz nada nem deixa criar de novo; fica no log.
-  for (const [i, { booking, product, quantity }] of lines.entries()) {
-    const request = created[i];
+  /*
+   * Fecho. A linha que ainda é desta chamada ganha o número e o lote. A que
+   * deixou de ser (foi devolvida ou tomada por outra chamada enquanto esta
+   * criava) tem a solicitação DESTA chamada cancelada: nunca ficam duas
+   * solicitações vivas para a mesma linha. Uma falha ao gravar o número não
+   * desfaz nada (a ligação já existe); fica no log.
+   */
+  let current: Booking[] | null = null;
+  try {
+    current = await store.list("bookings", { filter: { id: rowIds } });
+  } catch (error) {
+    console.error("[booking] releitura depois de criar falhou", error);
+  }
+  const byId = new Map(created.map((r) => [r.id, r]));
+  const kept: Request[] = [];
+  const dropped: string[] = [];
+  for (const { booking, product, quantity, requestId } of planned) {
+    const request = byId.get(requestId);
     if (!request) continue;
+    if (current && !mine(current.find((c) => c.id === booking.id))) {
+      dropped.push(requestId);
+      continue;
+    }
+    kept.push(request);
     const write = {
-      customerId,
-      reservedQty: quantity,
-      requestId: request.id,
       requestGroupId: request.groupId ?? null,
       requestNumber: request.number ?? null,
     };
     try {
-      try {
-        await store.update("bookings", booking.id, write);
-      } catch {
-        await store.update("bookings", booking.id, write);
-      }
+      await store.update("bookings", booking.id, write);
       await audit(
         user,
         "booking.request",
@@ -1198,16 +1229,29 @@ export async function generateRequestFromBooking(
           customerId: booking.customerId,
           reservedQty: booking.reservedQty,
         },
-        { status: "requested", ...write },
+        {
+          status: "requested",
+          customerId,
+          reservedQty: quantity,
+          requestId,
+          ...write,
+        },
       );
     } catch (error) {
       console.error(
-        "[booking] ligação com a solicitação falhou",
+        "[booking] número da solicitação na linha falhou",
         booking.id,
         request.id,
         error,
       );
     }
   }
-  return created;
+  await cancelOwnRequests(
+    user,
+    dropped,
+    "Linha do Booking devolvida durante a criação",
+  );
+  if (!kept.length)
+    throw refuse("booking_not_requestable", planned[0].booking.id);
+  return kept;
 }

@@ -90,10 +90,14 @@ export const pt = {
   "booking.error.booking_note_too_long":
     "Observação longa demais (até 500 caracteres).",
   "booking.error.booking_locked":
-    "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação. Para a linha voltar, exclua a solicitação.",
+    "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação.",
+  "booking.error.booking_request_pending":
+    "A solicitação desta linha está sendo criada agora. Espere um instante e atualize a página.",
+  "booking.error.booking_reopen_forbidden":
+    "A solicitação desta linha virou pedido ou foi cancelada. Reabrir a linha é de quem analisa no Superplan (hoje, o administrador).",
   "booking.productMissing": "Produto fora do cadastro",
   "booking.error.booking_request_alive":
-    "Esta linha tem uma solicitação em andamento. Para a linha voltar, exclua a solicitação (em Solicitações): ela volta sozinha para Reservado ou Aprovado.",
+    "Esta linha tem uma solicitação em andamento (ainda não virou pedido). Para a linha voltar, exclua a solicitação (em Solicitações): ela volta sozinha para Reservado ou Aprovado.",
   "booking.error.booking_request_customer":
     "Escolha o cliente na barra antes de gerar a solicitação: há linha marcada sem cliente.",
   "booking.error.booking_status_required":
@@ -195,10 +199,14 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.error.booking_note_too_long":
     "Note too long (up to 500 characters).",
   "booking.error.booking_locked":
-    "This row already became a request: customer and quantity change in the request. For the row to come back, delete the request.",
+    "This row already became a request: customer and quantity change in the request.",
+  "booking.error.booking_request_pending":
+    "The request of this row is being created right now. Wait a moment and refresh the page.",
+  "booking.error.booking_reopen_forbidden":
+    "The request of this row became an order or was cancelled. Reopening the row is for whoever analyzes in Superplan (today, the administrator).",
   "booking.productMissing": "Product no longer in the catalog",
   "booking.error.booking_request_alive":
-    "This row has a request in progress. For the row to come back, delete the request (in Requests): it returns by itself to Reserved or Approved.",
+    "This row has a request in progress (not an order yet). For the row to come back, delete the request (in Requests): it returns by itself to Reserved or Approved.",
   "booking.error.booking_request_customer":
     "Choose the customer in the bar before creating the request: a ticked row has no customer.",
   "booking.error.booking_status_required":
@@ -295,10 +303,14 @@ export const zh: Record<keyof typeof pt, string> = {
     "Superplan 分析仅限可打开 Superplan 的人（目前为管理员）。",
   "booking.error.booking_note_too_long": "备注过长（最多 500 个字符）。",
   "booking.error.booking_locked":
-    "该行已生成询价单：客户和数量请在询价单中修改。要让该行回来，请删除询价单。",
+    "该行已生成询价单：客户和数量请在询价单中修改。",
+  "booking.error.booking_request_pending":
+    "该行的询价单正在创建中。请稍等片刻后刷新页面。",
+  "booking.error.booking_reopen_forbidden":
+    "该行的询价单已转为订单或已取消。重新打开该行只能由在 Superplan 中分析的人操作（目前为管理员）。",
   "booking.productMissing": "产品已不在目录中",
   "booking.error.booking_request_alive":
-    "该行有一张进行中的询价单。要让该行回来，请删除询价单（在“询价单”中）：它会自动回到“已预订”或“已批准”。",
+    "该行有一张进行中的询价单（尚未转为订单）。要让该行回来，请删除询价单（在“询价单”中）：它会自动回到“已预订”或“已批准”。",
   "booking.error.booking_request_customer":
     "生成询价单之前请先在操作栏选择客户：有勾选的行没有客户。",
   "booking.error.booking_status_required":

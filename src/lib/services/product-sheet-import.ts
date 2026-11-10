@@ -775,6 +775,13 @@ export interface SheetImportOptions {
    * hoje (a planilha antiga não os reescreve).
    */
   keepExisting?: boolean;
+  /**
+   * Com `keepExisting`, de um lote "um produto por linha": o produto que
+   * cada grupo da planilha criou ou atualizou naquela importação (índice do
+   * grupo → id). O grupo cai nesse produto mesmo que ele tenha mudado de
+   * nome ou de linha desde então; só o que não existe mais vai pelo nome.
+   */
+  sourceProducts?: Record<string, string>;
 }
 
 /** Planilha enviada no formulário ou já subida direto ao armazenamento. */
@@ -1206,7 +1213,11 @@ export async function importProductSheet(
     "import.sheet",
     "import_batch",
     batch.id,
-    `Ficha técnica ${batch.fileName}: ${summary.created} criados, ${summary.updated} atualizados, ${summary.errors} erros, ${summary.suppliersCreated} fornecedor(es) novo(s), ${summary.photos} foto(s)` +
+    `Ficha técnica ${batch.fileName}: ${summary.created} criados, ${summary.updated} ${
+      options.keepExisting
+        ? "que já existiam (não alterados: planilha antiga relida)"
+        : "atualizados"
+    }, ${summary.errors} erros, ${summary.suppliersCreated} fornecedor(es) novo(s), ${summary.photos} foto(s)` +
       (mode === "variants"
         ? `, ${summary.variantsCreated} variação(ões) criada(s), ${summary.variantsUpdated} atualizada(s), ${summary.variantErrors} com erro`
         : "") +
@@ -1328,6 +1339,29 @@ async function dropBookingRow(
   } catch (error) {
     console.error("[sheet-import] desfazer linha do Booking", productId, error);
   }
+}
+
+/**
+ * Planilha antiga relida: o produto nasceu numa tentativa anterior do Booking
+ * que não terminou? Sinais: veio de importação, a linha dele no Booking ainda
+ * está em Novo, e o lote em que entrou não existe (a tentativa caiu antes de
+ * gravar o lote) ou registrou erro para este produto. Só esse é completado; o
+ * resto do cadastro não volta aos valores da planilha antiga.
+ */
+async function leftHalfBorn(product: Product): Promise<boolean> {
+  if (product.source !== "import") return false;
+  const store = getStore();
+  const [row] = await store.list("bookings", {
+    filter: { productId: product.id },
+    limit: 1,
+  });
+  if (!row || row.status !== "new" || !row.importBatchId) return false;
+  const batch = await store.get("import_batches", row.importBatchId);
+  if (!batch) return true;
+  return Object.values(batch.decisions ?? {}).some((d) => {
+    const decision = batchDecision(d);
+    return decision.status === "error" && decision.productId === product.id;
+  });
 }
 
 /** Quanto tempo uma linha sem produto espera antes de ser varrida (ms). */
@@ -1523,10 +1557,29 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
           existing = undefined;
         }
       }
+      // Planilha antiga relida de um lote "um produto por linha": o produto
+      // que este grupo criou naquela importação, mesmo renomeado desde então.
+      const sourceId =
+        booking && options.keepExisting
+          ? options.sourceProducts?.[String(group.index)]
+          : undefined;
+      const fromSource = sourceId
+        ? products.find((p) => p.id === sourceId)
+        : undefined;
+      if (fromSource) {
+        existing = fromSource;
+        name = fromSource.name;
+      }
       namesUsed.add(norm(name));
       result.name = name;
       let product: Product;
-      if (booking && options.keepExisting && existing) {
+      // Produto que uma tentativa anterior desta mesma releitura deixou pela
+      // metade (nasceu, e a ficha ou a foto falhou): é completado agora.
+      const halfBorn =
+        booking && options.keepExisting && existing
+          ? await leftHalfBorn(existing)
+          : false;
+      if (booking && options.keepExisting && existing && !halfBorn) {
         // Planilha antiga relida: o que já existe não volta aos valores dela.
         result.status = "updated";
         summary.updated++;
@@ -1607,6 +1660,9 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
           product = born;
         }
         products.push(product);
+        // Já existe: uma falha daqui em diante fica registrada com o produto
+        // (a tentativa seguinte sabe qual completar).
+        result.productId = product.id;
         if (supplierId)
           await syncMainSupplierLink(
             user,
@@ -1666,6 +1722,13 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       );
       summary.photos += result.photos;
       result.missing = saved.missing;
+      // Completado agora (nasceu numa tentativa que falhou): é a primeira vez
+      // que dá certo, então conta como criado, não como "já existia".
+      if (halfBorn && result.status === "updated") {
+        result.status = "created";
+        summary.updated--;
+        summary.created++;
+      }
       decisions[String(group.index)] = `${result.status}:${product.id}`;
     } catch (error) {
       // Falha depois de criar o produto: ele existe (fica no resultado), mas
@@ -1997,6 +2060,17 @@ export function importBatchMode(batch: ImportBatch): SheetImportMode {
   return mode === "variants" || mode === "booking" ? mode : "products";
 }
 
+/** Lote "um produto por linha": o produto de cada grupo (índice → id). */
+function sourceProductsOf(batch: ImportBatch): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, decision] of Object.entries(batch.decisions ?? {})) {
+    if (VARIANT_DECISION.test(key)) continue;
+    const { status, productId } = batchDecision(decision);
+    if (status !== "error" && productId) out[key] = productId;
+  }
+  return out;
+}
+
 /** Lote relido de um arquivo guardado: o produto que já existia não foi alterado. */
 export function importBatchKeptExisting(batch: ImportBatch): boolean {
   return batch.mapping?.__keep === "1";
@@ -2043,6 +2117,12 @@ export async function reimportSheetToBooking(
       mode: "booking",
       // A planilha é antiga: o que já existe no cadastro não volta a ela.
       keepExisting: true,
+      // "Um produto por linha": cada grupo cai no produto que criou naquela
+      // importação (mesmo renomeado). No lote com variações o produto é um
+      // só para a planilha toda, e ele fica como está.
+      ...(importBatchMode(batch) === "products"
+        ? { sourceProducts: sourceProductsOf(batch) }
+        : {}),
     },
   );
 }

@@ -1361,3 +1361,130 @@ describe("achados da revisão (segunda leva)", () => {
     ).toEqual([2, 3]);
   });
 });
+
+describe("planilha antiga relida (terceira revisão)", () => {
+  it("tentativa que falhou no meio: mandar de novo completa o produto que ficou pela metade, sem reescrever os outros", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Pi Lanternas", "P9-900"],
+        [
+          { sku: "L1", desc: "LANTERNA ALTA", price: "9", color: "Preta" },
+          { sku: "L2", desc: "LANTERNA BAIXA", price: "7", color: "Preta" },
+        ],
+      );
+    // Importação antiga, com variações (os produtos por linha ainda não existem).
+    const old = await svc.importProductSheet(
+      admin,
+      file(bytes(), "lanternas.xlsx"),
+      { lineId, namePrefix: "Pi" },
+    );
+    // 1ª tentativa: o produto da 1ª linha nasce e a ficha dele falha.
+    const original = store.create.bind(store);
+    let failed = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (!failed && table === "purchase_sheets") {
+          failed = true;
+          throw new Error("sheets down");
+        }
+        return original(table, data as never);
+      });
+    let first: Awaited<ReturnType<typeof svc.reimportSheetToBooking>>;
+    try {
+      first = await svc.reimportSheetToBooking(admin, old.batchId);
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(failed).toBe(true);
+    expect(first.results.map((r) => r.status)).toEqual(["error", "created"]);
+    // O produto nasceu (com a linha em Novo) e o erro ficou registrado com ele.
+    const halfId = first.results[0].productId!;
+    expect(halfId).toBeTruthy();
+    expect(await getProductSheet(halfId)).toBeNull();
+    expect((await bookingOf(halfId))!.status).toBe("new");
+    const siblingId = first.results[1].productId!;
+    // Enquanto isso, o outro produto foi corrigido à mão.
+    await store.update("products", siblingId, { price: 7.5 });
+
+    const before = await count();
+    const retry = await svc.reimportSheetToBooking(admin, old.batchId);
+    // O que ficou pela metade é completado (conta como criado); o outro fica.
+    expect(retry.results.map((r) => [r.status, r.productId])).toEqual([
+      ["created", halfId],
+      ["updated", siblingId],
+    ]);
+    expect(retry.summary).toMatchObject({ created: 1, updated: 1, errors: 0 });
+    expect((await getProductSheet(halfId))!.price).toBe(9);
+    expect((await bookingOf(halfId))!.status).toBe("new");
+    expect((await store.get("products", siblingId))!.price).toBe(7.5);
+    const after = await count();
+    expect(after.products).toBe(before.products);
+    expect(after.bookings).toBe(before.bookings);
+    // Completo: uma terceira vez não mexe mais nele.
+    await store.update("products", halfId, { price: 9.9 });
+    const third = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(third.results.map((r) => r.status)).toEqual(["updated", "updated"]);
+    expect((await store.get("products", halfId))!.price).toBe(9.9);
+  });
+
+  it("lote 'um produto por linha': o produto do lote entra no Booking mesmo renomeado; o apagado de vez nasce de novo, como Novo", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Ro Baldes", "R1-100"],
+        [
+          { sku: "B1", desc: "BALDE ALFA", price: "4", color: "Azul" },
+          { sku: "B2", desc: "BALDE BETA", price: "5", color: "Azul" },
+          { sku: "B3", desc: "BALDE GAMA", price: "6", color: "Azul" },
+        ],
+      );
+    const old = await svc.importProductSheet(
+      admin,
+      file(bytes(), "baldes.xlsx"),
+      {
+        lineId,
+        mode: "products",
+      },
+    );
+    const [alfaId, betaId, gamaId] = old.results.map((r) => r.productId!);
+    // Desde então: um foi renomeado e outro, apagado de vez.
+    await store.update("products", alfaId, {
+      name: "Balde grande (linha casa)",
+    });
+    await store.remove("products", gamaId);
+    const alfaBefore = (await store.get("products", alfaId))!;
+
+    const before = await count();
+    const result = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(result.results.map((r) => [r.name, r.status, r.productId])).toEqual([
+      ["Balde grande (linha casa)", "updated", alfaId],
+      ["BALDE BETA", "updated", betaId],
+      ["BALDE GAMA", "created", result.results[2].productId],
+    ]);
+    expect(result.results[2].productId).not.toBe(gamaId);
+    // O renomeado continua igual e ganha a linha; nada foi duplicado.
+    expect(await store.get("products", alfaId)).toEqual(alfaBefore);
+    expect((await bookingOf(alfaId))!.status).toBe("approved");
+    expect((await bookingOf(betaId))!.status).toBe("approved");
+    expect((await bookingOf(result.results[2].productId!))!.status).toBe("new");
+    const after = await count();
+    expect(after.products).toBe(before.products + 1);
+    expect(after.bookings).toBe(before.bookings + 3);
+    // O registro da importação diz que os que existiam não foram alterados.
+    const [entry] = await store.list("audit_log", {
+      filter: { entity: "import_batch", entityId: result.batchId },
+    });
+    expect(entry.summary).toContain("2 que já existiam (não alterados");
+    expect(entry.summary).not.toContain("atualizados");
+    // Mandar de novo não duplica nada.
+    const again = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(again.results.map((r) => r.productId)).toEqual(
+      result.results.map((r) => r.productId),
+    );
+    expect((await count()).products).toBe(after.products);
+  });
+});

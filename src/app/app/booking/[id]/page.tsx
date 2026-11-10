@@ -89,12 +89,11 @@ export default async function BookingRowPage({
   const statusLabel = (s: string) => t(`booking.status.${s}` as DictionaryKey);
   const col = (key: string) => t(`booking.col.${key}` as DictionaryKey);
   const name = row.name || t("booking.productMissing");
-  // Tomada para virar solicitação e sem solicitação ligada (a criação parou
-  // no meio): a linha pode voltar; o serviço oferece as etapas de volta.
-  const unlinked =
-    row.status === "requested" &&
-    !row.requestId &&
-    detail.moveOptions.length > 1;
+  // "Virou solicitação": o que a linha permite depende da solicitação dela
+  // (sendo criada, em andamento, virou pedido/cancelada, ou não nasceu).
+  const unlinked = detail.link === "missing";
+  const pending = detail.link === "pending";
+  const closed = detail.link === "closed";
   const locked = row.status === "requested" && !unlinked;
   const hidden = hidesFromShowcase(row.status);
 
@@ -252,8 +251,12 @@ export default async function BookingRowPage({
             ) : null}
             {locked ? (
               <div className="mb-3">
-                <Alert tone="info">
-                  {t("booking.detail.locked")}
+                <Alert tone={pending ? "warning" : "info"}>
+                  {pending
+                    ? t("booking.detail.pending")
+                    : closed
+                      ? t("booking.detail.closed")
+                      : t("booking.detail.locked")}
                   {requestHref && canOpen(user, "requests") ? (
                     <>
                       {" "}

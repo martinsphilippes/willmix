@@ -117,6 +117,13 @@ export async function createRequestBatch(
     "customerId" | "deadline" | "notes" | "requestedForUserId"
   >,
   items: RequestBatchItem[],
+  /**
+   * Só para chamadas do próprio servidor (nunca vem do formulário): `ids` =
+   * o id de cada solicitação, escolhido antes por quem chama, na ordem dos
+   * produtos (o Booking grava a ligação na linha antes de a solicitação
+   * nascer; docs/BOOKING.md).
+   */
+  internal: { ids?: string[] } = {},
 ): Promise<Request[]> {
   if (!items.length) throw new Error("no_products");
   const groupId = items.length > 1 ? randomUUID() : null;
@@ -126,23 +133,29 @@ export async function createRequestBatch(
      checagens de permissão, para não gastar número à toa) e os demais o
      repetem. Sem a coluna no banco ainda, fica sem número. */
   let number: number | undefined;
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
     try {
-      const request = await createRequest(user, {
-        ...base,
-        productId: item.productId,
-        variantId: item.variantId ?? null,
-        productName: item.productName,
-        description: item.description,
-        specification: item.specification,
-        quantity: item.quantity,
-        unit: item.unit,
-        origin:
-          item.sourcingDemand && !item.productId ? "sourcing_demand" : "manual",
-        groupId,
-        schedule: item.schedule ?? null,
-        number,
-      });
+      const request = await createRequest(
+        user,
+        {
+          ...base,
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          productName: item.productName,
+          description: item.description,
+          specification: item.specification,
+          quantity: item.quantity,
+          unit: item.unit,
+          origin:
+            item.sourcingDemand && !item.productId
+              ? "sourcing_demand"
+              : "manual",
+          groupId,
+          schedule: item.schedule ?? null,
+          number,
+        },
+        internal.ids?.[index] ? { id: internal.ids[index] } : {},
+      );
       created.push(request);
       number ??= request.number ?? undefined;
     } catch (error) {
@@ -351,9 +364,10 @@ export async function createRequest(
   input: CreateRequestInput,
   /**
    * Só para chamadas do próprio servidor (nunca vem do formulário):
-   * `ownOrder` = recompra, o produto é o de um pedido que o cliente já tem.
+   * `ownOrder` = recompra, o produto é o de um pedido que o cliente já tem;
+   * `id` = o id que a solicitação vai ter, escolhido antes (Booking).
    */
-  internal: { ownOrder?: boolean } = {},
+  internal: { ownOrder?: boolean; id?: string } = {},
 ): Promise<Request> {
   const store = getStore();
   const settings = await getSettings();
@@ -454,6 +468,8 @@ export async function createRequest(
     ...(input.schedule ? { schedule: input.schedule } : {}),
     // Idem para o analista responsável (coluna opcional).
     ...(ownerUserId ? { ownerUserId } : {}),
+    // Id escolhido antes por quem chama (só o servidor).
+    ...(internal.id ? { id: internal.id } : {}),
   } as const;
   let request: Request;
   try {

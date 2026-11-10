@@ -402,18 +402,31 @@ export default async function BookingPage({
         </span>
       );
     const chosen = filters.options[key] ?? [];
+    // Mais de uma opção (o "Ver no Booking" de uma importação, ou o endereço
+    // com várias): o seletor leva todas, para refinar a lista sem perdê-las.
+    const current = chosen.join(",");
     const list = optionsOf(key);
     return (
       <select
-        key={chosen[0] ?? ""}
+        key={current}
         form={FILTER_FORM}
         name={key}
-        // Mais de uma opção (endereço escrito à mão): o seletor mostra a primeira.
-        defaultValue={chosen[0] ?? ""}
+        defaultValue={current}
         aria-label={aria}
         className={cx(inputDenseClass, "min-w-28 max-w-44")}
       >
         <option value="">{t("booking.filter.all")}</option>
+        {chosen.length > 1 ? (
+          <option value={current}>
+            {chosen
+              .map((id) =>
+                id === BOOKING_EMPTY
+                  ? t("booking.filter.empty")
+                  : optionLabel(key, id),
+              )
+              .join(", ")}
+          </option>
+        ) : null}
         {list.map((o) => (
           <option key={o.id} value={o.id}>
             {o.label}
@@ -652,7 +665,18 @@ export default async function BookingPage({
       case "note":
         return textCell(row.note, "max-w-56");
       case "request": {
-        if (!row.requestId) return muted;
+        if (!row.requestId)
+          return row.requestState ? (
+            <span className="whitespace-nowrap text-xs text-amber-800">
+              {t(
+                row.requestState === "pending"
+                  ? "booking.row.requestPending"
+                  : "booking.row.requestMissing",
+              )}
+            </span>
+          ) : (
+            muted
+          );
         const href = row.requestGroupId
           ? `/app/requests/batch/${encodeURIComponent(row.requestGroupId)}`
           : `/app/requests/${row.requestId}`;

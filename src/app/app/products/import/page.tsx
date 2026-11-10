@@ -6,6 +6,7 @@ import { getStore, SHEET_CURRENCIES } from "@/lib/db";
 import {
   SHEET_IMPORT_ENTITY,
   SHEET_IMPORT_MODES,
+  importBatchKeptExisting,
   importBatchMode,
 } from "@/lib/services/product-sheet-import";
 import { getT } from "@/i18n/server";
@@ -231,11 +232,17 @@ export default async function ProductSheetImportPage({
                       {t("sheetImport.previous.booking")}
                     </Badge>
                   ) : null}
-                  {t("sheetImport.previous.line", {
-                    created: b.summary?.created ?? 0,
-                    updated: b.summary?.updated ?? 0,
-                    errors: b.summary?.errors ?? 0,
-                  })}
+                  {/* Planilha antiga relida: quem já existia não foi alterado. */}
+                  {t(
+                    importBatchKeptExisting(b)
+                      ? "sheetImport.previous.lineKept"
+                      : "sheetImport.previous.line",
+                    {
+                      created: b.summary?.created ?? 0,
+                      updated: b.summary?.updated ?? 0,
+                      errors: b.summary?.errors ?? 0,
+                    },
+                  )}
                 </span>
               </li>
             ))}

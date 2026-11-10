@@ -39,6 +39,8 @@ export const pt = {
   "sheetImport.previous.empty": "Nenhuma importação de ficha técnica ainda.",
   "sheetImport.previous.line":
     "{created} criado(s) · {updated} atualizado(s) · {errors} erro(s)",
+  "sheetImport.previous.lineKept":
+    "{created} criado(s) · {updated} já existia(m), não alterado(s) · {errors} erro(s)",
   "sheetImport.result.title": "Importação: {file}",
   "sheetImport.result.summary":
     "{created} produto(s) criado(s), {updated} atualizado(s), {errors} com erro · {suppliers} fornecedor(es) novo(s) · {photos} foto(s)",
@@ -131,7 +133,7 @@ export const pt = {
   "sheetImport.toBooking.hint":
     "Lê de novo a planilha guardada desta importação e cria um produto por linha no Booking. O produto com variações fica como está, e o produto que já existe com o mesmo nome não é alterado: só ganha a linha do Booking.",
   "sheetImport.toBooking.hintProducts":
-    "Coloca os produtos desta importação no Booking. Eles não são alterados (preço, pedido mínimo, cores e fotos ficam como estão hoje): só ganham a linha do Booking, como Aprovado, e continuam na vitrine do cliente. O que estiver excluído entra como Novo.",
+    "Coloca os produtos desta importação no Booking (os mesmos, ainda que tenham mudado de nome). Eles não são alterados (preço, pedido mínimo, cores e fotos ficam como estão hoje): só ganham a linha do Booking, como Aprovado, e continuam na vitrine do cliente. O que estiver excluído entra como Novo; o que foi apagado de vez é criado de novo, como Novo.",
   "sheetImport.toBooking.confirmProducts":
     "Os produtos desta importação vão para o Booking como Aprovado (continuam na vitrine do cliente) e não são alterados. Continuar?",
   "sheetImport.toBooking.noFile":
@@ -186,6 +188,8 @@ export const en = {
   "sheetImport.previous.empty": "No technical-sheet import yet.",
   "sheetImport.previous.line":
     "{created} created · {updated} updated · {errors} error(s)",
+  "sheetImport.previous.lineKept":
+    "{created} created · {updated} already existed, not changed · {errors} error(s)",
   "sheetImport.result.title": "Import: {file}",
   "sheetImport.result.summary":
     "{created} product(s) created, {updated} updated, {errors} with errors · {suppliers} new supplier(s) · {photos} photo(s)",
@@ -277,7 +281,7 @@ export const en = {
   "sheetImport.toBooking.hint":
     "Reads the stored spreadsheet of this import again and creates one product per row in the Booking. The product with variations stays as it is, and a product that already exists with the same name is not changed: it only gets its Booking row.",
   "sheetImport.toBooking.hintProducts":
-    "Puts this import's products in the Booking. They are not changed (price, minimum order, colours and photos stay as they are today): they only get their Booking row, as Approved, and stay in the customer showcase. An excluded product enters as New.",
+    "Puts this import's products in the Booking (the same ones, even if renamed since). They are not changed (price, minimum order, colours and photos stay as they are today): they only get their Booking row, as Approved, and stay in the customer showcase. An excluded product enters as New; one that was permanently deleted is created again, as New.",
   "sheetImport.toBooking.confirmProducts":
     "This import's products go to the Booking as Approved (they stay in the customer showcase) and are not changed. Continue?",
   "sheetImport.toBooking.noFile":
@@ -332,6 +336,8 @@ export const zh = {
   "sheetImport.previous.empty": "尚无技术表导入记录。",
   "sheetImport.previous.line":
     "新建 {created} · 更新 {updated} · 错误 {errors}",
+  "sheetImport.previous.lineKept":
+    "新建 {created} · 已存在且未改动 {updated} · 错误 {errors}",
   "sheetImport.result.title": "导入：{file}",
   "sheetImport.result.summary":
     "新建 {created} 个产品，更新 {updated} 个，{errors} 个出错 · 新增供应商 {suppliers} 个 · 照片 {photos} 张",
@@ -416,7 +422,7 @@ export const zh = {
   "sheetImport.toBooking.hint":
     "重新读取本次导入保存的表格，并在 Booking 中每行创建一个产品。带款式的产品保持不变；同名的已有产品不会被改动，只获得 Booking 行。",
   "sheetImport.toBooking.hintProducts":
-    "把本次导入的产品放入 Booking。它们不会被改动（价格、起订量、颜色和照片保持现状）：只是以“已批准”获得 Booking 行，继续留在客户展示页。已删除的产品以“新增”进入。",
+    "把本次导入的产品放入 Booking（即使之后改过名称，也是同一批产品）。它们不会被改动（价格、起订量、颜色和照片保持现状）：只是以“已批准”获得 Booking 行，继续留在客户展示页。已停用的产品以“新增”进入；已彻底删除的产品会重新创建，阶段为“新增”。",
   "sheetImport.toBooking.confirmProducts":
     "本次导入的产品将以“已批准”进入 Booking（继续留在客户展示页），且不会被改动。是否继续？",
   "sheetImport.toBooking.noFile":

@@ -516,8 +516,8 @@ describe("achados da revisão (segunda leva)", () => {
     await bulkBookingAction(bulk({ op: "analyze" }, [manual.id, plain.id]));
     const q = query(last());
     expect([q.get("analyzed"), q.get("kept")]).toEqual(["1", "1"]);
-    // O produto do teste não tem NCM: a análise entrou com II e IPI 0.
-    expect(q.get("norates")).toBe("1");
+    // Sem câmbio no teste não houve custo: nada a avisar sobre II e IPI.
+    expect(q.get("norates")).toBeNull();
     expect((await fresh(manual.id)).analysis).toEqual(saved.analysis);
     expect((await fresh(plain.id)).analysis?.manual ?? false).toBe(false);
     // Avisos de uma ida anterior não voltam grudados no endereço.
