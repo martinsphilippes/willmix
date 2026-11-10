@@ -73,7 +73,7 @@ async function fillStage(
           : req.type === "date"
             ? "2026-10-01"
             : "ok");
-      await submitRequirement(user, req.id, { value });
+      await submitRequirement(user, req.id, { value, signature: true });
     }
   }
   return (await store.get("stages", stage.id))!;

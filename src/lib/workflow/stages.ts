@@ -160,6 +160,21 @@ export const PREPARATION_VALIDATIONS: RequirementTemplate[] = [
   },
 ];
 
+/**
+ * Assinatura do documento do pedido (docs/ORDER_SIGNATURE.md): a Wellmix
+ * assina na etapa "Pedido criado" e o fornecedor, em seguida, no começo da
+ * Preparação. São itens do tipo "confirm", mas só a assinatura do documento
+ * (nome digitado e aceite, com a versão do documento) os conclui.
+ */
+export const ORDER_SIGNED_WELLMIX = "order_signed_wellmix";
+export const ORDER_SIGNED_SUPPLIER = "order_signed_supplier";
+export const ORDER_SIGNATURE_KEYS: readonly string[] = [
+  ORDER_SIGNED_WELLMIX,
+  ORDER_SIGNED_SUPPLIER,
+];
+export const isOrderSignatureKey = (key: string) =>
+  ORDER_SIGNATURE_KEYS.includes(key);
+
 /** Quem envia a arte da embalagem: a agência do pedido ou, sem ela, a Wellmix. */
 export function artRole(
   order: Pick<Order, "agencyId">,
@@ -199,6 +214,13 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
         required: false,
         role: "operator",
       },
+      {
+        key: ORDER_SIGNED_WELLMIX,
+        label: "Documento do pedido assinado pela Wellmix",
+        type: "confirm",
+        required: true,
+        role: "operator",
+      },
     ],
   },
   {
@@ -206,6 +228,13 @@ export const STAGE_TEMPLATES: StageTemplate[] = [
     responsibleRole: "supplier",
     partyField: "supplierId",
     requirements: ({ line }) => [
+      {
+        key: ORDER_SIGNED_SUPPLIER,
+        label: "Documento do pedido assinado pelo fornecedor",
+        type: "confirm",
+        required: true,
+        role: "supplier",
+      },
       ...(line?.requirements?.length
         ? line.requirements
         : DEFAULT_PREPARATION_REQUIREMENTS),

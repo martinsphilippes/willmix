@@ -49,7 +49,11 @@ import {
   type DateBounds,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue, isMoneyRequirement } from "@/lib/workflow/money";
-import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
+import {
+  canCompleteLater,
+  isOffFlowStage,
+  isOrderSignatureKey,
+} from "@/lib/workflow/stages";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
 import { normalizeShipping } from "@/lib/services/shipping-stage";
@@ -2625,6 +2629,21 @@ function RequirementRow({
                   ? t("sheet.completeCta", { count: String(sheetHint.count) })
                   : t("sheet.open")
                 : t("sheet.view")}
+            </LinkButton>
+          </div>
+        ) : null
+      ) : isOrderSignatureKey(r.key) ? (
+        // Assinatura: pela página do documento do pedido (só a Wellmix e o
+        // fornecedor do pedido chegam a ela).
+        isWellmix(user) || user.role === "supplier" ? (
+          <div className={wide.side}>
+            <LinkButton
+              href={`/app/orders/${order.id}/purchase-order`}
+              variant={canAct ? "primary" : "secondary"}
+              className="w-full @sm:w-auto"
+              data-order-sign-link={r.key}
+            >
+              {canAct ? t("orderSign.open") : t("orderSign.view")}
             </LinkButton>
           </div>
         ) : null

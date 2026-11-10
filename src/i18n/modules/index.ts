@@ -96,6 +96,7 @@ import * as sankhya from "./sankhya";
 import * as sankhyaIntegration from "./sankhya-integration";
 import * as superplanRfq from "./superplan-rfq";
 import * as quoteFlow from "./quote-flow";
+import * as orderSignature from "./order-signature";
 import * as booking from "./booking";
 import * as bookingScreen from "./booking-screen";
 import * as bookingDetail from "./booking-detail";
@@ -202,6 +203,7 @@ export const modulesPt = {
   ...sankhyaIntegration.pt,
   ...superplanRfq.pt,
   ...quoteFlow.pt,
+  ...orderSignature.pt,
   ...booking.pt,
   ...bookingScreen.pt,
   ...bookingDetail.pt,
@@ -304,6 +306,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sankhyaIntegration.en,
   ...superplanRfq.en,
   ...quoteFlow.en,
+  ...orderSignature.en,
   ...booking.en,
   ...bookingScreen.en,
   ...bookingDetail.en,
@@ -406,6 +409,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sankhyaIntegration.zh,
   ...superplanRfq.zh,
   ...quoteFlow.zh,
+  ...orderSignature.zh,
   ...booking.zh,
   ...bookingScreen.zh,
   ...bookingDetail.zh,
