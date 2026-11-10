@@ -46,7 +46,7 @@ export const pt = {
   "booking.guide.stage.rule": "estar em Aprovado, Oferecido ou Reservado.",
   "booking.guide.stage.ok": "está em {stage}.",
   "booking.guide.stage.fix":
-    "está em {stage}. Com as linhas marcadas, no grupo Etapa escolha “Aprovado” e toque em Mover.",
+    "está em {stage}, que não gera solicitação. Com as linhas marcadas, no grupo Etapa escolha “Aprovado” e toque em Mover.",
   "booking.guide.stage.fixAdmin":
     "está em {stage}. Aprovar é do administrador: peça a ele para mover estas linhas para “Aprovado”.",
   "booking.guide.customer": "Cliente",
@@ -75,7 +75,7 @@ export const pt = {
   "booking.bulk.request.confirm":
     "Gerar uma solicitação com {n} linha(s) marcada(s)? (até {max} por vez)",
   "booking.bulk.hint":
-    "A quantidade digitada na linha e o cliente escolhido aqui valem para as linhas marcadas. Gerar solicitação usa a quantidade da linha (sem ela, o pedido mínimo) e aceita até {max} linhas por vez.",
+    "Para gerar a solicitação: marque as linhas, escolha o cliente e toque em Gerar solicitação. A quantidade é a digitada na linha (sem ela, a planejada ou o pedido mínimo). Até {max} linhas por vez.",
   "booking.bulk.working": "Gravando…",
   "booking.done.moved": "{n} linha(s) movida(s) de etapa.",
   "booking.done.edited":
@@ -198,7 +198,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "Create a request with {n} ticked row(s)? (up to {max} at a time)",
   "booking.bulk.hint":
-    "The quantity typed in the row and the customer chosen here apply to the ticked rows. Create request uses the row's quantity (without it, the minimum order) and takes up to {max} rows at a time.",
+    "To create the request: tick the rows, choose the customer and tap Create request. The quantity is the one typed in the row (without it, the planned one or the minimum order). Up to {max} rows at a time.",
   "booking.bulk.working": "Saving…",
   "booking.done.moved": "{n} row(s) moved to another stage.",
   "booking.done.edited":
@@ -317,7 +317,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "用勾选的 {n} 行生成一张询价单？（每次最多 {max} 行）",
   "booking.bulk.hint":
-    "行内填写的数量和这里选择的客户只对勾选的行生效。生成询价单使用该行的数量（没有则用起订量），每次最多 {max} 行。",
+    "生成询价单：勾选行，选择客户，然后点击“生成询价单”。数量取行内填写的数量（没有则用计划数量或起订量）。每次最多 {max} 行。",
   "booking.bulk.working": "保存中…",
   "booking.done.moved": "已移动 {n} 行的阶段。",
   "booking.done.edited": "已保存 {n} 个产品的数据（目录和主表）。",

@@ -11,8 +11,8 @@ import {
   BOOKING_BULK_MAX,
   BOOKING_PAGE_SIZE,
   BOOKING_REQUEST_MAX,
-  BOOKING_REQUESTABLE,
   BOOKING_SIGNALS,
+  bookingCanRequest,
   activeBookingFilters,
   bookingColumnsFor,
   bookingQuery,
@@ -269,7 +269,9 @@ export default async function BookingPage({
   const requestGuide = REQUEST_GUIDE_CODES.includes(errorCode)
     ? (() => {
         const row = errorRow ?? null;
-        const stageOk = row ? BOOKING_REQUESTABLE.includes(row.status) : false;
+        const stageOk = row
+          ? bookingCanRequest(row.status, data.canApprove)
+          : false;
         const qty = row
           ? bookingRequestQuantity({
               reservedQty: row.reservedQty,

@@ -842,3 +842,16 @@ export function bookingRequestQuantity(input: {
       : null;
   return input.typed ?? input.reservedQty ?? planned ?? input.moq ?? null;
 }
+
+/**
+ * A linha pode virar solicitação? Aprovado, Oferecido e Reservado: sempre.
+ * Novo e Em análise: só para quem aprova (gerar a solicitação já aprova).
+ * Descartado e "Virou solicitação": nunca.
+ */
+export function bookingCanRequest(
+  status: BookingStatus,
+  canApprove: boolean,
+): boolean {
+  if (BOOKING_REQUESTABLE.includes(status)) return true;
+  return canApprove && (status === "new" || status === "analysis");
+}

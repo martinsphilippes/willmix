@@ -13,6 +13,7 @@ const { getStore, PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { translator } = await import("@/i18n");
 const booking = await import("@/lib/services/booking");
+const { bookingCanRequest } = await import("@/lib/booking");
 const { ensureBookingForProduct } =
   await import("@/lib/services/booking-intake");
 const { hiddenBookingProductIds, isHiddenByBooking } =
@@ -543,6 +544,57 @@ describe("gerar solicitação", () => {
     expect(created[0].groupId ?? null).toBeNull();
     expect(created[0].quantity).toBe(360);
     expect((await fresh(a.booking.id)).reservedQty).toBe(360);
+  });
+
+  it("quem aprova gera a solicitação direto de Novo e Em análise (um toque); quem não aprova, não; Descartado nunca", async () => {
+    const fromAnalysis = await row("analysis");
+    const fromNew = await row("new");
+    const discarded = await row("discarded");
+    // O comprador (não abre o Superplan) continua precisando da aprovação.
+    expect(
+      await code(() =>
+        booking.generateRequestFromBooking(
+          buyer,
+          { ids: [fromAnalysis.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      ),
+    ).toBe("booking_not_requestable");
+    expect(
+      await code(() =>
+        booking.generateRequestFromBooking(
+          admin,
+          { ids: [discarded.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      ),
+    ).toBe("booking_not_requestable");
+    // O administrador: marcou, escolheu o cliente, gerou.
+    const created = await booking.generateRequestFromBooking(
+      admin,
+      {
+        ids: [fromAnalysis.booking.id, fromNew.booking.id],
+        customer: joao.partyId!,
+      },
+      t,
+    );
+    expect(created).toHaveLength(2);
+    for (const line of [fromAnalysis, fromNew]) {
+      const now = await fresh(line.booking.id);
+      expect([now.status, now.customerId, !!now.requestId]).toEqual([
+        "requested",
+        joao.partyId,
+        true,
+      ]);
+    }
+    // A auditoria diz que a aprovação foi junto.
+    const [log] = await getStore().list("audit_log", {
+      filter: { entityId: fromAnalysis.booking.id, action: "booking.request" },
+    });
+    expect(log.summary).toContain("aprovado junto");
+    expect(bookingCanRequest("analysis", true)).toBe(true);
+    expect(bookingCanRequest("analysis", false)).toBe(false);
+    expect(bookingCanRequest("requested", true)).toBe(false);
   });
 
   it("recusas: etapa, cliente de outra linha, sem cliente, quantidade e produto", async () => {
