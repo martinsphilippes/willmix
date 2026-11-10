@@ -344,6 +344,23 @@ export type PackagingDimsSource = (typeof PACKAGING_DIMS_SOURCES)[number];
 export const PRODUCT_SUPPLIER_SOURCES = ["catalog", "quote", "manual"] as const;
 export type ProductSupplierSource = (typeof PRODUCT_SUPPLIER_SOURCES)[number];
 
+/**
+ * Booking (docs/BOOKING.md): etapa de um produto que chegou pela ficha
+ * técnica, antes de virar solicitação. `requested` só é gravada pelo "Gerar
+ * solicitação"; `discarded` fica fora da fila. Não confundir com o passo
+ * "booking" do embarque (reserva no navio, `IMPORT_STEP_KEYS`).
+ */
+export const BOOKING_STATUSES = [
+  "new",
+  "analysis",
+  "approved",
+  "offered",
+  "reserved",
+  "requested",
+  "discarded",
+] as const;
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -2110,6 +2127,74 @@ export type StockReservationStatus =
  * disponível (vitrine e baixa para outros) até ser usada (vira baixa por
  * venda), cancelada ou vencer (`expiresAt` passado = vencida, sem gravar).
  */
+/**
+ * Retrato da análise do Superplan guardado na linha do Booking: o que foi
+ * analisado, com que pressupostos e o resultado. A lista mostra o retrato com
+ * a data (não recalcula sozinha). `verdict` nulo = faltou dado (`missing`).
+ */
+export interface BookingAnalysis {
+  at: string;
+  byUserId: string;
+  /** Tipo de negócio do Superplan usado (markup, comissão, despesas e meta). */
+  businessType: string;
+  /** Preço de venda analisado (R$ por peça) e se era o preço mínimo. */
+  salePriceBrl: number | null;
+  usesMinimum: boolean;
+  costBrl: number | null;
+  minimumBrl: number | null;
+  profitPct: number | null;
+  targetPct: number;
+  verdict: "viable" | "below" | "loss" | null;
+  /** Preço para bater a meta; nulo quando impossível ou sem conta. */
+  targetPriceBrl: number | null;
+  /** O que faltou para calcular (chaves do Superplan: price, fx, cbm…). */
+  missing: string[];
+  /** Pressupostos da conta, para conferência. */
+  inputs?: {
+    officialRate: number | null;
+    futureRate: number | null;
+    rmbPerUsd: number | null;
+    iiPct: number;
+    ipiPct: number;
+    /** NCM achado na tabela fiscal (sem ele, II e IPI contam 0). */
+    ncmFound: boolean;
+    container: string | null;
+    freightUsd: number | null;
+    /** Peso bruto estimado pelo líquido (a ficha não trouxe o bruto). */
+    grossEstimated?: boolean;
+  } | null;
+}
+
+/**
+ * Linha do Booking: um produto do cadastro que chegou pela ficha técnica,
+ * com a etapa, a reserva e a análise. Uma por produto.
+ */
+export interface Booking extends BaseRow {
+  productId: string;
+  status: BookingStatus;
+  /** Lote da importação (`import_batches`) e a planilha de origem. */
+  importBatchId: string | null;
+  sourceFileName: string | null;
+  /** Linhas da planilha ("3-5") e a primeira delas (ordem da planilha). */
+  sourceRows: string | null;
+  sourceOrder: number | null;
+  /** Cliente da oferta ou da reserva. */
+  customerId: string | null;
+  /** Peças reservadas (nunca abaixo do pedido mínimo). */
+  reservedQty: number | null;
+  /** Responsável na Wellmix (quem importou, até alguém trocar). */
+  ownerUserId: string | null;
+  note: string | null;
+  analysis: BookingAnalysis | null;
+  /** Solicitação gerada a partir desta linha (uma por produto do lote). */
+  requestId: string | null;
+  requestGroupId: string | null;
+  requestNumber: number | null;
+  statusChangedAt: string | null;
+  statusChangedByUserId: string | null;
+  createdByUserId: string | null;
+}
+
 export interface StockReservation extends BaseRow {
   productId: string;
   customerId: string;
@@ -2184,6 +2269,7 @@ export interface Tables {
   stock_counts: StockCount;
   stock_count_items: StockCountItem;
   stock_reservations: StockReservation;
+  bookings: Booking;
 }
 export type TableName = keyof Tables;
 
@@ -3612,6 +3698,33 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_product", type: "key", columns: ["productId"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_status", type: "key", columns: ["status"] },
+    ],
+  },
+  bookings: {
+    label: "Booking (produtos antes da solicitação)",
+    columns: {
+      productId: id(),
+      status: enumOf(BOOKING_STATUSES),
+      importBatchId: id(false),
+      sourceFileName: str(200),
+      sourceRows: str(40),
+      sourceOrder: int(),
+      customerId: id(false),
+      reservedQty: int(),
+      ownerUserId: id(false),
+      note: str(500),
+      analysis: json(),
+      requestId: id(false),
+      requestGroupId: id(false),
+      requestNumber: int(),
+      statusChangedAt: datetime(),
+      statusChangedByUserId: id(false),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "product_unique", type: "unique", columns: ["productId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
+      { key: "by_batch", type: "key", columns: ["importBatchId"] },
     ],
   },
 };

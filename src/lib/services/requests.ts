@@ -34,6 +34,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
+import { isHiddenByBooking } from "./booking-visibility";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
 import { createPurchaseSnapshot } from "./snapshots";
@@ -347,6 +348,11 @@ export async function setRequester(
 export async function createRequest(
   user: User,
   input: CreateRequestInput,
+  /**
+   * Só para chamadas do próprio servidor (nunca vem do formulário):
+   * `ownOrder` = recompra, o produto é o de um pedido que o cliente já tem.
+   */
+  internal: { ownOrder?: boolean } = {},
 ): Promise<Request> {
   const store = getStore();
   const settings = await getSettings();
@@ -355,6 +361,20 @@ export async function createRequest(
     if (input.customerId !== user.partyId) throw new ForbiddenError();
   } else if (!isWellmix(user)) {
     throw new ForbiddenError();
+  }
+  // Cliente só pede produto do catálogo que ele pode ver: existe, está ativo
+  // e não está escondido pelo Booking (docs/BOOKING.md). A mesma recusa nos
+  // três casos (não dá para descobrir se um produto existe), antes de olhar
+  // variação, mínimo ou nome do produto. A Wellmix segue como antes.
+  // A recompra de um pedido do próprio cliente (createFollowUpRequest) fica
+  // como sempre foi: o produto vem do pedido dele, não do formulário.
+  if (user.role === "customer" && input.productId && !internal.ownOrder) {
+    const [catalogProduct, hiddenByBooking] = await Promise.all([
+      store.get("products", input.productId),
+      isHiddenByBooking(input.productId),
+    ]);
+    if (!catalogProduct?.active || hiddenByBooking)
+      throw new RequestError("product_unavailable");
   }
   // Solicitante: o próprio cliente; ou, pela Wellmix, um login daquele cliente.
   let requestedForUserId: string | null =
@@ -1325,32 +1345,37 @@ export async function createFollowUpRequest(
   const product = item.productId
     ? await store.get("products", item.productId)
     : null;
-  return createRequest(user, {
-    customerId: order.customerId,
-    productId: item.productId,
-    // Mesma variação do pedido (a cópia dos valores é refeita com a variação
-    // de hoje; desativada, a recompra pede outra).
-    variantId: item.variantId ?? previous?.variantId ?? null,
-    productName: item.name,
-    description:
-      previous?.description ??
-      `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} do pedido #${order.number}`,
-    specification: previous?.specification ?? product?.specification ?? null,
-    quantity: input.quantity,
-    unit: item.unit,
-    deadline: input.deadline ?? null,
-    notes:
-      [
-        `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} a partir do pedido #${order.number} (última quantidade ${item.quantity} ${item.unit}).`,
-        input.notes,
-      ]
-        .filter(Boolean)
-        .join("\n") || null,
-    origin: input.origin,
-    // Recompra aberta pela Wellmix continua do mesmo login solicitante.
-    requestedForUserId: order.requestedByUserId,
-    sourceOrderId: order.id,
-  });
+  return createRequest(
+    user,
+    {
+      customerId: order.customerId,
+      productId: item.productId,
+      // Mesma variação do pedido (a cópia dos valores é refeita com a variação
+      // de hoje; desativada, a recompra pede outra).
+      variantId: item.variantId ?? previous?.variantId ?? null,
+      productName: item.name,
+      description:
+        previous?.description ??
+        `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} do pedido #${order.number}`,
+      specification: previous?.specification ?? product?.specification ?? null,
+      quantity: input.quantity,
+      unit: item.unit,
+      deadline: input.deadline ?? null,
+      notes:
+        [
+          `${input.origin === "replenishment" ? "Reposição" : "Nova proposta"} a partir do pedido #${order.number} (última quantidade ${item.quantity} ${item.unit}).`,
+          input.notes,
+        ]
+          .filter(Boolean)
+          .join("\n") || null,
+      origin: input.origin,
+      // Recompra aberta pela Wellmix continua do mesmo login solicitante.
+      requestedForUserId: order.requestedByUserId,
+      sourceOrderId: order.id,
+    },
+    // O produto é o do pedido que o cliente já tem (conferido acima).
+    { ownOrder: true },
+  );
 }
 
 /** Solicitações que ainda podem ser excluídas: não viraram pedido nem foram excluídas. */

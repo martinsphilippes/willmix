@@ -2,6 +2,7 @@ import { Fragment } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
+import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
 import {
   SHEET_IMPORT_ENTITY,
@@ -14,6 +15,10 @@ import { getProductVariants } from "@/lib/services/product-variants";
 import { missingForCompletion } from "@/lib/services/purchase-sheet-calc";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { dictionaries } from "@/i18n/dictionaries";
+import { fallbackError } from "@/i18n/error-text";
+import { SubmitButton } from "@/components/submit-button";
+import { reimportSheetToBookingAction } from "../../../actions/product-sheet-import";
 import {
   Alert,
   Badge,
@@ -36,7 +41,18 @@ import {
  * falta na ficha mestre (a mesma regra do produto), sempre pelo estado atual.
  * No modo "um produto com variações", o produto único traz a lista das
  * variações criadas/atualizadas (nome, preço, MOQ, foto, situação).
+ * Lote que foi para o Booking: botão "Ver no Booking". Lote de outro modo que
+ * ainda tem a planilha guardada: "Mandar para o Booking" (relê o arquivo e
+ * cria um produto por linha no Booking), para quem abre a tela Booking.
  */
+
+/**
+ * "Mandar para o Booking" relê a planilha guardada e cadastra até 80 produtos
+ * (com fotos) numa requisição: a ação roda sob esta página, com o mesmo tempo
+ * da importação.
+ */
+export const maxDuration = 120;
+
 const STATUS_TONE: Record<string, Tone> = {
   created: "success",
   updated: "info",
@@ -45,8 +61,10 @@ const STATUS_TONE: Record<string, Tone> = {
 
 export default async function ProductSheetImportResultPage({
   params,
+  searchParams,
 }: PageProps<"/app/products/import/[batchId]">) {
   const { batchId } = await params;
+  const { error } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "products");
@@ -55,6 +73,25 @@ export default async function ProductSheetImportResultPage({
   const batch = await store.get("import_batches", batchId);
   if (!batch || batch.entity !== SHEET_IMPORT_ENTITY) notFound();
   const mode = importBatchMode(batch);
+  // Booking: o atalho e o "Mandar para o Booking" são só de quem abre a tela.
+  const canBooking = canOpen(user, "booking");
+  const inBooking = mode === "booking";
+  const canSendToBooking = canBooking && !inBooking;
+  // Recusa de uma ação desta página ("Mandar para o Booking").
+  const errorKey = `sheetImport.error.${error}`;
+  const actionError =
+    typeof error === "string" && error
+      ? errorKey in dictionaries.pt
+        ? t(errorKey as DictionaryKey)
+        : fallbackError(t, error)
+      : null;
+  // Erro de um grupo ou de uma variação: o texto próprio quando o código tem um.
+  const rowError = (code: string) => {
+    const key = `sheetImport.error.${code}`;
+    return key in dictionaries.pt
+      ? t(key as DictionaryKey)
+      : t("sheetImport.result.error", { code });
+  };
   const ids = batchProductIds(batch);
   const variantDecisions =
     mode === "variants" ? batchVariantDecisions(batch) : [];
@@ -142,20 +179,75 @@ export default async function ProductSheetImportResultPage({
                 updated: s.variantsUpdated ?? 0,
                 errors: s.variantErrors ?? 0,
               })}`
-            : summaryText
+            : inBooking
+              ? `${summaryText} · ${t("sheetImport.result.bookingSummary", {
+                  created: s.bookingCreated ?? 0,
+                  kept: s.bookingKept ?? 0,
+                })}`
+              : summaryText
         }
         actions={
           <div className="flex flex-wrap gap-2">
             <LinkButton href="/app/products/import">
               {t("sheetImport.result.again")}
             </LinkButton>
-            <LinkButton href="/app/products" variant="primary">
+            {/* Lote do Booking: o botão principal leva às linhas desta planilha. */}
+            <LinkButton
+              href="/app/products"
+              variant={inBooking && canBooking ? "secondary" : "primary"}
+            >
               {t("sheetImport.result.goList")}
             </LinkButton>
+            {inBooking && canBooking ? (
+              <LinkButton
+                href={`/app/booking?source=${encodeURIComponent(batch.id)}`}
+                variant="primary"
+                data-sheet-import-booking-link
+              >
+                {t("sheetImport.result.goBooking")}
+              </LinkButton>
+            ) : null}
           </div>
         }
       />
       <div className="mb-3 space-y-2">
+        {actionError ? <Alert tone="danger">{actionError}</Alert> : null}
+        {inBooking ? (
+          <Alert tone="info">{t("sheetImport.result.bookingNote")}</Alert>
+        ) : null}
+        {/* Planilha antiga (variações ou um produto por linha) direto no Booking. */}
+        {canSendToBooking ? (
+          batch.fileDocumentId ? (
+            <form
+              action={reimportSheetToBookingAction}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 shadow-sm"
+              data-sheet-import-to-booking
+            >
+              <input type="hidden" name="batchId" value={batch.id} />
+              {/* Lote "um produto por linha": os produtos já existem e podem
+                  estar na vitrine; no Booking (Novo) eles saem dela até aprovar. */}
+              <p className="min-w-0 flex-1 text-sm text-zinc-700">
+                {mode === "variants"
+                  ? t("sheetImport.toBooking.hint")
+                  : t("sheetImport.toBooking.hintProducts")}
+              </p>
+              <SubmitButton
+                pendingText={t("sheetImport.toBooking.pending")}
+                confirmText={
+                  mode === "variants"
+                    ? undefined
+                    : t("sheetImport.toBooking.confirmProducts")
+                }
+              >
+                {t("sheetImport.toBooking.submit")}
+              </SubmitButton>
+            </form>
+          ) : (
+            <p className="text-sm text-zinc-600">
+              {t("sheetImport.toBooking.noFile")}
+            </p>
+          )
+        ) : null}
         {failed > 0 ? (
           <Alert tone="danger">
             {t("sheetImport.result.failed", { n: failed })}
@@ -223,7 +315,7 @@ export default async function ProductSheetImportResultPage({
                     <Td>
                       {r.error ? (
                         <span className="text-sm text-red-700">
-                          {t("sheetImport.result.error", { code: r.error })}
+                          {rowError(r.error)}
                         </span>
                       ) : r.missing.length === 0 ? (
                         <Badge tone="success">
@@ -305,9 +397,7 @@ export default async function ProductSheetImportResultPage({
                                   </span>
                                   {v.error ? (
                                     <span className="text-red-700">
-                                      {t("sheetImport.result.error", {
-                                        code: v.error,
-                                      })}
+                                      {rowError(v.error)}
                                     </span>
                                   ) : null}
                                   <Badge

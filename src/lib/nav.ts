@@ -76,6 +76,8 @@ export function navFor(
       ...group(
         "nav.group.orders",
         pick(has, [
+          // Produtos que chegaram pela ficha técnica, antes da solicitação.
+          ["booking", { href: "/app/booking", key: "nav.booking" }],
           ["requests", { href: "/app/requests", key: "nav.requests" }],
           ["orders", { href: "/app/orders", key: "nav.orders" }],
           ["sourcing", { href: "/app/sourcing", key: "nav.sourcing" }],

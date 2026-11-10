@@ -16,8 +16,9 @@ import {
 
 /*
  * Parâmetros do Superplan (só o administrador): a tabela de tipos de negócio
- * da planilha, as despesas padrão por container, fretes, câmbio, AFRMM,
- * fatores de preço e impostos da venda. Formulário comum (funciona sem
+ * da planilha, as despesas padrão por container, fretes, câmbio, AFRMM, a
+ * folga da embalagem no peso (para o peso bruto estimado), fatores de preço
+ * e impostos da venda. Formulário comum (funciona sem
  * JavaScript); o servidor confere tudo antes de gravar e aponta o campo
  * recusado. Linha sem nome sai; a linha vazia do fim cria uma nova.
  */
@@ -59,8 +60,9 @@ export function SuperplanParamsForm({
     label: DictionaryKey,
     current: number,
     digits?: number,
+    hint?: DictionaryKey,
   ) => (
-    <Field label={t(label)}>
+    <Field label={t(label)} hint={hint ? t(hint) : undefined}>
       <Input
         name={name}
         inputMode="decimal"
@@ -231,6 +233,15 @@ export function SuperplanParamsForm({
               params.afrmmFixedBrl,
               2,
             )}
+            <div className="col-span-2">
+              {num(
+                "grossEstimatePct",
+                "superplan.params.grossEstimate",
+                params.grossEstimatePct,
+                2,
+                "superplan.params.grossEstimate.hint",
+              )}
+            </div>
           </div>
         </Card>
         <Card dense title={t("superplan.params.factors")}>

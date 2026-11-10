@@ -2,35 +2,46 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isAdmin } from "@/lib/auth/permissions";
+import { canOpen } from "@/lib/auth/screens";
 import { getStore } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
-import { getFxRates } from "@/lib/services/fx";
-import { lookupNcm } from "@/lib/services/fiscal";
-import { boxCbm } from "@/lib/logistics/cbm";
-import { superplanParams } from "@/lib/superplan";
+import {
+  loadSuperplanContext,
+  superplanPrefillsFor,
+} from "@/lib/services/superplan-analysis";
+import {
+  EMPTY_SUPERPLAN_PREFILL,
+  type SuperplanPrefill,
+} from "@/lib/superplan-defaults";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { pt as superplanTexts } from "@/i18n/modules/superplan";
 import { ActionError } from "@/components/action-error";
-import { Alert, Card, PageHeader, formatDate } from "@/components/ui";
+import { Alert, Card, PageHeader, TextLink, formatDate } from "@/components/ui";
 import {
   SuperplanCalculator,
   type SuperplanLabels,
-  type SuperplanPrefill,
 } from "@/components/superplan-calculator";
+import { saveBookingAnalysisAction } from "../actions/booking";
 import { SuperplanParamsForm } from "./_components/params-form";
 
 /*
  * Superplan (Pedidos → Superplan, só o administrador; docs/SUPERPLAN.md):
  * viabilidade de um produto importado e o preço por que a Wellmix deve
- * vender. Escolher um produto do cadastro preenche preço, caixa, peso, volume
- * e os impostos do NCM; câmbio, container, despesas e tipo de negócio vêm do
- * sistema. A conta é feita na tela, ao vivo (nada é gravado). Embaixo: como o
- * cálculo é feito e, para o administrador, os parâmetros.
+ * vender. Escolher um produto do cadastro preenche preço, caixa, pesos
+ * (líquido e bruto), volume e os impostos do NCM; câmbio, container, despesas
+ * e tipo de negócio vêm do sistema. A conta é feita na tela, ao vivo (nada é
+ * gravado). Embaixo: como o cálculo é feito e, para o administrador, os
+ * parâmetros. Os dados do produto e do sistema vêm de
+ * services/superplan-analysis.ts, o mesmo caminho da análise em lote.
+ *
+ * Aberto por uma linha do Booking (`?booking=<id>`, docs/BOOKING.md): a tela
+ * já vem com o produto da linha e ganha "Gravar no Booking", que guarda a
+ * simulação na linha (o resultado é refeito no servidor).
  */
 
 const PRODUCT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,35}$/;
+const BOOKING_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** Texto da tela (para o componente da simulação), no idioma de quem vê. */
 function labelsFor(t: Awaited<ReturnType<typeof getT>>): SuperplanLabels {
@@ -54,51 +65,39 @@ export default async function SuperplanPage({
   requireScreen(user, "superplan");
   const t = await getT();
   const query = await searchParams;
-  const productId =
-    typeof query.product === "string" && PRODUCT_ID.test(query.product)
+  // Aberto por uma linha do Booking (só para quem também abre o Booking): o
+  // produto é o da linha, não o do endereço.
+  const bookingId =
+    typeof query.booking === "string" &&
+    BOOKING_ID.test(query.booking) &&
+    canOpen(user, "booking")
+      ? query.booking
+      : null;
+  const bookingRow = bookingId
+    ? await getStore().get("bookings", bookingId)
+    : null;
+  const productId = bookingRow
+    ? bookingRow.productId
+    : typeof query.product === "string" && PRODUCT_ID.test(query.product)
       ? query.product
       : null;
 
-  const store = getStore();
-  const [settings, fx, products] = await Promise.all([
-    getSettings(),
-    getFxRates(),
-    store.list("products", { filter: { active: true }, orderBy: "name" }),
-  ]);
-  const params = superplanParams(settings.superplan);
-  const product = productId
-    ? (products.find((p) => p.id === productId) ??
-      (await store.get("products", productId)))
-    : null;
-  const rates = product?.ncm ? await lookupNcm(product.ncm) : null;
-
-  const currency = (product?.currency ?? "").toUpperCase();
-  const known = currency === "USD" || currency === "CNY" || currency === "RMB";
-  const prefill: SuperplanPrefill = {
-    productId: product?.id ?? null,
-    productName: product
-      ? [product.sku, product.name].filter(Boolean).join(" · ")
+  const [ctx, products, prefills] = await Promise.all([
+    loadSuperplanContext({
+      formatDay: (day) => formatDate(`${day}T12:00:00Z`, t),
+    }),
+    getStore().list("products", { filter: { active: true }, orderBy: "name" }),
+    // Produto desativado continua abrindo pelo endereço, como sempre abriu;
+    // pela linha do Booking, só produto que está no cadastro.
+    productId
+      ? superplanPrefillsFor([productId], { includeInactive: !bookingRow })
       : null,
-    unitPrice: product && known ? product.price : null,
-    currency: currency === "USD" ? "USD" : "RMB",
-    otherCurrency: product?.price && currency && !known ? currency : null,
-    pcsPerCarton: product?.masterBoxQty ?? null,
-    grossWeightPcKg: product?.grossWeightKg ?? null,
-    // Volume da caixa master: informado ou calculado das medidas da caixa.
-    cbmPerCarton: product ? boxCbm(product) : null,
-    ncm: product?.ncm ?? null,
-    iiPct: rates?.ii ?? null,
-    ipiPct: rates ? (rates.ipiNt ? 0 : (rates.ipi ?? null)) : null,
-  };
-
-  const usd = fx.rates.USD ?? null;
-  const rmb = fx.rates.RMB ?? null;
-  const containers = settings.containerTypes.filter(
-    (c) => c.capacityCbm > 0 && c.code,
-  );
-  // Dia da cotação do dólar (AAAA-MM-DD no começo), sem depender do fuso.
-  const fxDay = /^\d{4}-\d{2}-\d{2}/.exec(fx.quotedAt.USD ?? fx.day ?? "")?.[0];
-  const fxDate = fxDay ? formatDate(`${fxDay}T12:00:00Z`, t) : null;
+  ]);
+  const { params } = ctx;
+  const loaded = productId ? (prefills?.get(productId) ?? null) : null;
+  /** A linha do Booking com o produto no cadastro: dá para gravar a simulação. */
+  const booking = bookingRow && loaded ? bookingRow : null;
+  const prefill: SuperplanPrefill = loaded ?? EMPTY_SUPERPLAN_PREFILL;
   const decimal = t.intl.startsWith("pt") ? "," : ".";
   const admin = isAdmin(user);
 
@@ -107,7 +106,11 @@ export default async function SuperplanPage({
     ? null
     : errorCode === "invalid_input"
       ? t("superplan.error.invalid")
-      : ([`superplan.error.${errorCode}`, `common.${errorCode}`]
+      : ([
+          `superplan.error.${errorCode}`,
+          `booking.error.${errorCode}`,
+          `common.${errorCode}`,
+        ]
           .map((k) => [k, t(k as DictionaryKey)] as const)
           .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, errorCode));
 
@@ -117,6 +120,7 @@ export default async function SuperplanPage({
       freightFx: params.freightFxPct.toLocaleString(t.intl),
       afrmm: params.afrmmPct.toLocaleString(t.intl),
       fixed: params.afrmmFixedBrl.toLocaleString(t.intl),
+      gross: params.grossEstimatePct.toLocaleString(t.intl),
     });
 
   return (
@@ -125,8 +129,32 @@ export default async function SuperplanPage({
         title={t("superplan.title")}
         subtitle={t("superplan.subtitle")}
       />
+      {bookingId ? (
+        <div className="mb-4 space-y-2" data-superplan-booking>
+          {booking ? (
+            <Alert tone="brand">
+              {t("booking.superplan.banner", {
+                name: prefill.productName ?? booking.productId,
+              })}{" "}
+              <TextLink href={`/app/booking/${booking.id}`}>
+                {t("booking.superplan.back")}
+              </TextLink>
+            </Alert>
+          ) : (
+            <Alert tone="warning">
+              {t("booking.superplan.missing")}{" "}
+              <TextLink href="/app/booking">
+                {t("booking.detail.back")}
+              </TextLink>
+            </Alert>
+          )}
+          {booking && errorText ? (
+            <Alert tone="danger">{errorText}</Alert>
+          ) : null}
+        </div>
+      ) : null}
       <SuperplanCalculator
-        key={`${prefill.productId ?? "none"}:${hash(JSON.stringify(params))}`}
+        key={`${booking?.id ?? ""}:${prefill.productId ?? "none"}:${hash(JSON.stringify(params))}`}
         labels={labelsFor(t)}
         intl={t.intl}
         products={products.map((p) => ({
@@ -134,22 +162,20 @@ export default async function SuperplanPage({
           label: [p.sku, p.name].filter(Boolean).join(" · "),
         }))}
         prefill={prefill}
-        ctx={{
-          params,
-          containers,
-          defaultContainer: containers.some((c) => c.code === "40HC")
-            ? "40HC"
-            : ([...containers].sort((a, b) => b.capacityCbm - a.capacityCbm)[0]
-                ?.code ?? null),
-          official: usd,
-          rmbPerUsd: usd && rmb ? usd / rmb : null,
-          fxDate,
-          fxStatus: usd ? fx.status : "none",
-          insurancePct: settings.insurancePercent ?? 0,
-          pisImportPct: settings.pisImportPercent ?? 0,
-          cofinsImportPct: settings.cofinsImportPercent ?? 0,
-          icmsImportPct: settings.icmsPercent ?? null,
-        }}
+        // Média do despachante (ficha mestre): só informação na tela.
+        averageUsd={loaded ? loaded.averageUsd : undefined}
+        ctx={ctx}
+        save={
+          booking
+            ? {
+                action: saveBookingAnalysisAction,
+                hidden: { bookingId: booking.id },
+                title: t("booking.superplan.title"),
+                hint: t("booking.superplan.hint"),
+                submit: t("booking.superplan.save"),
+              }
+            : undefined
+        }
       />
 
       <details
@@ -189,19 +215,22 @@ export default async function SuperplanPage({
               {t("superplan.params.hint")}
             </p>
           </div>
-          <ActionError
-            t={t}
-            code={errorCode}
-            text={errorText}
-            fields={query.fields}
-            token={query.at}
-          />
+          {/* Recusa do "Gravar no Booking": já aparece em cima, junto da simulação. */}
+          {booking ? null : (
+            <ActionError
+              t={t}
+              code={errorCode}
+              text={errorText}
+              fields={query.fields}
+              token={query.at}
+            />
+          )}
           {query.saved ? (
             <Alert tone="success">{t("superplan.params.saved")}</Alert>
           ) : null}
           <SuperplanParamsForm t={t} params={params} decimal={decimal} />
         </section>
-      ) : errorText ? (
+      ) : errorText && !booking ? (
         <Card className="mt-6">
           <Alert tone="danger">{errorText}</Alert>
         </Card>

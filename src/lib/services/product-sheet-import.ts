@@ -14,7 +14,9 @@ import {
 } from "@/lib/db";
 import { randomUUID } from "node:crypto";
 import { assertWellmix } from "@/lib/auth/permissions";
+import { assertScreen } from "@/lib/auth/screens";
 import { audit } from "./audit";
+import { ensureBookingForProduct } from "./booking-intake";
 import { registerUploadedDocument, uploadDocument } from "./documents";
 import { isSchemaMissing } from "./packaging-brief";
 import {
@@ -47,6 +49,11 @@ import { openXlsWorkbook } from "./xls";
  * PHOTO e o cartão do fornecedor na coluna dele). Em um passo: lê a aba,
  * agrupa as linhas (mesmo código, descrição, tamanho e preço; cores juntas),
  * cadastra o fornecedor que faltar e, conforme o modo:
+ * - "booking" (docs/BOOKING.md): um produto por grupo, como em "products", e
+ *   cada produto ganha a sua linha no Booking (etapa Novo, fora da vitrine do
+ *   cliente até ser aprovado). Reimportar a mesma planilha cai nos mesmos
+ *   produtos e não cria outra linha nem muda a etapa. Só para quem abre a
+ *   tela Booking;
  * - "variants" (padrão): UM produto por planilha; cada grupo vira uma
  *   variação (upsert pela chave código + nome), com a foto da coluna PHOTO
  *   como foto da variação; a ficha mestre e as colunas do produto espelham a
@@ -736,9 +743,14 @@ function groupRows(
 /* Importação                                                                */
 /* ------------------------------------------------------------------------ */
 
-/** Resultado da importação: um produto com variações (padrão) ou um produto por linha. */
-export type SheetImportMode = "variants" | "products";
+/**
+ * Resultado da importação: produtos no Booking (um por linha; a opção
+ * oferecida primeiro a quem abre a tela Booking), um produto com variações
+ * (o padrão de quem não informa o modo) ou um produto por linha.
+ */
+export type SheetImportMode = "booking" | "variants" | "products";
 export const SHEET_IMPORT_MODES: readonly SheetImportMode[] = [
+  "booking",
   "variants",
   "products",
 ];
@@ -746,8 +758,9 @@ export const SHEET_IMPORT_MODES: readonly SheetImportMode[] = [
 export interface SheetImportOptions {
   lineId: string;
   /**
-   * "Um produto com variações": o nome do produto. "Um produto por linha":
-   * entra antes da descrição e do tamanho no nome ("Porta-retrato").
+   * "Um produto com variações": o nome do produto. "Um produto por linha" e
+   * "Mandar para o Booking": entra antes da descrição e do tamanho no nome
+   * ("Porta-retrato").
    */
   namePrefix?: string | null;
   /** Moeda do preço quando a planilha não diz. */
@@ -762,7 +775,13 @@ export type SheetSource =
   | File
   | { fileKey: string; fileName?: string | null }
   /** Link de uma planilha do Google Sheets compartilhada com o link. */
-  | { url: string };
+  | { url: string }
+  /**
+   * Arquivo já guardado de uma importação anterior (o documento do lote): é
+   * lido de novo e o lote novo aponta para o mesmo documento. Nada é enviado
+   * outra vez e o arquivo guardado nunca é apagado.
+   */
+  | { documentId: string };
 
 /** Uma variação criada/atualizada no modo "um produto com variações". */
 export interface SheetImportVariantResult {
@@ -807,6 +826,12 @@ export interface SheetImportSummary extends Record<string, number> {
   variantsCreated: number;
   variantsUpdated: number;
   variantErrors: number;
+  /**
+   * Modo "booking": linhas do Booking que nasceram agora e produtos que já
+   * estavam no Booking (a linha e a etapa deles ficam como estão).
+   */
+  bookingCreated: number;
+  bookingKept: number;
 }
 
 export interface SheetImportResult {
@@ -978,6 +1003,15 @@ async function sheetBytes(source: SheetSource) {
       throw new SheetImportError("sheet_fetch_failed");
     }
   }
+  if ("documentId" in source) {
+    // Arquivo guardado de uma importação anterior: só leitura.
+    const store = getStore();
+    const doc = await store.get("documents", source.documentId);
+    const kept = doc ? await store.getFile(doc.storageKey) : null;
+    if (!doc || !kept || kept.bytes.length === 0)
+      throw new SheetImportError("file_gone");
+    return { bytes: kept.bytes, name: doc.name || kept.name || "ficha.xlsx" };
+  }
   const stored = await getStore().getFile(source.fileKey);
   if (!stored || stored.bytes.length === 0)
     throw new SheetImportError("file_required");
@@ -991,10 +1025,14 @@ async function sheetBytes(source: SheetSource) {
 interface ImportContext {
   user: User;
   options: SheetImportOptions;
+  mode: SheetImportMode;
   parsed: ParsedSheet;
-  /** Id do lote, gerado antes para as variações apontarem para ele. */
+  /** Id do lote, gerado antes para as variações e o Booking apontarem para ele. */
   batchId: string;
+  /** Nome do arquivo lido (a planilha de origem das linhas do Booking). */
+  fileName: string;
   suppliers: Party[];
+  /** Produtos em que um grupo pode cair (no Booking, sem os produtos com variações). */
   products: Product[];
   summary: SheetImportSummary;
   results: SheetImportRowResult[];
@@ -1005,6 +1043,13 @@ interface ImportContext {
 const rowsLabel = (g: Pick<ProductGroup, "firstRow" | "lastRow">) =>
   g.firstRow === g.lastRow ? String(g.firstRow) : `${g.firstRow}–${g.lastRow}`;
 
+/** Linhas da planilha gravadas na linha do Booking ("3-5", com hífen comum; uma só: "7"). */
+const bookingSourceRows = (g: Pick<ProductGroup, "firstRow" | "lastRow">) =>
+  (g.firstRow === g.lastRow
+    ? String(g.firstRow)
+    : `${g.firstRow}-${g.lastRow}`
+  ).slice(0, 40);
+
 const errorText = (error: unknown) =>
   (error instanceof Error ? error.message : "unexpected").slice(0, 120);
 
@@ -1012,7 +1057,8 @@ const errorText = (error: unknown) =>
  * Importa a planilha: cada produto é cadastrado ou atualizado (mesmo nome na
  * mesma linha de produto e mesmo fornecedor), com a ficha mestre e as fotos,
  * e o resultado diz o que falta em cada um. No modo padrão a planilha inteira
- * é um produto e cada grupo de linhas, uma variação. O arquivo fica guardado
+ * é um produto e cada grupo de linhas, uma variação. No modo "booking" cada
+ * grupo é um produto com a sua linha no Booking. O arquivo fica guardado
  * como evidência do lote.
  */
 export async function importProductSheet(
@@ -1021,13 +1067,19 @@ export async function importProductSheet(
   options: SheetImportOptions,
 ): Promise<SheetImportResult> {
   assertWellmix(user);
+  const mode: SheetImportMode =
+    options.mode === "booking" || options.mode === "products"
+      ? options.mode
+      : "variants";
+  // Mandar para o Booking é só de quem abre a tela Booking.
+  if (mode === "booking") assertScreen(user, "booking");
   const store = getStore();
   const line = options.lineId
     ? await store.get("product_lines", options.lineId)
     : null;
   if (!line) throw new SheetImportError("line_required");
-  const mode: SheetImportMode =
-    options.mode === "products" ? "products" : "variants";
+  // Booking sem a tabela publicada: recusa antes de gravar qualquer coisa.
+  if (mode === "booking") await assertBookingTable();
   const currency =
     options.defaultCurrency &&
     (SHEET_CURRENCIES as readonly string[]).includes(options.defaultCurrency)
@@ -1039,15 +1091,21 @@ export async function importProductSheet(
     defaultCurrency: currency,
   });
 
-  const [suppliers, products] = await Promise.all([
+  const [suppliers, allProducts] = await Promise.all([
     store.list("parties", { filter: { type: "supplier" } }),
     store.list("products"),
   ]);
+  const products =
+    mode === "booking"
+      ? await bookingCandidates(allProducts, options.lineId)
+      : allProducts;
   const ctx: ImportContext = {
     user,
     options,
+    mode,
     parsed,
     batchId: randomUUID(),
+    fileName: file.name,
     suppliers,
     products,
     summary: {
@@ -1061,6 +1119,8 @@ export async function importProductSheet(
       variantsCreated: 0,
       variantsUpdated: 0,
       variantErrors: 0,
+      bookingCreated: 0,
+      bookingKept: 0,
     },
     results: [],
     decisions: {},
@@ -1071,31 +1131,38 @@ export async function importProductSheet(
   const { summary, results, decisions } = ctx;
 
   // Lote: evidência (arquivo guardado) e histórico do que entrou. A planilha
-  // baixada do Google fica guardada como se tivesse sido enviada.
-  const doc = await (
-    source instanceof File
-      ? uploadDocument(user, source, {
-          type: "attachment",
-          visibility: "internal",
-        })
-      : "url" in source
-        ? uploadDocument(
-            user,
-            new File([new Uint8Array(file.bytes)], file.name, {
-              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            }),
-            { type: "attachment", visibility: "internal" },
-          )
-        : registerUploadedDocument(user, source.fileKey, {
-            type: "attachment",
-            visibility: "internal",
-          })
-  ).catch(() => null);
+  // baixada do Google fica guardada como se tivesse sido enviada. Arquivo de
+  // uma importação anterior: o lote novo aponta para o mesmo documento (nada
+  // é enviado de novo nem apagado).
+  const fileDocumentId =
+    !(source instanceof File) && "documentId" in source
+      ? source.documentId
+      : ((
+          await (
+            source instanceof File
+              ? uploadDocument(user, source, {
+                  type: "attachment",
+                  visibility: "internal",
+                })
+              : "url" in source
+                ? uploadDocument(
+                    user,
+                    new File([new Uint8Array(file.bytes)], file.name, {
+                      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    }),
+                    { type: "attachment", visibility: "internal" },
+                  )
+                : registerUploadedDocument(user, source.fileKey, {
+                    type: "attachment",
+                    visibility: "internal",
+                  })
+          ).catch(() => null)
+        )?.id ?? null);
   const headers = Object.values(parsed.headers).filter(Boolean) as string[];
   const batch: ImportBatch = await store.create("import_batches", {
     id: ctx.batchId,
     entity: SHEET_IMPORT_ENTITY,
-    fileDocumentId: doc?.id ?? null,
+    fileDocumentId,
     fileName: file.name.slice(0, 255),
     sheetName: parsed.sheetName.slice(0, 120),
     headers,
@@ -1133,6 +1200,9 @@ export async function importProductSheet(
     `Ficha técnica ${batch.fileName}: ${summary.created} criados, ${summary.updated} atualizados, ${summary.errors} erros, ${summary.suppliersCreated} fornecedor(es) novo(s), ${summary.photos} foto(s)` +
       (mode === "variants"
         ? `, ${summary.variantsCreated} variação(ões) criada(s), ${summary.variantsUpdated} atualizada(s), ${summary.variantErrors} com erro`
+        : "") +
+      (mode === "booking"
+        ? `, ${summary.bookingCreated} produto(s) novo(s) no Booking, ${summary.bookingKept} que já estava(m) lá`
         : ""),
   );
   return {
@@ -1142,6 +1212,135 @@ export async function importProductSheet(
     results,
     warnings: parsed.warnings,
   };
+}
+
+/** Booking: a tabela precisa existir antes de qualquer gravação (nada fica pela metade). */
+async function assertBookingTable(): Promise<void> {
+  try {
+    await getStore().list("bookings", { limit: 1 });
+  } catch (error) {
+    if (isSchemaMissing(error)) throw new SheetImportError("schema_outdated");
+    throw error;
+  }
+}
+
+/**
+ * Booking: em que produtos um grupo da planilha pode cair. O produto com
+ * variações (o produto único do modo "variants") fica de fora: ele não é
+ * alterado e a linha da planilha vira um produto novo. Só continua valendo o
+ * produto com variações que já está no Booking (ganhou variações depois de
+ * entrar): reimportar cai nele, sem criar outro produto nem outra linha.
+ */
+async function bookingCandidates(
+  products: Product[],
+  lineId: string,
+): Promise<Product[]> {
+  const ids = products.filter((p) => p.lineId === lineId).map((p) => p.id);
+  if (!ids.length) return products;
+  const store = getStore();
+  let parents: string[];
+  try {
+    const variants = await store.list("product_variants", {
+      filter: { productId: ids },
+    });
+    parents = [...new Set(variants.map((v) => v.productId))];
+  } catch (error) {
+    // Tabela das variações ainda não publicada: nenhum produto tem variação.
+    if (!isSchemaMissing(error)) throw error;
+    return products;
+  }
+  if (!parents.length) return products;
+  const inBooking = new Set(
+    (await store.list("bookings", { filter: { productId: parents } })).map(
+      (b) => b.productId,
+    ),
+  );
+  const skip = new Set(parents.filter((id) => !inBooking.has(id)));
+  return skip.size ? products.filter((p) => !skip.has(p.id)) : products;
+}
+
+/**
+ * Booking: garante a linha do produto no Booking (responsável = quem
+ * importou, na primeira vez; quem já está lá fica na etapa em que está).
+ * Produto que a planilha criou entra em Novo (fora da vitrine); produto que
+ * já existia no cadastro (`existed`) entra em Aprovado, para a importação
+ * não tirar da vitrine o que já se vende. Vem antes da ficha mestre e das
+ * fotos: o produto novo só ganha preço e imagem depois de estar fora da
+ * vitrine do cliente. Falha aqui: o grupo fica com erro e reimportar
+ * conserta (o produto recém-criado é desfeito, ver `dropStub`).
+ */
+async function enterBooking(
+  ctx: ImportContext,
+  product: Product,
+  group: ProductGroup,
+  existed: boolean,
+): Promise<void> {
+  try {
+    const { created } = await ensureBookingForProduct(ctx.user, {
+      productId: product.id,
+      importBatchId: ctx.batchId,
+      sourceFileName: (ctx.fileName || ctx.parsed.sheetName).slice(0, 200),
+      sourceRows: bookingSourceRows(group),
+      sourceOrder: group.firstRow,
+      productExisted: existed,
+    });
+    if (created) ctx.summary.bookingCreated++;
+    else ctx.summary.bookingKept++;
+  } catch (error) {
+    // O detalhe fica no log do servidor; a tela mostra o código.
+    console.error("[sheet-import] booking", product.id, error);
+    throw new SheetImportError("booking_failed");
+  }
+}
+
+/**
+ * Booking: o produto acabou de nascer nesta importação e a linha dele no
+ * Booking falhou. Ele ainda não tem ficha, preço nem foto; se ficasse no
+ * cadastro, apareceria na vitrine do cliente sem ter passado pelo Booking.
+ * É desfeito (com a ligação ao fornecedor); reimportar o cria de novo.
+ */
+async function dropStub(ctx: ImportContext, product: Product): Promise<void> {
+  const store = getStore();
+  try {
+    for (const link of await store.list("product_suppliers", {
+      filter: { productId: product.id },
+    }))
+      await store.remove("product_suppliers", link.id);
+    await store.remove("products", product.id);
+    await audit(
+      ctx.user,
+      "product.import_rollback",
+      "product",
+      product.id,
+      `${product.name}: desfeito (não entrou no Booking nesta importação)`,
+    );
+  } catch (error) {
+    console.error("[sheet-import] desfazer produto", product.id, error);
+  }
+}
+
+/**
+ * Booking: dois grupos da planilha com o mesmo nome. O segundo ganha o código
+ * da fábrica e, se ainda repetir, um contador. A regra só depende da ordem da
+ * planilha, então reimportar dá os mesmos nomes (e cai nos mesmos produtos).
+ * O sufixo nunca é cortado pelo limite do nome (a base é que encurta).
+ */
+function uniqueSheetName(
+  name: string,
+  code: string | number | null | undefined,
+  used: Set<string>,
+): string {
+  const join = (base: string, suffix: string) =>
+    `${base.slice(0, 160 - suffix.length).trimEnd()}${suffix}`;
+  const withCode =
+    code !== null && code !== undefined && String(code).trim()
+      ? join(name, ` · ${String(code).trim().slice(0, 60)}`)
+      : null;
+  if (withCode && !used.has(norm(withCode))) return withCode;
+  const base = withCode ?? name;
+  let n = 2;
+  while (used.has(norm(join(base, ` (${n})`)))) n++;
+  return join(base, ` (${n})`);
 }
 
 /**
@@ -1167,7 +1366,12 @@ function matchProduct(
   return { existing, name };
 }
 
-/** Um produto por grupo (o comportamento anterior, mantido sem mudanças). */
+/**
+ * Um produto por grupo. Modo "products": o comportamento anterior, mantido
+ * sem mudanças. Modo "booking": o mesmo cadastro e, para cada produto, a
+ * linha do Booking; os nomes repetidos são resolvidos sempre do mesmo jeito,
+ * para reimportar a planilha cair nos mesmos produtos.
+ */
 async function importAsProducts(ctx: ImportContext): Promise<void> {
   const {
     user,
@@ -1179,6 +1383,7 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
     results,
     decisions,
   } = ctx;
+  const booking = ctx.mode === "booking";
   const store = getStore();
   const namesUsed = new Set<string>();
   for (const group of parsed.groups) {
@@ -1219,18 +1424,45 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       );
       let existing = matched.existing;
       let name = matched.name;
+      // Booking: o nome que ganhou o fornecedor (já havia o mesmo nome de outro
+      // fornecedor) é igual em toda importação: procura o produto que nasceu com ele.
+      if (booking && name !== result.name)
+        existing = matchProduct(
+          products,
+          options.lineId,
+          name,
+          supplierId,
+          null,
+        ).existing;
       // Dois grupos da planilha com o mesmo nome: código da fábrica, depois um contador.
       if (namesUsed.has(norm(name))) {
-        const code = group.reading.factoryItemCode;
-        const withCode = code ? `${name} · ${code}`.slice(0, 160) : null;
-        if (withCode && !namesUsed.has(norm(withCode))) name = withCode;
-        else {
-          const base = withCode ?? name;
-          let n = 2;
-          while (namesUsed.has(norm(`${base} (${n})`))) n++;
-          name = `${base} (${n})`.slice(0, 160);
+        if (booking) {
+          // Booking: o nome trocado é sempre o mesmo, e reimportar cai no
+          // produto que nasceu com ele (em vez de criar outro).
+          name = uniqueSheetName(
+            name,
+            group.reading.factoryItemCode,
+            namesUsed,
+          );
+          existing = matchProduct(
+            products,
+            options.lineId,
+            name,
+            supplierId,
+            null,
+          ).existing;
+        } else {
+          const code = group.reading.factoryItemCode;
+          const withCode = code ? `${name} · ${code}`.slice(0, 160) : null;
+          if (withCode && !namesUsed.has(norm(withCode))) name = withCode;
+          else {
+            const base = withCode ?? name;
+            let n = 2;
+            while (namesUsed.has(norm(`${base} (${n})`))) n++;
+            name = `${base} (${n})`.slice(0, 160);
+          }
+          existing = undefined;
         }
-        existing = undefined;
       }
       namesUsed.add(norm(name));
       result.name = name;
@@ -1294,6 +1526,22 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         summary.created++;
       }
       result.productId = product.id;
+      // Booking: a linha do produto nasce antes da ficha mestre e das fotos.
+      if (booking) {
+        const existed = result.status === "updated";
+        try {
+          await enterBooking(ctx, product, group, existed);
+        } catch (error) {
+          // Produto criado agora e sem linha no Booking: não fica no cadastro.
+          if (!existed) {
+            await dropStub(ctx, product);
+            const at = products.indexOf(product);
+            if (at >= 0) products.splice(at, 1);
+            result.productId = null;
+          }
+          throw error;
+        }
+      }
       const saved = await saveProductSheet(
         user,
         product.id,
@@ -1656,7 +1904,51 @@ export function batchProductIds(batch: ImportBatch): string[] {
 
 /** Modo com que o lote foi importado (lotes anteriores à opção: um produto por linha). */
 export function importBatchMode(batch: ImportBatch): SheetImportMode {
-  return batch.mapping?.__mode === "variants" ? "variants" : "products";
+  const mode = batch.mapping?.__mode;
+  return mode === "variants" || mode === "booking" ? mode : "products";
+}
+
+/**
+ * Planilha de uma importação anterior (com variações ou um produto por linha)
+ * direto no Booking: relê o arquivo guardado do lote e importa no modo
+ * "booking", com a mesma linha de produto, nome base, moeda e aba. Nasce um
+ * lote novo, que aponta para o mesmo arquivo (nada é enviado de novo nem
+ * apagado). O produto com variações da importação antiga fica como está.
+ */
+export async function reimportSheetToBooking(
+  user: User,
+  batchId: string,
+): Promise<SheetImportResult> {
+  assertWellmix(user);
+  assertScreen(user, "booking");
+  const store = getStore();
+  const batch = batchId ? await store.get("import_batches", batchId) : null;
+  if (!batch || batch.entity !== SHEET_IMPORT_ENTITY)
+    throw new SheetImportError("batch_not_found");
+  if (!batch.fileDocumentId) throw new SheetImportError("file_gone");
+  const mapping = batch.mapping ?? {};
+  const lineId = typeof mapping.__lineId === "string" ? mapping.__lineId : "";
+  const line = lineId ? await store.get("product_lines", lineId) : null;
+  if (!line) throw new SheetImportError("line_gone");
+  const currency = (SHEET_CURRENCIES as readonly string[]).includes(
+    mapping.__currency ?? "",
+  )
+    ? (mapping.__currency as SheetCurrency)
+    : null;
+  return importProductSheet(
+    user,
+    { documentId: batch.fileDocumentId },
+    {
+      lineId,
+      namePrefix:
+        typeof mapping.__namePrefix === "string" && mapping.__namePrefix
+          ? mapping.__namePrefix
+          : null,
+      defaultCurrency: currency,
+      sheet: batch.sheetName,
+      mode: "booking",
+    },
+  );
 }
 
 /** Lote no modo "variants": decisão de cada variação (grupo da planilha), na ordem. */
