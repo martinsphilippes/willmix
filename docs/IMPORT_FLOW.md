@@ -33,7 +33,9 @@ O **financeiro** é uma função da Wellmix (Equipe → Funções). Só ele (ou 
 - **Arquivos**:
   - cada arquivo de passo é do tipo `import_step` e só abre para quem vê aquele passo (o fornecedor nunca abre numerário, DI ou CI; o cliente não vê nada);
   - um arquivo só entra num passo se for do mesmo pedido;
-  - o XML da DI baixa como anexo.
+  - o XML da DI baixa como anexo;
+  - arquivo acima de ~3,5 MB sobe do navegador direto ao armazenamento (até 50 MB), como os arquivos de requisito; enquanto sobe, o passo não é enviado;
+  - a recusa de um envio ou de uma validação aparece dentro do cartão de onde a ação veio (além do aviso no alto da página).
 
 ## Pendências
 - O parceiro vê os passos dele que já podem ser feitos, e os que recusaram.

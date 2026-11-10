@@ -198,8 +198,10 @@ describe("pedido novo: cai no login da certificadora", () => {
 
   it("pedido cancelado ou encerrado não deixa pendência", async () => {
     for (const status of ["CANCELLED", "CLOSED"] as const) {
-      await getStore().update("orders", order.id, { status });
+      const closed = await getStore().update("orders", order.id, { status });
       expect(await certTasks(ocp, order)).toHaveLength(0);
+      // A tela do briefing também não pede mais o selo.
+      expect(await f.sealStateFor(agency, closed)).toBeNull();
       await expect(
         f.submitStep(ocp, order.id, "cert_seal", {
           documentId: (await doc(ocp, order, `late-${status}.pdf`)).id,
@@ -281,6 +283,7 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
       documentId: (await doc(agency, order, "arte-com-selo.pdf")).id,
     });
     expect(await certTasks(agency, order)).toHaveLength(0);
+    expect(await f.sealStateFor(agency, order)).toBe("sent");
     const validate = await certTasks(admin, order);
     expect(validate.map((t) => t.kind)).toEqual(["cert_validate"]);
     expect(validate[0].text?.title).toBe("tasks.seal.validate.title");
@@ -498,6 +501,33 @@ describe("parceiro designado depois", () => {
     });
     await f.notifySealPartner(order, "agencyId");
     expect(await inbox(agency, order)).toHaveLength(before + 1);
+  });
+
+  it("dono do briefing trocado depois do selo: quem passa a fazer a arte é avisado", async () => {
+    const { assignPackagingBrief } =
+      await import("@/lib/services/packaging-brief");
+    let order = await newOrder();
+    order = await getStore().update("orders", order.id, {
+      ownerUserId: admin.id,
+    });
+    await f.submitStep(ocp, order.id, "cert_seal", {
+      documentId: (await doc(ocp, order, "selo.pdf")).id,
+    });
+    const sealNotes = async (user: User) =>
+      (await inbox(user, order)).filter((n) => n.link === sealLink(order));
+    const [brief] = await getStore().list("packaging_briefs", {
+      filter: { orderId: order.id },
+    });
+    // A Wellmix assume a arte: o selo a aplicar passa a ser dela.
+    const adminBefore = (await sealNotes(admin)).length;
+    await assignPackagingBrief(admin, brief.id, null);
+    expect((await fresh(order)).agencyId).toBeNull();
+    expect(await sealNotes(admin)).toHaveLength(adminBefore + 1);
+    // De volta à agência: ela é avisada do selo que já chegou.
+    const agencyBefore = (await sealNotes(agency)).length;
+    await assignPackagingBrief(admin, brief.id, agency.partyId!);
+    expect(await sealNotes(agency)).toHaveLength(agencyBefore + 1);
+    expect(await certTasks(agency, order)).toHaveLength(1);
   });
 
   it("pedido sem certificadora: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de designar", async () => {

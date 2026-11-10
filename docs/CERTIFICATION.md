@@ -1,6 +1,6 @@
 # Certificação com o OCP (Fase F)
 
-- **OCP (organismo de certificação)**: login próprio (papel `ocp`, empresa do tipo OCP), designado no pedido em "Parceiros" (`orders.ocpId`). Com uma só certificadora ativa, ela é designada sozinha quando o pedido nasce. Vê só os pedidos em que está e, neles, só os passos da certificação.
+- **OCP (organismo de certificação)**: login próprio (papel `ocp`, empresa do tipo OCP), designado no pedido em "Parceiros" (`orders.ocpId`). Com uma só certificadora ativa, ela é designada sozinha quando o pedido nasce. Vê só os pedidos em que está: o cartão Certificação e o pedido completo para ler (seção 6), sem preço nem cliente.
 - **Todo pedido precisa do selo de certificação** (decisão do dono, 10/11/2026): as duas linhas do selo aparecem no cartão **Certificação** de todo pedido, desde que ele nasce (não esperam a Preparação).
 - Memorial, laudo e registro aparecem no cartão quando há OCP designado, quando a ficha da cotação/pedido marca "Precisa de certificação" ou quando algum deles já começou.
 
@@ -39,16 +39,17 @@ A arte não espera o selo: o briefing de embalagem continua nascendo na RFQ. Na 
 - **Todo pedido precisa de selo**: a pendência do selo existe em todo pedido aberto e nunca fica sem dono. Com certificadora no pedido, é dela; sem certificadora, é da Wellmix ("designar a certificadora do selo", que abre em Parceiros do pedido).
 - **Sem trava por enquanto** (decisão do dono): a arte pode ser enviada e aprovada pelo fornecedor sem o selo; o que avisa é a pendência e o quadro "Certificação pendente". Travas ficam para depois.
 - **Quem recebe o selo**: quem faz a arte, pela mesma regra do item "Arte" da etapa Arte e embalagem (`artRole`): a agência do pedido; sem agência, ou com "Arte da embalagem feita pela agência" desligado, a Wellmix (o designer do pedido, quem tem a função Designer ou o analista).
-- **Pedido recém-criado**: só os passos do selo viram pendência; memorial, laudo e registro continuam a partir da Preparação.
-- **Selo trocado**: a certificadora pode reenviar o selo. Se a arte com o selo já tinha sido enviada ou validada, o passo da arte **reabre** (a arte leva o selo antigo) e quem faz a arte é avisado. Reenviar sem mudar arquivo nem número não reabre nem avisa.
+- **Pedido recém-criado**: só o selo já nasce como pendência. Memorial, laudo e registro viram pendência a partir da Preparação; se alguém começar o memorial antes, pelo cartão, o que vem depois (validar, laudo) segue normalmente.
+- **Selo trocado**: a certificadora pode reenviar o selo. Se a arte com o selo já tinha sido enviada ou validada, o passo da arte **reabre** (a arte leva o selo antigo), o reenvio pede um arquivo novo e quem faz a arte é avisado. Reenviar sem mudar arquivo nem número não reabre nem avisa.
 - **Wellmix no lugar da certificadora**: a Wellmix pode enviar o selo recebido por fora; o resto do caminho é igual.
 - **Pedido encerrado ou cancelado**: os passos não aceitam mais envio e as pendências somem.
 
 ### 5. Casos especiais
 - **Nenhuma certificadora no pedido** (nenhuma cadastrada ou mais de uma ativa; com uma só, ela é designada sozinha): a Wellmix recebe o aviso "sem certificadora para o selo" e a pendência de designar em Parceiros do pedido; a certificadora designada depois é avisada na hora e a pendência passa para ela. A Wellmix também pode enviar o selo recebido por fora.
 - **Agência trocada ou retirada** depois de o selo chegar: quem passa a fazer a arte é avisado.
-- **Wellmix fez a arte**: quem enviou não valida a própria arte com o selo; outro usuário da Wellmix (ou o administrador) valida.
-- **Pedidos que já estavam abertos** antes desta entrega: ganham a pendência do selo na certificadora (sem aviso retroativo).
+- **Wellmix fez a arte**: quem enviou não valida a própria arte com o selo; outro usuário da Wellmix (ou o administrador) valida, e o aviso de validar vai para o resto da equipe.
+- **Arte feita pela Wellmix nas configurações** ("Arte da embalagem feita pela agência" desligado): a agência do pedido só acompanha as linhas do selo; não envia a arte com o selo.
+- **Pedidos que já estavam abertos** antes desta entrega: ganham a pendência do selo na certificadora, ou na Wellmix quando o pedido não tem certificadora (sem aviso retroativo).
 
 ### 6. Papéis e o que cada um vê
 | Papel | Vê | Faz |
@@ -64,7 +65,7 @@ O cliente e o preço continuam invisíveis para OCP e agência.
 Para gerar o selo ela precisa de tudo o que é do produto e do pedido. No pedido em que é a certificadora, ela vê, só para ler:
 
 - **Resumo**: fornecedor, data do pedido e o atalho "Ver ficha de compra".
-- **Itens**: foto, nome, código, variação e quantidade. As fotos são as de vitrine do cadastro do produto mais as enviadas na ficha do pedido.
+- **Itens**: foto, nome, código, variação e quantidade. As fotos são as de vitrine do cadastro do produto mais, no pedido de um item só, as enviadas na ficha do pedido.
 - **Ficha de compra do pedido** inteira, com todos os blocos abertos: fornecedor (nome, cidade, loja, telefone, código na fábrica), produto (pesos, capacidade, cores Pantone, material, energia), caixa e embalagem (medidas, CBM), programação, **fotos** (balança, medidas, ângulos, original, HD, faca), despachante (NCM, II, IPI, dumping, certificação pedida) e descrição/observações.
 - **Certificações já registradas** do produto e do fornecedor (tipo, número, emissor, situação, validade e o arquivo).
 - **Documentos** do pedido que já eram dela: artes, faca, etiquetas, manual, BL, inspeção e fotos.
@@ -73,7 +74,7 @@ Para gerar o selo ela precisa de tudo o que é do produto e do pedido. No pedido
 O que **não** vai para a certificadora: preço (o bloco Preço da ficha não aparece e os valores não saem do servidor: condição, moeda, preço, pedido mínimo e a média do despachante), pagamentos, margem, valores do pedido e o nome do cliente. Cartão do fabricante e foto de referência do cadastro também não. Ela não edita nada na ficha.
 
 ### 7. Dados
-Sem tabela e sem coluna nova: dois valores novos no enum `import_steps.key` (`cert_seal`, `cert_seal_art`). O arquivo é um documento `import_step` do pedido (visibilidade interna; abre só para quem vê o passo). **O esquema precisa ser publicado no Appwrite antes do primeiro envio** (GitHub Actions → "Publicar esquema Appwrite"); sem isso o envio avisa "passo ainda não liberado no banco de dados".
+Sem tabela e sem coluna nova: dois valores novos no enum `import_steps.key` (`cert_seal`, `cert_seal_art`). O arquivo é um documento `import_step` do pedido (visibilidade interna; abre só para quem vê o passo). **O esquema precisa ser publicado no Appwrite antes do primeiro envio** (GitHub Actions → "Publicar esquema Appwrite"); sem isso o envio avisa que o passo ainda não está liberado no sistema.
 
 ### 8. Avisos e pendências
 | Quando | Para quem | Aviso | Pendência |
@@ -85,7 +86,7 @@ Sem tabela e sem coluna nova: dois valores novos no enum `import_steps.key` (`ce
 | Arte recusada | quem faz a arte | recusado + motivo | Aplicar o selo na arte |
 | Pedido sem certificadora | Wellmix | designar certificadora | Designar a certificadora do selo |
 
-As pendências de certificação aparecem com o tipo "Certificação" e abrem direto no cartão (`#certification`).
+As pendências de certificação aparecem com o tipo "Certificação" e abrem direto no cartão (`#certification`); a de designar a certificadora abre em Parceiros do pedido. A recusa de uma ação (arquivo que falta, formato não aceito, passo anterior por fazer) aparece dentro do próprio cartão. Arquivo grande (a arte com o selo) sobe direto ao armazenamento, até 50 MB, e o botão só envia depois que o arquivo terminou de subir.
 
 ### 9. Indicadores
 - Control Tower, "Certificação pendente": todo pedido aberto sem o selo enviado ou sem a arte com o selo conferida; com certificação pedida (OCP, ficha ou passo começado), também memorial, laudo e registro.

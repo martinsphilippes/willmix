@@ -670,13 +670,15 @@ export type SealState = "pending" | "ready" | "rejected" | "sent" | "done";
  * Situação do selo para o usuário: aguardando a certificadora, disponível
  * para aplicar, arte com o selo recusada (refazer), enviada ou conferida.
  * Todo pedido tem selo;
- * nulo só para pedido cancelado ou quando o usuário não vê o passo.
+ * nulo só para pedido cancelado ou encerrado, ou quando o usuário não vê o
+ * passo (ou não é quem aplica o selo).
  */
 export async function sealStateFor(
   user: User,
   order: Order,
 ): Promise<SealState | null> {
-  if (order.status === "CANCELLED") return null;
+  // Pedido cancelado ou encerrado: os passos não aceitam mais envio.
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return null;
   if (!canSeeStep(user, order, "cert_seal")) return null;
   // Agência do pedido com a arte feita pela Wellmix: não é ela quem aplica.
   if (!isWellmix(user) && !(await agencyDoesArt(order))) return null;

@@ -439,10 +439,14 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
     // Sem certificadora designada: o selo vale do mesmo jeito.
     const noOcp = order("PREPARATION");
     const noOcpDone = order("PREPARATION");
-    const s = [born, sealed, done, noOcp, noOcpDone].map((o) => stage(o));
+    // Memorial, laudo e registro concluídos, mas ainda sem o selo.
+    const classicOnly = order("PACKAGING", { ocpId: "ocp1" });
+    const s = [born, sealed, done, noOcp, noOcpDone, classicOnly].map((o) =>
+      stage(o),
+    );
     const board = buildTowerBoard(
       input({
-        orders: [born, sealed, done, noOcp, noOcpDone],
+        orders: [born, sealed, done, noOcp, noOcpDone, classicOnly],
         activeStages: s.map((x) => x.active),
         stages: s.map((x) => x.stage),
         steps: [
@@ -458,6 +462,9 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
           // Sem certificadora: só o selo conta (memorial, laudo e registro não).
           step(noOcpDone, "cert_seal"),
           step(noOcpDone, "cert_seal_art", "validated"),
+          step(classicOnly, "cert_memorial", "validated"),
+          step(classicOnly, "cert_lab"),
+          step(classicOnly, "cert_registration", "validated"),
         ],
       }),
     );
@@ -465,6 +472,7 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
       born.id,
       sealed.id,
       noOcp.id,
+      classicOnly.id,
     ]);
     expect(ids(board, "parDocsToValidate")).toEqual([]);
   });
