@@ -72,7 +72,8 @@ describe("quadros da operação lidos do banco", () => {
       notes: null,
     });
 
-    const board = await loadTowerBoard({ finance: true });
+    // Com Finanças e Booking: todos os quadrados.
+    const board = await loadTowerBoard({ finance: true, booking: true });
     expect(board.cards.map((c) => c.key)).toEqual(
       BOARD_CARDS.map((c) => c.key),
     );
