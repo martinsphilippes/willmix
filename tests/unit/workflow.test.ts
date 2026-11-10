@@ -1,5 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { withTempStore } from "./setup";
+import {
+  ORDER_DOCUMENT_KEYS,
+  completeOrderDocument,
+  withTempStore,
+} from "./setup";
 
 withTempStore();
 
@@ -41,6 +45,8 @@ async function fillStage(
   });
   for (const req of reqs) {
     if (!req.required || req.type === "approval") continue;
+    // Documento do pedido: tem o caminho próprio (envio e assinaturas).
+    if (ORDER_DOCUMENT_KEYS.includes(req.key)) continue;
     // Cada um preenche o que é seu (a Wellmix preenche tudo).
     if (
       user.role !== "admin" &&
@@ -206,6 +212,10 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect((await store.get("requirements", art.id))!.status).toBe("rejected");
     await fillStage(agency, order.id, "PACKAGING");
     await decideRequirement(supplierA, approval.id, "approve");
+    // Arte aprovada: a etapa ainda espera o documento do pedido (ordem nova:
+    // selo na arte, "Enviar para assinatura", Wellmix e fornecedor assinam).
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    await completeOrderDocument(operator, order.id);
     expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
 
     // inspeção com peso divergente bloqueia

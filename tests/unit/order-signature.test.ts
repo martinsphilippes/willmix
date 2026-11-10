@@ -1,12 +1,15 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { signOrderAs, withTempStore } from "./setup";
+import { reachSignature, signOrderAs, withTempStore } from "./setup";
 
 /*
- * Documento do pedido com duas assinaturas (docs/ORDER_SIGNATURE.md): a
- * Wellmix assina primeiro, o fornecedor em seguida; o pedido só passa da
- * Preparação com as duas. A assinatura grava nome, quem, quando e a versão
- * do documento. O documento (preço de compra) só abre para a Wellmix e o
- * fornecedor do pedido.
+ * Documento do pedido com duas assinaturas (docs/ORDER_SIGNATURE.md). Ordem
+ * nova (decisão do dono, 10/11/2026): a assinatura vem depois da arte. Na
+ * etapa "Arte e embalagem", quem fez a arte envia a arte, aplica o selo da
+ * certificadora e aperta "Enviar para assinatura"; então a Wellmix assina e
+ * o fornecedor em seguida, e a etapa só conclui com as duas. A assinatura
+ * grava nome, quem, quando e a versão do documento. O documento (preço de
+ * compra) só abre para a Wellmix e o fornecedor do pedido. Pedido de antes
+ * da ordem nova guarda os itens onde nasceram e segue funcionando.
  */
 withTempStore();
 
@@ -76,6 +79,37 @@ const reqOf = async (orderId: string, key: string) =>
 const stageOf = async (orderId: string, key: string) =>
   (await getStore().list("stages", { filter: { orderId, key } }))[0];
 
+/** Pedido já enviado para assinatura (arte, selo e envio feitos pela Wellmix). */
+async function readyOrder(name: string) {
+  const order = await newOrder(name);
+  await reachSignature(admin, order.id);
+  return order;
+}
+
+/**
+ * Pedido como nascia antes da ordem nova: a Wellmix assina em "Pedido
+ * criado", o fornecedor na Preparação, e não existe o item de envio.
+ */
+async function legacyOrder(name: string) {
+  const store = getStore();
+  const order = await newOrder(name);
+  await store.remove(
+    "requirements",
+    (await reqOf(order.id, "order_sign_send")).id,
+  );
+  await store.update(
+    "requirements",
+    (await reqOf(order.id, "order_signed_wellmix")).id,
+    { stageId: (await stageOf(order.id, "ORDER_CREATED")).id },
+  );
+  await store.update(
+    "requirements",
+    (await reqOf(order.id, "order_signed_supplier")).id,
+    { stageId: (await stageOf(order.id, "PREPARATION")).id },
+  );
+  return order;
+}
+
 describe("documento do pedido com duas assinaturas", () => {
   it("o pedido nasce com os dois itens de assinatura; o 'Confirmar' comum não os conclui", async () => {
     const order = await newOrder("Quadro assinado");
@@ -94,10 +128,163 @@ describe("documento do pedido com duas assinaturas", () => {
     await expect(
       submitRequirement(admin, wellmix.id, { value: "confirmed" }),
     ).rejects.toThrow("signature_required");
+    // Ordem nova: os dois ficam na etapa "Arte e embalagem", depois do item
+    // de envio para assinatura (de quem faz a arte).
+    const packaging = await stageOf(order.id, "PACKAGING");
+    const send = await reqOf(order.id, "order_sign_send");
+    expect([wellmix.stageId, supplier.stageId, send.stageId]).toEqual([
+      packaging.id,
+      packaging.id,
+      packaging.id,
+    ]);
+    expect([send.status, send.required, send.role]).toEqual([
+      "pending",
+      true,
+      "agency",
+    ]);
+    expect(
+      (
+        await getStore().list("requirements", {
+          filter: { stageId: packaging.id },
+        })
+      ).map((x) => x.key),
+    ).toEqual([
+      "art",
+      "art_approval",
+      "order_sign_send",
+      "order_signed_wellmix",
+      "order_signed_supplier",
+    ]);
+  });
+
+  it("ordem nova: o documento só vai para assinatura com a arte enviada e o selo aplicado; quem envia é quem fez a arte (ou a Wellmix)", async () => {
+    const store = getStore();
+    const order = await newOrder("Quadro na ordem nova");
+    const agency = (await store.list("users")).find(
+      (u) => u.role === "agency" && u.partyId === order.agencyId,
+    )!;
+    // Pedido recém-criado: em preparação; ninguém assina ainda.
+    let view = (await sig.getOrderSignatureView(admin, order.id))!;
+    expect([
+      view.status,
+      view.awaitingSend,
+      view.canSign,
+      view.canSend,
+    ]).toEqual(["awaiting_send", true, null, false]);
+    await expect(signOrderAs(admin, order.id)).rejects.toThrow(
+      "signature_not_sent",
+    );
+    await reachSignature(admin, order.id, "packaging");
+    const packaging = await stageOf(order.id, "PACKAGING");
+    expect(packaging.status).toBe("active");
+    // Falta a arte; depois, o selo. O envio é recusado dizendo o que falta.
+    expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([
+      "art",
+      "seal",
+    ]);
+    await expect(sig.sendOrderForSignature(agency, order.id)).rejects.toThrow(
+      "sign_send_art_required",
+    );
+    const { uploadDocument } = await import("@/lib/services/documents");
+    const file = (name: string) =>
+      new File(["%PDF-1.4 x"], name, { type: "application/pdf" });
+    const art = await reqOf(order.id, "art");
+    const artDoc = await uploadDocument(agency, file("arte.pdf"), {
+      orderId: order.id,
+      requirementId: art.id,
+      type: "art",
+    });
+    await submitRequirement(agency, art.id, { documentId: artDoc.id });
+    expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([
+      "seal",
+    ]);
+    await expect(sig.sendOrderForSignature(agency, order.id)).rejects.toThrow(
+      "sign_send_seal_required",
+    );
+    // Sem o selo, o envio ainda não é pendência de ninguém.
+    const { pendingTasksFor } = await import("@/lib/services/tasks");
+    const sendTask = async (user: User) =>
+      (await pendingTasksFor(user)).some(
+        (t) =>
+          t.kind === "requirement" &&
+          t.orderNumber === order.number &&
+          t.detail.includes("enviado para assinatura"),
+      );
+    expect(await sendTask(agency)).toBe(false);
+    // A certificadora (aqui, a Wellmix no lugar dela) envia o selo e a
+    // agência envia a arte com o selo.
+    const flow = await import("@/lib/services/import-flow");
+    const stepDoc = async (user: User, name: string) =>
+      (
+        await uploadDocument(user, file(name), {
+          orderId: order.id,
+          type: "import_step",
+          visibility: "internal",
+        })
+      ).id;
+    await flow.submitStep(admin, order.id, "cert_seal", {
+      documentId: await stepDoc(admin, "selo.pdf"),
+    });
+    await flow.submitStep(agency, order.id, "cert_seal_art", {
+      documentId: await stepDoc(agency, "arte-com-selo.pdf"),
+    });
+    expect(await sig.signSendBlockers(order.id, packaging.id)).toEqual([]);
+    expect(await sendTask(agency)).toBe(true);
+    view = (await sig.getOrderSignatureView(admin, order.id))!;
+    expect([view.awaitingSend, view.canSend, view.canSign]).toEqual([
+      true,
+      true,
+      null,
+    ]);
+    // O fornecedor não envia (não é dele) e ainda não assina.
+    await expect(
+      sig.sendOrderForSignature(supplierA, order.id),
+    ).rejects.toThrow();
+    const forSupplier = (await sig.getOrderSignatureView(supplierA, order.id))!;
+    expect([forSupplier.canSend, forSupplier.canSign]).toEqual([false, null]);
+    // A agência aperta "Enviar para assinatura": a Wellmix é avisada e assina.
+    const before = (
+      await store.list("notifications", { filter: { userId: admin.id } })
+    ).length;
+    await sig.sendOrderForSignature(agency, order.id);
+    const notes = await store.list("notifications", {
+      filter: { userId: admin.id },
+    });
+    expect(notes.length).toBeGreaterThan(before);
+    expect(
+      notes.some((n) => n.link === `/app/orders/${order.id}/purchase-order`),
+    ).toBe(true);
+    await expect(sig.sendOrderForSignature(admin, order.id)).rejects.toThrow(
+      "sign_send_already_done",
+    );
+    view = (await sig.getOrderSignatureView(admin, order.id))!;
+    expect([view.status, view.awaitingSend, view.canSign]).toEqual([
+      "awaiting_wellmix",
+      false,
+      "wellmix",
+    ]);
+    // A Wellmix assina, o fornecedor em seguida (mesma etapa, sem outro clique).
+    await signOrderAs(admin, order.id);
+    expect(
+      (await sig.getOrderSignatureView(supplierA, order.id))!.canSign,
+    ).toBe("supplier");
+    await signOrderAs(supplierA, order.id);
+    expect((await sig.getOrderSignatureView(admin, order.id))!.status).toBe(
+      "signed",
+    );
+    // A etapa só conclui com a arte aprovada pelo fornecedor também.
+    expect((await stageOf(order.id, "PACKAGING")).status).toBe("active");
+    const { decideRequirement } = await import("@/lib/workflow/engine");
+    await decideRequirement(
+      supplierA,
+      (await reqOf(order.id, "art_approval")).id,
+      "approve",
+    );
+    expect((await stageOf(order.id, "PACKAGING")).status).toBe("done");
   });
 
   it("quem vê o documento: a Wellmix e o fornecedor do pedido; cliente e outro fornecedor não", async () => {
-    const order = await newOrder("Quadro visível");
+    const order = await readyOrder("Quadro visível");
     const view = (await sig.getOrderSignatureView(admin, order.id))!;
     expect(view.document).toMatchObject({
       orderNumber: order.number,
@@ -133,8 +320,8 @@ describe("documento do pedido com duas assinaturas", () => {
     ).rejects.toThrow();
   });
 
-  it("a Wellmix assina primeiro (nome, aceite e a versão vista); depois o fornecedor; só então a Preparação anda", async () => {
-    const order = await newOrder("Quadro em duas assinaturas");
+  it("a Wellmix assina primeiro (nome, aceite e a versão vista); depois o fornecedor, na mesma etapa", async () => {
+    const order = await readyOrder("Quadro em duas assinaturas");
     const { hash } = (await sig.getOrderSignatureView(admin, order.id))!;
     // O fornecedor não assina antes da Wellmix.
     await expect(
@@ -179,15 +366,11 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(
       notes.some((n) => n.link === `/app/orders/${order.id}/purchase-order`),
     ).toBe(true);
-    // Assinar é conferir e liberar: o item "Pedido conferido e liberado ao
-    // fornecedor" conclui junto, e a etapa do fornecedor abre na hora.
-    const confirm = await reqOf(order.id, "order_confirmed");
-    expect([confirm.status, confirm.submittedByUserId]).toEqual([
-      "done",
-      admin.id,
-    ]);
+    // Ordem nova: as duas assinaturas ficam na etapa da arte, que segue
+    // aberta até o fornecedor assinar (e aprovar a arte).
     expect((await stageOf(order.id, "ORDER_CREATED")).status).toBe("done");
-    expect((await stageOf(order.id, "PREPARATION")).status).toBe("active");
+    expect((await stageOf(order.id, "PREPARATION")).status).toBe("done");
+    expect((await stageOf(order.id, "PACKAGING")).status).toBe("active");
 
     const view = (await sig.getOrderSignatureView(supplierA, order.id))!;
     expect([view.canSign, view.wellmix?.name, view.supplier]).toEqual([
@@ -215,17 +398,17 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(audits).toHaveLength(2);
   });
 
-  it("sem a assinatura do fornecedor a Preparação não conclui; o administrador registra a que veio por fora", async () => {
-    const order = await newOrder("Quadro por fora");
+  it("sem a assinatura do fornecedor a etapa da arte não conclui; o administrador registra a que veio por fora", async () => {
+    const order = await readyOrder("Quadro por fora");
     await signOrderAs(admin, order.id);
-    const prep = await stageOf(order.id, "PREPARATION");
-    // A Wellmix conclui tudo o que é dela e do fornecedor, menos a assinatura.
-    for (const req of await getStore().list("requirements", {
-      filter: { stageId: prep.id, status: "pending" },
-    }))
-      if (req.key !== "order_signed_supplier")
-        await submitRequirement(admin, req.id, { value: "ok" });
-    expect((await stageOf(order.id, "PREPARATION")).status).toBe("active");
+    // Arte aprovada: da etapa só falta a assinatura do fornecedor.
+    const { decideRequirement } = await import("@/lib/workflow/engine");
+    await decideRequirement(
+      supplierA,
+      (await reqOf(order.id, "art_approval")).id,
+      "approve",
+    );
+    expect((await stageOf(order.id, "PACKAGING")).status).toBe("active");
     const { hash, canRegisterSupplier } = (await sig.getOrderSignatureView(
       admin,
       order.id,
@@ -253,11 +436,11 @@ describe("documento do pedido com duas assinaturas", () => {
       onBehalf: true,
       userName: admin.name,
     });
-    expect((await stageOf(order.id, "PREPARATION")).status).toBe("done");
+    expect((await stageOf(order.id, "PACKAGING")).status).toBe("done");
   });
 
   it("PDF para baixar; o fornecedor anexa o arquivo assinado; só então o pedido vai ao Sankhya; o administrador devolve arquivo errado", async () => {
-    const order = await newOrder("Quadro em PDF");
+    const order = await readyOrder("Quadro em PDF");
     await signOrderAs(admin, order.id);
     // O pedido nasce sem ir ao Sankhya: espera a assinatura do fornecedor.
     expect((await getStore().get("orders", order.id))!.erpSyncStatus).toBe(
@@ -350,6 +533,7 @@ describe("documento do pedido com duas assinaturas", () => {
     const before = (await ps.getSheetForUser(supplierA, order.id))!;
     expect(before.sheet.productionStartAt ?? null).toBeNull();
     expect(before.missing).not.toContain("productionStartAt");
+    await reachSignature(admin, order.id);
     await signOrderAs(admin, order.id);
     const signed = await signOrderAs(supplierA, order.id);
     // Dia da assinatura (Brasília) mais 3 dias.
@@ -374,7 +558,7 @@ describe("documento do pedido com duas assinaturas", () => {
   });
 
   it("o pedido mudou depois da assinatura: a tela mostra que a versão assinada é outra", async () => {
-    const order = await newOrder("Quadro alterado");
+    const order = await readyOrder("Quadro alterado");
     const signed = await signOrderAs(admin, order.id);
     const [item] = await getStore().list("order_items", {
       filter: { orderId: order.id },
@@ -387,7 +571,7 @@ describe("documento do pedido com duas assinaturas", () => {
   });
   it("pedido que a Wellmix assinou sem liberar (antes desta regra): abrir o documento libera e o fornecedor assina", async () => {
     const store = getStore();
-    const order = await newOrder("Quadro travado");
+    const order = await legacyOrder("Quadro travado");
     await signOrderAs(admin, order.id);
     // Como era antes: assinado pela Wellmix, mas o item de conferência ficou
     // pendente e a etapa do fornecedor não abriu.
@@ -417,7 +601,7 @@ describe("documento do pedido com duas assinaturas", () => {
     expect([free.canSign, free.supplierBlocked]).toEqual(["supplier", false]);
     // Nada a liberar de novo; e sem a assinatura da Wellmix nada é liberado.
     expect(await sig.releaseOrderBySignature(order.id)).toBe(false);
-    const fresh = await newOrder("Quadro sem assinatura");
+    const fresh = await legacyOrder("Quadro sem assinatura");
     expect(await sig.releaseOrderBySignature(fresh.id)).toBe(false);
     expect((await reqOf(fresh.id, "order_confirmed")).status).toBe("pending");
     await signOrderAs(supplierA, order.id);
@@ -428,7 +612,7 @@ describe("documento do pedido com duas assinaturas", () => {
 
   it("arquivo assinado grande (já subido direto ao armazenamento): registra pelo id; tipo errado é recusado e apagado", async () => {
     const store = getStore();
-    const order = await newOrder("Quadro com foto grande");
+    const order = await readyOrder("Quadro com foto grande");
     await signOrderAs(admin, order.id);
     const view = (await sig.getOrderSignatureView(supplierA, order.id))!;
     expect(view.canSign).toBe("supplier");

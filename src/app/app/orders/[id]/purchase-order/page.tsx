@@ -30,6 +30,7 @@ import { FileAutoInput } from "@/components/file-auto-input";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import {
   reopenSupplierSignatureAction,
+  sendOrderForSignatureAction,
   signOrderDocumentAction,
 } from "../../../actions/order-signature";
 
@@ -45,7 +46,7 @@ export default async function PurchaseOrderPage({
   if (!user) redirect("/login");
   requireScreen(user, "orders");
   const { id } = await params;
-  const { error, signed, reopened } = await searchParams;
+  const { error, signed, reopened, sent } = await searchParams;
   let view = await getOrderSignatureView(user, id);
   if (!view) notFound();
   // Pedido que a Wellmix assinou sem marcar "conferido e liberado": a
@@ -292,6 +293,7 @@ export default async function PurchaseOrderPage({
       />
       <ActionError t={t} code={errorCode} text={errorText} fields={null} />
       {signed ? <Alert tone="success">{t("orderSign.done")}</Alert> : null}
+      {sent ? <Alert tone="success">{t("orderSign.send.done")}</Alert> : null}
       {reopened ? (
         <Alert tone="success">{t("orderSign.reopened")}</Alert>
       ) : null}
@@ -347,6 +349,30 @@ export default async function PurchaseOrderPage({
       ) : null}
       {!view.applies ? (
         <Alert tone="info">{t("orderSign.notApplicable")}</Alert>
+      ) : view.awaitingSend ? (
+        // Ordem nova: primeiro a arte e o selo, depois o envio para assinatura.
+        <Alert tone={view.sendBlockers.length ? "warning" : "info"}>
+          <div className="space-y-2" data-order-awaiting-send>
+            {isWellmix(user) ? (
+              <>
+                <p>
+                  {view.sendBlockers.length
+                    ? t(`orderSign.send.missing.${view.sendBlockers[0]}`)
+                    : t("orderSign.send.ready")}
+                </p>
+                <p className="text-xs">{t("orderSign.send.who")}</p>
+                {view.canSend ? (
+                  <form action={sendOrderForSignatureAction}>
+                    <input type="hidden" name="orderId" value={order.id} />
+                    <SubmitButton>{t("orderSign.send.submit")}</SubmitButton>
+                  </form>
+                ) : null}
+              </>
+            ) : (
+              <p>{t("orderSign.awaitingSend.supplier")}</p>
+            )}
+          </div>
+        </Alert>
       ) : view.waitingWellmix ? (
         <Alert tone="warning">{t("orderSign.waitingWellmix")}</Alert>
       ) : view.supplierBlocked ? (

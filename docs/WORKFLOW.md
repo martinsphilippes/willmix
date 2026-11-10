@@ -22,10 +22,10 @@ Ordem fixa em `STAGE_KEYS`. Cada etapa tem status (`pending`, `active`, `blocked
 
 | Etapa              | Requisitos obrigatórios (papel)                                                                                                                                               |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ORDER_CREATED`    | Pedido conferido (operador) e documento do pedido assinado pela Wellmix (docs/ORDER_SIGNATURE.md). Opcional: número no Sankhya                                                |
-| `PREPARATION`      | Documento do pedido assinado pelo fornecedor (primeiro item). Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta |
+| `ORDER_CREATED`    | Pedido conferido (operador). Opcional: número no Sankhya. A assinatura do documento saiu daqui (vem depois da arte, em `PACKAGING`)                                                |
+| `PREPARATION`      | Checklist da linha de produto (fornecedor). Padrão: dieline, foto profissional, peso, foto na balança, etiqueta |
 | `SUPPLIER_PAYMENT` | Fora do fluxo: sem requisitos, conclui sozinha (`OFF_FLOW_STAGES`). O pagamento segue a condição do fornecedor (abaixo)                                                       |
-| `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor)                                                  |
+| `PACKAGING`        | Arte (agência designada; sem agência ou com `agencyValidationEnabled` desligado, a Wellmix) + aprovação da arte (fornecedor) + documento do pedido: "Enviar para assinatura" (quem fez a arte, só com a arte enviada e o selo aplicado), assinatura da Wellmix e do fornecedor (docs/ORDER_SIGNATURE.md, seção 2c)                                                  |
 | `INSPECTION`       | Foto sem embalagem, foto com embalagem, foto na balança, peso medido (fornecedor). Divergência acima da tolerância bloqueia                                                   |
 | `SHIPPING`         | Embarque confirmado (companhia marítima; operador se não houver designada). Opcionais: data de embarque, previsão de chegada, navio, BL                                       |
 | `CUSTOMS`          | Número do processo, documentos aduaneiros, custos realizados, liberação (despachante; operador se não houver). Opcional: previstos                                            |

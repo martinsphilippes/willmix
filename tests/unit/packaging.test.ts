@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { translator } from "@/i18n";
-import { withTempStore } from "./setup";
+import { completeOrderDocument, withTempStore } from "./setup";
 
 /*
  * Arte e embalagem: a agência (ou a Wellmix, sem agência) faz e envia a arte;
@@ -172,6 +172,10 @@ describe("arte e embalagem", () => {
 
     await uploadArt(agency, order.id, art.id);
     await decideRequirement(supplierA, approval.id, "approve");
+    // Ordem nova: a etapa só conclui com o documento do pedido assinado
+    // (selo na arte, envio para assinatura, Wellmix e fornecedor).
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    await completeOrderDocument(admin, order.id);
     expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
   });
 
@@ -295,6 +299,10 @@ describe("arte e embalagem: correções da revisão", () => {
     const { art, approval } = await packagingReqs(order.id);
     await uploadArt(agency, order.id, art.id);
     await decideRequirement(supplierA, approval.id, "approve");
+    // Ordem nova: a etapa só conclui com o documento do pedido assinado
+    // (selo na arte, envio para assinatura, Wellmix e fornecedor).
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    await completeOrderDocument(admin, order.id);
     expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
     await expect(
       decideRequirement(supplierA, approval.id, "reject", "desisto"),

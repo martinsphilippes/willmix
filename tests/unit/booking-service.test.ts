@@ -686,22 +686,19 @@ describe("gerar solicitação", () => {
     });
     expect((await nextOf())?.step).toBe("wait_down_payment");
     const order = await r.confirmDownPayment(admin, request.id);
-    // Pedido criado: o lugar da troca do documento, com a Wellmix primeiro.
+    // Pedido criado (ordem nova): primeiro a arte e o selo; o documento
+    // ainda não foi enviado para assinatura.
     expect(await nextOf()).toMatchObject({
-      step: "sign_wellmix",
+      step: "prepare_document",
       href: `/app/orders/${order.id}`,
       target: "order",
     });
-    const { signOrderAs } = await import("./setup");
+    const { reachSignature, signOrderAs } = await import("./setup");
+    // Arte enviada, selo aplicado e "Enviar para assinatura": a Wellmix assina.
+    await reachSignature(admin, order.id);
+    expect((await nextOf())?.step).toBe("sign_wellmix");
     await signOrderAs(admin, order.id);
     expect((await nextOf())?.step).toBe("sign_supplier");
-    // A assinatura da Wellmix já libera o pedido ("Pedido conferido e
-    // liberado ao fornecedor" conclui junto): a Preparação abre e o
-    // fornecedor assina.
-    const [confirmed] = await getStore().list("requirements", {
-      filter: { orderId: order.id, key: "order_confirmed" },
-    });
-    expect(confirmed.status).toBe("done");
     const supplier = (await getStore().list("users")).find(
       (u) => u.role === "supplier" && u.partyId === "fornecedor-a",
     )!;

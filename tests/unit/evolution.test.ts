@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { withTempStore } from "./setup";
+import { sendForSignature, withTempStore } from "./setup";
 
 /*
  * Prioridade Agora: snapshot da compra, inspeção cega com comparação
@@ -174,7 +174,10 @@ describe("comparação comprado × inspecionado", () => {
         (r) => r.stageId === stage.id && r.status !== "done" && r.required,
       );
       for (const r of pending) {
-        if (r.type === "approval")
+        // Documento do pedido (ordem nova): o envio para assinatura pede o
+        // selo aplicado na arte.
+        if (r.key === "order_sign_send") await sendForSignature(admin, orderId);
+        else if (r.type === "approval")
           await decideRequirement(admin, r.id, "approve");
         else if (r.type === "file" || r.type === "photo") {
           const doc = await store.create("documents", {

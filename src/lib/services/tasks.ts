@@ -11,6 +11,9 @@ import {
 } from "@/lib/db";
 import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
+  ORDER_SIGN_SEND,
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
   isOffFlowStage,
@@ -175,6 +178,13 @@ export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
 }
 
 const STAGE_ORDER: string[] = STAGE_TEMPLATES.map((s) => s.key);
+
+/** Item da assinatura do documento → o item da mesma etapa que vem antes dele. */
+const SIGN_AFTER: ReadonlyArray<[string, string]> = [
+  [ORDER_SIGN_SEND, "art"],
+  [ORDER_SIGNED_WELLMIX, ORDER_SIGN_SEND],
+  [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
+];
 const KIND_ORDER: string[] = [
   "rfq",
   "quote",
@@ -363,6 +373,31 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   ]);
   const orderById = new Map(orders.map((o) => [o.id, o]));
 
+  // "Enviar para assinatura" só é pendência com o selo já aplicado na arte
+  // (antes disso não há o que apertar): uma consulta só para os pedidos em
+  // que o envio está aberto.
+  const sendOrderIds = [
+    ...new Set(
+      openRequirements
+        .filter((r) => r.key === ORDER_SIGN_SEND)
+        .map((r) => r.orderId),
+    ),
+  ];
+  const sealApplied = new Set(
+    sendOrderIds.length
+      ? (
+          await store
+            .list("import_steps", {
+              filter: { orderId: sendOrderIds, key: "cert_seal_art" },
+            })
+            // Tabela ainda não publicada: nenhum selo aplicado.
+            .catch(() => [])
+        )
+          .filter((s) => s.status === "submitted" || s.status === "validated")
+          .map((s) => s.orderId)
+      : [],
+  );
+
   // Requisitos pendentes em etapas ativas/bloqueadas.
   for (const stage of stages) {
     // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
@@ -380,7 +415,17 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           openRequirements.some(
             (x) => x.stageId === stage.id && x.key === "art",
           )
-        ),
+        ) &&
+        // Documento do pedido (ordem nova): enviar para assinatura só depois
+        // da arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
+        !SIGN_AFTER.some(
+          ([key, before]) =>
+            r.key === key &&
+            openRequirements.some(
+              (x) => x.stageId === stage.id && x.key === before,
+            ),
+        ) &&
+        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)),
     );
     if (mine.length === 0) continue;
     tasks.push(

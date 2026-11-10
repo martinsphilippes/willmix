@@ -94,6 +94,36 @@ export const pt = {
     "O fornecedor ainda não consegue assinar: falta concluir, no pedido, o item “Pedido conferido e liberado ao fornecedor” da etapa Pedido criado.",
   "orderSign.error.signature_file_missing":
     "O arquivo assinado não chegou. Envie de novo.",
+  "req.order_sign_send": "Documento do pedido enviado para assinatura",
+  "orderSign.send.submit": "Enviar para assinatura",
+  "orderSign.send.missing.art":
+    "Aguardando a arte da embalagem: o documento só vai para assinatura depois dela.",
+  "orderSign.send.missing.seal":
+    "Aguardando o selo da certificadora aplicado na arte: o documento só vai para assinatura depois dele.",
+  "orderSign.send.ready":
+    "Arte enviada e selo aplicado: o documento já pode ser enviado para a assinatura da Wellmix e do fornecedor.",
+  "orderSign.send.who":
+    "Quem envia é quem fez a arte (a agência), no pedido, no item “Documento do pedido enviado para assinatura”. A Wellmix também pode enviar.",
+  "orderSign.send.done":
+    "Documento enviado para assinatura. A Wellmix assina primeiro.",
+  "orderSign.send.waitSend": "Aguardando o envio para assinatura.",
+  "orderSign.send.waitWellmix": "A Wellmix assina primeiro.",
+  "orderSign.status.awaiting_send":
+    "Em preparação: vai para assinatura depois da arte e do selo",
+  "orderSign.awaitingSend.supplier":
+    "O documento ainda não foi enviado para assinatura. Primeiro a agência conclui a arte e aplica o selo da certificadora; depois a Wellmix assina e você assina em seguida.",
+  "orderSign.error.signature_not_sent":
+    "O documento ainda não foi enviado para assinatura (falta a arte, o selo ou o envio).",
+  "orderSign.error.sign_send_art_required":
+    "Falta a arte da embalagem para enviar o documento para assinatura.",
+  "orderSign.error.sign_send_seal_required":
+    "Falta o selo da certificadora aplicado na arte para enviar o documento para assinatura.",
+  "orderSign.error.sign_send_already_done":
+    "O documento já foi enviado para assinatura.",
+  "orders.error.sign_send_art_required":
+    "Falta a arte da embalagem para enviar o documento para assinatura.",
+  "orders.error.sign_send_seal_required":
+    "Falta o selo da certificadora aplicado na arte para enviar o documento para assinatura.",
   "orderSign.moq": "Pedido mínimo (MOQ)",
   "orderSign.moq.value": "{n} peças",
   "orderSign.status.awaiting_wellmix":
@@ -223,6 +253,35 @@ export const en: Record<keyof typeof pt, string> = {
     "The supplier cannot sign yet: in the order, conclude the item “Order checked and released to the supplier” of the Order created stage.",
   "orderSign.error.signature_file_missing":
     "The signed file did not arrive. Send it again.",
+  "req.order_sign_send": "Order document sent for signature",
+  "orderSign.send.submit": "Send for signature",
+  "orderSign.send.missing.art":
+    "Waiting for the packaging artwork: the document only goes for signature after it.",
+  "orderSign.send.missing.seal":
+    "Waiting for the certifier's seal applied to the artwork: the document only goes for signature after it.",
+  "orderSign.send.ready":
+    "Artwork sent and seal applied: the document can now be sent for Wellmix's and the supplier's signature.",
+  "orderSign.send.who":
+    "Whoever made the artwork (the agency) sends it, in the order, in the item “Order document sent for signature”. Wellmix can also send it.",
+  "orderSign.send.done": "Document sent for signature. Wellmix signs first.",
+  "orderSign.send.waitSend": "Waiting to be sent for signature.",
+  "orderSign.send.waitWellmix": "Wellmix signs first.",
+  "orderSign.status.awaiting_send":
+    "In preparation: goes for signature after the artwork and the seal",
+  "orderSign.awaitingSend.supplier":
+    "The document has not been sent for signature yet. First the agency finishes the artwork and applies the certifier's seal; then Wellmix signs and you sign next.",
+  "orderSign.error.signature_not_sent":
+    "The document has not been sent for signature yet (artwork, seal or sending is missing).",
+  "orderSign.error.sign_send_art_required":
+    "The packaging artwork is missing to send the document for signature.",
+  "orderSign.error.sign_send_seal_required":
+    "The certifier's seal applied to the artwork is missing to send the document for signature.",
+  "orderSign.error.sign_send_already_done":
+    "The document has already been sent for signature.",
+  "orders.error.sign_send_art_required":
+    "The packaging artwork is missing to send the document for signature.",
+  "orders.error.sign_send_seal_required":
+    "The certifier's seal applied to the artwork is missing to send the document for signature.",
   "orderSign.moq": "Minimum order (MOQ)",
   "orderSign.moq.value": "{n} pcs",
   "orderSign.status.awaiting_wellmix": "Ready to sign: waiting for Wellmix",
@@ -336,6 +395,31 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.blocked.wellmix":
     "供应商暂时无法签署：请在订单的“订单已创建”阶段完成“订单已核对并发给供应商”一项。",
   "orderSign.error.signature_file_missing": "未收到已签署的文件，请重新上传。",
+  "req.order_sign_send": "订单文件已发送签署",
+  "orderSign.send.submit": "发送签署",
+  "orderSign.send.missing.art":
+    "等待包装设计稿：设计稿完成后文件才会发送签署。",
+  "orderSign.send.missing.seal":
+    "等待认证机构的标志加到设计稿上：完成后文件才会发送签署。",
+  "orderSign.send.ready":
+    "设计稿已上传且认证标志已加上：现在可以把文件发给 Wellmix 和供应商签署。",
+  "orderSign.send.who":
+    "由制作设计稿的一方（设计公司）在订单的“订单文件已发送签署”一项中发送。Wellmix 也可以发送。",
+  "orderSign.send.done": "文件已发送签署。Wellmix 先签署。",
+  "orderSign.send.waitSend": "等待发送签署。",
+  "orderSign.send.waitWellmix": "Wellmix 先签署。",
+  "orderSign.status.awaiting_send": "准备中：设计稿和认证标志完成后发送签署",
+  "orderSign.awaitingSend.supplier":
+    "文件尚未发送签署。先由设计公司完成设计稿并加上认证标志；然后 Wellmix 签署，接着由您签署。",
+  "orderSign.error.signature_not_sent":
+    "文件尚未发送签署（缺少设计稿、认证标志或发送步骤）。",
+  "orderSign.error.sign_send_art_required": "缺少包装设计稿，无法发送签署。",
+  "orderSign.error.sign_send_seal_required":
+    "缺少加在设计稿上的认证标志，无法发送签署。",
+  "orderSign.error.sign_send_already_done": "文件已发送签署。",
+  "orders.error.sign_send_art_required": "缺少包装设计稿，无法发送签署。",
+  "orders.error.sign_send_seal_required":
+    "缺少加在设计稿上的认证标志，无法发送签署。",
   "orderSign.moq": "最小起订量（MOQ）",
   "orderSign.moq.value": "{n} 件",
   "orderSign.status.awaiting_wellmix": "待签署：等待 Wellmix",

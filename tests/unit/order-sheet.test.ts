@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { signOrderAs, withTempStore } from "./setup";
+import { reachSignature, signOrderAs, withTempStore } from "./setup";
 
 /*
  * Folha do pedido no modelo da Wellmix (docs/ORDER_SIGNATURE.md): cabeçalho,
@@ -99,6 +99,13 @@ describe("folha do pedido no modelo da Wellmix", () => {
     const [product] = await store.list("products", { limit: 1 });
     const order = await newOrder(product.id);
     await fillSheet(order.id, product.id);
+    // Ordem nova: a Wellmix assina depois da arte, do selo e do envio.
+    // A Wellmix faz a programação de compra (370 caixas de 5 = 1.850 peças).
+    const ps = await import("@/lib/services/purchase-sheet");
+    await ps.saveSheet(admin, order.id, {
+      lots: [{ departureIntervalDays: 30, masterCartons: 370 }],
+    } as never);
+    await reachSignature(admin, order.id);
     await signOrderAs(admin, order.id);
     const view = (await sig.getOrderSignatureView(admin, order.id))!;
     const sheet = await buildOrderSheet(order, view.document, view.wellmix);
@@ -215,6 +222,7 @@ describe("folha do pedido no modelo da Wellmix", () => {
     const [product] = await store.list("products", { limit: 1 });
     const order = await newOrder(product.id);
     const before = (await sig.getOrderSignatureView(admin, order.id))!.hash;
+    await reachSignature(admin, order.id);
     await signOrderAs(admin, order.id);
     const [sheetRow] = await store.list("purchase_sheets", {
       filter: { orderId: order.id },

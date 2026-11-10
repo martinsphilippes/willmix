@@ -784,8 +784,15 @@ describe("depois de virar solicitação: o próximo passo", () => {
     });
     // Pedido com o documento das duas assinaturas: cada ponto dele.
     const doc = (
-      document: "awaiting_wellmix" | "sent_to_supplier" | "signed",
+      document:
+        "awaiting_send" | "awaiting_wellmix" | "sent_to_supplier" | "signed",
     ) => bookingNextStep(req("ORDERED"), [], { id: "o1", document }, true);
+    // Ordem nova: antes do envio para assinatura vêm a arte e o selo.
+    expect(doc("awaiting_send")).toMatchObject({
+      step: "prepare_document",
+      href: "/app/orders/o1",
+      target: "order",
+    });
     expect(doc("awaiting_wellmix")).toMatchObject({
       step: "sign_wellmix",
       href: "/app/orders/o1",
@@ -797,6 +804,7 @@ describe("depois de virar solicitação: o próximo passo", () => {
     expect(BOOKING_NEXT_WAITING).toEqual([
       "wait_supplier",
       "negotiating",
+      "prepare_document",
       "sign_supplier",
       "signed",
       "cancelled",

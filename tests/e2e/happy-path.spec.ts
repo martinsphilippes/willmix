@@ -465,21 +465,16 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 7. ORDER_CREATED: o operador (comprador) confirma (limitamos a 1 envio)
   await login(page, "operador@wellmix.com");
-  // O item de assinatura leva ao documento do pedido (não tem "Confirmar").
-  await page.goto(orderUrl);
+  // Ordem nova (decisão do dono): o documento do pedido só vai para
+  // assinatura depois da arte com o selo. Agora ele está "em preparação" e
+  // ninguém assina ainda.
+  await page.goto(`${orderUrl}/purchase-order`);
   await expect(
-    page.locator("[data-order-sign-link=order_signed_wellmix]"),
+    page.locator("[data-order-document-status=awaiting_send]"),
   ).toBeVisible();
-  // A Wellmix assina o documento do pedido (a primeira das duas assinaturas).
-  await signOrderDocument(page, orderUrl);
-  await expect(
-    page.locator("[data-order-signature=wellmix][data-signed=yes]"),
-  ).toBeVisible();
-  await expect(
-    page.locator("[data-order-signature=supplier][data-signed=no]"),
-  ).toBeVisible();
-  // Assinar é conferir e liberar: o item "Pedido conferido e liberado ao
-  // fornecedor" conclui junto e a Preparação abre (sem outro clique).
+  await expect(page.locator("[data-order-awaiting-send]")).toBeVisible();
+  await expect(page.locator("[data-order-sign-turn]")).toHaveCount(0);
+  await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
   // A Programação de compra é da Wellmix: ela a faz na ficha do pedido,
@@ -487,8 +482,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(`${orderUrl}/purchase-sheet`);
   // O bloco com pendência (Programação de compra) já vem aberto.
   await expect(page.locator("[data-sheet-section=schedule]")).toBeVisible();
-  // Início da produção: automático (contrato assinado + Configurações);
-  // ninguém digita.
+  // Início da produção: automático (contrato assinado + prazo do
+  // fornecedor); ninguém digita.
   await expect(page.locator("input[name=productionStartAt]")).toBeDisabled();
   await expect(page.locator("[data-production-start-hint]")).toBeVisible();
   await page.locator("[data-sheet-schedule][data-ready]").waitFor();
@@ -523,24 +518,12 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.locator("[data-sheet-section=product]")).toBeVisible();
   await expect(page.locator("[data-sheet-section=schedule]")).toHaveCount(0);
   await expect(page.locator("input[name=lot1Cartons]")).toHaveCount(0);
-  // O fornecedor assina o documento do pedido (a segunda assinatura): só
-  // então a Preparação conclui.
-  // Ele baixa o documento em PDF, assina e anexa o arquivo de volta.
-  const pdfResponse = await page.request.get(
-    `${orderUrl.replace("/app/orders/", "/api/orders/")}/purchase-order`,
-  );
-  expect(pdfResponse.status()).toBe(200);
-  expect(pdfResponse.headers()["content-type"]).toBe("application/pdf");
-  expect((await pdfResponse.body()).subarray(0, 5).toString()).toBe("%PDF-");
-  await signOrderDocument(page, orderUrl, pdf);
-  await expect(
-    page.locator("[data-order-signature=supplier][data-signed=yes]"),
-  ).toBeVisible();
-  await expect(page.locator("[data-signed-file]")).toBeVisible();
-  // Assinado pelos dois: pedido autorizado (sem integração, falta o Sankhya).
-  await expect(
-    page.locator("[data-order-document-status=signed]"),
-  ).toBeVisible();
+  // A Preparação conclui com a ficha completa e as validações da Wellmix. O
+  // documento do pedido ainda não foi enviado para assinatura: o fornecedor
+  // vê o aviso e não tem onde assinar.
+  await page.goto(`${orderUrl}/purchase-order`);
+  await expect(page.locator("[data-order-awaiting-send]")).toBeVisible();
+  await expect(page.locator("[data-order-sign-turn]")).toHaveCount(0);
   await page.goto(orderUrl);
   await expect(
     page
@@ -607,7 +590,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   );
   // 10. PACKAGING: a agência faz e envia a arte; o fornecedor confere e aprova.
   // Antes da arte, o fornecedor não tem o que aprovar.
-  await expect(page.locator("[data-requirement-waiting]")).toBeVisible();
+  await expect(
+    page.locator("[data-requirement-waiting]").first(),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /批准|Approve|Aprovar/ }),
   ).toHaveCount(0);
@@ -642,7 +627,41 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     page.locator("li", { hasText: /Arte da embalagem/ }).first(),
   ).toContainText(/doc\.pdf/);
+  // 10b. Documento do pedido (ordem nova): com a arte enviada e o selo já
+  // aplicado nela (passo 6b), a agência aperta "Enviar para assinatura".
+  await page.goto(orderUrl);
+  const sendForm = page.locator("[data-requirement-form=order_sign_send]");
+  await expect(sendForm).toBeVisible();
+  await sendForm.locator("button[type=submit]").click();
+  await page.waitForLoadState("networkidle");
+  await expect(sendForm).toHaveCount(0);
+  // A Wellmix assina primeiro (aceite no portal).
+  await login(page, "operador@wellmix.com");
+  await signOrderDocument(page, orderUrl);
+  await expect(
+    page.locator("[data-order-signature=wellmix][data-signed=yes]"),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-order-signature=supplier][data-signed=no]"),
+  ).toBeVisible();
+  // O fornecedor baixa o documento em PDF, assina e envia o arquivo de volta.
   await login(page, "supplier.a@china.com");
+  const pdfResponse = await page.request.get(
+    `${orderUrl.replace("/app/orders/", "/api/orders/")}/purchase-order`,
+  );
+  expect(pdfResponse.status()).toBe(200);
+  expect(pdfResponse.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdfResponse.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  await signOrderDocument(page, orderUrl, pdf);
+  await expect(
+    page.locator("[data-order-signature=supplier][data-signed=yes]"),
+  ).toBeVisible();
+  await expect(page.locator("[data-signed-file]")).toBeVisible();
+  // Assinado pelos dois: pedido autorizado (sem integração, falta o Sankhya).
+  await expect(
+    page.locator("[data-order-document-status=signed]"),
+  ).toBeVisible();
+  // O fornecedor confere e aprova a arte: a etapa conclui.
   await page.goto(orderUrl);
   await page.getByRole("button", { name: /批准|Approve|Aprovar/ }).click();
   await page.waitForLoadState("networkidle");
