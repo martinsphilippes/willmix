@@ -244,8 +244,24 @@ const KIND_ORDER: string[] = [
   "sourcing_demand",
   "after_sales",
 ];
+/*
+ * Caminho da agência: o que chega na mão dela, na ordem em que acontece. É o
+ * filtro "Etapa" da tela de pendências da agência (o grupo da pendência vira
+ * `agency.<etapa>`): a arte pedida na cotação (briefing), a arte do pedido e
+ * o selo de certificação a aplicar na arte.
+ */
+export const AGENCY_STEPS = ["brief", "art", "seal"] as const;
+export type AgencyStep = (typeof AGENCY_STEPS)[number];
+export const agencyGroup = (step: AgencyStep) => `agency.${step}`;
+const AGENCY_STEP_OF_KIND: Partial<Record<TaskKind, AgencyStep>> = {
+  packaging_brief: "brief",
+  requirement: "art",
+  cert_step: "seal",
+};
+
 const GROUP_ORDER = [
   ...SUPPLIER_STEPS.map(supplierGroup),
+  ...AGENCY_STEPS.map(agencyGroup),
   ...STAGE_ORDER,
   ...KIND_ORDER,
 ];
@@ -1129,6 +1145,12 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
   if (supplier) await datesForSupplier(tasks);
   // Pelo prazo: as mais urgentes primeiro; sem prazo por último.
+  // Agência: cada pendência entra na etapa dela (filtros da tela).
+  if (agency)
+    for (const task of tasks) {
+      const step = AGENCY_STEP_OF_KIND[task.kind];
+      if (step) task.group = agencyGroup(step);
+    }
   return sortTasks(tasks);
 }
 

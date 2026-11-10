@@ -31,6 +31,19 @@ export const pt = {
   "supplierTasks.empty":
     "Nenhuma pendência agora. Quando algo chegar para você, aparece aqui, na etapa certa.",
   "supplierTasks.orderStep": "Pedido #{n}: {step}",
+  "agencyTasks.intro":
+    "Aqui está tudo que depende de você, da arte na cotação até o selo. Toque numa etapa para ver só as pendências dela.",
+  "agencyTasks.after":
+    "Depois da arte com o selo conferida pela Wellmix, nada depende de você. Para acompanhar, abra Pedidos.",
+  "tasks.group.agency.brief": "Arte na cotação",
+  "tasks.group.agency.art": "Arte do pedido",
+  "tasks.group.agency.seal": "Selo na arte",
+  "agencyTasks.help.brief":
+    "Faça a arte da embalagem em cima da faca (die-cut) enviada pelo fornecedor e envie os arquivos do briefing.",
+  "agencyTasks.help.art":
+    "Envie a arte do pedido; se o fornecedor reprovar, corrija e envie de novo.",
+  "agencyTasks.help.seal":
+    "Aplique na arte o selo enviado pela certificadora e envie a arte com o selo para a Wellmix conferir.",
   "tasks.group.supplier.booking": "Analisar o Booking",
   "tasks.group.supplier.dieline": "Faca da embalagem",
   "tasks.group.supplier.sheet": "Ficha de compra",
@@ -81,6 +94,19 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierTasks.empty":
     "Nothing pending now. When something reaches you, it shows up here, in the right step.",
   "supplierTasks.orderStep": "Order #{n}: {step}",
+  "agencyTasks.intro":
+    "Everything that depends on you, from the quotation artwork to the seal. Tap a step to see only its pending items.",
+  "agencyTasks.after":
+    "After Wellmix checks the artwork with the seal, nothing depends on you. To follow up, open Orders.",
+  "tasks.group.agency.brief": "Quotation artwork",
+  "tasks.group.agency.art": "Order artwork",
+  "tasks.group.agency.seal": "Seal on the artwork",
+  "agencyTasks.help.brief":
+    "Make the packaging artwork on the die-cut sent by the supplier and upload the brief files.",
+  "agencyTasks.help.art":
+    "Upload the order artwork; if the supplier rejects it, fix it and upload again.",
+  "agencyTasks.help.seal":
+    "Apply the seal sent by the certifier to the artwork and upload it for Wellmix to check.",
   "tasks.group.supplier.booking": "Review the Booking",
   "tasks.group.supplier.dieline": "Packaging die-cut",
   "tasks.group.supplier.sheet": "Purchase sheet",
@@ -130,6 +156,18 @@ export const zh: Record<keyof typeof pt, string> = {
   "supplierTasks.empty":
     "目前没有待办。有事项需要您处理时，会显示在相应的环节。",
   "supplierTasks.orderStep": "订单 #{n}：{step}",
+  "agencyTasks.intro":
+    "这里是所有需要您处理的事项，从报价阶段的设计稿到认证标志。点击某个环节，只看该环节的待办。",
+  "agencyTasks.after":
+    "Wellmix 核对带认证标志的设计稿之后，不再需要您处理。如需跟进，请打开“订单”。",
+  "tasks.group.agency.brief": "报价阶段设计稿",
+  "tasks.group.agency.art": "订单设计稿",
+  "tasks.group.agency.seal": "设计稿加认证标志",
+  "agencyTasks.help.brief":
+    "在供应商发送的刀模上制作包装设计稿，并上传任务所需文件。",
+  "agencyTasks.help.art": "上传订单设计稿；如供应商未通过，请修改后重新上传。",
+  "agencyTasks.help.seal":
+    "把认证机构发送的认证标志加到设计稿上，并上传给 Wellmix 核对。",
   "tasks.group.supplier.booking": "审核 Booking",
   "tasks.group.supplier.dieline": "包装刀模",
   "tasks.group.supplier.sheet": "采购表",
