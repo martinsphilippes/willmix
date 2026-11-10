@@ -7,12 +7,14 @@ import {
   serviceErrorCode,
 } from "@/lib/auth/login-errors";
 
+// `email` leva o que a pessoa digitou: o e-mail ou o nome de usuário (login
+// sem e-mail, src/lib/auth/login-id.ts). O formato é conferido no signIn.
 const bodySchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(3).max(254),
   password: z.string().min(6),
 });
 
-/** Login por e-mail e senha. Grava cookie HttpOnly. */
+/** Login por e-mail (ou nome de usuário) e senha. Grava cookie HttpOnly. */
 export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {

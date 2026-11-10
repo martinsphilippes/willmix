@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -9,6 +9,15 @@ import { withTempStore } from "./setup";
  */
 withTempStore();
 
+// signIn grava o cookie da sessão: fora de uma requisição, um pote de teste.
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: () => undefined,
+    set: () => {},
+    delete: () => {},
+  }),
+}));
+
 const { getStore, PARTY_EXTRA_DEFAULTS, PRODUCT_EXTRA_DEFAULTS } =
   await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
@@ -16,8 +25,14 @@ const { listBookingRows } = await import("@/lib/services/booking");
 const { ensureBookingForProduct } =
   await import("@/lib/services/booking-intake");
 const { saveProductSheet } = await import("@/lib/services/product-sheet");
-const { createPortalLogin, partiesWithoutLogin, PORTAL_MIN_PASSWORD } =
-  await import("@/lib/services/portal-access");
+const {
+  createPortalLogin,
+  partiesWithoutLogin,
+  PORTAL_MIN_PASSWORD,
+  suggestPassword,
+} = await import("@/lib/services/portal-access");
+const { isLoginName, loginLabel } = await import("@/lib/auth/login-id");
+const { signIn } = await import("@/lib/auth/session");
 const { verifyPassword } = await import("@/lib/auth/password");
 type User = import("@/lib/db").User;
 type Party = import("@/lib/db").Party;
@@ -171,11 +186,56 @@ describe("acesso ao portal preso ao cadastro", () => {
     );
   });
 
+  it("login sem e-mail: nome de usuário criado pela Wellmix entra no portal; fora do formato é recusado", async () => {
+    for (const bad of ["ab", "li wei", "fábrica", "工厂"])
+      expect(
+        await code(() => createPortalLogin(admin, login({ email: bad }))),
+      ).toBe("user_login_invalid");
+    const created = await createPortalLogin(
+      admin,
+      login({ email: " Fabrica.Nova ", password: "abc23456" }),
+    );
+    expect(isLoginName(created.email)).toBe(true);
+    expect(loginLabel(created.email)).toBe("fabrica.nova");
+    expect(created.partyId).toBe(factory.id);
+    // O mesmo nome de usuário não ganha um segundo login.
+    expect(
+      await code(() =>
+        createPortalLogin(admin, login({ email: "FABRICA.NOVA" })),
+      ),
+    ).toBe("user_email_taken");
+    // Entra digitando só o nome de usuário (sem distinguir maiúsculas).
+    expect((await signIn("Fabrica.Nova", "abc23456")).id).toBe(created.id);
+    expect(await code(() => signIn("fabrica.nova", "senha-errada"))).not.toBe(
+      "ok",
+    );
+    expect(await code(() => signIn("nao existe", "abc23456"))).not.toBe("ok");
+    // Quem tem e-mail continua entrando por ele.
+    expect((await signIn("ADMIN@wellmix.com", "wellmix123")).id).toBe(admin.id);
+    const log = await getStore().list("audit_log", {
+      filter: { action: "user.create", entityId: created.id },
+    });
+    expect(log[0].summary).toContain("fabrica.nova (supplier)");
+    expect(log[0].summary).not.toContain("@");
+  });
+
+  it("senha sugerida: tamanho mínimo e sem caracteres que se confundem", () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 20; i++) {
+      const password = suggestPassword();
+      expect(password).toMatch(/^[a-hj-km-np-z2-9]{10}$/);
+      seen.add(password);
+    }
+    expect(seen.size).toBeGreaterThan(15);
+  });
+
   it("login desativado não conta: o fornecedor volta a aparecer sem acesso", async () => {
-    const [user] = await getStore().list("users", {
+    const users = await getStore().list("users", {
       filter: { partyId: factory.id },
     });
-    await getStore().update("users", user.id, { active: false });
+    expect(users.length).toBe(2);
+    for (const user of users)
+      await getStore().update("users", user.id, { active: false });
     expect(await partiesWithoutLogin([factory.id])).toEqual(
       new Set([factory.id]),
     );
