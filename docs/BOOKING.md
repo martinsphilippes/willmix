@@ -21,7 +21,7 @@ Onde está cada parte:
 
 A tela **Booking** (`/app/booking`) passou a ser a lista dos **bookings**: cada booking é a planilha que um fornecedor mandou, com status, origem, fornecedor e data, e uma lista de itens. A fila de produtos descrita nas seções seguintes continua existindo, em **`/app/booking/products`** (botão "Fila de produtos"; endereço antigo `/app/booking?…` com filtros é encaminhado para lá).
 
-**Os itens do booking não são produtos.** Nada entra no cadastro de produtos nem no Sankhya ao subir ou fechar um booking. Mais à frente, na **Seleção de itens** (etapa seguinte, ainda não construída), o analista compara itens iguais de vários bookings, escolhe o melhor, dá o nome certo, cria o produto no portal e no Sankhya e liga a ele os itens iguais (`booking_items.productId`, vazio até lá).
+**Os itens do booking não são produtos.** Nada entra no cadastro de produtos nem no Sankhya ao subir ou fechar um booking. Na **Seleção de itens** (`/app/booking/selection`, docs/SUPPLIER_REQUESTS.md) a Wellmix compara itens parecidos de vários bookings e abre a **solicitação ao fornecedor** do escolhido; só depois de aprovada com o fornecedor o produto é criado ou associado e os itens iguais são ligados a ele (`booking_items.productId`, vazio até lá). A Seleção de itens substitui a fila de produtos: o botão da tela principal leva a ela, e `/app/booking/products` continua existindo sem link.
 
 Decisões:
 

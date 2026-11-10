@@ -376,6 +376,21 @@ export const BOOKING_LOT_STATUSES = [
 ] as const;
 export type BookingLotStatus = (typeof BOOKING_LOT_STATUSES)[number];
 
+/**
+ * Solicitação ao fornecedor (docs/SUPPLIER_REQUESTS.md): nasce na Seleção de
+ * itens. Aberta (esperando o fornecedor) → Respondida (ele disse se faz e em
+ * que condições) → Aprovada (a Wellmix segue com ele; o produto nasce depois)
+ * ou Recusada; Cancelada pela Wellmix antes da decisão.
+ */
+export const SUPPLIER_REQUEST_STATUSES = [
+  "open",
+  "answered",
+  "approved",
+  "declined",
+  "cancelled",
+] as const;
+export type SupplierRequestStatus = (typeof SUPPLIER_REQUEST_STATUSES)[number];
+
 export const REVIEW_STATUSES = ["open", "resolved", "dismissed"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
@@ -2375,6 +2390,70 @@ export interface BookingItem extends BaseRow {
   updatedByUserId: string | null;
 }
 
+/** Cópia do item do booking no momento da solicitação (o que o fornecedor vê). */
+export interface SupplierRequestItem {
+  itemNumber: string | null;
+  factoryItemCode: string | null;
+  productName: string | null;
+  description: string | null;
+  incoterm: SheetIncoterm | null;
+  currency: SheetCurrency | null;
+  price: number | null;
+  masterCartonQty: number | null;
+  innerQty: number | null;
+  netWeightPcKg: number | null;
+  grossWeightPcKg: number | null;
+  cbmPerCarton: number | null;
+  lengthCm: number | null;
+  widthCm: number | null;
+  heightCm: number | null;
+  capacityMl: number | null;
+  packageType: string | null;
+  material: string | null;
+  moq: number | null;
+  colorAssortment: string | null;
+  powerDetail: string | null;
+  photoDocumentId: string | null;
+}
+
+/**
+ * Solicitação ao fornecedor: a Wellmix escolheu um item de um booking (e
+ * guardou os parecidos como alternativas) e pergunta ao fornecedor se ele
+ * faz o que ela precisa, em que quantidade e condições. O fornecedor vê e
+ * responde no portal; nada de produto, cliente ou estoque nasce aqui.
+ */
+export interface SupplierRequest extends BaseRow {
+  /** Número sequencial (contador `supplier_request_number`). */
+  number: number;
+  status: SupplierRequestStatus;
+  supplierId: string;
+  bookingItemId: string;
+  bookingLotId: string;
+  /** Itens parecidos de outros bookings (só a Wellmix vê). */
+  alternativeItemIds: string[] | null;
+  item: SupplierRequestItem;
+  quantity: number;
+  unit: string;
+  /** O que a Wellmix precisa no produto (cor, embalagem, ajuste…). */
+  needs: string | null;
+  /** Busca usada na seleção (para refazer a comparação). */
+  searchQuery: string | null;
+  /* Resposta do fornecedor */
+  supplierCanDo: YesNo | null;
+  supplierPrice: number | null;
+  supplierCurrency: SheetCurrency | null;
+  supplierMoq: number | null;
+  supplierLeadTimeDays: number | null;
+  supplierNote: string | null;
+  respondedAt: string | null;
+  respondedByUserId: string | null;
+  /* Decisão da Wellmix */
+  decidedAt: string | null;
+  decidedByUserId: string | null;
+  decisionNote: string | null;
+  createdByUserId: string;
+}
+
 export interface StockReservation extends BaseRow {
   productId: string;
   customerId: string;
@@ -2452,6 +2531,7 @@ export interface Tables {
   bookings: Booking;
   booking_lots: BookingLot;
   booking_items: BookingItem;
+  supplier_requests: SupplierRequest;
 }
 export type TableName = keyof Tables;
 
@@ -3989,6 +4069,39 @@ export const TABLES: Record<TableName, TableDef> = {
     indexes: [
       { key: "by_lot", type: "key", columns: ["lotId"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  supplier_requests: {
+    label: "Solicitações ao fornecedor",
+    columns: {
+      number: int(true),
+      status: enumOf(SUPPLIER_REQUEST_STATUSES),
+      supplierId: id(),
+      bookingItemId: id(),
+      bookingLotId: id(),
+      alternativeItemIds: json(),
+      item: json(),
+      quantity: int(true),
+      unit: str(20, true),
+      needs: text(),
+      searchQuery: str(200),
+      supplierCanDo: enumOf(YES_NO, false),
+      supplierPrice: float(),
+      supplierCurrency: enumOf(SHEET_CURRENCIES, false),
+      supplierMoq: int(),
+      supplierLeadTimeDays: int(),
+      supplierNote: text(),
+      respondedAt: datetime(),
+      respondedByUserId: id(false),
+      decidedAt: datetime(),
+      decidedByUserId: id(false),
+      decisionNote: str(500),
+      createdByUserId: id(),
+    },
+    indexes: [
+      { key: "by_supplier", type: "key", columns: ["supplierId"] },
+      { key: "by_item", type: "key", columns: ["bookingItemId"] },
+      { key: "by_status", type: "key", columns: ["status"] },
     ],
   },
 };

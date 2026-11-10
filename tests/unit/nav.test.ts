@@ -178,7 +178,12 @@ describe("menu principal", () => {
       home,
       {
         group: "nav.group.orders",
-        items: ["/app/quotes", "/app/orders", "/app/account"],
+        items: [
+          "/app/quotes",
+          "/app/supplier-requests",
+          "/app/orders",
+          "/app/account",
+        ],
       },
     ]);
     expect(view({ role: "shipping_line" })).toEqual([

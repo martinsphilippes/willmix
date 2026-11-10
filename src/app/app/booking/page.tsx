@@ -81,8 +81,10 @@ export default async function BookingLotsPage({
         subtitle={t("bookingLots.subtitle")}
         actions={
           <>
-            <LinkButton href="/app/booking/products" variant="secondary">
-              {t("bookingLots.productsQueue")}
+            {/* A Seleção de itens substitui a fila de produtos (a rota
+                /app/booking/products continua, sem link). */}
+            <LinkButton href="/app/booking/selection" variant="secondary">
+              {t("nav.bookingSelection")}
             </LinkButton>
             {entries ? (
               <LinkButton
