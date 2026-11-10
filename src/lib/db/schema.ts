@@ -834,6 +834,8 @@ export interface Request extends BaseRow {
    */
   proposalApprovedAt?: string | null;
   proposalApprovedByUserId?: string | null;
+  /** NUNOTA da nota no Sankhya enquanto ainda não há pedido (cotação, pre-order). */
+  sankhyaCode?: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -921,6 +923,9 @@ export interface Order extends BaseRow {
   supplierPaymentTerms?: PaymentTermInstallment[] | null;
   /** NUNOTA da nota no Sankhya (vínculo da carga/integração; `erpNumber` é o número exibido). Nulo = sem vínculo. */
   sankhyaCode?: string | null;
+  /** Faturamento registrado no portal (evento de processo "pedido faturado"). */
+  invoicedAt?: string | null;
+  invoicedByUserId?: string | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -2098,6 +2103,9 @@ export const STOCK_MOVEMENT_KINDS = [
   "sale_out",
   "count_loss",
   "count_gain",
+  /** Entrada e saída por regra de processo (Configurações → Processos). */
+  "process_in",
+  "process_out",
 ] as const;
 export type StockMovementKind = (typeof STOCK_MOVEMENT_KINDS)[number];
 
@@ -2114,6 +2122,8 @@ export interface StockMovement extends BaseRow {
   countItemId: string | null;
   note: string | null;
   createdByUserId: string;
+  /** Evento de processo que gerou a movimentação (kind process_in/out). */
+  processEventId?: string | null;
 }
 
 export const STOCK_COUNT_STATUSES = ["open", "closed"] as const;
@@ -2283,6 +2293,25 @@ export interface StockReservation extends BaseRow {
 }
 
 /** Condição de pagamento (tabela de tipos de negociação do Sankhya, TGFTPV): vale para compra e venda. */
+/** Execução de uma regra de processo (Configurações → Processos; docs/PROCESSES.md). */
+export interface ProcessEvent extends BaseRow {
+  /** Evento (ex.: "request:ORDERED", "stage:SHIPPING:done", "order:invoiced"). */
+  event: string;
+  requestId: string | null;
+  orderId: string | null;
+  /** O que a regra pediu: movimentação de estoque e ação no Sankhya. */
+  stockAction: string;
+  sankhyaAction: string;
+  top: number | null;
+  /** done = feito; simulated = integração desligada (só registrado); skipped; error. */
+  status: "done" | "simulated" | "skipped" | "error";
+  detail: string | null;
+  /** NUNOTA antes e depois da ação no Sankhya. */
+  nunotaBefore: string | null;
+  nunotaAfter: string | null;
+  createdByUserId: string | null;
+}
+
 export interface PaymentCondition extends BaseRow {
   /** CODTIPVENDA no Sankhya (único). */
   code: number;
@@ -2355,6 +2384,7 @@ export interface Tables {
   stock_reservations: StockReservation;
   bookings: Booking;
   payment_conditions: PaymentCondition;
+  process_events: ProcessEvent;
 }
 export type TableName = keyof Tables;
 
@@ -2587,6 +2617,7 @@ export const TABLES: Record<TableName, TableDef> = {
       // Etapa "Proposta ao cliente" (opcionais; só gravados na aprovação).
       proposalApprovedAt: datetime(),
       proposalApprovedByUserId: id(false),
+      sankhyaCode: str(40),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -2662,6 +2693,8 @@ export const TABLES: Record<TableName, TableDef> = {
       supplierPaymentTerms: json(),
       ownerUserId: id(false),
       sankhyaCode: str(40),
+      invoicedAt: datetime(),
+      invoicedByUserId: id(false),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -3735,6 +3768,7 @@ export const TABLES: Record<TableName, TableDef> = {
       countItemId: id(false),
       note: text(),
       createdByUserId: id(),
+      processEventId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
@@ -3842,6 +3876,27 @@ export const TABLES: Record<TableName, TableDef> = {
       updatedByUserId: id(false),
     },
     indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
+  },
+  process_events: {
+    label: "Eventos de processo (regras de status → estoque e Sankhya)",
+    columns: {
+      event: str(80, true),
+      requestId: id(false),
+      orderId: id(false),
+      stockAction: str(20),
+      sankhyaAction: str(20),
+      top: int(),
+      status: enumOf(["done", "simulated", "skipped", "error"] as const),
+      detail: text(),
+      nunotaBefore: str(40),
+      nunotaAfter: str(40),
+      createdByUserId: id(false),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_event", type: "key", columns: ["event"] },
+    ],
   },
 };
 

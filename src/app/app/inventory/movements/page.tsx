@@ -32,6 +32,8 @@ const KIND_TONE = {
   sale_out: "info",
   count_loss: "danger",
   count_gain: "success",
+  process_in: "success",
+  process_out: "warning",
 } as const;
 
 type Tab = "all" | StockMovement["kind"];

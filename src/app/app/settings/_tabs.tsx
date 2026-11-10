@@ -11,13 +11,14 @@ import { cx } from "@/components/ui";
  */
 
 export type SettingsTab =
-  "general" | "integration" | "load" | "payment" | "explore";
+  "general" | "integration" | "load" | "payment" | "process" | "explore";
 
 const TABS: Array<{ key: SettingsTab; href: string }> = [
   { key: "general", href: "/app/settings" },
   { key: "integration", href: "/app/settings/sankhya" },
   { key: "load", href: "/app/settings/sankhya?tab=load" },
   { key: "payment", href: "/app/settings/sankhya?tab=payment" },
+  { key: "process", href: "/app/settings/sankhya?tab=process" },
   { key: "explore", href: "/app/settings/sankhya?tab=explore" },
 ];
 
