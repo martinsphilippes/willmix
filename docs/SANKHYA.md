@@ -22,6 +22,8 @@ export SANKHYA_X_TOKEN=...
 bash scripts/sankhya-curl.sh
 ```
 
+Para não deixar os segredos no histórico do terminal, leia-os sem eco. No zsh (padrão do macOS): `read -rs "SANKHYA_CLIENT_SECRET?Client Secret: "`; no bash: `read -rsp "Client Secret: " SANKHYA_CLIENT_SECRET`; depois `export` as três. O X-Token da tela "Configurações Gateway" do Sankhya Om é de produção: contra o sandbox ele devolve `invalid_client`.
+
 Autentica, lê 5 empresas (loadRecords), produtos (REST), busca tabelas no dicionário (SQL) e mostra as colunas de TDDLIG e TDDINS (para confirmar os nomes usados em `sankhya-dictionary.ts`). Mostra a resposta de cada passo; credencial errada para no passo 1 com o texto do Sankhya (`invalid_client`).
 
 ## Autenticação

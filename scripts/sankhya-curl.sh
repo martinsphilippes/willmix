@@ -14,6 +14,11 @@ set -euo pipefail
 : "${SANKHYA_CLIENT_SECRET:?defina SANKHYA_CLIENT_SECRET}"
 : "${SANKHYA_X_TOKEN:?defina SANKHYA_X_TOKEN}"
 BASE="${SANKHYA_BASE_URL:-https://api.sankhya.com.br}"
+OUT=$(mktemp)
+trap 'rm -f "$OUT"' EXIT
+# Mostra só o começo da resposta. A saída vai para um arquivo temporário antes
+# do corte: com "curl | head" o curl recebe erro 23 e o pipefail encerra o script.
+show() { head -c 1500 "$OUT"; echo; }
 
 echo "== 1) Autenticação em $BASE/authenticate"
 AUTH=$(curl -sS -X POST "$BASE/authenticate" \
@@ -34,21 +39,21 @@ echo "== 2) Empresas (CRUDServiceProvider.loadRecords)"
 curl -sS -X POST "$BASE/gateway/v1/mge/service.sbr?serviceName=CRUDServiceProvider.loadRecords&outputType=json" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"serviceName":"CRUDServiceProvider.loadRecords","requestBody":{"dataSet":{"rootEntity":"Empresa","includePresentationFields":"N","offsetPage":"0","entity":{"fieldset":{"list":"CODEMP,NOMEFANTASIA"}}}}}' \
-  | head -c 1500
-echo
+  -o "$OUT"
+show
 
 echo
 echo "== 3) Produtos (REST GET /v1/produtos)"
-curl -sS "$BASE/v1/produtos?page=1" -H "Authorization: Bearer $TOKEN" | head -c 1500
-echo
+curl -sS "$BASE/v1/produtos?page=1" -H "Authorization: Bearer $TOKEN" -o "$OUT"
+show
 
 echo
 echo "== 4) Dicionário (DbExplorerSP.executeQuery: tabelas com NOTA no nome)"
 curl -sS -X POST "$BASE/gateway/v1/mge/service.sbr?serviceName=DbExplorerSP.executeQuery&outputType=json" \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d "{\"serviceName\":\"DbExplorerSP.executeQuery\",\"requestBody\":{\"sql\":\"SELECT NOMETAB, DESCRTAB FROM TDDTAB WHERE UPPER(DESCRTAB) LIKE '%NOTA%'\"}}" \
-  | head -c 1500
-echo
+  -o "$OUT"
+show
 
 echo
 echo "== 5) Colunas do dicionário (TDDLIG e TDDINS, sem linhas: só fieldsMetadata)"
@@ -57,6 +62,6 @@ for TAB in TDDLIG TDDINS; do
   curl -sS -X POST "$BASE/gateway/v1/mge/service.sbr?serviceName=DbExplorerSP.executeQuery&outputType=json" \
     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
     -d "{\"serviceName\":\"DbExplorerSP.executeQuery\",\"requestBody\":{\"sql\":\"SELECT * FROM $TAB WHERE 1 = 0\"}}" \
-    | head -c 1500
-  echo
+    -o "$OUT"
+  show
 done
