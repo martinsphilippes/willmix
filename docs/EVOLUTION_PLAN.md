@@ -458,6 +458,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Anexos**: "Anexar arquivo ou foto" na conversa envia na hora, junto com o texto digitado (texto opcional quando há arquivo; sem texto, a mensagem mostra o nome do arquivo). Até ~4 MB vai pelo formulário; acima disso sobe direto ao armazenamento (`FileAutoInput`, até 50 MB). O documento ganha `conversationTopicId` (coluna opcional de `documents`, só nos anexos) e nenhum vínculo com pedido ou solicitação: `canAccessDocument` libera só quem vê o assunto (`canOpenTopic`: Wellmix e a empresa da conversa; nos assuntos de solicitação/pedido, só quem vê a solicitação/o pedido). O acesso é conferido antes de qualquer arquivo ser gravado. Imagens aparecem na conversa; outros arquivos, como link.
 - **Cotação do fornecedor**: botão "Conversar com a Wellmix" (fornecedor) / "Conversar com o fornecedor" (Wellmix), que abre o assunto da solicitação na conversa do fornecedor.
 - **Limpar dados de teste** apaga também conversas, assuntos, mensagens, leituras e os anexos (com o arquivo); a tela mostra a linha "Mensagens do chat".
+- **Limpar dados de teste** apaga também os briefings de embalagem (`packaging_briefs`) e os arquivos ligados só ao briefing ou só à cotação (`documents.packagingBriefId`, `documents.quoteId`), que antes ficavam sem dono; arquivo do catálogo que tinha essa ligação fica e só a perde.
 
 ## Mensagens: aviso evidente para quem é de fora e tradução automática
 
