@@ -698,3 +698,7 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 ## Pedido: sai o índice "Ir para"
 
 - **Pedido do dono** (10/11/2026): a barra "Ir para:" (atalhos para Resumo, Itens, Etapas, Pagamento ao fornecedor, Produção, Documentos…) sai do alto da tela do pedido, para todos os logins. As seções e as âncoras (`#order-stages`, `#production`…) continuam; a tabela "Etapas do pedido" já leva a cada parte pelo "Abrir".
+
+## Solicitação: a linha do tempo resumida sai também para o cliente
+
+- **Pedido do dono** (10/11/2026): o cartão "Linha do tempo" da solicitação sai para todos os logins (antes, só para a Wellmix). A situação continua no selo do alto da tela; a Wellmix acompanha pelas "Etapas da solicitação".
