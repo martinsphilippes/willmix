@@ -6,10 +6,12 @@ import { quotedQuantity } from "./purchase-sheet-calc";
 import {
   getStore,
   type FreightQuote,
+  type Product,
   type PurchaseSheet,
   type Request,
   type User,
 } from "@/lib/db";
+import { boxCbm } from "@/lib/logistics/cbm";
 import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { totalCbmFor } from "@/lib/pricing";
 import { audit } from "./audit";
@@ -17,11 +19,13 @@ import { notify, notifyWellmix } from "./notifications";
 import { getQuoteSheet } from "./quote-sheet";
 
 /*
- * Cotação de frete pela companhia marítima. Quando o fornecedor envia a
- * cotação com a ficha de compra, cada companhia marítima ativa recebe um
- * pedido de frete (pendência + notificação) com a carga: CBM, caixas, peso,
- * medidas, incoterm e local. Ela informa o valor; o valor entra no custo
- * importado do valor ao cliente. Preço do fornecedor, fornecedor e cliente não
+ * Cotação de frete pela companhia marítima. Quando a cotação do fornecedor é
+ * enviada (com a ficha de compra, só confirmando o preço ou registrada pela
+ * Wellmix), cada companhia marítima ativa recebe um pedido de frete
+ * (pendência + notificação) com a carga: CBM, caixas, peso, medidas, incoterm
+ * e local. Quem informa o valor é ela: o valor entra no custo importado do
+ * valor ao cliente e fica fixado. Sem a resposta dela, a conta segue com o
+ * frete estimado (por CBM). Preço do fornecedor, fornecedor e cliente não
  * aparecem para a companhia.
  */
 
@@ -63,15 +67,61 @@ export function cargoFor(
   };
 }
 
+const positive = (n: number | null | undefined) =>
+  typeof n === "number" && n > 0 ? n : null;
+
+/**
+ * Carga da cotação para o pedido de frete: a da ficha do fornecedor; o que
+ * faltar nela vem do cadastro (variação pedida > produto), a mesma regra do
+ * volume no valor ao cliente (`quotePricing`). Assim a companhia marítima
+ * recebe o pedido mesmo quando a cotação veio sem a ficha.
+ */
+export function quoteCargo(
+  request: Pick<Request, "quantity" | "unit" | "variant">,
+  sheet: Partial<PurchaseSheet> | null,
+  product: Pick<
+    Product,
+    | "masterBoxQty"
+    | "cbm"
+    | "boxLengthCm"
+    | "boxWidthCm"
+    | "boxHeightCm"
+    | "grossWeightKg"
+  > | null,
+): Cargo {
+  const variant = request.variant ?? null;
+  const qty = quotedQuantity(request, sheet as PurchaseSheet | null);
+  const sheetPer = positive(sheet?.masterCartonQty);
+  const sheetCbm = positive(sheet?.cbmPerCarton);
+  const catalogPer =
+    positive(variant?.masterBoxQty) ?? positive(product?.masterBoxQty);
+  const catalogCbm =
+    positive(variant?.cbm) ?? (product ? positive(boxCbm(product)) : null);
+  const fromSheet = sheetPer !== null && sheetCbm !== null;
+  const perCarton = fromSheet ? sheetPer : (sheetPer ?? catalogPer);
+  const cbmPerCarton = fromSheet ? sheetCbm : (sheetCbm ?? catalogCbm);
+  const cbm = totalCbmFor(qty, perCarton, cbmPerCarton);
+  const grossPc =
+    positive(sheet?.grossWeightPcKg) ??
+    positive(variant?.grossWeightKg) ??
+    positive(product?.grossWeightKg);
+  return {
+    totalCbm: cbm !== null ? Math.round(cbm * 10000) / 10000 : null,
+    cartons: perCarton ? Math.ceil(qty / perCarton) : null,
+    grossWeightKg: grossPc ? Math.round(qty * grossPc * 100) / 100 : null,
+  };
+}
+
 const sameCargo = (a: Cargo, b: Cargo) =>
   a.totalCbm === b.totalCbm &&
   a.cartons === b.cartons &&
   a.grossWeightKg === b.grossWeightKg;
 
 /**
- * Fornecedor enviou (ou reenviou) a cotação com a ficha: pede frete a cada
- * companhia marítima ativa. Se a carga mudou num reenvio, o frete já
- * informado volta a pendente para a companhia revisar.
+ * Cotação enviada (ou reenviada): pede frete a cada companhia marítima ativa.
+ * Se a carga mudou num reenvio, o frete já informado volta a pendente para a
+ * companhia revisar. Sem volume nem caixas conhecidos (nem na ficha, nem no
+ * cadastro) não há o que cotar: o pedido sai quando a ficha trouxer a carga.
  */
 export async function inviteFreightForQuote(
   user: User | null,
@@ -86,8 +136,13 @@ export async function inviteFreightForQuote(
     store.list("parties", { filter: { type: "shipping_line", active: true } }),
     store.list("freight_quotes", { filter: { quoteId } }),
   ]);
-  if (!request || !sheet) return 0;
-  const cargo = cargoFor(request, sheet);
+  if (!request) return 0;
+  const product = request.productId
+    ? await store.get("products", request.productId)
+    : null;
+  const cargo = quoteCargo(request, sheet, product);
+  if (cargo.totalCbm === null && cargo.cartons === null && !existing.length)
+    return 0;
   let invited = 0;
   for (const carrier of carriers) {
     const current = existing.find((f) => f.carrierId === carrier.id);

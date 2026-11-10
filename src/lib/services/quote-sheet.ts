@@ -515,14 +515,11 @@ export async function saveQuoteSheet(
   } catch (error) {
     console.error("[quote-sheet] medidas para a embalagem", error);
   }
-  // Cotação já respondida e com frete pedido: a carga desta ficha (caixas,
-  // CBM, peso) é a que vale no preço; a companhia marítima revisa o frete
-  // quando ela muda (sem mudança, nada é enviado).
-  if (
-    quote.status === "answered" &&
-    (await store.list("freight_quotes", { filter: { quoteId }, limit: 1 }))
-      .length
-  ) {
+  // Cotação já respondida: a carga desta ficha (caixas, CBM, peso) é a que
+  // vale no preço; a companhia marítima recebe o pedido de frete se ainda não
+  // tinha (cotação que veio sem a carga) e revisa o frete quando a carga muda
+  // (sem mudança, nada é enviado).
+  if (quote.status === "answered") {
     const { inviteFreightForQuote } = await import("./freight");
     await inviteFreightForQuote(user, quoteId);
   }

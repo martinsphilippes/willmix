@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { inputClass } from "@/components/ui";
 import {
@@ -13,9 +14,12 @@ import { PICK_QUOTE_EVENT, QUOTE_CURRENT_EVENT } from "./pick-quote-button";
 
 /*
  * Escolha do fornecedor com o valor ao cliente calculado (custo importado +
- * margem), atualizado ao trocar o fornecedor ou informar o frete da
- * companhia marítima. O valor segue editável; editar à mão para de atualizar até
- * clicar em "Usar valor calculado". O servidor refaz a conta ao gravar.
+ * margem), atualizado ao trocar o fornecedor. O frete marítimo não é digitado
+ * aqui: quem informa é a companhia marítima, no pedido de frete que ela
+ * recebe (o valor dela fica fixado); sem a resposta dela, a conta segue com
+ * o frete estimado. O valor ao cliente segue editável; editar à mão para de
+ * atualizar até clicar em "Usar valor calculado". O servidor refaz a conta ao
+ * gravar.
  */
 
 export interface CalculatorQuote {
@@ -24,7 +28,7 @@ export interface CalculatorQuote {
   hasSheet: boolean;
   input: PricingInput;
   marginSource: "customer" | "line" | "default";
-  /** Frete da companhia marítima (R$) para pré-preencher; null se não houver. */
+  /** Frete informado pela companhia marítima (R$); null se ela não informou. */
   shippingFreightBrl: number | null;
   /** Linha de situação do frete da companhia marítima (já traduzida). */
   shippingFreightNote: string | null;
@@ -44,6 +48,9 @@ type Labels = Record<
   | "sellPrice"
   | "carrierFreight"
   | "carrierFreightHint"
+  | "carrierFixed"
+  | "carrierEstimated"
+  | "carrierOpen"
   | "title"
   | "fob"
   | "fx"
@@ -112,8 +119,6 @@ export function SellPriceCalculator({
   const anchor = useRef<HTMLSpanElement>(null);
   const [currency, setCurrency] = useState("BRL");
   const currencyRef = useRef("BRL");
-  // Frete digitado por cotação; sem edição, vale o da companhia marítima.
-  const [carrierEdits, setCarrierEdits] = useState<Record<string, string>>({});
   const [manual, setManual] = useState<string | null>(null);
   const current = quotes.find((q) => q.quoteId === quoteId) ?? quotes[0];
   // Disputa de fornecedores (acima): "Escolher" numa linha seleciona aqui, e
@@ -133,19 +138,15 @@ export function SellPriceCalculator({
       }),
     );
   }, [current?.quoteId]);
-  const carrier =
-    (current && carrierEdits[current.quoteId]) ??
-    (current?.shippingFreightBrl != null
-      ? current.shippingFreightBrl.toFixed(2)
-      : "");
-  const carrierBrl = Number(carrier.replace(",", "."));
+  // Frete: o informado pela companhia marítima; sem ele, o estimado (CBM).
+  const carrierBrl =
+    current?.shippingFreightBrl != null && current.shippingFreightBrl > 0
+      ? current.shippingFreightBrl
+      : null;
   const result = current
     ? priceToCustomer({
         ...current.input,
-        freight: {
-          ...current.input.freight,
-          carrierBrl: carrier && carrierBrl > 0 ? carrierBrl : null,
-        },
+        freight: { ...current.input.freight, carrierBrl },
       })
     : null;
   const rate = current ? rateFor(current.input.fx, currency) : null;
@@ -456,35 +457,54 @@ export function SellPriceCalculator({
         </div>
       ) : null}
 
-      <div>
-        <label
-          htmlFor="sp-carrier"
-          className="mb-1 block text-xs font-medium leading-5 text-zinc-700"
-        >
+      {/* Frete marítimo: só leitura. Quem informa é a companhia marítima. */}
+      <div
+        data-carrier-freight={carrierBrl !== null ? "answered" : "estimated"}
+      >
+        <p className="mb-1 block text-xs font-medium leading-5 text-zinc-700">
           {labels.carrierFreight}
-        </label>
-        <MoneyInput
-          locale={labels.intl}
-          id="sp-carrier"
-          name="freightCarrierBrl"
-          currency="BRL"
-          value={carrier}
-          onValueChange={(value) => {
-            if (current)
-              setCarrierEdits((prev) => ({
-                ...prev,
-                [current.quoteId]: value,
-              }));
-          }}
-          className="w-full"
-        />
+        </p>
+        <div
+          className={
+            carrierBrl !== null
+              ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"
+              : "rounded-lg border border-zinc-200 bg-white px-3 py-2"
+          }
+        >
+          <p className="text-sm font-semibold tabular-nums text-zinc-900">
+            {carrierBrl !== null
+              ? brl(carrierBrl, labels.intl)
+              : result?.freightSource === "cbm"
+                ? brl(result.freightBrl, labels.intl)
+                : "—"}
+          </p>
+          <p
+            className={
+              carrierBrl !== null
+                ? "text-xs font-medium text-emerald-800"
+                : "text-xs text-amber-800"
+            }
+          >
+            {carrierBrl !== null
+              ? labels.carrierFixed
+              : result?.freightSource === "cbm"
+                ? labels.carrierEstimated
+                : labels.missing.freight}
+          </p>
+        </div>
         {current?.shippingFreightNote ? (
           <p className="mt-1 text-xs font-medium text-brand-800">
             {current.shippingFreightNote}
           </p>
         ) : null}
         <p className="mt-1 text-xs text-zinc-500">
-          {labels.carrierFreightHint}
+          {labels.carrierFreightHint}{" "}
+          <Link
+            href="/app/freight"
+            className="font-medium text-brand-700 underline"
+          >
+            {labels.carrierOpen}
+          </Link>
         </p>
       </div>
       <div>
