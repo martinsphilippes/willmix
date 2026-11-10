@@ -597,6 +597,45 @@ describe("gerar solicitação", () => {
     expect(bookingCanRequest("requested", true)).toBe(false);
   });
 
+  it("a linha que virou solicitação mostra o próximo passo e acompanha a solicitação; quem não abre Solicitações não recebe o link", async () => {
+    const line = await row("approved");
+    const [request] = await booking.generateRequestFromBooking(
+      admin,
+      { ids: [line.booking.id], customer: joao.partyId! },
+      t,
+    );
+    const nextOf = async (user: User) =>
+      (await booking.listBookingRows(user)).rows.find(
+        (r) => r.id === line.booking.id,
+      )!.next;
+    expect(await nextOf(admin)).toEqual({
+      step: "open_rfq",
+      href: `/app/requests/${request.id}`,
+      target: "request",
+    });
+    // RFQ aberta: esperando o fornecedor, com o botão direto na cotação.
+    const { openRfq } = await import("@/lib/services/requests");
+    const [supplier] = await getStore().list("parties", {
+      filter: { type: "supplier", active: true },
+      limit: 1,
+    });
+    const [quote] = await openRfq(admin, request.id, [supplier.id]);
+    expect(await nextOf(admin)).toEqual({
+      step: "wait_supplier",
+      href: `/app/quotes/${quote.id}`,
+      target: "quote",
+    });
+    // Linha que não virou solicitação não tem próximo passo.
+    const other = await row("approved");
+    expect(
+      (await booking.listBookingRows(admin)).rows.find(
+        (r) => r.id === other.booking.id,
+      )!.next,
+    ).toBeNull();
+    // Só Booking (sem a tela Solicitações): sem link para lá.
+    expect(await nextOf(onlyBooking)).toBeNull();
+  });
+
   it("recusas: etapa, cliente de outra linha, sem cliente, quantidade e produto", async () => {
     const before = (await getStore().list("requests")).length;
     const other = await getStore().create("parties", {

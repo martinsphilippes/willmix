@@ -838,7 +838,33 @@ export default async function BookingPage({
         );
       }
       case "status":
-        return (
+        return row.next ? (
+          // Virou solicitação: o próximo passo, em palavras, e o botão que
+          // leva direto para lá.
+          <div className="max-w-64 space-y-1" data-booking-next={row.next.step}>
+            <Badge tone={STATUS_TONE[row.status]}>
+              {statusLabel(row.status)}
+              {row.requestNumber ? ` nº ${row.requestNumber}` : ""}
+            </Badge>
+            <p className="whitespace-normal text-xs leading-snug text-zinc-700">
+              {t(`booking.next.${row.next.step}`)}
+            </p>
+            <LinkButton
+              href={row.next.href}
+              variant={
+                row.next.step === "wait_supplier" ||
+                row.next.step === "negotiating" ||
+                row.next.step === "cancelled"
+                  ? "secondary"
+                  : "primary"
+              }
+              className="h-7 px-2.5 py-0! text-xs! whitespace-nowrap"
+              data-booking-next-go=""
+            >
+              {t(`booking.next.go.${row.next.target}`)} →
+            </LinkButton>
+          </div>
+        ) : (
           <Badge tone={STATUS_TONE[row.status]}>
             {statusLabel(row.status)}
           </Badge>
