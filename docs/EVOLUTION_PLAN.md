@@ -688,3 +688,9 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 
 - **Pedido do dono** (10/11/2026): na tela da solicitação, o cartão "Solicitações" mostra os dados em linha (uma coluna por informação, inclusive cada item da especificação), com `RequestInfoTable`, o mesmo padrão da cotação, na largura toda.
 - O cartão "Linha do tempo" (5 passos resumidos) sai para a equipe Wellmix, que acompanha pelas "Etapas da solicitação". O cliente não tem as Etapas, por isso continua vendo a linha do tempo resumida.
+
+## Pedido: fornecedor e parceiros veem só as próprias linhas em "Etapas do pedido"
+
+- **Pedido do dono** (10/11/2026): na tabela "Etapas do pedido", o fornecedor (e cada parceiro) vê só o que é responsabilidade do próprio login. Regra pura em `src/lib/order-view.ts` (`stageRowFor`, `partRowFor`, `ORDER_PART_ROLES`), com teste em `tests/unit/order-view.test.ts`.
+- **Etapa**: aparece quando o papel responde por ela ou tem item a preencher nela; o parceiro continua vendo a etapa que só lê (ex.: o despachante e o Embarque). **Parte do pedido**: fornecedor vê Documento do pedido, Ficha de compra e Produção e inspeção; a certificadora, a Certificação; a agência, as Artes; comex, despachante e agente de carga, Embarque e desembaraço. Pagamento ao fornecedor e Recebimento são só da Wellmix.
+- A numeração das etapas continua a do fluxo inteiro (a mesma que a Wellmix vê). Wellmix e cliente continuam vendo todas as linhas. Os cartões de baixo e as permissões não mudaram: é só a tabela.
