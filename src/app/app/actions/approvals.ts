@@ -30,7 +30,9 @@ export async function decideApprovalAction(form: FormData) {
     const note = field(form, "note", z.string().trim().max(1000));
     const { decideApproval } = await import("@/lib/services/approvals");
     await decideApproval(user, approvalId, decision, note || null);
-    return `${to}?decided=${decision}#approval`;
+    // Endereço diferente a cada decisão: a tela sempre é recarregada (duas
+    // aprovações seguidas voltariam para o mesmo endereço).
+    return `${to}?decided=${decision}&at=${Date.now()}#approval`;
   });
 }
 
