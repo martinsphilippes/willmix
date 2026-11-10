@@ -11,21 +11,14 @@ import { cx, formatMoney } from "./ui";
 
 /*
  * Quadros da operação na Control Tower (o fluxo de ponta a ponta, a partir do
- * Booking, em cinco blocos). Cada quadrado é um link: tocar mostra os pedidos dele numa lista
+ * Booking, em quatro blocos). Cada quadrado é um link: tocar mostra os pedidos dele numa lista
  * logo abaixo do bloco dele, sem a tela pular (scroll={false}); tocar de novo
  * fecha a lista; Booking, containers e revisão levam às telas deles. Zero fica cinza (não some), para a tela ficar sempre igual.
  */
 
-const BLOCKS: BoardBlock[] = [
-  "booking",
-  "request",
-  "order",
-  "parallel",
-  "problem",
-];
+const BLOCKS: BoardBlock[] = ["request", "order", "parallel", "problem"];
 
 const TONE: Record<BoardBlock, string> = {
-  booking: "from-amber-700 to-orange-500",
   request: "from-violet-700 to-fuchsia-500",
   order: "from-sky-700 to-blue-500",
   parallel: "from-teal-700 to-emerald-500",

@@ -198,7 +198,7 @@ Sem integração externa. Server Actions (todas conferem papel Wellmix e a tela 
 
 ## 12. Relatórios, 13. Dashboards, 14. Indicadores
 
-Na Control Tower, o bloco **Booking** abre os quadros da operação: um quadrado por etapa (Novo a Reservado), com a contagem, que leva a esta tela filtrada (`docs/WORKFLOW.md`, "Control Tower: quadros da operação").
+Na Control Tower, o quadrado **Booking** é o primeiro dos quadros da operação (no lugar de "Solicitação nova"): conta as linhas que ainda não viraram solicitação (Novo a Reservado) e leva a esta tela filtrada nelas (`docs/WORKFLOW.md`, "Control Tower: quadros da operação").
 
 Na própria tela: cartões com a contagem por etapa (viram filtro), total filtrado e, para quem abre o Superplan, o filtro "sinal" (viável, abaixo da meta, prejuízo, no preço mínimo, falta dado, sem análise).
 

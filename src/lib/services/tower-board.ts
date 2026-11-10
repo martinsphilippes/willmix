@@ -35,14 +35,12 @@ import { requestStepDays } from "@/lib/request-stages";
 
 /*
  * Quadros da operação na Control Tower: o fluxo de ponta a ponta, a partir
- * do Booking, em cinco blocos escolhidos pelo dono (docs/WORKFLOW.md,
+ * do Booking, em quatro blocos escolhidos pelo dono (docs/WORKFLOW.md,
  * "Control Tower: quadros da operação").
  *
- * 0. Booking: o produto da ficha técnica antes de virar solicitação, pela
- *    etapa da linha (só para quem abre o Booking; o quadrado leva à tela
- *    Booking já filtrada).
- * 1. Antes de virar pedido: a solicitação, pelo mesmo "próximo passo" da
- *    tela Solicitações.
+ * 1. Antes de virar pedido: o Booking (linhas que ainda não viraram
+ *    solicitação; no lugar de "Solicitação nova" para quem abre o Booking) e
+ *    a solicitação, pelo mesmo "próximo passo" da tela Solicitações.
  * 2. Onde o pedido está agora: cada pedido em andamento cai em um quadrado
  *    só (a etapa, dividida pelo que já foi feito dentro dela); encerrados e
  *    cancelados contam só no mês.
@@ -55,8 +53,7 @@ import { requestStepDays } from "@/lib/request-stages";
  * dinheiro (parcelas, a receber) só para quem abre Finanças.
  */
 
-export type BoardBlock =
-  "booking" | "request" | "order" | "parallel" | "problem";
+export type BoardBlock = "request" | "order" | "parallel" | "problem";
 
 interface CardDef {
   key: string;
@@ -69,13 +66,15 @@ interface CardDef {
 
 /** Quadrados na ordem da tela. */
 export const BOARD_CARDS = [
-  // Booking (docs/BOOKING.md): na ordem das etapas. "Virou solicitação"
-  // continua no bloco seguinte; "Descartado" saiu do fluxo.
-  { key: "bkNew", block: "booking", href: "/app/booking?status=new" },
-  { key: "bkAnalysis", block: "booking", href: "/app/booking?status=analysis" },
-  { key: "bkApproved", block: "booking", href: "/app/booking?status=approved" },
-  { key: "bkOffered", block: "booking", href: "/app/booking?status=offered" },
-  { key: "bkReserved", block: "booking", href: "/app/booking?status=reserved" },
+  // O fluxo começa no Booking (docs/BOOKING.md): as linhas que ainda não
+  // viraram solicitação. Leva à tela Booking, já sem as que viraram e as
+  // descartadas. Só para quem abre o Booking.
+  {
+    key: "bkOpen",
+    block: "request",
+    href: "/app/booking?status=new,analysis,approved,offered,reserved",
+  },
+  // Com o Booking no lugar dela, só aparece quando há solicitação nova.
   { key: "reqNew", block: "request" },
   { key: "reqRfq", block: "request" },
   { key: "reqQuotes", block: "request" },
@@ -193,7 +192,7 @@ export interface BoardInput {
   finance: boolean;
   /**
    * Linhas do Booking (só a etapa). Sem a lista (login que não abre o
-   * Booking), o bloco do Booking não aparece.
+   * Booking), o quadrado do Booking não aparece e "Solicitação nova" fica.
    */
   bookings?: Pick<Booking, "status">[];
   orders: Order[];
@@ -518,30 +517,31 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     (r) => !cancelled.has(reviewOrderId(r) ?? ""),
   ).length;
 
-  /* Bloco 0: Booking, uma contagem por etapa. */
-  const BOOKING_CARD: Partial<Record<Booking["status"], BoardCardKey>> = {
-    new: "bkNew",
-    analysis: "bkAnalysis",
-    approved: "bkApproved",
-    offered: "bkOffered",
-    reserved: "bkReserved",
-  };
-  const bookingCount = new Map<BoardCardKey, number>();
-  for (const b of input.bookings ?? []) {
-    const key = BOOKING_CARD[b.status];
-    if (key) bookingCount.set(key, (bookingCount.get(key) ?? 0) + 1);
-  }
+  /* Booking: linhas que ainda não viraram solicitação (nem descartadas). */
+  const BOOKING_OPEN: Booking["status"][] = [
+    "new",
+    "analysis",
+    "approved",
+    "offered",
+    "reserved",
+  ];
+  const bookingOpen = (input.bookings ?? []).filter((b) =>
+    BOOKING_OPEN.includes(b.status),
+  ).length;
 
   const cards = BOARD_CARDS.filter(
     (c) =>
       (input.finance || !("finance" in c && c.finance)) &&
-      (c.block !== "booking" || !!input.bookings),
+      // Quem abre o Booking começa por ele: "Solicitação nova" só aparece
+      // enquanto houver alguma (nada some da tela sem ser visto).
+      (c.key !== "bkOpen" || !!input.bookings) &&
+      (c.key !== "reqNew" || !input.bookings || rows.get("reqNew")!.length > 0),
   ).map((c): BoardCard => {
     const list = rows.get(c.key)!;
     const href = "href" in c ? c.href : null;
     const count =
-      c.block === "booking"
-        ? (bookingCount.get(c.key) ?? 0)
+      c.key === "bkOpen"
+        ? bookingOpen
         : c.key === "parContainers"
           ? input.containers.open
           : c.key === "probReviews"
@@ -576,7 +576,7 @@ const safe = <T>(p: Promise<T[]>): Promise<T[]> =>
  */
 export async function loadTowerBoard(options: {
   finance: boolean;
-  /** Quem abre a tela Booking vê o bloco do Booking. */
+  /** Quem abre a tela Booking vê o quadrado do Booking. */
   booking?: boolean;
   now?: Date;
 }): Promise<TowerBoard> {
