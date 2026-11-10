@@ -45,6 +45,27 @@ export async function signOrderDocumentAction(form: FormData) {
   });
 }
 
+/**
+ * "Enviar para assinatura": quem fez a arte (ou a Wellmix) manda o documento
+ * do pedido para as duas assinaturas. O serviço confere papel, etapa e o que
+ * falta (arte enviada e selo aplicado).
+ */
+export async function sendOrderForSignatureAction(form: FormData) {
+  const user = await requireUser();
+  const orderId = str(form, "orderId");
+  const back = ID.test(orderId)
+    ? `/app/orders/${orderId}/purchase-order`
+    : "/app";
+  await run(back, async () => {
+    assertScreen(user, "orders");
+    const id = z.string().regex(ID).parse(orderId);
+    const { sendOrderForSignature } =
+      await import("@/lib/services/order-signature");
+    await sendOrderForSignature(user, id);
+    return `/app/orders/${id}/purchase-order?sent=1`;
+  });
+}
+
 /** Administrador: devolve a assinatura do fornecedor (arquivo errado). */
 export async function reopenSupplierSignatureAction(form: FormData) {
   const user = await requireUser();

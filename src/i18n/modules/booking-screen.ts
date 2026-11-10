@@ -136,6 +136,8 @@ export const pt = {
     "O fornecedor enviou a cotação. Próximo passo: conferir e confirmar a cotação (com o valor de venda).",
   "booking.next.supplier_draft":
     "A ficha da cotação já foi preenchida em parte, mas a cotação ainda não foi enviada. Abra para ver o que falta ou registrar a resposta pelo fornecedor.",
+  "booking.next.prepare_document":
+    "Virou pedido. O documento vai para assinatura depois que a agência enviar a arte com o selo da certificadora.",
   "booking.next.sign_wellmix":
     "Virou pedido. Próximo passo: a Wellmix assina o documento do pedido para ele seguir ao fornecedor.",
   "booking.next.sign_supplier":
@@ -151,6 +153,7 @@ export const pt = {
   "booking.next.label.choose_quote": "Cotação enviada",
   "booking.next.label.wait_down_payment": "Cotação confirmada",
   "booking.next.label.ordered": "Pedido criado",
+  "booking.next.label.prepare_document": "Pedido: arte e selo",
   "booking.next.label.sign_wellmix": "Pedido: assinar documento",
   "booking.next.label.sign_supplier": "Documento com o fornecedor",
   "booking.next.label.signed": "Documento assinado",
@@ -310,6 +313,8 @@ export const en: Record<keyof typeof pt, string> = {
     "The supplier sent the quote. Next step: check and confirm the quote (with the sale price).",
   "booking.next.supplier_draft":
     "The quote sheet is partly filled in, but the quote has not been sent yet. Open it to see what is missing or to record the supplier's answer.",
+  "booking.next.prepare_document":
+    "It became an order. The document goes for signature after the agency sends the artwork with the certifier's seal.",
   "booking.next.sign_wellmix":
     "It became an order. Next step: Wellmix signs the order document so it goes to the supplier.",
   "booking.next.sign_supplier":
@@ -325,6 +330,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.next.label.choose_quote": "Quote sent",
   "booking.next.label.wait_down_payment": "Quote confirmed",
   "booking.next.label.ordered": "Order created",
+  "booking.next.label.prepare_document": "Order: artwork and seal",
   "booking.next.label.sign_wellmix": "Order: sign document",
   "booking.next.label.sign_supplier": "Document with supplier",
   "booking.next.label.signed": "Document signed",
@@ -474,6 +480,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "供应商已提交报价。下一步：核对并确认报价（含销售价格）。",
   "booking.next.supplier_draft":
     "报价采购单已填写一部分，但报价尚未提交。请打开查看缺少的内容，或代供应商登记回复。",
+  "booking.next.prepare_document":
+    "已转为订单。设计公司上传带认证标志的设计稿后，文件才会发送签署。",
   "booking.next.sign_wellmix":
     "已转为订单。下一步：Wellmix 签署订单文件，以便发给供应商。",
   "booking.next.sign_supplier": "订单文件已发送。等待供应商下载、签署并上传。",
@@ -487,6 +495,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.next.label.choose_quote": "报价已提交",
   "booking.next.label.wait_down_payment": "报价已确认",
   "booking.next.label.ordered": "订单已创建",
+  "booking.next.label.prepare_document": "订单：设计稿和认证标志",
   "booking.next.label.sign_wellmix": "订单：签署文件",
   "booking.next.label.sign_supplier": "文件在供应商处",
   "booking.next.label.signed": "文件已签署",

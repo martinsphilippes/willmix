@@ -10,10 +10,11 @@ import type { StageKey } from "@/lib/db/schema";
  */
 
 export const ORDER_PART_KEYS = [
-  "document",
   "certification",
   "sheet",
   "artwork",
+  // Assinatura do documento: depois da arte (com o selo) e antes de produzir.
+  "document",
   "supplier_payment",
   "production",
   "import",
@@ -23,7 +24,9 @@ export type OrderPartKey = (typeof ORDER_PART_KEYS)[number];
 
 /** Etapa debaixo da qual a parte aparece (a ordem de ORDER_PART_KEYS vale dentro dela). */
 export const ORDER_PART_STAGE: Record<OrderPartKey, StageKey> = {
-  document: "ORDER_CREATED",
+  // Decisão do dono (10/11/2026): a assinatura vem depois da arte e do selo.
+  // Pedido de antes disso guarda a parte onde os itens dele estão (`stage`).
+  document: "PACKAGING",
   // A certificadora recebe o pedido quando ele nasce (decisão do dono,
   // docs/CERTIFICATION.md): o selo corre ao mesmo tempo que o resto.
   certification: "ORDER_CREATED",
@@ -52,12 +55,18 @@ export interface OrderPart {
   /** Detalhe curto já traduzido por quem monta (ex.: "ETD 12/12/2026"). */
   detail?: string | null;
   href: string;
+  /**
+   * Etapa em que a parte aparece neste pedido, quando não é a padrão
+   * (documento de pedido antigo: assinaturas em "Pedido criado").
+   */
+  stage?: StageKey;
 }
 
 /** Documento do pedido: os dois itens de assinatura (pedido antigo: sem a parte). */
 export function documentPart(
-  requirements: Array<{ key: string; status: string }>,
+  requirements: Array<{ key: string; status: string; stageId?: string }>,
   href: string,
+  stages: Array<{ id: string; key: string }> = [],
 ): OrderPart | null {
   const signatures = requirements.filter(
     (r) =>
@@ -65,12 +74,24 @@ export function documentPart(
   );
   if (!signatures.length) return null;
   const done = signatures.filter((r) => r.status === "done").length;
+  // Pedido novo: antes do "Enviar para assinatura" a parte ainda não começou.
+  const send = requirements.find((r) => r.key === "order_sign_send");
+  // A parte fica debaixo da etapa em que a Wellmix assina neste pedido.
+  const wellmix = signatures.find((r) => r.key === "order_signed_wellmix");
+  const stage = stages.find((s) => s.id === wellmix?.stageId)?.key as
+    StageKey | undefined;
   return {
     key: "document",
-    state: done === signatures.length ? "done" : "active",
+    state:
+      done === signatures.length
+        ? "done"
+        : send && send.status !== "done"
+          ? "pending"
+          : "active",
     done,
     total: signatures.length,
     href,
+    ...(stage && stage !== ORDER_PART_STAGE.document ? { stage } : {}),
   };
 }
 
@@ -130,8 +151,15 @@ export function orderPartsByStage(
   for (const key of ORDER_PART_KEYS) {
     const part = parts.find((p) => p?.key === key);
     if (!part) continue;
-    const stage = ORDER_PART_STAGE[key];
-    map.set(stage, [...(map.get(stage) ?? []), part]);
+    const stage = part.stage ?? ORDER_PART_STAGE[key];
+    // Fora da etapa padrão (pedido antigo): a parte abre a lista da etapa,
+    // como era ("Documento do pedido" logo abaixo de "Pedido criado").
+    map.set(
+      stage,
+      part.stage
+        ? [part, ...(map.get(stage) ?? [])]
+        : [...(map.get(stage) ?? []), part],
+    );
   }
   return map;
 }

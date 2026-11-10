@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { translator } from "@/i18n";
-import { withTempStore } from "./setup";
+import { completeOrderDocument, withTempStore } from "./setup";
 
 /*
  * Embalagem na RFQ: ao abrir a cotação para os fornecedores, a agência (ou o
@@ -590,7 +590,8 @@ describe("pedido criado", () => {
     reqs = await packagingReqs(order.id);
     expect(reqs.stage.status).toBe("active");
     expect(reqs.stage.responsibleRole).toBe("supplier");
-    expect(reqs.stage.percent).toBe(50);
+    // 1 de 5: arte feita; faltam a aprovação, o envio e as duas assinaturas.
+    expect(reqs.stage.percent).toBe(20);
     // Aviso vai ao fornecedor (aprovar), no idioma dele, não à agência.
     const zh = translator(supplierA.locale);
     const supplierNotes = (await notificationsOf(supplierA)).slice(
@@ -643,6 +644,8 @@ describe("pedido criado", () => {
     expect(reqs.art.status).toBe("done");
     expect(reqs.approval.status).toBe("pending");
     await decideRequirement(supplierA, reqs.approval.id, "approve", null);
+    // Ordem nova: a etapa conclui com o documento do pedido assinado.
+    await completeOrderDocument(admin, order.id);
     expect((await packagingReqs(order.id)).stage.status).toBe("done");
   });
 
@@ -873,6 +876,8 @@ describe("correções da revisão", () => {
     );
     reqs = await packagingReqs(order.id);
     await decideRequirement(supplierA, reqs.approval.id, "approve", null);
+    // Ordem nova: a etapa conclui com o documento do pedido assinado.
+    await completeOrderDocument(admin, order.id);
     expect((await packagingReqs(order.id)).stage.status).toBe("done");
     await expect(
       pb.uploadPackagingItem(agency, brief.id, "art", pdf("troca.pdf")),

@@ -61,7 +61,11 @@ import {
   canCompleteLater,
   isOffFlowStage,
   isOrderSignatureKey,
+  ORDER_SIGN_SEND,
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
+import { signSendBlockers } from "@/lib/services/order-signature";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
 import { normalizeShipping } from "@/lib/services/shipping-stage";
@@ -253,6 +257,12 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  // "Enviar para assinatura" (pedidos novos): o que ainda falta (arte, selo).
+  const signSend = requirements.find((r) => r.key === ORDER_SIGN_SEND);
+  const sendBlockers =
+    signSend && signSend.status !== "done"
+      ? await signSendBlockers(order.id, signSend.stageId)
+      : [];
   /* Produção: Wellmix e o fornecedor do pedido (fora das etapas). */
   const productionView =
     order.status !== "CANCELLED" &&
@@ -762,7 +772,11 @@ export default async function OrderPage({
      login já vê nos cartões de baixo; cada linha leva ao cartão ou à página. */
   const partsByStage = orderPartsByStage([
     wellmix || (user.role === "supplier" && order.supplierId === user.partyId)
-      ? documentPart(requirements, `/app/orders/${order.id}/purchase-order`)
+      ? documentPart(
+          requirements,
+          `/app/orders/${order.id}/purchase-order`,
+          stages,
+        )
       : null,
     sheetState
       ? sheetPart(
@@ -1668,7 +1682,24 @@ export default async function OrderPage({
                               (x) => x.key === "art" && x.status !== "done",
                             )
                               ? t("packaging.waitingArt")
-                              : dateWaiting(t, stage.key, r, reqs)
+                              : r.key === ORDER_SIGN_SEND && sendBlockers.length
+                                ? // Só envia com a arte e o selo prontos.
+                                  t(`orderSign.send.missing.${sendBlockers[0]}`)
+                                : r.key === ORDER_SIGNED_WELLMIX &&
+                                    reqs.some(
+                                      (x) =>
+                                        x.key === ORDER_SIGN_SEND &&
+                                        x.status !== "done",
+                                    )
+                                  ? t("orderSign.send.waitSend")
+                                  : r.key === ORDER_SIGNED_SUPPLIER &&
+                                      reqs.some(
+                                        (x) =>
+                                          x.key === ORDER_SIGNED_WELLMIX &&
+                                          x.status !== "done",
+                                      )
+                                    ? t("orderSign.send.waitWellmix")
+                                    : dateWaiting(t, stage.key, r, reqs)
                           }
                           dateBounds={
                             r.type === "date"
