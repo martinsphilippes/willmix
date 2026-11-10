@@ -573,12 +573,17 @@ export function parseBookingFilters(
           ...(max !== undefined ? { max } : {}),
         };
     } else {
+      // Um campo só na tela: o dia escolhido (`coluna_on`). O período
+      // (`coluna_from`/`coluna_to`) continua valendo em endereços antigos.
+      const on = first(params[`${key}_on`]);
       const from = first(params[`${key}_from`]);
       const to = first(params[`${key}_to`]);
-      const range = {
-        ...(DAY.test(from) ? { from } : {}),
-        ...(DAY.test(to) ? { to } : {}),
-      };
+      const range = DAY.test(on)
+        ? { from: on, to: on }
+        : {
+            ...(DAY.test(from) ? { from } : {}),
+            ...(DAY.test(to) ? { to } : {}),
+          };
       if (range.from || range.to) filters.dates[key] = range;
     }
   }
@@ -770,6 +775,11 @@ export function bookingQuery(
   }
   for (const [k, v] of Object.entries(filters.dates)) {
     if (!v || k === dropped) continue;
+    // Um dia só: o parâmetro do campo único da tela.
+    if (v.from && v.from === v.to) {
+      q.set(`${k}_on`, v.from);
+      continue;
+    }
     if (v.from) q.set(`${k}_from`, v.from);
     if (v.to) q.set(`${k}_to`, v.to);
   }
