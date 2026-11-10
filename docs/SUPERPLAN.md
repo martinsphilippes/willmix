@@ -70,6 +70,8 @@ Tudo continua editável na tela para a simulação. A simulação não grava nad
 8. **Preço para a meta**: o lucro é uma reta no preço; o preço que dá exatamente a meta % sai dela (arredondado para cima no centavo). Markup necessário = esse preço ÷ custo por peça. Sem solução (impostos e despesas maiores que a margem): a tela avisa.
 9. **Sinal**: verde com lucro ≥ meta; amarelo com lucro positivo abaixo da meta; vermelho com prejuízo.
 
+A mesma lógica fica escrita na própria tela, sempre à vista, no quadro "Como o Superplan calcula" (`src/app/app/superplan/_components/logic.tsx`, textos em `src/i18n/modules/superplan-logic.ts`): oito passos na ordem da conta (container, compra, frete e seguro, impostos da importação, custo, preços, lucro na venda, resultado), cada um com as fórmulas e os percentuais em uso, mais "De onde vêm os números". O botão "Como a conta é feita" no alto leva até ele. Quem mudar `computeSuperplan` muda esse quadro junto; `tests/unit/superplan-logic.test.ts` refaz as fórmulas escritas e compara com a conta.
+
 ### 5.1 Os "pesos": líquido, bruto, médio e a média
 
 O **peso médio por peça** (`purchase_sheets.averageWeightPcKg`, kg) aparece na Compra, ao lado do bruto, **só para leitura**: vem da ficha do produto e muda-se lá ou no Booking. Não entra na conta (o container continua limitado pelo bruto ou pelo bruto estimado).
