@@ -251,9 +251,10 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
-  /* Certificação (Fase F): com OCP designado, ficha pedindo certificação
-     ou passo já começado. Vale desde o pedido recém-criado: o selo de
-     certificação já nasce na mão da certificadora. */
+  /* Certificação (Fase F). O selo de certificação vale para todo pedido,
+     desde que ele nasce (já está na mão da certificadora). Memorial, laudo
+     e registro aparecem com OCP designado, ficha pedindo certificação ou
+     passo deles já começado. */
   const certAll =
     order.status !== "CANCELLED"
       ? await importFlow.importFlowView(user, order, "certification")
@@ -264,12 +265,11 @@ export default async function OrderPage({
         limit: 1,
       })
     : [];
-  const certSteps =
-    order.ocpId ||
-    certAll.some((v) => v.step) ||
-    certSheet?.certificationRequired === "yes"
-      ? certAll
-      : [];
+  const classicCert =
+    !!order.ocpId ||
+    certAll.some((v) => v.step && !v.template.seal) ||
+    certSheet?.certificationRequired === "yes";
+  const certSteps = certAll.filter((v) => v.template.seal || classicCert);
   for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
@@ -1651,6 +1651,10 @@ export default async function OrderPage({
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")
               ? [t("certFlow.sealHint")]
+              : []),
+            // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
+            ...(wellmix && !order.ocpId && certSteps.length
+              ? [t("certFlow.notify.noOcp.body")]
               : []),
             ...(certSheet?.certificationNote?.trim()
               ? [

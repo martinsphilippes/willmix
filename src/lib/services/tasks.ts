@@ -826,8 +826,13 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       const cert = p.kind === "cert_step" || p.kind === "cert_validate";
       const validate =
         p.kind === "import_validate" || p.kind === "cert_validate";
+      // Selo sem certificadora no pedido: a pendência é da Wellmix, que
+      // designa a certificadora em Parceiros do pedido.
+      const assignOcp =
+        p.kind === "cert_step" && p.key === "cert_seal" && !p.order.ocpId;
       // Selo de certificação: texto próprio, traduzido na tela.
-      const seal = SEAL_TASK_TEXT[`${p.kind}:${p.key}`];
+      const seal =
+        SEAL_TASK_TEXT[assignOcp ? "assign_ocp" : `${p.kind}:${p.key}`];
       const values = { n: p.order.number };
       tasks.push(
         finish(
@@ -840,7 +845,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
                 : `${step}: pedido #${p.order.number}`,
             detail: seal ? ptText(seal.detail, values) : "",
             ...(seal ? { text: { ...seal, values } } : {}),
-            link: `/app/orders/${p.order.id}#${cert ? "certification" : "import-flow"}`,
+            link: `/app/orders/${p.order.id}#${assignOcp ? "order-partners" : cert ? "certification" : "import-flow"}`,
             dueAt: null,
             orderNumber: p.order.number,
             customerId: p.order.customerId,
@@ -919,6 +924,10 @@ const SEAL_TASK_TEXT: Record<
   "cert_validate:cert_seal_art": {
     title: "tasks.seal.validate.title",
     detail: "tasks.seal.validate.detail",
+  },
+  assign_ocp: {
+    title: "tasks.seal.assign.title",
+    detail: "tasks.seal.assign.detail",
   },
 };
 

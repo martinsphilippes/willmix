@@ -418,7 +418,12 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
     expect(ids(board, "parFollowupDue")).toEqual([making.id]);
     expect(ids(board, "parSkuRejected")).toEqual([making.id]);
     expect(ids(board, "parArtIssue")).toEqual([making.id]);
-    expect(ids(board, "parCertification")).toEqual([making.id]);
+    // Todo pedido precisa do selo de certificação: os três estão sem ele.
+    expect(ids(board, "parCertification")).toEqual([
+      making.id,
+      customs.id,
+      receiving.id,
+    ]);
     expect(ids(board, "parDocsToValidate")).toEqual([customs.id]);
     expect(ids(board, "parNumerario")).toEqual([customs.id]);
     expect(ids(board, "parChannel")).toEqual([customs.id]);
@@ -427,14 +432,17 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
     expect(ids(board, "parContainerReturn")).toEqual([receiving.id]);
   });
 
-  it("selo de certificação: fica em Certificação pendente até a arte com o selo ser conferida, e não vira documento para validar", () => {
+  it("selo de certificação: todo pedido fica em Certificação pendente até a arte com o selo ser conferida, e não vira documento para validar", () => {
     const born = order("ORDER_CREATED", { ocpId: "ocp1" });
     const sealed = order("PACKAGING", { ocpId: "ocp1" });
     const done = order("PACKAGING", { ocpId: "ocp1" });
-    const s = [stage(born), stage(sealed), stage(done)];
+    // Sem certificadora designada: o selo vale do mesmo jeito.
+    const noOcp = order("PREPARATION");
+    const noOcpDone = order("PREPARATION");
+    const s = [born, sealed, done, noOcp, noOcpDone].map((o) => stage(o));
     const board = buildTowerBoard(
       input({
-        orders: [born, sealed, done],
+        orders: [born, sealed, done, noOcp, noOcpDone],
         activeStages: s.map((x) => x.active),
         stages: s.map((x) => x.stage),
         steps: [
@@ -447,10 +455,17 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
           step(done, "cert_registration", "validated"),
           step(done, "cert_seal"),
           step(done, "cert_seal_art", "validated"),
+          // Sem certificadora: só o selo conta (memorial, laudo e registro não).
+          step(noOcpDone, "cert_seal"),
+          step(noOcpDone, "cert_seal_art", "validated"),
         ],
       }),
     );
-    expect(ids(board, "parCertification")).toEqual([born.id, sealed.id]);
+    expect(ids(board, "parCertification")).toEqual([
+      born.id,
+      sealed.id,
+      noOcp.id,
+    ]);
     expect(ids(board, "parDocsToValidate")).toEqual([]);
   });
 

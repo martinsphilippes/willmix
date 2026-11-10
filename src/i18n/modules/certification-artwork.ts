@@ -44,7 +44,7 @@ export const pt = {
     "A certificadora enviou um selo novo. Baixe o selo no pedido, aplique na arte da embalagem e envie a arte com o selo de novo.",
   "certFlow.notify.noOcp.subject": "Pedido #{n}: sem certificadora para o selo",
   "certFlow.notify.noOcp.body":
-    "Há mais de uma certificadora (OCP) ativa. Designe a certificadora em Parceiros do pedido para o pedido chegar a ela e o selo ser gerado.",
+    "Todo pedido precisa do selo de certificação e este está sem certificadora (OCP). Designe a certificadora em Parceiros do pedido para o pedido chegar a ela.",
   "certFlow.brief.sealPending":
     "Selo de certificação: aguardando a certificadora. Deixe o espaço do selo na arte.",
   "certFlow.brief.sealReady":
@@ -65,6 +65,9 @@ export const pt = {
   "tasks.seal.validate.title": "Validar o selo aplicado na arte: pedido #{n}",
   "tasks.seal.validate.detail":
     "Confira o selo na arte e valide, ou recuse com o motivo.",
+  "tasks.seal.assign.title": "Designar a certificadora do selo: pedido #{n}",
+  "tasks.seal.assign.detail":
+    "O pedido está sem certificadora. Designe em Parceiros do pedido, ou envie no cartão Certificação o selo recebido por fora.",
   "artwork.title": "Artes",
   "artwork.downloadAll": "Baixar todas as artes",
   "artwork.designer": "Designer",
@@ -155,7 +158,7 @@ export const en: Record<keyof typeof pt, string> = {
   "certFlow.notify.noOcp.subject":
     "Order #{n}: no certification body for the seal",
   "certFlow.notify.noOcp.body":
-    "There is more than one active certification body (OCP). Assign one under Order partners so the order reaches it and the seal is issued.",
+    "Every order needs the certification seal and this one has no certification body (OCP). Assign one under Order partners so the order reaches it.",
   "certFlow.brief.sealPending":
     "Certification seal: waiting for the certification body. Leave room for the seal in the artwork.",
   "certFlow.brief.sealReady":
@@ -178,6 +181,10 @@ export const en: Record<keyof typeof pt, string> = {
     "Validate the seal applied to the artwork: order #{n}",
   "tasks.seal.validate.detail":
     "Check the seal on the artwork and validate it, or reject it with the reason.",
+  "tasks.seal.assign.title":
+    "Assign the certification body for the seal: order #{n}",
+  "tasks.seal.assign.detail":
+    "The order has no certification body. Assign one under Order partners, or send the seal you received elsewhere on the Certification card.",
   "artwork.title": "Artwork",
   "artwork.downloadAll": "Download all artwork",
   "artwork.designer": "Designer",
@@ -264,7 +271,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "认证机构提交了新的认证标志。请在订单中下载标志，放入包装设计稿，并重新提交带标志的设计稿。",
   "certFlow.notify.noOcp.subject": "订单 #{n}：尚未指定出具标志的认证机构",
   "certFlow.notify.noOcp.body":
-    "有多个启用的认证机构（OCP）。请在“订单合作方”中指定认证机构，订单才会到达该机构并出具标志。",
+    "每个订单都需要认证标志，而此订单尚未指定认证机构（OCP）。请在“订单合作方”中指定认证机构，订单才会到达该机构。",
   "certFlow.brief.sealPending":
     "认证标志：等待认证机构提交。请在设计稿中预留标志位置。",
   "certFlow.brief.sealReady":
@@ -282,6 +289,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.seal.validate.title": "审核设计稿中的认证标志：订单 #{n}",
   "tasks.seal.validate.detail":
     "请核对设计稿中的标志并审核通过，或填写原因后退回。",
+  "tasks.seal.assign.title": "指定出具标志的认证机构：订单 #{n}",
+  "tasks.seal.assign.detail":
+    "此订单尚未指定认证机构。请在“订单合作方”中指定，或在“认证”卡片中提交从其他渠道收到的标志。",
   "artwork.title": "设计稿",
   "artwork.downloadAll": "下载全部设计稿",
   "artwork.designer": "设计师",

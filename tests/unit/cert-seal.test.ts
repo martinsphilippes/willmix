@@ -445,30 +445,52 @@ describe("parceiro designado depois", () => {
     expect(await inbox(agency, order)).toHaveLength(before + 1);
   });
 
-  it("pedido sem certificadora: com mais de uma ativa, a Wellmix é avisada para designar", async () => {
+  it("pedido sem certificadora: todo pedido precisa de selo, então a Wellmix é avisada e fica com a pendência de designar", async () => {
     let order = await newOrder();
     order = await getStore().update("orders", order.id, { ocpId: null });
     const before = (await inbox(admin, order)).length;
-    // Uma só certificadora ativa: nada (ela já teria sido designada sozinha).
     await f.notifySealRequested(order);
-    expect(await inbox(admin, order)).toHaveLength(before);
-    const second = await getStore().create("parties", {
-      type: "ocp",
-      name: "Outra Certificadora",
-      country: "BR",
-      email: "contato@outra-ocp.com",
-      active: true,
-    } as never);
-    try {
-      await f.notifySealRequested(order);
-      const notes = await inbox(admin, order);
-      expect(notes).toHaveLength(before + 1);
-      expect(notes.some((n) => n.link?.endsWith("#order-partners"))).toBe(true);
-      // Sem certificadora no pedido, ninguém ganha pendência de selo.
-      expect(await certTasks(ocp, order)).toHaveLength(0);
-    } finally {
-      await getStore().update("parties", second.id, { active: false });
-    }
+    const notes = await inbox(admin, order);
+    expect(notes).toHaveLength(before + 1);
+    expect(notes.some((n) => n.link?.endsWith("#order-partners"))).toBe(true);
+    // A pendência do selo não fica sem dono: vai para a Wellmix, em Parceiros.
+    const assign = (await pendingTasksFor(admin)).filter(
+      (t) => t.link === `/app/orders/${order.id}#order-partners`,
+    );
+    expect(assign).toHaveLength(1);
+    expect(assign[0].kind).toBe("cert_step");
+    expect(assign[0].text?.title).toBe("tasks.seal.assign.title");
+    expect(await certTasks(ocp, order)).toHaveLength(0);
+    // Memorial, laudo e registro não viram pendência sem certificadora.
+    await getStore().update("orders", order.id, { status: "PREPARATION" });
+    expect(await certTasks(admin, order)).toHaveLength(0);
+    // Certificadora designada: a pendência passa para ela e sai da Wellmix.
+    order = await getStore().update("orders", order.id, {
+      ocpId: ocp.partyId,
+      status: "ORDER_CREATED",
+    });
+    const ocpBefore = (await inbox(ocp, order)).length;
+    await f.notifySealPartner(order, "ocpId");
+    expect(await inbox(ocp, order)).toHaveLength(ocpBefore + 1);
+    expect(await certTasks(ocp, order)).toHaveLength(1);
+    expect(
+      (await pendingTasksFor(admin)).filter(
+        (t) =>
+          t.link === `/app/orders/${order.id}#order-partners` ||
+          t.link === sealLink(order),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it("sem certificadora, o cartão e a tela do briefing mostram o selo do mesmo jeito", async () => {
+    let order = await newOrder();
+    order = await getStore().update("orders", order.id, { ocpId: null });
+    const view = await f.importFlowView(agency, order, "certification");
+    expect(view.map((v) => v.template.key)).toEqual([
+      "cert_seal",
+      "cert_seal_art",
+    ]);
+    expect(await f.sealStateFor(agency, order)).toBe("pending");
   });
 
   it("a Wellmix envia o selo no lugar da certificadora: a agência recebe do mesmo jeito", async () => {

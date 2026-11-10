@@ -62,10 +62,11 @@ export interface StepTemplate {
   /** Sem valor: embarque e desembaraço. */
   group?: StepGroup;
   /**
-   * Certificação: o passo já vale com o pedido recém-criado (os demais só
-   * viram pendência a partir da Preparação).
+   * Selo de certificação: vale para todo pedido, desde que ele nasce (os
+   * demais passos da certificação dependem de OCP designado ou de já terem
+   * começado, e só viram pendência a partir da Preparação).
    */
-  fromBirth?: boolean;
+  seal?: boolean;
 }
 
 export const groupOf = (tpl: StepTemplate): StepGroup => tpl.group ?? "import";
@@ -205,7 +206,7 @@ export const IMPORT_STEPS: StepTemplate[] = [
     input: "file_text",
     visibleTo: ["ocp", "agency"],
     group: "certification",
-    fromBirth: true,
+    seal: true,
   },
   {
     key: "cert_seal_art",
@@ -215,7 +216,7 @@ export const IMPORT_STEPS: StepTemplate[] = [
     visibleTo: ["agency", "ocp"],
     after: "cert_seal",
     group: "certification",
-    fromBirth: true,
+    seal: true,
   },
 ];
 
@@ -543,9 +544,10 @@ async function handOverSeal(
 
 /**
  * Pedido novo (ou OCP designado depois): avisa a certificadora de que há um
- * selo a emitir; a pendência dela nasce junto. Sem OCP no pedido e com mais
- * de uma certificadora ativa, a Wellmix é avisada para designar uma (com uma
- * só, ela já é designada sozinha na criação do pedido).
+ * selo a emitir; a pendência dela nasce junto. Todo pedido precisa de selo:
+ * sem certificadora no pedido (nenhuma ou mais de uma ativa; com uma só ela
+ * é designada sozinha), a Wellmix é avisada para designar, e a pendência
+ * fica com ela.
  */
 export async function notifySealRequested(order: Order): Promise<void> {
   if (order.status === "CANCELLED" || order.status === "CLOSED") return;
@@ -565,10 +567,6 @@ export async function notifySealRequested(order: Order): Promise<void> {
     );
     return;
   }
-  const ocps = await getStore().list("parties", {
-    filter: { type: "ocp", active: true },
-  });
-  if (ocps.length < 2) return;
   await notify(await targetFor(order, "wellmix"), {
     link: `/app/orders/${order.id}#order-partners`,
     kind: "action",
@@ -617,8 +615,8 @@ export type SealState = "pending" | "ready" | "sent" | "done";
 
 /**
  * Situação do selo para o usuário: aguardando a certificadora, disponível
- * para aplicar, arte com o selo enviada ou conferida. Nulo quando o pedido
- * não tem certificação em andamento ou o usuário não vê o passo.
+ * para aplicar, arte com o selo enviada ou conferida. Todo pedido tem selo;
+ * nulo só para pedido cancelado ou quando o usuário não vê o passo.
  */
 export async function sealStateFor(
   user: User,
@@ -627,10 +625,6 @@ export async function sealStateFor(
   if (order.status === "CANCELLED") return null;
   if (!canSeeStep(user, order, "cert_seal")) return null;
   const steps = await stepsOf(order.id);
-  const started = steps.some(
-    (s) => groupOf(stepTemplate(s.key)) === "certification",
-  );
-  if (!order.ocpId && !started) return null;
   if (!isDone(steps.find((s) => s.key === "cert_seal"))) return "pending";
   const art = steps.find((s) => s.key === "cert_seal_art");
   if (isDone(art)) return "done";
@@ -786,9 +780,11 @@ export interface ImportTaskDraft {
  * o passo é dela (DANFE, memorial) ou quando é ela quem faz a arte (o passo
  * "selo aplicado na arte" de um pedido sem agência).
  *
- * Certificação: vale com OCP designado ou passo já começado (como o cartão
- * do pedido). Com o pedido recém-criado só o selo vira pendência; memorial,
- * laudo e registro, a partir da Preparação.
+ * Certificação: o selo vale para todo pedido, desde que ele nasce; sem
+ * certificadora no pedido, a pendência do selo fica com a Wellmix (designar
+ * a certificadora ou enviar o selo recebido por fora). Memorial, laudo e
+ * registro valem com OCP designado ou passo deles já começado (como o
+ * cartão do pedido), a partir da Preparação.
  */
 export async function importTasks(
   user: User,
@@ -814,15 +810,22 @@ export async function importTasks(
   for (const order of open) {
     const steps = rows.filter((r) => r.orderId === order.id);
     const importLive = IMPORT_LIVE.includes(order.status);
-    const certLive =
+    // Memorial, laudo e registro: com OCP designado ou passo deles começado.
+    const classicCert =
       !!order.ocpId ||
-      steps.some((s) => groupOf(stepTemplate(s.key)) === "certification");
-    if (!importLive && !certLive) continue;
+      steps.some((s) => {
+        const tpl = stepTemplate(s.key);
+        return groupOf(tpl) === "certification" && !tpl.seal;
+      });
     for (const tpl of IMPORT_STEPS) {
       const cert = groupOf(tpl) === "certification";
       if (!cert && !importLive) continue;
-      if (cert && !certLive) continue;
-      if (cert && order.status === "ORDER_CREATED" && !tpl.fromBirth) continue;
+      if (
+        cert &&
+        !tpl.seal &&
+        (!classicCert || order.status === "ORDER_CREATED")
+      )
+        continue;
       const step = steps.find((s) => s.key === tpl.key);
       // Validar o que foi enviado.
       if (
@@ -854,7 +857,13 @@ export async function importTasks(
         agencyArt ??= (await getSettings()).agencyValidationEnabled;
         const agencyDoes = artRole(order, agencyArt) === "agency";
         if (wellmix ? agencyDoes : !agencyDoes) continue;
-      } else if (wellmix && tpl.actor !== "wellmix" && tpl.actor !== "finance")
+      } else if (
+        wellmix &&
+        tpl.actor !== "wellmix" &&
+        tpl.actor !== "finance" &&
+        // Selo sem certificadora no pedido: a pendência fica com a Wellmix.
+        !(tpl.seal && !order[PARTNER_FIELD[tpl.actor]])
+      )
         continue;
       out.push({
         kind: cert ? "cert_step" : "import_step",
