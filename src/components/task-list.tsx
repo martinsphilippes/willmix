@@ -159,6 +159,25 @@ function SupplierSteps({
   const counts = new Map<string, number>();
   for (const task of tasks)
     counts.set(task.group, (counts.get(task.group) ?? 0) + 1);
+  // Etapa com alguma pendência atrasada fica vermelha; com pendência no
+  // prazo, amarela; sem nada a fazer, verde (as cores dos selos do sistema).
+  const late = new Set(tasks.filter((x) => x.overdue).map((x) => x.group));
+  const toneOf = (key: string, n: number) =>
+    late.has(key) ? "danger" : n ? "warning" : "success";
+  const TONE = {
+    danger: {
+      box: "border-red-300 bg-red-50 hover:border-red-500",
+      dot: "bg-red-600 text-white",
+    },
+    warning: {
+      box: "border-amber-300 bg-amber-50 hover:border-amber-500",
+      dot: "bg-amber-500 text-white",
+    },
+    success: {
+      box: "border-emerald-200 bg-emerald-50 hover:border-emerald-400",
+      dot: "bg-emerald-600 text-white",
+    },
+  } as const;
   const activeStep =
     SUPPLIER_STEPS.find((step) => supplierGroup(step) === group) ?? null;
   return (
@@ -193,6 +212,7 @@ function SupplierSteps({
           const key = supplierGroup(step);
           const n = counts.get(key) ?? 0;
           const active = group === key;
+          const tone = toneOf(key, n);
           return (
             <li key={step} className="flex shrink-0 items-center gap-1">
               {i > 0 ? (
@@ -209,18 +229,16 @@ function SupplierSteps({
                 data-supplier-step-count={n}
                 className={cx(
                   "flex h-full items-center gap-1.5 rounded-lg border px-2 py-1.5 transition",
-                  active
-                    ? "border-brand-600 bg-brand-50 ring-1 ring-brand-600"
-                    : n
-                      ? "border-zinc-300 bg-white hover:border-brand-300 hover:bg-brand-50/50"
-                      : "border-zinc-200 bg-zinc-50 hover:border-zinc-300",
+                  TONE[tone].box,
+                  active && "ring-2 ring-zinc-900",
                 )}
+                data-supplier-step-tone={tone}
               >
                 <span
                   aria-hidden
                   className={cx(
                     "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                    n ? "bg-brand-600 text-white" : "bg-zinc-200 text-zinc-600",
+                    TONE[tone].dot,
                   )}
                 >
                   {i + 1}
@@ -230,7 +248,10 @@ function SupplierSteps({
                 </span>
                 {n ? (
                   <span
-                    className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold text-white"
+                    className={cx(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+                      TONE[tone].dot,
+                    )}
                     aria-label={
                       n === 1
                         ? t("supplierTasks.steps.count1")
@@ -245,6 +266,20 @@ function SupplierSteps({
           );
         })}
       </ol>
+      <p
+        className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600"
+        data-supplier-flow-legend
+      >
+        {(["danger", "warning", "success"] as const).map((tone) => (
+          <span key={tone} className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={cx("h-2.5 w-2.5 rounded-full", TONE[tone].dot)}
+            />
+            {t(`supplierTasks.legend.${tone}`)}
+          </span>
+        ))}
+      </p>
       {activeStep ? (
         <p className="mt-1 text-sm text-zinc-700" data-supplier-step-help>
           {t(`supplierTasks.help.${activeStep}` as DictionaryKey)}

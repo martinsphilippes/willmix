@@ -764,3 +764,4 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Pendências do fornecedor: etapas em faixa de fluxo
 
 - **Pedido do dono** (10/11/2026): os quadrados das etapas em "Minhas pendências" do fornecedor ficam pequenos, um ao lado do outro, com seta entre eles, como um fluxo de processo (`SupplierSteps` em `src/components/task-list.tsx`). Cada um mostra o número da etapa, o nome e a contagem quando há pendência; o texto do que fazer aparece ao escolher a etapa (e na dica do quadrado). Em tela estreita a faixa rola para o lado. Filtros e contagens não mudaram.
+- **Cores por situação** (dono, 10/11/2026): cada etapa da faixa usa as cores dos selos do sistema: vermelha com alguma pendência atrasada, amarela com pendência no prazo, verde concluída ou sem nada a fazer. Legenda logo abaixo da faixa; a etapa escolhida ganha um contorno escuro.
