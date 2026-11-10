@@ -749,3 +749,9 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 ## Control Tower: Exceções e Visão comercial por container abrem por quadrado
 
 - **Pedido do dono** (10/11/2026): os cartões "Exceções" e "Visão comercial por container" deixam de ficar abertos no fim do painel. Cada um ganhou um quadrado em "Visões gerais" (com a contagem); tocar abre o cartão logo abaixo (`/app?filter=exceptions` e `/app?filter=commercial`), tocar de novo fecha. Nada saiu: o conteúdo e as permissões são os mesmos (a visão comercial continua só para quem tem o Financeiro). Código em `src/components/control-tower.tsx`.
+
+## Programação de compra vira pendência do administrador
+
+- **Decisão do dono** (10/11/2026): quem faz a Programação de compra é a Wellmix, o administrador. Pedido na Preparação, com ficha de compra e ainda sem o 1º lote, aparece em "Minhas pendências" do administrador como "Fazer a programação de compra: pedido #N", com o atalho para a ficha e o prazo da etapa. Some quando o 1º lote é gravado.
+- Pendência derivada (não é item de etapa): `pendingTasksFor` em `src/lib/services/tasks.ts`, tipo `purchase_schedule`. A trava na validação da ficha (`schedule_required`) continua.
+- Teste: `tests/unit/purchase-sheet.test.ts`.
