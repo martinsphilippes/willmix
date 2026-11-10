@@ -229,6 +229,10 @@ export default async function BookingPage({
   // "Editar dados" (quem também abre Produtos): as células viram campos. O
   // modo mora no endereço e acompanha filtros, ordem e páginas.
   const canEdit = canOpen(user, "products");
+  // Fornecedores das linhas sem login (o acesso é criado em Cadastros).
+  const canParties = canOpen(user, "parties");
+  const noLogin = data.options.suppliersWithoutLogin;
+  const noLoginIds = new Set(noLogin.map((s) => s.id));
   const editing = canEdit && query.edit === "1";
   const q = (opts?: Parameters<typeof bookingQuery>[1]) => {
     const base = bookingQuery(filters, opts);
@@ -598,6 +602,24 @@ export default async function BookingPage({
       muted
     );
 
+  /** Selo "Sem acesso" do fornecedor da linha, com o caminho para criar. */
+  const supplierAccess = (row: BookingRow) =>
+    row.supplierId && noLoginIds.has(row.supplierId) ? (
+      canParties ? (
+        <a
+          href={`/app/parties/${row.supplierId}#access`}
+          title={t("portalAccess.create")}
+          data-booking-row-no-login=""
+        >
+          <Badge tone="warning">{t("portalAccess.none")}</Badge>
+        </a>
+      ) : (
+        <span data-booking-row-no-login="">
+          <Badge tone="warning">{t("portalAccess.none")}</Badge>
+        </span>
+      )
+    ) : null;
+
   /** O número de uma coluna numérica da linha. */
   const numberOf = (row: BookingRow, key: BookingColumnKey) => {
     const v = byKey.get(key)?.value(row);
@@ -661,25 +683,28 @@ export default async function BookingPage({
         const list = data.options.allSuppliers;
         const current = row.supplierId ?? "";
         return (
-          <BookingProductSelect
-            productId={row.productId}
-            field="supplierId"
-            current={current}
-            width="w-44"
-            options={[
-              ...(current ? [] : [{ value: "", label: "—" }]),
-              ...(current && !list.some((o) => o.id === current)
-                ? [{ value: current, label: row.supplierName ?? current }]
-                : []),
-              ...list.map((o) => ({ value: o.id, label: o.label })),
-            ]}
-            labels={rowLabels(
-              t("booking.edit.field", {
-                field: label(key),
-                name: row.name || row.productId,
-              }),
-            )}
-          />
+          <span className="flex flex-col items-start gap-0.5">
+            <BookingProductSelect
+              productId={row.productId}
+              field="supplierId"
+              current={current}
+              width="w-44"
+              options={[
+                ...(current ? [] : [{ value: "", label: "—" }]),
+                ...(current && !list.some((o) => o.id === current)
+                  ? [{ value: current, label: row.supplierName ?? current }]
+                  : []),
+                ...list.map((o) => ({ value: o.id, label: o.label })),
+              ]}
+              labels={rowLabels(
+                t("booking.edit.field", {
+                  field: label(key),
+                  name: row.name || row.productId,
+                }),
+              )}
+            />
+            {supplierAccess(row)}
+          </span>
         );
       }
       case "location":
@@ -958,7 +983,12 @@ export default async function BookingPage({
           muted
         );
       case "supplier":
-        return textCell(row.supplierName);
+        return (
+          <span className="flex flex-col items-start gap-0.5">
+            {textCell(row.supplierName)}
+            {supplierAccess(row)}
+          </span>
+        );
       case "location":
         return textCell(
           [row.location, row.supplierStore].filter(Boolean).join(" · ") || null,
@@ -1229,6 +1259,41 @@ export default async function BookingPage({
                 </p>
               </div>
             ) : null}
+          </Alert>
+        ) : null}
+        {/* Fornecedor que entrou pela planilha e ainda não tem login: o que
+            o Booking envia fica parado. O acesso nasce no cadastro dele. */}
+        {noLogin.length ? (
+          <Alert tone="warning">
+            <span data-booking-no-login>
+              <span className="font-semibold">
+                {t("portalAccess.booking.title")}
+              </span>{" "}
+              <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
+                {noLogin.map((s) =>
+                  canParties ? (
+                    <TextLink
+                      key={s.id}
+                      href={`/app/parties/${s.id}#access`}
+                      data-booking-no-login-supplier={s.id}
+                    >
+                      {s.label} · {t("portalAccess.create")} →
+                    </TextLink>
+                  ) : (
+                    <span key={s.id} data-booking-no-login-supplier={s.id}>
+                      {s.label}
+                    </span>
+                  ),
+                )}
+              </span>
+              <span className="mt-1 block text-xs">
+                {t(
+                  canParties
+                    ? "portalAccess.booking.hint"
+                    : "portalAccess.booking.noScreen",
+                )}
+              </span>
+            </span>
           </Alert>
         ) : null}
         {done.map((text) => (

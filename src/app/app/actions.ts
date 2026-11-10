@@ -12,7 +12,6 @@ import { getCurrentUser } from "@/lib/auth/session";
 import {
   assertRole,
   assertWellmix,
-  isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
@@ -20,7 +19,6 @@ import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
   PAYMENT_EXTRA_DEFAULTS,
-  USER_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
   PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
@@ -53,7 +51,10 @@ import {
 import { audit } from "@/lib/services/audit";
 import { requesterTarget, notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
-import { hashPassword } from "@/lib/auth/password";
+import {
+  createPortalLogin,
+  PORTAL_MIN_PASSWORD,
+} from "@/lib/services/portal-access";
 import { importCsv } from "@/lib/services/import";
 import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
@@ -940,7 +941,7 @@ export async function createUserAction(form: FormData) {
   const user = await requireUser();
   const partyId = str(form, "partyId") || null;
   const back = partyId ? `/app/parties/${partyId}` : "/app/parties";
-  await run(back, async () => {
+  await run(`${back}#access`, async () => {
     assertWellmix(user);
     assertScreen(user, "parties");
     const parsed = z
@@ -949,7 +950,7 @@ export async function createUserAction(form: FormData) {
         name: z.string().min(2),
         role: z.enum(ROLES),
         locale: z.enum(LOCALES),
-        password: z.string().min(6),
+        password: z.string().min(PORTAL_MIN_PASSWORD),
       })
       .parse({
         email: str(form, "email").toLowerCase(),
@@ -958,41 +959,9 @@ export async function createUserAction(form: FormData) {
         locale: str(form, "locale") || "pt",
         password: str(form, "password"),
       });
-    if (
-      (parsed.role === "admin" || parsed.role === "operator") &&
-      !isAdmin(user)
-    )
-      throw new Error("forbidden");
-    const store = getStore();
-    if (store.mode === "appwrite") {
-      const { createAdminClient } = await import("@/lib/appwrite/server");
-      const { ID } = await import("node-appwrite");
-      const { users } = createAdminClient();
-      await users.create({
-        userId: ID.unique(),
-        email: parsed.email,
-        password: parsed.password,
-        name: parsed.name,
-      });
-    }
-    const created = await store.create("users", {
-      ...USER_EXTRA_DEFAULTS,
-      email: parsed.email,
-      name: parsed.name,
-      role: parsed.role,
-      partyId: partyId,
-      locale: parsed.locale,
-      passwordHash:
-        store.mode === "memory" ? hashPassword(parsed.password) : null,
-      active: true,
-    });
-    await audit(
-      user,
-      "user.create",
-      "user",
-      created.id,
-      `${parsed.email} (${parsed.role})`,
-    );
+    // O login nasce preso ao cadastro (docs/ARQUITETURA.md, "Acesso ao portal").
+    await createPortalLogin(user, { ...parsed, partyId });
+    return `${back}?saved=user#access`;
   });
 }
 
