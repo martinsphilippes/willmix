@@ -366,9 +366,9 @@ export default async function ProductSheetPage({
             {line ? <Badge>{line.name}</Badge> : null}
             {/* Código do produto no Sankhya (gravado na solicitação ao
                 fornecedor aprovada; docs/SUPPLIER_REQUESTS.md). */}
-            <span data-product-erp-code={product.erpCode ?? ""}>
-              <Badge tone={product.erpCode ? "info" : "neutral"}>
-                {t("srProduct.erp.code")} {product.erpCode ?? "—"}
+            <span data-product-erp-code={product.sankhyaCode ?? ""}>
+              <Badge tone={product.sankhyaCode ? "info" : "neutral"}>
+                {t("srProduct.erp.code")} {product.sankhyaCode ?? "—"}
               </Badge>
             </span>
             {product.source ? (
@@ -625,6 +625,14 @@ export default async function ProductSheetPage({
                   name="material"
                   maxLength={120}
                   defaultValue={product.material ?? ""}
+                  dense
+                />
+              </FieldRow>
+              <FieldRow label={t("catalog.brand")} size="md">
+                <Input
+                  name="brand"
+                  maxLength={80}
+                  defaultValue={product.brand ?? ""}
                   dense
                 />
               </FieldRow>

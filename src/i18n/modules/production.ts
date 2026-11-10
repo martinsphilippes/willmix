@@ -14,6 +14,8 @@ export const pt = {
   "production.etdHistory": "Mudanças do ETD",
   "production.factoryName": "Fábrica",
   "production.factoryHint": "Trade: onde o produto é feito (onde inspecionar)",
+  "production.factoryAuto":
+    "Veio do cadastro do fornecedor. Se ele for trade, troque pela fábrica.",
   "production.factoryAddress": "Endereço da fábrica",
   "production.save": "Salvar produção",
   "production.followups": "Follow da produção",
@@ -98,6 +100,8 @@ export const en: Record<keyof typeof pt, string> = {
   "production.factoryName": "Factory",
   "production.factoryHint":
     "Trading: where the product is made (where to inspect)",
+  "production.factoryAuto":
+    "From the supplier's record. If the supplier is a trading company, replace with the factory.",
   "production.factoryAddress": "Factory address",
   "production.save": "Save production",
   "production.followups": "Production follow-up",
@@ -183,6 +187,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "production.etdHistory": "ETD 变更记录",
   "production.factoryName": "工厂",
   "production.factoryHint": "贸易公司：产品的生产工厂（验货地点）",
+  "production.factoryAuto":
+    "来自供应商档案。如供应商为贸易公司，请改为实际工厂。",
   "production.factoryAddress": "工厂地址",
   "production.save": "保存生产信息",
   "production.followups": "生产跟进",

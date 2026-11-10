@@ -5,15 +5,20 @@ import { cx } from "@/components/ui";
 
 /*
  * Abas de Configurações (só o administrador vê as do Sankhya): Geral,
- * Integração Sankhya (credenciais, códigos do ERP e testes) e Sankhya:
+ * Integração Sankhya (credenciais, códigos do ERP e testes), Carga do Sankhya
+ * (mapeamento e amostra do histórico) e Sankhya:
  * explorar dados (dicionário, consultas, SQL e gravações avulsas).
  */
 
-export type SettingsTab = "general" | "integration" | "explore";
+export type SettingsTab =
+  "general" | "integration" | "load" | "payment" | "process" | "explore";
 
 const TABS: Array<{ key: SettingsTab; href: string }> = [
   { key: "general", href: "/app/settings" },
   { key: "integration", href: "/app/settings/sankhya" },
+  { key: "load", href: "/app/settings/sankhya?tab=load" },
+  { key: "payment", href: "/app/settings/sankhya?tab=payment" },
+  { key: "process", href: "/app/settings/sankhya?tab=process" },
   { key: "explore", href: "/app/settings/sankhya?tab=explore" },
 ];
 

@@ -259,7 +259,7 @@ export function RequestProductCard({
                             {[
                               p.sku,
                               p.supplierSku,
-                              p.erpCode ? `CODPROD ${p.erpCode}` : null,
+                              p.sankhyaCode ? `CODPROD ${p.sankhyaCode}` : null,
                             ]
                               .filter(Boolean)
                               .join(" · ")}
@@ -389,12 +389,12 @@ export function RequestProductCard({
             className="mb-2 text-sm text-zinc-700"
             data-request-product-erp-code
           >
-            {product.erpCode
+            {product.sankhyaCode
               ? t(
                   r.erpCheckedAt
                     ? "srProduct.erp.checked"
                     : "srProduct.erp.unchecked",
-                  { code: product.erpCode },
+                  { code: product.sankhyaCode },
                 )
               : t("srProduct.erp.none")}
           </p>
@@ -459,7 +459,7 @@ export function RequestProductCard({
                 <Input
                   name="erpCode"
                   inputMode="numeric"
-                  defaultValue={product.erpCode ?? ""}
+                  defaultValue={product.sankhyaCode ?? ""}
                   maxLength={10}
                   data-request-product-erp-input
                 />

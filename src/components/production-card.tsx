@@ -63,6 +63,9 @@ export function ProductionCard({
         )
       : 0;
 
+  // Fornecedor que fabrica: nome e endereço vêm do cadastro (trade: a
+  // fábrica é outra empresa, digitada).
+  const own = track?.mode === "trade" ? null : view.supplierFactory;
   const planForm = `production-plan-${order.id}`;
   const inspectionForm = `production-inspection-${order.id}`;
   return (
@@ -148,17 +151,23 @@ export function ProductionCard({
                   form={planForm}
                   name="factoryName"
                   maxLength={160}
-                  defaultValue={track?.factoryName ?? ""}
+                  defaultValue={track?.factoryName ?? own?.name ?? ""}
                   aria-label={t("production.factoryName")}
                   title={t("production.factoryHint")}
+                  data-production-factory
                 />
+                {own?.name && !track?.factoryName ? (
+                  <span className="mt-1 block text-xs text-zinc-500">
+                    {t("production.factoryAuto")}
+                  </span>
+                ) : null}
               </Td>
               <Td className="min-w-52">
                 <Input
                   form={planForm}
                   name="factoryAddress"
                   maxLength={1000}
-                  defaultValue={track?.factoryAddress ?? ""}
+                  defaultValue={track?.factoryAddress ?? own?.address ?? ""}
                   aria-label={t("production.factoryAddress")}
                 />
               </Td>

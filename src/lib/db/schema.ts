@@ -706,6 +706,22 @@ export interface Party extends BaseRow {
    * (solicitações, pedidos, etapas) cai no painel de SLA dele. Opcional.
    */
   ownerUserId?: string | null;
+  /** Código do parceiro (CODPARC) ou da empresa (EMP-CODEMP) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
+  /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
+  sankhyaSyncedAt?: string | null;
+  /** Razão social (TGFPAR.RAZAOSOCIAL); `name` é o nome fantasia. */
+  legalName?: string | null;
+  /** Inscrição estadual (TGFPAR.IDENTINSCESTAD). */
+  stateRegistration?: string | null;
+  /** Pessoa física (F) ou jurídica (J) (TGFPAR.TIPPESSOA). */
+  personType?: string | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface RequirementTemplate {
@@ -729,6 +745,8 @@ export interface ProductLine extends BaseRow {
   prompts: LinePrompts | null;
   /** Divisão da linha (Wellmix ou WellKids): define o analista responsável. */
   division?: Division | null;
+  /** Código do grupo (CODGRUPOPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
 }
 
 /** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
@@ -781,14 +799,22 @@ export interface Product extends BaseRow {
   ncm: string | null;
   /** Faixas de preço por quantidade negociadas: [{ minQty, price }]. Base da análise de oportunidade. */
   priceTiers: PriceTier[] | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
+  /** Marca (TGFPRO.MARCA). */
+  brand?: string | null;
   /** Estoque mínimo (limite): abaixo dele a tela Estoque pede reposição e o admin é avisado. Nulo = sem limite. */
   minStock?: number | null;
-  /**
-   * Código do produto no Sankhya (CODPROD), ligado na solicitação ao
-   * fornecedor aprovada (docs/SUPPLIER_REQUESTS.md). Opcional: só gravado
-   * quando informado.
-   */
-  erpCode?: string | null;
+  /** Código do produto (CODPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
+  /** EAN (código de barras); no Sankhya fica em REFERENCIA. */
+  ean?: string | null;
+  /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
+  sankhyaSyncedAt?: string | null;
 }
 
 export interface PriceTier {
@@ -864,6 +890,8 @@ export interface Request extends BaseRow {
    */
   proposalApprovedAt?: string | null;
   proposalApprovedByUserId?: string | null;
+  /** NUNOTA da nota no Sankhya enquanto ainda não há pedido (cotação, pre-order). */
+  sankhyaCode?: string | null;
 }
 
 export interface Quote extends BaseRow {
@@ -949,6 +977,25 @@ export interface Order extends BaseRow {
    * pedidos antigos: vale a condição atual do fornecedor.
    */
   supplierPaymentTerms?: PaymentTermInstallment[] | null;
+  /** NUNOTA da nota no Sankhya (vínculo da carga/integração; `erpNumber` é o número exibido). Nulo = sem vínculo. */
+  sankhyaCode?: string | null;
+  /** Faturamento registrado no portal (evento de processo "pedido faturado"). */
+  invoicedAt?: string | null;
+  invoicedByUserId?: string | null;
+  /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
+  sankhyaSyncedAt?: string | null;
+  /** Incoterm do pedido (FOB, EXW, CIF...); do Sankhya vem de TGFCAB.CIF_FOB. */
+  incoterm?: string | null;
+  /** Condição de pagamento (payment_conditions; CODTIPVENDA no Sankhya). */
+  paymentConditionId?: string | null;
+  /** Câmbio do pedido (moeda do pedido → R$; TGFCAB.VLRMOEDA). */
+  fxRate?: number | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -961,6 +1008,14 @@ export interface OrderItem extends BaseRow {
   /** Variação pedida e a cópia dos valores dela (copiadas da solicitação). */
   variantId?: string | null;
   variant?: VariantSnapshot | null;
+  /** SEQUENCIA do item na nota do Sankhya (a nota é o sankhyaCode do pedido). */
+  sankhyaCode?: string | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface Stage extends BaseRow {
@@ -1048,6 +1103,14 @@ export interface Payment extends BaseRow {
   note: string | null;
   /** Pagamento de kit de marketing (sem pedido nem solicitação). */
   kitId: string | null;
+  /** Título do financeiro (NUFIN) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
+  /**
+   * Códigos do Sankhya do registro de origem (todas as colunas COD*, NU* e as
+   * de endereço): guardam as ligações com outras entidades do ERP para usar
+   * depois, mesmo as que o portal não tem como campo.
+   */
+  sankhyaRefs?: Record<string, string | number> | null;
 }
 
 export interface Notification extends BaseRow {
@@ -2124,6 +2187,11 @@ export const STOCK_MOVEMENT_KINDS = [
   "sale_out",
   "count_loss",
   "count_gain",
+  /** Entrada e saída por regra de processo (Configurações → Processos). */
+  "process_in",
+  "process_out",
+  /** Ajuste para o saldo do Sankhya (TGFEST) por local, na carga. */
+  "sankhya_balance",
 ] as const;
 export type StockMovementKind = (typeof STOCK_MOVEMENT_KINDS)[number];
 
@@ -2140,6 +2208,10 @@ export interface StockMovement extends BaseRow {
   countItemId: string | null;
   note: string | null;
   createdByUserId: string;
+  /** Evento de processo que gerou a movimentação (kind process_in/out). */
+  processEventId?: string | null;
+  /** Local de estoque (stock_locations; CODLOCAL no Sankhya). */
+  locationId?: string | null;
 }
 
 export const STOCK_COUNT_STATUSES = ["open", "closed"] as const;
@@ -2487,6 +2559,50 @@ export interface StockReservation extends BaseRow {
   closedAt: string | null;
 }
 
+/** Condição de pagamento (tabela de tipos de negociação do Sankhya, TGFTPV): vale para compra e venda. */
+/** Execução de uma regra de processo (Configurações → Processos; docs/PROCESSES.md). */
+export interface ProcessEvent extends BaseRow {
+  /** Evento (ex.: "request:ORDERED", "stage:SHIPPING:done", "order:invoiced"). */
+  event: string;
+  requestId: string | null;
+  orderId: string | null;
+  /** O que a regra pediu: movimentação de estoque e ação no Sankhya. */
+  stockAction: string;
+  sankhyaAction: string;
+  top: number | null;
+  /** done = feito; simulated = integração desligada (só registrado); skipped; error. */
+  status: "done" | "simulated" | "skipped" | "error";
+  detail: string | null;
+  /** NUNOTA antes e depois da ação no Sankhya. */
+  nunotaBefore: string | null;
+  nunotaAfter: string | null;
+  createdByUserId: string | null;
+  /** Sincronização de cadastro (fase 3): tabela e id do registro do portal. */
+  entity?: string | null;
+  entityId?: string | null;
+}
+
+/** Local de estoque (Sankhya TGFLOC; CODLOCAL). */
+export interface StockLocation extends BaseRow {
+  /** CODLOCAL no Sankhya (único). */
+  code: number;
+  name: string;
+  active: boolean;
+  notes: string | null;
+  sankhyaCode: string | null;
+}
+
+export interface PaymentCondition extends BaseRow {
+  /** CODTIPVENDA no Sankhya (único). */
+  code: number;
+  name: string;
+  active: boolean;
+  notes: string | null;
+  /** Veio do Sankhya (carga) ou foi criada no portal. */
+  source: "sankhya" | "portal";
+  updatedByUserId: string | null;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -2550,6 +2666,9 @@ export interface Tables {
   booking_lots: BookingLot;
   booking_items: BookingItem;
   supplier_requests: SupplierRequest;
+  payment_conditions: PaymentCondition;
+  stock_locations: StockLocation;
+  process_events: ProcessEvent;
 }
 export type TableName = keyof Tables;
 
@@ -2678,10 +2797,17 @@ export const TABLES: Record<TableName, TableDef> = {
       paymentTerms: json(),
       paymentTermsNote: text(),
       ownerUserId: id(false),
+      sankhyaCode: str(40),
+      sankhyaSyncedAt: datetime(),
+      legalName: str(160),
+      stateRegistration: str(30),
+      personType: str(2),
+      sankhyaRefs: json(),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
     ],
   },
   product_lines: {
@@ -2694,7 +2820,9 @@ export const TABLES: Record<TableName, TableDef> = {
       requiredCertifications: json(),
       prompts: json(),
       division: enumOf(DIVISIONS, false),
+      sankhyaCode: str(40),
     },
+    indexes: [{ key: "by_sankhya", type: "key", columns: ["sankhyaCode"] }],
   },
   products: {
     label: "Produtos",
@@ -2732,10 +2860,15 @@ export const TABLES: Record<TableName, TableDef> = {
       primaryPhotoDocumentId: id(false),
       ncm: str(10),
       priceTiers: json(),
+      sankhyaRefs: json(),
+      brand: str(80),
       minStock: float(),
-      erpCode: str(40),
+      sankhyaCode: str(40),
+      ean: str(20),
+      sankhyaSyncedAt: datetime(),
     },
     indexes: [
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_line", type: "key", columns: ["lineId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
     ],
@@ -2776,6 +2909,7 @@ export const TABLES: Record<TableName, TableDef> = {
       // Etapa "Proposta ao cliente" (opcionais; só gravados na aprovação).
       proposalApprovedAt: datetime(),
       proposalApprovedByUserId: id(false),
+      sankhyaCode: str(40),
     },
     indexes: [
       { key: "by_customer", type: "key", columns: ["customerId"] },
@@ -2850,9 +2984,18 @@ export const TABLES: Record<TableName, TableDef> = {
       cancelRequestResponse: text(),
       supplierPaymentTerms: json(),
       ownerUserId: id(false),
+      sankhyaCode: str(40),
+      invoicedAt: datetime(),
+      invoicedByUserId: id(false),
+      sankhyaSyncedAt: datetime(),
+      incoterm: str(10),
+      paymentConditionId: id(false),
+      fxRate: float(),
+      sankhyaRefs: json(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
@@ -2870,6 +3013,8 @@ export const TABLES: Record<TableName, TableDef> = {
       unitPrice: float(),
       variantId: id(false),
       variant: json(),
+      sankhyaCode: str(40),
+      sankhyaRefs: json(),
     },
     indexes: [{ key: "by_order", type: "key", columns: ["orderId"] }],
   },
@@ -2967,10 +3112,13 @@ export const TABLES: Record<TableName, TableDef> = {
       confirmedAt: datetime(),
       note: text(),
       kitId: id(false),
+      sankhyaCode: str(40),
+      sankhyaRefs: json(),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
     ],
   },
   notifications: {
@@ -3920,6 +4068,8 @@ export const TABLES: Record<TableName, TableDef> = {
       countItemId: id(false),
       note: text(),
       createdByUserId: id(),
+      processEventId: id(false),
+      locationId: id(false),
     },
     indexes: [
       { key: "by_product", type: "key", columns: ["productId"] },
@@ -4129,6 +4279,53 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_item", type: "key", columns: ["bookingItemId"] },
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_product", type: "key", columns: ["productId"] },
+    ],
+  },
+  stock_locations: {
+    label: "Locais de estoque (Sankhya TGFLOC)",
+    columns: {
+      code: int(true),
+      name: str(120, true),
+      active: bool(),
+      notes: text(),
+      sankhyaCode: str(40),
+    },
+    indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
+  },
+  payment_conditions: {
+    label: "Condições de pagamento (Sankhya TGFTPV)",
+    columns: {
+      code: int(true),
+      name: str(160, true),
+      active: bool(),
+      notes: text(),
+      source: enumOf(["sankhya", "portal"] as const),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
+  },
+  process_events: {
+    label: "Eventos de processo (regras de status → estoque e Sankhya)",
+    columns: {
+      event: str(80, true),
+      requestId: id(false),
+      orderId: id(false),
+      stockAction: str(20),
+      sankhyaAction: str(20),
+      top: int(),
+      status: enumOf(["done", "simulated", "skipped", "error"] as const),
+      detail: text(),
+      nunotaBefore: str(40),
+      nunotaAfter: str(40),
+      createdByUserId: id(false),
+      entity: str(40),
+      entityId: id(false),
+    },
+    indexes: [
+      { key: "by_order", type: "key", columns: ["orderId"] },
+      { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_event", type: "key", columns: ["event"] },
+      { key: "by_entity", type: "key", columns: ["entityId"] },
     ],
   },
 };

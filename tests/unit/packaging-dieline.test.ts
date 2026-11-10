@@ -27,6 +27,10 @@ let supplierA: User;
 let supplierB: User;
 let agency: User;
 
+const hdPhoto = () =>
+  new File([new Uint8Array([255, 216, 255, 224, 0, 16])], "alta.jpg", {
+    type: "image/jpeg",
+  });
 const pdf = (name = "faca.pdf") =>
   new File([new Uint8Array([37, 80, 68, 70, 45, 49])], name, {
     type: "application/pdf",
@@ -139,13 +143,18 @@ describe("faca (die-cut) com o fornecedor escolhido", () => {
       (t) => t.link === `/app/quotes/${qa.id}#die-cut`,
     )!;
     const { translator } = await import("@/i18n");
-    expect(dielineTask.group).toBe("packaging_brief");
+    // Fornecedor: o filtro é a etapa dele ("Die Cut").
+    expect(dielineTask.group).toBe("supplier.dieline");
+    expect(translator("pt")("tasks.group.supplier.dieline")).toBe("Die Cut");
+    expect(translator("zh")("tasks.group.supplier.dieline")).toBe(
+      "刀模 (Die Cut)",
+    );
     expect(translator("zh")("tasks.group.packaging_brief")).toBe(
       "包装（刀模与设计稿）",
     );
     expect(
       translator("zh")(dielineTask.text!.title, dielineTask.text!.values),
-    ).toBe(`包装刀模：${request.productName}`);
+    ).toBe(`刀模 (Die Cut)：${request.productName}`);
     const view = await pb.supplierDielineView(supplierA, { quoteId: qa.id });
     expect(view?.briefId).toBe(brief.id);
     expect(view?.document).toBeNull();
@@ -182,7 +191,21 @@ describe("faca (die-cut) com o fornecedor escolhido", () => {
     expect(await canAccessDocument(agency, doc)).toBe(true);
     expect(await canAccessDocument(supplierB, doc)).toBe(false);
     expect(await canAccessDocument(joao, doc)).toBe(false);
-    // Depois: a pendência some e o cartão mostra o arquivo.
+    // Depois: o cartão mostra o arquivo. A etapa "Die Cut" segue aberta
+    // pelos outros itens (foto em alta e pedido mínimo) e some com os quatro.
+    tasks = await pendingTasksFor(supplierA);
+    const still = tasks.find((t) => t.link === `/app/quotes/${qa.id}#die-cut`);
+    expect(still?.detail).toMatch(/falta: foto em alta, pedido mínimo$/);
+    const { sendDieCutStep } = await import("@/lib/services/die-cut-step");
+    await sendDieCutStep(
+      supplierA,
+      { quoteId: qa.id },
+      {
+        moq: 500,
+        leadTimeDays: null,
+        hdPhotos: [hdPhoto()],
+      },
+    );
     tasks = await pendingTasksFor(supplierA);
     expect(tasks.some((t) => t.link === `/app/quotes/${qa.id}#die-cut`)).toBe(
       false,

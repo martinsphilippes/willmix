@@ -17,7 +17,14 @@ import type { DictionaryKey } from "@/i18n/dictionaries";
 import { fallbackError } from "@/i18n/error-text";
 import { pt as superplanTexts } from "@/i18n/modules/superplan";
 import { ActionError } from "@/components/action-error";
-import { Alert, Card, PageHeader, TextLink, formatDate } from "@/components/ui";
+import {
+  Alert,
+  Card,
+  LinkButton,
+  PageHeader,
+  TextLink,
+  formatDate,
+} from "@/components/ui";
 import {
   SuperplanCalculator,
   type SuperplanLabels,
@@ -26,6 +33,7 @@ import { saveBookingAnalysisAction } from "../actions/booking";
 import { superplanSupplierOptions } from "@/lib/services/superplan-rfq";
 import { STOCK_PARTY_ID } from "@/lib/services/purchase-flow";
 import { SuperplanParamsForm } from "./_components/params-form";
+import { SuperplanLogic } from "./_components/logic";
 
 /*
  * Superplan (Pedidos → Superplan, só o administrador; docs/SUPERPLAN.md):
@@ -140,20 +148,20 @@ export default async function SuperplanPage({
           .map((k) => [k, t(k as DictionaryKey)] as const)
           .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, errorCode));
 
-  const how = (key: DictionaryKey) =>
-    t(key, {
-      spread: params.futureSpreadBrl.toLocaleString(t.intl),
-      freightFx: params.freightFxPct.toLocaleString(t.intl),
-      afrmm: params.afrmmPct.toLocaleString(t.intl),
-      fixed: params.afrmmFixedBrl.toLocaleString(t.intl),
-      gross: params.grossEstimatePct.toLocaleString(t.intl),
-    });
-
   return (
     <>
       <PageHeader
         title={t("superplan.title")}
         subtitle={t("superplan.subtitle")}
+        actions={
+          <LinkButton
+            href="#como-calcula"
+            variant="secondary"
+            data-superplan-how-link
+          >
+            {t("superplanLogic.link")} ↓
+          </LinkButton>
+        }
       />
       {errorText && fromRfq && !bookingId ? (
         <div className="mb-4" data-superplan-error>
@@ -212,32 +220,8 @@ export default async function SuperplanPage({
         }
       />
 
-      <details
-        className="mt-6 rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm"
-        data-superplan-how
-      >
-        <summary className="cursor-pointer text-base font-semibold text-zinc-900">
-          {t("superplan.how.title")}
-        </summary>
-        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-zinc-700">
-          {(
-            [
-              "superplan.how.1",
-              "superplan.how.2",
-              "superplan.how.3",
-              "superplan.how.4",
-              "superplan.how.5",
-              "superplan.how.6",
-              "superplan.how.7",
-            ] as const
-          ).map((key) => (
-            <li key={key}>{how(key)}</li>
-          ))}
-        </ol>
-        <p className="mt-3 text-sm text-zinc-600">
-          {t("superplan.how.change")}
-        </p>
-      </details>
+      {/* A lógica da conta, escrita por extenso e sempre à vista. */}
+      <SuperplanLogic ctx={ctx} t={t} />
 
       {admin ? (
         <section id="parametros" className="mt-6 scroll-mt-4 space-y-3">

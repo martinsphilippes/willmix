@@ -397,6 +397,52 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "legalName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "stateRegistration",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 30
+        },
+        {
+          "key": "personType",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 2
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -415,6 +461,16 @@
           "type": "key",
           "columns": [
             "ownerUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
           ],
           "orders": [
             "ASC"
@@ -485,9 +541,28 @@
             "wellmix",
             "wellkids"
           ]
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
-      "indexes": []
+      "indexes": [
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
     },
     {
       "$id": "products",
@@ -748,6 +823,21 @@
           "type": "text"
         },
         {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "brand",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
           "key": "minStock",
           "required": false,
           "array": false,
@@ -755,15 +845,40 @@
           "type": "double"
         },
         {
-          "key": "erpCode",
+          "key": "sankhyaCode",
           "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
           "size": 40
+        },
+        {
+          "key": "ean",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
         {
           "key": "by_line",
           "type": "key",
@@ -1058,6 +1173,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -1609,6 +1732,66 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "invoicedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "invoicedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
+        },
+        {
+          "key": "incoterm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "paymentConditionId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "fxRate",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -1617,6 +1800,16 @@
           "type": "unique",
           "columns": [
             "number"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
           ],
           "orders": [
             "ASC"
@@ -1728,6 +1921,21 @@
         },
         {
           "key": "variant",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaRefs",
           "required": false,
           "array": false,
           "default": null,
@@ -2409,6 +2617,21 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "sankhyaRefs",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -2427,6 +2650,16 @@
           "type": "key",
           "columns": [
             "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
           ],
           "orders": [
             "ASC"
@@ -8353,7 +8586,10 @@
           "elements": [
             "sale_out",
             "count_loss",
-            "count_gain"
+            "count_gain",
+            "process_in",
+            "process_out",
+            "sankhya_balance"
           ]
         },
         {
@@ -8405,6 +8641,22 @@
         {
           "key": "createdByUserId",
           "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "processEventId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "locationId",
+          "required": false,
           "array": false,
           "default": null,
           "type": "varchar",
@@ -9781,6 +10033,296 @@
           "type": "key",
           "columns": [
             "productId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "stock_locations",
+      "databaseId": "willmix",
+      "name": "Locais de estoque (Sankhya TGFLOC)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "code",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 120
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        }
+      ],
+      "indexes": [
+        {
+          "key": "code_unique",
+          "type": "unique",
+          "columns": [
+            "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "payment_conditions",
+      "databaseId": "willmix",
+      "name": "Condições de pagamento (Sankhya TGFTPV)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "code",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "name",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "active",
+          "required": false,
+          "array": false,
+          "default": false,
+          "type": "boolean"
+        },
+        {
+          "key": "notes",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "source",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "sankhya",
+            "portal"
+          ]
+        },
+        {
+          "key": "updatedByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "code_unique",
+          "type": "unique",
+          "columns": [
+            "code"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
+    },
+    {
+      "$id": "process_events",
+      "databaseId": "willmix",
+      "name": "Eventos de processo (regras de status → estoque e Sankhya)",
+      "enabled": true,
+      "rowSecurity": false,
+      "$permissions": [],
+      "columns": [
+        {
+          "key": "event",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 80
+        },
+        {
+          "key": "requestId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "orderId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "stockAction",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "sankhyaAction",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 20
+        },
+        {
+          "key": "top",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "integer"
+        },
+        {
+          "key": "status",
+          "required": true,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "format": "enum",
+          "elements": [
+            "done",
+            "simulated",
+            "skipped",
+            "error"
+          ]
+        },
+        {
+          "key": "detail",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "nunotaBefore",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "nunotaAfter",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "createdByUserId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "entity",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "entityId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        }
+      ],
+      "indexes": [
+        {
+          "key": "by_order",
+          "type": "key",
+          "columns": [
+            "orderId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_request",
+          "type": "key",
+          "columns": [
+            "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_event",
+          "type": "key",
+          "columns": [
+            "event"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_entity",
+          "type": "key",
+          "columns": [
+            "entityId"
           ],
           "orders": [
             "ASC"

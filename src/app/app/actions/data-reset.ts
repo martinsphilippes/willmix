@@ -25,3 +25,19 @@ export async function resetSalesDataAction(form: FormData) {
     return `/app/settings/reset?done=${done}`;
   });
 }
+
+/**
+ * Limpar os cadastros que vêm do Sankhya (parceiros, produtos, linhas,
+ * condições de pagamento, locais), antes da migração. Só o administrador,
+ * com a palavra; o serviço exige as vendas já apagadas.
+ */
+export async function resetCatalogDataAction(form: FormData) {
+  const user = await requireUser();
+  await run("/app/settings/reset", async () => {
+    assertRole(user, ["admin"]);
+    const confirm = z.string().max(20).parse(str(form, "confirm"));
+    const { resetCatalogData } = await import("@/lib/services/catalog-reset");
+    const result = await resetCatalogData(user, confirm);
+    return `/app/settings/reset?catalog=${result.finished ? "1" : "partial"}#catalog`;
+  });
+}

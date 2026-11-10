@@ -420,7 +420,7 @@ describe("produto da solicitação aprovada", () => {
       "40123",
     );
     expect(res.checked).toBe(false);
-    expect((await store.get("products", created.id))!.erpCode).toBe("40123");
+    expect((await store.get("products", created.id))!.sankhyaCode).toBe("40123");
     expect(
       (await store.get("supplier_requests", request.id))!.erpCheckedAt,
     ).toBeNull();

@@ -77,6 +77,9 @@ import * as rfq from "./rfq";
 import * as rfqStandby from "./rfq-standby";
 import * as sourcingStandby from "./sourcing-standby";
 import * as portalAccess from "./portal-access";
+import * as supplierTasks from "./supplier-tasks";
+import * as superplanLogic from "./superplan-logic";
+import * as dieCutStep from "./die-cut-step";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
@@ -97,6 +100,7 @@ import * as freightTariff from "./freight-tariff";
 import * as superplan from "./superplan";
 import * as sankhya from "./sankhya";
 import * as sankhyaIntegration from "./sankhya-integration";
+import * as processes from "./processes";
 import * as superplanRfq from "./superplan-rfq";
 import * as quoteFlow from "./quote-flow";
 import * as orderSignature from "./order-signature";
@@ -169,6 +173,9 @@ export const modulesPt = {
   ...rfqStandby.pt,
   ...sourcingStandby.pt,
   ...portalAccess.pt,
+  ...supplierTasks.pt,
+  ...superplanLogic.pt,
+  ...dieCutStep.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
@@ -210,6 +217,7 @@ export const modulesPt = {
   ...superplan.pt,
   ...sankhya.pt,
   ...sankhyaIntegration.pt,
+  ...processes.pt,
   ...superplanRfq.pt,
   ...quoteFlow.pt,
   ...orderSignature.pt,
@@ -278,6 +286,9 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...rfqStandby.en,
   ...sourcingStandby.en,
   ...portalAccess.en,
+  ...supplierTasks.en,
+  ...superplanLogic.en,
+  ...dieCutStep.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
   ...sheetPhotos.en,
@@ -319,6 +330,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...superplan.en,
   ...sankhya.en,
   ...sankhyaIntegration.en,
+  ...processes.en,
   ...superplanRfq.en,
   ...quoteFlow.en,
   ...orderSignature.en,
@@ -387,6 +399,9 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...rfqStandby.zh,
   ...sourcingStandby.zh,
   ...portalAccess.zh,
+  ...supplierTasks.zh,
+  ...superplanLogic.zh,
+  ...dieCutStep.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
   ...sheetPhotos.zh,
@@ -428,6 +443,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...superplan.zh,
   ...sankhya.zh,
   ...sankhyaIntegration.zh,
+  ...processes.zh,
   ...superplanRfq.zh,
   ...quoteFlow.zh,
   ...orderSignature.zh,

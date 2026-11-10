@@ -40,7 +40,7 @@ A Seleção de itens **substitui a fila de produtos** do Booking: o botão da te
 
 ## Banco
 
-Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`); índice `by_status`. `products` ganhou `erpCode` (CODPROD do Sankhya), opcional e só gravado quando informado. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
+Tabela `supplier_requests` (docs/APPWRITE.md): `number` (contador `supplier_request_number`), `status`, `supplierId` (índice `by_supplier`), `bookingItemId` (índice `by_item`), `bookingLotId`, `alternativeItemIds` (JSON), `item` (JSON, cópia do item), `quantity`, `unit`, `needs`, `searchQuery`, a resposta (`supplierCanDo`, `supplierPrice`, `supplierCurrency`, `supplierMoq`, `supplierLeadTimeDays`, `supplierNote`, `respondedAt`, `respondedByUserId`), a decisão (`decidedAt`, `decidedByUserId`, `decisionNote`), `createdByUserId` e o produto (`productId`, com índice `by_product`, `productAction` created/linked, `productLinkedAt`, `productLinkedByUserId`, `showcaseReleasedAt`, `showcaseReleasedByUserId`, `erpCheckedAt`); índice `by_status`. Antes de `npm run appwrite:push`, as telas avisam "esquema desatualizado".
 
 ## Onde está
 
@@ -71,7 +71,7 @@ Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bl
 4. **Vitrine**: o produto **criado** nasce **fora da vitrine do cliente** (vitrine, página do produto, carrinho, nova solicitação e kit de marketing) até "Liberar na vitrine". O produto **associado** já existia e não muda. A regra fica em `booking-visibility.ts`, junto com a do Booking.
 5. **Sankhya**: só **ligar ao CODPROD que já existe**; o produto não é criado no ERP. O código aparece no cabeçalho da página do produto ("CODPROD …"; sem código, "CODPROD —").
    - A busca usa a descrição (parte) ou a referência do fornecedor (`Produto`: CODPROD, DESCRPROD, REFFORN) e um botão "Usar" em cada resultado.
-   - O código também pode ser digitado. Ele é gravado em `products.erpCode`.
+   - O código também pode ser digitado. Ele é gravado em `products.sankhyaCode`, o mesmo campo do vínculo da carga do Sankhya (docs/SANKHYA.md).
    - Com o Sankhya configurado, o código é **conferido** no ERP (inexistente recusa). Sem credencial, ou com o ERP fora do ar, fica gravado como **não conferido**, e a tela diz isso.
 6. **Depois**: o pedido de compra ao fornecedor é outra etapa (ainda não construída).
 

@@ -14,6 +14,10 @@ Caixas vêm do item do container (ou da caixa master do produto, para o que aind
 
 Em Estoque, "− Baixa por venda": produto (só os que têm estoque no Brasil), quantidade (nunca mais do que há), pedido do cliente (opcional) e observação. Grava uma movimentação `sale_out` (tabela `stock_movements`, quantidade negativa) que desconta do "No Brasil" na tela e na vitrine. Wellmix com a tela Produtos; vai para a auditoria.
 
+## Movimentação por regra de processo
+
+Configurações → Processos (docs/PROCESSES.md) pode dar entrada (`process_in`) ou saída (`process_out`) das quantidades de um pedido quando ele chega a um status. Essas movimentações somam no "No Brasil" como as demais e aparecem em Registro de perdas/movimentações. Nenhuma regra mexe no estoque por padrão.
+
 ## Inventário às cegas (`/app/inventory/counts`)
 
 - Só o admin abre (um por vez). O sistema guarda, para cada produto com estoque no Brasil, a quantidade esperada (`stock_count_items.expected`), que nunca aparece para quem conta (coluna "Sistema" e diferença só para o admin).

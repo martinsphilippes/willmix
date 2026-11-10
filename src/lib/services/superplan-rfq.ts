@@ -148,7 +148,7 @@ export async function superplanSupplierOptions(productId: string | null) {
 }
 
 /** MOQ e prazo conhecidos do fornecedor no produto (para ele só confirmar). */
-async function knownTerms(productId: string, supplierId: string) {
+export async function knownTerms(productId: string, supplierId: string) {
   const store = getStore();
   const [product, links] = await Promise.all([
     store.get("products", productId),
@@ -304,7 +304,7 @@ export interface SuperplanQuoteView {
 }
 
 /** HD da cotação (fotos "hd" guardadas na ficha da cotação). */
-async function hdPhotosOf(quoteId: string) {
+export async function hdPhotosOf(quoteId: string) {
   const store = getStore();
   const photos = await store.list("product_photos", {
     filter: { orderId: quoteId, kind: "hd" },
@@ -493,10 +493,15 @@ export async function sendSuperplanItems(
     patch.answeredAt = new Date().toISOString();
   }
   if (Object.keys(patch).length) await store.update("quotes", quoteId, patch);
-  if (completed && request.status === "RFQ_OPEN")
+  if (completed && request.status === "RFQ_OPEN") {
     await store.update("requests", request.id, {
       status: "QUOTATION_RECEIVED",
     });
+    const { emitProcessEvent } = await import("./process-engine");
+    await emitProcessEvent(user, "request:QUOTATION_RECEIVED", {
+      requestId: request.id,
+    });
+  }
   await audit(
     user,
     "superplan.items",

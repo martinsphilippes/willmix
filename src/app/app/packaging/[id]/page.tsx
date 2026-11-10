@@ -31,6 +31,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { PhotoInput } from "@/components/photo-input";
 import { FileAutoInput } from "@/components/file-auto-input";
 import { BRIEF_TONE, OwnerSelect } from "@/components/packaging-brief-card";
+import { PackagingArtPrompt } from "@/components/packaging-art-prompt";
 import {
   assignPackagingBriefAction,
   clearPackagingItemAction,
@@ -536,6 +537,67 @@ export default async function PackagingBriefPage({
               ))}
             </ul>
           </Card>
+
+          {/* Prompt da arte: texto pronto para colar no ChatGPT (nada é gravado). */}
+          {brief.status !== "cancelled" ? (
+            <Card
+              title={
+                <span id="art-prompt" className="scroll-mt-24">
+                  {t("packBrief.artPrompt.title")}
+                </span>
+              }
+            >
+              <PackagingArtPrompt
+                briefId={brief.id}
+                base={{
+                  intro: t("packBrief.artPrompt.intro"),
+                  facts: [
+                    [t("common.product"), request.productName],
+                    [
+                      t("packBrief.quantity"),
+                      `${request.quantity.toLocaleString(t.intl)} ${request.unit}`,
+                    ],
+                    [t("packBrief.description"), request.description],
+                    [
+                      t("packBrief.specification"),
+                      request.specification ?? product?.specification,
+                    ],
+                    [
+                      t("packBrief.artPrompt.fact.carton"),
+                      dims?.lengthCm && dims.widthCm && dims.heightCm
+                        ? `${num(t.intl, dims.lengthCm)} × ${num(t.intl, dims.widthCm)} × ${num(t.intl, dims.heightCm)} cm`
+                        : null,
+                    ],
+                    [
+                      t("packBrief.dims.perCarton"),
+                      num(t.intl, dims?.masterCartonQty, 0),
+                    ],
+                    [t("packBrief.dims.package"), dims?.packageType],
+                    [t("packBrief.dims.material"), dims?.material],
+                    [
+                      t("packBrief.dims.pantone"),
+                      dims?.colorPantones?.map((c) => c.code).join(", "),
+                    ],
+                    [t("packBrief.artPrompt.fact.instructions"), brief.brief],
+                    [t("packBrief.artPrompt.fact.notes"), brief.agencyNotes],
+                  ],
+                  wishLabel: t("packBrief.artPrompt.wish"),
+                  closing: t("packBrief.artPrompt.closing"),
+                }}
+                labels={{
+                  hint: t("packBrief.artPrompt.hint"),
+                  wish: t("packBrief.artPrompt.wish"),
+                  wishPlaceholder: t("packBrief.artPrompt.wishPlaceholder"),
+                  generate: t("packBrief.artPrompt.generate"),
+                  result: t("packBrief.artPrompt.result"),
+                  copy: t("packBrief.artPrompt.copy"),
+                  copied: t("packBrief.artPrompt.copied"),
+                  copyFailed: t("packBrief.artPrompt.copyFailed"),
+                  open: t("packBrief.artPrompt.open"),
+                }}
+              />
+            </Card>
+          ) : null}
 
           <Card
             title={

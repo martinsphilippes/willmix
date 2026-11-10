@@ -236,3 +236,46 @@ describe("produção do pedido", () => {
     ).rejects.toThrow("already_approved");
   });
 });
+
+describe("fábrica entra sozinha quando o fornecedor fabrica", () => {
+  it("nome e endereço vêm do cadastro do fornecedor; trade continua digitado", async () => {
+    const store = getStore();
+    const party = (await store.get("parties", order.supplierId))!;
+    await store.update("parties", party.id, {
+      address: "88 Factory Road",
+      city: "Shenzhen",
+      country: "CN",
+    });
+    // A tela já sugere o nome e o endereço do fornecedor.
+    const view = await pr.productionView(order);
+    expect(view.supplierFactory).toEqual({
+      name: party.name,
+      address: "88 Factory Road, Shenzhen, CN",
+    });
+    const [track] = await store.list("production_tracks", {
+      filter: { orderId: order.id },
+    });
+    await store.update("production_tracks", track.id, {
+      factoryName: null,
+      factoryAddress: null,
+    });
+    // Salvar como fábrica com os campos em branco: preenche sozinho.
+    await pr.savePlan(admin, order.id, {
+      mode: "factory",
+      factoryName: null,
+      factoryAddress: null,
+    });
+    let saved = (await pr.getTrack(order.id))!;
+    expect(saved.factoryName).toBe(party.name);
+    expect(saved.factoryAddress).toBe("88 Factory Road, Shenzhen, CN");
+    // O que foi digitado vale; trade não é preenchido com o fornecedor.
+    await pr.savePlan(admin, order.id, {
+      mode: "trade",
+      factoryName: "Outra Fábrica",
+      factoryAddress: null,
+    });
+    saved = (await pr.getTrack(order.id))!;
+    expect(saved.factoryName).toBe("Outra Fábrica");
+    expect(saved.factoryAddress).toBeNull();
+  });
+});

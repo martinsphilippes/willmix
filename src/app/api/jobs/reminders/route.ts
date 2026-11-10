@@ -31,6 +31,13 @@ export async function GET(request: Request) {
   const payablesDue = await notifyPayablesDue();
   // Fornecedor que ainda não confirmou o recebimento de pagamento feito.
   const toConfirm = await notifySuppliersToConfirm();
+  // Cadastros e itens de pedido pendentes vão para o Sankhya (fase 3).
+  const sankhya = await import("@/lib/integrations/sankhya-sync")
+    .then((m) => m.runSankhyaSync(null))
+    .catch((error) => {
+      console.error("[reminders] sankhya-sync", error);
+      return null;
+    });
   return NextResponse.json({
     ...result,
     released,
@@ -38,5 +45,6 @@ export async function GET(request: Request) {
     shipping,
     payablesDue,
     toConfirm,
+    sankhya,
   });
 }

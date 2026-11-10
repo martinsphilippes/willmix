@@ -1,3 +1,4 @@
+import { registerOrderInvoiceAction } from "../../actions/order-invoice";
 import { ArtworkCard } from "@/components/artwork-card";
 import { ReceivingCard } from "@/components/receiving-card";
 import { ImportFlowCard } from "@/components/import-flow-card";
@@ -34,7 +35,7 @@ import {
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { stageChat } from "@/lib/stage-chat";
-import { SupplierDielineCard } from "@/components/supplier-dieline-card";
+import { DieCutStepCard } from "@/components/die-cut-step-card";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -622,6 +623,36 @@ export default async function OrderPage({
       </span>
     );
   };
+  /* Condição de pagamento, Incoterm e câmbio (vêm do Sankhya; só a Wellmix). */
+  const paymentCondition =
+    wellmix && order.paymentConditionId
+      ? await store.get("payment_conditions", order.paymentConditionId)
+      : null;
+  const commercialItems: Array<[string, ReactNode]> = wellmix
+    ? [
+        ...(order.incoterm
+          ? [[t("orders.incoterm"), order.incoterm] as [string, ReactNode]]
+          : []),
+        ...(paymentCondition
+          ? [
+              [
+                t("orders.paymentCondition"),
+                `${paymentCondition.code} · ${paymentCondition.name}`,
+              ] as [string, ReactNode],
+            ]
+          : []),
+        ...(order.fxRate
+          ? [
+              [
+                t("orders.fxRate"),
+                new Intl.NumberFormat(t.intl, {
+                  maximumFractionDigits: 4,
+                }).format(order.fxRate),
+              ] as [string, ReactNode],
+            ]
+          : []),
+      ]
+    : [];
   /* Resumo do pedido (uma linha): o que este papel pode ver (vazio = não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
     ...(user.role !== "customer" &&
@@ -671,6 +702,30 @@ export default async function OrderPage({
                 </Badge>
               )),
           ] as [string, ReactNode],
+          [
+            t("orderInvoice.label"),
+            order.invoicedAt ? (
+              formatDate(order.invoicedAt, t)
+            ) : isCancelled ? (
+              "—"
+            ) : (
+              <form
+                key="invoice"
+                action={registerOrderInvoiceAction}
+                className="inline"
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <SubmitButton
+                  variant="secondary"
+                  pendingText="…"
+                  confirmText={t("orderInvoice.confirm")}
+                >
+                  {t("orderInvoice.register")}
+                </SubmitButton>
+              </form>
+            ),
+          ] as [string, ReactNode],
+          ...commercialItems,
         ]
       : []),
     // Parceiro: a data do pedido não diz nada a ele (menos à certificadora).
@@ -1800,12 +1855,13 @@ export default async function OrderPage({
 
       <div className="mt-6 flex min-w-0 flex-col gap-6">
         {/* Faca (die-cut) da embalagem: o fornecedor do pedido envia (ou troca). */}
-        <SupplierDielineCard
+        <DieCutStepCard
           t={t}
           user={user}
           from={{ orderId: order.id }}
           back={`/app/orders/${order.id}`}
-          justSent={dielineNotice === "sent"}
+          notice={dielineNotice}
+          error={error}
         />
         {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
             fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}

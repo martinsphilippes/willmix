@@ -77,6 +77,10 @@ export const pt = {
   "ncm.notify.many.body":
     "Produtos novos sem NCM. Abra as pendências e classifique cada um.",
   "tasks.group.ncm_classify": "Classificar NCM",
+  "tasks.group.purchase_schedule": "Programação de compra",
+  "tasks.schedule.title": "Fazer a programação de compra: pedido #{n}",
+  "tasks.schedule.detail":
+    "Informe os lotes (caixas e dias de saída) na ficha de compra do pedido",
   "tasks.ncm.title": "Classificar NCM: {product}",
   "tasks.ncm.detail":
     "Solicitação nº {n} · confira as sugestões e confirme o NCM",
@@ -205,6 +209,10 @@ export const en: Record<keyof typeof pt, string> = {
   "ncm.notify.many.body":
     "New products without an NCM. Open your tasks and classify each one.",
   "tasks.group.ncm_classify": "Classify NCM",
+  "tasks.group.purchase_schedule": "Purchase schedule",
+  "tasks.schedule.title": "Fill in the purchase schedule: order #{n}",
+  "tasks.schedule.detail":
+    "Enter the lots (cartons and departure days) on the order's purchase sheet",
   "tasks.ncm.title": "Classify NCM: {product}",
   "tasks.ncm.detail":
     "Request no. {n} · check the suggestions and confirm the NCM",
@@ -325,6 +333,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "ncm.notify.many.subject": "{count} 个产品需要 NCM 归类",
   "ncm.notify.many.body": "新产品尚无 NCM。请打开待办，逐个归类。",
   "tasks.group.ncm_classify": "NCM 归类",
+  "tasks.group.purchase_schedule": "采购计划",
+  "tasks.schedule.title": "填写采购计划：订单 #{n}",
+  "tasks.schedule.detail": "在订单采购单中填写各批次（箱数和出货天数）",
   "tasks.ncm.title": "NCM 归类：{product}",
   "tasks.ncm.detail": "需求单 {n} · 查看建议并确认 NCM",
   "tasks.ncm.detailNoNumber": "查看建议并确认 NCM",

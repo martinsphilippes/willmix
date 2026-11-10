@@ -19,6 +19,14 @@ import {
   saveSankhyaErpSettings,
 } from "@/lib/integrations/sankhya-settings";
 import { checkTestOrder } from "@/lib/integrations/sankhya-test-order";
+import { fetchImportSet } from "@/lib/integrations/sankhya-sample";
+import { importSankhyaSet } from "@/lib/integrations/sankhya-import";
+import {
+  resetFullLoad,
+  runFullLoad,
+} from "@/lib/integrations/sankhya-full-load";
+import { FULL_LOAD_ENTITIES } from "@/lib/integrations/sankhya-mapping";
+import { getStore } from "@/lib/db";
 import { requireUser, str } from "./helpers";
 
 /*
@@ -113,44 +121,46 @@ const code = (max = 999999) =>
     z.number().int().min(0).max(max).nullable(),
   );
 
+/*
+ * Códigos do ERP para os pedidos. Pelas respostas da Wellmix, o volume é
+ * sempre UN e as TOPs ficam em Configurações → Processos (as regras gravam
+ * topOrder/topQuote); aqui só o que ainda se escolhe. O que não vem no
+ * formulário continua como estava gravado.
+ */
 const erpSchema = z.object({
   codEmp: code(9999),
-  topOrder: code(),
-  topQuote: code(),
   codTipVenda: code(),
-  paymentFromSupplier: z.boolean(),
   codVend: code(),
-  codLocal: code(99999999),
-  volumeMode: z.enum(["product", "fixed"]),
-  codVol: z
-    .string()
-    .trim()
-    .max(6)
-    .regex(/^[A-Za-z0-9]*$/),
-  autoLink: z.boolean(),
+  codNat: code(999999999),
+  codCenCus: code(999999999),
+  codProj: code(999999999),
+  currency: z.enum(["USD", "BRL", "CNY", "EUR"]),
+  codMoeda: code(9999),
+  erpNumberField: z.enum(["NUNOTA", "NUMNOTA"]),
 });
 
-/** Grava as respostas das 5 perguntas (códigos do ERP para os pedidos). */
+/** Grava os códigos do ERP para os pedidos. */
 export async function saveSankhyaErpAction(form: FormData) {
   const user = await admin();
   let target: string;
   try {
     const input = erpSchema.parse({
       codEmp: str(form, "codEmp"),
-      topOrder: str(form, "topOrder"),
-      topQuote: str(form, "topQuote"),
       codTipVenda: str(form, "codTipVenda"),
-      paymentFromSupplier: str(form, "paymentFromSupplier") === "1",
       codVend: str(form, "codVend"),
-      codLocal: str(form, "codLocal"),
-      volumeMode: str(form, "volumeMode") || "product",
-      codVol: str(form, "codVol").toUpperCase(),
-      autoLink: str(form, "autoLink") === "1",
+      codNat: str(form, "codNat"),
+      codCenCus: str(form, "codCenCus"),
+      codProj: str(form, "codProj"),
+      currency: str(form, "currency") || "USD",
+      codMoeda: str(form, "codMoeda"),
+      erpNumberField: str(form, "erpNumberField") || "NUNOTA",
     });
     const before = await getSankhyaErpSettings();
-    // O envio automático dos pedidos do portal ainda não está na tela: mantém.
+    const { updatedAt: _u, updatedBy: _b, ...rest } = before;
+    void _u;
+    void _b;
     await saveSankhyaErpSettings(
-      { ...input, ordersEnabled: before.ordersEnabled },
+      { ...rest, ...input, volumeMode: "fixed", codVol: "UN" },
       user.id,
     );
     await audit(
@@ -273,6 +283,189 @@ export async function sankhyaCancelTestAction(form: FormData) {
     target = back({ it: "cancelled", nunota: input.nunota }, "order");
   } catch (error) {
     target = failure(error, "order");
+  }
+  redirect(target);
+}
+
+/**
+ * Carga do Sankhya: grava no portal as N últimas notas de importação (1 a 5)
+ * com parceiros, produtos, linhas e financeiro (sankhya-import.ts). Volta para
+ * a aba Carga com o resultado de cada registro.
+ */
+export async function sankhyaImportSampleAction(form: FormData) {
+  const user = await admin();
+  let target: string;
+  try {
+    const n = z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(5)
+      .parse(str(form, "n") || "1");
+    const lines = await importSankhyaSet(
+      user,
+      await fetchImportSet(n),
+      await getSankhyaErpSettings(),
+    );
+    const summary = lines.slice(0, 80).map((l) => ({
+      e: l.entity,
+      c: l.code,
+      o: l.outcome,
+      i: l.id,
+      l: l.label.slice(0, 60),
+      r: l.reason,
+    }));
+    target = `${BACK}?${new URLSearchParams({ tab: "load", n: String(n), imported: JSON.stringify(summary) }).toString()}#imported`;
+  } catch (error) {
+    target = `${BACK}?${new URLSearchParams({
+      tab: "load",
+      error:
+        error instanceof SankhyaError ? error.code : "sankhya_import_failed",
+      detail: (error instanceof SankhyaError
+        ? error.detail
+        : error instanceof Error
+          ? error.message
+          : String(error)
+      ).slice(0, 600),
+    }).toString()}#imported`;
+    if (!(error instanceof SankhyaError))
+      console.error("[sankhya-import]", error);
+  }
+  redirect(target);
+}
+
+const fullLoadSchema = z.object({
+  entity: z.enum(FULL_LOAD_ENTITIES),
+  reset: z.boolean(),
+  auto: z.boolean(),
+});
+
+/**
+ * Carga completa de um cadastro (condições de pagamento, fornecedores e
+ * clientes, produtos): processa lotes por até ~40 s e volta com o progresso;
+ * chamar de novo continua de onde parou. "Recomeçar" zera o cursor.
+ */
+export async function sankhyaFullLoadAction(form: FormData) {
+  const user = await admin();
+  let target: string;
+  const hash = "full";
+  try {
+    const input = fullLoadSchema.parse({
+      entity: str(form, "entity"),
+      reset: str(form, "reset") === "1",
+      auto: str(form, "auto") === "1",
+    });
+    if (input.reset) {
+      await resetFullLoad(input.entity);
+      target = `${BACK}?tab=load&full=${input.entity}#${hash}`;
+    } else {
+      const { progress } = await runFullLoad(user, input.entity);
+      target = `${BACK}?${new URLSearchParams({
+        tab: "load",
+        full: input.entity,
+        ran: progress.done ? "done" : "partial",
+        // "Até o fim": a tela envia de novo sozinha enquanto faltar.
+        ...(input.auto && !progress.done ? { auto: "1" } : {}),
+      }).toString()}#${hash}`;
+    }
+  } catch (error) {
+    if (!(error instanceof SankhyaError) && !(error instanceof z.ZodError))
+      console.error("[sankhya-full-load]", error);
+    target = `${BACK}?${new URLSearchParams({
+      tab: "load",
+      error:
+        error instanceof SankhyaError ? error.code : "sankhya_import_failed",
+      detail: (error instanceof SankhyaError
+        ? error.detail
+        : error instanceof Error
+          ? error.message
+          : String(error)
+      ).slice(0, 600),
+    }).toString()}#${hash}`;
+  }
+  redirect(target);
+}
+
+const conditionSchema = z.object({
+  id: z.string().max(64).optional(),
+  code: z.coerce.number().int().min(0).max(99999999),
+  name: z.string().trim().min(1).max(160),
+  active: z.boolean(),
+  notes: z.string().trim().max(2000),
+});
+
+const CONDITIONS = "/app/settings/sankhya?tab=payment";
+
+/**
+ * Condição de pagamento (tabela igual à TGFTPV do Sankhya; compra e venda):
+ * inclui ou altera no portal. O envio ao Sankhya entra com a sincronização.
+ */
+export async function savePaymentConditionAction(form: FormData) {
+  const user = await admin();
+  let target: string;
+  try {
+    const input = conditionSchema.parse({
+      id: str(form, "id") || undefined,
+      code: str(form, "code"),
+      name: str(form, "name"),
+      active: str(form, "active") === "1",
+      notes: str(form, "notes"),
+    });
+    const store = getStore();
+    const [sameCode] = await store.list("payment_conditions", {
+      filter: { code: input.code },
+      limit: 1,
+    });
+    if (sameCode && sameCode.id !== input.id) {
+      target = `${CONDITIONS}&error=duplicate_code&detail=${input.code}#conditions`;
+    } else if (input.id) {
+      const before = await store.get("payment_conditions", input.id);
+      if (!before) throw new z.ZodError([]);
+      const after = await store.update("payment_conditions", input.id, {
+        code: input.code,
+        name: input.name,
+        active: input.active,
+        notes: input.notes || null,
+        updatedByUserId: user.id,
+      });
+      await audit(
+        user,
+        "payment_condition.update",
+        "payment_condition",
+        input.id,
+        `Condição de pagamento ${input.code} ${input.name}`,
+        before,
+        after,
+      );
+      target = `${CONDITIONS}&saved=${input.code}#conditions`;
+    } else {
+      const created = await store.create("payment_conditions", {
+        code: input.code,
+        name: input.name,
+        active: input.active,
+        notes: input.notes || null,
+        source: "portal",
+        updatedByUserId: user.id,
+      });
+      await audit(
+        user,
+        "payment_condition.create",
+        "payment_condition",
+        created.id,
+        `Condição de pagamento ${input.code} ${input.name}`,
+        null,
+        created,
+      );
+      target = `${CONDITIONS}&saved=${input.code}#conditions`;
+    }
+  } catch (error) {
+    target = `${CONDITIONS}&error=invalid_input&detail=${encodeURIComponent(
+      error instanceof z.ZodError
+        ? error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")
+        : String(error),
+    ).slice(0, 600)}#conditions`;
   }
   redirect(target);
 }

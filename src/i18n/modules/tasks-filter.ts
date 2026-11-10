@@ -33,13 +33,13 @@ export const pt = {
   "tasks.group.sourcing_demand": "Sourcing sob demanda",
   "tasks.group.after_sales": "Pós-venda",
   "tasks.group.packaging_brief": "Embalagem (faca e arte)",
-  "tasks.dieline.title": "Faca (die-cut) da embalagem: {product}",
+  "tasks.dieline.title": "Die Cut: {product}",
   "tasks.dieline.detailOrder":
-    "Pedido #{n} · envie a faca da caixa: a agência faz a arte em cima dela",
+    "Pedido #{n} · die-cut, foto em alta, pedido mínimo e prazo de entrega",
   "tasks.dieline.detailRequest":
-    "Solicitação nº {n} · envie a faca da caixa: a agência faz a arte em cima dela",
+    "Solicitação nº {n} · die-cut, foto em alta, pedido mínimo e prazo de entrega",
   "tasks.dieline.detail":
-    "Envie a faca da caixa: a agência faz a arte em cima dela",
+    "Die-cut, foto em alta, pedido mínimo e prazo de entrega",
   "tasks.col.task": "Pendência",
   "tasks.col.detail": "Detalhe",
 };
@@ -75,13 +75,13 @@ export const en: Record<keyof typeof pt, string> = {
   "tasks.group.sourcing_demand": "Sourcing on demand",
   "tasks.group.after_sales": "After-sales",
   "tasks.group.packaging_brief": "Packaging (die-cut and artwork)",
-  "tasks.dieline.title": "Packaging die-cut: {product}",
+  "tasks.dieline.title": "Die Cut: {product}",
   "tasks.dieline.detailOrder":
-    "Order #{n} · send the box die-cut: the agency designs the artwork on it",
+    "Order #{n} · die-cut, high-resolution photo, minimum order and lead time",
   "tasks.dieline.detailRequest":
-    "Request no. {n} · send the box die-cut: the agency designs the artwork on it",
+    "Request no. {n} · die-cut, high-resolution photo, minimum order and lead time",
   "tasks.dieline.detail":
-    "Send the box die-cut: the agency designs the artwork on it",
+    "Die-cut, high-resolution photo, minimum order and lead time",
   "tasks.col.task": "Task",
   "tasks.col.detail": "Detail",
 };
@@ -117,12 +117,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.sourcing_demand": "按需寻源",
   "tasks.group.after_sales": "售后",
   "tasks.group.packaging_brief": "包装（刀模与设计稿）",
-  "tasks.dieline.title": "包装刀模：{product}",
-  "tasks.dieline.detailOrder":
-    "订单 #{n} · 请上传纸箱刀模：设计公司将据此制作设计稿",
-  "tasks.dieline.detailRequest":
-    "询价单 {n} 号 · 请上传纸箱刀模：设计公司将据此制作设计稿",
-  "tasks.dieline.detail": "请上传纸箱刀模：设计公司将据此制作设计稿",
+  "tasks.dieline.title": "刀模 (Die Cut)：{product}",
+  "tasks.dieline.detailOrder": "订单 #{n} · 刀模、高清照片、起订量和交期",
+  "tasks.dieline.detailRequest": "询价单 {n} 号 · 刀模、高清照片、起订量和交期",
+  "tasks.dieline.detail": "刀模、高清照片、起订量和交期",
   "tasks.col.task": "待办",
   "tasks.col.detail": "详情",
 };

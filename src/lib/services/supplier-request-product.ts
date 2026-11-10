@@ -144,7 +144,7 @@ export async function searchCatalogProducts(query: string): Promise<Product[]> {
     .filter((p) =>
       matchesItemSearch(
         fold(
-          [p.name, p.sku, p.supplierSku, p.erpCode].filter(Boolean).join(" "),
+          [p.name, p.sku, p.supplierSku, p.sankhyaCode].filter(Boolean).join(" "),
         ),
         words,
       ),
@@ -511,8 +511,8 @@ export async function setRequestProductErpCode(
   const product = await store.get("products", request.productId);
   if (!product) throw new RequestProductError("request_product_not_found");
   // Coluna nova: o vazio só vai ao banco para apagar um código já gravado.
-  if (code || product.erpCode)
-    await store.update("products", product.id, { erpCode: code || null });
+  if (code || product.sankhyaCode)
+    await store.update("products", product.id, { sankhyaCode: code || null });
   await store.update("supplier_requests", request.id, {
     erpCheckedAt: checked ? new Date().toISOString() : null,
   });
@@ -522,8 +522,8 @@ export async function setRequestProductErpCode(
     "product",
     product.id,
     `CODPROD ${code || "-"} ${checked ? "(conferido no Sankhya)" : "(não conferido)"}`,
-    { erpCode: product.erpCode ?? null },
-    { erpCode: code || null },
+    { sankhyaCode: product.sankhyaCode ?? null },
+    { sankhyaCode: code || null },
   );
   return { checked };
 }

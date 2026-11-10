@@ -17,7 +17,11 @@ import {
   planSalesReset,
   type ResetPlan,
 } from "@/lib/services/data-reset";
-import { resetSalesDataAction } from "../../actions/data-reset";
+import {
+  resetCatalogDataAction,
+  resetSalesDataAction,
+} from "../../actions/data-reset";
+import { planCatalogReset } from "@/lib/services/catalog-reset";
 
 // A limpeza apaga linha por linha no Appwrite: mais tempo que uma página
 // comum. A rodada para sozinha bem antes (RESET_BUDGET_MS) e a tela mostra
@@ -34,21 +38,27 @@ export default async function ResetPage({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   requireScreen(user, "settings");
-  const { done, error } = await searchParams;
+  const { done, error, catalog } = await searchParams;
   const t = await getT();
   const plan = await planSalesReset(user);
+  const catalogPlan = await planCatalogReset(user);
+  const catalogRows = Object.entries(catalogPlan.remove).filter(
+    ([, n]) => (n ?? 0) > 0,
+  ) as Array<[string, number]>;
   const rows: Array<[keyof ResetPlan["remove"], number]> = (
     Object.entries(plan.remove) as Array<[keyof ResetPlan["remove"], number]>
   ).filter(([, n]) => n > 0);
   const errorText =
     error === "reset_confirm"
       ? t("reset.error.confirm")
-      : // Barrado antes de apagar qualquer coisa.
-        error === "forbidden" || error === "invalid_input"
-        ? t("reset.error.blocked", { code: error })
-        : typeof error === "string" && error
-          ? t("reset.error.failed", { code: error })
-          : null;
+      : error === "sales_first"
+        ? t("reset.catalog.salesFirst")
+        : // Barrado antes de apagar qualquer coisa.
+          error === "forbidden" || error === "invalid_input"
+          ? t("reset.error.blocked", { code: error })
+          : typeof error === "string" && error
+            ? t("reset.error.failed", { code: error })
+            : null;
 
   return (
     <>
@@ -163,6 +173,76 @@ export default async function ResetPage({
               {t("reset.submit")}
             </SubmitButton>
           </form>
+        </div>
+      </Card>
+      <Card className="mt-6" title={t("reset.catalog.title")}>
+        <div id="catalog" className="scroll-mt-4 space-y-4">
+          {catalog === "1" ? (
+            <Alert tone="success">{t("reset.catalog.done")}</Alert>
+          ) : catalog === "partial" ? (
+            <Alert tone="warning">
+              {t("reset.remaining", { n: catalogPlan.total })}
+            </Alert>
+          ) : null}
+          <p className="text-sm font-medium text-red-700">
+            {t("reset.catalog.intro")}
+          </p>
+          {catalogPlan.total === 0 ? (
+            <p className="text-sm text-zinc-600">{t("reset.nothing")}</p>
+          ) : (
+            <dl
+              className="grid max-w-md grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm"
+              data-catalog-plan=""
+            >
+              {catalogRows.map(([key, n]) => (
+                <div key={key} className="contents">
+                  <dt className="font-mono text-xs text-zinc-700">{key}</dt>
+                  <dd className="text-right font-medium tabular-nums">
+                    {n.toLocaleString(t.intl)}
+                  </dd>
+                </div>
+              ))}
+              <div className="contents">
+                <dt className="text-zinc-700">{t("reset.catalog.unlink")}</dt>
+                <dd className="text-right font-medium tabular-nums">
+                  {catalogPlan.unlink.toLocaleString(t.intl)}
+                </dd>
+              </div>
+              <div className="contents">
+                <dt className="text-zinc-700">
+                  {t("reset.catalog.usersDisabled")}
+                </dt>
+                <dd className="text-right font-medium tabular-nums">
+                  {catalogPlan.usersDisabled.toLocaleString(t.intl)}
+                </dd>
+              </div>
+            </dl>
+          )}
+          {catalogPlan.salesLeft > 0 ? (
+            <Alert tone="warning">{t("reset.catalog.salesFirst")}</Alert>
+          ) : catalogPlan.total > 0 ? (
+            <form
+              action={resetCatalogDataAction}
+              className="flex flex-wrap items-end gap-3 border-t border-zinc-200 pt-4"
+              data-catalog-form=""
+            >
+              <div className="w-full sm:w-64">
+                <Field label={t("reset.confirmLabel")}>
+                  <Input
+                    name="confirm"
+                    required
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    maxLength={20}
+                    placeholder={RESET_CONFIRM_WORD}
+                  />
+                </Field>
+              </div>
+              <SubmitButton variant="danger" pendingText="…">
+                {t("reset.catalog.submit")}
+              </SubmitButton>
+            </form>
+          ) : null}
         </div>
       </Card>
     </>
