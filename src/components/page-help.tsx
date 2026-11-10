@@ -11,6 +11,14 @@ export interface HelpSpec {
 }
 
 /**
+ * Interruptor do "Como funciona" em todas as telas. Desligado a pedido do
+ * dono (10/11/2026): a caixa do cabeçalho e o bloco da página do produto na
+ * vitrine não aparecem mais. Os textos e o componente ficam guardados; para
+ * voltar, basta ligar aqui.
+ */
+export const PAGE_HELP_ENABLED: boolean = false;
+
+/**
  * Painel de ajuda contextual. Toda tela explica a lógica e o próximo passo,
  * no idioma do usuário. Começa sempre recolhido (a tela abre direto no
  * trabalho); quem quer entender toca em "Como funciona" para abrir.

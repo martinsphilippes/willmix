@@ -231,13 +231,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.locator("[data-explore]")).toBeVisible();
   await page.goto("/app/requests");
   await expect(page.getByText("Precisa importar um produto?")).toBeVisible();
-  // "Como funciona" chega recolhido; um toque abre e mostra a explicação.
-  const help = page.locator("[data-page-help]").first();
-  await expect(help).not.toHaveAttribute("open", /.*/);
-  await expect(help.locator("ol, p").first()).toBeHidden();
-  await help.locator("summary").click();
-  await expect(help).toHaveAttribute("open", /.*/);
-  await expect(help.locator("p").first()).toBeVisible();
+  // "Como funciona" saiu de todas as telas (pedido do dono).
+  await expect(page.locator("[data-page-help]")).toHaveCount(0);
   await page.goto("/app/requests/new");
   await page.selectOption('select[name="p0.productId"]', "prod-jarra");
   await page.fill(

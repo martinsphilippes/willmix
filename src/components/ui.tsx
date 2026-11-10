@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cloneElement, isValidElement, useId } from "react";
 import { twMerge } from "tailwind-merge";
 import type { Translate } from "@/i18n";
-import { PageHelp, type HelpSpec } from "./page-help";
+import { PAGE_HELP_ENABLED, PageHelp, type HelpSpec } from "./page-help";
 
 /*
  * Kit de componentes com a identidade Wellmix. Tailwind 4, sem dependências.
@@ -146,7 +146,8 @@ export function PageHeader({
         </div>
         {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
       </div>
-      {help && t ? <PageHelp t={t} help={help} /> : null}
+      {/* "Como funciona": fora de todas as telas (PAGE_HELP_ENABLED). */}
+      {PAGE_HELP_ENABLED && help && t ? <PageHelp t={t} help={help} /> : null}
     </>
   );
 }
