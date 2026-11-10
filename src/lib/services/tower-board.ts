@@ -4,6 +4,7 @@ import {
   getStore,
   type Approval,
   type ArtIssue,
+  type Booking,
   type Certification,
   type ImportStep,
   type Order,
@@ -33,10 +34,13 @@ import { getSettings } from "@/lib/settings";
 import { requestStepDays } from "@/lib/request-stages";
 
 /*
- * Quadros da operação na Control Tower: o pedido de ponta a ponta, em quatro
- * blocos escolhidos pelo dono (docs/WORKFLOW.md, "Control Tower: quadros da
- * operação").
+ * Quadros da operação na Control Tower: o fluxo de ponta a ponta, a partir
+ * do Booking, em cinco blocos escolhidos pelo dono (docs/WORKFLOW.md,
+ * "Control Tower: quadros da operação").
  *
+ * 0. Booking: o produto da ficha técnica antes de virar solicitação, pela
+ *    etapa da linha (só para quem abre o Booking; o quadrado leva à tela
+ *    Booking já filtrada).
  * 1. Antes de virar pedido: a solicitação, pelo mesmo "próximo passo" da
  *    tela Solicitações.
  * 2. Onde o pedido está agora: cada pedido em andamento cai em um quadrado
@@ -51,7 +55,8 @@ import { requestStepDays } from "@/lib/request-stages";
  * dinheiro (parcelas, a receber) só para quem abre Finanças.
  */
 
-export type BoardBlock = "request" | "order" | "parallel" | "problem";
+export type BoardBlock =
+  "booking" | "request" | "order" | "parallel" | "problem";
 
 interface CardDef {
   key: string;
@@ -64,6 +69,13 @@ interface CardDef {
 
 /** Quadrados na ordem da tela. */
 export const BOARD_CARDS = [
+  // Booking (docs/BOOKING.md): na ordem das etapas. "Virou solicitação"
+  // continua no bloco seguinte; "Descartado" saiu do fluxo.
+  { key: "bkNew", block: "booking", href: "/app/booking?status=new" },
+  { key: "bkAnalysis", block: "booking", href: "/app/booking?status=analysis" },
+  { key: "bkApproved", block: "booking", href: "/app/booking?status=approved" },
+  { key: "bkOffered", block: "booking", href: "/app/booking?status=offered" },
+  { key: "bkReserved", block: "booking", href: "/app/booking?status=reserved" },
   { key: "reqNew", block: "request" },
   { key: "reqRfq", block: "request" },
   { key: "reqQuotes", block: "request" },
@@ -179,6 +191,11 @@ const ALERT_CHANNELS = ["yellow", "red", "grey"];
 export interface BoardInput {
   now: Date;
   finance: boolean;
+  /**
+   * Linhas do Booking (só a etapa). Sem a lista (login que não abre o
+   * Booking), o bloco do Booking não aparece.
+   */
+  bookings?: Pick<Booking, "status">[];
   orders: Order[];
   parties: Pick<Party, "id" | "name">[];
   items: Pick<OrderItem, "orderId" | "name">[];
@@ -501,17 +518,35 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     (r) => !cancelled.has(reviewOrderId(r) ?? ""),
   ).length;
 
+  /* Bloco 0: Booking, uma contagem por etapa. */
+  const BOOKING_CARD: Partial<Record<Booking["status"], BoardCardKey>> = {
+    new: "bkNew",
+    analysis: "bkAnalysis",
+    approved: "bkApproved",
+    offered: "bkOffered",
+    reserved: "bkReserved",
+  };
+  const bookingCount = new Map<BoardCardKey, number>();
+  for (const b of input.bookings ?? []) {
+    const key = BOOKING_CARD[b.status];
+    if (key) bookingCount.set(key, (bookingCount.get(key) ?? 0) + 1);
+  }
+
   const cards = BOARD_CARDS.filter(
-    (c) => input.finance || !("finance" in c && c.finance),
+    (c) =>
+      (input.finance || !("finance" in c && c.finance)) &&
+      (c.block !== "booking" || !!input.bookings),
   ).map((c): BoardCard => {
     const list = rows.get(c.key)!;
     const href = "href" in c ? c.href : null;
     const count =
-      c.key === "parContainers"
-        ? input.containers.open
-        : c.key === "probReviews"
-          ? reviewsOpen
-          : list.length;
+      c.block === "booking"
+        ? (bookingCount.get(c.key) ?? 0)
+        : c.key === "parContainers"
+          ? input.containers.open
+          : c.key === "probReviews"
+            ? reviewsOpen
+            : list.length;
     const value = values.get(c.key);
     return {
       key: c.key,
@@ -541,6 +576,8 @@ const safe = <T>(p: Promise<T[]>): Promise<T[]> =>
  */
 export async function loadTowerBoard(options: {
   finance: boolean;
+  /** Quem abre a tela Booking vê o bloco do Booking. */
+  booking?: boolean;
   now?: Date;
 }): Promise<TowerBoard> {
   const store = getStore();
@@ -559,6 +596,7 @@ export async function loadTowerBoard(options: {
     reviews,
     certifications,
     containers,
+    bookings,
   ] = await Promise.all([
     store.list("orders", { orderBy: "number", direction: "desc" }),
     store.list("parties"),
@@ -577,6 +615,7 @@ export async function loadTowerBoard(options: {
     }),
     import("./compliance").then((m) => m.expiringCertifications()),
     store.list("containers"),
+    options.booking ? safe(store.list("bookings")) : Promise.resolve(undefined),
   ]);
   const live = orders.filter(
     (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
@@ -647,6 +686,7 @@ export async function loadTowerBoard(options: {
   return buildTowerBoard({
     now,
     finance: options.finance,
+    bookings,
     orders,
     parties,
     items,

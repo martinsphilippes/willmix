@@ -198,6 +198,8 @@ Sem integração externa. Server Actions (todas conferem papel Wellmix e a tela 
 
 ## 12. Relatórios, 13. Dashboards, 14. Indicadores
 
+Na Control Tower, o bloco **Booking** abre os quadros da operação: um quadrado por etapa (Novo a Reservado), com a contagem, que leva a esta tela filtrada (`docs/WORKFLOW.md`, "Control Tower: quadros da operação").
+
 Na própria tela: cartões com a contagem por etapa (viram filtro), total filtrado e, para quem abre o Superplan, o filtro "sinal" (viável, abaixo da meta, prejuízo, no preço mínimo, falta dado, sem análise).
 
 ## 15. Auditoria
@@ -231,6 +233,5 @@ Toda mudança grava em `audit_log` (entidade `booking`): `booking.create` (impor
 - Reserva por vários clientes no mesmo produto e quantidade por cor.
 - Ler as colunas da Wellmix na planilha da feira (caixas por programação, total de peças, CBM e containers): o plano de compra já viria pronto.
 - Reanalisar sozinho quando o câmbio ou o frete mudam e avisar quem passou de verde para amarelo ou vermelho.
-- Cartão do Booking na Control Tower (antes do pedido).
 - Aviso ao responsável quando a linha dele é aprovada, e ao cliente quando um produto oferecido a ele entra na vitrine.
 - Colunas escolhidas e filtros salvos por login; exportar a lista filtrada.

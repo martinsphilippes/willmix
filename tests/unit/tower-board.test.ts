@@ -512,7 +512,52 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
       value: 1500,
     });
     expect(open.cards.find((c) => c.key === "ordBooking")!.value).toBe(5000);
-    expect(open.cards.map((c) => c.key)).toEqual(BOARD_CARDS.map((c) => c.key));
+    // Sem a lista do Booking (login que não abre a tela), o bloco não aparece.
+    expect(open.cards.map((c) => c.key)).toEqual(
+      BOARD_CARDS.filter((c) => c.block !== "booking").map((c) => c.key),
+    );
+  });
+});
+
+describe("bloco do Booking: o fluxo começa antes da solicitação", () => {
+  const status = (s: string) =>
+    ({ status: s }) as NonNullable<BoardInput["bookings"]>[number];
+
+  it("conta as linhas por etapa, na ordem, e leva à tela Booking filtrada", () => {
+    const board = buildTowerBoard(
+      input({
+        bookings: [
+          status("new"),
+          status("new"),
+          status("analysis"),
+          status("reserved"),
+          // Já está no bloco da solicitação; descartado saiu do fluxo.
+          status("requested"),
+          status("discarded"),
+        ],
+      }),
+    );
+    const booking = board.cards.filter((c) => c.block === "booking");
+    expect(booking.map((c) => [c.key, c.count, c.href])).toEqual([
+      ["bkNew", 2, "/app/booking?status=new"],
+      ["bkAnalysis", 1, "/app/booking?status=analysis"],
+      ["bkApproved", 0, "/app/booking?status=approved"],
+      ["bkOffered", 0, "/app/booking?status=offered"],
+      ["bkReserved", 1, "/app/booking?status=reserved"],
+    ]);
+    // O Booking vem primeiro, antes da solicitação.
+    expect(board.cards[0].key).toBe("bkNew");
+    expect(board.cards[5].block).toBe("request");
+  });
+
+  it("com o Booking vazio os quadrados aparecem zerados", () => {
+    const board = buildTowerBoard(input({ bookings: [], finance: true }));
+    expect(board.cards.map((c) => c.key)).toEqual(
+      BOARD_CARDS.map((c) => c.key),
+    );
+    expect(
+      board.cards.filter((c) => c.block === "booking").map((c) => c.count),
+    ).toEqual([0, 0, 0, 0, 0]);
   });
 });
 

@@ -3,6 +3,14 @@
  * o pedido de ponta a ponta em quatro blocos): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "board.block.booking": "Booking",
+  "board.hint.booking":
+    "produto da ficha técnica, antes da solicitação (abre o Booking)",
+  "board.card.bkNew": "Novo",
+  "board.card.bkAnalysis": "Em análise",
+  "board.card.bkApproved": "Aprovado",
+  "board.card.bkOffered": "Oferecido ao cliente",
+  "board.card.bkReserved": "Reservado pelo cliente",
   "board.block.request": "Antes de virar pedido",
   "board.block.order": "Onde o pedido está agora",
   "board.block.parallel": "Acontece ao mesmo tempo",
@@ -71,6 +79,14 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "board.block.booking": "Booking",
+  "board.hint.booking":
+    "product from the spec sheet, before the request (opens Booking)",
+  "board.card.bkNew": "New",
+  "board.card.bkAnalysis": "Under analysis",
+  "board.card.bkApproved": "Approved",
+  "board.card.bkOffered": "Offered to customer",
+  "board.card.bkReserved": "Reserved by customer",
   "board.block.request": "Before becoming an order",
   "board.block.order": "Where the order is now",
   "board.block.parallel": "Happening at the same time",
@@ -139,6 +155,13 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "board.block.booking": "Booking",
+  "board.hint.booking": "来自规格表的产品，尚未生成询价申请（打开 Booking）",
+  "board.card.bkNew": "新增",
+  "board.card.bkAnalysis": "分析中",
+  "board.card.bkApproved": "已批准",
+  "board.card.bkOffered": "已向客户推荐",
+  "board.card.bkReserved": "客户已预订",
   "board.block.request": "下单之前",
   "board.block.order": "订单当前位置",
   "board.block.parallel": "同时进行",
