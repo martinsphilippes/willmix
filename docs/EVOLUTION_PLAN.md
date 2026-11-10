@@ -750,6 +750,11 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): os cartões "Exceções" e "Visão comercial por container" deixam de ficar abertos no fim do painel. Cada um ganhou um quadrado em "Visões gerais" (com a contagem); tocar abre o cartão logo abaixo (`/app?filter=exceptions` e `/app?filter=commercial`), tocar de novo fecha. Nada saiu: o conteúdo e as permissões são os mesmos (a visão comercial continua só para quem tem o Financeiro). Código em `src/components/control-tower.tsx`.
 
+## "Pedido criado" passa a se chamar "Pedido pré-aprovado"
+
+- **Pedido do dono** (10/11/2026): a primeira etapa do pedido e a situação da solicitação que virou pedido se chamavam "Pedido criado", mas o pedido só está de fato criado depois das assinaturas do documento, quando vai para a produção. O nome passa a ser "Pedido pré-aprovado" (en "Order pre-approved", zh "订单预批准").
+- **Onde mudou** (só texto): etapa `ORDER_CREATED`, situação `ORDERED` da solicitação, programação de compra do catálogo, próximo passo do Booking, aviso ao fornecedor, ajuda da tela de solicitações, recusa da assinatura, pendência da arte e o item de revisão "sem valor FOB". As chaves do código e do banco (`ORDER_CREATED`, `ORDERED`) não mudaram: nenhum dado foi alterado.
+
 ## Programação de compra vira pendência do administrador
 
 - **Decisão do dono** (10/11/2026): quem faz a Programação de compra é a Wellmix, o administrador. Pedido na Preparação, com ficha de compra e ainda sem o 1º lote, aparece em "Minhas pendências" do administrador como "Fazer a programação de compra: pedido #N", com o atalho para a ficha e o prazo da etapa. Some quando o 1º lote é gravado.

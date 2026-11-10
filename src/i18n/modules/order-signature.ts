@@ -91,7 +91,7 @@ export const pt = {
   "orderSign.blocked.supplier":
     "A Wellmix já assinou, mas ainda não liberou o pedido para a sua assinatura. Avise a Wellmix.",
   "orderSign.blocked.wellmix":
-    "O fornecedor ainda não consegue assinar: falta concluir, no pedido, o item “Pedido conferido e liberado ao fornecedor” da etapa Pedido criado.",
+    "O fornecedor ainda não consegue assinar: falta concluir, no pedido, o item “Pedido conferido e liberado ao fornecedor” da etapa Pedido pré-aprovado.",
   "orderSign.error.signature_file_missing":
     "O arquivo assinado não chegou. Envie de novo.",
   "req.order_sign_send": "Documento do pedido enviado para assinatura",
@@ -250,7 +250,7 @@ export const en: Record<keyof typeof pt, string> = {
   "orderSign.blocked.supplier":
     "Wellmix has already signed, but has not yet released the order for your signature. Please tell Wellmix.",
   "orderSign.blocked.wellmix":
-    "The supplier cannot sign yet: in the order, conclude the item “Order checked and released to the supplier” of the Order created stage.",
+    "The supplier cannot sign yet: in the order, conclude the item “Order checked and released to the supplier” of the Order pre-approved stage.",
   "orderSign.error.signature_file_missing":
     "The signed file did not arrive. Send it again.",
   "req.order_sign_send": "Order document sent for signature",
@@ -393,7 +393,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.blocked.supplier":
     "Wellmix 已签署，但尚未将订单发给您签署。请通知 Wellmix。",
   "orderSign.blocked.wellmix":
-    "供应商暂时无法签署：请在订单的“订单已创建”阶段完成“订单已核对并发给供应商”一项。",
+    "供应商暂时无法签署：请在订单的“订单预批准”阶段完成“订单已核对并发给供应商”一项。",
   "orderSign.error.signature_file_missing": "未收到已签署的文件，请重新上传。",
   "req.order_sign_send": "订单文件已发送签署",
   "orderSign.send.submit": "发送签署",

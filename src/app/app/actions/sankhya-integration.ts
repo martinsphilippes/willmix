@@ -121,20 +121,16 @@ const code = (max = 999999) =>
     z.number().int().min(0).max(max).nullable(),
   );
 
+/*
+ * Códigos do ERP para os pedidos. Pelas respostas da Wellmix, o volume é
+ * sempre UN e as TOPs ficam em Configurações → Processos (as regras gravam
+ * topOrder/topQuote); aqui só o que ainda se escolhe. O que não vem no
+ * formulário continua como estava gravado.
+ */
 const erpSchema = z.object({
   codEmp: code(9999),
-  topOrder: code(),
-  topQuote: code(),
   codTipVenda: code(),
-  paymentFromSupplier: z.boolean(),
   codVend: code(),
-  volumeMode: z.enum(["product", "fixed"]),
-  codVol: z
-    .string()
-    .trim()
-    .max(6)
-    .regex(/^[A-Za-z0-9]*$/),
-  autoLink: z.boolean(),
   codNat: code(999999999),
   codCenCus: code(999999999),
   codProj: code(999999999),
@@ -143,21 +139,15 @@ const erpSchema = z.object({
   erpNumberField: z.enum(["NUNOTA", "NUMNOTA"]),
 });
 
-/** Grava as respostas das 5 perguntas (códigos do ERP para os pedidos). */
+/** Grava os códigos do ERP para os pedidos. */
 export async function saveSankhyaErpAction(form: FormData) {
   const user = await admin();
   let target: string;
   try {
     const input = erpSchema.parse({
       codEmp: str(form, "codEmp"),
-      topOrder: str(form, "topOrder"),
-      topQuote: str(form, "topQuote"),
       codTipVenda: str(form, "codTipVenda"),
-      paymentFromSupplier: str(form, "paymentFromSupplier") === "1",
       codVend: str(form, "codVend"),
-      volumeMode: str(form, "volumeMode") || "fixed",
-      codVol: str(form, "codVol").toUpperCase(),
-      autoLink: str(form, "autoLink") === "1",
       codNat: str(form, "codNat"),
       codCenCus: str(form, "codCenCus"),
       codProj: str(form, "codProj"),
@@ -166,9 +156,11 @@ export async function saveSankhyaErpAction(form: FormData) {
       erpNumberField: str(form, "erpNumberField") || "NUNOTA",
     });
     const before = await getSankhyaErpSettings();
-    // O envio automático dos pedidos do portal ainda não está na tela: mantém.
+    const { updatedAt: _u, updatedBy: _b, ...rest } = before;
+    void _u;
+    void _b;
     await saveSankhyaErpSettings(
-      { ...input, ordersEnabled: before.ordersEnabled },
+      { ...rest, ...input, volumeMode: "fixed", codVol: "UN" },
       user.id,
     );
     await audit(

@@ -10,6 +10,7 @@ import {
 import {
   getSankhyaErpSettings,
   readSetting,
+  saveSankhyaErpSettings,
   writeSetting,
   type SankhyaErpSettings,
 } from "@/lib/integrations/sankhya-settings";
@@ -34,6 +35,30 @@ export async function getProcessRules(): Promise<ProcessRule[]> {
 export async function saveProcessRules(user: User, rules: ProcessRule[]) {
   const before = await getProcessRules();
   await writeSetting(RULES_KEY, rules);
+  // As TOPs da cotação e do pedido vêm das regras (Integração e pedido de
+  // teste usam as mesmas): cotação = "aguardando sinal → incluir nota",
+  // pedido = "assinado pelos dois".
+  const by = new Map(rules.map((r) => [r.event, r]));
+  const quote = by.get("request:WAITING_DOWN_PAYMENT");
+  const signed = by.get("order:signed");
+  const erp = await getSankhyaErpSettings();
+  const { updatedAt: _u, updatedBy: _b, ...rest } = erp;
+  void _u;
+  void _b;
+  await saveSankhyaErpSettings(
+    {
+      ...rest,
+      topQuote:
+        quote?.sankhya === "create_note" && quote.top
+          ? quote.top
+          : erp.topQuote,
+      topOrder:
+        signed && signed.sankhya !== "none" && signed.top
+          ? signed.top
+          : erp.topOrder,
+    },
+    user.id,
+  );
   await audit(
     user,
     "process.rules",
