@@ -17,6 +17,7 @@ import {
 } from "@/lib/services/quote-pricing";
 import { getFxRates } from "@/lib/services/fx";
 import {
+  hasNcmBroker,
   requestNcm,
   scheduleNcmSuggestion,
   suggestionsView,
@@ -309,6 +310,17 @@ export default async function RequestDetailPage({
     ncmInfo?.status === "none" && request.ncmSuggestions == null;
   if (ncmPendingAuto) scheduleNcmSuggestion(request.id);
   const fiscalLoaded = ncmInfo ? await hasFiscalTable() : false;
+  /* Quem classifica é o despachante: a Wellmix vê se está na fila dele e quem confirmou. */
+  const ncmQueue =
+    ncmInfo?.status === "none" && !request.orderId
+      ? (await hasNcmBroker())
+        ? ("broker" as const)
+        : ("none" as const)
+      : null;
+  const ncmConfirmer =
+    ncmInfo?.status === "confirmed" && request.ncmConfirmedByUserId
+      ? await store.get("users", request.ncmConfirmedByUserId)
+      : null;
   const ncmAiCode =
     typeof ncmAi === "string" ? ncmAi.replace(/^ai_/, "") : null;
   const ncmAiReason = ncmAiCode
@@ -765,6 +777,12 @@ export default async function RequestDetailPage({
                   suggestionsPending={ncmPendingAuto}
                   hasTable={fiscalLoaded}
                   editable={!request.orderId}
+                  queue={ncmQueue}
+                  confirmedBy={
+                    ncmConfirmer
+                      ? `${ncmConfirmer.name} (${t(`role.${ncmConfirmer.role}` as DictionaryKey)})`
+                      : null
+                  }
                   notice={
                     ncmConfirmed
                       ? t("ncm.confirmedOk")

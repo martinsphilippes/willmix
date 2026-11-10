@@ -54,7 +54,35 @@ export const pt = {
     "Informe e salve os links oficiais antes de atualizar pelos links.",
   "ncm.title": "Classificação fiscal (NCM)",
   "ncm.hint":
-    "O NCM define o II (TEC) e o IPI (TIPI) do valor ao cliente. A IA sugere; a Wellmix confirma.",
+    "O NCM define o II (TEC) e o IPI (TIPI) do valor ao cliente. Quem classifica é o despachante; a Wellmix também pode confirmar. A IA só sugere.",
+  "ncm.noTable.outsider":
+    "A Wellmix ainda não carregou a tabela fiscal (TEC/TIPI): as alíquotas não aparecem aqui, mas o NCM pode ser confirmado.",
+  "ncm.confirmedBy": "Confirmado por {name}",
+  "ncm.queue.broker":
+    "Está na fila do despachante: ele recebeu a pendência para classificar. A Wellmix também pode confirmar aqui.",
+  "ncm.queue.none":
+    "Nenhum despachante com login ativo: por enquanto a Wellmix confirma aqui.",
+  "ncm.work.title": "Classificar NCM",
+  "ncm.work.subtitleNumber": "Solicitação nº {n} · {product}",
+  "ncm.work.backToTasks": "Voltar às pendências",
+  "ncm.work.closed":
+    "Esta solicitação já virou pedido ou foi encerrada: o NCM não muda mais por aqui.",
+  "ncm.work.supplierHs": "HS informado pelo fornecedor",
+  "ncm.work.description": "Descrição",
+  "ncm.error.forbidden": "Você não tem permissão para esta ação.",
+  "ncm.notify.one.subject": "Classificar NCM: {product}",
+  "ncm.notify.one.body":
+    "Produto novo sem NCM. Abra, confira as sugestões e confirme a classificação.",
+  "ncm.notify.many.subject": "{count} produtos para classificar o NCM",
+  "ncm.notify.many.body":
+    "Produtos novos sem NCM. Abra as pendências e classifique cada um.",
+  "tasks.group.ncm_classify": "Classificar NCM",
+  "tasks.ncm.title": "Classificar NCM: {product}",
+  "tasks.ncm.detail":
+    "Solicitação nº {n} · confira as sugestões e confirme o NCM",
+  "tasks.ncm.detailNoNumber": "Confira as sugestões e confirme o NCM",
+  "pricing.error.ncm_closed":
+    "Esta solicitação já virou pedido ou foi encerrada: o NCM não muda mais por aqui.",
   "ncm.status.confirmed": "NCM confirmado",
   "ncm.status.product": "Do cadastro do produto",
   "ncm.status.none": "Falta confirmar",
@@ -154,7 +182,35 @@ export const en: Record<keyof typeof pt, string> = {
     "Enter and save the official links before updating from them.",
   "ncm.title": "Tax classification (NCM)",
   "ncm.hint":
-    "The NCM sets the import duty (TEC) and IPI (TIPI) of the customer value. AI suggests; Wellmix confirms.",
+    "The NCM sets the import duty (TEC) and IPI (TIPI) of the customer value. The customs broker classifies it; Wellmix can also confirm. AI only suggests.",
+  "ncm.noTable.outsider":
+    "Wellmix has not loaded the tax table (TEC/TIPI) yet: rates are not shown here, but the NCM can be confirmed.",
+  "ncm.confirmedBy": "Confirmed by {name}",
+  "ncm.queue.broker":
+    "In the customs broker's queue: they received the task to classify it. Wellmix can also confirm here.",
+  "ncm.queue.none":
+    "No customs broker with an active login: for now Wellmix confirms here.",
+  "ncm.work.title": "Classify NCM",
+  "ncm.work.subtitleNumber": "Request no. {n} · {product}",
+  "ncm.work.backToTasks": "Back to tasks",
+  "ncm.work.closed":
+    "This request already became an order or was closed: the NCM no longer changes here.",
+  "ncm.work.supplierHs": "HS code given by the supplier",
+  "ncm.work.description": "Description",
+  "ncm.error.forbidden": "You do not have permission for this action.",
+  "ncm.notify.one.subject": "Classify NCM: {product}",
+  "ncm.notify.one.body":
+    "New product without an NCM. Open it, check the suggestions and confirm the classification.",
+  "ncm.notify.many.subject": "{count} products need an NCM",
+  "ncm.notify.many.body":
+    "New products without an NCM. Open your tasks and classify each one.",
+  "tasks.group.ncm_classify": "Classify NCM",
+  "tasks.ncm.title": "Classify NCM: {product}",
+  "tasks.ncm.detail":
+    "Request no. {n} · check the suggestions and confirm the NCM",
+  "tasks.ncm.detailNoNumber": "Check the suggestions and confirm the NCM",
+  "pricing.error.ncm_closed":
+    "This request already became an order or was closed: the NCM no longer changes here.",
   "ncm.status.confirmed": "NCM confirmed",
   "ncm.status.product": "From the product record",
   "ncm.status.none": "Needs confirmation",
@@ -250,7 +306,30 @@ export const zh: Record<keyof typeof pt, string> = {
   "settings.error.fiscal_no_urls": "请先填写并保存官方链接，再通过链接更新。",
   "ncm.title": "税则分类（NCM）",
   "ncm.hint":
-    "NCM 决定客户价格中的进口税（TEC）和 IPI（TIPI）。AI 提供建议，Wellmix 确认。",
+    "NCM 决定客户价格中的进口税（TEC）和 IPI（TIPI）。由报关行归类，Wellmix 也可以确认。AI 仅提供建议。",
+  "ncm.noTable.outsider":
+    "Wellmix 尚未导入税则表（TEC/TIPI）：此处不显示税率，但可以确认 NCM。",
+  "ncm.confirmedBy": "确认人：{name}",
+  "ncm.queue.broker":
+    "已在报关行的待办中：对方已收到归类任务。Wellmix 也可以在此确认。",
+  "ncm.queue.none": "没有可登录的报关行：暂由 Wellmix 在此确认。",
+  "ncm.work.title": "NCM 归类",
+  "ncm.work.subtitleNumber": "需求单 {n} · {product}",
+  "ncm.work.backToTasks": "返回待办",
+  "ncm.work.closed": "该需求单已转为订单或已关闭：NCM 不能再在此修改。",
+  "ncm.work.supplierHs": "供应商提供的 HS 编码",
+  "ncm.work.description": "描述",
+  "ncm.error.forbidden": "您没有执行此操作的权限。",
+  "ncm.notify.one.subject": "NCM 归类：{product}",
+  "ncm.notify.one.body": "新产品尚无 NCM。请打开，查看建议并确认归类。",
+  "ncm.notify.many.subject": "{count} 个产品需要 NCM 归类",
+  "ncm.notify.many.body": "新产品尚无 NCM。请打开待办，逐个归类。",
+  "tasks.group.ncm_classify": "NCM 归类",
+  "tasks.ncm.title": "NCM 归类：{product}",
+  "tasks.ncm.detail": "需求单 {n} · 查看建议并确认 NCM",
+  "tasks.ncm.detailNoNumber": "查看建议并确认 NCM",
+  "pricing.error.ncm_closed":
+    "该需求单已转为订单或已关闭：NCM 不能再在此修改。",
   "ncm.status.confirmed": "NCM 已确认",
   "ncm.status.product": "来自产品档案",
   "ncm.status.none": "待确认",

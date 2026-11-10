@@ -202,6 +202,8 @@ export async function createRequestBatch(
       groupId,
       `Lote com ${items.length} produtos: ${items.map((i) => i.productName).join(", ")}`,
     );
+  // Produto sem NCM: o despachante recebe a pendência e um aviso só.
+  await (await import("./request-ncm")).notifyNcmPending(created);
   return created;
 }
 
