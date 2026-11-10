@@ -236,6 +236,19 @@ describe("ficha no pedido", () => {
       "lot1",
     );
     expect((await getSheetForUser(admin, order.id))!.missing).toContain("lot1");
+    // Enquanto falta, é pendência do administrador (não do operador nem do
+    // fornecedor), com o atalho para a ficha.
+    const { pendingTasksFor } = await import("@/lib/services/tasks");
+    const scheduleTask = async (who: typeof admin) =>
+      (await pendingTasksFor(who)).find(
+        (task) =>
+          task.kind === "purchase_schedule" &&
+          task.orderNumber === order.number,
+      );
+    expect((await scheduleTask(admin))?.link).toBe(
+      `/app/orders/${order.id}/purchase-sheet`,
+    );
+    expect(await scheduleTask(supplierA)).toBeUndefined();
     await saveSheet(admin, order.id, {
       lots: [
         { departureIntervalDays: 30, masterCartons: 100 },
@@ -243,6 +256,7 @@ describe("ficha no pedido", () => {
         { departureIntervalDays: 45, masterCartons: 100 },
       ],
     } as never);
+    expect(await scheduleTask(admin)).toBeUndefined();
     // Preparação tem só a ficha de compra.
     expect(
       (

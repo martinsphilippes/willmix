@@ -43,8 +43,6 @@ describe("passos e percentuais", () => {
       (c) =>
         (c.block === "request" || c.block === "order") &&
         ![
-          // O Booking vem antes da solicitação: não é passo da viagem dela.
-          "bkOpen",
           "reqDieline",
           "reqPackaging",
           "ordInspectionIssue",

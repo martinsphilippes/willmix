@@ -72,15 +72,11 @@ describe("quadros da operação lidos do banco", () => {
       notes: null,
     });
 
-    await getStore().create("bookings", {
-      productId: "produto-do-quadro",
-      status: "analysis",
-    } as never);
+    // Com Finanças e Booking: todos os quadrados.
     const board = await loadTowerBoard({ finance: true, booking: true });
     expect(board.cards.map((c) => c.key)).toEqual(
       BOARD_CARDS.map((c) => c.key),
     );
-    expect(board.cards.find((c) => c.key === "bkOpen")!.count).toBe(1);
     const live = (await getStore().list("orders")).filter(
       (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
     );
@@ -104,8 +100,6 @@ describe("quadros da operação lidos do banco", () => {
     // Sem Finanças: sem parcelas, sem "a receber" e sem valores.
     const operator = await loadTowerBoard({ finance: false });
     expect(operator.cards.map((c) => c.key)).not.toContain("parReceivable");
-    // Sem a tela Booking: sem o quadrado do Booking.
-    expect(operator.cards.some((c) => c.key === "bkOpen")).toBe(false);
     expect(operator.cards.every((c) => c.value === null)).toBe(true);
   });
 });

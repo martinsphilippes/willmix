@@ -1,7 +1,13 @@
 import type { Approval, User } from "@/lib/db";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { APPROVAL_LEVELS } from "@/lib/db/schema";
-import { canDecide, canRetryApproval } from "@/lib/services/approvals";
+import {
+  canDecide,
+  canRetryApproval,
+  isApplying,
+  isApplyStale,
+} from "@/lib/services/approvals";
+import { AutoRefresh } from "./auto-refresh";
 import {
   decideApprovalAction,
   cancelApprovalAction,
@@ -49,6 +55,9 @@ export function ApprovalCard({
   if (!approvals.length && !sent) return null;
   const open = approvals.find((a) => a.status === "pending") ?? null;
   const past = approvals.filter((a) => a !== open);
+  // Todos os níveis aprovaram e a escolha está sendo gravada (ou parou).
+  const applying = !!open && isApplying(open);
+  const stale = !!open && isApplyStale(open);
   const name = (id: string) => names.get(id) ?? "—";
   const levelLabel = (l: string) => t(`approvals.level.${l}` as DictionaryKey);
 
@@ -111,14 +120,24 @@ export function ApprovalCard({
           tone={
             a.status === "approved"
               ? "success"
-              : a.status === "pending"
-                ? "warning"
-                : a.status === "rejected" || a.status === "failed"
-                  ? "danger"
-                  : "neutral"
+              : isApplying(a)
+                ? isApplyStale(a)
+                  ? "warning"
+                  : "info"
+                : a.status === "pending"
+                  ? "warning"
+                  : a.status === "rejected" || a.status === "failed"
+                    ? "danger"
+                    : "neutral"
           }
         >
-          {t(`approvals.status.${a.status}` as DictionaryKey)}
+          {isApplying(a)
+            ? t(
+                isApplyStale(a)
+                  ? "approvals.applying.staleBadge"
+                  : "approvals.applying.badge",
+              )
+            : t(`approvals.status.${a.status}` as DictionaryKey)}
         </Badge>
         <span>
           {t("approvals.value")}:{" "}
@@ -181,7 +200,37 @@ export function ApprovalCard({
         >
           {header(open)}
           {steps(open)}
-          {canDecide(user, open) ? (
+          {applying ? (
+            stale ? (
+              <div className="mt-3 space-y-2" data-approval-applying="stale">
+                <Alert tone="warning">{t("approvals.applying.stale")}</Alert>
+                {canRetryApproval(user, open, open === approvals[0]) ? (
+                  <form
+                    action={retryApprovalAction}
+                    data-approval-retry={open.id}
+                  >
+                    <input type="hidden" name="requestId" value={requestId} />
+                    <input type="hidden" name="approvalId" value={open.id} />
+                    <SubmitButton>{t("approvals.retry.submit")}</SubmitButton>
+                  </form>
+                ) : null}
+              </div>
+            ) : (
+              <div className="mt-3" data-approval-applying="running">
+                <Alert tone="info">
+                  <span className="inline-flex items-start gap-2">
+                    <span
+                      aria-hidden
+                      className="mt-0.5 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent"
+                    />
+                    <span role="status">{t("approvals.applying.body")}</span>
+                  </span>
+                </Alert>
+                {/* A gravação termina no servidor: a tela busca o resultado sozinha. */}
+                <AutoRefresh everyMs={3000} />
+              </div>
+            )
+          ) : canDecide(user, open) ? (
             <form action={decideApprovalAction} className="mt-3 space-y-2">
               <p className="text-sm font-medium text-amber-800">
                 {t("approvals.waitingYou")}
@@ -216,7 +265,8 @@ export function ApprovalCard({
               })}
             </p>
           )}
-          {open.requestedByUserId === user.id || user.role === "admin" ? (
+          {(open.requestedByUserId === user.id || user.role === "admin") &&
+          (!applying || stale) ? (
             <form action={cancelApprovalAction} className="mt-2">
               <input type="hidden" name="requestId" value={requestId} />
               <input type="hidden" name="approvalId" value={open.id} />

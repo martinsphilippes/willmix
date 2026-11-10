@@ -838,6 +838,8 @@ export interface ImportTaskDraft {
   kind: "import_step" | "import_validate" | "cert_step" | "cert_validate";
   order: Order;
   key: ImportStepKey;
+  /** Desde quando o passo está com quem o vê (envio a validar; passo anterior concluído). */
+  sinceAt?: string | null;
 }
 
 /**
@@ -910,6 +912,7 @@ export async function importTasks(
           kind: cert ? "cert_validate" : "import_validate",
           order,
           key: tpl.key,
+          sinceAt: step.submittedAt,
         });
         continue;
       }
@@ -935,6 +938,13 @@ export async function importTasks(
         kind: cert ? "cert_step" : "import_step",
         order,
         key: tpl.key,
+        // Recusado: desde a recusa; senão, desde que o passo anterior fechou.
+        sinceAt:
+          step?.status === "rejected"
+            ? step.validatedAt
+            : tpl.after
+              ? (steps.find((x) => x.key === tpl.after)?.validatedAt ?? null)
+              : null,
       });
     }
   }

@@ -666,7 +666,7 @@ describe("pedido criado", () => {
       t.link.includes(brief.id),
     );
     expect(pending).toHaveLength(1);
-    expect(pending[0].detail).toContain("pedido criado");
+    expect(pending[0].detail).toContain("pedido pré-aprovado");
     // Arte pelo briefing antes de a etapa abrir conclui o item e a pendência some;
     // a etapa abre direto na aprovação.
     await pb.uploadPackagingItem(agency, brief.id, "art", pdf());

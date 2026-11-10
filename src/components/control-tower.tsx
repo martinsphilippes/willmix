@@ -270,6 +270,11 @@ export async function ControlTower({
     !boardCard && filter && filter in data.buckets
       ? (filter as keyof typeof data.buckets)
       : null;
+  // Quadrados que abrem um cartão (não uma lista): exceções e visão comercial.
+  const extra =
+    !boardCard && (filter === "exceptions" || filter === "commercial")
+      ? filter
+      : null;
   const rows = boardCard
     ? boardCard.rows
     : selected
@@ -448,43 +453,68 @@ export async function ControlTower({
                 active={c.key === selected}
               />
             ))}
+            {/* Exceções e visão comercial: ficam escondidas (pedido do dono) e
+                abrem pelo quadrado de cada uma; tocar de novo fecha. */}
+            <Stat
+              label={t("ct.exceptions")}
+              value={data.exceptions.length}
+              href={extra === "exceptions" ? "/app" : "/app?filter=exceptions"}
+              tone={data.exceptions.length > 0 ? "warning" : undefined}
+              active={extra === "exceptions"}
+            />
+            {totals && finance ? (
+              <Stat
+                label={t("ct.commercial.title")}
+                value={totals.commercial.length}
+                href={
+                  extra === "commercial" ? "/app" : "/app?filter=commercial"
+                }
+                active={extra === "commercial"}
+              />
+            ) : null}
           </div>
           {selected ? list : null}
 
-          <div className="mt-4">
-            <Card className="min-w-0" title={t("ct.exceptions")}>
-              {data.exceptions.length === 0 ? (
-                <Empty>{t("common.none")}</Empty>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {data.exceptions.map((e, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <Badge
-                          tone={e.severity === "high" ? "danger" : "warning"}
-                        >
-                          {t(`ct.exception.${e.kind}`)}
-                        </Badge>
-                        <p className="mt-1 text-zinc-700">{e.detail}</p>
-                      </div>
-                      <TextLink
-                        href={e.link}
-                        className="whitespace-nowrap text-xs"
+          {extra === "exceptions" ? (
+            <div className="mt-4" data-tower-extra="exceptions">
+              <Card className="min-w-0" title={t("ct.exceptions")}>
+                {data.exceptions.length === 0 ? (
+                  <Empty>{t("common.none")}</Empty>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {data.exceptions.map((e, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-zinc-200/80 px-3 py-2"
                       >
-                        {t("tasks.open")}
-                      </TextLink>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
+                        <div className="min-w-0">
+                          <Badge
+                            tone={e.severity === "high" ? "danger" : "warning"}
+                          >
+                            {t(`ct.exception.${e.kind}`)}
+                          </Badge>
+                          <p className="mt-1 text-zinc-700">{e.detail}</p>
+                        </div>
+                        <TextLink
+                          href={e.link}
+                          className="whitespace-nowrap text-xs"
+                        >
+                          {t("tasks.open")}
+                        </TextLink>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            </div>
+          ) : null}
         </>
       ) : null}
-      {totals && finance ? <CommercialCard totals={totals} t={t} /> : null}
+      {totals && finance && operations && extra === "commercial" ? (
+        <div data-tower-extra="commercial">
+          <CommercialCard totals={totals} t={t} />
+        </div>
+      ) : null}
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
   TextLink,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
+import { getStore } from "@/lib/db";
 import {
   executeQuery,
   loadRecords,
@@ -140,7 +141,7 @@ async function erpOptions() {
     tops: [] as SankhyaRow[],
     payment: [] as SankhyaRow[],
     buyers: [] as SankhyaRow[],
-    locations: [] as SankhyaRow[],
+    currencies: [] as SankhyaRow[],
   };
   const first = await attempt(() =>
     loadRecords({ entity: "Empresa", fields: "CODEMP, NOMEFANTASIA" }),
@@ -148,7 +149,7 @@ async function erpOptions() {
   if (first.error !== null) return empty;
   const list = async (sql: string) =>
     (await attempt(() => executeQuery(sql))).data?.rows ?? [];
-  const [tops, payment, buyers, locations] = await Promise.all([
+  const [tops, payment, buyers, currencies] = await Promise.all([
     list(
       "SELECT DISTINCT CODTIPOPER, DESCROPER FROM TGFTOP WHERE TIPMOV = 'O' ORDER BY CODTIPOPER",
     ),
@@ -158,9 +159,9 @@ async function erpOptions() {
     list(
       "SELECT CODVEND, APELIDO FROM TGFVEN WHERE ATIVO = 'S' ORDER BY CODVEND",
     ),
-    list("SELECT CODLOCAL, DESCRLOCAL FROM TGFLOC ORDER BY CODLOCAL"),
+    list("SELECT CODMOEDA, NOMEMOEDA FROM TSIMOE ORDER BY CODMOEDA"),
   ]);
-  return { companies: first.data.rows, tops, payment, buyers, locations };
+  return { companies: first.data.rows, tops, payment, buyers, currencies };
 }
 
 function Options({
@@ -217,9 +218,15 @@ function parseRows(raw: string): SankhyaRow[] {
 }
 
 export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
-  const [status, erp] = await Promise.all([
+  const [status, erp, conditions] = await Promise.all([
     getSankhyaConfigStatus(),
     getSankhyaErpSettings(),
+    getStore()
+      .list("payment_conditions")
+      .then((rows) =>
+        rows.filter((c) => c.active).sort((a, b) => a.code - b.code),
+      )
+      .catch(() => []),
   ]);
   const ready = status.config !== null;
 
@@ -447,7 +454,7 @@ export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
         )}
       </Card>
 
-      {/* 3. Códigos do ERP (as 5 perguntas) */}
+      {/* 3. Códigos do ERP (o que ainda se escolhe; TOPs em Processos) */}
       <Card title={t("sankhyaInt.erp")}>
         {anchor("erp")}
         <p className="mb-3 text-sm text-zinc-600">{t("sankhyaInt.erp.hint")}</p>
@@ -469,12 +476,6 @@ export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
               label="NOMEFANTASIA"
             />
             <Options
-              id="sk-tops"
-              rows={options.tops}
-              code="CODTIPOPER"
-              label="DESCROPER"
-            />
-            <Options
               id="sk-payment"
               rows={options.payment}
               code="CODTIPVENDA"
@@ -487,92 +488,134 @@ export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
               label="APELIDO"
             />
             <Options
-              id="sk-locations"
-              rows={options.locations}
-              code="CODLOCAL"
-              label="DESCRLOCAL"
+              id="sk-currencies"
+              rows={options.currencies}
+              code="CODMOEDA"
+              label="NOMEMOEDA"
             />
           </>
         ) : null}
         <form action={saveSankhyaErpAction} className="grid gap-3">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label={t("sankhyaInt.erp.q1")}>
-              <Input
-                name="codEmp"
-                inputMode="numeric"
-                list="sk-companies"
-                defaultValue={codeValue(erp.codEmp)}
-              />
+            <Field
+              label={t("sankhyaInt.erp.q3")}
+              hint={t("sankhyaInt.erp.paymentFromTable")}
+            >
+              {conditions.length ? (
+                <Select
+                  name="codTipVenda"
+                  defaultValue={codeValue(erp.codTipVenda)}
+                >
+                  <option value="">—</option>
+                  {conditions.map((c) => (
+                    <option key={c.id} value={String(c.code)}>
+                      {c.code} · {c.name}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  name="codTipVenda"
+                  inputMode="numeric"
+                  list="sk-payment"
+                  defaultValue={codeValue(erp.codTipVenda)}
+                />
+              )}
             </Field>
-            <Field label={t("sankhyaInt.erp.q2order")}>
-              <Input
-                name="topOrder"
-                inputMode="numeric"
-                list="sk-tops"
-                defaultValue={codeValue(erp.topOrder)}
-              />
-            </Field>
-            <Field label={t("sankhyaInt.erp.q2quote")}>
-              <Input
-                name="topQuote"
-                inputMode="numeric"
-                list="sk-tops"
-                defaultValue={codeValue(erp.topQuote)}
-              />
-            </Field>
-            <Field label={t("sankhyaInt.erp.q3")}>
-              <Input
-                name="codTipVenda"
-                inputMode="numeric"
-                list="sk-payment"
-                defaultValue={codeValue(erp.codTipVenda)}
-              />
-            </Field>
-            <Field label={t("sankhyaInt.erp.q3supplier")}>
-              <Select
-                name="paymentFromSupplier"
-                defaultValue={erp.paymentFromSupplier ? "1" : "0"}
-              >
-                <option value="0">{t("sankhyaInt.no")}</option>
-                <option value="1">{t("sankhyaInt.yes")}</option>
+            <Field
+              label={t("sankhyaInt.erp.erpNumberField")}
+              hint={t("sankhyaInt.erp.erpNumberFieldHint")}
+            >
+              <Select name="erpNumberField" defaultValue={erp.erpNumberField}>
+                <option value="NUNOTA">NUNOTA</option>
+                <option value="NUMNOTA">NUMNOTA</option>
               </Select>
             </Field>
-            <Field label={t("sankhyaInt.erp.q4vend")}>
-              <Input
-                name="codVend"
-                inputMode="numeric"
-                list="sk-buyers"
-                defaultValue={codeValue(erp.codVend)}
-              />
-            </Field>
-            <Field label={t("sankhyaInt.erp.q4local")}>
-              <Input
-                name="codLocal"
-                inputMode="numeric"
-                list="sk-locations"
-                defaultValue={codeValue(erp.codLocal)}
-              />
-            </Field>
-            <Field label={t("sankhyaInt.erp.volume")}>
-              <Select name="volumeMode" defaultValue={erp.volumeMode}>
-                <option value="product">
-                  {t("sankhyaInt.erp.volume.product")}
-                </option>
-                <option value="fixed">
-                  {t("sankhyaInt.erp.volume.fixed")}
-                </option>
+            <Field label={t("sankhyaInt.erp.currency")}>
+              <Select name="currency" defaultValue={erp.currency}>
+                {["USD", "BRL", "CNY", "EUR"].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </Select>
             </Field>
-            <Field label={t("sankhyaInt.erp.codVol")}>
-              <Input name="codVol" maxLength={6} defaultValue={erp.codVol} />
-            </Field>
-            <Field label={t("sankhyaInt.erp.q5")}>
-              <Select name="autoLink" defaultValue={erp.autoLink ? "1" : "0"}>
-                <option value="1">{t("sankhyaInt.yes")}</option>
-                <option value="0">{t("sankhyaInt.no")}</option>
-              </Select>
+            <Field
+              label={t("sankhyaInt.erp.codMoeda")}
+              hint={t("sankhyaInt.erp.codMoedaHint")}
+            >
+              <Input
+                name="codMoeda"
+                inputMode="numeric"
+                list="sk-currencies"
+                defaultValue={codeValue(erp.codMoeda)}
+              />
             </Field>
           </div>
+          <p className="text-sm text-zinc-700">
+            {t("sankhyaInt.erp.topsFromProcess", {
+              quote: codeValue(erp.topQuote) || "—",
+              order: codeValue(erp.topOrder) || "—",
+            })}{" "}
+            <TextLink href="/app/settings/sankhya?tab=process#rules">
+              {t("sankhyaInt.tab.process")}
+            </TextLink>
+            {" · "}
+            {t("sankhyaInt.erp.volumeFixed")}
+          </p>
+          <details className="rounded-lg border border-zinc-200 px-3 py-2">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-800">
+              {t("sankhyaInt.erp.fixed", {
+                emp: codeValue(erp.codEmp) || "—",
+                nat: codeValue(erp.codNat) || "—",
+                cr: codeValue(erp.codCenCus) || "—",
+                proj: codeValue(erp.codProj) || "—",
+                vend: codeValue(erp.codVend) || "—",
+              })}
+            </summary>
+            <p className="my-2 text-xs text-zinc-500">
+              {t("sankhyaInt.erp.fixedHint")}
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label={t("sankhyaInt.erp.q1")}>
+                <Input
+                  name="codEmp"
+                  inputMode="numeric"
+                  list="sk-companies"
+                  defaultValue={codeValue(erp.codEmp)}
+                />
+              </Field>
+              <Field label={t("sankhyaInt.erp.q4vend")}>
+                <Input
+                  name="codVend"
+                  inputMode="numeric"
+                  list="sk-buyers"
+                  defaultValue={codeValue(erp.codVend)}
+                />
+              </Field>
+              <Field label={t("sankhyaInt.erp.codNat")}>
+                <Input
+                  name="codNat"
+                  inputMode="numeric"
+                  defaultValue={codeValue(erp.codNat)}
+                />
+              </Field>
+              <Field label={t("sankhyaInt.erp.codCenCus")}>
+                <Input
+                  name="codCenCus"
+                  inputMode="numeric"
+                  defaultValue={codeValue(erp.codCenCus)}
+                />
+              </Field>
+              <Field label={t("sankhyaInt.erp.codProj")}>
+                <Input
+                  name="codProj"
+                  inputMode="numeric"
+                  defaultValue={codeValue(erp.codProj)}
+                />
+              </Field>
+            </div>
+          </details>
           <p className="text-xs text-zinc-500">
             {t("sankhyaInt.erp.ordersOff")}
           </p>

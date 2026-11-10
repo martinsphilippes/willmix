@@ -2,9 +2,13 @@ import Link from "next/link";
 import type { User } from "@/lib/db";
 import { SCREENS, SCREEN_LABEL, type Screen } from "@/lib/auth/screens";
 import {
+  SUPPLIER_STEPS,
   TASK_DUE_FILTERS,
+  daysUntil,
   filterTasks,
   pendingTasksFor,
+  supplierGroup,
+  supplierStepOfGroup,
   taskGroups,
   type Task,
 } from "@/lib/services/tasks";
@@ -56,6 +60,9 @@ export async function TaskList({
     : null;
   const shown = filterTasks(tasks, { due, group });
   const filtering = shown.length !== tasks.length || !!due || !!group;
+  // Fornecedor: os filtros são as etapas dele (do Booking ao embarque), cada
+  // uma explicada, e a tabela ganha a data em que a pendência chegou a ele.
+  const supplier = user.role === "supplier";
   // Cliente tem poucas ações próprias: a ajuda fala só delas.
   const help =
     user.role === "customer"
@@ -83,18 +90,27 @@ export async function TaskList({
       {sent ? (
         <QuoteSentNotice user={user} quoteId={sent} tasks={tasks} t={t} />
       ) : null}
+      {supplier ? (
+        <SupplierSteps tasks={tasks} due={due} group={group} t={t} />
+      ) : null}
       {tasks.length === 0 ? (
-        <Empty>{t("tasks.empty")}</Empty>
+        <Empty>{t(supplier ? "supplierTasks.empty" : "tasks.empty")}</Empty>
       ) : (
         <>
-          <TaskFilters tasks={tasks} due={due} group={group} t={t} />
+          <TaskFilters
+            tasks={tasks}
+            due={due}
+            group={group}
+            t={t}
+            supplier={supplier}
+          />
           {shown.length === 0 ? (
             <Empty>
               {t("tasks.filter.empty")}{" "}
               <TextLink href="/app/tasks">{t("tasks.filter.clear")}</TextLink>
             </Empty>
           ) : (
-            <TaskItems tasks={shown} t={t} />
+            <TaskItems tasks={shown} t={t} since={supplier} />
           )}
           {filtering && shown.length > 0 ? (
             <p className="mt-3 text-sm">
@@ -108,13 +124,28 @@ export async function TaskList({
 }
 
 function groupLabel(group: string, stage: boolean, t: Translate) {
-  return stage
+  // Etapa do fornecedor (supplier.<etapa>): nome próprio, não o da etapa do pedido.
+  return stage && !supplierStepOfGroup(group)
     ? t(`stage.${group}` as DictionaryKey)
     : t(`tasks.group.${group}` as DictionaryKey);
 }
 
-/** Filtros por prazo e por tipo, com contagem; chip ativo em destaque. */
-function TaskFilters({
+/** Endereço da lista com os filtros (prazo e etapa/tipo) escolhidos. */
+function tasksHref(due: string | null, group: string | null) {
+  const p = new URLSearchParams();
+  if (due) p.set("due", due);
+  if (group) p.set("type", group);
+  const q = p.toString();
+  return q ? `/app/tasks?${q}` : "/app/tasks";
+}
+
+/**
+ * Fornecedor: as etapas que chegam na mão dele, do Booking ao embarque, na
+ * ordem em que acontecem. Cada cartão diz o que fazer e quantas pendências
+ * tem; tocar filtra a lista. Aparecem todas, mesmo sem pendência, para ele
+ * conhecer o caminho inteiro.
+ */
+function SupplierSteps({
   tasks,
   due,
   group,
@@ -125,7 +156,159 @@ function TaskFilters({
   group: string | null;
   t: Translate;
 }) {
-  const groups = taskGroups(tasks);
+  const counts = new Map<string, number>();
+  for (const task of tasks)
+    counts.set(task.group, (counts.get(task.group) ?? 0) + 1);
+  // Etapa com alguma pendência atrasada fica vermelha; com pendência no
+  // prazo, amarela; sem nada a fazer, verde (as cores dos selos do sistema).
+  const late = new Set(tasks.filter((x) => x.overdue).map((x) => x.group));
+  const toneOf = (key: string, n: number) =>
+    late.has(key) ? "danger" : n ? "warning" : "success";
+  const TONE = {
+    danger: {
+      box: "border-red-300 bg-red-50 hover:border-red-500",
+      dot: "bg-red-600 text-white",
+    },
+    warning: {
+      box: "border-amber-300 bg-amber-50 hover:border-amber-500",
+      dot: "bg-amber-500 text-white",
+    },
+    success: {
+      box: "border-emerald-200 bg-emerald-50 hover:border-emerald-400",
+      dot: "bg-emerald-600 text-white",
+    },
+  } as const;
+  const activeStep =
+    SUPPLIER_STEPS.find((step) => supplierGroup(step) === group) ?? null;
+  return (
+    <section className="mb-4" data-supplier-steps>
+      <p className="mb-3 text-sm text-zinc-600">{t("supplierTasks.intro")}</p>
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          {t("supplierTasks.steps.title")}
+        </h2>
+        <Link
+          href={tasksHref(due, null)}
+          aria-pressed={!group}
+          data-task-filter="type:all"
+          className={cx(
+            "inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-medium transition",
+            !group
+              ? "border-brand-600 bg-brand-600 text-white"
+              : "border-zinc-300 bg-white text-zinc-700 hover:border-brand-300 hover:bg-brand-50",
+          )}
+        >
+          {t("supplierTasks.steps.all")} · {tasks.length}
+        </Link>
+      </div>
+      {/* Fluxo do processo: quadrados pequenos, um ao lado do outro, na
+          ordem das etapas (pedido do dono). Em tela estreita a faixa rola
+          para o lado. O que fazer em cada etapa aparece ao escolher. */}
+      <ol
+        className="flex items-stretch gap-1 overflow-x-auto pb-1"
+        data-supplier-flow
+      >
+        {SUPPLIER_STEPS.map((step, i) => {
+          const key = supplierGroup(step);
+          const n = counts.get(key) ?? 0;
+          const active = group === key;
+          const tone = toneOf(key, n);
+          return (
+            <li key={step} className="flex shrink-0 items-center gap-1">
+              {i > 0 ? (
+                <span aria-hidden className="text-sm text-zinc-400">
+                  →
+                </span>
+              ) : null}
+              <Link
+                href={tasksHref(due, active ? null : key)}
+                aria-pressed={active}
+                title={t(`supplierTasks.help.${step}` as DictionaryKey)}
+                data-task-filter={`type:${key}`}
+                data-supplier-step={step}
+                data-supplier-step-count={n}
+                className={cx(
+                  "flex h-full items-center gap-1.5 rounded-lg border px-2 py-1.5 transition",
+                  TONE[tone].box,
+                  active && "ring-2 ring-zinc-900",
+                )}
+                data-supplier-step-tone={tone}
+              >
+                <span
+                  aria-hidden
+                  className={cx(
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                    TONE[tone].dot,
+                  )}
+                >
+                  {i + 1}
+                </span>
+                <span className="whitespace-nowrap text-xs font-semibold text-zinc-900">
+                  {t(`tasks.group.${key}` as DictionaryKey)}
+                </span>
+                {n ? (
+                  <span
+                    className={cx(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold",
+                      TONE[tone].dot,
+                    )}
+                    aria-label={
+                      n === 1
+                        ? t("supplierTasks.steps.count1")
+                        : t("supplierTasks.steps.count", { n })
+                    }
+                  >
+                    {n}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+      <p
+        className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600"
+        data-supplier-flow-legend
+      >
+        {(["danger", "warning", "success"] as const).map((tone) => (
+          <span key={tone} className="inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className={cx("h-2.5 w-2.5 rounded-full", TONE[tone].dot)}
+            />
+            {t(`supplierTasks.legend.${tone}`)}
+          </span>
+        ))}
+      </p>
+      {activeStep ? (
+        <p className="mt-1 text-sm text-zinc-700" data-supplier-step-help>
+          {t(`supplierTasks.help.${activeStep}` as DictionaryKey)}
+        </p>
+      ) : null}
+      <p className="mt-2 text-xs text-zinc-500">{t("supplierTasks.after")}</p>
+    </section>
+  );
+}
+
+/** Filtros por prazo e por tipo, com contagem; chip ativo em destaque. */
+function TaskFilters({
+  tasks,
+  due,
+  group,
+  t,
+  supplier = false,
+}: {
+  tasks: Task[];
+  due: string | null;
+  group: string | null;
+  t: Translate;
+  /** Fornecedor: as etapas ficam nos cartões acima; aqui, só o prazo. */
+  supplier?: boolean;
+}) {
+  // Fora das etapas do fornecedor (não deve haver): continuam filtráveis.
+  const groups = taskGroups(tasks).filter(
+    (g) => !supplier || !supplierStepOfGroup(g.group),
+  );
   const dueCounts = new Map<string, number>();
   for (const task of tasks)
     dueCounts.set(task.due, (dueCounts.get(task.due) ?? 0) + 1);
@@ -157,7 +340,9 @@ function TaskFilters({
   );
   return (
     <div className="mb-3 space-y-2" data-task-filters>
-      <p className="text-xs text-zinc-500">{t("tasks.sortHint")}</p>
+      <p className="text-xs text-zinc-500">
+        {t(supplier ? "supplierTasks.due.hint" : "tasks.sortHint")}
+      </p>
       {/* Prazo e tipo na mesma linha quando cabem. */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -185,7 +370,7 @@ function TaskFilters({
             </Link>
           ))}
         </div>
-        {groups.length > 1 ? (
+        {groups.length > (supplier ? 0 : 1) ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {t("tasks.filter.type")}
@@ -233,14 +418,33 @@ function dueLabel(task: Task, t: Translate): string | null {
  * Solicitações): a mesma tabela das outras telas (Pedidos, Control Tower),
  * uma pendência por linha, na ordem do prazo, com o botão Abrir na linha.
  */
-export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
+export function TaskItems({
+  tasks,
+  t,
+  since = false,
+}: {
+  tasks: Task[];
+  t: Translate;
+  /** Fornecedor: coluna "Com você desde" e o nome da etapa dele. */
+  since?: boolean;
+}) {
+  /** "hoje", "há 1 dia", "há 5 dias". */
+  const ago = (iso: string) => {
+    const n = -(daysUntil(iso) ?? 0);
+    return n <= 0
+      ? t("supplierTasks.since.today")
+      : n === 1
+        ? t("supplierTasks.since.day1")
+        : t("supplierTasks.since.days", { n });
+  };
   return (
     <Table>
       <thead>
         <tr>
           <Th>{t("tasks.col.task")}</Th>
           <Th>{t("tasks.col.detail")}</Th>
-          <Th>{t("tasks.filter.type")}</Th>
+          <Th>{t(since ? "supplierTasks.col.step" : "tasks.filter.type")}</Th>
+          {since ? <Th>{t("supplierTasks.col.since")}</Th> : null}
           <Th>{t("common.due")}</Th>
           <Th className="text-right">
             <span className="sr-only">{t("tasks.open")}</span>
@@ -252,15 +456,24 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
           // Requisito de etapa: etapa traduzida (o serviço guarda a chave).
           const title = task.text
             ? t(task.text.title, task.text.values)
-            : task.stageKey && task.orderNumber
-              ? t("tasks.orderStage", {
+            : task.supplierStep && task.stageKey && task.orderNumber
+              ? t("supplierTasks.orderStep", {
                   n: task.orderNumber,
-                  stage: t(`stage.${task.stageKey}` as DictionaryKey),
+                  step: t(`tasks.group.${task.group}` as DictionaryKey),
                 })
-              : task.title;
+              : task.stageKey && task.orderNumber
+                ? t("tasks.orderStage", {
+                    n: task.orderNumber,
+                    stage: t(`stage.${task.stageKey}` as DictionaryKey),
+                  })
+                : task.title;
+          // Item de etapa do fornecedor: o que fazer, no idioma dele (os
+          // rótulos dos itens do pedido são gravados em português).
           const detail = task.text
             ? t(task.text.detail, task.text.values)
-            : task.detail;
+            : since && task.supplierStep && task.kind === "requirement"
+              ? t(`supplierTasks.help.${task.supplierStep}` as DictionaryKey)
+              : task.detail;
           const relative = dueLabel(task, t);
           return (
             <tr
@@ -289,6 +502,30 @@ export function TaskItems({ tasks, t }: { tasks: Task[]; t: Translate }) {
               <Td className="whitespace-nowrap text-zinc-700">
                 {groupLabel(task.group, !!task.stageKey, t)}
               </Td>
+              {since ? (
+                <Td className="whitespace-nowrap tabular-nums" data-task-since>
+                  {task.sinceAt ? (
+                    <>
+                      {formatDate(task.sinceAt, t)}
+                      <span className="block text-xs text-zinc-500">
+                        {ago(task.sinceAt)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-zinc-400">—</span>
+                  )}
+                  {task.loadedAt ? (
+                    <span
+                      className="block text-xs text-zinc-500"
+                      data-task-loaded
+                    >
+                      {t("supplierTasks.loaded", {
+                        date: formatDate(task.loadedAt, t),
+                      })}
+                    </span>
+                  ) : null}
+                </Td>
+              ) : null}
               <Td
                 className={cx(
                   "whitespace-nowrap tabular-nums",

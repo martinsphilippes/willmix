@@ -108,7 +108,7 @@ export const pt = {
     "Nenhuma programação. Planeje as próximas compras deste produto.",
   "catalog.scheduleStatus.planned": "Planejada",
   "catalog.scheduleStatus.confirmed": "Confirmada",
-  "catalog.scheduleStatus.ordered": "Pedido criado",
+  "catalog.scheduleStatus.ordered": "Pedido pré-aprovado",
   "catalog.scheduleStatus.cancelled": "Cancelada",
 
   /* Parceiro */
@@ -391,7 +391,7 @@ export const en: Record<keyof typeof pt, string> = {
     "No schedule yet. Plan the next purchases of this product.",
   "catalog.scheduleStatus.planned": "Planned",
   "catalog.scheduleStatus.confirmed": "Confirmed",
-  "catalog.scheduleStatus.ordered": "Order created",
+  "catalog.scheduleStatus.ordered": "Order pre-approved",
   "catalog.scheduleStatus.cancelled": "Cancelled",
 
   "catalog.party.sourcing": "Contact and address (sourcing)",
@@ -664,7 +664,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "catalog.schedules.empty": "暂无采购计划。请规划该产品的后续采购。",
   "catalog.scheduleStatus.planned": "已规划",
   "catalog.scheduleStatus.confirmed": "已确认",
-  "catalog.scheduleStatus.ordered": "已下单",
+  "catalog.scheduleStatus.ordered": "订单预批准",
   "catalog.scheduleStatus.cancelled": "已取消",
 
   "catalog.party.sourcing": "联系方式与地址（采购）",

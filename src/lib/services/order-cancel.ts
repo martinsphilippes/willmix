@@ -216,6 +216,10 @@ export async function cancelOrder(
       settlement: input.settlement,
     },
   );
+  {
+    const { emitProcessEvent } = await import("./process-engine");
+    await emitProcessEvent(user, "order:cancelled", { orderId });
+  }
   await notifyEveryone(order, (t) => ({
     subject: t("notif.cancelled.subject", { n: order.number }),
     body: input.note

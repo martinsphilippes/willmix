@@ -503,7 +503,9 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
       expect(keys).not.toContain(k);
     expect(closed.cards.every((c) => c.value === null)).toBe(true);
 
-    const open = buildTowerBoard(input({ ...base, finance: true }));
+    const open = buildTowerBoard(
+      input({ ...base, finance: true, bookings: {} }),
+    );
     expect(ids(open, "parInstallmentOverdue")).toEqual([o.id]);
     expect(ids(open, "parInstallmentDueSoon")).toEqual([o.id]);
     expect(ids(open, "parInstallmentRequested")).toEqual([]);
@@ -512,19 +514,91 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
       value: 1500,
     });
     expect(open.cards.find((c) => c.key === "ordBooking")!.value).toBe(5000);
-    // Sem a lista do Booking (login que não abre a tela), sem o quadrado dele.
+    // Com o Booking, "Solicitação nova" só aparece quando há alguma.
     expect(open.cards.map((c) => c.key)).toEqual(
-      BOARD_CARDS.filter((c) => c.key !== "bkOpen").map((c) => c.key),
+      BOARD_CARDS.filter((c) => c.key !== "reqNew").map((c) => c.key),
     );
   });
 });
 
-describe("o fluxo começa no Booking", () => {
-  const status = (s: string) =>
-    ({ status: s }) as NonNullable<BoardInput["bookings"]>[number];
-  const request = (id: string) =>
-    ({
-      id,
+describe("bloco 4: problemas", () => {
+  it("bloqueado, documento rejeitado, Sankhya, multa, cancelamento, revisão e certificação vencendo", () => {
+    const blocked = order("INSPECTION", {
+      erpSyncStatus: "pending",
+      cancelRequestStatus: "requested",
+    });
+    const fine = order("TRANSPORT");
+    const gone = order("CANCELLED");
+    const s = [stage(blocked, { status: "blocked" }), stage(fine)];
+    const board = buildTowerBoard(
+      input({
+        orders: [blocked, fine, gone],
+        activeStages: s.map((x) => x.active),
+        stages: s.map((x) => x.stage),
+        steps: [step(fine, "bl", "rejected")],
+        penalties: [{ orderId: fine.id }, { orderId: gone.id }],
+        reviews: [
+          { orderId: blocked.id, rule: "inspection.weight", entity: "order" },
+          { orderId: gone.id, rule: "x", entity: "order" },
+        ] as unknown as BoardInput["reviews"],
+        products: [{ id: "p1", name: "Boneca" }],
+        certifications: [
+          {
+            id: "cert1",
+            entity: "product",
+            entityId: "p1",
+            kind: "Inmetro",
+            validUntil: FUTURE,
+          },
+        ] as unknown as BoardInput["certifications"],
+        containers: { open: 3 },
+      }),
+    );
+    expect(ids(board, "probBlocked")).toEqual([blocked.id]);
+    expect(ids(board, "ordInspectionIssue")).toEqual([blocked.id]);
+    expect(ids(board, "probDocRejected")).toEqual([fine.id]);
+    expect(ids(board, "probErp")).toEqual([blocked.id]);
+    expect(ids(board, "probCancelRequest")).toEqual([blocked.id]);
+    // Multa de pedido cancelado não conta.
+    expect(ids(board, "probPenalty")).toEqual([fine.id]);
+    // Revisão de pedido cancelado não conta; quadrado leva à tela de revisão.
+    expect(board.cards.find((c) => c.key === "probReviews")).toMatchObject({
+      count: 1,
+      href: "/app/reviews",
+    });
+    expect(board.cards.find((c) => c.key === "parContainers")).toMatchObject({
+      count: 3,
+      href: "/app/containers",
+    });
+    const cert = board.cards.find((c) => c.key === "probCertExpiring")!;
+    expect(cert.rows[0]).toMatchObject({
+      kind: "cert",
+      product: "Boneca",
+      link: "/app/products/p1",
+    });
+  });
+});
+
+describe("bloco do Booking", () => {
+  it("conta as linhas por etapa e leva ao Booking filtrado", () => {
+    const board = buildTowerBoard(
+      input({ bookings: { analysis: 15, reserved: 5 } }),
+    );
+    const card = (key: string) => board.cards.find((c) => c.key === key)!;
+    expect(card("bkAnalysis")).toMatchObject({
+      block: "booking",
+      count: 15,
+      href: "/app/booking?status=analysis",
+    });
+    expect(card("bkReserved").count).toBe(5);
+    expect(card("bkNew").count).toBe(0);
+    // O bloco vem antes das solicitações.
+    expect(board.cards[0].block).toBe("booking");
+  });
+
+  it("com o Booking, Solicitação nova só aparece enquanto houver alguma", () => {
+    const request = {
+      id: "r1",
       status: "REQUESTED",
       customerId: "c1",
       productName: "Copo",
@@ -532,50 +606,17 @@ describe("o fluxo começa no Booking", () => {
       sellPrice: null,
       sellCurrency: null,
       selectedQuoteId: null,
-    }) as unknown as BoardInput["requests"][number];
-
-  it("o Booking toma o lugar de Solicitação nova e conta as linhas que ainda não viraram solicitação", () => {
-    const board = buildTowerBoard(
-      input({
-        finance: true,
-        bookings: [
-          status("new"),
-          status("analysis"),
-          status("approved"),
-          status("offered"),
-          status("reserved"),
-          // Já está nos quadrados da solicitação; descartado saiu do fluxo.
-          status("requested"),
-          status("discarded"),
-        ],
-      }),
-    );
-    expect(board.cards[0]).toMatchObject({
-      key: "bkOpen",
-      block: "request",
-      count: 5,
-      href: "/app/booking?status=new,analysis,approved,offered,reserved",
-    });
-    expect(board.cards[1].key).toBe("reqRfq");
-    expect(board.cards.map((c) => c.key)).toEqual(
-      BOARD_CARDS.filter((c) => c.key !== "reqNew").map((c) => c.key),
-    );
+    } as unknown as BoardInput["requests"][number];
+    const keys = (over: Partial<BoardInput>) =>
+      buildTowerBoard(input(over)).cards.map((c) => c.key);
+    expect(keys({ bookings: {} })).not.toContain("reqNew");
+    expect(keys({ bookings: {}, requests: [request] })).toContain("reqNew");
+    // Quem não abre o Booking continua com ela, mesmo zerada.
+    expect(keys({})).toContain("reqNew");
   });
 
-  it("havendo solicitação nova, o quadrado dela aparece logo depois do Booking", () => {
-    const board = buildTowerBoard(
-      input({ bookings: [], requests: [request("r1")] }),
-    );
-    expect(board.cards.slice(0, 2).map((c) => [c.key, c.count])).toEqual([
-      ["bkOpen", 0],
-      ["reqNew", 1],
-    ]);
-    expect(ids(board, "reqNew")).toEqual(["r1"]);
-  });
-
-  it("quem não abre o Booking continua com Solicitação nova, mesmo zerada", () => {
+  it("some para quem não abre o Booking", () => {
     const board = buildTowerBoard(input());
-    expect(board.cards[0]).toMatchObject({ key: "reqNew", count: 0 });
-    expect(board.cards.some((c) => c.key === "bkOpen")).toBe(false);
+    expect(board.cards.some((c) => c.block === "booking")).toBe(false);
   });
 });

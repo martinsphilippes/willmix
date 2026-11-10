@@ -904,6 +904,16 @@ export async function evaluateStage(user: User | null, stageId: string) {
   await completeStage(user, stage);
 }
 
+/** Regras de processo do evento de etapa (docs/PROCESSES.md). Nunca lança. */
+async function emitStageEvent(
+  user: User | null,
+  orderId: string,
+  event: `stage:${StageKey}:${"start" | "done"}`,
+) {
+  const { emitProcessEvent } = await import("@/lib/services/process-engine");
+  await emitProcessEvent(user, event, { orderId });
+}
+
 async function completeStage(user: User | null, stage: Stage) {
   const store = getStore();
   const now = new Date().toISOString();
@@ -920,6 +930,7 @@ async function completeStage(user: User | null, stage: Stage) {
     stage.id,
     `${stage.key} concluída`,
   );
+  await emitStageEvent(user, stage.orderId, `stage:${stage.key}:done`);
 
   const order = await store.get("orders", stage.orderId);
   // Pedido cancelado não avança.
@@ -976,6 +987,7 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
     currentStageId: stage.id,
   });
   await audit(user, "stage.activate", "stage", stage.id, `${key} iniciada`);
+  await emitStageEvent(user, order.id, `stage:${key}:start`);
 
   // Preparação com a ficha completa desde a cotação: conclui sem pedir nada ao fornecedor.
   if (key === "PREPARATION" && user && required.length > 0) {

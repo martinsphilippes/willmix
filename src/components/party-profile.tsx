@@ -69,6 +69,18 @@ export function PartyProfile({
               "status",
             ),
             row(t("parties.taxId"), party.taxId, "taxId"),
+            ...(party.legalName && party.legalName !== party.name
+              ? [row(t("parties.legalName"), party.legalName, "legalName")]
+              : []),
+            ...(party.stateRegistration
+              ? [
+                  row(
+                    t("parties.stateRegistration"),
+                    party.stateRegistration,
+                    "stateRegistration",
+                  ),
+                ]
+              : []),
             row(
               t("partyProfile.since"),
               formatDate(party.createdAt, t),

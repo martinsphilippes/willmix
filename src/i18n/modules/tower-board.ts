@@ -3,12 +3,11 @@
  * o pedido de ponta a ponta em quatro blocos): mesmas chaves em pt, en e zh.
  */
 export const pt = {
-  "board.card.bkOpen": "Booking",
   "board.block.request": "Antes de virar pedido",
   "board.block.order": "Onde o pedido está agora",
   "board.block.parallel": "Acontece ao mesmo tempo",
   "board.block.problem": "Problemas",
-  "board.hint.request": "do Booking até o sinal",
+  "board.hint.request": "ainda é solicitação",
   "board.hint.order": "cada pedido aparece em um só quadrado",
   "board.hint.parallel": "o mesmo pedido pode aparecer aqui e no bloco de cima",
   "board.hint.problem": "o que precisa de atenção",
@@ -69,15 +68,24 @@ export const pt = {
   "board.card.probCancelRequest": "Pedido de cancelamento",
   "board.card.ordClosed": "Encerrado",
   "board.stoppedAt": "Parou em: {step}",
+  "board.block.booking": "Booking",
+  "board.hint.booking":
+    "produtos antes de virar solicitação; toque para abrir o Booking nessa etapa",
+  "board.card.bkNew": "Novo",
+  "board.card.bkAnalysis": "Em análise",
+  "board.card.bkApproved": "Aprovado",
+  "board.card.bkOffered": "Oferecido ao cliente",
+  "board.card.bkReserved": "Reservado pelo cliente",
+  "board.card.bkRequested": "Virou solicitação",
+  "board.card.bkDiscarded": "Descartado",
 };
 
 export const en: Record<keyof typeof pt, string> = {
-  "board.card.bkOpen": "Booking",
   "board.block.request": "Before becoming an order",
   "board.block.order": "Where the order is now",
   "board.block.parallel": "Happening at the same time",
   "board.block.problem": "Problems",
-  "board.hint.request": "from Booking to the down payment",
+  "board.hint.request": "still a request",
   "board.hint.order": "each order shows in one tile only",
   "board.hint.parallel": "the same order may show here and in the block above",
   "board.hint.problem": "what needs attention",
@@ -138,15 +146,24 @@ export const en: Record<keyof typeof pt, string> = {
   "board.card.probCancelRequest": "Cancellation request",
   "board.card.ordClosed": "Closed",
   "board.stoppedAt": "Stopped at: {step}",
+  "board.block.booking": "Booking",
+  "board.hint.booking":
+    "products before becoming a request; tap to open Booking at that step",
+  "board.card.bkNew": "New",
+  "board.card.bkAnalysis": "Under analysis",
+  "board.card.bkApproved": "Approved",
+  "board.card.bkOffered": "Offered to the customer",
+  "board.card.bkReserved": "Reserved by the customer",
+  "board.card.bkRequested": "Became a request",
+  "board.card.bkDiscarded": "Discarded",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
-  "board.card.bkOpen": "Booking",
   "board.block.request": "下单之前",
   "board.block.order": "订单当前位置",
   "board.block.parallel": "同时进行",
   "board.block.problem": "问题",
-  "board.hint.request": "从 Booking 到定金",
+  "board.hint.request": "仍是询价申请",
   "board.hint.order": "每个订单只出现在一个方块",
   "board.hint.parallel": "同一订单可能同时出现在这里和上方",
   "board.hint.problem": "需要关注的事项",
@@ -206,4 +223,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.card.probCancelRequest": "取消申请",
   "board.card.ordClosed": "已结案",
   "board.stoppedAt": "停在：{step}",
+  "board.block.booking": "Booking",
+  "board.hint.booking": "成为需求之前的产品；点击可打开该阶段的 Booking",
+  "board.card.bkNew": "新建",
+  "board.card.bkAnalysis": "分析中",
+  "board.card.bkApproved": "已批准",
+  "board.card.bkOffered": "已向客户报价",
+  "board.card.bkReserved": "客户已预订",
+  "board.card.bkRequested": "已转为需求",
+  "board.card.bkDiscarded": "已放弃",
 };
