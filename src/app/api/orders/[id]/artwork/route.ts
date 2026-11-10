@@ -32,7 +32,12 @@ export async function GET(
     `Baixou ${docs.length} arquivo(s) de arte`,
   );
   const names = safeZipNames(
-    docs.map((d) => `${d.type}-v${d.version}-${d.name}`),
+    docs.map((d) =>
+      // Arquivo de passo no zip das artes só o selo de certificação.
+      d.type === "import_step"
+        ? `selo-certificacao-${d.name}`
+        : `${d.type}-v${d.version}-${d.name}`,
+    ),
   );
   const body = zipStream(
     docs.map((doc, i) => ({

@@ -78,11 +78,15 @@ export const pt = {
     "= {amount} de sinal ({percent}% de {total}) · restante {rest}",
   "pricing.calc.carrierFreight": "Frete marítimo da companhia marítima (R$)",
   "pricing.calc.carrierFreightHint":
-    "Opcional: só para trocar o frete calculado pela tabela da companhia marítima (ex.: valor fechado para este embarque).",
+    "Quem informa este valor é a companhia marítima, no pedido de frete que ela recebe. Sem a resposta dela, a conta segue com o frete estimado.",
+  "pricing.calc.carrierFixed": "Valor fixado pela companhia marítima",
+  "pricing.calc.carrierEstimated":
+    "Estimado: a companhia marítima ainda não informou",
+  "pricing.calc.carrierOpen": "Ver pedidos de frete",
   "pricing.calc.missing.price": "A ficha não tem preço.",
   "pricing.calc.missing.fx": "Sem câmbio para a moeda da ficha.",
   "pricing.calc.missing.freight":
-    "Sem frete marítimo: informe o da companhia marítima ou configure o frete por CBM.",
+    "Sem frete marítimo: a companhia marítima ainda não informou e o frete por CBM não está configurado (Configurações).",
   "pricing.calc.missing.cbm":
     "Falta o volume da caixa (peças por caixa master e CBM da caixa) na ficha do fornecedor e no cadastro do produto: sem ele, o frete da tabela da companhia marítima não é calculado.",
   "pricing.calc.cbmFromProduct":
@@ -177,11 +181,15 @@ export const en: Record<keyof typeof pt, string> = {
     "= {amount} down payment ({percent}% of {total}) · balance {rest}",
   "pricing.calc.carrierFreight": "Ocean freight from the shipping line (R$)",
   "pricing.calc.carrierFreightHint":
-    "Optional: only to replace the freight calculated from the shipping line's table (e.g. a fixed price for this shipment).",
+    "The shipping line provides this value, in the freight request it receives. Without its answer, the calculation uses the estimated freight.",
+  "pricing.calc.carrierFixed": "Value fixed by the shipping line",
+  "pricing.calc.carrierEstimated":
+    "Estimated: the shipping line has not answered yet",
+  "pricing.calc.carrierOpen": "See freight requests",
   "pricing.calc.missing.price": "The sheet has no price.",
   "pricing.calc.missing.fx": "No exchange rate for the sheet currency.",
   "pricing.calc.missing.freight":
-    "No ocean freight: enter the shipping line's or set the freight per CBM.",
+    "No ocean freight: the shipping line has not answered yet and the freight per CBM is not set (Settings).",
   "pricing.calc.missing.cbm":
     "The carton volume (pieces per master carton and CBM per carton) is missing on the supplier's sheet and in the product record: without it, the freight from the shipping line's table is not calculated.",
   "pricing.calc.cbmFromProduct":
@@ -266,11 +274,14 @@ export const zh: Record<keyof typeof pt, string> = {
     "= 定金 {amount}（{total} 的 {percent}%）· 余款 {rest}",
   "pricing.calc.carrierFreight": "船公司海运费（R$）",
   "pricing.calc.carrierFreightHint":
-    "可选：仅用于替换按船公司运价表计算的运费（例如本次运输的固定价格）。",
+    "该金额由船公司在其收到的运费询价中填写。船公司未回复时，按预估运费计算。",
+  "pricing.calc.carrierFixed": "船公司确定的金额",
+  "pricing.calc.carrierEstimated": "预估：船公司尚未报价",
+  "pricing.calc.carrierOpen": "查看运费询价",
   "pricing.calc.missing.price": "采购单没有价格。",
   "pricing.calc.missing.fx": "没有采购单币种的汇率。",
   "pricing.calc.missing.freight":
-    "没有海运费：请填写船公司运费或设置每立方米运费。",
+    "没有海运费：船公司尚未报价，且未设置每立方米运费（设置）。",
   "pricing.calc.missing.cbm":
     "供应商采购单和产品档案都缺少外箱体积（每外箱件数和每箱立方米）：无法按船公司运价表计算运费。",
   "pricing.calc.cbmFromProduct":

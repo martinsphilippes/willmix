@@ -22,7 +22,15 @@ import {
   isPartner,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { stageVisibleTo } from "@/lib/order-view";
+import { partRowFor, stageRowFor, stageVisibleTo } from "@/lib/order-view";
+import {
+  ORDER_PART_PARALLEL,
+  documentPart,
+  orderPartsByStage,
+  plainPart,
+  sheetPart,
+  stepsPart,
+} from "@/lib/order-parts";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { stageChat } from "@/lib/stage-chat";
@@ -49,7 +57,15 @@ import {
   type DateBounds,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue, isMoneyRequirement } from "@/lib/workflow/money";
-import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
+import {
+  canCompleteLater,
+  isOffFlowStage,
+  isOrderSignatureKey,
+  ORDER_SIGN_SEND,
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
+} from "@/lib/workflow/stages";
+import { signSendBlockers } from "@/lib/services/order-signature";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
 import { normalizeShipping } from "@/lib/services/shipping-stage";
@@ -152,6 +168,7 @@ import { PairsTable } from "@/components/pairs-table";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { galleryProps } from "@/components/photo-gallery-props";
 import { productPhotoList } from "@/lib/services/product-list";
+import { showcaseOf } from "@/lib/services/documents";
 import {
   FreightTariffBox,
   FreightTariffUploadBox,
@@ -181,6 +198,8 @@ export default async function OrderPage({
     tariffOrigin,
     production: productionNotice,
     importStep: importNotice,
+    certStep: certNotice,
+    stepCard,
     receiving: receivingNotice,
     artwork: artworkNotice,
     stage: stageQuery,
@@ -202,6 +221,12 @@ export default async function OrderPage({
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
+  /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
+     (decisão do dono, 10/11/2026): cliente, fornecedor, itens com foto e
+     preço de compra, a ficha inteira, o documento do pedido, as
+     certificações já registradas e os arquivos. Só lê. O financeiro da
+     Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
+  const certifier = user.role === "ocp";
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
   /* Nova medição (inspeção bloqueada): só com ?remeasure=1; sem o parâmetro a tela é a de sempre. */
@@ -233,6 +258,12 @@ export default async function OrderPage({
     sheetState = await sheetProgress(progress.order);
   }
   const { order, stages, requirements } = progress;
+  // "Enviar para assinatura" (pedidos novos): o que ainda falta (arte, selo).
+  const signSend = requirements.find((r) => r.key === ORDER_SIGN_SEND);
+  const sendBlockers =
+    signSend && signSend.status !== "done"
+      ? await signSendBlockers(order.id, signSend.stageId)
+      : [];
   /* Produção: Wellmix e o fornecedor do pedido (fora das etapas). */
   const productionView =
     order.status !== "CANCELLED" &&
@@ -250,10 +281,12 @@ export default async function OrderPage({
     order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
       ? await importFlow.importFlowView(user, order)
       : [];
-  /* Certificação (Fase F): com OCP designado, ficha pedindo certificação
-     ou passo já começado. */
+  /* Certificação (Fase F). O selo de certificação vale para todo pedido,
+     desde que ele nasce (já está na mão da certificadora). Memorial, laudo
+     e registro aparecem com OCP designado, ficha pedindo certificação ou
+     passo deles já começado. */
   const certAll =
-    order.status !== "CANCELLED" && order.status !== "ORDER_CREATED"
+    order.status !== "CANCELLED"
       ? await importFlow.importFlowView(user, order, "certification")
       : [];
   const [certSheet] = certAll.length
@@ -262,12 +295,11 @@ export default async function OrderPage({
         limit: 1,
       })
     : [];
-  const certSteps =
-    order.ocpId ||
-    certAll.some((v) => v.step) ||
-    certSheet?.certificationRequired === "yes"
-      ? certAll
-      : [];
+  const classicCert =
+    !!order.ocpId ||
+    certAll.some((v) => v.step && !v.template.seal) ||
+    certSheet?.certificationRequired === "yes";
+  const certSteps = certAll.filter((v) => v.template.seal || classicCert);
   for (const v of [...importSteps, ...certSteps]) {
     if (v.step?.submittedByUserId)
       productionUserIds.add(v.step.submittedByUserId);
@@ -466,19 +498,86 @@ export default async function OrderPage({
     sourceOrderRow && canViewOrder(user, sourceOrderRow)
       ? sourceOrderRow
       : null;
-  /* Itens em linhas: foto e código do produto só para a Wellmix. */
+  /* Itens em linhas: foto e código do produto para a Wellmix e para a
+     certificadora do pedido (ela vê as fotos de vitrine, as que pode abrir). */
   const itemProductIds = [
     ...new Set(items.map((i) => i.productId).filter(Boolean)),
   ] as string[];
+  const itemMedia = wellmix || certifier;
   const [itemProducts, itemPhotos] =
-    wellmix && itemProductIds.length
+    itemMedia && itemProductIds.length
       ? await Promise.all([
           store.list("products", { filter: { id: itemProductIds } }),
-          store.list("product_photos", {
-            filter: { productId: itemProductIds },
-          }),
+          store
+            .list("product_photos", {
+              filter: { productId: itemProductIds },
+            })
+            .then((photos) => (wellmix ? photos : showcaseOf(photos))),
         ])
       : [[], []];
+  /* Certificações já registradas do produto e do fornecedor (menos as
+     rejeitadas): a certificadora parte delas para gerar o selo. */
+  const dossierCerts = certifier
+    ? await (async () => {
+        const { listCertifications, effectiveStatus } =
+          await import("@/lib/services/compliance");
+        const lists = await Promise.all([
+          ...itemProductIds.map((pid) => listCertifications("product", pid)),
+          listCertifications("party", order.supplierId),
+        ]);
+        return lists
+          .flat()
+          .map((cert) => ({ cert, status: effectiveStatus(cert) }))
+          .filter((c) => c.status !== "rejected");
+      })()
+    : [];
+  /* Certificadora: as fotos enviadas na ficha do pedido entram na galeria do
+     item (um pedido, um produto), para o produto não ficar sem foto quando o
+     cadastro não tem nenhuma. */
+  const sheetItemPhotos =
+    certifier && items.length === 1
+      ? showcaseOf(
+          await store.list("product_photos", {
+            filter: { orderId: order.id },
+          }),
+        )
+      : [];
+  /* Fotos da linha do item: as do cadastro (para a certificadora, só as de
+     vitrine; a principal só entra se for uma delas) e as da ficha do pedido. */
+  const itemGallery = (
+    product: (typeof itemProducts)[number] | null | undefined,
+  ) => {
+    const fromCatalog = product
+      ? productPhotoList(
+          wellmix ||
+            itemPhotos.some(
+              (ph) => ph.documentId === product.primaryPhotoDocumentId,
+            )
+            ? product
+            : { ...product, primaryPhotoDocumentId: null },
+          itemPhotos,
+        )
+      : [];
+    const seen = new Set(fromCatalog.map((ph) => ph.documentId));
+    return [
+      ...fromCatalog,
+      ...sheetItemPhotos
+        .filter((ph) => !seen.has(ph.documentId))
+        .map((ph) => ({ documentId: ph.documentId, kind: ph.kind })),
+    ];
+  };
+  /* Recusa de um passo (embarque ou certificação): o motivo aparece também
+     dentro do cartão de onde a ação veio, que é onde a pessoa está. */
+  const stepError =
+    typeof error === "string" && typeof stepCard === "string"
+      ? t(`importFlow.error.${error}` as DictionaryKey) !==
+        `importFlow.error.${error}`
+        ? t(`importFlow.error.${error}` as DictionaryKey)
+        : t(`orders.error.${error}` as DictionaryKey) !==
+            `orders.error.${error}`
+          ? t(`orders.error.${error}` as DictionaryKey)
+          : fallbackError(t, error)
+      : null;
   /* Cancelamento: só o admin cancela; o cliente pede até a produção começar. */
   const isCancelled = order.status === "CANCELLED";
   const admin = user.role === "admin";
@@ -525,7 +624,8 @@ export default async function OrderPage({
   };
   /* Resumo do pedido (uma linha): o que este papel pode ver (vazio = não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
-    ...(user.role !== "customer" && (wellmix || user.role === "legal")
+    ...(user.role !== "customer" &&
+    (wellmix || user.role === "legal" || certifier)
       ? [
           [t("common.customer"), partyName(order.customerId)] as [
             string,
@@ -541,7 +641,7 @@ export default async function OrderPage({
           ],
         ]
       : []),
-    ...(canSeeInternalCosts(user)
+    ...(canSeeInternalCosts(user) || certifier
       ? [
           [
             t("orders.fob"),
@@ -573,8 +673,8 @@ export default async function OrderPage({
           ] as [string, ReactNode],
         ]
       : []),
-    // Parceiro: a data do pedido não diz nada a ele.
-    ...(partner
+    // Parceiro: a data do pedido não diz nada a ele (menos à certificadora).
+    ...(partner && !certifier
       ? []
       : [
           [t("common.date"), formatDate(order.createdAt, t)] as [
@@ -604,6 +704,31 @@ export default async function OrderPage({
                 )}
               </Badge>
             </span>,
+          ] as [string, ReactNode],
+        ]
+      : []),
+    /* Certificadora: o documento do pedido (itens, preços e condições), para ler. */
+    ...(certifier
+      ? [
+          [
+            t("orderSign.link.title"),
+            <TextLink
+              key="order-document"
+              href={`/app/orders/${order.id}/purchase-order`}
+            >
+              {t("orderSign.link.open")}
+            </TextLink>,
+          ] as [string, ReactNode],
+        ]
+      : []),
+    /* Certificadora: a ficha de compra do pedido para ler (dados técnicos e fotos). */
+    ...(certifier && sheetHref
+      ? [
+          [
+            t("sheet.title"),
+            <TextLink key="sheet" href={sheetHref}>
+              {t("sheet.view")}
+            </TextLink>,
           ] as [string, ReactNode],
         ]
       : []),
@@ -659,6 +784,90 @@ export default async function OrderPage({
     delivered &&
     !!items[0] &&
     (!wellmix || canOpen(user, "requests"));
+  /* Partes do pedido na tabela de etapas (ordem do negócio): só as que este
+     login já vê nos cartões de baixo; cada linha leva ao cartão ou à página. */
+  const partsByStage = orderPartsByStage([
+    wellmix || (user.role === "supplier" && order.supplierId === user.partyId)
+      ? documentPart(
+          requirements,
+          `/app/orders/${order.id}/purchase-order`,
+          stages,
+        )
+      : null,
+    sheetState
+      ? sheetPart(
+          {
+            missing: sheetState.missing.length,
+            started: sheetState.saved || sheetState.prefillSource !== "catalog",
+          },
+          `/app/orders/${order.id}/purchase-sheet`,
+          sheetState.missing.length
+            ? t("orderParts.sheet.missing", {
+                n: sheetState.missing.length,
+              })
+            : null,
+        )
+      : null,
+    stepsPart(
+      "certification",
+      certSteps.map((v) => ({ done: v.done, started: !!v.step })),
+      "#certification",
+    ),
+    artworkView
+      ? plainPart(
+          "artwork",
+          artworkView.open > 0 ? "active" : "pending",
+          "#artwork",
+          artworkView.open > 0
+            ? t("orderParts.artwork.open", { n: artworkView.open })
+            : null,
+        )
+      : null,
+    showSupplierPayment
+      ? plainPart(
+          "supplier_payment",
+          order.status === "CLOSED" ? "done" : "active",
+          "#supplier-payment",
+        )
+      : null,
+    productionView
+      ? plainPart(
+          "production",
+          productionView.allApproved
+            ? "done"
+            : productionView.track
+              ? "active"
+              : "pending",
+          "#production",
+          productionView.track?.etd
+            ? t("orderParts.production.etd", {
+                date: formatDate(productionView.track.etd, t),
+              })
+            : null,
+        )
+      : null,
+    stepsPart(
+      "import",
+      importSteps.map((v) => ({ done: v.done, started: !!v.step })),
+      "#import-flow",
+    ),
+    receivingView
+      ? plainPart(
+          "receiving",
+          receivingView.row?.closedAt
+            ? "done"
+            : receivingView.row
+              ? "active"
+              : "pending",
+          "#receiving",
+          receivingView.divergences
+            ? t("orderParts.receiving.divergences", {
+                n: receivingView.divergences,
+              })
+            : null,
+        )
+      : null,
+  ]);
   /* Cartões coloridos do alto (como Clientes e Fornecedores): os mesmos
      valores e a mesma regra de quem vê do antigo cartão Financeiro (cliente:
      venda, recebido e a receber; administrador: também compra, pago, a pagar
@@ -741,64 +950,6 @@ export default async function OrderPage({
             : []),
         ]
       : [];
-  /* Índice: atalhos só para as partes que este login vê. */
-  const indexLinks: Array<[string, string]> = [
-    ...(!cargo && orderInfoItems.length
-      ? [["#order-summary", t("orderView.summary")] as [string, string]]
-      : []),
-    ...(!cargo
-      ? [["#order-items", t("orderView.items")] as [string, string]]
-      : []),
-    ["#order-stages", t("orderView.stages")],
-    ...(showAfterSales
-      ? [["#after-sales", t("orders.afterSales.title")] as [string, string]]
-      : []),
-    ...(showFollowUp
-      ? [["#followup", t("orders.followup.title")] as [string, string]]
-      : []),
-    ...(showSupplierPayment
-      ? [["#supplier-payment", t("supplierTerms.card")] as [string, string]]
-      : []),
-    ...(productionView
-      ? [["#production", t("production.title")] as [string, string]]
-      : []),
-    ...(importSteps.length
-      ? [["#import-flow", t("importFlow.title")] as [string, string]]
-      : []),
-    ...(certSteps.length
-      ? [["#certification", t("certFlow.title")] as [string, string]]
-      : []),
-    ...(receivingView
-      ? [["#receiving", t("receiving.title")] as [string, string]]
-      : []),
-    ...(artworkView
-      ? [["#artwork", t("artwork.title")] as [string, string]]
-      : []),
-    ...(wellmix || containers.length > 0
-      ? [
-          ["#order-containers", t("orders.containers.title")] as [
-            string,
-            string,
-          ],
-        ]
-      : []),
-    ...(finance && financeAccess
-      ? [["#order-finance", t("orderView.finance")] as [string, string]]
-      : []),
-    ...(visiblePayments.length > 0
-      ? [["#payments", t("orders.payments")] as [string, string]]
-      : []),
-    ["#order-documents", t("orders.documents")],
-    ...(wellmix || user.role === "legal" || visiblePenalties.length > 0
-      ? [["#order-penalties", t("orders.penalties")] as [string, string]]
-      : []),
-    ...(wellmix
-      ? [
-          ["#order-partners", t("orders.partners")] as [string, string],
-          ["#snapshot", t("orders.snapshot.title")] as [string, string],
-        ]
-      : []),
-  ];
 
   return (
     <>
@@ -973,21 +1124,9 @@ export default async function OrderPage({
       ) : null}
 
       {/* Tela em linhas: uma coluna só, cada parte numa tabela (como as
-          telas de Clientes, Fornecedores e o pedido em lista). Índice com
-          atalhos para as partes que este login vê. */}
-      <nav
-        className="mb-4 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 print:hidden"
-        data-order-index
-      >
-        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          {t("orderView.index")}
-        </span>
-        {indexLinks.map(([href, label]) => (
-          <a key={href} href={href} className={cx(linkClass, "text-sm")}>
-            {label}
-          </a>
-        ))}
-      </nav>
+          telas de Clientes, Fornecedores e o pedido em lista). O índice
+          "Ir para" saiu por decisão do dono: a tabela Etapas do pedido já
+          leva a cada parte. */}
 
       {moneyCards.length ? (
         <ColorCards name="order" items={moneyCards} />
@@ -1033,13 +1172,13 @@ export default async function OrderPage({
             <thead>
               <tr>
                 <Th className="w-10 text-right">{t("orderView.col.n")}</Th>
-                {wellmix ? (
+                {itemMedia ? (
                   <Th className="w-14">{t("orderView.col.photo")}</Th>
                 ) : null}
                 <Th>{t("orderView.col.product")}</Th>
                 <Th>{t("orderView.col.variant")}</Th>
                 <Th className="text-right">{t("orderView.col.qty")}</Th>
-                {canSeeInternalCosts(user) ? (
+                {canSeeInternalCosts(user) || certifier ? (
                   <>
                     <Th className="text-right">
                       {t("orderView.col.unitPrice")}
@@ -1058,16 +1197,11 @@ export default async function OrderPage({
                 return (
                   <tr key={i.id} className={rowClass} data-order-item>
                     <Td className="text-right tabular-nums">{index + 1}</Td>
-                    {wellmix ? (
+                    {itemMedia ? (
                       <Td className="w-14">
                         <PhotoGallery
                           name={i.name}
-                          {...galleryProps(
-                            t,
-                            product
-                              ? productPhotoList(product, itemPhotos)
-                              : [],
-                          )}
+                          {...galleryProps(t, itemGallery(product))}
                         />
                       </Td>
                     ) : null}
@@ -1092,7 +1226,7 @@ export default async function OrderPage({
                     <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
                       {i.quantity.toLocaleString(t.intl)} {i.unit}
                     </Td>
-                    {canSeeInternalCosts(user) ? (
+                    {canSeeInternalCosts(user) || certifier ? (
                       <>
                         <Td className="whitespace-nowrap text-right tabular-nums">
                           {i.unitPrice !== null
@@ -1171,169 +1305,245 @@ export default async function OrderPage({
             {flowStages.map((s, index) => {
               const visible = stageVisible(s);
               const reqs = requirements.filter((r) => r.stageId === s.id);
+              // Fornecedor e parceiros: só as linhas que são do próprio
+              // login (a numeração continua a do fluxo inteiro).
+              const ownStage = stageRowFor(user, s, reqs);
+              const ownParts = (partsByStage.get(s.key) ?? []).filter((part) =>
+                partRowFor(user, part.key),
+              );
+              if (!ownStage && !ownParts.length) return null;
               const open = s.status === "active" || s.status === "blocked";
               const expanded = expandedStageIds.has(s.id);
               return (
-                <tr
-                  key={s.id}
-                  className={cx(
-                    rowClass,
-                    s.status === "active" && "bg-brand-50/60",
-                    s.status === "blocked" && "bg-amber-50/70",
-                  )}
-                  data-stage-row={s.key}
-                >
-                  <Td className="w-10">
-                    <StepDot state={s.status}>{index + 1}</StepDot>
-                  </Td>
-                  <Td className="min-w-40">
-                    <span
+                <Fragment key={s.id}>
+                  {ownStage ? (
+                    <tr
                       className={cx(
-                        s.status === "pending"
-                          ? "text-zinc-500"
-                          : s.status === "active"
-                            ? "font-semibold text-brand-800"
-                            : s.status === "blocked"
-                              ? "font-semibold text-amber-900"
-                              : "font-medium text-zinc-900",
+                        rowClass,
+                        s.status === "active" && "bg-brand-50/60",
+                        s.status === "blocked" && "bg-amber-50/70",
                       )}
+                      data-stage-row={s.key}
                     >
-                      {visible ? (
-                        <a
-                          href={stageHref(s)}
-                          className="transition hover:text-brand-700"
+                      <Td className="w-10">
+                        <StepDot state={s.status}>{index + 1}</StepDot>
+                      </Td>
+                      <Td className="min-w-40">
+                        <span
+                          className={cx(
+                            s.status === "pending"
+                              ? "text-zinc-500"
+                              : s.status === "active"
+                                ? "font-semibold text-brand-800"
+                                : s.status === "blocked"
+                                  ? "font-semibold text-amber-900"
+                                  : "font-medium text-zinc-900",
+                          )}
                         >
-                          {t(`stage.${s.key}`)}
-                        </a>
-                      ) : (
-                        t(`stage.${s.key}`)
-                      )}
-                    </span>
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <Badge tone={stageTone(s.status)}>
-                      {t(`stageStatus.${s.status}`)}
-                    </Badge>
-                  </Td>
-                  <Td className="whitespace-nowrap text-zinc-700">
-                    {visible ? (
-                      <span className="inline-flex items-center gap-1">
-                        {t(`role.${s.responsibleRole}`)}
-                        {(() => {
-                          // Mensagem para o responsável da etapa (Wellmix: a
-                          // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
-                          const chat = stageChat(
-                            order,
-                            s.responsibleRole,
-                            wellmix,
-                          );
-                          const draft = t("orderView.stage.chatDraft", {
-                            stage: t(`stage.${s.key}`),
-                          });
-                          if (!chat) return null;
-                          if (chat.kind === "unassigned")
-                            return (
-                              <a
-                                href="#order-partners"
-                                className="text-xs font-medium text-brand-700 underline underline-offset-2"
-                                title={t("orderView.stage.chatAssignTitle", {
-                                  role: t(`role.${s.responsibleRole}`),
-                                })}
-                                data-stage-chat-assign={s.key}
-                              >
-                                {t("orderView.stage.chatAssign")}
-                              </a>
-                            );
-                          return (
-                            <span data-stage-chat={s.key}>
-                              <ChatOpenButton
-                                target={
-                                  chat.kind === "party"
-                                    ? {
-                                        orderId: order.id,
-                                        partyId: chat.partyId,
-                                        draft,
-                                      }
-                                    : { orderId: order.id, draft }
-                                }
-                                label={
-                                  chat.kind === "party"
-                                    ? t("orderView.stage.chat", {
-                                        who: `${t(`role.${s.responsibleRole}`)} (${partyName(chat.partyId)})`,
-                                      })
-                                    : t("orderView.stage.chatWellmix")
-                                }
-                              />
+                          {visible ? (
+                            <a
+                              href={stageHref(s)}
+                              className="transition hover:text-brand-700"
+                            >
+                              {t(`stage.${s.key}`)}
+                            </a>
+                          ) : (
+                            t(`stage.${s.key}`)
+                          )}
+                        </span>
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        <Badge tone={stageTone(s.status)}>
+                          {t(`stageStatus.${s.status}`)}
+                        </Badge>
+                      </Td>
+                      <Td className="whitespace-nowrap text-zinc-700">
+                        {visible ? (
+                          <span className="inline-flex items-center gap-1">
+                            {t(`role.${s.responsibleRole}`)}
+                            {(() => {
+                              // Mensagem para o responsável da etapa (Wellmix: a
+                              // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
+                              const chat = stageChat(
+                                order,
+                                s.responsibleRole,
+                                wellmix,
+                              );
+                              const draft = t("orderView.stage.chatDraft", {
+                                stage: t(`stage.${s.key}`),
+                              });
+                              if (!chat) return null;
+                              if (chat.kind === "unassigned")
+                                return (
+                                  <a
+                                    href="#order-partners"
+                                    className="text-xs font-medium text-brand-700 underline underline-offset-2"
+                                    title={t(
+                                      "orderView.stage.chatAssignTitle",
+                                      {
+                                        role: t(`role.${s.responsibleRole}`),
+                                      },
+                                    )}
+                                    data-stage-chat-assign={s.key}
+                                  >
+                                    {t("orderView.stage.chatAssign")}
+                                  </a>
+                                );
+                              return (
+                                <span data-stage-chat={s.key}>
+                                  <ChatOpenButton
+                                    target={
+                                      chat.kind === "party"
+                                        ? {
+                                            orderId: order.id,
+                                            partyId: chat.partyId,
+                                            draft,
+                                          }
+                                        : { orderId: order.id, draft }
+                                    }
+                                    label={
+                                      chat.kind === "party"
+                                        ? t("orderView.stage.chat", {
+                                            who: `${t(`role.${s.responsibleRole}`)} (${partyName(chat.partyId)})`,
+                                          })
+                                        : t("orderView.stage.chatWellmix")
+                                    }
+                                  />
+                                </span>
+                              );
+                            })()}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </Td>
+                      <Td
+                        className={cx(
+                          "whitespace-nowrap tabular-nums",
+                          visible && open && isOverdue(s.dueAt)
+                            ? "font-semibold text-red-700"
+                            : "text-zinc-700",
+                        )}
+                      >
+                        {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap tabular-nums text-zinc-700">
+                        {visible && s.completedAt
+                          ? formatDate(s.completedAt, t)
+                          : "—"}
+                      </Td>
+                      <Td className="w-32">
+                        {open ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-16">
+                              <Progress percent={s.percent} />
                             </span>
-                          );
-                        })()}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </Td>
-                  <Td
-                    className={cx(
-                      "whitespace-nowrap tabular-nums",
-                      visible && open && isOverdue(s.dueAt)
-                        ? "font-semibold text-red-700"
-                        : "text-zinc-700",
-                    )}
-                  >
-                    {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap tabular-nums text-zinc-700">
-                    {visible && s.completedAt
-                      ? formatDate(s.completedAt, t)
-                      : "—"}
-                  </Td>
-                  <Td className="w-32">
-                    {open ? (
-                      <span className="flex items-center gap-2">
-                        <span className="w-16">
-                          <Progress percent={s.percent} />
-                        </span>
-                        <span className="text-xs font-semibold tabular-nums text-zinc-600">
-                          {s.percent}%
-                        </span>
-                      </span>
-                    ) : s.status === "done" ? (
-                      <span className="text-xs font-semibold text-emerald-700">
-                        100%
-                      </span>
-                    ) : (
-                      <span className="text-zinc-400">—</span>
-                    )}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                    {visible && reqs.length
-                      ? t("orderView.stage.reqs", {
-                          done: reqs.filter((r) => r.status === "done").length,
-                          total: reqs.length,
-                        })
-                      : "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right">
-                    {visible ? (
-                      expanded && !defaultExpanded(s) ? (
-                        <TextLink
-                          href={`/app/orders/${order.id}#order-stages`}
-                          className="text-sm"
+                            <span className="text-xs font-semibold tabular-nums text-zinc-600">
+                              {s.percent}%
+                            </span>
+                          </span>
+                        ) : s.status === "done" ? (
+                          <span className="text-xs font-semibold text-emerald-700">
+                            100%
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                        {visible && reqs.length
+                          ? t("orderView.stage.reqs", {
+                              done: reqs.filter((r) => r.status === "done")
+                                .length,
+                              total: reqs.length,
+                            })
+                          : "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right">
+                        {visible ? (
+                          expanded && !defaultExpanded(s) ? (
+                            <TextLink
+                              href={`/app/orders/${order.id}#order-stages`}
+                              className="text-sm"
+                            >
+                              {t("orderView.stage.close")}
+                            </TextLink>
+                          ) : expanded ? null : (
+                            <TextLink
+                              href={stageHref(s)}
+                              className="text-sm"
+                              data-stage-open={s.key}
+                            >
+                              {t("orderView.stage.open")}
+                            </TextLink>
+                          )
+                        ) : null}
+                      </Td>
+                    </tr>
+                  ) : null}
+                  {/* Partes do pedido que acontecem nesta altura do fluxo e têm
+                    cartão (ou página) próprio: aparecem aqui, na ordem do
+                    negócio, com a situação e o atalho. */}
+                  {ownParts.map((part) => (
+                    <tr
+                      key={part.key}
+                      className={cx(rowClass, "bg-zinc-50/60")}
+                      data-order-part={part.key}
+                      data-order-part-state={part.state}
+                    >
+                      <Td className="w-10 text-center text-zinc-400">↳</Td>
+                      <Td className="min-w-40">
+                        <a
+                          href={part.href}
+                          className="font-medium text-zinc-800 transition hover:text-brand-700"
                         >
-                          {t("orderView.stage.close")}
-                        </TextLink>
-                      ) : expanded ? null : (
-                        <TextLink
-                          href={stageHref(s)}
-                          className="text-sm"
-                          data-stage-open={s.key}
+                          {t(`orderParts.${part.key}` as DictionaryKey)}
+                        </a>
+                        {ORDER_PART_PARALLEL.includes(part.key) ? (
+                          <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
+                            {t("orderParts.parallel")}
+                          </span>
+                        ) : null}
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        <Badge
+                          tone={
+                            part.state === "done"
+                              ? "success"
+                              : part.state === "active"
+                                ? "warning"
+                                : "neutral"
+                          }
                         >
-                          {t("orderView.stage.open")}
+                          {t(`orderParts.state.${part.state}` as DictionaryKey)}
+                        </Badge>
+                      </Td>
+                      <Td className="whitespace-nowrap text-zinc-700">
+                        {t(`orderParts.who.${part.key}` as DictionaryKey)}
+                      </Td>
+                      <Td colSpan={3} className="text-xs text-zinc-600">
+                        {part.detail ?? "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                        {part.total
+                          ? t("orderView.stage.reqs", {
+                              done: part.done ?? 0,
+                              total: part.total,
+                            })
+                          : "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right">
+                        <TextLink
+                          href={part.href}
+                          className="text-sm"
+                          data-order-part-open={part.key}
+                        >
+                          {t("orderParts.open")}
                         </TextLink>
-                      )
-                    ) : null}
-                  </Td>
-                </tr>
+                      </Td>
+                    </tr>
+                  ))}
+                </Fragment>
               );
             })}
           </tbody>
@@ -1488,7 +1698,24 @@ export default async function OrderPage({
                               (x) => x.key === "art" && x.status !== "done",
                             )
                               ? t("packaging.waitingArt")
-                              : dateWaiting(t, stage.key, r, reqs)
+                              : r.key === ORDER_SIGN_SEND && sendBlockers.length
+                                ? // Só envia com a arte e o selo prontos.
+                                  t(`orderSign.send.missing.${sendBlockers[0]}`)
+                                : r.key === ORDER_SIGNED_WELLMIX &&
+                                    reqs.some(
+                                      (x) =>
+                                        x.key === ORDER_SIGN_SEND &&
+                                        x.status !== "done",
+                                    )
+                                  ? t("orderSign.send.waitSend")
+                                  : r.key === ORDER_SIGNED_SUPPLIER &&
+                                      reqs.some(
+                                        (x) =>
+                                          x.key === ORDER_SIGNED_WELLMIX &&
+                                          x.status !== "done",
+                                      )
+                                    ? t("orderSign.send.waitWellmix")
+                                    : dateWaiting(t, stage.key, r, reqs)
                           }
                           dateBounds={
                             r.type === "date"
@@ -1630,6 +1857,7 @@ export default async function OrderPage({
           order={order}
           steps={importSteps}
           names={productionNames}
+          error={stepCard === "import-flow" ? stepError : null}
           notice={
             typeof importNotice === "string" &&
             ["submitted", "validated", "rejected"].includes(importNotice)
@@ -1637,7 +1865,8 @@ export default async function OrderPage({
               : null
           }
         />
-        {/* Certificação (Fase F): memorial, laboratório e registro com o OCP. */}
+        {/* Certificação (Fase F): memorial, laboratório e registro com o OCP,
+            e o selo de certificação que a agência aplica na arte. */}
         <ImportFlowCard
           t={t}
           order={order}
@@ -1645,7 +1874,90 @@ export default async function OrderPage({
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
-          notice={null}
+          error={stepCard === "certification" ? stepError : null}
+          hints={[
+            ...(certSteps.some((v) => v.template.key === "cert_seal")
+              ? [t("certFlow.sealHint")]
+              : []),
+            // Todo pedido precisa de selo: sem certificadora, a Wellmix designa.
+            ...(wellmix && !order.ocpId && certSteps.length
+              ? [t("certFlow.notify.noOcp.body")]
+              : []),
+            // A certificação pedida na ficha: só para quem abre a ficha
+            // aqui (a Wellmix e a certificadora), não para a agência ou o comex.
+            ...((wellmix || certifier) && certSheet?.certificationNote?.trim()
+              ? [
+                  t("certFlow.sheetNote", {
+                    note: certSheet.certificationNote.trim(),
+                  }),
+                ]
+              : []),
+            // Certificadora: onde está o pedido completo para gerar o selo.
+            ...(certifier && certSteps.length
+              ? [
+                  <span key="dossier" data-certifier-dossier>
+                    {t("certFlow.dossier.hint")}{" "}
+                    {sheetHref ? (
+                      <>
+                        <TextLink href={sheetHref}>{t("sheet.view")}</TextLink>
+                        {" · "}
+                      </>
+                    ) : null}
+                    <a href="#order-items" className={linkClass}>
+                      {t("orderView.items")}
+                    </a>
+                    {" · "}
+                    <a href="#order-documents" className={linkClass}>
+                      {t("orders.documents")}
+                    </a>
+                  </span>,
+                ]
+              : []),
+            ...(certifier && certSteps.length && dossierCerts.length
+              ? [
+                  <span key="certs" data-certifier-certs>
+                    {t("certFlow.dossier.certs")}
+                    <span className="mt-1 block space-y-0.5">
+                      {dossierCerts.map(({ cert, status }) => (
+                        <span key={cert.id} className="block">
+                          {[
+                            cert.kind,
+                            cert.name,
+                            cert.number
+                              ? `${t("catalog.cert.number")} ${cert.number}`
+                              : null,
+                            cert.issuer,
+                            t(`catalog.cert.status.${status}` as DictionaryKey),
+                            cert.validUntil
+                              ? `${t("catalog.cert.validUntil")} ${formatDate(cert.validUntil, t)}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          {cert.documentId ? (
+                            <>
+                              {" · "}
+                              <a
+                                href={`/api/files/${cert.documentId}`}
+                                className={linkClass}
+                              >
+                                {t("catalog.cert.open")}
+                              </a>
+                            </>
+                          ) : null}
+                        </span>
+                      ))}
+                    </span>
+                  </span>,
+                ]
+              : []),
+          ]}
+          notice={
+            typeof certNotice === "string" &&
+            ["submitted", "validated", "rejected"].includes(certNotice)
+              ? t(`importFlow.done.${certNotice}` as DictionaryKey)
+              : null
+          }
         />
 
         {/* Recebimento (Fase E): lacre, checklist, divergência por SKU, RIC, fechamento. */}
@@ -2625,6 +2937,21 @@ function RequirementRow({
                   ? t("sheet.completeCta", { count: String(sheetHint.count) })
                   : t("sheet.open")
                 : t("sheet.view")}
+            </LinkButton>
+          </div>
+        ) : null
+      ) : isOrderSignatureKey(r.key) ? (
+        // Assinatura: pela página do documento do pedido (só a Wellmix e o
+        // fornecedor do pedido chegam a ela).
+        isWellmix(user) || user.role === "supplier" ? (
+          <div className={wide.side}>
+            <LinkButton
+              href={`/app/orders/${order.id}/purchase-order`}
+              variant={canAct ? "primary" : "secondary"}
+              className="w-full @sm:w-auto"
+              data-order-sign-link={r.key}
+            >
+              {canAct ? t("orderSign.open") : t("orderSign.view")}
             </LinkButton>
           </div>
         ) : null

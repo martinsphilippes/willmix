@@ -18,6 +18,10 @@ let maria: User;
 
 beforeAll(async () => {
   const { users } = await seedDemo();
+  // Estes testes cobrem o Sourcing ativo (em espera, o pedido de produto
+  // fora do catálogo não abre item de Sourcing).
+  const { setSetting } = await import("@/lib/settings");
+  await setSetting("sourcingEnabled", true);
   admin = users.find((u) => u.email === "admin@wellmix.com")!;
   joao = users.find((u) => u.email === "joao@lojista.com")!;
   // Outro cliente (não existe no seed): mesmo papel, outra empresa.

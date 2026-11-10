@@ -100,6 +100,9 @@ describe("certificação com o OCP", () => {
       "cert_memorial",
       "cert_lab",
       "cert_registration",
+      // Selo de certificação (tests/unit/cert-seal.test.ts).
+      "cert_seal",
+      "cert_seal_art",
     ]);
     // O cartão de embarque não mostra passos da certificação.
     const imp = await f.importFlowView(admin, order);
@@ -132,7 +135,12 @@ describe("certificação com o OCP", () => {
       null,
     );
     const view = await f.importFlowView(admin, order, "certification");
-    expect(view.every((v) => v.done)).toBe(true);
+    // Memorial, laudo e registro concluídos (o selo é outro caminho).
+    expect(
+      view
+        .filter((v) => !v.template.key.startsWith("cert_seal"))
+        .every((v) => v.done),
+    ).toBe(true);
     // Comex vê o registro (para a DI), não o laudo.
     expect(f.canSeeStep(comex, order, "cert_registration")).toBe(true);
   });

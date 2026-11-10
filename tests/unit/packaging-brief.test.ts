@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { translator } from "@/i18n";
-import { withTempStore } from "./setup";
+import { completeOrderDocument, withTempStore } from "./setup";
 
 /*
  * Embalagem na RFQ: ao abrir a cotação para os fornecedores, a agência (ou o
@@ -96,7 +96,7 @@ async function reachPackaging(orderId: string) {
       filter: { stageId: stage.id, status: "pending" },
     }))
       if ((await store.get("stages", stage.id))?.status === "active")
-        await submitRequirement(admin, req.id, { value: "1" });
+        await submitRequirement(admin, req.id, { value: "1", signature: true });
   }
   return (await store.get("orders", orderId))!;
 }
@@ -590,7 +590,8 @@ describe("pedido criado", () => {
     reqs = await packagingReqs(order.id);
     expect(reqs.stage.status).toBe("active");
     expect(reqs.stage.responsibleRole).toBe("supplier");
-    expect(reqs.stage.percent).toBe(50);
+    // 1 de 5: arte feita; faltam a aprovação, o envio e as duas assinaturas.
+    expect(reqs.stage.percent).toBe(20);
     // Aviso vai ao fornecedor (aprovar), no idioma dele, não à agência.
     const zh = translator(supplierA.locale);
     const supplierNotes = (await notificationsOf(supplierA)).slice(
@@ -643,6 +644,8 @@ describe("pedido criado", () => {
     expect(reqs.art.status).toBe("done");
     expect(reqs.approval.status).toBe("pending");
     await decideRequirement(supplierA, reqs.approval.id, "approve", null);
+    // Ordem nova: a etapa conclui com o documento do pedido assinado.
+    await completeOrderDocument(admin, order.id);
     expect((await packagingReqs(order.id)).stage.status).toBe("done");
   });
 
@@ -873,6 +876,8 @@ describe("correções da revisão", () => {
     );
     reqs = await packagingReqs(order.id);
     await decideRequirement(supplierA, reqs.approval.id, "approve", null);
+    // Ordem nova: a etapa conclui com o documento do pedido assinado.
+    await completeOrderDocument(admin, order.id);
     expect((await packagingReqs(order.id)).stage.status).toBe("done");
     await expect(
       pb.uploadPackagingItem(agency, brief.id, "art", pdf("troca.pdf")),
@@ -970,5 +975,42 @@ describe("correções da revisão", () => {
     const confirmed = await pb.confirmPackagingDims(agency, brief.id);
     expect(confirmed.dimsChangedAt).toBeNull();
     expect(confirmed.status).toBe("ready");
+  });
+});
+
+describe("valor por item da agência", () => {
+  it("a agência informa o valor por item; apagar e valor inválido", async () => {
+    const store = getStore();
+    const [brief] = await store.list("packaging_briefs", { limit: 1 });
+    const pb = await import("@/lib/services/packaging-brief");
+    const owner = (await store.list("users")).find((u) => u.role === "admin")!;
+    await pb.saveAgencyNotes(owner, brief.id, "Prova de cor na gráfica", {
+      amount: 350,
+      currency: "BRL",
+    });
+    let saved = (await store.get("packaging_briefs", brief.id))!;
+    expect([saved.agencyItemPrice, saved.agencyItemCurrency]).toEqual([
+      350,
+      "BRL",
+    ]);
+    // Sem o campo no formulário, o valor fica como está.
+    await pb.saveAgencyNotes(owner, brief.id, "Outra observação");
+    saved = (await store.get("packaging_briefs", brief.id))!;
+    expect([saved.agencyNotes, saved.agencyItemPrice]).toEqual([
+      "Outra observação",
+      350,
+    ]);
+    await expect(
+      pb.saveAgencyNotes(owner, brief.id, null, {
+        amount: -1,
+        currency: "BRL",
+      }),
+    ).rejects.toThrow("agency_price_invalid");
+    await pb.saveAgencyNotes(owner, brief.id, null, {
+      amount: null,
+      currency: null,
+    });
+    saved = (await store.get("packaging_briefs", brief.id))!;
+    expect(saved.agencyItemPrice ?? null).toBeNull();
   });
 });

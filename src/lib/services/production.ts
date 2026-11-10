@@ -121,8 +121,14 @@ export async function savePlan(user: User, orderId: string, input: PlanInput) {
   if (input.factoryName !== undefined) patch.factoryName = input.factoryName;
   if (input.factoryAddress !== undefined)
     patch.factoryAddress = input.factoryAddress;
-  if (input.productionStartAt !== undefined)
-    patch.productionStartAt = input.productionStartAt;
+  // Início automático (contrato assinado): o que vier do formulário não vale.
+  if (input.productionStartAt !== undefined) {
+    const { productionStartFor } = await import("./order-signature");
+    const start = await productionStartFor(orderId);
+    if (!start.auto) patch.productionStartAt = input.productionStartAt;
+    else if (start.at && !track.productionStartAt)
+      patch.productionStartAt = start.at;
+  }
 
   const etdChanged =
     input.etd !== undefined &&
@@ -449,6 +455,8 @@ export interface ProductionView {
   items: { item: OrderItem; latest: SkuInspection | null; rounds: number }[];
   due: { day: number; dueAt: string }[];
   allApproved: boolean;
+  /** Início da produção automático (contrato assinado + Configurações): não se digita. */
+  startAuto: { days: number; signed: boolean } | null;
 }
 
 /** Tudo o que o cartão "Produção" mostra. */
@@ -464,10 +472,19 @@ export async function productionView(order: Order): Promise<ProductionView> {
     latest: latest.get(item.id) ?? null,
     rounds: rows.filter((r) => r.orderItemId === item.id).length,
   }));
+  // Início automático: pedido assinado antes desta regra mostra a data
+  // calculada mesmo sem ela gravada no acompanhamento.
+  const { productionStartFor } = await import("./order-signature");
+  const start = await productionStartFor(order.id);
+  const shown =
+    track && start.auto && start.at && !track.productionStartAt
+      ? { ...track, productionStartAt: start.at }
+      : track;
   return {
-    track,
+    track: shown,
+    startAuto: start.auto ? { days: start.days, signed: !!start.at } : null,
     items: view,
-    due: followupsDue(track),
+    due: followupsDue(shown),
     allApproved:
       view.length > 0 && view.every((v) => v.latest?.result === "approved"),
   };

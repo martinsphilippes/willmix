@@ -10,6 +10,8 @@ export const pt = {
   "quoteSheet.title": "Ficha de compra da cotação",
   "quoteSheet.leadTime": "Prazo de produção (dias)",
   "quoteSheet.leadTimeLabel": "Prazo de produção",
+  "quoteSheet.leadTimeDaysHint":
+    "Quantos dias para produzir, contados da confirmação do pedido. A programação de compra (datas e lotes) é preenchida depois, no pedido.",
   "quoteSheet.leadTimeAuto": "{days} dias",
   "quoteSheet.leadTimePending": "Preencha “Saída em (dias)” na programação 1.",
   "quoteSheet.leadTimeHint":
@@ -17,7 +19,8 @@ export const pt = {
   "quoteSheet.conditions": "Condições de pagamento e observações",
   "quoteSheet.saveDraft": "Salvar rascunho",
   "quoteSheet.send": "Enviar cotação",
-  "quoteSheet.saved.partial": "Rascunho salvo. Falta preencher: {fields}.",
+  "quoteSheet.saved.partial":
+    "Rascunho salvo. A cotação ainda NÃO foi enviada à Wellmix. Falta preencher: {fields}.",
   "quoteSheet.saved.complete":
     "Rascunho salvo e ficha completa. Confira e clique em Enviar cotação.",
   "quoteSheet.saved.sent": "Cotação enviada à Wellmix com a ficha de compra.",
@@ -51,7 +54,7 @@ export const pt = {
   "quoteSheet.error.lead_time_required":
     "A ficha foi salva. Para enviar a cotação, informe o prazo de produção (dias) no fim da página.",
   "quoteSheet.error.sheet_incomplete":
-    "A ficha foi salva, mas ainda está incompleta: preencha os campos com *, o 1º lote da programação e todas as fotos para enviar a cotação.",
+    "A ficha foi salva, mas ainda está incompleta: preencha os campos com * e todas as fotos para enviar a cotação.",
   "quoteSheet.readOnly": "Cotação encerrada: a ficha fica só para consulta.",
   "quoteSheet.wellmixHint":
     "A Wellmix pode completar NCM, imposto de importação e IPI: entram no custo importado do valor ao cliente.",
@@ -65,6 +68,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.title": "Quotation purchase sheet",
   "quoteSheet.leadTime": "Production lead time (days)",
   "quoteSheet.leadTimeLabel": "Production lead time",
+  "quoteSheet.leadTimeDaysHint":
+    "How many days to produce, counted from the order confirmation. The purchase schedule (dates and lots) is filled in later, in the order.",
   "quoteSheet.leadTimeAuto": "{days} days",
   "quoteSheet.leadTimePending": "Fill in “Departure in (days)” on shipment 1.",
   "quoteSheet.leadTimeHint":
@@ -72,7 +77,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.conditions": "Payment terms and notes",
   "quoteSheet.saveDraft": "Save draft",
   "quoteSheet.send": "Send quotation",
-  "quoteSheet.saved.partial": "Draft saved. Still missing: {fields}.",
+  "quoteSheet.saved.partial":
+    "Draft saved. The quote has NOT been sent to Wellmix yet. Still missing: {fields}.",
   "quoteSheet.saved.complete":
     "Draft saved and sheet complete. Review it and click Send quotation.",
   "quoteSheet.saved.sent": "Quotation sent to Wellmix with the purchase sheet.",
@@ -106,7 +112,7 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.error.lead_time_required":
     "The sheet was saved. To send the quotation, enter the production lead time (days) at the end of the page.",
   "quoteSheet.error.sheet_incomplete":
-    "The sheet was saved but is still incomplete: fill in the fields with *, the 1st lot of the schedule and all the photos to send the quotation.",
+    "The sheet was saved but is still incomplete: fill in the fields with * and all the photos to send the quotation.",
   "quoteSheet.readOnly": "Quotation closed: the sheet is read-only.",
   "quoteSheet.wellmixHint":
     "Wellmix can complete NCM, import duty and IPI: they go into the landed cost of the customer value.",
@@ -120,6 +126,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSheet.title": "报价采购单",
   "quoteSheet.leadTime": "生产周期（天）",
   "quoteSheet.leadTimeLabel": "生产周期",
+  "quoteSheet.leadTimeDaysHint":
+    "从订单确认起算的生产天数。采购计划（日期和批次）稍后在订单中填写。",
   "quoteSheet.leadTimeAuto": "{days} 天",
   "quoteSheet.leadTimePending": "请在第 1 批填写“出货间隔（天）”。",
   "quoteSheet.leadTimeHint":
@@ -127,7 +135,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSheet.conditions": "付款条件和备注",
   "quoteSheet.saveDraft": "保存草稿",
   "quoteSheet.send": "提交报价",
-  "quoteSheet.saved.partial": "草稿已保存。尚未填写：{fields}。",
+  "quoteSheet.saved.partial":
+    "草稿已保存。报价尚未提交给 Wellmix。尚未填写：{fields}。",
   "quoteSheet.saved.complete":
     "草稿已保存，采购单已完整。请检查后点击提交报价。",
   "quoteSheet.saved.sent": "报价已连同采购单提交给 Wellmix。",
@@ -159,7 +168,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSheet.error.lead_time_required":
     "采购单已保存。要提交报价，请在页面底部填写生产周期（天）。",
   "quoteSheet.error.sheet_incomplete":
-    "采购单已保存，但仍不完整：请填写带 * 的字段、第 1 批计划以及所有照片后再提交报价。",
+    "采购单已保存，但仍不完整：请填写带 * 的字段以及所有照片后再提交报价。",
   "quoteSheet.readOnly": "报价已关闭：采购单仅供查看。",
   "quoteSheet.wellmixHint":
     "Wellmix 可以补充 NCM、进口税和 IPI：这些将计入客户价格的到岸成本。",

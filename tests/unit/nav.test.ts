@@ -46,6 +46,13 @@ describe("menu principal", () => {
       "/app/booking",
       "/app/requests",
     ]);
+    // RFQ e Sourcing, os dois em espera, ficam juntos no fim de Pedidos.
+    const ordersEnd = hrefs.indexOf("/app/rfq");
+    expect(hrefs.slice(ordersEnd, ordersEnd + 2)).toEqual([
+      "/app/rfq",
+      "/app/sourcing",
+    ]);
+    expect(hrefs.indexOf("/app/superplan")).toBeLessThan(ordersEnd);
     for (const href of [
       "/app",
       "/app/tasks",

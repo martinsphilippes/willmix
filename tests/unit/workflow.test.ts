@@ -1,5 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { withTempStore } from "./setup";
+import {
+  ORDER_DOCUMENT_KEYS,
+  completeOrderDocument,
+  withTempStore,
+} from "./setup";
 
 withTempStore();
 
@@ -41,6 +45,8 @@ async function fillStage(
   });
   for (const req of reqs) {
     if (!req.required || req.type === "approval") continue;
+    // Documento do pedido: tem o caminho próprio (envio e assinaturas).
+    if (ORDER_DOCUMENT_KEYS.includes(req.key)) continue;
     // Cada um preenche o que é seu (a Wellmix preenche tudo).
     if (
       user.role !== "admin" &&
@@ -73,7 +79,7 @@ async function fillStage(
           : req.type === "date"
             ? "2026-10-01"
             : "ok");
-      await submitRequirement(user, req.id, { value });
+      await submitRequirement(user, req.id, { value, signature: true });
     }
   }
   return (await store.get("stages", stage.id))!;
@@ -162,6 +168,10 @@ describe("fluxo completo: solicitação → entrega", () => {
     // Peso declarado = peso líquido por peça da ficha de compra.
     await saveSheet(supplierA, order.id, { netWeightPcKg: 12 });
     await fillStage(supplierA, order.id, "PREPARATION");
+    // A programação de compra é da Wellmix e vem antes de validar a ficha.
+    await saveSheet(operator, order.id, {
+      lots: [{ departureIntervalDays: 30, masterCartons: 10 }],
+    } as never);
     // A Wellmix valida a ficha e o cadastro do produto (Fase B).
     const prep = await fillStage(operator, order.id, "PREPARATION");
     expect(prep.status).toBe("done");
@@ -202,6 +212,10 @@ describe("fluxo completo: solicitação → entrega", () => {
     expect((await store.get("requirements", art.id))!.status).toBe("rejected");
     await fillStage(agency, order.id, "PACKAGING");
     await decideRequirement(supplierA, approval.id, "approve");
+    // Arte aprovada: a etapa ainda espera o documento do pedido (ordem nova:
+    // selo na arte, "Enviar para assinatura", Wellmix e fornecedor assinam).
+    expect((await store.get("orders", order.id))!.status).toBe("PACKAGING");
+    await completeOrderDocument(operator, order.id);
     expect((await store.get("orders", order.id))!.status).toBe("INSPECTION");
 
     // inspeção com peso divergente bloqueia

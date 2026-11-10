@@ -9,18 +9,12 @@ import { formatAmount, moneyValue, parseAmount } from "@/lib/workflow/money";
 import { CURRENCIES, isCurrency, parseCurrency } from "@/lib/currencies";
 import { QUOTE_SLA_MAX_DAYS, QUOTE_SLA_MIN_DAYS } from "@/lib/sla";
 import { getCurrentUser } from "@/lib/auth/session";
-import {
-  assertRole,
-  assertWellmix,
-  isAdmin,
-  isWellmix,
-} from "@/lib/auth/permissions";
+import { assertRole, assertWellmix, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
 import {
   getStore,
   PARTY_EXTRA_DEFAULTS,
   PAYMENT_EXTRA_DEFAULTS,
-  USER_EXTRA_DEFAULTS,
   LINE_EXTRA_DEFAULTS,
   PARTY_TYPES,
   PRODUCT_EXTRA_DEFAULTS,
@@ -53,7 +47,11 @@ import {
 import { audit } from "@/lib/services/audit";
 import { requesterTarget, notify } from "@/lib/services/notifications";
 import { DEFAULT_SETTINGS, setSetting, type SettingKey } from "@/lib/settings";
-import { hashPassword } from "@/lib/auth/password";
+import { loginLabel } from "@/lib/auth/login-id";
+import {
+  createPortalLogin,
+  PORTAL_MIN_PASSWORD,
+} from "@/lib/services/portal-access";
 import { importCsv } from "@/lib/services/import";
 import { confirmSupplierPaymentReceipt } from "@/lib/services/acknowledgements";
 
@@ -278,6 +276,9 @@ export async function openRfqAction(form: FormData) {
     const supplierIds = form.getAll("supplierIds").map(String).filter(Boolean);
     // Junto com a RFQ, a embalagem: quem faz a faca e a arte e as instruções.
     const { packagingOptionsFrom } = await import("./actions/helpers");
+    // RFQ em espera: um fornecedor só por produto, sem disputa.
+    const { assertRfqStandby } = await import("@/lib/services/requests");
+    await assertRfqStandby([requestId], supplierIds);
     await openRfq(user, requestId, supplierIds, {
       packaging: packagingOptionsFrom(form),
     });
@@ -329,12 +330,10 @@ export async function selectQuoteAction(form: FormData) {
         downPaymentAmount: num(form, "downPaymentAmount"),
         downPaymentPercent: parseNumberInput(str(form, "downPaymentPercent")),
       });
-    const carrierBrl = z
-      .number()
-      .nonnegative()
-      .max(100_000_000)
-      .nullable()
-      .parse(num(form, "freightCarrierBrl"));
+    // Frete marítimo: quem informa é a companhia marítima, no pedido de
+    // frete dela; sem a resposta, a conta usa o estimado. Nada digitado no
+    // formulário da escolha entra na conta (um valor enviado é ignorado).
+    const carrierBrl = null;
     // Memória do cálculo refeita no servidor (não confia no navegador).
     const pricing = await pricingRecordFor(
       requestId,
@@ -629,6 +628,22 @@ export async function assignPartnerAction(form: FormData) {
       orderId,
       `${field} = ${partyId ?? "—"}`,
     );
+    // Selo de certificação: o OCP novo é avisado do selo a emitir; quem
+    // passa a fazer a arte, do selo que já chegou. Só quando mudou de fato.
+    if (
+      (field === "ocpId" || field === "agencyId") &&
+      (order[field] ?? null) !== partyId
+    ) {
+      try {
+        const updated = await store.get("orders", orderId);
+        const { notifySealPartner } =
+          await import("@/lib/services/import-flow");
+        if (updated)
+          await notifySealPartner(updated, field, order[field] ?? null);
+      } catch (error) {
+        console.error("[certification] aviso do selo ao parceiro novo", error);
+      }
+    }
   });
 }
 
@@ -923,59 +938,30 @@ export async function createUserAction(form: FormData) {
   const user = await requireUser();
   const partyId = str(form, "partyId") || null;
   const back = partyId ? `/app/parties/${partyId}` : "/app/parties";
-  await run(back, async () => {
+  await run(`${back}#access`, async () => {
     assertWellmix(user);
     assertScreen(user, "parties");
     const parsed = z
       .object({
-        email: z.string().email(),
+        // Nome de usuário ou e-mail: o formato é conferido no serviço.
+        email: z.string().min(3).max(254),
         name: z.string().min(2),
         role: z.enum(ROLES),
         locale: z.enum(LOCALES),
-        password: z.string().min(6),
+        password: z.string().min(PORTAL_MIN_PASSWORD).max(128),
       })
       .parse({
-        email: str(form, "email").toLowerCase(),
+        email: (str(form, "login") || str(form, "email")).toLowerCase(),
         name: str(form, "name"),
         role: str(form, "role"),
         locale: str(form, "locale") || "pt",
         password: str(form, "password"),
       });
-    if (
-      (parsed.role === "admin" || parsed.role === "operator") &&
-      !isAdmin(user)
-    )
-      throw new Error("forbidden");
-    const store = getStore();
-    if (store.mode === "appwrite") {
-      const { createAdminClient } = await import("@/lib/appwrite/server");
-      const { ID } = await import("node-appwrite");
-      const { users } = createAdminClient();
-      await users.create({
-        userId: ID.unique(),
-        email: parsed.email,
-        password: parsed.password,
-        name: parsed.name,
-      });
-    }
-    const created = await store.create("users", {
-      ...USER_EXTRA_DEFAULTS,
-      email: parsed.email,
-      name: parsed.name,
-      role: parsed.role,
-      partyId: partyId,
-      locale: parsed.locale,
-      passwordHash:
-        store.mode === "memory" ? hashPassword(parsed.password) : null,
-      active: true,
-    });
-    await audit(
-      user,
-      "user.create",
-      "user",
-      created.id,
-      `${parsed.email} (${parsed.role})`,
-    );
+    // O login nasce preso ao cadastro (docs/ARQUITETURA.md, "Acesso ao portal").
+    const created = await createPortalLogin(user, { ...parsed, partyId });
+    // O login (não a senha) volta na confirmação, para conferir o que passar.
+    const login = encodeURIComponent(loginLabel(created.email));
+    return `${back}?saved=user&login=${login}#access`;
   });
 }
 
@@ -1194,6 +1180,11 @@ export async function saveSettingsAction(form: FormData) {
       } else if (key === "packagingBriefDueDays") {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > 365)
+          throw new Error("invalid_input");
+        value = n;
+      } else if (key === "productionStartDays") {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 0 || n > 365)
           throw new Error("invalid_input");
         value = n;
       } else if (key === "packagingDefaultAgencyId") {

@@ -31,6 +31,7 @@ import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import {
   missingForCompletion,
+  supplierMissing,
   REQUIRED_SHEET_PHOTOS,
   normalizeLots,
   isPiecesUnit,
@@ -97,6 +98,7 @@ export const SUPPLIER_FIELDS = [
   "innerQty",
   "netWeightPcKg",
   "grossWeightPcKg",
+  "averageWeightPcKg",
   "cbmPerCarton",
   "heightCm",
   "widthCm",
@@ -114,6 +116,12 @@ export const SUPPLIER_FIELDS = [
   "ecommerceDescription",
   "notes",
 ] as const;
+/** Programação de compra: só a Wellmix preenche (dono, 10/11/2026). */
+export const SCHEDULE_FIELDS = [
+  "productionStartAt",
+  "lots",
+  "containerType",
+] as const satisfies readonly (typeof SUPPLIER_FIELDS)[number][];
 /** Campos do despachante (e da Wellmix). */
 export const CUSTOMS_FIELDS = [
   "ncm",
@@ -140,6 +148,7 @@ export const OPTIONAL_SHEET_FIELDS: readonly string[] = [
   "averagePrice",
   "certificationRequired",
   "certificationNote",
+  "averageWeightPcKg",
 ];
 
 /** Tira as colunas novas vazias de um objeto de ficha (muda no lugar). */
@@ -149,6 +158,24 @@ export function dropEmptyOptional<T extends Record<string, unknown>>(
   for (const k of OPTIONAL_SHEET_FIELDS)
     if (row[k] === null || row[k] === undefined) delete row[k];
   return row;
+}
+/**
+ * Apagar uma coluna nova (valor vazio) só vai ao banco quando a ficha já tem
+ * valor nela: aí a coluna com certeza existe. Sem valor gravado, o vazio não
+ * muda nada e sai do pacote (a ficha continua salvando antes de o esquema
+ * ser publicado). Muda o pacote no lugar.
+ */
+export function dropUnsavedEmptyOptional(
+  patch: Record<string, unknown>,
+  existing: Partial<PurchaseSheet> | null | undefined,
+): void {
+  for (const k of OPTIONAL_SHEET_FIELDS) {
+    if (!(k in patch)) continue;
+    const v = patch[k];
+    if (v !== null && v !== undefined) continue;
+    const saved = (existing as Record<string, unknown> | null | undefined)?.[k];
+    if (saved === null || saved === undefined) delete patch[k];
+  }
 }
 export type SheetInput = Partial<Pick<PurchaseSheet, SheetField>>;
 
@@ -161,7 +188,26 @@ export interface SheetAccess {
 }
 
 /**
- * Quem vê: Wellmix, o fornecedor do pedido e o despachante do pedido. Cliente
+ * Campos da ficha que a certificadora não recebe. Hoje nenhum: ela vê tudo
+ * do pedido (decisão do dono, 10/11/2026). Para tirar um campo dela, basta
+ * incluí-lo aqui (ex.: "price", "moq"): ele não sai do servidor.
+ */
+export const CERTIFIER_HIDDEN_FIELDS: readonly SheetField[] = [];
+
+/**
+ * Certificadora (OCP) do pedido: precisa do pedido completo para gerar o
+ * selo de certificação (docs/CERTIFICATION.md). Lê a ficha, não edita nada.
+ */
+export function isSheetCertifier(
+  user: Pick<User, "role" | "partyId">,
+  order: Pick<Order, "ocpId">,
+): boolean {
+  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
+}
+
+/**
+ * Quem vê: Wellmix, o fornecedor do pedido, o despachante do pedido e a
+ * certificadora do pedido (só leitura). Cliente
  * nunca (fornecedor, contato e preço). Pedido encerrado: só a Wellmix edita.
  */
 export function sheetAccess(user: User, order: Order): SheetAccess {
@@ -194,6 +240,7 @@ export function sheetAccess(user: User, order: Order): SheetAccess {
       editCustoms: !closed,
       addPhotos: false,
     };
+  if (isSheetCertifier(user, order)) return { ...none, view: true };
   return none;
 }
 
@@ -427,6 +474,8 @@ async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
 }
 
 export interface SheetView {
+  /** Início da produção automático (contrato assinado + prazo das Configurações). */
+  productionStart: import("./order-signature").ProductionStart;
   order: Order;
   access: SheetAccess;
   /** Ficha gravada, ou o rascunho pré-preenchido quando ainda não existe. */
@@ -472,13 +521,27 @@ export async function getSheetForUser(
     stored.productId ?? request?.productId ?? null,
   );
   // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
-  const sheet = existing ? withRecordDefaults(existing, records) : stored;
+  const full = existing ? withRecordDefaults(existing, records) : stored;
+  // Certificadora: a ficha inteira, menos os campos de CERTIFIER_HIDDEN_FIELDS.
+  const sheet = isSheetCertifier(user, order)
+    ? {
+        ...full,
+        ...Object.fromEntries(CERTIFIER_HIDDEN_FIELDS.map((k) => [k, null])),
+      }
+    : { ...full };
+  // Início da produção: vem do contrato assinado mais o prazo das
+  // Configurações. Ficha sem a data gravada mostra a calculada.
+  const { productionStartFor } = await import("./order-signature");
+  const productionStart = await productionStartFor(orderId);
+  if (productionStart.auto)
+    sheet.productionStartAt = productionStart.at ?? sheet.productionStartAt;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
     order,
     access,
     sheet,
+    productionStart,
     saved: !!existing,
     prefillSource: draft?.prefillSource ?? null,
     photos,
@@ -495,7 +558,10 @@ export async function getSheetForUser(
       },
       container.capacity,
     ),
-    missing: missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
+    // Programação de compra é da Wellmix: para os outros, não é pendência.
+    missing: ((all) => (isWellmix(user) ? all : supplierMissing(all)))(
+      missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
+    ),
     catalogPhotoKinds: await catalogPhotoKinds(request?.productId),
     containerType: container.type,
     containerTypes: container.types,
@@ -522,11 +588,20 @@ export async function saveSheet(
   for (const [key, value] of Object.entries(input)) {
     if (allowed.has(key) && value !== undefined) patch[key] = value;
   }
+  // Programação de compra (lotes, container, início): só a Wellmix grava.
+  if (!isWellmix(user)) for (const key of SCHEDULE_FIELDS) delete patch[key];
+  // Início da produção automático (contrato assinado): não se digita.
+  if ("productionStartAt" in patch) {
+    const { productionStartFor } = await import("./order-signature");
+    if ((await productionStartFor(orderId)).auto)
+      delete patch.productionStartAt;
+  }
   if ("lots" in patch) patch.lots = normalizeLots(patch.lots as never);
   const [existing] = await store.list("purchase_sheets", {
     filter: { orderId },
     limit: 1,
   });
+  dropUnsavedEmptyOptional(patch, existing);
   // CBM da caixa: com as três medidas, o calculado (como no cadastro).
   if (allowed.has("cbmPerCarton")) withBoxCbm(patch, existing);
   let sheet: PurchaseSheet;
@@ -615,7 +690,11 @@ export async function saveSheet(
     );
   }
   const missing = await syncRequirements(user, order, sheet);
-  return { sheet, missing };
+  // Programação de compra é da Wellmix: para os outros não é pendência.
+  return {
+    sheet,
+    missing: isWellmix(user) ? missing : supplierMissing(missing),
+  };
 }
 
 /** Etapas em que a quantidade ainda acompanha a programação (antes da inspeção). */
@@ -988,9 +1067,11 @@ async function syncRequirements(
   const sheetReq = prep.requirements.find(
     (r) => r.key === "purchase_sheet" && r.status !== "done",
   );
+  // "Ficha de compra" é a parte do fornecedor: conclui sem a programação
+  // de compra, que é da Wellmix (ela trava a validação do comprador).
   if (
     sheetReq &&
-    !missing.length &&
+    !supplierMissing(missing).length &&
     canSubmitRequirement(user, order, sheetReq)
   ) {
     const container = await containerCapacity(sheet.containerType);
@@ -1021,11 +1102,32 @@ export async function sheetProgress(order: Order) {
   return {
     saved: !!existing,
     prefillSource: draft?.prefillSource ?? null,
-    missing: missingForCompletion(
-      existing ?? draft,
-      await photoKindsDone(order.id, photos),
+    // A parte do fornecedor (é o que o item "Ficha de compra" espera).
+    missing: supplierMissing(
+      missingForCompletion(
+        existing ?? draft,
+        await photoKindsDone(order.id, photos),
+      ),
     ),
   };
+}
+
+/**
+ * A Wellmix já fez a programação de compra (1º lote) deste pedido? Pedido
+ * sem ficha de compra (linha sem ficha, pedido antigo) não tem o que programar.
+ */
+export async function scheduleDone(orderId: string): Promise<boolean> {
+  const [sheet] = await getStore().list("purchase_sheets", {
+    filter: { orderId },
+    limit: 1,
+  });
+  if (!sheet) return true;
+  const first = normalizeLots(sheet.lots)[0];
+  return (
+    typeof first.masterCartons === "number" &&
+    first.masterCartons > 0 &&
+    typeof first.departureIntervalDays === "number"
+  );
 }
 
 /**

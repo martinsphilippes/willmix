@@ -6,6 +6,7 @@ import {
   type RankingValues,
 } from "@/lib/services/supplier-ranking-calc";
 import { Badge, Card, cx, TextLink } from "@/components/ui";
+import { PickQuoteButton } from "@/components/pick-quote-button";
 
 /**
  * Disputa entre as cotações: nota de cada fornecedor por critério (com o
@@ -16,12 +17,19 @@ export function SupplierRankingCard({
   ranking,
   supplierOf,
   canEditWeights,
+  decideWith = null,
 }: {
   t: Translate;
   ranking: SupplierRanking;
   /** Nome do fornecedor de cada cotação. */
   supplierOf: (quoteId: string) => string;
   canEditWeights: boolean;
+  /**
+   * A escolha ainda está aberta: o texto do botão que conclui a decisão no
+   * formulário logo abaixo ("Enviar para aprovação" ou "Selecionar"). Com
+   * ele, cada linha ganha "Escolher", que seleciona o fornecedor lá embaixo.
+   */
+  decideWith?: string | null;
 }) {
   const money = (n: number, currency: string | null) => {
     const digits = { maximumFractionDigits: n < 10 ? 4 : 2 };
@@ -122,6 +130,11 @@ export function SupplierRankingCard({
               points: num(ranking.rows[0].total),
               suppliers: tied.map((r) => supplierOf(r.quoteId)).join(", "),
             })}
+            {decideWith ? (
+              <span className="mt-1 block font-normal" data-ranking-how="">
+                {t("ranking.howToDecide", { action: decideWith })}
+              </span>
+            ) : null}
           </p>
         ) : winner && winnerValues ? (
           <div
@@ -179,6 +192,11 @@ export function SupplierRankingCard({
                   </th>
                 ))}
                 <th className="py-1 text-right">{t("ranking.col.total")}</th>
+                {decideWith ? (
+                  <th className="py-1 pl-3 text-right">
+                    {t("ranking.col.decision")}
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
@@ -227,6 +245,15 @@ export function SupplierRankingCard({
                     <td className="py-2 text-right text-base font-semibold tabular-nums text-zinc-900">
                       {num(row.total)}
                     </td>
+                    {decideWith ? (
+                      <td className="py-2 pl-3 text-right">
+                        <PickQuoteButton
+                          quoteId={row.quoteId}
+                          label={t("ranking.pick")}
+                          chosenLabel={t("ranking.picked")}
+                        />
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}

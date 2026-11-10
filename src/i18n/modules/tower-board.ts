@@ -12,7 +12,7 @@ export const pt = {
   "board.hint.parallel": "o mesmo pedido pode aparecer aqui e no bloco de cima",
   "board.hint.problem": "o que precisa de atenção",
   "board.tap":
-    "Toque num quadrado: a lista de baixo mostra só os pedidos dele, sem a tela pular.",
+    "Toque num quadrado: os pedidos dele aparecem logo abaixo. Toque de novo para fechar.",
   "board.late.one": "1 atrasado",
   "board.late.many": "{n} atrasados",
   "board.occupancy": "Ocupação média {pct}",
@@ -80,7 +80,7 @@ export const en: Record<keyof typeof pt, string> = {
   "board.hint.parallel": "the same order may show here and in the block above",
   "board.hint.problem": "what needs attention",
   "board.tap":
-    "Tap a tile: the list below shows only its orders, without the page jumping.",
+    "Tap a tile: its orders appear right below it. Tap again to close.",
   "board.late.one": "1 late",
   "board.late.many": "{n} late",
   "board.occupancy": "Average occupancy {pct}",
@@ -147,7 +147,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.hint.order": "每个订单只出现在一个方块",
   "board.hint.parallel": "同一订单可能同时出现在这里和上方",
   "board.hint.problem": "需要关注的事项",
-  "board.tap": "点击方块：下方列表只显示其中的订单，页面不会跳动。",
+  "board.tap": "点击方块：其中的订单显示在正下方。再点一次即可收起。",
   "board.late.one": "1 个逾期",
   "board.late.many": "{n} 个逾期",
   "board.occupancy": "平均装载率 {pct}",

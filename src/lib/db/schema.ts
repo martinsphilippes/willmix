@@ -561,6 +561,10 @@ export const IMPORT_STEP_KEYS = [
   "cert_memorial",
   "cert_lab",
   "cert_registration",
+  // Selo de certificação: a certificadora envia o selo do pedido e a agência
+  // aplica na arte da embalagem (docs/CERTIFICATION.md).
+  "cert_seal",
+  "cert_seal_art",
 ] as const;
 export type ImportStepKey = (typeof IMPORT_STEP_KEYS)[number];
 export const IMPORT_STEP_STATUSES = [
@@ -851,6 +855,13 @@ export interface Quote extends BaseRow {
    * Coluna opcional: só vai ao banco nesse fluxo.
    */
   moq?: number | null;
+  /**
+   * Negociação (docs/QUOTE_FLOW.md): rodadas de "devolver com comentário" da
+   * Wellmix e a resposta do fornecedor. Opcional: só gravada nesse fluxo.
+   */
+  negotiation?: import("@/lib/quote-flow").NegotiationRound[] | null;
+  /** Proposta de embalagem enviada ao fornecedor e o OK dele. Opcional. */
+  packagingProposal?: import("@/lib/quote-flow").PackagingProposal | null;
 }
 
 export interface Order extends BaseRow {
@@ -986,6 +997,11 @@ export interface Document extends BaseRow {
    * (a empresa da conversa e a Wellmix). Opcional: documentos antigos ficam sem.
    */
   conversationTopicId?: string | null;
+  /**
+   * Arquivo de uma cotação (imagem da proposta de embalagem): só a Wellmix e
+   * o fornecedor daquela cotação abrem. Opcional: documentos antigos ficam sem.
+   */
+  quoteId?: string | null;
 }
 
 export interface Payment extends BaseRow {
@@ -1505,6 +1521,11 @@ export interface PurchaseSheet extends BaseRow {
   dumpingReleasedByUserId?: string | null;
   dumpingReleasedAt?: string | null;
   averagePrice?: number | null;
+  /**
+   * Peso médio por peça (kg): um terceiro peso, além do líquido e do bruto,
+   * informado pela fábrica ou medido. Opcional: fichas antigas ficam sem.
+   */
+  averageWeightPcKg?: number | null;
   certificationRequired?: YesNo | null;
   certificationNote?: string | null;
   ecommerceDescription: string | null;
@@ -1612,6 +1633,12 @@ export interface PackagingBrief extends BaseRow {
   brief: string | null;
   /** Observações da agência (gráfica, fornecedor). */
   agencyNotes: string | null;
+  /**
+   * Valor que a agência cobra por este item (criação e finalização da arte)
+   * e a moeda. Opcionais: só gravados quando informados.
+   */
+  agencyItemPrice?: number | null;
+  agencyItemCurrency?: string | null;
   dueAt: string | null;
   readyAt: string | null;
   /** Depois da transferência: o pedido e o item "Arte" dele. */
@@ -2200,6 +2227,18 @@ export interface BookingAnalysis {
  * Linha do Booking: um produto do cadastro que chegou pela ficha técnica,
  * com a etapa, a reserva e a análise. Uma por produto.
  */
+/**
+ * Plano da linha do Booking (docs/BOOKING.md, "Quantidade e previsão"): as
+ * peças planejadas (vêm da planilha, coluna "TT PCS", e podem ser digitadas)
+ * e a previsão de vendas por canal, digitada pela equipe.
+ */
+export interface BookingPlan {
+  plannedQty?: number | null;
+  forecastOrder?: number | null;
+  forecastDistribution?: number | null;
+  forecastEcommerce?: number | null;
+}
+
 export interface Booking extends BaseRow {
   productId: string;
   status: BookingStatus;
@@ -2217,6 +2256,8 @@ export interface Booking extends BaseRow {
   ownerUserId: string | null;
   note: string | null;
   analysis: BookingAnalysis | null;
+  /** Peças planejadas e previsão de vendas. Opcional: linhas antigas ficam sem. */
+  plan?: BookingPlan | null;
   /** Solicitação gerada a partir desta linha (uma por produto do lote). */
   requestId: string | null;
   requestGroupId: string | null;
@@ -2571,6 +2612,8 @@ export const TABLES: Record<TableName, TableDef> = {
       manufacturerCardConfirmedAt: datetime(),
       manufacturerCardConfirmedByUserId: id(false),
       moq: int(),
+      negotiation: json(),
+      packagingProposal: json(),
     },
     indexes: [
       { key: "by_request", type: "key", columns: ["requestId"] },
@@ -2707,6 +2750,7 @@ export const TABLES: Record<TableName, TableDef> = {
       imageHash: str(32),
       packagingBriefId: id(false),
       conversationTopicId: id(false),
+      quoteId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
@@ -3272,6 +3316,7 @@ export const TABLES: Record<TableName, TableDef> = {
       dumpingReleasedByUserId: id(false),
       dumpingReleasedAt: datetime(),
       averagePrice: float(),
+      averageWeightPcKg: float(),
       certificationRequired: enumOf(YES_NO, false),
       certificationNote: text(),
     },
@@ -3326,6 +3371,8 @@ export const TABLES: Record<TableName, TableDef> = {
       dimsChangedAt: datetime(),
       brief: text(),
       agencyNotes: text(),
+      agencyItemPrice: float(),
+      agencyItemCurrency: str(3),
       dueAt: datetime(),
       readyAt: datetime(),
       orderId: id(false),
@@ -3770,6 +3817,7 @@ export const TABLES: Record<TableName, TableDef> = {
       ownerUserId: id(false),
       note: str(500),
       analysis: json(),
+      plan: json(),
       requestId: id(false),
       requestGroupId: id(false),
       requestNumber: int(),

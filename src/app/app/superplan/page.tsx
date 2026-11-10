@@ -195,6 +195,8 @@ export default async function SuperplanPage({
         prefill={prefill}
         // Média do despachante (ficha mestre): só informação na tela.
         averageUsd={loaded ? loaded.averageUsd : undefined}
+        // Peso médio (ficha mestre): mostrado na Compra, fora da conta.
+        averageWeightKg={loaded ? loaded.averageWeightKg : null}
         ctx={ctx}
         rfq={rfq}
         save={

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { withTempStore } from "./setup";
+import { sendForSignature, withTempStore } from "./setup";
 
 /*
  * Segunda Onda: NCM com validação humana, gate de conformidade, pós-venda,
@@ -100,7 +100,10 @@ async function completeOrder(orderId: string) {
     );
     if (pending.length === 0) return;
     for (const r of pending) {
-      if (r.type === "approval")
+      // Documento do pedido (ordem nova): o envio para assinatura pede o
+      // selo aplicado na arte.
+      if (r.key === "order_sign_send") await sendForSignature(admin, orderId);
+      else if (r.type === "approval")
         await decideRequirement(admin, r.id, "approve");
       else if (r.type === "file" || r.type === "photo") {
         const doc = await store.create("documents", {
@@ -126,7 +129,8 @@ async function completeOrder(orderId: string) {
         await submitRequirement(admin, r.id, { value: "3" });
       else if (r.type === "date")
         await submitRequirement(admin, r.id, { value: "2026-11-01" });
-      else await submitRequirement(admin, r.id, { value: "ok" });
+      else
+        await submitRequirement(admin, r.id, { value: "ok", signature: true });
     }
   }
 }
@@ -263,8 +267,47 @@ describe("pós-venda, recompra e histórico", () => {
 });
 
 describe("sourcing sob demanda", () => {
-  it("solicitação sem produto vira item de sourcing e a promoção liga o produto de volta", async () => {
+  it("Sourcing em espera (padrão): a solicitação nasce, mas não abre item de Sourcing nem pendência", async () => {
     const store = getStore();
+    const { getSettings } = await import("@/lib/settings");
+    expect((await getSettings()).sourcingEnabled).toBe(false);
+    const before = (await store.list("sourcing_items")).length;
+    const request = await createRequest(customer, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Kit de pastilhas de freio",
+      description: "Jogo dianteiro",
+      specification: null,
+      quantity: 100,
+      unit: "un",
+      deadline: null,
+      notes: null,
+      origin: "sourcing_demand",
+    });
+    // A solicitação existe, com a origem guardada; a Wellmix é avisada dela.
+    expect((await store.get("requests", request.id))!.origin).toBe(
+      "sourcing_demand",
+    );
+    expect(await store.list("sourcing_items")).toHaveLength(before);
+    expect(
+      await store.list("sourcing_items", { filter: { requestId: request.id } }),
+    ).toHaveLength(0);
+    expect(
+      (await pendingTasksFor(admin)).some((t) => t.kind === "sourcing_demand"),
+    ).toBe(false);
+    const notes = await store.list("notifications", {
+      filter: { userId: admin.id },
+    });
+    expect(notes.some((n) => /^Sourcing sob demanda/.test(n.subject))).toBe(
+      false,
+    );
+    expect(notes.some((n) => /^Nova solicitação/.test(n.subject))).toBe(true);
+  });
+
+  it("Sourcing ativo: solicitação sem produto vira item de sourcing e a promoção liga o produto de volta; em espera a pendência some", async () => {
+    const store = getStore();
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("sourcingEnabled", true);
     const request = await createRequest(customer, {
       customerId: "cliente-joao",
       productId: null,
@@ -284,12 +327,20 @@ describe("sourcing sob demanda", () => {
     expect(
       (await pendingTasksFor(admin)).some((t) => t.kind === "sourcing_demand"),
     ).toBe(true);
+    // Colocar em espera tira a pendência; o item fica guardado.
+    await setSetting("sourcingEnabled", false);
+    expect(
+      (await pendingTasksFor(admin)).some((t) => t.kind === "sourcing_demand"),
+    ).toBe(false);
+    expect(await store.get("sourcing_items", item.id)).not.toBeNull();
+    await setSetting("sourcingEnabled", true);
     const product = await promoteSourcingItem(admin, item.id, {
       lineId: "linha-utilidades",
     });
     expect((await store.get("requests", request.id))!.productId).toBe(
       product.id,
     );
+    await setSetting("sourcingEnabled", false);
   });
 });
 

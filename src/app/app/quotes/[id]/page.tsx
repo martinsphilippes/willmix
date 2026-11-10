@@ -6,6 +6,11 @@ import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
 import { SupplierDielineCard } from "@/components/supplier-dieline-card";
 import { SuperplanItemsCard } from "@/components/superplan-items-card";
+import {
+  QuoteNegotiationCard,
+  QuoteOfferCard,
+  QuotePackagingProposalCard,
+} from "@/components/quote-flow-cards";
 import type { PurchaseSheet } from "@/lib/db";
 import { canReleaseDumping } from "@/lib/services/purchase-flow";
 import {
@@ -54,15 +59,18 @@ import {
 } from "@/components/request-info-table";
 import { SheetSafety } from "@/components/sheet-safety";
 import { ActionError } from "@/components/action-error";
+import { quoteOfferFor } from "@/lib/services/quote-flow";
 import { scheduleNcmSuggestion } from "@/lib/services/request-ncm";
 import {
   isPiecesUnit,
   leadTimeFromLots,
 } from "@/lib/services/purchase-sheet-calc";
-import { LeadTimeAuto } from "@/components/lead-time-auto";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { QuoteManufacturerCard } from "@/components/manufacturer-cards";
-import { quoteCardsView } from "@/lib/services/manufacturer-cards";
+import {
+  bringCardToQuote,
+  quoteCardsView,
+} from "@/lib/services/manufacturer-cards";
 import { sheetReadingView } from "@/lib/services/sheet-reading";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
 import {
@@ -92,6 +100,9 @@ export default async function QuotePage({
     card: cardNotice,
     dieline: dielineNotice,
     superplan: superplanNotice,
+    negotiation: negotiationNotice,
+    offer: offerNotice,
+    proposal: proposalNotice,
   } = await searchParams;
   const store = getStore();
   const quote = await store.get("quotes", id);
@@ -103,6 +114,28 @@ export default async function QuotePage({
     filter: { requestId: request.id },
   });
   const canAnswer = quote.status === "invited" || quote.status === "answered";
+  // A Wellmix e o fornecedor desta cotação: negociação, embalagem e o preço
+  // desejado (docs/QUOTE_FLOW.md).
+  const flowSide =
+    isWellmix(user) ||
+    (user.role === "supplier" && user.partyId === quote.supplierId);
+  const offer = flowSide ? await quoteOfferFor(quote, request) : null;
+  // Produto que veio do Booking: para o fornecedor é a análise do Booking
+  // dele (um fornecedor só, sem disputa; docs/RFQ_STANDBY.md).
+  const { isBookingRequest } = await import("@/lib/services/requests");
+  const fromBooking = flowSide ? await isBookingRequest(request.id) : false;
+  // Botão das mensagens dentro dos cartões (preço não aceito ou diferente).
+  const flowChat = (
+    <ChatButtons
+      back={`/app/quotes/${quote.id}`}
+      requestId={request.id}
+      targets={[
+        isWellmix(user)
+          ? { partyId: quote.supplierId, label: t("messages.chatSupplier") }
+          : { label: t("messages.chatWellmix") },
+      ]}
+    />
+  );
   // Resposta pela ficha de compra (fotos opcionais nesta fase).
   const sheetView = await getQuoteSheetForUser(user, quote.id);
   // Quem preenche vê o que falta em vermelho e o aviso leva até cada campo.
@@ -126,7 +159,15 @@ export default async function QuotePage({
   const dumpingReleaser = dumpingInfo?.dumpingReleasedByUserId
     ? await store.get("users", dumpingInfo.dumpingReleasedByUserId)
     : null;
-  const cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
+  let cardsView = sheetView ? await quoteCardsView(user, quote.id) : null;
+  // Cotação aberta sem cartão: o que veio na planilha do Booking (ou o último
+  // já apresentado para o produto) entra sozinho, já confirmado.
+  if (
+    cardsView?.canEdit &&
+    !cardsView.selectedId &&
+    (await bringCardToQuote(user, quote, request.productId))
+  )
+    cardsView = await quoteCardsView(user, quote.id);
   const errorCode = typeof error === "string" ? error : "";
   // Envio recusado: o que falta na ficha. O prazo de produção não é mais
   // digitado (vem da programação 1, que já está na lista do que falta).
@@ -164,7 +205,11 @@ export default async function QuotePage({
       <PageHeader
         help={{ body: "help.quote.body", steps: "help.quote.steps" }}
         t={t}
-        title={`${t("quotes.title")}: ${request.productName}`}
+        title={
+          fromBooking
+            ? t("bookingAnalysis.title", { product: request.productName })
+            : `${t("quotes.title")}: ${request.productName}`
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {request.number ? (
@@ -217,6 +262,11 @@ export default async function QuotePage({
           fields={invalidFields}
           token={saveToken}
         />
+        {fromBooking && user.role === "supplier" ? (
+          <div data-booking-analysis>
+            <Alert tone="info">{t("bookingAnalysis.hint")}</Alert>
+          </div>
+        ) : null}
         {typeof adopted === "string" && adopted ? (
           <Alert tone="success">{t("productSheet.adopted")}</Alert>
         ) : null}
@@ -269,6 +319,42 @@ export default async function QuotePage({
           />
         ) : null}
       </div>
+      {/* Negociação e proposta de embalagem (docs/QUOTE_FLOW.md): a Wellmix
+          e o fornecedor desta cotação. */}
+      {/* Solicitação que nasceu do Booking: o fornecedor do produto recebe
+          o preço desejado e confirma ou manda o dele (sem a ficha inteira). */}
+      {offer ? (
+        <div className="mt-4">
+          <QuoteOfferCard
+            t={t}
+            quoteId={quote.id}
+            offer={offer}
+            quantity={`${request.quantity.toLocaleString(t.intl)} ${request.unit}`}
+            wellmix={isWellmix(user)}
+            notice={typeof offerNotice === "string" ? offerNotice : ""}
+            chat={flowChat}
+          />
+        </div>
+      ) : null}
+      {flowSide ? (
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+          <QuoteNegotiationCard
+            t={t}
+            quote={quote}
+            wellmix={isWellmix(user)}
+            notice={
+              typeof negotiationNotice === "string" ? negotiationNotice : ""
+            }
+            chat={flowChat}
+          />
+          <QuotePackagingProposalCard
+            t={t}
+            quote={quote}
+            wellmix={isWellmix(user)}
+            notice={typeof proposalNotice === "string" ? proposalNotice : ""}
+          />
+        </div>
+      ) : null}
       <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
         <Card title={t("requests.title")} className="lg:col-span-2">
           {/* Uma linha, cada coluna uma informação (inclusive cada item da
@@ -457,6 +543,8 @@ export default async function QuotePage({
             </div>
             <PurchaseSheetFields
               t={t}
+              // A programação de compra saiu da cotação (é do pedido).
+              hideSchedule
               sheet={sheetView.sheet}
               plan={sheetView.plan}
               containerType={sheetView.containerType}
@@ -516,6 +604,8 @@ export default async function QuotePage({
             addAction={addQuoteSheetPhotosAction}
             removeAction={removeQuoteSheetPhotoAction}
             coveredKinds={sheetView.catalogPhotoKinds}
+            given={sheetView.bookingPhotos}
+            waivedKinds={sheetView.waivedPhotoKinds}
             hint={t("quoteSheet.photosHint")}
             className="lg:order-4"
             missing={canFillSheet ? sheetMissing : []}
@@ -567,19 +657,25 @@ export default async function QuotePage({
           >
             {/* Prazo (curto) e condições lado a lado em telas grandes. */}
             <div className="grid gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-4">
-              {/* Prazo de produção: vem da programação 1 (não é digitado). */}
+              {/* Prazo de produção: informado direto, em dias (a programação
+                  de compra saiu da cotação; ela é do pedido). */}
               <FieldRow
-                label={t("quoteSheet.leadTimeLabel")}
+                label={t("quoteSheet.leadTime")}
                 size="full"
                 anchor="leadTimeDays"
+                hint={t("quoteSheet.leadTimeDaysHint")}
               >
-                <LeadTimeAuto
-                  initial={leadTimeFromLots(sheetView.sheet.lots)}
-                  labels={{
-                    days: t("quoteSheet.leadTimeAuto", { days: "{days}" }),
-                    pending: t("quoteSheet.leadTimePending"),
-                    hint: t("quoteSheet.leadTimeHint"),
-                  }}
+                <input
+                  form="quote-sheet"
+                  name="leadTimeDays"
+                  inputMode="numeric"
+                  defaultValue={
+                    quote.leadTimeDays ??
+                    leadTimeFromLots(sheetView.sheet.lots) ??
+                    ""
+                  }
+                  className={cx(inputDenseClass, "w-28")}
+                  data-lead-time-days
                 />
               </FieldRow>
               <FieldRow

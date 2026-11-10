@@ -24,7 +24,11 @@ describe("cifra", () => {
     const other = st.encryptionKey({ SESSION_SECRET: "outro" })!;
     expect(st.decryptSecret(enc, other)).toBeNull();
     const [v, iv, tag, data] = enc.split(":");
-    const tampered = [v, iv, tag, `A${data.slice(1)}`].join(":");
+    // Troca o primeiro caractere por outro de verdade: quando o cifrado já
+    // começava com "A" (1 em 64), "A" + resto era o próprio valor e o teste
+    // falhava ao acaso.
+    const first = data.startsWith("A") ? "B" : "A";
+    const tampered = [v, iv, tag, `${first}${data.slice(1)}`].join(":");
     expect(st.decryptSecret(tampered, key)).toBeNull();
     // Cada gravação usa um IV novo.
     expect(st.encryptSecret("x", key)).not.toBe(st.encryptSecret("x", key));

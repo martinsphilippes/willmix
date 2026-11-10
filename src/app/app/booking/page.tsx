@@ -12,9 +12,12 @@ import {
   BOOKING_PAGE_SIZE,
   BOOKING_REQUEST_MAX,
   BOOKING_SIGNALS,
+  bookingCanRequest,
   activeBookingFilters,
   bookingColumnsFor,
+  BOOKING_NEXT_WAITING,
   bookingQuery,
+  bookingRequestQuantity,
   bookingSignal,
   filterBookingRows,
   pageOfBookingRows,
@@ -23,10 +26,12 @@ import {
   type BookingColumn,
   type BookingColumnKey,
   type BookingFilters,
+  type BookingNextStep,
   type BookingRow,
   type BookingSignal,
 } from "@/lib/booking";
-import type { BookingStatus } from "@/lib/db/schema";
+import { SHEET_CURRENCIES, type BookingStatus } from "@/lib/db/schema";
+import { getSettings } from "@/lib/settings";
 import {
   BOOKING_STOCK_OPTION,
   listBookingRows,
@@ -54,6 +59,12 @@ import {
   rowClass,
   type Tone,
 } from "@/components/ui";
+import {
+  BookingCustomerSelect,
+  BookingProductInput,
+  BookingProductSelect,
+  BookingQuantityInput,
+} from "@/components/booking-row-fields";
 import { FormDraftGuard } from "@/components/form-draft-guard";
 import { SelectAllCheckbox } from "@/components/select-all-checkbox";
 import { bulkBookingAction } from "../actions/booking";
@@ -70,6 +81,22 @@ import { BookingEnhancer, BulkButton } from "./_components/booking-client";
 
 const FILTER_FORM = "booking-filter";
 const BULK_FORM = "booking-bulk";
+/** Recusas do "Gerar solicitação" que ganham o passo a passo de como resolver. */
+const REQUEST_GUIDE_CODES: readonly string[] = [
+  "booking_not_requestable",
+  "booking_request_customer",
+  "booking_customer_mismatch",
+  "booking_qty_missing",
+  "booking_qty_below_moq",
+  "below_moq",
+];
+/** Barra de ações: grupo (rótulo + lista + botão) e botão pequeno. */
+const BULK_GROUP =
+  "flex flex-col gap-0.5 rounded-lg border border-zinc-200 bg-zinc-50/70 px-1.5 py-1";
+const BULK_LABEL =
+  "px-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500";
+const BULK_BUTTON = "h-7 px-2.5 py-0! text-xs! whitespace-nowrap";
+/** "Editar dados": os campos das células pertencem a este formulário. */
 const BASE = "/app/booking";
 
 const STATUS_TONE: Record<BookingStatus, Tone> = {
@@ -92,23 +119,29 @@ const SIGNAL_TONE: Record<BookingSignal, Tone> = {
 
 /**
  * Ordem das colunas na tela: o produto primeiro (fica fixo ao rolar), depois
- * o que se mexe no dia a dia (etapa, cliente, reserva, Superplan) e então os
- * dados da ficha. Coluna nova em BOOKING_COLUMNS entra no fim sozinha.
+ * o que se mexe no dia a dia (etapa, fornecedor, reserva, Superplan) e então
+ * os dados da ficha. Coluna nova em BOOKING_COLUMNS entra no fim sozinha.
  */
 const FIRST: BookingColumnKey[] = [
   "name",
   "status",
-  "customer",
+  "supplier",
   "reservedQty",
   "cost",
   "salePrice",
   "targetPrice",
   "signal",
 ];
+/**
+ * Colunas que saíram da tela, com o dado guardado. Cliente: o Booking é do
+ * fornecedor escolhido ao subir a ficha; linha sem cliente é compra para o
+ * estoque da Wellmix (o cliente ainda pode ser trocado na página da linha).
+ */
+const HIDDEN: readonly BookingColumnKey[] = ["customer"];
 const ORDER: BookingColumnKey[] = [
   ...FIRST,
   ...BOOKING_COLUMNS.map((c) => c.key).filter((k) => !FIRST.includes(k)),
-];
+].filter((k) => !HIDDEN.includes(k));
 
 const thBase =
   "border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 text-left align-bottom text-[11px] font-semibold uppercase tracking-wide text-zinc-500";
@@ -126,6 +159,14 @@ export default async function BookingPage({
   const t = await getT();
   const query = await searchParams;
   const data = await listBookingRows(user, { intl: t.intl });
+  // RFQ em espera: a linha que ainda não foi ao fornecedor diz "Enviar ao
+  // fornecedor" em vez de "Abrir RFQ" (docs/RFQ_STANDBY.md).
+  const rfqOn = (await getSettings()).rfqEnabled;
+  const nextKey = (step: BookingNextStep) =>
+    !rfqOn && step === "open_rfq" ? ("send_supplier" as const) : step;
+  const canRfqScreen = canOpen(user, "rfq");
+  const sendHere = (step: BookingNextStep) =>
+    !rfqOn && step === "open_rfq" && canRfqScreen;
   const superplan = data.canApprove;
   const canRequest = canOpen(user, "requests");
   const filters = parseBookingFilters(query, { superplan });
@@ -185,7 +226,19 @@ export default async function BookingPage({
     forCards.filter((r) => r.status === s).length;
   const activeStatus = filters.options.status ?? [];
   const active = activeBookingFilters(filters);
-  const back = `${BASE}${bookingQuery(filters)}`;
+  // "Editar dados" (quem também abre Produtos): as células viram campos. O
+  // modo mora no endereço e acompanha filtros, ordem e páginas.
+  const canEdit = canOpen(user, "products");
+  // Fornecedores das linhas sem login (o acesso é criado em Cadastros).
+  const canParties = canOpen(user, "parties");
+  const noLogin = data.options.suppliersWithoutLogin;
+  const noLoginIds = new Set(noLogin.map((s) => s.id));
+  const editing = canEdit && query.edit === "1";
+  const q = (opts?: Parameters<typeof bookingQuery>[1]) => {
+    const base = bookingQuery(filters, opts);
+    return editing ? (base ? `${base}&edit=1` : "?edit=1") : base;
+  };
+  const back = `${BASE}${q()}`;
 
   const intl = t.intl;
   const number = (n: number | null, digits = 0) =>
@@ -230,12 +283,75 @@ export default async function BookingPage({
   const errorRow = errorRowId
     ? data.rows.find((r) => r.id === errorRowId)
     : undefined;
+  /*
+   * "Gerar solicitação" recusado: os três requisitos de cada linha (etapa,
+   * cliente, quantidade), o que a linha apontada já tem e como resolver o
+   * que falta. Sem linha apontada, a lista vale como orientação geral.
+   */
+  const requestGuide = REQUEST_GUIDE_CODES.includes(errorCode)
+    ? (() => {
+        const row = errorRow ?? null;
+        const stageOk = row
+          ? bookingCanRequest(row.status, data.canApprove)
+          : false;
+        const qty = row
+          ? bookingRequestQuantity({
+              reservedQty: row.reservedQty,
+              plannedQty: row.plannedQty,
+              moq: row.moq,
+            })
+          : null;
+        const qtyOk =
+          qty !== null && (row?.moq == null || qty >= (row?.moq ?? 0));
+        return [
+          {
+            key: "stage",
+            label: t("booking.guide.stage"),
+            ok: stageOk,
+            text: stageOk
+              ? t("booking.guide.stage.ok", {
+                  stage: statusLabel(row!.status),
+                })
+              : row
+                ? t(
+                    data.canApprove
+                      ? "booking.guide.stage.fix"
+                      : "booking.guide.stage.fixAdmin",
+                    { stage: statusLabel(row.status) },
+                  )
+                : t("booking.guide.stage.rule"),
+          },
+          {
+            key: "customer",
+            label: t("booking.guide.customer"),
+            // Sem cliente na linha: compra para o estoque da Wellmix.
+            ok: true,
+            text: row?.customerId
+              ? t("booking.guide.customer.ok", {
+                  name: row.customerName ?? "",
+                })
+              : t("booking.guide.customer.stock"),
+          },
+          {
+            key: "qty",
+            label: t("booking.guide.qty"),
+            ok: qtyOk,
+            text: qtyOk
+              ? t("booking.guide.qty.ok", { n: number(qty) })
+              : row?.moq
+                ? t("booking.guide.qty.fixMoq", { moq: number(row.moq) })
+                : t("booking.guide.qty.fix"),
+          },
+        ];
+      })()
+    : null;
   const done = (
     [
       ["moved", "booking.done.moved"],
       ["saved", "booking.done.saved"],
       ["owners", "booking.done.owners"],
       ["analyzed", "booking.done.analyzed"],
+      ["edited", "booking.done.edited"],
     ] as const
   )
     .map(([param, key]) => {
@@ -297,14 +413,18 @@ export default async function BookingPage({
                   )
                 : undefined
               : filters.dates[key]
-                ? range(
-                    filters.dates[key]?.from
-                      ? day(filters.dates[key]!.from!)
-                      : undefined,
-                    filters.dates[key]?.to
-                      ? day(filters.dates[key]!.to!)
-                      : undefined,
-                  )
+                ? filters.dates[key]!.from &&
+                  filters.dates[key]!.from === filters.dates[key]!.to
+                  ? // Um dia só (o campo único da coluna).
+                    day(filters.dates[key]!.from!)
+                  : range(
+                      filters.dates[key]?.from
+                        ? day(filters.dates[key]!.from!)
+                        : undefined,
+                      filters.dates[key]?.to
+                        ? day(filters.dates[key]!.to!)
+                        : undefined,
+                    )
                 : undefined;
       return value ? [{ key, text: `${label(key)}: ${value}` }] : [];
     }),
@@ -318,7 +438,7 @@ export default async function BookingPage({
         : current === "asc"
           ? ({ key, dir: "desc" } as const)
           : null;
-    return `${BASE}${bookingQuery(filters, { sort: next })}`;
+    return `${BASE}${q({ sort: next })}`;
   };
 
   const optionsOf = (key: BookingColumnKey): BookingOption[] =>
@@ -382,29 +502,58 @@ export default async function BookingPage({
           />
         </span>
       );
-    if (c.kind === "date")
+    if (c.kind === "date") {
+      // Um campo só: o dia escolhido. O "×" ao lado zera o filtro da coluna.
+      // Período vindo de um endereço antigo (de/até diferentes) continua
+      // valendo, guardado em campos escondidos, até ser zerado ou trocado.
+      const active = filters.dates[key];
+      const single = active && active.from === active.to ? active.from : "";
       return (
-        <span className="flex gap-1">
+        <span className="flex items-center gap-1" data-date-filter={key}>
           <input
-            key={`from:${filters.dates[key]?.from ?? ""}`}
+            key={`on:${single ?? ""}`}
             form={FILTER_FORM}
             type="date"
-            name={`${key}_from`}
-            defaultValue={filters.dates[key]?.from ?? ""}
-            aria-label={`${aria}: ${t("booking.filter.min")}`}
-            className={cx(inputDenseClass, "w-32 min-w-32 px-1.5")}
+            name={`${key}_on`}
+            defaultValue={single ?? ""}
+            aria-label={aria}
+            className={cx(inputDenseClass, "w-36 min-w-36 px-1.5")}
           />
-          <input
-            key={`to:${filters.dates[key]?.to ?? ""}`}
-            form={FILTER_FORM}
-            type="date"
-            name={`${key}_to`}
-            defaultValue={filters.dates[key]?.to ?? ""}
-            aria-label={`${aria}: ${t("booking.filter.max")}`}
-            className={cx(inputDenseClass, "w-32 min-w-32 px-1.5")}
-          />
+          {active && !single ? (
+            <>
+              {active.from ? (
+                <input
+                  form={FILTER_FORM}
+                  type="hidden"
+                  name={`${key}_from`}
+                  value={active.from}
+                />
+              ) : null}
+              {active.to ? (
+                <input
+                  form={FILTER_FORM}
+                  type="hidden"
+                  name={`${key}_to`}
+                  value={active.to}
+                />
+              ) : null}
+            </>
+          ) : null}
+          {active ? (
+            <Link
+              href={`${BASE}${q({ drop: key })}`}
+              scroll={false}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-white text-sm font-semibold text-zinc-600 transition hover:border-brand-300 hover:text-brand-700"
+              aria-label={t("booking.filter.reset", { col: label(key) })}
+              title={t("booking.filter.reset", { col: label(key) })}
+              data-date-filter-clear={key}
+            >
+              ×
+            </Link>
+          ) : null}
         </span>
       );
+    }
     const chosen = filters.options[key] ?? [];
     // Mais de uma opção (o "Ver no Booking" de uma importação, ou o endereço
     // com várias): o seletor leva todas, para refinar a lista sem perdê-las.
@@ -453,8 +602,240 @@ export default async function BookingPage({
       muted
     );
 
+  /** Selo "Sem acesso" do fornecedor da linha, com o caminho para criar. */
+  const supplierAccess = (row: BookingRow) =>
+    row.supplierId && noLoginIds.has(row.supplierId) ? (
+      canParties ? (
+        <a
+          href={`/app/parties/${row.supplierId}#access`}
+          title={t("portalAccess.create")}
+          data-booking-row-no-login=""
+        >
+          <Badge tone="warning">{t("portalAccess.none")}</Badge>
+        </a>
+      ) : (
+        <span data-booking-row-no-login="">
+          <Badge tone="warning">{t("portalAccess.none")}</Badge>
+        </span>
+      )
+    ) : null;
+
+  /** O número de uma coluna numérica da linha. */
+  const numberOf = (row: BookingRow, key: BookingColumnKey) => {
+    const v = byKey.get(key)?.value(row);
+    return typeof v === "number" ? v : null;
+  };
+  /** Número como a pessoa digita (vírgula no português). */
+  const raw = (n: number | null) =>
+    n === null ? "" : String(n).replace(".", decimal);
+  /** Avisos das células que gravam sozinhas (cliente, quantidade e dados do produto). */
+  const rowLabels = (field: string) => ({
+    field,
+    saving: t("booking.row.saving"),
+    saved: t("booking.row.saved"),
+    failed: t("booking.row.failed"),
+  });
+
+  /** Campo de um dado do produto: grava sozinho ao sair dele. */
+  const editBox = (
+    row: BookingRow,
+    field: string,
+    value: string,
+    opts: {
+      width?: string;
+      numeric?: boolean;
+      type?: string;
+      what: string;
+      /** Vários campos na mesma célula. */
+      inline?: boolean;
+    },
+  ) => (
+    <BookingProductInput
+      productId={row.productId}
+      field={field}
+      saved={value}
+      type={opts.type}
+      numeric={opts.numeric}
+      width={opts.width}
+      wrap={!opts.inline}
+      labels={rowLabels(
+        t("booking.edit.field", {
+          field: opts.what,
+          name: row.name || row.productId,
+        }),
+      )}
+    />
+  );
+  /** O campo da célula, para quem edita produtos (nulo: só leitura). */
+  const editor = (row: BookingRow, key: BookingColumnKey): ReactNode => {
+    const num = (field: string) =>
+      editBox(row, field, raw(numberOf(row, key)), {
+        numeric: true,
+        what: label(key),
+      });
+    switch (key) {
+      case "code":
+        return editBox(row, "factoryItemCode", row.code ?? "", {
+          width: "w-32",
+          what: label(key),
+        });
+      case "supplier": {
+        const list = data.options.allSuppliers;
+        const current = row.supplierId ?? "";
+        return (
+          <span className="flex flex-col items-start gap-0.5">
+            <BookingProductSelect
+              productId={row.productId}
+              field="supplierId"
+              current={current}
+              width="w-44"
+              options={[
+                ...(current ? [] : [{ value: "", label: "—" }]),
+                ...(current && !list.some((o) => o.id === current)
+                  ? [{ value: current, label: row.supplierName ?? current }]
+                  : []),
+                ...list.map((o) => ({ value: o.id, label: o.label })),
+              ]}
+              labels={rowLabels(
+                t("booking.edit.field", {
+                  field: label(key),
+                  name: row.name || row.productId,
+                }),
+              )}
+            />
+            {supplierAccess(row)}
+          </span>
+        );
+      }
+      case "location":
+        return (
+          <span className="flex items-start gap-1">
+            {editBox(row, "location", row.location ?? "", {
+              width: "w-28",
+              what: t("booking.edit.location"),
+              inline: true,
+            })}
+            {editBox(row, "supplierStore", row.supplierStore ?? "", {
+              width: "w-24",
+              what: t("booking.edit.store"),
+              inline: true,
+            })}
+          </span>
+        );
+      case "sheetDate":
+        return editBox(row, "sheetDate", row.sheetDate?.slice(0, 10) ?? "", {
+          type: "date",
+          width: "w-36",
+          what: label(key),
+        });
+      case "price":
+        return num("price");
+      case "currency": {
+        const current = row.currency ?? "";
+        const known = (SHEET_CURRENCIES as readonly string[]).includes(current);
+        return (
+          <BookingProductSelect
+            productId={row.productId}
+            field="currency"
+            current={current}
+            width="w-24"
+            options={[
+              { value: "", label: "—" },
+              ...(current && !known
+                ? [{ value: current, label: current }]
+                : []),
+              ...SHEET_CURRENCIES.map((c) => ({ value: c, label: c })),
+            ]}
+            labels={rowLabels(
+              t("booking.edit.field", {
+                field: label(key),
+                name: row.name || row.productId,
+              }),
+            )}
+          />
+        );
+      }
+      case "moq":
+        return num("moq");
+      case "masterQty":
+        return num("masterCartonQty");
+      case "innerQty":
+        return num("innerQty");
+      case "netWeight":
+        return num("netWeightPcKg");
+      case "grossWeight":
+        return num("grossWeightPcKg");
+      case "averageWeight":
+        return num("averageWeightPcKg");
+      case "plannedQty":
+      case "forecastOrder":
+      case "forecastDistribution":
+      case "forecastEcommerce":
+        return num(key);
+      case "average":
+        return num("averagePrice");
+      case "cbm":
+        return num("cbmPerCarton");
+      case "size":
+        return (
+          <span className="flex items-start gap-1 text-xs leading-7 text-zinc-500">
+            {editBox(row, "pieceLengthCm", raw(row.pieceLengthCm), {
+              numeric: true,
+              width: "w-16",
+              what: t("booking.edit.length"),
+              inline: true,
+            })}
+            ×
+            {editBox(row, "pieceWidthCm", raw(row.pieceWidthCm), {
+              numeric: true,
+              width: "w-16",
+              what: t("booking.edit.width"),
+              inline: true,
+            })}
+            ×
+            {editBox(row, "pieceHeightCm", raw(row.pieceHeightCm), {
+              numeric: true,
+              width: "w-16",
+              what: t("booking.edit.height"),
+              inline: true,
+            })}
+            cm
+          </span>
+        );
+      case "colors":
+        return editBox(row, "colorAssortment", row.colors ?? "", {
+          width: "w-48",
+          what: label(key),
+        });
+      case "material":
+        return editBox(row, "material", row.material ?? "", {
+          width: "w-40",
+          what: label(key),
+        });
+      case "packageType":
+        return editBox(row, "packageType", row.packageType ?? "", {
+          width: "w-40",
+          what: label(key),
+        });
+      default:
+        return null;
+    }
+  };
+
+  /** A lista de clientes de cada linha (a mesma da barra de cima). */
+  const customerOptions = [
+    ...(data.options.stockOption
+      ? [{ value: BOOKING_STOCK_OPTION, label: t("booking.bulk.stock") }]
+      : []),
+    ...data.options.customers.map((c) => ({ value: c.id, label: c.label })),
+  ];
+
   /** O conteúdo de uma célula. */
   const cell = (row: BookingRow, key: BookingColumnKey): ReactNode => {
+    if (canEdit && row.name && key !== "name") {
+      const box = editor(row, key);
+      if (box) return box;
+    }
     switch (key) {
       case "name": {
         const name = row.name || t("booking.productMissing");
@@ -490,13 +871,20 @@ export default async function BookingPage({
               />
             )}
             <div className="min-w-0">
-              <Link
-                href={`${BASE}/${row.id}`}
-                className={cx(linkClass, "block max-w-52 truncate")}
-                title={name}
-              >
-                {name}
-              </Link>
+              {canEdit && row.name ? (
+                editBox(row, "name", row.name, {
+                  width: "w-52",
+                  what: label("name"),
+                })
+              ) : (
+                <Link
+                  href={`${BASE}/${row.id}`}
+                  className={cx(linkClass, "block max-w-52 truncate")}
+                  title={name}
+                >
+                  {name}
+                </Link>
+              )}
               <span className="block max-w-52 truncate text-xs text-zinc-500">
                 {[
                   row.sku,
@@ -506,6 +894,15 @@ export default async function BookingPage({
                 ]
                   .filter(Boolean)
                   .join(" · ")}
+                {canEdit && row.name ? (
+                  <Link
+                    href={`${BASE}/${row.id}`}
+                    className={cx(linkClass, "ml-1.5")}
+                    data-booking-open=""
+                  >
+                    {t("booking.row.open")}
+                  </Link>
+                ) : null}
                 {row.productMissing && row.name ? (
                   <span className="ml-1 font-semibold text-red-700">
                     {t("booking.productMissing")}
@@ -517,7 +914,64 @@ export default async function BookingPage({
         );
       }
       case "status":
-        return (
+        return row.next ? (
+          // Virou solicitação: o próximo passo, em palavras, e o botão que
+          // leva direto para lá.
+          <div className="max-w-64 space-y-1" data-booking-next={row.next.step}>
+            <div className="flex flex-wrap items-center gap-1">
+              <Badge tone={STATUS_TONE[row.status]}>
+                {statusLabel(row.status)}
+                {row.requestNumber ? ` nº ${row.requestNumber}` : ""}
+              </Badge>
+              {/* A situação de agora, em uma palavra (ex.: "Cotação enviada"). */}
+              <span data-booking-next-label="">
+                <Badge
+                  tone={
+                    row.next.step === "cancelled"
+                      ? "neutral"
+                      : BOOKING_NEXT_WAITING.includes(row.next.step)
+                        ? "info"
+                        : "warning"
+                  }
+                >
+                  {t(`booking.next.label.${nextKey(row.next.step)}`)}
+                </Badge>
+              </span>
+            </div>
+            <p className="whitespace-normal text-xs leading-snug text-zinc-700">
+              {t(`booking.next.${nextKey(row.next.step)}`)}
+              {row.next.total > 1 &&
+              (row.next.step === "wait_supplier" ||
+                row.next.step === "supplier_draft" ||
+                row.next.step === "choose_quote")
+                ? ` ${t("booking.next.count", {
+                    answered: row.next.answered,
+                    total: row.next.total,
+                  })}`
+                : ""}
+            </p>
+            <LinkButton
+              href={
+                // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
+                sendHere(row.next.step) && row.requestId
+                  ? `/app/rfq#req-${row.requestId}`
+                  : row.next.href
+              }
+              variant={
+                BOOKING_NEXT_WAITING.includes(row.next.step)
+                  ? "secondary"
+                  : "primary"
+              }
+              className="h-7 px-2.5 py-0! text-xs! whitespace-nowrap"
+              data-booking-next-go=""
+            >
+              {sendHere(row.next.step)
+                ? t("rfqStandby.send.submit")
+                : t(`booking.next.go.${row.next.target}`)}{" "}
+              →
+            </LinkButton>
+          </div>
+        ) : (
           <Badge tone={STATUS_TONE[row.status]}>
             {statusLabel(row.status)}
           </Badge>
@@ -529,7 +983,12 @@ export default async function BookingPage({
           muted
         );
       case "supplier":
-        return textCell(row.supplierName);
+        return (
+          <span className="flex flex-col items-start gap-0.5">
+            {textCell(row.supplierName)}
+            {supplierAccess(row)}
+          </span>
+        );
       case "location":
         return textCell(
           [row.location, row.supplierStore].filter(Boolean).join(" · ") || null,
@@ -564,6 +1023,8 @@ export default async function BookingPage({
         ) : (
           number(row.estimatedWeightKg, 4)
         );
+      case "averageWeight":
+        return number(row.averageWeightKg, 4);
       case "average":
         return number(row.averageUsd, 4);
       case "cbm":
@@ -576,26 +1037,53 @@ export default async function BookingPage({
         return textCell(row.material, "max-w-40");
       case "packageType":
         return textCell(row.packageType, "max-w-40");
-      case "customer":
-        return textCell(row.customerName, "max-w-40");
+      case "plannedQty":
+        return number(row.plannedQty);
+      case "forecastOrder":
+        return number(row.forecastOrder);
+      case "forecastDistribution":
+        return number(row.forecastDistribution);
+      case "forecastEcommerce":
+        return number(row.forecastEcommerce);
+      case "forecastTotal":
+        return number(row.forecastTotal);
+      case "customer": {
+        // Já virou solicitação ou foi descartada: o cliente não muda aqui.
+        if (row.status === "requested" || row.status === "discarded")
+          return textCell(row.customerName, "max-w-40");
+        const current = row.customerId ?? BOOKING_EMPTY;
+        return (
+          <BookingCustomerSelect
+            bookingId={row.id}
+            current={current}
+            options={[
+              { value: BOOKING_EMPTY, label: "—" },
+              ...(row.customerId &&
+              !customerOptions.some((o) => o.value === row.customerId)
+                ? [{ value: row.customerId, label: row.customerName ?? "?" }]
+                : []),
+              ...customerOptions,
+            ]}
+            labels={rowLabels(
+              t("booking.row.customer", { name: row.name || row.productId }),
+            )}
+          />
+        );
+      }
       case "reservedQty": {
         if (row.status === "requested" || row.status === "discarded")
           return number(row.reservedQty);
         return (
-          <input
-            form={BULK_FORM}
-            name={`qty_${row.id}`}
-            defaultValue={row.reservedQty ?? ""}
-            inputMode="numeric"
-            autoComplete="off"
+          <BookingQuantityInput
+            bookingId={row.id}
+            formId={BULK_FORM}
+            saved={row.reservedQty === null ? "" : String(row.reservedQty)}
             placeholder={
               row.moq ? t("booking.row.qtyMin", { moq: number(row.moq) }) : ""
             }
-            aria-label={t("booking.row.qty", {
-              name: row.name || row.productId,
-            })}
-            data-booking-qty={row.id}
-            className={cx(inputDenseClass, "w-24 min-w-24 text-right")}
+            labels={rowLabels(
+              t("booking.row.qty", { name: row.name || row.productId }),
+            )}
           />
         );
       }
@@ -734,6 +1222,78 @@ export default async function BookingPage({
                 })}
               </span>
             ) : null}
+            {/* Recusa do "Gerar solicitação": o que cada linha precisa e o
+                que falta na linha apontada, com o caminho para resolver. */}
+            {requestGuide ? (
+              <div
+                className="mt-2 rounded-lg bg-white/70 p-2 text-sm text-zinc-800"
+                data-request-guide
+              >
+                <p className="font-semibold">{t("booking.guide.title")}</p>
+                <ol className="mt-1 space-y-1">
+                  {requestGuide.map((step) => (
+                    <li
+                      key={step.key}
+                      className="flex items-start gap-2"
+                      data-guide-step={step.key}
+                      data-guide-ok={step.ok ? "yes" : "no"}
+                    >
+                      <span
+                        aria-hidden
+                        className={cx(
+                          "mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white",
+                          step.ok ? "bg-emerald-600" : "bg-red-600",
+                        )}
+                      >
+                        {step.ok ? "✓" : "!"}
+                      </span>
+                      <span>
+                        <span className="font-medium">{step.label}: </span>
+                        {step.text}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-1.5 text-zinc-600">
+                  {t("booking.guide.then")}
+                </p>
+              </div>
+            ) : null}
+          </Alert>
+        ) : null}
+        {/* Fornecedor que entrou pela planilha e ainda não tem login: o que
+            o Booking envia fica parado. O acesso nasce no cadastro dele. */}
+        {noLogin.length ? (
+          <Alert tone="warning">
+            <span data-booking-no-login>
+              <span className="font-semibold">
+                {t("portalAccess.booking.title")}
+              </span>{" "}
+              <span className="inline-flex flex-wrap gap-x-3 gap-y-1">
+                {noLogin.map((s) =>
+                  canParties ? (
+                    <TextLink
+                      key={s.id}
+                      href={`/app/parties/${s.id}#access`}
+                      data-booking-no-login-supplier={s.id}
+                    >
+                      {s.label} · {t("portalAccess.create")} →
+                    </TextLink>
+                  ) : (
+                    <span key={s.id} data-booking-no-login-supplier={s.id}>
+                      {s.label}
+                    </span>
+                  ),
+                )}
+              </span>
+              <span className="mt-1 block text-xs">
+                {t(
+                  canParties
+                    ? "portalAccess.booking.hint"
+                    : "portalAccess.booking.noScreen",
+                )}
+              </span>
+            </span>
           </Alert>
         ) : null}
         {done.map((text) => (
@@ -765,7 +1325,7 @@ export default async function BookingPage({
           compact
           label={t("booking.cards.all")}
           value={forCards.length}
-          href={`${BASE}${bookingQuery(filters, { option: { key: "status", values: [] } })}`}
+          href={`${BASE}${q({ option: { key: "status", values: [] } })}`}
           active={activeStatus.length === 0}
         />
         {[...BOOKING_FLOW, "discarded" as const].map((s) => {
@@ -776,7 +1336,7 @@ export default async function BookingPage({
               compact
               label={statusLabel(s)}
               value={countOf(s)}
-              href={`${BASE}${bookingQuery(filters, {
+              href={`${BASE}${q({
                 option: { key: "status", values: on ? [] : [s] },
               })}`}
               active={on}
@@ -797,6 +1357,7 @@ export default async function BookingPage({
         className="mb-2 flex flex-wrap items-center gap-2"
         data-booking-filter
       >
+        {editing ? <input type="hidden" name="edit" value="1" /> : null}
         {filters.sort ? (
           <>
             <input type="hidden" name="sort" value={filters.sort.key} />
@@ -843,7 +1404,7 @@ export default async function BookingPage({
           {chips.map((chip) => (
             <Link
               key={chip.key}
-              href={`${BASE}${bookingQuery(filters, { drop: chip.key })}`}
+              href={`${BASE}${q({ drop: chip.key })}`}
               scroll={false}
               title={t("booking.filter.remove")}
               className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-800 transition hover:border-brand-400 hover:bg-brand-100"
@@ -885,96 +1446,100 @@ export default async function BookingPage({
         {/* Id do envio: a tela o preenche a cada envio e a recusa o devolve
             no endereço (só o rascunho daquele envio volta). */}
         <input type="hidden" name="draftId" defaultValue="" />
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-            {t("booking.bulk.title")}
-          </span>
-          <Select
-            dense
-            name="customer"
-            defaultValue=""
-            aria-label={label("customer")}
-            className="w-auto max-w-56"
-          >
-            <option value="">{t("booking.bulk.customer.keep")}</option>
-            {data.options.stockOption ? (
-              <option value={BOOKING_STOCK_OPTION}>
-                {t("booking.bulk.stock")}
-              </option>
-            ) : null}
-            {data.options.customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-            <option value={BOOKING_EMPTY}>
-              {t("booking.bulk.customer.none")}
-            </option>
-          </Select>
-          {/* O primeiro botão: é ele que o Enter aciona sem o JavaScript. */}
-          <BulkButton
-            op="assign"
-            variant="secondary"
-            pendingText={t("booking.bulk.working")}
-          >
-            {t("booking.bulk.assign")}
-          </BulkButton>
-          <span aria-hidden className="hidden h-6 w-px bg-zinc-200 sm:block" />
-          <Select
-            dense
-            name="status"
-            defaultValue=""
-            aria-label={t("booking.bulk.status")}
-            className="w-auto max-w-52"
-          >
-            <option value="">{t("booking.bulk.status")}</option>
-            {[...BOOKING_FLOW, "discarded" as const]
-              // "Virou solicitação" só nasce do botão "Gerar solicitação".
-              .filter((s) => s !== "requested")
-              .map((s) => (
-                <option key={s} value={s}>
-                  {statusLabel(s)}
+        {/* Três grupos (cliente, etapa, responsável), cada um com a sua
+            lista e o seu botão; à direita, as duas ações que fecham o
+            trabalho. Botões pequenos, todos do mesmo tamanho. */}
+        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          {t("booking.bulk.title")}
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          {/* A coluna Cliente saiu da tela (linha sem cliente é compra para o
+              estoque); fica o botão que grava as quantidades digitadas. */}
+          <div className={BULK_GROUP} data-bulk-group="quantity">
+            <span className={BULK_LABEL}>{label("reservedQty")}</span>
+            <div className="flex items-center gap-1">
+              {/* O primeiro botão: é ele que o Enter aciona sem o JavaScript. */}
+              <BulkButton
+                op="assign"
+                variant="secondary"
+                className={BULK_BUTTON}
+                title={t("booking.bulk.assign")}
+                aria-label={t("booking.bulk.assign")}
+                pendingText={t("booking.bulk.working")}
+              >
+                {t("booking.bulk.assign.short")}
+              </BulkButton>
+            </div>
+          </div>
+          <div className={BULK_GROUP} data-bulk-group="status">
+            <span className={BULK_LABEL}>{label("status")}</span>
+            <div className="flex items-center gap-1">
+              <Select
+                dense
+                name="status"
+                defaultValue=""
+                aria-label={t("booking.bulk.status")}
+                className="h-7! w-auto max-w-40 py-0! text-xs!"
+              >
+                <option value="">{t("booking.bulk.status")}</option>
+                {[...BOOKING_FLOW, "discarded" as const]
+                  // "Virou solicitação" só nasce do botão "Gerar solicitação".
+                  .filter((s) => s !== "requested")
+                  .map((s) => (
+                    <option key={s} value={s}>
+                      {statusLabel(s)}
+                    </option>
+                  ))}
+              </Select>
+              <BulkButton
+                op="move"
+                variant="secondary"
+                className={BULK_BUTTON}
+                pendingText={t("booking.bulk.working")}
+                confirmText={t("booking.bulk.move.confirm")}
+              >
+                {t("booking.bulk.move")}
+              </BulkButton>
+            </div>
+          </div>
+          <div className={BULK_GROUP} data-bulk-group="owner">
+            <span className={BULK_LABEL}>{label("owner")}</span>
+            <div className="flex items-center gap-1">
+              <Select
+                dense
+                name="ownerUserId"
+                defaultValue=""
+                aria-label={label("owner")}
+                className="h-7! w-auto max-w-40 py-0! text-xs!"
+              >
+                <option value="">{t("booking.bulk.owner.keep")}</option>
+                {data.options.owners.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+                <option value={BOOKING_EMPTY}>
+                  {t("booking.bulk.owner.none")}
                 </option>
-              ))}
-          </Select>
-          <BulkButton
-            op="move"
-            variant="secondary"
-            pendingText={t("booking.bulk.working")}
-            confirmText={t("booking.bulk.move.confirm")}
-          >
-            {t("booking.bulk.move")}
-          </BulkButton>
-          <span aria-hidden className="hidden h-6 w-px bg-zinc-200 sm:block" />
-          <Select
-            dense
-            name="ownerUserId"
-            defaultValue=""
-            aria-label={label("owner")}
-            className="w-auto max-w-48"
-          >
-            <option value="">{t("booking.bulk.owner.keep")}</option>
-            {data.options.owners.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-            <option value={BOOKING_EMPTY}>
-              {t("booking.bulk.owner.none")}
-            </option>
-          </Select>
-          <BulkButton
-            op="owner"
-            variant="secondary"
-            pendingText={t("booking.bulk.working")}
-          >
-            {t("booking.bulk.setOwner")}
-          </BulkButton>
-          <span className="ml-auto flex flex-wrap gap-2">
+              </Select>
+              <BulkButton
+                op="owner"
+                variant="secondary"
+                className={BULK_BUTTON}
+                title={t("booking.bulk.setOwner")}
+                aria-label={t("booking.bulk.setOwner")}
+                pendingText={t("booking.bulk.working")}
+              >
+                {t("booking.bulk.setOwner.short")}
+              </BulkButton>
+            </div>
+          </div>
+          <span className="ml-auto flex flex-wrap items-center gap-1.5">
             {superplan ? (
               <BulkButton
                 op="analyze"
                 variant="secondary"
+                className={BULK_BUTTON}
                 pendingText={t("booking.bulk.working")}
                 data-booking-analyze=""
               >
@@ -985,6 +1550,7 @@ export default async function BookingPage({
               <BulkButton
                 op="request"
                 variant="primary"
+                className={BULK_BUTTON}
                 pendingText={t("booking.bulk.working")}
                 confirmText={t("booking.bulk.request.confirm", {
                   max: BOOKING_REQUEST_MAX,
@@ -1000,6 +1566,12 @@ export default async function BookingPage({
           {t("booking.bulk.hint", { max: BOOKING_REQUEST_MAX })}
         </p>
       </form>
+
+      {/* Os campos da tabela gravam sozinhos, um a um (cliente, quantidade
+          e, para quem edita produtos, os dados do cadastro e da ficha). */}
+      <p className="mb-2 text-xs text-zinc-500" data-booking-autosave="">
+        {t("booking.row.autosave")}
+      </p>
 
       <div
         className="relative -mx-4 overflow-x-auto border-y border-zinc-200/80 bg-white sm:mx-0 sm:rounded-xl sm:border"
@@ -1146,9 +1718,7 @@ export default async function BookingPage({
           data-booking-pages
         >
           {page.page > 1 ? (
-            <TextLink
-              href={`${BASE}${bookingQuery(filters, { page: page.page - 1 })}`}
-            >
+            <TextLink href={`${BASE}${q({ page: page.page - 1 })}`}>
               ← {t("booking.page.prev")}
             </TextLink>
           ) : null}
@@ -1156,9 +1726,7 @@ export default async function BookingPage({
             {page.page} / {page.pages}
           </span>
           {page.page < page.pages ? (
-            <TextLink
-              href={`${BASE}${bookingQuery(filters, { page: page.page + 1 })}`}
-            >
+            <TextLink href={`${BASE}${q({ page: page.page + 1 })}`}>
               {t("booking.page.next")} →
             </TextLink>
           ) : null}

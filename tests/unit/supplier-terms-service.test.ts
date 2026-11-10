@@ -264,7 +264,7 @@ describe("contas a pagar, pendências e aviso diário", () => {
       filter: { stageId: created.id, status: "pending" },
     }))
       if ((await store.get("stages", created.id))?.status === "active")
-        await submitRequirement(admin, req.id, { value: "1" });
+        await submitRequirement(admin, req.id, { value: "1", signature: true });
     const tasks = await pendingTasksFor(admin);
     expect(
       tasks.some(
@@ -287,7 +287,10 @@ describe("pedidos antigos e correções da revisão", () => {
         filter: { stageId: stage.id, status: "pending" },
       }))
         if ((await store.get("stages", stage.id))?.status === "active")
-          await submitRequirement(admin, req.id, { value: "1" });
+          await submitRequirement(admin, req.id, {
+            value: "1",
+            signature: true,
+          });
     }
     return (await store.get("orders", order.id))!;
   }
@@ -465,7 +468,10 @@ describe("segunda revisão: pedidos antigos, liberação e lembrete", () => {
         filter: { stageId: stage.id, status: "pending" },
       }))
         if ((await store.get("stages", stage.id))?.status === "active")
-          await submitRequirement(admin, req.id, { value: "1" });
+          await submitRequirement(admin, req.id, {
+            value: "1",
+            signature: true,
+          });
     }
     return (await store.get("orders", order.id))!;
   }
@@ -629,7 +635,10 @@ describe("revisão final: condição fixa depois do pagamento, legado por pagame
         filter: { stageId: stage.id, status: "pending" },
       }))
         if ((await store.get("stages", stage.id))?.status === "active")
-          await submitRequirement(admin, req.id, { value: "1" });
+          await submitRequirement(admin, req.id, {
+            value: "1",
+            signature: true,
+          });
     }
     return (await store.get("orders", order.id))!;
   }

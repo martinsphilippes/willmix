@@ -14,7 +14,10 @@ import {
 import { parseTerms } from "@/lib/supplier-terms";
 import { PaymentTermsEditor } from "@/components/payment-terms-editor";
 import { paymentTermsTexts } from "@/components/supplier-terms-text";
-import { saveSupplierTermsAction } from "../../actions/supplier-terms";
+import {
+  saveSupplierProductionStartAction,
+  saveSupplierTermsAction,
+} from "../../actions/supplier-terms";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
@@ -43,6 +46,13 @@ import { SubmitButton } from "@/components/submit-button";
 import { listCertifications } from "@/lib/services/compliance";
 import { radarProblem } from "@/lib/services/operations";
 import { createUserAction } from "../../actions";
+import {
+  PORTAL_MIN_PASSWORD,
+  suggestPassword,
+} from "@/lib/services/portal-access";
+import { loginLabel, suggestLoginName } from "@/lib/auth/login-id";
+import { PartyProfile } from "@/components/party-profile";
+import { AccessCopy } from "@/components/access-copy";
 import { updatePartyExtraAction } from "../../actions/catalog";
 import { saveCustomerOperationAction } from "../../actions/vision";
 import { CertificationsSection } from "../../products/_components/certifications-section";
@@ -61,6 +71,10 @@ function partyError(t: Translate, code: string | string[] | undefined) {
   if (t(catalogKey) === catalogKey && t(opKey) !== opKey) return t(opKey);
   return catalogError(t, code);
 }
+
+/** País da China como a ficha técnica e o cadastro escrevem (CN, China, 中国). */
+const isChina = (country: string | null | undefined) =>
+  /^(cn|china|中国)$/i.test((country ?? "").trim());
 
 const roleForType: Record<string, string> = {
   customer: "customer",
@@ -83,7 +97,7 @@ export default async function PartyPage({
   if (!user) redirect("/login");
   requireScreen(user, "parties");
   const { id } = await params;
-  const { error, saved } = await searchParams;
+  const { error, saved, login: savedLogin } = await searchParams;
   const store = getStore();
   const party = await store.get("parties", id);
   if (!party) notFound();
@@ -110,6 +124,12 @@ export default async function PartyPage({
       store.list("users"),
       isCustomer ? getSettings() : Promise.resolve(null),
     ]);
+  // Início da produção: o prazo deste fornecedor e o padrão das Configurações.
+  const allSettings = await getSettings();
+  const productionStart = {
+    own: allSettings.productionStartDaysBySupplier?.[id] ?? null,
+    fallback: allSettings.productionStartDays,
+  };
   // Produtos que o fornecedor fornece: os em que é o principal e os em que
   // entrou pela cotação (cada um com o código, preço e MOQ dele).
   const links = isSupplier ? await listSupplierProducts(id) : [];
@@ -146,7 +166,10 @@ export default async function PartyPage({
   ].sort((a, b) => a.product.name.localeCompare(b.product.name));
   /* Erros da condição de pagamento aparecem no card dela (âncora #payment-terms). */
   const termsError = typeof error === "string" && error.startsWith("terms_");
-  const errorText = termsError ? null : partyError(t, error);
+  /* Erros da criação do login aparecem no quadro de acesso (âncora #access). */
+  const userError = typeof error === "string" && error.startsWith("user_");
+  const accessError = userError ? partyError(t, error) : null;
+  const errorText = termsError || userError ? null : partyError(t, error);
   const currentTerms = isSupplier
     ? parseTerms(party.paymentTerms ?? null)
     : null;
@@ -160,9 +183,35 @@ export default async function PartyPage({
           : "operations.radarProblem.none",
       )
     : null;
-  const roles = isAdmin(user)
-    ? ROLES
-    : ROLES.filter((r) => r !== "admin" && r !== "operator");
+  // Função do acesso: a do tipo deste cadastro (o servidor recusa as outras);
+  // as da Wellmix continuam só para o administrador.
+  // Perfil: cartão do fabricante mais recente e o responsável na Wellmix.
+  const [profileCard] = isSupplier
+    ? await store
+        .list("manufacturer_cards", {
+          filter: { supplierId: id },
+          orderBy: "createdAt",
+          direction: "desc",
+          limit: 1,
+        })
+        .catch(() => [])
+    : [];
+  const ownerName = party.ownerUserId
+    ? (allUsers.find((u) => u.id === party.ownerUserId)?.name ?? null)
+    : null;
+  // Criar acesso: login sugerido pelo nome (sem e-mail) e senha sugerida.
+  const loginSuggestion = suggestLoginName(
+    party.name,
+    party.storeNumber,
+    allUsers.map((u) => u.email),
+  );
+  const passwordSuggestion = suggestPassword();
+  const roles = [
+    ...ROLES.filter((r) => r === party.type),
+    ...ROLES.filter(
+      (r) => isAdmin(user) && (r === "admin" || r === "operator"),
+    ),
+  ];
 
   return (
     <>
@@ -195,7 +244,7 @@ export default async function PartyPage({
           ) : null
         }
       />
-      {saved && saved !== "terms" ? (
+      {saved && saved !== "terms" && saved !== "user" ? (
         <Alert tone="success">
           {saved === "operation"
             ? t("operations.mode.saved")
@@ -203,87 +252,181 @@ export default async function PartyPage({
         </Alert>
       ) : null}
       {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
+      <PartyProfile
+        party={party}
+        users={users}
+        ownerName={ownerName}
+        productCount={isSupplier ? supplierProducts.length : null}
+        card={profileCard ?? null}
+        t={t}
+      />
       {/* Dois cartões por linha no iPad/desktop: cadastro e usuários à esquerda; modalidade e sourcing/banco à direita. */}
       <div className="mt-3 grid items-start gap-4 lg:grid-cols-2">
         <div className="min-w-0 space-y-4">
           <Card title={t("common.edit")}>
             <PartyForm party={party} t={t} />
           </Card>
-          <Card title={t("parties.users")}>
-            <ul className="mb-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
-              {users.map((u) => (
-                <li
-                  key={u.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2"
-                >
-                  <span className="min-w-0 break-words">
-                    <span className="font-medium text-zinc-900">{u.name}</span>{" "}
-                    <span className="text-zinc-500">· {u.email}</span>
-                  </span>
-                  <span className="shrink-0">
-                    <Badge>{t(`role.${u.role}`)}</Badge>
-                  </span>
-                </li>
-              ))}
-              {users.length === 0 ? (
-                <li className="px-3 py-2 text-zinc-500">{t("common.none")}</li>
+          {/* Acesso ao portal: o login nasce aqui, preso a este cadastro
+              (o Booking traz para cá o fornecedor sem login). */}
+          <div id="access" className="scroll-mt-24" data-party-access>
+            <Card title={t("parties.users")}>
+              {saved === "user" ? (
+                <div className="mb-3" data-party-access-saved>
+                  <Alert tone="success">
+                    {typeof savedLogin === "string" && savedLogin
+                      ? t("portalAccess.saved.login", {
+                          name: party.name,
+                          login: savedLogin.slice(0, 254),
+                        })
+                      : t("portalAccess.saved", { name: party.name })}
+                  </Alert>
+                </div>
               ) : null}
-            </ul>
-            <form
-              action={createUserAction}
-              className="@container space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
-            >
-              <input type="hidden" name="partyId" value={party.id} />
-              <div className="grid gap-3 @sm:grid-cols-2 @lg:grid-cols-6">
-                <div className="min-w-0 @lg:col-span-3">
-                  <Field label={t("common.name")}>
-                    <Input name="name" required />
-                  </Field>
+              {accessError ? (
+                <div className="mb-3">
+                  <Alert tone="danger">{accessError}</Alert>
                 </div>
-                <div className="min-w-0 @lg:col-span-3">
-                  <Field label={t("common.email")}>
-                    <Input name="email" type="email" required />
-                  </Field>
+              ) : null}
+              {!users.some((u) => u.active) ? (
+                <div className="mb-3" data-party-no-access>
+                  <Alert tone="warning">{t("portalAccess.party.none")}</Alert>
                 </div>
-                <div className="min-w-0 @lg:col-span-2">
-                  <Field label={t("common.role")}>
-                    <Select
-                      name="role"
-                      defaultValue={roleForType[party.type] ?? "customer"}
+              ) : null}
+              <p className="mb-3 text-xs text-zinc-500">
+                {t("portalAccess.party.linked", { name: party.name })}
+              </p>
+              <ul className="mb-3 divide-y divide-zinc-100 rounded-xl border border-zinc-200/80 text-sm">
+                {users.map((u) => (
+                  <li
+                    key={u.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2"
+                  >
+                    <span className="min-w-0 break-words">
+                      <span className="font-medium text-zinc-900">
+                        {u.name}
+                      </span>{" "}
+                      <span className="text-zinc-500">
+                        · {loginLabel(u.email)}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      {u.active ? null : (
+                        <Badge tone="neutral">
+                          {t("portalAccess.party.inactive")}
+                        </Badge>
+                      )}
+                      <Badge>{t(`role.${u.role}`)}</Badge>
+                    </span>
+                  </li>
+                ))}
+                {users.length === 0 ? (
+                  <li className="px-3 py-2 text-zinc-500">
+                    {t("common.none")}
+                  </li>
+                ) : null}
+              </ul>
+              <form
+                action={createUserAction}
+                className="@container space-y-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-3"
+              >
+                <input type="hidden" name="partyId" value={party.id} />
+                <div className="grid gap-3 @sm:grid-cols-2 @lg:grid-cols-6">
+                  <div className="min-w-0 @lg:col-span-3">
+                    <Field label={t("common.name")}>
+                      <Input
+                        name="name"
+                        defaultValue={
+                          users.length ? "" : (party.contactName ?? party.name)
+                        }
+                        required
+                      />
+                    </Field>
+                  </div>
+                  <div className="min-w-0 @lg:col-span-3">
+                    <Field
+                      label={t("portalAccess.login.label")}
+                      hint={t("portalAccess.login.hint")}
                     >
-                      {roles.map((r) => (
-                        <option key={r} value={r}>
-                          {t(`role.${r}`)}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-                </div>
-                <div className="min-w-0 @lg:col-span-2">
-                  <Field label={t("common.language")}>
-                    <Select
-                      name="locale"
-                      defaultValue={party.country === "CN" ? "zh" : "pt"}
+                      <Input
+                        name="login"
+                        defaultValue={loginSuggestion}
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        autoComplete="off"
+                        maxLength={254}
+                        required
+                      />
+                    </Field>
+                  </div>
+                  <div className="min-w-0 @lg:col-span-2">
+                    <Field label={t("common.role")}>
+                      <Select
+                        name="role"
+                        defaultValue={roleForType[party.type] ?? "customer"}
+                      >
+                        {roles.map((r) => (
+                          <option key={r} value={r}>
+                            {t(`role.${r}`)}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className="min-w-0 @lg:col-span-2">
+                    <Field label={t("common.language")}>
+                      <Select
+                        name="locale"
+                        defaultValue={isChina(party.country) ? "zh" : "pt"}
+                      >
+                        {LOCALES.map((l) => (
+                          <option key={l} value={l}>
+                            {LOCALE_NAMES[l]}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className="min-w-0 @lg:col-span-2">
+                    <Field
+                      label={t("login.password")}
+                      hint={t("portalAccess.password.hint", {
+                        n: PORTAL_MIN_PASSWORD,
+                      })}
                     >
-                      {LOCALES.map((l) => (
-                        <option key={l} value={l}>
-                          {LOCALE_NAMES[l]}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
+                      <Input
+                        name="password"
+                        type="text"
+                        minLength={PORTAL_MIN_PASSWORD}
+                        maxLength={128}
+                        defaultValue={passwordSuggestion}
+                        autoComplete="off"
+                        required
+                      />
+                    </Field>
+                  </div>
                 </div>
-                <div className="min-w-0 @lg:col-span-2">
-                  <Field label={t("login.password")}>
-                    <Input name="password" type="text" minLength={6} required />
-                  </Field>
+                <p className="text-xs text-zinc-500">
+                  {t("portalAccess.copy.hint")}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <AccessCopy
+                    labels={{
+                      copy: t("portalAccess.copy"),
+                      copied: t("portalAccess.copied"),
+                      empty: t("portalAccess.copy.empty"),
+                      portal: t("portalAccess.copy.portal"),
+                      login: t("portalAccess.login.label"),
+                      password: t("login.password"),
+                    }}
+                  />
+                  <SubmitButton variant="primary" data-party-access-create="">
+                    + {t("portalAccess.create")}
+                  </SubmitButton>
                 </div>
-              </div>
-              <SubmitButton variant="secondary">
-                + {t("parties.users")}
-              </SubmitButton>
-            </form>
-          </Card>
+              </form>
+            </Card>
+          </div>
         </div>
         <div className="min-w-0 space-y-4">
           {/* Visão de Produto: modalidade de operação do cliente (importação própria / via trade / outra) e RADAR. */}
@@ -488,6 +631,49 @@ export default async function PartyPage({
               </SubmitButton>
             </form>
           </Card>
+          {isSupplier && isAdmin(user) ? (
+            /* Início da produção: dias depois do contrato assinado, por
+               fornecedor (só o administrador). Vazio: o padrão das Configurações. */
+            <Card
+              title={
+                <span id="production-start" className="scroll-mt-24">
+                  {t("prodStart.title")}
+                </span>
+              }
+            >
+              <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                {t("prodStart.hint", {
+                  days: String(productionStart.fallback),
+                })}
+              </p>
+              {saved === "production" ? (
+                <div className="mb-3">
+                  <Alert tone="success">{t("prodStart.saved")}</Alert>
+                </div>
+              ) : null}
+              <form
+                action={saveSupplierProductionStartAction}
+                className="flex flex-wrap items-end gap-2"
+                data-production-start-form
+              >
+                <input type="hidden" name="id" value={party.id} />
+                <Field label={t("prodStart.label")}>
+                  <Input
+                    name="productionStartDays"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="365"
+                    defaultValue={productionStart.own ?? ""}
+                    placeholder={String(productionStart.fallback)}
+                  />
+                </Field>
+                <SubmitButton variant="secondary">
+                  {t("common.save")}
+                </SubmitButton>
+              </form>
+            </Card>
+          ) : null}
           {isSupplier && canOpen(user, "finance") ? (
             /* Condição de pagamento negociada com o fornecedor: os pedidos novos
                copiam; vira parcelas em Contas a pagar. Financeiro: só o admin. */

@@ -1278,6 +1278,20 @@
           "array": false,
           "default": null,
           "type": "integer"
+        },
+        {
+          "key": "negotiation",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "packagingProposal",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
         }
       ],
       "indexes": [
@@ -2286,6 +2300,14 @@
         },
         {
           "key": "conversationTopicId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "quoteId",
           "required": false,
           "array": false,
           "default": null,
@@ -5990,6 +6012,13 @@
           "type": "double"
         },
         {
+          "key": "averageWeightPcKg",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
           "key": "certificationRequired",
           "required": false,
           "array": false,
@@ -6337,6 +6366,21 @@
           "array": false,
           "default": null,
           "type": "text"
+        },
+        {
+          "key": "agencyItemPrice",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
+        },
+        {
+          "key": "agencyItemCurrency",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 3
         },
         {
           "key": "dueAt",
@@ -7945,7 +7989,9 @@
             "danfe",
             "cert_memorial",
             "cert_lab",
-            "cert_registration"
+            "cert_registration",
+            "cert_seal",
+            "cert_seal_art"
           ]
         },
         {
@@ -8938,6 +8984,13 @@
         },
         {
           "key": "analysis",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "text"
+        },
+        {
+          "key": "plan",
           "required": false,
           "array": false,
           "default": null,

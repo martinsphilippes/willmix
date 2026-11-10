@@ -327,6 +327,16 @@ export default async function SettingsPage({
                       defaultValue={s.packagingBriefDueDays}
                     />
                   </Field>
+                  <Field label={t("settings.label.productionStartDays")}>
+                    <Input
+                      name="productionStartDays"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="365"
+                      defaultValue={s.productionStartDays}
+                    />
+                  </Field>
                   <Field label={t("settings.label.agencyShowsCustomer")}>
                     <Select
                       name="agencyShowsCustomer"

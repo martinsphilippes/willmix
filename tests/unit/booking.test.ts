@@ -10,6 +10,9 @@ import {
   bookingMoveError,
   bookingMoveOptions,
   bookingQuery,
+  BOOKING_NEXT_STEPS,
+  BOOKING_NEXT_WAITING,
+  bookingNextStep,
   bookingSignal,
   bookingStatusRequirementError,
   filterBookingRows,
@@ -73,6 +76,12 @@ const row = (patch: Partial<BookingRow> = {}): BookingRow => ({
   estimatedWeightKg: 0.243,
   weightEstimated: true,
   averageUsd: null,
+  averageWeightKg: null,
+  plannedQty: null,
+  forecastOrder: null,
+  forecastDistribution: null,
+  forecastEcommerce: null,
+  forecastTotal: null,
   cbm: 0.0183,
   size: "33,5 × 24,8 × 1,5 cm",
   colors: "White / Gray / bege",
@@ -95,6 +104,10 @@ const row = (patch: Partial<BookingRow> = {}): BookingRow => ({
   requestGroupId: null,
   requestNumber: null,
   requestState: null,
+  next: null,
+  pieceLengthCm: null,
+  pieceWidthCm: null,
+  pieceHeightCm: null,
   ...patch,
 });
 
@@ -364,6 +377,31 @@ describe("filtros do Booking: toda coluna filtra", () => {
     ).toEqual(["b1", "b2"]);
   });
 
+  it("data: um campo só (o dia escolhido); o endereço guarda o dia e zerar tira o filtro", () => {
+    expect(run({ sheetDate_on: "2026-10-13" })).toEqual(["b1", "b2"]);
+    // Dia inválido não filtra; o período antigo (de/até) continua valendo.
+    expect(run({ sheetDate_on: "ontem" })).toEqual(["b1", "b2", "b3"]);
+    const filters = parseBookingFilters(
+      { sheetDate_on: "2026-10-13" },
+      { superplan: false },
+    );
+    expect(filters.dates.sheetDate).toEqual({
+      from: "2026-10-13",
+      to: "2026-10-13",
+    });
+    expect(bookingQuery(filters)).toBe("?sheetDate_on=2026-10-13");
+    expect(bookingQuery(filters, { drop: "sheetDate" })).toBe("");
+    // Período de endereço antigo: segue como de/até.
+    expect(
+      bookingQuery(
+        parseBookingFilters(
+          { enteredAt_from: "2026-11-01", enteredAt_to: "2026-11-05" },
+          { superplan: false },
+        ),
+      ),
+    ).toBe("?enteredAt_from=2026-11-01&enteredAt_to=2026-11-05");
+  });
+
   it("vários filtros valem juntos; a busca geral procura em tudo", () => {
     expect(run({ name: "porta", status: "approved" })).toEqual(["b2"]);
     expect(run({ name: "porta", price_min: "3,9", colors: "bege" })).toEqual([
@@ -608,5 +646,200 @@ describe("sair de 'Virou solicitação'", () => {
     expect(bookingMoveError("approved", "requested", ADMIN, "missing")).toBe(
       "booking_request_only",
     );
+  });
+});
+
+describe("depois de virar solicitação: o próximo passo", () => {
+  const req = (status: string) => ({ id: "r1", status });
+  const quote = (status: string, kinds: string[] = [], id = "q1") => ({
+    id,
+    status,
+    negotiation: kinds.map((kind) => ({ kind })),
+  });
+
+  it("cada situação da solicitação diz o que fazer e para onde ir", () => {
+    // Criada: abrir a RFQ, na solicitação.
+    expect(bookingNextStep(req("REQUESTED"), [], null, true)).toEqual({
+      step: "open_rfq",
+      href: "/app/requests/r1",
+      target: "request",
+      answered: 0,
+      total: 0,
+    });
+    // RFQ aberta com uma cotação: o botão vai direto na cotação.
+    expect(
+      bookingNextStep(req("RFQ_OPEN"), [quote("invited")], null, true),
+    ).toEqual({
+      step: "wait_supplier",
+      href: "/app/quotes/q1",
+      target: "quote",
+      answered: 0,
+      total: 1,
+    });
+    // Várias cotações: a solicitação (lá se vê todas).
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("invited"), quote("invited", [], "q2")],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "wait_supplier", target: "request" });
+    // O fornecedor não aceitou o preço: a cotação dele.
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("invited"), quote("invited", ["offer", "decline"], "q2")],
+        null,
+        true,
+      ),
+    ).toEqual({
+      step: "offer_declined",
+      href: "/app/quotes/q2",
+      target: "quote",
+      answered: 0,
+      total: 2,
+    });
+    // Respondida: escolher; devolvida esperando resposta: negociando.
+    expect(
+      bookingNextStep(
+        req("QUOTATION_RECEIVED"),
+        [quote("answered", ["offer", "confirm"])],
+        null,
+        true,
+      ),
+    ).toEqual({
+      // "Cotação enviada": o botão leva à comparação, onde a Wellmix confirma.
+      step: "choose_quote",
+      href: "/app/requests/r1#quotes-compare",
+      target: "confirm",
+      answered: 1,
+      total: 1,
+    });
+    expect(
+      bookingNextStep(
+        req("QUOTATION_RECEIVED"),
+        [quote("answered", ["offer", "counter", "return"])],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "negotiating", href: "/app/quotes/q1" });
+    expect(
+      bookingNextStep(req("WAITING_DOWN_PAYMENT"), [], null, true).step,
+    ).toBe("wait_down_payment");
+    // Virou pedido: o pedido.
+    expect(bookingNextStep(req("ORDERED"), [], { id: "o1" }, true)).toEqual({
+      step: "ordered",
+      href: "/app/orders/o1",
+      target: "order",
+      answered: 0,
+      total: 0,
+    });
+    expect(bookingNextStep(req("ORDERED"), [], null, true)).toMatchObject({
+      step: "ordered",
+      target: "request",
+    });
+    expect(bookingNextStep(req("CANCELLED"), [], null, true).step).toBe(
+      "cancelled",
+    );
+  });
+
+  it("rascunho do fornecedor, cotação enviada e o documento do pedido aparecem na linha", () => {
+    // A ficha foi gravada mas a cotação não foi enviada: não é "esperando".
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [{ ...quote("invited"), draft: true }],
+        null,
+        true,
+      ),
+    ).toMatchObject({ step: "supplier_draft", href: "/app/quotes/q1" });
+    // Dois convidados, um com rascunho: vai na cotação dele.
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("invited"), { ...quote("invited", [], "q2"), draft: true }],
+        null,
+        true,
+      ),
+    ).toMatchObject({
+      step: "supplier_draft",
+      href: "/app/quotes/q2",
+      total: 2,
+    });
+    // Cotação enviada com a solicitação ainda em "RFQ aberta" (gravação
+    // interrompida): a linha mostra a cotação enviada, não fica esperando.
+    expect(
+      bookingNextStep(
+        req("RFQ_OPEN"),
+        [quote("answered"), quote("invited", [], "q2")],
+        null,
+        true,
+      ),
+    ).toMatchObject({
+      step: "choose_quote",
+      target: "confirm",
+      answered: 1,
+      total: 2,
+    });
+    // Pedido com o documento das duas assinaturas: cada ponto dele.
+    const doc = (
+      document:
+        "awaiting_send" | "awaiting_wellmix" | "sent_to_supplier" | "signed",
+    ) => bookingNextStep(req("ORDERED"), [], { id: "o1", document }, true);
+    // Ordem nova: antes do envio para assinatura vêm a arte e o selo.
+    expect(doc("awaiting_send")).toMatchObject({
+      step: "prepare_document",
+      href: "/app/orders/o1",
+      target: "order",
+    });
+    expect(doc("awaiting_wellmix")).toMatchObject({
+      step: "sign_wellmix",
+      href: "/app/orders/o1",
+      target: "order",
+    });
+    expect(doc("sent_to_supplier").step).toBe("sign_supplier");
+    expect(doc("signed").step).toBe("signed");
+    // Só os passos em que a bola está com outro ficam "em espera".
+    expect(BOOKING_NEXT_WAITING).toEqual([
+      "wait_supplier",
+      "negotiating",
+      "prepare_document",
+      "sign_supplier",
+      "signed",
+      "cancelled",
+    ]);
+  });
+
+  it("quem não abre Cotações é levado à solicitação; cada passo tem texto nas três línguas", async () => {
+    expect(
+      bookingNextStep(req("RFQ_OPEN"), [quote("invited")], null, false),
+    ).toEqual({
+      step: "wait_supplier",
+      href: "/app/requests/r1",
+      target: "request",
+      answered: 0,
+      total: 1,
+    });
+    const { translator } = await import("@/i18n");
+    for (const lang of ["pt", "en", "zh"] as const) {
+      const tr = translator(lang);
+      for (const step of BOOKING_NEXT_STEPS) {
+        expect(tr(`booking.next.${step}`)).not.toBe(`booking.next.${step}`);
+        expect(tr(`booking.next.label.${step}`)).not.toBe(
+          `booking.next.label.${step}`,
+        );
+      }
+      for (const target of [
+        "request",
+        "quote",
+        "order",
+        "confirm",
+        "document",
+      ] as const)
+        expect(tr(`booking.next.go.${target}`)).not.toBe(
+          `booking.next.go.${target}`,
+        );
+    }
   });
 });

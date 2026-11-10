@@ -22,10 +22,15 @@ export function SheetPhotosCard({
   removeAction,
   hint,
   coveredKinds = [],
+  given = [],
+  waivedKinds = [],
   className = "mt-4",
   missing = [],
+  open = false,
   kinds: SHEET_PHOTO_KINDS = ADDABLE_SHEET_PHOTO_KINDS,
 }: {
+  /** Sempre aberto (quem só lê a ficha inteira, sem a tabela de blocos). */
+  open?: boolean;
   /** Tipos que se pode adicionar aqui (fornecedor: só as 5 obrigatórias). */
   kinds?: readonly string[];
   /** Fotos obrigatórias que faltam (scalePhoto…): ficam em vermelho e o aviso leva até elas. */
@@ -41,6 +46,13 @@ export function SheetPhotosCard({
   hint?: string;
   /** Tipos cobertos pelas fotos do cadastro do produto (sem precisar reenviar). */
   coveredKinds?: string[];
+  /**
+   * Fotos que já vieram com o produto (o Booking): aparecem no alto, como
+   * já recebidas. Com elas, os tipos em `waivedKinds` deixam de ser
+   * obrigatórios aqui (continuam podendo ser enviados).
+   */
+  given?: ProductPhoto[];
+  waivedKinds?: readonly string[];
   className?: string;
 }) {
   return (
@@ -48,17 +60,61 @@ export function SheetPhotosCard({
     // escondido, como os outros blocos que não são o primeiro com pendência.
     <div
       data-sheet-section="photos"
-      hidden={initialSheetSection(missing) !== "photos"}
+      hidden={!open && initialSheetSection(missing) !== "photos"}
       className={className}
     >
       <Card title={t("sheet.section.photos")} dense>
         <span id="photos" className="block scroll-mt-24" />
-        <p className="mb-2 text-xs leading-relaxed text-zinc-600">
-          {hint ?? t("sheet.photos.hint")}
-        </p>
+        {/* Com as fotos do Booking, o aviso verde abaixo diz o que vale
+            (o texto "todas são obrigatórias" não se aplica). */}
+        {waivedKinds.length ? null : (
+          <p className="mb-2 text-xs leading-relaxed text-zinc-600">
+            {hint ?? t("sheet.photos.hint")}
+          </p>
+        )}
         {/* Uma linha por tipo de foto; verde com check quando já tem foto.
           Fotos antigas de tipos que saíram da ficha (referência, cartão) ficam
           visíveis e excluíveis, mas sem botão de adicionar. */}
+        {given.length ? (
+          <div
+            className="mb-2 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2"
+            data-photos-given={given.length}
+          >
+            <p className="text-[13px] font-semibold leading-5 text-emerald-900">
+              ✓ {t("sheet.photos.given.title", { n: String(given.length) })}
+            </p>
+            <ul className="mt-1.5 flex flex-wrap gap-2">
+              {given.map((p) => (
+                <li key={p.id}>
+                  <a
+                    href={`/api/files/${p.documentId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block overflow-hidden rounded-lg border border-emerald-200 bg-white"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- arquivo privado servido por /api/files com sessão */}
+                    <img
+                      src={`/api/files/${p.documentId}`}
+                      alt={t(`catalog.photoKind.${p.kind}` as DictionaryKey)}
+                      loading="lazy"
+                      className="h-14 w-14 object-cover"
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-xs leading-relaxed text-emerald-900/80">
+              {t("sheet.photos.given.note")}
+            </p>
+          </div>
+        ) : waivedKinds.length ? (
+          <p
+            className="mb-2 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-2 text-xs leading-relaxed text-emerald-900"
+            data-photos-given="0"
+          >
+            ✓ {t("sheet.photos.given.note")}
+          </p>
+        ) : null}
         <ul className="space-y-1.5">
           {[
             ...SHEET_PHOTO_KINDS,
@@ -71,18 +127,21 @@ export function SheetPhotosCard({
             ),
           ].map((kind) => {
             const photos = allPhotos.filter((p) => p.kind === kind);
-            const required = kind in REQUIRED_SHEET_PHOTOS;
+            // Dispensada aqui (o produto já veio com foto): vira opcional.
+            const waived = waivedKinds.includes(kind);
+            const required = kind in REQUIRED_SHEET_PHOTOS && !waived;
             const addable = (SHEET_PHOTO_KINDS as readonly string[]).includes(
               kind,
             );
             const covered = coveredKinds.includes(kind);
             const done = photos.length > 0 || covered;
             const name = t(`catalog.photoKind.${kind}` as DictionaryKey);
-            const field = required
-              ? REQUIRED_SHEET_PHOTOS[
-                  kind as keyof typeof REQUIRED_SHEET_PHOTOS
-                ]
-              : null;
+            const field =
+              kind in REQUIRED_SHEET_PHOTOS
+                ? REQUIRED_SHEET_PHOTOS[
+                    kind as keyof typeof REQUIRED_SHEET_PHOTOS
+                  ]
+                : null;
             const lacking = !done && !!field && missing.includes(field);
             return (
               <li
@@ -139,6 +198,14 @@ export function SheetPhotosCard({
                         </span>
                       ) : null}
                     </p>
+                    {waived && photos.length === 0 && !covered ? (
+                      <span
+                        className="mt-0.5 inline-block rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-semibold text-zinc-600"
+                        data-photo-waived={kind}
+                      >
+                        {t("sheet.photos.waived")}
+                      </span>
+                    ) : null}
                     {covered && photos.length === 0 ? (
                       <span
                         className="mt-0.5 inline-block rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800"

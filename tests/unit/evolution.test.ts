@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { withTempStore } from "./setup";
+import { sendForSignature, withTempStore } from "./setup";
 
 /*
  * Prioridade Agora: snapshot da compra, inspeção cega com comparação
@@ -174,7 +174,10 @@ describe("comparação comprado × inspecionado", () => {
         (r) => r.stageId === stage.id && r.status !== "done" && r.required,
       );
       for (const r of pending) {
-        if (r.type === "approval")
+        // Documento do pedido (ordem nova): o envio para assinatura pede o
+        // selo aplicado na arte.
+        if (r.key === "order_sign_send") await sendForSignature(admin, orderId);
+        else if (r.type === "approval")
           await decideRequirement(admin, r.id, "approve");
         else if (r.type === "file" || r.type === "photo") {
           const doc = await store.create("documents", {
@@ -195,14 +198,24 @@ describe("comparação comprado × inspecionado", () => {
             kitId: null,
             imageHash: null,
           });
-          await submitRequirement(admin, r.id, { documentId: doc.id });
+          await submitRequirement(admin, r.id, {
+            documentId: doc.id,
+            signature: true,
+          });
         } else if (r.type === "number")
           await submitRequirement(admin, r.id, {
             value: r.key === "weight" ? "2.4" : "1",
           });
         else if (r.type === "date")
-          await submitRequirement(admin, r.id, { value: "2026-10-01" });
-        else await submitRequirement(admin, r.id, { value: "ok" });
+          await submitRequirement(admin, r.id, {
+            value: "2026-10-01",
+            signature: true,
+          });
+        else
+          await submitRequirement(admin, r.id, {
+            value: "ok",
+            signature: true,
+          });
       }
     }
     let progress = (await loadOrderProgress(orderId))!;

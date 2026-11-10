@@ -19,6 +19,8 @@ export const pt = {
   "production.followups": "Follow da produção",
   "production.followups.noStart":
     "Informe o início da produção para agendar os follows de 5, 15 e 25 dias.",
+  "production.followups.noStart.auto":
+    "Os follows de 5, 15 e 25 dias começam a contar sozinhos quando o contrato for assinado.",
   "production.followups.day": "{day} dias",
   "production.followups.onTrack": "No prazo",
   "production.followups.delayed": "Atrasado",
@@ -101,6 +103,8 @@ export const en: Record<keyof typeof pt, string> = {
   "production.followups": "Production follow-up",
   "production.followups.noStart":
     "Enter the production start to schedule the 5, 15 and 25-day follow-ups.",
+  "production.followups.noStart.auto":
+    "The 5, 15 and 25-day follow-ups start counting automatically once the contract is signed.",
   "production.followups.day": "{day} days",
   "production.followups.onTrack": "On track",
   "production.followups.delayed": "Delayed",
@@ -184,6 +188,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "production.followups": "生产跟进",
   "production.followups.noStart":
     "请填写开始生产日期，以安排第 5、15、25 天的跟进。",
+  "production.followups.noStart.auto":
+    "合同签署后，第 5、15、25 天的跟进自动开始计时。",
   "production.followups.day": "{day} 天",
   "production.followups.onTrack": "按期",
   "production.followups.delayed": "延误",

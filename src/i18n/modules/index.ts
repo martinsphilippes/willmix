@@ -74,6 +74,9 @@ import * as freight from "./freight";
 import * as importTaxes from "./import-taxes";
 import * as errors from "./errors";
 import * as rfq from "./rfq";
+import * as rfqStandby from "./rfq-standby";
+import * as sourcingStandby from "./sourcing-standby";
+import * as portalAccess from "./portal-access";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
@@ -95,6 +98,8 @@ import * as superplan from "./superplan";
 import * as sankhya from "./sankhya";
 import * as sankhyaIntegration from "./sankhya-integration";
 import * as superplanRfq from "./superplan-rfq";
+import * as quoteFlow from "./quote-flow";
+import * as orderSignature from "./order-signature";
 import * as booking from "./booking";
 import * as bookingScreen from "./booking-screen";
 import * as bookingDetail from "./booking-detail";
@@ -158,6 +163,9 @@ export const modulesPt = {
   ...importTaxes.pt,
   ...errors.pt,
   ...rfq.pt,
+  ...rfqStandby.pt,
+  ...sourcingStandby.pt,
+  ...portalAccess.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
@@ -200,6 +208,8 @@ export const modulesPt = {
   ...sankhya.pt,
   ...sankhyaIntegration.pt,
   ...superplanRfq.pt,
+  ...quoteFlow.pt,
+  ...orderSignature.pt,
   ...booking.pt,
   ...bookingScreen.pt,
   ...bookingDetail.pt,
@@ -259,6 +269,9 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...importTaxes.en,
   ...errors.en,
   ...rfq.en,
+  ...rfqStandby.en,
+  ...sourcingStandby.en,
+  ...portalAccess.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
   ...sheetPhotos.en,
@@ -301,6 +314,8 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sankhya.en,
   ...sankhyaIntegration.en,
   ...superplanRfq.en,
+  ...quoteFlow.en,
+  ...orderSignature.en,
   ...booking.en,
   ...bookingScreen.en,
   ...bookingDetail.en,
@@ -360,6 +375,9 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...importTaxes.zh,
   ...errors.zh,
   ...rfq.zh,
+  ...rfqStandby.zh,
+  ...sourcingStandby.zh,
+  ...portalAccess.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
   ...sheetPhotos.zh,
@@ -402,6 +420,8 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sankhya.zh,
   ...sankhyaIntegration.zh,
   ...superplanRfq.zh,
+  ...quoteFlow.zh,
+  ...orderSignature.zh,
   ...booking.zh,
   ...bookingScreen.zh,
   ...bookingDetail.zh,

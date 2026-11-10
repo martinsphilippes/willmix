@@ -1,3 +1,4 @@
+import { loginLabel } from "@/lib/auth/login-id";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -353,7 +354,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
               <UserMenu
                 name={user.name}
                 role={roleLabel}
-                email={user.email}
+                email={loginLabel(user.email)}
                 label={t("nav.user")}
               >
                 <LogoutButton label={t("nav.logout")} variant="light" />

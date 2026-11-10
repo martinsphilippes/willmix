@@ -5,8 +5,12 @@ import {
   superplanQuoteView,
 } from "@/lib/services/superplan-rfq";
 import { ActionError } from "@/components/action-error";
+import {
+  RequestInfoTable,
+  specificationColumns,
+  type InfoColumn,
+} from "@/components/request-info-table";
 import { fallbackError } from "@/i18n/error-text";
-import Link from "next/link";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
 import { SupplierRankingCard } from "@/components/supplier-ranking-card";
 import { supplierRanking } from "@/lib/services/supplier-ranking";
@@ -17,6 +21,7 @@ import {
 } from "@/lib/services/quote-pricing";
 import { getFxRates } from "@/lib/services/fx";
 import {
+  hasNcmBroker,
   requestNcm,
   scheduleNcmSuggestion,
   suggestionsView,
@@ -33,8 +38,7 @@ import {
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { getStore, type FreightQuote } from "@/lib/db";
-import { freightByQuote } from "@/lib/services/freight";
+import { getStore } from "@/lib/db";
 import { listProductSuppliers } from "@/lib/services/product-suppliers";
 import {
   RFQ_OPEN_STATUSES,
@@ -58,17 +62,11 @@ import {
   LinkButton,
   PageHeader,
   Select,
-  StepDot,
-  Table,
-  Td,
   TextLink,
-  Th,
   cx,
   formatDate,
   formatMoney,
   linkClass,
-  rowClass,
-  type StepState,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
 import { SubmitButton } from "@/components/submit-button";
@@ -80,7 +78,6 @@ import {
 } from "../../actions/payments";
 import { proposalApproved } from "@/lib/services/proposal-approval";
 import {
-  answerQuoteAction,
   confirmDownPaymentAction,
   openRfqAction,
   selectQuoteAction,
@@ -88,19 +85,22 @@ import {
   setRequesterAction,
 } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { MoneyInput } from "@/components/money-input";
 import { DownPaymentInput } from "@/components/down-payment-input";
 import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
-import {
-  PackagingBriefCard,
-  PackagingRfqFields,
-} from "@/components/packaging-brief-card";
+import { PackagingRfqFields } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ApprovalCard } from "@/components/approval-card";
 import { RequestStagesCard } from "@/components/request-stages-card";
 import { approvalsFor } from "@/lib/services/approvals";
+
+/*
+ * As ações desta página que criam o pedido (aprovar o último nível, escolher
+ * o fornecedor na compra para estoque, confirmar o sinal) gravam dezenas de
+ * linhas no banco: precisam de mais tempo do que o padrão da função.
+ */
+export const maxDuration = 120;
 
 export default async function RequestDetailPage({
   params,
@@ -213,17 +213,6 @@ export default async function RequestDetailPage({
   const allInvited =
     suppliers.length > 0 && suppliers.every((s) => invited.has(s.id));
   /* Frete pedido à companhia marítima por cotação (só a Wellmix vê). */
-  const freights = wellmix
-    ? await freightByQuote(quotes.map((q) => q.id))
-    : new Map<string, FreightQuote[]>();
-  const carrierIds = [
-    ...new Set([...freights.values()].flat().map((f) => f.carrierId)),
-  ];
-  const carriers = carrierIds.length
-    ? await store.list("parties", { filter: { id: carrierIds } })
-    : [];
-  const carrierName = (id: string) =>
-    carriers.find((c) => c.id === id)?.name ?? "—";
   /* Segunda Onda: origem (recompra, nova proposta, sourcing sob demanda) e link ao
      pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
   const origin =
@@ -308,6 +297,17 @@ export default async function RequestDetailPage({
     ncmInfo?.status === "none" && request.ncmSuggestions == null;
   if (ncmPendingAuto) scheduleNcmSuggestion(request.id);
   const fiscalLoaded = ncmInfo ? await hasFiscalTable() : false;
+  /* Quem classifica é o despachante: a Wellmix vê se está na fila dele e quem confirmou. */
+  const ncmQueue =
+    ncmInfo?.status === "none" && !request.orderId
+      ? (await hasNcmBroker())
+        ? ("broker" as const)
+        : ("none" as const)
+      : null;
+  const ncmConfirmer =
+    ncmInfo?.status === "confirmed" && request.ncmConfirmedByUserId
+      ? await store.get("users", request.ncmConfirmedByUserId)
+      : null;
   const ncmAiCode =
     typeof ncmAi === "string" ? ncmAi.replace(/^ai_/, "") : null;
   const ncmAiReason = ncmAiCode
@@ -341,11 +341,28 @@ export default async function RequestDetailPage({
   // (e o cliente nunca os vê).
   const attachments = documents.filter((d) => !d.packagingBriefId);
   /* RFQ: Wellmix escolhe fornecedores (antes da proposta). */
+  /* RFQ em espera (docs/RFQ_STANDBY.md): o produto vai para um fornecedor só
+     (o do Booking, já marcado), sem "convidar mais" depois de enviado. */
+  const rfqOn = settings.rfqEnabled;
+  /* O cartão da RFQ saiu desta tela (pedido do dono): com a RFQ em espera,
+     o envio ao fornecedor é automático pelo Booking e, quando não foi, fica
+     na tela Pedidos → RFQ. Só com a RFQ ligada o cartão volta a aparecer. */
   const showRfq =
     wellmix &&
+    rfqOn &&
     ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
-  /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
-  const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
+  /* Ainda não foi a nenhum fornecedor (RFQ em espera): atalho para enviar. */
+  const toSend =
+    wellmix && !rfqOn && request.status === "REQUESTED" && !quotes.length;
+  /* Solicitante do cliente: também saiu como cartão. Compra para o estoque
+     não tem login de cliente; nas outras, é uma linha do cartão da
+     solicitação (o isolamento entre logins do cliente continua valendo). */
+  const showRequester =
+    wellmix &&
+    !isStockCustomer(request.customerId) &&
+    (customerLogins.length > 0 || !!request.requestedForUserId);
+  /* Cartões de ação da Wellmix (RFQ, NCM): lado a lado em telas grandes. */
+  const actionCards = [showRfq, !!ncmInfo].filter(Boolean).length;
   /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
   const packagingBrief = wellmix ? await briefForRequest(request.id) : null;
   const hasLiveBrief =
@@ -542,15 +559,17 @@ export default async function RequestDetailPage({
         <Alert tone="success">{t("access.requesterSaved")}</Alert>
       ) : null}
 
-      {/* Telas médias e grandes: dados | andamento lado a lado, depois os cartões
-          de ação da Wellmix lado a lado; cotações e proposta na largura toda.
-          No celular (uma coluna) a ordem segue a de antes: solicitante e
-          andamento por último (order-*). */}
+      {/* Dados da solicitação em linha (cada coluna uma informação, como nas
+          outras telas), na largura toda; depois os cartões de ação da Wellmix
+          lado a lado; cotações e proposta na largura toda. A linha do tempo
+          resumida saiu para todos (decisão do dono): a situação fica no
+          selo do alto e a Wellmix acompanha pelas Etapas da solicitação. */}
       <div className="mt-4 flex flex-col gap-4">
-        <div className="contents md:grid md:grid-cols-3 md:items-start md:gap-4">
-          <Card title={t("requests.title")} className="md:col-span-2">
-            <DescriptionList
-              items={[
+        <div className="contents">
+          <Card title={t("requests.title")}>
+            <RequestInfoTable
+              rowKey={request.id}
+              columns={[
                 // Variação pedida: o nome para todos; os valores da cópia
                 // (preço, MOQ, caixa, CBM) só para a Wellmix.
                 ...(request.variant
@@ -565,21 +584,17 @@ export default async function RequestDetailPage({
                             </span>
                           ) : null}
                         </span>,
-                      ] as [string, React.ReactNode],
+                      ] as InfoColumn,
                     ]
                   : []),
                 [t("common.quantity"), `${request.quantity} ${request.unit}`],
                 [t("requests.deadline"), formatDate(request.deadline, t)],
                 [t("requests.description"), request.description],
-                [
+                // Cada item da especificação na sua coluna.
+                ...specificationColumns(
+                  request.specification,
                   t("requests.specification"),
-                  // Uma informação por linha (como a especificação é montada).
-                  request.specification ? (
-                    <span className="whitespace-pre-line">
-                      {request.specification}
-                    </span>
-                  ) : null,
-                ],
+                ),
                 [t("common.note"), request.notes],
               ]}
             />
@@ -599,60 +614,52 @@ export default async function RequestDetailPage({
                 ))}
               </ul>
             ) : null}
-          </Card>
-          <Card title={t("orders.timeline")} className="order-2 md:order-none">
-            <ol className="-mx-2 space-y-0.5 text-sm">
-              {(
-                [
-                  "REQUESTED",
-                  "RFQ_OPEN",
-                  "QUOTATION_RECEIVED",
-                  "WAITING_DOWN_PAYMENT",
-                  "ORDERED",
-                ] as const
-              ).map((s, i, arr) => {
-                const idx = arr.indexOf(request.status as (typeof arr)[number]);
-                const done = idx >= i;
-                const current = idx === i;
-                // Pedido cancelado: o passo "Pedido criado" aparece cancelado.
-                const cancelledStep =
-                  s === "ORDERED" && displayStatus === "ORDER_CANCELLED";
-                const state: StepState = cancelledStep
-                  ? "cancelled"
-                  : done
-                    ? current && s !== "ORDERED"
-                      ? "active"
-                      : "done"
-                    : "pending";
-                return (
-                  <li
-                    key={s}
-                    aria-current={state === "active" ? "step" : undefined}
-                    className={cx(
-                      "flex items-center gap-3 rounded-lg px-2 py-1",
-                      state === "active" && "bg-brand-50",
-                    )}
-                  >
-                    <StepDot state={state}>{i + 1}</StepDot>
-                    <span
-                      className={cx(
-                        state === "active"
-                          ? "font-semibold text-brand-800"
-                          : state === "cancelled"
-                            ? "font-medium text-red-700"
-                            : state === "done"
-                              ? "text-zinc-900"
-                              : "text-zinc-500",
-                      )}
-                    >
-                      {t(
-                        `reqStatusLabel.${cancelledStep ? "ORDER_CANCELLED" : s}`,
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
+            {toSend ? (
+              <p
+                className="mt-3 border-t border-zinc-100 pt-2.5 text-sm text-zinc-700"
+                data-request-to-send
+              >
+                {t("rfqStandby.request.toSend")}{" "}
+                {canOpen(user, "rfq") ? (
+                  <TextLink href={`/app/rfq#req-${request.id}`}>
+                    {t("rfqStandby.send.submit")}
+                  </TextLink>
+                ) : null}
+              </p>
+            ) : null}
+            {showRequester ? (
+              <form
+                action={setRequesterAction}
+                className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-2.5"
+                data-request-requester
+              >
+                <input type="hidden" name="requestId" value={request.id} />
+                <label
+                  htmlFor="requestedForUserId"
+                  className="text-sm text-zinc-600"
+                  title={t("access.requesterHint")}
+                >
+                  {t("access.requesterTitle")}
+                </label>
+                <Select
+                  dense
+                  id="requestedForUserId"
+                  name="requestedForUserId"
+                  defaultValue={request.requestedForUserId ?? ""}
+                  className="w-auto max-w-64"
+                >
+                  <option value="">{t("access.requesterNone")}</option>
+                  {customerLogins.map((u) => (
+                    <option key={u.id} value={u.id} disabled={!u.active}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </Select>
+                <SubmitButton variant="secondary">
+                  {t("common.save")}
+                </SubmitButton>
+              </form>
+            ) : null}
           </Card>
         </div>
 
@@ -663,31 +670,43 @@ export default async function RequestDetailPage({
           <div
             className={cx(
               "contents md:grid md:grid-cols-2 md:items-start md:gap-4",
-              actionCards !== 2 && "lg:grid-cols-3",
             )}
           >
             {/* RFQ: Wellmix escolhe fornecedores */}
             {showRfq ? (
               <Card
-                title={rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
+                title={
+                  !rfqOn
+                    ? t("rfqStandby.send.title")
+                    : rfqOpened
+                      ? t("rfq.inviteMore")
+                      : t("requests.rfq.open")
+                }
               >
-                <form action={openRfqAction} className="space-y-2.5">
+                <form
+                  action={openRfqAction}
+                  className="space-y-2.5"
+                  data-rfq-card={rfqOn ? "rfq" : "standby"}
+                >
                   <input type="hidden" name="requestId" value={request.id} />
                   <p className="text-sm text-zinc-600">
-                    {allInvited
-                      ? t("rfq.allInvited")
-                      : rfqOpened
-                        ? t("rfq.inviteMoreHint")
-                        : t("requests.rfq.select")}
+                    {!rfqOn
+                      ? t("rfqStandby.send.hint")
+                      : allInvited
+                        ? t("rfq.allInvited")
+                        : rfqOpened
+                          ? t("rfq.inviteMoreHint")
+                          : t("requests.rfq.select")}
                   </p>
-                  {supplying.size ? (
+                  {supplying.size && rfqOn ? (
                     <p className="text-xs text-zinc-500">
                       {t("productSuppliers.rfqHint")}
                     </p>
                   ) : null}
                   {/* Lote: o atalho só enquanto algum produto ainda não tem
                       RFQ (depois de aberta, não se abre de novo). */}
-                  {request.groupId &&
+                  {rfqOn &&
+                  request.groupId &&
                   rfqSiblings.length > 0 &&
                   [request, ...rfqSiblings].some(
                     (r) => r.status === "REQUESTED",
@@ -715,11 +734,18 @@ export default async function RequestDetailPage({
                         )}
                       >
                         <input
-                          type="checkbox"
+                          // RFQ em espera: um fornecedor só (o do produto já
+                          // vem marcado); com a RFQ ligada, vários.
+                          type={rfqOn ? "checkbox" : "radio"}
                           name="supplierIds"
                           value={s.id}
+                          required={!rfqOn}
                           disabled={invited.has(s.id)}
-                          defaultChecked={invited.has(s.id)}
+                          defaultChecked={
+                            rfqOn
+                              ? invited.has(s.id)
+                              : s.id === productForRfq?.supplierId
+                          }
                           className="h-4 w-4 shrink-0 accent-brand-600"
                         />
                         <span>
@@ -742,9 +768,11 @@ export default async function RequestDetailPage({
                   )}
                   {allInvited ? null : (
                     <SubmitButton>
-                      {rfqOpened
-                        ? t("rfq.inviteSelected")
-                        : t("requests.rfq.open")}
+                      {!rfqOn
+                        ? t("rfqStandby.send.submit")
+                        : rfqOpened
+                          ? t("rfq.inviteSelected")
+                          : t("requests.rfq.open")}
                     </SubmitButton>
                   )}
                 </form>
@@ -764,6 +792,12 @@ export default async function RequestDetailPage({
                   suggestionsPending={ncmPendingAuto}
                   hasTable={fiscalLoaded}
                   editable={!request.orderId}
+                  queue={ncmQueue}
+                  confirmedBy={
+                    ncmConfirmer
+                      ? `${ncmConfirmer.name} (${t(`role.${ncmConfirmer.role}` as DictionaryKey)})`
+                      : null
+                  }
                   notice={
                     ncmConfirmed
                       ? t("ncm.confirmedOk")
@@ -779,179 +813,30 @@ export default async function RequestDetailPage({
                 />
               </div>
             ) : null}
-
-            {wellmix ? (
-              <Card
-                title={t("access.requesterTitle")}
-                className="order-1 md:order-none"
-              >
-                <form action={setRequesterAction} className="space-y-2">
-                  <input type="hidden" name="requestId" value={request.id} />
-                  <p className="text-xs leading-relaxed text-zinc-500">
-                    {t("access.requesterHint")}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select
-                      name="requestedForUserId"
-                      defaultValue={request.requestedForUserId ?? ""}
-                      aria-label={t("access.requester")}
-                      className="flex-1"
-                    >
-                      <option value="">{t("access.requesterNone")}</option>
-                      {customerLogins.map((u) => (
-                        <option key={u.id} value={u.id} disabled={!u.active}>
-                          {u.name} ({u.email})
-                        </option>
-                      ))}
-                    </Select>
-                    <SubmitButton variant="secondary">
-                      {t("common.save")}
-                    </SubmitButton>
-                  </div>
-                </form>
-              </Card>
-            ) : null}
           </div>
         ) : null}
 
-        {/* Embalagem (faca e arte) preparada em paralelo com a cotação (só Wellmix) */}
-        {wellmix && request.status !== "REQUESTED" ? (
-          <PackagingBriefCard
-            t={t}
-            request={request}
-            saved={typeof saved === "string" ? saved : undefined}
-          />
-        ) : null}
+        {/* Embalagem (faca e arte): saiu da tela da solicitação (pedido do
+            dono); o briefing segue em Embalagem (/app/packaging), com a
+            agência, e a faca com o fornecedor escolhido. */}
 
-        {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
-        {wellmix && quotes.length > 0 ? (
-          <Card title={t("requests.quotes.compare")}>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("common.supplier")}</Th>
-                  <Th>{t("common.price")}</Th>
-                  <Th className="whitespace-nowrap">{t("common.leadTime")}</Th>
-                  <Th>{t("common.conditions")}</Th>
-                  <Th>{t("common.status")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotes.map((q) => (
-                  <tr
-                    key={q.id}
-                    className={cx(
-                      rowClass,
-                      q.status === "selected" && "bg-emerald-50/50",
-                    )}
-                  >
-                    <Td className="font-medium text-zinc-900">
-                      {supplierName(q.supplierId)}
-                    </Td>
-                    {q.status === "invited" &&
-                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
-                      request.status,
-                    ) ? (
-                      <Td colSpan={3}>
-                        <form
-                          action={answerQuoteAction}
-                          className="flex flex-wrap items-end gap-2"
-                        >
-                          <input type="hidden" name="quoteId" value={q.id} />
-                          <input
-                            type="hidden"
-                            name="back"
-                            value={`/app/requests/${request.id}`}
-                          />
-                          <MoneyInput
-                            locale={t.intl}
-                            name="price"
-                            watchField="currency"
-                            decimals={4}
-                            required
-                            className="w-36"
-                          />
-                          <CurrencySelect
-                            name="currency"
-                            value="USD"
-                            t={t}
-                            className="w-32"
-                          />
-                          <Input
-                            name="leadTimeDays"
-                            type="number"
-                            min="1"
-                            max="3650"
-                            required
-                            placeholder={t("common.leadTime")}
-                            className="w-28"
-                          />
-                          <Input
-                            name="conditions"
-                            maxLength={2000}
-                            placeholder={t("common.conditions")}
-                            className="w-44"
-                          />
-                          <SubmitButton variant="secondary">
-                            {t("requests.quotes.register")}
-                          </SubmitButton>
-                        </form>
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {t("requests.quotes.registerHint")}
-                        </p>
-                      </Td>
-                    ) : (
-                      <>
-                        <Td
-                          className={cx(
-                            "whitespace-nowrap tabular-nums",
-                            q.price === null && "text-zinc-500",
-                          )}
-                        >
-                          {q.price !== null
-                            ? `${formatMoney(q.price, q.currency, t)} / ${request.unit}`
-                            : t("requests.quotes.waiting")}
-                        </Td>
-                        <Td className="tabular-nums">
-                          <span data-quote-lead={q.leadTimeDays ?? ""}>
-                            {q.leadTimeDays ?? "—"}
-                          </span>
-                        </Td>
-                        <Td>{q.conditions ?? "—"}</Td>
-                      </>
-                    )}
-                    <Td className="whitespace-nowrap">
-                      <Badge
-                        tone={
-                          q.status === "selected"
-                            ? "success"
-                            : q.status === "answered"
-                              ? "info"
-                              : "neutral"
-                        }
-                      >
-                        {t(`quoteStatus.${q.status}`)}
-                      </Badge>
-                      {(freights.get(q.id) ?? []).map((f) => (
-                        <Link
-                          key={f.id}
-                          href={`/app/freight/${f.id}`}
-                          className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
-                        >
-                          {t("freight.compare.title")}:{" "}
-                          {carrierName(f.carrierId)} ·{" "}
-                          {f.status === "answered"
-                            ? formatMoney(f.amount, f.currency, t)
-                            : t("freight.compare.waiting")}
-                        </Link>
-                      ))}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+        {/* Comparação de cotações (só Wellmix): ranking e escolha do
+            fornecedor. A tabela de cotações saiu por decisão do dono (cada
+            cotação continua na própria página e no ranking). */}
+        {wellmix &&
+        (ranking ||
+          (["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
+            quotes.some((q) => q.status === "answered"))) ? (
+          <Card
+            title={
+              // Âncora do Booking ("Conferir e confirmar a cotação").
+              <span id="quotes-compare" className="scroll-mt-24">
+                {t("requests.quotes.compare")}
+              </span>
+            }
+          >
             {ranking ? (
-              <div className="mt-3">
+              <div>
                 <SupplierRankingCard
                   t={t}
                   ranking={ranking}
@@ -961,6 +846,17 @@ export default async function RequestDetailPage({
                     )
                   }
                   canEditWeights={user.role === "admin"}
+                  decideWith={
+                    // Escolha ainda aberta: "Escolher" na linha seleciona no
+                    // formulário de baixo, onde a decisão é concluída.
+                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                      request.status,
+                    ) && quotes.some((q) => q.status === "answered")
+                      ? settings.approvalsEnabled
+                        ? t("approvals.submit")
+                        : t("requests.quotes.select")
+                      : null
+                  }
                 />
               </div>
             ) : null}
@@ -1031,6 +927,9 @@ export default async function RequestDetailPage({
                     sellPrice: t("requests.sellPrice"),
                     carrierFreight: t("pricing.calc.carrierFreight"),
                     carrierFreightHint: t("pricing.calc.carrierFreightHint"),
+                    carrierFixed: t("pricing.calc.carrierFixed"),
+                    carrierEstimated: t("pricing.calc.carrierEstimated"),
+                    carrierOpen: t("pricing.calc.carrierOpen"),
                     title: t("pricing.calc.title"),
                     fob: t("pricing.calc.fob"),
                     fx: t("pricing.calc.fx"),

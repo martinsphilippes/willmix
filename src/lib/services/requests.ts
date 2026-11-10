@@ -32,7 +32,6 @@ import {
   canViewOrder,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
-import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
 import { releaseBookingsOfRequests } from "./booking-intake";
 import { isHiddenByBooking } from "./booking-visibility";
@@ -203,6 +202,8 @@ export async function createRequestBatch(
       groupId,
       `Lote com ${items.length} produtos: ${items.map((i) => i.productName).join(", ")}`,
     );
+  // Produto sem NCM: o despachante recebe a pendência e um aviso só.
+  await (await import("./request-ncm")).notifyNcmPending(created);
   return created;
 }
 
@@ -491,7 +492,13 @@ export async function createRequest(
     `Solicitação: ${request.productName}`,
   );
   // Sourcing sob demanda: produto ainda não catalogado vira item de sourcing para o time na China.
-  if (request.origin === "sourcing_demand" && !request.productId) {
+  // Sourcing em espera (decisão do dono): a solicitação nasce igual, mas não
+  // abre item de Sourcing nem o aviso "Sourcing sob demanda".
+  if (
+    request.origin === "sourcing_demand" &&
+    !request.productId &&
+    (await getSettings()).sourcingEnabled
+  ) {
     const customer = await store.get("parties", request.customerId);
     await store.create("sourcing_items", {
       visitId: null,
@@ -653,6 +660,10 @@ export async function openRfq(
   validUntil.setDate(validUntil.getDate() + settings.quotationExpirationDays);
 
   const existing = await store.list("quotes", { filter: { requestId } });
+  // Produto que veio do Booking: o fornecedor recebe como "Booking para
+  // analisar" (é o Booking dele, não uma disputa de preço).
+  const fromBooking =
+    options.notify !== false ? await isBookingRequest(requestId) : false;
   const invited: Quote[] = [];
   for (const supplierId of new Set(supplierIds)) {
     if (existing.some((q) => q.supplierId === supplierId)) continue;
@@ -669,6 +680,12 @@ export async function openRfq(
     });
     invited.push(quote);
     options.collect?.push(quote);
+    // Cartão do fabricante que veio na planilha do Booking: já entra
+    // confirmado na cotação do fornecedor do produto (ninguém envia de novo).
+    if (request.productId) {
+      const { bringCardToQuote } = await import("./manufacturer-cards");
+      await bringCardToQuote(user, quote, request.productId);
+    }
     if (options.notify !== false)
       await notify(
         { role: "supplier", partyId: supplierId },
@@ -676,14 +693,19 @@ export async function openRfq(
           kind: "action",
           link: `/app/quotes/${quote.id}`,
           text: (t) => ({
-            subject: t("notif.rfq.subject", {
-              product: request.productName,
-              ref: "",
-            }),
-            body: t("notif.rfq.body", {
-              qty: request.quantity.toLocaleString(t.intl),
-              unit: request.unit,
-            }),
+            subject: t(
+              fromBooking
+                ? "notif.bookingAnalysis.subject"
+                : "notif.rfq.subject",
+              { product: request.productName, ref: "" },
+            ),
+            body: t(
+              fromBooking ? "notif.bookingAnalysis.body" : "notif.rfq.body",
+              {
+                qty: request.quantity.toLocaleString(t.intl),
+                unit: request.unit,
+              },
+            ),
           }),
         },
       );
@@ -706,6 +728,43 @@ export async function openRfq(
       notify: options.notify !== false && packaging.notify !== false,
     });
   return invited;
+}
+
+/** A solicitação nasceu de uma linha do Booking (tabela opcional: sem ela, não). */
+export async function isBookingRequest(requestId: string): Promise<boolean> {
+  try {
+    const rows = await getStore().list("bookings", {
+      filter: { requestId },
+      limit: 1,
+    });
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * RFQ em espera (`settings.rfqEnabled` desligado, docs/RFQ_STANDBY.md): cada
+ * produto vai para um fornecedor só, sem disputa. Recusa mais de um
+ * fornecedor de uma vez e um segundo fornecedor em solicitação que já foi
+ * enviada a outro. Com a RFQ ligada não faz nada. As ações da tela chamam
+ * isto antes de `openRfq`/`openBatchRfq` (o Superplan e o Booking já mandam
+ * um fornecedor só).
+ */
+export async function assertRfqStandby(
+  requestIds: string[],
+  supplierIds: string[],
+): Promise<void> {
+  const settings = await getSettings();
+  if (settings.rfqEnabled) return;
+  const ids = [...new Set(supplierIds.filter(Boolean))];
+  if (ids.length > 1) throw new RequestError("rfq_standby_one");
+  if (!ids.length || !requestIds.length) return;
+  const quotes = await getStore().list("quotes", {
+    filter: { requestId: requestIds },
+  });
+  if (quotes.some((q) => q.supplierId !== ids[0]))
+    throw new RequestError("rfq_standby_sent");
 }
 
 /** Situações em que a RFQ pode ser aberta ou receber mais fornecedores. */
@@ -879,6 +938,15 @@ export async function answerQuote(
     quoteId,
     `${input.currency} ${input.price}, ${input.leadTimeDays} dias`,
   );
+  // A companhia marítima recebe o pedido de frete com a carga desta cotação
+  // (quem informa o frete é ela; sem resposta, a conta segue com o estimado).
+  // Falha aqui não derruba a resposta da cotação.
+  try {
+    const { inviteFreightForQuote } = await import("./freight");
+    await inviteFreightForQuote(user, quoteId);
+  } catch (error) {
+    console.error("[requests] pedido de frete da cotação falhou", error);
+  }
   if (request) {
     await notifyWellmix({
       kind: "action",
@@ -936,10 +1004,19 @@ export async function selectQuote(
   assertWellmix(user);
   const store = getStore();
   const quote = await store.get("quotes", quoteId);
-  if (!quote || quote.status !== "answered")
-    throw new RequestError("invalid_quote");
+  if (!quote) throw new RequestError("invalid_quote");
   const request = await store.get("requests", quote.requestId);
   if (!request) throw new RequestError("not_found");
+  // Escolha interrompida no meio (tempo esgotado depois de marcar a cotação
+  // e antes de o pedido nascer): a mesma escolha é retomada de onde parou,
+  // em vez de recusada por a cotação "já estar selecionada".
+  const resuming =
+    quote.status === "selected" &&
+    request.status !== "ORDERED" &&
+    request.status !== "CANCELLED" &&
+    (!request.selectedQuoteId || request.selectedQuoteId === quote.id);
+  if (quote.status !== "answered" && !resuming)
+    throw new RequestError("invalid_quote");
   // Dumping marcado pelo despachante: espera a liberação (Fase B).
   const { dumpingHold } = await import("./purchase-flow");
   if (await dumpingHold(quote.id))
@@ -947,6 +1024,10 @@ export async function selectQuote(
   // Aberta do Superplan: a proposta espera faca, MOQ, prazo e foto em alta.
   const { assertSuperplanItems } = await import("./superplan-rfq");
   await assertSuperplanItems(request, quote);
+  // Devolução esperando resposta, ou proposta de embalagem sem o OK do
+  // fornecedor: a escolha espera (docs/QUOTE_FLOW.md).
+  const { assertQuoteFlowSettled } = await import("./quote-flow");
+  await assertQuoteFlowSettled(request, quote);
   // Antes de qualquer gravação: a ficha não pode ter mudado depois da conta.
   const current = quotedQuantity(request, await getQuoteSheet(quote.id));
   if (
@@ -977,8 +1058,8 @@ export async function selectQuote(
   }
   // Frete das cotações não escolhidas deixa de valer.
   await cancelFreightForRequest(request.id, quote.id);
-  // Histórico do fornecedor no produto: mais uma cotação escolhida.
-  await markSupplierSelected(user, quote.id);
+  // Histórico do fornecedor no produto: mais uma cotação escolhida (uma vez).
+  if (!resuming) await markSupplierSelected(user, quote.id);
   // Embalagem: as medidas da cotação escolhida passam a valer para a faca
   // (alerta à agência se mudaram); com `packagingBriefAt = selection`, o
   // briefing nasce aqui.
@@ -1016,7 +1097,14 @@ export async function selectQuote(
       { quantity: request.quantity },
       { quantity },
     );
-  if (!stock)
+  // Retomada: o sinal já lançado não é lançado de novo.
+  const [signal] = resuming
+    ? await store.list("payments", {
+        filter: { requestId: request.id, direction: "customer_in" },
+        limit: 1,
+      })
+    : [];
+  if (!stock && !signal)
     await store.create("payments", {
       ...PAYMENT_EXTRA_DEFAULTS,
       orderId: null,
@@ -1038,7 +1126,7 @@ export async function selectQuote(
     "quote.select",
     "request",
     request.id,
-    `Fornecedor selecionado; sinal ${input.sellCurrency} ${downPayment}`,
+    `Fornecedor selecionado${resuming ? " (escolha retomada)" : ""}; sinal ${input.sellCurrency} ${downPayment}`,
     null,
     {
       sellPrice: input.sellPrice,
@@ -1047,7 +1135,7 @@ export async function selectQuote(
       pricing: input.pricing ?? null,
     },
   );
-  if (!stock)
+  if (!stock && !signal)
     await notify(requesterTarget(request.requestedForUserId), {
       kind: "action",
       link: `/app/requests/${request.id}`,
@@ -1061,20 +1149,23 @@ export async function selectQuote(
         }),
       }),
     });
-  await notify(
-    { role: "supplier", partyId: quote.supplierId },
-    {
-      kind: "info",
-      actor: "customer",
-      link: `/app/quotes/${quote.id}`,
-      text: (t) => ({
-        subject: t("notif.quoteSelected.subject", {
-          product: request.productName,
+  // Retomada com a escolha já gravada na solicitação: o fornecedor já foi
+  // avisado na primeira vez.
+  if (!(resuming && request.selectedQuoteId === quote.id))
+    await notify(
+      { role: "supplier", partyId: quote.supplierId },
+      {
+        kind: "info",
+        actor: "customer",
+        link: `/app/quotes/${quote.id}`,
+        text: (t) => ({
+          subject: t("notif.quoteSelected.subject", {
+            product: request.productName,
+          }),
+          body: t("notif.quoteSelected.body"),
         }),
-        body: t("notif.quoteSelected.body"),
-      }),
-    },
-  );
+      },
+    );
   // Estoque: sem sinal a esperar, o pedido é criado na hora.
   if (stock) await confirmDownPayment(user, request.id);
 }
@@ -1130,7 +1221,12 @@ async function createOrderFromRequest(
   const product = request.productId
     ? await store.get("products", request.productId)
     : null;
-  const number = await store.nextNumber("order_number");
+  // Criação interrompida antes (tempo esgotado no meio): o pedido que ficou
+  // pela metade é retomado, em vez de nascer outro com outro número.
+  const [unfinished] = (
+    await store.list("orders", { filter: { requestId: request.id } })
+  ).filter((o) => o.status !== "CANCELLED");
+  const number = unfinished?.number ?? (await store.nextNumber("order_number"));
   const fobTotal = quote.price !== null ? quote.price * request.quantity : null;
   // Briefing de embalagem da RFQ: a agência dele é a agência do pedido.
   const brief = await briefForRequest(request.id);
@@ -1139,48 +1235,66 @@ async function createOrderFromRequest(
       ? brief
       : null;
 
-  const order = await store.create("orders", {
-    ...ORDER_EXTRA_DEFAULTS,
-    // Só o login solicitante do cliente vê o pedido.
-    requestedByUserId: request.requestedForUserId,
-    // O pedido segue com o analista da solicitação (coluna opcional).
-    ...(request.ownerUserId ? { ownerUserId: request.ownerUserId } : {}),
-    number,
-    requestId: request.id,
-    customerId: request.customerId,
-    supplierId: quote.supplierId,
-    lineId: product?.lineId ?? null,
-    status: "ORDER_CREATED",
-    currentStageId: null,
-    fobTotal,
-    fobCurrency: quote.currency,
-    sellPrice: request.sellPrice,
-    sellCurrency: request.sellCurrency,
-    erpSyncStatus: "pending",
-    erpNumber: null,
-    agencyId: briefLive?.agencyId ?? null,
-    brokerId: null,
-    shippingLineId: null,
-    carrierId: null,
-    closedAt: null,
-    notes: null,
-  });
-  const item = await store.create("order_items", {
-    orderId: order.id,
-    productId: request.productId,
-    name: request.productName,
-    quantity: request.quantity,
-    unit: request.unit,
-    unitPrice: quote.price,
-    // Variação pedida e a cópia dos valores dela (colunas opcionais): só
-    // quando a solicitação tem uma.
-    ...(request.variantId
-      ? {
-          variantId: request.variantId,
-          ...(request.variant ? { variant: request.variant } : {}),
-        }
-      : {}),
-  });
+  const order =
+    unfinished ??
+    (await store.create("orders", {
+      ...ORDER_EXTRA_DEFAULTS,
+      // Só o login solicitante do cliente vê o pedido.
+      requestedByUserId: request.requestedForUserId,
+      // O pedido segue com o analista da solicitação (coluna opcional).
+      ...(request.ownerUserId ? { ownerUserId: request.ownerUserId } : {}),
+      number,
+      requestId: request.id,
+      customerId: request.customerId,
+      supplierId: quote.supplierId,
+      lineId: product?.lineId ?? null,
+      status: "ORDER_CREATED",
+      currentStageId: null,
+      fobTotal,
+      fobCurrency: quote.currency,
+      sellPrice: request.sellPrice,
+      sellCurrency: request.sellCurrency,
+      erpSyncStatus: "pending",
+      erpNumber: null,
+      agencyId: briefLive?.agencyId ?? null,
+      brokerId: null,
+      shippingLineId: null,
+      carrierId: null,
+      closedAt: null,
+      notes: null,
+    }));
+  if (unfinished)
+    await audit(
+      user,
+      "order.create_resumed",
+      "order",
+      order.id,
+      `Criação do pedido #${number} retomada (tinha sido interrompida)`,
+    );
+  const [existingItem] = unfinished
+    ? await store.list("order_items", {
+        filter: { orderId: order.id },
+        limit: 1,
+      })
+    : [];
+  const item =
+    existingItem ??
+    (await store.create("order_items", {
+      orderId: order.id,
+      productId: request.productId,
+      name: request.productName,
+      quantity: request.quantity,
+      unit: request.unit,
+      unitPrice: quote.price,
+      // Variação pedida e a cópia dos valores dela (colunas opcionais): só
+      // quando a solicitação tem uma.
+      ...(request.variantId
+        ? {
+            variantId: request.variantId,
+            ...(request.variant ? { variant: request.variant } : {}),
+          }
+        : {}),
+    }));
   // Condição de pagamento combinada com o fornecedor vale como estava hoje.
   const { snapshotOrderPaymentTerms } = await import("./supplier-terms");
   await snapshotOrderPaymentTerms(order);
@@ -1194,8 +1308,16 @@ async function createOrderFromRequest(
   await createStagesForOrder(
     await store.get("orders", order.id).then((o) => o ?? order),
   );
-  // Snapshot da negociação: o que foi comprado fica congelado neste pedido.
-  await createPurchaseSnapshot(user, order, item, quote, product);
+  // Snapshot da negociação: o que foi comprado fica congelado neste pedido
+  // (um por pedido; na retomada, o que já foi tirado fica).
+  const [snapshot] = unfinished
+    ? await store.list("purchase_snapshots", {
+        filter: { orderId: order.id },
+        limit: 1,
+      })
+    : [];
+  if (!snapshot)
+    await createPurchaseSnapshot(user, order, item, quote, product);
   // A ficha preenchida na cotação vira a ficha do pedido (Preparação já preenchida).
   await copyQuoteSheetToOrder(quote.id, order.id);
   // Embalagem preparada na RFQ: arquivos ao pedido (fornecedor vê), arte já
@@ -1256,11 +1378,8 @@ async function createOrderFromRequest(
   if (payment)
     await store.update("payments", payment.id, { orderId: order.id });
 
-  const sync = await getSankhyaAdapter().createOrder(order, [item]);
-  await store.update("orders", order.id, {
-    erpSyncStatus: sync.status === "synced" ? "synced" : "pending",
-    erpNumber: sync.status === "synced" ? sync.erpNumber : null,
-  });
+  // O pedido só vai ao Sankhya depois da assinatura do documento pelo
+  // fornecedor (docs/ORDER_SIGNATURE.md); até lá fica "pendente", como nasceu.
   await store.update("requests", request.id, {
     status: "ORDERED",
     orderId: order.id,
@@ -1301,7 +1420,17 @@ async function createOrderFromRequest(
       }),
     },
   );
-  return (await store.get("orders", order.id)) ?? order;
+  // Relido: os parceiros padrão (OCP, agência...) entraram depois da criação.
+  const born = (await store.get("orders", order.id)) ?? order;
+  // Selo de certificação: o pedido já nasce na mão da certificadora (aviso;
+  // a pendência dela sai do passo). Uma falha aqui não desfaz o pedido.
+  try {
+    const { notifySealRequested } = await import("./import-flow");
+    await notifySealRequested(born);
+  } catch (error) {
+    console.error("[certification] aviso do selo no pedido novo", error);
+  }
+  return born;
 }
 
 /**

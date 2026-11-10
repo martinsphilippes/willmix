@@ -9,6 +9,11 @@ export const pt = {
   "ranking.winner": "Vencedor: {supplier}, com {points} pontos.",
   "ranking.tie":
     "Empate em {points} pontos entre {suppliers}: a Wellmix decide.",
+  "ranking.howToDecide":
+    "Para decidir: toque em “Escolher” na linha do fornecedor e depois em “{action}”, logo abaixo.",
+  "ranking.col.decision": "Decisão",
+  "ranking.pick": "Escolher",
+  "ranking.picked": "Escolhido ✓",
   "ranking.why": "Ganhou por: {reasons}.",
   "ranking.lostIn": "Perdeu em: {criteria}.",
   "ranking.tiedIn": "Empate em: {criteria}.",
@@ -65,6 +70,11 @@ export const en: Record<keyof typeof pt, string> = {
     "Each quotation scores 0 to 100 points per criterion, compared with the best. The score is the average weighted by the Settings.",
   "ranking.winner": "Winner: {supplier}, with {points} points.",
   "ranking.tie": "Tie at {points} points between {suppliers}: Wellmix decides.",
+  "ranking.howToDecide":
+    "To decide: tap “Choose” on the supplier's row and then “{action}”, just below.",
+  "ranking.col.decision": "Decision",
+  "ranking.pick": "Choose",
+  "ranking.picked": "Chosen ✓",
   "ranking.why": "Won on: {reasons}.",
   "ranking.lostIn": "Lost on: {criteria}.",
   "ranking.tiedIn": "Tied on: {criteria}.",
@@ -121,6 +131,11 @@ export const zh: Record<keyof typeof pt, string> = {
     "每份报价在每个标准上按与最佳值的比较得 0 到 100 分，总分按设置中的权重加权平均。",
   "ranking.winner": "胜出：{supplier}，{points} 分。",
   "ranking.tie": "{suppliers} 同为 {points} 分：由 Wellmix 决定。",
+  "ranking.howToDecide":
+    "决定方法：在供应商所在行点击“选择”，然后点击下方的“{action}”。",
+  "ranking.col.decision": "决定",
+  "ranking.pick": "选择",
+  "ranking.picked": "已选择 ✓",
   "ranking.why": "胜出原因：{reasons}。",
   "ranking.lostIn": "落后项：{criteria}。",
   "ranking.tiedIn": "持平项：{criteria}。",

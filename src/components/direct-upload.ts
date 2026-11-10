@@ -20,6 +20,12 @@ function lowerExtension(file: File): File {
 export const SERVER_MAX_BYTES = 3.5 * 1024 * 1024;
 
 /**
+ * Teto por arquivo no armazenamento (o mesmo MAX_DOCUMENT_BYTES do servidor,
+ * plano do Appwrite): acima disso nem adianta começar a subir.
+ */
+export const DIRECT_MAX_BYTES = 50_000_000;
+
+/**
  * Sobe arquivos direto ao armazenamento (Appwrite) com o token da sessão;
  * devolve os ids. Sem envio direto (modo memória, desenvolvimento), devolve
  * nulo e os arquivos seguem no formulário.

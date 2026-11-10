@@ -21,7 +21,7 @@ export const pt = {
   "booking.col.code": "Código",
   "booking.col.name": "Produto",
   "booking.col.supplier": "Fornecedor",
-  "booking.col.location": "Local / loja",
+  "booking.col.location": "Local / Porto",
   "booking.col.sheetDate": "Data da ficha",
   "booking.col.price": "Preço",
   "booking.col.currency": "Moeda",
@@ -31,6 +31,7 @@ export const pt = {
   "booking.col.netWeight": "Peso líquido (kg)",
   "booking.col.grossWeight": "Peso bruto (kg)",
   "booking.col.estimatedWeight": "Peso estimado (kg)",
+  "booking.col.averageWeight": "Peso médio (kg)",
   "booking.col.average": "Média (US$)",
   "booking.col.cbm": "CBM da caixa",
   "booking.col.size": "Medidas",
@@ -39,6 +40,11 @@ export const pt = {
   "booking.col.packageType": "Embalagem",
   "booking.col.customer": "Cliente",
   "booking.col.reservedQty": "Qtd. reservada",
+  "booking.col.plannedQty": "Qtd. planejada (pç)",
+  "booking.col.forecastOrder": "Previsão encomenda (pç)",
+  "booking.col.forecastDistribution": "Previsão distribuição (pç)",
+  "booking.col.forecastEcommerce": "Previsão e-commerce (pç)",
+  "booking.col.forecastTotal": "Previsão total (pç)",
   "booking.col.salePrice": "Preço de venda",
   "booking.col.cost": "Custo (R$)",
   "booking.col.targetPrice": "Preço p/ meta",
@@ -91,6 +97,8 @@ export const pt = {
     "Observação longa demais (até 500 caracteres).",
   "booking.error.booking_locked":
     "Esta linha já virou solicitação: cliente e quantidade mudam na solicitação.",
+  "booking.error.booking_data_invalid":
+    "Algum valor digitado não deu para ler (número, data, fornecedor ou nome com menos de 2 letras). Nada foi gravado: confira a linha destacada.",
   "booking.error.booking_changed":
     "Esta linha mudou enquanto a ação rodava (outra pessoa mexeu nela). As linhas anteriores a ela já foram gravadas; atualize a página e confira.",
   "booking.error.booking_request_pending":
@@ -132,7 +140,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.col.code": "Code",
   "booking.col.name": "Product",
   "booking.col.supplier": "Supplier",
-  "booking.col.location": "Place / store",
+  "booking.col.location": "Place / Port",
   "booking.col.sheetDate": "Sheet date",
   "booking.col.price": "Price",
   "booking.col.currency": "Currency",
@@ -142,6 +150,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.col.netWeight": "Net weight (kg)",
   "booking.col.grossWeight": "Gross weight (kg)",
   "booking.col.estimatedWeight": "Estimated weight (kg)",
+  "booking.col.averageWeight": "Average weight (kg)",
   "booking.col.average": "Average (US$)",
   "booking.col.cbm": "Carton CBM",
   "booking.col.size": "Size",
@@ -150,6 +159,11 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.col.packageType": "Packaging",
   "booking.col.customer": "Customer",
   "booking.col.reservedQty": "Reserved qty",
+  "booking.col.plannedQty": "Planned qty (pcs)",
+  "booking.col.forecastOrder": "Forecast: made to order (pcs)",
+  "booking.col.forecastDistribution": "Forecast: distribution (pcs)",
+  "booking.col.forecastEcommerce": "Forecast: e-commerce (pcs)",
+  "booking.col.forecastTotal": "Forecast total (pcs)",
   "booking.col.salePrice": "Sale price",
   "booking.col.cost": "Cost (R$)",
   "booking.col.targetPrice": "Price for target",
@@ -202,6 +216,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Note too long (up to 500 characters).",
   "booking.error.booking_locked":
     "This row already became a request: customer and quantity change in the request.",
+  "booking.error.booking_data_invalid":
+    "A typed value could not be read (number, date, supplier, or a name shorter than 2 letters). Nothing was saved: check the highlighted row.",
   "booking.error.booking_changed":
     "This row changed while the action was running (someone else touched it). The rows before it were already saved; refresh the page and check.",
   "booking.error.booking_request_pending":
@@ -243,7 +259,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.col.code": "货号",
   "booking.col.name": "产品",
   "booking.col.supplier": "供应商",
-  "booking.col.location": "地点 / 店铺",
+  "booking.col.location": "地点 / 港口",
   "booking.col.sheetDate": "技术表日期",
   "booking.col.price": "价格",
   "booking.col.currency": "币种",
@@ -253,6 +269,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.col.netWeight": "净重（kg）",
   "booking.col.grossWeight": "毛重（kg）",
   "booking.col.estimatedWeight": "估算重量（kg）",
+  "booking.col.averageWeight": "平均重量（kg）",
   "booking.col.average": "均价（美元）",
   "booking.col.cbm": "箱体积",
   "booking.col.size": "尺寸",
@@ -261,6 +278,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.col.packageType": "包装",
   "booking.col.customer": "客户",
   "booking.col.reservedQty": "预订数量",
+  "booking.col.plannedQty": "计划数量（件）",
+  "booking.col.forecastOrder": "预测：订货（件）",
+  "booking.col.forecastDistribution": "预测：分销（件）",
+  "booking.col.forecastEcommerce": "预测：电商（件）",
+  "booking.col.forecastTotal": "预测合计（件）",
   "booking.col.salePrice": "售价",
   "booking.col.cost": "成本（R$）",
   "booking.col.targetPrice": "达标价格",
@@ -308,6 +330,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.error.booking_note_too_long": "备注过长（最多 500 个字符）。",
   "booking.error.booking_locked":
     "该行已生成询价单：客户和数量请在询价单中修改。",
+  "booking.error.booking_data_invalid":
+    "有输入的值无法识别（数字、日期、供应商，或名称少于 2 个字）。没有保存任何内容：请检查标出的那一行。",
   "booking.error.booking_changed":
     "操作进行时该行已被他人修改。它之前的行已保存；请刷新页面后核对。",
   "booking.error.booking_request_pending":

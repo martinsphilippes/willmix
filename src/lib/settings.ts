@@ -15,6 +15,21 @@ import { getStore } from "@/lib/db";
  */
 export const DEFAULT_SETTINGS = {
   customerCanCreateRequest: true,
+  /**
+   * RFQ (pedido de preço a vários fornecedores, comparação e disputa). Em
+   * espera por decisão do dono (10/11/2026): cada produto vai direto para o
+   * fornecedor dele (o do Booking), um só, sem disputa. A RFQ continua
+   * guardada e volta ao ligar aqui (tela Pedidos → RFQ, docs/RFQ_STANDBY.md).
+   */
+  rfqEnabled: false,
+  /**
+   * Sourcing (visitas, itens encontrados, sourcing sob demanda). Em espera
+   * por decisão do dono (10/11/2026), como a RFQ: os produtos chegam pela
+   * ficha técnica do Booking. Em espera, o pedido de produto fora do
+   * catálogo vira só a solicitação (sem item de Sourcing nem pendência). As
+   * telas e os dados ficam; volta ao ligar na tela Pedidos → Sourcing.
+   */
+  sourcingEnabled: false,
   /* ---- Aprovação do pré-custo (docs/APPROVALS.md) ---- */
   /** A escolha do fornecedor só vale depois de aprovada (planner → diretoria de compras → diretoria executiva). */
   approvalsEnabled: true,
@@ -69,6 +84,18 @@ export const DEFAULT_SETTINGS = {
     DELIVERED: 3,
     CLOSED: 0,
   } as Record<string, number>,
+  /**
+   * Início da produção: dias depois do contrato assinado (documento do pedido
+   * com as duas assinaturas). A data entra sozinha na programação de compra
+   * e no acompanhamento da produção; ninguém digita.
+   */
+  productionStartDays: 0,
+  /**
+   * O mesmo prazo, por fornecedor (id do fornecedor → dias): quem tem valor
+   * aqui usa o dele; os outros, o padrão acima. Só o administrador grava,
+   * no cadastro do fornecedor.
+   */
+  productionStartDaysBySupplier: {} as Record<string, number>,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */

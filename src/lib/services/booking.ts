@@ -25,11 +25,21 @@ import {
   bookingMoveOptions,
   bookingStatusRequirementError,
   reservedQtyError,
+  bookingCanRequest,
+  bookingNextStep,
+  bookingRequestQuantity,
+  forecastTotalOf,
   type BookingActor,
   type BookingErrorCode,
   type BookingLinkState,
+  type BookingOrderDocument,
   type BookingRow,
 } from "@/lib/booking";
+import {
+  ORDER_SIGN_SEND,
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
+} from "@/lib/workflow/stages";
 import { estimatedGrossKg } from "@/lib/weights";
 import { effectiveMoq } from "@/lib/moq";
 import { superplanParams } from "@/lib/superplan";
@@ -115,6 +125,13 @@ export interface BookingOptions {
   currencies: string[];
   /** A empresa de estoque ainda não existe: oferecer "Estoque Wellmix". */
   stockOption: boolean;
+  /** Todos os fornecedores ativos (para trocar o fornecedor na edição). */
+  allSuppliers: BookingOption[];
+  /**
+   * Fornecedores das linhas sem nenhum login ativo: não conseguem ver nem
+   * responder o que o Booking envia (o acesso é criado no cadastro deles).
+   */
+  suppliersWithoutLogin: BookingOption[];
 }
 
 export interface BookingListData {
@@ -251,6 +268,7 @@ function rowOf(
     estimatedWeightKg: estimate.kg,
     weightEstimated: estimate.estimated,
     averageUsd: positive(master.averagePrice),
+    averageWeightKg: positive(master.averageWeightPcKg),
     cbm: view?.cbmPerCarton ?? null,
     size: product ? sizeText(product, ctx.intl) : null,
     colors: text(master.colorAssortment) ?? text(product?.color),
@@ -260,6 +278,11 @@ function rowOf(
     customerId: booking.customerId,
     customerName: customer?.name ?? null,
     reservedQty: booking.reservedQty,
+    plannedQty: positive(booking.plan?.plannedQty),
+    forecastOrder: positive(booking.plan?.forecastOrder),
+    forecastDistribution: positive(booking.plan?.forecastDistribution),
+    forecastEcommerce: positive(booking.plan?.forecastEcommerce),
+    forecastTotal: forecastTotalOf(booking.plan ?? {}),
     // A análise (custo, preço, lucro) só sai do servidor para quem analisa.
     analysis: ctx.canApprove ? (booking.analysis ?? null) : null,
     ownerUserId: booking.ownerUserId,
@@ -274,6 +297,11 @@ function rowOf(
     requestGroupId: absent ? null : booking.requestGroupId,
     requestNumber: absent ? null : booking.requestNumber,
     requestState: absent === "none" ? null : absent,
+    // Preenchido depois, com a solicitação lida (buildRows).
+    next: null,
+    pieceLengthCm: positive(product?.lengthCm),
+    pieceWidthCm: positive(product?.widthCm),
+    pieceHeightCm: positive(product?.heightCm),
   };
 }
 
@@ -326,6 +354,74 @@ async function buildRows(
     }),
   );
 
+  // Linhas que viraram solicitação: o próximo passo de cada uma (a situação
+  // da solicitação, as cotações e o pedido), só para quem abre Solicitações.
+  const requestIds = canOpen(user, "requests")
+    ? distinct(
+        rows
+          .filter((r) => r.status === "requested" && r.requestId)
+          .map((r) => r.requestId as string),
+      )
+    : [];
+  if (requestIds.length) {
+    const [requests, quotes, orders] = await Promise.all([
+      store.list("requests", { filter: { id: requestIds } }),
+      store.list("quotes", { filter: { requestId: requestIds } }),
+      store.list("orders", { filter: { requestId: requestIds } }),
+    ]);
+    const requestOf = new Map(requests.map((r) => [r.id, r]));
+    const openQuotes = canOpen(user, "quotes");
+    // Cotação ainda não enviada com a ficha já gravada (rascunho) ou com o
+    // prazo guardado: o fornecedor começou e não enviou.
+    const invitedIds = quotes
+      .filter((q) => q.status === "invited")
+      .map((q) => q.id);
+    // Pedidos que nasceram: o ponto do documento com as duas assinaturas.
+    const orderIds = orders.map((o) => o.id);
+    const [draftSheets, signatures] = await Promise.all([
+      invitedIds.length
+        ? store.list("purchase_sheets", { filter: { orderId: invitedIds } })
+        : [],
+      orderIds.length
+        ? store.list("requirements", { filter: { orderId: orderIds } })
+        : [],
+    ]);
+    const drafted = new Set(draftSheets.map((s) => s.orderId));
+    const documentOf = (orderId: string): BookingOrderDocument => {
+      const mine = signatures.filter((r) => r.orderId === orderId);
+      const wellmix = mine.find((r) => r.key === ORDER_SIGNED_WELLMIX);
+      const supplier = mine.find((r) => r.key === ORDER_SIGNED_SUPPLIER);
+      // Pedido de antes do documento com assinaturas: sem os itens.
+      if (!wellmix && !supplier) return null;
+      // Ordem nova: antes do "Enviar para assinatura" ninguém assina.
+      const send = mine.find((r) => r.key === ORDER_SIGN_SEND);
+      if (send && send.status !== "done" && wellmix?.status !== "done")
+        return "awaiting_send";
+      if (wellmix?.status !== "done") return "awaiting_wellmix";
+      return supplier?.status === "done" ? "signed" : "sent_to_supplier";
+    };
+    for (const row of rows) {
+      const request = row.requestId ? requestOf.get(row.requestId) : null;
+      if (!request || row.status !== "requested") continue;
+      const order = orders.find((o) => o.requestId === request.id) ?? null;
+      row.next = bookingNextStep(
+        request,
+        quotes
+          .filter((q) => q.requestId === request.id)
+          .map((q) => ({
+            id: q.id,
+            status: q.status,
+            negotiation: q.negotiation,
+            draft:
+              q.status === "invited" &&
+              (drafted.has(q.id) || q.leadTimeDays != null || !!q.conditions),
+          })),
+        order ? { id: order.id, document: documentOf(order.id) } : null,
+        openQuotes,
+      );
+    }
+  }
+
   const usedCustomers = new Set(rows.map((r) => r.customerId));
   const usedOwners = new Set(rows.map((r) => r.ownerUserId));
   const sources = new Map<string, BookingOption>();
@@ -336,6 +432,11 @@ async function buildRows(
         label: r.sourceFileName ?? r.importBatchId,
       });
   const { STOCK_PARTY_ID } = await import("./purchase-flow");
+  const { partiesWithoutLogin } = await import("./portal-access");
+  const rowSuppliers = distinct(rows.map((r) => r.supplierId)).filter(
+    (id): id is string => !!id && parties.has(id),
+  );
+  const noLogin = await partiesWithoutLogin(rowSuppliers);
   return {
     rows,
     canApprove,
@@ -358,6 +459,14 @@ async function buildRows(
         .filter((c): c is string => !!c)
         .sort(),
       stockOption: !customers.some((c) => c.id === STOCK_PARTY_ID),
+      allSuppliers: suppliers
+        .filter((p) => p.active)
+        .map((p) => ({ id: p.id, label: p.name }))
+        .sort(byLabel),
+      suppliersWithoutLogin: rowSuppliers
+        .filter((id) => noLogin.has(id))
+        .map((id) => ({ id, label: parties.get(id)?.name ?? id }))
+        .sort(byLabel),
     },
   };
 }
@@ -670,6 +779,27 @@ async function resolveCustomer(
   return party.id;
 }
 
+/**
+ * A coluna Cliente saiu da tela do Booking: linha sem cliente é compra para
+ * o estoque da Wellmix. Etapa que exige cliente (Oferecido, Reservado) numa
+ * linha sem cliente ganha a empresa de estoque, em vez de recusar.
+ */
+async function withStockCustomer(
+  user: User,
+  booking: Booking,
+  patch: BookingPatch,
+): Promise<BookingPatch> {
+  const status = patch.status ?? booking.status;
+  if (status !== "offered" && status !== "reserved") return patch;
+  const customerId =
+    patch.customerId !== undefined ? patch.customerId : booking.customerId;
+  if (customerId) return patch;
+  return {
+    ...patch,
+    customerId: await resolveCustomer(user, BOOKING_STOCK_OPTION, booking.id),
+  };
+}
+
 async function resolveOwner(
   raw: string,
   bookingId?: string | null,
@@ -726,7 +856,7 @@ export async function saveBookingRow(
   ]);
   const planned = plan(
     booking,
-    resolved,
+    await withStockCustomer(user, booking, resolved),
     joined.moq.get(booking.productId) ?? null,
     bookingActor(user),
     user,
@@ -777,11 +907,11 @@ async function applyBulk(
     const typed = input.quantities?.[booking.id];
     const p = plan(
       booking,
-      {
+      await withStockCustomer(user, booking, {
         ...(customerId !== undefined ? { customerId } : {}),
         ...(typed !== undefined ? { reservedQty: typed } : {}),
         ...extra(booking),
-      },
+      }),
       joined.moq.get(booking.productId) ?? null,
       actor,
       user,
@@ -1009,8 +1139,10 @@ async function cancelOwnRequests(
 
 /**
  * As linhas marcadas viram uma solicitação (um lote, uma por produto) do
- * cliente escolhido. Só linhas em Aprovado, Oferecido ou Reservado; linha
- * reservada para outro cliente recusa tudo (nada é criado). Quantidade: a
+ * cliente escolhido. Linhas em Aprovado, Oferecido ou Reservado; e, para quem
+ * aprova (abre o Superplan; hoje, o administrador), também as de Novo e Em
+ * análise: gerar a solicitação já é aprovar, num toque só (fica na
+ * auditoria). Linha reservada para outro cliente recusa tudo (nada é criado). Quantidade: a
  * digitada na linha, senão a reservada, senão o pedido mínimo do produto.
  * Depois, as linhas vão para "Virou solicitação" com o número dela.
  */
@@ -1027,8 +1159,9 @@ export async function generateRequestFromBooking(
     BOOKING_REQUEST_MAX,
     "booking_request_too_many",
   );
+  const approver = bookingActor(user).canApprove;
   for (const booking of bookings)
-    if (!BOOKING_REQUESTABLE.includes(booking.status))
+    if (!bookingCanRequest(booking.status, approver))
       throw refuse("booking_not_requestable", booking.id);
 
   // Cliente: o escolhido na barra; sem escolha, o das linhas (se for um só).
@@ -1046,13 +1179,18 @@ export async function generateRequestFromBooking(
         "booking_customer_mismatch",
         bookings.find((b) => b.customerId && b.customerId !== own[0])?.id,
       );
-    // Nenhuma linha tem cliente e nenhum foi escolhido na barra.
-    if (!own.length || bookings.some((b) => !b.customerId))
+    // Linha sem cliente é compra para o estoque da Wellmix (a coluna
+    // Cliente saiu da tela): sem cliente em nenhuma, todas vão para o
+    // estoque; com cliente só em algumas, as sem cliente destoam.
+    const stock = bookings.some((b) => !b.customerId)
+      ? await resolveCustomer(user, BOOKING_STOCK_OPTION)
+      : null;
+    if (stock && own.length && own[0] !== stock)
       throw refuse(
-        "booking_request_customer",
-        bookings.find((b) => !b.customerId)?.id,
+        "booking_customer_mismatch",
+        bookings.find((b) => b.customerId)?.id,
       );
-    customerId = await resolveCustomer(user, own[0]);
+    customerId = stock ?? (await resolveCustomer(user, own[0]));
   }
   for (const booking of bookings)
     if (booking.customerId && booking.customerId !== customerId)
@@ -1071,8 +1209,12 @@ export async function generateRequestFromBooking(
     if ((variants.get(product.id) ?? []).some((v) => v.active !== false))
       throw refuse("booking_variant_required", booking.id);
     const moq = joined.moq.get(product.id) ?? null;
-    const quantity =
-      input.quantities?.[booking.id] ?? booking.reservedQty ?? moq ?? null;
+    const quantity = bookingRequestQuantity({
+      typed: input.quantities?.[booking.id],
+      reservedQty: booking.reservedQty,
+      plannedQty: positive(booking.plan?.plannedQty),
+      moq,
+    });
     if (quantity === null) throw refuse("booking_qty_missing", booking.id);
     const error = reservedQtyError(quantity, moq);
     if (error) throw refuse(error, booking.id);
@@ -1252,7 +1394,11 @@ export async function generateRequestFromBooking(
         booking.id,
         `Booking: ${product.name}: virou a solicitação${
           request.number ? ` #${request.number}` : ""
-        } (${quantity} peças)`,
+        } (${quantity} peças)${
+          BOOKING_REQUESTABLE.includes(booking.status)
+            ? ""
+            : "; aprovado junto, por quem gerou"
+        }`,
         {
           status: booking.status,
           customerId: booking.customerId,
@@ -1282,5 +1428,92 @@ export async function generateRequestFromBooking(
   );
   if (!kept.length)
     throw refuse("booking_not_requestable", planned[0].booking.id);
+  await sendToBookingSuppliers(
+    user,
+    kept,
+    new Map(planned.map((p) => [p.requestId, p.product])),
+  );
   return kept;
+}
+
+/**
+ * RFQ em espera (docs/RFQ_STANDBY.md): a solicitação que nasce do Booking vai
+ * na hora para o fornecedor do produto (o escolhido ao subir a ficha), um só,
+ * para ele analisar: preço, prazo, pedido mínimo, fotos. Cada fornecedor
+ * recebe um aviso só, com a lista. Produto sem fornecedor fica esperando na
+ * solicitação ("Enviar ao fornecedor"). Uma falha aqui não desfaz a
+ * solicitação: fica no log e o envio pode ser feito pela solicitação.
+ */
+async function sendToBookingSuppliers(
+  user: User,
+  requests: Request[],
+  productOf: Map<string, Product>,
+): Promise<void> {
+  if ((await getSettings()).rfqEnabled) return;
+  const { openRfq } = await import("./requests");
+  const sent = new Map<string, { request: Request; quoteId: string }[]>();
+  for (const request of requests) {
+    const supplierId = productOf.get(request.id)?.supplierId;
+    if (!supplierId) continue;
+    try {
+      const [quote] = await openRfq(user, request.id, [supplierId], {
+        notify: false,
+      });
+      if (!quote) continue;
+      sent.set(supplierId, [
+        ...(sent.get(supplierId) ?? []),
+        { request, quoteId: quote.id },
+      ]);
+    } catch (error) {
+      console.error(
+        "[booking] envio ao fornecedor do Booking falhou",
+        request.id,
+        error,
+      );
+    }
+  }
+  const { notify } = await import("./notifications");
+  for (const [supplierId, items] of sent) {
+    try {
+      const number = items.find((i) => i.request.number)?.request.number;
+      await notify(
+        { role: "supplier", partyId: supplierId },
+        {
+          kind: "action",
+          link:
+            items.length === 1
+              ? `/app/quotes/${items[0].quoteId}`
+              : "/app/quotes",
+          text: (t) => {
+            const ref = number ? t("notif.ref", { number }) : "";
+            return items.length === 1
+              ? {
+                  subject: t("notif.bookingAnalysis.subject", {
+                    product: items[0].request.productName,
+                    ref,
+                  }),
+                  body: t("notif.bookingAnalysis.body", {
+                    qty: items[0].request.quantity.toLocaleString(t.intl),
+                    unit: items[0].request.unit,
+                  }),
+                }
+              : {
+                  subject: t("notif.bookingAnalysis.many.subject", {
+                    count: items.length,
+                    ref,
+                  }),
+                  body: t("notif.bookingAnalysis.many.body", {
+                    items: items
+                      .map((i) => i.request.productName)
+                      .join("; ")
+                      .slice(0, 400),
+                  }),
+                };
+          },
+        },
+      );
+    } catch (error) {
+      console.error("[booking] aviso ao fornecedor falhou", supplierId, error);
+    }
+  }
 }

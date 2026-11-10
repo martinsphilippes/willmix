@@ -13,6 +13,7 @@ const { getStore, PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
 const { seedDemo } = await import("@/lib/seed");
 const { translator } = await import("@/i18n");
 const booking = await import("@/lib/services/booking");
+const { bookingCanRequest } = await import("@/lib/booking");
 const { ensureBookingForProduct } =
   await import("@/lib/services/booking-intake");
 const { hiddenBookingProductIds, isHiddenByBooking } =
@@ -265,13 +266,14 @@ describe("etapas", () => {
     ).toBe("booking_request_only");
   });
 
-  it("oferecido pede cliente; reservado pede quantidade no pedido mínimo", async () => {
+  it("oferecido sem cliente vira compra para o estoque; reservado pede quantidade no pedido mínimo", async () => {
+    // A coluna Cliente saiu da tela: linha sem cliente é do estoque Wellmix.
+    const { booking: stocked } = await row("approved");
+    await booking.saveBookingRow(buyer, stocked.id, { status: "offered" });
+    const stockId = (await fresh(stocked.id)).customerId;
+    expect(stockId).toBeTruthy();
+    expect((await getStore().get("parties", stockId!))?.type).toBe("customer");
     const { booking: b } = await row("approved");
-    expect(
-      await code(() =>
-        booking.saveBookingRow(buyer, b.id, { status: "offered" }),
-      ),
-    ).toBe("booking_customer_required");
     await booking.saveBookingRow(buyer, b.id, {
       status: "offered",
       customerId: joao.partyId,
@@ -296,12 +298,9 @@ describe("etapas", () => {
     });
     const saved = await fresh(b.id);
     expect([saved.status, saved.reservedQty]).toEqual(["reserved", 240]);
-    // Tirar o cliente de uma linha reservada: recusa.
-    expect(
-      await code(() =>
-        booking.saveBookingRow(buyer, b.id, { customerId: null }),
-      ),
-    ).toBe("booking_customer_required");
+    // Tirar o cliente de uma linha reservada: ela passa para o estoque.
+    await booking.saveBookingRow(buyer, b.id, { customerId: null });
+    expect((await fresh(b.id)).customerId).toBe(stockId);
   });
 
   it("cliente precisa ser empresa cliente ativa; responsável, login ativo da Wellmix", async () => {
@@ -545,6 +544,168 @@ describe("gerar solicitação", () => {
     expect((await fresh(a.booking.id)).reservedQty).toBe(360);
   });
 
+  it("quem aprova gera a solicitação direto de Novo e Em análise (um toque); quem não aprova, não; Descartado nunca", async () => {
+    const fromAnalysis = await row("analysis");
+    const fromNew = await row("new");
+    const discarded = await row("discarded");
+    // O comprador (não abre o Superplan) continua precisando da aprovação.
+    expect(
+      await code(() =>
+        booking.generateRequestFromBooking(
+          buyer,
+          { ids: [fromAnalysis.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      ),
+    ).toBe("booking_not_requestable");
+    expect(
+      await code(() =>
+        booking.generateRequestFromBooking(
+          admin,
+          { ids: [discarded.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      ),
+    ).toBe("booking_not_requestable");
+    // O administrador: marcou, escolheu o cliente, gerou.
+    const created = await booking.generateRequestFromBooking(
+      admin,
+      {
+        ids: [fromAnalysis.booking.id, fromNew.booking.id],
+        customer: joao.partyId!,
+      },
+      t,
+    );
+    expect(created).toHaveLength(2);
+    for (const line of [fromAnalysis, fromNew]) {
+      const now = await fresh(line.booking.id);
+      expect([now.status, now.customerId, !!now.requestId]).toEqual([
+        "requested",
+        joao.partyId,
+        true,
+      ]);
+    }
+    // A auditoria diz que a aprovação foi junto.
+    const [log] = await getStore().list("audit_log", {
+      filter: { entityId: fromAnalysis.booking.id, action: "booking.request" },
+    });
+    expect(log.summary).toContain("aprovado junto");
+    expect(bookingCanRequest("analysis", true)).toBe(true);
+    expect(bookingCanRequest("analysis", false)).toBe(false);
+    expect(bookingCanRequest("requested", true)).toBe(false);
+  });
+
+  it("a linha que virou solicitação mostra o próximo passo e acompanha a solicitação; quem não abre Solicitações não recebe o link", async () => {
+    const line = await row("approved");
+    const [request] = await booking.generateRequestFromBooking(
+      admin,
+      { ids: [line.booking.id], customer: joao.partyId! },
+      t,
+    );
+    const nextOf = async (user: User) =>
+      (await booking.listBookingRows(user)).rows.find(
+        (r) => r.id === line.booking.id,
+      )!.next;
+    expect(await nextOf(admin)).toEqual({
+      step: "open_rfq",
+      href: `/app/requests/${request.id}`,
+      target: "request",
+      answered: 0,
+      total: 0,
+    });
+    // RFQ aberta: esperando o fornecedor, com o botão direto na cotação.
+    const { openRfq } = await import("@/lib/services/requests");
+    const [supplier] = await getStore().list("parties", {
+      filter: { type: "supplier", active: true },
+      limit: 1,
+    });
+    const [quote] = await openRfq(admin, request.id, [supplier.id]);
+    expect(await nextOf(admin)).toEqual({
+      step: "wait_supplier",
+      href: `/app/quotes/${quote.id}`,
+      target: "quote",
+      answered: 0,
+      total: 1,
+    });
+    // O fornecedor salvou um rascunho (prazo guardado) e não enviou: a linha
+    // diz isso, em vez de "esperando".
+    await getStore().update("quotes", quote.id, { leadTimeDays: 30 });
+    expect(await nextOf(admin)).toMatchObject({
+      step: "supplier_draft",
+      href: `/app/quotes/${quote.id}`,
+    });
+    // Cotação enviada: a linha muda e o botão leva à confirmação.
+    const { answerQuote } = await import("@/lib/services/requests");
+    await answerQuote(admin, quote.id, {
+      price: 4,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    expect(await nextOf(admin)).toEqual({
+      step: "choose_quote",
+      href: `/app/requests/${request.id}#quotes-compare`,
+      target: "confirm",
+      answered: 1,
+      total: 1,
+    });
+    // Linha que não virou solicitação não tem próximo passo.
+    const other = await row("approved");
+    expect(
+      (await booking.listBookingRows(admin)).rows.find(
+        (r) => r.id === other.booking.id,
+      )!.next,
+    ).toBeNull();
+    // Só Booking (sem a tela Solicitações): sem link para lá.
+    expect(await nextOf(onlyBooking)).toBeNull();
+  });
+
+  it("depois do pedido, a linha acompanha o documento do pedido: Wellmix assina, fornecedor assina, assinado", async () => {
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("approvalsEnabled", false);
+    const line = await row("approved");
+    const [request] = await booking.generateRequestFromBooking(
+      admin,
+      { ids: [line.booking.id], customer: joao.partyId! },
+      t,
+    );
+    const nextOf = async () =>
+      (await booking.listBookingRows(admin)).rows.find(
+        (r) => r.id === line.booking.id,
+      )!.next;
+    const r = await import("@/lib/services/requests");
+    const [quote] = await r.openRfq(admin, request.id, ["fornecedor-a"]);
+    await r.answerQuote(admin, quote.id, {
+      price: 3.6,
+      currency: "USD",
+      leadTimeDays: 45,
+    });
+    await r.selectQuote(admin, quote.id, {
+      sellPrice: 10_000,
+      sellCurrency: "BRL",
+      downPaymentAmount: 3000,
+    });
+    expect((await nextOf())?.step).toBe("wait_down_payment");
+    const order = await r.confirmDownPayment(admin, request.id);
+    // Pedido criado (ordem nova): primeiro a arte e o selo; o documento
+    // ainda não foi enviado para assinatura.
+    expect(await nextOf()).toMatchObject({
+      step: "prepare_document",
+      href: `/app/orders/${order.id}`,
+      target: "order",
+    });
+    const { reachSignature, signOrderAs } = await import("./setup");
+    // Arte enviada, selo aplicado e "Enviar para assinatura": a Wellmix assina.
+    await reachSignature(admin, order.id);
+    expect((await nextOf())?.step).toBe("sign_wellmix");
+    await signOrderAs(admin, order.id);
+    expect((await nextOf())?.step).toBe("sign_supplier");
+    const supplier = (await getStore().list("users")).find(
+      (u) => u.role === "supplier" && u.partyId === "fornecedor-a",
+    )!;
+    await signOrderAs(supplier, order.id);
+    expect((await nextOf())?.step).toBe("signed");
+  });
+
   it("recusas: etapa, cliente de outra linha, sem cliente, quantidade e produto", async () => {
     const before = (await getStore().list("requests")).length;
     const other = await getStore().create("parties", {
@@ -576,9 +737,11 @@ describe("gerar solicitação", () => {
     expect(await ask([ok.booking.id, forOther.booking.id])).toBe(
       "booking_customer_mismatch",
     );
-    expect(await ask([ok.booking.id], { customer: "" })).toBe(
-      "booking_request_customer",
-    );
+    // Sem cliente na barra, linha de um cliente e linha sem cliente (que é
+    // do estoque) não vão na mesma solicitação.
+    expect(
+      await ask([ok.booking.id, forOther.booking.id], { customer: "" }),
+    ).toBe("booking_customer_mismatch");
     expect(await ask([ok.booking.id, noMoq.booking.id])).toBe(
       "booking_qty_missing",
     );
@@ -1129,8 +1292,9 @@ describe("achados da revisão (segunda leva)", () => {
     expect((await fresh(manual.booking.id)).analysis?.salePriceBrl).toBe(12);
   });
 
-  it("gerar solicitação sem cliente: recusa própria, com a linha; clientes diferentes apontam a que destoa", async () => {
+  it("gerar solicitação sem cliente: vai para o estoque Wellmix; clientes diferentes apontam a que destoa", async () => {
     const none = await row("approved");
+    const none2 = await row("approved");
     const withJoao = await row("offered", { customerId: joao.partyId });
     const other = await getStore().create("parties", {
       ...(await getStore().get("parties", joao.partyId!))!,
@@ -1147,14 +1311,19 @@ describe("achados da revisão (segunda leva)", () => {
       }
       return ["ok", null];
     };
-    expect(await refusal([none.booking.id])).toEqual([
-      "booking_request_customer",
-      none.booking.id,
+    // Linha de um cliente junto com linha sem cliente (estoque): destoa.
+    expect(await refusal([withJoao.booking.id, none2.booking.id])).toEqual([
+      "booking_customer_mismatch",
+      withJoao.booking.id,
     ]);
-    expect(await refusal([withJoao.booking.id, none.booking.id])).toEqual([
-      "booking_request_customer",
-      none.booking.id,
-    ]);
+    // Só linhas sem cliente: a solicitação nasce para o estoque da Wellmix.
+    expect(await refusal([none.booking.id])).toEqual(["ok", null]);
+    const born = await getStore().get(
+      "requests",
+      (await getStore().get("bookings", none.booking.id))!.requestId!,
+    );
+    const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+    expect(born?.customerId).toBe(STOCK_PARTY_ID);
     expect(await refusal([withJoao.booking.id, withOther.booking.id])).toEqual([
       "booking_customer_mismatch",
       withOther.booking.id,

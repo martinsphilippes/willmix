@@ -77,18 +77,10 @@ async function fillQuoteSheet(page: Page, price: string) {
   );
   await page.fill("input[name=colorAssortment]", "WHITE / PANTONE 185 C");
   await page.fill("input[name=material]", "GLASS");
-  await page.fill("input[name=productionStartAt]", "2026-11-02");
-  await page.locator("[data-sheet-schedule][data-ready]").waitFor();
-  await page.fill("input[name=lot1Interval]", "30");
-  await page.fill("input[name=lot1Cartons]", "50");
-  // Conta ao vivo e sugestão para fechar o container (sem aplicar).
-  // O fornecedor chinês vê "1,200" (zh-CN); em português seria "1.200".
-  await expect(page.locator("[data-sheet-totals]")).toContainText(/1[.,]200/);
-  await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
-    "data-fill-suggestion",
-    "partial",
-  );
-  await expect(page.locator("[data-fill-apply=add]")).toBeVisible();
+  // A "Programação de compra" saiu da cotação (pedido do dono): é do pedido.
+  await expect(page.locator("[data-sheet-section=schedule]")).toHaveCount(0);
+  await expect(page.locator("input[name=productionStartAt]")).toHaveCount(0);
+  await expect(page.locator("input[name=lot1Cartons]")).toHaveCount(0);
   // Salva o rascunho (os botões ficam no fim, depois das fotos; o `form` liga ao formulário).
   await Promise.all([
     page.waitForURL(/saved=/),
@@ -132,6 +124,33 @@ async function login(page: Page, email: string) {
   await page.getByLabel(/senha|password|密码/i).fill(PASSWORD);
   await page.getByRole("button", { name: /entrar|sign in|登录/i }).click();
   await page.waitForURL(/\/app/);
+}
+
+/**
+ * Assina o documento do pedido (docs/ORDER_SIGNATURE.md): o nome já vem
+ * preenchido; marca o aceite e assina. A Wellmix primeiro, o fornecedor depois.
+ */
+async function signOrderDocument(
+  page: Page,
+  orderUrl: string,
+  signedFile?: { name: string; mimeType: string; buffer: Buffer },
+) {
+  await page.goto(`${orderUrl}/purchase-order`);
+  // As duas formas de assinar ficam no topo, no quadro "Sua vez de assinar".
+  await expect(page.locator("[data-order-sign-turn]")).toBeVisible();
+  if (signedFile) {
+    // Fornecedor, opção 2: envia o PDF baixado e assinado. Escolher o
+    // arquivo já registra a assinatura (a opção 1, no portal, fica ao lado).
+    await expect(page.locator("[data-order-sign-form=own]")).toBeVisible();
+    await page
+      .locator("[data-order-sign-file] input[type=file]")
+      .setInputFiles(signedFile);
+  } else {
+    const form = page.locator("[data-order-sign-form=own]");
+    await form.locator("input[name=agree]").check();
+    await form.locator("button[type=submit]").click();
+  }
+  await page.waitForURL(/signed=1/);
 }
 
 /** Preenche todos os requisitos pendentes que o usuário logado pode preencher na tela do pedido. */
@@ -212,13 +231,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(page.locator("[data-explore]")).toBeVisible();
   await page.goto("/app/requests");
   await expect(page.getByText("Precisa importar um produto?")).toBeVisible();
-  // "Como funciona" chega recolhido; um toque abre e mostra a explicação.
-  const help = page.locator("[data-page-help]").first();
-  await expect(help).not.toHaveAttribute("open", /.*/);
-  await expect(help.locator("ol, p").first()).toBeHidden();
-  await help.locator("summary").click();
-  await expect(help).toHaveAttribute("open", /.*/);
-  await expect(help.locator("p").first()).toBeVisible();
+  // "Como funciona" saiu de todas as telas (pedido do dono).
+  await expect(page.locator("[data-page-help]")).toHaveCount(0);
   await page.goto("/app/requests/new");
   await page.selectOption('select[name="p0.productId"]', "prod-jarra");
   await page.fill(
@@ -231,9 +245,40 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   const requestUrl = page.url();
   await expect(page.getByText(/Solicitado/).first()).toBeVisible();
 
-  // 2. Wellmix abre RFQ para dois fornecedores
+  // 2. A RFQ está em espera (docs/RFQ_STANDBY.md): a solicitação oferece
+  // "Enviar ao fornecedor", um só. O administrador liga a RFQ na tela
+  // Pedidos → RFQ, e este teste segue pelo caminho da disputa (que continua
+  // guardado e funcionando).
   await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
+  // Em espera, a tela da solicitação não tem cartão de RFQ nem o cartão do
+  // solicitante (pedido do dono): só o atalho para enviar ao fornecedor.
+  await expect(page.locator("[data-rfq-card]")).toHaveCount(0);
+  await expect(page.locator("[data-request-to-send]")).toBeVisible();
+  await login(page, "admin@wellmix.com");
+  await page.goto("/app/rfq");
+  await expect(page.locator("[data-rfq-state=off]")).toBeVisible();
+  // O envio ao fornecedor (um só) fica nesta tela.
+  await expect(page.locator("[data-rfq-send]").first()).toBeVisible();
+  await page.locator("[data-rfq-switch=on]").click();
+  await page.waitForURL(/\/app\/rfq\?saved=on/);
+  await expect(page.locator("[data-rfq-state=on]")).toBeVisible();
+  // Sourcing também em espera (pedido do dono): a tela guarda tudo, mostra a
+  // situação e o interruptor do administrador (liga e volta para espera).
+  await page.goto("/app/sourcing");
+  await expect(page.locator("[data-sourcing-state=off]")).toBeVisible();
+  await expect(page.locator("[data-sourcing-standby]")).toBeVisible();
+  await page.locator("[data-sourcing-switch=on]").click();
+  await page.waitForURL(/\/app\/sourcing\?saved=on/);
+  await expect(page.locator("[data-sourcing-state=on]")).toBeVisible();
+  await page.locator("[data-sourcing-switch=off]").click();
+  await page.waitForURL(/\/app\/sourcing\?saved=off/);
+  await expect(page.locator("[data-sourcing-state=off]")).toBeVisible();
+
+  // Wellmix abre RFQ para dois fornecedores
+  await login(page, "operador@wellmix.com");
+  await page.goto(requestUrl);
+  await expect(page.locator("[data-rfq-card=rfq]")).toBeVisible();
   await page.getByLabel(/Shenzhen Supplier A/).check();
   await page.getByLabel(/Guangzhou Supplier B/).check();
   await page.getByRole("button", { name: /Abrir RFQ/ }).click();
@@ -251,9 +296,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.35");
-  // Prazo de produção não é digitado: vem da programação 1 (30 dias).
-  await expect(page.locator('[data-lead-time-auto="30"]')).toBeVisible();
-  await expect(page.locator("input[name=leadTimeDays]")).toHaveCount(0);
+  // Prazo de produção: informado direto, em dias (sem a programação).
+  await page.fill("input[name=leadTimeDays]", "30");
   await page.fill("textarea[name=conditions]", "FOB Shenzhen, 30/70");
   await page
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
@@ -280,7 +324,7 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
     .click();
   await page.waitForURL(/\/app\/quotes\//);
   await fillQuoteSheet(page, "2.6");
-  await expect(page.locator('[data-lead-time-auto="30"]')).toBeVisible();
+  await page.fill("input[name=leadTimeDays]", "30");
   await page
     .getByRole("button", { name: /提交报价|Send quotation|Enviar cotação/ })
     .click();
@@ -304,12 +348,6 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(requestUrl);
   await expect(page.getByText("Shenzhen Supplier A").first()).toBeVisible();
   await expect(page.getByText("Guangzhou Supplier B").first()).toBeVisible();
-  // Prazo de produção chega pela programação 1 da ficha (30 dias), sem digitar.
-  await expect(
-    page
-      .locator("tr", { hasText: "Shenzhen Supplier A" })
-      .locator("[data-quote-lead]"),
-  ).toHaveAttribute("data-quote-lead", "30");
   // Disputa: A é mais barato (o resto empata) e vence, com o motivo.
   const ranking = page.locator("[data-supplier-ranking]");
   await expect(ranking).toBeVisible();
@@ -386,11 +424,90 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   )?.match(/#(\d+)/)?.[1];
   expect(orderNumber).toBeTruthy();
 
+  // 6b. Selo de certificação: o pedido recém-criado já está nas pendências
+  // da certificadora (OCP), que envia o selo; a agência recebe a pendência,
+  // baixa o selo e envia a arte com o selo; a Wellmix confere.
+  const sealTask = page.locator("[data-task-row][data-task-group=cert_step]", {
+    hasText: new RegExp(`#${orderNumber}\\b`),
+  });
+  await login(page, "ocp@certifica.com");
+  await page.goto("/app");
+  await expect(sealTask.first()).toBeVisible();
+  await sealTask.first().getByRole("link").first().click();
+  await page.waitForURL(/\/app\/orders\/[^/]+#certification$/);
+  const sealRow = page.locator("[data-import-step=cert_seal]");
+  await expect(sealRow).toHaveAttribute("data-import-status", "pending");
+  // A certificadora vê o pedido completo para gerar o selo: os itens com
+  // foto e código e a ficha de compra inteira para ler, com o preço.
+  await expect(page.locator("[data-certifier-dossier]")).toBeVisible();
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  await expect(page.locator("[data-sheet-section=product]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=customs]")).toBeVisible();
+  // Vê tudo do pedido (decisão do dono): o bloco Preço também, só para ler.
+  await expect(page.locator("[data-sheet-section=price]")).toBeVisible();
+  await expect(page.locator("input[name=price]")).toBeDisabled();
+  await expect(page.locator("input[name=material]")).toBeDisabled();
+  await page.goto(`${orderUrl}#certification`);
+  await sealRow.locator("input[type=file]").setInputFiles(png);
+  await sealRow.locator("[data-import-submit=cert_seal]").click();
+  await page.waitForURL(/[?&]certStep=submitted/);
+  await expect(sealRow).toHaveAttribute("data-import-status", "submitted");
+  await login(page, "agencia@design.com");
+  await page.goto("/app");
+  await expect(sealTask.first()).toBeVisible();
+  await page.goto(orderUrl);
+  // A agência vê só as linhas do selo, com o arquivo para baixar.
+  await expect(page.locator("[data-import-step=cert_memorial]")).toHaveCount(0);
+  await expect(sealRow.locator("[data-import-file]")).toBeVisible();
+  const sealArtRow = page.locator("[data-import-step=cert_seal_art]");
+  await sealArtRow.locator("input[type=file]").setInputFiles(pdf);
+  await sealArtRow.locator("[data-import-submit=cert_seal_art]").click();
+  await page.waitForURL(/[?&]certStep=submitted/);
+  await login(page, "admin@wellmix.com");
+  await page.goto(orderUrl);
+  await page.locator("[data-import-validate=cert_seal_art]").click();
+  await page.waitForURL(/[?&]certStep=validated/);
+  await expect(sealArtRow).toHaveAttribute("data-import-status", "validated");
+
   // 7. ORDER_CREATED: o operador (comprador) confirma (limitamos a 1 envio)
   await login(page, "operador@wellmix.com");
+  // Ordem nova (decisão do dono): o documento do pedido só vai para
+  // assinatura depois da arte com o selo. Agora ele está "em preparação" e
+  // ninguém assina ainda.
+  await page.goto(`${orderUrl}/purchase-order`);
+  await expect(
+    page.locator("[data-order-document-status=awaiting_send]"),
+  ).toBeVisible();
+  await expect(page.locator("[data-order-awaiting-send]")).toBeVisible();
+  await expect(page.locator("[data-order-sign-turn]")).toHaveCount(0);
   await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
+  // A Programação de compra é da Wellmix: ela a faz na ficha do pedido,
+  // antes de validar a ficha.
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  // O bloco com pendência (Programação de compra) já vem aberto.
+  await expect(page.locator("[data-sheet-section=schedule]")).toBeVisible();
+  // Início da produção: automático (contrato assinado + prazo do
+  // fornecedor); ninguém digita.
+  await expect(page.locator("input[name=productionStartAt]")).toBeDisabled();
+  await expect(page.locator("[data-production-start-hint]")).toBeVisible();
+  await page.locator("[data-sheet-schedule][data-ready]").waitFor();
+  await page.fill("input[name=lot1Interval]", "30");
+  await page.fill("input[name=lot1Cartons]", "50");
+  // Conta ao vivo e sugestão para fechar o container (sem aplicar).
+  await expect(page.locator("[data-sheet-totals]")).toContainText(/1[.,]200/);
+  await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
+    "data-fill-suggestion",
+    "partial",
+  );
+  await expect(page.locator("[data-fill-apply=add]")).toBeVisible();
+  await Promise.all([
+    page.waitForURL(/saved=complete/),
+    page
+      .getByRole("button", { name: /保存采购单|Save sheet|Salvar ficha/ })
+      .click(),
+  ]);
   // A Wellmix valida a ficha/imagens (comprador) e o cadastro do produto.
   await fillMyRequirements(page, orderUrl, {}, 2);
   // Produção (Fase C): o cartão aparece para a Wellmix no pedido.
@@ -399,10 +516,20 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // Embarque e desembaraço (Fase D): os passos aparecem para a Wellmix.
   await expect(page.locator("[data-import-step=booking]")).toBeVisible();
 
-  // 8. PREPARATION: a ficha completa (com fotos) veio da cotação, então a etapa
-  // se concluiu sozinha. O pagamento ao fornecedor saiu do fluxo (segue a
-  // condição do cadastro do fornecedor): o pedido já está na embalagem.
+  // 8. PREPARATION: a ficha (com fotos) veio da cotação. A "Programação de
+  // compra" é da Wellmix (feita acima): o fornecedor nem a vê. O pagamento ao
+  // fornecedor saiu do fluxo (segue a condição do cadastro do fornecedor).
   await login(page, "supplier.a@china.com");
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  await expect(page.locator("[data-sheet-section=product]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=schedule]")).toHaveCount(0);
+  await expect(page.locator("input[name=lot1Cartons]")).toHaveCount(0);
+  // A Preparação conclui com a ficha completa e as validações da Wellmix. O
+  // documento do pedido ainda não foi enviado para assinatura: o fornecedor
+  // vê o aviso e não tem onde assinar.
+  await page.goto(`${orderUrl}/purchase-order`);
+  await expect(page.locator("[data-order-awaiting-send]")).toBeVisible();
+  await expect(page.locator("[data-order-sign-turn]")).toHaveCount(0);
   await page.goto(orderUrl);
   await expect(
     page
@@ -469,7 +596,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   );
   // 10. PACKAGING: a agência faz e envia a arte; o fornecedor confere e aprova.
   // Antes da arte, o fornecedor não tem o que aprovar.
-  await expect(page.locator("[data-requirement-waiting]")).toBeVisible();
+  await expect(
+    page.locator("[data-requirement-waiting]").first(),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /批准|Approve|Aprovar/ }),
   ).toHaveCount(0);
@@ -504,7 +633,41 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await expect(
     page.locator("li", { hasText: /Arte da embalagem/ }).first(),
   ).toContainText(/doc\.pdf/);
+  // 10b. Documento do pedido (ordem nova): com a arte enviada e o selo já
+  // aplicado nela (passo 6b), a agência aperta "Enviar para assinatura".
+  await page.goto(orderUrl);
+  const sendForm = page.locator("[data-requirement-form=order_sign_send]");
+  await expect(sendForm).toBeVisible();
+  await sendForm.locator("button[type=submit]").click();
+  await page.waitForLoadState("networkidle");
+  await expect(sendForm).toHaveCount(0);
+  // A Wellmix assina primeiro (aceite no portal).
+  await login(page, "operador@wellmix.com");
+  await signOrderDocument(page, orderUrl);
+  await expect(
+    page.locator("[data-order-signature=wellmix][data-signed=yes]"),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-order-signature=supplier][data-signed=no]"),
+  ).toBeVisible();
+  // O fornecedor baixa o documento em PDF, assina e envia o arquivo de volta.
   await login(page, "supplier.a@china.com");
+  const pdfResponse = await page.request.get(
+    `${orderUrl.replace("/app/orders/", "/api/orders/")}/purchase-order`,
+  );
+  expect(pdfResponse.status()).toBe(200);
+  expect(pdfResponse.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdfResponse.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  await signOrderDocument(page, orderUrl, pdf);
+  await expect(
+    page.locator("[data-order-signature=supplier][data-signed=yes]"),
+  ).toBeVisible();
+  await expect(page.locator("[data-signed-file]")).toBeVisible();
+  // Assinado pelos dois: pedido autorizado (sem integração, falta o Sankhya).
+  await expect(
+    page.locator("[data-order-document-status=signed]"),
+  ).toBeVisible();
+  // O fornecedor confere e aprova a arte: a etapa conclui.
   await page.goto(orderUrl);
   await page.getByRole("button", { name: /批准|Approve|Aprovar/ }).click();
   await page.waitForLoadState("networkidle");

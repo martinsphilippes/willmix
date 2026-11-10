@@ -79,6 +79,16 @@ beforeAll(async () => {
   order = await r.confirmDownPayment(admin, req.id);
 });
 
+/** Início da produção é automático (contrato assinado): o teste recua a data direto no banco. */
+async function backdateStart(orderId: string, iso: string) {
+  const [track] = await getStore().list("production_tracks", {
+    filter: { orderId },
+  });
+  await getStore().update("production_tracks", track.id, {
+    productionStartAt: iso,
+  });
+}
+
 describe("auditoria", () => {
   it("só admin e diretorias", () => {
     expect(av.canSeeAudit(admin)).toBe(true);
@@ -126,6 +136,10 @@ describe("painéis por área", () => {
       productionStartAt: new Date(Date.now() - 20 * 86_400_000).toISOString(),
       etd: "2026-12-01T12:00:00.000Z",
     });
+    await backdateStart(
+      order.id,
+      new Date(Date.now() - 20 * 86_400_000).toISOString(),
+    );
     await pr.recordFollowup(admin, order.id, {
       day: 5,
       status: "delayed",

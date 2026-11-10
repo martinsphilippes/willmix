@@ -24,6 +24,7 @@ import { audit } from "./audit";
 import {
   CUSTOMS_FIELDS,
   OPTIONAL_SHEET_FIELDS,
+  dropUnsavedEmptyOptional,
   SHEET_PHOTO_KINDS,
   SUPPLIER_FIELDS,
   type SheetInput,
@@ -63,6 +64,7 @@ export const MASTER_PRODUCT_FIELDS = [
   "innerQty",
   "netWeightPcKg",
   "grossWeightPcKg",
+  "averageWeightPcKg",
   "cbmPerCarton",
   "heightCm",
   "widthCm",
@@ -469,6 +471,7 @@ async function writeProductSheet(
     if (allowed.has(key) && value !== undefined) patch[key] = value;
   if ("lots" in patch) patch.lots = normalizeLots(patch.lots as never);
   const existing = await getProductSheet(productId);
+  dropUnsavedEmptyOptional(patch, existing);
   // Antes: o que a mestre mostrava (ficha ou colunas do produto).
   const supplier = product.supplierId
     ? await store.get("parties", product.supplierId)

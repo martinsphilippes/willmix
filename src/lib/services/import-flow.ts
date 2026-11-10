@@ -12,6 +12,8 @@ import {
   isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
+import { getSettings } from "@/lib/settings";
+import { artRole } from "@/lib/workflow/stages";
 import { audit } from "./audit";
 import { notify, type NotifyTarget } from "./notifications";
 import { isSchemaMissing } from "./packaging-brief";
@@ -22,18 +24,37 @@ import { isSchemaMissing } from "./packaging-brief";
  * financeiro ou Wellmix), quem valida e quem vê. Sem parceiro designado, a
  * Wellmix faz a parte dele. O financeiro (função da Wellmix) valida e paga o
  * numerário. A Wellmix vê e pode agir em tudo, menos no que é do financeiro.
+ *
+ * Certificação (Fase F, docs/CERTIFICATION.md) usa o mesmo mecanismo: além de
+ * memorial, laudo e registro, o selo de certificação. O pedido já nasce na
+ * mão da certificadora (OCP), que envia o selo; o selo vai para quem faz a
+ * arte da embalagem (a agência do pedido ou, sem ela, a Wellmix), que envia
+ * a arte com o selo aplicado; a Wellmix confere.
  */
 
 export class ImportFlowError extends Error {}
 
+/**
+ * Motivo gravado no passo "selo aplicado na arte" quando a certificadora
+ * troca o selo: é um marcador, e a tela mostra o texto no idioma de quem lê
+ * (certFlow.sealReplaced).
+ */
+export const SEAL_REPLACED_REASON = "@seal_replaced";
+
 /** Quem age num passo. */
 export type StepActor =
-  "logistics" | "comex" | "ocp" | "supplier" | "finance" | "wellmix";
+  "logistics" | "comex" | "ocp" | "agency" | "supplier" | "finance" | "wellmix";
 /** Cartão do passo: embarque/desembaraço ou certificação (Fase F). */
 export type StepGroup = "import" | "certification";
-/** O que o passo pede. */
+/** O que o passo pede ("file_text": arquivo obrigatório e texto opcional). */
 export type StepInput =
-  "text" | "file" | "text_file" | "money_file" | "channel" | "date";
+  | "text"
+  | "file"
+  | "text_file"
+  | "file_text"
+  | "money_file"
+  | "channel"
+  | "date";
 
 export interface StepTemplate {
   key: ImportStepKey;
@@ -46,6 +67,12 @@ export interface StepTemplate {
   after?: ImportStepKey;
   /** Sem valor: embarque e desembaraço. */
   group?: StepGroup;
+  /**
+   * Selo de certificação: vale para todo pedido, desde que ele nasce (os
+   * demais passos da certificação dependem de OCP designado ou de já terem
+   * começado, e só viram pendência a partir da Preparação).
+   */
+  seal?: boolean;
 }
 
 export const groupOf = (tpl: StepTemplate): StepGroup => tpl.group ?? "import";
@@ -175,6 +202,28 @@ export const IMPORT_STEPS: StepTemplate[] = [
     after: "cert_lab",
     group: "certification",
   },
+  // Selo de certificação: a certificadora envia o selo do pedido desde que
+  // ele nasce; quem faz a arte (agência ou Wellmix) aplica o selo na arte da
+  // embalagem, que corre em paralelo, e a Wellmix confere.
+  {
+    key: "cert_seal",
+    actor: "ocp",
+    validator: null,
+    input: "file_text",
+    visibleTo: ["ocp", "agency"],
+    group: "certification",
+    seal: true,
+  },
+  {
+    key: "cert_seal_art",
+    actor: "agency",
+    validator: "wellmix",
+    input: "file",
+    visibleTo: ["agency", "ocp"],
+    after: "cert_seal",
+    group: "certification",
+    seal: true,
+  },
 ];
 
 export const stepTemplate = (key: ImportStepKey) =>
@@ -184,8 +233,17 @@ const PARTNER_FIELD = {
   logistics: "logisticsId",
   comex: "comexId",
   ocp: "ocpId",
+  agency: "agencyId",
   supplier: "supplierId",
 } as const;
+
+/** Âncora do cartão do passo na tela do pedido. */
+const anchorOf = (tpl: StepTemplate) =>
+  groupOf(tpl) === "certification" ? "certification" : "import-flow";
+
+/** Nome do cartão nos registros da auditoria. */
+const auditLabel = (tpl: StepTemplate) =>
+  groupOf(tpl) === "certification" ? "Certificação" : "Embarque/desembaraço";
 
 /** Financeiro: função da Wellmix (ou admin). */
 export const isFinance = (user: User) =>
@@ -199,6 +257,22 @@ export function actsAs(user: User, order: Order, actor: StepActor): boolean {
   if (actor === "wellmix") return false;
   const field = PARTNER_FIELD[actor];
   return user.role === actor && !!user.partyId && order[field] === user.partyId;
+}
+
+/**
+ * Pode enviar o passo: quem age por ele. O passo da agência só é dela quando
+ * é ela quem faz a arte; com a arte feita pela Wellmix nas configurações, a
+ * agência do pedido só acompanha (a mesma regra do item "Arte" da etapa).
+ */
+export async function canSubmitStep(
+  user: User,
+  order: Order,
+  key: ImportStepKey,
+): Promise<boolean> {
+  const tpl = stepTemplate(key);
+  if (!actsAs(user, order, tpl.actor)) return false;
+  if (tpl.actor === "agency" && !isWellmix(user)) return agencyDoesArt(order);
+  return true;
 }
 
 /** Vê o passo: Wellmix sempre; o parceiro, se o passo é visível ao papel dele. */
@@ -247,11 +321,42 @@ async function loadOrder(orderId: string) {
   return order;
 }
 
+/**
+ * O passo da agência é de quem faz a arte da embalagem: a agência do pedido
+ * ou, sem agência (ou com a arte feita pela Wellmix nas configurações), a
+ * Wellmix. É a mesma regra do item "Arte" da etapa Arte e embalagem.
+ */
+async function agencyDoesArt(order: Order): Promise<boolean> {
+  const settings = await getSettings();
+  return artRole(order, settings.agencyValidationEnabled) === "agency";
+}
+
+/** Quem faz a arte na Wellmix: o designer do pedido, a função Designer ou o analista. */
+async function wellmixArtTarget(order: Order): Promise<NotifyTarget> {
+  const team = await getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  const designer = team.find((u) => u.id === order.designerUserId);
+  if (designer) return { userIds: [designer.id] };
+  const designers = team.filter((u) =>
+    (u.functions ?? []).includes("designer"),
+  );
+  if (designers.length) return { userIds: designers.map((u) => u.id) };
+  return order.ownerUserId
+    ? { userIds: [order.ownerUserId] }
+    : { role: ["admin", "operator"] };
+}
+
 /** Destino dos avisos para um papel do passo neste pedido. */
 async function targetFor(
   order: Order,
   actor: StepActor,
 ): Promise<NotifyTarget> {
+  if (actor === "agency") {
+    return order.agencyId && (await agencyDoesArt(order))
+      ? { role: "agency", partyId: order.agencyId }
+      : wellmixArtTarget(order);
+  }
   if (actor === "finance") {
     const team = await getStore().list("users", {
       filter: { role: ["admin", "operator"], active: true },
@@ -289,7 +394,7 @@ export async function submitStep(
 ) {
   const order = await loadOrder(orderId);
   const tpl = stepTemplate(key);
-  if (!actsAs(user, order, tpl.actor)) throw new ForbiddenError();
+  if (!(await canSubmitStep(user, order, key))) throw new ForbiddenError();
   const store = getStore();
   const steps = await stepsOf(orderId);
   if (!ready(key, steps)) throw new ImportFlowError("previous_step");
@@ -301,7 +406,9 @@ export async function submitStep(
   const needsValue = ["text", "text_file", "channel", "date"].includes(
     tpl.input,
   );
-  const needsFile = ["file", "text_file", "money_file"].includes(tpl.input);
+  const needsFile = ["file", "text_file", "file_text", "money_file"].includes(
+    tpl.input,
+  );
   if (needsValue && !value) throw new ImportFlowError("value_required");
   if (
     tpl.input === "channel" &&
@@ -331,19 +438,29 @@ export async function submitStep(
     validatedAt: null,
     rejectReason: null,
   };
-  const step = current
-    ? await store.update("import_steps", current.id, data)
-    : await store.create("import_steps", { orderId, key, ...data });
+  let step: ImportStep;
+  try {
+    step = current
+      ? await store.update("import_steps", current.id, data)
+      : await store.create("import_steps", { orderId, key, ...data });
+  } catch (error) {
+    // Passo novo cujo valor ainda não foi publicado no Appwrite (enum da
+    // coluna "key", gravada só na criação da linha): a tela explica, em vez
+    // de "erro inesperado".
+    if (!current && isEnumPending(error))
+      throw new ImportFlowError("schema_pending");
+    throw error;
+  }
   await audit(
     user,
     "import.step_submitted",
     "order",
     orderId,
-    `Embarque/desembaraço: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
+    `${auditLabel(tpl)}: ${key} enviado${value ? ` (${value})` : ""}${data.amount ? ` · ${data.currency} ${data.amount}` : ""}`,
   );
-  const link = `/app/orders/${orderId}#import-flow`;
+  const link = `/app/orders/${orderId}#${anchorOf(tpl)}`;
   if (tpl.validator)
-    await notify(await targetFor(order, tpl.validator), {
+    await notify(await validatorTarget(order, tpl.validator, user), {
       link,
       kind: "action",
       text: (t) => ({
@@ -368,7 +485,216 @@ export async function submitStep(
         body: t("importFlow.notify.channel.body"),
       }),
     });
+  // Selo de certificação: vai para quem faz a arte (agência ou Wellmix).
+  if (key === "cert_seal")
+    await handOverSeal(user, order, steps, current ?? null, step);
   return step;
+}
+
+/**
+ * Quem valida recebe o aviso. Quando a própria Wellmix enviou o passo que a
+ * Wellmix valida e o aviso iria só para quem enviou (o analista do pedido),
+ * ele vai para o resto da equipe: quem enviou não valida o próprio passo.
+ */
+async function validatorTarget(
+  order: Order,
+  validator: StepActor,
+  submitter: User,
+): Promise<NotifyTarget> {
+  const target = await targetFor(order, validator);
+  if (validator !== "wellmix" || !isWellmix(submitter)) return target;
+  if (!target.userIds?.length) return target;
+  if (target.userIds.some((id) => id !== submitter.id)) return target;
+  const team = await getStore().list("users", {
+    filter: { role: ["admin", "operator"], active: true },
+  });
+  const others = team.filter((u) => u.id !== submitter.id);
+  return others.length ? { userIds: others.map((u) => u.id) } : target;
+}
+
+/** Valor novo de enum ainda não publicado no Appwrite (esquema desatualizado). */
+function isEnumPending(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    ["document_invalid_structure", "row_invalid_structure"].includes(
+      String((error as { type?: unknown }).type ?? ""),
+    ) ||
+    /invalid (document|row) structure|not a valid enum|invalid.*enum/i.test(
+      error.message,
+    )
+  );
+}
+
+/**
+ * O selo chegou (ou foi trocado): quem faz a arte é avisado. Selo trocado com
+ * a arte já enviada ou validada: o passo da arte reabre, porque a arte leva o
+ * selo antigo. Reenviar sem mudar nada não avisa nem reabre.
+ */
+async function handOverSeal(
+  user: User,
+  order: Order,
+  steps: ImportStep[],
+  before: ImportStep | null,
+  seal: ImportStep,
+) {
+  const replaced = !!before && before.status !== "pending";
+  if (
+    replaced &&
+    before.documentId === seal.documentId &&
+    (before.value ?? null) === (seal.value ?? null)
+  )
+    return;
+  const link = `/app/orders/${order.id}#certification`;
+  const art = steps.find((s) => s.key === "cert_seal_art");
+  if (
+    replaced &&
+    (art?.status === "submitted" || art?.status === "validated")
+  ) {
+    await getStore().update("import_steps", art.id, {
+      status: "rejected",
+      validatedByUserId: null,
+      validatedAt: null,
+      // A arte antiga leva o selo antigo: sai do passo, para o reenvio pedir
+      // um arquivo novo (o antigo continua nos documentos do pedido).
+      documentId: null,
+      rejectReason: SEAL_REPLACED_REASON,
+    });
+    await audit(
+      user,
+      "import.step_rejected",
+      "order",
+      order.id,
+      "Certificação: cert_seal_art reaberto (a certificadora trocou o selo)",
+    );
+  }
+  await notify(await targetFor(order, "agency"), {
+    link,
+    kind: "action",
+    text: (t) => ({
+      subject: t(
+        replaced
+          ? "certFlow.notify.sealChanged.subject"
+          : "certFlow.notify.sealReady.subject",
+        { n: String(order.number) },
+      ),
+      body: t(
+        replaced
+          ? "certFlow.notify.sealChanged.body"
+          : "certFlow.notify.sealReady.body",
+      ),
+    }),
+  });
+}
+
+/**
+ * Pedido novo (ou OCP designado depois): avisa a certificadora de que há um
+ * selo a emitir; a pendência dela nasce junto. Todo pedido precisa de selo:
+ * sem certificadora no pedido (nenhuma ou mais de uma ativa; com uma só ela
+ * é designada sozinha), a Wellmix é avisada para designar, e a pendência
+ * fica com ela.
+ */
+export async function notifySealRequested(order: Order): Promise<void> {
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return;
+  if (order.ocpId) {
+    await notify(
+      { role: "ocp", partyId: order.ocpId },
+      {
+        link: `/app/orders/${order.id}#certification`,
+        kind: "action",
+        text: (t) => ({
+          subject: t("certFlow.notify.sealRequested.subject", {
+            n: String(order.number),
+          }),
+          body: t("certFlow.notify.sealRequested.body"),
+        }),
+      },
+    );
+    return;
+  }
+  await notify(await targetFor(order, "wellmix"), {
+    link: `/app/orders/${order.id}#order-partners`,
+    kind: "action",
+    text: (t) => ({
+      subject: t("certFlow.notify.noOcp.subject", { n: String(order.number) }),
+      body: t("certFlow.notify.noOcp.body"),
+    }),
+  });
+}
+
+/**
+ * Parceiro trocado no pedido já criado (em "Parceiros" ou pelo dono do
+ * briefing de embalagem). OCP novo: é avisado do selo ainda não enviado.
+ * Agência nova (ou retirada): quem passa a fazer a arte é avisado do selo
+ * que já chegou e ainda não foi aplicado.
+ */
+export async function notifySealPartner(
+  order: Order,
+  field: "ocpId" | "agencyId",
+  /** Quem estava no campo antes da troca (para não avisar de novo quem já fazia a arte). */
+  previousPartyId?: string | null,
+): Promise<void> {
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return;
+  const steps = await stepsOf(order.id);
+  const sealDone = isDone(steps.find((s) => s.key === "cert_seal"));
+  if (field === "ocpId") {
+    if (order.ocpId && !sealDone) await notifySealRequested(order);
+    return;
+  }
+  if (previousPartyId !== undefined) {
+    // Quem faz a arte não mudou (ex.: arte feita pela Wellmix nas
+    // configurações e só a agência do pedido trocou): nada a avisar.
+    const byAgency = (await getSettings()).agencyValidationEnabled;
+    const maker = (agencyId: string | null) =>
+      artRole({ agencyId }, byAgency) === "agency" ? agencyId : null;
+    if (maker(previousPartyId) === maker(order.agencyId ?? null)) return;
+  }
+  const art = steps.find((s) => s.key === "cert_seal_art");
+  const artOpen = !art || art.status === "pending" || art.status === "rejected";
+  if (!sealDone || !artOpen) return;
+  await notify(await targetFor(order, "agency"), {
+    link: `/app/orders/${order.id}#certification`,
+    kind: "action",
+    text: (t) => ({
+      subject: t("certFlow.notify.sealReady.subject", {
+        n: String(order.number),
+      }),
+      body: t("certFlow.notify.sealReady.body"),
+    }),
+  });
+}
+
+/** Selo de certificação visto por quem faz a arte (tela do briefing). */
+export type SealState = "pending" | "ready" | "rejected" | "sent" | "done";
+
+/**
+ * Situação do selo para o usuário: aguardando a certificadora, disponível
+ * para aplicar, arte com o selo recusada (refazer), enviada ou conferida.
+ * Todo pedido tem selo;
+ * nulo só para pedido cancelado ou encerrado, ou quando o usuário não vê o
+ * passo (ou não é quem aplica o selo).
+ */
+export async function sealStateFor(
+  user: User,
+  order: Order,
+): Promise<SealState | null> {
+  // Pedido cancelado ou encerrado: os passos não aceitam mais envio.
+  if (order.status === "CANCELLED" || order.status === "CLOSED") return null;
+  if (!canSeeStep(user, order, "cert_seal")) return null;
+  // Agência do pedido com a arte feita pela Wellmix: não é ela quem aplica.
+  if (!isWellmix(user) && !(await agencyDoesArt(order))) return null;
+  const steps = await stepsOf(order.id);
+  if (!isDone(steps.find((s) => s.key === "cert_seal"))) return "pending";
+  const art = steps.find((s) => s.key === "cert_seal_art");
+  if (isDone(art)) return "done";
+  if (art?.status === "submitted") return "sent";
+  // Recusada pela Wellmix ou reaberta por selo trocado: refazer.
+  return art?.status === "rejected" ? "rejected" : "ready";
+}
+
+/** Arquivo atual do selo de certificação do pedido (para o zip das artes). */
+export async function sealDocumentId(orderId: string): Promise<string | null> {
+  const seal = (await stepsOf(orderId)).find((s) => s.key === "cert_seal");
+  return seal && isDone(seal) ? seal.documentId : null;
 }
 
 /** Quem valida aprova ou recusa (com motivo; volta para quem fez). */
@@ -402,9 +728,9 @@ export async function validateStep(
     decision === "validated" ? "import.step_validated" : "import.step_rejected",
     "order",
     orderId,
-    `Embarque/desembaraço: ${key} ${decision === "validated" ? "validado" : `recusado (${reason})`}`,
+    `${auditLabel(tpl)}: ${key} ${decision === "validated" ? "validado" : `recusado (${reason})`}`,
   );
-  const link = `/app/orders/${orderId}#import-flow`;
+  const link = `/app/orders/${orderId}#${anchorOf(tpl)}`;
   if (decision === "rejected")
     await notify(await targetFor(order, tpl.actor), {
       link,
@@ -454,9 +780,15 @@ export async function importFlowView(
   const steps = await stepsOf(order.id);
   // Pedido encerrado: só leitura.
   const open = order.status !== "CLOSED" && order.status !== "CANCELLED";
-  return IMPORT_STEPS.filter(
+  const shown = IMPORT_STEPS.filter(
     (tpl) => groupOf(tpl) === group && canSeeStep(user, order, tpl.key),
-  ).map((tpl) => {
+  );
+  // Passo da agência: só de quem faz a arte (a Wellmix sempre pode agir).
+  const agencyActs =
+    isWellmix(user) ||
+    !shown.some((tpl) => tpl.actor === "agency") ||
+    (await agencyDoesArt(order));
+  return shown.map((tpl) => {
     const step = steps.find((s) => s.key === tpl.key) ?? null;
     const isReady = ready(tpl.key, steps);
     const done = isDone(step ?? undefined);
@@ -469,7 +801,8 @@ export async function importFlowView(
         open &&
         isReady &&
         !(tpl.validator && step?.status === "validated") &&
-        actsAs(user, order, tpl.actor),
+        actsAs(user, order, tpl.actor) &&
+        (tpl.actor !== "agency" || agencyActs),
       canValidate:
         open &&
         !!tpl.validator &&
@@ -501,33 +834,38 @@ export async function canAccessStepDocument(
 }
 
 export interface ImportTaskDraft {
-  kind: "import_step" | "import_validate";
+  /** Embarque/desembaraço (import_*) ou certificação (cert_*): fazer ou validar. */
+  kind: "import_step" | "import_validate" | "cert_step" | "cert_validate";
   order: Order;
   key: ImportStepKey;
 }
 
 /**
- * Pendências: o parceiro (comex, agente de carga, fornecedor) faz os passos
- * dele que estão prontos; quem valida, os enviados; o financeiro, o numerário.
- * A Wellmix só ganha pendência quando valida ou quando o passo é dela (DANFE).
+ * Pendências: o parceiro (comex, agente de carga, fornecedor, OCP, agência)
+ * faz os passos dele que estão prontos; quem valida, os enviados; o
+ * financeiro, o numerário. A Wellmix só ganha pendência quando valida, quando
+ * o passo é dela (DANFE, memorial) ou quando é ela quem faz a arte (o passo
+ * "selo aplicado na arte" de um pedido sem agência).
+ *
+ * Certificação: o selo vale para todo pedido, desde que ele nasce; sem
+ * certificadora no pedido, a pendência do selo fica com a Wellmix (designar
+ * a certificadora ou enviar o selo recebido por fora). Memorial, laudo e
+ * registro valem com OCP designado ou passo deles já começado (como o
+ * cartão do pedido), a partir da Preparação.
  */
 export async function importTasks(
   user: User,
   orders: Order[],
 ): Promise<ImportTaskDraft[]> {
   const IMPORT_LIVE = ["INSPECTION", "SHIPPING", "CUSTOMS", "TRANSPORT"];
-  const live = orders.filter(
-    (o) =>
-      IMPORT_LIVE.includes(o.status) ||
-      // Certificação: do pedido criado em diante, com OCP designado.
-      (!!o.ocpId &&
-        !["ORDER_CREATED", "CLOSED", "CANCELLED"].includes(o.status)),
+  const open = orders.filter(
+    (o) => o.status !== "CLOSED" && o.status !== "CANCELLED",
   );
-  if (!live.length) return [];
+  if (!open.length) return [];
   let rows: ImportStep[] = [];
   try {
     rows = await getStore().list("import_steps", {
-      filter: { orderId: live.map((o) => o.id) },
+      filter: { orderId: open.map((o) => o.id) },
     });
   } catch (error) {
     if (isSchemaMissing(error)) return [];
@@ -535,12 +873,25 @@ export async function importTasks(
   }
   const out: ImportTaskDraft[] = [];
   const wellmix = isWellmix(user);
-  for (const order of live) {
+  let agencyArt: boolean | null = null;
+  for (const order of open) {
     const steps = rows.filter((r) => r.orderId === order.id);
+    const importLive = IMPORT_LIVE.includes(order.status);
+    // Memorial, laudo e registro: com OCP designado ou passo deles começado.
+    // Com o pedido recém-criado ninguém ganha a pendência de começar, mas o
+    // que já começou pelo cartão segue (validar, passo seguinte).
+    const classicStarted = steps.some((s) => {
+      const tpl = stepTemplate(s.key);
+      return groupOf(tpl) === "certification" && !tpl.seal;
+    });
+    const classicCert =
+      order.status === "ORDER_CREATED"
+        ? classicStarted
+        : !!order.ocpId || classicStarted;
     for (const tpl of IMPORT_STEPS) {
-      if (groupOf(tpl) === "import" && !IMPORT_LIVE.includes(order.status))
-        continue;
-      if (groupOf(tpl) === "certification" && !order.ocpId) continue;
+      const cert = groupOf(tpl) === "certification";
+      if (!cert && !importLive) continue;
+      if (cert && !tpl.seal && !classicCert) continue;
       const step = steps.find((s) => s.key === tpl.key);
       // Validar o que foi enviado.
       if (
@@ -555,17 +906,36 @@ export async function importTasks(
           (tpl.validator !== "supplier" &&
             !order[PARTNER_FIELD[tpl.validator]]))
       ) {
-        out.push({ kind: "import_validate", order, key: tpl.key });
+        out.push({
+          kind: cert ? "cert_validate" : "import_validate",
+          order,
+          key: tpl.key,
+        });
         continue;
       }
       // Fazer (ou refazer) o passo.
-      const open =
+      const todo =
         !step || step.status === "pending" || step.status === "rejected";
-      if (!open || !ready(tpl.key, steps)) continue;
+      if (!todo || !ready(tpl.key, steps)) continue;
       if (!actsAs(user, order, tpl.actor)) continue;
-      if (wellmix && tpl.actor !== "wellmix" && tpl.actor !== "finance")
+      if (tpl.actor === "agency") {
+        // Passo de quem faz a arte: a agência do pedido ou, sem ela, a Wellmix.
+        agencyArt ??= (await getSettings()).agencyValidationEnabled;
+        const agencyDoes = artRole(order, agencyArt) === "agency";
+        if (wellmix ? agencyDoes : !agencyDoes) continue;
+      } else if (
+        wellmix &&
+        tpl.actor !== "wellmix" &&
+        tpl.actor !== "finance" &&
+        // Selo sem certificadora no pedido: a pendência fica com a Wellmix.
+        !(tpl.seal && !order[PARTNER_FIELD[tpl.actor]])
+      )
         continue;
-      out.push({ kind: "import_step", order, key: tpl.key });
+      out.push({
+        kind: cert ? "cert_step" : "import_step",
+        order,
+        key: tpl.key,
+      });
     }
   }
   return out;

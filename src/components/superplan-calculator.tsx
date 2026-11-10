@@ -118,6 +118,7 @@ export function SuperplanCalculator({
   prefill,
   ctx,
   averageUsd,
+  averageWeightKg = null,
   save,
   rfq = null,
 }: {
@@ -133,6 +134,12 @@ export function SuperplanCalculator({
    * propriedade, a linha não aparece.
    */
   averageUsd?: number | null;
+  /**
+   * Peso médio por peça (kg), da ficha mestre do produto: aparece na Compra,
+   * só para leitura (muda-se na ficha do produto ou no Booking). Não entra
+   * na conta.
+   */
+  averageWeightKg?: number | null;
   save?: SuperplanSave;
   /** Nulo: sem o cartão de abrir a faca e a RFQ. */
   rfq?: SuperplanRfqOptions | null;
@@ -377,6 +384,22 @@ export function SuperplanCalculator({
               {field("pcsPerCarton", "superplan.pcsPerCarton")}
               {field("netWeightPcKg", "superplan.netWeight")}
               {field("grossWeightPcKg", "superplan.grossWeight")}
+              <Field
+                label={L("superplan.averageWeight")}
+                hint={L("superplan.averageWeight.hint")}
+              >
+                <Input
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={averageWeightKg === null ? "" : nf(averageWeightKg, 4)}
+                  placeholder="—"
+                  data-superplan-average-weight={
+                    averageWeightKg === null ? "" : averageWeightKg.toFixed(4)
+                  }
+                  className="bg-zinc-50 text-zinc-600"
+                />
+              </Field>
               {field("cbmPerCarton", "superplan.cbm")}
             </div>
             {/* Bruto vazio com o líquido preenchido: o campo continua vazio e

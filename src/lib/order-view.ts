@@ -1,5 +1,6 @@
 import type { Requirement, Role, Stage, StageKey, User } from "@/lib/db";
 import { isPartner, isWellmix } from "@/lib/auth/permissions";
+import type { OrderPartKey } from "@/lib/order-parts";
 
 /*
  * O que cada papel vê das etapas na tela do pedido. A Wellmix vê tudo; cliente
@@ -43,4 +44,49 @@ export function stageVisibleTo(
     return reads.includes(stage.key) && stage.status !== "pending";
   }
   return stage.status !== "pending";
+}
+
+/*
+ * Tabela "Etapas do pedido": quais linhas cada login vê (decisão do dono).
+ * A Wellmix e o cliente veem o fluxo inteiro (o cliente acompanha o pedido).
+ * Fornecedor e parceiros veem só o que é responsabilidade do próprio login:
+ * as etapas em que respondem ou têm item a preencher, as partes do pedido em
+ * que atuam e, no caso dos parceiros, as etapas que precisam ler.
+ */
+
+/** Papéis de fora da Wellmix que atuam em cada parte do pedido. */
+export const ORDER_PART_ROLES: Record<OrderPartKey, readonly Role[]> = {
+  document: ["supplier"],
+  sheet: ["supplier"],
+  certification: ["ocp"],
+  artwork: ["agency"],
+  // Pagamento ao fornecedor e recebimento: só a Wellmix age.
+  supplier_payment: [],
+  production: ["supplier"],
+  import: ["comex", "broker", "logistics"],
+  receiving: [],
+};
+
+const seesWholeFlow = (user: Pick<User, "role">) =>
+  isWellmix(user) || user.role === "customer";
+
+/** A linha da etapa aparece na tabela para este login? */
+export function stageRowFor(
+  user: Pick<User, "role">,
+  stage: Pick<Stage, "key" | "status" | "responsibleRole">,
+  reqs: readonly Pick<Requirement, "role">[],
+): boolean {
+  if (seesWholeFlow(user)) return true;
+  if (stageOfRole(stage, reqs, user.role)) return true;
+  // Etapa que o parceiro só lê (ex.: o despachante e o embarque).
+  const reads = PARTNER_READ_STAGES[user.role] ?? [];
+  return reads.includes(stage.key) && stageVisibleTo(user, stage, reqs);
+}
+
+/** A linha da parte do pedido aparece na tabela para este login? */
+export function partRowFor(
+  user: Pick<User, "role">,
+  part: OrderPartKey,
+): boolean {
+  return seesWholeFlow(user) || ORDER_PART_ROLES[part].includes(user.role);
 }

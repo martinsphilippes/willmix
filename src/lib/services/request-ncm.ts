@@ -9,7 +9,7 @@ import {
   type RequestNcmSource,
   type User,
 } from "@/lib/db";
-import { assertWellmix } from "@/lib/auth/permissions";
+import { ForbiddenError, isWellmix } from "@/lib/auth/permissions";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { audit } from "./audit";
 import {
@@ -22,12 +22,34 @@ import {
 
 /*
  * NCM da solicitação. Ordem:
- *   1. NCM confirmado na própria solicitação (pela Wellmix);
+ *   1. NCM confirmado na própria solicitação (pelo despachante ou pela Wellmix);
  *   2. NCM validado no cadastro do produto (vale direto, sem pedir de novo);
- *   3. sem nenhum: a IA (e a tabela, pelas palavras-chave) sugere; a Wellmix
- *      confirma. Sugestão nunca entra na conta sozinha (IA ≠ regra de negócio).
+ *   3. sem nenhum: a IA (e a tabela, pelas palavras-chave) sugere; o
+ *      despachante classifica (pendência dele) e a Wellmix também pode
+ *      confirmar. Sugestão nunca entra na conta sozinha (IA ≠ regra de negócio).
  * Com o NCM, II e IPI saem da tabela TEC/TIPI.
+ *
+ * O despachante trabalha numa tela só do NCM (`ncmWorkFor`): vê o produto
+ * (nome, descrição, especificação, material), nunca cliente, fornecedor,
+ * quantidade nem preço.
  */
+
+/** Quem classifica o NCM: o despachante (com empresa); a Wellmix também pode. */
+export const canClassifyNcm = (user: Pick<User, "role" | "partyId">) =>
+  isWellmix(user as User) || (user.role === "broker" && !!user.partyId);
+
+export function assertNcmClassifier(user: Pick<User, "role" | "partyId">) {
+  if (!canClassifyNcm(user)) throw new ForbiddenError();
+}
+
+/** Situações em que a solicitação ainda espera o NCM (antes do pedido). */
+const NCM_OPEN_STATUSES = [
+  "REQUESTED",
+  "RFQ_OPEN",
+  "QUOTATION_RECEIVED",
+  "SUPPLIER_SELECTED",
+  "WAITING_DOWN_PAYMENT",
+] as const;
 
 export interface RequestNcm {
   ncm: string | null;
@@ -89,6 +111,7 @@ async function factsFor(request: Request) {
     category: sheet?.ncm
       ? `HS/NCM informado pelo fornecedor: ${sheet.ncm}`
       : null,
+    supplierHs: sheet?.ncm ?? null,
   };
 }
 
@@ -117,10 +140,12 @@ export async function suggestRequestNcm(
   user: User | null,
   requestId: string,
 ): Promise<{ count: number; aiError: string | null }> {
-  if (user) assertWellmix(user);
+  if (user) assertNcmClassifier(user);
   const store = getStore();
   const request = await store.get("requests", requestId);
   if (!request) throw new Error("not_found");
+  if (user && !isWellmix(user) && !ncmOpenFor(request))
+    throw new Error("ncm_closed");
   const facts = await factsFor(request);
   const out: NcmSuggestion[] = [];
   let aiError: string | null = null;
@@ -136,7 +161,13 @@ export async function suggestRequestNcm(
     try {
       const result = await adapter.complete(
         buildPrompt("ncm", {
-          product: facts,
+          product: {
+            name: facts.name,
+            description: facts.description,
+            specification: facts.specification,
+            material: facts.material,
+            category: facts.category,
+          },
           context:
             "Prefira o NCM completo de 8 dígitos (0000.00.00) da TEC vigente; use 6 dígitos só se não for possível decidir o item.",
         }),
@@ -203,8 +234,10 @@ export async function suggestionsView(
 }
 
 /**
- * Wellmix confirma o NCM da solicitação. Com tabela carregada, o NCM tem de
- * existir nela. Produto do catálogo sem NCM ganha a classificação validada.
+ * O despachante (ou a Wellmix) confirma o NCM da solicitação. Com tabela
+ * carregada, o NCM tem de existir nela. Produto do catálogo sem NCM ganha a
+ * classificação validada. O despachante só mexe antes do pedido; depois, os
+ * dados aduaneiros são os da ficha do pedido.
  */
 export async function confirmRequestNcm(
   user: User,
@@ -212,13 +245,14 @@ export async function confirmRequestNcm(
   raw: string,
   source: RequestNcmSource,
 ) {
-  assertWellmix(user);
+  assertNcmClassifier(user);
   const ncm = normalizeNcm(raw);
   if (!ncm) throw new FiscalError("ncm_invalid");
   const store = getStore();
   const request = await store.get("requests", requestId);
   if (!request) throw new Error("not_found");
   if (request.status === "CANCELLED") throw new Error("request_closed");
+  if (!isWellmix(user) && !ncmOpenFor(request)) throw new Error("ncm_closed");
   const rates = await lookupNcm(ncm);
   if (!rates && (await hasFiscalTable()))
     throw new FiscalError("ncm_not_in_table");
@@ -261,7 +295,166 @@ export async function confirmRequestNcm(
       await validateTaxClassification(user, row.id);
     }
   }
+  // Classificado pelo despachante: o analista fica sabendo (o valor ao cliente mudou).
+  if (!isWellmix(user)) {
+    const { notify } = await import("./notifications");
+    const { WELLMIX_ROLES } = await import("@/lib/auth/permissions");
+    await notify(
+      request.ownerUserId
+        ? { userIds: [request.ownerUserId] }
+        : { role: WELLMIX_ROLES },
+      {
+        kind: "done",
+        subject: `NCM classificado pelo despachante: ${request.productName}`,
+        body: `NCM ${formatNcm(ncm)}${request.number ? ` · solicitação nº ${request.number}` : ""}. II e IPI já entram no valor ao cliente.`,
+        link: `/app/requests/${request.id}#ncm`,
+      },
+    ).catch(() => undefined);
+  }
   return { ncm, rates };
+}
+
+/** A solicitação ainda aceita o NCM do despachante (aberta e sem pedido). */
+function ncmOpenFor(request: Pick<Request, "status" | "orderId">) {
+  return (
+    !request.orderId &&
+    (NCM_OPEN_STATUSES as readonly string[]).includes(request.status)
+  );
+}
+
+/**
+ * Solicitações abertas sem NCM (nem na solicitação, nem no cadastro do
+ * produto): a fila do despachante.
+ */
+export async function ncmPendingRequests(): Promise<Request[]> {
+  const store = getStore();
+  const open = (
+    await store.list("requests", {
+      filter: { status: [...NCM_OPEN_STATUSES] },
+    })
+  ).filter((r) => !r.orderId && !normalizeNcm(r.ncm));
+  const productIds = [
+    ...new Set(open.map((r) => r.productId).filter((id): id is string => !!id)),
+  ];
+  const products = productIds.length
+    ? await store.list("products", { filter: { id: productIds } })
+    : [];
+  const withNcm = new Set(
+    products.filter((p) => normalizeNcm(p.ncm)).map((p) => p.id),
+  );
+  return open.filter((r) => !r.productId || !withNcm.has(r.productId));
+}
+
+/** Despachantes que recebem a pendência do NCM: login ativo e com empresa. */
+async function ncmBrokers(): Promise<User[]> {
+  const brokers = await getStore().list("users", {
+    filter: { role: "broker", active: true },
+  });
+  return brokers.filter((u) => !!u.partyId);
+}
+
+/** Há despachante com login ativo para receber a pendência do NCM? */
+export async function hasNcmBroker(): Promise<boolean> {
+  return (await ncmBrokers()).length > 0;
+}
+
+/**
+ * Aviso aos despachantes: há produto novo para classificar. Um aviso por
+ * envio (um lote de 30 produtos não vira 30 avisos). Nunca impede a
+ * solicitação de nascer.
+ */
+export async function notifyNcmPending(created: Request[]) {
+  try {
+    const brokers = await ncmBrokers();
+    if (!brokers.length) return;
+    const ids = new Set(created.map((r) => r.id));
+    const pending = (await ncmPendingRequests()).filter((r) => ids.has(r.id));
+    if (!pending.length) return;
+    const { notify } = await import("./notifications");
+    const [first] = pending;
+    await notify(
+      { userIds: brokers.map((u) => u.id) },
+      {
+        kind: "action",
+        link:
+          pending.length === 1 ? `/app/requests/${first.id}/ncm` : "/app/tasks",
+        text: (t) =>
+          pending.length === 1
+            ? {
+                subject: t("ncm.notify.one.subject", {
+                  product: first.productName,
+                }),
+                body: t("ncm.notify.one.body"),
+              }
+            : {
+                subject: t("ncm.notify.many.subject", {
+                  count: pending.length,
+                }),
+                body: t("ncm.notify.many.body"),
+              },
+      },
+    );
+  } catch (error) {
+    console.error("[ncm] aviso ao despachante falhou", error);
+  }
+}
+
+/** O que o despachante vê para classificar: só o produto, nada comercial. */
+export interface NcmWork {
+  requestId: string;
+  number: number | null;
+  productName: string;
+  description: string | null;
+  specification: string | null;
+  /** Material da ficha do fornecedor ou do cadastro. */
+  material: string | null;
+  category: string | null;
+  color: string | null;
+  /** HS/NCM que o fornecedor informou na ficha (pista, não é a classificação). */
+  supplierHs: string | null;
+  ncm: RequestNcm;
+  suggestions: SuggestionView[];
+  /** Ainda não houve sugestão automática. */
+  neverSuggested: boolean;
+  hasTable: boolean;
+  /** Ainda dá para classificar (aberta e sem pedido). */
+  editable: boolean;
+}
+
+/**
+ * Tela do NCM para quem classifica. Nulo quando a solicitação não existe ou
+ * foi cancelada. Não devolve cliente, fornecedor, quantidade nem preço.
+ */
+export async function ncmWorkFor(
+  user: User,
+  requestId: string,
+): Promise<NcmWork | null> {
+  assertNcmClassifier(user);
+  const store = getStore();
+  const request = await store.get("requests", requestId);
+  if (!request || request.status === "CANCELLED") return null;
+  const [product, facts, hasTable] = await Promise.all([
+    request.productId ? store.get("products", request.productId) : null,
+    factsFor(request),
+    hasFiscalTable(),
+  ]);
+  const ncm = await requestNcm(request, product);
+  return {
+    requestId: request.id,
+    number: request.number ?? null,
+    productName: request.productName,
+    description: request.description ?? null,
+    specification: request.specification ?? null,
+    material: facts.material ?? product?.material ?? null,
+    category: product?.category ?? null,
+    color: product?.color ?? null,
+    supplierHs: facts.supplierHs,
+    ncm,
+    suggestions: ncm.status === "none" ? await suggestionsView(request) : [],
+    neverSuggested: ncm.status === "none" && request.ncmSuggestions == null,
+    hasTable,
+    editable: ncmOpenFor(request),
+  };
 }
 
 /**

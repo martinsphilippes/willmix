@@ -56,12 +56,14 @@ export function PurchaseSheetFields({
   plan,
   containerType,
   containerTypes,
+  productionStart = null,
   editSupplier,
   editCustoms,
   lotRequired = true,
   requestSchedule = null,
   requestUnit = "un",
   master = false,
+  hideSchedule = false,
   records = null,
   ncmSuggestions = [],
   supplierOptions = null,
@@ -80,6 +82,8 @@ export function PurchaseSheetFields({
   plan: SheetPlan;
   containerType: string | null;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
+  /** Pedido: início da produção automático (contrato assinado + Configurações). */
+  productionStart?: { auto: boolean; days: number; at: string | null } | null;
   editSupplier: boolean;
   editCustoms: boolean;
   /** Lote 1 obrigatório (Preparação); na cotação os lotes são opcionais. */
@@ -90,6 +94,11 @@ export function PurchaseSheetFields({
   requestUnit?: string;
   /** Ficha mestre do produto: sem início de produção nem programações (são de cada compra). */
   master?: boolean;
+  /**
+   * Cotação: sem o bloco "Programação de compra" (é do pedido). O que já
+   * estava gravado nele fica como está: o formulário não o envia.
+   */
+  hideSchedule?: boolean;
   /** Bloco Fornecedor vem dos cadastros: o que falta neles e os atalhos para completar. */
   records?: SheetRecords | null;
   /** Sugestões de NCM (cadastro do produto, classificações, tabela) para quem edita a alfândega. */
@@ -111,9 +120,10 @@ export function PurchaseSheetFields({
   /**
    * Quem está preenchendo. Fornecedor: só o que é dele (sem Despachante nem
    * E-commerce, que são da Wellmix; o container do cálculo é escolha da
-   * Wellmix e fica só para ver).
+   * Wellmix e fica só para ver). Certificadora (OCP): só leitura, todos os
+   * blocos abertos de uma vez e sem o bloco Preço nem a média do despachante.
    */
-  audience?: "wellmix" | "supplier";
+  audience?: "wellmix" | "supplier" | "certifier";
   /** Alíquotas da tabela pelo NCM da ficha ("II 20% · IPI 0%"): valem com II/IPI vazios. */
   ncmRates?: string | null;
   /** Sem NCM nem sugestão: onde a IA sugere (card de NCM da solicitação). */
@@ -135,7 +145,7 @@ export function PurchaseSheetFields({
     v === null || v === undefined ? "" : String(v);
   const sup = !editSupplier;
   const lots = plan.lots;
-  const view = { containerType, containerTypes };
+  const view = { containerType, containerTypes, productionStart };
   const access = { editCustoms };
   const required = t("sheet.required");
   const F = SheetField;
@@ -143,26 +153,37 @@ export function PurchaseSheetFields({
   // pendência (os outros nascem escondidos); a tabela troca o bloco aberto e
   // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
   const supplierOnly = audience === "supplier";
+  const certifier = audience === "certifier";
+  // Programação de compra: quem faz é a Wellmix; o fornecedor não a vê
+  // (a ficha mestre do produto continua como era).
+  const noSchedule = hideSchedule || (supplierOnly && !master);
   const nav = sheetSectionsView(t, sectionsMissing, {
     master,
     photosHref,
-    omit: supplierOnly ? ["customs", "ecommerce"] : [],
+    omit: [
+      ...(supplierOnly ? (["customs", "ecommerce"] as const) : []),
+      ...(noSchedule ? (["schedule"] as const) : []),
+    ],
   });
   const open = initialSheetSection(sectionsMissing, { photosHref });
   const Section = SheetSection;
   return (
     <>
-      <div className="lg:col-span-2">
-        <SheetSectionsNav
-          sections={nav.sections}
-          labels={nav.labels}
-          initial={open}
-        />
-      </div>
+      {/* Quem só lê para certificar vê a ficha inteira de uma vez (sem a
+          tabela de blocos, que serve a quem preenche). */}
+      {certifier ? null : (
+        <div className="lg:col-span-2">
+          <SheetSectionsNav
+            sections={nav.sections}
+            labels={nav.labels}
+            initial={open}
+          />
+        </div>
+      )}
       {/* Fornecedor e Produto lado a lado: primeiro quem vende, depois o que se compra.
           Na ficha do pedido/cotação a página é uma grade de 2 colunas (o <form> é
           display: contents): daí as classes de ordem e de largura dos blocos. */}
-      <Section open={open} k="supplier" order="lg:order-1">
+      <Section open={open} all={certifier} k="supplier" order="lg:order-1">
         <Card title={t("sheet.section.supplier")} dense>
           <Rows>
             <F t={t} m={missing} k="sheetDate" size="sm">
@@ -307,7 +328,7 @@ export function PurchaseSheetFields({
           ) : null}
         </Card>
       </Section>
-      <Section open={open} k="product" order="lg:order-1">
+      <Section open={open} all={certifier} k="product" order="lg:order-1">
         <Card title={t("sheet.section.product")} dense>
           <Rows>
             <F t={t} m={missing} k="netWeightPcKg" size="xs" req>
@@ -321,6 +342,13 @@ export function PurchaseSheetFields({
               <Num
                 name="grossWeightPcKg"
                 value={numValue(sheet.grossWeightPcKg)}
+                disabled={sup}
+              />
+            </F>
+            <F t={t} m={missing} k="averageWeightPcKg" size="xs">
+              <Num
+                name="averageWeightPcKg"
+                value={numValue(sheet.averageWeightPcKg ?? null)}
                 disabled={sup}
               />
             </F>
@@ -413,7 +441,7 @@ export function PurchaseSheetFields({
       </Section>
 
       {/* Caixa e embalagem à esquerda, preço e condições à direita. */}
-      <Section open={open} k="carton" order="lg:order-2">
+      <Section open={open} all={certifier} k="carton" order="lg:order-2">
         <Card title={t("sheet.section.carton")} dense>
           <Rows>
             <F t={t} m={missing} k="masterCartonQty" size="xs" req>
@@ -558,239 +586,267 @@ export function PurchaseSheetFields({
           </Rows>
         </Card>
       </Section>
-      <Section open={open} k="price" order="lg:order-2">
-        <Card title={t("sheet.section.price")} dense>
-          <Rows>
-            <F t={t} m={missing} k="incoterm" size="xs" req>
-              <select
-                name="incoterm"
-                defaultValue={sheet.incoterm ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              >
-                <option value="">—</option>
-                {SHEET_INCOTERMS.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </F>
-            <F t={t} m={missing} k="currency" size="sm" req>
-              <select
-                name="currency"
-                defaultValue={sheet.currency ?? ""}
-                disabled={sup}
-                className={inputDenseClass}
-              >
-                <option value="">—</option>
-                {SHEET_CURRENCIES.map((v) => (
-                  <option key={v} value={v}>
-                    {t(`currency.name.${v}` as DictionaryKey)}
-                  </option>
-                ))}
-              </select>
-            </F>
-            <F t={t} m={missing} k="price" size="sm" req>
-              <MoneyInput
-                locale={t.intl}
-                name="price"
-                watchField="currency"
-                defaultAmount={numValue(sheet.price) || null}
-                disabled={sup}
-                decimals={4}
-                size="sm"
-              />
-            </F>
-            <F t={t} m={missing} k="moq" size="xs" req>
-              <Num name="moq" value={numValue(sheet.moq)} disabled={sup} int />
-            </F>
-          </Rows>
-        </Card>
-      </Section>
-
-      <Section open={open} k="schedule" order="lg:order-3">
-        <Card title={t("sheet.section.schedule")} dense>
-          <Rows>
-            {!master ? (
-              <F t={t} m={missing} k="productionStartAt" size="sm" req>
-                <input
-                  type="date"
-                  name="productionStartAt"
-                  defaultValue={dateValue(sheet.productionStartAt)}
+      {
+        <Section open={open} all={certifier} k="price" order="lg:order-2">
+          <Card title={t("sheet.section.price")} dense>
+            <Rows>
+              <F t={t} m={missing} k="incoterm" size="xs" req>
+                <select
+                  name="incoterm"
+                  defaultValue={sheet.incoterm ?? ""}
                   disabled={sup}
                   className={inputDenseClass}
+                >
+                  <option value="">—</option>
+                  {SHEET_INCOTERMS.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </F>
+              <F t={t} m={missing} k="currency" size="sm" req>
+                <select
+                  name="currency"
+                  defaultValue={sheet.currency ?? ""}
+                  disabled={sup}
+                  className={inputDenseClass}
+                >
+                  <option value="">—</option>
+                  {SHEET_CURRENCIES.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`currency.name.${v}` as DictionaryKey)}
+                    </option>
+                  ))}
+                </select>
+              </F>
+              <F t={t} m={missing} k="price" size="sm" req>
+                <MoneyInput
+                  locale={t.intl}
+                  name="price"
+                  watchField="currency"
+                  defaultAmount={numValue(sheet.price) || null}
+                  disabled={sup}
+                  decimals={4}
+                  size="sm"
                 />
               </F>
-            ) : null}
-            <F t={t} m={missing} k="containerType" size="sm">
-              <select
-                name="containerType"
-                defaultValue={view.containerType ?? ""}
-                disabled={sup || supplierOnly}
-                className={inputDenseClass}
-              >
-                {view.containerTypes.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} · {c.capacityCbm} m³
-                  </option>
-                ))}
-              </select>
-            </F>
-          </Rows>
-          {master ? (
-            <p className="mt-3 text-xs text-zinc-500">
-              {t("productSheet.scheduleHint")}
-            </p>
-          ) : (
-            <>
+              <F t={t} m={missing} k="moq" size="xs" req>
+                <Num
+                  name="moq"
+                  value={numValue(sheet.moq)}
+                  disabled={sup}
+                  int
+                />
+              </F>
+            </Rows>
+          </Card>
+        </Section>
+      }
+
+      {noSchedule ? null : (
+        <Section open={open} all={certifier} k="schedule" order="lg:order-3">
+          <Card title={t("sheet.section.schedule")} dense>
+            <Rows>
+              {!master ? (
+                <F t={t} m={missing} k="productionStartAt" size="sm">
+                  {/* Automático: contrato assinado + prazo das Configurações.
+                      Desabilitado: não vai no envio; a programação lê o valor. */}
+                  <input
+                    type="date"
+                    name="productionStartAt"
+                    defaultValue={dateValue(sheet.productionStartAt)}
+                    disabled={sup || !!view.productionStart?.auto}
+                    className={inputDenseClass}
+                    data-production-start={
+                      view.productionStart?.auto ? "auto" : "manual"
+                    }
+                  />
+                  {view.productionStart?.auto ? (
+                    <span
+                      className="mt-1 block text-xs text-zinc-500"
+                      data-production-start-hint
+                    >
+                      {t(
+                        view.productionStart.at
+                          ? "sheet.productionStart.auto"
+                          : "sheet.productionStart.waiting",
+                        { days: String(view.productionStart.days) },
+                      )}
+                    </span>
+                  ) : null}
+                </F>
+              ) : null}
+              <F t={t} m={missing} k="containerType" size="sm">
+                <select
+                  name="containerType"
+                  defaultValue={view.containerType ?? ""}
+                  disabled={sup || supplierOnly}
+                  className={inputDenseClass}
+                >
+                  {view.containerTypes.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} · {c.capacityCbm} m³
+                    </option>
+                  ))}
+                </select>
+              </F>
+            </Rows>
+            {master ? (
               <p className="mt-3 text-xs text-zinc-500">
-                {t("sheet.lot.intervalHint")}
+                {t("productSheet.scheduleHint")}
               </p>
-              {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
-              <SheetSchedule
-                initialLots={lots.map((l) => ({
-                  departureIntervalDays: l.departureIntervalDays,
-                  masterCartons: l.masterCartons,
-                }))}
-                initial={{
-                  masterCartonQty: sheet.masterCartonQty ?? null,
-                  cbmPerCarton: sheet.cbmPerCarton ?? null,
-                  heightCm: sheet.heightCm ?? null,
-                  widthCm: sheet.widthCm ?? null,
-                  lengthCm: sheet.lengthCm ?? null,
-                  productionStartAt: dateValue(sheet.productionStartAt) || null,
-                  containerType: view.containerType ?? null,
-                }}
-                containerTypes={view.containerTypes}
-                disabled={sup}
-                lotRequired={lotRequired}
-                lot1Missing={missing.includes("lot1")}
-                requested={requestSchedule?.items ?? []}
-                unit={requestUnit}
-                quantity={orderQuantity}
-                target={targetQuantity}
-                labels={{
-                  gen: {
-                    toggle: t("sheet.gen.toggle"),
-                    hint: t("sheet.gen.hint"),
-                    total: t("sheet.gen.total"),
-                    count: t("sheet.gen.count"),
-                    interval: t("sheet.gen.interval"),
-                    days: t("sheet.gen.days", { n: "{n}" }),
-                    custom: t("sheet.gen.custom"),
-                    first: t("sheet.gen.first"),
-                    equals: t("sheet.gen.equals", {
-                      pieces: "{pieces}",
-                      cbm: "{cbm}",
+            ) : (
+              <>
+                <p className="mt-3 text-xs text-zinc-500">
+                  {t("sheet.lot.intervalHint")}
+                </p>
+                {/* Lotes, totais e sugestão para fechar o container: ao vivo, com a mesma conta do servidor. */}
+                <SheetSchedule
+                  initialLots={lots.map((l) => ({
+                    departureIntervalDays: l.departureIntervalDays,
+                    masterCartons: l.masterCartons,
+                  }))}
+                  initial={{
+                    masterCartonQty: sheet.masterCartonQty ?? null,
+                    cbmPerCarton: sheet.cbmPerCarton ?? null,
+                    heightCm: sheet.heightCm ?? null,
+                    widthCm: sheet.widthCm ?? null,
+                    lengthCm: sheet.lengthCm ?? null,
+                    productionStartAt:
+                      dateValue(sheet.productionStartAt) || null,
+                    containerType: view.containerType ?? null,
+                  }}
+                  containerTypes={view.containerTypes}
+                  disabled={sup}
+                  lotRequired={lotRequired}
+                  lot1Missing={missing.includes("lot1")}
+                  requested={requestSchedule?.items ?? []}
+                  unit={requestUnit}
+                  quantity={orderQuantity}
+                  target={targetQuantity}
+                  labels={{
+                    gen: {
+                      toggle: t("sheet.gen.toggle"),
+                      hint: t("sheet.gen.hint"),
+                      total: t("sheet.gen.total"),
+                      count: t("sheet.gen.count"),
+                      interval: t("sheet.gen.interval"),
+                      days: t("sheet.gen.days", { n: "{n}" }),
+                      custom: t("sheet.gen.custom"),
+                      first: t("sheet.gen.first"),
+                      equals: t("sheet.gen.equals", {
+                        pieces: "{pieces}",
+                        cbm: "{cbm}",
+                      }),
+                      replace: t("sheet.gen.replace"),
+                      submit: t("sheet.gen.submit"),
+                      cancel: t("sheet.gen.cancel"),
+                      done: t("sheet.gen.done", {
+                        total: "{total}",
+                        count: "{count}",
+                        first: "{first}",
+                        days: "{days}",
+                      }),
+                      doneOne: t("sheet.gen.doneOne", {
+                        total: "{total}",
+                        first: "{first}",
+                      }),
+                      undo: t("sheet.gen.undo"),
+                      errorTotal: t("sheet.gen.error.total"),
+                      errorInterval: t("sheet.gen.error.interval"),
+                      errorFirst: t("sheet.gen.error.first"),
+                      fromLots: t("sheet.gen.fromLots"),
+                      fromRequested: t("sheet.gen.fromRequested", {
+                        quantity: "{quantity}",
+                        unit: "{unit}",
+                        perCarton: "{perCarton}",
+                        cartons: "{cartons}",
+                      }),
+                      fromQuantity: t("sheet.gen.fromQuantity", {
+                        quantity: "{quantity}",
+                        unit: "{unit}",
+                        perCarton: "{perCarton}",
+                        cartons: "{cartons}",
+                      }),
+                      extra: t("sheet.gen.extra", {
+                        pieces: "{pieces}",
+                        extra: "{extra}",
+                      }),
+                      needPerCarton: t("sheet.gen.needPerCarton"),
+                      goTo: t("sheet.gen.goTo"),
+                      useCalc: t("sheet.gen.useCalc", { cartons: "{cartons}" }),
+                    },
+                    intl: t.intl,
+                    lotColumn: t("sheet.lot.column"),
+                    interval: t("sheet.lot.interval"),
+                    cartons: t("sheet.lot.cartons"),
+                    pieces: t("sheet.lot.pieces"),
+                    cbm: t("sheet.lot.cbm"),
+                    departure: t("sheet.lot.departure"),
+                    lotTitle: t("sheet.lot.title", { n: "{n}" }),
+                    required,
+                    totalPieces: t("sheet.total.pieces"),
+                    totalCbm: t("sheet.total.cbm"),
+                    totalContainers: t("sheet.total.containers", {
+                      type: "{type}",
+                      capacity: "{capacity}",
                     }),
-                    replace: t("sheet.gen.replace"),
-                    submit: t("sheet.gen.submit"),
-                    cancel: t("sheet.gen.cancel"),
-                    done: t("sheet.gen.done", {
-                      total: "{total}",
-                      count: "{count}",
-                      first: "{first}",
-                      days: "{days}",
-                    }),
-                    doneOne: t("sheet.gen.doneOne", {
-                      total: "{total}",
-                      first: "{first}",
-                    }),
-                    undo: t("sheet.gen.undo"),
-                    errorTotal: t("sheet.gen.error.total"),
-                    errorInterval: t("sheet.gen.error.interval"),
-                    errorFirst: t("sheet.gen.error.first"),
-                    fromLots: t("sheet.gen.fromLots"),
-                    fromRequested: t("sheet.gen.fromRequested", {
+                    live: t("sheet.fill.live"),
+                    fillTitle: t("sheet.fill.title"),
+                    partial: t("sheet.fill.partial"),
+                    add: t("sheet.fill.add"),
+                    addNoPieces: t("sheet.fill.addNoPieces"),
+                    apply: t("sheet.fill.apply"),
+                    remove: t("sheet.fill.remove"),
+                    removeNoPieces: t("sheet.fill.removeNoPieces"),
+                    applyRemove: t("sheet.fill.applyRemove"),
+                    exact: t("sheet.fill.exact"),
+                    full: t("sheet.fill.full"),
+                    need: t("sheet.fill.need"),
+                    applied: t("sheet.fill.applied"),
+                    exactNow: t("sheet.fill.exactNow"),
+                    up: t("sheet.fill.up"),
+                    upNoPieces: t("sheet.fill.upNoPieces"),
+                    applyUp: t("sheet.fill.applyUp"),
+                    down: t("sheet.fill.down"),
+                    downNoPieces: t("sheet.fill.downNoPieces"),
+                    applyDown: t("sheet.fill.applyDown"),
+                    appliedTotal: t("sheet.fill.appliedTotal"),
+                    cbmHigh: t("sheet.fill.cbmHigh"),
+                    cbmHighSize: t("sheet.fill.cbmHighSize"),
+                    cbmMismatch: t("sheet.fill.cbmMismatch"),
+                    qty: {
+                      title: t("sheet.qty.title"),
+                      same: t("sheet.qty.same"),
+                      order: t("sheet.qty.order"),
+                      quote: t("sheet.qty.quote"),
+                      quoteDraft: t("sheet.qty.quoteDraft"),
+                      readonly: t("sheet.qty.readonly"),
+                      paid: t("sheet.qty.paid"),
+                    },
+                    addLot: t("sheet.lot.add"),
+                    removeLot: t("sheet.lot.remove", { n: "{n}" }),
+                    requested: t("sheet.lot.requested", {
                       quantity: "{quantity}",
                       unit: "{unit}",
-                      perCarton: "{perCarton}",
-                      cartons: "{cartons}",
+                      date: "{date}",
                     }),
-                    fromQuantity: t("sheet.gen.fromQuantity", {
-                      quantity: "{quantity}",
-                      unit: "{unit}",
-                      perCarton: "{perCarton}",
-                      cartons: "{cartons}",
-                    }),
-                    extra: t("sheet.gen.extra", {
-                      pieces: "{pieces}",
-                      extra: "{extra}",
-                    }),
-                    needPerCarton: t("sheet.gen.needPerCarton"),
-                    goTo: t("sheet.gen.goTo"),
-                    useCalc: t("sheet.gen.useCalc", { cartons: "{cartons}" }),
-                  },
-                  intl: t.intl,
-                  lotColumn: t("sheet.lot.column"),
-                  interval: t("sheet.lot.interval"),
-                  cartons: t("sheet.lot.cartons"),
-                  pieces: t("sheet.lot.pieces"),
-                  cbm: t("sheet.lot.cbm"),
-                  departure: t("sheet.lot.departure"),
-                  lotTitle: t("sheet.lot.title", { n: "{n}" }),
-                  required,
-                  totalPieces: t("sheet.total.pieces"),
-                  totalCbm: t("sheet.total.cbm"),
-                  totalContainers: t("sheet.total.containers", {
-                    type: "{type}",
-                    capacity: "{capacity}",
-                  }),
-                  live: t("sheet.fill.live"),
-                  fillTitle: t("sheet.fill.title"),
-                  partial: t("sheet.fill.partial"),
-                  add: t("sheet.fill.add"),
-                  addNoPieces: t("sheet.fill.addNoPieces"),
-                  apply: t("sheet.fill.apply"),
-                  remove: t("sheet.fill.remove"),
-                  removeNoPieces: t("sheet.fill.removeNoPieces"),
-                  applyRemove: t("sheet.fill.applyRemove"),
-                  exact: t("sheet.fill.exact"),
-                  full: t("sheet.fill.full"),
-                  need: t("sheet.fill.need"),
-                  applied: t("sheet.fill.applied"),
-                  exactNow: t("sheet.fill.exactNow"),
-                  up: t("sheet.fill.up"),
-                  upNoPieces: t("sheet.fill.upNoPieces"),
-                  applyUp: t("sheet.fill.applyUp"),
-                  down: t("sheet.fill.down"),
-                  downNoPieces: t("sheet.fill.downNoPieces"),
-                  applyDown: t("sheet.fill.applyDown"),
-                  appliedTotal: t("sheet.fill.appliedTotal"),
-                  cbmHigh: t("sheet.fill.cbmHigh"),
-                  cbmHighSize: t("sheet.fill.cbmHighSize"),
-                  cbmMismatch: t("sheet.fill.cbmMismatch"),
-                  qty: {
-                    title: t("sheet.qty.title"),
-                    same: t("sheet.qty.same"),
-                    order: t("sheet.qty.order"),
-                    quote: t("sheet.qty.quote"),
-                    quoteDraft: t("sheet.qty.quoteDraft"),
-                    readonly: t("sheet.qty.readonly"),
-                    paid: t("sheet.qty.paid"),
-                  },
-                  addLot: t("sheet.lot.add"),
-                  removeLot: t("sheet.lot.remove", { n: "{n}" }),
-                  requested: t("sheet.lot.requested", {
-                    quantity: "{quantity}",
-                    unit: "{unit}",
-                    date: "{date}",
-                  }),
-                }}
-              />
-              <p className="mt-2 text-xs text-zinc-500">
-                {t("sheet.total.hint")}
-              </p>
-            </>
-          )}
-        </Card>
-      </Section>
+                  }}
+                />
+                <p className="mt-2 text-xs text-zinc-500">
+                  {t("sheet.total.hint")}
+                </p>
+              </>
+            )}
+          </Card>
+        </Section>
+      )}
 
       {/* Despachante e e-commerce lado a lado (menos rolagem); são da Wellmix:
           o fornecedor não os vê. */}
       {supplierOnly ? null : (
-        <Section open={open} k="customs" order="lg:order-5">
+        <Section open={open} all={certifier} k="customs" order="lg:order-5">
           <Card title={t("sheet.section.customs")} dense>
             <Rows>
               <F
@@ -900,13 +956,15 @@ export function PurchaseSheetFields({
                   className={inputDenseClass}
                 />
               </F>
-              <F t={t} m={missing} k="averagePrice" size="xs">
-                <Num
-                  name="averagePrice"
-                  value={numValue(sheet.averagePrice ?? null)}
-                  disabled={!access.editCustoms}
-                />
-              </F>
+              {
+                <F t={t} m={missing} k="averagePrice" size="xs">
+                  <Num
+                    name="averagePrice"
+                    value={numValue(sheet.averagePrice ?? null)}
+                    disabled={!access.editCustoms}
+                  />
+                </F>
+              }
               <F t={t} m={missing} k="certificationRequired" size="xs">
                 <select
                   name="certificationRequired"
@@ -934,7 +992,7 @@ export function PurchaseSheetFields({
         </Section>
       )}
       {supplierOnly ? null : (
-        <Section open={open} k="ecommerce" order="lg:order-6">
+        <Section open={open} all={certifier} k="ecommerce" order="lg:order-6">
           <Card title={t("sheet.section.ecommerce")} dense>
             <Rows>
               <F t={t} m={missing} k="ecommerceDescription" size="full">
@@ -969,11 +1027,14 @@ export function PurchaseSheetFields({
 function SheetSection({
   k,
   open,
+  all = false,
   order,
   children,
 }: {
   k: SheetSectionKey;
   open: SheetSectionKey;
+  /** Todos os blocos abertos (quem só lê a ficha inteira). */
+  all?: boolean;
   /** Ordem na grade de 2 colunas da página (lg:order-…). */
   order: string;
   children: React.ReactNode;
@@ -981,8 +1042,8 @@ function SheetSection({
   return (
     <div
       data-sheet-section={k}
-      hidden={k !== open}
-      className={cx(order, k === open && "lg:col-span-2")}
+      hidden={!all && k !== open}
+      className={cx(order, !all && k === open && "lg:col-span-2")}
     >
       {children}
     </div>

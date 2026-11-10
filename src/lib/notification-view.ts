@@ -78,6 +78,8 @@ const TEMPLATE_KINDS: ReadonlyArray<
   ["notif.proposal.subject", "action", "recipient"],
   ["notif.proposalUpdated.subject", "action", "recipient"],
   ["notif.quoteSelected.subject", "info", "customer"],
+  ["notif.bookingAnalysis.subject", "action", "recipient"],
+  ["notif.bookingAnalysis.many.subject", "action", "recipient"],
   ["notif.rfq.subject", "action", "recipient"],
   ["notif.rfq.many.subject", "action", "recipient"],
   ["notif.paymentRegistered.subject", "action", "recipient"],
@@ -108,7 +110,10 @@ function compiledTemplates(): Template[] {
     for (const locale of ["pt", "en", "zh"] as const) {
       const text = dictionaries[locale][key];
       if (!text) continue;
-      const source = text.split(/\{[a-zA-Z]+\}/).map(escapeRegExp).join(".{0,120}");
+      const source = text
+        .split(/\{[a-zA-Z]+\}/)
+        .map(escapeRegExp)
+        .join(".{0,120}");
       templates.push({ re: new RegExp(`^${source}$`), kind, actor });
     }
   return templates;
@@ -144,7 +149,8 @@ export function notificationActor(n: Row): NotificationActor | null {
   if (template) return template.actor;
   const kind = notificationKind(n);
   if (kind === "action") return "recipient";
-  if (kind === "alert") return /^atrasado:/i.test(n.subject) ? "recipient" : null;
+  if (kind === "alert")
+    return /^atrasado:/i.test(n.subject) ? "recipient" : null;
   return null;
 }
 
@@ -161,7 +167,8 @@ export function notificationGroup(kind: NotificationKind): NotificationGroup {
 }
 
 const LEGACY_STAGE = /^Pedido #(\d+): etapa ([A-Z_]+) aguarda sua ação$/;
-const LEGACY_DUE = /^(ATRASADO|Vence em breve): pedido #(\d+), etapa ([A-Z_]+)$/;
+const LEGACY_DUE =
+  /^(ATRASADO|Vence em breve): pedido #(\d+), etapa ([A-Z_]+)$/;
 const isStageKey = (key: string): key is StageKey =>
   (STAGE_KEYS as readonly string[]).includes(key);
 

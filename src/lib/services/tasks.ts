@@ -1,5 +1,6 @@
 import "server-only";
 
+import { translator } from "@/i18n";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   getStore,
@@ -10,6 +11,9 @@ import {
 } from "@/lib/db";
 import { canViewRequest, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
+  ORDER_SIGN_SEND,
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
   ROLE_PARTY_FIELD,
   STAGE_TEMPLATES,
   isOffFlowStage,
@@ -36,7 +40,10 @@ export type TaskKind =
   | "sku_fix"
   | "import_step"
   | "import_validate"
-  | "message_reply";
+  | "cert_step"
+  | "cert_validate"
+  | "message_reply"
+  | "ncm_classify";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -171,6 +178,13 @@ export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
 }
 
 const STAGE_ORDER: string[] = STAGE_TEMPLATES.map((s) => s.key);
+
+/** Item da assinatura do documento → o item da mesma etapa que vem antes dele. */
+const SIGN_AFTER: ReadonlyArray<[string, string]> = [
+  [ORDER_SIGN_SEND, "art"],
+  [ORDER_SIGNED_WELLMIX, ORDER_SIGN_SEND],
+  [ORDER_SIGNED_SUPPLIER, ORDER_SIGNED_WELLMIX],
+];
 const KIND_ORDER: string[] = [
   "rfq",
   "quote",
@@ -359,6 +373,31 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   ]);
   const orderById = new Map(orders.map((o) => [o.id, o]));
 
+  // "Enviar para assinatura" só é pendência com o selo já aplicado na arte
+  // (antes disso não há o que apertar): uma consulta só para os pedidos em
+  // que o envio está aberto.
+  const sendOrderIds = [
+    ...new Set(
+      openRequirements
+        .filter((r) => r.key === ORDER_SIGN_SEND)
+        .map((r) => r.orderId),
+    ),
+  ];
+  const sealApplied = new Set(
+    sendOrderIds.length
+      ? (
+          await store
+            .list("import_steps", {
+              filter: { orderId: sendOrderIds, key: "cert_seal_art" },
+            })
+            // Tabela ainda não publicada: nenhum selo aplicado.
+            .catch(() => [])
+        )
+          .filter((s) => s.status === "submitted" || s.status === "validated")
+          .map((s) => s.orderId)
+      : [],
+  );
+
   // Requisitos pendentes em etapas ativas/bloqueadas.
   for (const stage of stages) {
     // Pagamento ao fornecedor não é pendência de etapa (vira parcela abaixo).
@@ -376,7 +415,17 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
           openRequirements.some(
             (x) => x.stageId === stage.id && x.key === "art",
           )
-        ),
+        ) &&
+        // Documento do pedido (ordem nova): enviar para assinatura só depois
+        // da arte; a Wellmix assina depois do envio; o fornecedor, depois dela.
+        !SIGN_AFTER.some(
+          ([key, before]) =>
+            r.key === key &&
+            openRequirements.some(
+              (x) => x.stageId === stage.id && x.key === before,
+            ),
+        ) &&
+        !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)),
     );
     if (mine.length === 0) continue;
     tasks.push(
@@ -397,7 +446,24 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
     );
   }
 
-  // Fase de solicitação.
+  // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): o que veio do
+  // Booking é "analisar o Booking" para o fornecedor, e a Wellmix "envia ao
+  // fornecedor" em vez de abrir a RFQ.
+  const { getSettings } = await import("@/lib/settings");
+  const flowSettings = await getSettings();
+  const rfqOn = flowSettings.rfqEnabled;
+  const fromBooking = new Set(
+    quotes.length
+      ? (
+          await store
+            .list("bookings", {
+              filter: { requestId: quotes.map((q) => q.requestId) },
+            })
+            // Tabela ainda não publicada: nenhum veio do Booking.
+            .catch(() => [])
+        ).map((b) => b.requestId)
+      : [],
+  );
   for (const quote of quotes) {
     const request = quoteRequests.find((r) => r.id === quote.requestId);
     if (!request) continue;
@@ -405,7 +471,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       finish(
         {
           kind: "quote",
-          title: `RFQ: ${request.productName}`,
+          title: fromBooking.has(request.id)
+            ? `Analisar o Booking: ${request.productName}`
+            : `RFQ: ${request.productName}`,
           detail: `${request.quantity} ${request.unit}`,
           link: `/app/quotes/${quote.id}`,
           chat: { requestId: request.id },
@@ -502,7 +570,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
   for (const request of wellmixRequests) {
     if (awaitingApproval.has(request.id)) continue;
-    const task = requestTask(request);
+    const task = requestTask(request, rfqOn);
     if (task.kind === "confirm_payment" && withProof.has(request.id))
       task.detail = "Comprovante enviado pelo cliente: conferir e confirmar";
     tasks.push(finish(task, now));
@@ -576,7 +644,10 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
   }
 
   // Sourcing sob demanda: produto pedido por cliente ainda sem fornecedor.
-  const withRequest = demands.filter((x) => x.requestId);
+  // Com o Sourcing em espera (decisão do dono) não é pendência de ninguém.
+  const withRequest = flowSettings.sourcingEnabled
+    ? demands.filter((x) => x.requestId)
+    : [];
   const demandRequests = withRequest.length
     ? await store.list("requests", {
         filter: { id: [...new Set(withRequest.map((d) => d.requestId!))] },
@@ -773,9 +844,13 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         ),
       );
   }
-  // Embarque e desembaraço (Fase D): passos a fazer e a validar.
+  // Embarque e desembaraço (Fase D) e certificação (Fase F): passos a fazer
+  // e a validar. A agência entra pelo selo de certificação a aplicar na arte.
   const importRole =
-    user.role === "comex" || user.role === "logistics" || user.role === "ocp"
+    user.role === "comex" ||
+    user.role === "logistics" ||
+    user.role === "ocp" ||
+    user.role === "agency"
       ? user.role
       : null;
   if (wellmix || supplier || (importRole && user.partyId)) {
@@ -790,12 +865,16 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
                 ? "comexId"
                 : importRole === "ocp"
                   ? "ocpId"
-                  : "logisticsId"]: user.partyId!,
+                  : importRole === "agency"
+                    ? "agencyId"
+                    : "logisticsId"]: user.partyId!,
             }
           : supplier
             ? { supplierId: user.partyId! }
             : {
                 status: [
+                  // Pedido recém-criado: só o selo de certificação já vale.
+                  "ORDER_CREATED",
                   "PREPARATION",
                   "PACKAGING",
                   "INSPECTION",
@@ -809,18 +888,32 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       // Coluna nova ainda não publicada no Appwrite: sem pendências.
       if (!isSchemaMissing(error)) throw error;
     }
+    const ptText = translator("pt");
     for (const p of await importTasks(user, orders)) {
       const step = IMPORT_STEP_LABEL[p.key] ?? p.key;
+      const cert = p.kind === "cert_step" || p.kind === "cert_validate";
+      const validate =
+        p.kind === "import_validate" || p.kind === "cert_validate";
+      // Selo sem certificadora no pedido: a pendência é da Wellmix, que
+      // designa a certificadora em Parceiros do pedido.
+      const assignOcp =
+        p.kind === "cert_step" && p.key === "cert_seal" && !p.order.ocpId;
+      // Selo de certificação: texto próprio, traduzido na tela.
+      const seal =
+        SEAL_TASK_TEXT[assignOcp ? "assign_ocp" : `${p.kind}:${p.key}`];
+      const values = { n: p.order.number };
       tasks.push(
         finish(
           {
             kind: p.kind,
-            title:
-              p.kind === "import_validate"
+            title: seal
+              ? ptText(seal.title, values)
+              : validate
                 ? `Validar ${step}: pedido #${p.order.number}`
                 : `${step}: pedido #${p.order.number}`,
-            detail: "",
-            link: `/app/orders/${p.order.id}#import-flow`,
+            detail: seal ? ptText(seal.detail, values) : "",
+            ...(seal ? { text: { ...seal, values } } : {}),
+            link: `/app/orders/${p.order.id}#${assignOcp ? "order-partners" : cert ? "certification" : "import-flow"}`,
             dueAt: null,
             orderNumber: p.order.number,
             customerId: p.order.customerId,
@@ -855,6 +948,37 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       );
     }
   }
+  // Despachante: produto de solicitação aberta sem NCM (ele classifica; a
+  // Wellmix também pode, na solicitação). Só o produto: sem cliente nem valor.
+  if (user.role === "broker" && user.partyId) {
+    const { ncmPendingRequests } = await import("./request-ncm");
+    for (const request of await ncmPendingRequests()) {
+      tasks.push(
+        finish(
+          {
+            kind: "ncm_classify",
+            title: `Classificar NCM: ${request.productName}`,
+            detail: request.number
+              ? `Solicitação nº ${request.number} · confira as sugestões e confirme o NCM`
+              : "Confira as sugestões e confirme o NCM",
+            text: {
+              title: "tasks.ncm.title",
+              detail: request.number
+                ? "tasks.ncm.detail"
+                : "tasks.ncm.detailNoNumber",
+              values: {
+                product: request.productName,
+                n: request.number ?? "",
+              },
+            },
+            link: `/app/requests/${request.id}/ncm`,
+            dueAt: request.deadline,
+          },
+          now,
+        ),
+      );
+    }
+  }
   // Pelo prazo: as mais urgentes primeiro; sem prazo por último.
   return sortTasks(tasks);
 }
@@ -879,6 +1003,31 @@ const IMPORT_STEP_LABEL: Record<string, string> = {
   cert_memorial: "Memorial descritivo (certificação)",
   cert_lab: "Ensaio em laboratório (laudo)",
   cert_registration: "Número de registro (certificado)",
+  cert_seal: "Selo de certificação",
+  cert_seal_art: "Selo aplicado na arte",
+};
+
+/** Pendências do selo de certificação (tipo da pendência + passo): título e detalhe traduzidos. */
+const SEAL_TASK_TEXT: Record<
+  string,
+  { title: DictionaryKey; detail: DictionaryKey } | undefined
+> = {
+  "cert_step:cert_seal": {
+    title: "tasks.seal.issue.title",
+    detail: "tasks.seal.issue.detail",
+  },
+  "cert_step:cert_seal_art": {
+    title: "tasks.seal.apply.title",
+    detail: "tasks.seal.apply.detail",
+  },
+  "cert_validate:cert_seal_art": {
+    title: "tasks.seal.validate.title",
+    detail: "tasks.seal.validate.detail",
+  },
+  assign_ocp: {
+    title: "tasks.seal.assign.title",
+    detail: "tasks.seal.assign.detail",
+  },
 };
 
 /** Nível da aprovação do pré-custo (pendências saem em português, como as demais). */
@@ -978,9 +1127,13 @@ const PACKAGING_ITEM_LABEL: Record<string, string> = {
   packaging_sample: "foto da embalagem física",
 };
 
-function requestTask(request: Request): DraftTask {
+function requestTask(request: Request, rfqOn = true): DraftTask {
   const base = {
-    link: `/app/requests/${request.id}`,
+    // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
+    link:
+      !rfqOn && request.status === "REQUESTED"
+        ? `/app/rfq#req-${request.id}`
+        : `/app/requests/${request.id}`,
     dueAt: request.deadline,
     customerId: request.customerId,
     ownerUserId: request.ownerUserId ?? null,
@@ -989,8 +1142,12 @@ function requestTask(request: Request): DraftTask {
     case "REQUESTED":
       return {
         kind: "rfq",
-        title: `Abrir RFQ: ${request.productName}`,
-        detail: "Selecione fornecedores",
+        title: rfqOn
+          ? `Abrir RFQ: ${request.productName}`
+          : `Enviar ao fornecedor: ${request.productName}`,
+        detail: rfqOn
+          ? "Selecione fornecedores"
+          : "Escolha o fornecedor que vai analisar o produto",
         ...base,
       };
     case "QUOTATION_RECEIVED":

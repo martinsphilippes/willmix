@@ -1,5 +1,6 @@
 import type { Requirement } from "@/lib/db";
 import type { Translate } from "@/i18n";
+import { ORDER_SIGN_SEND } from "@/lib/workflow/stages";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
   decideRequirementAction,
@@ -128,13 +129,18 @@ export function RequirementForm({
 
   const submit = (
     <SubmitButton pendingText="...">
-      {requirement.type === "confirm" ? t("common.confirm") : t("common.send")}
+      {requirement.key === ORDER_SIGN_SEND
+        ? t("orderSign.send.submit")
+        : requirement.type === "confirm"
+          ? t("common.confirm")
+          : t("common.send")}
     </SubmitButton>
   );
   return (
     <form
       action={action ?? submitRequirementAction}
       className="flex flex-wrap items-center gap-1.5"
+      data-requirement-form={requirement.key}
     >
       <input type="hidden" name="orderId" value={orderId} />
       <input type="hidden" name="requirementId" value={requirement.id} />

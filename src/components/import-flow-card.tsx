@@ -1,7 +1,11 @@
+import type { ReactNode } from "react";
 import type { Order } from "@/lib/db";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import { CUSTOMS_CHANNELS } from "@/lib/db/schema";
-import type { StepView } from "@/lib/services/import-flow";
+import {
+  SEAL_REPLACED_REASON,
+  type StepView,
+} from "@/lib/services/import-flow";
 import {
   submitImportStepAction,
   validateImportStepAction,
@@ -21,6 +25,7 @@ import {
   rowClass,
 } from "./ui";
 import { SubmitButton } from "./submit-button";
+import { DirectFileInput } from "./sheet-file-input";
 import type { getT } from "@/i18n/server";
 
 /*
@@ -39,18 +44,24 @@ export function ImportFlowCard({
   order,
   steps,
   notice,
+  error = null,
   names,
   title,
   anchor = "import-flow",
+  hints = [],
 }: {
   t: Translate;
   order: Order;
   steps: StepView[];
   notice: string | null;
+  /** Recusa da última ação deste cartão (o aviso aparece onde a pessoa está). */
+  error?: string | null;
   names: Map<string, string>;
   /** Certificação (Fase F) usa o mesmo cartão com outro título e âncora. */
   title?: string;
   anchor?: "import-flow" | "certification";
+  /** Explicações do cartão (ex.: como anda o selo de certificação). */
+  hints?: ReactNode[];
 }) {
   if (!steps.length) return null;
   const name = (id: string | null) => (id ? (names.get(id) ?? "—") : "—");
@@ -76,6 +87,20 @@ export function ImportFlowCard({
           <Alert tone="success">{notice}</Alert>
         </div>
       ) : null}
+      {error ? (
+        <div className="mb-3" data-import-error={anchor}>
+          <Alert tone="danger">{error}</Alert>
+        </div>
+      ) : null}
+      {hints.map((hint, i) => (
+        <div
+          key={i}
+          className="mb-3 text-sm text-zinc-600"
+          data-import-hint={anchor}
+        >
+          {hint}
+        </div>
+      ))}
       {/* Um passo por linha: situação, quem faz e valida, o que foi
           informado, quem enviou e a ação (enviar ou validar). */}
       <Table>
@@ -134,7 +159,10 @@ export function ImportFlowCard({
                   {step?.status === "rejected" && step.rejectReason ? (
                     <span className="mt-1 block max-w-56 whitespace-normal text-xs text-red-700">
                       {t("importFlow.rejectedReason", {
-                        reason: step.rejectReason,
+                        reason:
+                          step.rejectReason === SEAL_REPLACED_REASON
+                            ? t("certFlow.sealReplaced")
+                            : step.rejectReason,
                       })}
                     </span>
                   ) : null}
@@ -227,6 +255,16 @@ export function ImportFlowCard({
                           )}
                         />
                       ) : null}
+                      {tpl.input === "file_text" ? (
+                        <Input
+                          name="value"
+                          maxLength={200}
+                          defaultValue={step?.value ?? ""}
+                          placeholder={t(
+                            `importFlow.ph.${tpl.key}` as DictionaryKey,
+                          )}
+                        />
+                      ) : null}
                       {tpl.input === "date" ? (
                         <Input
                           type="date"
@@ -259,15 +297,23 @@ export function ImportFlowCard({
                           <input type="hidden" name="currency" value="BRL" />
                         </>
                       ) : null}
-                      {["file", "text_file", "money_file"].includes(
-                        tpl.input,
-                      ) ? (
-                        <input
-                          type="file"
+                      {[
+                        "file",
+                        "text_file",
+                        "file_text",
+                        "money_file",
+                      ].includes(tpl.input) ? (
+                        // Arquivo grande (ex.: a arte com o selo) sobe direto
+                        // ao armazenamento; o formulário leva só o id.
+                        <DirectFileInput
                           name="file"
                           required={!step?.documentId}
                           className={fileClass}
-                          aria-label={t("importFlow.file")}
+                          label={t("importFlow.file")}
+                          uploadingLabel={t("requirement.file.uploading")}
+                          failedLabel={t("requirement.file.failed")}
+                          tooBigLabel={t("requirement.file.tooBig")}
+                          chosenLabel={t("importFlow.fileReady")}
                         />
                       ) : null}
                       <SubmitButton

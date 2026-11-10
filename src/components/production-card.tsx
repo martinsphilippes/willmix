@@ -111,7 +111,19 @@ export function ProductionCard({
                   name="productionStartAt"
                   defaultValue={dateValue(track?.productionStartAt)}
                   aria-label={t("production.start")}
+                  disabled={!!view.startAuto}
+                  data-production-start={view.startAuto ? "auto" : "manual"}
                 />
+                {view.startAuto ? (
+                  <span className="mt-1 block text-xs text-zinc-500">
+                    {t(
+                      view.startAuto.signed
+                        ? "sheet.productionStart.auto"
+                        : "sheet.productionStart.waiting",
+                      { days: String(view.startAuto.days) },
+                    )}
+                  </span>
+                ) : null}
               </Td>
               <Td className="min-w-36">
                 <Input
@@ -221,7 +233,11 @@ export function ProductionCard({
           </h3>
           {!track?.productionStartAt ? (
             <p className="text-sm text-zinc-500">
-              {t("production.followups.noStart")}
+              {t(
+                view.startAuto
+                  ? "production.followups.noStart.auto"
+                  : "production.followups.noStart",
+              )}
             </p>
           ) : (
             <Table>

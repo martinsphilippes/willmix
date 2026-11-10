@@ -78,6 +78,8 @@ export const BOOKING_ERRORS = [
   "booking_note_too_long",
   /** Linha que já virou solicitação: cliente e quantidade não mudam aqui. */
   "booking_locked",
+  /** Editar dados: algum valor digitado não deu para ler. */
+  "booking_data_invalid",
   /** A linha mudou (outra pessoa, outra aba) entre a conferência e a gravação. */
   "booking_changed",
   /** Linha com solicitação em andamento: só volta quando a solicitação é excluída. */
@@ -306,6 +308,15 @@ export interface BookingRow {
   weightEstimated: boolean;
   /** Média do despachante (US$), da ficha mestre. */
   averageUsd: number | null;
+  /** Peso médio por peça (kg), da ficha mestre: o terceiro peso. */
+  averageWeightKg: number | null;
+  /** Peças planejadas (da planilha, coluna "TT PCS", ou digitadas). */
+  plannedQty: number | null;
+  /** Previsão de vendas (peças) por canal, digitada; e a soma das três. */
+  forecastOrder: number | null;
+  forecastDistribution: number | null;
+  forecastEcommerce: number | null;
+  forecastTotal: number | null;
   /** Volume da caixa master (m³). */
   cbm: number | null;
   /** Medidas da peça ("33,5 × 24,8 × 1,5 cm") ou o tamanho escrito na ficha. */
@@ -338,6 +349,15 @@ export interface BookingRow {
    * `missing` = a criação parou no meio (a linha pode ser devolvida).
    */
   requestState: "pending" | "missing" | null;
+  /**
+   * Linha que virou solicitação: o próximo passo e para onde ir (nulo nas
+   * outras etapas e para quem não abre Solicitações).
+   */
+  next: BookingNext | null;
+  /** Medidas da peça (cm), para editar na tabela. */
+  pieceLengthCm: number | null;
+  pieceWidthCm: number | null;
+  pieceHeightCm: number | null;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -391,12 +411,47 @@ export const BOOKING_COLUMNS = [
     kind: "number",
     value: (r) => r.estimatedWeightKg,
   },
+  {
+    key: "averageWeight",
+    kind: "number",
+    value: (r) => r.averageWeightKg,
+  },
   { key: "average", kind: "number", value: (r) => r.averageUsd },
   { key: "cbm", kind: "number", value: (r) => r.cbm },
   { key: "size", kind: "text", value: (r) => r.size },
   { key: "colors", kind: "text", value: (r) => r.colors },
   { key: "material", kind: "text", value: (r) => r.material },
   { key: "packageType", kind: "text", value: (r) => r.packageType },
+  {
+    key: "plannedQty",
+    kind: "number",
+    whole: true,
+    value: (r) => r.plannedQty,
+  },
+  {
+    key: "forecastOrder",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastOrder,
+  },
+  {
+    key: "forecastDistribution",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastDistribution,
+  },
+  {
+    key: "forecastEcommerce",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastEcommerce,
+  },
+  {
+    key: "forecastTotal",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastTotal,
+  },
   { key: "customer", kind: "option", value: (r) => r.customerId },
   {
     key: "reservedQty",
@@ -518,12 +573,17 @@ export function parseBookingFilters(
           ...(max !== undefined ? { max } : {}),
         };
     } else {
+      // Um campo só na tela: o dia escolhido (`coluna_on`). O período
+      // (`coluna_from`/`coluna_to`) continua valendo em endereços antigos.
+      const on = first(params[`${key}_on`]);
       const from = first(params[`${key}_from`]);
       const to = first(params[`${key}_to`]);
-      const range = {
-        ...(DAY.test(from) ? { from } : {}),
-        ...(DAY.test(to) ? { to } : {}),
-      };
+      const range = DAY.test(on)
+        ? { from: on, to: on }
+        : {
+            ...(DAY.test(from) ? { from } : {}),
+            ...(DAY.test(to) ? { to } : {}),
+          };
       if (range.from || range.to) filters.dates[key] = range;
     }
   }
@@ -715,6 +775,11 @@ export function bookingQuery(
   }
   for (const [k, v] of Object.entries(filters.dates)) {
     if (!v || k === dropped) continue;
+    // Um dia só: o parâmetro do campo único da tela.
+    if (v.from && v.from === v.to) {
+      q.set(`${k}_on`, v.from);
+      continue;
+    }
     if (v.from) q.set(`${k}_from`, v.from);
     if (v.to) q.set(`${k}_to`, v.to);
   }
@@ -746,4 +811,232 @@ export function pageOfBookingRows<T>(
     pages,
     total: rows.length,
   };
+}
+
+/** Campos do plano da linha (peças), na ordem das colunas. */
+export const BOOKING_PLAN_FIELDS = [
+  "plannedQty",
+  "forecastOrder",
+  "forecastDistribution",
+  "forecastEcommerce",
+] as const;
+export type BookingPlanField = (typeof BOOKING_PLAN_FIELDS)[number];
+/** Teto de uma quantidade do plano (peças). */
+export const BOOKING_PLAN_MAX = 100_000_000;
+
+/** Soma da previsão por canal; nulo quando nenhum canal foi informado. */
+export function forecastTotalOf(plan: {
+  forecastOrder?: number | null;
+  forecastDistribution?: number | null;
+  forecastEcommerce?: number | null;
+}): number | null {
+  const parts = [
+    plan.forecastOrder,
+    plan.forecastDistribution,
+    plan.forecastEcommerce,
+  ].filter((n): n is number => typeof n === "number" && n > 0);
+  return parts.length ? parts.reduce((a, b) => a + b, 0) : null;
+}
+
+/**
+ * Quantidade de uma linha ao gerar a solicitação: a digitada; senão a
+ * reservada; senão a planejada (quando não fica abaixo do pedido mínimo);
+ * senão o pedido mínimo.
+ */
+export function bookingRequestQuantity(input: {
+  typed?: number | null;
+  reservedQty: number | null;
+  plannedQty: number | null;
+  moq: number | null;
+}): number | null {
+  const planned =
+    input.plannedQty !== null &&
+    input.plannedQty > 0 &&
+    (input.moq === null || input.plannedQty >= input.moq)
+      ? input.plannedQty
+      : null;
+  return input.typed ?? input.reservedQty ?? planned ?? input.moq ?? null;
+}
+
+/**
+ * A linha pode virar solicitação? Aprovado, Oferecido e Reservado: sempre.
+ * Novo e Em análise: só para quem aprova (gerar a solicitação já aprova).
+ * Descartado e "Virou solicitação": nunca.
+ */
+export function bookingCanRequest(
+  status: BookingStatus,
+  canApprove: boolean,
+): boolean {
+  if (BOOKING_REQUESTABLE.includes(status)) return true;
+  return canApprove && (status === "new" || status === "analysis");
+}
+
+/* ------------------------------------------------------------------------ */
+/* Depois de "Virou solicitação": o próximo passo                            */
+/* ------------------------------------------------------------------------ */
+
+/** Onde a solicitação da linha está, dito como "o que fazer agora". */
+export const BOOKING_NEXT_STEPS = [
+  /** Solicitação criada: falta abrir a RFQ (convidar o fornecedor). */
+  "open_rfq",
+  /** RFQ aberta: o fornecedor ainda não respondeu. */
+  "wait_supplier",
+  /** RFQ aberta: a ficha já foi preenchida em parte, mas a cotação não foi enviada. */
+  "supplier_draft",
+  /** O fornecedor não aceitou o preço desejado: conversar. */
+  "offer_declined",
+  /** Cotação devolvida com comentário: esperando o fornecedor. */
+  "negotiating",
+  /** Cotação enviada pelo fornecedor: a Wellmix confere e confirma. */
+  "choose_quote",
+  /** Fornecedor escolhido: falta o sinal (ou a aprovação). */
+  "wait_down_payment",
+  /** Virou pedido (pedido antigo, sem o documento com assinaturas). */
+  "ordered",
+  /**
+   * Pedido criado: a arte e o selo vêm antes; o documento ainda não foi
+   * enviado para assinatura.
+   */
+  "prepare_document",
+  /** Documento enviado para assinatura: falta a Wellmix assinar. */
+  "sign_wellmix",
+  /** Documento enviado: o fornecedor baixa, assina e anexa de volta. */
+  "sign_supplier",
+  /** Documento do pedido assinado pelos dois. */
+  "signed",
+  "cancelled",
+] as const;
+export type BookingNextStep = (typeof BOOKING_NEXT_STEPS)[number];
+
+/** Passos em que a bola não está com a Wellmix (o botão é só para acompanhar). */
+export const BOOKING_NEXT_WAITING: readonly BookingNextStep[] = [
+  "wait_supplier",
+  "negotiating",
+  "prepare_document",
+  "sign_supplier",
+  "signed",
+  "cancelled",
+];
+
+export interface BookingNext {
+  step: BookingNextStep;
+  /** Para onde o botão leva (solicitação, cotação, pedido ou documento). */
+  href: string;
+  /**
+   * O que o botão abre (o texto dele): "confirm" = a comparação de cotações
+   * da solicitação, onde a Wellmix confirma; "document" = o documento do
+   * pedido (baixar, assinar, anexar e conferir).
+   */
+  target: "request" | "quote" | "order" | "confirm" | "document";
+  /** Cotações da solicitação: quantas foram enviadas, de quantas. */
+  answered: number;
+  total: number;
+}
+
+/** Em que ponto está o documento do pedido (docs/ORDER_SIGNATURE.md). */
+export type BookingOrderDocument =
+  "awaiting_send" | "awaiting_wellmix" | "sent_to_supplier" | "signed" | null;
+
+/**
+ * O próximo passo de uma linha que virou solicitação, a partir da situação
+ * da solicitação, das cotações dela e do pedido (quando já nasceu).
+ * `openQuotes`: quem vê abre a tela Cotações (senão o botão leva à
+ * solicitação). `draft` na cotação: a ficha dela já foi gravada (rascunho) e
+ * ela ainda não foi enviada. `document` no pedido: o ponto do documento com
+ * as duas assinaturas (nulo em pedido antigo, sem ele).
+ */
+export function bookingNextStep(
+  request: { id: string; status: string },
+  quotes: Array<{
+    id: string;
+    status: string;
+    negotiation?: Array<{ kind: string }> | null;
+    draft?: boolean;
+  }>,
+  order: { id: string; document?: BookingOrderDocument } | null,
+  openQuotes: boolean,
+): BookingNext {
+  const sent = quotes.filter(
+    (q) => q.status === "answered" || q.status === "selected",
+  );
+  const counts = { answered: sent.length, total: quotes.length };
+  const toRequest = {
+    href: `/app/requests/${request.id}`,
+    target: "request" as const,
+    ...counts,
+  };
+  // Uma cotação só: o botão vai direto nela.
+  const toQuote = (quote: { id: string } | undefined) =>
+    quote && openQuotes
+      ? { href: `/app/quotes/${quote.id}`, target: "quote" as const, ...counts }
+      : toRequest;
+  const lastKind = (q: { negotiation?: Array<{ kind: string }> | null }) =>
+    q.negotiation?.length ? q.negotiation[q.negotiation.length - 1].kind : null;
+  if (request.status === "CANCELLED")
+    return { step: "cancelled", ...toRequest };
+  if (request.status === "ORDERED") {
+    if (!order) return { step: "ordered", ...toRequest };
+    if (!order.document)
+      return {
+        step: "ordered",
+        href: `/app/orders/${order.id}`,
+        target: "order",
+        ...counts,
+      };
+    return {
+      step:
+        order.document === "awaiting_send"
+          ? "prepare_document"
+          : order.document === "awaiting_wellmix"
+            ? "sign_wellmix"
+            : order.document === "sent_to_supplier"
+              ? "sign_supplier"
+              : "signed",
+      // Vai para o pedido (a tela de gestão da Wellmix); o documento abre
+      // de lá, na linha "Documento do pedido" (pedido do dono).
+      href: `/app/orders/${order.id}`,
+      target: "order",
+      ...counts,
+    };
+  }
+  if (
+    request.status === "WAITING_DOWN_PAYMENT" ||
+    request.status === "SUPPLIER_SELECTED"
+  )
+    return { step: "wait_down_payment", ...toRequest };
+  // Cotação enviada com a solicitação ainda em "RFQ aberta" (gravação
+  // interrompida no meio): vale a cotação, a linha não fica "esperando".
+  if (
+    request.status === "QUOTATION_RECEIVED" ||
+    (request.status === "RFQ_OPEN" && sent.length > 0)
+  ) {
+    const returned = quotes.find(
+      (q) => q.status === "answered" && lastKind(q) === "return",
+    );
+    if (returned) return { step: "negotiating", ...toQuote(returned) };
+    return {
+      step: "choose_quote",
+      href: `/app/requests/${request.id}#quotes-compare`,
+      target: "confirm",
+      ...counts,
+    };
+  }
+  if (request.status === "RFQ_OPEN") {
+    const invited = quotes.filter((q) => q.status === "invited");
+    const declined = invited.find((q) => lastKind(q) === "decline");
+    if (declined) return { step: "offer_declined", ...toQuote(declined) };
+    const drafts = invited.filter((q) => q.draft);
+    if (drafts.length)
+      return {
+        step: "supplier_draft",
+        ...toQuote(
+          drafts.length === 1 || invited.length === 1 ? drafts[0] : undefined,
+        ),
+      };
+    return {
+      step: "wait_supplier",
+      ...toQuote(invited.length === 1 ? invited[0] : undefined),
+    };
+  }
+  return { step: "open_rfq", ...toRequest };
 }

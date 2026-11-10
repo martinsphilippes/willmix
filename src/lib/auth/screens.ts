@@ -31,6 +31,7 @@ export const SCREENS = [
   "packaging",
   "containers",
   "superplan",
+  "rfq",
   "parties",
   "products",
   "lines",
@@ -65,6 +66,7 @@ export const SCREEN_ROUTES: ReadonlyArray<readonly [string, Screen]> = [
   ["/app/packaging", "packaging"],
   ["/app/containers", "containers"],
   ["/app/superplan", "superplan"],
+  ["/app/rfq", "rfq"],
   ["/app/parties", "parties"],
   ["/app/customers", "parties"],
   ["/app/suppliers", "parties"],
@@ -114,6 +116,7 @@ export const SCREEN_LABEL: Record<Screen, DictionaryKey> = {
   packaging: "nav.packaging",
   containers: "nav.containers",
   superplan: "nav.superplan",
+  rfq: "nav.rfq",
   parties: "nav.parties",
   products: "nav.products",
   lines: "nav.lines",
@@ -204,6 +207,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   buyer: [
     "booking",
     "requests",
+    // Envio ao fornecedor com a RFQ em espera (o interruptor é só do admin).
+    "rfq",
     "quotes",
     "orders",
     "sourcing",
@@ -220,6 +225,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   product_manager: [
     "booking",
     "requests",
+    // Envio ao fornecedor com a RFQ em espera (o interruptor é só do admin).
+    "rfq",
     "quotes",
     "orders",
     "sourcing",
@@ -235,6 +242,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   planner: [
     "booking",
     "requests",
+    // Envio ao fornecedor com a RFQ em espera (o interruptor é só do admin).
+    "rfq",
     "quotes",
     "orders",
     "containers",
@@ -286,6 +295,7 @@ export const SCREEN_GROUPS: ReadonlyArray<{
       "packaging",
       "containers",
       "superplan",
+      "rfq",
     ],
   },
   {

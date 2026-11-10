@@ -7,7 +7,8 @@ import { isSchemaMissing } from "./packaging-brief";
 
 /*
  * Limpar dados de teste: apaga as VENDAS (solicitações, cotações, pedidos,
- * pagamentos, containers, inspeções, documentos e arquivos de venda,
+ * pagamentos, containers, inspeções, briefings de embalagem, documentos e
+ * arquivos de venda,
  * notificações, mensagens do chat (com os anexos), sugestões da IA, kits de marketing e o histórico delas) e
  * recomeça a numeração de solicitações e pedidos do #1.
  *
@@ -56,6 +57,8 @@ const SALES_TABLES = [
   "conversations",
   // Aprovações do pré-custo das solicitações de teste.
   "approvals",
+  // Briefings de embalagem (faca e arte) das solicitações de teste.
+  "packaging_briefs",
   // Produção (follow, ETD) e inspeção por SKU dos pedidos de teste.
   "production_tracks",
   "sku_inspections",
@@ -74,6 +77,7 @@ const SALES_TABLES = [
 /** Tabelas que podem ainda não existir no Appwrite (esquema não publicado). */
 const OPTIONAL_TABLES = new Set<TableName>([
   "approvals",
+  "packaging_briefs",
   "import_steps",
   "receivings",
   "production_tracks",
@@ -405,6 +409,10 @@ async function buildWork(): Promise<Work> {
       !!(d.orderId || d.requestId || d.requirementId || d.kitId) ||
       // Anexo do chat (sai junto com as mensagens).
       !!d.conversationTopicId ||
+      // Arquivo do briefing de embalagem ou da cotação (negociação, proposta
+      // de embalagem): saem com eles, mesmo sem pedido nem solicitação.
+      !!d.packagingBriefId ||
+      !!d.quoteId ||
       droppedPhotoDocs.has(d.id) ||
       (!!d.sourcingItemId && sourcingGone.has(d.sourcingItemId));
     // Do catálogo: usado por algo que fica, ou do produto/sourcing que fica
@@ -425,6 +433,8 @@ async function buildWork(): Promise<Work> {
     if (d.requestId) patch.requestId = null;
     if (d.requirementId) patch.requirementId = null;
     if (d.kitId) patch.kitId = null;
+    if (d.packagingBriefId) patch.packagingBriefId = null;
+    if (d.quoteId) patch.quoteId = null;
     if (d.previousDocumentId && deleted.has(d.previousDocumentId))
       patch.previousDocumentId = null;
     if (Object.keys(patch).length)

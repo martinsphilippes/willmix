@@ -1,0 +1,155 @@
+import { describe, expect, it } from "vitest";
+import {
+  ORDER_PART_KEYS,
+  ORDER_PART_PARALLEL,
+  ORDER_PART_STAGE,
+  documentPart,
+  orderPartsByStage,
+  plainPart,
+  sheetPart,
+  stepsPart,
+} from "@/lib/order-parts";
+import { STAGE_KEYS } from "@/lib/db/schema";
+
+describe("partes do pedido na tabela de etapas", () => {
+  it("toda parte fica debaixo de uma etapa que existe", () => {
+    for (const key of ORDER_PART_KEYS)
+      expect(STAGE_KEYS).toContain(ORDER_PART_STAGE[key]);
+    for (const key of ORDER_PART_PARALLEL)
+      expect(ORDER_PART_KEYS).toContain(key);
+  });
+
+  it("documento do pedido: conta as duas assinaturas", () => {
+    expect(
+      documentPart([{ key: "order_confirmed", status: "done" }], "/d"),
+    ).toBe(null);
+    const half = documentPart(
+      [
+        { key: "order_signed_wellmix", status: "done" },
+        { key: "order_signed_supplier", status: "pending" },
+      ],
+      "/d",
+    );
+    expect(half).toMatchObject({ state: "active", done: 1, total: 2 });
+    const full = documentPart(
+      [
+        { key: "order_signed_wellmix", status: "done" },
+        { key: "order_signed_supplier", status: "done" },
+      ],
+      "/d",
+    );
+    expect(full?.state).toBe("done");
+  });
+
+  it("parte em passos: não começou, em andamento e concluída", () => {
+    expect(stepsPart("import", [], "#x")).toBe(null);
+    const step = (done: boolean, started: boolean) => ({ done, started });
+    expect(
+      stepsPart("certification", [step(false, false), step(false, false)], "#c")
+        ?.state,
+    ).toBe("pending");
+    expect(
+      stepsPart("certification", [step(true, true), step(false, false)], "#c"),
+    ).toMatchObject({ state: "active", done: 1, total: 2 });
+    expect(
+      stepsPart("import", [step(true, true), step(true, true)], "#i")?.state,
+    ).toBe("done");
+  });
+
+  it("ficha de compra: completa quando nada falta", () => {
+    expect(sheetPart({ missing: 0, started: true }, "/s", null).state).toBe(
+      "done",
+    );
+    expect(sheetPart({ missing: 3, started: true }, "/s", "x").state).toBe(
+      "active",
+    );
+    expect(sheetPart({ missing: 3, started: false }, "/s", "x").state).toBe(
+      "pending",
+    );
+  });
+
+  it("agrupa por etapa na ordem do negócio e ignora o que o login não vê", () => {
+    const map = orderPartsByStage([
+      plainPart("production", "active", "#production"),
+      null,
+      plainPart("artwork", "pending", "#artwork"),
+      plainPart("supplier_payment", "active", "#supplier-payment"),
+      plainPart("receiving", "pending", "#receiving"),
+    ]);
+    expect(map.get("PACKAGING")?.map((p) => p.key)).toEqual([
+      "artwork",
+      "supplier_payment",
+      "production",
+    ]);
+    expect(map.get("TRANSPORT")?.map((p) => p.key)).toEqual(["receiving"]);
+    expect(map.has("PREPARATION")).toBe(false);
+  });
+
+  it("ordem nova: a certificação corre desde Pedido criado e o documento do pedido vem depois da arte, antes da produção", () => {
+    const stages = [
+      { id: "s1", key: "ORDER_CREATED" },
+      { id: "s3", key: "PACKAGING" },
+    ];
+    const reqs = [
+      { key: "order_sign_send", status: "pending", stageId: "s3" },
+      { key: "order_signed_wellmix", status: "pending", stageId: "s3" },
+      { key: "order_signed_supplier", status: "pending", stageId: "s3" },
+    ];
+    const document = documentPart(reqs, "/doc", stages)!;
+    // Antes do "Enviar para assinatura" a parte ainda não começou.
+    expect([document.state, document.done, document.total]).toEqual([
+      "pending",
+      0,
+      2,
+    ]);
+    const map = orderPartsByStage([
+      stepsPart("certification", [{ done: false, started: false }], "#c"),
+      document,
+      sheetPart({ missing: 1, started: false }, "/s", null),
+      plainPart("artwork", "active", "#artwork"),
+      plainPart("production", "pending", "#production"),
+    ]);
+    expect(map.get("ORDER_CREATED")?.map((p) => p.key)).toEqual([
+      "certification",
+    ]);
+    expect(map.get("PREPARATION")?.map((p) => p.key)).toEqual(["sheet"]);
+    expect(map.get("PACKAGING")?.map((p) => p.key)).toEqual([
+      "artwork",
+      "document",
+      "production",
+    ]);
+    // Enviado para assinatura: a parte fica em andamento.
+    expect(
+      documentPart(
+        [{ ...reqs[0], status: "done" }, reqs[1], reqs[2]],
+        "/doc",
+        stages,
+      )!.state,
+    ).toBe("active");
+  });
+
+  it("pedido de antes da ordem nova: o documento continua logo abaixo de Pedido criado, antes da certificação", () => {
+    const stages = [
+      { id: "s1", key: "ORDER_CREATED" },
+      { id: "s2", key: "PREPARATION" },
+    ];
+    const map = orderPartsByStage([
+      stepsPart("certification", [{ done: false, started: false }], "#c"),
+      documentPart(
+        [
+          { key: "order_signed_wellmix", status: "pending", stageId: "s1" },
+          { key: "order_signed_supplier", status: "pending", stageId: "s2" },
+        ],
+        "/doc",
+        stages,
+      ),
+      sheetPart({ missing: 1, started: false }, "/s", null),
+    ]);
+    expect(map.get("ORDER_CREATED")?.map((p) => p.key)).toEqual([
+      "document",
+      "certification",
+    ]);
+    expect(map.get("PREPARATION")?.map((p) => p.key)).toEqual(["sheet"]);
+    expect(map.has("PACKAGING")).toBe(false);
+  });
+});

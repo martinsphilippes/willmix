@@ -1,0 +1,453 @@
+/**
+ * Dicionário do módulo "order-signature" (documento do pedido com as duas
+ * assinaturas: Wellmix e fornecedor): mesmas chaves em pt, en e zh.
+ */
+export const pt = {
+  "req.order_signed_wellmix": "Documento do pedido assinado pela Wellmix",
+  "req.order_signed_supplier": "Documento do pedido assinado pelo fornecedor",
+  "orderSign.title": "Documento do pedido #{n}",
+  "orderSign.subtitle":
+    "O que foi combinado neste pedido. A Wellmix assina primeiro; o fornecedor assina em seguida. O pedido só segue com as duas assinaturas.",
+  "orderSign.open": "Abrir e assinar o documento",
+  "orderSign.link.title": "Documento do pedido",
+  "orderSign.link.open": "Abrir o documento",
+  "orderSign.view": "Ver o documento do pedido",
+  "orderSign.buyer": "Comprador",
+  "orderSign.supplier": "Fornecedor",
+  "orderSign.item": "Produto",
+  "orderSign.qty": "Quantidade",
+  "orderSign.unitPrice": "Preço por unidade",
+  "orderSign.total": "Total",
+  "orderSign.leadTime": "Prazo de produção",
+  "orderSign.leadTime.days": "{n} dias",
+  "orderSign.payment": "Condição de pagamento",
+  "orderSign.payment.none": "Conforme combinado (sem parcelas cadastradas).",
+  "orderSign.packaging": "Embalagem",
+  "orderSign.packaging.ok":
+    "Proposta de embalagem {n}, com o OK do fornecedor na cotação.",
+  "orderSign.version": "Versão do documento: {hash}",
+  "orderSign.signatures": "Assinaturas",
+  "orderSign.side.wellmix": "Wellmix",
+  "orderSign.side.supplier": "Fornecedor",
+  "orderSign.signed": "{name}, em {date}.",
+  "orderSign.signed.onBehalf":
+    "{name}, em {date}. Assinatura recebida por fora e registrada por {by}.",
+  "orderSign.signed.old":
+    "Assinou uma versão anterior deste documento (o pedido mudou depois).",
+  "orderSign.pending": "Ainda não assinou.",
+  "orderSign.waitingWellmix":
+    "A Wellmix ainda não assinou. Você assina depois dela.",
+  "orderSign.notApplicable":
+    "Este pedido é de antes da assinatura no portal: o documento fica só para consulta.",
+  "orderSign.form.title": "Assinar",
+  "orderSign.form.title.onBehalf":
+    "Registrar a assinatura do fornecedor recebida por fora (administrador)",
+  "orderSign.form.name": "Seu nome completo",
+  "orderSign.form.name.onBehalf": "Nome de quem assinou pelo fornecedor",
+  "orderSign.form.agree":
+    "Li o documento acima e concordo com produto, quantidade, preço, prazo e condição de pagamento.",
+  "orderSign.form.agree.onBehalf":
+    "Confirmo que recebi o documento assinado pelo fornecedor (papel ou e-mail) e que ele está guardado.",
+  "orderSign.form.submit": "Assinar o documento",
+  "orderSign.form.submit.onBehalf": "Registrar a assinatura",
+  "orderSign.form.note":
+    "A assinatura registra o seu nome, o seu login, a data e a hora e esta versão do documento. É um aceite no portal, não um certificado digital.",
+  "orderSign.done": "Assinatura registrada.",
+  "orderSign.print": "Imprimir ou salvar em PDF",
+  "orderSign.back": "Voltar ao pedido",
+  "orderSign.back.supplier": "Etapas e pendências do pedido",
+  "orderSign.tasks.title": "Suas pendências neste pedido",
+  "orderSign.error.signature_required":
+    "Este item só é concluído pela assinatura do documento do pedido.",
+  "orderSign.error.signature_name_required":
+    "Digite o nome completo (pelo menos 3 letras).",
+  "orderSign.error.signature_agree_required":
+    "Marque que leu e concorda para assinar.",
+  "orderSign.error.signature_not_applicable":
+    "Este pedido não tem assinatura no portal.",
+  "orderSign.error.signature_already_done":
+    "Este documento já foi assinado por este lado.",
+  "orderSign.error.signature_wellmix_first":
+    "A Wellmix assina primeiro. Aguarde a assinatura dela.",
+  "orderSign.error.signature_document_changed":
+    "O pedido mudou enquanto você lia. Confira o documento de novo e assine.",
+  "orderSign.error.stage_not_active":
+    "Ainda não é a hora desta assinatura: a etapa dela não está aberta.",
+  "orderSign.turn.title": "Sua vez de assinar",
+  "orderSign.turn.hint.supplier":
+    "A Wellmix já assinou. Confira o documento abaixo e assine de uma destas duas formas:",
+  "orderSign.turn.hint.wellmix":
+    "Confira o documento abaixo e assine. Ao assinar, o pedido é liberado ao fornecedor, que assina em seguida.",
+  "orderSign.option.portal": "Opção 1: assinar aqui no portal",
+  "orderSign.option.portal.hint":
+    "Digite o seu nome, marque que leu e concorda e toque em Assinar.",
+  "orderSign.option.file": "Opção 2: enviar o documento assinado",
+  "orderSign.option.file.hint":
+    "Baixe o PDF, assine e carimbe, e envie aqui o arquivo assinado (PDF ou foto).",
+  "orderSign.option.file.name": "Nome de quem assinou",
+  "orderSign.option.file.send": "Enviar o documento assinado (PDF ou foto)",
+  "orderSign.option.file.note":
+    "Ao escolher o arquivo, a assinatura já fica registrada com o arquivo guardado no pedido.",
+  "orderSign.blocked.supplier":
+    "A Wellmix já assinou, mas ainda não liberou o pedido para a sua assinatura. Avise a Wellmix.",
+  "orderSign.blocked.wellmix":
+    "O fornecedor ainda não consegue assinar: falta concluir, no pedido, o item “Pedido conferido e liberado ao fornecedor” da etapa Pedido criado.",
+  "orderSign.error.signature_file_missing":
+    "O arquivo assinado não chegou. Envie de novo.",
+  "req.order_sign_send": "Documento do pedido enviado para assinatura",
+  "orderSign.send.submit": "Enviar para assinatura",
+  "orderSign.send.missing.art":
+    "Aguardando a arte da embalagem: o documento só vai para assinatura depois dela.",
+  "orderSign.send.missing.seal":
+    "Aguardando o selo da certificadora aplicado na arte: o documento só vai para assinatura depois dele.",
+  "orderSign.send.ready":
+    "Arte enviada e selo aplicado: o documento já pode ser enviado para a assinatura da Wellmix e do fornecedor.",
+  "orderSign.send.who":
+    "Quem envia é quem fez a arte (a agência), no pedido, no item “Documento do pedido enviado para assinatura”. A Wellmix também pode enviar.",
+  "orderSign.send.done":
+    "Documento enviado para assinatura. A Wellmix assina primeiro.",
+  "orderSign.send.waitSend": "Aguardando o envio para assinatura.",
+  "orderSign.send.waitWellmix": "A Wellmix assina primeiro.",
+  "orderSign.status.awaiting_send":
+    "Em preparação: vai para assinatura depois da arte e do selo",
+  "orderSign.awaitingSend.supplier":
+    "O documento ainda não foi enviado para assinatura. Primeiro a agência conclui a arte e aplica o selo da certificadora; depois a Wellmix assina e você assina em seguida.",
+  "orderSign.error.signature_not_sent":
+    "O documento ainda não foi enviado para assinatura (falta a arte, o selo ou o envio).",
+  "orderSign.error.sign_send_art_required":
+    "Falta a arte da embalagem para enviar o documento para assinatura.",
+  "orderSign.error.sign_send_seal_required":
+    "Falta o selo da certificadora aplicado na arte para enviar o documento para assinatura.",
+  "orderSign.error.sign_send_already_done":
+    "O documento já foi enviado para assinatura.",
+  "orders.error.sign_send_art_required":
+    "Falta a arte da embalagem para enviar o documento para assinatura.",
+  "orders.error.sign_send_seal_required":
+    "Falta o selo da certificadora aplicado na arte para enviar o documento para assinatura.",
+  "orderSign.moq": "Pedido mínimo (MOQ)",
+  "orderSign.moq.value": "{n} peças",
+  "orderSign.status.awaiting_wellmix":
+    "Pronto para assinatura: esperando a Wellmix",
+  "orderSign.status.sent_to_supplier":
+    "Enviado ao fornecedor: esperando a assinatura dele",
+  "orderSign.status.signed":
+    "Assinado pelos dois: pedido autorizado, falta gerar no Sankhya",
+  "orderSign.status.in_erp": "Pedido gerado no Sankhya: {n}",
+  "orderSign.download": "Baixar o documento em PDF",
+  "orderSign.sheet.title": "Folha do pedido (modelo Wellmix)",
+  "orderSign.sheet.hint":
+    "É assim que o documento sai no PDF: o fornecedor baixa, assina no quadro do canto e anexa de volta. Campo em branco é dado que ainda não está no portal.",
+  "orderSign.file.title": "Como assinar",
+  "orderSign.file.steps":
+    "1) Baixe o PDF. 2) Assine e carimbe. 3) Anexe aqui o arquivo assinado (PDF ou foto) e toque em Assinar. Sem arquivo, vale o aceite no portal.",
+  "orderSign.file.label": "Documento assinado (PDF ou foto)",
+  "orderSign.file.label.optional": "Documento assinado (PDF ou foto), opcional",
+  "orderSign.signed.file": "Arquivo assinado",
+  "orderSign.signed.accept": "Aceite no portal",
+  "orderSign.reopen.title":
+    "Devolver a assinatura do fornecedor (administrador)",
+  "orderSign.reopen.reason": "Motivo (o fornecedor lê)",
+  "orderSign.reopen.submit": "Devolver para assinar de novo",
+  "orderSign.reopened": "Assinatura devolvida. O fornecedor foi avisado.",
+  "orderSign.error.signature_file_invalid":
+    "O arquivo assinado precisa ser PDF ou foto (JPG, PNG ou WebP).",
+  "orderSign.error.signature_reason_required":
+    "Escreva o motivo (pelo menos 3 letras).",
+  "notif.orderSignReopened.subject": "Pedido #{n}: assine o documento de novo",
+  "notif.orderSignReopened.body":
+    "A Wellmix devolveu a sua assinatura: {reason} Abra o documento do pedido e assine de novo.",
+  "notif.orderSign.subject": "Pedido #{n}: assine o documento do pedido",
+  "notif.orderSign.body":
+    "A Wellmix assinou o documento do pedido. Abra, confira produto, quantidade, preço e prazo e assine para o pedido seguir.",
+} as const;
+
+export const en: Record<keyof typeof pt, string> = {
+  "req.order_signed_wellmix": "Order document signed by Wellmix",
+  "req.order_signed_supplier": "Order document signed by the supplier",
+  "orderSign.title": "Order document #{n}",
+  "orderSign.subtitle":
+    "What was agreed for this order. Wellmix signs first; the supplier signs next. The order only goes on with both signatures.",
+  "orderSign.open": "Open and sign the document",
+  "orderSign.link.title": "Order document",
+  "orderSign.link.open": "Open the document",
+  "orderSign.view": "View the order document",
+  "orderSign.buyer": "Buyer",
+  "orderSign.supplier": "Supplier",
+  "orderSign.item": "Product",
+  "orderSign.qty": "Quantity",
+  "orderSign.unitPrice": "Unit price",
+  "orderSign.total": "Total",
+  "orderSign.leadTime": "Production lead time",
+  "orderSign.leadTime.days": "{n} days",
+  "orderSign.payment": "Payment terms",
+  "orderSign.payment.none": "As agreed (no installments registered).",
+  "orderSign.packaging": "Packaging",
+  "orderSign.packaging.ok":
+    "Packaging proposal {n}, with the supplier's OK on the quote.",
+  "orderSign.version": "Document version: {hash}",
+  "orderSign.signatures": "Signatures",
+  "orderSign.side.wellmix": "Wellmix",
+  "orderSign.side.supplier": "Supplier",
+  "orderSign.signed": "{name}, on {date}.",
+  "orderSign.signed.onBehalf":
+    "{name}, on {date}. Signature received outside the portal and registered by {by}.",
+  "orderSign.signed.old":
+    "Signed an earlier version of this document (the order changed afterwards).",
+  "orderSign.pending": "Not signed yet.",
+  "orderSign.waitingWellmix":
+    "Wellmix has not signed yet. You sign after them.",
+  "orderSign.notApplicable":
+    "This order predates signing in the portal: the document is for reference only.",
+  "orderSign.form.title": "Sign",
+  "orderSign.form.title.onBehalf":
+    "Register the supplier's signature received outside the portal (administrator)",
+  "orderSign.form.name": "Your full name",
+  "orderSign.form.name.onBehalf": "Name of who signed for the supplier",
+  "orderSign.form.agree":
+    "I have read the document above and agree with product, quantity, price, lead time and payment terms.",
+  "orderSign.form.agree.onBehalf":
+    "I confirm I received the document signed by the supplier (paper or e-mail) and that it is filed.",
+  "orderSign.form.submit": "Sign the document",
+  "orderSign.form.submit.onBehalf": "Register the signature",
+  "orderSign.form.note":
+    "The signature records your name, your login, the date and time and this version of the document. It is an acceptance in the portal, not a digital certificate.",
+  "orderSign.done": "Signature registered.",
+  "orderSign.print": "Print or save as PDF",
+  "orderSign.back": "Back to the order",
+  "orderSign.back.supplier": "Order steps and pending items",
+  "orderSign.tasks.title": "Your pending items on this order",
+  "orderSign.error.signature_required":
+    "This item is only completed by signing the order document.",
+  "orderSign.error.signature_name_required":
+    "Type the full name (at least 3 letters).",
+  "orderSign.error.signature_agree_required":
+    "Tick that you have read and agree in order to sign.",
+  "orderSign.error.signature_not_applicable":
+    "This order has no signature in the portal.",
+  "orderSign.error.signature_already_done":
+    "This document has already been signed by this side.",
+  "orderSign.error.signature_wellmix_first":
+    "Wellmix signs first. Wait for their signature.",
+  "orderSign.error.signature_document_changed":
+    "The order changed while you were reading. Check the document again and sign.",
+  "orderSign.error.stage_not_active":
+    "It is not time for this signature yet: its stage is not open.",
+  "orderSign.turn.title": "Your turn to sign",
+  "orderSign.turn.hint.supplier":
+    "Wellmix has already signed. Check the document below and sign in one of these two ways:",
+  "orderSign.turn.hint.wellmix":
+    "Check the document below and sign. When you sign, the order is released to the supplier, who signs next.",
+  "orderSign.option.portal": "Option 1: sign here in the portal",
+  "orderSign.option.portal.hint":
+    "Type your name, tick that you have read and agree, and tap Sign.",
+  "orderSign.option.file": "Option 2: send the signed document",
+  "orderSign.option.file.hint":
+    "Download the PDF, sign and stamp it, and send the signed file here (PDF or photo).",
+  "orderSign.option.file.name": "Name of who signed",
+  "orderSign.option.file.send": "Send the signed document (PDF or photo)",
+  "orderSign.option.file.note":
+    "When you choose the file, the signature is recorded with the file kept in the order.",
+  "orderSign.blocked.supplier":
+    "Wellmix has already signed, but has not yet released the order for your signature. Please tell Wellmix.",
+  "orderSign.blocked.wellmix":
+    "The supplier cannot sign yet: in the order, conclude the item “Order checked and released to the supplier” of the Order created stage.",
+  "orderSign.error.signature_file_missing":
+    "The signed file did not arrive. Send it again.",
+  "req.order_sign_send": "Order document sent for signature",
+  "orderSign.send.submit": "Send for signature",
+  "orderSign.send.missing.art":
+    "Waiting for the packaging artwork: the document only goes for signature after it.",
+  "orderSign.send.missing.seal":
+    "Waiting for the certifier's seal applied to the artwork: the document only goes for signature after it.",
+  "orderSign.send.ready":
+    "Artwork sent and seal applied: the document can now be sent for Wellmix's and the supplier's signature.",
+  "orderSign.send.who":
+    "Whoever made the artwork (the agency) sends it, in the order, in the item “Order document sent for signature”. Wellmix can also send it.",
+  "orderSign.send.done": "Document sent for signature. Wellmix signs first.",
+  "orderSign.send.waitSend": "Waiting to be sent for signature.",
+  "orderSign.send.waitWellmix": "Wellmix signs first.",
+  "orderSign.status.awaiting_send":
+    "In preparation: goes for signature after the artwork and the seal",
+  "orderSign.awaitingSend.supplier":
+    "The document has not been sent for signature yet. First the agency finishes the artwork and applies the certifier's seal; then Wellmix signs and you sign next.",
+  "orderSign.error.signature_not_sent":
+    "The document has not been sent for signature yet (artwork, seal or sending is missing).",
+  "orderSign.error.sign_send_art_required":
+    "The packaging artwork is missing to send the document for signature.",
+  "orderSign.error.sign_send_seal_required":
+    "The certifier's seal applied to the artwork is missing to send the document for signature.",
+  "orderSign.error.sign_send_already_done":
+    "The document has already been sent for signature.",
+  "orders.error.sign_send_art_required":
+    "The packaging artwork is missing to send the document for signature.",
+  "orders.error.sign_send_seal_required":
+    "The certifier's seal applied to the artwork is missing to send the document for signature.",
+  "orderSign.moq": "Minimum order (MOQ)",
+  "orderSign.moq.value": "{n} pcs",
+  "orderSign.status.awaiting_wellmix": "Ready to sign: waiting for Wellmix",
+  "orderSign.status.sent_to_supplier":
+    "Sent to the supplier: waiting for their signature",
+  "orderSign.status.signed":
+    "Signed by both: order authorized, still to be created in Sankhya",
+  "orderSign.status.in_erp": "Order created in Sankhya: {n}",
+  "orderSign.download": "Download the document as PDF",
+  "orderSign.sheet.title": "Order sheet (Wellmix template)",
+  "orderSign.sheet.hint":
+    "This is how the document looks in the PDF: the supplier downloads it, signs in the corner box and attaches it back. A blank field is data that is not in the portal yet.",
+  "orderSign.file.title": "How to sign",
+  "orderSign.file.steps":
+    "1) Download the PDF. 2) Sign and stamp it. 3) Attach the signed file here (PDF or photo) and tap Sign. Without a file, the acceptance in the portal applies.",
+  "orderSign.file.label": "Signed document (PDF or photo)",
+  "orderSign.file.label.optional": "Signed document (PDF or photo), optional",
+  "orderSign.signed.file": "Signed file",
+  "orderSign.signed.accept": "Accepted in the portal",
+  "orderSign.reopen.title": "Return the supplier's signature (administrator)",
+  "orderSign.reopen.reason": "Reason (the supplier reads it)",
+  "orderSign.reopen.submit": "Return to sign again",
+  "orderSign.reopened": "Signature returned. The supplier was notified.",
+  "orderSign.error.signature_file_invalid":
+    "The signed file must be a PDF or a photo (JPG, PNG or WebP).",
+  "orderSign.error.signature_reason_required":
+    "Write the reason (at least 3 letters).",
+  "notif.orderSignReopened.subject": "Order #{n}: sign the document again",
+  "notif.orderSignReopened.body":
+    "Wellmix returned your signature: {reason} Open the order document and sign again.",
+  "notif.orderSign.subject": "Order #{n}: sign the order document",
+  "notif.orderSign.body":
+    "Wellmix signed the order document. Open it, check product, quantity, price and lead time, and sign so the order can go on.",
+};
+
+export const zh: Record<keyof typeof pt, string> = {
+  "req.order_signed_wellmix": "Wellmix 已签署订单文件",
+  "req.order_signed_supplier": "供应商已签署订单文件",
+  "orderSign.title": "订单文件 #{n}",
+  "orderSign.subtitle":
+    "本订单约定的内容。Wellmix 先签署，供应商随后签署。双方签署后订单才继续。",
+  "orderSign.open": "打开并签署文件",
+  "orderSign.link.title": "订单文件",
+  "orderSign.link.open": "打开文件",
+  "orderSign.view": "查看订单文件",
+  "orderSign.buyer": "买方",
+  "orderSign.supplier": "供应商",
+  "orderSign.item": "产品",
+  "orderSign.qty": "数量",
+  "orderSign.unitPrice": "单价",
+  "orderSign.total": "合计",
+  "orderSign.leadTime": "生产交期",
+  "orderSign.leadTime.days": "{n} 天",
+  "orderSign.payment": "付款条件",
+  "orderSign.payment.none": "按约定（未登记分期）。",
+  "orderSign.packaging": "包装",
+  "orderSign.packaging.ok": "包装方案 {n}，供应商已在报价单中确认。",
+  "orderSign.version": "文件版本：{hash}",
+  "orderSign.signatures": "签署",
+  "orderSign.side.wellmix": "Wellmix",
+  "orderSign.side.supplier": "供应商",
+  "orderSign.signed": "{name}，{date}。",
+  "orderSign.signed.onBehalf":
+    "{name}，{date}。签署在系统外收到，由 {by} 登记。",
+  "orderSign.signed.old": "签署的是本文件的旧版本（之后订单有变更）。",
+  "orderSign.pending": "尚未签署。",
+  "orderSign.waitingWellmix": "Wellmix 尚未签署。请在其之后签署。",
+  "orderSign.notApplicable": "该订单早于系统内签署功能：文件仅供查阅。",
+  "orderSign.form.title": "签署",
+  "orderSign.form.title.onBehalf": "登记在系统外收到的供应商签署（管理员）",
+  "orderSign.form.name": "您的全名",
+  "orderSign.form.name.onBehalf": "代表供应商签署的人的姓名",
+  "orderSign.form.agree":
+    "我已阅读上述文件，并同意产品、数量、价格、交期和付款条件。",
+  "orderSign.form.agree.onBehalf":
+    "我确认已收到供应商签署的文件（纸质或电子邮件）并已存档。",
+  "orderSign.form.submit": "签署文件",
+  "orderSign.form.submit.onBehalf": "登记签署",
+  "orderSign.form.note":
+    "签署会记录您的姓名、登录账号、日期时间以及文件的这一版本。这是系统内的确认，不是数字证书。",
+  "orderSign.done": "签署已登记。",
+  "orderSign.print": "打印或保存为 PDF",
+  "orderSign.back": "返回订单",
+  "orderSign.back.supplier": "订单步骤与待办",
+  "orderSign.tasks.title": "您在此订单的待办事项",
+  "orderSign.error.signature_required": "此项只能通过签署订单文件来完成。",
+  "orderSign.error.signature_name_required": "请输入全名（至少 3 个字符）。",
+  "orderSign.error.signature_agree_required": "请勾选已阅读并同意后再签署。",
+  "orderSign.error.signature_not_applicable": "该订单没有系统内签署。",
+  "orderSign.error.signature_already_done": "该文件这一方已经签署。",
+  "orderSign.error.signature_wellmix_first": "Wellmix 先签署。请等待其签署。",
+  "orderSign.error.signature_document_changed":
+    "在您阅读期间订单有变更。请重新核对文件后签署。",
+  "orderSign.error.stage_not_active": "还未到此签署的时间：对应阶段尚未开启。",
+  "orderSign.turn.title": "轮到您签署",
+  "orderSign.turn.hint.supplier":
+    "Wellmix 已签署。请核对下方文件，并用以下两种方式之一签署：",
+  "orderSign.turn.hint.wellmix":
+    "请核对下方文件并签署。签署后订单即发给供应商，由供应商接着签署。",
+  "orderSign.option.portal": "方式一：在平台上直接签署",
+  "orderSign.option.portal.hint":
+    "填写您的姓名，勾选已阅读并同意，然后点击签署。",
+  "orderSign.option.file": "方式二：上传已签署的文件",
+  "orderSign.option.file.hint":
+    "下载 PDF，签字盖章后，在这里上传已签署的文件（PDF 或照片）。",
+  "orderSign.option.file.name": "签署人姓名",
+  "orderSign.option.file.send": "上传已签署的文件（PDF 或照片）",
+  "orderSign.option.file.note": "选择文件后，签署即被记录，文件保存在订单中。",
+  "orderSign.blocked.supplier":
+    "Wellmix 已签署，但尚未将订单发给您签署。请通知 Wellmix。",
+  "orderSign.blocked.wellmix":
+    "供应商暂时无法签署：请在订单的“订单已创建”阶段完成“订单已核对并发给供应商”一项。",
+  "orderSign.error.signature_file_missing": "未收到已签署的文件，请重新上传。",
+  "req.order_sign_send": "订单文件已发送签署",
+  "orderSign.send.submit": "发送签署",
+  "orderSign.send.missing.art":
+    "等待包装设计稿：设计稿完成后文件才会发送签署。",
+  "orderSign.send.missing.seal":
+    "等待认证机构的标志加到设计稿上：完成后文件才会发送签署。",
+  "orderSign.send.ready":
+    "设计稿已上传且认证标志已加上：现在可以把文件发给 Wellmix 和供应商签署。",
+  "orderSign.send.who":
+    "由制作设计稿的一方（设计公司）在订单的“订单文件已发送签署”一项中发送。Wellmix 也可以发送。",
+  "orderSign.send.done": "文件已发送签署。Wellmix 先签署。",
+  "orderSign.send.waitSend": "等待发送签署。",
+  "orderSign.send.waitWellmix": "Wellmix 先签署。",
+  "orderSign.status.awaiting_send": "准备中：设计稿和认证标志完成后发送签署",
+  "orderSign.awaitingSend.supplier":
+    "文件尚未发送签署。先由设计公司完成设计稿并加上认证标志；然后 Wellmix 签署，接着由您签署。",
+  "orderSign.error.signature_not_sent":
+    "文件尚未发送签署（缺少设计稿、认证标志或发送步骤）。",
+  "orderSign.error.sign_send_art_required": "缺少包装设计稿，无法发送签署。",
+  "orderSign.error.sign_send_seal_required":
+    "缺少加在设计稿上的认证标志，无法发送签署。",
+  "orderSign.error.sign_send_already_done": "文件已发送签署。",
+  "orders.error.sign_send_art_required": "缺少包装设计稿，无法发送签署。",
+  "orders.error.sign_send_seal_required":
+    "缺少加在设计稿上的认证标志，无法发送签署。",
+  "orderSign.moq": "最小起订量（MOQ）",
+  "orderSign.moq.value": "{n} 件",
+  "orderSign.status.awaiting_wellmix": "待签署：等待 Wellmix",
+  "orderSign.status.sent_to_supplier": "已发送给供应商：等待其签署",
+  "orderSign.status.signed": "双方已签署：订单已授权，尚待在 Sankhya 生成",
+  "orderSign.status.in_erp": "订单已在 Sankhya 生成：{n}",
+  "orderSign.download": "下载 PDF 文件",
+  "orderSign.sheet.title": "订单表（Wellmix 模板）",
+  "orderSign.sheet.hint":
+    "PDF 文件即为此格式：供应商下载后，在右上角方框内签字盖章并上传。空白栏为系统中尚无的数据。",
+  "orderSign.file.title": "如何签署",
+  "orderSign.file.steps":
+    "1）下载 PDF。2）签字并盖章。3）在此上传已签署的文件（PDF 或照片），然后点击签署。不上传文件时，以系统内确认为准。",
+  "orderSign.file.label": "已签署的文件（PDF 或照片）",
+  "orderSign.file.label.optional": "已签署的文件（PDF 或照片），选填",
+  "orderSign.signed.file": "已签署的文件",
+  "orderSign.signed.accept": "系统内确认",
+  "orderSign.reopen.title": "退回供应商的签署（管理员）",
+  "orderSign.reopen.reason": "原因（供应商可见）",
+  "orderSign.reopen.submit": "退回重新签署",
+  "orderSign.reopened": "签署已退回，已通知供应商。",
+  "orderSign.error.signature_file_invalid":
+    "已签署的文件必须是 PDF 或照片（JPG、PNG 或 WebP）。",
+  "orderSign.error.signature_reason_required": "请填写原因（至少 3 个字符）。",
+  "notif.orderSignReopened.subject": "订单 #{n}：请重新签署文件",
+  "notif.orderSignReopened.body":
+    "Wellmix 退回了您的签署：{reason} 请打开订单文件并重新签署。",
+  "notif.orderSign.subject": "订单 #{n}：请签署订单文件",
+  "notif.orderSign.body":
+    "Wellmix 已签署订单文件。请打开并核对产品、数量、价格和交期后签署，订单才能继续。",
+};

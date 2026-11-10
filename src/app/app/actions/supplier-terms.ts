@@ -71,6 +71,26 @@ export async function saveSupplierTermsAction(form: FormData) {
 }
 
 /** No pedido: troca a condição copiada pela atual do cadastro do fornecedor. */
+/** Prazo de início da produção do fornecedor (só o administrador). */
+export async function saveSupplierProductionStartAction(form: FormData) {
+  const user = await requireUser();
+  const id = str(form, "id");
+  await run(`/app/parties/${id}#production-start`, async () => {
+    assertRole(user, ["admin"]);
+    const partyId = z
+      .string()
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/)
+      .parse(id);
+    const raw = str(form, "productionStartDays");
+    const days =
+      raw === "" ? null : z.coerce.number().int().min(0).max(365).parse(raw);
+    const { setSupplierProductionStartDays } =
+      await import("@/lib/services/order-signature");
+    await setSupplierProductionStartDays(user, partyId, days);
+    return `/app/parties/${partyId}?saved=production#production-start`;
+  });
+}
+
 export async function applySupplierTermsAction(form: FormData) {
   const user = await requireUser();
   const orderId = str(form, "orderId");

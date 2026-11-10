@@ -35,8 +35,13 @@ const { seedDemo } = await import("@/lib/seed");
 const { ensureBookingForProduct } =
   await import("@/lib/services/booking-intake");
 const { saveProductSheet } = await import("@/lib/services/product-sheet");
-const { bulkBookingAction, saveBookingRowAction, saveBookingAnalysisAction } =
-  await import("@/app/app/actions/booking");
+const {
+  bulkBookingAction,
+  saveBookingRowAction,
+  saveBookingAnalysisAction,
+  setBookingCustomerAction,
+  setBookingQuantityAction,
+} = await import("@/app/app/actions/booking");
 type User = import("@/lib/db").User;
 type Booking = import("@/lib/db").Booking;
 type BookingStatus = import("@/lib/db").BookingStatus;
@@ -314,6 +319,99 @@ describe("página da linha", () => {
   });
 });
 
+describe("cliente escolhido direto na linha da tabela", () => {
+  it("grava sozinho (cliente, estoque, tirar) e devolve o resultado, sem redirecionar", async () => {
+    const b = await row();
+    h.current = buyer;
+    const before = h.redirects.length;
+    expect(await setBookingCustomerAction(b.id, joao.partyId!)).toEqual({
+      ok: true,
+    });
+    expect((await fresh(b.id)).customerId).toBe(joao.partyId);
+    // "Estoque Wellmix": a empresa de estoque (criada se faltar).
+    expect(await setBookingCustomerAction(b.id, "__stock")).toEqual({
+      ok: true,
+    });
+    const stock = (await fresh(b.id)).customerId;
+    expect(stock).toBeTruthy();
+    expect(stock).not.toBe(joao.partyId);
+    expect(await setBookingCustomerAction(b.id, "-")).toEqual({ ok: true });
+    expect((await fresh(b.id)).customerId).toBeNull();
+    expect(h.redirects.length).toBe(before);
+    // A auditoria registra cada troca.
+    const log = await getStore().list("audit_log", {
+      filter: { entityId: b.id, action: "booking.update" },
+    });
+    expect(log).toHaveLength(3);
+  });
+
+  it("recusa com o texto de quem está na tela e nada muda: outro login, cliente que não existe, linha travada, reserva sem cliente", async () => {
+    const b = await row();
+    h.current = joao;
+    const forbidden = await setBookingCustomerAction(b.id, joao.partyId!);
+    expect(forbidden).toEqual({
+      ok: false,
+      message: "Você não tem permissão para esta ação.",
+    });
+    expect((await fresh(b.id)).customerId).toBeNull();
+
+    h.current = buyer;
+    for (const bad of ["nao-existe", admin.partyId ?? "x y", ""]) {
+      const result = await setBookingCustomerAction(b.id, bad);
+      expect(result.ok).toBe(false);
+      expect((await fresh(b.id)).customerId).toBeNull();
+    }
+    // Reservada: precisa de cliente; tirar é recusado e o cliente fica.
+    const reserved = await row("reserved", {
+      customerId: joao.partyId,
+      reservedQty: 120,
+    });
+    // Tirar o cliente de uma linha reservada: ela passa para o estoque da
+    // Wellmix (a coluna Cliente saiu da tela; sem cliente é estoque).
+    const removed = await setBookingCustomerAction(reserved.id, "-");
+    expect(removed.ok).toBe(true);
+    const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+    expect((await fresh(reserved.id)).customerId).toBe(STOCK_PARTY_ID);
+    // Linha que não existe.
+    expect((await setBookingCustomerAction("sumiu", "-")).ok).toBe(false);
+  });
+});
+
+describe("quantidade digitada direto na linha da tabela", () => {
+  it("grava ao sair do campo (com ponto de milhar), vazio tira; abaixo do mínimo, texto ou linha travada: recusa e nada muda", async () => {
+    const b = await row(); // pedido mínimo 120
+    h.current = buyer;
+    const before = h.redirects.length;
+    expect(await setBookingQuantityAction(b.id, "2.400")).toEqual({ ok: true });
+    expect((await fresh(b.id)).reservedQty).toBe(2400);
+    const low = await setBookingQuantityAction(b.id, "5");
+    expect(low).toEqual({
+      ok: false,
+      message:
+        "A quantidade reservada está abaixo do pedido mínimo do produto.",
+    });
+    for (const bad of ["abc", "0", "-3", "1,5"]) {
+      expect((await setBookingQuantityAction(b.id, bad)).ok).toBe(false);
+      expect((await fresh(b.id)).reservedQty).toBe(2400);
+    }
+    expect(await setBookingQuantityAction(b.id, "  ")).toEqual({ ok: true });
+    expect((await fresh(b.id)).reservedQty).toBeNull();
+    expect(h.redirects.length).toBe(before);
+
+    // Reservada: a quantidade não pode sair.
+    const reserved = await row("reserved", {
+      customerId: joao.partyId,
+      reservedQty: 120,
+    });
+    expect((await setBookingQuantityAction(reserved.id, "")).ok).toBe(false);
+    expect((await fresh(reserved.id)).reservedQty).toBe(120);
+    // Outro login não grava.
+    h.current = joao;
+    expect((await setBookingQuantityAction(b.id, "300")).ok).toBe(false);
+    expect((await fresh(b.id)).reservedQty).toBeNull();
+  });
+});
+
 describe("gravar no Booking pelo Superplan", () => {
   it("o resultado é refeito no servidor; só quem abre o Superplan grava", async () => {
     const b = await row();
@@ -534,21 +632,16 @@ describe("achados da revisão (segunda leva)", () => {
     expect(last()).toBe("/app/booking?status=analysis&owners=1");
   });
 
-  it("gerar solicitação sem cliente responde com o texto próprio, na linha", async () => {
+  it("gerar solicitação sem cliente: nasce para o estoque da Wellmix", async () => {
     const a = await row("approved");
     h.current = buyer;
     await bulkBookingAction(bulk({ op: "request" }, [a.id]));
-    const q = query(last());
-    expect([q.get("error"), q.get("row")]).toEqual([
-      "booking_request_customer",
-      a.id,
-    ]);
-    const { translator } = await import("@/i18n");
-    for (const lang of ["pt", "en", "zh"] as const) {
-      const text = translator(lang)("booking.error.booking_request_customer");
-      expect(text).not.toBe("booking.error.booking_request_customer");
-      expect(text.length).toBeGreaterThan(10);
-    }
-    expect((await fresh(a.id)).status).toBe("approved");
+    expect(query(last()).get("error")).toBeNull();
+    const after = await fresh(a.id);
+    expect(after.status).toBe("requested");
+    const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+    expect(
+      (await getStore().get("requests", after.requestId!))?.customerId,
+    ).toBe(STOCK_PARTY_ID);
   });
 });
