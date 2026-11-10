@@ -25,6 +25,7 @@ import {
   type EntitySample,
 } from "@/lib/integrations/sankhya-sample";
 import { Failure, one } from "./_shared";
+import { FullLoadCard } from "./_full";
 
 /*
  * Aba Carga do Sankhya (só o administrador; docs/SANKHYA.md): mapeamento
@@ -252,6 +253,8 @@ export async function LoadTab({ t, q }: { t: Translate; q: Params }) {
           </p>
         ) : null}
       </Card>
+
+      {status.config ? <FullLoadCard t={t} q={q} /> : null}
 
       {status.config ? (
         <Card title={t("sankhyaLoad.import")}>

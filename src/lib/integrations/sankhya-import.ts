@@ -9,6 +9,8 @@ import {
   REQUEST_EXTRA_DEFAULTS,
   type Order,
   type Party,
+  type Product,
+  type ProductLine,
   type User,
 } from "@/lib/db";
 import { STAGE_KEYS } from "@/lib/db/schema";
@@ -18,28 +20,47 @@ import { audit } from "@/lib/services/audit";
 import type { SankhyaRow } from "./sankhya-client";
 import { convert, sankhyaDate, TOP_STAGES } from "./sankhya-mapping";
 import type { ImportSet } from "./sankhya-sample";
+import {
+  DEFAULT_SANKHYA_ERP,
+  type SankhyaErpSettings,
+} from "./sankhya-settings";
 
 /*
- * Grava no portal a amostra lida do Sankhya (aba Carga do Sankhya; docs/SANKHYA.md).
- * Decisões da Wellmix: os pedidos entram como pedidos normais, a TOP (IMP)
- * define a etapa e os valores ficam em R$.
+ * Grava no portal o que veio do Sankhya (aba Carga do Sankhya; docs/SANKHYA.md):
+ * a amostra (notas com tudo o que elas usam) e a carga completa de cadastros
+ * (fornecedores, clientes, produtos, linhas e condições de pagamento).
  *
- * Idempotente: cada cadastro guarda o código do Sankhya (`sankhyaCode`; nos
- * pedidos, `erpNumber` = NUNOTA). O que já existe é reaproveitado: pelo
- * código; sem código, pelo CNPJ/nome (parceiro), SKU = REFFORN (produto) ou
- * nome (linha), e ganha o código. Estoque não é gravado (o portal calcula).
+ * Decisões da Wellmix: pedidos entram como pedidos normais, a TOP define a
+ * etapa, a moeda do pedido é a do Sankhya com o câmbio do pedido (USD =
+ * VLRNOTA ÷ VLRMOEDA); sem câmbio, R$. REFFORN = SKU (código interno),
+ * CODPROD = vínculo, REFERENCIA = EAN.
+ *
+ * Idempotente: cada cadastro guarda o código do Sankhya (`sankhyaCode`). O que
+ * já existe é reaproveitado pelo código; sem código, por CNPJ/nome
+ * (parceiro), SKU (produto) ou nome (linha), e ganha o código. Na carga
+ * completa (`update`), os campos que vêm do Sankhya são atualizados: o
+ * Sankhya é a fonte desses cadastros. Estoque não é gravado (o portal calcula).
  */
 
-export type ImportOutcome = "created" | "linked" | "existing" | "skipped";
+export type ImportOutcome =
+  | "created"
+  | "linked"
+  | "existing"
+  | "updated"
+  | "skipped";
+
+export type ImportEntity =
+  | "productGroups"
+  | "products"
+  | "partners"
+  | "customers"
+  | "companies"
+  | "orders"
+  | "financial"
+  | "paymentConditions";
 
 export interface ImportLine {
-  entity:
-    | "productGroups"
-    | "products"
-    | "partners"
-    | "companies"
-    | "orders"
-    | "financial";
+  entity: ImportEntity;
   code: string;
   outcome: ImportOutcome;
   /** Id no portal (quando há). */
@@ -60,6 +81,8 @@ const norm = (v: unknown) =>
     .replace(/[̀-ͯ]/g, "")
     .trim()
     .toLowerCase();
+const round = (n: number, places = 4) =>
+  Math.round(n * 10 ** places) / 10 ** places;
 
 /** "AAAA-MM-DD" → ISO ao meio-dia de Brasília (evita virar o dia). */
 const isoOf = (value: unknown) => {
@@ -67,23 +90,50 @@ const isoOf = (value: unknown) => {
   return day ? `${day}T15:00:00.000Z` : null;
 };
 
-export async function importSankhyaSet(
-  user: User,
-  set: ImportSet,
-): Promise<ImportLine[]> {
-  const store = getStore();
-  const out: ImportLine[] = [];
+/* ------------------------------------------------------------------------ */
+/* Contexto: cadastros do portal carregados uma vez por lote                 */
+/* ------------------------------------------------------------------------ */
 
-  /* ---- Linhas de produto (grupos) ---- */
-  const lines = await store.list("product_lines");
+export interface ImportContext {
+  user: User;
+  out: ImportLine[];
+  /** Carga completa: atualiza os campos vindos do Sankhya nos que já existem. */
+  update: boolean;
+  lines: ProductLine[];
+  parties: Party[];
+  products: Product[];
+}
+
+export async function importContext(
+  user: User,
+  update: boolean,
+): Promise<ImportContext> {
+  const store = getStore();
+  const [lines, parties, products] = await Promise.all([
+    store.list("product_lines"),
+    store.list("parties"),
+    store.list("products"),
+  ]);
+  return { user, out: [], update, lines, parties, products };
+}
+
+/* ---- Linhas de produto (grupos) ---- */
+
+export async function upsertGroups(ctx: ImportContext, rows: SankhyaRow[]) {
+  const store = getStore();
   const lineByGroup = new Map<string, string>();
-  for (const row of set.groups) {
+  for (const row of rows) {
     const key = code(row.CODGRUPOPROD);
     const name = text(row, "DESCRGRUPOPROD") ?? `Grupo ${key}`;
-    let line = lines.find((l) => l.sankhyaCode === key);
+    const active = convert("sn", row.ATIVO, row) !== false;
+    let line = ctx.lines.find((l) => l.sankhyaCode === key);
     let outcome: ImportOutcome = "existing";
+    if (line && ctx.update && (line.name !== name || line.active !== active)) {
+      line = await store.update("product_lines", line.id, { name, active });
+      outcome = "updated";
+    }
     if (!line) {
-      line = lines.find((l) => norm(l.name) === norm(name));
+      line = ctx.lines.find((l) => norm(l.name) === norm(name));
       if (line) {
         line = await store.update("product_lines", line.id, {
           sankhyaCode: key,
@@ -98,14 +148,15 @@ export async function importSankhyaSet(
         manualDocumentId: null,
         requirements: DEFAULT_PREPARATION_REQUIREMENTS,
         requiredCertifications: null,
-        active: convert("sn", row.ATIVO, row) !== false,
+        active,
         sankhyaCode: key,
       });
-      lines.push(line);
+      ctx.lines.push(line);
       outcome = "created";
     }
+    replaceIn(ctx.lines, line);
     lineByGroup.set(key, line.id);
-    out.push({
+    ctx.out.push({
       entity: "productGroups",
       code: key,
       outcome,
@@ -113,75 +164,111 @@ export async function importSankhyaSet(
       label: line.name,
     });
   }
-  /** Produto sem grupo no Sankhya: linha "Importados do Sankhya". */
-  const fallbackLine = async () => {
-    const name = "Importados do Sankhya";
-    const found = lines.find((l) => l.name === name);
-    if (found) return found.id;
-    const created = await store.create("product_lines", {
-      ...LINE_EXTRA_DEFAULTS,
-      name,
-      manualDocumentId: null,
-      requirements: DEFAULT_PREPARATION_REQUIREMENTS,
-      requiredCertifications: null,
-      active: true,
-    });
-    lines.push(created);
-    return created.id;
-  };
+  return lineByGroup;
+}
 
-  /* ---- Produtos ---- */
-  const productByCode = new Map<
+function replaceIn<T extends { id: string }>(list: T[], row: T) {
+  const i = list.findIndex((r) => r.id === row.id);
+  if (i >= 0) list[i] = row;
+}
+
+/** Produto sem grupo no Sankhya: linha "Importados do Sankhya". */
+async function fallbackLine(ctx: ImportContext) {
+  const name = "Importados do Sankhya";
+  const found = ctx.lines.find((l) => l.name === name);
+  if (found) return found.id;
+  const created = await getStore().create("product_lines", {
+    ...LINE_EXTRA_DEFAULTS,
+    name,
+    manualDocumentId: null,
+    requirements: DEFAULT_PREPARATION_REQUIREMENTS,
+    requiredCertifications: null,
+    active: true,
+  });
+  ctx.lines.push(created);
+  return created.id;
+}
+
+/* ---- Produtos ---- */
+
+/** Campos do produto que vêm do Sankhya. */
+function productFields(row: SankhyaRow) {
+  const cm = (column: string) =>
+    convert("metersToCm", row[column], row) as number | null;
+  return {
+    name: text(row, "DESCRPROD") ?? `Produto ${code(row.CODPROD)}`,
+    sku: text(row, "REFFORN"),
+    ean: convert("digits", row.REFERENCIA, row) as string | null,
+    ncm: convert("digits", row.NCM, row) as string | null,
+    grossWeightKg: number(row, "PESOBRUTO"),
+    netWeightKg: number(row, "PESOLIQ"),
+    heightCm: cm("ALTURA"),
+    widthCm: cm("LARGURA"),
+    lengthCm: cm("ESPESSURA"),
+    minStock: number(row, "ESTMIN"),
+    active: convert("sn", row.ATIVO, row) !== false,
+  };
+}
+
+export async function upsertProducts(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+  lineByGroup: Map<string, string>,
+) {
+  const store = getStore();
+  const byCode = new Map<
     string,
     { id: string; name: string; lineId: string }
   >();
-  for (const row of set.products) {
+  for (const row of rows) {
     const key = code(row.CODPROD);
-    const sku = text(row, "REFFORN");
-    let [product] = await store.list("products", {
-      filter: { sankhyaCode: key },
-      limit: 1,
-    });
+    const fields = productFields(row);
+    const groupLine = lineByGroup.get(code(row.CODGRUPOPROD));
+    let product = ctx.products.find((p) => p.sankhyaCode === key);
     let outcome: ImportOutcome = "existing";
-    if (!product && sku) {
-      [product] = await store.list("products", { filter: { sku }, limit: 1 });
+    if (product && ctx.update) {
+      product = await store.update("products", product.id, {
+        ...fields,
+        ...(groupLine ? { lineId: groupLine } : {}),
+        // Especificação do portal só é preenchida quando estiver vazia.
+        ...(product.specification
+          ? {}
+          : { specification: text(row, "CARACTERISTICAS") }),
+      });
+      outcome = "updated";
+    }
+    if (!product && fields.sku) {
+      const sku = fields.sku.toUpperCase();
+      product = ctx.products.find(
+        (p) => !p.sankhyaCode && (p.sku ?? "").toUpperCase() === sku,
+      );
       if (product) {
         product = await store.update("products", product.id, {
           sankhyaCode: key,
+          ...(ctx.update ? fields : {}),
         });
         outcome = "linked";
       }
     }
     if (!product) {
-      const lineId =
-        lineByGroup.get(code(row.CODGRUPOPROD)) ?? (await fallbackLine());
-      const cm = (column: string) =>
-        convert("metersToCm", row[column], row) as number | null;
       product = await store.create("products", {
         ...PRODUCT_EXTRA_DEFAULTS,
-        lineId,
-        name: text(row, "DESCRPROD") ?? `Produto ${key}`,
-        sku,
+        ...fields,
+        lineId: groupLine ?? (await fallbackLine(ctx)),
         specification: text(row, "CARACTERISTICAS"),
-        active: convert("sn", row.ATIVO, row) !== false,
-        ncm: convert("digits", row.NCM, row) as string | null,
-        grossWeightKg: number(row, "PESOBRUTO"),
-        netWeightKg: number(row, "PESOLIQ"),
-        heightCm: cm("ALTURA"),
-        widthCm: cm("LARGURA"),
-        lengthCm: cm("ESPESSURA"),
-        minStock: number(row, "ESTMIN"),
         source: "import",
         sankhyaCode: key,
       });
+      ctx.products.push(product);
       outcome = "created";
     }
-    productByCode.set(key, {
+    replaceIn(ctx.products, product);
+    byCode.set(key, {
       id: product.id,
       name: product.name,
       lineId: product.lineId,
     });
-    out.push({
+    ctx.out.push({
       entity: "products",
       code: key,
       outcome,
@@ -189,71 +276,183 @@ export async function importSankhyaSet(
       label: `${product.sku ?? ""} ${product.name}`.trim(),
     });
   }
+  return byCode;
+}
 
-  /* ---- Parceiros (fornecedores das notas) e empresas (clientes) ---- */
-  const parties = await store.list("parties");
-  const findOrCreateParty = async (
-    entity: "partners" | "companies",
-    key: string,
-    data: {
-      name: string;
-      taxId: string | null;
-      email?: string | null;
-      phone?: string | null;
-      contactName?: string | null;
-      active: boolean;
-      type: Party["type"];
-    },
-  ) => {
-    let party = parties.find((p) => p.sankhyaCode === key);
-    let outcome: ImportOutcome = "existing";
-    if (!party) {
-      party = parties.find(
-        (p) =>
-          p.type === data.type &&
-          ((data.taxId && (p.taxId ?? "").replace(/\D/g, "") === data.taxId) ||
-            norm(p.name) === norm(data.name)),
-      );
-      if (party) {
-        party = await store.update("parties", party.id, { sankhyaCode: key });
-        outcome = "linked";
-      }
-    }
-    if (!party) {
-      party = await store.create("parties", {
-        ...PARTY_EXTRA_DEFAULTS,
-        type: data.type,
-        name: data.name,
-        country: null,
-        email: data.email ?? null,
-        phone: data.phone ?? null,
-        taxId: data.taxId,
-        notes: "Importado do Sankhya",
-        active: data.active,
-        contactName: data.contactName ?? null,
+/* ---- Parceiros: fornecedores, clientes e empresas ---- */
+
+interface PartyData {
+  type: Party["type"];
+  name: string;
+  taxId: string | null;
+  email?: string | null;
+  phone?: string | null;
+  contactName?: string | null;
+  active: boolean;
+}
+
+export async function upsertParty(
+  ctx: ImportContext,
+  entity: "partners" | "customers" | "companies",
+  key: string,
+  data: PartyData,
+) {
+  const store = getStore();
+  // O mesmo CODPARC pode ser fornecedor e cliente: um cadastro por tipo.
+  let party = ctx.parties.find(
+    (p) => p.sankhyaCode === key && p.type === data.type,
+  );
+  let outcome: ImportOutcome = "existing";
+  const fields = {
+    name: data.name,
+    taxId: data.taxId,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    contactName: data.contactName ?? null,
+    active: data.active,
+  };
+  if (party && ctx.update) {
+    party = await store.update("parties", party.id, fields);
+    outcome = "updated";
+  }
+  if (!party) {
+    party = ctx.parties.find(
+      (p) =>
+        p.type === data.type &&
+        !p.sankhyaCode &&
+        ((data.taxId && (p.taxId ?? "").replace(/\D/g, "") === data.taxId) ||
+          norm(p.name) === norm(data.name)),
+    );
+    if (party) {
+      party = await store.update("parties", party.id, {
         sankhyaCode: key,
+        ...(ctx.update ? fields : {}),
       });
-      parties.push(party);
+      outcome = "linked";
+    }
+  }
+  if (!party) {
+    party = await store.create("parties", {
+      ...PARTY_EXTRA_DEFAULTS,
+      ...fields,
+      type: data.type,
+      country: null,
+      notes: "Importado do Sankhya",
+      sankhyaCode: key,
+    });
+    ctx.parties.push(party);
+    outcome = "created";
+  }
+  replaceIn(ctx.parties, party);
+  ctx.out.push({ entity, code: key, outcome, id: party.id, label: party.name });
+  return party;
+}
+
+/** Dados do parceiro (TGFPAR) para o portal. */
+export function partnerData(
+  row: SankhyaRow,
+  type: "supplier" | "customer",
+): PartyData {
+  return {
+    type,
+    name: text(row, "NOMEPARC") ?? `Parceiro ${code(row.CODPARC)}`,
+    taxId: convert("digits", row.CGC_CPF, row) as string | null,
+    email: text(row, "EMAIL"),
+    phone: text(row, "TELEFONE"),
+    contactName: text(row, "RAZAOSOCIAL"),
+    active: convert("sn", row.ATIVO, row) !== false,
+  };
+}
+
+/** Carga completa de parceiros: FORNECEDOR = S → fornecedor; CLIENTE = S → cliente. */
+export async function upsertPartners(ctx: ImportContext, rows: SankhyaRow[]) {
+  for (const row of rows) {
+    const key = code(row.CODPARC);
+    const isSupplier = convert("sn", row.FORNECEDOR, row) === true;
+    const isCustomer = convert("sn", row.CLIENTE, row) === true;
+    if (isSupplier)
+      await upsertParty(ctx, "partners", key, partnerData(row, "supplier"));
+    if (isCustomer)
+      await upsertParty(ctx, "customers", key, partnerData(row, "customer"));
+    if (!isSupplier && !isCustomer)
+      ctx.out.push({
+        entity: "partners",
+        code: key,
+        outcome: "skipped",
+        id: null,
+        label: text(row, "NOMEPARC") ?? key,
+        reason: "nem fornecedor nem cliente",
+      });
+  }
+}
+
+/* ---- Condições de pagamento (TGFTPV) ---- */
+
+export async function upsertPaymentConditions(
+  ctx: ImportContext,
+  rows: SankhyaRow[],
+) {
+  const store = getStore();
+  const existing = await store.list("payment_conditions");
+  for (const row of rows) {
+    const value = Number(row.CODTIPVENDA);
+    if (!Number.isInteger(value)) continue;
+    const name =
+      text(row, "DESCRTIPVENDA") ?? `Condição ${String(value).trim()}`;
+    const active = row.ATIVO == null ? true : convert("sn", row.ATIVO, row) !== false;
+    let found = existing.find((c) => c.code === value);
+    let outcome: ImportOutcome = "existing";
+    if (found && ctx.update && (found.name !== name || found.active !== active)) {
+      found = await store.update("payment_conditions", found.id, {
+        name,
+        active,
+        updatedByUserId: ctx.user.id,
+      });
+      outcome = "updated";
+    }
+    if (!found) {
+      found = await store.create("payment_conditions", {
+        code: value,
+        name,
+        active,
+        notes: null,
+        source: "sankhya",
+        updatedByUserId: ctx.user.id,
+      });
+      existing.push(found);
       outcome = "created";
     }
-    out.push({ entity, code: key, outcome, id: party.id, label: party.name });
-    return party;
-  };
+    ctx.out.push({
+      entity: "paymentConditions",
+      code: String(value),
+      outcome,
+      id: found.id,
+      label: found.name,
+    });
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Amostra: notas com tudo o que elas usam                                  */
+/* ------------------------------------------------------------------------ */
+
+export async function importSankhyaSet(
+  user: User,
+  set: ImportSet,
+  erp: SankhyaErpSettings = DEFAULT_SANKHYA_ERP,
+): Promise<ImportLine[]> {
+  const store = getStore();
+  const ctx = await importContext(user, false);
+
+  const lineByGroup = await upsertGroups(ctx, set.groups);
+  const productByCode = await upsertProducts(ctx, set.products, lineByGroup);
 
   const supplierByCode = new Map<string, Party>();
   for (const row of set.partners) {
     const key = code(row.CODPARC);
     supplierByCode.set(
       key,
-      await findOrCreateParty("partners", key, {
-        type: "supplier",
-        name: text(row, "NOMEPARC") ?? `Parceiro ${key}`,
-        taxId: convert("digits", row.CGC_CPF, row) as string | null,
-        email: text(row, "EMAIL"),
-        phone: text(row, "TELEFONE"),
-        contactName: text(row, "RAZAOSOCIAL"),
-        active: convert("sn", row.ATIVO, row) !== false,
-      }),
+      await upsertParty(ctx, "partners", key, partnerData(row, "supplier")),
     );
   }
   const customerByEmp = new Map<string, Party>();
@@ -267,7 +466,7 @@ export async function importSankhyaSet(
   ]) {
     customerByEmp.set(
       emp,
-      await findOrCreateParty("companies", `EMP-${emp}`, {
+      await upsertParty(ctx, "companies", `EMP-${emp}`, {
         type: "customer",
         name: companyName(emp),
         taxId: null,
@@ -277,14 +476,21 @@ export async function importSankhyaSet(
   }
 
   /* ---- Pedidos (com solicitação, itens e etapas pela TOP) ---- */
+  const out = ctx.out;
   const orderByNunota = new Map<string, Order>();
   for (const row of set.orders) {
     const nunota = code(row.NUNOTA);
     const top = Number(row.CODTIPOPER);
-    const [existing] = await store.list("orders", {
-      filter: { erpNumber: nunota },
-      limit: 1,
-    });
+    const [existing] = [
+      ...(await store.list("orders", {
+        filter: { sankhyaCode: nunota },
+        limit: 1,
+      })),
+      ...(await store.list("orders", {
+        filter: { erpNumber: nunota },
+        limit: 1,
+      })),
+    ];
     if (existing) {
       orderByNunota.set(nunota, existing);
       out.push({
@@ -326,10 +532,26 @@ export async function importSankhyaSet(
       continue;
     }
 
+    // Moeda: com câmbio no pedido, valores na moeda do pedido (USD); sem, R$.
+    const rate = number(row, "VLRMOEDA");
+    const fx = rate && rate > 0 ? rate : null;
+    const currency = fx ? erp.currency : "BRL";
+    const inCurrency = (v: number | null) =>
+      v == null ? null : fx ? round(v / fx) : v;
+
     const first = items[0];
     const firstProduct = productByCode.get(code(first.CODPROD)) ?? null;
     const createdAt = isoOf(row.DTNEG) ?? new Date().toISOString();
-    const note = `Importado do Sankhya: NUNOTA ${nunota}, TOP ${top} ${target.label}`;
+    const erpNumber =
+      erp.erpNumberField === "NUMNOTA" && code(row.NUMNOTA)
+        ? code(row.NUMNOTA)
+        : nunota;
+    const note = [
+      `Importado do Sankhya: NUNOTA ${nunota}, TOP ${top} ${target.label}`,
+      fx && `câmbio ${String(fx).replace(".", ",")}`,
+    ]
+      .filter(Boolean)
+      .join(", ");
     const request = await store.create("requests", {
       ...REQUEST_EXTRA_DEFAULTS,
       customerId: customer.id,
@@ -362,12 +584,13 @@ export async function importSankhyaSet(
       lineId: firstProduct?.lineId ?? null,
       status: "ORDER_CREATED",
       currentStageId: null,
-      fobTotal: number(row, "VLRNOTA"),
-      fobCurrency: "BRL",
+      fobTotal: inCurrency(number(row, "VLRNOTA")),
+      fobCurrency: currency,
       sellPrice: null,
       sellCurrency: null,
       erpSyncStatus: "synced",
-      erpNumber: nunota,
+      erpNumber,
+      sankhyaCode: nunota,
       agencyId: null,
       brokerId: null,
       shippingLineId: null,
@@ -387,7 +610,7 @@ export async function importSankhyaSet(
           `Produto ${code(item.CODPROD)}`,
         quantity: number(item, "QTDNEG") ?? 0,
         unit: text(item, "CODVOL") ?? "UN",
-        unitPrice: number(item, "VLRUNIT"),
+        unitPrice: inCurrency(number(item, "VLRUNIT")),
       });
     }
     await createStagesForOrder(order);
@@ -422,7 +645,9 @@ export async function importSankhyaSet(
     }
     const order = orderByNunota.get(code(row.NUNOTA));
     const direction = convert("recDesp", row.RECDESP, row) as
-      "customer_in" | "supplier_out" | null;
+      | "customer_in"
+      | "supplier_out"
+      | null;
     const amount = number(row, "VLRDESDOB");
     if (!order || !direction || amount == null) {
       out.push({
@@ -440,7 +665,9 @@ export async function importSankhyaSet(
       continue;
     }
     const status = convert("paidAt", row.DHBAIXA, row) as
-      "pending" | "confirmed" | "received";
+      | "pending"
+      | "confirmed"
+      | "received";
     const payment = await store.create("payments", {
       ...PAYMENT_EXTRA_DEFAULTS,
       orderId: order.id,
@@ -473,24 +700,35 @@ export async function importSankhyaSet(
     });
   }
 
-  const count = (o: ImportOutcome) => out.filter((l) => l.outcome === o).length;
+  await auditImport(user, "sample", out);
+  return out;
+}
+
+export async function auditImport(
+  user: User,
+  scope: string,
+  out: ImportLine[],
+) {
+  const count = (o: ImportOutcome) =>
+    out.filter((l) => l.outcome === o).length;
   await audit(
     user,
     "sankhya.import",
     "sankhya",
-    "sample",
-    `Carga do Sankhya: ${count("created")} criados, ${count("linked")} vinculados, ${count("existing")} já existiam, ${count("skipped")} ignorados`,
+    scope,
+    `Carga do Sankhya (${scope}): ${count("created")} criados, ${count("updated")} atualizados, ${count("linked")} vinculados, ${count("existing")} já existiam, ${count("skipped")} ignorados`,
     null,
     {
-      lines: out.map(({ entity, code: c, outcome, id }) => ({
-        entity,
-        code: c,
-        outcome,
-        id,
-      })),
+      lines: out
+        .slice(0, 500)
+        .map(({ entity, code: c, outcome, id }) => ({
+          entity,
+          code: c,
+          outcome,
+          id,
+        })),
     },
   );
-  return out;
 }
 
 /**

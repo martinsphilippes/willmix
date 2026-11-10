@@ -23,6 +23,7 @@ import { getSankhyaConfigStatus } from "@/lib/integrations/sankhya-settings";
 import { SettingsTabs } from "../_tabs";
 import { IntegrationTab } from "./_integration";
 import { LoadTab } from "./_load";
+import { PaymentConditionsTab } from "./_payment";
 import {
   describeTable,
   searchTables,
@@ -106,6 +107,23 @@ export default async function SankhyaPage({
     exploreSk.includes(one(q.sk))
       ? "explore"
       : "integration";
+
+  if (one(q.tab) === "payment")
+    return (
+      <>
+        <PageHeader
+          title={t("paymentConditions.title")}
+          subtitle={t("paymentConditions.subtitle")}
+          actions={
+            <TextLink href="/app/settings" className="text-sm">
+              {t("sankhya.back")}
+            </TextLink>
+          }
+        />
+        <SettingsTabs t={t} active="payment" admin />
+        <PaymentConditionsTab t={t} q={q} />
+      </>
+    );
 
   if (one(q.tab) === "load")
     return (

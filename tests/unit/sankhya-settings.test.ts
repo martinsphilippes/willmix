@@ -127,7 +127,10 @@ describe("configuração efetiva", () => {
     // Sem config nas opções, o cliente lê a da tela.
     sk.resetSankhyaTokenCache();
     const bodies: string[] = [];
-    const fetcher = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const fetcher = (async (
+      input: RequestInfo | URL,
+      init: RequestInit = {},
+    ) => {
       if (String(input).endsWith("/authenticate")) {
         bodies.push(String(init.body));
         return new Response(
@@ -150,18 +153,41 @@ describe("configuração efetiva", () => {
 });
 
 describe("códigos do ERP e nota de teste", () => {
-  const erp = {
-    ...st.DEFAULT_SANKHYA_ERP,
-    codEmp: 1,
-    codLocal: 10000,
-  };
+  const erp = { ...st.DEFAULT_SANKHYA_ERP };
 
-  it("diz o que falta", () => {
-    expect(st.erpMissing(st.DEFAULT_SANKHYA_ERP, "order")).toEqual([
-      "CODEMP",
-      "CODLOCAL",
-    ]);
-    expect(st.erpMissing(erp, "order")).toEqual([]);
+  it("respostas da Wellmix: empresa 3, UN fixo, natureza e centro de resultado", () => {
+    expect(st.DEFAULT_SANKHYA_ERP).toMatchObject({
+      codEmp: 3,
+      volumeMode: "fixed",
+      codVol: "UN",
+      codNat: 203005,
+      codCenCus: 101006,
+      codProj: 0,
+      currency: "USD",
+      erpNumberField: "NUNOTA",
+    });
+    // Gravação antiga (sem versão) recebe as respostas: empresa 3 e UN.
+    expect(
+      st.mergeErpSettings({
+        codEmp: null,
+        volumeMode: "product",
+        topOrder: 33,
+      }),
+    ).toMatchObject({
+      codEmp: 3,
+      volumeMode: "fixed",
+      codVol: "UN",
+      topOrder: 33,
+    });
+    // Gravação nova vale como está.
+    expect(st.mergeErpSettings({ codEmp: 2, version: 2 }).codEmp).toBe(2);
+  });
+
+  it("diz o que falta (CODLOCAL não: é do WMS)", () => {
+    expect(st.erpMissing(st.DEFAULT_SANKHYA_ERP, "order")).toEqual([]);
+    expect(
+      st.erpMissing({ ...erp, codEmp: null, codNat: null }, "order"),
+    ).toEqual(["CODEMP", "CODNAT"]);
     expect(
       st.erpMissing({ ...erp, volumeMode: "fixed", codVol: " " }, "quote"),
     ).toEqual(["CODVOL"]);
@@ -179,7 +205,10 @@ describe("códigos do ERP e nota de teste", () => {
       date: "10/11/2026",
     });
     expect(note.header).toMatchObject({
-      CODEMP: 1,
+      CODEMP: 3,
+      CODNAT: 203005,
+      CODCENCUS: 101006,
+      CODPROJ: 0,
       CODPARC: 123,
       CODTIPOPER: 1002,
       CODTIPVENDA: 33,
@@ -192,7 +221,6 @@ describe("códigos do ERP e nota de teste", () => {
         CODPROD: 50,
         QTDNEG: 2,
         CODVOL: "UN",
-        CODLOCALORIG: 10000,
         VLRUNIT: 9.5,
         PERCDESC: 0,
       },

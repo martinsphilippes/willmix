@@ -95,11 +95,16 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
     portalTable: "orders",
     key_: "NUNOTA",
     fields: [
-      { sankhya: "NUNOTA", portal: "erpNumber", transform: "text" },
+      {
+        sankhya: "NUNOTA",
+        portal: "sankhyaCode",
+        transform: "text",
+        note: "Vínculo; o número exibido (erpNumber) é NUNOTA ou NUMNOTA, conforme a Integração",
+      },
       {
         sankhya: "NUMNOTA",
         portal: null,
-        note: "Nº da nota/pedido no ERP (o portal numera os próprios pedidos)",
+        note: "Nº do pedido/nota no ERP: vai para erpNumber quando escolhido na Integração",
       },
       { sankhya: "CODEMP", portal: null, note: "Empresa que emitiu" },
       {
@@ -119,7 +124,13 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         sankhya: "VLRNOTA",
         portal: "fobTotal",
         transform: "number",
-        note: "Valor da nota em R$; o FOB do portal é na moeda do fornecedor",
+        note: "Valor da nota em R$; com câmbio (VLRMOEDA), vira USD = VLRNOTA ÷ VLRMOEDA",
+      },
+      { sankhya: "CODMOEDA", portal: null, note: "Moeda da nota (TSIMOE)" },
+      {
+        sankhya: "VLRMOEDA",
+        portal: null,
+        note: "Taxa de câmbio do pedido (ex.: 5,16)",
       },
       {
         sankhya: "STATUSNOTA",
@@ -212,8 +223,9 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
       },
       {
         sankhya: "REFERENCIA",
-        portal: null,
-        note: "EAN (o portal não tem campo próprio)",
+        portal: "ean",
+        transform: "digits",
+        note: "EAN",
       },
       {
         sankhya: "CODGRUPOPROD",
@@ -456,3 +468,73 @@ export function missingColumns(
     .map((f) => f.sankhya)
     .filter((c) => !have.has(c.toUpperCase()));
 }
+
+/* ---- Carga completa por faixa de código (só leitura) ---- */
+
+export const FULL_LOAD_ENTITIES = [
+  "paymentConditions",
+  "partners",
+  "products",
+] as const;
+export type FullLoadEntity = (typeof FULL_LOAD_ENTITIES)[number];
+
+const FULL_LOAD_TABLE: Record<
+  Exclude<FullLoadEntity, "paymentConditions">,
+  {
+    entity: SankhyaEntityKey;
+    table: string;
+    alias: string;
+    key: string;
+    where: string;
+  }
+> = {
+  partners: {
+    entity: "partners",
+    table: "TGFPAR",
+    alias: "P",
+    key: "CODPARC",
+    where: "(P.FORNECEDOR = 'S' OR P.CLIENTE = 'S')",
+  },
+  products: {
+    entity: "products",
+    table: "TGFPRO",
+    alias: "P",
+    key: "CODPROD",
+    where: "1 = 1",
+  },
+};
+
+const int0 = (n: number) =>
+  Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+
+/**
+ * SQL de um lote da carga completa: códigos em (after, upTo], em ordem. Faixa
+ * de código em vez de "LIMIT" para valer no Oracle e no SQL Server.
+ */
+export function fullLoadSql(
+  entity: FullLoadEntity,
+  after: number,
+  upTo: number,
+  star = false,
+): string {
+  if (entity === "paymentConditions")
+    return `SELECT CODTIPVENDA, MAX(DESCRTIPVENDA) AS DESCRTIPVENDA FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)} AND CODTIPVENDA <= ${int0(upTo)} GROUP BY CODTIPVENDA ORDER BY CODTIPVENDA`;
+  const t = FULL_LOAD_TABLE[entity];
+  const a = t.alias;
+  return `SELECT ${star ? `${a}.*` : cols(t.entity, a)} FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)} AND ${a}.${t.key} <= ${int0(upTo)} ORDER BY ${a}.${t.key}`;
+}
+
+/** Próximo código (para pular buracos) e total de registros da carga. */
+export function fullLoadProbeSql(entity: FullLoadEntity, after: number) {
+  if (entity === "paymentConditions")
+    return `SELECT MIN(CODTIPVENDA) AS NEXTCODE, COUNT(DISTINCT CODTIPVENDA) AS REMAINING FROM TGFTPV WHERE CODTIPVENDA > ${int0(after)}`;
+  const t = FULL_LOAD_TABLE[entity];
+  const a = t.alias;
+  return `SELECT MIN(${a}.${t.key}) AS NEXTCODE, COUNT(*) AS REMAINING FROM ${t.table} ${a} WHERE ${t.where} AND ${a}.${t.key} > ${int0(after)}`;
+}
+
+export const FULL_LOAD_KEY: Record<FullLoadEntity, string> = {
+  paymentConditions: "CODTIPVENDA",
+  partners: "CODPARC",
+  products: "CODPROD",
+};

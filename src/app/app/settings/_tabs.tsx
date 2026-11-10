@@ -10,12 +10,14 @@ import { cx } from "@/components/ui";
  * explorar dados (dicionário, consultas, SQL e gravações avulsas).
  */
 
-export type SettingsTab = "general" | "integration" | "load" | "explore";
+export type SettingsTab =
+  "general" | "integration" | "load" | "payment" | "explore";
 
 const TABS: Array<{ key: SettingsTab; href: string }> = [
   { key: "general", href: "/app/settings" },
   { key: "integration", href: "/app/settings/sankhya" },
   { key: "load", href: "/app/settings/sankhya?tab=load" },
+  { key: "payment", href: "/app/settings/sankhya?tab=payment" },
   { key: "explore", href: "/app/settings/sankhya?tab=explore" },
 ];
 

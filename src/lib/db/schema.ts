@@ -908,6 +908,8 @@ export interface Order extends BaseRow {
    * pedidos antigos: vale a condição atual do fornecedor.
    */
   supplierPaymentTerms?: PaymentTermInstallment[] | null;
+  /** NUNOTA da nota no Sankhya (vínculo da carga/integração; `erpNumber` é o número exibido). Nulo = sem vínculo. */
+  sankhyaCode?: string | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -2239,6 +2241,18 @@ export interface StockReservation extends BaseRow {
   closedAt: string | null;
 }
 
+/** Condição de pagamento (tabela de tipos de negociação do Sankhya, TGFTPV): vale para compra e venda. */
+export interface PaymentCondition extends BaseRow {
+  /** CODTIPVENDA no Sankhya (único). */
+  code: number;
+  name: string;
+  active: boolean;
+  notes: string | null;
+  /** Veio do Sankhya (carga) ou foi criada no portal. */
+  source: "sankhya" | "portal";
+  updatedByUserId: string | null;
+}
+
 export interface Tables {
   users: User;
   parties: Party;
@@ -2299,6 +2313,7 @@ export interface Tables {
   stock_count_items: StockCountItem;
   stock_reservations: StockReservation;
   bookings: Booking;
+  payment_conditions: PaymentCondition;
 }
 export type TableName = keyof Tables;
 
@@ -2487,6 +2502,7 @@ export const TABLES: Record<TableName, TableDef> = {
       priceTiers: json(),
       minStock: float(),
       sankhyaCode: str(40),
+      ean: str(20),
     },
     indexes: [
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
@@ -2602,9 +2618,11 @@ export const TABLES: Record<TableName, TableDef> = {
       cancelRequestResponse: text(),
       supplierPaymentTerms: json(),
       ownerUserId: id(false),
+      sankhyaCode: str(40),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
       { key: "by_customer", type: "key", columns: ["customerId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
@@ -3764,6 +3782,18 @@ export const TABLES: Record<TableName, TableDef> = {
       { key: "by_status", type: "key", columns: ["status"] },
       { key: "by_batch", type: "key", columns: ["importBatchId"] },
     ],
+  },
+  payment_conditions: {
+    label: "Condições de pagamento (Sankhya TGFTPV)",
+    columns: {
+      code: int(true),
+      name: str(160, true),
+      active: bool(),
+      notes: text(),
+      source: enumOf(["sankhya", "portal"] as const),
+      updatedByUserId: id(false),
+    },
+    indexes: [{ key: "code_unique", type: "unique", columns: ["code"] }],
   },
 };
 

@@ -157,10 +157,16 @@ async function portalMatches(entity: SankhyaEntityKey, rows: SankhyaRow[]) {
   } else if (entity === "orders") {
     const numbers = rows.map((r) => String(r.NUNOTA ?? "")).filter(Boolean);
     const orders = numbers.length
-      ? await store.list("orders", { filter: { erpNumber: numbers } })
+      ? [
+          ...(await store.list("orders", { filter: { sankhyaCode: numbers } })),
+          ...(await store.list("orders", { filter: { erpNumber: numbers } })),
+        ]
       : [];
     for (const row of rows) {
-      const hit = orders.find((o) => o.erpNumber === String(row.NUNOTA));
+      const nunota = String(row.NUNOTA);
+      const hit = orders.find(
+        (o) => o.sankhyaCode === nunota || o.erpNumber === nunota,
+      );
       out.set(
         row,
         hit
