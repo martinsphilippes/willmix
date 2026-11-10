@@ -179,9 +179,13 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(
       notes.some((n) => n.link === `/app/orders/${order.id}/purchase-order`),
     ).toBe(true);
-    // A etapa "Pedido criado" ainda pede a conferência da Wellmix.
+    // Assinar é conferir e liberar: o item "Pedido conferido e liberado ao
+    // fornecedor" conclui junto, e a etapa do fornecedor abre na hora.
     const confirm = await reqOf(order.id, "order_confirmed");
-    await submitRequirement(admin, confirm.id, { value: "confirmed" });
+    expect([confirm.status, confirm.submittedByUserId]).toEqual([
+      "done",
+      admin.id,
+    ]);
     expect((await stageOf(order.id, "ORDER_CREATED")).status).toBe("done");
     expect((await stageOf(order.id, "PREPARATION")).status).toBe("active");
 
@@ -214,11 +218,6 @@ describe("documento do pedido com duas assinaturas", () => {
   it("sem a assinatura do fornecedor a Preparação não conclui; o administrador registra a que veio por fora", async () => {
     const order = await newOrder("Quadro por fora");
     await signOrderAs(admin, order.id);
-    await submitRequirement(
-      admin,
-      (await reqOf(order.id, "order_confirmed")).id,
-      { value: "confirmed" },
-    );
     const prep = await stageOf(order.id, "PREPARATION");
     // A Wellmix conclui tudo o que é dela e do fornecedor, menos a assinatura.
     for (const req of await getStore().list("requirements", {
@@ -260,11 +259,6 @@ describe("documento do pedido com duas assinaturas", () => {
   it("PDF para baixar; o fornecedor anexa o arquivo assinado; só então o pedido vai ao Sankhya; o administrador devolve arquivo errado", async () => {
     const order = await newOrder("Quadro em PDF");
     await signOrderAs(admin, order.id);
-    await submitRequirement(
-      admin,
-      (await reqOf(order.id, "order_confirmed")).id,
-      { value: "confirmed" },
-    );
     // O pedido nasce sem ir ao Sankhya: espera a assinatura do fornecedor.
     expect((await getStore().get("orders", order.id))!.erpSyncStatus).toBe(
       "pending",
@@ -332,33 +326,6 @@ describe("documento do pedido com duas assinaturas", () => {
       "supplier",
       "sent_to_supplier",
     ]);
-    // Arquivo grande (foto de celular): o navegador sobe direto ao
-    // armazenamento e a assinatura leva só o id; tipo errado é recusado.
-    const bytes = new TextEncoder().encode("foto assinada");
-    const wrong = await getStore().putFile(bytes, "x.exe", "application/zip");
-    await expect(
-      sig.signOrderDocument(supplierA, order.id, {
-        name: "Li Wei",
-        agree: true,
-        hash: view.hash,
-        signedUploadId: wrong.key,
-      }),
-    ).rejects.toThrow("signature_file_invalid");
-    expect(await getStore().statFile(wrong.key)).toBeNull();
-    const photo = await getStore().putFile(bytes, "po.jpg", "image/jpeg");
-    const direct = await sig.signOrderDocument(supplierA, order.id, {
-      name: "Li Wei",
-      agree: true,
-      hash: view.hash,
-      signedUploadId: photo.key,
-    });
-    expect(direct.method).toBe("file");
-    const directDoc = (await getStore().get("documents", direct.documentId!))!;
-    expect([directDoc.orderId, directDoc.storageKey]).toEqual([
-      order.id,
-      photo.key,
-    ]);
-    await sig.reopenSupplierSignature(admin, order.id, "Conferir de novo");
     // Sem arquivo, vale o aceite no portal (a opção continua).
     const accepted = await signOrderAs(supplierA, order.id);
     expect(accepted.method).toBe("accept");
@@ -375,5 +342,93 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(view.hash).not.toBe(signed.hash);
     expect(view.wellmix?.hash).toBe(signed.hash);
     expect(view.document.items[0].quantity).toBe(1200);
+  });
+  it("pedido que a Wellmix assinou sem liberar (antes desta regra): abrir o documento libera e o fornecedor assina", async () => {
+    const store = getStore();
+    const order = await newOrder("Quadro travado");
+    await signOrderAs(admin, order.id);
+    // Como era antes: assinado pela Wellmix, mas o item de conferência ficou
+    // pendente e a etapa do fornecedor não abriu.
+    const confirm = await reqOf(order.id, "order_confirmed");
+    await store.update("requirements", confirm.id, {
+      status: "pending",
+      value: null,
+    });
+    await store.update(
+      "stages",
+      (await stageOf(order.id, "ORDER_CREATED")).id,
+      { status: "active" },
+    );
+    await store.update("stages", (await stageOf(order.id, "PREPARATION")).id, {
+      status: "pending",
+    });
+    const stuck = (await sig.getOrderSignatureView(supplierA, order.id))!;
+    expect([stuck.canSign, stuck.supplierBlocked, stuck.status]).toEqual([
+      null,
+      true,
+      "sent_to_supplier",
+    ]);
+    // A página do documento chama a liberação: vale a assinatura da Wellmix.
+    expect(await sig.releaseOrderBySignature(order.id)).toBe(true);
+    expect((await reqOf(order.id, "order_confirmed")).status).toBe("done");
+    const free = (await sig.getOrderSignatureView(supplierA, order.id))!;
+    expect([free.canSign, free.supplierBlocked]).toEqual(["supplier", false]);
+    // Nada a liberar de novo; e sem a assinatura da Wellmix nada é liberado.
+    expect(await sig.releaseOrderBySignature(order.id)).toBe(false);
+    const fresh = await newOrder("Quadro sem assinatura");
+    expect(await sig.releaseOrderBySignature(fresh.id)).toBe(false);
+    expect((await reqOf(fresh.id, "order_confirmed")).status).toBe("pending");
+    await signOrderAs(supplierA, order.id);
+    expect((await reqOf(order.id, "order_signed_supplier")).status).toBe(
+      "done",
+    );
+  });
+
+  it("arquivo assinado grande (já subido direto ao armazenamento): registra pelo id; tipo errado é recusado e apagado", async () => {
+    const store = getStore();
+    const order = await newOrder("Quadro com foto grande");
+    await signOrderAs(admin, order.id);
+    const view = (await sig.getOrderSignatureView(supplierA, order.id))!;
+    expect(view.canSign).toBe("supplier");
+    const bad = await store.putFile(
+      new Uint8Array([1, 2, 3]),
+      "virus.exe",
+      "application/x-msdownload",
+    );
+    await expect(
+      sig.signOrderDocument(supplierA, order.id, {
+        name: "Li Wei",
+        agree: true,
+        hash: view.hash,
+        signedFileKey: bad.key,
+      }),
+    ).rejects.toThrow("signature_file_invalid");
+    expect(await store.statFile(bad.key)).toBeNull();
+    await expect(
+      sig.signOrderDocument(supplierA, order.id, {
+        name: "Li Wei",
+        agree: true,
+        hash: view.hash,
+        signedFileKey: "nao-existe",
+      }),
+    ).rejects.toThrow("signature_file_missing");
+    const photo = await store.putFile(
+      new Uint8Array([255, 216, 255, 224, 9, 9]),
+      "assinado.jpg",
+      "image/jpeg",
+    );
+    const signed = await sig.signOrderDocument(supplierA, order.id, {
+      name: "Li Wei",
+      agree: true,
+      hash: view.hash,
+      signedFileKey: photo.key,
+    });
+    expect(signed.method).toBe("file");
+    const doc = (await store.get("documents", signed.documentId!))!;
+    expect([doc.orderId, doc.visibility, doc.storageKey]).toEqual([
+      order.id,
+      "internal",
+      photo.key,
+    ]);
   });
 });

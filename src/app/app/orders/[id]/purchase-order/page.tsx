@@ -4,8 +4,10 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
+import { isWellmix } from "@/lib/auth/permissions";
 import {
   getOrderSignatureView,
+  releaseOrderBySignature,
   type OrderSignature,
 } from "@/lib/services/order-signature";
 import { buildOrderSheet } from "@/lib/services/order-sheet";
@@ -24,7 +26,7 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
-import { DirectFileInput } from "@/components/sheet-file-input";
+import { FileAutoInput } from "@/components/file-auto-input";
 import { pendingTasksFor } from "@/lib/services/tasks";
 import {
   reopenSupplierSignatureAction,
@@ -44,8 +46,12 @@ export default async function PurchaseOrderPage({
   requireScreen(user, "orders");
   const { id } = await params;
   const { error, signed, reopened } = await searchParams;
-  const view = await getOrderSignatureView(user, id);
+  let view = await getOrderSignatureView(user, id);
   if (!view) notFound();
+  // Pedido que a Wellmix assinou sem marcar "conferido e liberado": a
+  // assinatura dela libera o fornecedor (antes ele ficava sem onde assinar).
+  if (view.supplierBlocked && (await releaseOrderBySignature(id)))
+    view = (await getOrderSignatureView(user, id)) ?? view;
   const t = await getT();
   const { order, document: doc, hash } = view;
   const sheet = await buildOrderSheet(order, doc, view.wellmix);
@@ -59,22 +65,6 @@ export default async function PurchaseOrderPage({
           !task.link.startsWith(`/app/orders/${order.id}/purchase-order`),
       )
     : [];
-  const fileClass =
-    "block max-w-xs text-sm text-zinc-700 file:mr-2 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm";
-  // Arquivo assinado: acima do teto da requisição sobe direto ao armazenamento.
-  const signedFileInput = (required: boolean) => (
-    <DirectFileInput
-      name="signedFile"
-      required={required}
-      accept="application/pdf,image/jpeg,image/png,image/webp"
-      className={fileClass}
-      label={t("orderSign.file.label")}
-      uploadingLabel={t("requirement.file.uploading")}
-      failedLabel={t("requirement.file.failed")}
-      tooBigLabel={t("requirement.file.tooBig")}
-      chosenLabel={t("importFlow.fileReady")}
-    />
-  );
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `orderSign.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
@@ -148,8 +138,9 @@ export default async function PurchaseOrderPage({
   );
   // Fornecedor (ou o administrador registrando por ele): pode anexar o PDF
   // assinado; a Wellmix assina pelo aceite.
-  const supplierSide = (onBehalf: boolean) =>
-    onBehalf || view.canSign === "supplier";
+  // O fornecedor tem as duas opções lado a lado (portal ou arquivo); o
+  // administrador, registrando por ele, anexa o arquivo no mesmo formulário.
+  const supplierTurn = view.canSign === "supplier";
   const signForm = (onBehalf: boolean) => (
     <form
       action={signOrderDocumentAction}
@@ -162,8 +153,15 @@ export default async function PurchaseOrderPage({
       <p className="text-sm font-semibold text-zinc-900">
         {onBehalf
           ? t("orderSign.form.title.onBehalf")
-          : t("orderSign.form.title")}
+          : supplierTurn
+            ? t("orderSign.option.portal")
+            : t("orderSign.form.title")}
       </p>
+      {!onBehalf && supplierTurn ? (
+        <p className="text-sm text-zinc-700">
+          {t("orderSign.option.portal.hint")}
+        </p>
+      ) : null}
       <Field
         label={
           onBehalf
@@ -180,14 +178,18 @@ export default async function PurchaseOrderPage({
           defaultValue={onBehalf ? "" : user.name}
         />
       </Field>
-      {supplierSide(onBehalf) ? (
+      {onBehalf ? (
         <>
           <p className="text-sm text-zinc-700" data-sign-steps>
             <span className="font-medium">{t("orderSign.file.title")}: </span>
             {t("orderSign.file.steps")}
           </p>
           <Field label={t("orderSign.file.label.optional")}>
-            {signedFileInput(false)}
+            <Input
+              type="file"
+              name="signedFile"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+            />
           </Field>
         </>
       ) : null}
@@ -207,6 +209,71 @@ export default async function PurchaseOrderPage({
       <p className="text-xs text-zinc-500">{t("orderSign.form.note")}</p>
     </form>
   );
+
+  // Opção 2 do fornecedor: baixa o PDF, assina e envia o arquivo. Escolher o
+  // arquivo já registra a assinatura; arquivo grande sobe direto ao
+  // armazenamento (não passa pelo teto da requisição).
+  const pdfHref = `/api/orders/${order.id}/purchase-order`;
+  const fileForm = (
+    <form
+      action={signOrderDocumentAction}
+      className="space-y-3 rounded-xl border border-brand-200 bg-white p-3"
+      data-order-sign-file
+      data-order-signed-upload
+    >
+      <input type="hidden" name="orderId" value={order.id} />
+      <input type="hidden" name="hash" value={hash} />
+      <input type="hidden" name="agree" value="on" />
+      <p className="text-sm font-semibold text-zinc-900">
+        {t("orderSign.option.file")}
+      </p>
+      <p className="text-sm text-zinc-700">{t("orderSign.option.file.hint")}</p>
+      <a href={pdfHref} download className={linkClass} data-order-pdf-step>
+        {t("orderSign.download")}
+      </a>
+      <Field label={t("orderSign.option.file.name")}>
+        <Input
+          name="name"
+          required
+          minLength={3}
+          maxLength={120}
+          autoComplete="name"
+          defaultValue={user.name}
+        />
+      </Field>
+      <FileAutoInput
+        name="signedFile"
+        label={t("orderSign.option.file.send")}
+        pendingLabel={t("requirement.sending")}
+        uploadingLabel={t("requirement.file.uploading")}
+        tooBigLabel={t("requirement.file.tooBig")}
+        serverOnlyLabel={t("requirement.file.serverOnly")}
+        failedLabel={t("requirement.file.failed")}
+        accept="application/pdf,image/jpeg,image/png,image/webp"
+        className="w-full"
+      />
+      <p className="text-xs text-zinc-500">{t("orderSign.option.file.note")}</p>
+    </form>
+  );
+  const signTurn = view.canSign ? (
+    <Card title={t("orderSign.turn.title")} dense className="print:hidden">
+      <div
+        id="assinar"
+        className="scroll-mt-24 space-y-3"
+        data-order-sign-turn={view.canSign}
+      >
+        <p className="text-sm text-zinc-700">
+          {supplierTurn
+            ? t("orderSign.turn.hint.supplier")
+            : t("orderSign.turn.hint.wellmix")}
+        </p>
+        <div className={supplierTurn ? "grid gap-3 md:grid-cols-2" : ""}>
+          {signForm(false)}
+          {supplierTurn ? fileForm : null}
+        </div>
+      </div>
+    </Card>
+  ) : null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -257,35 +324,6 @@ export default async function PurchaseOrderPage({
           </a>
         </div>
       ) : null}
-      {/* Fornecedor: baixar, assinar e enviar de volta, logo no alto (o
-          formulário completo, com o aceite no portal, continua no fim). */}
-      {view.canSign === "supplier" ? (
-        <form
-          action={signOrderDocumentAction}
-          className="space-y-2 rounded-xl border border-brand-300 bg-brand-50/60 p-3 print:hidden"
-          data-order-signed-upload
-        >
-          <input type="hidden" name="orderId" value={order.id} />
-          <input type="hidden" name="hash" value={hash} />
-          <input type="hidden" name="name" value={user.name} />
-          <input type="hidden" name="agree" value="on" />
-          <p className="text-sm font-semibold text-zinc-900">
-            {t("orderSign.upload.title")}
-          </p>
-          <p className="text-sm text-zinc-700">{t("orderSign.upload.hint")}</p>
-          <div className="flex flex-wrap items-end gap-2">
-            <a
-              href={`/api/orders/${order.id}/purchase-order`}
-              download
-              className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
-            >
-              {t("orderSign.download")}
-            </a>
-            {signedFileInput(true)}
-            <SubmitButton>{t("orderSign.upload.submit")}</SubmitButton>
-          </div>
-        </form>
-      ) : null}
       {myTasks.length ? (
         <div
           className="space-y-1 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-sm print:hidden"
@@ -311,7 +349,17 @@ export default async function PurchaseOrderPage({
         <Alert tone="info">{t("orderSign.notApplicable")}</Alert>
       ) : view.waitingWellmix ? (
         <Alert tone="warning">{t("orderSign.waitingWellmix")}</Alert>
+      ) : view.supplierBlocked ? (
+        // A liberação automática não conseguiu: diz a cada lado o que falta.
+        <Alert tone="warning">
+          <span data-order-sign-blocked>
+            {isWellmix(user)
+              ? t("orderSign.blocked.wellmix")
+              : t("orderSign.blocked.supplier")}
+          </span>
+        </Alert>
       ) : null}
+      {signTurn}
       <Card>
         <section className="space-y-4" data-order-document={hash}>
           <div className="grid gap-4 text-sm sm:grid-cols-2">
@@ -425,7 +473,6 @@ export default async function PurchaseOrderPage({
             {signatureLine("wellmix", view.wellmix)}
             {signatureLine("supplier", view.supplier)}
           </div>
-          {view.canSign ? signForm(false) : null}
           {view.canRegisterSupplier ? (
             <details className="print:hidden">
               <summary className={linkClass}>

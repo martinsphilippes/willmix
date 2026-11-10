@@ -10,6 +10,7 @@ import {
 } from "@/lib/db";
 import { ForbiddenError, isAdmin, isWellmix } from "@/lib/auth/permissions";
 import {
+  ORDER_CONFIRMED,
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
@@ -204,6 +205,11 @@ export interface OrderSignatureView {
    * deu por fora (depois da assinatura da Wellmix).
    */
   canRegisterSupplier: boolean;
+  /**
+   * A Wellmix já assinou, o fornecedor ainda não, e a etapa dele não abriu
+   * (o pedido não foi liberado): ninguém consegue assinar por ele ainda.
+   */
+  supplierBlocked: boolean;
   /** O fornecedor espera a assinatura da Wellmix. */
   waitingWellmix: boolean;
   /**
@@ -253,8 +259,11 @@ export async function getOrderSignatureView(
   };
   let canSign: OrderSignatureView["canSign"] = null;
   let canRegisterSupplier = false;
+  let supplierBlocked = false;
   if (open) {
     const supplierOpen = !!wellmix && (await stageActive(reqs.supplier));
+    supplierBlocked =
+      !!wellmix && !!reqs.supplier && !supplier && !supplierOpen;
     if (isWellmix(user)) {
       if (await stageActive(reqs.wellmix)) canSign = "wellmix";
       canRegisterSupplier = supplierOpen && isAdmin(user);
@@ -286,6 +295,7 @@ export async function getOrderSignatureView(
     supplier,
     canSign,
     canRegisterSupplier,
+    supplierBlocked,
     waitingWellmix: isOrderSupplier(user, order) && !!reqs.wellmix && !wellmix,
   };
 }
@@ -308,13 +318,50 @@ export interface SignOrderInput {
    */
   signedFile?: File | null;
   /**
-   * O mesmo arquivo, já subido direto ao armazenamento pelo navegador
-   * (acima do teto da requisição na Vercel): o id dele.
+   * O mesmo arquivo assinado quando é grande demais para a requisição (foto
+   * do celular, PDF escaneado): o navegador já o subiu direto ao
+   * armazenamento e aqui vem só o id dele.
    */
-  signedUploadId?: string | null;
+  signedFileKey?: string | null;
 }
 
 const SIGNED_FILE_MIME = /^(application\/pdf|image\/(jpeg|png|webp))$/i;
+
+/**
+ * A assinatura da Wellmix libera o pedido ao fornecedor. O item "Pedido
+ * conferido e liberado ao fornecedor" (mesma etapa da assinatura dela) é
+ * concluído em nome de quem assinou: sem isso a etapa do fornecedor não abria
+ * e ele recebia o aviso para assinar sem ter onde assinar. Vale também para
+ * os pedidos que já estavam assim (chamado ao abrir o documento). Nunca
+ * derruba quem chamou: se não der, o documento explica o que falta.
+ */
+export async function releaseOrderBySignature(
+  orderId: string,
+): Promise<boolean> {
+  try {
+    const store = getStore();
+    const reqs = await signatureRequirements(orderId);
+    const signature = parseSignature(reqs.wellmix);
+    if (!signature || !reqs.wellmix) return false;
+    const [confirm] = await store.list("requirements", {
+      filter: { stageId: reqs.wellmix.stageId, key: ORDER_CONFIRMED },
+      limit: 1,
+    });
+    if (!confirm || confirm.status === "done") return false;
+    const signer = signature.userId
+      ? await store.get("users", signature.userId)
+      : null;
+    if (!signer || !isWellmix(signer)) return false;
+    await submitRequirement(signer, confirm.id, {
+      value: "confirmed",
+      note: "Liberado pela assinatura da Wellmix no documento do pedido",
+    });
+    return true;
+  } catch (error) {
+    console.error("[order-signature] liberar ao fornecedor", orderId, error);
+    return false;
+  }
+}
 
 /**
  * Assina o documento do pedido. A Wellmix assina o item dela; o fornecedor do
@@ -355,27 +402,32 @@ export async function signOrderDocument(
   // pedido como interno. Só a Wellmix e quem o enviou abrem: tem o preço.
   let documentId: string | null = null;
   const file = input.signedFile ?? null;
-  const target = {
-    orderId: order.id,
-    type: "other",
-    visibility: "internal",
-  } as const;
   if (file) {
     if (!SIGNED_FILE_MIME.test(file.type))
       throw new OrderSignatureError("signature_file_invalid");
     const { uploadDocument } = await import("./documents");
-    documentId = (await uploadDocument(user, file, target)).id;
-  } else if (input.signedUploadId) {
-    // Arquivo grande (foto de celular, PDF escaneado): já está guardado.
-    const stored = await store.statFile(input.signedUploadId);
-    if (stored && !SIGNED_FILE_MIME.test(stored.mime ?? "")) {
-      await store.removeFile(input.signedUploadId);
+    const doc = await uploadDocument(user, file, {
+      orderId: order.id,
+      type: "other",
+      visibility: "internal",
+    });
+    documentId = doc.id;
+  } else if (input.signedFileKey) {
+    // Arquivo grande, já no armazenamento: confere o tipo antes de registrar
+    // (o que não é PDF nem foto é apagado) e guarda como o anexo comum.
+    const stored = await store.statFile(input.signedFileKey);
+    if (!stored) throw new OrderSignatureError("signature_file_missing");
+    if (!SIGNED_FILE_MIME.test(stored.mime ?? "")) {
+      await store.removeFile(input.signedFileKey).catch(() => undefined);
       throw new OrderSignatureError("signature_file_invalid");
     }
     const { registerUploadedDocument } = await import("./documents");
-    documentId = (
-      await registerUploadedDocument(user, input.signedUploadId, target)
-    ).id;
+    const doc = await registerUploadedDocument(user, input.signedFileKey, {
+      orderId: order.id,
+      type: "other",
+      visibility: "internal",
+    });
+    documentId = doc.id;
   }
   const signature: OrderSignature = {
     side,
@@ -409,6 +461,8 @@ export async function signOrderDocument(
     { side, name, hash, onBehalf, method: signature.method, documentId },
   );
   if (side === "wellmix") {
+    // Assinar é conferir e liberar: o fornecedor já pode assinar em seguida.
+    await releaseOrderBySignature(order.id);
     await notify(
       { role: "supplier", partyId: order.supplierId },
       {

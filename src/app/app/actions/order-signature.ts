@@ -34,12 +34,11 @@ export async function signOrderDocumentAction(form: FormData) {
       onBehalfOfSupplier: str(form, "onBehalf") === "1",
       // PDF baixado, assinado e anexado de volta (opcional: sem ele, aceite).
       signedFile: files(form, "signedFile")[0] ?? null,
-      // Arquivo grande: o navegador já subiu direto; o formulário traz o id.
-      signedUploadId: str(form, "uploadedFileId")
-        ? z
-            .string()
-            .regex(/^[A-Za-z0-9_.-]{1,64}$/)
-            .parse(str(form, "uploadedFileId"))
+      // Arquivo grande: já subiu direto ao armazenamento; vem só o id.
+      signedFileKey: /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(
+        str(form, "uploadedFileId"),
+      )
+        ? str(form, "uploadedFileId")
         : null,
     });
     return `/app/orders/${id}/purchase-order?signed=1`;

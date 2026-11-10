@@ -38,6 +38,14 @@ Os valores vêm da ficha do pedido (`purchase_sheets`), da variação pedida e d
 
 A folha é **apresentação**: a versão que as partes assinam (a impressão digital) continua sendo o conteúdo comercial do `OrderDocument` (produto, quantidade, preço, total, incoterm, MOQ, prazo, pagamento, embalagem). Preencher a ficha depois da assinatura muda a folha, não a versão assinada.
 
+## 2b. As duas formas de o fornecedor assinar (10/11/2026)
+
+Correção do dono: o fornecedor baixava o PDF e não achava onde devolver assinado. Três causas, três consertos:
+
+- **A assinatura da Wellmix libera o pedido.** O item "Pedido conferido e liberado ao fornecedor" (`ORDER_CONFIRMED`, mesma etapa da assinatura dela) conclui junto, em nome de quem assinou (`releaseOrderBySignature`). Antes, sem esse item marcado à parte, a Preparação não abria: o fornecedor era avisado para assinar e a tela não mostrava onde. Pedido que já estava assim é liberado ao abrir o documento; se a liberação não for possível, um aviso diz a cada lado o que falta (`supplierBlocked`).
+- **Quadro "Sua vez de assinar" no topo**, com as duas opções lado a lado para o fornecedor: **1) assinar no portal** (nome + "li e concordo") e **2) enviar o documento assinado** (baixa o PDF, assina, carimba e escolhe o arquivo; escolher já registra a assinatura). A Wellmix vê só a opção do portal. O administrador continua registrando a assinatura recebida por fora, no quadro Assinaturas.
+- **Arquivo grande** (foto do celular, PDF escaneado): acima de 4 MB sobe direto ao armazenamento (`FileAutoInput`, `uploadedFileId` → `signedFileKey`), sem passar pelo teto da requisição na Vercel. Só PDF ou foto; outro tipo é recusado e apagado.
+
 ## 3. Casos especiais
 
 - **Pedidos antigos** (de antes desta mudança) não têm os itens: seguem como estavam e o documento fica só para consulta.
