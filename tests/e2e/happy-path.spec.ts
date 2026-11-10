@@ -399,6 +399,50 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   )?.match(/#(\d+)/)?.[1];
   expect(orderNumber).toBeTruthy();
 
+  // 6b. Selo de certificação: o pedido recém-criado já está nas pendências
+  // da certificadora (OCP), que envia o selo; a agência recebe a pendência,
+  // baixa o selo e envia a arte com o selo; a Wellmix confere.
+  const sealTask = page.locator("[data-task-row][data-task-group=cert_step]", {
+    hasText: new RegExp(`#${orderNumber}\\b`),
+  });
+  await login(page, "ocp@certifica.com");
+  await page.goto("/app");
+  await expect(sealTask.first()).toBeVisible();
+  await sealTask.first().getByRole("link").first().click();
+  await page.waitForURL(/\/app\/orders\/[^/]+#certification$/);
+  const sealRow = page.locator("[data-import-step=cert_seal]");
+  await expect(sealRow).toHaveAttribute("data-import-status", "pending");
+  // A certificadora vê o pedido completo para gerar o selo: os itens com
+  // foto e código e a ficha de compra inteira para ler, sem o bloco de preço.
+  await expect(page.locator("[data-certifier-dossier]")).toBeVisible();
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  await expect(page.locator("[data-sheet-section=product]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=customs]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=price]")).toHaveCount(0);
+  await expect(page.locator("input[name=price]")).toHaveCount(0);
+  await expect(page.locator("input[name=material]")).toBeDisabled();
+  await page.goto(`${orderUrl}#certification`);
+  await sealRow.locator("input[type=file]").setInputFiles(png);
+  await sealRow.locator("[data-import-submit=cert_seal]").click();
+  await page.waitForURL(/[?&]certStep=submitted/);
+  await expect(sealRow).toHaveAttribute("data-import-status", "submitted");
+  await login(page, "agencia@design.com");
+  await page.goto("/app");
+  await expect(sealTask.first()).toBeVisible();
+  await page.goto(orderUrl);
+  // A agência vê só as linhas do selo, com o arquivo para baixar.
+  await expect(page.locator("[data-import-step=cert_memorial]")).toHaveCount(0);
+  await expect(sealRow.locator("[data-import-file]")).toBeVisible();
+  const sealArtRow = page.locator("[data-import-step=cert_seal_art]");
+  await sealArtRow.locator("input[type=file]").setInputFiles(pdf);
+  await sealArtRow.locator("[data-import-submit=cert_seal_art]").click();
+  await page.waitForURL(/[?&]certStep=submitted/);
+  await login(page, "admin@wellmix.com");
+  await page.goto(orderUrl);
+  await page.locator("[data-import-validate=cert_seal_art]").click();
+  await page.waitForURL(/[?&]certStep=validated/);
+  await expect(sealArtRow).toHaveAttribute("data-import-status", "validated");
+
   // 7. ORDER_CREATED: o operador (comprador) confirma (limitamos a 1 envio)
   await login(page, "operador@wellmix.com");
   // O item de assinatura leva ao documento do pedido (não tem "Confirmar").

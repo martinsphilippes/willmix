@@ -32,6 +32,7 @@ O E2E sobe o próprio servidor em `localhost:3100` com `DATA_DIR=.data-e2e`. Nã
 
 - `api.vercel.com` bloqueado: o Vercel CLI não funciona; use o conector ou push no GitHub.
 - Playwright instalado pelo npm procura outra versão do Chromium; use `PW_CHROMIUM=/opt/pw-browsers/chromium`.
+- O servidor de desenvolvimento é lento na sessão cloud: o cenário principal do E2E leva cerca de 2,5 minutos e estoura o limite padrão de 90 s por teste. Rode com `E2E_TIMEOUT=400000` (o teste passa; só o limite é curto).
 
 ## Nomenclatura
 

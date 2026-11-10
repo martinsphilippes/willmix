@@ -12,7 +12,7 @@ Visível para a Wellmix, para o designer do pedido e para a agência do pedido.
   - a Wellmix aceita ou reabre com o motivo;
   - tudo vai para a auditoria (`artwork.*`).
 - **Baixar todas as artes**:
-  - um zip com a versão mais nova de cada arte, faca, etiqueta, arquivo de gráfica e foto de embalagem do pedido e do briefing de embalagem;
+  - um zip com a versão mais nova de cada arte, faca, etiqueta, arquivo de gráfica e foto de embalagem do pedido e do briefing de embalagem, mais o selo de certificação do pedido (docs/CERTIFICATION.md), quando já foi enviado;
   - só entra o que o usuário pode abrir;
   - o zip é gerado em fluxo, sem carregar tudo na memória.
 

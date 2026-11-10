@@ -2,7 +2,30 @@
 
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { SERVER_MAX_BYTES, uploadDirect } from "./direct-upload";
+import {
+  DIRECT_MAX_BYTES,
+  SERVER_MAX_BYTES,
+  uploadDirect,
+} from "./direct-upload";
+
+const SHEET_ACCEPT =
+  ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
+const SHEET_CLASS =
+  "block w-full text-sm text-zinc-700 file:mr-3 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-800 disabled:opacity-60";
+
+interface DirectFileInputProps {
+  name?: string;
+  label: string;
+  /** Falso quando há outro jeito de informar (ex.: link do Google Sheets) ou já há arquivo. */
+  required?: boolean;
+  /** Com {percent}: progresso do envio direto. */
+  uploadingLabel: string;
+  failedLabel: string;
+  /** Com {name} e {size}: arquivo escolhido (já subido direto). */
+  chosenLabel: string;
+  /** Arquivo acima do teto do armazenamento (sem ele, vale o aviso de falha). */
+  tooBigLabel?: string;
+}
 
 /**
  * Campo da planilha (.xlsx ou .xls). Planilha com fotos passa do teto da requisição
@@ -10,23 +33,38 @@ import { SERVER_MAX_BYTES, uploadDirect } from "./direct-upload";
  * leva só o id (`uploadedFileId`); menor, segue no próprio formulário. Em
  * desenvolvimento (modo memória) vai sempre pelo formulário.
  */
-export function SheetFileInput({
+export function SheetFileInput(props: DirectFileInputProps) {
+  return (
+    <DirectFileInput
+      {...props}
+      accept={SHEET_ACCEPT}
+      className={SHEET_CLASS}
+      marker="sheet-import"
+    />
+  );
+}
+
+/**
+ * Campo de arquivo de um formulário com botão de enviar (ex.: passo de
+ * embarque ou de certificação, como a arte com o selo): o mesmo envio direto
+ * da planilha para arquivo acima do teto da requisição, sem restringir o tipo.
+ */
+export function DirectFileInput({
   name = "file",
   label,
   uploadingLabel,
   failedLabel,
   chosenLabel,
+  tooBigLabel,
   required = true,
-}: {
-  name?: string;
-  label: string;
-  /** Falso quando há outro jeito de informar a planilha (ex.: link do Google Sheets). */
-  required?: boolean;
-  /** Com {percent}: progresso do envio direto. */
-  uploadingLabel: string;
-  failedLabel: string;
-  /** Com {name} e {size}: arquivo escolhido (já subido direto). */
-  chosenLabel: string;
+  accept,
+  className,
+  marker = "direct",
+}: DirectFileInputProps & {
+  accept?: string;
+  className?: string;
+  /** Prefixo dos atributos data-* (os testes da planilha usam "sheet-import"). */
+  marker?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const hiddenRef = useRef<HTMLInputElement | null>(null);
@@ -49,8 +87,19 @@ export function SheetFileInput({
     setError(null);
     setChosen(null);
     clearHidden();
-    if (!file || !form || file.size <= SERVER_MAX_BYTES) return;
+    if (!file || !form) return;
+    if (file.size > DIRECT_MAX_BYTES) {
+      setError(tooBigLabel ?? failedLabel);
+      input.value = "";
+      return;
+    }
+    if (file.size <= SERVER_MAX_BYTES) return;
     setBusy(true);
+    setProgress(0);
+    // Enquanto o arquivo sobe, o formulário não envia: iria sem o arquivo
+    // (ou, num reenvio, com o arquivo antigo).
+    const hold = (e: Event) => e.preventDefault();
+    form.addEventListener("submit", hold);
     try {
       const ids = await uploadDirect([file], setProgress);
       if (ids?.[0]) {
@@ -89,6 +138,7 @@ export function SheetFileInput({
       input.value = "";
       clearHidden();
     } finally {
+      form.removeEventListener("submit", hold);
       setProgress(null);
       setBusy(false);
     }
@@ -102,13 +152,13 @@ export function SheetFileInput({
         type="file"
         name={name}
         required={required}
-        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        accept={accept}
         disabled={working}
         onChange={onChange}
         aria-label={label}
         aria-busy={working || undefined}
-        className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-800 disabled:opacity-60"
-        data-sheet-import-file
+        className={className}
+        {...{ [`data-${marker}-file`]: "" }}
       />
       {busy && progress !== null ? (
         <p className="text-xs text-zinc-600" role="status">
@@ -119,7 +169,7 @@ export function SheetFileInput({
         <p
           className="text-xs text-emerald-800"
           role="status"
-          data-sheet-import-uploaded
+          {...{ [`data-${marker}-uploaded`]: "" }}
         >
           {chosen}
         </p>

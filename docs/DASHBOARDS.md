@@ -15,7 +15,7 @@ Números calculados na hora; cada um leva à tela onde se age. Abaixo, os pedido
 | Produção | pedidos acompanhados, follow vencido, atraso informado, ETD alterado, variação média do ETD, % de SKUs reprovados |
 | Embarque e desembaraço | em embarque/desembaraço/transporte, passos aguardando validação, recusados, canais verde/amarelo/vermelho-cinza |
 | Recebimento | abertos, com divergência, lacre violado, container sem devolução |
-| Certificação e artes | certificações em andamento, registros obtidos, artes não conformes, correções aguardando aceite, dias médios para corrigir |
+| Certificação e artes | certificações em andamento (passo enviado sem concluir ou o seguinte de um concluído ainda por fazer, como o selo enviado e a arte com o selo pendente), registros obtidos, artes não conformes, correções aguardando aceite, dias médios para corrigir |
 | Financeiro | sinais a confirmar, pagamentos a fornecedor pendentes, numerários a validar (quantidade e valor), pedidos sem lançamento no ERP |
 
 ## Sankhya

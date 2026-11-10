@@ -1362,7 +1362,17 @@ async function createOrderFromRequest(
       }),
     },
   );
-  return (await store.get("orders", order.id)) ?? order;
+  // Relido: os parceiros padrão (OCP, agência...) entraram depois da criação.
+  const born = (await store.get("orders", order.id)) ?? order;
+  // Selo de certificação: o pedido já nasce na mão da certificadora (aviso;
+  // a pendência dela sai do passo). Uma falha aqui não desfaz o pedido.
+  try {
+    const { notifySealRequested } = await import("./import-flow");
+    await notifySealRequested(born);
+  } catch (error) {
+    console.error("[certification] aviso do selo no pedido novo", error);
+  }
+  return born;
 }
 
 /**

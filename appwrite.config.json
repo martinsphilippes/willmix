@@ -7890,7 +7890,9 @@
             "danfe",
             "cert_memorial",
             "cert_lab",
-            "cert_registration"
+            "cert_registration",
+            "cert_seal",
+            "cert_seal_art"
           ]
         },
         {

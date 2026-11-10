@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   getStore,
+  type Order,
   type Certification,
   type Document,
   type DocumentType,
@@ -365,6 +366,16 @@ export async function canAccessDocument(
       (await isCatalogShowcasePhoto(doc.productId, doc.id))
     )
       return true;
+    // Certificadora (OCP): as fotos de vitrine dos produtos dos pedidos em
+    // que está (precisa ver o produto para gerar o selo de certificação).
+    if (
+      doc.productId &&
+      user.role === "ocp" &&
+      !!user.partyId &&
+      (await ocpHasOrderWithProduct(user.partyId, doc.productId)) &&
+      (await isShowcaseDocument(doc.productId, doc.id))
+    )
+      return true;
     // Agência: as mesmas fotos de vitrine, só dos produtos de que tem briefing
     // de embalagem (a arte precisa ver o produto).
     if (
@@ -394,12 +405,22 @@ export async function canAccessDocument(
   return false;
 }
 
-/** Despachante: todos; fornecedor: só o próprio cadastro ou produtos dele. */
+/**
+ * Despachante: todos; fornecedor: só o próprio cadastro ou produtos dele;
+ * certificadora (OCP): os do produto e do fornecedor dos pedidos em que está.
+ */
 async function canViewCertificationDocument(
   user: User,
   cert: Certification,
 ): Promise<boolean> {
   if (user.role === "broker") return true;
+  if (user.role === "ocp" && user.partyId) {
+    if (cert.entity === "product")
+      return ocpHasOrderWithProduct(user.partyId, cert.entityId);
+    return (await ocpOrders(user.partyId)).some(
+      (o) => o.supplierId === cert.entityId,
+    );
+  }
   if (user.role !== "supplier" || !user.partyId) return false;
   if (cert.entity === "party") return cert.entityId === user.partyId;
   const product = await getStore().get("products", cert.entityId);
@@ -528,4 +549,60 @@ async function agencyHasBriefFor(
     // Tabela ainda não publicada: nada a conceder.
     return false;
   }
+}
+
+/*
+ * Certificadora (OCP): precisa do pedido completo para gerar o selo de
+ * certificação (docs/CERTIFICATION.md). Abre as fotos de vitrine dos
+ * produtos e os certificados do produto e do fornecedor dos pedidos em que
+ * está. As regras ficam aqui embaixo, separadas das da vitrine do cliente.
+ */
+
+/**
+ * Das fotos (do cadastro ou da ficha do pedido), as de vitrine: sem o cartão
+ * do fornecedor/fabricante e a foto de referência, e sem a original que
+ * ganhou versão comercial (a comercial é o que a Wellmix quer mostrar).
+ */
+export function showcaseOf(photos: ProductPhoto[]): ProductPhoto[] {
+  const replaced = new Set(
+    photos
+      .filter((p) => p.kind === "commercial" && p.derivedFromPhotoId)
+      .map((p) => p.derivedFromPhotoId as string),
+  );
+  return photos.filter(
+    (p) => !CATALOG_HIDDEN_KINDS.includes(p.kind) && !replaced.has(p.id),
+  );
+}
+
+/** O documento é uma foto de vitrine deste produto (ativo ou não)? */
+async function isShowcaseDocument(
+  productId: string,
+  documentId: string,
+): Promise<boolean> {
+  const photos = await getStore().list("product_photos", {
+    filter: { productId },
+  });
+  return showcaseOf(photos).some((p) => p.documentId === documentId);
+}
+
+/** Pedidos (não cancelados) em que a empresa é a certificadora (OCP). */
+async function ocpOrders(partyId: string): Promise<Order[]> {
+  const orders = await getStore().list("orders", {
+    filter: { ocpId: partyId },
+  });
+  return orders.filter((o) => o.status !== "CANCELLED");
+}
+
+/** O produto está em algum pedido em que a empresa é a certificadora? */
+async function ocpHasOrderWithProduct(
+  partyId: string,
+  productId: string,
+): Promise<boolean> {
+  const orders = await ocpOrders(partyId);
+  if (!orders.length) return false;
+  const items = await getStore().list("order_items", {
+    filter: { orderId: orders.map((o) => o.id), productId },
+    limit: 1,
+  });
+  return items.length > 0;
 }

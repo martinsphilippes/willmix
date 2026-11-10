@@ -181,7 +181,31 @@ export interface SheetAccess {
 }
 
 /**
- * Quem vê: Wellmix, o fornecedor do pedido e o despachante do pedido. Cliente
+ * Campos de preço da ficha: a certificadora lê a ficha inteira, menos eles
+ * (condição, moeda, preço, pedido mínimo e a média do despachante).
+ */
+export const CERTIFIER_HIDDEN_FIELDS = [
+  "incoterm",
+  "currency",
+  "price",
+  "moq",
+  "averagePrice",
+] as const satisfies readonly SheetField[];
+
+/**
+ * Certificadora (OCP) do pedido: precisa do pedido completo para gerar o
+ * selo de certificação (docs/CERTIFICATION.md). Lê a ficha, não edita nada.
+ */
+export function isSheetCertifier(
+  user: Pick<User, "role" | "partyId">,
+  order: Pick<Order, "ocpId">,
+): boolean {
+  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
+}
+
+/**
+ * Quem vê: Wellmix, o fornecedor do pedido, o despachante do pedido e a
+ * certificadora do pedido (só leitura e sem os campos de preço). Cliente
  * nunca (fornecedor, contato e preço). Pedido encerrado: só a Wellmix edita.
  */
 export function sheetAccess(user: User, order: Order): SheetAccess {
@@ -214,6 +238,7 @@ export function sheetAccess(user: User, order: Order): SheetAccess {
       editCustoms: !closed,
       addPhotos: false,
     };
+  if (isSheetCertifier(user, order)) return { ...none, view: true };
   return none;
 }
 
@@ -492,7 +517,14 @@ export async function getSheetForUser(
     stored.productId ?? request?.productId ?? null,
   );
   // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
-  const sheet = existing ? withRecordDefaults(existing, records) : stored;
+  const full = existing ? withRecordDefaults(existing, records) : stored;
+  // Certificadora: a ficha inteira, menos o preço (não sai do servidor).
+  const sheet = isSheetCertifier(user, order)
+    ? {
+        ...full,
+        ...Object.fromEntries(CERTIFIER_HIDDEN_FIELDS.map((k) => [k, null])),
+      }
+    : full;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {

@@ -165,11 +165,15 @@ export const BOARD_REQUIREMENT_KEYS = JOURNEY_REQUIREMENT_KEYS;
 
 /** Documentos de embarque validados por alguém (numerário tem quadrado próprio). */
 const NOT_DOCUMENTS: ImportStep["key"][] = ["numerario", "numerario_paid"];
-const CERT_STEPS: ImportStep["key"][] = [
+/** Memorial, laudo e registro: com OCP, ficha pedindo ou passo começado. */
+const CLASSIC_CERT_STEPS: ImportStep["key"][] = [
   "cert_memorial",
   "cert_lab",
   "cert_registration",
 ];
+/** Selo de certificação e selo aplicado na arte: todo pedido precisa. */
+const SEAL_STEPS: ImportStep["key"][] = ["cert_seal", "cert_seal_art"];
+const CERT_STEPS = [...CLASSIC_CERT_STEPS, ...SEAL_STEPS];
 const ALERT_CHANNELS = ["yellow", "red", "grey"];
 
 export interface BoardInput {
@@ -379,9 +383,15 @@ export function buildTowerBoard(input: BoardInput): TowerBoard {
     if (skus.some((s) => s.result === "rejected"))
       addOrder("parSkuRejected", o);
     if (artIssue.has(o.id)) addOrder("parArtIssue", o);
-    const certs = CERT_STEPS.map((k) => step(o, k));
-    const withCert = !!o.ocpId || certSheet.has(o.id) || certs.some((s) => !!s);
-    if (withCert && certs.some((s) => !s || !importStepDone(s)))
+    const classic = CLASSIC_CERT_STEPS.map((k) => step(o, k));
+    const withCert =
+      !!o.ocpId || certSheet.has(o.id) || classic.some((s) => !!s);
+    // Certificação pendente: o selo (todo pedido) ou, com certificação
+    // pedida, memorial, laudo e registro.
+    if (
+      SEAL_STEPS.some((k) => !importStepDone(step(o, k))) ||
+      (withCert && classic.some((s) => !importStepDone(s)))
+    )
       addOrder("parCertification", o);
     if (
       (stepsBy.get(o.id) ?? []).some(

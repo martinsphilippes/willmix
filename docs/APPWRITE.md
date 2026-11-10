@@ -42,6 +42,8 @@ Banco "Wellmix" (ID `willmix`, mantido por compatibilidade), 59 tabelas (a conta
 
 Bucket `arquivos` (50 MB por arquivo, antivírus e criptografia, gzip; aceita `json` para a tabela fiscal). Metadados em `documents`; acesso sempre por `/api/files/[id]`. Extensões aceitas: `BUCKET_EXTENSIONS` em `src/lib/db/schema.ts` (PDF, imagens, planilhas, XML, ZIP e artes; no chat também GIF, Word, PowerPoint, texto e vídeo MP4/MOV/WebM/3GP). O Appwrite recusa as outras ("File extension not allowed"), por isso o teste `bucket-extensions` confere que todo tipo aceito no portal está na lista; o nome guardado leva a extensão em minúsculas. Lista nova só vale depois de publicar o esquema (o push acrescenta as que faltam).
 
+Selo de certificação (docs/CERTIFICATION.md): `import_steps.key` ganhou os valores `cert_seal` e `cert_seal_art`. Sem tabela nem coluna nova; o valor novo do enum precisa do esquema publicado antes do primeiro envio (até lá o envio do selo avisa que o passo ainda não foi liberado).
+
 ## Permissões
 
 Tabelas e bucket **sem permissões de usuário**: só a API key do servidor lê e escreve. A autorização é feita na aplicação (`src/lib/auth/permissions.ts`, `canSubmitRequirement`, `canAccessDocument`). Permissão de linha no Appwrite fica como segunda barreira no hardening.

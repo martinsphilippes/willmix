@@ -580,6 +580,18 @@ export async function assignPackagingBrief(
         const { normalizePackagingStage } = await import("./packaging");
         await normalizePackagingStage(pack.id, { reassign: true });
       }
+      // Selo de certificação já enviado e ainda não aplicado: quem passa a
+      // fazer a arte é avisado.
+      try {
+        const { notifySealPartner } = await import("./import-flow");
+        await notifySealPartner(
+          { ...order, agencyId: owner.agencyId },
+          "agencyId",
+          order.agencyId ?? null,
+        );
+      } catch (error) {
+        console.error("[certification] aviso do selo ao novo dono", error);
+      }
     }
   }
   await audit(
@@ -1553,6 +1565,8 @@ export interface PackagingBriefView {
   /** Venda ainda não confirmada (sem pedido). */
   presale: boolean;
   order: Order | null;
+  /** Selo de certificação do pedido a aplicar na arte (nulo: sem selo). */
+  orderSeal: "pending" | "ready" | "rejected" | "sent" | "done" | null;
   /** Estado ao vivo do item "Arte" e da aprovação do fornecedor no pedido. */
   orderArt: {
     art: Requirement | null;
@@ -1616,7 +1630,10 @@ export async function getPackagingBriefView(
       : [];
   const order = brief.orderId ? await store.get("orders", brief.orderId) : null;
   let orderArt: PackagingBriefView["orderArt"] = null;
+  let orderSeal: PackagingBriefView["orderSeal"] = null;
   if (order) {
+    const { sealStateFor } = await import("./import-flow");
+    orderSeal = await sealStateFor(user, order);
     const stage = await packagingStage(order.id);
     const reqs = stage
       ? await store.list("requirements", { filter: { stageId: stage.id } })
@@ -1648,6 +1665,7 @@ export async function getPackagingBriefView(
     canSendDieline:
       LIVE.includes(brief.status) && (await canSendDieline(user, brief)),
     wellmix,
+    orderSeal,
     presale:
       !brief.orderId &&
       brief.status !== "cancelled" &&
