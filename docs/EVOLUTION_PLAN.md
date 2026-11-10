@@ -695,6 +695,10 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - **Etapa**: aparece quando o papel responde por ela ou tem item a preencher nela; o parceiro continua vendo a etapa que só lê (ex.: o despachante e o Embarque). **Parte do pedido**: fornecedor vê Documento do pedido, Ficha de compra e Produção e inspeção; a certificadora, a Certificação; a agência, as Artes; comex, despachante e agente de carga, Embarque e desembaraço. Pagamento ao fornecedor e Recebimento são só da Wellmix.
 - A numeração das etapas continua a do fluxo inteiro (a mesma que a Wellmix vê). Wellmix e cliente continuam vendo todas as linhas. Os cartões de baixo e as permissões não mudaram: é só a tabela.
 
+## "Como funciona" fora de todas as telas (10/11/2026)
+
+Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor só, `PAGE_HELP_ENABLED` em `src/components/page-help.tsx` (desligado): a caixa do cabeçalho (`PageHeader` → `PageHelp`) deixa de aparecer em todas as telas, e o bloco "Como funciona" da página do produto na vitrine também. Os textos (`help.*`, `explore.product.how.*`) e o componente ficam guardados; para voltar, basta ligar o interruptor. As explicações curtas dentro das etapas do pedido e o guia do Booking não mudam.
+
 ## Pedido: sai o índice "Ir para"
 
 - **Pedido do dono** (10/11/2026): a barra "Ir para:" (atalhos para Resumo, Itens, Etapas, Pagamento ao fornecedor, Produção, Documentos…) sai do alto da tela do pedido, para todos os logins. As seções e as âncoras (`#order-stages`, `#production`…) continuam; a tabela "Etapas do pedido" já leva a cada parte pelo "Abrir".

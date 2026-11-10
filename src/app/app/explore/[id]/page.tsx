@@ -24,6 +24,7 @@ import { ExploreVariantPicker } from "@/components/explore-variant-picker";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { SubmitButton } from "@/components/submit-button";
 import { Alert, TextLink, formatDate } from "@/components/ui";
+import { PAGE_HELP_ENABLED } from "@/components/page-help";
 
 /*
  * Página do produto na vitrine: fotos, preço estimado (e por quantidade),
@@ -369,27 +370,30 @@ export default async function ExploreProductPage({
             ) : null}
           </section>
 
-          <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5">
-            <h2 className="text-base font-semibold text-zinc-900">
-              {t("explore.product.how.title")}
-            </h2>
-            <ol className="mt-3 space-y-3 text-sm text-zinc-700">
-              {[
-                t("explore.product.how.1"),
-                t("explore.product.how.2", {
-                  date: formatDate(product.proposalBy, t),
-                }),
-                t("explore.product.how.3"),
-              ].map((text, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
-                    {i + 1}
-                  </span>
-                  <span className="pt-0.5">{text}</span>
-                </li>
-              ))}
-            </ol>
-          </section>
+          {/* "Como funciona" saiu de todas as telas (PAGE_HELP_ENABLED). */}
+          {PAGE_HELP_ENABLED ? (
+            <section className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] sm:p-5">
+              <h2 className="text-base font-semibold text-zinc-900">
+                {t("explore.product.how.title")}
+              </h2>
+              <ol className="mt-3 space-y-3 text-sm text-zinc-700">
+                {[
+                  t("explore.product.how.1"),
+                  t("explore.product.how.2", {
+                    date: formatDate(product.proposalBy, t),
+                  }),
+                  t("explore.product.how.3"),
+                ].map((text, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                      {i + 1}
+                    </span>
+                    <span className="pt-0.5">{text}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
         </div>
 
         <div className="min-w-0 lg:col-start-1 lg:row-start-2">
