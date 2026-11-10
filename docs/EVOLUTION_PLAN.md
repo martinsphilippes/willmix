@@ -675,7 +675,6 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - **Fica**: o cartão "Comparação de cotações" (âncora `#quotes-compare`, usada pelo Booking) com o ranking dos fornecedores e o formulário de escolha (valor ao cliente e sinal). Ele aparece quando há ranking ou cotação respondida para escolher.
 - **Onde ver o que estava na tabela**: preço, prazo, condições, negociação e frete de cada cotação continuam na página da cotação (`/app/quotes/{id}`) e na tela Cotações; a Wellmix registra a resposta no lugar do fornecedor pela ficha da cotação. A Server Action `answerQuoteAction` continua (nada saiu do servidor).
 
-
 ## Cotação: sai o bloco "Programação de compra"
 
 - **Pedido do dono** (10/11/2026): na tela em que o fornecedor responde a cotação (a análise do Booking), o bloco "Programação de compra" (início da produção, container, lotes) não aparece mais. A programação é do **pedido**, onde a compra está confirmada.
@@ -684,3 +683,8 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - **Disputa de fornecedores** (guardada com a RFQ): o prazo é o da cotação e, sem data de início, a produção conta a partir de hoje (a "entrega" continua comparável).
 - **Pedido**: nada muda na ficha de compra do pedido. Como a programação não vem mais da cotação, o fornecedor a preenche na Preparação (a ficha do pedido aponta "Início da produção" e "1º lote da programação" como o que falta); o resto da ficha e as fotos continuam vindo da cotação.
 - Testes: `tests/unit/quote-lead-time-action.test.ts`, `tests/unit/quote-sheet.test.ts`; o E2E preenche a programação no pedido.
+
+## Solicitação: dados em linha e sem a linha do tempo resumida (Wellmix)
+
+- **Pedido do dono** (10/11/2026): na tela da solicitação, o cartão "Solicitações" mostra os dados em linha (uma coluna por informação, inclusive cada item da especificação), com `RequestInfoTable`, o mesmo padrão da cotação, na largura toda.
+- O cartão "Linha do tempo" (5 passos resumidos) sai para a equipe Wellmix, que acompanha pelas "Etapas da solicitação". O cliente não tem as Etapas, por isso continua vendo a linha do tempo resumida.
