@@ -6,7 +6,6 @@ import {
 } from "@/lib/services/superplan-rfq";
 import { ActionError } from "@/components/action-error";
 import { fallbackError } from "@/i18n/error-text";
-import Link from "next/link";
 import { SellPriceCalculator } from "@/components/sell-price-calculator";
 import { SupplierRankingCard } from "@/components/supplier-ranking-card";
 import { supplierRanking } from "@/lib/services/supplier-ranking";
@@ -34,8 +33,7 @@ import {
   canViewRequest,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { getStore, type FreightQuote } from "@/lib/db";
-import { freightByQuote } from "@/lib/services/freight";
+import { getStore } from "@/lib/db";
 import { listProductSuppliers } from "@/lib/services/product-suppliers";
 import {
   RFQ_OPEN_STATUSES,
@@ -60,15 +58,11 @@ import {
   PageHeader,
   Select,
   StepDot,
-  Table,
-  Td,
   TextLink,
-  Th,
   cx,
   formatDate,
   formatMoney,
   linkClass,
-  rowClass,
   type StepState,
 } from "@/components/ui";
 import { CurrencySelect } from "@/components/currency-select";
@@ -81,7 +75,6 @@ import {
 } from "../../actions/payments";
 import { proposalApproved } from "@/lib/services/proposal-approval";
 import {
-  answerQuoteAction,
   confirmDownPaymentAction,
   openRfqAction,
   selectQuoteAction,
@@ -89,7 +82,6 @@ import {
   setRequesterAction,
 } from "../../actions";
 import type { DictionaryKey } from "@/i18n/dictionaries";
-import { MoneyInput } from "@/components/money-input";
 import { DownPaymentInput } from "@/components/down-payment-input";
 import { getSettings } from "@/lib/settings";
 import { RequestScheduleTable } from "@/components/request-schedule-table";
@@ -99,7 +91,6 @@ import {
 } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
-import { quoteFlowChips } from "@/components/quote-flow-cards";
 import { ApprovalCard } from "@/components/approval-card";
 import { RequestStagesCard } from "@/components/request-stages-card";
 import { approvalsFor } from "@/lib/services/approvals";
@@ -222,17 +213,6 @@ export default async function RequestDetailPage({
   const allInvited =
     suppliers.length > 0 && suppliers.every((s) => invited.has(s.id));
   /* Frete pedido à companhia marítima por cotação (só a Wellmix vê). */
-  const freights = wellmix
-    ? await freightByQuote(quotes.map((q) => q.id))
-    : new Map<string, FreightQuote[]>();
-  const carrierIds = [
-    ...new Set([...freights.values()].flat().map((f) => f.carrierId)),
-  ];
-  const carriers = carrierIds.length
-    ? await store.list("parties", { filter: { id: carrierIds } })
-    : [];
-  const carrierName = (id: string) =>
-    carriers.find((c) => c.id === id)?.name ?? "—";
   /* Segunda Onda: origem (recompra, nova proposta, sourcing sob demanda) e link ao
      pedido de origem só para quem pode abri-lo (mesmo isolamento por papel). */
   const origin =
@@ -849,8 +829,13 @@ export default async function RequestDetailPage({
           />
         ) : null}
 
-        {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
-        {wellmix && quotes.length > 0 ? (
+        {/* Comparação de cotações (só Wellmix): ranking e escolha do
+            fornecedor. A tabela de cotações saiu por decisão do dono (cada
+            cotação continua na própria página e no ranking). */}
+        {wellmix &&
+        (ranking ||
+          (["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
+            quotes.some((q) => q.status === "answered"))) ? (
           <Card
             title={
               // Âncora do Booking ("Conferir e confirmar a cotação").
@@ -859,152 +844,8 @@ export default async function RequestDetailPage({
               </span>
             }
           >
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t("common.supplier")}</Th>
-                  <Th>{t("common.price")}</Th>
-                  <Th className="whitespace-nowrap">{t("common.leadTime")}</Th>
-                  <Th>{t("common.conditions")}</Th>
-                  <Th>{t("common.status")}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotes.map((q) => (
-                  <tr
-                    key={q.id}
-                    className={cx(
-                      rowClass,
-                      q.status === "selected" && "bg-emerald-50/50",
-                    )}
-                  >
-                    <Td className="font-medium text-zinc-900">
-                      {supplierName(q.supplierId)}
-                    </Td>
-                    {q.status === "invited" &&
-                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
-                      request.status,
-                    ) ? (
-                      <Td colSpan={3}>
-                        <form
-                          action={answerQuoteAction}
-                          className="flex flex-wrap items-end gap-2"
-                        >
-                          <input type="hidden" name="quoteId" value={q.id} />
-                          <input
-                            type="hidden"
-                            name="back"
-                            value={`/app/requests/${request.id}`}
-                          />
-                          <MoneyInput
-                            locale={t.intl}
-                            name="price"
-                            watchField="currency"
-                            decimals={4}
-                            required
-                            className="w-36"
-                          />
-                          <CurrencySelect
-                            name="currency"
-                            value="USD"
-                            t={t}
-                            className="w-32"
-                          />
-                          <Input
-                            name="leadTimeDays"
-                            type="number"
-                            min="1"
-                            max="3650"
-                            required
-                            placeholder={t("common.leadTime")}
-                            className="w-28"
-                          />
-                          <Input
-                            name="conditions"
-                            maxLength={2000}
-                            placeholder={t("common.conditions")}
-                            className="w-44"
-                          />
-                          <SubmitButton variant="secondary">
-                            {t("requests.quotes.register")}
-                          </SubmitButton>
-                        </form>
-                        <p className="mt-1 text-xs text-zinc-500">
-                          {t("requests.quotes.registerHint")}
-                        </p>
-                      </Td>
-                    ) : (
-                      <>
-                        <Td
-                          className={cx(
-                            "whitespace-nowrap tabular-nums",
-                            q.price === null && "text-zinc-500",
-                          )}
-                        >
-                          {q.price !== null
-                            ? `${formatMoney(q.price, q.currency, t)} / ${request.unit}`
-                            : t("requests.quotes.waiting")}
-                        </Td>
-                        <Td className="tabular-nums">
-                          <span data-quote-lead={q.leadTimeDays ?? ""}>
-                            {q.leadTimeDays ?? "—"}
-                          </span>
-                        </Td>
-                        <Td>{q.conditions ?? "—"}</Td>
-                      </>
-                    )}
-                    <Td className="whitespace-nowrap">
-                      <Badge
-                        tone={
-                          q.status === "selected"
-                            ? "success"
-                            : q.status === "answered"
-                              ? "info"
-                              : "neutral"
-                        }
-                      >
-                        {t(`quoteStatus.${q.status}`)}
-                      </Badge>
-                      {/* Negociação e proposta de embalagem desta cotação. */}
-                      {wellmix
-                        ? quoteFlowChips(t, q).map((chip) => (
-                            <span
-                              key={chip.key}
-                              className="mt-1 block"
-                              data-quote-flow-chip={chip.key}
-                            >
-                              <Badge tone={chip.tone}>{chip.text}</Badge>
-                            </span>
-                          ))
-                        : null}
-                      {wellmix && q.status === "answered" ? (
-                        <Link
-                          href={`/app/quotes/${q.id}#negotiation`}
-                          className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
-                        >
-                          {t("quoteFlow.chip.open")}
-                        </Link>
-                      ) : null}
-                      {(freights.get(q.id) ?? []).map((f) => (
-                        <Link
-                          key={f.id}
-                          href={`/app/freight/${f.id}`}
-                          className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
-                        >
-                          {t("freight.compare.title")}:{" "}
-                          {carrierName(f.carrierId)} ·{" "}
-                          {f.status === "answered"
-                            ? formatMoney(f.amount, f.currency, t)
-                            : t("freight.compare.waiting")}
-                        </Link>
-                      ))}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
             {ranking ? (
-              <div className="mt-3">
+              <div>
                 <SupplierRankingCard
                   t={t}
                   ranking={ranking}
