@@ -3,6 +3,15 @@
  * ERP e testes): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "sankhyaInt.erp.paymentFromTable":
+    "Da tabela Condições de pagamento (aba própria).",
+  "sankhyaInt.erp.topsFromProcess":
+    "TOPs: cotação {quote} e pedido {order}, definidas nas regras de",
+  "sankhyaInt.erp.volumeFixed": "Volume do item: sempre UN.",
+  "sankhyaInt.erp.fixed":
+    "Valores fixos: empresa {emp}, natureza {nat}, centro de resultado {cr}, projeto {proj}, comprador {vend}",
+  "sankhyaInt.erp.fixedHint":
+    "Respostas da Wellmix (empresa 3 = WELLMIX - SC, natureza 203005 = COMPRA INTERNACIONAL, centro de resultado 101006 = IMPORTACAO, projeto 0). Só mude se a regra mudar.",
   "sankhyaInt.tab.payment": "Condições de pagamento",
   "paymentConditions.title": "Condições de pagamento",
   "paymentConditions.subtitle":
@@ -170,7 +179,7 @@ export const pt = {
     "Grave as credenciais na parte 1 para usar esta parte.",
   "sankhyaInt.erp": "3. Códigos do ERP para os pedidos",
   "sankhyaInt.erp.hint":
-    "As respostas às perguntas da integração. Os valores iniciais são sugestões tiradas do ERP da Wellmix; as listas vêm do Sankhya quando a conexão funciona.",
+    "O que vai em cada pedido e nota enviados ao Sankhya. Os valores fixos seguem as respostas da Wellmix; as TOPs ficam em Processos.",
   "sankhyaInt.erp.q1":
     "Empresa que emite o pedido de compra (CODEMP; Wellmix: 3, WELLMIX - SC)",
   "sankhyaInt.erp.q2order": "TOP do pedido de compra (CODTIPOPER)",
@@ -193,7 +202,7 @@ export const pt = {
   "sankhyaInt.erp.missing":
     "Ainda falta: {fields}. O pedido de teste só é enviado com tudo preenchido.",
   "sankhyaInt.erp.ordersOff":
-    "Os pedidos do portal continuam com número manual: o envio automático ao ERP é a próxima etapa, depois que o pedido de teste der certo.",
+    'O envio ao Sankhya (pedidos, notas e cadastros) liga e desliga em Configurações → Processos, "Execução no Sankhya".',
   "sankhyaInt.erp.updated": "Salvo em {at}",
   "sankhyaInt.q": "4. Consultas de exemplo",
   "sankhyaInt.q.hint":
@@ -242,6 +251,14 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "sankhyaInt.erp.paymentFromTable": "From the Payment terms table (own tab).",
+  "sankhyaInt.erp.topsFromProcess":
+    "TOPs: quotation {quote} and order {order}, set in the rules of",
+  "sankhyaInt.erp.volumeFixed": "Item unit: always UN.",
+  "sankhyaInt.erp.fixed":
+    "Fixed values: company {emp}, nature {nat}, profit center {cr}, project {proj}, buyer {vend}",
+  "sankhyaInt.erp.fixedHint":
+    "Wellmix answers (company 3 = WELLMIX - SC, nature 203005 = COMPRA INTERNACIONAL, profit center 101006 = IMPORTACAO, project 0). Change only if the rule changes.",
   "sankhyaInt.tab.payment": "Payment terms",
   "paymentConditions.title": "Payment terms",
   "paymentConditions.subtitle":
@@ -407,7 +424,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhyaInt.needConfig": "Save the credentials in part 1 to use this part.",
   "sankhyaInt.erp": "3. ERP codes for orders",
   "sankhyaInt.erp.hint":
-    "The answers to the integration questions. Initial values are suggestions taken from Wellmix's ERP; the lists come from Sankhya when the connection works.",
+    "What goes on each order and note sent to Sankhya. Fixed values follow Wellmix's answers; the TOPs live in Processes.",
   "sankhyaInt.erp.q1": "Company that issues the order (CODEMP)",
   "sankhyaInt.erp.q2order": "Purchase order TOP (CODTIPOPER)",
   "sankhyaInt.erp.q2quote": "Quotation TOP (CODTIPOPER)",
@@ -429,7 +446,7 @@ export const en: Record<keyof typeof pt, string> = {
   "sankhyaInt.erp.missing":
     "Still missing: {fields}. The test order is only sent when everything is filled in.",
   "sankhyaInt.erp.ordersOff":
-    "Portal orders keep the manual number: sending them to the ERP automatically is the next step, after the test order works.",
+    'Sending to Sankhya (orders, notes and master data) is turned on and off in Settings → Processes, "Execution in Sankhya".',
   "sankhyaInt.erp.updated": "Saved at {at}",
   "sankhyaInt.q": "4. Example queries",
   "sankhyaInt.q.hint":
@@ -478,6 +495,14 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "sankhyaInt.erp.paymentFromTable": "来自“付款条件”表（单独标签）。",
+  "sankhyaInt.erp.topsFromProcess":
+    "TOP：询价 {quote}，订单 {order}，在以下规则中设置：",
+  "sankhyaInt.erp.volumeFixed": "明细单位：始终为 UN。",
+  "sankhyaInt.erp.fixed":
+    "固定值：公司 {emp}，性质 {nat}，利润中心 {cr}，项目 {proj}，采购员 {vend}",
+  "sankhyaInt.erp.fixedHint":
+    "Wellmix 的答复（公司 3 = WELLMIX - SC，性质 203005 = COMPRA INTERNACIONAL，利润中心 101006 = IMPORTACAO，项目 0）。仅在规则变化时修改。",
   "sankhyaInt.tab.payment": "付款条件",
   "paymentConditions.title": "付款条件",
   "paymentConditions.subtitle":
@@ -637,13 +662,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhyaInt.needConfig": "请先在第 1 部分保存凭证。",
   "sankhyaInt.erp": "3. 订单使用的 ERP 代码",
   "sankhyaInt.erp.hint":
-    "集成问题的答案。初始值是根据 Wellmix 的 ERP 给出的建议；连接正常时列表来自 Sankhya。",
+    "发送到 Sankhya 的每个订单和单据中包含的内容。固定值遵循 Wellmix 的答复；TOP 在“流程”中设置。",
   "sankhyaInt.erp.q1": "开具订单的公司（CODEMP）",
   "sankhyaInt.erp.q2order": "采购订单的 TOP（CODTIPOPER）",
   "sankhyaInt.erp.q2quote": "询价的 TOP（CODTIPOPER）",
   "sankhyaInt.erp.q3": "默认付款方式（CODTIPVENDA）",
-  "sankhyaInt.erp.q3supplier":
-    "供应商在 Sankhya 中有自己的账期时，使用其账期",
+  "sankhyaInt.erp.q3supplier": "供应商在 Sankhya 中有自己的账期时，使用其账期",
   "sankhyaInt.erp.q4vend": "采购员（CODVEND；0 = 无销售员）",
   "sankhyaInt.erp.q4local": "库存地点（CODLOCAL）",
   "sankhyaInt.erp.volume": "明细单位",
@@ -658,7 +682,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "sankhyaInt.erp.saved": "代码已保存。",
   "sankhyaInt.erp.missing": "仍缺少：{fields}。全部填写后才会发送测试订单。",
   "sankhyaInt.erp.ordersOff":
-    "门户订单仍使用手动编号：测试订单成功后，下一步才是自动发送到 ERP。",
+    "发送到 Sankhya（订单、单据和主数据）在“设置 → 流程”的“在 Sankhya 中执行”中开启或关闭。",
   "sankhyaInt.erp.updated": "保存于 {at}",
   "sankhyaInt.q": "4. 示例查询",
   "sankhyaInt.q.hint":

@@ -143,6 +143,21 @@ describe("regras", () => {
     expect(merged.every((r) => r.stock === "none")).toBe(true);
   });
 
+  it("as TOPs da cotação e do pedido seguem as regras salvas", async () => {
+    await setRules({
+      "request:WAITING_DOWN_PAYMENT": { top: 1003 },
+      "order:signed": { top: 1102 },
+    });
+    let erp = await st.getSankhyaErpSettings();
+    expect(erp).toMatchObject({ topQuote: 1003, topOrder: 1102 });
+    await setRules({
+      "request:WAITING_DOWN_PAYMENT": { top: 1002 },
+      "order:signed": { top: 1101 },
+    });
+    erp = await st.getSankhyaErpSettings();
+    expect(erp).toMatchObject({ topQuote: 1002, topOrder: 1101 });
+  });
+
   it("acha o NUNOTA novo na resposta do faturamento", () => {
     expect(
       engine.newNunota(
