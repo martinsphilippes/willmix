@@ -8,6 +8,8 @@ import {
   getOrderSignatureView,
   type OrderSignature,
 } from "@/lib/services/order-signature";
+import { buildOrderSheet } from "@/lib/services/order-sheet";
+import { OrderSheetView } from "@/components/order-sheet-view";
 import { describeTerms } from "@/components/supplier-terms-text";
 import {
   Alert,
@@ -44,6 +46,7 @@ export default async function PurchaseOrderPage({
   if (!view) notFound();
   const t = await getT();
   const { order, document: doc, hash } = view;
+  const sheet = await buildOrderSheet(order, doc, view.wellmix);
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `orderSign.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
@@ -334,6 +337,13 @@ export default async function PurchaseOrderPage({
             {t("orderSign.version", { hash })}
           </p>
         </section>
+      </Card>
+      {/* A folha do pedido no modelo da Wellmix: é assim que sai no PDF. */}
+      <Card title={t("orderSign.sheet.title")} dense>
+        <p className="mb-2 text-xs text-zinc-600 print:hidden">
+          {t("orderSign.sheet.hint")}
+        </p>
+        <OrderSheetView sheet={sheet} />
       </Card>
       <Card title={t("orderSign.signatures")} dense>
         <div className="space-y-3">

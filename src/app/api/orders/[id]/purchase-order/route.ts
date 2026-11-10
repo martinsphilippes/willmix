@@ -26,7 +26,7 @@ export async function GET(
       ? await getOrderSignatureView(user, id)
       : null;
   if (!view) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  const bytes = await renderOrderDocumentPdf(view);
+  const bytes = await renderOrderDocumentPdf(view, { printedBy: user.name });
   return new NextResponse(bytes as unknown as BodyInit, {
     status: 200,
     headers: {

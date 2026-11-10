@@ -513,187 +513,28 @@ export async function reopenSupplierSignature(
 
 /**
  * O documento do pedido em PDF, para o fornecedor baixar, assinar e anexar de
- * volta. Rótulos em inglês e português (o fornecedor costuma ler inglês); o
- * conteúdo é o mesmo da página, com a versão (impressão digital) no rodapé.
+ * volta: a folha do pedido no formato do modelo da Wellmix (deitada, com o
+ * cabeçalho, os itens em duas faixas, os totais e os procedimentos), com a
+ * versão (impressão digital) no rodapé. `printedBy`: quem gerou o arquivo.
  */
 export async function renderOrderDocumentPdf(
-  view: Pick<OrderSignatureView, "document" | "hash" | "wellmix" | "supplier">,
+  view: Pick<
+    OrderSignatureView,
+    "order" | "document" | "hash" | "wellmix" | "supplier"
+  >,
+  options: { printedBy?: string | null; printedAt?: string } = {},
 ): Promise<Uint8Array> {
-  const { SimplePdf, pdfWrap } = await import("@/lib/simple-pdf");
-  const { translator } = await import("@/i18n");
-  const { describeTerms } = await import("@/components/supplier-terms-text");
-  const t = translator("en");
-  const doc = view.document;
-  const pdf = new SimplePdf();
-  const left = 48;
-  const right = SimplePdf.width - 48;
-  const bottom = SimplePdf.height - 60;
-  let y = 60;
-  const money = (v: number | null, digits = 2) =>
-    v === null
-      ? "-"
-      : `${doc.currency} ${v.toLocaleString("en-US", {
-          minimumFractionDigits: digits,
-          maximumFractionDigits: digits,
-        })}`;
-  const footer = () => {
-    pdf.text(
-      left,
-      SimplePdf.height - 34,
-      `Document version / Versão do documento: ${view.hash}`,
-      { size: 7 },
-    );
-    pdf.text(right, SimplePdf.height - 34, `${pdf.pageCount}`, {
-      size: 7,
-      align: "right",
-    });
-  };
-  const need = (height: number) => {
-    if (y + height <= bottom) return;
-    footer();
-    pdf.addPage();
-    y = 60;
-  };
-  const pair = (label: string, value: string) => {
-    const lines = pdfWrap(value || "-", 10, right - left - 190);
-    need(14 * lines.length + 4);
-    pdf.text(left, y, label, { size: 10, bold: true });
-    lines.forEach((line, i) => pdf.text(left + 190, y + 14 * i, line));
-    y += 14 * lines.length + 4;
-  };
-
-  pdf.text(left, y, `PURCHASE ORDER / PEDIDO DE COMPRA  #${doc.orderNumber}`, {
-    size: 16,
-    bold: true,
+  const [{ buildOrderSheet }, { renderOrderSheetPdf }] = await Promise.all([
+    import("./order-sheet"),
+    import("./order-sheet-pdf"),
+  ]);
+  const sheet = await buildOrderSheet(view.order, view.document, view.wellmix);
+  return renderOrderSheetPdf({
+    sheet,
+    hash: view.hash,
+    wellmix: view.wellmix,
+    supplier: view.supplier,
+    printedBy: options.printedBy ?? null,
+    printedAt: options.printedAt ?? new Date().toISOString(),
   });
-  y += 26;
-  pair("Buyer / Comprador", doc.buyerName);
-  pair("Supplier / Fornecedor", doc.supplierName);
-  y += 8;
-
-  // Itens.
-  const cols = { qty: left + 300, price: left + 400, total: right };
-  const header = () => {
-    pdf.line(left, y - 11, right, y - 11);
-    pdf.text(left + 4, y, "Product / Produto", { size: 9, bold: true });
-    pdf.text(cols.qty, y, "Quantity / Qtd.", {
-      size: 9,
-      bold: true,
-      align: "right",
-    });
-    pdf.text(cols.price, y, "Unit price / Preço", {
-      size: 9,
-      bold: true,
-      align: "right",
-    });
-    pdf.text(cols.total - 4, y, "Total", {
-      size: 9,
-      bold: true,
-      align: "right",
-    });
-    pdf.line(left, y + 5, right, y + 5);
-    y += 19;
-  };
-  header();
-  for (const item of doc.items) {
-    const name = pdfWrap(
-      item.variant ? `${item.name} - ${item.variant}` : item.name,
-      10,
-      200,
-    );
-    if (y + 14 * name.length + 6 > bottom) {
-      footer();
-      pdf.addPage();
-      y = 60;
-      header();
-    }
-    name.forEach((line, i) => pdf.text(left + 4, y + 14 * i, line));
-    pdf.text(
-      cols.qty,
-      y,
-      `${item.quantity.toLocaleString("en-US")} ${item.unit}`,
-      { align: "right" },
-    );
-    pdf.text(cols.price, y, money(item.unitPrice, 4), { align: "right" });
-    pdf.text(cols.total - 4, y, money(item.total), { align: "right" });
-    y += 14 * name.length + 2;
-    pdf.line(left, y - 9, right, y - 9, 0.3);
-    y += 4;
-  }
-  need(24);
-  pdf.text(left + 4, y, `TOTAL${doc.incoterm ? ` ${doc.incoterm}` : ""}`, {
-    bold: true,
-  });
-  pdf.text(cols.total - 4, y, money(doc.total), { bold: true, align: "right" });
-  pdf.line(left, y + 5, right, y + 5);
-  y += 28;
-
-  pair(
-    "MOQ / Pedido mínimo",
-    doc.moq ? `${doc.moq.toLocaleString("en-US")} pcs` : "-",
-  );
-  pair(
-    "Lead time / Prazo de produção",
-    doc.leadTimeDays ? `${doc.leadTimeDays} days / dias` : "-",
-  );
-  pair(
-    "Payment terms / Pagamento",
-    doc.paymentTerms.length
-      ? describeTerms(t, doc.paymentTerms)
-      : "As agreed / Conforme combinado",
-  );
-  if (doc.packagingOkVersion)
-    pair(
-      "Packaging / Embalagem",
-      `Proposal ${doc.packagingOkVersion} approved by the supplier / Proposta ${doc.packagingOkVersion} com o OK do fornecedor`,
-    );
-  y += 10;
-
-  // Assinaturas.
-  need(150);
-  pdf.text(left, y, "Signatures / Assinaturas", { size: 12, bold: true });
-  y += 14;
-  const half = (right - left - 16) / 2;
-  const box = (x: number, title: string, who: string, lines: string[]) => {
-    pdf.rect(x, y, half, 112);
-    pdf.text(x + 8, y + 16, title, { size: 9, bold: true });
-    pdfWrap(who, 9, half - 16)
-      .slice(0, 2)
-      .forEach((line, i) =>
-        pdf.text(x + 8, y + 30 + 11 * i, line, { size: 9 }),
-      );
-    lines.forEach((line, i) =>
-      pdf.text(x + 8, y + 62 + 16 * i, line, { size: 9 }),
-    );
-  };
-  const day = (iso: string) => iso.slice(0, 10);
-  box(
-    left,
-    "Buyer / Comprador",
-    doc.buyerName,
-    view.wellmix
-      ? [
-          `Signed in the portal by / Assinado no portal por:`,
-          `${view.wellmix.name}`,
-          `Date / Data: ${day(view.wellmix.at)}`,
-        ]
-      : ["Not signed yet / Ainda não assinou"],
-  );
-  box(
-    left + half + 16,
-    "Supplier / Fornecedor",
-    doc.supplierName,
-    view.supplier
-      ? [
-          `Signed by / Assinado por: ${view.supplier.name}`,
-          `Date / Data: ${day(view.supplier.at)}`,
-        ]
-      : [
-          "Name / Nome: ______________________________",
-          "Signature, stamp / Assinatura, carimbo:",
-          "Date / Data: ____ / ____ / ________",
-        ],
-  );
-  footer();
-  return pdf.build();
 }

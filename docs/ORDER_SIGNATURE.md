@@ -23,6 +23,21 @@ O pedido nascia e seguia para a produção sem um registro de que as duas partes
 11. **Assinatura recebida por fora** (papel, e-mail): só o **administrador** registra, com o nome de quem assinou pelo fornecedor; fica marcado quem registrou.
 12. A página imprime (Ctrl/⌘ + P) para guardar em PDF.
 
+## 2a. A folha do pedido no modelo da Wellmix
+
+O dono enviou (10/11/2026) o modelo do pedido assinado pelo fornecedor. O PDF que o fornecedor baixa e a página do documento passaram a seguir esse modelo (folha deitada):
+
+1. **Cabeçalho**: nome da empresa, Order Issued by (analista responsável), Date of issuance, On (quando o arquivo foi gerado), Lote (`número-ano`, o ano do ETD ou, sem ele, o da emissão), Partner, Forwarding Agent (o agente de carga do pedido, com o e-mail), Incoterm, Payment Condition, Order print by (quem baixou), Date ETD (da Produção), Purchase Order (o número no Sankhya, quando existe), WELLMIX Number (o número do pedido no portal), Commission % e Sent to partner on (quando a Wellmix assinou). No canto, os dois quadros de assinatura: o do fornecedor em cima (para assinar e carimbar no papel) e o da Wellmix embaixo.
+2. **Cada item em duas faixas**: identificação (item, contato, foto, arte, Pantone, código da fábrica, trading, código Wellmix, EAN, DUN master, DUN inner, descrição, descrição em português, pilhas, NCM, LI) e, embaixo, embalagem, medidas da peça em metros, CBM da caixa master e total, pesos líquido e bruto (por peça e do pedido), peças por inner e por master, total de caixas, total de peças, preço e valor. Depois, "Comments / Specifications" do item e "Factory".
+3. **Totais**: CBM, peso líquido, peso bruto, valor, comissão e valor com comissão. Depois o quadro geral "Comments /Specifications" (com o MOQ, o prazo de produção e a proposta de embalagem aprovada).
+4. **WELLMIX PROCEDURES**: página própria com o texto padrão (`src/lib/order-procedures.ts`).
+
+Os valores vêm da ficha do pedido (`purchase_sheets`), da variação pedida e do cadastro do produto, nessa ordem. Caixas e totais só são calculados com a quantidade em peças; um total só aparece quando todos os itens têm o dado (total parcial enganaria).
+
+**Campo sem dado fica em branco, nunca inventado.** Hoje ficam em branco, por não existirem no portal: foto na folha, Trading Code, EAN, DUN master e inner, medidas da embalagem da peça, LI, comissão. A página "Shipping Mark" do modelo (as marcas de embarque por linha) ainda não sai no PDF.
+
+A folha é **apresentação**: a versão que as partes assinam (a impressão digital) continua sendo o conteúdo comercial do `OrderDocument` (produto, quantidade, preço, total, incoterm, MOQ, prazo, pagamento, embalagem). Preencher a ficha depois da assinatura muda a folha, não a versão assinada.
+
 ## 3. Casos especiais
 
 - **Pedidos antigos** (de antes desta mudança) não têm os itens: seguem como estavam e o documento fica só para consulta.
@@ -45,10 +60,11 @@ Sem coluna nova: a assinatura fica no próprio item da etapa (`requirements.valu
 
 ## 7. Código
 
-`src/lib/services/order-signature.ts`, `src/app/app/actions/order-signature.ts`, `src/app/app/orders/[id]/purchase-order/page.tsx`, o PDF em `src/app/api/orders/[id]/purchase-order/route.ts` e `src/lib/simple-pdf.ts` (gerador sem dependências; caracteres fora do alfabeto latino são omitidos no PDF), chaves em `src/lib/workflow/stages.ts` (`ORDER_SIGNATURE_KEYS`) e a trava em `submitRequirement`. Testes: `tests/unit/order-signature.test.ts` e o E2E do caminho principal.
+`src/lib/services/order-signature.ts`, `src/app/app/actions/order-signature.ts`, `src/app/app/orders/[id]/purchase-order/page.tsx`, o PDF em `src/app/api/orders/[id]/purchase-order/route.ts` e `src/lib/simple-pdf.ts` (gerador sem dependências; caracteres fora do alfabeto latino são omitidos no PDF), a folha no modelo em `src/lib/services/order-sheet.ts` (dados), `src/lib/order-sheet-layout.ts` (colunas e células, comum ao PDF e à tela), `src/lib/services/order-sheet-pdf.ts` (PDF deitado) e `src/components/order-sheet-view.tsx` (tela), chaves em `src/lib/workflow/stages.ts` (`ORDER_SIGNATURE_KEYS`) e a trava em `submitRequirement`. Testes: `tests/unit/order-signature.test.ts`, `tests/unit/order-sheet.test.ts` e o E2E do caminho principal.
 
 ## 8. Melhorias futuras
 
 - Assinatura com validade jurídica por serviço externo (Clicksign, DocuSign) quando contratado.
 - Alçada por função para a assinatura da Wellmix e reassinatura obrigatória quando o documento muda.
 - Guardar o PDF gerado junto ao pedido e lembrete por prazo ao fornecedor.
+- Folha do pedido: foto do produto e a página "Shipping Mark" no PDF (o gerador ainda não embute imagens); campos de EAN, DUN, trading, LI, comissão e medidas da embalagem da peça no cadastro; texto dos procedimentos editável nas Configurações.

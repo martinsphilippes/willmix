@@ -1,6 +1,7 @@
 /*
- * Gerador mínimo de PDF (texto e linhas, A4), sem dependências: serve para
- * documentos simples como o do pedido (docs/ORDER_SIGNATURE.md). Usa as
+ * Gerador mínimo de PDF (texto, linhas e caixas preenchidas; A4 em pé ou
+ * deitado), sem dependências: serve para documentos simples como o do pedido
+ * (docs/ORDER_SIGNATURE.md). Usa as
  * fontes padrão Helvetica e Helvetica-Bold com WinAnsi: cobre português e
  * inglês com acentos. Caracteres fora disso (chinês, por exemplo) são
  * omitidos: a página do portal continua sendo a versão completa.
@@ -66,7 +67,20 @@ export function pdfWrap(
   const lines: string[] = [];
   for (const paragraph of text.split(/\r?\n/)) {
     let line = "";
-    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+    for (let word of paragraph.split(/\s+/).filter(Boolean)) {
+      // Palavra maior que a largura (código, link): quebra no meio.
+      while (pdfTextWidth(word, size, bold) > maxWidth && word.length > 1) {
+        let cut = word.length - 1;
+        while (
+          cut > 1 &&
+          pdfTextWidth(word.slice(0, cut), size, bold) > maxWidth
+        )
+          cut--;
+        if (line) lines.push(line);
+        lines.push(word.slice(0, cut));
+        line = "";
+        word = word.slice(cut);
+      }
       const next = line ? `${line} ${word}` : word;
       if (line && pdfTextWidth(next, size, bold) > maxWidth) {
         lines.push(line);
@@ -80,10 +94,21 @@ export function pdfWrap(
 
 const n = (v: number) => (Math.round(v * 100) / 100).toString();
 
+/** Cor RGB, cada canal de 0 a 1. */
+export type PdfColor = [number, number, number];
+
 export class SimplePdf {
+  /** A4 em pé (o padrão); a instância diz o tamanho real da página dela. */
   static readonly width = PAGE_W;
   static readonly height = PAGE_H;
+  readonly width: number;
+  readonly height: number;
   private pages: string[][] = [[]];
+
+  constructor(options: { landscape?: boolean } = {}) {
+    this.width = options.landscape ? PAGE_H : PAGE_W;
+    this.height = options.landscape ? PAGE_W : PAGE_H;
+  }
 
   private get page() {
     return this.pages[this.pages.length - 1];
@@ -102,25 +127,46 @@ export class SimplePdf {
     x: number,
     y: number,
     text: string,
-    opts: { size?: number; bold?: boolean; align?: "left" | "right" } = {},
+    opts: {
+      size?: number;
+      bold?: boolean;
+      /** "center": `x` é o meio do texto. */
+      align?: "left" | "right" | "center";
+      color?: PdfColor;
+    } = {},
   ) {
     const size = opts.size ?? 10;
+    const width = pdfTextWidth(text, size, opts.bold);
     const left =
-      opts.align === "right" ? x - pdfTextWidth(text, size, opts.bold) : x;
+      opts.align === "right"
+        ? x - width
+        : opts.align === "center"
+          ? x - width / 2
+          : x;
+    const color = opts.color
+      ? `${opts.color.map(n).join(" ")} rg `
+      : "0 0 0 rg ";
     this.page.push(
-      `BT /${opts.bold ? "F2" : "F1"} ${n(size)} Tf ${n(left)} ${n(PAGE_H - y)} Td (${pdfString(text)}) Tj ET`,
+      `BT ${color}/${opts.bold ? "F2" : "F1"} ${n(size)} Tf ${n(left)} ${n(this.height - y)} Td (${pdfString(text)}) Tj ET`,
     );
   }
 
   line(x1: number, y1: number, x2: number, y2: number, width = 0.6) {
     this.page.push(
-      `${n(width)} w ${n(x1)} ${n(PAGE_H - y1)} m ${n(x2)} ${n(PAGE_H - y2)} l S`,
+      `${n(width)} w ${n(x1)} ${n(this.height - y1)} m ${n(x2)} ${n(this.height - y2)} l S`,
     );
   }
 
   rect(x: number, y: number, w: number, h: number, width = 0.6) {
     this.page.push(
-      `${n(width)} w ${n(x)} ${n(PAGE_H - y - h)} ${n(w)} ${n(h)} re S`,
+      `${n(width)} w ${n(x)} ${n(this.height - y - h)} ${n(w)} ${n(h)} re S`,
+    );
+  }
+
+  /** Caixa preenchida (ex.: faixa cinza de título), sem contorno. */
+  fillRect(x: number, y: number, w: number, h: number, color: PdfColor) {
+    this.page.push(
+      `${color.map(n).join(" ")} rg ${n(x)} ${n(this.height - y - h)} ${n(w)} ${n(h)} re f`,
     );
   }
 
@@ -146,7 +192,7 @@ export class SimplePdf {
       );
       kids.push(
         add(
-          `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${n(PAGE_W)} ${n(PAGE_H)}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${contentId} 0 R >>`,
+          `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${n(this.width)} ${n(this.height)}] /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> /Contents ${contentId} 0 R >>`,
         ),
       );
     }
