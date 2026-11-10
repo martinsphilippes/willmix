@@ -95,6 +95,9 @@ export default async function RequestBatchPage({
      (não "abre" de novo), como na página da solicitação. */
   const rfqOpened =
     rfqRows.length > 0 && rfqRows.every((r) => r.status !== "REQUESTED");
+  // RFQ em espera (docs/RFQ_STANDBY.md): um fornecedor só, sem convidar mais.
+  const { getSettings } = await import("@/lib/settings");
+  const rfqOn = (await getSettings()).rfqEnabled;
   const [quotes, suppliers, products] = wellmix
     ? await Promise.all([
         store.list("quotes", { filter: { requestId: rows.map((r) => r.id) } }),
@@ -349,10 +352,16 @@ export default async function RequestBatchPage({
           </SubmitButton>
         </form>
       ) : null}
-      {rfqRows.length ? (
+      {rfqRows.length && (rfqOn || !rfqOpened) ? (
         <div id="rfq" className="mt-4 max-w-2xl scroll-mt-24" data-batch-rfq>
           <Card
-            title={rfqOpened ? t("rfq.inviteMore") : t("reqBatch.rfqTitle")}
+            title={
+              !rfqOn
+                ? t("rfqStandby.send.title")
+                : rfqOpened
+                  ? t("rfq.inviteMore")
+                  : t("reqBatch.rfqTitle")
+            }
           >
             <form action={openBatchRfqAction} className="space-y-2.5">
               <input type="hidden" name="groupId" value={groupId} />
@@ -366,13 +375,15 @@ export default async function RequestBatchPage({
                 </p>
               ) : (
                 <p className="text-sm text-zinc-600">
-                  {allInvited
-                    ? t("rfq.allInvited")
-                    : rfqOpened
-                      ? t("rfq.inviteMoreHint")
-                      : rfqRows.length === 1
-                        ? t("reqBatch.rfqHintOne")
-                        : t("reqBatch.rfqHint", { n: rfqRows.length })}
+                  {!rfqOn
+                    ? t("rfqStandby.send.hint")
+                    : allInvited
+                      ? t("rfq.allInvited")
+                      : rfqOpened
+                        ? t("rfq.inviteMoreHint")
+                        : rfqRows.length === 1
+                          ? t("reqBatch.rfqHintOne")
+                          : t("reqBatch.rfqHint", { n: rfqRows.length })}
                 </p>
               )}
               <div className="grid gap-1.5 sm:grid-cols-2">
@@ -389,11 +400,13 @@ export default async function RequestBatchPage({
                       )}
                     >
                       <input
-                        type="checkbox"
+                        // RFQ em espera: um fornecedor só para o lote.
+                        type={rfqOn ? "checkbox" : "radio"}
                         name="supplierIds"
                         value={s.id}
+                        required={!rfqOn}
                         disabled={done}
-                        defaultChecked={done}
+                        defaultChecked={rfqOn ? done : false}
                         className="h-4 w-4 shrink-0 accent-brand-600"
                       />
                       <span>
@@ -428,11 +441,13 @@ export default async function RequestBatchPage({
               )}
               {allInvited || !rfqSuppliers.length ? null : (
                 <SubmitButton data-batch-rfq-submit>
-                  {rfqOpened
-                    ? t("rfq.inviteSelected")
-                    : rfqRows.length === 1
-                      ? t("reqBatch.rfqSubmitOne")
-                      : t("reqBatch.rfqSubmit", { n: rfqRows.length })}
+                  {!rfqOn
+                    ? t("rfqStandby.send.submit")
+                    : rfqOpened
+                      ? t("rfq.inviteSelected")
+                      : rfqRows.length === 1
+                        ? t("reqBatch.rfqSubmitOne")
+                        : t("reqBatch.rfqSubmit", { n: rfqRows.length })}
                 </SubmitButton>
               )}
             </form>

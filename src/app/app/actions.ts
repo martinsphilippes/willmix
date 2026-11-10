@@ -278,6 +278,9 @@ export async function openRfqAction(form: FormData) {
     const supplierIds = form.getAll("supplierIds").map(String).filter(Boolean);
     // Junto com a RFQ, a embalagem: quem faz a faca e a arte e as instruções.
     const { packagingOptionsFrom } = await import("./actions/helpers");
+    // RFQ em espera: um fornecedor só por produto, sem disputa.
+    const { assertRfqStandby } = await import("@/lib/services/requests");
+    await assertRfqStandby([requestId], supplierIds);
     await openRfq(user, requestId, supplierIds, {
       packaging: packagingOptionsFrom(form),
     });
