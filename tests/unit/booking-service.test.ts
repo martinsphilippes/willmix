@@ -1235,6 +1235,21 @@ describe("achados da revisão (segunda leva)", () => {
     });
     expect(await shown(e.booking.id)).toEqual([5, "USD", 12, 0.069]);
     expect(await used(e.booking.id)).toEqual(await shown(e.booking.id));
+
+    // Produto ainda sem preço: a moeda marcada é a do cadastro, como a tela
+    // do Superplan sempre trouxe (nunca troca sozinha para RMB).
+    const g = await row("new", {}, { price: null, currency: null });
+    await getStore().update("products", g.product.id, {
+      price: null,
+      currency: "USD",
+    });
+    expect((await shown(g.booking.id)).slice(0, 2)).toEqual([null, "USD"]);
+    const { superplanPrefillsFor } =
+      await import("@/lib/services/superplan-analysis");
+    const prefill = (await superplanPrefillsFor([g.product.id])).get(
+      g.product.id,
+    )!;
+    expect([prefill.unitPrice, prefill.currency]).toEqual([null, "USD"]);
   });
 
   it("preço em outra moeda (EUR): a análise diz que falta o preço em RMB ou US$, não o preço", async () => {

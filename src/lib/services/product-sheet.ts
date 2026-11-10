@@ -232,12 +232,12 @@ export function productPurchaseView(
   const columnPrice = pos(product.price);
   const sheetPrice = pos(sheet?.price);
   const price = columnPrice ?? sheetPrice;
-  const currency =
-    price === null
-      ? null
-      : columnPrice !== null
-        ? (written(product.currency) ?? written(sheet?.currency))
-        : (written(sheet?.currency) ?? written(product.currency));
+  // A moeda acompanha a fonte do preço. Sem preço em nenhuma das duas, vale
+  // a do cadastro (é a que a tela do Superplan sempre trouxe marcada).
+  const fromSheet = columnPrice === null && sheetPrice !== null;
+  const currency = fromSheet
+    ? (written(sheet?.currency) ?? written(product.currency))
+    : (written(product.currency) ?? written(sheet?.currency));
   return {
     master,
     price,

@@ -1342,11 +1342,38 @@ async function dropBookingRow(
 }
 
 /**
+ * Fotos do grupo no produto: a da coluna PHOTO entra como foto do fornecedor
+ * (imagem do produto no catálogo, provisória) e a do cartão vira o cartão do
+ * fornecedor. Nunca repete: o tipo de foto que o produto já tem não entra de
+ * novo. A foto original (evidência) é da equipe: continua pendente na ficha.
+ * Devolve quantas entraram.
+ */
+async function attachGroupPhotos(
+  user: User,
+  productId: string,
+  group: ProductGroup,
+): Promise<number> {
+  const kinds = new Set(
+    (await getStore().list("product_photos", { filter: { productId } })).map(
+      (p) => p.kind as string,
+    ),
+  );
+  // Produto que já tem a foto original (da equipe, ou a da planilha guardada
+  // assim pela versão anterior) não precisa da foto do fornecedor de novo.
+  if (kinds.has("original")) kinds.add("supplier");
+  return (
+    (await attachPhoto(user, productId, group.photo, "supplier", kinds)) +
+    (await attachPhoto(user, productId, group.card, "business_card", kinds))
+  );
+}
+
+/**
  * Planilha antiga relida: o produto nasceu numa tentativa anterior do Booking
  * que não terminou? Sinais: veio de importação, a linha dele no Booking ainda
  * está em Novo, e o lote em que entrou não existe (a tentativa caiu antes de
- * gravar o lote) ou registrou erro para este produto. Só esse é completado; o
- * resto do cadastro não volta aos valores da planilha antiga.
+ * gravar o lote) ou registrou erro para este produto. Só nesse a releitura
+ * preenche o que ficou vazio (ficha mestre, fotos); o que já existe, nele e
+ * no resto do cadastro, não volta aos valores da planilha antiga.
  */
 async function leftHalfBorn(product: Product): Promise<boolean> {
   if (product.source !== "import") return false;
@@ -1574,17 +1601,26 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
       result.name = name;
       let product: Product;
       // Produto que uma tentativa anterior desta mesma releitura deixou pela
-      // metade (nasceu, e a ficha ou a foto falhou): é completado agora.
+      // metade (nasceu, e a ficha ou a foto falhou): a releitura preenche só
+      // o que ficou VAZIO. Sem ficha mestre, grava a ficha e as fotos (segue
+      // pelo caminho de sempre); com ficha, só as fotos que faltam. Nada do
+      // que já existe é reescrito.
       const halfBorn =
         booking && options.keepExisting && existing
           ? await leftHalfBorn(existing)
           : false;
-      if (booking && options.keepExisting && existing && !halfBorn) {
+      const completing =
+        halfBorn && existing ? !(await getProductSheet(existing.id)) : false;
+      if (booking && options.keepExisting && existing && !completing) {
         // Planilha antiga relida: o que já existe não volta aos valores dela.
         result.status = "updated";
         summary.updated++;
         result.productId = existing.id;
         await enterBooking(ctx, existing.id, group, existing.active);
+        if (halfBorn) {
+          result.photos += await attachGroupPhotos(user, existing.id, group);
+          summary.photos += result.photos;
+        }
         decisions[String(group.index)] = `updated:${existing.id}`;
         continue;
       }
@@ -1692,39 +1728,13 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         product.id,
         sheetInputFrom(group.reading, group.notes),
       );
-      // Fotos: a da coluna PHOTO entra como foto do fornecedor (imagem do produto
-      // no catálogo, provisória) e a do cartão vira o cartão do fornecedor; nunca
-      // repete em nova importação. A foto original (evidência) é da equipe:
-      // continua pendente na ficha.
-      const kinds = new Set(
-        (
-          await store.list("product_photos", {
-            filter: { productId: product.id },
-          })
-        ).map((p) => p.kind as string),
-      );
-      // Produto que já tem a foto original (da equipe, ou a da planilha guardada
-      // assim pela versão anterior) não precisa da foto do fornecedor de novo.
-      if (kinds.has("original")) kinds.add("supplier");
-      result.photos += await attachPhoto(
-        user,
-        product.id,
-        group.photo,
-        "supplier",
-        kinds,
-      );
-      result.photos += await attachPhoto(
-        user,
-        product.id,
-        group.card,
-        "business_card",
-        kinds,
-      );
+      result.photos += await attachGroupPhotos(user, product.id, group);
       summary.photos += result.photos;
       result.missing = saved.missing;
-      // Completado agora (nasceu numa tentativa que falhou): é a primeira vez
-      // que dá certo, então conta como criado, não como "já existia".
-      if (halfBorn && result.status === "updated") {
+      // Completado agora (nasceu numa tentativa que falhou antes da ficha): é
+      // a primeira vez que dá certo, então conta como criado, não como "já
+      // existia".
+      if (completing && result.status === "updated") {
         result.status = "created";
         summary.updated--;
         summary.created++;

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
-import { xlsxBytes } from "./xlsx-fixture";
+import { PNG_1X1, xlsxBytes } from "./xlsx-fixture";
 
 /*
  * Importação da ficha técnica no modo "Mandar para o Booking"
@@ -1486,5 +1486,116 @@ describe("planilha antiga relida (terceira revisão)", () => {
       result.results.map((r) => r.productId),
     );
     expect((await count()).products).toBe(after.products);
+  });
+});
+
+describe("planilha antiga relida: a retomada só preenche o que ficou vazio", () => {
+  /** Planilha com a coluna PHOTO e uma foto na 1ª linha de produto. */
+  const withPhoto = () =>
+    xlsxBytes(
+      [
+        {
+          name: "SUPPLIER INFO",
+          cells: [
+            ["PHOTO", ...HEADER],
+            [
+              "",
+              "F1",
+              "Sigma Fotos",
+              "S5-500",
+              "MOLDURA FOTO",
+              "8",
+              "12",
+              "0.225",
+              "",
+              "0.0183",
+              "Preta",
+              "1200",
+            ],
+            [
+              "",
+              "F2",
+              "Sigma Fotos",
+              "S5-500",
+              "MOLDURA LISA",
+              "6",
+              "12",
+              "0.225",
+              "",
+              "0.0183",
+              "Preta",
+              "1200",
+            ],
+          ],
+        },
+      ],
+      { images: [{ sheet: 0, col: 0, row: 1, bytes: PNG_1X1, ext: "png" }] },
+    );
+
+  it("falha na foto: mandar de novo anexa só a foto que faltou e não reescreve o que foi corrigido à mão", async () => {
+    const store = getStore();
+    // Importação antiga, com variações (os produtos por linha ainda não existem).
+    const old = await svc.importProductSheet(
+      admin,
+      file(withPhoto(), "fotos.xlsx"),
+      { lineId, namePrefix: "Sigma" },
+    );
+    const photosOf = async (productId: string) =>
+      (await store.list("product_photos", { filter: { productId } })).map(
+        (p) => p.kind,
+      );
+    // 1ª tentativa: o produto nasce, a ficha é gravada e a foto falha.
+    const original = store.create.bind(store);
+    let failed = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (!failed && table === "product_photos") {
+          failed = true;
+          throw new Error("photos down");
+        }
+        return original(table, data as never);
+      });
+    let first: Awaited<ReturnType<typeof svc.reimportSheetToBooking>>;
+    try {
+      first = await svc.reimportSheetToBooking(admin, old.batchId);
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(failed).toBe(true);
+    expect(first.results.map((r) => r.status)).toEqual(["error", "created"]);
+    const id = first.results[0].productId!;
+    expect(id).toBeTruthy();
+    expect(await getProductSheet(id)).not.toBeNull();
+    expect(await photosOf(id)).toEqual([]);
+    // Enquanto isso, o produto foi corrigido à mão.
+    await store.update("products", id, { price: 9.9, moq: 300 });
+    const productBefore = (await store.get("products", id))!;
+    const sheetBefore = await getProductSheet(id);
+
+    const retry = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(retry.results.map((r) => [r.status, r.productId, r.photos])).toEqual(
+      [
+        ["updated", id, 1],
+        ["updated", first.results[1].productId, 0],
+      ],
+    );
+    expect(retry.summary).toMatchObject({ created: 0, updated: 2, errors: 0 });
+    // Só a foto entrou: o cadastro e a ficha continuam como estavam.
+    expect(await photosOf(id)).toEqual(["supplier"]);
+    expect(await getProductSheet(id)).toEqual(sheetBefore);
+    const productAfter = (await store.get("products", id))!;
+    expect([productAfter.price, productAfter.moq, productAfter.name]).toEqual([
+      productBefore.price,
+      productBefore.moq,
+      productBefore.name,
+    ]);
+    expect((await bookingOf(id))!.status).toBe("new");
+    // Mais uma vez: nada novo (a foto não repete).
+    const third = await svc.reimportSheetToBooking(admin, old.batchId);
+    expect(third.results[0]).toMatchObject({ status: "updated", photos: 0 });
+    expect(await photosOf(id)).toEqual(["supplier"]);
   });
 });
