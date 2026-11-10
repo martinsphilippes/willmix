@@ -482,19 +482,8 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // fornecedor" conclui junto e a Preparação abre (sem outro clique).
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
-  // A Wellmix valida a ficha/imagens (comprador) e o cadastro do produto.
-  await fillMyRequirements(page, orderUrl, {}, 2);
-  // Produção (Fase C): o cartão aparece para a Wellmix no pedido.
-  await page.goto(orderUrl);
-  await expect(page.locator("[data-production-card]")).toBeVisible();
-  // Embarque e desembaraço (Fase D): os passos aparecem para a Wellmix.
-  await expect(page.locator("[data-import-step=booking]")).toBeVisible();
-
-  // 8. PREPARATION: a ficha (com fotos) veio da cotação; falta só a
-  // "Programação de compra", que saiu da cotação e é preenchida aqui, no
-  // pedido. O pagamento ao fornecedor saiu do fluxo (segue a condição do
-  // cadastro do fornecedor).
-  await login(page, "supplier.a@china.com");
+  // A Programação de compra é da Wellmix: ela a faz na ficha do pedido,
+  // antes de validar a ficha.
   await page.goto(`${orderUrl}/purchase-sheet`);
   // O bloco com pendência (Programação de compra) já vem aberto.
   await expect(page.locator("[data-sheet-section=schedule]")).toBeVisible();
@@ -506,7 +495,6 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.fill("input[name=lot1Interval]", "30");
   await page.fill("input[name=lot1Cartons]", "50");
   // Conta ao vivo e sugestão para fechar o container (sem aplicar).
-  // O fornecedor chinês vê "1,200" (zh-CN); em português seria "1.200".
   await expect(page.locator("[data-sheet-totals]")).toContainText(/1[.,]200/);
   await expect(page.locator("[data-fill-suggestion]")).toHaveAttribute(
     "data-fill-suggestion",
@@ -519,6 +507,22 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
       .getByRole("button", { name: /保存采购单|Save sheet|Salvar ficha/ })
       .click(),
   ]);
+  // A Wellmix valida a ficha/imagens (comprador) e o cadastro do produto.
+  await fillMyRequirements(page, orderUrl, {}, 2);
+  // Produção (Fase C): o cartão aparece para a Wellmix no pedido.
+  await page.goto(orderUrl);
+  await expect(page.locator("[data-production-card]")).toBeVisible();
+  // Embarque e desembaraço (Fase D): os passos aparecem para a Wellmix.
+  await expect(page.locator("[data-import-step=booking]")).toBeVisible();
+
+  // 8. PREPARATION: a ficha (com fotos) veio da cotação. A "Programação de
+  // compra" é da Wellmix (feita acima): o fornecedor nem a vê. O pagamento ao
+  // fornecedor saiu do fluxo (segue a condição do cadastro do fornecedor).
+  await login(page, "supplier.a@china.com");
+  await page.goto(`${orderUrl}/purchase-sheet`);
+  await expect(page.locator("[data-sheet-section=product]")).toBeVisible();
+  await expect(page.locator("[data-sheet-section=schedule]")).toHaveCount(0);
+  await expect(page.locator("input[name=lot1Cartons]")).toHaveCount(0);
   // O fornecedor assina o documento do pedido (a segunda assinatura): só
   // então a Preparação conclui.
   // Ele baixa o documento em PDF, assina e anexa o arquivo de volta.

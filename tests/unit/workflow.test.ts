@@ -162,6 +162,10 @@ describe("fluxo completo: solicitação → entrega", () => {
     // Peso declarado = peso líquido por peça da ficha de compra.
     await saveSheet(supplierA, order.id, { netWeightPcKg: 12 });
     await fillStage(supplierA, order.id, "PREPARATION");
+    // A programação de compra é da Wellmix e vem antes de validar a ficha.
+    await saveSheet(operator, order.id, {
+      lots: [{ departureIntervalDays: 30, masterCartons: 10 }],
+    } as never);
     // A Wellmix valida a ficha e o cadastro do produto (Fase B).
     const prep = await fillStage(operator, order.id, "PREPARATION");
     expect(prep.status).toBe("done");

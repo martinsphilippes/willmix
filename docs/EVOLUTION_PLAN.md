@@ -711,3 +711,12 @@ Um produto do catálogo pode ter variações (modelo, tamanho, acabamento), cada
 - **Pedido antigo**, sem documento para assinar: continua com a data informada à mão (nada se perde). Data já gravada antes da regra fica como está até a assinatura.
 - **Em aberto**: reassinatura (assinatura devolvida e refeita) recalcula a data pelo dia da nova assinatura; mudar o prazo nas Configurações não mexe em pedido já assinado com a data gravada.
 - Testes: `tests/unit/order-signature.test.ts`, `tests/unit/production.test.ts`; o E2E confere o campo automático.
+
+## Programação de compra é da Wellmix (sai da ficha do fornecedor)
+
+- **Pedido do dono** (10/11/2026): quem faz a Programação de compra (lotes, caixas, container) é a Wellmix; ela não deve aparecer para o fornecedor nem ser pendência dele.
+- **Fornecedor**: o bloco "Programação de compra" não aparece na ficha de compra do pedido (`PurchaseSheetFields`, público `supplier`); o item "Ficha de compra" conclui sem ela (`supplierMissing`, `syncRequirements`) e o "Falta: ..." do pedido deixa de citar o 1º lote. O que ele mandar nesses campos não é gravado (`SCHEDULE_FIELDS` em `saveSheet`).
+- **Wellmix**: vê e preenche a programação na ficha do pedido; para ela o 1º lote continua aparecendo como pendência da ficha. O item "Ficha e imagens validadas pelo comprador" só conclui com a programação feita (`scheduleDone` no `submitRequirement`; erro `schedule_required` com o caminho). Pedido sem ficha de compra não tem essa trava.
+- Nenhuma tela ou campo saiu: a programação continua na ficha, agora só para a Wellmix (e para a certificadora ler). A ficha mestre do produto não mudou.
+- **Em aberto**: programação que o fornecedor já tinha gravado em pedidos em andamento continua lá (a Wellmix confere); se o despachante ou outro parceiro deve ver a programação.
+- Testes: `tests/unit/purchase-sheet.test.ts`, `tests/unit/sheet-prefill.test.ts`, `tests/unit/sheet-quantity.test.ts`, `tests/unit/workflow.test.ts`; o E2E faz a programação como Wellmix.

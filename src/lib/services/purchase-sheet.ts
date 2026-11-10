@@ -31,6 +31,7 @@ import { scheduleToLots } from "@/lib/workflow/request-schedule";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import {
   missingForCompletion,
+  supplierMissing,
   REQUIRED_SHEET_PHOTOS,
   normalizeLots,
   isPiecesUnit,
@@ -115,6 +116,12 @@ export const SUPPLIER_FIELDS = [
   "ecommerceDescription",
   "notes",
 ] as const;
+/** Programação de compra: só a Wellmix preenche (dono, 10/11/2026). */
+export const SCHEDULE_FIELDS = [
+  "productionStartAt",
+  "lots",
+  "containerType",
+] as const satisfies readonly (typeof SUPPLIER_FIELDS)[number][];
 /** Campos do despachante (e da Wellmix). */
 export const CUSTOMS_FIELDS = [
   "ncm",
@@ -551,7 +558,10 @@ export async function getSheetForUser(
       },
       container.capacity,
     ),
-    missing: missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
+    // Programação de compra é da Wellmix: para os outros, não é pendência.
+    missing: ((all) => (isWellmix(user) ? all : supplierMissing(all)))(
+      missingForCompletion(sheet, await photoKindsDone(orderId, photos)),
+    ),
     catalogPhotoKinds: await catalogPhotoKinds(request?.productId),
     containerType: container.type,
     containerTypes: container.types,
@@ -578,6 +588,8 @@ export async function saveSheet(
   for (const [key, value] of Object.entries(input)) {
     if (allowed.has(key) && value !== undefined) patch[key] = value;
   }
+  // Programação de compra (lotes, container, início): só a Wellmix grava.
+  if (!isWellmix(user)) for (const key of SCHEDULE_FIELDS) delete patch[key];
   // Início da produção automático (contrato assinado): não se digita.
   if ("productionStartAt" in patch) {
     const { productionStartFor } = await import("./order-signature");
@@ -678,7 +690,11 @@ export async function saveSheet(
     );
   }
   const missing = await syncRequirements(user, order, sheet);
-  return { sheet, missing };
+  // Programação de compra é da Wellmix: para os outros não é pendência.
+  return {
+    sheet,
+    missing: isWellmix(user) ? missing : supplierMissing(missing),
+  };
 }
 
 /** Etapas em que a quantidade ainda acompanha a programação (antes da inspeção). */
@@ -1051,9 +1067,11 @@ async function syncRequirements(
   const sheetReq = prep.requirements.find(
     (r) => r.key === "purchase_sheet" && r.status !== "done",
   );
+  // "Ficha de compra" é a parte do fornecedor: conclui sem a programação
+  // de compra, que é da Wellmix (ela trava a validação do comprador).
   if (
     sheetReq &&
-    !missing.length &&
+    !supplierMissing(missing).length &&
     canSubmitRequirement(user, order, sheetReq)
   ) {
     const container = await containerCapacity(sheet.containerType);
@@ -1084,11 +1102,32 @@ export async function sheetProgress(order: Order) {
   return {
     saved: !!existing,
     prefillSource: draft?.prefillSource ?? null,
-    missing: missingForCompletion(
-      existing ?? draft,
-      await photoKindsDone(order.id, photos),
+    // A parte do fornecedor (é o que o item "Ficha de compra" espera).
+    missing: supplierMissing(
+      missingForCompletion(
+        existing ?? draft,
+        await photoKindsDone(order.id, photos),
+      ),
     ),
   };
+}
+
+/**
+ * A Wellmix já fez a programação de compra (1º lote) deste pedido? Pedido
+ * sem ficha de compra (linha sem ficha, pedido antigo) não tem o que programar.
+ */
+export async function scheduleDone(orderId: string): Promise<boolean> {
+  const [sheet] = await getStore().list("purchase_sheets", {
+    filter: { orderId },
+    limit: 1,
+  });
+  if (!sheet) return true;
+  const first = normalizeLots(sheet.lots)[0];
+  return (
+    typeof first.masterCartons === "number" &&
+    first.masterCartons > 0 &&
+    typeof first.departureIntervalDays === "number"
+  );
 }
 
 /**

@@ -154,12 +154,15 @@ export function PurchaseSheetFields({
   // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
   const supplierOnly = audience === "supplier";
   const certifier = audience === "certifier";
+  // Programação de compra: quem faz é a Wellmix; o fornecedor não a vê
+  // (a ficha mestre do produto continua como era).
+  const noSchedule = hideSchedule || (supplierOnly && !master);
   const nav = sheetSectionsView(t, sectionsMissing, {
     master,
     photosHref,
     omit: [
       ...(supplierOnly ? (["customs", "ecommerce"] as const) : []),
-      ...(hideSchedule ? (["schedule"] as const) : []),
+      ...(noSchedule ? (["schedule"] as const) : []),
     ],
   });
   const open = initialSheetSection(sectionsMissing, { photosHref });
@@ -641,7 +644,7 @@ export function PurchaseSheetFields({
         </Section>
       }
 
-      {hideSchedule ? null : (
+      {noSchedule ? null : (
         <Section open={open} all={certifier} k="schedule" order="lg:order-3">
           <Card title={t("sheet.section.schedule")} dense>
             <Rows>
