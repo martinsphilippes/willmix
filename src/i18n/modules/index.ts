@@ -79,6 +79,7 @@ import * as sourcingStandby from "./sourcing-standby";
 import * as portalAccess from "./portal-access";
 import * as supplierTasks from "./supplier-tasks";
 import * as superplanLogic from "./superplan-logic";
+import * as dieCutStep from "./die-cut-step";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
@@ -171,6 +172,7 @@ export const modulesPt = {
   ...portalAccess.pt,
   ...supplierTasks.pt,
   ...superplanLogic.pt,
+  ...dieCutStep.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
@@ -280,6 +282,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...portalAccess.en,
   ...supplierTasks.en,
   ...superplanLogic.en,
+  ...dieCutStep.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
   ...sheetPhotos.en,
@@ -389,6 +392,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...portalAccess.zh,
   ...supplierTasks.zh,
   ...superplanLogic.zh,
+  ...dieCutStep.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
   ...sheetPhotos.zh,
