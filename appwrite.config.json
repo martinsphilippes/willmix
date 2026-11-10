@@ -405,6 +405,13 @@
           "default": null,
           "type": "varchar",
           "size": 40
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -806,6 +813,13 @@
           "default": null,
           "type": "varchar",
           "size": 20
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -1695,6 +1709,13 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaSyncedAt",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "datetime"
         }
       ],
       "indexes": [
@@ -9279,6 +9300,22 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "entity",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
+        },
+        {
+          "key": "entityId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
         }
       ],
       "indexes": [
@@ -9307,6 +9344,16 @@
           "type": "key",
           "columns": [
             "event"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_entity",
+          "type": "key",
+          "columns": [
+            "entityId"
           ],
           "orders": [
             "ASC"

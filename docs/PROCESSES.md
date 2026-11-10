@@ -25,6 +25,10 @@ Onde são disparados: `src/lib/services/requests.ts` (status da solicitação), 
 
 Proposta inicial (`DEFAULT_RULES`): aguardando sinal → incluir cotação (1002); pedido criado → faturar para pre-order (1100); assinado pelos dois → faturar para pedido (1101); faturado → faturar (TOP a informar); cancelado → cancelar. Estoque: nada.
 
+## Fase 3: cadastros e itens
+
+A mesma execução no Sankhya liga a sincronização de fornecedores, clientes, produtos e itens de pedidos ligados (docs/SANKHYA.md, "Sincronização portal → Sankhya"), com o cartão "Sincronização com o Sankhya" nesta tela.
+
 ## Execução e registro
 
 - **Execução no Sankhya** (mesma tela; `ordersEnabled` dos códigos do ERP): desligada por padrão. Desligada, a regra só registra o que faria ("simulado"); ligada, escreve no Sankhya de produção.

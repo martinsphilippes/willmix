@@ -298,6 +298,15 @@ export interface SankhyaErpSettings {
   codMoeda: number | null;
   /** Número de referência do pedido no portal: NUNOTA (único do sistema) ou NUMNOTA. */
   erpNumberField: "NUNOTA" | "NUMNOTA";
+  /**
+   * Sincronização portal → Sankhya (fase 3): só cadastros criados a partir
+   * desta data vão como novos (o que veio da carga nunca volta duplicado).
+   * Gravada quando a execução no Sankhya é ligada pela primeira vez.
+   */
+  syncSince?: string | null;
+  /** Campos fixos ao incluir parceiro e produto no Sankhya (ex.: {"USOPROD": "R"}). */
+  partnerDefaults?: Record<string, string | number>;
+  productDefaults?: Record<string, string | number>;
   /** Versão das respostas da Wellmix aplicadas (migração dos padrões). */
   version?: number;
   updatedAt?: string | null;

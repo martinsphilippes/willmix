@@ -3,6 +3,34 @@
  * Sankhya) e do faturamento do pedido: mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "processes.sync": "Sincronização com o Sankhya",
+  "processes.sync.hint":
+    "Fornecedores, clientes e produtos novos no portal são incluídos no Sankhya (antes, o portal procura lá pelo CNPJ/nome ou pelo SKU e só vincula se já existir); alterações vão para lá; quantidade e preço dos itens do pedido ligado também. Roda logo depois das telas de cadastro gravarem, todo dia no job do portal e aqui no botão. Só com a execução no Sankhya ligada.",
+  "processes.sync.since":
+    "Sincronizando o que foi criado ou alterado desde {at} (o que veio da carga não volta).",
+  "processes.sync.notStarted":
+    "Começa quando a execução no Sankhya for ligada: só o que for criado ou alterado a partir daí vai para o Sankhya.",
+  "processes.sync.what": "Pendente",
+  "processes.sync.create": "Incluir",
+  "processes.sync.update": "Alterar",
+  "processes.sync.parties": "Fornecedores e clientes",
+  "processes.sync.products": "Produtos",
+  "processes.sync.orders": "Itens de pedidos ligados",
+  "processes.sync.run": "Sincronizar agora",
+  "processes.sync.ran":
+    "Sincronização: {done} enviados, {errors} com erro (veja Últimos eventos), {remaining} ficaram para a próxima.",
+  "processes.sync.off":
+    "A execução no Sankhya está desligada: nada foi enviado.",
+  "processes.sync.defaults": "Campos fixos ao incluir no Sankhya",
+  "processes.sync.defaultsHint":
+    'JSON com colunas e valores que o Sankhya exige ao incluir e o portal não tem (ex.: {"USOPROD": "R"} no produto, {"CODCID": 0} no parceiro). Se o Sankhya recusar uma inclusão, o motivo aparece em Últimos eventos.',
+  "processes.sync.partnerDefaults": "Parceiro (TGFPAR)",
+  "processes.sync.productDefaults": "Produto (TGFPRO)",
+  "processes.sync.saveDefaults": "Salvar campos fixos",
+  "processes.sync.defaultsSaved": "Campos fixos salvos.",
+  "processes.sync.entity.party": "Fornecedor/cliente",
+  "processes.sync.entity.product": "Produto",
+  "processes.sync.entity.order": "Pedido",
   "sankhyaInt.tab.process": "Processos",
   "orderInvoice.label": "Faturamento",
   "orderInvoice.register": "Registrar faturamento",
@@ -61,6 +89,33 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "processes.sync": "Sync with Sankhya",
+  "processes.sync.hint":
+    "New suppliers, customers and products in the portal are created in Sankhya (first the portal looks there by CNPJ/name or SKU and only links if it already exists); changes go there; quantity and price of the linked order's items too. Runs right after the master-data screens save, daily in the portal job and here with the button. Only with execution in Sankhya on.",
+  "processes.sync.since":
+    "Syncing what was created or changed since {at} (what came from the load does not go back).",
+  "processes.sync.notStarted":
+    "Starts when execution in Sankhya is turned on: only what is created or changed from then on goes to Sankhya.",
+  "processes.sync.what": "Pending",
+  "processes.sync.create": "Create",
+  "processes.sync.update": "Update",
+  "processes.sync.parties": "Suppliers and customers",
+  "processes.sync.products": "Products",
+  "processes.sync.orders": "Items of linked orders",
+  "processes.sync.run": "Sync now",
+  "processes.sync.ran":
+    "Sync: {done} sent, {errors} with errors (see Latest events), {remaining} left for next time.",
+  "processes.sync.off": "Execution in Sankhya is off: nothing was sent.",
+  "processes.sync.defaults": "Fixed fields when creating in Sankhya",
+  "processes.sync.defaultsHint":
+    'JSON with columns and values Sankhya requires on creation that the portal lacks (e.g. {"USOPROD": "R"} for products, {"CODCID": 0} for partners). If Sankhya rejects a creation, the reason shows in Latest events.',
+  "processes.sync.partnerDefaults": "Partner (TGFPAR)",
+  "processes.sync.productDefaults": "Product (TGFPRO)",
+  "processes.sync.saveDefaults": "Save fixed fields",
+  "processes.sync.defaultsSaved": "Fixed fields saved.",
+  "processes.sync.entity.party": "Supplier/customer",
+  "processes.sync.entity.product": "Product",
+  "processes.sync.entity.order": "Order",
   "sankhyaInt.tab.process": "Processes",
   "orderInvoice.label": "Invoicing",
   "orderInvoice.register": "Register invoicing",
@@ -118,6 +173,33 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "processes.sync": "与 Sankhya 同步",
+  "processes.sync.hint":
+    "门户中新增的供应商、客户和产品会在 Sankhya 中新建（门户先按 CNPJ/名称或 SKU 在 Sankhya 中查找，已存在则只关联）；修改会同步过去；已关联订单的明细数量和价格也会同步。在档案页面保存后立即运行、每天随门户任务运行，也可在此点击按钮运行。仅在开启 Sankhya 执行时运行。",
+  "processes.sync.since":
+    "同步自 {at} 起新建或修改的内容（导入的数据不会回写）。",
+  "processes.sync.notStarted":
+    "开启 Sankhya 执行后开始：只有此后新建或修改的内容会发送到 Sankhya。",
+  "processes.sync.what": "待同步",
+  "processes.sync.create": "新建",
+  "processes.sync.update": "修改",
+  "processes.sync.parties": "供应商和客户",
+  "processes.sync.products": "产品",
+  "processes.sync.orders": "已关联订单的明细",
+  "processes.sync.run": "立即同步",
+  "processes.sync.ran":
+    "同步：已发送 {done} 条，{errors} 条出错（见最近事件），{remaining} 条留待下次。",
+  "processes.sync.off": "Sankhya 执行已关闭：未发送任何内容。",
+  "processes.sync.defaults": "在 Sankhya 新建时的固定字段",
+  "processes.sync.defaultsHint":
+    'JSON 格式，填写 Sankhya 新建时必填而门户没有的列和值（例如产品 {"USOPROD": "R"}，合作方 {"CODCID": 0}）。如果 Sankhya 拒绝新建，原因会显示在最近事件中。',
+  "processes.sync.partnerDefaults": "合作方（TGFPAR）",
+  "processes.sync.productDefaults": "产品（TGFPRO）",
+  "processes.sync.saveDefaults": "保存固定字段",
+  "processes.sync.defaultsSaved": "固定字段已保存。",
+  "processes.sync.entity.party": "供应商/客户",
+  "processes.sync.entity.product": "产品",
+  "processes.sync.entity.order": "订单",
   "sankhyaInt.tab.process": "流程",
   "orderInvoice.label": "开票",
   "orderInvoice.register": "登记开票",

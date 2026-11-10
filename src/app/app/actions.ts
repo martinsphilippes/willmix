@@ -920,9 +920,12 @@ export async function savePartyAction(form: FormData) {
         active: form.getAll("active").includes("on"),
       });
     const store = getStore();
+    // Fornecedor/cliente novo ou alterado vai para o Sankhya (fase 3).
+    const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
     if (id) {
       await store.update("parties", id, parsed);
       await audit(user, "party.update", "party", id, parsed.name);
+      await syncSoon(user, "party", id);
       return `/app/parties/${id}`;
     }
     const party = await store.create("parties", {
@@ -930,6 +933,7 @@ export async function savePartyAction(form: FormData) {
       ...parsed,
     });
     await audit(user, "party.create", "party", party.id, parsed.name);
+    await syncSoon(user, "party", party.id);
     return `/app/parties/${party.id}`;
   });
 }
@@ -985,13 +989,16 @@ export async function saveProductAction(form: FormData) {
       });
     const id = str(form, "id");
     const store = getStore();
-    if (id) await store.update("products", id, parsed);
-    else
-      await store.create("products", {
-        ...PRODUCT_EXTRA_DEFAULTS,
-        ...parsed,
-        active: true,
-      });
+    const saved = id
+      ? await store.update("products", id, parsed)
+      : await store.create("products", {
+          ...PRODUCT_EXTRA_DEFAULTS,
+          ...parsed,
+          active: true,
+        });
+    // Produto novo ou alterado vai para o Sankhya (fase 3).
+    const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
+    await syncSoon(user, "product", saved.id);
   });
 }
 

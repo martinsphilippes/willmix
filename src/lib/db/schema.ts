@@ -678,6 +678,8 @@ export interface Party extends BaseRow {
   ownerUserId?: string | null;
   /** Código do parceiro (CODPARC) ou da empresa (EMP-CODEMP) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
+  /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
+  sankhyaSyncedAt?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -759,6 +761,10 @@ export interface Product extends BaseRow {
   minStock?: number | null;
   /** Código do produto (CODPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
   sankhyaCode?: string | null;
+  /** EAN (código de barras); no Sankhya fica em REFERENCIA. */
+  ean?: string | null;
+  /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
+  sankhyaSyncedAt?: string | null;
 }
 
 export interface PriceTier {
@@ -926,6 +932,8 @@ export interface Order extends BaseRow {
   /** Faturamento registrado no portal (evento de processo "pedido faturado"). */
   invoicedAt?: string | null;
   invoicedByUserId?: string | null;
+  /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
+  sankhyaSyncedAt?: string | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -2310,6 +2318,9 @@ export interface ProcessEvent extends BaseRow {
   nunotaBefore: string | null;
   nunotaAfter: string | null;
   createdByUserId: string | null;
+  /** Sincronização de cadastro (fase 3): tabela e id do registro do portal. */
+  entity?: string | null;
+  entityId?: string | null;
 }
 
 export interface PaymentCondition extends BaseRow {
@@ -2514,6 +2525,7 @@ export const TABLES: Record<TableName, TableDef> = {
       paymentTermsNote: text(),
       ownerUserId: id(false),
       sankhyaCode: str(40),
+      sankhyaSyncedAt: datetime(),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
@@ -2574,6 +2586,7 @@ export const TABLES: Record<TableName, TableDef> = {
       minStock: float(),
       sankhyaCode: str(40),
       ean: str(20),
+      sankhyaSyncedAt: datetime(),
     },
     indexes: [
       { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
@@ -2695,6 +2708,7 @@ export const TABLES: Record<TableName, TableDef> = {
       sankhyaCode: str(40),
       invoicedAt: datetime(),
       invoicedByUserId: id(false),
+      sankhyaSyncedAt: datetime(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },
@@ -3891,11 +3905,14 @@ export const TABLES: Record<TableName, TableDef> = {
       nunotaBefore: str(40),
       nunotaAfter: str(40),
       createdByUserId: id(false),
+      entity: str(40),
+      entityId: id(false),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
       { key: "by_event", type: "key", columns: ["event"] },
+      { key: "by_entity", type: "key", columns: ["entityId"] },
     ],
   },
 };

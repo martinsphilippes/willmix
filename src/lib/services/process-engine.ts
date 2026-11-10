@@ -234,8 +234,21 @@ async function sankhyaAction(
     if (!nunota)
       return { status: "skipped", detail: `Sankhya: ${what}: sem nota ligada` };
     if (rule.sankhya === "advance") {
-      const { invoiceNotes } =
+      const { invoiceNotes, executeQuery } =
         await import("@/lib/integrations/sankhya-client");
+      // Nota já na TOP de destino (ex.: o pedido nasceu direto como 1101):
+      // nada a faturar.
+      if (/^\d+$/.test(nunota)) {
+        const current = await executeQuery(
+          `SELECT CODTIPOPER FROM TGFCAB WHERE NUNOTA = ${nunota}`,
+        );
+        if (Number(current.rows[0]?.CODTIPOPER) === rule.top)
+          return {
+            status: "skipped",
+            detail: `Sankhya: ${nunota} já está na TOP ${rule.top}`,
+            nunotaAfter: nunota,
+          };
+      }
       const response = await invoiceNotes([nunota], rule.top!);
       const next = newNunota(response, nunota);
       if (next) await linkNunota(user, order, request, next, erp);

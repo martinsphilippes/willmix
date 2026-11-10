@@ -43,11 +43,7 @@ import {
  */
 
 export type ImportOutcome =
-  | "created"
-  | "linked"
-  | "existing"
-  | "updated"
-  | "skipped";
+  "created" | "linked" | "existing" | "updated" | "skipped";
 
 export type ImportEntity =
   | "productGroups"
@@ -83,6 +79,9 @@ const norm = (v: unknown) =>
     .toLowerCase();
 const round = (n: number, places = 4) =>
   Math.round(n * 10 ** places) / 10 ** places;
+
+/** Marca o que veio do Sankhya como sincronizado (não volta para lá). */
+const syncedNow = () => new Date(Date.now() + 10_000).toISOString();
 
 /** "AAAA-MM-DD" → ISO ao meio-dia de Brasília (evita virar o dia). */
 const isoOf = (value: unknown) => {
@@ -229,6 +228,7 @@ export async function upsertProducts(
     if (product && ctx.update) {
       product = await store.update("products", product.id, {
         ...fields,
+        sankhyaSyncedAt: syncedNow(),
         ...(groupLine ? { lineId: groupLine } : {}),
         // Especificação do portal só é preenchida quando estiver vazia.
         ...(product.specification
@@ -245,6 +245,7 @@ export async function upsertProducts(
       if (product) {
         product = await store.update("products", product.id, {
           sankhyaCode: key,
+          sankhyaSyncedAt: syncedNow(),
           ...(ctx.update ? fields : {}),
         });
         outcome = "linked";
@@ -258,6 +259,7 @@ export async function upsertProducts(
         specification: text(row, "CARACTERISTICAS"),
         source: "import",
         sankhyaCode: key,
+        sankhyaSyncedAt: syncedNow(),
       });
       ctx.products.push(product);
       outcome = "created";
@@ -312,7 +314,10 @@ export async function upsertParty(
     active: data.active,
   };
   if (party && ctx.update) {
-    party = await store.update("parties", party.id, fields);
+    party = await store.update("parties", party.id, {
+      ...fields,
+      sankhyaSyncedAt: syncedNow(),
+    });
     outcome = "updated";
   }
   if (!party) {
@@ -326,6 +331,7 @@ export async function upsertParty(
     if (party) {
       party = await store.update("parties", party.id, {
         sankhyaCode: key,
+        sankhyaSyncedAt: syncedNow(),
         ...(ctx.update ? fields : {}),
       });
       outcome = "linked";
@@ -339,6 +345,7 @@ export async function upsertParty(
       country: null,
       notes: "Importado do Sankhya",
       sankhyaCode: key,
+      sankhyaSyncedAt: syncedNow(),
     });
     ctx.parties.push(party);
     outcome = "created";
@@ -399,10 +406,15 @@ export async function upsertPaymentConditions(
     if (!Number.isInteger(value)) continue;
     const name =
       text(row, "DESCRTIPVENDA") ?? `Condição ${String(value).trim()}`;
-    const active = row.ATIVO == null ? true : convert("sn", row.ATIVO, row) !== false;
+    const active =
+      row.ATIVO == null ? true : convert("sn", row.ATIVO, row) !== false;
     let found = existing.find((c) => c.code === value);
     let outcome: ImportOutcome = "existing";
-    if (found && ctx.update && (found.name !== name || found.active !== active)) {
+    if (
+      found &&
+      ctx.update &&
+      (found.name !== name || found.active !== active)
+    ) {
       found = await store.update("payment_conditions", found.id, {
         name,
         active,
@@ -591,6 +603,7 @@ export async function importSankhyaSet(
       erpSyncStatus: "synced",
       erpNumber,
       sankhyaCode: nunota,
+      sankhyaSyncedAt: syncedNow(),
       agencyId: null,
       brokerId: null,
       shippingLineId: null,
@@ -645,9 +658,7 @@ export async function importSankhyaSet(
     }
     const order = orderByNunota.get(code(row.NUNOTA));
     const direction = convert("recDesp", row.RECDESP, row) as
-      | "customer_in"
-      | "supplier_out"
-      | null;
+      "customer_in" | "supplier_out" | null;
     const amount = number(row, "VLRDESDOB");
     if (!order || !direction || amount == null) {
       out.push({
@@ -665,9 +676,7 @@ export async function importSankhyaSet(
       continue;
     }
     const status = convert("paidAt", row.DHBAIXA, row) as
-      | "pending"
-      | "confirmed"
-      | "received";
+      "pending" | "confirmed" | "received";
     const payment = await store.create("payments", {
       ...PAYMENT_EXTRA_DEFAULTS,
       orderId: order.id,
@@ -709,8 +718,7 @@ export async function auditImport(
   scope: string,
   out: ImportLine[],
 ) {
-  const count = (o: ImportOutcome) =>
-    out.filter((l) => l.outcome === o).length;
+  const count = (o: ImportOutcome) => out.filter((l) => l.outcome === o).length;
   await audit(
     user,
     "sankhya.import",
@@ -719,14 +727,12 @@ export async function auditImport(
     `Carga do Sankhya (${scope}): ${count("created")} criados, ${count("updated")} atualizados, ${count("linked")} vinculados, ${count("existing")} já existiam, ${count("skipped")} ignorados`,
     null,
     {
-      lines: out
-        .slice(0, 500)
-        .map(({ entity, code: c, outcome, id }) => ({
-          entity,
-          code: c,
-          outcome,
-          id,
-        })),
+      lines: out.slice(0, 500).map(({ entity, code: c, outcome, id }) => ({
+        entity,
+        code: c,
+        outcome,
+        id,
+      })),
     },
   );
 }

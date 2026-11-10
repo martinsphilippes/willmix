@@ -98,6 +98,18 @@ Botão **Gravar no portal** na mesma aba (`src/lib/integrations/sankhya-import.t
 
 `bash scripts/sankhya-curl.sh codigos` lista os códigos para o pedido (TOPs de compra, tipos de negociação, vendedores/compradores, locais) e as colunas de `AD_NFIMPORTACAO`.
 
+## Sincronização portal → Sankhya (fase 3)
+
+Decisões 8 e 14: o que nasce ou muda no portal vai para o Sankhya, e os dois ficam iguais (`src/lib/integrations/sankhya-sync.ts`, `src/lib/integrations/sankhya.ts`).
+
+- **Fornecedor e cliente** (`parties` supplier/customer) → Parceiro (TGFPAR) por `DatasetSP.save`: NOMEPARC, RAZAOSOCIAL (ao incluir), TIPPESSOA (CPF = F), CGC_CPF, EMAIL, TELEFONE, ATIVO, FORNECEDOR ou CLIENTE = S, mais os **campos fixos** do parceiro.
+- **Produto** → Produto (TGFPRO): DESCRPROD, REFFORN (SKU), REFERENCIA (EAN), NCM, CODVOL (UN), CODGRUPOPROD (grupo da linha, obrigatório ao incluir), pesos, medidas em metros, ATIVO, mais os campos fixos do produto.
+- Antes de incluir, procura no Sankhya (CNPJ/CPF ou nome; REFFORN): se já existe, só **vincula** (`sankhyaCode`) e manda os dados do portal. Depois de incluir, lê o código gerado do mesmo jeito.
+- **Pedido**: depois das duas assinaturas, `getSankhyaAdapter().createOrder` usa a nota já ligada (cotação/pre-order das regras de processo) ou inclui o pedido com a TOP de pedido; sem a execução ligada, segue manual como antes. A regra "assinado → faturar para 1101" pula a nota que já está na TOP. **Itens** do pedido ligado: quantidade e preço alterados e itens novos vão para a nota (`CACSP.incluirAlterarItemNota`); item que saiu do pedido é avisado (remover no Sankhya). Cancelamento: regra de processo.
+- **Pendente** = criado depois de `syncSince` (gravado na primeira vez que a execução é ligada) e sem código, ou alterado depois de `sankhyaSyncedAt`. A carga grava `sankhyaSyncedAt`: o que veio do Sankhya não volta duplicado.
+- **Quando roda**: logo depois das telas de cadastro de parceiro e de produto gravarem; no job diário (`/api/jobs/reminders`); em `/api/jobs/sankhya-sync` (agendador externo, com `CRON_SECRET`); e no botão "Sincronizar agora" (Configurações → Processos), que mostra as pendências. Só com a execução no Sankhya ligada. Cada envio fica em `process_events` (`sync:party|product|order:create|update`).
+- **Campos fixos** (Configurações → Processos): JSON com colunas que o Sankhya exige ao incluir e o portal não tem (ex.: `{"USOPROD": "R"}`). A recusa do Sankhya aparece em "Últimos eventos" com o texto dele.
+
 ## Decisões da Wellmix (10/11/2026)
 
 | #   | Tema                     | Decisão                                                                                                                                                            | Onde está                                                |
@@ -109,13 +121,13 @@ Botão **Gravar no portal** na mesma aba (`src/lib/integrations/sankhya-import.t
 | 5   | CODVOL                   | Sempre UN                                                                                                                                                          | Integração → códigos (volume fixo UN)                    |
 | 6   | Cadastros                | Fornecedores, produtos e clientes inteiros vão para o portal                                                                                                       | Carga do Sankhya → Carga completa                        |
 | 7   | Códigos do produto       | REFFORN = código interno (SKU), CODPROD = código único (vínculo), REFERENCIA = EAN                                                                                 | `products.sku`, `sankhyaCode`, `ean`                     |
-| 8   | Novos cadastros          | Produto, fornecedor, cliente e pedido novos no portal são criados no Sankhya pela integração                                                                       | Fase 3 (a fazer)                                         |
+| 8   | Novos cadastros          | Produto, fornecedor, cliente e pedido novos no portal são criados no Sankhya pela integração                                                                       | Fase 3: sincronização (abaixo) e regras de processo      |
 | 9   | Moeda                    | Pedido em USD (502 de 518) com o câmbio no pedido (ex.: 5,16); moeda de origem do fornecedor (RMB) registrada à parte                                              | Carga: USD = VLRNOTA ÷ VLRMOEDA; códigos: moeda/CODMOEDA |
 | 10  | Incoterm                 | Campo próprio no pedido: FOB (380), EXW (137), nenhum CIF                                                                                                          | A mapear (nome da coluna)                                |
 | 11  | Natureza                 | 203005 (COMPRA INTERNACIONAL), centro de resultado 101006 (IMPORTACAO), projeto 0                                                                                  | Integração → códigos                                     |
 | 12  | Momento de envio         | Cotação (1002) → pre-order (1100) → pedido (1101), feitos pelo planejamento: cada passo é um gatilho de status que escreve a TOP no Sankhya (sem mexer no estoque) | Configurações → Processos (docs/PROCESSES.md)            |
 | 13  | Número de referência     | Configurável: NUNOTA ou NUMNOTA                                                                                                                                    | Integração → códigos (`erpNumberField`)                  |
-| 14  | Alteração/cancelamento   | Sempre refletem no Sankhya: os dois sistemas ficam sincronizados                                                                                                   | Fase 3 (a fazer)                                         |
+| 14  | Alteração/cancelamento   | Sempre refletem no Sankhya: os dois sistemas ficam sincronizados                                                                                                   | Fase 3: sincronização (abaixo) e regras de processo      |
 | 15  | Faturamento              | Evento de status no portal que escreve a TOP no Sankhya                                                                                                            | Configurações → Processos (docs/PROCESSES.md)            |
 | 16  | Frete, financeiro, notas | Só consulta (o que o portal não tem como entrada)                                                                                                                  | Explorar dados / leitura                                 |
 | 17  | Pedido de teste          | Depois que todos os dados estiverem no portal                                                                                                                      | Integração → parte 5                                     |
@@ -130,5 +142,5 @@ Aba Carga do Sankhya → **Carga completa** (`src/lib/integrations/sankhya-full-
 
 1. Nomes das colunas do Incoterm e da moeda de origem do fornecedor no TGFCAB (provavelmente campos AD_).
 2. Fase 2 feita (docs/PROCESSES.md): ligar a execução no Sankhya depois de conferir a simulação.
-3. Fase 3: `getSankhyaAdapter().createOrder` (hoje `MockSankhyaAdapter`) e a sincronização de produtos, fornecedores, clientes, alterações e cancelamentos.
+3. Fase 3 feita (seção abaixo): conferir os campos que o Sankhya exige ao incluir parceiro e produto (campos fixos) no primeiro uso.
 4. Automatizações candidatas: importar/atualizar produtos, parceiros, estoque e preços do Sankhya (com `logAlteracoesTabelas`); criar no ERP o pedido de compra/venda quando o pedido nasce no portal; enviar a tabela de frete (AD_FREINT, hoje CSV) por `DatasetSP.save`; ler títulos financeiros (a receber/pagar, boletos) e NF-e emitidas para conciliar com o portal.

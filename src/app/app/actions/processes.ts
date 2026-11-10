@@ -90,7 +90,16 @@ export async function setSankhyaExecutionAction(form: FormData) {
   const { updatedAt: _u, updatedBy: _b, ...rest } = before;
   void _u;
   void _b;
-  await saveSankhyaErpSettings({ ...rest, ordersEnabled: enabled }, user.id);
+  // A primeira vez que liga marca o início da sincronização: só o que for
+  // criado a partir de agora vai como novo para o Sankhya.
+  await saveSankhyaErpSettings(
+    {
+      ...rest,
+      ordersEnabled: enabled,
+      syncSince: rest.syncSince ?? (enabled ? new Date().toISOString() : null),
+    },
+    user.id,
+  );
   await audit(
     user,
     "sankhya.execution",
@@ -103,4 +112,67 @@ export async function setSankhyaExecutionAction(form: FormData) {
     { ordersEnabled: enabled },
   );
   redirect(`${BACK}#execution`);
+}
+
+/** "Sincronizar agora": envia as pendências ao Sankhya (até ~40 s). */
+export async function runSankhyaSyncAction() {
+  const user = await admin();
+  const { runSankhyaSync } = await import("@/lib/integrations/sankhya-sync");
+  const run = await runSankhyaSync(user);
+  redirect(
+    `${BACK}&sync=${run.enabled ? "ran" : "off"}&done=${run.done}&errors=${run.errors}&remaining=${run.remaining}#sync`,
+  );
+}
+
+const defaultsSchema = z.object({
+  partnerDefaults: z.record(
+    z.string().regex(/^[A-Z][A-Z0-9_]{0,39}$/),
+    z.union([z.string().max(200), z.number()]),
+  ),
+  productDefaults: z.record(
+    z.string().regex(/^[A-Z][A-Z0-9_]{0,39}$/),
+    z.union([z.string().max(200), z.number()]),
+  ),
+});
+
+/** Campos fixos ao incluir parceiro e produto no Sankhya (JSON). */
+export async function saveSyncDefaultsAction(form: FormData) {
+  const user = await admin();
+  let target: string;
+  try {
+    const parse = (raw: string) => (raw.trim() ? JSON.parse(raw) : {});
+    const input = defaultsSchema.parse({
+      partnerDefaults: parse(str(form, "partnerDefaults")),
+      productDefaults: parse(str(form, "productDefaults")),
+    });
+    const before = await getSankhyaErpSettings();
+    const { updatedAt: _u, updatedBy: _b, ...rest } = before;
+    void _u;
+    void _b;
+    await saveSankhyaErpSettings({ ...rest, ...input }, user.id);
+    await audit(
+      user,
+      "sankhya.sync_defaults",
+      "sankhya",
+      "erp",
+      "Campos fixos ao incluir no Sankhya",
+      {
+        partnerDefaults: before.partnerDefaults ?? {},
+        productDefaults: before.productDefaults ?? {},
+      },
+      input,
+    );
+    target = `${BACK}&defaults=1#sync`;
+  } catch (error) {
+    target = `${BACK}&error=invalid_input&detail=${encodeURIComponent(
+      error instanceof z.ZodError
+        ? error.issues
+            .map((i) => `${i.path.join(".")}: ${i.message}`)
+            .join("; ")
+        : error instanceof Error
+          ? error.message
+          : String(error),
+    ).slice(0, 600)}#sync`;
+  }
+  redirect(target);
 }
