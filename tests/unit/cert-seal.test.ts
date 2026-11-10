@@ -304,6 +304,8 @@ describe("selo enviado: vai para a agência aplicar na arte", () => {
     );
     expect(await inbox(agency, order)).toHaveLength(before + 1);
     expect(await certTasks(agency, order)).toHaveLength(1);
+    // A tela do briefing diz que a arte com o selo é para refazer.
+    expect(await f.sealStateFor(agency, order)).toBe("rejected");
   });
 
   it("arte reenviada e validada: tudo concluído, sem pendência para ninguém", async () => {
@@ -364,7 +366,8 @@ describe("selo trocado depois da arte", () => {
     const view = await f.importFlowView(agency, order, "certification");
     const applied = view.find((v) => v.template.key === "cert_seal_art")!;
     expect(applied.step?.status).toBe("rejected");
-    expect(applied.step?.rejectReason).toBeTruthy();
+    // Motivo gravado como marcador: a tela mostra no idioma de quem lê.
+    expect(applied.step?.rejectReason).toBe(f.SEAL_REPLACED_REASON);
     expect(applied.done).toBe(false);
     expect(applied.canSubmit).toBe(true);
     expect(await inbox(agency, order)).toHaveLength(before + 1);

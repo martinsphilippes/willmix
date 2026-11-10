@@ -12,7 +12,6 @@ import {
   isAdmin,
   isWellmix,
 } from "@/lib/auth/permissions";
-import { translator } from "@/i18n";
 import { getSettings } from "@/lib/settings";
 import { artRole } from "@/lib/workflow/stages";
 import { audit } from "./audit";
@@ -34,6 +33,13 @@ import { isSchemaMissing } from "./packaging-brief";
  */
 
 export class ImportFlowError extends Error {}
+
+/**
+ * Motivo gravado no passo "selo aplicado na arte" quando a certificadora
+ * troca o selo: é um marcador, e a tela mostra o texto no idioma de quem lê
+ * (certFlow.sealReplaced).
+ */
+export const SEAL_REPLACED_REASON = "@seal_replaced";
 
 /** Quem age num passo. */
 export type StepActor =
@@ -551,8 +557,7 @@ async function handOverSeal(
       // A arte antiga leva o selo antigo: sai do passo, para o reenvio pedir
       // um arquivo novo (o antigo continua nos documentos do pedido).
       documentId: null,
-      // Texto gravado no passo (quem aplica o selo lê em português).
-      rejectReason: translator("pt")("certFlow.sealReplaced"),
+      rejectReason: SEAL_REPLACED_REASON,
     });
     await audit(
       user,
@@ -659,11 +664,12 @@ export async function notifySealPartner(
 }
 
 /** Selo de certificação visto por quem faz a arte (tela do briefing). */
-export type SealState = "pending" | "ready" | "sent" | "done";
+export type SealState = "pending" | "ready" | "rejected" | "sent" | "done";
 
 /**
  * Situação do selo para o usuário: aguardando a certificadora, disponível
- * para aplicar, arte com o selo enviada ou conferida. Todo pedido tem selo;
+ * para aplicar, arte com o selo recusada (refazer), enviada ou conferida.
+ * Todo pedido tem selo;
  * nulo só para pedido cancelado ou quando o usuário não vê o passo.
  */
 export async function sealStateFor(
@@ -678,7 +684,9 @@ export async function sealStateFor(
   if (!isDone(steps.find((s) => s.key === "cert_seal"))) return "pending";
   const art = steps.find((s) => s.key === "cert_seal_art");
   if (isDone(art)) return "done";
-  return art?.status === "submitted" ? "sent" : "ready";
+  if (art?.status === "submitted") return "sent";
+  // Recusada pela Wellmix ou reaberta por selo trocado: refazer.
+  return art?.status === "rejected" ? "rejected" : "ready";
 }
 
 /** Arquivo atual do selo de certificação do pedido (para o zip das artes). */

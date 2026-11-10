@@ -183,6 +183,7 @@ export default async function OrderPage({
     production: productionNotice,
     importStep: importNotice,
     certStep: certNotice,
+    stepCard,
     receiving: receivingNotice,
     artwork: artworkNotice,
     stage: stageQuery,
@@ -542,6 +543,18 @@ export default async function OrderPage({
         .map((ph) => ({ documentId: ph.documentId, kind: ph.kind })),
     ];
   };
+  /* Recusa de um passo (embarque ou certificação): o motivo aparece também
+     dentro do cartão de onde a ação veio, que é onde a pessoa está. */
+  const stepError =
+    typeof error === "string" && typeof stepCard === "string"
+      ? t(`importFlow.error.${error}` as DictionaryKey) !==
+        `importFlow.error.${error}`
+        ? t(`importFlow.error.${error}` as DictionaryKey)
+        : t(`orders.error.${error}` as DictionaryKey) !==
+            `orders.error.${error}`
+          ? t(`orders.error.${error}` as DictionaryKey)
+          : fallbackError(t, error)
+      : null;
   /* Cancelamento: só o admin cancela; o cliente pede até a produção começar. */
   const isCancelled = order.status === "CANCELLED";
   const admin = user.role === "admin";
@@ -1699,6 +1712,7 @@ export default async function OrderPage({
           order={order}
           steps={importSteps}
           names={productionNames}
+          error={stepCard === "import-flow" ? stepError : null}
           notice={
             typeof importNotice === "string" &&
             ["submitted", "validated", "rejected"].includes(importNotice)
@@ -1715,6 +1729,7 @@ export default async function OrderPage({
           names={productionNames}
           title={t("certFlow.title")}
           anchor="certification"
+          error={stepCard === "certification" ? stepError : null}
           hints={[
             ...(certSteps.some((v) => v.template.key === "cert_seal")
               ? [t("certFlow.sealHint")]

@@ -23,6 +23,10 @@ const anchorOf = (form: FormData) =>
 const doneParam = (form: FormData) =>
   anchorOf(form) === "certification" ? "certStep" : "importStep";
 
+/** Volta da recusa: o cartão de onde veio mostra o motivo (?stepCard=). */
+const errorBack = (form: FormData, to: string) =>
+  `${to}?stepCard=${anchorOf(form)}#${anchorOf(form)}`;
+
 function back(form: FormData) {
   const orderId = ID.safeParse(str(form, "orderId"));
   return orderId.success ? `/app/orders/${orderId.data}` : "/app/orders";
@@ -31,7 +35,7 @@ function back(form: FormData) {
 export async function submitImportStepAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
-  await run(`${to}#${anchorOf(form)}`, async () => {
+  await run(errorBack(form, to), async () => {
     const orderId = ID.parse(str(form, "orderId"));
     const key = z.enum(IMPORT_STEP_KEYS).parse(str(form, "key"));
     const value = field(form, "value", z.string().trim().max(200)) || null;
@@ -89,7 +93,7 @@ export async function submitImportStepAction(form: FormData) {
 export async function validateImportStepAction(form: FormData) {
   const user = await requireUser();
   const to = back(form);
-  await run(`${to}#${anchorOf(form)}`, async () => {
+  await run(errorBack(form, to), async () => {
     assertScreen(user, "orders");
     const orderId = ID.parse(str(form, "orderId"));
     const key = z.enum(IMPORT_STEP_KEYS).parse(str(form, "key"));

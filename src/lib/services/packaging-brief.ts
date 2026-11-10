@@ -1510,7 +1510,7 @@ export interface PackagingBriefView {
   presale: boolean;
   order: Order | null;
   /** Selo de certificação do pedido a aplicar na arte (nulo: sem selo). */
-  orderSeal: "pending" | "ready" | "sent" | "done" | null;
+  orderSeal: "pending" | "ready" | "rejected" | "sent" | "done" | null;
   /** Estado ao vivo do item "Arte" e da aprovação do fornecedor no pedido. */
   orderArt: {
     art: Requirement | null;

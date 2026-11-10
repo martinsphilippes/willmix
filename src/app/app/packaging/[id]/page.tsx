@@ -48,6 +48,7 @@ const num = (intl: string, n: number | null | undefined, digits = 1) =>
 const SEAL_HINT = {
   pending: "certFlow.brief.sealPending",
   ready: "certFlow.brief.sealReady",
+  rejected: "certFlow.brief.sealRejected",
   sent: "certFlow.brief.sealSent",
   done: "certFlow.brief.sealDone",
 } as const satisfies Record<string, DictionaryKey>;

@@ -2,7 +2,11 @@
 
 import { useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { SERVER_MAX_BYTES, uploadDirect } from "./direct-upload";
+import {
+  DIRECT_MAX_BYTES,
+  SERVER_MAX_BYTES,
+  uploadDirect,
+} from "./direct-upload";
 
 const SHEET_ACCEPT =
   ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
@@ -19,6 +23,8 @@ interface DirectFileInputProps {
   failedLabel: string;
   /** Com {name} e {size}: arquivo escolhido (já subido direto). */
   chosenLabel: string;
+  /** Arquivo acima do teto do armazenamento (sem ele, vale o aviso de falha). */
+  tooBigLabel?: string;
 }
 
 /**
@@ -49,6 +55,7 @@ export function DirectFileInput({
   uploadingLabel,
   failedLabel,
   chosenLabel,
+  tooBigLabel,
   required = true,
   accept,
   className,
@@ -80,8 +87,19 @@ export function DirectFileInput({
     setError(null);
     setChosen(null);
     clearHidden();
-    if (!file || !form || file.size <= SERVER_MAX_BYTES) return;
+    if (!file || !form) return;
+    if (file.size > DIRECT_MAX_BYTES) {
+      setError(tooBigLabel ?? failedLabel);
+      input.value = "";
+      return;
+    }
+    if (file.size <= SERVER_MAX_BYTES) return;
     setBusy(true);
+    setProgress(0);
+    // Enquanto o arquivo sobe, o formulário não envia: iria sem o arquivo
+    // (ou, num reenvio, com o arquivo antigo).
+    const hold = (e: Event) => e.preventDefault();
+    form.addEventListener("submit", hold);
     try {
       const ids = await uploadDirect([file], setProgress);
       if (ids?.[0]) {
@@ -120,6 +138,7 @@ export function DirectFileInput({
       input.value = "";
       clearHidden();
     } finally {
+      form.removeEventListener("submit", hold);
       setProgress(null);
       setBusy(false);
     }
