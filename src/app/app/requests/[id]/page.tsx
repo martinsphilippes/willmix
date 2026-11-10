@@ -844,7 +844,14 @@ export default async function RequestDetailPage({
 
         {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
         {wellmix && quotes.length > 0 ? (
-          <Card title={t("requests.quotes.compare")}>
+          <Card
+            title={
+              // Âncora do Booking ("Conferir e confirmar a cotação").
+              <span id="quotes-compare" className="scroll-mt-24">
+                {t("requests.quotes.compare")}
+              </span>
+            }
+          >
             <Table>
               <thead>
                 <tr>

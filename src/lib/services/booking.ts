@@ -32,8 +32,13 @@ import {
   type BookingActor,
   type BookingErrorCode,
   type BookingLinkState,
+  type BookingOrderDocument,
   type BookingRow,
 } from "@/lib/booking";
+import {
+  ORDER_SIGNED_SUPPLIER,
+  ORDER_SIGNED_WELLMIX,
+} from "@/lib/workflow/stages";
 import { estimatedGrossKg } from "@/lib/weights";
 import { effectiveMoq } from "@/lib/moq";
 import { superplanParams } from "@/lib/superplan";
@@ -360,13 +365,48 @@ async function buildRows(
     ]);
     const requestOf = new Map(requests.map((r) => [r.id, r]));
     const openQuotes = canOpen(user, "quotes");
+    // Cotação ainda não enviada com a ficha já gravada (rascunho) ou com o
+    // prazo guardado: o fornecedor começou e não enviou.
+    const invitedIds = quotes
+      .filter((q) => q.status === "invited")
+      .map((q) => q.id);
+    // Pedidos que nasceram: o ponto do documento com as duas assinaturas.
+    const orderIds = orders.map((o) => o.id);
+    const [draftSheets, signatures] = await Promise.all([
+      invitedIds.length
+        ? store.list("purchase_sheets", { filter: { orderId: invitedIds } })
+        : [],
+      orderIds.length
+        ? store.list("requirements", { filter: { orderId: orderIds } })
+        : [],
+    ]);
+    const drafted = new Set(draftSheets.map((s) => s.orderId));
+    const documentOf = (orderId: string): BookingOrderDocument => {
+      const mine = signatures.filter((r) => r.orderId === orderId);
+      const wellmix = mine.find((r) => r.key === ORDER_SIGNED_WELLMIX);
+      const supplier = mine.find((r) => r.key === ORDER_SIGNED_SUPPLIER);
+      // Pedido de antes do documento com assinaturas: sem os itens.
+      if (!wellmix && !supplier) return null;
+      if (wellmix?.status !== "done") return "awaiting_wellmix";
+      return supplier?.status === "done" ? "signed" : "sent_to_supplier";
+    };
     for (const row of rows) {
       const request = row.requestId ? requestOf.get(row.requestId) : null;
       if (!request || row.status !== "requested") continue;
+      const order = orders.find((o) => o.requestId === request.id) ?? null;
       row.next = bookingNextStep(
         request,
-        quotes.filter((q) => q.requestId === request.id),
-        orders.find((o) => o.requestId === request.id) ?? null,
+        quotes
+          .filter((q) => q.requestId === request.id)
+          .map((q) => ({
+            id: q.id,
+            status: q.status,
+            negotiation: q.negotiation,
+            draft:
+              q.status === "invited" &&
+              (drafted.has(q.id) || q.leadTimeDays != null || !!q.conditions),
+          })),
+        order ? { id: order.id, document: documentOf(order.id) } : null,
         openQuotes,
       );
     }

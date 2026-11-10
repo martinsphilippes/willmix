@@ -612,6 +612,8 @@ describe("gerar solicitação", () => {
       step: "open_rfq",
       href: `/app/requests/${request.id}`,
       target: "request",
+      answered: 0,
+      total: 0,
     });
     // RFQ aberta: esperando o fornecedor, com o botão direto na cotação.
     const { openRfq } = await import("@/lib/services/requests");
@@ -624,6 +626,29 @@ describe("gerar solicitação", () => {
       step: "wait_supplier",
       href: `/app/quotes/${quote.id}`,
       target: "quote",
+      answered: 0,
+      total: 1,
+    });
+    // O fornecedor salvou um rascunho (prazo guardado) e não enviou: a linha
+    // diz isso, em vez de "esperando".
+    await getStore().update("quotes", quote.id, { leadTimeDays: 30 });
+    expect(await nextOf(admin)).toMatchObject({
+      step: "supplier_draft",
+      href: `/app/quotes/${quote.id}`,
+    });
+    // Cotação enviada: a linha muda e o botão leva à confirmação.
+    const { answerQuote } = await import("@/lib/services/requests");
+    await answerQuote(admin, quote.id, {
+      price: 4,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    expect(await nextOf(admin)).toEqual({
+      step: "choose_quote",
+      href: `/app/requests/${request.id}#quotes-compare`,
+      target: "confirm",
+      answered: 1,
+      total: 1,
     });
     // Linha que não virou solicitação não tem próximo passo.
     const other = await row("approved");
@@ -634,6 +659,55 @@ describe("gerar solicitação", () => {
     ).toBeNull();
     // Só Booking (sem a tela Solicitações): sem link para lá.
     expect(await nextOf(onlyBooking)).toBeNull();
+  });
+
+  it("depois do pedido, a linha acompanha o documento do pedido: Wellmix assina, fornecedor assina, assinado", async () => {
+    const { setSetting } = await import("@/lib/settings");
+    await setSetting("approvalsEnabled", false);
+    const line = await row("approved");
+    const [request] = await booking.generateRequestFromBooking(
+      admin,
+      { ids: [line.booking.id], customer: joao.partyId! },
+      t,
+    );
+    const nextOf = async () =>
+      (await booking.listBookingRows(admin)).rows.find(
+        (r) => r.id === line.booking.id,
+      )!.next;
+    const r = await import("@/lib/services/requests");
+    const [quote] = await r.openRfq(admin, request.id, ["fornecedor-a"]);
+    await r.answerQuote(admin, quote.id, {
+      price: 3.6,
+      currency: "USD",
+      leadTimeDays: 45,
+    });
+    await r.selectQuote(admin, quote.id, {
+      sellPrice: 10_000,
+      sellCurrency: "BRL",
+      downPaymentAmount: 3000,
+    });
+    expect((await nextOf())?.step).toBe("wait_down_payment");
+    const order = await r.confirmDownPayment(admin, request.id);
+    // Pedido criado: o lugar da troca do documento, com a Wellmix primeiro.
+    expect(await nextOf()).toMatchObject({
+      step: "sign_wellmix",
+      href: `/app/orders/${order.id}/purchase-order`,
+      target: "document",
+    });
+    const { signOrderAs } = await import("./setup");
+    await signOrderAs(admin, order.id);
+    expect((await nextOf())?.step).toBe("sign_supplier");
+    // "Pedido criado" concluído: a Preparação abre e o fornecedor assina.
+    const { submitRequirement } = await import("@/lib/workflow/engine");
+    const [confirmed] = await getStore().list("requirements", {
+      filter: { orderId: order.id, key: "order_confirmed" },
+    });
+    await submitRequirement(admin, confirmed.id, { value: "confirmed" });
+    const supplier = (await getStore().list("users")).find(
+      (u) => u.role === "supplier" && u.partyId === "fornecedor-a",
+    )!;
+    await signOrderAs(supplier, order.id);
+    expect((await nextOf())?.step).toBe("signed");
   });
 
   it("recusas: etapa, cliente de outra linha, sem cliente, quantidade e produto", async () => {

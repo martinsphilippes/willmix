@@ -124,13 +124,36 @@ export const pt = {
   "booking.next.open_rfq":
     "Próximo passo: abrir a RFQ, que envia o pedido de preço ao fornecedor.",
   "booking.next.wait_supplier":
-    "Esperando o fornecedor confirmar o preço. Se ele já respondeu por fora, registre a resposta na cotação.",
+    "Esperando o fornecedor enviar a cotação (confirmar ou mudar o preço). Se ele já respondeu por fora, registre a resposta na cotação.",
   "booking.next.offer_declined":
     "O fornecedor não aceitou o preço. Converse com ele ou mude o preço aqui na tabela.",
   "booking.next.negotiating":
     "Cotação devolvida: esperando a resposta do fornecedor.",
   "booking.next.choose_quote":
-    "O fornecedor respondeu. Próximo passo: escolher a cotação e definir o valor de venda.",
+    "O fornecedor enviou a cotação. Próximo passo: conferir e confirmar a cotação (com o valor de venda).",
+  "booking.next.supplier_draft":
+    "A ficha da cotação já foi preenchida em parte, mas a cotação ainda não foi enviada. Abra para ver o que falta ou registrar a resposta pelo fornecedor.",
+  "booking.next.sign_wellmix":
+    "Virou pedido. Próximo passo: a Wellmix assina o documento do pedido para ele seguir ao fornecedor.",
+  "booking.next.sign_supplier":
+    "Documento do pedido enviado. Esperando o fornecedor baixar, assinar e anexar de volta.",
+  "booking.next.signed":
+    "Documento do pedido assinado pelos dois e guardado no pedido.",
+  "booking.next.count": "({answered} de {total} cotações enviadas)",
+  "booking.next.label.open_rfq": "Abrir RFQ",
+  "booking.next.label.wait_supplier": "Aguardando fornecedor",
+  "booking.next.label.supplier_draft": "Cotação em rascunho",
+  "booking.next.label.offer_declined": "Preço não aceito",
+  "booking.next.label.negotiating": "Em negociação",
+  "booking.next.label.choose_quote": "Cotação enviada",
+  "booking.next.label.wait_down_payment": "Cotação confirmada",
+  "booking.next.label.ordered": "Pedido criado",
+  "booking.next.label.sign_wellmix": "Pedido: assinar documento",
+  "booking.next.label.sign_supplier": "Documento com o fornecedor",
+  "booking.next.label.signed": "Documento assinado",
+  "booking.next.label.cancelled": "Cancelada",
+  "booking.next.go.confirm": "Conferir e confirmar",
+  "booking.next.go.document": "Abrir documento do pedido",
   "booking.next.wait_down_payment":
     "Fornecedor escolhido. Próximo passo: confirmar o sinal (ou a aprovação) na solicitação.",
   "booking.next.ordered": "Já virou pedido. Daqui em diante, siga pelo pedido.",
@@ -272,13 +295,36 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.next.open_rfq":
     "Next step: open the RFQ, which sends the price request to the supplier.",
   "booking.next.wait_supplier":
-    "Waiting for the supplier to confirm the price. If they already answered elsewhere, record the answer in the quote.",
+    "Waiting for the supplier to send the quote (confirm or change the price). If they already answered elsewhere, record the answer in the quote.",
   "booking.next.offer_declined":
     "The supplier did not accept the price. Talk to them or change the price here in the table.",
   "booking.next.negotiating":
     "Quote returned: waiting for the supplier's answer.",
   "booking.next.choose_quote":
-    "The supplier answered. Next step: choose the quote and set the sale price.",
+    "The supplier sent the quote. Next step: check and confirm the quote (with the sale price).",
+  "booking.next.supplier_draft":
+    "The quote sheet is partly filled in, but the quote has not been sent yet. Open it to see what is missing or to record the supplier's answer.",
+  "booking.next.sign_wellmix":
+    "It became an order. Next step: Wellmix signs the order document so it goes to the supplier.",
+  "booking.next.sign_supplier":
+    "Order document sent. Waiting for the supplier to download, sign and attach it back.",
+  "booking.next.signed":
+    "Order document signed by both sides and stored in the order.",
+  "booking.next.count": "({answered} of {total} quotes sent)",
+  "booking.next.label.open_rfq": "Open RFQ",
+  "booking.next.label.wait_supplier": "Waiting for supplier",
+  "booking.next.label.supplier_draft": "Quote in draft",
+  "booking.next.label.offer_declined": "Price not accepted",
+  "booking.next.label.negotiating": "Negotiating",
+  "booking.next.label.choose_quote": "Quote sent",
+  "booking.next.label.wait_down_payment": "Quote confirmed",
+  "booking.next.label.ordered": "Order created",
+  "booking.next.label.sign_wellmix": "Order: sign document",
+  "booking.next.label.sign_supplier": "Document with supplier",
+  "booking.next.label.signed": "Document signed",
+  "booking.next.label.cancelled": "Cancelled",
+  "booking.next.go.confirm": "Check and confirm",
+  "booking.next.go.document": "Open order document",
   "booking.next.wait_down_payment":
     "Supplier chosen. Next step: confirm the down payment (or the approval) in the request.",
   "booking.next.ordered":
@@ -412,11 +458,33 @@ export const zh: Record<keyof typeof pt, string> = {
     "表格中的字段会自动保存：从列表中选择，或输入后离开该字段。下方显示“已保存 ✓”；无法保存时，原因以红色显示。",
   "booking.next.open_rfq": "下一步：开启询价（RFQ），向供应商发送报价请求。",
   "booking.next.wait_supplier":
-    "等待供应商确认价格。如对方已通过其他方式回复，请在报价中登记。",
+    "等待供应商提交报价（确认或修改价格）。如对方已通过其他方式回复，请在报价中登记。",
   "booking.next.offer_declined":
     "供应商未接受该价格。请与对方沟通，或在此表格中修改价格。",
   "booking.next.negotiating": "报价已退回：等待供应商回复。",
-  "booking.next.choose_quote": "供应商已回复。下一步：选择报价并确定销售价格。",
+  "booking.next.choose_quote":
+    "供应商已提交报价。下一步：核对并确认报价（含销售价格）。",
+  "booking.next.supplier_draft":
+    "报价采购单已填写一部分，但报价尚未提交。请打开查看缺少的内容，或代供应商登记回复。",
+  "booking.next.sign_wellmix":
+    "已转为订单。下一步：Wellmix 签署订单文件，以便发给供应商。",
+  "booking.next.sign_supplier": "订单文件已发送。等待供应商下载、签署并上传。",
+  "booking.next.signed": "订单文件已由双方签署并保存在订单中。",
+  "booking.next.count": "（已提交 {answered}/{total} 份报价）",
+  "booking.next.label.open_rfq": "开启询价",
+  "booking.next.label.wait_supplier": "等待供应商",
+  "booking.next.label.supplier_draft": "报价草稿",
+  "booking.next.label.offer_declined": "价格未接受",
+  "booking.next.label.negotiating": "协商中",
+  "booking.next.label.choose_quote": "报价已提交",
+  "booking.next.label.wait_down_payment": "报价已确认",
+  "booking.next.label.ordered": "订单已创建",
+  "booking.next.label.sign_wellmix": "订单：签署文件",
+  "booking.next.label.sign_supplier": "文件在供应商处",
+  "booking.next.label.signed": "文件已签署",
+  "booking.next.label.cancelled": "已取消",
+  "booking.next.go.confirm": "核对并确认",
+  "booking.next.go.document": "打开订单文件",
   "booking.next.wait_down_payment":
     "已选定供应商。下一步：在询价单中确认定金（或审批）。",
   "booking.next.ordered": "已转为订单。之后请在订单中跟进。",
