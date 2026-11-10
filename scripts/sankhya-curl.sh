@@ -7,7 +7,8 @@
 #   export SANKHYA_X_TOKEN=...        # Sankhya Om → Configurações Gateway
 #   export SANKHYA_BASE_URL=https://api.sankhya.com.br   # opcional (sandbox: https://api.sandbox.sankhya.com.br)
 #   bash scripts/sankhya-curl.sh
-# Faz: 1) autentica; 2) lê 5 empresas (loadRecords); 3) lê 5 produtos (REST v1).
+# Faz: 1) autentica; 2) lê 5 empresas (loadRecords); 3) lê 5 produtos (REST v1);
+# 4) busca tabelas no dicionário (SQL); 5) mostra as colunas de TDDLIG e TDDINS.
 set -euo pipefail
 : "${SANKHYA_CLIENT_ID:?defina SANKHYA_CLIENT_ID}"
 : "${SANKHYA_CLIENT_SECRET:?defina SANKHYA_CLIENT_SECRET}"
@@ -48,3 +49,14 @@ curl -sS -X POST "$BASE/gateway/v1/mge/service.sbr?serviceName=DbExplorerSP.exec
   -d "{\"serviceName\":\"DbExplorerSP.executeQuery\",\"requestBody\":{\"sql\":\"SELECT NOMETAB, DESCRTAB FROM TDDTAB WHERE UPPER(DESCRTAB) LIKE '%NOTA%'\"}}" \
   | head -c 1500
 echo
+
+echo
+echo "== 5) Colunas do dicionário (TDDLIG e TDDINS, sem linhas: só fieldsMetadata)"
+for TAB in TDDLIG TDDINS; do
+  echo "-- $TAB"
+  curl -sS -X POST "$BASE/gateway/v1/mge/service.sbr?serviceName=DbExplorerSP.executeQuery&outputType=json" \
+    -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+    -d "{\"serviceName\":\"DbExplorerSP.executeQuery\",\"requestBody\":{\"sql\":\"SELECT * FROM $TAB WHERE 1 = 0\"}}" \
+    | head -c 1500
+  echo
+done

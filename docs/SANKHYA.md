@@ -22,7 +22,7 @@ export SANKHYA_X_TOKEN=...
 bash scripts/sankhya-curl.sh
 ```
 
-Autentica, lê 5 empresas (loadRecords), produtos (REST) e busca tabelas no dicionário (SQL). Mostra a resposta de cada passo; credencial errada para no passo 1 com o texto do Sankhya (`invalid_client`).
+Autentica, lê 5 empresas (loadRecords), produtos (REST), busca tabelas no dicionário (SQL) e mostra as colunas de TDDLIG e TDDINS (para confirmar os nomes usados em `sankhya-dictionary.ts`). Mostra a resposta de cada passo; credencial errada para no passo 1 com o texto do Sankhya (`invalid_client`).
 
 ## Autenticação
 
