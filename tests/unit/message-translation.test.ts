@@ -482,6 +482,9 @@ describe("aviso evidente para quem é de fora", () => {
     // Começa sem nada novo.
     await msg.markTopicRead(supplierA, topicId);
     expect((await msg.unreadDigest(supplierA, "zh")).total).toBe(0);
+    // A leitura vale até o milissegundo dela: a mensagem nova precisa nascer
+    // depois, senão conta como já lida (no CI as duas chegavam a empatar).
+    await new Promise((r) => setTimeout(r, 5));
 
     const sent = await msg.postMessage(
       admin,

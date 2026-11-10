@@ -12,6 +12,7 @@ import {
   normalizeWeights,
 } from "@/lib/services/supplier-ranking-calc";
 import { FiscalTableCard, TaxRateFields } from "@/components/fiscal-settings";
+import { SettingsTabs } from "./_tabs";
 import { fiscalStatus } from "@/lib/services/fiscal";
 import { formatContainerTypes } from "@/lib/services/containers";
 import { aiStatus } from "@/lib/integrations/ai";
@@ -213,11 +214,18 @@ export default async function SettingsPage({
         title={t("settings.title")}
         actions={
           // Só admin chega aqui: apagar as vendas de teste e recomeçar.
-          <LinkButton href="/app/settings/reset" variant="danger">
-            {t("reset.link")}
-          </LinkButton>
+          <>
+            {/* ERP Sankhya: conexão, dicionário, consultas e envio de pedidos. */}
+            <LinkButton href="/app/settings/sankhya" variant="secondary">
+              {t("sankhya.open")}
+            </LinkButton>
+            <LinkButton href="/app/settings/reset" variant="danger">
+              {t("reset.link")}
+            </LinkButton>
+          </>
         }
       />
+      <SettingsTabs t={t} active="general" admin={user.role === "admin"} />
       {ok ? <Alert tone="success">{t("settings.saved")}</Alert> : null}
       {error ? <Alert tone="danger">{errorText}</Alert> : null}
       <Card className="mt-3">

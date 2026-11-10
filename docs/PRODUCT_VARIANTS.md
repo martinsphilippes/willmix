@@ -70,7 +70,7 @@ Com variações, as colunas comerciais do produto (`price`, `currency`, `moq`, `
 
 - **Cadastro do produto**: seção "Variações" (tabela: foto, nome, código de fábrica, tamanho, preço, MOQ, caixa master/inner, pesos, medidas, CBM, cores, material; situação), com formulário para adicionar/editar e botão desativar/reativar. Ações: `saveProductVariantAction`, `toggleProductVariantAction`.
 - **Catálogo (lista)**: preço "a partir de" e selo "N variações".
-- **Importar ficha técnica**: opção "Resultado" (um produto com variações / um produto por linha); o resultado mostra o produto e as variações criadas/atualizadas.
+- **Importar ficha técnica**: opção "Resultado" (mandar para o Booking, um produto por linha, a primeira para quem abre o Booking, ver `docs/BOOKING.md` / um produto com variações / um produto por linha); o resultado mostra o produto e as variações criadas/atualizadas.
 - **Nova solicitação**: ao escolher um produto com variações aparece o campo "Variação" (obrigatório), que preenche especificação, MOQ e foto.
 - **Solicitação, cotação e pedido**: mostram a variação (nome e, para a Wellmix, os valores do snapshot).
 - **Vitrine**: seletor de variação na página do produto; carrinho com a variação em cada item.

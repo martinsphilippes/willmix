@@ -17,7 +17,8 @@ export const pt = {
   "quoteSheet.conditions": "Condições de pagamento e observações",
   "quoteSheet.saveDraft": "Salvar rascunho",
   "quoteSheet.send": "Enviar cotação",
-  "quoteSheet.saved.partial": "Rascunho salvo. Falta preencher: {fields}.",
+  "quoteSheet.saved.partial":
+    "Rascunho salvo. A cotação ainda NÃO foi enviada à Wellmix. Falta preencher: {fields}.",
   "quoteSheet.saved.complete":
     "Rascunho salvo e ficha completa. Confira e clique em Enviar cotação.",
   "quoteSheet.saved.sent": "Cotação enviada à Wellmix com a ficha de compra.",
@@ -72,7 +73,8 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteSheet.conditions": "Payment terms and notes",
   "quoteSheet.saveDraft": "Save draft",
   "quoteSheet.send": "Send quotation",
-  "quoteSheet.saved.partial": "Draft saved. Still missing: {fields}.",
+  "quoteSheet.saved.partial":
+    "Draft saved. The quote has NOT been sent to Wellmix yet. Still missing: {fields}.",
   "quoteSheet.saved.complete":
     "Draft saved and sheet complete. Review it and click Send quotation.",
   "quoteSheet.saved.sent": "Quotation sent to Wellmix with the purchase sheet.",
@@ -127,7 +129,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteSheet.conditions": "付款条件和备注",
   "quoteSheet.saveDraft": "保存草稿",
   "quoteSheet.send": "提交报价",
-  "quoteSheet.saved.partial": "草稿已保存。尚未填写：{fields}。",
+  "quoteSheet.saved.partial":
+    "草稿已保存。报价尚未提交给 Wellmix。尚未填写：{fields}。",
   "quoteSheet.saved.complete":
     "草稿已保存，采购单已完整。请检查后点击提交报价。",
   "quoteSheet.saved.sent": "报价已连同采购单提交给 Wellmix。",

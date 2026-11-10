@@ -28,6 +28,15 @@ export const pt = {
   "superplan.currency": "Moeda",
   "superplan.pcsPerCarton": "Peças por caixa",
   "superplan.grossWeight": "Peso bruto por peça (kg)",
+  "superplan.netWeight": "Peso líquido por peça (kg)",
+  "superplan.grossWeight.estimated":
+    "Peso bruto estimado: {kg} kg (líquido + {pct}%). A conta usa esse peso até você informar o peso bruto.",
+  "superplan.average":
+    "Média do despachante: {value} (só informação, não entra na conta).",
+  "superplan.average.none": "Média do despachante: ainda não informada.",
+  "superplan.averageWeight": "Peso médio por peça (kg)",
+  "superplan.averageWeight.hint":
+    "Da ficha do produto (muda-se lá ou no Booking). Não entra na conta.",
   "superplan.cbm": "Volume da caixa (m³)",
   "superplan.ii": "II (%)",
   "superplan.ipi": "IPI (%)",
@@ -71,6 +80,8 @@ export const pt = {
     "Câmbio de {date} (o último obtido). Dólar futuro = oficial + R$ {spread}.",
   "superplan.cost.base": "base, não soma",
   "superplan.missing.price": "preço por peça",
+  "superplan.missing.currency":
+    "preço em RMB ou US$ (o cadastro está em outra moeda)",
   "superplan.missing.carton": "peças por caixa",
   "superplan.missing.cbm": "volume da caixa",
   "superplan.missing.container": "capacidade do container",
@@ -82,6 +93,7 @@ export const pt = {
   "superplan.container.byVolume": "Limitado pelo volume ({cbm} m³).",
   "superplan.container.byWeight": "Limitado pelo peso ({kg} kg).",
   "superplan.container.noWeight": "Sem peso por peça: conta só o volume.",
+  "superplan.container.estimated": "Peso bruto estimado (líquido + {pct}%).",
   "superplan.cost.title": "Custo do container",
   "superplan.cost.goods": "Compra ({usd}, no dólar futuro)",
   "superplan.cost.freight": "Frete marítimo",
@@ -129,7 +141,7 @@ export const pt = {
     "ICMS da importação não configurado (Configurações → Tributos): conta como 0%.",
   "superplan.how.title": "Como o Superplan calcula",
   "superplan.how.1":
-    "Container: quantas caixas inteiras cabem pelo volume ou pelo peso máximo, o que acabar primeiro.",
+    "Container: quantas caixas inteiras cabem pelo volume ou pelo peso máximo, o que acabar primeiro. O peso é o bruto; sem peso bruto na ficha, a conta usa o peso líquido + {gross}% (peso estimado).",
   "superplan.how.2":
     "Compra: preço por peça × peças, em dólar, paga ao fornecedor no dólar futuro (oficial + R$ {spread}).",
   "superplan.how.3":
@@ -164,6 +176,9 @@ export const pt = {
   "superplan.params.freightFx": "Câmbio do frete: oficial + (%)",
   "superplan.params.afrmmPct": "AFRMM (% do frete)",
   "superplan.params.afrmmFixed": "AFRMM: valor fixo (R$)",
+  "superplan.params.grossEstimate": "Folga da embalagem no peso (%)",
+  "superplan.params.grossEstimate.hint":
+    "Quanto a embalagem soma ao peso líquido quando a ficha não traz o peso bruto.",
   "superplan.params.factors": "Fatores de preço (× preço mínimo)",
   "superplan.params.table": "Tabela",
   "superplan.params.wholesale": "Atacado",
@@ -182,6 +197,38 @@ export const pt = {
     "Algum valor dos parâmetros não é um número válido. Confira e salve de novo.",
   "superplan.settingsLink":
     "Parâmetros do Superplan (tipos de negócio, despesas e impostos da venda)",
+  "superplan.rfq.title": "Viável? Abrir faca e RFQ com o fornecedor",
+  "superplan.rfq.hint":
+    "Cria a solicitação e a RFQ só com o fornecedor ganho, com o preço e a quantidade desta simulação. Ele envia a faca (die-cut), o MOQ, o prazo e a foto em alta; a proposta espera esses quatro itens.",
+  "superplan.rfq.supplier": "Fornecedor ganho",
+  "superplan.rfq.linked": "do produto",
+  "superplan.rfq.customer": "Para quem",
+  "superplan.rfq.stock": "Compra para estoque (sem cliente)",
+  "superplan.rfq.quantity": "Quantidade (peças)",
+  "superplan.rfq.quantity.hint": "Padrão: as peças que cabem no container.",
+  "superplan.rfq.submit": "Abrir faca e RFQ",
+  "superplan.rfq.sending": "Abrindo…",
+  "superplan.rfq.needProduct":
+    "Escolha um produto do cadastro para abrir a faca e a RFQ.",
+  "superplan.rfq.needResult": "Complete a simulação para abrir a faca e a RFQ.",
+  "superplan.rfq.loss":
+    "Com prejuízo não dá para abrir: ajuste o preço ou os números.",
+  "superplan.rfq.below":
+    "Lucro abaixo da meta: dá para abrir, mas confira antes.",
+  "superplan.rfq.noSuppliers": "Nenhum fornecedor ativo no cadastro.",
+  "superplan.error.simulation_incomplete":
+    "A simulação está incompleta: preencha o que falta e tente de novo.",
+  "superplan.error.not_viable":
+    "Com prejuízo não dá para abrir: ajuste o preço ou os números.",
+  "superplan.error.invalid_quantity":
+    "Quantidade: use um número inteiro de peças.",
+  "superplan.error.invalid_customer": "Cliente inválido ou inativo.",
+  "superplan.error.product_not_found": "Produto não encontrado no cadastro.",
+  "superplan.error.quote_not_created": "A RFQ não foi criada: tente de novo.",
+  "superplan.error.variant_required":
+    "Produto com variações: abra a solicitação pela tela de solicitações, escolhendo a variação.",
+  "superplan.error.below_moq": "Quantidade abaixo do pedido mínimo do produto.",
+  "superplan.error.invalid_supplier": "Fornecedor inválido ou inativo.",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -209,6 +256,15 @@ export const en: Record<keyof typeof pt, string> = {
   "superplan.currency": "Currency",
   "superplan.pcsPerCarton": "Pieces per carton",
   "superplan.grossWeight": "Gross weight per piece (kg)",
+  "superplan.netWeight": "Net weight per piece (kg)",
+  "superplan.grossWeight.estimated":
+    "Estimated gross weight: {kg} kg (net + {pct}%). The calculation uses this weight until you enter the gross weight.",
+  "superplan.average":
+    "Customs broker average: {value} (information only, not used in the calculation).",
+  "superplan.average.none": "Customs broker average: not informed yet.",
+  "superplan.averageWeight": "Average weight per piece (kg)",
+  "superplan.averageWeight.hint":
+    "From the product sheet (change it there or in Booking). Not used in the calculation.",
   "superplan.cbm": "Carton volume (m³)",
   "superplan.ii": "II (%)",
   "superplan.ipi": "IPI (%)",
@@ -252,6 +308,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Rate from {date} (the last one obtained). Forward dollar = official + R$ {spread}.",
   "superplan.cost.base": "base, not added",
   "superplan.missing.price": "price per piece",
+  "superplan.missing.currency":
+    "price in RMB or US$ (the product is registered in another currency)",
   "superplan.missing.carton": "pieces per carton",
   "superplan.missing.cbm": "carton volume",
   "superplan.missing.container": "container capacity",
@@ -264,6 +322,7 @@ export const en: Record<keyof typeof pt, string> = {
   "superplan.container.byVolume": "Limited by volume ({cbm} m³).",
   "superplan.container.byWeight": "Limited by weight ({kg} kg).",
   "superplan.container.noWeight": "No weight per piece: only volume counts.",
+  "superplan.container.estimated": "Estimated gross weight (net + {pct}%).",
   "superplan.cost.title": "Container cost",
   "superplan.cost.goods": "Purchase ({usd}, at the forward dollar)",
   "superplan.cost.freight": "Ocean freight",
@@ -310,7 +369,7 @@ export const en: Record<keyof typeof pt, string> = {
     "Import ICMS not set (Settings → Taxes): counted as 0%.",
   "superplan.how.title": "How Superplan calculates",
   "superplan.how.1":
-    "Container: how many whole cartons fit by volume or by maximum weight, whichever runs out first.",
+    "Container: how many whole cartons fit by volume or by maximum weight, whichever runs out first. The weight is the gross weight; when the sheet has no gross weight, the calculation uses the net weight + {gross}% (estimated weight).",
   "superplan.how.2":
     "Purchase: price per piece × pieces, in dollars, paid to the supplier at the forward dollar (official + R$ {spread}).",
   "superplan.how.3":
@@ -345,6 +404,9 @@ export const en: Record<keyof typeof pt, string> = {
   "superplan.params.freightFx": "Freight exchange rate: official + (%)",
   "superplan.params.afrmmPct": "AFRMM (% of freight)",
   "superplan.params.afrmmFixed": "AFRMM: fixed amount (R$)",
+  "superplan.params.grossEstimate": "Packaging allowance on weight (%)",
+  "superplan.params.grossEstimate.hint":
+    "How much the packaging adds to the net weight when the sheet has no gross weight.",
   "superplan.params.factors": "Price factors (× minimum price)",
   "superplan.params.table": "List",
   "superplan.params.wholesale": "Wholesale",
@@ -363,6 +425,39 @@ export const en: Record<keyof typeof pt, string> = {
     "A parameter value is not a valid number. Check it and save again.",
   "superplan.settingsLink":
     "Superplan parameters (business types, expenses and sale taxes)",
+  "superplan.rfq.title": "Viable? Open die-cut and RFQ with the supplier",
+  "superplan.rfq.hint":
+    "Creates the request and the RFQ only with the winning supplier, with this simulation's price and quantity. The supplier sends the die-cut, the MOQ, the lead time and the high-res photo; the proposal waits for those four items.",
+  "superplan.rfq.supplier": "Winning supplier",
+  "superplan.rfq.linked": "of the product",
+  "superplan.rfq.customer": "For",
+  "superplan.rfq.stock": "Stock purchase (no customer)",
+  "superplan.rfq.quantity": "Quantity (pieces)",
+  "superplan.rfq.quantity.hint":
+    "Default: the pieces that fit in the container.",
+  "superplan.rfq.submit": "Open die-cut and RFQ",
+  "superplan.rfq.sending": "Opening…",
+  "superplan.rfq.needProduct":
+    "Choose a product from the catalog to open the die-cut and the RFQ.",
+  "superplan.rfq.needResult":
+    "Complete the simulation to open the die-cut and the RFQ.",
+  "superplan.rfq.loss":
+    "With a loss it cannot be opened: adjust the price or the numbers.",
+  "superplan.rfq.below":
+    "Profit below the target: it can be opened, but check first.",
+  "superplan.rfq.noSuppliers": "No active supplier in the registry.",
+  "superplan.error.simulation_incomplete":
+    "The simulation is incomplete: fill in what is missing and try again.",
+  "superplan.error.not_viable":
+    "With a loss it cannot be opened: adjust the price or the numbers.",
+  "superplan.error.invalid_quantity": "Quantity: use a whole number of pieces.",
+  "superplan.error.invalid_customer": "Invalid or inactive customer.",
+  "superplan.error.product_not_found": "Product not found in the catalog.",
+  "superplan.error.quote_not_created": "The RFQ was not created: try again.",
+  "superplan.error.variant_required":
+    "Product with variants: open the request from the requests screen, choosing the variant.",
+  "superplan.error.below_moq": "Quantity below the product's minimum order.",
+  "superplan.error.invalid_supplier": "Invalid or inactive supplier.",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -389,6 +484,14 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.currency": "币种",
   "superplan.pcsPerCarton": "每箱件数",
   "superplan.grossWeight": "单件毛重（kg）",
+  "superplan.netWeight": "单件净重（kg）",
+  "superplan.grossWeight.estimated":
+    "估算毛重：{kg} kg（净重 + {pct}%）。在填写毛重之前，按这个重量计算。",
+  "superplan.average": "报关行均价：{value}（仅供参考，不参与计算）。",
+  "superplan.average.none": "报关行均价：尚未填写。",
+  "superplan.averageWeight": "每件平均重量（千克）",
+  "superplan.averageWeight.hint":
+    "来自产品资料表（在那里或 Booking 中修改）。不参与计算。",
   "superplan.cbm": "箱体积（m³）",
   "superplan.ii": "进口税 II（%）",
   "superplan.ipi": "IPI（%）",
@@ -431,6 +534,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "{date} 的汇率（最近一次获取）。远期美元 = 官方 + R$ {spread}。",
   "superplan.cost.base": "税基，不计入合计",
   "superplan.missing.price": "单价",
+  "superplan.missing.currency":
+    "以人民币或美元计的价格（产品登记的是其他币种）",
   "superplan.missing.carton": "每箱件数",
   "superplan.missing.cbm": "箱体积",
   "superplan.missing.container": "货柜容量",
@@ -442,6 +547,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.container.byVolume": "受体积限制（{cbm} m³）。",
   "superplan.container.byWeight": "受重量限制（{kg} kg）。",
   "superplan.container.noWeight": "没有单件重量：只按体积计算。",
+  "superplan.container.estimated": "毛重为估算值（净重 + {pct}%）。",
   "superplan.cost.title": "货柜成本",
   "superplan.cost.goods": "采购（{usd}，按远期美元）",
   "superplan.cost.freight": "海运费",
@@ -486,7 +592,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.target.use": "测试这个价格",
   "superplan.icms.unset": "未设置进口 ICMS（设置 → 税费）：按 0% 计算。",
   "superplan.how.title": "Superplan 的计算方式",
-  "superplan.how.1": "货柜：按体积或最大重量能装多少整箱，取先达到的一个。",
+  "superplan.how.1":
+    "货柜：按体积或最大重量能装多少整箱，取先达到的一个。重量按毛重计算；资料表没有毛重时，按净重 + {gross}% 计算（估算重量）。",
   "superplan.how.2":
     "采购：单价 × 件数，换算成美元，按远期美元支付给供应商（官方 + R$ {spread}）。",
   "superplan.how.3":
@@ -521,6 +628,9 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.params.freightFx": "运费汇率：官方 +（%）",
   "superplan.params.afrmmPct": "AFRMM（运费的 %）",
   "superplan.params.afrmmFixed": "AFRMM：固定金额（雷亚尔）",
+  "superplan.params.grossEstimate": "包装重量余量（%）",
+  "superplan.params.grossEstimate.hint":
+    "资料表没有毛重时，包装在净重基础上增加的比例。",
   "superplan.params.factors": "价格系数（× 最低价）",
   "superplan.params.table": "目录",
   "superplan.params.wholesale": "批发",
@@ -537,4 +647,30 @@ export const zh: Record<keyof typeof pt, string> = {
   "superplan.params.saved": "参数已保存。",
   "superplan.error.invalid": "某个参数不是有效数字。请检查后重新保存。",
   "superplan.settingsLink": "Superplan 参数（业务类型、费用和销售税）",
+  "superplan.rfq.title": "可行？向供应商开启刀版和询价",
+  "superplan.rfq.hint":
+    "只向中标供应商创建需求和询价，使用本次模拟的价格和数量。供应商发送刀版、起订量、交期和高清照片；报价方案需等待这四项。",
+  "superplan.rfq.supplier": "中标供应商",
+  "superplan.rfq.linked": "本产品",
+  "superplan.rfq.customer": "用于",
+  "superplan.rfq.stock": "备货采购（无客户）",
+  "superplan.rfq.quantity": "数量（件）",
+  "superplan.rfq.quantity.hint": "默认：一个货柜可装的件数。",
+  "superplan.rfq.submit": "开启刀版和询价",
+  "superplan.rfq.sending": "正在开启…",
+  "superplan.rfq.needProduct": "请从产品目录选择产品，以开启刀版和询价。",
+  "superplan.rfq.needResult": "请完成模拟，以开启刀版和询价。",
+  "superplan.rfq.loss": "亏损时无法开启：请调整价格或数字。",
+  "superplan.rfq.below": "利润低于目标：可以开启，但请先核对。",
+  "superplan.rfq.noSuppliers": "目录中没有启用的供应商。",
+  "superplan.error.simulation_incomplete": "模拟不完整：请补全后重试。",
+  "superplan.error.not_viable": "亏损时无法开启：请调整价格或数字。",
+  "superplan.error.invalid_quantity": "数量：请填写整数件数。",
+  "superplan.error.invalid_customer": "客户无效或未启用。",
+  "superplan.error.product_not_found": "产品目录中找不到该产品。",
+  "superplan.error.quote_not_created": "询价未创建：请重试。",
+  "superplan.error.variant_required":
+    "此产品有规格变体：请在需求页面选择变体后开启需求。",
+  "superplan.error.below_moq": "数量低于产品的最低起订量。",
+  "superplan.error.invalid_supplier": "供应商无效或未启用。",
 };

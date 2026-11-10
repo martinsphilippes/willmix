@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { openSuperplanRfqAction } from "@/app/app/actions/superplan-rfq";
 import type { pt as superplanTexts } from "@/i18n/modules/superplan";
 import { parseNumberInput } from "@/lib/number-input";
 import {
@@ -11,6 +12,22 @@ import {
   type SuperplanParams,
   type SuperplanResult,
 } from "@/lib/superplan";
+import {
+  businessTypeFields,
+  containerFields,
+  defaultSuperplanForm,
+  isWholeSuperplanField,
+  readSuperplanNumber,
+  superplanFieldText,
+  superplanInputOf,
+  targetPriceCents,
+  type SuperplanContext,
+  type SuperplanFields,
+  type SuperplanNumberField,
+  type SuperplanPrefill,
+} from "@/lib/superplan-defaults";
+import { estimatedGrossKg } from "@/lib/weights";
+import { SubmitButton } from "./submit-button";
 import {
   Alert,
   Button,
@@ -30,6 +47,23 @@ import {
  * tipo de negócio preenche markup, comissão, despesas e meta; trocar o
  * container preenche capacidade e peso máximo; o dólar futuro acompanha o
  * oficial até ser digitado à mão.
+ *
+ * O estado inicial e a passagem dos campos para a conta vêm de
+ * src/lib/superplan-defaults.ts (o servidor usa as mesmas funções para
+ * analisar vários produtos de uma vez: os números batem).
+ *
+ * Pesos: líquido e bruto, cada um no seu campo. Bruto vazio com o líquido
+ * preenchido: o campo do bruto CONTINUA vazio e uma linha diz que a conta usa
+ * um peso bruto estimado (líquido + folga dos parâmetros). A média do
+ * despachante aparece só como informação: não entra em conta nenhuma.
+ *
+ * `save` (opcional): quem monta a tela pode pedir um botão que envia a
+ * simulação que está na tela a uma Server Action (a ação refaz a conta no
+ * servidor). O componente não sabe para que a simulação será gravada.
+ *
+ * `rfq` (opcional, só o administrador): cartão "Viável? Abrir faca e RFQ com
+ * o fornecedor" (docs/SUPERPLAN.md). Envia a simulação do mesmo jeito que o
+ * `save`; o servidor refaz a conta com os parâmetros do sistema.
  */
 
 export type SuperplanLabels = Record<keyof typeof superplanTexts, string>;
@@ -40,77 +74,34 @@ export interface SuperplanProductOption {
   label: string;
 }
 
-/** Dados do produto escolhido (vazios sem produto). */
-export interface SuperplanPrefill {
-  productId: string | null;
-  productName: string | null;
-  unitPrice: number | null;
-  currency: "RMB" | "USD";
-  /** Moeda do cadastro que o Superplan não usa (EUR, BRL): o preço fica vazio. */
-  otherCurrency: string | null;
-  pcsPerCarton: number | null;
-  grossWeightPcKg: number | null;
-  cbmPerCarton: number | null;
-  ncm: string | null;
-  /** II e IPI do NCM na tabela fiscal; nulos quando o NCM não foi achado. */
-  iiPct: number | null;
-  ipiPct: number | null;
+// Os tipos moram em src/lib/superplan-defaults.ts (o servidor também usa);
+// continuam exportados daqui para quem já importava do componente.
+export type { SuperplanContext, SuperplanPrefill };
+
+/**
+ * Botão "gravar esta simulação" (opcional): a tela que usa a calculadora diz
+ * para qual Server Action enviar, os campos escondidos dela e os textos.
+ */
+export interface SuperplanSave {
+  action: (form: FormData) => void | Promise<void>;
+  /** Campos escondidos de quem pediu o botão (ex.: o id do que será gravado). */
+  hidden: Record<string, string>;
+  title: string;
+  hint: string;
+  submit: string;
 }
 
-/** O que vem do sistema: parâmetros, containers, câmbio e tributos da importação. */
-export interface SuperplanContext {
-  params: SuperplanParams;
-  containers: Array<{ code: string; capacityCbm: number; maxWeightKg: number }>;
-  defaultContainer: string | null;
-  /** R$ por US$ (câmbio do dia) e RMB por US$; nulos sem câmbio. */
-  official: number | null;
-  rmbPerUsd: number | null;
-  fxDate: string | null;
-  fxStatus: "today" | "stale" | "manual" | "none";
-  insurancePct: number;
-  pisImportPct: number;
-  cofinsImportPct: number;
-  /** null = não configurado em Configurações (conta como 0%). */
-  icmsImportPct: number | null;
+/**
+ * Abrir a faca e a RFQ com o fornecedor ganho (só o administrador, com um
+ * produto do cadastro): fornecedores (os do produto primeiro) e clientes.
+ */
+export interface SuperplanRfqOptions {
+  suppliers: Array<{ id: string; name: string; linked: boolean }>;
+  customers: Array<{ id: string; name: string }>;
 }
 
-type Fields = {
-  unitPrice: string;
-  currency: "RMB" | "USD";
-  pcsPerCarton: string;
-  grossWeightPcKg: string;
-  cbmPerCarton: string;
-  iiPct: string;
-  ipiPct: string;
-  container: string;
-  containerCbm: string;
-  containerMaxKg: string;
-  freightUsd: string;
-  roadFreightBrl: string;
-  deliveryFreightBrl: string;
-  officialRate: string;
-  futureRate: string;
-  rmbPerUsd: string;
-  businessType: string;
-  markup: string;
-  commissionPct: string;
-  adminExpensesPct: string;
-  targetProfitPct: string;
-  wdPct: string;
-  tradingCommissionPct: string;
-  chinaChargesRmb: string;
-  salePrice: string;
-};
-
-/** Campos em que "1.000" é mil (peças, kg, valores em reais e dólares cheios). */
-const WHOLE: ReadonlyArray<keyof Fields> = [
-  "pcsPerCarton",
-  "containerMaxKg",
-  "freightUsd",
-  "roadFreightBrl",
-  "deliveryFreightBrl",
-  "chinaChargesRmb",
-];
+/** Campos escondidos que a calculadora manda (os de `save.hidden` não os trocam). */
+const SAVE_FIELDS = ["input", "businessType", "container", "ncmFound"];
 
 const fill = (text: string, params?: Record<string, string | number>) =>
   params
@@ -120,29 +111,16 @@ const fill = (text: string, params?: Record<string, string | number>) =>
       )
     : text;
 
-/** Número para o campo: sem separador de milhar, com a vírgula do idioma. */
-function toInput(
-  value: number | null | undefined,
-  decimal: string,
-  digits = 2,
-) {
-  if (value === null || value === undefined || !Number.isFinite(value))
-    return "";
-  const rounded = Number(value.toFixed(digits));
-  return String(rounded).replace(".", decimal);
-}
-
-function read(raw: string, whole = false): number | null {
-  const n = parseNumberInput(raw, { int: whole });
-  return n === null || Number.isNaN(n) ? null : n;
-}
-
 export function SuperplanCalculator({
   labels,
   intl,
   products,
   prefill,
   ctx,
+  averageUsd,
+  averageWeightKg = null,
+  save,
+  rfq = null,
 }: {
   labels: SuperplanLabels;
   /** Tag do idioma para os números (pt-BR, en-US, zh-CN). */
@@ -150,138 +128,89 @@ export function SuperplanCalculator({
   products: SuperplanProductOption[];
   prefill: SuperplanPrefill;
   ctx: SuperplanContext;
+  /**
+   * Média do despachante (US$), da ficha mestre do produto: SÓ informação na
+   * tela. Não entra na conta. `null` = ainda não informada; sem a
+   * propriedade, a linha não aparece.
+   */
+  averageUsd?: number | null;
+  /**
+   * Peso médio por peça (kg), da ficha mestre do produto: aparece na Compra,
+   * só para leitura (muda-se na ficha do produto ou no Booking). Não entra
+   * na conta.
+   */
+  averageWeightKg?: number | null;
+  save?: SuperplanSave;
+  /** Nulo: sem o cartão de abrir a faca e a RFQ. */
+  rfq?: SuperplanRfqOptions | null;
 }) {
   const router = useRouter();
   const L = (key: LabelKey, params?: Record<string, string | number>) =>
     fill(labels[key], params);
   const decimal = intl.startsWith("pt") ? "," : ".";
-  const show = (n: number | null | undefined, digits = 2) =>
-    toInput(n, decimal, digits);
   const { params } = ctx;
 
-  const [f, setF] = useState<Fields>(() => {
-    const type = businessTypeOf(params, params.defaultBusinessType);
-    const box =
-      ctx.containers.find((c) => c.code === ctx.defaultContainer) ??
-      ctx.containers[0] ??
-      null;
-    return {
-      unitPrice: show(prefill.unitPrice, 4),
-      currency: prefill.currency,
-      pcsPerCarton: show(prefill.pcsPerCarton, 0),
-      grossWeightPcKg: show(prefill.grossWeightPcKg, 4),
-      cbmPerCarton: show(prefill.cbmPerCarton, 4),
-      iiPct: show(prefill.iiPct),
-      ipiPct: show(prefill.ipiPct),
-      container: box?.code ?? "",
-      containerCbm: show(box?.capacityCbm),
-      containerMaxKg: show(box?.maxWeightKg, 0),
-      freightUsd: show(params.freightUsd),
-      roadFreightBrl: show(params.roadFreightBrl),
-      deliveryFreightBrl: "",
-      officialRate: show(ctx.official, 4),
-      futureRate: show(
-        ctx.official === null ? null : ctx.official + params.futureSpreadBrl,
-        4,
-      ),
-      rmbPerUsd: show(ctx.rmbPerUsd, 4),
-      businessType: type.name,
-      markup: show(type.markup, 4),
-      commissionPct: show(type.commissionPct),
-      adminExpensesPct: show(type.adminExpensesPct),
-      targetProfitPct: show(type.targetProfitPct),
-      wdPct: show(type.wdPct),
-      tradingCommissionPct: "",
-      chinaChargesRmb: "",
-      salePrice: "",
-    };
-  });
-  const [expenses, setExpenses] = useState<string[]>(() =>
-    params.expenses.map((e) => show(e.amountBrl)),
+  // Estado inicial: a mesma simulação padrão que o servidor usa para analisar
+  // vários produtos de uma vez (src/lib/superplan-defaults.ts).
+  const [initial] = useState(() =>
+    defaultSuperplanForm(prefill, ctx, {}, decimal),
   );
+  const [f, setF] = useState<SuperplanFields>(initial.fields);
+  const [expenses, setExpenses] = useState<string[]>(initial.expenses);
   // O dólar futuro acompanha o oficial (+ diferença dos parâmetros) até a
   // pessoa digitar o futuro à mão.
   const [futureTouched, setFutureTouched] = useState(false);
 
-  const set = <K extends keyof Fields>(key: K, value: Fields[K]) =>
-    setF((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof SuperplanFields>(
+    key: K,
+    value: SuperplanFields[K],
+  ) => setF((prev) => ({ ...prev, [key]: value }));
 
   const chooseType = (name: string) => {
     const type = businessTypeOf(params, name);
-    setF((prev) => ({
-      ...prev,
-      businessType: type.name,
-      markup: show(type.markup, 4),
-      commissionPct: show(type.commissionPct),
-      adminExpensesPct: show(type.adminExpensesPct),
-      targetProfitPct: show(type.targetProfitPct),
-      wdPct: show(type.wdPct),
-    }));
+    setF((prev) => ({ ...prev, ...businessTypeFields(type, decimal) }));
   };
   const chooseContainer = (code: string) => {
     const box = ctx.containers.find((c) => c.code === code);
     setF((prev) => ({
       ...prev,
-      container: code,
-      containerCbm: box ? show(box.capacityCbm) : prev.containerCbm,
-      containerMaxKg: box ? show(box.maxWeightKg, 0) : prev.containerMaxKg,
+      ...(box ? containerFields(box, decimal) : { container: code }),
     }));
   };
   const setOfficial = (raw: string) => {
     setF((prev) => {
-      const official = read(raw);
+      const official = readSuperplanNumber(raw);
       return {
         ...prev,
         officialRate: raw,
         futureRate:
           futureTouched || official === null
             ? prev.futureRate
-            : show(official + params.futureSpreadBrl, 4),
+            : superplanFieldText(
+                "futureRate",
+                official + params.futureSpreadBrl,
+                decimal,
+              ),
       };
     });
   };
+  const testSalePrice = (price: number) =>
+    set("salePrice", superplanFieldText("salePrice", price, decimal));
 
-  const num = (key: keyof Fields) =>
-    read(f[key] as string, WHOLE.includes(key));
-  const input: SuperplanInput = {
-    unitPrice: num("unitPrice"),
-    currency: f.currency,
-    pcsPerCarton: num("pcsPerCarton"),
-    grossWeightPcKg: num("grossWeightPcKg"),
-    cbmPerCarton: num("cbmPerCarton"),
-    containerCbm: num("containerCbm"),
-    containerMaxKg: num("containerMaxKg"),
-    iiPct: num("iiPct") ?? 0,
-    ipiPct: num("ipiPct") ?? 0,
-    freightUsd: num("freightUsd"),
-    roadFreightBrl: num("roadFreightBrl") ?? 0,
-    deliveryFreightBrl: num("deliveryFreightBrl") ?? 0,
-    officialRate: num("officialRate"),
-    futureRate: num("futureRate"),
-    rmbPerUsd: num("rmbPerUsd"),
-    tradingCommissionPct: num("tradingCommissionPct") ?? 0,
-    chinaChargesRmb: num("chinaChargesRmb") ?? 0,
-    expenses: params.expenses.map((e, i) => ({
-      ...e,
-      amountBrl: read(expenses[i] ?? "", true) ?? 0,
-    })),
-    markup: num("markup") ?? 0,
-    commissionPct: num("commissionPct") ?? 0,
-    adminExpensesPct: num("adminExpensesPct") ?? 0,
-    targetProfitPct: num("targetProfitPct") ?? 0,
-    wdPct: num("wdPct") ?? 0,
-    insurancePct: ctx.insurancePct,
-    pisImportPct: ctx.pisImportPct,
-    cofinsImportPct: ctx.cofinsImportPct,
-    icmsImportPct: ctx.icmsImportPct ?? 0,
-    freightFxPct: params.freightFxPct,
-    afrmmPct: params.afrmmPct,
-    afrmmFixedBrl: params.afrmmFixedBrl,
-    priceFactors: params.priceFactors,
-    saleTaxes: params.saleTaxes,
-    salePrice: num("salePrice"),
-  };
+  const input: SuperplanInput = superplanInputOf({ fields: f, expenses }, ctx);
   const r = computeSuperplan(input);
+  // Peso bruto que a conta usa: o digitado ou, só com o líquido, o estimado
+  // (a mesma função da conta). O campo do bruto nunca recebe a estimativa.
+  const weight = estimatedGrossKg(
+    input.netWeightPcKg,
+    input.grossWeightPcKg,
+    input.grossEstimatePct,
+  );
+  // II e IPI informados (vieram do produto ou foram digitados): sem eles a
+  // conta usa 0 e quem grava a simulação fica sabendo.
+  const ratesKnown =
+    readSuperplanNumber(f.iiPct) !== null &&
+    readSuperplanNumber(f.ipiPct) !== null;
 
   const nf = (v: number, digits = 2) =>
     new Intl.NumberFormat(intl, { maximumFractionDigits: digits }).format(v);
@@ -294,12 +223,12 @@ export function SuperplanCalculator({
   const usd = (v: number) => formatMoney(v, "USD", intl);
 
   const field = (
-    key: Exclude<keyof Fields, "currency" | "container" | "businessType">,
+    key: SuperplanNumberField,
     label: LabelKey,
     opts: { hint?: ReactNode; onChange?: (raw: string) => void } = {},
   ) => {
     const bad = Number.isNaN(
-      parseNumberInput(f[key], { int: WHOLE.includes(key) }),
+      parseNumberInput(f[key], { int: isWholeSuperplanField(key) }),
     );
     return (
       <Field label={L(label)} hint={opts.hint}>
@@ -338,6 +267,30 @@ export function SuperplanCalculator({
         ? `/app/superplan?product=${encodeURIComponent(id)}`
         : "/app/superplan",
     );
+  // "Gravar esta simulação" (só quando a tela pede): vai a conta que está na
+  // tela; a ação refaz o cálculo no servidor (o resultado não sai daqui).
+  const saveForm = save ? (
+    <form
+      action={save.action}
+      className="rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm"
+      data-superplan-save-form
+    >
+      {Object.entries(save.hidden)
+        .filter(([name]) => !SAVE_FIELDS.includes(name))
+        .map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
+      <input type="hidden" name="input" value={JSON.stringify(input)} />
+      <input type="hidden" name="businessType" value={f.businessType} />
+      <input type="hidden" name="container" value={f.container} />
+      <input type="hidden" name="ncmFound" value={ratesKnown ? "1" : "0"} />
+      <p className="text-sm font-semibold text-zinc-900">{save.title}</p>
+      <p className="mt-0.5 text-xs text-zinc-600">{save.hint}</p>
+      <SubmitButton className="mt-2" data-superplan-save-simulation>
+        {save.submit}
+      </SubmitButton>
+    </form>
+  ) : null;
 
   return (
     <div className="space-y-4">
@@ -376,15 +329,16 @@ export function SuperplanCalculator({
       </form>
 
       {/* No celular o resultado fica embaixo: o resumo aparece aqui também. */}
-      <div className="lg:hidden">
+      <div className="space-y-2 lg:hidden">
         <VerdictBox
           r={r}
           L={L}
           nf={nf}
           pct={pct}
           brl={brl}
-          onUse={(p) => set("salePrice", show(p))}
+          onUse={testSalePrice}
         />
+        {saveForm}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,31rem)]">
@@ -428,8 +382,53 @@ export function SuperplanCalculator({
                 </Select>
               </Field>
               {field("pcsPerCarton", "superplan.pcsPerCarton")}
+              {field("netWeightPcKg", "superplan.netWeight")}
               {field("grossWeightPcKg", "superplan.grossWeight")}
+              <Field
+                label={L("superplan.averageWeight")}
+                hint={L("superplan.averageWeight.hint")}
+              >
+                <Input
+                  type="text"
+                  readOnly
+                  tabIndex={-1}
+                  value={averageWeightKg === null ? "" : nf(averageWeightKg, 4)}
+                  placeholder="—"
+                  data-superplan-average-weight={
+                    averageWeightKg === null ? "" : averageWeightKg.toFixed(4)
+                  }
+                  className="bg-zinc-50 text-zinc-600"
+                />
+              </Field>
               {field("cbmPerCarton", "superplan.cbm")}
+            </div>
+            {/* Bruto vazio com o líquido preenchido: o campo continua vazio e
+                esta linha diz o peso que a conta está usando. */}
+            {weight.estimated && weight.kg !== null ? (
+              <p
+                className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs text-amber-900"
+                data-superplan-gross-estimate={weight.kg.toFixed(4)}
+              >
+                {L("superplan.grossWeight.estimated", {
+                  kg: nf(weight.kg, 4),
+                  pct: nf(params.grossEstimatePct, 2),
+                })}
+              </p>
+            ) : null}
+            {/* Média do despachante: só informação (não entra na conta). */}
+            {prefill.productId && averageUsd !== undefined ? (
+              <p
+                className="mt-2 text-xs text-zinc-600"
+                data-superplan-average={
+                  averageUsd === null ? "" : averageUsd.toFixed(2)
+                }
+              >
+                {averageUsd === null
+                  ? L("superplan.average.none")
+                  : L("superplan.average", { value: usd(averageUsd) })}
+              </p>
+            ) : null}
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {field("iiPct", "superplan.ii")}
               {field("ipiPct", "superplan.ipi")}
             </div>
@@ -569,18 +568,30 @@ export function SuperplanCalculator({
               ) : null}
             </div>
           </Card>
+          {rfq ? (
+            <RfqCard
+              L={L}
+              r={r}
+              rfq={rfq}
+              productId={prefill.productId}
+              input={input}
+              businessType={f.businessType}
+              container={f.container}
+            />
+          ) : null}
         </div>
 
         <div className="min-w-0 space-y-4 lg:sticky lg:top-4 lg:self-start">
-          <div className="hidden lg:block">
+          <div className="hidden space-y-2 lg:block">
             <VerdictBox
               r={r}
               L={L}
               nf={nf}
               pct={pct}
               brl={brl}
-              onUse={(p) => set("salePrice", show(p))}
+              onUse={testSalePrice}
             />
+            {saveForm}
           </div>
           <Results
             r={r}
@@ -590,6 +601,7 @@ export function SuperplanCalculator({
             brl={brl}
             usd={usd}
             icmsUnset={ctx.icmsImportPct === null}
+            grossEstimatePct={params.grossEstimatePct}
             factors={params.priceFactors}
             markup={input.markup}
             wdPct={input.wdPct}
@@ -633,9 +645,9 @@ function VerdictBox({
   const { sale, target, verdict, prices } = r;
   const goal = `${nf(target.pct, 1)}%`;
   // Preço da meta em centavos, arredondado para cima: vendendo a ele, a meta
-  // é batida (o mesmo valor que o botão "Testar esse preço" usa).
-  const needed =
-    target.price === null ? null : Math.ceil(target.price * 100 - 1e-6) / 100;
+  // é batida (o mesmo valor que o botão "Testar esse preço" usa e que o
+  // retrato da simulação guarda).
+  const needed = targetPriceCents(r);
   const neededMarkup =
     needed !== null && r.cost ? needed / r.cost.perPiece : null;
   const tested = Math.abs(sale.price - prices.minimum) > 0.0049;
@@ -755,6 +767,7 @@ function Results({
   brl,
   usd,
   icmsUnset,
+  grossEstimatePct,
   factors,
   markup,
   wdPct,
@@ -767,6 +780,7 @@ function Results({
   brl: Fmt;
   usd: Fmt;
   icmsUnset: boolean;
+  grossEstimatePct: number;
   factors: SuperplanParams["priceFactors"];
   markup: number;
   wdPct: number;
@@ -786,7 +800,17 @@ function Results({
               pieces: nf(container.pieces, 0),
             })}
           </p>
-          <p className="mt-0.5 text-xs text-zinc-600">
+          <p
+            className="mt-0.5 text-xs text-zinc-600"
+            data-superplan-limited={container.limitedBy}
+            data-superplan-weight={
+              container.weightUnknown
+                ? "unknown"
+                : container.weightEstimated
+                  ? "estimated"
+                  : "informed"
+            }
+          >
             {container.limitedBy === "weight"
               ? L("superplan.container.byWeight", {
                   kg: nf(container.usedKg ?? 0, 0),
@@ -796,6 +820,11 @@ function Results({
                 })}
             {container.weightUnknown
               ? ` ${L("superplan.container.noWeight")}`
+              : null}
+            {container.weightEstimated
+              ? ` ${L("superplan.container.estimated", {
+                  pct: nf(grossEstimatePct, 2),
+                })}`
               : null}
           </p>
         </Card>
@@ -954,5 +983,110 @@ function Results({
         </Card>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Viabilidade feita: abre a solicitação e a RFQ só com o fornecedor ganho
+ * (docs/SUPERPLAN.md). Com prejuízo ou conta incompleta, o botão não aparece
+ * e a tela diz por quê; o servidor confere de novo.
+ */
+function RfqCard({
+  L,
+  r,
+  rfq,
+  productId,
+  input,
+  businessType,
+  container,
+}: {
+  L: Lbl;
+  r: SuperplanResult;
+  rfq: SuperplanRfqOptions;
+  productId: string | null;
+  input: SuperplanInput;
+  businessType: string;
+  container: string;
+}) {
+  const pieces = r.container?.pieces ?? null;
+  // A quantidade acompanha o container até a pessoa digitar outra.
+  const [quantity, setQuantity] = useState<string | null>(null);
+  const shown = quantity ?? (pieces ? String(pieces) : "");
+  const blocked = !productId
+    ? L("superplan.rfq.needProduct")
+    : r.missing.length || !r.verdict
+      ? L("superplan.rfq.needResult")
+      : r.verdict === "loss"
+        ? L("superplan.rfq.loss")
+        : !rfq.suppliers.length
+          ? L("superplan.rfq.noSuppliers")
+          : null;
+  return (
+    <div id="superplan-rfq" className="scroll-mt-4" data-superplan-rfq>
+      <Card dense title={L("superplan.rfq.title")}>
+        <p className="-mt-1 mb-3 text-sm text-zinc-600">
+          {L("superplan.rfq.hint")}
+        </p>
+        {blocked ? (
+          <Alert tone={r.verdict === "loss" ? "danger" : "neutral"}>
+            {blocked}
+          </Alert>
+        ) : (
+          <form action={openSuperplanRfqAction} className="space-y-3">
+            <input type="hidden" name="productId" value={productId ?? ""} />
+            <input type="hidden" name="input" value={JSON.stringify(input)} />
+            <input type="hidden" name="businessType" value={businessType} />
+            <input type="hidden" name="container" value={container} />
+            {r.verdict === "below" ? (
+              <Alert tone="warning">{L("superplan.rfq.below")}</Alert>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field label={L("superplan.rfq.supplier")}>
+                <Select name="supplierId" required data-sp="rfq.supplier">
+                  {rfq.suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.linked
+                        ? `${s.name} (${L("superplan.rfq.linked")})`
+                        : s.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={L("superplan.rfq.customer")}>
+                <Select name="customerId" data-sp="rfq.customer">
+                  <option value="__stock">{L("superplan.rfq.stock")}</option>
+                  {rfq.customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label={L("superplan.rfq.quantity")}
+                hint={L("superplan.rfq.quantity.hint")}
+              >
+                <Input
+                  name="quantity"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  value={shown}
+                  data-sp="rfq.quantity"
+                  onChange={(e) => setQuantity(e.target.value)}
+                />
+              </Field>
+            </div>
+            <SubmitButton
+              pendingText={L("superplan.rfq.sending")}
+              data-superplan-rfq-submit
+            >
+              {L("superplan.rfq.submit")}
+            </SubmitButton>
+          </form>
+        )}
+      </Card>
+    </div>
   );
 }

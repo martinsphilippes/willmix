@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { requireScreen } from "@/lib/auth/guard";
 import { isWellmix } from "@/lib/auth/permissions";
+import { canOpen } from "@/lib/auth/screens";
 import { getT } from "@/i18n/server";
 import type { DictionaryKey } from "@/i18n/dictionaries";
 import {
@@ -22,7 +23,7 @@ import { ExploreGallery } from "@/components/explore-gallery";
 import { ExploreVariantPicker } from "@/components/explore-variant-picker";
 import { QuantityStepper } from "@/components/quantity-stepper";
 import { SubmitButton } from "@/components/submit-button";
-import { Alert, formatDate } from "@/components/ui";
+import { Alert, TextLink, formatDate } from "@/components/ui";
 
 /*
  * Página do produto na vitrine: fotos, preço estimado (e por quantidade),
@@ -104,6 +105,23 @@ export default async function ExploreProductPage({
       </div>
       {wellmix ? (
         <Alert tone="info">{t("explore.preview.banner")}</Alert>
+      ) : null}
+      {/* Só a Wellmix chega aqui com o produto ainda no Booking (para o
+        cliente a página não abre): avisa que ele está fora da vitrine. */}
+      {product.hiddenByBooking ? (
+        <div data-explore-booking-hidden="">
+          <Alert tone="warning">
+            {t("explore.booking.hidden")}
+            {canOpen(user, "booking") ? (
+              <>
+                {" "}
+                <TextLink href="/app/booking">
+                  {t("explore.booking.open")}
+                </TextLink>
+              </>
+            ) : null}
+          </Alert>
+        </div>
       ) : null}
       {added ? (
         <div

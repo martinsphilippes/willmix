@@ -39,7 +39,8 @@ export type TaskKind =
   | "import_validate"
   | "cert_step"
   | "cert_validate"
-  | "message_reply";
+  | "message_reply"
+  | "ncm_classify";
 
 /** Situação da pendência em relação ao prazo (dia civil em Brasília). */
 export type TaskDue = "overdue" | "today" | "week" | "later" | "none";
@@ -874,6 +875,37 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             dueAt: m.dueAt,
             customerId: m.customerId,
             ownerUserId: m.analystId,
+          },
+          now,
+        ),
+      );
+    }
+  }
+  // Despachante: produto de solicitação aberta sem NCM (ele classifica; a
+  // Wellmix também pode, na solicitação). Só o produto: sem cliente nem valor.
+  if (user.role === "broker" && user.partyId) {
+    const { ncmPendingRequests } = await import("./request-ncm");
+    for (const request of await ncmPendingRequests()) {
+      tasks.push(
+        finish(
+          {
+            kind: "ncm_classify",
+            title: `Classificar NCM: ${request.productName}`,
+            detail: request.number
+              ? `Solicitação nº ${request.number} · confira as sugestões e confirme o NCM`
+              : "Confira as sugestões e confirme o NCM",
+            text: {
+              title: "tasks.ncm.title",
+              detail: request.number
+                ? "tasks.ncm.detail"
+                : "tasks.ncm.detailNoNumber",
+              values: {
+                product: request.productName,
+                n: request.number ?? "",
+              },
+            },
+            link: `/app/requests/${request.id}/ncm`,
+            dueAt: request.deadline,
           },
           now,
         ),

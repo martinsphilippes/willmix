@@ -28,6 +28,13 @@ export function ChatAttachButtons({
           : "cursor-pointer border-brand-300 bg-white text-brand-700 hover:bg-brand-50 active:bg-brand-100",
       )}
       data-chat-attach={photo ? "photo" : "file"}
+      // Segundo caminho (como no botão de foto das fichas): o toque que cair
+      // no botão, e não no campo invisível, abre o seletor do mesmo jeito.
+      onClick={(event) => {
+        const field = event.currentTarget.querySelector("input");
+        if (!field || field.disabled || event.target === field) return;
+        field.click();
+      }}
     >
       <span aria-hidden>{photo ? "📷" : "📎"}</span>
       <span aria-hidden>{photo ? labels.photo : labels.file}</span>

@@ -173,6 +173,12 @@ export async function submitForApproval(
   const { dumpingHold } = await import("./purchase-flow");
   if (await dumpingHold(quote.id))
     throw new ApprovalError("dumping_release_required");
+  // Aberta do Superplan: a aprovação espera faca, MOQ, prazo e foto em alta.
+  const { assertSuperplanItems } = await import("./superplan-rfq");
+  await assertSuperplanItems(request, quote);
+  // Negociação em aberto ou embalagem sem o OK do fornecedor: espera.
+  const { assertQuoteFlowSettled } = await import("./quote-flow");
+  await assertQuoteFlowSettled(request, quote);
   const settings = await getSettings();
   const valueBrl = valueInBrl(input);
   const levels = levelsFor(valueBrl, settings.approvalExecutiveThresholdBrl);
@@ -286,12 +292,7 @@ export async function decideApproval(
   }
   // Último nível: a seleção do fornecedor passa a valer.
   try {
-    const { selectQuote } = await import("./requests");
-    await selectQuote(
-      user,
-      approval.quoteId,
-      approval.input as unknown as SelectQuoteInput,
-    );
+    await applySelection(user, approval);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const failed = await store.update("approvals", approval.id, {
@@ -328,6 +329,97 @@ export async function decideApproval(
     "request",
     request.id,
     `Aprovação concluída (${level}); escolha do fornecedor gravada`,
+  );
+  await announce(
+    done,
+    request.productName,
+    { userIds: [approval.requestedByUserId] },
+    "approved",
+  );
+  return done;
+}
+
+/**
+ * Grava a escolha aprovada. Se uma tentativa anterior foi interrompida no
+ * meio (tempo esgotado depois de marcar a cotação, antes de o pedido
+ * nascer), retoma de onde parou; se a escolha já está toda gravada (a
+ * solicitação já virou pedido com esta cotação), não há mais nada a fazer.
+ */
+async function applySelection(user: User, approval: Approval) {
+  const store = getStore();
+  const request = await store.get("requests", approval.requestId);
+  if (
+    request?.status === "ORDERED" &&
+    request.selectedQuoteId === approval.quoteId
+  )
+    return;
+  const { selectQuote } = await import("./requests");
+  await selectQuote(
+    user,
+    approval.quoteId,
+    approval.input as unknown as SelectQuoteInput,
+  );
+}
+
+/**
+ * A aprovação terminou em "falhou" (todos os níveis aprovaram, mas a escolha
+ * não pôde ser gravada) e é a mais recente da solicitação: dá para tentar
+ * concluir de novo. Só o administrador ou quem aprovou o último nível.
+ */
+export function canRetryApproval(
+  user: User,
+  approval: Approval,
+  latest: boolean,
+): boolean {
+  if (!isWellmix(user) || approval.status !== "failed" || !latest) return false;
+  if (isAdmin(user)) return true;
+  const last = approval.steps[approval.steps.length - 1];
+  return !!last && last.decision === "approved" && last.userId === user.id;
+}
+
+/**
+ * Tenta concluir de novo uma aprovação que falhou ao gravar a escolha (ex.:
+ * a criação do pedido foi interrompida). Não pede nova aprovação: os níveis
+ * já aprovaram; só refaz a gravação, retomando de onde parou.
+ */
+export async function retryApproval(
+  user: User,
+  approvalId: string,
+): Promise<Approval> {
+  const store = getStore();
+  const approval = await store.get("approvals", approvalId);
+  if (!approval) throw new ApprovalError("not_found");
+  const [latest] = await approvalsFor(approval.requestId);
+  if (!canRetryApproval(user, approval, latest?.id === approval.id))
+    throw new ForbiddenError();
+  const request = await store.get("requests", approval.requestId);
+  if (!request) throw new ApprovalError("not_found");
+  try {
+    await applySelection(user, approval);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const failed = await store.update("approvals", approval.id, { reason });
+    await audit(
+      user,
+      "approval.failed",
+      "request",
+      request.id,
+      `Nova tentativa de gravar a escolha aprovada não deu certo: ${reason}`,
+    );
+    return failed;
+  }
+  const done = await store.update("approvals", approval.id, {
+    status: "approved",
+    currentLevel: null,
+    reason: null,
+    decidedAt: new Date().toISOString(),
+  });
+  await audit(
+    user,
+    "approval.approve",
+    "request",
+    request.id,
+    "Aprovação concluída na nova tentativa; escolha do fornecedor gravada",
   );
   await announce(
     done,

@@ -308,7 +308,7 @@ describe("NCM da solicitação", () => {
       rates: { ii: 18, ipi: 9.75 },
     });
 
-    // Só a Wellmix confirma; NCM fora da tabela é recusado.
+    // Cliente não confirma (só o despachante e a Wellmix); NCM fora da tabela é recusado.
     await expect(
       rn.confirmRequestNcm(joao, request.id, "7013.37.00", "table"),
     ).rejects.toThrow();

@@ -126,7 +126,8 @@ async function completeOrder(orderId: string) {
         await submitRequirement(admin, r.id, { value: "3" });
       else if (r.type === "date")
         await submitRequirement(admin, r.id, { value: "2026-11-01" });
-      else await submitRequirement(admin, r.id, { value: "ok" });
+      else
+        await submitRequirement(admin, r.id, { value: "ok", signature: true });
     }
   }
 }

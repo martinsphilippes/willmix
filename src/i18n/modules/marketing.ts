@@ -202,6 +202,8 @@ export const pt = {
   "marketing.error.marketing_disabled":
     "O marketing studio está desligado nas configurações.",
   "marketing.error.not_found": "Kit ou produto não encontrado.",
+  "marketing.error.product_in_booking":
+    "Este produto ainda está no Booking e o cliente não o vê. Aprove o produto no Booking antes de criar ou oferecer o kit.",
   "marketing.error.invalid_customer": "Cliente inválido.",
   "marketing.error.invalid_price":
     "Preço inválido (use um valor maior ou igual a zero).",
@@ -422,6 +424,8 @@ export const en: Record<keyof typeof pt, string> = {
   "marketing.error.marketing_disabled":
     "The marketing studio is turned off in settings.",
   "marketing.error.not_found": "Kit or product not found.",
+  "marketing.error.product_in_booking":
+    "This product is still in Booking and the customer cannot see it. Approve the product in Booking before creating or offering the kit.",
   "marketing.error.invalid_customer": "Invalid customer.",
   "marketing.error.invalid_price":
     "Invalid price (use a value greater than or equal to zero).",
@@ -627,6 +631,8 @@ export const zh: Record<keyof typeof pt, string> = {
 
   "marketing.error.marketing_disabled": "营销工作室已在设置中关闭。",
   "marketing.error.not_found": "未找到套件或产品。",
+  "marketing.error.product_in_booking":
+    "该产品仍在 Booking 中，客户还看不到。请先在 Booking 中批准该产品，再创建或提供套件。",
   "marketing.error.invalid_customer": "客户无效。",
   "marketing.error.invalid_price": "价格无效（请使用大于或等于零的值）。",
   "marketing.error.kit_cancelled": "此套件已取消；无法更改。",

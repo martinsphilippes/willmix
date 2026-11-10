@@ -2,7 +2,7 @@
 
 Tela **Pedidos → Superplan** (`/app/superplan`), só do administrador. Substitui a planilha SuperPlan: a partir do preço do fornecedor, da caixa, do container, dos fretes, do câmbio e das despesas, mostra quanto custa cada peça posta no depósito, o preço mínimo de venda, os preços sugeridos e se o lucro bate a meta do tipo de negócio.
 
-Conta pura em `src/lib/superplan.ts` (a tela e os testes usam a mesma). Tela em `src/app/app/superplan/page.tsx` e `src/components/superplan-calculator.tsx`; parâmetros em `src/app/app/superplan/_components/params-form.tsx` e `src/app/app/actions/superplan.ts`; textos em `src/i18n/modules/superplan.ts`.
+Conta pura em `src/lib/superplan.ts` (a tela e os testes usam a mesma); peso bruto estimado em `src/lib/weights.ts`. Simulação padrão, retrato da conta e conferência de uma conta vinda do navegador em `src/lib/superplan-defaults.ts` (puro). Dados do sistema e do produto e análise em lote em `src/lib/services/superplan-analysis.ts` (servidor, só leitura). Tela em `src/app/app/superplan/page.tsx` e `src/components/superplan-calculator.tsx`; parâmetros em `src/app/app/superplan/_components/params-form.tsx` e `src/app/app/actions/superplan.ts`; textos em `src/i18n/modules/superplan.ts`.
 
 ## 1. Problema
 
@@ -30,22 +30,25 @@ Em segundos, para qualquer produto: custo por peça, preço mínimo, lucro e um 
 
 ## 4. De onde vêm os números
 
-| Dado                                                                                 | Origem                                                                |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| Preço por peça e moeda (RMB ou US$)                                                  | Cadastro do produto (`price`, `currency`; CNY = RMB)                  |
-| Peças por caixa, peso bruto por peça, volume da caixa                                | Cadastro (`masterBoxQty`, `grossWeightKg`, `cbm` ou medidas da caixa) |
-| II e IPI                                                                             | Tabela fiscal (TEC/TIPI) pelo NCM do produto                          |
-| PIS/COFINS-importação, ICMS da importação, seguro                                    | Configurações → Tributos da importação (os mesmos da proposta)        |
-| Container (capacidade e peso máximo)                                                 | Configurações → Tipos de container (padrão 40HC)                      |
-| Dólar oficial e RMB por dólar                                                        | Câmbio do dia (PTAX do Banco Central; reservas: AwesomeAPI e BCE)     |
-| Dólar futuro                                                                         | Oficial + diferença dos parâmetros (R$ 0,25)                          |
-| Tipos de negócio, despesas por container, fretes, AFRMM, fatores e impostos da venda | Parâmetros do Superplan (setting `superplan`)                         |
+| Dado                                                                                                             | Origem                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Preço por peça e moeda (RMB ou US$)                                                                              | Cadastro do produto (`price`, `currency`; CNY = RMB); cadastro sem preço: ficha mestre. Preço e moeda vêm sempre da mesma fonte           |
+| Peças por caixa e volume da caixa                                                                                | Cadastro (`masterBoxQty`, `cbm` ou medidas da caixa); coluna vazia ou zero: ficha mestre. Leitura única: `productPurchaseView`            |
+| Peso líquido e peso bruto por peça                                                                               | Ficha mestre do produto (N.W e G.W, cada um no seu campo), completada pelas colunas do cadastro                                           |
+| Média do despachante (US$)                                                                                       | Ficha mestre (`averagePrice`): **só informação na tela**, não entra na conta (seção 5.1)                                                  |
+| NCM                                                                                                              | Cadastro; sem ele, o da ficha mestre                                                                                                      |
+| II e IPI                                                                                                         | O que a Wellmix digitou na ficha mestre (`importTaxPercent`, `ipiPercent`); sem isso, a tabela fiscal (TEC/TIPI) pelo NCM (IPI "NT" = 0%) |
+| PIS/COFINS-importação, ICMS da importação, seguro                                                                | Configurações → Tributos da importação (os mesmos da proposta)                                                                            |
+| Container (capacidade e peso máximo)                                                                             | Configurações → Tipos de container (padrão 40HC)                                                                                          |
+| Dólar oficial e RMB por dólar                                                                                    | Câmbio do dia (PTAX do Banco Central; reservas: AwesomeAPI e BCE)                                                                         |
+| Dólar futuro                                                                                                     | Oficial + diferença dos parâmetros (R$ 0,25)                                                                                              |
+| Tipos de negócio, despesas por container, fretes, AFRMM, folga da embalagem no peso, fatores e impostos da venda | Parâmetros do Superplan (setting `superplan`)                                                                                             |
 
-Tudo continua editável na tela para a simulação. A simulação não grava nada.
+Tudo continua editável na tela para a simulação. A simulação não grava nada (o botão opcional de gravar a simulação está na seção 5.3); o botão "Abrir faca e RFQ" cria a solicitação (seção "Da viabilidade à faca e à RFQ").
 
 ## 5. Como calcula
 
-1. **Container**: caixas inteiras que cabem pelo volume (capacidade ÷ volume da caixa) ou pelo peso (peso máximo ÷ peso da caixa), o que acabar primeiro. Peças = caixas × peças por caixa. Sem peso por peça, conta só o volume.
+1. **Container**: caixas inteiras que cabem pelo volume (capacidade ÷ volume da caixa) ou pelo peso (peso máximo ÷ peso bruto da caixa), o que acabar primeiro. Peças = caixas × peças por caixa. O peso é o bruto; sem ele, o bruto estimado pelo líquido (seção 5.1). Sem peso nenhum, conta só o volume.
 2. **Compra**: preço por peça × peças, em dólar (RMB ÷ RMB por dólar). Paga ao fornecedor no dólar futuro.
 3. **Frete marítimo** em R$: frete em US$ × dólar oficial × (1 + 3,02%). **Seguro**: % do FOB, quando configurado.
 4. **Impostos da importação sobre o valor real**:
@@ -67,6 +70,50 @@ Tudo continua editável na tela para a simulação. A simulação não grava nad
 8. **Preço para a meta**: o lucro é uma reta no preço; o preço que dá exatamente a meta % sai dela (arredondado para cima no centavo). Markup necessário = esse preço ÷ custo por peça. Sem solução (impostos e despesas maiores que a margem): a tela avisa.
 9. **Sinal**: verde com lucro ≥ meta; amarelo com lucro positivo abaixo da meta; vermelho com prejuízo.
 
+### 5.1 Os "pesos": líquido, bruto, médio e a média
+
+O **peso médio por peça** (`purchase_sheets.averageWeightPcKg`, kg) aparece na Compra, ao lado do bruto, **só para leitura**: vem da ficha do produto e muda-se lá ou no Booking. Não entra na conta (o container continua limitado pelo bruto ou pelo bruto estimado).
+
+
+A ficha técnica traz o **peso líquido** (N.W PC) e o **peso bruto** (G.W PC) por peça; a maioria das planilhas só preenche o líquido. A tela tem os dois campos, lado a lado, e cada um lê só a sua coluna: **o líquido nunca é lido como bruto**.
+
+- **Peso bruto informado**: é ele que limita o container, como sempre.
+- **Peso bruto vazio e líquido informado**: a conta usa um **peso bruto estimado** = líquido × (1 + folga da embalagem). A folga é o parâmetro "Folga da embalagem no peso (%)" (`grossEstimatePct`, padrão 8, de 0 a 100). O campo do peso bruto **continua vazio** e a tela mostra, logo abaixo, "Peso bruto estimado: 0,243 kg (líquido + 8%)"; o resultado do container também diz que o peso é estimado (`container.weightEstimated`). Digitar o peso bruto troca a estimativa pelo valor real.
+- **Os dois vazios**: só o volume limita o container, com o aviso de sempre (`container.weightUnknown`).
+- A estimativa é só da conta: **nunca é gravada** no produto nem na ficha mestre. A regra está em `estimatedGrossKg` (`src/lib/weights.ts`), a mesma que o Booking usa na coluna "peso estimado".
+
+A **média** é o valor em US$ que o despachante informa na ficha mestre do produto (`purchase_sheets.averagePrice`, campo "Média (US$)"). No Superplan ela aparece **só como informação**, ao lado dos pesos: "Média do despachante: US$ 3,20"; vazia, "ainda não informada". Ela **não entra em conta nenhuma**: não faz parte de `SuperplanInput`, de `computeSuperplan` nem de imposto ou custo algum. Os impostos da importação continuam sobre o **valor real da compra** (passo 4). Não existe, e não deve ser criado, cálculo, campo ou dica de "valor declarado = peso líquido × média": declarar valor diferente do pago é subfaturamento (seção 10). Os testes `tests/unit/superplan-weights.test.ts` travam isso (a conta não tem campo de média; duas contas iguais, uma com média "a mais", dão o mesmo resultado).
+
+### 5.2 Simulação padrão e análise em lote
+
+A simulação que a tela mostra ao abrir um produto, antes de qualquer edição, sai de um lugar só: `src/lib/superplan-defaults.ts`.
+
+- `defaultSuperplanForm(prefill, ctx, overrides?, decimal?)`: os campos da tela (tipo de negócio padrão, container padrão, frete padrão, câmbio do dia com dólar futuro = oficial + diferença, despesas e fatores dos parâmetros, preço de venda vazio = o preço mínimo).
+- `superplanInputOf(form, ctx)`: os campos da tela viram a conta (`SuperplanInput`). É a função que a calculadora usa a cada tecla.
+- `defaultSuperplanInput(prefill, ctx, overrides?)`: as duas juntas; devolve a conta, o tipo de negócio e o container. `overrides` troca só o tipo de negócio e o preço de venda.
+- `snapshotOf(input, result, meta)`: o retrato de uma conta (tipo, preço analisado, custo, mínimo, lucro, meta, sinal, preço para a meta, o que faltou e os pressupostos, incluindo o que foi usado do produto: preço, moeda, peças por caixa e CBM). Dinheiro em centavos, percentuais com 2 casas; o preço da meta é arredondado para cima no centavo, como na tela. `usesMinimum` diz que nenhum preço de venda foi testado (a conta foi feita no preço mínimo).
+- `superplanInputSchema`: confere uma conta vinda do navegador (todo número finito e dentro de uma faixa, listas e textos com tamanho máximo, campo desconhecido descartado).
+
+No servidor, `src/lib/services/superplan-analysis.ts` (só leitura; quem chama confere a permissão):
+
+- `loadSuperplanContext()`: parâmetros, containers, câmbio do dia e tributos da importação;
+- `superplanPrefillsFor(ids)`: os dados de vários produtos de uma vez (uma consulta de produtos, uma de fichas mestre e uma busca na tabela fiscal por NCM distinto). Produto desativado ou que não existe fica fora; a tela do Superplan pede `includeInactive` para continuar abrindo um produto desativado pelo endereço;
+- `analyzeProductsWithDefaults(ids)`: para cada produto, o retrato da simulação padrão. É o "Analisar no Superplan" em várias linhas do Booking (`docs/BOOKING.md`).
+
+A página do Superplan usa as mesmas duas primeiras funções: um caminho só, os números da tela e os da análise em lote batem (teste em `tests/unit/superplan-analysis.test.ts`). `ncmFound` no retrato quer dizer "II e IPI conhecidos" (ficha mestre ou tabela fiscal); sem eles a conta usa 0 no que falta e o custo sai menor (o Booking marca a linha com "II/IPI 0").
+
+**Um jeito só de ler o produto.** Preço, moeda, peças por caixa, CBM e pesos saem de `productPurchaseView` (`src/lib/services/product-sheet.ts`). O Superplan faz a conta com esses números e o Booking mostra os mesmos na linha (teste em `tests/unit/booking-service.test.ts`). Regras: preço e moeda andam juntos, da **mesma fonte** (o cadastro do produto; cadastro sem preço, a ficha mestre; a moeda da outra fonte só entra quando a do preço escolhido está vazia; sem preço em nenhuma das duas, a moeda marcada é a do cadastro); peças por caixa e volume, os do cadastro e, sem eles, os da ficha; zero ou negativo numa fonte não conta; pesos, os do cadastro e, sem eles, os da ficha mestre (cada um do seu campo). O cadastro vem primeiro porque é o gravado por último: salvar a ficha mestre espelha no cadastro, e a importação de produtos e o sourcing gravam só nele.
+
+**Preço em outra moeda.** A conta só aceita RMB ou US$. Produto com preço em EUR ou BRL: a análise em lote diz que falta o preço em RMB ou US$ (`missing: ["currency"]`), e não que falta o preço.
+
+**Sinal só com preço testado.** Sem preço de venda a conta é feita no preço mínimo (custo × fator do tipo de negócio); nesse preço o lucro depende quase só dos parâmetros, e todo produto daria o mesmo sinal. Por isso a análise em lote do Booking não mostra verde/amarelo/vermelho: mostra "No preço mínimo", com o custo e o preço para a meta. O sinal aparece quando alguém testa um preço e grava.
+
+### 5.3 Gravar a simulação (opcional)
+
+A calculadora aceita a propriedade opcional `save` (`action`, `hidden`, `title`, `hint`, `submit`). Com ela, aparece junto do sinal um formulário com um botão que envia à Server Action indicada: os campos escondidos de quem pediu (`hidden`), mais `input` (a conta que está na tela, em JSON), `businessType` (o tipo escolhido), `container` (o código do container, ou vazio) e `ncmFound` ("1" quando II e IPI estão preenchidos, "0" quando contam 0). O resultado não vai junto: a ação confere a conta com `superplanInputSchema` e refaz o cálculo no servidor. A calculadora não sabe para que a simulação será gravada (hoje, o "Gravar no Booking"); sem `save`, nada muda e nada é gravado.
+
+**Aberto pelo Booking** (`/app/superplan?booking=<id>`, só para quem abre as duas telas): a tela vem com o produto da linha (o do endereço não conta), mostra a faixa "Analisando para o Booking" com o link de volta e passa `save` para `saveBookingAnalysisAction` (`src/app/app/actions/booking.ts`), que confere a conta, refaz o cálculo e grava o retrato na linha (`bookings.analysis`). Linha que não existe mais ou produto fora do cadastro: aviso e nenhum botão. Escolher outro produto no seletor sai do modo Booking. Ver `docs/BOOKING.md`.
+
 ### Exemplo (o da planilha)
 
 Jarra a 24,90 RMB, 12 peças por caixa, 1,13 kg por peça, 0,069 m³ por caixa, II 20%, IPI 5%, container de 67,5 m³ e 28 t, frete US$ 3.492, dólar 5,15 (futuro 5,40), 6,75 RMB por dólar, despesas padrão:
@@ -82,6 +129,12 @@ Jarra a 24,90 RMB, 12 peças por caixa, 1,13 kg por peça, 0,069 m³ por caixa, 
 - Sem câmbio automático: os campos ficam vazios e a tela pede o valor.
 - ICMS da importação não configurado: conta 0%, com aviso.
 - Caixa maior que o container: "falta preencher: volume da caixa".
+- Só o peso líquido na ficha: peso bruto estimado (líquido + folga), marcado como estimado; o campo do bruto fica vazio.
+- Sem peso líquido e sem peso bruto: só o volume limita o container.
+- Média do despachante vazia: a tela diz "ainda não informada" (é só informação).
+- Cadastro sem preço, caixa ou volume (ou com zero): vêm da ficha mestre do produto, quando ela tem.
+- Preço em EUR ou BRL: "falta o preço em RMB ou US$".
+- "Gravar no Booking" recusado (número fora do limite): a mensagem diz que há um valor inválido na simulação; a calculadora ainda não marca qual campo.
 - Frete zero vale (produto já posto no Brasil).
 - Falta dado: a tela diz o quê e não mostra conta pela metade.
 
@@ -93,24 +146,41 @@ Jarra a 24,90 RMB, 12 peças por caixa, 1,13 kg por peça, 0,069 m³ por caixa, 
 
 ## 8. Dados
 
-Sem tabela nova e sem coluna nova: os parâmetros ficam na tabela `settings`, chave `superplan` (JSON, até 64 KB), lidos sempre com `superplanParams()`, que completa o que faltar com os valores da planilha. Um valor estragado nunca quebra a tela.
+Sem tabela nova e sem coluna nova: os parâmetros ficam na tabela `settings`, chave `superplan` (JSON, até 64 KB), lidos sempre com `superplanParams()`, que completa o que faltar com os valores da planilha. Um valor estragado nunca quebra a tela. A folga da embalagem no peso (`grossEstimatePct`) entrou depois: parâmetros gravados antes dela ficam com o padrão (8%) até alguém salvar.
 
 ## 9. Auditoria e segurança
 
 - Salvar os parâmetros grava na auditoria `settings.superplan` com o **antes e o depois** completos: nenhuma versão se perde.
 - O servidor confere tudo antes de gravar (números e faixas, nomes repetidos, tabela vazia); a recusa aponta o campo e nada fica pela metade.
-- A simulação roda no navegador com os dados que a página já mostra ao administrador; nada é gravado por ela.
+- A simulação roda no navegador com os dados que a página já mostra ao administrador; nada é gravado por ela. Com o botão opcional de gravar (seção 5.3), quem grava é a Server Action de quem pediu o botão, que confere a permissão, valida a conta e refaz o cálculo no servidor.
 
 ## 10. Como mudar depois (com o contador)
 
-- **Percentuais** (ICMS efetivo da venda, PIS, COFINS, IR, CSLL, AFRMM, câmbio do frete, dólar futuro, fatores de preço) e **tipos de negócio**: em Parâmetros do Superplan, embaixo da tela.
+- **Percentuais** (ICMS efetivo da venda, PIS, COFINS, IR, CSLL, AFRMM, câmbio do frete, dólar futuro, folga da embalagem no peso, fatores de preço) e **tipos de negócio**: em Parâmetros do Superplan, embaixo da tela.
 - **PIS/COFINS-importação, ICMS da importação e seguro**: em Configurações → Tributos (valem também para a proposta ao cliente).
 - **Regime ou forma de cálculo** (ex.: lucro presumido em vez de real, benefício fiscal do estado, crédito diferente): mudança na função `saleAt` de `src/lib/superplan.ts`, com teste novo em `tests/unit/superplan.test.ts` e o contador validando os números. A base dos impostos continua sendo o valor real da compra e da venda: declarar valor menor que o pago é subfaturamento, por isso não existe chave para isso.
 
-## 11. Melhorias futuras
+## 11. Da viabilidade à faca e à RFQ (fornecedor ganho)
+
+Pedido do dono: a faca (die-cut) vem **logo depois da análise de viabilidade**. É um fluxo novo, ao lado da solicitação comum (que não muda): do próprio Superplan abre-se a faca para o fornecedor e a RFQ com o fornecedor ganho, a partir da simulação.
+
+1. **No Superplan** (só o administrador, com um produto do cadastro): cartão **Viável? Abrir faca e RFQ com o fornecedor**. Escolhe o fornecedor ganho (os do produto primeiro, o principal no topo), para quem é (cliente ou compra para estoque, o padrão) e a quantidade (padrão: as peças que cabem no container). Com **prejuízo** (vermelho) ou conta incompleta, não abre; com lucro **abaixo da meta** (amarelo), abre com aviso.
+2. **O que o sistema cria**: a solicitação (origem "Superplan", com o resumo da viabilidade nas observações), a RFQ **só com o fornecedor ganho**, já com o **preço da simulação**, e o briefing da embalagem com a faca obrigatória. A conta é refeita no servidor com os parâmetros e tributos do sistema; a auditoria `superplan.rfq_open` guarda os números usados e o resultado.
+3. **O fornecedor** recebe "Superplan: envie faca, MOQ, prazo e foto em alta" e, na cotação (`/app/quotes/{id}#superplan`), envia os quatro itens, aos poucos se quiser:
+   - **Faca (die-cut)**: arquivo ou foto; vai para o briefing da embalagem (versões, e quem faz a arte é avisado na hora);
+   - **MOQ** e **prazo de produção**: vêm sugeridos (cadastro do produto e últimas cotações desse fornecedor) e **só contam depois que ele confirma ou corrige**;
+   - **Foto em alta (HD)**: fica nas fotos da cotação (tipo `hd`).
+4. **Com os quatro**, a cotação fica respondida e a Wellmix é avisada; se MOQ ou prazo mudaram em relação ao sugerido, o aviso é de atenção e mostra o antes. Cada envio fica na auditoria (`superplan.items`, com antes e depois).
+5. **Bloqueio**: enquanto faltar algum item, escolher o fornecedor (proposta ao cliente) e enviar para aprovação do pré-custo são recusados (`superplan_items_missing`). A Wellmix pode enviar no lugar do fornecedor.
+6. **Etapas da solicitação**: na aberta do Superplan, a etapa "Faca (die-cut)" vem logo depois da "Solicitação nova" e começa com a RFQ.
+
+Dados (aditivo): `requests.origin` ganhou `superplan`; `quotes.moq` (inteiro, opcional, só gravado nesse fluxo). Código: `src/lib/superplan-rfq.ts` (regra pura), `src/lib/services/superplan-rfq.ts`, `src/app/app/actions/superplan-rfq.ts`, `src/components/superplan-items-card.tsx`; testes em `tests/unit/superplan-rfq.test.ts`.
+
+## 12. Melhorias futuras
 
 - Puxar o frete do Tarifário de frete vigente (40HC, destino escolhido) em vez do padrão.
 - Salvar simulações por produto (histórico de custo e preço) e comparar cotações de fornecedores lado a lado.
 - Aviso quando câmbio ou frete fazem um produto passar de verde para amarelo ou vermelho.
 - Usar as variações do produto (tamanho, acabamento) e levar o preço do Superplan para a proposta ao cliente.
+- Abrir do Superplan produto com variações (hoje a tela pede para abrir pela solicitação) e lembrete por prazo dos quatro itens do fornecedor.
 - Exportar a simulação em PDF ou planilha.

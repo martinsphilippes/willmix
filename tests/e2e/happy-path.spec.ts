@@ -134,6 +134,25 @@ async function login(page: Page, email: string) {
   await page.waitForURL(/\/app/);
 }
 
+/**
+ * Assina o documento do pedido (docs/ORDER_SIGNATURE.md): o nome já vem
+ * preenchido; marca o aceite e assina. A Wellmix primeiro, o fornecedor depois.
+ */
+async function signOrderDocument(
+  page: Page,
+  orderUrl: string,
+  signedFile?: { name: string; mimeType: string; buffer: Buffer },
+) {
+  await page.goto(`${orderUrl}/purchase-order`);
+  const form = page.locator("[data-order-sign-form=own]");
+  // Fornecedor: anexa o PDF baixado e assinado.
+  if (signedFile)
+    await form.locator("input[name=signedFile]").setInputFiles(signedFile);
+  await form.locator("input[name=agree]").check();
+  await form.locator("button[type=submit]").click();
+  await page.waitForURL(/signed=1/);
+}
+
 /** Preenche todos os requisitos pendentes que o usuário logado pode preencher na tela do pedido. */
 async function fillMyRequirements(
   page: Page,
@@ -432,6 +451,19 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
 
   // 7. ORDER_CREATED: o operador (comprador) confirma (limitamos a 1 envio)
   await login(page, "operador@wellmix.com");
+  // O item de assinatura leva ao documento do pedido (não tem "Confirmar").
+  await page.goto(orderUrl);
+  await expect(
+    page.locator("[data-order-sign-link=order_signed_wellmix]"),
+  ).toBeVisible();
+  // A Wellmix assina o documento do pedido (a primeira das duas assinaturas).
+  await signOrderDocument(page, orderUrl);
+  await expect(
+    page.locator("[data-order-signature=wellmix][data-signed=yes]"),
+  ).toBeVisible();
+  await expect(
+    page.locator("[data-order-signature=supplier][data-signed=no]"),
+  ).toBeVisible();
   await fillMyRequirements(page, orderUrl, {}, 1);
   await page.goto(orderUrl);
   await expect(page.getByText("Preparação").first()).toBeVisible();
@@ -447,6 +479,24 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // se concluiu sozinha. O pagamento ao fornecedor saiu do fluxo (segue a
   // condição do cadastro do fornecedor): o pedido já está na embalagem.
   await login(page, "supplier.a@china.com");
+  // O fornecedor assina o documento do pedido (a segunda assinatura): só
+  // então a Preparação conclui.
+  // Ele baixa o documento em PDF, assina e anexa o arquivo de volta.
+  const pdfResponse = await page.request.get(
+    `${orderUrl.replace("/app/orders/", "/api/orders/")}/purchase-order`,
+  );
+  expect(pdfResponse.status()).toBe(200);
+  expect(pdfResponse.headers()["content-type"]).toBe("application/pdf");
+  expect((await pdfResponse.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  await signOrderDocument(page, orderUrl, pdf);
+  await expect(
+    page.locator("[data-order-signature=supplier][data-signed=yes]"),
+  ).toBeVisible();
+  await expect(page.locator("[data-signed-file]")).toBeVisible();
+  // Assinado pelos dois: pedido autorizado (sem integração, falta o Sankhya).
+  await expect(
+    page.locator("[data-order-document-status=signed]"),
+  ).toBeVisible();
   await page.goto(orderUrl);
   await expect(
     page

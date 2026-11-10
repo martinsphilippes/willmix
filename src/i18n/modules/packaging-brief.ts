@@ -84,6 +84,12 @@ export const pt = {
   "packBrief.orderArt.rejected": "Arte reprovada pelo fornecedor: reenvie",
   "packBrief.orderArt.waitingArt": "Arte ainda não enviada",
   "packBrief.notes": "Observações (gráfica, fornecedor)",
+  "packBrief.agencyPrice": "Valor por item (agência)",
+  "packBrief.agencyPrice.currency": "Moeda",
+  "packBrief.agencyPrice.hint":
+    "Quanto a agência cobra por este item (criação e finalização da arte). Opcional; fica só entre a agência e a Wellmix.",
+  "packBrief.error.agency_price_invalid":
+    "Informe o valor por item como número maior que zero.",
   "packBrief.notes.save": "Salvar observações",
   "packBrief.notes.placeholder":
     "Gráfica indicada, prova de cor, prazo de produção…",
@@ -307,6 +313,12 @@ export const en: Record<keyof typeof pt, string> = {
   "packBrief.orderArt.rejected": "Artwork rejected by the supplier: resend",
   "packBrief.orderArt.waitingArt": "Artwork not sent yet",
   "packBrief.notes": "Notes (printer, supplier)",
+  "packBrief.agencyPrice": "Price per item (agency)",
+  "packBrief.agencyPrice.currency": "Currency",
+  "packBrief.agencyPrice.hint":
+    "What the agency charges for this item (art creation and finishing). Optional; shared only between the agency and Wellmix.",
+  "packBrief.error.agency_price_invalid":
+    "Enter the price per item as a number above zero.",
   "packBrief.notes.save": "Save notes",
   "packBrief.notes.placeholder": "Printer, color proof, production time…",
   "packBrief.cancel": "Cancel brief",
@@ -521,6 +533,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "packBrief.orderArt.rejected": "设计稿被供应商退回：请重新上传",
   "packBrief.orderArt.waitingArt": "设计稿尚未上传",
   "packBrief.notes": "备注（印刷厂、供应商）",
+  "packBrief.agencyPrice": "单项费用（设计公司）",
+  "packBrief.agencyPrice.currency": "币种",
+  "packBrief.agencyPrice.hint":
+    "设计公司对该项收取的费用（设计与定稿）。选填；仅设计公司与 Wellmix 可见。",
+  "packBrief.error.agency_price_invalid": "请填写大于零的单项费用。",
   "packBrief.notes.save": "保存备注",
   "packBrief.notes.placeholder": "指定印刷厂、打样、生产周期…",
   "packBrief.cancel": "取消任务",

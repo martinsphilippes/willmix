@@ -330,6 +330,13 @@ export function PurchaseSheetFields({
                 disabled={sup}
               />
             </F>
+            <F t={t} m={missing} k="averageWeightPcKg" size="xs">
+              <Num
+                name="averageWeightPcKg"
+                value={numValue(sheet.averageWeightPcKg ?? null)}
+                disabled={sup}
+              />
+            </F>
             <F t={t} m={missing} k="capacityMl" size="xs">
               <Num
                 name="capacityMl"

@@ -16,6 +16,7 @@ A escolha do fornecedor e o valor ao cliente valiam na hora em que o operador cl
 6. Reprovado em qualquer nível: **motivo obrigatório**, a aprovação termina, o comprador (quem enviou) é avisado com o motivo e pode enviar outra escolha.
 7. Enviar outra escolha com uma em aberto substitui a anterior (cancelada com o motivo). Quem enviou ou o admin pode cancelar.
 8. Tudo vai para o histórico (`approval.submit`, `approval.approve`, `approval.reject`, `approval.cancel`, `approval.failed`), com usuário e data.
+9. **Gravação interrompida no meio** (correção de 10/11/2026): na compra para estoque, aprovar o último nível grava a escolha e já cria o pedido (dezenas de gravações). Se essa operação for cortada (tempo esgotado), a cotação fica "selecionada" com a aprovação ainda em aberto. Aprovar de novo **retoma de onde parou**: `selectQuote` aceita a cotação já selecionada desta mesma escolha (sem lançar o sinal nem avisar de novo), `createOrderFromRequest` retoma o pedido que ficou pela metade (mesmo número, sem duplicar item, etapas nem snapshot; `createStagesForOrder` cria só o que falta) e a aprovação conclui. Se a solicitação já virou pedido com a cotação aprovada, a aprovação só é concluída. Uma aprovação que ficou "aprovada, mas não gravada" e é a mais recente da solicitação ganha o botão **"Tentar concluir de novo"** (o administrador ou quem aprovou o último nível; `retryApproval`): refaz a gravação sem pedir outra aprovação. A página da solicitação dá 120 s a essas ações (`maxDuration`). Auditoria: `order.create_resumed`.
 
 ## 3. Funções da equipe
 

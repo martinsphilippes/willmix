@@ -99,7 +99,9 @@ export const canEditPackagingBrief = canViewPackagingBrief;
 
 /**
  * Fornecedor da embalagem: o do pedido (depois do sinal) ou o da cotação
- * escolhida. Nulo antes da escolha. É ele quem envia a faca (die-cut).
+ * escolhida. Nulo antes da escolha, menos na solicitação aberta do Superplan:
+ * lá o fornecedor já ganhou e manda a faca junto com a resposta da RFQ.
+ * É ele quem envia a faca (die-cut).
  */
 export async function briefSupplierId(
   brief: Pick<PackagingBrief, "orderId" | "requestId">,
@@ -110,9 +112,22 @@ export async function briefSupplierId(
     if (order) return order.supplierId;
   }
   const request = await store.get("requests", brief.requestId);
-  if (!request?.selectedQuoteId) return null;
+  if (!request) return null;
+  if (!request.selectedQuoteId)
+    return request.origin === "superplan"
+      ? ((await superplanQuote(request.id))?.supplierId ?? null)
+      : null;
   const quote = await store.get("quotes", request.selectedQuoteId);
   return quote?.supplierId ?? null;
+}
+
+/** A cotação do fornecedor ganho na RFQ do Superplan (a única não recusada). */
+async function superplanQuote(requestId: string): Promise<Quote | null> {
+  const quotes = await getStore().list("quotes", {
+    filter: { requestId },
+    orderBy: "createdAt",
+  });
+  return quotes.find((q) => q.status !== "rejected") ?? null;
 }
 
 /** O login é do fornecedor escolhido para esta embalagem? */
@@ -153,9 +168,12 @@ async function dielineLinkFor(
 ): Promise<string> {
   if (brief.orderId) return `/app/orders/${brief.orderId}#die-cut`;
   const request = await getStore().get("requests", brief.requestId);
-  return request?.selectedQuoteId
-    ? `/app/quotes/${request.selectedQuoteId}#die-cut`
-    : "/app";
+  if (request?.selectedQuoteId)
+    return `/app/quotes/${request.selectedQuoteId}#die-cut`;
+  // Superplan: a faca vai junto com MOQ, prazo e foto em alta, na cotação.
+  const superplan =
+    request?.origin === "superplan" ? await superplanQuote(request.id) : null;
+  return superplan ? `/app/quotes/${superplan.id}#superplan` : "/app";
 }
 
 /**
@@ -1046,6 +1064,11 @@ export async function saveAgencyNotes(
   user: User,
   briefId: string,
   notes: string | null,
+  /**
+   * Valor por item cobrado pela agência (opcional). `undefined` = o
+   * formulário não mandou o campo; `null` = apagar.
+   */
+  price?: { amount: number | null; currency: string | null },
 ) {
   const store = getStore();
   const brief = await store.get("packaging_briefs", briefId);
@@ -1053,10 +1076,43 @@ export async function saveAgencyNotes(
   if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
   if (!LIVE.includes(brief.status))
     throw new PackagingBriefError("brief_closed");
-  return store.update("packaging_briefs", briefId, {
+  const patch: Record<string, unknown> = {
     agencyNotes: notes?.trim() || null,
     updatedByUserId: user.id,
-  });
+  };
+  // Colunas novas: só vão ao banco quando há valor (ou para apagar um valor
+  // já gravado), para o briefing seguir salvando antes do esquema publicado.
+  if (price) {
+    const amount = price.amount;
+    if (
+      amount !== null &&
+      !(Number.isFinite(amount) && amount > 0 && amount <= 100_000_000)
+    )
+      throw new PackagingBriefError("agency_price_invalid");
+    const before = brief.agencyItemPrice ?? null;
+    if (amount !== before && (amount !== null || before !== null)) {
+      patch.agencyItemPrice = amount;
+      patch.agencyItemCurrency =
+        amount === null ? null : (price.currency || "BRL").slice(0, 3);
+      await audit(
+        user,
+        "packaging_brief.agency_price",
+        "packaging_brief",
+        briefId,
+        `Valor por item da agência: ${
+          amount === null ? "apagado" : `${patch.agencyItemCurrency} ${amount}`
+        }`,
+        { agencyItemPrice: before, currency: brief.agencyItemCurrency ?? null },
+        { agencyItemPrice: amount, currency: patch.agencyItemCurrency },
+      );
+    } else if (
+      amount !== null &&
+      price.currency &&
+      price.currency !== (brief.agencyItemCurrency ?? null)
+    )
+      patch.agencyItemCurrency = price.currency.slice(0, 3);
+  }
+  return store.update("packaging_briefs", briefId, patch);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1558,10 +1614,20 @@ export async function getPackagingBriefView(
   const docs = ids.length
     ? await store.list("documents", { filter: { id: ids } })
     : [];
-  const photos = brief.productId
-    ? ((await catalogShowcasePhotos([brief.productId])).get(brief.productId) ??
-      [])
-    : [];
+  // Produto ainda escondido pelo Booking (docs/BOOKING.md): fora da Wellmix,
+  // as fotos da vitrine não abrem; a lista vem vazia em vez de imagem quebrada.
+  const photosHidden =
+    !!brief.productId &&
+    !wellmix &&
+    (await (
+      await import("./booking-visibility")
+    ).isHiddenByBooking(brief.productId));
+  const photos =
+    brief.productId && !photosHidden
+      ? ((await catalogShowcasePhotos([brief.productId])).get(
+          brief.productId,
+        ) ?? [])
+      : [];
   const order = brief.orderId ? await store.get("orders", brief.orderId) : null;
   let orderArt: PackagingBriefView["orderArt"] = null;
   let orderSeal: PackagingBriefView["orderSeal"] = null;

@@ -1,15 +1,30 @@
 "use server";
 
 import { z } from "zod";
-import { assertRole, assertWellmix } from "@/lib/auth/permissions";
+import { assertRole, isWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
-import { REQUEST_NCM_SOURCES } from "@/lib/db/schema";
+import { REQUEST_NCM_SOURCES, type User } from "@/lib/db/schema";
 import { field, files, requireUser, run, str } from "./helpers";
 
 /*
  * Tributos da importação: tabela fiscal (TEC/TIPI) em Configurações (admin) e
- * NCM da solicitação (Wellmix). Toda regra fica nos serviços.
+ * NCM da solicitação (despachante; a Wellmix também pode). Toda regra fica
+ * nos serviços.
  */
+
+/**
+ * Para onde o envio do NCM volta: a Wellmix à solicitação; o despachante à
+ * tela só do NCM (ele não abre a solicitação).
+ */
+const ncmBack = (user: User, requestId: string) =>
+  `/app/requests/${encodeURIComponent(requestId)}${isWellmix(user) ? "" : "/ncm"}`;
+
+/** Wellmix: precisa abrir Solicitações. Despachante: o serviço confere o papel. */
+async function assertNcmAccess(user: User) {
+  if (isWellmix(user)) return assertScreen(user, "requests");
+  const { assertNcmClassifier } = await import("@/lib/services/request-ncm");
+  assertNcmClassifier(user);
+}
 
 const ID = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
 const MAX_FILE = 15 * 1024 * 1024;
@@ -51,30 +66,28 @@ export async function syncFiscalNowAction() {
   });
 }
 
-/** Wellmix pede (de novo) as sugestões de NCM da IA para a solicitação. */
+/** Pede (de novo) as sugestões de NCM da IA para a solicitação. */
 export async function suggestRequestNcmAction(form: FormData) {
   const user = await requireUser();
   const requestId = str(form, "requestId").slice(0, 64);
-  const back = `/app/requests/${encodeURIComponent(requestId)}`;
+  const back = ncmBack(user, requestId);
   await run(back, async () => {
     ID.parse(requestId);
-    assertWellmix(user);
-    assertScreen(user, "requests");
+    await assertNcmAccess(user);
     const { suggestRequestNcm } = await import("@/lib/services/request-ncm");
     const r = await suggestRequestNcm(user, requestId);
     return `${back}?ncmSuggested=${r.count}${r.aiError ? `&ncmAi=${r.aiError}` : ""}#ncm`;
   });
 }
 
-/** Wellmix confirma o NCM (de uma sugestão ou digitado). */
+/** O despachante (ou a Wellmix) confirma o NCM (de uma sugestão ou digitado). */
 export async function confirmRequestNcmAction(form: FormData) {
   const user = await requireUser();
   const requestId = str(form, "requestId").slice(0, 64);
-  const back = `/app/requests/${encodeURIComponent(requestId)}`;
+  const back = ncmBack(user, requestId);
   await run(back, async () => {
     ID.parse(requestId);
-    assertWellmix(user);
-    assertScreen(user, "requests");
+    await assertNcmAccess(user);
     const ncm = field(
       form,
       "ncm",

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { PACKAGING_ITEM_KEYS, getStore } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertAnyScreen, assertScreen } from "@/lib/auth/screens";
+import { parseNumberInput } from "@/lib/number-input";
 import {
   assignPackagingBrief,
   cancelPackagingBrief,
@@ -115,7 +116,20 @@ export async function saveAgencyNotesAction(form: FormData) {
     assertScreen(user, "packaging");
     const id = briefId.parse(brief.id);
     const notes = z.string().max(4000).parse(str(form, "agencyNotes"));
-    await saveAgencyNotes(user, id, notes || null);
+    // Valor por item da agência (quando o formulário traz o campo).
+    let price: { amount: number | null; currency: string | null } | undefined;
+    if (form.has("agencyItemPrice")) {
+      const raw = str(form, "agencyItemPrice");
+      const amount = raw ? parseNumberInput(raw) : null;
+      if (amount !== null && Number.isNaN(amount))
+        throw new Error("agency_price_invalid");
+      const currency = str(form, "agencyItemCurrency").toUpperCase();
+      price = {
+        amount,
+        currency: /^[A-Z]{3}$/.test(currency) ? currency : null,
+      };
+    }
+    await saveAgencyNotes(user, id, notes || null, price);
     return `${back(id)}?saved=notes#notes`;
   });
 }

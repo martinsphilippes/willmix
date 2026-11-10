@@ -74,9 +74,14 @@ async function answeredQuote() {
 describe("frete pela companhia marítima", () => {
   it("cotação enviada: companhia recebe pendência com a carga e só ela vê", async () => {
     const { request, quote } = await answeredQuote();
-    expect(await fr.inviteFreightForQuote(supplierA, quote.id)).toBe(1);
-    // Reenvio sem mudança na carga não duplica.
+    // A resposta da cotação já pediu o frete à companhia marítima; reenvio
+    // sem mudança na carga não duplica.
     expect(await fr.inviteFreightForQuote(supplierA, quote.id)).toBe(0);
+    expect(
+      await getStore().list("freight_quotes", {
+        filter: { quoteId: quote.id },
+      }),
+    ).toHaveLength(1);
     const [fq] = await getStore().list("freight_quotes", {
       filter: { quoteId: quote.id },
     });
@@ -228,5 +233,98 @@ describe("frete pela companhia marítima", () => {
       (f) => f.status === "invited",
     );
     expect(open.some((f) => f.quoteId === second.quote.id)).toBe(true);
+  });
+  it("cotação sem a ficha (só o preço confirmado): a companhia recebe o pedido com a carga do cadastro; sem volume, só quando a ficha chegar", async () => {
+    const store = getStore();
+    const [product] = await store.list("products", { limit: 1 });
+    await store.update("products", product.id, {
+      masterBoxQty: 10,
+      cbm: 0.05,
+      grossWeightKg: 0.3,
+    });
+    const withCatalog = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: product.id,
+      productName: product.name,
+      description: "Produto do catálogo",
+      specification: null,
+      quantity: 1000,
+      unit: "un",
+      deadline: null,
+    });
+    const [q1] = await r.openRfq(admin, withCatalog.id, ["fornecedor-a"]);
+    // Sem ficha: só o preço (como na oferta que nasce do Booking).
+    await r.answerQuote(supplierA, q1.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    const [fq] = await store.list("freight_quotes", {
+      filter: { quoteId: q1.id },
+    });
+    // 1000 / 10 = 100 caixas × 0,05 = 5 m³; 1000 × 0,3 = 300 kg.
+    expect(fq).toMatchObject({
+      carrierId: "armador",
+      status: "invited",
+      cartons: 100,
+      totalCbm: 5,
+      grossWeightKg: 300,
+    });
+
+    // Produto fora do catálogo e sem ficha: não há carga para cotar.
+    const noVolume = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: null,
+      productName: "Sem volume",
+      description: "Sem volume",
+      specification: null,
+      quantity: 500,
+      unit: "un",
+      deadline: null,
+    });
+    const [q2] = await r.openRfq(admin, noVolume.id, ["fornecedor-a"]);
+    await r.answerQuote(supplierA, q2.id, {
+      price: 2,
+      currency: "USD",
+      leadTimeDays: 30,
+    });
+    expect(
+      await store.list("freight_quotes", { filter: { quoteId: q2.id } }),
+    ).toHaveLength(0);
+    // A ficha trouxe a carga: o pedido de frete sai.
+    await qs.saveQuoteSheet(supplierA, q2.id, sheet);
+    const [late] = await store.list("freight_quotes", {
+      filter: { quoteId: q2.id },
+    });
+    expect(late).toMatchObject({ status: "invited", cartons: 21 });
+  });
+
+  it("o valor informado pela companhia fica fixado na conta; sem resposta, vale o estimado", async () => {
+    await setSetting("freightPerCbm", 100);
+    await setSetting("freightCurrency", "BRL");
+    const { request, quote } = await answeredQuote();
+    const fresh = (await getStore().get("quotes", quote.id))!;
+    const before = (await quotePricing(request, [fresh])).quotes[0];
+    expect(before.shippingFreight.status).toBe("waiting");
+    // Estimado por CBM: 2,52 m³ × R$ 100.
+    expect(before.result.freightSource).toBe("cbm");
+    expect(before.result.freightBrl).toBeCloseTo(252, 2);
+    const [fq] = await getStore().list("freight_quotes", {
+      filter: { quoteId: quote.id },
+    });
+    await fr.answerFreight(carrier, fq.id, {
+      amount: 900,
+      currency: "BRL",
+      transitDays: 35,
+      validUntil: null,
+      notes: null,
+    });
+    const after = (await quotePricing(request, [fresh])).quotes[0];
+    expect(after.shippingFreight).toMatchObject({
+      status: "answered",
+      brl: 900,
+    });
+    expect(after.result.freightSource).toBe("carrier");
+    expect(after.result.freightBrl).toBe(900);
   });
 });

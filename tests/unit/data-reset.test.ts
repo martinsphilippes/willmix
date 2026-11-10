@@ -545,4 +545,56 @@ describe("limpar dados de teste (vendas)", () => {
       total: 0,
     });
   });
+  it("briefing de embalagem e arquivos da cotação saem com a venda de teste", async () => {
+    const store = getStore();
+    const { request, quote } = await sale();
+    const brief = await store.create("packaging_briefs", {
+      requestId: request.id,
+      productId: "prod-jarra",
+      customerId: "cliente-joao",
+      agencyId: null,
+      ownerSource: "chosen",
+      status: "open",
+      requiredKeys: ["dieline", "art"],
+      dielineDocumentId: null,
+      artDocumentId: null,
+    } as never);
+    const file = (extra: Record<string, unknown>) =>
+      store.create("documents", {
+        orderId: null,
+        requestId: null,
+        requirementId: null,
+        type: "other",
+        name: "arquivo-de-teste.pdf",
+        storageKey: null,
+        mimeType: "application/pdf",
+        size: 10,
+        visibility: "internal",
+        version: 1,
+        previousDocumentId: null,
+        uploadedByUserId: admin.id,
+        productId: null,
+        sourcingItemId: null,
+        kitId: null,
+        ...extra,
+      } as never);
+    // Só ligados ao briefing e à cotação (sem pedido nem solicitação).
+    const briefDoc = await file({ packagingBriefId: brief.id });
+    const quoteDoc = await file({ quoteId: quote.id });
+    // Do catálogo, mas com a ligação da cotação: fica e perde a ligação.
+    const catalogDoc = await file({
+      productId: "prod-jarra",
+      quoteId: quote.id,
+    });
+
+    await reset.resetSalesData(admin, "APAGAR");
+
+    expect(await store.list("packaging_briefs")).toHaveLength(0);
+    expect(await store.get("documents", briefDoc.id)).toBeNull();
+    expect(await store.get("documents", quoteDoc.id)).toBeNull();
+    const kept = await store.get("documents", catalogDoc.id);
+    expect(kept).toMatchObject({ productId: "prod-jarra", quoteId: null });
+    expect(await store.list("requests")).toHaveLength(0);
+    expect(await store.list("orders")).toHaveLength(0);
+  });
 });

@@ -120,10 +120,23 @@ export async function createRequestAction(form: FormData) {
       const rows = parseRequestItems(form);
       if (!rows.length) throw new Error("no_products");
       const items: RequestBatchItem[] = [];
+      // Booking: produtos ainda escondidos do cliente (uma consulta só, e só
+      // quando um login de fora da Wellmix manda produto sem nome).
+      let hiddenByBooking: Set<string> | null = null;
       for (const row of rows) {
         let productName = row.productName;
         if (row.productId && !productName) {
           const product = await store.get("products", row.productId);
+          // Fora da Wellmix, o nome só é copiado de produto que o cliente pode
+          // ver (existe, ativo e não escondido pelo Booking). A mesma recusa
+          // nos três casos: não dá para descobrir se um produto existe.
+          if (!isWellmix(user)) {
+            hiddenByBooking ??= await (
+              await import("@/lib/services/booking-visibility")
+            ).hiddenBookingProductIds();
+            if (!product?.active || hiddenByBooking.has(product.id))
+              throw new Error("product_unavailable");
+          }
           productName = product?.name ?? "";
         }
         const parsed = requestItemSchema.parse({ ...row, productName });
@@ -316,12 +329,10 @@ export async function selectQuoteAction(form: FormData) {
         downPaymentAmount: num(form, "downPaymentAmount"),
         downPaymentPercent: parseNumberInput(str(form, "downPaymentPercent")),
       });
-    const carrierBrl = z
-      .number()
-      .nonnegative()
-      .max(100_000_000)
-      .nullable()
-      .parse(num(form, "freightCarrierBrl"));
+    // Frete marítimo: quem informa é a companhia marítima, no pedido de
+    // frete dela; sem a resposta, a conta usa o estimado. Nada digitado no
+    // formulário da escolha entra na conta (um valor enviado é ignorado).
+    const carrierBrl = null;
     // Memória do cálculo refeita no servidor (não confia no navegador).
     const pricing = await pricingRecordFor(
       requestId,

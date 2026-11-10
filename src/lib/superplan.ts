@@ -17,7 +17,15 @@
  * - os créditos de IPI, ICMS, PIS e COFINS da venda são os impostos pagos na
  *   importação, por peça.
  * Percentuais e valores ficam nos parâmetros (editáveis pelo administrador).
+ *
+ * Pesos (src/lib/weights.ts): a ficha traz o peso líquido e o peso bruto por
+ * peça, cada um no seu campo. O container é limitado pelo peso BRUTO; quando
+ * a ficha só traz o líquido, a conta usa um bruto estimado (líquido + folga da
+ * embalagem, dos parâmetros) e o resultado diz que é estimado. O líquido
+ * nunca é lido como bruto e a estimativa nunca é gravada no produto.
  */
+
+import { estimatedGrossKg } from "@/lib/weights";
 
 /** Tipo de negócio (empresa, categoria, país e venda), da tabela de parâmetros. */
 export interface SuperplanBusinessType {
@@ -77,6 +85,11 @@ export interface SuperplanParams {
   /** AFRMM = frete em R$ × % + valor fixo. */
   afrmmPct: number;
   afrmmFixedBrl: number;
+  /**
+   * Folga da embalagem no peso (%): quanto a embalagem soma ao peso líquido
+   * quando a ficha não traz o peso bruto (bruto estimado = líquido × (1 + %)).
+   */
+  grossEstimatePct: number;
   priceFactors: SuperplanPriceFactors;
   saleTaxes: SuperplanSaleTaxes;
 }
@@ -180,6 +193,7 @@ export const DEFAULT_SUPERPLAN: SuperplanParams = {
   freightFxPct: 3.02,
   afrmmPct: 8,
   afrmmFixedBrl: 700,
+  grossEstimatePct: 8,
   priceFactors: { table: 1.25, wholesale: 1.6, retail: 1.8 },
   // ICMS efetivo de 1,5% ("paga 1,5% e destaca 4%"); PIS/COFINS não
   // cumulativos; IR e CSLL como na planilha (conferir com o contador).
@@ -275,6 +289,8 @@ export function superplanParams(value: unknown): SuperplanParams {
     freightFxPct: num(v.freightFxPct, d.freightFxPct, 0, 100),
     afrmmPct: num(v.afrmmPct, d.afrmmPct, 0, 100),
     afrmmFixedBrl: num(v.afrmmFixedBrl, d.afrmmFixedBrl),
+    // Parâmetros gravados antes de a folga existir ficam com o padrão (8%).
+    grossEstimatePct: num(v.grossEstimatePct, d.grossEstimatePct, 0, 100),
     priceFactors: {
       table: num(pf.table, d.priceFactors.table, 0.01, 100),
       wholesale: num(pf.wholesale, d.priceFactors.wholesale, 0.01, 100),
@@ -296,7 +312,12 @@ export interface SuperplanInput {
   unitPrice: number | null;
   currency: "RMB" | "USD";
   pcsPerCarton: number | null;
-  /** Peso bruto por peça (kg); vazio: o container é limitado só pelo volume. */
+  /** Peso líquido por peça (kg), como a ficha traz; nunca é lido como bruto. */
+  netWeightPcKg: number | null;
+  /**
+   * Peso bruto por peça (kg). Vazio com o líquido informado: a conta usa o
+   * bruto estimado (líquido + folga). Os dois vazios: só o volume limita.
+   */
   grossWeightPcKg: number | null;
   /** Volume da caixa master (m³). */
   cbmPerCarton: number | null;
@@ -332,6 +353,8 @@ export interface SuperplanInput {
   freightFxPct: number;
   afrmmPct: number;
   afrmmFixedBrl: number;
+  /** Folga da embalagem no peso (%), para o peso bruto estimado. */
+  grossEstimatePct: number;
   priceFactors: SuperplanPriceFactors;
   saleTaxes: SuperplanSaleTaxes;
   /** Preço de venda a testar (R$ por peça); vazio = o preço mínimo. */
@@ -376,8 +399,10 @@ export interface SuperplanResult {
     cartons: number;
     pieces: number;
     limitedBy: "volume" | "weight";
-    /** Sem peso por peça: só o volume conta. */
+    /** Sem peso por peça (nem bruto nem líquido): só o volume conta. */
     weightUnknown: boolean;
+    /** O peso usado é o bruto estimado (líquido + folga), não o da ficha. */
+    weightEstimated: boolean;
     usedCbm: number;
     usedKg: number | null;
   } | null;
@@ -456,9 +481,13 @@ export function computeSuperplan(input: SuperplanInput): SuperplanResult {
   // 1) Quantas caixas cabem: volume do container ou peso máximo, o que
   //    acabar primeiro; só caixas inteiras.
   const byVolume = input.containerCbm! / cbm;
-  const kgPerCarton = positive(input.grossWeightPcKg)
-    ? input.grossWeightPcKg * pcs
-    : null;
+  // Peso bruto por peça: o informado ou, só com o líquido, o estimado.
+  const weight = estimatedGrossKg(
+    input.netWeightPcKg,
+    input.grossWeightPcKg,
+    input.grossEstimatePct,
+  );
+  const kgPerCarton = weight.kg === null ? null : weight.kg * pcs;
   const byWeight =
     kgPerCarton && positive(input.containerMaxKg)
       ? input.containerMaxKg / kgPerCarton
@@ -471,6 +500,7 @@ export function computeSuperplan(input: SuperplanInput): SuperplanResult {
     limitedBy: (byWeight < byVolume ? "weight" : "volume") as
       "volume" | "weight",
     weightUnknown: kgPerCarton === null,
+    weightEstimated: weight.estimated,
     usedCbm: cartons * cbm,
     usedKg: kgPerCarton === null ? null : cartons * kgPerCarton,
   };

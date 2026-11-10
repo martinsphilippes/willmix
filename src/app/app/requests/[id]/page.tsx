@@ -1,5 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { isStockCustomer } from "@/lib/services/purchase-flow";
+import {
+  superplanQuoteOf,
+  superplanQuoteView,
+} from "@/lib/services/superplan-rfq";
 import { ActionError } from "@/components/action-error";
 import { fallbackError } from "@/i18n/error-text";
 import Link from "next/link";
@@ -13,6 +17,7 @@ import {
 } from "@/lib/services/quote-pricing";
 import { getFxRates } from "@/lib/services/fx";
 import {
+  hasNcmBroker,
   requestNcm,
   scheduleNcmSuggestion,
   suggestionsView,
@@ -91,9 +96,17 @@ import { RequestScheduleTable } from "@/components/request-schedule-table";
 import { PackagingRfqFields } from "@/components/packaging-brief-card";
 import { briefForRequest } from "@/lib/services/packaging-brief";
 import { ChatButtons } from "@/components/chat-buttons";
+import { quoteFlowChips } from "@/components/quote-flow-cards";
 import { ApprovalCard } from "@/components/approval-card";
 import { RequestStagesCard } from "@/components/request-stages-card";
 import { approvalsFor } from "@/lib/services/approvals";
+
+/*
+ * As ações desta página que criam o pedido (aprovar o último nível, escolher
+ * o fornecedor na compra para estoque, confirmar o sinal) gravam dezenas de
+ * linhas no banco: precisam de mais tempo do que o padrão da função.
+ */
+export const maxDuration = 120;
 
 export default async function RequestDetailPage({
   params,
@@ -109,6 +122,7 @@ export default async function RequestDetailPage({
     fields: invalidFields,
     at: errorToken,
     fromCart,
+    superplan: superplanNotice,
   } = await searchParams;
   const request = await getRequestForUser(user, id);
   if (!request) notFound();
@@ -120,6 +134,14 @@ export default async function RequestDetailPage({
     canViewRequest(user, r),
   );
   const wellmix = isWellmix(user);
+  // Aberta do Superplan: os quatro itens do fornecedor ganho (só a Wellmix).
+  const superplanQuote =
+    wellmix && request.origin === "superplan"
+      ? await superplanQuoteOf(request.id)
+      : null;
+  const superplanItems = superplanQuote
+    ? await superplanQuoteView(user, superplanQuote.id)
+    : null;
   // Valores da variação pedida (cópia feita na solicitação), só para a Wellmix.
   const variantSummary =
     wellmix && request.variant
@@ -292,6 +314,17 @@ export default async function RequestDetailPage({
     ncmInfo?.status === "none" && request.ncmSuggestions == null;
   if (ncmPendingAuto) scheduleNcmSuggestion(request.id);
   const fiscalLoaded = ncmInfo ? await hasFiscalTable() : false;
+  /* Quem classifica é o despachante: a Wellmix vê se está na fila dele e quem confirmou. */
+  const ncmQueue =
+    ncmInfo?.status === "none" && !request.orderId
+      ? (await hasNcmBroker())
+        ? ("broker" as const)
+        : ("none" as const)
+      : null;
+  const ncmConfirmer =
+    ncmInfo?.status === "confirmed" && request.ncmConfirmedByUserId
+      ? await store.get("users", request.ncmConfirmedByUserId)
+      : null;
   const ncmAiCode =
     typeof ncmAi === "string" ? ncmAi.replace(/^ai_/, "") : null;
   const ncmAiReason = ncmAiCode
@@ -425,6 +458,33 @@ export default async function RequestDetailPage({
             {t("reqCancelled.banner", { n: order.number })}{" "}
             <TextLink href={`/app/orders/${order.id}`}>
               {t("reqCancelled.open")}
+            </TextLink>
+          </Alert>
+        </div>
+      ) : null}
+      {superplanItems ? (
+        <div className="mb-4" data-superplan-request>
+          <Alert
+            tone={
+              superplanItems.missing.length
+                ? superplanNotice === "opened"
+                  ? "success"
+                  : "warning"
+                : "success"
+            }
+          >
+            {superplanNotice === "opened" ? `${t("spRfq.opened")} ` : null}
+            {t("spRfq.request", {
+              state: superplanItems.missing.length
+                ? t("spRfq.missing", {
+                    list: superplanItems.missing
+                      .map((k) => t(`spRfq.item.${k}`))
+                      .join(", "),
+                  })
+                : t("spRfq.complete"),
+            })}{" "}
+            <TextLink href={`/app/quotes/${superplanItems.quoteId}#superplan`}>
+              {t("spRfq.openQuote")}
             </TextLink>
           </Alert>
         </div>
@@ -721,6 +781,12 @@ export default async function RequestDetailPage({
                   suggestionsPending={ncmPendingAuto}
                   hasTable={fiscalLoaded}
                   editable={!request.orderId}
+                  queue={ncmQueue}
+                  confirmedBy={
+                    ncmConfirmer
+                      ? `${ncmConfirmer.name} (${t(`role.${ncmConfirmer.role}` as DictionaryKey)})`
+                      : null
+                  }
                   notice={
                     ncmConfirmed
                       ? t("ncm.confirmedOk")
@@ -777,7 +843,14 @@ export default async function RequestDetailPage({
 
         {/* Comparação de cotações (só Wellmix vê fornecedores e preços FOB) */}
         {wellmix && quotes.length > 0 ? (
-          <Card title={t("requests.quotes.compare")}>
+          <Card
+            title={
+              // Âncora do Booking ("Conferir e confirmar a cotação").
+              <span id="quotes-compare" className="scroll-mt-24">
+                {t("requests.quotes.compare")}
+              </span>
+            }
+          >
             <Table>
               <thead>
                 <tr>
@@ -884,6 +957,26 @@ export default async function RequestDetailPage({
                       >
                         {t(`quoteStatus.${q.status}`)}
                       </Badge>
+                      {/* Negociação e proposta de embalagem desta cotação. */}
+                      {wellmix
+                        ? quoteFlowChips(t, q).map((chip) => (
+                            <span
+                              key={chip.key}
+                              className="mt-1 block"
+                              data-quote-flow-chip={chip.key}
+                            >
+                              <Badge tone={chip.tone}>{chip.text}</Badge>
+                            </span>
+                          ))
+                        : null}
+                      {wellmix && q.status === "answered" ? (
+                        <Link
+                          href={`/app/quotes/${q.id}#negotiation`}
+                          className="mt-1 block text-xs text-zinc-600 hover:text-brand-800"
+                        >
+                          {t("quoteFlow.chip.open")}
+                        </Link>
+                      ) : null}
                       {(freights.get(q.id) ?? []).map((f) => (
                         <Link
                           key={f.id}
@@ -913,6 +1006,17 @@ export default async function RequestDetailPage({
                     )
                   }
                   canEditWeights={user.role === "admin"}
+                  decideWith={
+                    // Escolha ainda aberta: "Escolher" na linha seleciona no
+                    // formulário de baixo, onde a decisão é concluída.
+                    ["RFQ_OPEN", "QUOTATION_RECEIVED"].includes(
+                      request.status,
+                    ) && quotes.some((q) => q.status === "answered")
+                      ? settings.approvalsEnabled
+                        ? t("approvals.submit")
+                        : t("requests.quotes.select")
+                      : null
+                  }
                 />
               </div>
             ) : null}
@@ -983,6 +1087,9 @@ export default async function RequestDetailPage({
                     sellPrice: t("requests.sellPrice"),
                     carrierFreight: t("pricing.calc.carrierFreight"),
                     carrierFreightHint: t("pricing.calc.carrierFreightHint"),
+                    carrierFixed: t("pricing.calc.carrierFixed"),
+                    carrierEstimated: t("pricing.calc.carrierEstimated"),
+                    carrierOpen: t("pricing.calc.carrierOpen"),
                     title: t("pricing.calc.title"),
                     fob: t("pricing.calc.fob"),
                     fx: t("pricing.calc.fx"),

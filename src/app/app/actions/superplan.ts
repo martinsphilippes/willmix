@@ -16,11 +16,11 @@ import { requireUser, run, str } from "./helpers";
 
 /*
  * Parâmetros do Superplan (docs/SUPERPLAN.md): tabela de tipos de negócio,
- * despesas padrão por container, fretes, câmbio, fatores de preço e impostos
- * da venda. Só o administrador grava. Tudo é conferido antes de gravar (um
- * valor inválido não deixa metade salva) e a recusa aponta o campo. Linha sem
- * nome sai da tabela; a linha vazia do fim cria uma nova. O antes e o depois
- * ficam na auditoria: nada se perde.
+ * despesas padrão por container, fretes, câmbio, folga da embalagem no peso,
+ * fatores de preço e impostos da venda. Só o administrador grava. Tudo é
+ * conferido antes de gravar (um valor inválido não deixa metade salva) e a
+ * recusa aponta o campo. Linha sem nome sai da tabela; a linha vazia do fim
+ * cria uma nova. O antes e o depois ficam na auditoria: nada se perde.
  */
 
 const BACK = "/app/superplan#parametros";
@@ -143,6 +143,8 @@ export async function saveSuperplanParamsAction(form: FormData) {
       freightFxPct: read("freightFxPct", amount(0, 100)),
       afrmmPct: read("afrmmPct", amount(0, 100)),
       afrmmFixedBrl: read("afrmmFixedBrl", amount(0, 1e7, { int: true })),
+      // Folga da embalagem no peso (bruto estimado = líquido + este %).
+      grossEstimatePct: read("grossEstimatePct", amount(0, 100)),
       priceFactors: {
         table: read("priceFactors.table", amount(0.01, 100)),
         wholesale: read("priceFactors.wholesale", amount(0.01, 100)),

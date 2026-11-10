@@ -23,6 +23,14 @@ import {
   isWellmix,
 } from "@/lib/auth/permissions";
 import { stageVisibleTo } from "@/lib/order-view";
+import {
+  ORDER_PART_PARALLEL,
+  documentPart,
+  orderPartsByStage,
+  plainPart,
+  sheetPart,
+  stepsPart,
+} from "@/lib/order-parts";
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { stageChat } from "@/lib/stage-chat";
@@ -49,7 +57,11 @@ import {
   type DateBounds,
 } from "@/lib/workflow/engine";
 import { formatMoneyValue, isMoneyRequirement } from "@/lib/workflow/money";
-import { canCompleteLater, isOffFlowStage } from "@/lib/workflow/stages";
+import {
+  canCompleteLater,
+  isOffFlowStage,
+  isOrderSignatureKey,
+} from "@/lib/workflow/stages";
 import { releaseOffFlowStages } from "@/lib/services/supplier-terms";
 import { normalizePackaging } from "@/lib/services/packaging";
 import { normalizeShipping } from "@/lib/services/shipping-stage";
@@ -746,6 +758,86 @@ export default async function OrderPage({
     delivered &&
     !!items[0] &&
     (!wellmix || canOpen(user, "requests"));
+  /* Partes do pedido na tabela de etapas (ordem do negócio): só as que este
+     login já vê nos cartões de baixo; cada linha leva ao cartão ou à página. */
+  const partsByStage = orderPartsByStage([
+    wellmix || (user.role === "supplier" && order.supplierId === user.partyId)
+      ? documentPart(requirements, `/app/orders/${order.id}/purchase-order`)
+      : null,
+    sheetState
+      ? sheetPart(
+          {
+            missing: sheetState.missing.length,
+            started: sheetState.saved || sheetState.prefillSource !== "catalog",
+          },
+          `/app/orders/${order.id}/purchase-sheet`,
+          sheetState.missing.length
+            ? t("orderParts.sheet.missing", {
+                n: sheetState.missing.length,
+              })
+            : null,
+        )
+      : null,
+    stepsPart(
+      "certification",
+      certSteps.map((v) => ({ done: v.done, started: !!v.step })),
+      "#certification",
+    ),
+    artworkView
+      ? plainPart(
+          "artwork",
+          artworkView.open > 0 ? "active" : "pending",
+          "#artwork",
+          artworkView.open > 0
+            ? t("orderParts.artwork.open", { n: artworkView.open })
+            : null,
+        )
+      : null,
+    showSupplierPayment
+      ? plainPart(
+          "supplier_payment",
+          order.status === "CLOSED" ? "done" : "active",
+          "#supplier-payment",
+        )
+      : null,
+    productionView
+      ? plainPart(
+          "production",
+          productionView.allApproved
+            ? "done"
+            : productionView.track
+              ? "active"
+              : "pending",
+          "#production",
+          productionView.track?.etd
+            ? t("orderParts.production.etd", {
+                date: formatDate(productionView.track.etd, t),
+              })
+            : null,
+        )
+      : null,
+    stepsPart(
+      "import",
+      importSteps.map((v) => ({ done: v.done, started: !!v.step })),
+      "#import-flow",
+    ),
+    receivingView
+      ? plainPart(
+          "receiving",
+          receivingView.row?.closedAt
+            ? "done"
+            : receivingView.row
+              ? "active"
+              : "pending",
+          "#receiving",
+          receivingView.divergences
+            ? t("orderParts.receiving.divergences", {
+                n: receivingView.divergences,
+              })
+            : null,
+        )
+      : null,
+  ]);
   /* Cartões coloridos do alto (como Clientes e Fornecedores): os mesmos
      valores e a mesma regra de quem vê do antigo cartão Financeiro (cliente:
      venda, recebido e a receber; administrador: também compra, pago, a pagar
@@ -1256,166 +1348,230 @@ export default async function OrderPage({
               const open = s.status === "active" || s.status === "blocked";
               const expanded = expandedStageIds.has(s.id);
               return (
-                <tr
-                  key={s.id}
-                  className={cx(
-                    rowClass,
-                    s.status === "active" && "bg-brand-50/60",
-                    s.status === "blocked" && "bg-amber-50/70",
-                  )}
-                  data-stage-row={s.key}
-                >
-                  <Td className="w-10">
-                    <StepDot state={s.status}>{index + 1}</StepDot>
-                  </Td>
-                  <Td className="min-w-40">
-                    <span
+                <Fragment key={s.id}>
+                  <tr
+                    className={cx(
+                      rowClass,
+                      s.status === "active" && "bg-brand-50/60",
+                      s.status === "blocked" && "bg-amber-50/70",
+                    )}
+                    data-stage-row={s.key}
+                  >
+                    <Td className="w-10">
+                      <StepDot state={s.status}>{index + 1}</StepDot>
+                    </Td>
+                    <Td className="min-w-40">
+                      <span
+                        className={cx(
+                          s.status === "pending"
+                            ? "text-zinc-500"
+                            : s.status === "active"
+                              ? "font-semibold text-brand-800"
+                              : s.status === "blocked"
+                                ? "font-semibold text-amber-900"
+                                : "font-medium text-zinc-900",
+                        )}
+                      >
+                        {visible ? (
+                          <a
+                            href={stageHref(s)}
+                            className="transition hover:text-brand-700"
+                          >
+                            {t(`stage.${s.key}`)}
+                          </a>
+                        ) : (
+                          t(`stage.${s.key}`)
+                        )}
+                      </span>
+                    </Td>
+                    <Td className="whitespace-nowrap">
+                      <Badge tone={stageTone(s.status)}>
+                        {t(`stageStatus.${s.status}`)}
+                      </Badge>
+                    </Td>
+                    <Td className="whitespace-nowrap text-zinc-700">
+                      {visible ? (
+                        <span className="inline-flex items-center gap-1">
+                          {t(`role.${s.responsibleRole}`)}
+                          {(() => {
+                            // Mensagem para o responsável da etapa (Wellmix: a
+                            // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
+                            const chat = stageChat(
+                              order,
+                              s.responsibleRole,
+                              wellmix,
+                            );
+                            const draft = t("orderView.stage.chatDraft", {
+                              stage: t(`stage.${s.key}`),
+                            });
+                            if (!chat) return null;
+                            if (chat.kind === "unassigned")
+                              return (
+                                <a
+                                  href="#order-partners"
+                                  className="text-xs font-medium text-brand-700 underline underline-offset-2"
+                                  title={t("orderView.stage.chatAssignTitle", {
+                                    role: t(`role.${s.responsibleRole}`),
+                                  })}
+                                  data-stage-chat-assign={s.key}
+                                >
+                                  {t("orderView.stage.chatAssign")}
+                                </a>
+                              );
+                            return (
+                              <span data-stage-chat={s.key}>
+                                <ChatOpenButton
+                                  target={
+                                    chat.kind === "party"
+                                      ? {
+                                          orderId: order.id,
+                                          partyId: chat.partyId,
+                                          draft,
+                                        }
+                                      : { orderId: order.id, draft }
+                                  }
+                                  label={
+                                    chat.kind === "party"
+                                      ? t("orderView.stage.chat", {
+                                          who: `${t(`role.${s.responsibleRole}`)} (${partyName(chat.partyId)})`,
+                                        })
+                                      : t("orderView.stage.chatWellmix")
+                                  }
+                                />
+                              </span>
+                            );
+                          })()}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
+                    <Td
                       className={cx(
-                        s.status === "pending"
-                          ? "text-zinc-500"
-                          : s.status === "active"
-                            ? "font-semibold text-brand-800"
-                            : s.status === "blocked"
-                              ? "font-semibold text-amber-900"
-                              : "font-medium text-zinc-900",
+                        "whitespace-nowrap tabular-nums",
+                        visible && open && isOverdue(s.dueAt)
+                          ? "font-semibold text-red-700"
+                          : "text-zinc-700",
                       )}
                     >
-                      {visible ? (
-                        <a
-                          href={stageHref(s)}
-                          className="transition hover:text-brand-700"
-                        >
-                          {t(`stage.${s.key}`)}
-                        </a>
+                      {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
+                    </Td>
+                    <Td className="whitespace-nowrap tabular-nums text-zinc-700">
+                      {visible && s.completedAt
+                        ? formatDate(s.completedAt, t)
+                        : "—"}
+                    </Td>
+                    <Td className="w-32">
+                      {open ? (
+                        <span className="flex items-center gap-2">
+                          <span className="w-16">
+                            <Progress percent={s.percent} />
+                          </span>
+                          <span className="text-xs font-semibold tabular-nums text-zinc-600">
+                            {s.percent}%
+                          </span>
+                        </span>
+                      ) : s.status === "done" ? (
+                        <span className="text-xs font-semibold text-emerald-700">
+                          100%
+                        </span>
                       ) : (
-                        t(`stage.${s.key}`)
+                        <span className="text-zinc-400">—</span>
                       )}
-                    </span>
-                  </Td>
-                  <Td className="whitespace-nowrap">
-                    <Badge tone={stageTone(s.status)}>
-                      {t(`stageStatus.${s.status}`)}
-                    </Badge>
-                  </Td>
-                  <Td className="whitespace-nowrap text-zinc-700">
-                    {visible ? (
-                      <span className="inline-flex items-center gap-1">
-                        {t(`role.${s.responsibleRole}`)}
-                        {(() => {
-                          // Mensagem para o responsável da etapa (Wellmix: a
-                          // empresa; quem é de fora: a Wellmix), já com a etapa escrita.
-                          const chat = stageChat(
-                            order,
-                            s.responsibleRole,
-                            wellmix,
-                          );
-                          const draft = t("orderView.stage.chatDraft", {
-                            stage: t(`stage.${s.key}`),
-                          });
-                          if (!chat) return null;
-                          if (chat.kind === "unassigned")
-                            return (
-                              <a
-                                href="#order-partners"
-                                className="text-xs font-medium text-brand-700 underline underline-offset-2"
-                                title={t("orderView.stage.chatAssignTitle", {
-                                  role: t(`role.${s.responsibleRole}`),
-                                })}
-                                data-stage-chat-assign={s.key}
-                              >
-                                {t("orderView.stage.chatAssign")}
-                              </a>
-                            );
-                          return (
-                            <span data-stage-chat={s.key}>
-                              <ChatOpenButton
-                                target={
-                                  chat.kind === "party"
-                                    ? {
-                                        orderId: order.id,
-                                        partyId: chat.partyId,
-                                        draft,
-                                      }
-                                    : { orderId: order.id, draft }
-                                }
-                                label={
-                                  chat.kind === "party"
-                                    ? t("orderView.stage.chat", {
-                                        who: `${t(`role.${s.responsibleRole}`)} (${partyName(chat.partyId)})`,
-                                      })
-                                    : t("orderView.stage.chatWellmix")
-                                }
-                              />
-                            </span>
-                          );
-                        })()}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </Td>
-                  <Td
-                    className={cx(
-                      "whitespace-nowrap tabular-nums",
-                      visible && open && isOverdue(s.dueAt)
-                        ? "font-semibold text-red-700"
-                        : "text-zinc-700",
-                    )}
-                  >
-                    {visible && s.dueAt ? formatDate(s.dueAt, t) : "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap tabular-nums text-zinc-700">
-                    {visible && s.completedAt
-                      ? formatDate(s.completedAt, t)
-                      : "—"}
-                  </Td>
-                  <Td className="w-32">
-                    {open ? (
-                      <span className="flex items-center gap-2">
-                        <span className="w-16">
-                          <Progress percent={s.percent} />
-                        </span>
-                        <span className="text-xs font-semibold tabular-nums text-zinc-600">
-                          {s.percent}%
-                        </span>
-                      </span>
-                    ) : s.status === "done" ? (
-                      <span className="text-xs font-semibold text-emerald-700">
-                        100%
-                      </span>
-                    ) : (
-                      <span className="text-zinc-400">—</span>
-                    )}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
-                    {visible && reqs.length
-                      ? t("orderView.stage.reqs", {
-                          done: reqs.filter((r) => r.status === "done").length,
-                          total: reqs.length,
-                        })
-                      : "—"}
-                  </Td>
-                  <Td className="whitespace-nowrap text-right">
-                    {visible ? (
-                      expanded && !defaultExpanded(s) ? (
-                        <TextLink
-                          href={`/app/orders/${order.id}#order-stages`}
-                          className="text-sm"
+                    </Td>
+                    <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                      {visible && reqs.length
+                        ? t("orderView.stage.reqs", {
+                            done: reqs.filter((r) => r.status === "done")
+                              .length,
+                            total: reqs.length,
+                          })
+                        : "—"}
+                    </Td>
+                    <Td className="whitespace-nowrap text-right">
+                      {visible ? (
+                        expanded && !defaultExpanded(s) ? (
+                          <TextLink
+                            href={`/app/orders/${order.id}#order-stages`}
+                            className="text-sm"
+                          >
+                            {t("orderView.stage.close")}
+                          </TextLink>
+                        ) : expanded ? null : (
+                          <TextLink
+                            href={stageHref(s)}
+                            className="text-sm"
+                            data-stage-open={s.key}
+                          >
+                            {t("orderView.stage.open")}
+                          </TextLink>
+                        )
+                      ) : null}
+                    </Td>
+                  </tr>
+                  {/* Partes do pedido que acontecem nesta altura do fluxo e têm
+                    cartão (ou página) próprio: aparecem aqui, na ordem do
+                    negócio, com a situação e o atalho. */}
+                  {(partsByStage.get(s.key) ?? []).map((part) => (
+                    <tr
+                      key={part.key}
+                      className={cx(rowClass, "bg-zinc-50/60")}
+                      data-order-part={part.key}
+                      data-order-part-state={part.state}
+                    >
+                      <Td className="w-10 text-center text-zinc-400">↳</Td>
+                      <Td className="min-w-40">
+                        <a
+                          href={part.href}
+                          className="font-medium text-zinc-800 transition hover:text-brand-700"
                         >
-                          {t("orderView.stage.close")}
-                        </TextLink>
-                      ) : expanded ? null : (
-                        <TextLink
-                          href={stageHref(s)}
-                          className="text-sm"
-                          data-stage-open={s.key}
+                          {t(`orderParts.${part.key}` as DictionaryKey)}
+                        </a>
+                        {ORDER_PART_PARALLEL.includes(part.key) ? (
+                          <span className="ml-1.5 whitespace-nowrap rounded-full bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-800 ring-1 ring-inset ring-sky-200">
+                            {t("orderParts.parallel")}
+                          </span>
+                        ) : null}
+                      </Td>
+                      <Td className="whitespace-nowrap">
+                        <Badge
+                          tone={
+                            part.state === "done"
+                              ? "success"
+                              : part.state === "active"
+                                ? "warning"
+                                : "neutral"
+                          }
                         >
-                          {t("orderView.stage.open")}
+                          {t(`orderParts.state.${part.state}` as DictionaryKey)}
+                        </Badge>
+                      </Td>
+                      <Td className="whitespace-nowrap text-zinc-700">
+                        {t(`orderParts.who.${part.key}` as DictionaryKey)}
+                      </Td>
+                      <Td colSpan={3} className="text-xs text-zinc-600">
+                        {part.detail ?? "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right tabular-nums text-zinc-700">
+                        {part.total
+                          ? t("orderView.stage.reqs", {
+                              done: part.done ?? 0,
+                              total: part.total,
+                            })
+                          : "—"}
+                      </Td>
+                      <Td className="whitespace-nowrap text-right">
+                        <TextLink
+                          href={part.href}
+                          className="text-sm"
+                          data-order-part-open={part.key}
+                        >
+                          {t("orderParts.open")}
                         </TextLink>
-                      )
-                    ) : null}
-                  </Td>
-                </tr>
+                      </Td>
+                    </tr>
+                  ))}
+                </Fragment>
               );
             })}
           </tbody>
@@ -2792,6 +2948,21 @@ function RequirementRow({
                   ? t("sheet.completeCta", { count: String(sheetHint.count) })
                   : t("sheet.open")
                 : t("sheet.view")}
+            </LinkButton>
+          </div>
+        ) : null
+      ) : isOrderSignatureKey(r.key) ? (
+        // Assinatura: pela página do documento do pedido (só a Wellmix e o
+        // fornecedor do pedido chegam a ela).
+        isWellmix(user) || user.role === "supplier" ? (
+          <div className={wide.side}>
+            <LinkButton
+              href={`/app/orders/${order.id}/purchase-order`}
+              variant={canAct ? "primary" : "secondary"}
+              className="w-full @sm:w-auto"
+              data-order-sign-link={r.key}
+            >
+              {canAct ? t("orderSign.open") : t("orderSign.view")}
             </LinkButton>
           </div>
         ) : null

@@ -32,6 +32,7 @@ import { quoteSlaDeadline } from "@/lib/sla";
 import { getAiAdapter } from "@/lib/integrations/ai";
 import { getLookup, STRONG_REASONS } from "@/lib/services/product-lookup";
 import { catalogShowcasePhotos } from "@/lib/services/documents";
+import { hiddenBookingProductIds } from "@/lib/services/booking-visibility";
 import { availableStockByProduct } from "@/lib/services/containers";
 import type { LookupField } from "@/lib/db";
 import { createRequestAction } from "../../actions";
@@ -82,22 +83,27 @@ export default async function NewRequestPage({
     schedule?.quantity ?? (typeof quantity === "string" ? quantity : "");
   const presetCustomerId =
     schedule?.customerId ?? (typeof customerId === "string" ? customerId : "");
-  const [products, customers, customerUsers] = await Promise.all([
-    store.list("products", { filter: { active: true }, orderBy: "name" }),
-    isWellmix(user)
-      ? store.list("parties", {
-          filter: { type: "customer", active: true },
-          orderBy: "name",
-        })
-      : Promise.resolve([]),
-    // Logins de cliente, para a Wellmix indicar o solicitante (só ele verá o pedido).
-    isWellmix(user)
-      ? store.list("users", {
-          filter: { role: "customer", active: true },
-          orderBy: "name",
-        })
-      : Promise.resolve([]),
-  ]);
+  const [activeProducts, hiddenByBooking, customers, customerUsers] =
+    await Promise.all([
+      store.list("products", { filter: { active: true }, orderBy: "name" }),
+      // Booking: produto ainda não aprovado lá não é oferecido aqui, nem ao
+      // cliente nem à Wellmix (para ela, a porta é "Gerar solicitação" no Booking).
+      hiddenBookingProductIds(),
+      isWellmix(user)
+        ? store.list("parties", {
+            filter: { type: "customer", active: true },
+            orderBy: "name",
+          })
+        : Promise.resolve([]),
+      // Logins de cliente, para a Wellmix indicar o solicitante (só ele verá o pedido).
+      isWellmix(user)
+        ? store.list("users", {
+            filter: { role: "customer", active: true },
+            orderBy: "name",
+          })
+        : Promise.resolve([]),
+    ]);
+  const products = activeProducts.filter((p) => !hiddenByBooking.has(p.id));
 
   /* Busca por foto ou link: resultado guardado em product_lookups (só de quem buscou ou Wellmix). */
   const found =
