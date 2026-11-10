@@ -139,7 +139,9 @@ describe("faca (die-cut) com o fornecedor escolhido", () => {
       (t) => t.link === `/app/quotes/${qa.id}#die-cut`,
     )!;
     const { translator } = await import("@/i18n");
-    expect(dielineTask.group).toBe("packaging_brief");
+    // Fornecedor: o filtro é a etapa dele ("Faca da embalagem").
+    expect(dielineTask.group).toBe("supplier.dieline");
+    expect(translator("zh")("tasks.group.supplier.dieline")).toBe("包装刀模");
     expect(translator("zh")("tasks.group.packaging_brief")).toBe(
       "包装（刀模与设计稿）",
     );
