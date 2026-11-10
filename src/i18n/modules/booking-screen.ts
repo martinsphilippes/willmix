@@ -40,7 +40,30 @@ export const pt = {
   "booking.bulk.customer.keep": "Cliente (não mexer)",
   "booking.bulk.customer.none": "Sem cliente (tirar)",
   "booking.bulk.stock": "Estoque Wellmix (compra para estoque)",
+  "booking.guide.title":
+    "Para gerar a solicitação, cada linha marcada precisa de três coisas:",
+  "booking.guide.stage": "Etapa",
+  "booking.guide.stage.rule": "estar em Aprovado, Oferecido ou Reservado.",
+  "booking.guide.stage.ok": "está em {stage}.",
+  "booking.guide.stage.fix":
+    "está em {stage}, que não gera solicitação. Com as linhas marcadas, no grupo Etapa escolha “Aprovado” e toque em Mover.",
+  "booking.guide.stage.fixAdmin":
+    "está em {stage}. Aprovar é do administrador: peça a ele para mover estas linhas para “Aprovado”.",
+  "booking.guide.customer": "Cliente",
+  "booking.guide.customer.ok": "{name}.",
+  "booking.guide.customer.fix":
+    "a linha não tem cliente. No grupo Cliente, escolha o cliente (ou “Estoque Wellmix”) antes de gerar.",
+  "booking.guide.qty": "Quantidade",
+  "booking.guide.qty.ok": "{n} peças.",
+  "booking.guide.qty.fix":
+    "digite a quantidade na coluna “Qtd. reservada” da linha.",
+  "booking.guide.qty.fixMoq":
+    "digite na coluna “Qtd. reservada” uma quantidade a partir do pedido mínimo ({moq}).",
+  "booking.guide.then":
+    "Depois, com as linhas marcadas, toque em “Gerar solicitação” de novo. O que você marcou e digitou continua na tela.",
   "booking.bulk.assign": "Salvar cliente e quantidades",
+  "booking.bulk.assign.short": "Salvar",
+  "booking.bulk.setOwner.short": "Trocar",
   "booking.bulk.status": "Mover para…",
   "booking.bulk.move": "Mover",
   "booking.bulk.move.confirm": "Mover {n} linha(s) para “{stage}”?",
@@ -52,7 +75,7 @@ export const pt = {
   "booking.bulk.request.confirm":
     "Gerar uma solicitação com {n} linha(s) marcada(s)? (até {max} por vez)",
   "booking.bulk.hint":
-    "A quantidade digitada na linha e o cliente escolhido aqui valem para as linhas marcadas. Gerar solicitação usa a quantidade da linha (sem ela, o pedido mínimo) e aceita até {max} linhas por vez.",
+    "Para gerar a solicitação: marque as linhas, escolha o cliente e toque em Gerar solicitação. A quantidade é a digitada na linha (sem ela, a planejada ou o pedido mínimo). Até {max} linhas por vez.",
   "booking.bulk.working": "Gravando…",
   "booking.done.moved": "{n} linha(s) movida(s) de etapa.",
   "booking.done.edited":
@@ -140,7 +163,30 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.bulk.customer.keep": "Customer (leave as is)",
   "booking.bulk.customer.none": "No customer (remove)",
   "booking.bulk.stock": "Wellmix stock (purchase for stock)",
+  "booking.guide.title":
+    "To create the request, each ticked row needs three things:",
+  "booking.guide.stage": "Stage",
+  "booking.guide.stage.rule": "be in Approved, Offered or Reserved.",
+  "booking.guide.stage.ok": "it is in {stage}.",
+  "booking.guide.stage.fix":
+    "it is in {stage}. With the rows ticked, choose “Approved” in the Stage group and tap Move.",
+  "booking.guide.stage.fixAdmin":
+    "it is in {stage}. Approving is for the administrator: ask them to move these rows to “Approved”.",
+  "booking.guide.customer": "Customer",
+  "booking.guide.customer.ok": "{name}.",
+  "booking.guide.customer.fix":
+    "the row has no customer. In the Customer group, choose the customer (or “Wellmix stock”) before creating.",
+  "booking.guide.qty": "Quantity",
+  "booking.guide.qty.ok": "{n} pieces.",
+  "booking.guide.qty.fix":
+    "type the quantity in the row's “Reserved qty” column.",
+  "booking.guide.qty.fixMoq":
+    "type in the “Reserved qty” column a quantity from the minimum order ({moq}) up.",
+  "booking.guide.then":
+    "Then, with the rows ticked, tap “Create request” again. What you ticked and typed stays on the screen.",
   "booking.bulk.assign": "Save customer and quantities",
+  "booking.bulk.assign.short": "Save",
+  "booking.bulk.setOwner.short": "Change",
   "booking.bulk.status": "Move to…",
   "booking.bulk.move": "Move",
   "booking.bulk.move.confirm": "Move {n} row(s) to “{stage}”?",
@@ -152,7 +198,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "Create a request with {n} ticked row(s)? (up to {max} at a time)",
   "booking.bulk.hint":
-    "The quantity typed in the row and the customer chosen here apply to the ticked rows. Create request uses the row's quantity (without it, the minimum order) and takes up to {max} rows at a time.",
+    "To create the request: tick the rows, choose the customer and tap Create request. The quantity is the one typed in the row (without it, the planned one or the minimum order). Up to {max} rows at a time.",
   "booking.bulk.working": "Saving…",
   "booking.done.moved": "{n} row(s) moved to another stage.",
   "booking.done.edited":
@@ -238,7 +284,28 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.bulk.customer.keep": "客户（不修改）",
   "booking.bulk.customer.none": "无客户（移除）",
   "booking.bulk.stock": "Wellmix 库存（为库存采购）",
+  "booking.guide.title": "要生成询价单，每个勾选的行需要三项：",
+  "booking.guide.stage": "阶段",
+  "booking.guide.stage.rule": "处于“已批准”“已推荐”或“已预订”。",
+  "booking.guide.stage.ok": "处于“{stage}”。",
+  "booking.guide.stage.fix":
+    "处于“{stage}”。勾选这些行后，在“阶段”组选择“已批准”并点击“移动”。",
+  "booking.guide.stage.fixAdmin":
+    "处于“{stage}”。批准由管理员操作：请让其把这些行移到“已批准”。",
+  "booking.guide.customer": "客户",
+  "booking.guide.customer.ok": "{name}。",
+  "booking.guide.customer.fix":
+    "该行没有客户。生成之前，请在“客户”组选择客户（或“Wellmix 库存”）。",
+  "booking.guide.qty": "数量",
+  "booking.guide.qty.ok": "{n} 件。",
+  "booking.guide.qty.fix": "请在该行的“预订数量”列填写数量。",
+  "booking.guide.qty.fixMoq":
+    "请在“预订数量”列填写不低于起订量（{moq}）的数量。",
+  "booking.guide.then":
+    "然后保持勾选，再次点击“生成询价单”。您勾选和填写的内容仍保留在页面上。",
   "booking.bulk.assign": "保存客户和数量",
+  "booking.bulk.assign.short": "保存",
+  "booking.bulk.setOwner.short": "更换",
   "booking.bulk.status": "移到…",
   "booking.bulk.move": "移动",
   "booking.bulk.move.confirm": "把 {n} 行移到“{stage}”？",
@@ -250,7 +317,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "用勾选的 {n} 行生成一张询价单？（每次最多 {max} 行）",
   "booking.bulk.hint":
-    "行内填写的数量和这里选择的客户只对勾选的行生效。生成询价单使用该行的数量（没有则用起订量），每次最多 {max} 行。",
+    "生成询价单：勾选行，选择客户，然后点击“生成询价单”。数量取行内填写的数量（没有则用计划数量或起订量）。每次最多 {max} 行。",
   "booking.bulk.working": "保存中…",
   "booking.done.moved": "已移动 {n} 行的阶段。",
   "booking.done.edited": "已保存 {n} 个产品的数据（目录和主表）。",

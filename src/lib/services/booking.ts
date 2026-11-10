@@ -25,6 +25,7 @@ import {
   bookingMoveOptions,
   bookingStatusRequirementError,
   reservedQtyError,
+  bookingCanRequest,
   bookingRequestQuantity,
   forecastTotalOf,
   type BookingActor,
@@ -1026,8 +1027,10 @@ async function cancelOwnRequests(
 
 /**
  * As linhas marcadas viram uma solicitação (um lote, uma por produto) do
- * cliente escolhido. Só linhas em Aprovado, Oferecido ou Reservado; linha
- * reservada para outro cliente recusa tudo (nada é criado). Quantidade: a
+ * cliente escolhido. Linhas em Aprovado, Oferecido ou Reservado; e, para quem
+ * aprova (abre o Superplan; hoje, o administrador), também as de Novo e Em
+ * análise: gerar a solicitação já é aprovar, num toque só (fica na
+ * auditoria). Linha reservada para outro cliente recusa tudo (nada é criado). Quantidade: a
  * digitada na linha, senão a reservada, senão o pedido mínimo do produto.
  * Depois, as linhas vão para "Virou solicitação" com o número dela.
  */
@@ -1044,8 +1047,9 @@ export async function generateRequestFromBooking(
     BOOKING_REQUEST_MAX,
     "booking_request_too_many",
   );
+  const approver = bookingActor(user).canApprove;
   for (const booking of bookings)
-    if (!BOOKING_REQUESTABLE.includes(booking.status))
+    if (!bookingCanRequest(booking.status, approver))
       throw refuse("booking_not_requestable", booking.id);
 
   // Cliente: o escolhido na barra; sem escolha, o das linhas (se for um só).
@@ -1273,7 +1277,11 @@ export async function generateRequestFromBooking(
         booking.id,
         `Booking: ${product.name}: virou a solicitação${
           request.number ? ` #${request.number}` : ""
-        } (${quantity} peças)`,
+        } (${quantity} peças)${
+          BOOKING_REQUESTABLE.includes(booking.status)
+            ? ""
+            : "; aprovado junto, por quem gerou"
+        }`,
         {
           status: booking.status,
           customerId: booking.customerId,
