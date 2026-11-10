@@ -330,3 +330,256 @@ describe("proposta de embalagem com o OK do fornecedor", () => {
     expect((await quoteOf(quote.id)).status).toBe("selected");
   });
 });
+
+const { translator } = await import("@/i18n");
+const booking = await import("@/lib/services/booking");
+const { ensureBookingForProduct } =
+  await import("@/lib/services/booking-intake");
+const { saveProductSheet } = await import("@/lib/services/product-sheet");
+const { PRODUCT_EXTRA_DEFAULTS } = await import("@/lib/db");
+const { offerRoundOf, suggestedReturnPrice } = await import("@/lib/quote-flow");
+
+describe("preço desejado: a solicitação que nasce do Booking", () => {
+  let seq = 0;
+
+  /** Produto do fornecedor A no Booking, já virado solicitação com a RFQ aberta. */
+  async function fromBooking(suppliers = ["fornecedor-a"]) {
+    seq++;
+    const store = getStore();
+    const [line] = await store.list("product_lines", { limit: 1 });
+    const product = await store.create("products", {
+      ...PRODUCT_EXTRA_DEFAULTS,
+      lineId: line.id,
+      name: `Moldura do Booking ${seq}`,
+      sku: null,
+      specification: null,
+      active: true,
+      source: "import",
+      supplierId: "fornecedor-a",
+    } as never);
+    await saveProductSheet(admin, product.id, {
+      price: 4,
+      currency: "RMB",
+      moq: 120,
+      masterCartonQty: 12,
+    });
+    const { booking: row } = await ensureBookingForProduct(admin, {
+      productId: product.id,
+      importBatchId: "lote-oferta",
+      sourceFileName: "feira.xls",
+      sourceRows: String(seq),
+      sourceOrder: seq,
+    });
+    const [req] = await booking.generateRequestFromBooking(
+      admin,
+      { ids: [row.id], customer: "cliente-joao" },
+      translator("pt"),
+    );
+    await r.openRfq(admin, req.id, suppliers);
+    const quotes = await store.list("quotes", {
+      filter: { requestId: req.id },
+    });
+    const quote = quotes.find((q) => q.supplierId === "fornecedor-a")!;
+    return { product, req, quote, quotes };
+  }
+
+  it("só o fornecedor do produto recebe o preço da ficha; os outros convidados e a solicitação comum, não", async () => {
+    const { req, quote, quotes } = await fromBooking([
+      "fornecedor-a",
+      "fornecedor-b",
+    ]);
+    expect(await flow.quoteOfferFor(quote, req)).toEqual({
+      price: 4,
+      currency: "CNY",
+      leadTimeDays: null,
+    });
+    const other = quotes.find((q) => q.supplierId === "fornecedor-b");
+    if (other) expect(await flow.quoteOfferFor(other, req)).toBeNull();
+    // Solicitação que não veio do Booking: cotação como sempre.
+    const plain = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: req.productId,
+      productName: "Fora do Booking",
+      description: "x",
+      specification: null,
+      quantity: 500,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    await r.openRfq(admin, plain.id, ["fornecedor-a"]);
+    const [plainQuote] = await getStore().list("quotes", {
+      filter: { requestId: plain.id },
+    });
+    expect(await flow.quoteOfferFor(plainQuote, plain)).toBeNull();
+    await expect(
+      flow.replyQuoteOffer(supplierA, plainQuote.id, {
+        decision: "confirm",
+        price: null,
+        leadTimeDays: 30,
+        comment: null,
+      }),
+    ).rejects.toThrow("offer_none");
+  });
+
+  it("o preço mudado na tabela do Booking é o que o fornecedor recebe", async () => {
+    const { product, req, quote } = await fromBooking();
+    await saveProductSheet(admin, product.id, { price: 3.5 });
+    expect((await flow.quoteOfferFor(quote, req))?.price).toBe(3.5);
+  });
+
+  it("confirmar: a cotação fica respondida com o preço desejado, sem a ficha inteira, e a escolha segue", async () => {
+    const { req, quote } = await fromBooking();
+    // Só o fornecedor da cotação (ou a Wellmix por ele); prazo obrigatório.
+    await expect(
+      flow.replyQuoteOffer(supplierB, quote.id, {
+        decision: "confirm",
+        price: null,
+        leadTimeDays: 30,
+        comment: null,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      flow.replyQuoteOffer(supplierA, quote.id, {
+        decision: "confirm",
+        price: null,
+        leadTimeDays: 0,
+        comment: null,
+      }),
+    ).rejects.toThrow("offer_lead_time_required");
+    expect((await quoteOf(quote.id)).status).toBe("invited");
+
+    await flow.replyQuoteOffer(supplierA, quote.id, {
+      decision: "confirm",
+      price: null,
+      leadTimeDays: 35,
+      comment: null,
+    });
+    const answered = await quoteOf(quote.id);
+    expect([
+      answered.status,
+      answered.price,
+      answered.currency,
+      answered.leadTimeDays,
+    ]).toEqual(["answered", 4, "CNY", 35]);
+    expect(answered.negotiation?.map((n) => n.kind)).toEqual([
+      "offer",
+      "confirm",
+    ]);
+    expect(offerRoundOf(answered.negotiation)?.targetPrice).toBe(4);
+    expect((await getStore().get("requests", req.id))!.status).toBe(
+      "QUOTATION_RECEIVED",
+    );
+    // Respondida: o preço desejado não espera mais resposta.
+    expect(await flow.quoteOfferFor(answered, req)).toBeNull();
+    await expect(
+      flow.replyQuoteOffer(supplierA, quote.id, {
+        decision: "confirm",
+        price: null,
+        leadTimeDays: 35,
+        comment: null,
+      }),
+    ).rejects.toThrow("offer_none");
+    // Nada em aberto: a Wellmix escolhe.
+    await r.selectQuote(admin, quote.id, sell);
+    expect((await quoteOf(quote.id)).status).toBe("selected");
+  });
+
+  it("outro preço: a cotação fica com o preço do fornecedor, a Wellmix é avisada e devolve já com o preço desejado", async () => {
+    const { req, quote } = await fromBooking();
+    await expect(
+      flow.replyQuoteOffer(supplierA, quote.id, {
+        decision: "counter",
+        price: null,
+        leadTimeDays: 30,
+        comment: null,
+      }),
+    ).rejects.toThrow("offer_price_required");
+    await flow.replyQuoteOffer(supplierA, quote.id, {
+      decision: "counter",
+      price: 4.6,
+      leadTimeDays: 30,
+      comment: "O material subiu.",
+    });
+    const countered = await quoteOf(quote.id);
+    expect([countered.status, countered.price, countered.conditions]).toEqual([
+      "answered",
+      4.6,
+      "O material subiu.",
+    ]);
+    expect(countered.negotiation?.map((n) => n.kind)).toEqual([
+      "offer",
+      "counter",
+    ]);
+    expect(countered.negotiation?.[1]).toMatchObject({
+      side: "supplier",
+      previousPrice: 4,
+      price: 4.6,
+    });
+    const alerts = await getStore().list("notifications", {
+      filter: { link: `/app/quotes/${quote.id}#negotiation` },
+    });
+    expect(
+      alerts.some((n) => n.subject.includes("Preço diferente do desejado")),
+    ).toBe(true);
+    // A devolução já sugere o preço desejado (e não os 10% a menos).
+    expect(
+      suggestedReturnPrice(countered.price, countered.negotiation),
+    ).toEqual({ price: 4, fromOffer: true });
+    // A negociação de sempre continua daqui: devolver e responder.
+    await flow.returnQuote(admin, quote.id, {
+      comment: "Precisamos chegar no preço combinado na feira.",
+      targetPrice: 4,
+    });
+    await expect(r.selectQuote(admin, quote.id, sell)).rejects.toThrow(
+      "negotiation_pending",
+    );
+    await flow.replyNegotiation(supplierA, quote.id, {
+      decision: "accept",
+      price: null,
+      comment: null,
+    });
+    expect((await quoteOf(quote.id)).price).toBe(4);
+    expect((await getStore().get("requests", req.id))!.status).toBe(
+      "QUOTATION_RECEIVED",
+    );
+  });
+
+  it("outro preço igual ao desejado é uma confirmação; a Wellmix pode registrar a resposta pelo fornecedor", async () => {
+    const { quote } = await fromBooking();
+    await flow.replyQuoteOffer(admin, quote.id, {
+      decision: "counter",
+      price: 4,
+      leadTimeDays: 28,
+      comment: null,
+    });
+    const answered = await quoteOf(quote.id);
+    expect(answered.negotiation?.map((n) => n.kind)).toEqual([
+      "offer",
+      "confirm",
+    ]);
+    expect(answered.price).toBe(4);
+  });
+
+  it("sem desconto sugerido quando não houve preço desejado; textos nas três línguas", async () => {
+    expect(suggestedReturnPrice(4, null)).toEqual({
+      price: 3.6,
+      fromOffer: false,
+    });
+    for (const lang of ["pt", "en", "zh"] as const) {
+      const tr = translator(lang);
+      for (const key of [
+        "quoteFlow.offer.title",
+        "quoteFlow.offer.confirm",
+        "quoteFlow.offer.counter",
+        "quoteFlow.neg.round.offer",
+        "quoteFlow.neg.round.confirm",
+        "quoteFlow.neg.differs",
+        "purchaseFlow.error.offer_none",
+        "purchaseFlow.error.offer_lead_time_required",
+        "purchaseFlow.error.offer_price_required",
+      ] as const)
+        expect(tr(key)).not.toBe(key);
+    }
+  });
+});

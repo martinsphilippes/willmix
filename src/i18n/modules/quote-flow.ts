@@ -28,6 +28,37 @@ export const pt = {
   "quoteFlow.neg.reply.comment": "Comentário (obrigatório para manter o preço)",
   "quoteFlow.neg.reply.submit": "Responder",
   "quoteFlow.neg.history": "Histórico da negociação",
+  "quoteFlow.neg.round.offer": "Wellmix informou o preço desejado",
+  "quoteFlow.neg.round.confirm": "Fornecedor confirmou o preço",
+  "quoteFlow.neg.targetHintOffer":
+    "Já vem com o preço desejado que o fornecedor recebeu ({suggested}); pode mudar ou apagar.",
+  "quoteFlow.neg.done.confirmed":
+    "Preço confirmado. A cotação está respondida e a Wellmix foi avisada.",
+  "quoteFlow.neg.done.countered":
+    "Preço enviado. A Wellmix foi avisada e vai responder; use as mensagens para conversar.",
+  "quoteFlow.neg.differs":
+    "O preço do fornecedor ({price}) é diferente do desejado pela Wellmix ({wanted}). Conversem pelas mensagens para negociar.",
+  "quoteFlow.offer.title": "Preço desejado pela Wellmix",
+  "quoteFlow.offer.intro":
+    "A Wellmix já conhece este produto e quer comprar por este preço. Confirme se você vende por ele ou mande o seu preço.",
+  "quoteFlow.offer.intro.wellmix":
+    "O fornecedor recebeu este preço (o da ficha do produto no Booking) e ainda não respondeu. Se ele respondeu por fora, registre aqui.",
+  "quoteFlow.offer.price": "Preço por peça",
+  "quoteFlow.offer.quantity": "Quantidade",
+  "quoteFlow.offer.leadTime": "Prazo de produção (dias)",
+  "quoteFlow.offer.other": "Outro preço por peça ({currency})",
+  "quoteFlow.offer.otherHint": "Só se você não vende pelo preço acima.",
+  "quoteFlow.offer.comment": "Comentário (opcional)",
+  "quoteFlow.offer.confirm": "Confirmar {price}",
+  "quoteFlow.offer.counter": "Enviar outro preço",
+  "quoteFlow.offer.after":
+    "Confirmando, a cotação fica respondida: não é preciso preencher a ficha abaixo. Mandando outro preço, a Wellmix responde e vocês conversam pelas mensagens.",
+  "purchaseFlow.error.offer_none":
+    "Esta cotação não tem preço desejado esperando resposta. Atualize a página.",
+  "purchaseFlow.error.offer_lead_time_required":
+    "Informe o prazo de produção em dias (número inteiro).",
+  "purchaseFlow.error.offer_price_required":
+    "Para enviar outro preço, digite o preço por peça.",
   "quoteFlow.neg.round.return": "Wellmix devolveu",
   "quoteFlow.neg.round.accept": "Fornecedor aceitou",
   "quoteFlow.neg.round.counter": "Fornecedor mandou outro preço",
@@ -132,6 +163,37 @@ export const en: Record<keyof typeof pt, string> = {
   "quoteFlow.neg.reply.comment": "Comment (required to keep the price)",
   "quoteFlow.neg.reply.submit": "Answer",
   "quoteFlow.neg.history": "Negotiation history",
+  "quoteFlow.neg.round.offer": "Wellmix sent the wanted price",
+  "quoteFlow.neg.round.confirm": "Supplier confirmed the price",
+  "quoteFlow.neg.targetHintOffer":
+    "Prefilled with the wanted price the supplier received ({suggested}); you can change or clear it.",
+  "quoteFlow.neg.done.confirmed":
+    "Price confirmed. The quote is answered and Wellmix was notified.",
+  "quoteFlow.neg.done.countered":
+    "Price sent. Wellmix was notified and will reply; use the messages to talk.",
+  "quoteFlow.neg.differs":
+    "The supplier's price ({price}) differs from the price Wellmix wants ({wanted}). Use the messages to negotiate.",
+  "quoteFlow.offer.title": "Price wanted by Wellmix",
+  "quoteFlow.offer.intro":
+    "Wellmix already knows this product and wants to buy at this price. Confirm that you sell at it, or send your price.",
+  "quoteFlow.offer.intro.wellmix":
+    "The supplier received this price (the one on the product sheet in Booking) and has not answered yet. If they answered elsewhere, record it here.",
+  "quoteFlow.offer.price": "Price per piece",
+  "quoteFlow.offer.quantity": "Quantity",
+  "quoteFlow.offer.leadTime": "Production lead time (days)",
+  "quoteFlow.offer.other": "Another price per piece ({currency})",
+  "quoteFlow.offer.otherHint": "Only if you do not sell at the price above.",
+  "quoteFlow.offer.comment": "Comment (optional)",
+  "quoteFlow.offer.confirm": "Confirm {price}",
+  "quoteFlow.offer.counter": "Send another price",
+  "quoteFlow.offer.after":
+    "If you confirm, the quote is answered: you do not need to fill in the sheet below. If you send another price, Wellmix replies and you talk through the messages.",
+  "purchaseFlow.error.offer_none":
+    "This quote has no wanted price waiting for an answer. Refresh the page.",
+  "purchaseFlow.error.offer_lead_time_required":
+    "Enter the production lead time in days (whole number).",
+  "purchaseFlow.error.offer_price_required":
+    "To send another price, type the price per piece.",
   "quoteFlow.neg.round.return": "Wellmix returned",
   "quoteFlow.neg.round.accept": "Supplier accepted",
   "quoteFlow.neg.round.counter": "Supplier sent another price",
@@ -235,6 +297,33 @@ export const zh: Record<keyof typeof pt, string> = {
   "quoteFlow.neg.reply.comment": "备注（维持原价时必填）",
   "quoteFlow.neg.reply.submit": "回复",
   "quoteFlow.neg.history": "议价记录",
+  "quoteFlow.neg.round.offer": "Wellmix 提出了期望价格",
+  "quoteFlow.neg.round.confirm": "供应商已确认价格",
+  "quoteFlow.neg.targetHintOffer":
+    "已填入供应商收到的期望价格（{suggested}）；可修改或清空。",
+  "quoteFlow.neg.done.confirmed": "价格已确认。报价已完成，并已通知 Wellmix。",
+  "quoteFlow.neg.done.countered":
+    "价格已发送。已通知 Wellmix，对方会回复；请通过消息沟通。",
+  "quoteFlow.neg.differs":
+    "供应商的价格（{price}）与 Wellmix 的期望价格（{wanted}）不同。请通过消息沟通协商。",
+  "quoteFlow.offer.title": "Wellmix 的期望价格",
+  "quoteFlow.offer.intro":
+    "Wellmix 已了解此产品，希望按此价格采购。请确认您是否按此价格供货，或报出您的价格。",
+  "quoteFlow.offer.intro.wellmix":
+    "供应商已收到此价格（Booking 中产品资料的价格），尚未回复。如对方已通过其他方式回复，请在此登记。",
+  "quoteFlow.offer.price": "单价",
+  "quoteFlow.offer.quantity": "数量",
+  "quoteFlow.offer.leadTime": "生产周期（天）",
+  "quoteFlow.offer.other": "其他单价（{currency}）",
+  "quoteFlow.offer.otherHint": "仅在您不能按上述价格供货时填写。",
+  "quoteFlow.offer.comment": "备注（选填）",
+  "quoteFlow.offer.confirm": "确认 {price}",
+  "quoteFlow.offer.counter": "发送其他价格",
+  "quoteFlow.offer.after":
+    "确认后报价即完成，无需填写下方的资料表。如发送其他价格，Wellmix 会回复，双方通过消息沟通。",
+  "purchaseFlow.error.offer_none": "此报价没有等待回复的期望价格。请刷新页面。",
+  "purchaseFlow.error.offer_lead_time_required": "请填写生产周期（天，整数）。",
+  "purchaseFlow.error.offer_price_required": "如需发送其他价格，请填写单价。",
   "quoteFlow.neg.round.return": "Wellmix 退回",
   "quoteFlow.neg.round.accept": "供应商已接受",
   "quoteFlow.neg.round.counter": "供应商另报新价",

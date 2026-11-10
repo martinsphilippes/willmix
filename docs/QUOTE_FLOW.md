@@ -21,6 +21,21 @@ Registrar, na própria cotação, a negociação de preço e o OK do fornecedor 
 5. Enquanto a devolução espera resposta, **a escolha do fornecedor fica parada** (`negotiation_pending`), na seleção direta e no envio para aprovação.
 6. O chat da solicitação continua no alto da página para conversar antes de responder.
 
+## 3a. Preço desejado: a solicitação que nasce do Booking
+
+Pedido do dono (10/11/2026): pelo Booking, o lançamento já tem o preço que a Wellmix quer pagar. O fornecedor não precisa preencher a cotação inteira (pesos, fotos, cartão do fabricante): ele recebe o preço e **confirma** ou **manda o dele**.
+
+1. **Quando vale** (`quoteOfferFor`): a solicitação tem uma linha do Booking ligada a ela, a cotação ainda espera a primeira resposta (`invited`, sem rodadas) e o fornecedor da cotação é o **principal do produto**. O preço é o da ficha do produto (o que a equipe ajusta na tabela do Booking), na moeda da ficha. Sem preço ou moeda na ficha, a cotação segue como sempre.
+2. **Só o fornecedor do produto vê o preço.** Outros fornecedores convidados para a mesma RFQ cotam do jeito de sempre e não veem o valor (o preço da ficha é do fornecedor dela: isolamento entre fornecedores).
+3. **É lido na hora.** Nada é gravado até o fornecedor responder; por isso a RFQ aberta antes desta regra também mostra o preço, e uma mudança de preço no Booking antes da resposta é a que ele recebe.
+4. **Na cotação**, o fornecedor (ou a Wellmix, registrando por ele) vê o cartão "Preço desejado pela Wellmix" com o preço, a quantidade e três campos: prazo de produção em dias (obrigatório), outro preço e comentário.
+   - **Confirmar**: a cotação fica **respondida** com o preço desejado e o prazo, pelo mesmo `answerQuote` de sempre (situação da solicitação, vínculo do fornecedor com o produto, auditoria, aviso à Wellmix). A ficha da cotação continua disponível, mas não é exigida.
+   - **Enviar outro preço**: a cotação fica respondida com o preço **dele**; a Wellmix recebe o aviso "Preço diferente do desejado" e os dois lados veem, no cartão da negociação, a diferença e o botão das mensagens. A Wellmix pode **devolver com comentário**, e o campo do preço proposto já vem com o **preço desejado** (em vez dos 10% a menos). Daí em diante é a negociação da seção 3.
+   - Outro preço igual ao desejado conta como confirmação.
+5. **Histórico**: duas rodadas em `quotes.negotiation`: `offer` (Wellmix, com `targetPrice`) e `confirm` ou `counter` (fornecedor, com `previousPrice` e `price`). Auditoria `quote.offer_reply`.
+6. **Erros**: `offer_none` (não há preço desejado esperando), `offer_lead_time_required`, `offer_price_required`.
+7. **Código**: `quoteOfferFor` e `replyQuoteOffer` (`src/lib/services/quote-flow.ts`), `replyQuoteOfferAction`, `QuoteOfferCard` (`src/components/quote-flow-cards.tsx`), `offerRoundOf` e `suggestedReturnPrice` (`src/lib/quote-flow.ts`). Sem coluna nova.
+
 ## 4. Proposta de embalagem (o OK do fornecedor)
 
 1. **A Wellmix envia** a imagem da embalagem proposta (gerada na ferramenta que a equipe já usa) e, se quiser, o **prompt** que a gerou (fica guardado). Sem gerador de imagem dentro do portal: decisão do dono.
@@ -37,7 +52,7 @@ Registrar, na própria cotação, a negociação de preço e o OK do fornecedor 
 
 ## 6. Dados (aditivo)
 
-- `quotes.negotiation` (JSON): rodadas `{at, byUserId, byName, side, kind: return|accept|counter|keep, comment, currency, targetPrice, previousPrice, price}`.
+- `quotes.negotiation` (JSON): rodadas `{at, byUserId, byName, side, kind: return|accept|counter|keep|offer|confirm, comment, currency, targetPrice, previousPrice, price}`.
 - `quotes.packagingProposal` (JSON): `{version, prompt, imageDocumentId, sentAt, sentBy…, decision: ok|no|null, decidedAt, decidedBy…, comment, history[]}`.
 - `documents.quoteId` (opcional): só gravado nos arquivos da cotação.
 - Antes de o esquema ser publicado, as ações novas voltam "esquema desatualizado"; o resto da cotação funciona.

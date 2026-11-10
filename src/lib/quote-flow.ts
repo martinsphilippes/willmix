@@ -17,7 +17,37 @@ export const NEGOTIATION_DISCOUNT_PCT = 10;
 /** Teto de rodadas guardadas por cotação. */
 export const NEGOTIATION_MAX_ROUNDS = 30;
 
-export type NegotiationKind = "return" | "accept" | "counter" | "keep";
+/**
+ * "offer" e "confirm" são do preço desejado (solicitação que nasce do
+ * Booking): a Wellmix já diz quanto quer pagar ("offer") e o fornecedor
+ * confirma ("confirm") ou manda o preço dele ("counter").
+ */
+export type NegotiationKind =
+  "return" | "accept" | "counter" | "keep" | "offer" | "confirm";
+/** Resposta ao preço desejado: confirma ou manda outro preço. */
+export const OFFER_REPLIES = ["confirm", "counter"] as const;
+export type OfferReply = (typeof OFFER_REPLIES)[number];
+
+/** O preço desejado enviado ao fornecedor (a rodada "offer"), se houve. */
+export function offerRoundOf(
+  rounds: NegotiationRound[] | null | undefined,
+): NegotiationRound | null {
+  return rounds?.find((r) => r.kind === "offer") ?? null;
+}
+
+/**
+ * Preço que a devolução já sugere: o desejado enviado ao fornecedor, quando
+ * ele respondeu com um preço maior; senão, o da cotação menos o desconto.
+ */
+export function suggestedReturnPrice(
+  price: number | null | undefined,
+  rounds: NegotiationRound[] | null | undefined,
+): { price: number | null; fromOffer: boolean } {
+  const wanted = offerRoundOf(rounds)?.targetPrice;
+  if (typeof wanted === "number" && typeof price === "number" && wanted < price)
+    return { price: wanted, fromOffer: true };
+  return { price: suggestedTargetPrice(price), fromOffer: false };
+}
 export const NEGOTIATION_REPLIES = ["accept", "counter", "keep"] as const;
 export type NegotiationReply = (typeof NEGOTIATION_REPLIES)[number];
 
