@@ -2,6 +2,7 @@ import "server-only";
 
 import { getStore, type Booking, type User } from "@/lib/db";
 import { audit } from "./audit";
+import { isSchemaMissing } from "./packaging-brief";
 
 /*
  * Entrada no Booking (docs/BOOKING.md): a importação da ficha técnica chama
@@ -25,6 +26,26 @@ export interface BookingIntake {
    * "Aprovado", para a importação não tirar da vitrine o que já se vende.
    */
   productExisted?: boolean;
+  /** Peças planejadas na planilha (coluna "TT PCS"); nulo: ela não traz. */
+  plannedQty?: number | null;
+}
+
+/**
+ * Grava com o plano; se a coluna `plan` ainda não existe no banco (esquema
+ * não publicado), grava sem ele: a linha do Booking nunca deixa de nascer
+ * por causa da quantidade planejada.
+ */
+async function withPlanFallback<T>(
+  withPlan: boolean,
+  write: (plan: boolean) => Promise<T>,
+): Promise<T> {
+  if (!withPlan) return write(false);
+  try {
+    return await write(true);
+  } catch (error) {
+    if (!isSchemaMissing(error)) throw error;
+    return write(false);
+  }
 }
 
 /**
@@ -42,38 +63,51 @@ export async function ensureBookingForProduct(
     filter: { productId: intake.productId },
     limit: 1,
   });
+  const planned =
+    typeof intake.plannedQty === "number" && intake.plannedQty > 0
+      ? Math.round(intake.plannedQty)
+      : null;
   if (existing) {
-    // Ainda em Novo: a planilha mais recente passa a ser a origem.
+    // Ainda em Novo: a planilha mais recente passa a ser a origem (e traz a
+    // quantidade planejada dela; a previsão digitada fica).
     if (existing.status !== "new") return { booking: existing, created: false };
-    const booking = await store.update("bookings", existing.id, {
-      importBatchId: intake.importBatchId,
-      sourceFileName: intake.sourceFileName?.slice(0, 200) ?? null,
-      sourceRows: intake.sourceRows?.slice(0, 40) ?? null,
-      sourceOrder: intake.sourceOrder,
-    });
+    const booking = await withPlanFallback(planned !== null, (plan) =>
+      store.update("bookings", existing.id, {
+        importBatchId: intake.importBatchId,
+        sourceFileName: intake.sourceFileName?.slice(0, 200) ?? null,
+        sourceRows: intake.sourceRows?.slice(0, 40) ?? null,
+        sourceOrder: intake.sourceOrder,
+        ...(plan
+          ? { plan: { ...(existing.plan ?? {}), plannedQty: planned } }
+          : {}),
+      }),
+    );
     return { booking, created: false };
   }
   const now = new Date().toISOString();
   const status = intake.productExisted ? "approved" : "new";
-  const booking = await store.create("bookings", {
-    productId: intake.productId,
-    status,
-    importBatchId: intake.importBatchId,
-    sourceFileName: intake.sourceFileName?.slice(0, 200) ?? null,
-    sourceRows: intake.sourceRows?.slice(0, 40) ?? null,
-    sourceOrder: intake.sourceOrder,
-    customerId: null,
-    reservedQty: null,
-    ownerUserId: user.id,
-    note: null,
-    analysis: null,
-    requestId: null,
-    requestGroupId: null,
-    requestNumber: null,
-    statusChangedAt: now,
-    statusChangedByUserId: user.id,
-    createdByUserId: user.id,
-  });
+  const booking = await withPlanFallback(planned !== null, (plan) =>
+    store.create("bookings", {
+      productId: intake.productId,
+      status,
+      importBatchId: intake.importBatchId,
+      sourceFileName: intake.sourceFileName?.slice(0, 200) ?? null,
+      sourceRows: intake.sourceRows?.slice(0, 40) ?? null,
+      sourceOrder: intake.sourceOrder,
+      customerId: null,
+      reservedQty: null,
+      ownerUserId: user.id,
+      note: null,
+      analysis: null,
+      ...(plan ? { plan: { plannedQty: planned } } : {}),
+      requestId: null,
+      requestGroupId: null,
+      requestNumber: null,
+      statusChangedAt: now,
+      statusChangedByUserId: user.id,
+      createdByUserId: user.id,
+    }),
+  );
   await audit(
     user,
     "booking.create",

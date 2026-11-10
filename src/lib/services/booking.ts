@@ -25,6 +25,8 @@ import {
   bookingMoveOptions,
   bookingStatusRequirementError,
   reservedQtyError,
+  bookingRequestQuantity,
+  forecastTotalOf,
   type BookingActor,
   type BookingErrorCode,
   type BookingLinkState,
@@ -263,6 +265,11 @@ function rowOf(
     customerId: booking.customerId,
     customerName: customer?.name ?? null,
     reservedQty: booking.reservedQty,
+    plannedQty: positive(booking.plan?.plannedQty),
+    forecastOrder: positive(booking.plan?.forecastOrder),
+    forecastDistribution: positive(booking.plan?.forecastDistribution),
+    forecastEcommerce: positive(booking.plan?.forecastEcommerce),
+    forecastTotal: forecastTotalOf(booking.plan ?? {}),
     // A análise (custo, preço, lucro) só sai do servidor para quem analisa.
     analysis: ctx.canApprove ? (booking.analysis ?? null) : null,
     ownerUserId: booking.ownerUserId,
@@ -1081,8 +1088,12 @@ export async function generateRequestFromBooking(
     if ((variants.get(product.id) ?? []).some((v) => v.active !== false))
       throw refuse("booking_variant_required", booking.id);
     const moq = joined.moq.get(product.id) ?? null;
-    const quantity =
-      input.quantities?.[booking.id] ?? booking.reservedQty ?? moq ?? null;
+    const quantity = bookingRequestQuantity({
+      typed: input.quantities?.[booking.id],
+      reservedQty: booking.reservedQty,
+      plannedQty: positive(booking.plan?.plannedQty),
+      moq,
+    });
     if (quantity === null) throw refuse("booking_qty_missing", booking.id);
     const error = reservedQtyError(quantity, moq);
     if (error) throw refuse(error, booking.id);

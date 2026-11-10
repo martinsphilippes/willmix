@@ -3,7 +3,11 @@ import "server-only";
 import { getStore, type User } from "@/lib/db";
 import { assertWellmix } from "@/lib/auth/permissions";
 import { assertScreen } from "@/lib/auth/screens";
-import { BOOKING_BULK_MAX } from "@/lib/booking";
+import {
+  BOOKING_BULK_MAX,
+  BOOKING_PLAN_FIELDS,
+  type BookingPlanField,
+} from "@/lib/booking";
 import { audit } from "./audit";
 import { BookingRefusal } from "./booking";
 import type { SheetInput } from "./purchase-sheet";
@@ -34,6 +38,11 @@ export interface BookingProductEdit {
   heightCm?: number | null;
   /** Campos da ficha mestre (já lidos e conferidos). */
   sheet: SheetInput;
+  /**
+   * Plano da linha do Booking (peças planejadas e previsão por canal): fica
+   * na linha, não no produto. Só os campos presentes mudam.
+   */
+  plan?: Partial<Record<BookingPlanField, number | null>>;
   /** Campos que não deu para ler: recusa o envio, apontando a linha. */
   invalid?: string[];
 }
@@ -57,6 +66,7 @@ export async function saveBookingProductEdits(
   ]);
   const productOf = new Map(products.map((p) => [p.id, p]));
   const rowOf = new Map(bookings.map((b) => [b.productId, b.id]));
+  const bookingOf = new Map(bookings.map((b) => [b.productId, b]));
 
   // Confere tudo antes de gravar qualquer coisa.
   const supplierIds = [
@@ -136,6 +146,33 @@ export async function saveBookingProductEdits(
     if (Object.keys(edit.sheet).length) {
       await saveProductSheet(user, product.id, edit.sheet);
       touched = true;
+    }
+    // 4. Plano da linha do Booking (quantidade planejada e previsão).
+    const booking = bookingOf.get(edit.productId);
+    if (booking && edit.plan && Object.keys(edit.plan).length) {
+      const before = booking.plan ?? {};
+      const next = { ...before };
+      let changed = false;
+      for (const key of BOOKING_PLAN_FIELDS) {
+        if (!(key in edit.plan)) continue;
+        const value = edit.plan[key] ?? null;
+        if ((before[key] ?? null) === value) continue;
+        next[key] = value;
+        changed = true;
+      }
+      if (changed) {
+        await store.update("bookings", booking.id, { plan: next });
+        await audit(
+          user,
+          "booking.update",
+          "booking",
+          booking.id,
+          `${product.name} (Booking: quantidade planejada e previsão)`,
+          { plan: before },
+          { plan: next },
+        );
+        touched = true;
+      }
     }
     if (touched) saved++;
   }

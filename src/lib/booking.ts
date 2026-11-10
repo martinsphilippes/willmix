@@ -310,6 +310,13 @@ export interface BookingRow {
   averageUsd: number | null;
   /** Peso médio por peça (kg), da ficha mestre: o terceiro peso. */
   averageWeightKg: number | null;
+  /** Peças planejadas (da planilha, coluna "TT PCS", ou digitadas). */
+  plannedQty: number | null;
+  /** Previsão de vendas (peças) por canal, digitada; e a soma das três. */
+  forecastOrder: number | null;
+  forecastDistribution: number | null;
+  forecastEcommerce: number | null;
+  forecastTotal: number | null;
   /** Volume da caixa master (m³). */
   cbm: number | null;
   /** Medidas da peça ("33,5 × 24,8 × 1,5 cm") ou o tamanho escrito na ficha. */
@@ -410,6 +417,36 @@ export const BOOKING_COLUMNS = [
   { key: "colors", kind: "text", value: (r) => r.colors },
   { key: "material", kind: "text", value: (r) => r.material },
   { key: "packageType", kind: "text", value: (r) => r.packageType },
+  {
+    key: "plannedQty",
+    kind: "number",
+    whole: true,
+    value: (r) => r.plannedQty,
+  },
+  {
+    key: "forecastOrder",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastOrder,
+  },
+  {
+    key: "forecastDistribution",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastDistribution,
+  },
+  {
+    key: "forecastEcommerce",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastEcommerce,
+  },
+  {
+    key: "forecastTotal",
+    kind: "number",
+    whole: true,
+    value: (r) => r.forecastTotal,
+  },
   { key: "customer", kind: "option", value: (r) => r.customerId },
   {
     key: "reservedQty",
@@ -759,4 +796,49 @@ export function pageOfBookingRows<T>(
     pages,
     total: rows.length,
   };
+}
+
+/** Campos do plano da linha (peças), na ordem das colunas. */
+export const BOOKING_PLAN_FIELDS = [
+  "plannedQty",
+  "forecastOrder",
+  "forecastDistribution",
+  "forecastEcommerce",
+] as const;
+export type BookingPlanField = (typeof BOOKING_PLAN_FIELDS)[number];
+/** Teto de uma quantidade do plano (peças). */
+export const BOOKING_PLAN_MAX = 100_000_000;
+
+/** Soma da previsão por canal; nulo quando nenhum canal foi informado. */
+export function forecastTotalOf(plan: {
+  forecastOrder?: number | null;
+  forecastDistribution?: number | null;
+  forecastEcommerce?: number | null;
+}): number | null {
+  const parts = [
+    plan.forecastOrder,
+    plan.forecastDistribution,
+    plan.forecastEcommerce,
+  ].filter((n): n is number => typeof n === "number" && n > 0);
+  return parts.length ? parts.reduce((a, b) => a + b, 0) : null;
+}
+
+/**
+ * Quantidade de uma linha ao gerar a solicitação: a digitada; senão a
+ * reservada; senão a planejada (quando não fica abaixo do pedido mínimo);
+ * senão o pedido mínimo.
+ */
+export function bookingRequestQuantity(input: {
+  typed?: number | null;
+  reservedQty: number | null;
+  plannedQty: number | null;
+  moq: number | null;
+}): number | null {
+  const planned =
+    input.plannedQty !== null &&
+    input.plannedQty > 0 &&
+    (input.moq === null || input.plannedQty >= input.moq)
+      ? input.plannedQty
+      : null;
+  return input.typed ?? input.reservedQty ?? planned ?? input.moq ?? null;
 }
