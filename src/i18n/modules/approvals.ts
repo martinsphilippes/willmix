@@ -34,6 +34,14 @@ export const pt = {
     "Escolha enviada para aprovação. A proposta só vai ao cliente depois de aprovada.",
   "approvals.submit": "Enviar para aprovação",
   "approvals.decided.approved": "Aprovação registrada.",
+  "approvals.applying.badge": "Aprovada · gravando a escolha",
+  "approvals.applying.staleBadge": "Aprovada · gravação interrompida",
+  "approvals.applying.body":
+    "Aprovada em todos os níveis. O sistema está gravando a escolha do fornecedor e criando o pedido. Leva alguns segundos e esta tela se atualiza sozinha.",
+  "approvals.applying.stale":
+    "Aprovada em todos os níveis, mas a gravação da escolha parou antes de terminar. Toque em “Tentar concluir de novo”: o sistema retoma de onde parou, sem pedir outra aprovação.",
+  "approvals.error.approval_applying":
+    "A escolha aprovada está sendo gravada. Aguarde alguns segundos.",
   "approvals.retry.hint":
     "Todos os níveis aprovaram, mas a gravação da escolha foi interrompida. Tente concluir de novo: o sistema retoma de onde parou, sem pedir outra aprovação.",
   "approvals.retry.submit": "Tentar concluir de novo",
@@ -110,6 +118,14 @@ export const en: Record<keyof typeof pt, string> = {
     "Choice sent for approval. The proposal only goes to the customer once approved.",
   "approvals.submit": "Send for approval",
   "approvals.decided.approved": "Approval recorded.",
+  "approvals.applying.badge": "Approved · saving the choice",
+  "approvals.applying.staleBadge": "Approved · saving interrupted",
+  "approvals.applying.body":
+    "Approved at every level. The system is saving the supplier choice and creating the order. It takes a few seconds and this screen refreshes by itself.",
+  "approvals.applying.stale":
+    "Approved at every level, but saving the choice stopped before finishing. Tap “Try to finish again”: the system resumes where it stopped, without asking for another approval.",
+  "approvals.error.approval_applying":
+    "The approved choice is being saved. Wait a few seconds.",
   "approvals.retry.hint":
     "Every level approved, but saving the choice was interrupted. Try to finish again: the system resumes where it stopped, without asking for another approval.",
   "approvals.retry.submit": "Try to finish again",
@@ -184,6 +200,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "approvals.sent": "已提交审批。批准后报价才会发给客户。",
   "approvals.submit": "提交审批",
   "approvals.decided.approved": "已记录批准。",
+  "approvals.applying.badge": "已批准 · 正在保存选择",
+  "approvals.applying.staleBadge": "已批准 · 保存中断",
+  "approvals.applying.body":
+    "各级均已批准。系统正在保存供应商选择并创建订单，需要几秒钟，本页面会自动刷新。",
+  "approvals.applying.stale":
+    "各级均已批准，但保存选择的过程中断了。请点击“再次尝试完成”：系统会从中断处继续，无需重新审批。",
+  "approvals.error.approval_applying": "已批准的选择正在保存中，请稍候几秒。",
   "approvals.retry.hint":
     "所有级别均已批准，但保存选择时被中断。请再次尝试完成：系统会从中断处继续，无需重新审批。",
   "approvals.retry.submit": "再次尝试完成",

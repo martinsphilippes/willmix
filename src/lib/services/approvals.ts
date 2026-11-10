@@ -1,5 +1,6 @@
 import "server-only";
 
+import { after } from "next/server";
 import {
   APPROVAL_LEVELS,
   getStore,
@@ -68,6 +69,32 @@ export function canDecide(user: User, approval: Approval): boolean {
   // Segregação: não aprova a própria escolha nem decide dois níveis.
   if (approval.requestedByUserId === user.id) return false;
   return !approval.steps.some((s) => s.userId === user.id);
+}
+
+/*
+ * "Gravando a escolha": todos os níveis aprovaram e a seleção do fornecedor
+ * (que, na compra para estoque, já cria o pedido: dezenas de gravações) está
+ * sendo gravada depois da resposta à tela. A aprovação continua "pendente",
+ * sem nível a decidir e com todos os passos registrados (sem valor novo no
+ * esquema). Termina em "aprovada" ou em "aprovada, mas não gravada".
+ */
+export function isApplying(approval: Approval): boolean {
+  return (
+    approval.status === "pending" &&
+    approval.currentLevel === null &&
+    approval.steps.length > 0 &&
+    approval.steps.every((s) => s.decision === "approved")
+  );
+}
+
+/** Tempo que a gravação pode levar antes de ser dada como interrompida. */
+export const APPLY_STALE_MS = 150_000;
+
+/** Gravação parada: passou do tempo e não concluiu (dá para concluir de novo). */
+export function isApplyStale(approval: Approval, now = Date.now()): boolean {
+  if (!isApplying(approval)) return false;
+  const since = Date.parse(approval.decidedAt ?? "");
+  return !Number.isFinite(since) || now - since > APPLY_STALE_MS;
 }
 
 /** Logins que decidem um nível (pela função); ninguém com a função: os admins. */
@@ -183,6 +210,9 @@ export async function submitForApproval(
   const valueBrl = valueInBrl(input);
   const levels = levelsFor(valueBrl, settings.approvalExecutiveThresholdBrl);
   const open = await pendingApprovalFor(request.id);
+  // A escolha aprovada está sendo gravada: não dá para substituir agora.
+  if (open && isApplying(open) && !isApplyStale(open))
+    throw new ApprovalError("approval_applying");
   if (open) {
     await store.update("approvals", open.id, {
       status: "cancelled",
@@ -290,17 +320,72 @@ export async function decideApproval(
     );
     return updated;
   }
-  // Último nível: a seleção do fornecedor passa a valer.
+  // Último nível: a aprovação fica registrada na hora (a tela responde já) e
+  // a seleção do fornecedor é gravada em seguida, depois da resposta.
+  const applying = await store.update("approvals", approval.id, {
+    steps,
+    currentLevel: null,
+    decidedAt: now,
+  });
+  await audit(
+    user,
+    "approval.approve",
+    "request",
+    request.id,
+    `Aprovado no último nível (${level}); gravando a escolha do fornecedor`,
+  );
+  // Fora de uma requisição (testes, rotinas) não há "depois": grava agora.
+  if (!scheduleFinish(user, applying.id))
+    return finishApproval(user, applying.id);
+  return applying;
+}
+
+/** Agenda a gravação da escolha para depois da resposta. Devolve se agendou. */
+function scheduleFinish(user: User, approvalId: string): boolean {
+  try {
+    after(async () => {
+      try {
+        await finishApproval(user, approvalId);
+      } catch (error) {
+        console.error(
+          "approval_finish_failed",
+          approvalId,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Conclui a aprovação que está "gravando a escolha": grava a seleção do
+ * fornecedor (selectQuote) e marca "aprovada"; se a gravação falhar (ficha
+ * mudou, cotação reaberta), fica "aprovada, mas não gravada" com o motivo e o
+ * comprador é avisado. Chamada de novo depois de concluída, não faz nada.
+ */
+export async function finishApproval(
+  user: User,
+  approvalId: string,
+): Promise<Approval> {
+  const store = getStore();
+  const approval = await store.get("approvals", approvalId);
+  if (!approval) throw new ApprovalError("not_found");
+  if (!isApplying(approval)) return approval;
+  const request = await store.get("requests", approval.requestId);
+  if (!request) throw new ApprovalError("not_found");
+  const level = approval.steps.at(-1)?.level ?? "";
   try {
     await applySelection(user, approval);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const failed = await store.update("approvals", approval.id, {
-      steps,
       status: "failed",
       currentLevel: null,
       reason,
-      decidedAt: now,
+      decidedAt: new Date().toISOString(),
     });
     await audit(
       user,
@@ -318,10 +403,9 @@ export async function decideApproval(
     return failed;
   }
   const done = await store.update("approvals", approval.id, {
-    steps,
     status: "approved",
     currentLevel: null,
-    decidedAt: now,
+    decidedAt: new Date().toISOString(),
   });
   await audit(
     user,
@@ -371,7 +455,9 @@ export function canRetryApproval(
   approval: Approval,
   latest: boolean,
 ): boolean {
-  if (!isWellmix(user) || approval.status !== "failed" || !latest) return false;
+  if (!isWellmix(user) || !latest) return false;
+  // "Falhou" ou gravação interrompida (passou do tempo sem concluir).
+  if (approval.status !== "failed" && !isApplyStale(approval)) return false;
   if (isAdmin(user)) return true;
   const last = approval.steps[approval.steps.length - 1];
   return !!last && last.decision === "approved" && last.userId === user.id;
@@ -398,7 +484,12 @@ export async function retryApproval(
     await applySelection(user, approval);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    const failed = await store.update("approvals", approval.id, { reason });
+    // Gravação interrompida que falha de novo passa a "aprovada, mas não gravada".
+    const failed = await store.update("approvals", approval.id, {
+      status: "failed",
+      currentLevel: null,
+      reason,
+    });
     await audit(
       user,
       "approval.failed",
@@ -441,6 +532,9 @@ export async function cancelApproval(
     throw new ApprovalError("not_found");
   if (!(isAdmin(user) || approval.requestedByUserId === user.id))
     throw new ForbiddenError();
+  // Já aprovada por todos e sendo gravada: não há mais o que cancelar.
+  if (isApplying(approval) && !isApplyStale(approval))
+    throw new ApprovalError("approval_applying");
   await store.update("approvals", approval.id, {
     status: "cancelled",
     currentLevel: null,
