@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { getStore, type User } from "@/lib/db";
 import { dataMode, sessionSecret } from "@/lib/env";
+import { loginToEmail } from "./login-id";
 import { verifyPassword } from "./password";
 import { signToken, verifyToken } from "./token";
 
@@ -17,13 +18,15 @@ export class AuthError extends Error {}
 const APPWRITE_MIN_PASSWORD = 8;
 
 /**
- * Login. Modo memória: valida senha localmente e assina um cookie.
+ * Login por e-mail ou nome de usuário. Modo memória: valida senha localmente e assina um cookie.
  * Modo Appwrite: cria sessão com a API key e guarda o segredo em cookie.
  * Em ambos, o usuário precisa existir na tabela `users` (papel e parceiro).
  */
 export async function signIn(email: string, password: string): Promise<User> {
   const store = getStore();
-  const normalized = email.trim().toLowerCase();
+  // E-mail ou nome de usuário (login sem e-mail): o endereço da conta.
+  const normalized = loginToEmail(email);
+  if (!normalized) throw new AuthError("invalid");
   const [user] = await store.list("users", {
     filter: { email: normalized },
     limit: 1,

@@ -127,6 +127,11 @@ export interface BookingOptions {
   stockOption: boolean;
   /** Todos os fornecedores ativos (para trocar o fornecedor na edição). */
   allSuppliers: BookingOption[];
+  /**
+   * Fornecedores das linhas sem nenhum login ativo: não conseguem ver nem
+   * responder o que o Booking envia (o acesso é criado no cadastro deles).
+   */
+  suppliersWithoutLogin: BookingOption[];
 }
 
 export interface BookingListData {
@@ -427,6 +432,11 @@ async function buildRows(
         label: r.sourceFileName ?? r.importBatchId,
       });
   const { STOCK_PARTY_ID } = await import("./purchase-flow");
+  const { partiesWithoutLogin } = await import("./portal-access");
+  const rowSuppliers = distinct(rows.map((r) => r.supplierId)).filter(
+    (id): id is string => !!id && parties.has(id),
+  );
+  const noLogin = await partiesWithoutLogin(rowSuppliers);
   return {
     rows,
     canApprove,
@@ -452,6 +462,10 @@ async function buildRows(
       allSuppliers: suppliers
         .filter((p) => p.active)
         .map((p) => ({ id: p.id, label: p.name }))
+        .sort(byLabel),
+      suppliersWithoutLogin: rowSuppliers
+        .filter((id) => noLogin.has(id))
+        .map((id) => ({ id, label: parties.get(id)?.name ?? id }))
         .sort(byLabel),
     },
   };

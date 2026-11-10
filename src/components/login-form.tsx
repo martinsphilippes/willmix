@@ -79,8 +79,14 @@ export function LoginForm({
           </span>
           <input
             name="email"
-            type="email"
-            autoComplete="email"
+            // Texto (não "email"): aceita também o nome de usuário do login
+            // sem e-mail; o teclado continua o de e-mail no celular.
+            type="text"
+            inputMode="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
