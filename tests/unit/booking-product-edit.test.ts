@@ -107,6 +107,54 @@ beforeAll(async () => {
   lineId = (await getStore().list("product_lines", { limit: 1 }))[0].id;
 });
 
+describe("peso médio por peça (o terceiro peso)", () => {
+  it("grava pela tabela do Booking, aparece na linha e no Superplan e pode ser apagado", async () => {
+    const a = await row();
+    h.current = admin;
+    await saveBookingProductsAction(
+      edit({ [`d.${a.product.id}.averageWeightPcKg`]: "0,27" }),
+    );
+    expect(last()).toBe("/app/booking?edit=1&edited=1");
+    expect((await getProductSheet(a.product.id))!.averageWeightPcKg).toBe(0.27);
+    const line = (await listBookingRows(admin)).rows.find(
+      (r) => r.id === a.booking.id,
+    )!;
+    // Um peso a mais: o líquido e o bruto ficam como estavam.
+    expect([
+      line.averageWeightKg,
+      line.netWeightKg,
+      line.grossWeightKg,
+    ]).toEqual([0.27, 0.225, null]);
+    expect(
+      (await superplanPrefillsFor([a.product.id])).get(a.product.id)!
+        .averageWeightKg,
+    ).toBe(0.27);
+    // Apagar o campo apaga o peso médio.
+    await saveBookingProductsAction(
+      edit({ [`d.${a.product.id}.averageWeightPcKg`]: "" }),
+    );
+    expect(
+      (await getProductSheet(a.product.id))!.averageWeightPcKg ?? null,
+    ).toBeNull();
+  });
+
+  it("vazio numa ficha que nunca teve peso médio não vai ao banco (esquema ainda não publicado)", async () => {
+    const { dropUnsavedEmptyOptional } =
+      await import("@/lib/services/purchase-sheet");
+    const patch: Record<string, unknown> = {
+      averageWeightPcKg: null,
+      averagePrice: undefined,
+      price: null,
+    };
+    dropUnsavedEmptyOptional(patch, { averagePrice: null });
+    // As colunas antigas seguem como vieram; as novas vazias saem.
+    expect(patch).toEqual({ price: null });
+    const clearing: Record<string, unknown> = { averageWeightPcKg: null };
+    dropUnsavedEmptyOptional(clearing, { averageWeightPcKg: 0.3 });
+    expect(clearing).toEqual({ averageWeightPcKg: null });
+  });
+});
+
 describe("editar dados dos produtos no Booking", () => {
   it("grava no cadastro e na ficha mestre, e a linha e o Superplan mostram o novo valor", async () => {
     const a = await row();

@@ -73,6 +73,8 @@ export async function loadSuperplanContext(
 export type SuperplanProductPrefill = SuperplanPrefill & {
   ncmFound: boolean;
   averageUsd: number | null;
+  /** Peso médio por peça (kg), da ficha mestre: mostrado, fora da conta. */
+  averageWeightKg: number | null;
 };
 
 const positive = (n: number | null | undefined): number | null =>
@@ -118,6 +120,7 @@ function prefillOf(
     ipiPct,
     ncmFound: iiPct !== null && ipiPct !== null,
     averageUsd: positive(sheet?.averagePrice),
+    averageWeightKg: positive(sheet?.averageWeightPcKg),
   };
 }
 

@@ -1495,6 +1495,11 @@ export interface PurchaseSheet extends BaseRow {
   dumpingReleasedByUserId?: string | null;
   dumpingReleasedAt?: string | null;
   averagePrice?: number | null;
+  /**
+   * Peso médio por peça (kg): um terceiro peso, além do líquido e do bruto,
+   * informado pela fábrica ou medido. Opcional: fichas antigas ficam sem.
+   */
+  averageWeightPcKg?: number | null;
   certificationRequired?: YesNo | null;
   certificationNote?: string | null;
   ecommerceDescription: string | null;
@@ -3238,6 +3243,7 @@ export const TABLES: Record<TableName, TableDef> = {
       dumpingReleasedByUserId: id(false),
       dumpingReleasedAt: datetime(),
       averagePrice: float(),
+      averageWeightPcKg: float(),
       certificationRequired: enumOf(YES_NO, false),
       certificationNote: text(),
     },

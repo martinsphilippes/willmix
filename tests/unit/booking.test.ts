@@ -73,6 +73,7 @@ const row = (patch: Partial<BookingRow> = {}): BookingRow => ({
   estimatedWeightKg: 0.243,
   weightEstimated: true,
   averageUsd: null,
+  averageWeightKg: null,
   cbm: 0.0183,
   size: "33,5 × 24,8 × 1,5 cm",
   colors: "White / Gray / bege",

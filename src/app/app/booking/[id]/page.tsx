@@ -164,6 +164,7 @@ export default async function BookingRowPage({
         </span>
       ),
     ],
+    [col("averageWeight"), number(row.averageWeightKg, 4)],
     [col("average"), number(row.averageUsd, 4)],
     [col("cbm"), number(row.cbm, 4)],
     [col("size"), row.size ?? "—"],

@@ -34,6 +34,9 @@ export const pt = {
   "superplan.average":
     "Média do despachante: {value} (só informação, não entra na conta).",
   "superplan.average.none": "Média do despachante: ainda não informada.",
+  "superplan.averageWeight": "Peso médio por peça (kg)",
+  "superplan.averageWeight.hint":
+    "Da ficha do produto (muda-se lá ou no Booking). Não entra na conta.",
   "superplan.cbm": "Volume da caixa (m³)",
   "superplan.ii": "II (%)",
   "superplan.ipi": "IPI (%)",
@@ -259,6 +262,9 @@ export const en: Record<keyof typeof pt, string> = {
   "superplan.average":
     "Customs broker average: {value} (information only, not used in the calculation).",
   "superplan.average.none": "Customs broker average: not informed yet.",
+  "superplan.averageWeight": "Average weight per piece (kg)",
+  "superplan.averageWeight.hint":
+    "From the product sheet (change it there or in Booking). Not used in the calculation.",
   "superplan.cbm": "Carton volume (m³)",
   "superplan.ii": "II (%)",
   "superplan.ipi": "IPI (%)",
@@ -483,6 +489,9 @@ export const zh: Record<keyof typeof pt, string> = {
     "估算毛重：{kg} kg（净重 + {pct}%）。在填写毛重之前，按这个重量计算。",
   "superplan.average": "报关行均价：{value}（仅供参考，不参与计算）。",
   "superplan.average.none": "报关行均价：尚未填写。",
+  "superplan.averageWeight": "每件平均重量（千克）",
+  "superplan.averageWeight.hint":
+    "来自产品资料表（在那里或 Booking 中修改）。不参与计算。",
   "superplan.cbm": "箱体积（m³）",
   "superplan.ii": "进口税 II（%）",
   "superplan.ipi": "IPI（%）",

@@ -323,6 +323,7 @@ const SHEET_EDIT_FIELDS = [
   "innerQty",
   "netWeightPcKg",
   "grossWeightPcKg",
+  "averageWeightPcKg",
   "averagePrice",
   "cbmPerCarton",
   "colorAssortment",

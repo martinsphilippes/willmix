@@ -38,6 +38,7 @@ export const SHEET_SECTION_FIELDS: Record<SheetSectionKey, readonly string[]> =
     product: [
       "netWeightPcKg",
       "grossWeightPcKg",
+      "averageWeightPcKg",
       "capacityMl",
       "colorAssortment",
       "material",

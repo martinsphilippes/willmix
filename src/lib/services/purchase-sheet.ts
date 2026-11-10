@@ -97,6 +97,7 @@ export const SUPPLIER_FIELDS = [
   "innerQty",
   "netWeightPcKg",
   "grossWeightPcKg",
+  "averageWeightPcKg",
   "cbmPerCarton",
   "heightCm",
   "widthCm",
@@ -140,6 +141,7 @@ export const OPTIONAL_SHEET_FIELDS: readonly string[] = [
   "averagePrice",
   "certificationRequired",
   "certificationNote",
+  "averageWeightPcKg",
 ];
 
 /** Tira as colunas novas vazias de um objeto de ficha (muda no lugar). */
@@ -149,6 +151,24 @@ export function dropEmptyOptional<T extends Record<string, unknown>>(
   for (const k of OPTIONAL_SHEET_FIELDS)
     if (row[k] === null || row[k] === undefined) delete row[k];
   return row;
+}
+/**
+ * Apagar uma coluna nova (valor vazio) só vai ao banco quando a ficha já tem
+ * valor nela: aí a coluna com certeza existe. Sem valor gravado, o vazio não
+ * muda nada e sai do pacote (a ficha continua salvando antes de o esquema
+ * ser publicado). Muda o pacote no lugar.
+ */
+export function dropUnsavedEmptyOptional(
+  patch: Record<string, unknown>,
+  existing: Partial<PurchaseSheet> | null | undefined,
+): void {
+  for (const k of OPTIONAL_SHEET_FIELDS) {
+    if (!(k in patch)) continue;
+    const v = patch[k];
+    if (v !== null && v !== undefined) continue;
+    const saved = (existing as Record<string, unknown> | null | undefined)?.[k];
+    if (saved === null || saved === undefined) delete patch[k];
+  }
 }
 export type SheetInput = Partial<Pick<PurchaseSheet, SheetField>>;
 
@@ -527,6 +547,7 @@ export async function saveSheet(
     filter: { orderId },
     limit: 1,
   });
+  dropUnsavedEmptyOptional(patch, existing);
   // CBM da caixa: com as três medidas, o calculado (como no cadastro).
   if (allowed.has("cbmPerCarton")) withBoxCbm(patch, existing);
   let sheet: PurchaseSheet;
