@@ -13,7 +13,7 @@ import { assertWellmix } from "@/lib/auth/permissions";
 import { formatNcm, normalizeNcm } from "@/lib/fiscal";
 import { cutAtSeparator } from "@/lib/pantone/color-text";
 import { translator } from "@/i18n";
-import { resolveCbm } from "@/lib/logistics/cbm";
+import { boxCbm, resolveCbm } from "@/lib/logistics/cbm";
 import {
   buildProductSpec,
   productSpecLabels,
@@ -194,10 +194,19 @@ export async function masterSheetInput(
 }
 
 /**
- * O que se compra, lido de um jeito só: a ficha mestre com o que falta
- * completado pelas colunas do produto (a ficha vale primeiro). O Booking
- * mostra estes números na linha e o Superplan faz a conta com eles: os dois
- * leem daqui, para a linha nunca mostrar um preço e a análise usar outro.
+ * O que se compra, lido de um jeito só. O Booking mostra estes números na
+ * linha e o Superplan faz a conta com eles: os dois leem daqui, para a linha
+ * nunca mostrar um preço e a análise usar outro.
+ *
+ * - Preço e moeda andam juntos, da MESMA fonte: os do cadastro do produto;
+ *   cadastro sem preço, os da ficha mestre. O cadastro vem primeiro porque é
+ *   o gravado por último: salvar a ficha mestre espelha no cadastro, e a
+ *   importação de produtos e o sourcing gravam só nele. A moeda da outra
+ *   fonte só entra quando a do preço escolhido está vazia.
+ * - Peças por caixa e volume da caixa: os do cadastro; sem eles, os da ficha.
+ * - Valor zero ou negativo numa fonte não conta: vale o da outra.
+ * - Pesos: os da ficha mestre (N.W e G.W, cada um no seu campo), completados
+ *   pelas colunas do cadastro. O líquido nunca vira bruto.
  */
 export function productPurchaseView(
   product: Product,
@@ -214,25 +223,36 @@ export function productPurchaseView(
 } {
   const pos = (n: number | null | undefined) =>
     typeof n === "number" && Number.isFinite(n) && n > 0 ? n : null;
+  const written = (c: string | null | undefined) =>
+    sheetCurrency(c) ?? (c?.trim().toUpperCase() || null);
   const master = withProductColumns<Partial<PurchaseSheet>>(
     sheet ?? {},
     productSheetDraft(product, null),
   );
+  const columnPrice = pos(product.price);
+  const sheetPrice = pos(sheet?.price);
+  const price = columnPrice ?? sheetPrice;
+  const currency =
+    price === null
+      ? null
+      : columnPrice !== null
+        ? (written(product.currency) ?? written(sheet?.currency))
+        : (written(sheet?.currency) ?? written(product.currency));
   return {
     master,
-    price: pos(master.price),
-    currency:
-      master.currency ??
-      sheetCurrency(product.currency) ??
-      (product.currency?.trim().toUpperCase() || null),
-    pcsPerCarton: pos(master.masterCartonQty),
-    // Volume da caixa master: informado; senão, das medidas da caixa.
-    cbmPerCarton: resolveCbm({
-      cbm: master.cbmPerCarton,
-      lengthCm: master.lengthCm,
-      widthCm: master.widthCm,
-      heightCm: master.heightCm,
-    }),
+    price,
+    currency,
+    pcsPerCarton: pos(product.masterBoxQty) ?? pos(sheet?.masterCartonQty),
+    // Volume da caixa master: o do cadastro (informado ou das medidas da
+    // caixa); sem ele, o da ficha mestre.
+    cbmPerCarton:
+      boxCbm(product) ??
+      resolveCbm({
+        cbm: sheet?.cbmPerCarton,
+        lengthCm: sheet?.lengthCm,
+        widthCm: sheet?.widthCm,
+        heightCm: sheet?.heightCm,
+      }),
     netWeightPcKg: pos(master.netWeightPcKg),
     grossWeightPcKg: pos(master.grossWeightPcKg),
   };

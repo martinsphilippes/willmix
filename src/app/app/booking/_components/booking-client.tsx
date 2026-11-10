@@ -2,6 +2,7 @@
 
 import { useEffect, type ComponentProps } from "react";
 import { useFormStatus } from "react-dom";
+import { DRAFT_RESTORING_ATTR } from "@/components/form-draft-guard";
 import { useFormDoneSignal } from "@/components/submit-button";
 import { Button } from "@/components/ui";
 
@@ -55,6 +56,13 @@ export function BookingEnhancer({
       if (!(el instanceof HTMLInputElement)) return;
       const id = el.dataset.bookingQty;
       if (!id || el.value.trim() === "") return;
+      // A restauração depois de uma recusa devolve a quantidade sem marcar a
+      // linha: as marcadas voltam como estavam no envio (a que a pessoa
+      // desmarcou continua desmarcada).
+      if (
+        document.getElementById(bulkFormId)?.hasAttribute(DRAFT_RESTORING_ATTR)
+      )
+        return;
       const box = rowBox(id);
       if (box) box.checked = true;
     };

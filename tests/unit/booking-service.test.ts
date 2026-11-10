@@ -1161,9 +1161,25 @@ describe("achados da revisão (segunda leva)", () => {
     ]);
   });
 
-  it("a linha e a análise leem os mesmos números do produto (ficha mestre primeiro)", async () => {
-    // Colunas do cadastro diferentes da ficha mestre (ex.: planilha genérica
-    // reimportada depois de a ficha ser corrigida).
+  it("a linha e a análise leem os mesmos números do produto: preço e moeda da mesma fonte (cadastro; sem preço nele, ficha mestre)", async () => {
+    const shown = async (id: string) => {
+      const line = (await booking.listBookingRows(admin)).rows.find(
+        (r) => r.id === id,
+      )!;
+      return [line.price, line.currency, line.masterQty, line.cbm];
+    };
+    const used = async (id: string) => {
+      await booking.analyzeBookings(admin, [id]);
+      const inputs = (await fresh(id)).analysis!.inputs!;
+      return [
+        inputs.unitPrice,
+        inputs.currency,
+        inputs.pcsPerCarton,
+        inputs.cbmPerCarton,
+      ];
+    };
+    // O cadastro foi gravado depois da ficha (importação de produtos ou
+    // sourcing, que não espelham na ficha mestre): vale o cadastro.
     const a = await row(
       "new",
       {},
@@ -1175,23 +1191,50 @@ describe("achados da revisão (segunda leva)", () => {
       masterBoxQty: 48,
       cbm: 0.09,
     });
-    const line = (await booking.listBookingRows(admin)).rows.find(
-      (r) => r.id === a.booking.id,
-    )!;
-    expect([line.price, line.currency, line.masterQty, line.cbm]).toEqual([
-      3.1,
-      "USD",
-      24,
-      0.05,
-    ]);
-    await booking.analyzeBookings(admin, [a.booking.id]);
-    const used = (await fresh(a.booking.id)).analysis!.inputs!;
-    expect([
-      used.unitPrice,
-      used.currency,
-      used.pcsPerCarton,
-      used.cbmPerCarton,
-    ]).toEqual([line.price, line.currency, line.masterQty, line.cbm]);
+    expect(await shown(a.booking.id)).toEqual([2.35, "USD", 48, 0.09]);
+    expect(await used(a.booking.id)).toEqual(await shown(a.booking.id));
+
+    // Ficha com preço e sem moeda; o cadastro foi reprecificado em dólar: o
+    // preço do cadastro vai com a moeda DELE (nunca 24,90 em dólar).
+    const b = await row("new", {}, { price: 24.9, currency: null });
+    await getStore().update("products", b.product.id, {
+      price: 3.7,
+      currency: "USD",
+    });
+    expect((await shown(b.booking.id)).slice(0, 2)).toEqual([3.7, "USD"]);
+    expect((await used(b.booking.id)).slice(0, 2)).toEqual([3.7, "USD"]);
+
+    // Ficha com moeda RMB e sem preço; cadastro com 3,70 USD: 3,70 USD.
+    const c = await row("new", {}, { price: null, currency: "RMB" });
+    await getStore().update("products", c.product.id, {
+      price: 3.7,
+      currency: "USD",
+    });
+    expect((await shown(c.booking.id)).slice(0, 2)).toEqual([3.7, "USD"]);
+    expect((await used(c.booking.id)).slice(0, 2)).toEqual([3.7, "USD"]);
+
+    // Cadastro sem preço: o preço e a moeda da ficha mestre, juntos.
+    const d = await row("new", {}, { price: 12, currency: "RMB" });
+    await getStore().update("products", d.product.id, {
+      price: null,
+      currency: "USD",
+    });
+    expect((await shown(d.booking.id)).slice(0, 2)).toEqual([12, "RMB"]);
+    expect((await used(d.booking.id)).slice(0, 2)).toEqual([12, "RMB"]);
+
+    // Zero numa fonte não esconde o valor da outra.
+    const e = await row(
+      "new",
+      {},
+      { price: 5, currency: "USD", masterCartonQty: 12, cbmPerCarton: 0.069 },
+    );
+    await getStore().update("products", e.product.id, {
+      price: 0,
+      masterBoxQty: 0,
+      cbm: 0,
+    });
+    expect(await shown(e.booking.id)).toEqual([5, "USD", 12, 0.069]);
+    expect(await used(e.booking.id)).toEqual(await shown(e.booking.id));
   });
 
   it("preço em outra moeda (EUR): a análise diz que falta o preço em RMB ou US$, não o preço", async () => {

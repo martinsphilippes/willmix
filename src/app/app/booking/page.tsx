@@ -223,6 +223,10 @@ export default async function BookingPage({
         )
         .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, errorCode));
   const errorRowId = one("row");
+  // O envio que esta recusa responde (só o rascunho dele volta).
+  const answeredDraft = /^[a-z0-9]{1,32}$/.test(one("draft"))
+    ? one("draft")
+    : "";
   const errorRow = errorRowId
     ? data.rows.find((r) => r.id === errorRowId)
     : undefined;
@@ -863,7 +867,8 @@ export default async function BookingPage({
         userId={user.id}
         failed={!!errorCode}
         saved={!errorCode}
-        token={`${errorCode}:${errorRowId}`}
+        token={`${errorCode}:${errorRowId}:${answeredDraft}`}
+        answers={answeredDraft || null}
         message={t("booking.draftRestored")}
         discardLabel={t("booking.draftDiscard")}
       />
@@ -877,6 +882,9 @@ export default async function BookingPage({
         data-booking-bulk
       >
         <input type="hidden" name="back" value={back} />
+        {/* Id do envio: a tela o preenche a cada envio e a recusa o devolve
+            no endereço (só o rascunho daquele envio volta). */}
+        <input type="hidden" name="draftId" defaultValue="" />
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
             {t("booking.bulk.title")}

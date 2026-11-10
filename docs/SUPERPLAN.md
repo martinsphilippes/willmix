@@ -32,8 +32,8 @@ Em segundos, para qualquer produto: custo por peça, preço mínimo, lucro e um 
 
 | Dado                                                                                                             | Origem                                                                                                                                    |
 | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Preço por peça e moeda (RMB ou US$)                                                                              | Ficha mestre do produto (`price`, `currency`); ficha sem preço: cadastro do produto (CNY = RMB). Leitura única: `productPurchaseView`     |
-| Peças por caixa e volume da caixa                                                                                | Ficha mestre (`masterCartonQty`, `cbmPerCarton` ou medidas da caixa); campo vazio: cadastro. A mesma leitura (`productPurchaseView`)      |
+| Preço por peça e moeda (RMB ou US$)                                                                              | Cadastro do produto (`price`, `currency`; CNY = RMB); cadastro sem preço: ficha mestre. Preço e moeda vêm sempre da mesma fonte           |
+| Peças por caixa e volume da caixa                                                                                | Cadastro (`masterBoxQty`, `cbm` ou medidas da caixa); coluna vazia ou zero: ficha mestre. Leitura única: `productPurchaseView`            |
 | Peso líquido e peso bruto por peça                                                                               | Ficha mestre do produto (N.W e G.W, cada um no seu campo), completada pelas colunas do cadastro                                           |
 | Média do despachante (US$)                                                                                       | Ficha mestre (`averagePrice`): **só informação na tela**, não entra na conta (seção 5.1)                                                  |
 | NCM                                                                                                              | Cadastro; sem ele, o da ficha mestre                                                                                                      |
@@ -99,7 +99,7 @@ No servidor, `src/lib/services/superplan-analysis.ts` (só leitura; quem chama c
 
 A página do Superplan usa as mesmas duas primeiras funções: um caminho só, os números da tela e os da análise em lote batem (teste em `tests/unit/superplan-analysis.test.ts`). `ncmFound` no retrato quer dizer "II e IPI conhecidos" (ficha mestre ou tabela fiscal); sem eles a conta usa 0 no que falta e o custo sai menor (o Booking marca a linha com "II/IPI 0").
 
-**Um jeito só de ler o produto.** Preço, moeda, peças por caixa, CBM e pesos saem de `productPurchaseView` (`src/lib/services/product-sheet.ts`): a ficha mestre vale primeiro e o cadastro do produto completa o que faltar. O Superplan faz a conta com esses números e o Booking mostra os mesmos na linha (teste em `tests/unit/booking-service.test.ts`).
+**Um jeito só de ler o produto.** Preço, moeda, peças por caixa, CBM e pesos saem de `productPurchaseView` (`src/lib/services/product-sheet.ts`). O Superplan faz a conta com esses números e o Booking mostra os mesmos na linha (teste em `tests/unit/booking-service.test.ts`). Regras: preço e moeda andam juntos, da **mesma fonte** (o cadastro do produto; cadastro sem preço, a ficha mestre; a moeda da outra fonte só entra quando a do preço escolhido está vazia); peças por caixa e volume, os do cadastro e, sem eles, os da ficha; zero ou negativo numa fonte não conta; pesos, os da ficha mestre completados pelo cadastro. O cadastro vem primeiro porque é o gravado por último: salvar a ficha mestre espelha no cadastro, e a importação de produtos e o sourcing gravam só nele.
 
 **Preço em outra moeda.** A conta só aceita RMB ou US$. Produto com preço em EUR ou BRL: a análise em lote diz que falta o preço em RMB ou US$ (`missing: ["currency"]`), e não que falta o preço.
 
@@ -129,7 +129,7 @@ Jarra a 24,90 RMB, 12 peças por caixa, 1,13 kg por peça, 0,069 m³ por caixa, 
 - Só o peso líquido na ficha: peso bruto estimado (líquido + folga), marcado como estimado; o campo do bruto fica vazio.
 - Sem peso líquido e sem peso bruto: só o volume limita o container.
 - Média do despachante vazia: a tela diz "ainda não informada" (é só informação).
-- Ficha mestre sem preço, caixa ou volume: vêm do cadastro do produto, quando ele tem (e o contrário).
+- Cadastro sem preço, caixa ou volume (ou com zero): vêm da ficha mestre do produto, quando ela tem.
 - Preço em EUR ou BRL: "falta o preço em RMB ou US$".
 - "Gravar no Booking" recusado (número fora do limite): a mensagem diz que há um valor inválido na simulação; a calculadora ainda não marca qual campo.
 - Frete zero vale (produto já posto no Brasil).

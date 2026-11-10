@@ -38,6 +38,7 @@ const FLASH = [
   "skipped",
   "kept",
   "norates",
+  "draft",
 ];
 
 /** Volta para a lista mantendo os filtros (só endereço do próprio Booking). */
@@ -66,17 +67,26 @@ const withParams = (back: string, params: Record<string, string | number>) => {
   return url.pathname + url.search;
 };
 
-/** A recusa de uma linha leva o id dela: a tela destaca a linha. */
+/**
+ * A recusa de uma linha leva o id dela (a tela destaca a linha) e o id do
+ * envio (`draft`, quando o formulário o mandou): a tela devolve o que estava
+ * digitado só para a recusa daquele envio.
+ */
 async function guarded(
   back: string,
   fn: () => Promise<string>,
+  draftId = "",
 ): Promise<string> {
   const { BookingRefusal } = await import("@/lib/services/booking");
   try {
     return await fn();
   } catch (error) {
-    if (error instanceof BookingRefusal && error.bookingId)
-      return withParams(back, { error: error.message, row: error.bookingId });
+    if (error instanceof BookingRefusal)
+      return withParams(back, {
+        error: error.message,
+        ...(error.bookingId ? { row: error.bookingId } : {}),
+        ...(draftId ? { draft: draftId } : {}),
+      });
     throw error;
   }
 }
@@ -101,86 +111,93 @@ function typedQuantities(form: FormData, ids: string[]) {
 export async function bulkBookingAction(form: FormData) {
   const user = await requireUser();
   const back = listBack(form);
+  // Id do envio (campo oculto que a tela preenche): só volta no endereço.
+  const sent = str(form, "draftId");
+  const draftId = /^[a-z0-9]{1,32}$/.test(sent) ? sent : "";
   await run(back, () =>
-    guarded(back, async () => {
-      assertWellmix(user);
-      assertScreen(user, "booking");
-      const input = z
-        .object({
-          op: z.enum(["move", "assign", "owner", "analyze", "request"]),
-          ids: z.array(ID).max(BOOKING_BULK_MAX),
-          status: z.enum(BOOKING_STATUSES).or(z.literal("")),
-          customer: CUSTOMER,
-          ownerUserId: ID.or(z.literal("")).or(z.literal(BOOKING_EMPTY)),
-        })
-        .parse({
-          op: str(form, "op"),
-          ids: form
-            .getAll("ids")
-            .filter((v): v is string => typeof v === "string"),
-          status: str(form, "status"),
-          customer: str(form, "customer"),
-          ownerUserId: str(form, "ownerUserId"),
-        });
-      const service = await import("@/lib/services/booking");
-      if (!input.ids.length)
-        throw new service.BookingRefusal("booking_none_selected");
-      const quantities = typedQuantities(form, input.ids);
-      // Quantidade que não é número inteiro: recusa apontando a linha.
-      for (const [id, n] of Object.entries(quantities))
-        if (!Number.isInteger(n) || n <= 0)
-          throw new service.BookingRefusal("booking_qty_required", id);
-      const bulk = { ids: input.ids, customer: input.customer, quantities };
+    guarded(
+      back,
+      async () => {
+        assertWellmix(user);
+        assertScreen(user, "booking");
+        const input = z
+          .object({
+            op: z.enum(["move", "assign", "owner", "analyze", "request"]),
+            ids: z.array(ID).max(BOOKING_BULK_MAX),
+            status: z.enum(BOOKING_STATUSES).or(z.literal("")),
+            customer: CUSTOMER,
+            ownerUserId: ID.or(z.literal("")).or(z.literal(BOOKING_EMPTY)),
+          })
+          .parse({
+            op: str(form, "op"),
+            ids: form
+              .getAll("ids")
+              .filter((v): v is string => typeof v === "string"),
+            status: str(form, "status"),
+            customer: str(form, "customer"),
+            ownerUserId: str(form, "ownerUserId"),
+          });
+        const service = await import("@/lib/services/booking");
+        if (!input.ids.length)
+          throw new service.BookingRefusal("booking_none_selected");
+        const quantities = typedQuantities(form, input.ids);
+        // Quantidade que não é número inteiro: recusa apontando a linha.
+        for (const [id, n] of Object.entries(quantities))
+          if (!Number.isInteger(n) || n <= 0)
+            throw new service.BookingRefusal("booking_qty_required", id);
+        const bulk = { ids: input.ids, customer: input.customer, quantities };
 
-      if (input.op === "move") {
-        if (!input.status)
-          throw new service.BookingRefusal("booking_status_required");
-        const moved = await service.moveBookings(user, {
-          ...bulk,
-          status: input.status,
-        });
-        return withParams(back, { moved });
-      }
-      if (input.op === "assign") {
-        const saved = await service.assignBookings(user, bulk);
-        return withParams(back, { saved });
-      }
-      if (input.op === "owner") {
-        if (!input.ownerUserId)
-          throw new service.BookingRefusal("booking_owner_required");
-        const owners = await service.setBookingsOwner(
+        if (input.op === "move") {
+          if (!input.status)
+            throw new service.BookingRefusal("booking_status_required");
+          const moved = await service.moveBookings(user, {
+            ...bulk,
+            status: input.status,
+          });
+          return withParams(back, { moved });
+        }
+        if (input.op === "assign") {
+          const saved = await service.assignBookings(user, bulk);
+          return withParams(back, { saved });
+        }
+        if (input.op === "owner") {
+          if (!input.ownerUserId)
+            throw new service.BookingRefusal("booking_owner_required");
+          const owners = await service.setBookingsOwner(
+            user,
+            input.ids,
+            input.ownerUserId === BOOKING_EMPTY ? null : input.ownerUserId,
+            { customer: input.customer, quantities },
+          );
+          return withParams(back, { owners });
+        }
+        if (input.op === "analyze") {
+          // O cliente da barra e a quantidade digitada valem em toda ação; o
+          // serviço confere antes quem analisa (nada é gravado numa recusa).
+          const result = await service.analyzeBookings(user, input.ids, {
+            customer: input.customer,
+            quantities,
+          });
+          return withParams(back, {
+            analyzed: result.analyzed,
+            ...(result.skipped ? { skipped: result.skipped } : {}),
+            ...(result.kept ? { kept: result.kept } : {}),
+            ...(result.noRates ? { norates: result.noRates } : {}),
+          });
+        }
+        const { getT } = await import("@/i18n/server");
+        const created = await service.generateRequestFromBooking(
           user,
-          input.ids,
-          input.ownerUserId === BOOKING_EMPTY ? null : input.ownerUserId,
-          { customer: input.customer, quantities },
+          bulk,
+          await getT(),
         );
-        return withParams(back, { owners });
-      }
-      if (input.op === "analyze") {
-        // O cliente da barra e a quantidade digitada valem em toda ação; o
-        // serviço confere antes quem analisa (nada é gravado numa recusa).
-        const result = await service.analyzeBookings(user, input.ids, {
-          customer: input.customer,
-          quantities,
-        });
-        return withParams(back, {
-          analyzed: result.analyzed,
-          ...(result.skipped ? { skipped: result.skipped } : {}),
-          ...(result.kept ? { kept: result.kept } : {}),
-          ...(result.noRates ? { norates: result.noRates } : {}),
-        });
-      }
-      const { getT } = await import("@/i18n/server");
-      const created = await service.generateRequestFromBooking(
-        user,
-        bulk,
-        await getT(),
-      );
-      const first = created[0];
-      return created.length === 1
-        ? `/app/requests/${first.id}?created=1`
-        : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
-    }),
+        const first = created[0];
+        return created.length === 1
+          ? `/app/requests/${first.id}?created=1`
+          : `/app/requests/batch/${encodeURIComponent(first.groupId ?? "")}?created=${created.length}`;
+      },
+      draftId,
+    ),
   );
 }
 

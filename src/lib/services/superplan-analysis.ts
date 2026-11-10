@@ -90,8 +90,9 @@ function prefillOf(
   rates: NcmRates | null,
 ): SuperplanProductPrefill {
   // O que se compra, lido do mesmo jeito que a linha do Booking mostra
-  // (ficha mestre primeiro; o que falta, das colunas do produto): preço,
-  // moeda, peças por caixa, volume e os pesos (o líquido nunca vira bruto).
+  // (`productPurchaseView`): preço e moeda da mesma fonte (cadastro; sem
+  // preço nele, ficha mestre), peças por caixa, volume e os pesos (o líquido
+  // nunca vira bruto).
   const view = productPurchaseView(product, sheet);
   const price = view.price;
   const currency = (view.currency ?? "").toUpperCase();
