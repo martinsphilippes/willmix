@@ -69,6 +69,35 @@ export const pt = {
     "O pedido mudou enquanto você lia. Confira o documento de novo e assine.",
   "orderSign.error.stage_not_active":
     "Ainda não é a hora desta assinatura: a etapa dela não está aberta.",
+  "orderSign.moq": "Pedido mínimo (MOQ)",
+  "orderSign.moq.value": "{n} peças",
+  "orderSign.status.awaiting_wellmix":
+    "Pronto para assinatura: esperando a Wellmix",
+  "orderSign.status.sent_to_supplier":
+    "Enviado ao fornecedor: esperando a assinatura dele",
+  "orderSign.status.signed":
+    "Assinado pelos dois: pedido autorizado, falta gerar no Sankhya",
+  "orderSign.status.in_erp": "Pedido gerado no Sankhya: {n}",
+  "orderSign.download": "Baixar o documento em PDF",
+  "orderSign.file.title": "Como assinar",
+  "orderSign.file.steps":
+    "1) Baixe o PDF. 2) Assine e carimbe. 3) Anexe aqui o arquivo assinado (PDF ou foto) e toque em Assinar. Sem arquivo, vale o aceite no portal.",
+  "orderSign.file.label": "Documento assinado (PDF ou foto)",
+  "orderSign.file.label.optional": "Documento assinado (PDF ou foto), opcional",
+  "orderSign.signed.file": "Arquivo assinado",
+  "orderSign.signed.accept": "Aceite no portal",
+  "orderSign.reopen.title":
+    "Devolver a assinatura do fornecedor (administrador)",
+  "orderSign.reopen.reason": "Motivo (o fornecedor lê)",
+  "orderSign.reopen.submit": "Devolver para assinar de novo",
+  "orderSign.reopened": "Assinatura devolvida. O fornecedor foi avisado.",
+  "orderSign.error.signature_file_invalid":
+    "O arquivo assinado precisa ser PDF ou foto (JPG, PNG ou WebP).",
+  "orderSign.error.signature_reason_required":
+    "Escreva o motivo (pelo menos 3 letras).",
+  "notif.orderSignReopened.subject": "Pedido #{n}: assine o documento de novo",
+  "notif.orderSignReopened.body":
+    "A Wellmix devolveu a sua assinatura: {reason} Abra o documento do pedido e assine de novo.",
   "notif.orderSign.subject": "Pedido #{n}: assine o documento do pedido",
   "notif.orderSign.body":
     "A Wellmix assinou o documento do pedido. Abra, confira produto, quantidade, preço e prazo e assine para o pedido seguir.",
@@ -141,6 +170,33 @@ export const en: Record<keyof typeof pt, string> = {
     "The order changed while you were reading. Check the document again and sign.",
   "orderSign.error.stage_not_active":
     "It is not time for this signature yet: its stage is not open.",
+  "orderSign.moq": "Minimum order (MOQ)",
+  "orderSign.moq.value": "{n} pcs",
+  "orderSign.status.awaiting_wellmix": "Ready to sign: waiting for Wellmix",
+  "orderSign.status.sent_to_supplier":
+    "Sent to the supplier: waiting for their signature",
+  "orderSign.status.signed":
+    "Signed by both: order authorized, still to be created in Sankhya",
+  "orderSign.status.in_erp": "Order created in Sankhya: {n}",
+  "orderSign.download": "Download the document as PDF",
+  "orderSign.file.title": "How to sign",
+  "orderSign.file.steps":
+    "1) Download the PDF. 2) Sign and stamp it. 3) Attach the signed file here (PDF or photo) and tap Sign. Without a file, the acceptance in the portal applies.",
+  "orderSign.file.label": "Signed document (PDF or photo)",
+  "orderSign.file.label.optional": "Signed document (PDF or photo), optional",
+  "orderSign.signed.file": "Signed file",
+  "orderSign.signed.accept": "Accepted in the portal",
+  "orderSign.reopen.title": "Return the supplier's signature (administrator)",
+  "orderSign.reopen.reason": "Reason (the supplier reads it)",
+  "orderSign.reopen.submit": "Return to sign again",
+  "orderSign.reopened": "Signature returned. The supplier was notified.",
+  "orderSign.error.signature_file_invalid":
+    "The signed file must be a PDF or a photo (JPG, PNG or WebP).",
+  "orderSign.error.signature_reason_required":
+    "Write the reason (at least 3 letters).",
+  "notif.orderSignReopened.subject": "Order #{n}: sign the document again",
+  "notif.orderSignReopened.body":
+    "Wellmix returned your signature: {reason} Open the order document and sign again.",
   "notif.orderSign.subject": "Order #{n}: sign the order document",
   "notif.orderSign.body":
     "Wellmix signed the order document. Open it, check product, quantity, price and lead time, and sign so the order can go on.",
@@ -201,6 +257,30 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.error.signature_document_changed":
     "在您阅读期间订单有变更。请重新核对文件后签署。",
   "orderSign.error.stage_not_active": "还未到此签署的时间：对应阶段尚未开启。",
+  "orderSign.moq": "最小起订量（MOQ）",
+  "orderSign.moq.value": "{n} 件",
+  "orderSign.status.awaiting_wellmix": "待签署：等待 Wellmix",
+  "orderSign.status.sent_to_supplier": "已发送给供应商：等待其签署",
+  "orderSign.status.signed": "双方已签署：订单已授权，尚待在 Sankhya 生成",
+  "orderSign.status.in_erp": "订单已在 Sankhya 生成：{n}",
+  "orderSign.download": "下载 PDF 文件",
+  "orderSign.file.title": "如何签署",
+  "orderSign.file.steps":
+    "1）下载 PDF。2）签字并盖章。3）在此上传已签署的文件（PDF 或照片），然后点击签署。不上传文件时，以系统内确认为准。",
+  "orderSign.file.label": "已签署的文件（PDF 或照片）",
+  "orderSign.file.label.optional": "已签署的文件（PDF 或照片），选填",
+  "orderSign.signed.file": "已签署的文件",
+  "orderSign.signed.accept": "系统内确认",
+  "orderSign.reopen.title": "退回供应商的签署（管理员）",
+  "orderSign.reopen.reason": "原因（供应商可见）",
+  "orderSign.reopen.submit": "退回重新签署",
+  "orderSign.reopened": "签署已退回，已通知供应商。",
+  "orderSign.error.signature_file_invalid":
+    "已签署的文件必须是 PDF 或照片（JPG、PNG 或 WebP）。",
+  "orderSign.error.signature_reason_required": "请填写原因（至少 3 个字符）。",
+  "notif.orderSignReopened.subject": "订单 #{n}：请重新签署文件",
+  "notif.orderSignReopened.body":
+    "Wellmix 退回了您的签署：{reason} 请打开订单文件并重新签署。",
   "notif.orderSign.subject": "订单 #{n}：请签署订单文件",
   "notif.orderSign.body":
     "Wellmix 已签署订单文件。请打开并核对产品、数量、价格和交期后签署，订单才能继续。",

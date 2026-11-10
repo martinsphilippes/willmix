@@ -12,15 +12,20 @@ import { describeTerms } from "@/components/supplier-terms-text";
 import {
   Alert,
   Card,
+  Badge,
   Field,
   Input,
   PageHeader,
+  Textarea,
   formatDate,
   linkClass,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
-import { signOrderDocumentAction } from "../../../actions/order-signature";
+import {
+  reopenSupplierSignatureAction,
+  signOrderDocumentAction,
+} from "../../../actions/order-signature";
 
 /*
  * Documento do pedido com as duas assinaturas (docs/ORDER_SIGNATURE.md). Só a
@@ -34,7 +39,7 @@ export default async function PurchaseOrderPage({
   if (!user) redirect("/login");
   requireScreen(user, "orders");
   const { id } = await params;
-  const { error, signed } = await searchParams;
+  const { error, signed, reopened } = await searchParams;
   const view = await getOrderSignatureView(user, id);
   if (!view) notFound();
   const t = await getT();
@@ -80,6 +85,25 @@ export default async function PurchaseOrderPage({
                   date: formatDate(signature.at, t),
                 })}
           </p>
+          <p className="mt-1 text-xs text-zinc-600" data-signature-method>
+            {signature.method === "file"
+              ? t("orderSign.signed.file")
+              : t("orderSign.signed.accept")}
+            {signature.documentId ? (
+              <>
+                {": "}
+                <a
+                  href={`/api/files/${signature.documentId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={linkClass}
+                  data-signed-file
+                >
+                  {t("orderSign.signed.file")}
+                </a>
+              </>
+            ) : null}
+          </p>
           {signature.hash !== hash ? (
             <p className="mt-1 text-xs text-amber-700" data-signature-old>
               {t("orderSign.signed.old")}
@@ -91,6 +115,10 @@ export default async function PurchaseOrderPage({
       )}
     </div>
   );
+  // Fornecedor (ou o administrador registrando por ele): pode anexar o PDF
+  // assinado; a Wellmix assina pelo aceite.
+  const supplierSide = (onBehalf: boolean) =>
+    onBehalf || view.canSign === "supplier";
   const signForm = (onBehalf: boolean) => (
     <form
       action={signOrderDocumentAction}
@@ -121,6 +149,21 @@ export default async function PurchaseOrderPage({
           defaultValue={onBehalf ? "" : user.name}
         />
       </Field>
+      {supplierSide(onBehalf) ? (
+        <>
+          <p className="text-sm text-zinc-700" data-sign-steps>
+            <span className="font-medium">{t("orderSign.file.title")}: </span>
+            {t("orderSign.file.steps")}
+          </p>
+          <Field label={t("orderSign.file.label.optional")}>
+            <Input
+              type="file"
+              name="signedFile"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+            />
+          </Field>
+        </>
+      ) : null}
       <label className="flex items-start gap-2 text-sm text-zinc-800">
         <input type="checkbox" name="agree" required className="mt-1" />
         <span>
@@ -155,6 +198,38 @@ export default async function PurchaseOrderPage({
       />
       <ActionError t={t} code={errorCode} text={errorText} fields={null} />
       {signed ? <Alert tone="success">{t("orderSign.done")}</Alert> : null}
+      {reopened ? (
+        <Alert tone="success">{t("orderSign.reopened")}</Alert>
+      ) : null}
+      {view.applies ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 print:hidden"
+          data-order-document-status={view.status}
+        >
+          <Badge
+            tone={
+              view.status === "in_erp"
+                ? "success"
+                : view.status === "signed"
+                  ? "info"
+                  : "warning"
+            }
+          >
+            {t(`orderSign.status.${view.status}`, {
+              n: order.erpNumber ?? "",
+            })}
+          </Badge>
+          {/* Rota de arquivo (não é página): link comum, que baixa o PDF. */}
+          <a
+            href={`/api/orders/${order.id}/purchase-order`}
+            download
+            className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50"
+            data-order-pdf
+          >
+            {t("orderSign.download")}
+          </a>
+        </div>
+      ) : null}
       {!view.applies ? (
         <Alert tone="info">{t("orderSign.notApplicable")}</Alert>
       ) : view.waitingWellmix ? (
@@ -221,6 +296,16 @@ export default async function PurchaseOrderPage({
           </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
+              <dt className="font-semibold">{t("orderSign.moq")}</dt>
+              <dd>
+                {doc.moq
+                  ? t("orderSign.moq.value", {
+                      n: doc.moq.toLocaleString(t.intl),
+                    })
+                  : "—"}
+              </dd>
+            </div>
+            <div>
               <dt className="font-semibold">{t("orderSign.leadTime")}</dt>
               <dd>
                 {doc.leadTimeDays
@@ -265,9 +350,26 @@ export default async function PurchaseOrderPage({
               <div className="mt-2">{signForm(true)}</div>
             </details>
           ) : null}
-          <p className="text-xs text-zinc-500 print:hidden">
-            {t("orderSign.print")}: Ctrl/⌘ + P
-          </p>
+          {view.canReopenSupplier ? (
+            <details className="print:hidden">
+              <summary className={linkClass}>
+                {t("orderSign.reopen.title")}
+              </summary>
+              <form
+                action={reopenSupplierSignatureAction}
+                className="mt-2 space-y-2"
+                data-order-sign-reopen
+              >
+                <input type="hidden" name="orderId" value={order.id} />
+                <Field label={t("orderSign.reopen.reason")}>
+                  <Textarea name="reason" rows={2} maxLength={500} required />
+                </Field>
+                <SubmitButton variant="secondary">
+                  {t("orderSign.reopen.submit")}
+                </SubmitButton>
+              </form>
+            </details>
+          ) : null}
         </div>
       </Card>
     </div>
