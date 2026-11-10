@@ -69,7 +69,7 @@ Na solicitação **Aprovada**, a Wellmix que abre Cotações e Produtos vê o bl
    - Item já ligado a outro produto recusa (`request_product_item_taken`).
    - Depois de criado ou associado, "Ligar mais itens" acrescenta outros.
 4. **Vitrine**: o produto **criado** nasce **fora da vitrine do cliente** (vitrine, página do produto, carrinho, nova solicitação e kit de marketing) até "Liberar na vitrine". O produto **associado** já existia e não muda. A regra fica em `booking-visibility.ts`, junto com a do Booking.
-5. **Sankhya**: só **ligar ao CODPROD que já existe**; o produto não é criado no ERP.
+5. **Sankhya**: só **ligar ao CODPROD que já existe**; o produto não é criado no ERP. O código aparece no cabeçalho da página do produto ("CODPROD …"; sem código, "CODPROD —").
    - A busca usa a descrição (parte) ou a referência do fornecedor (`Produto`: CODPROD, DESCRPROD, REFFORN) e um botão "Usar" em cada resultado.
    - O código também pode ser digitado. Ele é gravado em `products.erpCode`.
    - Com o Sankhya configurado, o código é **conferido** no ERP (inexistente recusa). Sem credencial, ou com o ERP fora do ar, fica gravado como **não conferido**, e a tela diz isso.
