@@ -1371,7 +1371,7 @@ async function createOrderFromRequest(
       entityId: order.id,
       rule: "order.zeroPrice",
       problem:
-        "Pedido criado sem valor FOB (preço zerado ou cotação sem preço)",
+        "Pedido pré-aprovado sem valor FOB (preço zerado ou cotação sem preço)",
       expected: "> 0",
       found: fobTotal ?? "—",
       responsibleRole: "operator",
@@ -1410,7 +1410,7 @@ async function createOrderFromRequest(
     "order.create",
     "order",
     order.id,
-    `Pedido #${number} criado a partir da solicitação`,
+    `Pedido #${number} pré-aprovado a partir da solicitação`,
   );
   await notify(requesterTarget(request.requestedForUserId), {
     kind: "info",

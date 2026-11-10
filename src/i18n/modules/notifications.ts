@@ -41,7 +41,7 @@ export const pt = {
   "notif.orderCreated.supplier.subject":
     "Pedido #{n}: preencha a ficha de compra",
   "notif.orderCreated.supplier.body":
-    "O pedido foi criado. Complete a preparação para a produção começar.",
+    "O pedido foi pré-aprovado. Complete a preparação para a produção começar.",
   "notif.proposal.subject": "Proposta pronta: {product}",
   "notif.proposal.body":
     "{qty} {unit} por {total}. Aprove a proposta no portal; depois, o sinal de {down} inicia o pedido.",
@@ -137,7 +137,7 @@ export const en = {
   "notif.orderCreated.supplier.subject":
     "Order #{n}: fill in the purchase sheet",
   "notif.orderCreated.supplier.body":
-    "The order was created. Complete the preparation checklist so production can start.",
+    "The order was pre-approved. Complete the preparation checklist so production can start.",
   "notif.proposal.subject": "Proposal ready: {product}",
   "notif.proposal.body":
     "{qty} {unit} for {total}. Approve the proposal in the portal; then the down payment of {down} starts the order.",
@@ -230,7 +230,7 @@ export const zh = {
     "现在由供应商填写采购单。请在时间线中跟进。",
   "notif.orderCreated.supplier.subject": "订单 #{n}：请填写采购单",
   "notif.orderCreated.supplier.body":
-    "订单已创建。请完成备产清单，以便开始生产。",
+    "订单已预批准。请完成备产清单，以便开始生产。",
   "notif.proposal.subject": "报价已就绪：{product}",
   "notif.proposal.body":
     "{qty} {unit}，合计 {total}。请在门户中确认报价，之后支付定金 {down} 即可下单。",

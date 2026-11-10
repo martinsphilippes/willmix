@@ -68,6 +68,16 @@ export const pt = {
   "board.card.probCancelRequest": "Pedido de cancelamento",
   "board.card.ordClosed": "Encerrado",
   "board.stoppedAt": "Parou em: {step}",
+  "board.block.booking": "Booking",
+  "board.hint.booking":
+    "produtos antes de virar solicitação; toque para abrir o Booking nessa etapa",
+  "board.card.bkNew": "Novo",
+  "board.card.bkAnalysis": "Em análise",
+  "board.card.bkApproved": "Aprovado",
+  "board.card.bkOffered": "Oferecido ao cliente",
+  "board.card.bkReserved": "Reservado pelo cliente",
+  "board.card.bkRequested": "Virou solicitação",
+  "board.card.bkDiscarded": "Descartado",
 };
 
 export const en: Record<keyof typeof pt, string> = {
@@ -136,6 +146,16 @@ export const en: Record<keyof typeof pt, string> = {
   "board.card.probCancelRequest": "Cancellation request",
   "board.card.ordClosed": "Closed",
   "board.stoppedAt": "Stopped at: {step}",
+  "board.block.booking": "Booking",
+  "board.hint.booking":
+    "products before becoming a request; tap to open Booking at that step",
+  "board.card.bkNew": "New",
+  "board.card.bkAnalysis": "Under analysis",
+  "board.card.bkApproved": "Approved",
+  "board.card.bkOffered": "Offered to the customer",
+  "board.card.bkReserved": "Reserved by the customer",
+  "board.card.bkRequested": "Became a request",
+  "board.card.bkDiscarded": "Discarded",
 };
 
 export const zh: Record<keyof typeof pt, string> = {
@@ -203,4 +223,13 @@ export const zh: Record<keyof typeof pt, string> = {
   "board.card.probCancelRequest": "取消申请",
   "board.card.ordClosed": "已结案",
   "board.stoppedAt": "停在：{step}",
+  "board.block.booking": "Booking",
+  "board.hint.booking": "成为需求之前的产品；点击可打开该阶段的 Booking",
+  "board.card.bkNew": "新建",
+  "board.card.bkAnalysis": "分析中",
+  "board.card.bkApproved": "已批准",
+  "board.card.bkOffered": "已向客户报价",
+  "board.card.bkReserved": "客户已预订",
+  "board.card.bkRequested": "已转为需求",
+  "board.card.bkDiscarded": "已放弃",
 };

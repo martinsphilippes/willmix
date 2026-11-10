@@ -503,7 +503,9 @@ describe("bloco 3: acontece ao mesmo tempo", () => {
       expect(keys).not.toContain(k);
     expect(closed.cards.every((c) => c.value === null)).toBe(true);
 
-    const open = buildTowerBoard(input({ ...base, finance: true }));
+    const open = buildTowerBoard(
+      input({ ...base, finance: true, bookings: {} }),
+    );
     expect(ids(open, "parInstallmentOverdue")).toEqual([o.id]);
     expect(ids(open, "parInstallmentDueSoon")).toEqual([o.id]);
     expect(ids(open, "parInstallmentRequested")).toEqual([]);
@@ -571,5 +573,28 @@ describe("bloco 4: problemas", () => {
       product: "Boneca",
       link: "/app/products/p1",
     });
+  });
+});
+
+describe("bloco do Booking", () => {
+  it("conta as linhas por etapa e leva ao Booking filtrado", () => {
+    const board = buildTowerBoard(
+      input({ bookings: { analysis: 15, reserved: 5 } }),
+    );
+    const card = (key: string) => board.cards.find((c) => c.key === key)!;
+    expect(card("bkAnalysis")).toMatchObject({
+      block: "booking",
+      count: 15,
+      href: "/app/booking?status=analysis",
+    });
+    expect(card("bkReserved").count).toBe(5);
+    expect(card("bkNew").count).toBe(0);
+    // O bloco vem antes das solicitações.
+    expect(board.cards[0].block).toBe("booking");
+  });
+
+  it("some para quem não abre o Booking", () => {
+    const board = buildTowerBoard(input());
+    expect(board.cards.some((c) => c.block === "booking")).toBe(false);
   });
 });

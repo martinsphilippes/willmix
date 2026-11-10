@@ -9,7 +9,7 @@ O pedido nascia e seguia para a produção sem um registro de que as duas partes
 ## 2. Como funciona
 
 1. Todo pedido novo nasce com dois itens obrigatórios:
-   - **Documento do pedido assinado pela Wellmix**, na etapa "Pedido criado";
+   - **Documento do pedido assinado pela Wellmix**, na etapa "Pedido pré-aprovado";
    - **Documento do pedido assinado pelo fornecedor**, o primeiro item da Preparação.
 2. Os dois levam à página **Documento do pedido** (`/app/orders/{id}/purchase-order`): comprador, fornecedor, itens (quantidade, preço por unidade, total), incoterm, prazo de produção, condição de pagamento e, quando houve, a proposta de embalagem com o OK do fornecedor.
 3. **A Wellmix assina primeiro**; o fornecedor é avisado ("sua vez") e **assina em seguida**. Sem a assinatura da Wellmix, o fornecedor não assina.
@@ -17,7 +17,7 @@ O pedido nascia e seguia para a produção sem um registro de que as duas partes
 5. **Depois das duas assinaturas o pedido vai ao Sankhya** (antes ia ao nascer): com a integração ligada, o número volta sozinho; sem ela, a Wellmix recebe "pedido autorizado: gere-o no Sankhya e informe o número". A página mostra a situação: pronto para assinatura (esperando a Wellmix) → enviado ao fornecedor → assinado pelos dois (pedido autorizado) → gerado no Sankhya.
 6. O documento traz também o **MOQ** combinado (da cotação ou da ficha).
 7. Aceite no portal = digitar o **nome completo**, marcar **"Li e concordo"** e tocar em Assinar. O sistema grava o nome digitado, o login, a data e a hora e a **versão exata do documento** (impressão digital SHA-256 do conteúdo). É um aceite no portal, **não um certificado digital**.
-8. **O pedido só segue com as duas**: "Pedido criado" não conclui sem a da Wellmix; a Preparação não conclui sem a do fornecedor.
+8. **O pedido só segue com as duas**: "Pedido pré-aprovado" não conclui sem a da Wellmix; a Preparação não conclui sem a do fornecedor.
 9. Os itens de assinatura não têm o "Confirmar" comum (`signature_required`): só a página do documento os conclui.
 10. Se o pedido mudar depois de uma assinatura (quantidade, preço…), a versão muda e a tela avisa que aquela assinatura é de uma **versão anterior**. Se mudar enquanto a pessoa lê, o envio é recusado e ela relê (`signature_document_changed`).
 11. **Assinatura recebida por fora** (papel, e-mail): só o **administrador** registra, com o nome de quem assinou pelo fornecedor; fica marcado quem registrou.
@@ -58,7 +58,7 @@ Decisão do dono: a assinatura do documento sai do começo do pedido e vai para 
 - Tabela "Etapas do pedido": a linha "Documento do pedido (assinaturas)" fica debaixo de "Arte e embalagem", depois de "Artes da embalagem" e antes de "Produção e inspeção".
 - Booking: linha que virou pedido mostra "Pedido: arte e selo" (`prepare_document`) até o envio; depois, "assinar documento".
 - O pedido só vai ao Sankhya depois das duas assinaturas (como antes), agora mais adiante no fluxo.
-- **Pedidos criados antes desta decisão** guardam os itens onde nasceram (Wellmix em "Pedido criado", fornecedor na Preparação), não têm o item de envio e seguem como eram, inclusive a liberação automática da seção 2b.
+- **Pedidos criados antes desta decisão** guardam os itens onde nasceram (Wellmix em "Pedido pré-aprovado", fornecedor na Preparação), não têm o item de envio e seguem como eram, inclusive a liberação automática da seção 2b.
 - Sem mudança de esquema: os itens são linhas de `requirements` criadas quando o pedido nasce.
 
 ## 2b. As duas formas de o fornecedor assinar (10/11/2026)
