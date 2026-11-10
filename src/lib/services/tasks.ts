@@ -1080,7 +1080,11 @@ const PACKAGING_ITEM_LABEL: Record<string, string> = {
 
 function requestTask(request: Request, rfqOn = true): DraftTask {
   const base = {
-    link: `/app/requests/${request.id}`,
+    // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
+    link:
+      !rfqOn && request.status === "REQUESTED"
+        ? `/app/rfq#req-${request.id}`
+        : `/app/requests/${request.id}`,
     dueAt: request.deadline,
     customerId: request.customerId,
     ownerUserId: request.ownerUserId ?? null,

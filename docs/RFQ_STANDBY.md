@@ -18,16 +18,16 @@ Nada foi removido: telas, rotas, tabelas e dados da RFQ continuam como estavam. 
 
 ## 3. Como funciona
 
-|                                              | RFQ em espera (padrão)                                                                                                                                                                                    | RFQ ativa                                                                  |
-| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Configuração                                 | `settings.rfqEnabled = false`                                                                                                                                                                             | `true`                                                                     |
-| Booking → "Gerar solicitação"                | A solicitação já vai para o fornecedor do produto (`sendToBookingSuppliers` em `services/booking.ts`): uma cotação convidada, situação "RFQ aberta", um aviso só por fornecedor ("Booking para analisar") | A solicitação fica em "Solicitado" esperando a abertura da RFQ, como antes |
-| Solicitação sem cotação                      | Cartão **Enviar ao fornecedor**: um fornecedor só (o do produto já marcado)                                                                                                                               | Cartão **Abrir RFQ**: vários fornecedores                                  |
-| Depois de enviada                            | Sem "Convidar mais"                                                                                                                                                                                       | "Convidar mais fornecedores"                                               |
-| Lote                                         | Um fornecedor para o lote                                                                                                                                                                                 | Vários                                                                     |
-| Disputa de fornecedores                      | Não aparece (só existe com duas ou mais cotações)                                                                                                                                                         | Aparece                                                                    |
-| Pendência da Wellmix                         | "Enviar ao fornecedor: produto"                                                                                                                                                                           | "Abrir RFQ: produto"                                                       |
-| Pendência do fornecedor (produto do Booking) | "Analisar o Booking: produto"                                                                                                                                                                             | igual                                                                      |
+|                                              | RFQ em espera (padrão)                                                                                                                                                                                                        | RFQ ativa                                                                  |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Configuração                                 | `settings.rfqEnabled = false`                                                                                                                                                                                                 | `true`                                                                     |
+| Booking → "Gerar solicitação"                | A solicitação já vai para o fornecedor do produto (`sendToBookingSuppliers` em `services/booking.ts`): uma cotação convidada, situação "RFQ aberta", um aviso só por fornecedor ("Booking para analisar")                     | A solicitação fica em "Solicitado" esperando a abertura da RFQ, como antes |
+| Solicitação sem cotação                      | Sem cartão na tela da solicitação (pedido do dono): só o aviso "ainda não foi enviado" com o atalho. O envio é na tela **Pedidos → RFQ**: uma lista com o fornecedor do produto já escolhido e o botão "Enviar ao fornecedor" | Cartão **Abrir RFQ**: vários fornecedores                                  |
+| Depois de enviada                            | Sem "Convidar mais"                                                                                                                                                                                                           | "Convidar mais fornecedores"                                               |
+| Lote                                         | Sem cartão no lote; cada produto é enviado pela tela Pedidos → RFQ                                                                                                                                                            | Vários                                                                     |
+| Disputa de fornecedores                      | Não aparece (só existe com duas ou mais cotações)                                                                                                                                                                             | Aparece                                                                    |
+| Pendência da Wellmix                         | "Enviar ao fornecedor: produto"                                                                                                                                                                                               | "Abrir RFQ: produto"                                                       |
+| Pendência do fornecedor (produto do Booking) | "Analisar o Booking: produto"                                                                                                                                                                                                 | igual                                                                      |
 
 Produto do Booking **sem fornecedor** no cadastro: a solicitação nasce em "Solicitado" e a linha do Booking mostra "Enviar ao fornecedor".
 
@@ -50,9 +50,11 @@ Nada de tela nova: é a mesma tela de Cotações, com o texto do Booking quando 
 
 ## 6. Tela Pedidos → RFQ (`/app/rfq`)
 
-Só o administrador (tela `rfq`, em `ADMIN_ONLY`). Mostra: a situação (Em espera / Ativa), como o fluxo está funcionando, o que está guardado, o interruptor e as solicitações em cotação (nº, produto, situação, fornecedores, quantos responderam).
+Abre para o administrador e para as funções que abrem Solicitações (comprador, gerente de produto, planejamento). Mostra: a situação (Em espera / Ativa), como o fluxo está funcionando, o que está guardado, o interruptor e as solicitações em cotação (nº, produto, situação, fornecedores, quantos responderam).
 
-O interruptor (`setRfqEnabledAction`, `src/app/app/actions/rfq.ts`) grava `settings.rfqEnabled` e registra na auditoria (`settings.rfq`). A tela de Configurações não mexe nessa chave.
+Na lista, a solicitação que ainda não foi a nenhum fornecedor tem o envio ali mesmo (`sendRequestToSupplierAction`: um fornecedor, com a trava `assertRfqStandby`). A pendência "Enviar ao fornecedor" e a linha do Booking levam a esta tela (`/app/rfq#req-<id>`).
+
+O interruptor é só do administrador (`setRfqEnabledAction`, `src/app/app/actions/rfq.ts`): grava `settings.rfqEnabled` e registra na auditoria (`settings.rfq`). A tela de Configurações não mexe nessa chave.
 
 ## 7. Onde está cada parte
 
@@ -71,3 +73,10 @@ O interruptor (`setRfqEnabledAction`, `src/app/app/actions/rfq.ts`) grava `setti
 - A situação da solicitação continua se chamando "RFQ aberta" nas listas e na Control Tower (é o nome da etapa no banco). Trocar o rótulo para "Com o fornecedor" é uma mudança só de texto, se o dono quiser.
 - O fornecedor vê o produto quando a Wellmix gera a solicitação pelo Booking, não na hora em que a ficha sobe (antes disso a Wellmix ainda está analisando preço e margem). Mostrar ao fornecedor já na importação é possível, se for a decisão.
 - A certificação em paralelo com a faca, o pedido mínimo, o prazo e a foto, e o selo da certificadora junto da arte, vêm em seguida.
+
+## 9. Tela da solicitação (pedido do dono, 10/11/2026)
+
+Saíram da tela da solicitação, como cartões:
+
+- **RFQ**: com a RFQ em espera não há cartão (nem na solicitação, nem no lote). O cartão "Abrir RFQ" só volta com a RFQ ligada.
+- **Solicitante do cliente**: virou uma linha no cartão da solicitação (lista e "Salvar"), e só aparece quando a compra é de um cliente com login. Compra para o Estoque Wellmix não tem solicitante. A regra não mudou: só o login escolhido vê a solicitação e o pedido (docs de acesso).

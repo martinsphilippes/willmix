@@ -104,8 +104,6 @@ describe("menu principal", () => {
             "/app/team",
             // Superplan: custo e margem de cada produto, só do admin.
             "/app/superplan",
-            // RFQ em espera: a tela que guarda a RFQ, só do admin.
-            "/app/rfq",
             // Painel do dono: números de Finanças, só do admin.
             "/app/dashboards/owner",
             "/app/dashboards/cashflow",

@@ -46,6 +46,13 @@ export const pt = {
   "rfqStandby.send.title": "Enviar ao fornecedor",
   "rfqStandby.send.hint":
     "Escolha o fornecedor que vai analisar este produto. O fornecedor do produto já vem marcado. Um fornecedor só: a RFQ para vários está em espera.",
+  "rfqStandby.send.supplier": "Fornecedor de {product}",
+  "rfqStandby.send.choose": "Escolha o fornecedor",
+  "rfqStandby.send.done": "Produto enviado ao fornecedor.",
+  "rfqStandby.send.listHint":
+    "Produto que ainda não foi a nenhum fornecedor: escolha o fornecedor e toque em Enviar. O que vem do Booking já vai sozinho.",
+  "rfqStandby.request.toSend":
+    "Este produto ainda não foi enviado a nenhum fornecedor.",
   "rfqStandby.send.submit": "Enviar ao fornecedor",
   "pricing.error.rfq_standby_one":
     "A RFQ para vários fornecedores está em espera: escolha um fornecedor só.",
@@ -108,6 +115,13 @@ export const en: Record<keyof typeof pt, string> = {
   "rfqStandby.send.title": "Send to the supplier",
   "rfqStandby.send.hint":
     "Choose the supplier who will review this product. The product's supplier is already ticked. One supplier only: the RFQ to several suppliers is on hold.",
+  "rfqStandby.send.supplier": "Supplier for {product}",
+  "rfqStandby.send.choose": "Choose the supplier",
+  "rfqStandby.send.done": "Product sent to the supplier.",
+  "rfqStandby.send.listHint":
+    "A product that has not gone to any supplier yet: choose the supplier and tap Send. What comes from the Booking goes by itself.",
+  "rfqStandby.request.toSend":
+    "This product has not been sent to any supplier yet.",
   "rfqStandby.send.submit": "Send to the supplier",
   "pricing.error.rfq_standby_one":
     "The RFQ to several suppliers is on hold: choose one supplier only.",
@@ -166,6 +180,12 @@ export const zh: Record<keyof typeof pt, string> = {
   "rfqStandby.send.title": "发送给供应商",
   "rfqStandby.send.hint":
     "选择分析此产品的供应商。产品的供应商已默认选中。只能选一家：向多家供应商询价的功能已暂停。",
+  "rfqStandby.send.supplier": "{product} 的供应商",
+  "rfqStandby.send.choose": "请选择供应商",
+  "rfqStandby.send.done": "产品已发送给供应商。",
+  "rfqStandby.send.listHint":
+    "尚未发送给任何供应商的产品：选择供应商并点击发送。来自 Booking 的产品会自动发送。",
+  "rfqStandby.request.toSend": "此产品尚未发送给任何供应商。",
   "rfqStandby.send.submit": "发送给供应商",
   "pricing.error.rfq_standby_one":
     "向多家供应商询价的功能已暂停：请只选择一家供应商。",

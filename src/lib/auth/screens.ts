@@ -155,8 +155,6 @@ export const ADMIN_ONLY: readonly Screen[] = [
   "settings",
   "team",
   "superplan",
-  // RFQ em espera: a tela que guarda a RFQ e o interruptor (docs/RFQ_STANDBY.md).
-  "rfq",
 ];
 
 const PARTNER_BASE: readonly Screen[] = [
@@ -209,6 +207,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   buyer: [
     "booking",
     "requests",
+    // Envio ao fornecedor com a RFQ em espera (o interruptor é só do admin).
+    "rfq",
     "quotes",
     "orders",
     "sourcing",
@@ -225,6 +225,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   product_manager: [
     "booking",
     "requests",
+    // Envio ao fornecedor com a RFQ em espera (o interruptor é só do admin).
+    "rfq",
     "quotes",
     "orders",
     "sourcing",
@@ -240,6 +242,8 @@ export const FUNCTION_SCREENS: Record<WellmixFunction, readonly Screen[]> = {
   planner: [
     "booking",
     "requests",
+    // Envio ao fornecedor com a RFQ em espera (o interruptor é só do admin).
+    "rfq",
     "quotes",
     "orders",
     "containers",
