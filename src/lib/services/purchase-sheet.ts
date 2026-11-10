@@ -181,16 +181,11 @@ export interface SheetAccess {
 }
 
 /**
- * Campos de preço da ficha: a certificadora lê a ficha inteira, menos eles
- * (condição, moeda, preço, pedido mínimo e a média do despachante).
+ * Campos da ficha que a certificadora não recebe. Hoje nenhum: ela vê tudo
+ * do pedido (decisão do dono, 10/11/2026). Para tirar um campo dela, basta
+ * incluí-lo aqui (ex.: "price", "moq"): ele não sai do servidor.
  */
-export const CERTIFIER_HIDDEN_FIELDS = [
-  "incoterm",
-  "currency",
-  "price",
-  "moq",
-  "averagePrice",
-] as const satisfies readonly SheetField[];
+export const CERTIFIER_HIDDEN_FIELDS: readonly SheetField[] = [];
 
 /**
  * Certificadora (OCP) do pedido: precisa do pedido completo para gerar o
@@ -205,7 +200,7 @@ export function isSheetCertifier(
 
 /**
  * Quem vê: Wellmix, o fornecedor do pedido, o despachante do pedido e a
- * certificadora do pedido (só leitura e sem os campos de preço). Cliente
+ * certificadora do pedido (só leitura). Cliente
  * nunca (fornecedor, contato e preço). Pedido encerrado: só a Wellmix edita.
  */
 export function sheetAccess(user: User, order: Order): SheetAccess {
@@ -518,7 +513,7 @@ export async function getSheetForUser(
   );
   // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
   const full = existing ? withRecordDefaults(existing, records) : stored;
-  // Certificadora: a ficha inteira, menos o preço (não sai do servidor).
+  // Certificadora: a ficha inteira, menos os campos de CERTIFIER_HIDDEN_FIELDS.
   const sheet = isSheetCertifier(user, order)
     ? {
         ...full,

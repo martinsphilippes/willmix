@@ -622,7 +622,7 @@ describe("certificadora vê o pedido completo", () => {
     order = await newOrder();
   });
 
-  it("lê a ficha de compra inteira, sem preço, e não edita", async () => {
+  it("lê a ficha de compra inteira, com preço, e não edita", async () => {
     const ps = await import("@/lib/services/purchase-sheet");
     await ps.saveSheet(admin, order.id, {
       supplierName: "Fábrica A",
@@ -646,8 +646,11 @@ describe("certificadora vê o pedido completo", () => {
     expect(view.sheet.material).toBe("GLASS");
     expect(view.sheet.masterCartonQty).toBe(24);
     expect(view.sheet.certificationNote).toBe("Inmetro");
-    for (const field of ps.CERTIFIER_HIDDEN_FIELDS)
-      expect(view.sheet[field] ?? null).toBeNull();
+    // Vê tudo do pedido (decisão do dono): o preço também.
+    expect(ps.CERTIFIER_HIDDEN_FIELDS).toEqual([]);
+    expect(view.sheet.price).toBe(2.5);
+    expect(view.sheet.moq).toBe(500);
+    expect(view.sheet.averagePrice).toBe(3.1);
     // A Wellmix continua vendo o preço; a ficha gravada não muda.
     const full = (await ps.getSheetForUser(admin, order.id))!;
     expect(full.sheet.price).toBe(2.5);
@@ -658,6 +661,23 @@ describe("certificadora vê o pedido completo", () => {
     // Agência, comex e outra certificadora não abrem a ficha.
     for (const user of [agency, comex, otherOcp()])
       expect(await ps.getSheetForUser(user, order.id)).toBeNull();
+  });
+
+  it("abre o documento do pedido para ler, mas não assina", async () => {
+    const sig = await import("@/lib/services/order-signature");
+    expect(sig.canViewOrderDocument(ocp, order)).toBe(true);
+    expect(sig.canViewOrderDocument(otherOcp(), order)).toBe(false);
+    expect(sig.canViewOrderDocument(agency, order)).toBe(false);
+    const view = (await sig.getOrderSignatureView(ocp, order.id))!;
+    expect(view.canSign).toBeNull();
+    expect(view.waitingWellmix).toBe(false);
+    await expect(
+      sig.signOrderDocument(ocp, order.id, {
+        name: "Certificadora",
+        agree: true,
+        hash: view.hash,
+      }),
+    ).rejects.toThrow("forbidden");
   });
 
   it("abre as fotos de vitrine do produto, não o cartão do fabricante", async () => {

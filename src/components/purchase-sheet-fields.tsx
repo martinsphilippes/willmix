@@ -580,7 +580,7 @@ export function PurchaseSheetFields({
           </Rows>
         </Card>
       </Section>
-      {certifier ? null : (
+      {
         <Section open={open} all={certifier} k="price" order="lg:order-2">
           <Card title={t("sheet.section.price")} dense>
             <Rows>
@@ -636,7 +636,7 @@ export function PurchaseSheetFields({
             </Rows>
           </Card>
         </Section>
-      )}
+      }
 
       {hideSchedule ? null : (
         <Section open={open} all={certifier} k="schedule" order="lg:order-3">
@@ -932,7 +932,7 @@ export function PurchaseSheetFields({
                   className={inputDenseClass}
                 />
               </F>
-              {certifier ? null : (
+              {
                 <F t={t} m={missing} k="averagePrice" size="xs">
                   <Num
                     name="averagePrice"
@@ -940,7 +940,7 @@ export function PurchaseSheetFields({
                     disabled={!access.editCustoms}
                   />
                 </F>
-              )}
+              }
               <F t={t} m={missing} k="certificationRequired" size="xs">
                 <select
                   name="certificationRequired"

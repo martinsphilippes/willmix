@@ -1,6 +1,6 @@
 # Certificação com o OCP (Fase F)
 
-- **OCP (organismo de certificação)**: login próprio (papel `ocp`, empresa do tipo OCP), designado no pedido em "Parceiros" (`orders.ocpId`). Com uma só certificadora ativa, ela é designada sozinha quando o pedido nasce. Vê só os pedidos em que está: o cartão Certificação e o pedido completo para ler (seção 6), sem preço nem cliente.
+- **OCP (organismo de certificação)**: login próprio (papel `ocp`, empresa do tipo OCP), designado no pedido em "Parceiros" (`orders.ocpId`). Com uma só certificadora ativa, ela é designada sozinha quando o pedido nasce. Vê só os pedidos em que está: o cartão Certificação e o pedido completo para ler (seção 6), inclusive cliente e preço de compra (decisão do dono, 10/11/2026).
 - **Todo pedido precisa do selo de certificação** (decisão do dono, 10/11/2026): as duas linhas do selo aparecem no cartão **Certificação** de todo pedido, desde que ele nasce (não esperam a Preparação).
 - Memorial, laudo e registro aparecem no cartão quando há OCP designado, quando a ficha da cotação/pedido marca "Precisa de certificação" ou quando algum deles já começou.
 
@@ -112,7 +112,8 @@ Na ordem do fluxo, o selo já fica depois dela: Booking e Superplan → solicita
 
 ### 11.2 Ainda em aberto
 0. Registro das respostas do dono de 10/11/2026 sobre o fluxo com o Booking do fornecedor (docs/RFQ_STANDBY.md): a faca continua sendo pedida ao fornecedor **depois da confirmação** da cotação, como hoje (não na análise do Booking); o selo é enviado pela certificadora, aplicado na arte por quem faz a arte e conferido pela Wellmix (o que já está feito aqui).
-1. **Preço e cliente para a certificadora**: ficaram de fora por segurança (preço de compra, valores e o nome do cliente). Se a certificadora precisar do cliente (por exemplo, como titular do certificado) ou de algum valor, é uma liberação de uma linha.
+1. **Preço e cliente para a certificadora**: resolvido (dono, 10/11/2026): ela vê **tudo do pedido** (cliente, fornecedor, FOB, preço dos itens, a ficha inteira com o bloco Preço e o documento do pedido, só para ler; não assina). O dono vai pedir depois o que tirar: campo da ficha sai incluindo o nome em `CERTIFIER_HIDDEN_FIELDS` (`purchase-sheet.ts`); o resto, nas condições `certifier` de `orders/[id]/page.tsx` e em `canViewOrderDocument`. Ficam fora o financeiro da Wellmix (preço de venda, margem, pagamentos), que não é dado do pedido para ela.
+2. **Quem gera e quem anexa o selo** (dono, 10/11/2026): a certificadora gera o selo; a agência anexa o selo ao produto/pedido (a arte com o selo) para o pedido seguir. É o que os passos `cert_seal` e `cert_seal_art` já fazem.
 
 ### 12. Melhorias futuras
 - Prazo (SLA) para a certificadora e para a agência, com lembrete e atraso no Painel de SLA.

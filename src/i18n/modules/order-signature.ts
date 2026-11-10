@@ -9,6 +9,8 @@ export const pt = {
   "orderSign.subtitle":
     "O que foi combinado neste pedido. A Wellmix assina primeiro; o fornecedor assina em seguida. O pedido só segue com as duas assinaturas.",
   "orderSign.open": "Abrir e assinar o documento",
+  "orderSign.link.title": "Documento do pedido",
+  "orderSign.link.open": "Abrir o documento",
   "orderSign.view": "Ver o documento do pedido",
   "orderSign.buyer": "Comprador",
   "orderSign.supplier": "Fornecedor",
@@ -53,6 +55,8 @@ export const pt = {
   "orderSign.done": "Assinatura registrada.",
   "orderSign.print": "Imprimir ou salvar em PDF",
   "orderSign.back": "Voltar ao pedido",
+  "orderSign.back.supplier": "Etapas e pendências do pedido",
+  "orderSign.tasks.title": "Suas pendências neste pedido",
   "orderSign.error.signature_required":
     "Este item só é concluído pela assinatura do documento do pedido.",
   "orderSign.error.signature_name_required":
@@ -117,6 +121,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orderSign.subtitle":
     "What was agreed for this order. Wellmix signs first; the supplier signs next. The order only goes on with both signatures.",
   "orderSign.open": "Open and sign the document",
+  "orderSign.link.title": "Order document",
+  "orderSign.link.open": "Open the document",
   "orderSign.view": "View the order document",
   "orderSign.buyer": "Buyer",
   "orderSign.supplier": "Supplier",
@@ -161,6 +167,8 @@ export const en: Record<keyof typeof pt, string> = {
   "orderSign.done": "Signature registered.",
   "orderSign.print": "Print or save as PDF",
   "orderSign.back": "Back to the order",
+  "orderSign.back.supplier": "Order steps and pending items",
+  "orderSign.tasks.title": "Your pending items on this order",
   "orderSign.error.signature_required":
     "This item is only completed by signing the order document.",
   "orderSign.error.signature_name_required":
@@ -223,6 +231,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.subtitle":
     "本订单约定的内容。Wellmix 先签署，供应商随后签署。双方签署后订单才继续。",
   "orderSign.open": "打开并签署文件",
+  "orderSign.link.title": "订单文件",
+  "orderSign.link.open": "打开文件",
   "orderSign.view": "查看订单文件",
   "orderSign.buyer": "买方",
   "orderSign.supplier": "供应商",
@@ -262,6 +272,8 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.done": "签署已登记。",
   "orderSign.print": "打印或保存为 PDF",
   "orderSign.back": "返回订单",
+  "orderSign.back.supplier": "订单步骤与待办",
+  "orderSign.tasks.title": "您在此订单的待办事项",
   "orderSign.error.signature_required": "此项只能通过签署订单文件来完成。",
   "orderSign.error.signature_name_required": "请输入全名（至少 3 个字符）。",
   "orderSign.error.signature_agree_required": "请勾选已阅读并同意后再签署。",

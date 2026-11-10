@@ -86,17 +86,26 @@ export function orderDocumentHash(doc: OrderDocument): string {
   return createHash("sha256").update(JSON.stringify(doc)).digest("hex");
 }
 
-/** Só a Wellmix e o fornecedor do pedido (o documento tem o preço de compra). */
-export function canViewOrderDocument(
-  user: User,
-  order: Pick<Order, "supplierId">,
-): boolean {
-  if (isWellmix(user)) return true;
+/** O fornecedor do pedido: quem assina o documento do lado de lá. */
+function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
   return (
     user.role === "supplier" &&
     !!user.partyId &&
     order.supplierId === user.partyId
   );
+}
+
+/**
+ * A Wellmix, o fornecedor do pedido e a certificadora do pedido (ela só lê:
+ * vê tudo do pedido para gerar o selo). O documento tem o preço de compra.
+ */
+export function canViewOrderDocument(
+  user: User,
+  order: Pick<Order, "supplierId"> & Partial<Pick<Order, "ocpId">>,
+): boolean {
+  if (isWellmix(user)) return true;
+  if (isOrderSupplier(user, order)) return true;
+  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
 }
 
 export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
@@ -249,7 +258,7 @@ export async function getOrderSignatureView(
     if (isWellmix(user)) {
       if (await stageActive(reqs.wellmix)) canSign = "wellmix";
       canRegisterSupplier = supplierOpen && isAdmin(user);
-    } else if (supplierOpen) {
+    } else if (supplierOpen && isOrderSupplier(user, order)) {
       canSign = "supplier";
     }
   }
@@ -277,7 +286,7 @@ export async function getOrderSignatureView(
     supplier,
     canSign,
     canRegisterSupplier,
-    waitingWellmix: !isWellmix(user) && !!reqs.wellmix && !wellmix,
+    waitingWellmix: isOrderSupplier(user, order) && !!reqs.wellmix && !wellmix,
   };
 }
 
@@ -298,6 +307,11 @@ export interface SignOrderInput {
    * Com ele, a assinatura é "por arquivo"; sem ele, é o aceite no portal.
    */
   signedFile?: File | null;
+  /**
+   * O mesmo arquivo, já subido direto ao armazenamento pelo navegador
+   * (acima do teto da requisição na Vercel): o id dele.
+   */
+  signedUploadId?: string | null;
 }
 
 const SIGNED_FILE_MIME = /^(application\/pdf|image\/(jpeg|png|webp))$/i;
@@ -315,7 +329,9 @@ export async function signOrderDocument(
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order) throw new OrderSignatureError("order_not_found");
-  if (!canViewOrderDocument(user, order)) throw new ForbiddenError();
+  // Assina a Wellmix ou o fornecedor do pedido; a certificadora só lê.
+  if (!isWellmix(user) && !isOrderSupplier(user, order))
+    throw new ForbiddenError();
   const name = input.name.trim().replace(/\s+/g, " ");
   if (name.length < 3 || name.length > 120)
     throw new OrderSignatureError("signature_name_required");
@@ -339,16 +355,27 @@ export async function signOrderDocument(
   // pedido como interno. Só a Wellmix e quem o enviou abrem: tem o preço.
   let documentId: string | null = null;
   const file = input.signedFile ?? null;
+  const target = {
+    orderId: order.id,
+    type: "other",
+    visibility: "internal",
+  } as const;
   if (file) {
     if (!SIGNED_FILE_MIME.test(file.type))
       throw new OrderSignatureError("signature_file_invalid");
     const { uploadDocument } = await import("./documents");
-    const doc = await uploadDocument(user, file, {
-      orderId: order.id,
-      type: "other",
-      visibility: "internal",
-    });
-    documentId = doc.id;
+    documentId = (await uploadDocument(user, file, target)).id;
+  } else if (input.signedUploadId) {
+    // Arquivo grande (foto de celular, PDF escaneado): já está guardado.
+    const stored = await store.statFile(input.signedUploadId);
+    if (stored && !SIGNED_FILE_MIME.test(stored.mime ?? "")) {
+      await store.removeFile(input.signedUploadId);
+      throw new OrderSignatureError("signature_file_invalid");
+    }
+    const { registerUploadedDocument } = await import("./documents");
+    documentId = (
+      await registerUploadedDocument(user, input.signedUploadId, target)
+    ).id;
   }
   const signature: OrderSignature = {
     side,

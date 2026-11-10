@@ -332,6 +332,33 @@ describe("documento do pedido com duas assinaturas", () => {
       "supplier",
       "sent_to_supplier",
     ]);
+    // Arquivo grande (foto de celular): o navegador sobe direto ao
+    // armazenamento e a assinatura leva só o id; tipo errado é recusado.
+    const bytes = new TextEncoder().encode("foto assinada");
+    const wrong = await getStore().putFile(bytes, "x.exe", "application/zip");
+    await expect(
+      sig.signOrderDocument(supplierA, order.id, {
+        name: "Li Wei",
+        agree: true,
+        hash: view.hash,
+        signedUploadId: wrong.key,
+      }),
+    ).rejects.toThrow("signature_file_invalid");
+    expect(await getStore().statFile(wrong.key)).toBeNull();
+    const photo = await getStore().putFile(bytes, "po.jpg", "image/jpeg");
+    const direct = await sig.signOrderDocument(supplierA, order.id, {
+      name: "Li Wei",
+      agree: true,
+      hash: view.hash,
+      signedUploadId: photo.key,
+    });
+    expect(direct.method).toBe("file");
+    const directDoc = (await getStore().get("documents", direct.documentId!))!;
+    expect([directDoc.orderId, directDoc.storageKey]).toEqual([
+      order.id,
+      photo.key,
+    ]);
+    await sig.reopenSupplierSignature(admin, order.id, "Conferir de novo");
     // Sem arquivo, vale o aceite no portal (a opção continua).
     const accepted = await signOrderAs(supplierA, order.id);
     expect(accepted.method).toBe("accept");

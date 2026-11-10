@@ -24,6 +24,8 @@ import {
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
+import { DirectFileInput } from "@/components/sheet-file-input";
+import { pendingTasksFor } from "@/lib/services/tasks";
 import {
   reopenSupplierSignatureAction,
   signOrderDocumentAction,
@@ -47,6 +49,32 @@ export default async function PurchaseOrderPage({
   const t = await getT();
   const { order, document: doc, hash } = view;
   const sheet = await buildOrderSheet(order, doc, view.wellmix);
+  /* Fornecedor: entra no pedido por aqui. As pendências dele neste pedido
+     aparecem no alto, cada uma com o atalho para a tela onde se resolve. */
+  const isSupplier = user.role === "supplier";
+  const myTasks = isSupplier
+    ? (await pendingTasksFor(user)).filter(
+        (task) =>
+          task.link.startsWith(`/app/orders/${order.id}`) &&
+          !task.link.startsWith(`/app/orders/${order.id}/purchase-order`),
+      )
+    : [];
+  const fileClass =
+    "block max-w-xs text-sm text-zinc-700 file:mr-2 file:rounded-lg file:border file:border-zinc-300 file:bg-white file:px-3 file:py-1.5 file:text-sm";
+  // Arquivo assinado: acima do teto da requisição sobe direto ao armazenamento.
+  const signedFileInput = (required: boolean) => (
+    <DirectFileInput
+      name="signedFile"
+      required={required}
+      accept="application/pdf,image/jpeg,image/png,image/webp"
+      className={fileClass}
+      label={t("orderSign.file.label")}
+      uploadingLabel={t("requirement.file.uploading")}
+      failedLabel={t("requirement.file.failed")}
+      tooBigLabel={t("requirement.file.tooBig")}
+      chosenLabel={t("importFlow.fileReady")}
+    />
+  );
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `orderSign.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
@@ -159,11 +187,7 @@ export default async function PurchaseOrderPage({
             {t("orderSign.file.steps")}
           </p>
           <Field label={t("orderSign.file.label.optional")}>
-            <Input
-              type="file"
-              name="signedFile"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-            />
+            {signedFileInput(false)}
           </Field>
         </>
       ) : null}
@@ -195,7 +219,7 @@ export default async function PurchaseOrderPage({
             href={`/app/orders/${order.id}`}
             className={`${linkClass} print:hidden`}
           >
-            {t("orderSign.back")}
+            {t(isSupplier ? "orderSign.back.supplier" : "orderSign.back")}
           </Link>
         }
       />
@@ -257,17 +281,31 @@ export default async function PurchaseOrderPage({
             >
               {t("orderSign.download")}
             </a>
-            <Input
-              type="file"
-              name="signedFile"
-              required
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              aria-label={t("orderSign.file.label")}
-              className="max-w-xs"
-            />
+            {signedFileInput(true)}
             <SubmitButton>{t("orderSign.upload.submit")}</SubmitButton>
           </div>
         </form>
+      ) : null}
+      {myTasks.length ? (
+        <div
+          className="space-y-1 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-sm print:hidden"
+          data-order-my-tasks
+        >
+          <p className="font-semibold text-zinc-900">
+            {t("orderSign.tasks.title")}
+          </p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {myTasks.map((task, i) => (
+              <li key={i}>
+                <Link href={task.link} className={linkClass}>
+                  {task.text
+                    ? t(task.text.title, task.text.values)
+                    : task.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       {!view.applies ? (
         <Alert tone="info">{t("orderSign.notApplicable")}</Alert>
