@@ -141,7 +141,7 @@ async function login(page: Page, email: string) {
 async function signOrderDocument(
   page: Page,
   orderUrl: string,
-  signedFile?: string,
+  signedFile?: { name: string; mimeType: string; buffer: Buffer },
 ) {
   await page.goto(`${orderUrl}/purchase-order`);
   const form = page.locator("[data-order-sign-form=own]");
