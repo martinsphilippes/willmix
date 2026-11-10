@@ -392,6 +392,7 @@ describe("preço desejado: a solicitação que nasce do Booking", () => {
       price: 4,
       currency: "CNY",
       leadTimeDays: null,
+      declined: null,
     });
     const other = quotes.find((q) => q.supplierId === "fornecedor-b");
     if (other) expect(await flow.quoteOfferFor(other, req)).toBeNull();
@@ -545,6 +546,79 @@ describe("preço desejado: a solicitação que nasce do Booking", () => {
     );
   });
 
+  it("não aceitar: fica no histórico, avisa a Wellmix, a cotação continua sem resposta e o preço continua à espera", async () => {
+    const { product, req, quote } = await fromBooking();
+    // Outro fornecedor não recusa por este.
+    await expect(
+      flow.replyQuoteOffer(supplierB, quote.id, {
+        decision: "decline",
+        price: null,
+        leadTimeDays: null,
+        comment: null,
+      }),
+    ).rejects.toThrow();
+    // Sem prazo nem preço: um toque.
+    await flow.replyQuoteOffer(supplierA, quote.id, {
+      decision: "decline",
+      price: null,
+      leadTimeDays: null,
+      comment: "Abaixo do nosso custo.",
+    });
+    const declined = await quoteOf(quote.id);
+    expect([declined.status, declined.price]).toEqual(["invited", null]);
+    expect(declined.negotiation?.map((n) => n.kind)).toEqual([
+      "offer",
+      "decline",
+    ]);
+    expect((await getStore().get("requests", req.id))!.status).toBe("RFQ_OPEN");
+    const alerts = await getStore().list("notifications", {
+      filter: { link: `/app/quotes/${quote.id}#offer` },
+    });
+    expect(
+      alerts.some((n) => n.subject.includes("Preço desejado não aceito")),
+    ).toBe(true);
+    // O preço continua à espera, com a recusa à vista.
+    const still = await flow.quoteOfferFor(declined, req);
+    expect(still).toMatchObject({
+      price: 4,
+      declined: { comment: "Abaixo do nosso custo.", price: 4 },
+    });
+    // O mesmo preço não é recusado duas vezes.
+    await expect(
+      flow.replyQuoteOffer(supplierA, quote.id, {
+        decision: "decline",
+        price: null,
+        leadTimeDays: null,
+        comment: null,
+      }),
+    ).rejects.toThrow("offer_already_declined");
+    // A Wellmix muda o preço no Booking: é outro preço, que ele pode recusar
+    // de novo ou, depois da conversa, confirmar. O histórico fica inteiro.
+    await saveProductSheet(admin, product.id, { price: 4.3 });
+    const raised = await flow.quoteOfferFor(await quoteOf(quote.id), req);
+    expect([raised?.price, raised?.declined?.price]).toEqual([4.3, 4]);
+    await flow.replyQuoteOffer(supplierA, quote.id, {
+      decision: "confirm",
+      price: null,
+      leadTimeDays: 40,
+      comment: null,
+    });
+    const answered = await quoteOf(quote.id);
+    expect([answered.status, answered.price, answered.leadTimeDays]).toEqual([
+      "answered",
+      4.3,
+      40,
+    ]);
+    expect(answered.negotiation?.map((n) => n.kind)).toEqual([
+      "offer",
+      "decline",
+      "offer",
+      "confirm",
+    ]);
+    // A devolução, se houver, sugere o último preço desejado.
+    expect(offerRoundOf(answered.negotiation)?.targetPrice).toBe(4.3);
+  });
+
   it("outro preço igual ao desejado é uma confirmação; a Wellmix pode registrar a resposta pelo fornecedor", async () => {
     const { quote } = await fromBooking();
     await flow.replyQuoteOffer(admin, quote.id, {
@@ -687,6 +761,12 @@ describe("preço desejado: a solicitação que nasce do Booking", () => {
         "quoteFlow.neg.round.offer",
         "quoteFlow.neg.round.confirm",
         "quoteFlow.neg.differs",
+        "quoteFlow.neg.round.decline",
+        "quoteFlow.offer.decline",
+        "quoteFlow.offer.declined.supplier",
+        "quoteFlow.offer.declined.wellmix",
+        "quoteFlow.chip.offerDeclined",
+        "purchaseFlow.error.offer_already_declined",
         "purchaseFlow.error.offer_none",
         "purchaseFlow.error.offer_lead_time_required",
         "purchaseFlow.error.offer_price_required",

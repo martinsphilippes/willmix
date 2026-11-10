@@ -75,9 +75,13 @@ export async function replyQuoteOfferAction(form: FormData) {
     assertScreen(user, "quotes");
     const id = z.string().regex(ID).parse(quoteId);
     const decision = z.enum(OFFER_REPLIES).parse(str(form, "decision"));
-    const days = parseNumberInput(str(form, "leadTimeDays"), { int: true });
-    if (days === null || !Number.isInteger(days))
-      throw new Error("offer_lead_time_required");
+    // "Não aceito" não pede prazo (o botão não valida o formulário).
+    let days: number | null = null;
+    if (decision !== "decline") {
+      days = parseNumberInput(str(form, "leadTimeDays"), { int: true });
+      if (days === null || !Number.isInteger(days))
+        throw new Error("offer_lead_time_required");
+    }
     const { replyQuoteOffer } = await import("@/lib/services/quote-flow");
     const quote = await replyQuoteOffer(user, id, {
       decision,
@@ -86,6 +90,7 @@ export async function replyQuoteOfferAction(form: FormData) {
       comment: text(form, "comment", 1000) || null,
     });
     const last = quote.negotiation?.at(-1)?.kind;
+    if (last === "decline") return `/app/quotes/${id}?offer=declined#offer`;
     return `/app/quotes/${id}?negotiation=${
       last === "confirm" ? "confirmed" : "countered"
     }#negotiation`;
