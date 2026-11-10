@@ -269,6 +269,7 @@ export default async function PurchaseSheetPage({
             plan={plan}
             containerType={view.containerType}
             containerTypes={view.containerTypes}
+            productionStart={view.productionStart}
             editSupplier={access.editSupplier}
             editCustoms={access.editCustoms}
             requestSchedule={request?.schedule ?? null}

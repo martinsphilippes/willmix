@@ -473,7 +473,8 @@ export const SHEET_REQUIRED_FIELDS = [
   "packageType",
   "colorAssortment",
   "material",
-  "productionStartAt",
+  // "productionStartAt" saiu (dono, 10/11/2026): a data vem sozinha do
+  // contrato assinado mais o prazo das Configurações; ninguém digita.
 ] as const;
 export type SheetRequiredField = (typeof SHEET_REQUIRED_FIELDS)[number];
 
@@ -493,6 +494,9 @@ export const REQUIRED_SHEET_PHOTOS = {
 
 export type SheetMissing =
   | SheetRequiredField
+  // Não é mais exigido (vem do contrato assinado); o nome fica no tipo para
+  // os filtros antigos que o tiravam das listas.
+  | "productionStartAt"
   | "lot1"
   | (typeof REQUIRED_SHEET_PHOTOS)[keyof typeof REQUIRED_SHEET_PHOTOS];
 

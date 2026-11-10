@@ -498,7 +498,10 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await page.goto(`${orderUrl}/purchase-sheet`);
   // O bloco com pendência (Programação de compra) já vem aberto.
   await expect(page.locator("[data-sheet-section=schedule]")).toBeVisible();
-  await page.fill("input[name=productionStartAt]", "2026-11-02");
+  // Início da produção: automático (contrato assinado + Configurações);
+  // ninguém digita.
+  await expect(page.locator("input[name=productionStartAt]")).toBeDisabled();
+  await expect(page.locator("[data-production-start-hint]")).toBeVisible();
   await page.locator("[data-sheet-schedule][data-ready]").waitFor();
   await page.fill("input[name=lot1Interval]", "30");
   await page.fill("input[name=lot1Cartons]", "50");

@@ -476,6 +476,8 @@ export async function signOrderDocument(
       },
     );
   } else {
+    // Contrato assinado: o início da produção entra sozinho (e o prazo conta).
+    await applyProductionStart(user, order.id);
     // Assinado pelos dois: o pedido está autorizado e segue para o Sankhya.
     const erp = await sendOrderToErp(user, order.id);
     await notifyWellmix({
@@ -492,6 +494,104 @@ export async function signOrderDocument(
     });
   }
   return signature;
+}
+
+/** Dia civil em Brasília (AAAA-MM-DD) de um instante. */
+function dayInBrazil(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+export interface ProductionStart {
+  /** O pedido tem documento para assinar: a data é automática. */
+  auto: boolean;
+  /** Dias depois do contrato assinado (Configurações). */
+  days: number;
+  /** A data (ISO, meia-noite UTC); nula enquanto o fornecedor não assina. */
+  at: string | null;
+}
+
+/**
+ * Início da produção do pedido (decisão do dono, 10/11/2026): ninguém digita.
+ * É o dia em que o contrato fica assinado (a assinatura do fornecedor, a
+ * segunda) mais o prazo das Configurações (`productionStartDays`). Pedido
+ * antigo, sem documento para assinar, continua com a data informada à mão.
+ */
+export async function productionStartFor(
+  orderId: string,
+): Promise<ProductionStart> {
+  const { getSettings } = await import("@/lib/settings");
+  const [reqs, settings] = await Promise.all([
+    signatureRequirements(orderId),
+    getSettings(),
+  ]);
+  const days = settings.productionStartDays;
+  const signed = parseSignature(reqs.supplier);
+  if (!signed) return { auto: !!reqs.supplier, days, at: null };
+  const start = new Date(`${dayInBrazil(signed.at)}T00:00:00.000Z`);
+  start.setUTCDate(start.getUTCDate() + days);
+  return { auto: true, days, at: start.toISOString() };
+}
+
+/**
+ * Contrato assinado: grava o início da produção na ficha de compra e no
+ * acompanhamento da produção (de onde contam os follows de 5, 15 e 25 dias).
+ * Nunca derruba a assinatura: falha aqui fica no log e a ficha continua
+ * mostrando a data calculada.
+ */
+async function applyProductionStart(user: User, orderId: string) {
+  try {
+    const store = getStore();
+    const { at } = await productionStartFor(orderId);
+    if (!at) return;
+    const [sheet] = await store.list("purchase_sheets", {
+      filter: { orderId },
+      limit: 1,
+    });
+    if (sheet && sheet.productionStartAt !== at)
+      await store.update("purchase_sheets", sheet.id, {
+        productionStartAt: at,
+      });
+    const [track] = await store.list("production_tracks", {
+      filter: { orderId },
+      limit: 1,
+    });
+    if (track) {
+      if (track.productionStartAt !== at)
+        await store.update("production_tracks", track.id, {
+          productionStartAt: at,
+          updatedByUserId: user.id,
+        });
+    } else {
+      await store.create("production_tracks", {
+        orderId,
+        mode: null,
+        factoryName: null,
+        factoryAddress: null,
+        productionStartAt: at,
+        etd: null,
+        etdOriginal: null,
+        etdHistory: [],
+        followups: [],
+        inspectionScheduledAt: null,
+        inspectionNote: null,
+        updatedByUserId: user.id,
+      });
+    }
+    await audit(
+      user,
+      "order.production_start",
+      "order",
+      orderId,
+      `Início da produção definido pelo contrato assinado: ${at.slice(0, 10)}`,
+    );
+  } catch (error) {
+    console.error("[order-signature] início da produção", error);
+  }
 }
 
 /**

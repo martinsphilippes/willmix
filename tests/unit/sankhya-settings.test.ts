@@ -131,7 +131,10 @@ describe("configuração efetiva", () => {
     // Sem config nas opções, o cliente lê a da tela.
     sk.resetSankhyaTokenCache();
     const bodies: string[] = [];
-    const fetcher = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const fetcher = (async (
+      input: RequestInfo | URL,
+      init: RequestInit = {},
+    ) => {
       if (String(input).endsWith("/authenticate")) {
         bodies.push(String(init.body));
         return new Response(

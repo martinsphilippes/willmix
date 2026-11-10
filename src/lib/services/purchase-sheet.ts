@@ -467,6 +467,8 @@ async function photoKindsDone(orderId: string, photos: ProductPhoto[]) {
 }
 
 export interface SheetView {
+  /** Início da produção automático (contrato assinado + prazo das Configurações). */
+  productionStart: import("./order-signature").ProductionStart;
   order: Order;
   access: SheetAccess;
   /** Ficha gravada, ou o rascunho pré-preenchido quando ainda não existe. */
@@ -519,13 +521,20 @@ export async function getSheetForUser(
         ...full,
         ...Object.fromEntries(CERTIFIER_HIDDEN_FIELDS.map((k) => [k, null])),
       }
-    : full;
+    : { ...full };
+  // Início da produção: vem do contrato assinado mais o prazo das
+  // Configurações. Ficha sem a data gravada mostra a calculada.
+  const { productionStartFor } = await import("./order-signature");
+  const productionStart = await productionStartFor(orderId);
+  if (productionStart.auto)
+    sheet.productionStartAt = productionStart.at ?? sheet.productionStartAt;
   const photos = await getSheetPhotos(orderId);
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
     order,
     access,
     sheet,
+    productionStart,
     saved: !!existing,
     prefillSource: draft?.prefillSource ?? null,
     photos,
@@ -568,6 +577,12 @@ export async function saveSheet(
   const patch: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
     if (allowed.has(key) && value !== undefined) patch[key] = value;
+  }
+  // Início da produção automático (contrato assinado): não se digita.
+  if ("productionStartAt" in patch) {
+    const { productionStartFor } = await import("./order-signature");
+    if ((await productionStartFor(orderId)).auto)
+      delete patch.productionStartAt;
   }
   if ("lots" in patch) patch.lots = normalizeLots(patch.lots as never);
   const [existing] = await store.list("purchase_sheets", {

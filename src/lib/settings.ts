@@ -76,6 +76,12 @@ export const DEFAULT_SETTINGS = {
     DELIVERED: 3,
     CLOSED: 0,
   } as Record<string, number>,
+  /**
+   * Início da produção: dias depois do contrato assinado (documento do pedido
+   * com as duas assinaturas). A data entra sozinha na programação de compra
+   * e no acompanhamento da produção; ninguém digita.
+   */
+  productionStartDays: 0,
   /** Dias para lembrar antes do vencimento e depois. */
   reminderDaysBeforeDue: 1,
   /* ---- Evolução incremental (docs/EVOLUTION_PLAN.md) ---- */
