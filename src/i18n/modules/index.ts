@@ -77,6 +77,7 @@ import * as rfq from "./rfq";
 import * as rfqStandby from "./rfq-standby";
 import * as sourcingStandby from "./sourcing-standby";
 import * as portalAccess from "./portal-access";
+import * as supplierTasks from "./supplier-tasks";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
@@ -166,6 +167,7 @@ export const modulesPt = {
   ...rfqStandby.pt,
   ...sourcingStandby.pt,
   ...portalAccess.pt,
+  ...supplierTasks.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
@@ -272,6 +274,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...rfqStandby.en,
   ...sourcingStandby.en,
   ...portalAccess.en,
+  ...supplierTasks.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
   ...sheetPhotos.en,
@@ -378,6 +381,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...rfqStandby.zh,
   ...sourcingStandby.zh,
   ...portalAccess.zh,
+  ...supplierTasks.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
   ...sheetPhotos.zh,

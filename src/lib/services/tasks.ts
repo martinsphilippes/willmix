@@ -80,7 +80,51 @@ export interface Task {
   customerId?: string | null;
   /** Analista responsável (da solicitação/do pedido): dono no painel de SLA. */
   ownerUserId?: string | null;
+  /** Solicitação de origem (acha a linha do Booking do produto). */
+  requestId?: string | null;
+  /** Pedido do requisito de etapa. */
+  orderId?: string | null;
+  /** Desde quando a pendência está com quem a vê (ISO); nulo: não se sabe. */
+  sinceAt?: string | null;
+  /** Quando o produto foi carregado no sistema (linha do Booking; senão, a solicitação). */
+  loadedAt?: string | null;
+  /** Etapa do caminho do fornecedor (só nas pendências do fornecedor). */
+  supplierStep?: SupplierStep;
 }
+
+/*
+ * Caminho do fornecedor: tudo que chega na mão dele, do Booking ao embarque,
+ * na ordem em que acontece. É o filtro "Etapa" da tela de pendências do
+ * fornecedor (o grupo da pendência vira `supplier.<etapa>`). Depois do
+ * embarque (desembaraço, transporte, entrega ao cliente) nada depende dele.
+ */
+export const SUPPLIER_STEPS = [
+  "booking",
+  "dieline",
+  "sheet",
+  "art",
+  "sign",
+  "inspection",
+  "shipping",
+] as const;
+export type SupplierStep = (typeof SUPPLIER_STEPS)[number];
+
+export const supplierGroup = (step: SupplierStep) => `supplier.${step}`;
+
+/** A etapa do fornecedor de um grupo `supplier.<etapa>`; nulo nos demais. */
+export function supplierStepOfGroup(group: string): SupplierStep | null {
+  const step = group.startsWith("supplier.") ? group.slice(9) : "";
+  return (SUPPLIER_STEPS as readonly string[]).includes(step)
+    ? (step as SupplierStep)
+    : null;
+}
+
+/** Etapa do pedido → etapa do fornecedor (itens dele que não são a assinatura). */
+const SUPPLIER_STAGE_STEP: Partial<Record<StageKey, SupplierStep>> = {
+  PREPARATION: "sheet",
+  PACKAGING: "art",
+  INSPECTION: "inspection",
+};
 
 /* ---------------------------------------------------------------------------
  * Prazo: dia civil em Brasília. Uma pendência que vence hoje "vence hoje";
@@ -199,7 +243,11 @@ const KIND_ORDER: string[] = [
   "sourcing_demand",
   "after_sales",
 ];
-const GROUP_ORDER = [...STAGE_ORDER, ...KIND_ORDER];
+const GROUP_ORDER = [
+  ...SUPPLIER_STEPS.map(supplierGroup),
+  ...STAGE_ORDER,
+  ...KIND_ORDER,
+];
 
 /** Grupos presentes (etapas na ordem do fluxo, depois os tipos), com contagem. */
 export function taskGroups(
@@ -227,7 +275,11 @@ function finish(
   const due = dueBucket(daysLeft);
   return {
     ...task,
-    group: task.group ?? task.stageKey ?? task.kind,
+    group:
+      task.group ??
+      (task.supplierStep
+        ? supplierGroup(task.supplierStep)
+        : (task.stageKey ?? task.kind)),
     due,
     daysLeft,
     overdue: due === "overdue",
@@ -428,22 +480,43 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
         !(r.key === ORDER_SIGN_SEND && !sealApplied.has(r.orderId)),
     );
     if (mine.length === 0) continue;
-    tasks.push(
-      finish(
-        {
-          kind: "requirement",
-          title: `Pedido #${order.number}: ${stage.key}`,
-          detail: mine.map((r) => r.label).join(", "),
-          link: `/app/orders/${order.id}`,
-          dueAt: stage.dueAt,
-          orderNumber: order.number,
-          stageKey: stage.key,
-          customerId: order.customerId,
-          ownerUserId: order.ownerUserId ?? null,
-        },
-        now,
-      ),
-    );
+    // Fornecedor: a assinatura do documento é uma etapa dele à parte dos
+    // outros itens da etapa do pedido (ficha, arte, inspeção).
+    const sign = supplier
+      ? mine.filter((r) => r.key === ORDER_SIGNED_SUPPLIER)
+      : [];
+    const rest = supplier
+      ? mine.filter((r) => r.key !== ORDER_SIGNED_SUPPLIER)
+      : mine;
+    for (const [items, step] of [
+      [rest, supplier ? SUPPLIER_STAGE_STEP[stage.key] : undefined],
+      [sign, "sign"],
+    ] as Array<[typeof mine, SupplierStep | undefined]>) {
+      if (!items.length) continue;
+      tasks.push(
+        finish(
+          {
+            kind: "requirement",
+            title: `Pedido #${order.number}: ${stage.key}`,
+            detail: items.map((r) => r.label).join(", "),
+            link:
+              step === "sign"
+                ? `/app/orders/${order.id}/purchase-order`
+                : `/app/orders/${order.id}`,
+            dueAt: stage.dueAt,
+            orderNumber: order.number,
+            stageKey: stage.key,
+            customerId: order.customerId,
+            ownerUserId: order.ownerUserId ?? null,
+            requestId: order.requestId,
+            orderId: order.id,
+            sinceAt: stage.startedAt,
+            ...(step ? { supplierStep: step } : {}),
+          },
+          now,
+        ),
+      );
+    }
   }
 
   // Fase de solicitação. RFQ em espera (docs/RFQ_STANDBY.md): o que veio do
@@ -475,9 +548,28 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             ? `Analisar o Booking: ${request.productName}`
             : `RFQ: ${request.productName}`,
           detail: `${request.quantity} ${request.unit}`,
+          // Traduzido na tela (o fornecedor costuma usar outro idioma).
+          text: {
+            title: fromBooking.has(request.id)
+              ? "supplierTasks.booking.title"
+              : "supplierTasks.rfq.title",
+            detail: "supplierTasks.booking.detail",
+            values: {
+              product: request.productName,
+              qty: request.quantity,
+              unit: request.unit,
+            },
+          },
           link: `/app/quotes/${quote.id}`,
           chat: { requestId: request.id },
           dueAt: quote.validUntil,
+          requestId: request.id,
+          // Devolvida pela Wellmix: está com o fornecedor desde a devolução.
+          sinceAt:
+            quote.negotiation?.at(-1)?.side === "wellmix"
+              ? quote.negotiation.at(-1)!.at
+              : quote.createdAt,
+          supplierStep: "booking",
         },
         now,
       ),
@@ -836,6 +928,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             detail: p.detail,
             link: `/app/orders/${p.order.id}#production`,
             dueAt: p.dueAt,
+            requestId: p.order.requestId,
+            sinceAt: p.sinceAt ?? null,
+            ...(supplier ? { supplierStep: "inspection" as const } : {}),
             orderNumber: p.order.number,
             customerId: p.order.customerId,
             ownerUserId: p.order.ownerUserId ?? null,
@@ -915,6 +1010,9 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
             ...(seal ? { text: { ...seal, values } } : {}),
             link: `/app/orders/${p.order.id}#${assignOcp ? "order-partners" : cert ? "certification" : "import-flow"}`,
             dueAt: null,
+            requestId: p.order.requestId,
+            sinceAt: p.sinceAt ?? null,
+            ...(supplier && !cert ? { supplierStep: "shipping" as const } : {}),
             orderNumber: p.order.number,
             customerId: p.order.customerId,
             ownerUserId: p.order.ownerUserId ?? null,
@@ -979,8 +1077,61 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
       );
     }
   }
+  if (supplier) await datesForSupplier(tasks);
   // Pelo prazo: as mais urgentes primeiro; sem prazo por último.
   return sortTasks(tasks);
+}
+
+/**
+ * Datas das pendências do fornecedor: quando o produto foi carregado no
+ * sistema (a linha do Booking da solicitação; sem ela, a própria solicitação)
+ * e, na arte e na assinatura, desde quando o item está com ele (a arte
+ * enviada; o documento assinado pela Wellmix).
+ */
+async function datesForSupplier(tasks: Task[]): Promise<void> {
+  const store = getStore();
+  const requestIds = [
+    ...new Set(
+      tasks.map((t) => t.requestId).filter((id): id is string => !!id),
+    ),
+  ];
+  if (requestIds.length) {
+    const [bookings, requests] = await Promise.all([
+      store
+        .list("bookings", { filter: { requestId: requestIds } })
+        // Tabela ainda não publicada: vale a data da solicitação.
+        .catch(() => []),
+      store.list("requests", { filter: { id: requestIds } }),
+    ]);
+    for (const task of tasks) {
+      if (!task.requestId) continue;
+      task.loadedAt =
+        bookings.find((b) => b.requestId === task.requestId)?.createdAt ??
+        requests.find((r) => r.id === task.requestId)?.createdAt ??
+        null;
+    }
+  }
+  const waiting = tasks.filter(
+    (t) =>
+      t.kind === "requirement" &&
+      !!t.orderId &&
+      (t.supplierStep === "art" || t.supplierStep === "sign"),
+  );
+  if (!waiting.length) return;
+  const before = await store.list("requirements", {
+    filter: {
+      orderId: [...new Set(waiting.map((t) => t.orderId!))],
+      key: ["art", ORDER_SIGNED_WELLMIX],
+    },
+  });
+  for (const task of waiting) {
+    const row = before.find(
+      (r) =>
+        r.orderId === task.orderId &&
+        r.key === (task.supplierStep === "sign" ? ORDER_SIGNED_WELLMIX : "art"),
+    );
+    if (row?.submittedAt) task.sinceAt = row.submittedAt;
+  }
 }
 
 type DraftTask = Omit<Task, "overdue" | "group" | "due" | "daysLeft">;
@@ -1112,6 +1263,13 @@ async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
           chat: order ? { orderId: order.id } : { requestId: request.id },
           dueAt: brief.dueAt,
           orderNumber: order?.number,
+          requestId: request.id,
+          // A faca passa a ser dele quando a cotação é escolhida (ou o pedido nasce).
+          sinceAt:
+            order?.createdAt ??
+            selected.find((q) => q.id === request.selectedQuoteId)?.updatedAt ??
+            brief.createdAt,
+          supplierStep: "dieline",
         },
         now,
       ),
