@@ -13,13 +13,17 @@ import {
   Badge,
   Card,
   PageHeader,
+  Select,
   Table,
   Td,
   TextLink,
   Th,
 } from "@/components/ui";
 import { SubmitButton } from "@/components/submit-button";
-import { setRfqEnabledAction } from "../actions/rfq";
+import {
+  sendRequestToSupplierAction,
+  setRfqEnabledAction,
+} from "../actions/rfq";
 
 /*
  * RFQ em espera (docs/RFQ_STANDBY.md): a tela que guarda a RFQ (pedido de
@@ -34,7 +38,7 @@ export default async function RfqPage({ searchParams }: PageProps<"/app/rfq">) {
   if (!user) redirect("/login?next=/app/rfq");
   requireScreen(user, "rfq");
   const t = await getT();
-  const { saved, error } = await searchParams;
+  const { saved, sent, error } = await searchParams;
   const settings = await getSettings();
   const on = settings.rfqEnabled;
   const store = getStore();
@@ -55,6 +59,20 @@ export default async function RfqPage({ searchParams }: PageProps<"/app/rfq">) {
     store.list("parties", { filter: { type: "supplier" } }),
   ]);
   const supplierName = new Map(suppliers.map((s) => [s.id, s.name]));
+  // Enviar ao fornecedor (RFQ em espera): os ativos, com o do produto já
+  // escolhido na lista.
+  const activeSuppliers = suppliers
+    .filter((s) => s.active)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const productIds = [
+    ...new Set(
+      requests.map((r) => r.productId).filter((id): id is string => !!id),
+    ),
+  ];
+  const products = productIds.length
+    ? await store.list("products", { filter: { id: productIds } })
+    : [];
+  const mainSupplier = new Map(products.map((p) => [p.id, p.supplierId]));
   const canOpenRequests = canOpen(user, "requests");
 
   return (
@@ -74,6 +92,11 @@ export default async function RfqPage({ searchParams }: PageProps<"/app/rfq">) {
       {typeof error === "string" && error ? (
         <div className="mb-3">
           <Alert tone="danger">{fallbackError(t, error)}</Alert>
+        </div>
+      ) : null}
+      {sent ? (
+        <div className="mb-3">
+          <Alert tone="success">{t("rfqStandby.send.done")}</Alert>
         </div>
       ) : null}
       {saved === "on" || saved === "off" ? (
@@ -120,6 +143,11 @@ export default async function RfqPage({ searchParams }: PageProps<"/app/rfq">) {
       </div>
       <div className="mt-4">
         <Card title={t("rfqStandby.list.title")}>
+          {!on && requests.some((r) => r.status === "REQUESTED") ? (
+            <p className="mb-2 text-sm text-zinc-600">
+              {t("rfqStandby.send.listHint")}
+            </p>
+          ) : null}
           {requests.length ? (
             <Table>
               <thead>
@@ -139,22 +167,67 @@ export default async function RfqPage({ searchParams }: PageProps<"/app/rfq">) {
                     (q) => q.status !== "invited",
                   ).length;
                   return (
-                    <tr key={r.id} data-rfq-request={r.id}>
+                    <tr
+                      key={r.id}
+                      id={`req-${r.id}`}
+                      className="scroll-mt-24"
+                      data-rfq-request={r.id}
+                    >
                       <Td className="whitespace-nowrap">{r.number ?? "—"}</Td>
                       <Td>{r.productName}</Td>
                       <Td className="whitespace-nowrap">
                         {t(`reqStatusLabel.${r.status}` as DictionaryKey)}
                       </Td>
                       <Td>
-                        {mine.length
-                          ? mine
-                              .map(
-                                (q) =>
-                                  supplierName.get(q.supplierId) ??
-                                  q.supplierId,
-                              )
-                              .join(", ")
-                          : t("rfqStandby.list.none")}
+                        {mine.length ? (
+                          mine
+                            .map(
+                              (q) =>
+                                supplierName.get(q.supplierId) ?? q.supplierId,
+                            )
+                            .join(", ")
+                        ) : !on && r.status === "REQUESTED" ? (
+                          // Ainda não foi a nenhum fornecedor: enviar daqui.
+                          <form
+                            action={sendRequestToSupplierAction}
+                            className="flex flex-wrap items-center gap-1.5"
+                            data-rfq-send={r.id}
+                          >
+                            <input
+                              type="hidden"
+                              name="requestId"
+                              value={r.id}
+                            />
+                            <Select
+                              dense
+                              name="supplierId"
+                              required
+                              defaultValue={
+                                (r.productId &&
+                                  mainSupplier.get(r.productId)) ||
+                                ""
+                              }
+                              aria-label={t("rfqStandby.send.supplier", {
+                                product: r.productName,
+                              })}
+                              className="w-auto max-w-56"
+                            >
+                              <option value="" disabled>
+                                {t("rfqStandby.send.choose")}
+                              </option>
+                              {activeSuppliers.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </Select>
+                            <SubmitButton variant="primary">
+                              {t("rfqStandby.send.submit")}
+                            </SubmitButton>
+                          </form>
+                        ) : (
+                          t("rfqStandby.list.none")
+                        )}
                       </Td>
                       <Td className="whitespace-nowrap tabular-nums">
                         {mine.length ? `${answered} / ${mine.length}` : "—"}

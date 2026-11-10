@@ -352,7 +352,9 @@ export default async function RequestBatchPage({
           </SubmitButton>
         </form>
       ) : null}
-      {rfqRows.length && (rfqOn || !rfqOpened) ? (
+      {/* O cartão da RFQ saiu desta tela com a RFQ em espera (pedido do
+          dono): o envio ao fornecedor fica na tela Pedidos → RFQ. */}
+      {rfqRows.length && rfqOn ? (
         <div id="rfq" className="mt-4 max-w-2xl scroll-mt-24" data-batch-rfq>
           <Card
             title={

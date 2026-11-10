@@ -256,13 +256,15 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // guardado e funcionando).
   await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
-  await expect(page.locator("[data-rfq-card=standby]")).toBeVisible();
-  await expect(
-    page.locator("[data-rfq-card=standby] input[type=radio]").first(),
-  ).toBeVisible();
+  // Em espera, a tela da solicitação não tem cartão de RFQ nem o cartão do
+  // solicitante (pedido do dono): só o atalho para enviar ao fornecedor.
+  await expect(page.locator("[data-rfq-card]")).toHaveCount(0);
+  await expect(page.locator("[data-request-to-send]")).toBeVisible();
   await login(page, "admin@wellmix.com");
   await page.goto("/app/rfq");
   await expect(page.locator("[data-rfq-state=off]")).toBeVisible();
+  // O envio ao fornecedor (um só) fica nesta tela.
+  await expect(page.locator("[data-rfq-send]").first()).toBeVisible();
   await page.locator("[data-rfq-switch=on]").click();
   await page.waitForURL(/\/app\/rfq\?saved=on/);
   await expect(page.locator("[data-rfq-state=on]")).toBeVisible();

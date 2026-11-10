@@ -129,11 +129,24 @@ describe("RFQ em espera", () => {
       "REQUESTED",
     );
     const tasks = await listTasks(admin);
+    // A pendência leva à tela Pedidos → RFQ, onde o envio é feito (o cartão
+    // saiu da tela da solicitação).
     expect(
-      tasks.some(
+      tasks.find(
+        (task) => task.title === `Enviar ao fornecedor: ${lone.product.name}`,
+      )?.link,
+    ).toBe(`/app/rfq#req-${request.id}`);
+    // Enviado a um fornecedor: a solicitação segue e a pendência some.
+    await requests.assertRfqStandby([request.id], ["fornecedor-b"]);
+    await requests.openRfq(admin, request.id, ["fornecedor-b"]);
+    expect((await getStore().get("requests", request.id))?.status).toBe(
+      "RFQ_OPEN",
+    );
+    expect(
+      (await listTasks(admin)).some(
         (task) => task.title === `Enviar ao fornecedor: ${lone.product.name}`,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("a tela recusa vários fornecedores e um segundo fornecedor depois do envio", async () => {

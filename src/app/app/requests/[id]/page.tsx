@@ -341,12 +341,25 @@ export default async function RequestDetailPage({
   /* RFQ em espera (docs/RFQ_STANDBY.md): o produto vai para um fornecedor só
      (o do Booking, já marcado), sem "convidar mais" depois de enviado. */
   const rfqOn = settings.rfqEnabled;
+  /* O cartão da RFQ saiu desta tela (pedido do dono): com a RFQ em espera,
+     o envio ao fornecedor é automático pelo Booking e, quando não foi, fica
+     na tela Pedidos → RFQ. Só com a RFQ ligada o cartão volta a aparecer. */
   const showRfq =
     wellmix &&
-    ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status) &&
-    (rfqOn || !rfqOpened);
-  /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
-  const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
+    rfqOn &&
+    ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
+  /* Ainda não foi a nenhum fornecedor (RFQ em espera): atalho para enviar. */
+  const toSend =
+    wellmix && !rfqOn && request.status === "REQUESTED" && !quotes.length;
+  /* Solicitante do cliente: também saiu como cartão. Compra para o estoque
+     não tem login de cliente; nas outras, é uma linha do cartão da
+     solicitação (o isolamento entre logins do cliente continua valendo). */
+  const showRequester =
+    wellmix &&
+    !isStockCustomer(request.customerId) &&
+    (customerLogins.length > 0 || !!request.requestedForUserId);
+  /* Cartões de ação da Wellmix (RFQ, NCM): lado a lado em telas grandes. */
+  const actionCards = [showRfq, !!ncmInfo].filter(Boolean).length;
   /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
   const packagingBrief = wellmix ? await briefForRequest(request.id) : null;
   const hasLiveBrief =
@@ -600,6 +613,52 @@ export default async function RequestDetailPage({
                 ))}
               </ul>
             ) : null}
+            {toSend ? (
+              <p
+                className="mt-3 border-t border-zinc-100 pt-2.5 text-sm text-zinc-700"
+                data-request-to-send
+              >
+                {t("rfqStandby.request.toSend")}{" "}
+                {canOpen(user, "rfq") ? (
+                  <TextLink href={`/app/rfq#req-${request.id}`}>
+                    {t("rfqStandby.send.submit")}
+                  </TextLink>
+                ) : null}
+              </p>
+            ) : null}
+            {showRequester ? (
+              <form
+                action={setRequesterAction}
+                className="mt-3 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-2.5"
+                data-request-requester
+              >
+                <input type="hidden" name="requestId" value={request.id} />
+                <label
+                  htmlFor="requestedForUserId"
+                  className="text-sm text-zinc-600"
+                  title={t("access.requesterHint")}
+                >
+                  {t("access.requesterTitle")}
+                </label>
+                <Select
+                  dense
+                  id="requestedForUserId"
+                  name="requestedForUserId"
+                  defaultValue={request.requestedForUserId ?? ""}
+                  className="w-auto max-w-64"
+                >
+                  <option value="">{t("access.requesterNone")}</option>
+                  {customerLogins.map((u) => (
+                    <option key={u.id} value={u.id} disabled={!u.active}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </Select>
+                <SubmitButton variant="secondary">
+                  {t("common.save")}
+                </SubmitButton>
+              </form>
+            ) : null}
           </Card>
           <Card title={t("orders.timeline")} className="order-2 md:order-none">
             <ol className="-mx-2 space-y-0.5 text-sm">
@@ -664,7 +723,6 @@ export default async function RequestDetailPage({
           <div
             className={cx(
               "contents md:grid md:grid-cols-2 md:items-start md:gap-4",
-              actionCards !== 2 && "lg:grid-cols-3",
             )}
           >
             {/* RFQ: Wellmix escolhe fornecedores */}
@@ -807,38 +865,6 @@ export default async function RequestDetailPage({
                   }
                 />
               </div>
-            ) : null}
-
-            {wellmix ? (
-              <Card
-                title={t("access.requesterTitle")}
-                className="order-1 md:order-none"
-              >
-                <form action={setRequesterAction} className="space-y-2">
-                  <input type="hidden" name="requestId" value={request.id} />
-                  <p className="text-xs leading-relaxed text-zinc-500">
-                    {t("access.requesterHint")}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select
-                      name="requestedForUserId"
-                      defaultValue={request.requestedForUserId ?? ""}
-                      aria-label={t("access.requester")}
-                      className="flex-1"
-                    >
-                      <option value="">{t("access.requesterNone")}</option>
-                      {customerLogins.map((u) => (
-                        <option key={u.id} value={u.id} disabled={!u.active}>
-                          {u.name} ({u.email})
-                        </option>
-                      ))}
-                    </Select>
-                    <SubmitButton variant="secondary">
-                      {t("common.save")}
-                    </SubmitButton>
-                  </div>
-                </form>
-              </Card>
             ) : null}
           </div>
         ) : null}

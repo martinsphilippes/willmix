@@ -164,6 +164,9 @@ export default async function BookingPage({
   const rfqOn = (await getSettings()).rfqEnabled;
   const nextKey = (step: BookingNextStep) =>
     !rfqOn && step === "open_rfq" ? ("send_supplier" as const) : step;
+  const canRfqScreen = canOpen(user, "rfq");
+  const sendHere = (step: BookingNextStep) =>
+    !rfqOn && step === "open_rfq" && canRfqScreen;
   const superplan = data.canApprove;
   const canRequest = canOpen(user, "requests");
   const filters = parseBookingFilters(query, { superplan });
@@ -923,7 +926,12 @@ export default async function BookingPage({
                 : ""}
             </p>
             <LinkButton
-              href={row.next.href}
+              href={
+                // RFQ em espera: o envio ao fornecedor é na tela Pedidos → RFQ.
+                sendHere(row.next.step) && row.requestId
+                  ? `/app/rfq#req-${row.requestId}`
+                  : row.next.href
+              }
               variant={
                 BOOKING_NEXT_WAITING.includes(row.next.step)
                   ? "secondary"
@@ -932,7 +940,10 @@ export default async function BookingPage({
               className="h-7 px-2.5 py-0! text-xs! whitespace-nowrap"
               data-booking-next-go=""
             >
-              {t(`booking.next.go.${row.next.target}`)} →
+              {sendHere(row.next.step)
+                ? t("rfqStandby.send.submit")
+                : t(`booking.next.go.${row.next.target}`)}{" "}
+              →
             </LinkButton>
           </div>
         ) : (
