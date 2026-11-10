@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { signOrderAs, withTempStore } from "./setup";
+import { withTempStore } from "./setup";
 
 /* Ficha de compra (planilha COMPRAS) da Preparação. */
 withTempStore();
@@ -83,16 +83,13 @@ async function orderInPreparation() {
   })) {
     const stage = await store.get("stages", created.id);
     if (stage?.status !== "active") break;
-    // A assinatura da Wellmix é pela página do documento do pedido.
-    if (req.key === "order_signed_wellmix") await signOrderAs(admin, order.id);
-    else await submitRequirement(admin, req.id, { value: "OK-1" });
+    await submitRequirement(admin, req.id, { value: "OK-1" });
   }
   const [prep] = await store.list("stages", {
     filter: { orderId: order.id, key: "PREPARATION" },
   });
+  // As assinaturas do documento do pedido vêm depois (etapa da arte).
   expect(prep.status).toBe("active");
-  // O fornecedor assina o documento do pedido (primeiro item da Preparação).
-  await signOrderAs(supplierA, order.id);
   return { order: (await store.get("orders", order.id))!, prep };
 }
 
@@ -235,7 +232,7 @@ describe("ficha no pedido", () => {
         await getStore().list("requirements", { filter: { stageId: prep.id } })
       ).map((x) => x.key),
     ).toEqual([
-      "order_signed_supplier",
+      // A assinatura do fornecedor saiu daqui: vem depois da arte e do selo.
       "purchase_sheet",
       "sheet_validated",
       "product_registered",

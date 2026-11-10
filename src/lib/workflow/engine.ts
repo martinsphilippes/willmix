@@ -25,7 +25,9 @@ import {
   artRole,
   canCompleteLater,
   isOffFlowStage,
+  isOrderDocumentKey,
   isOrderSignatureKey,
+  ORDER_SIGN_SEND,
   nextStageKey,
 } from "./stages";
 import {
@@ -328,6 +330,13 @@ export async function submitRequirement(
   ) {
     throw new WorkflowError("stage_not_active");
   }
+  // "Enviar para assinatura": só com a arte enviada e o selo da certificadora
+  // já aplicado nela (decisão do dono). A recusa diz o que falta.
+  if (requirement.key === ORDER_SIGN_SEND) {
+    const { signSendBlockers } = await import("@/lib/services/order-signature");
+    const [missing] = await signSendBlockers(order.id, stage.id);
+    if (missing) throw new WorkflowError(`sign_send_${missing}_required`);
+  }
 
   if (requirement.type === "file" || requirement.type === "photo") {
     if (!input.documentId) throw new WorkflowError("document_required");
@@ -397,6 +406,15 @@ export async function submitRequirement(
     );
   }
 
+  // Documento enviado para assinatura: a vez é da Wellmix (assina primeiro).
+  if (requirement.key === ORDER_SIGN_SEND) {
+    await notifyWellmix({
+      kind: "action",
+      subject: `Pedido #${order.number}: documento pronto para a assinatura da Wellmix`,
+      body: `${user.name} enviou o documento do pedido para assinatura (arte enviada e selo aplicado). A Wellmix assina primeiro; o fornecedor assina em seguida.`,
+      link: `/app/orders/${order.id}/purchase-order`,
+    });
+  }
   // Arte enviada pelo pedido: o briefing de embalagem (se houver) acompanha.
   if (requirement.key === "art" && updated.documentId) {
     const { syncBriefArt } = await import("@/lib/services/packaging-brief");
@@ -975,6 +993,7 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
 
   const role = pendingRequired[0].role;
   const partyField = ROLE_PARTY_FIELD[role];
+  const firstSteps = pendingRequired.filter((r) => !isOrderDocumentKey(r.key));
   await notify(
     role === "customer"
       ? requesterTarget(order.requestedByUserId)
@@ -991,7 +1010,11 @@ async function activateStage(user: User | null, order: Order, key: StageKey) {
           stage: t(`stage.${key}`),
         }),
         body: t("notif.stage.body", {
-          items: pendingRequired.map((r) => requirementLabel(t, r)).join(", "),
+          // O envio para assinatura e as assinaturas vêm depois, cada um com
+          // o seu aviso: aqui vai só o que já dá para fazer.
+          items: (firstSteps.length ? firstSteps : pendingRequired)
+            .map((r) => requirementLabel(t, r))
+            .join(", "),
         }),
       }),
     },

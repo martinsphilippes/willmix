@@ -38,6 +38,29 @@ Os valores vêm da ficha do pedido (`purchase_sheets`), da variação pedida e d
 
 A folha é **apresentação**: a versão que as partes assinam (a impressão digital) continua sendo o conteúdo comercial do `OrderDocument` (produto, quantidade, preço, total, incoterm, MOQ, prazo, pagamento, embalagem). Preencher a ficha depois da assinatura muda a folha, não a versão assinada.
 
+## 2c. Ordem nova: a assinatura vem depois da arte e do selo (10/11/2026)
+
+Decisão do dono: a assinatura do documento sai do começo do pedido e vai para **depois da arte**. A tela de assinatura não muda; muda a ordem das etapas.
+
+**Caminho** (etapa "Arte e embalagem"):
+
+1. O fornecedor manda a faca (die-cut); a agência faz a arte e envia (item "Arte da embalagem").
+2. A certificadora envia o selo e quem fez a arte aplica o selo na arte (cartão Certificação, passos `cert_seal` e `cert_seal_art`).
+3. Quem fez a arte aperta **"Enviar para assinatura"** (item `order_sign_send`, "Documento do pedido enviado para assinatura"). A Wellmix também pode apertar.
+4. A Wellmix assina; o fornecedor assina em seguida (as duas formas da seção 2b). A etapa só conclui com as duas assinaturas e a arte aprovada pelo fornecedor.
+
+**Regras**
+
+- **Trava (decisão do dono)**: o envio só é aceito com a arte enviada **e** o selo já aplicado nela (a arte com o selo enviada e não recusada). Sem um deles, o botão não aparece e a linha diz o que falta; a tentativa é recusada com `sign_send_art_required` ou `sign_send_seal_required` (`signSendBlockers`).
+- Antes do envio ninguém assina (`signature_not_sent`); o documento aparece como **"Em preparação"** (`awaiting_send`). O fornecedor vê o aviso de que assina depois da arte e do selo.
+- Quem envia: o papel do item "Arte" (`artRole`: a agência do pedido; sem agência, a Wellmix). A Wellmix sempre pode. Ao enviar, a Wellmix recebe o aviso para assinar.
+- Pendências: o envio só vira pendência com a arte enviada e o selo aplicado; a assinatura da Wellmix, depois do envio; a do fornecedor, depois da Wellmix.
+- Tabela "Etapas do pedido": a linha "Documento do pedido (assinaturas)" fica debaixo de "Arte e embalagem", depois de "Artes da embalagem" e antes de "Produção e inspeção".
+- Booking: linha que virou pedido mostra "Pedido: arte e selo" (`prepare_document`) até o envio; depois, "assinar documento".
+- O pedido só vai ao Sankhya depois das duas assinaturas (como antes), agora mais adiante no fluxo.
+- **Pedidos criados antes desta decisão** guardam os itens onde nasceram (Wellmix em "Pedido criado", fornecedor na Preparação), não têm o item de envio e seguem como eram, inclusive a liberação automática da seção 2b.
+- Sem mudança de esquema: os itens são linhas de `requirements` criadas quando o pedido nasce.
+
 ## 2b. As duas formas de o fornecedor assinar (10/11/2026)
 
 Correção do dono: o fornecedor baixava o PDF e não achava onde devolver assinado. Três causas, três consertos:

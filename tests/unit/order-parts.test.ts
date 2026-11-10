@@ -85,12 +85,63 @@ describe("partes do pedido na tabela de etapas", () => {
     expect(map.has("PREPARATION")).toBe(false);
   });
 
-  it("a certificação fica em Pedido criado, depois do documento: a certificadora recebe quando o pedido nasce", () => {
+  it("ordem nova: a certificação corre desde Pedido criado e o documento do pedido vem depois da arte, antes da produção", () => {
+    const stages = [
+      { id: "s1", key: "ORDER_CREATED" },
+      { id: "s3", key: "PACKAGING" },
+    ];
+    const reqs = [
+      { key: "order_sign_send", status: "pending", stageId: "s3" },
+      { key: "order_signed_wellmix", status: "pending", stageId: "s3" },
+      { key: "order_signed_supplier", status: "pending", stageId: "s3" },
+    ];
+    const document = documentPart(reqs, "/doc", stages)!;
+    // Antes do "Enviar para assinatura" a parte ainda não começou.
+    expect([document.state, document.done, document.total]).toEqual([
+      "pending",
+      0,
+      2,
+    ]);
+    const map = orderPartsByStage([
+      stepsPart("certification", [{ done: false, started: false }], "#c"),
+      document,
+      sheetPart({ missing: 1, started: false }, "/s", null),
+      plainPart("artwork", "active", "#artwork"),
+      plainPart("production", "pending", "#production"),
+    ]);
+    expect(map.get("ORDER_CREATED")?.map((p) => p.key)).toEqual([
+      "certification",
+    ]);
+    expect(map.get("PREPARATION")?.map((p) => p.key)).toEqual(["sheet"]);
+    expect(map.get("PACKAGING")?.map((p) => p.key)).toEqual([
+      "artwork",
+      "document",
+      "production",
+    ]);
+    // Enviado para assinatura: a parte fica em andamento.
+    expect(
+      documentPart(
+        [{ ...reqs[0], status: "done" }, reqs[1], reqs[2]],
+        "/doc",
+        stages,
+      )!.state,
+    ).toBe("active");
+  });
+
+  it("pedido de antes da ordem nova: o documento continua logo abaixo de Pedido criado, antes da certificação", () => {
+    const stages = [
+      { id: "s1", key: "ORDER_CREATED" },
+      { id: "s2", key: "PREPARATION" },
+    ];
     const map = orderPartsByStage([
       stepsPart("certification", [{ done: false, started: false }], "#c"),
       documentPart(
-        [{ key: "order_signed_wellmix", status: "pending" }],
+        [
+          { key: "order_signed_wellmix", status: "pending", stageId: "s1" },
+          { key: "order_signed_supplier", status: "pending", stageId: "s2" },
+        ],
         "/doc",
+        stages,
       ),
       sheetPart({ missing: 1, started: false }, "/s", null),
     ]);
@@ -99,5 +150,6 @@ describe("partes do pedido na tabela de etapas", () => {
       "certification",
     ]);
     expect(map.get("PREPARATION")?.map((p) => p.key)).toEqual(["sheet"]);
+    expect(map.has("PACKAGING")).toBe(false);
   });
 });

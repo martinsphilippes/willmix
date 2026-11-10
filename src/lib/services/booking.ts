@@ -36,6 +36,7 @@ import {
   type BookingRow,
 } from "@/lib/booking";
 import {
+  ORDER_SIGN_SEND,
   ORDER_SIGNED_SUPPLIER,
   ORDER_SIGNED_WELLMIX,
 } from "@/lib/workflow/stages";
@@ -387,6 +388,10 @@ async function buildRows(
       const supplier = mine.find((r) => r.key === ORDER_SIGNED_SUPPLIER);
       // Pedido de antes do documento com assinaturas: sem os itens.
       if (!wellmix && !supplier) return null;
+      // Ordem nova: antes do "Enviar para assinatura" ninguém assina.
+      const send = mine.find((r) => r.key === ORDER_SIGN_SEND);
+      if (send && send.status !== "done" && wellmix?.status !== "done")
+        return "awaiting_send";
       if (wellmix?.status !== "done") return "awaiting_wellmix";
       return supplier?.status === "done" ? "signed" : "sent_to_supplier";
     };

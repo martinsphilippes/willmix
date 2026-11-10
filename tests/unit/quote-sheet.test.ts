@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { signOrderAs, withTempStore } from "./setup";
+import { withTempStore } from "./setup";
 
 /* RFQ respondida pela ficha de compra; a ficha escolhida vira a do pedido. */
 withTempStore();
@@ -158,9 +158,7 @@ describe("ficha de compra na cotação", () => {
       filter: { stageId: created.id, key: "order_confirmed" },
     });
     await submitRequirement(admin, confirm.id, {});
-    // As duas assinaturas do documento do pedido: Wellmix e fornecedor.
-    await signOrderAs(admin, order.id);
-    await signOrderAs(supplierA, order.id);
+    // As assinaturas do documento do pedido vêm depois (etapa da arte).
     const [prep] = await store.list("stages", {
       filter: { orderId: order.id, key: "PREPARATION" },
     });
