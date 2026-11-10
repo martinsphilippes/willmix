@@ -21,6 +21,13 @@ import type { SankhyaRow } from "./sankhya-client";
 import { convert, sankhyaDate, TOP_STAGES } from "./sankhya-mapping";
 import type { ImportSet } from "./sankhya-sample";
 import {
+  partnerExtras,
+  productExtras,
+  titleTypeNames,
+  type PartnerExtra,
+  type ProductExtra,
+} from "./sankhya-relations";
+import {
   DEFAULT_SANKHYA_ERP,
   type SankhyaErpSettings,
 } from "./sankhya-settings";
@@ -51,6 +58,7 @@ export type ImportEntity =
   | "partners"
   | "customers"
   | "companies"
+  | "carriers"
   | "orders"
   | "financial"
   | "paymentConditions";
@@ -79,6 +87,12 @@ const norm = (v: unknown) =>
     .toLowerCase();
 const round = (n: number, places = 4) =>
   Math.round(n * 10 ** places) / 10 ** places;
+
+/** Só as chaves com valor (não apaga o que o portal já tem). */
+const filled = <T extends Record<string, unknown>>(data: T): Partial<T> =>
+  Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v != null && v !== ""),
+  ) as Partial<T>;
 
 /** Marca o que veio do Sankhya como sincronizado (não volta para lá). */
 const syncedNow = () => new Date(Date.now() + 10_000).toISOString();
@@ -209,12 +223,51 @@ function productFields(row: SankhyaRow) {
   };
 }
 
+/**
+ * Campos que vêm de outras tabelas (fornecedor e preço da última compra,
+ * caixas) e da descrição complementar: só preenchem o que estiver vazio no
+ * portal (a negociação feita no portal vale mais).
+ */
+function productExtraFields(
+  ctx: ImportContext,
+  row: SankhyaRow,
+  extra: ProductExtra | undefined,
+  currency: string,
+) {
+  const supplier = extra?.supplierCode
+    ? ctx.parties.find(
+        (p) => p.type === "supplier" && p.sankhyaCode === extra.supplierCode,
+      )
+    : undefined;
+  const fx = extra?.lastFx && extra.lastFx > 0 ? extra.lastFx : null;
+  const price =
+    extra?.lastPrice != null
+      ? fx
+        ? round(extra.lastPrice / fx)
+        : extra.lastPrice
+      : null;
+  const brand = text(row, "MARCA");
+  const notes = [text(row, "COMPLDESC"), brand && `Marca: ${brand}`]
+    .filter(Boolean)
+    .join("\n");
+  return {
+    supplierId: supplier?.id ?? null,
+    price,
+    currency: price == null ? null : fx ? currency : "BRL",
+    masterBoxQty: extra?.masterBoxQty ?? null,
+    innerBoxQty: extra?.innerBoxQty ?? null,
+    notes: notes || null,
+  };
+}
+
 export async function upsertProducts(
   ctx: ImportContext,
   rows: SankhyaRow[],
   lineByGroup: Map<string, string>,
+  currency = DEFAULT_SANKHYA_ERP.currency,
 ) {
   const store = getStore();
+  const extras = await productExtras(rows);
   const byCode = new Map<
     string,
     { id: string; name: string; lineId: string }
@@ -222,12 +275,23 @@ export async function upsertProducts(
   for (const row of rows) {
     const key = code(row.CODPROD);
     const fields = productFields(row);
+    const extra = productExtraFields(ctx, row, extras.get(key), currency);
+    const emptyOnly = (p: Product) =>
+      filled(
+        Object.fromEntries(
+          Object.entries(extra).filter(
+            ([k]) =>
+              p[k as keyof Product] == null || p[k as keyof Product] === "",
+          ),
+        ),
+      );
     const groupLine = lineByGroup.get(code(row.CODGRUPOPROD));
     let product = ctx.products.find((p) => p.sankhyaCode === key);
     let outcome: ImportOutcome = "existing";
     if (product && ctx.update) {
       product = await store.update("products", product.id, {
         ...fields,
+        ...emptyOnly(product),
         sankhyaSyncedAt: syncedNow(),
         ...(groupLine ? { lineId: groupLine } : {}),
         // Especificação do portal só é preenchida quando estiver vazia.
@@ -247,6 +311,7 @@ export async function upsertProducts(
           sankhyaCode: key,
           sankhyaSyncedAt: syncedNow(),
           ...(ctx.update ? fields : {}),
+          ...emptyOnly(product),
         });
         outcome = "linked";
       }
@@ -255,6 +320,7 @@ export async function upsertProducts(
       product = await store.create("products", {
         ...PRODUCT_EXTRA_DEFAULTS,
         ...fields,
+        ...extra,
         lineId: groupLine ?? (await fallbackLine(ctx)),
         specification: text(row, "CARACTERISTICAS"),
         source: "import",
@@ -290,12 +356,18 @@ interface PartyData {
   email?: string | null;
   phone?: string | null;
   contactName?: string | null;
+  legalName?: string | null;
+  stateRegistration?: string | null;
+  personType?: string | null;
+  city?: string | null;
+  country?: string | null;
+  address?: string | null;
   active: boolean;
 }
 
 export async function upsertParty(
   ctx: ImportContext,
-  entity: "partners" | "customers" | "companies",
+  entity: "partners" | "customers" | "companies" | "carriers",
   key: string,
   data: PartyData,
 ) {
@@ -310,8 +382,17 @@ export async function upsertParty(
     taxId: data.taxId,
     email: data.email ?? null,
     phone: data.phone ?? null,
-    contactName: data.contactName ?? null,
     active: data.active,
+    // Vindos de outras tabelas: só quando o Sankhya tem (não apaga o portal).
+    ...filled({
+      contactName: data.contactName,
+      legalName: data.legalName,
+      stateRegistration: data.stateRegistration,
+      personType: data.personType,
+      city: data.city,
+      country: data.country,
+      address: data.address,
+    }),
   };
   if (party && ctx.update) {
     party = await store.update("parties", party.id, {
@@ -342,7 +423,7 @@ export async function upsertParty(
       ...PARTY_EXTRA_DEFAULTS,
       ...fields,
       type: data.type,
-      country: null,
+      country: fields.country ?? null,
       notes: "Importado do Sankhya",
       sankhyaCode: key,
       sankhyaSyncedAt: syncedNow(),
@@ -358,29 +439,49 @@ export async function upsertParty(
 /** Dados do parceiro (TGFPAR) para o portal. */
 export function partnerData(
   row: SankhyaRow,
-  type: "supplier" | "customer",
+  type: "supplier" | "customer" | "carrier",
+  extra?: PartnerExtra,
 ): PartyData {
+  const person = text(row, "TIPPESSOA")?.toUpperCase().slice(0, 1) ?? null;
   return {
     type,
     name: text(row, "NOMEPARC") ?? `Parceiro ${code(row.CODPARC)}`,
     taxId: convert("digits", row.CGC_CPF, row) as string | null,
-    email: text(row, "EMAIL"),
-    phone: text(row, "TELEFONE"),
-    contactName: text(row, "RAZAOSOCIAL"),
+    email: text(row, "EMAIL") ?? extra?.contactEmail ?? null,
+    phone: text(row, "TELEFONE") ?? extra?.contactPhone ?? null,
+    contactName: extra?.contactName ?? null,
+    legalName: text(row, "RAZAOSOCIAL"),
+    stateRegistration: text(row, "IDENTINSCESTAD"),
+    personType: person === "F" || person === "J" ? person : null,
+    city: extra?.city ?? null,
+    country: extra?.country ?? null,
+    address: extra?.address ?? null,
     active: convert("sn", row.ATIVO, row) !== false,
   };
 }
 
 /** Carga completa de parceiros: FORNECEDOR = S → fornecedor; CLIENTE = S → cliente. */
 export async function upsertPartners(ctx: ImportContext, rows: SankhyaRow[]) {
+  const extras = await partnerExtras(rows);
   for (const row of rows) {
     const key = code(row.CODPARC);
+    const extra = extras.get(key);
     const isSupplier = convert("sn", row.FORNECEDOR, row) === true;
     const isCustomer = convert("sn", row.CLIENTE, row) === true;
     if (isSupplier)
-      await upsertParty(ctx, "partners", key, partnerData(row, "supplier"));
+      await upsertParty(
+        ctx,
+        "partners",
+        key,
+        partnerData(row, "supplier", extra),
+      );
     if (isCustomer)
-      await upsertParty(ctx, "customers", key, partnerData(row, "customer"));
+      await upsertParty(
+        ctx,
+        "customers",
+        key,
+        partnerData(row, "customer", extra),
+      );
     if (!isSupplier && !isCustomer)
       ctx.out.push({
         entity: "partners",
@@ -456,17 +557,50 @@ export async function importSankhyaSet(
   const store = getStore();
   const ctx = await importContext(user, false);
 
-  const lineByGroup = await upsertGroups(ctx, set.groups);
-  const productByCode = await upsertProducts(ctx, set.products, lineByGroup);
-
+  // Parceiros antes dos produtos: o fornecedor da última compra do produto
+  // é ligado pelo código do parceiro.
+  const extras = await partnerExtras([
+    ...set.partners,
+    ...(set.carriers ?? []),
+  ]);
   const supplierByCode = new Map<string, Party>();
   for (const row of set.partners) {
     const key = code(row.CODPARC);
     supplierByCode.set(
       key,
-      await upsertParty(ctx, "partners", key, partnerData(row, "supplier")),
+      await upsertParty(
+        ctx,
+        "partners",
+        key,
+        partnerData(row, "supplier", extras.get(key)),
+      ),
     );
   }
+  const carrierByCode = new Map<string, Party>();
+  for (const row of set.carriers ?? []) {
+    const key = code(row.CODPARC);
+    carrierByCode.set(
+      key,
+      await upsertParty(
+        ctx,
+        "carriers",
+        key,
+        partnerData(row, "carrier", extras.get(key)),
+      ),
+    );
+  }
+
+  const lineByGroup = await upsertGroups(ctx, set.groups);
+  const productByCode = await upsertProducts(
+    ctx,
+    set.products,
+    lineByGroup,
+    erp.currency,
+  );
+  const conditionByCode = new Map(
+    (await store.list("payment_conditions")).map((c) => [String(c.code), c]),
+  );
+  const titleNames = await titleTypeNames(set.financial);
   const customerByEmp = new Map<string, Party>();
   const companyName = (emp: string) =>
     text(
@@ -558,9 +692,11 @@ export async function importSankhyaSet(
       erp.erpNumberField === "NUMNOTA" && code(row.NUMNOTA)
         ? code(row.NUMNOTA)
         : nunota;
+    const expected = sankhyaDate(row.DTPREVENT);
     const note = [
       `Importado do Sankhya: NUNOTA ${nunota}, TOP ${top} ${target.label}`,
       fx && `câmbio ${String(fx).replace(".", ",")}`,
+      expected && `previsão de entrega ${expected}`,
     ]
       .filter(Boolean)
       .join(", ");
@@ -607,9 +743,13 @@ export async function importSankhyaSet(
       agencyId: null,
       brokerId: null,
       shippingLineId: null,
-      carrierId: null,
+      carrierId: carrierByCode.get(code(row.CODPARCTRANSP))?.id ?? null,
       closedAt: null,
       notes: [note, text(row, "OBSERVACAO")].filter(Boolean).join("\n"),
+      incoterm: convert("incoterm", row.CIF_FOB, row) as string | null,
+      paymentConditionId:
+        conditionByCode.get(code(row.CODTIPVENDA))?.id ?? null,
+      fxRate: fx,
     });
     await store.update("requests", request.id, { orderId: order.id });
     for (const item of items) {
@@ -684,8 +824,8 @@ export async function importSankhyaSet(
       direction,
       amount,
       currency: "BRL",
-      fxRate: null,
-      method: "Sankhya",
+      fxRate: order.fxRate ?? null,
+      method: titleNames.get(code(row.CODTIPTIT)) ?? "Sankhya",
       status,
       proofDocumentId: null,
       registeredByUserId: user.id,

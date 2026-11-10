@@ -680,6 +680,12 @@ export interface Party extends BaseRow {
   sankhyaCode?: string | null;
   /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
   sankhyaSyncedAt?: string | null;
+  /** Razão social (TGFPAR.RAZAOSOCIAL); `name` é o nome fantasia. */
+  legalName?: string | null;
+  /** Inscrição estadual (TGFPAR.IDENTINSCESTAD). */
+  stateRegistration?: string | null;
+  /** Pessoa física (F) ou jurídica (J) (TGFPAR.TIPPESSOA). */
+  personType?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -934,6 +940,12 @@ export interface Order extends BaseRow {
   invoicedByUserId?: string | null;
   /** Última sincronização com o Sankhya (docs/SANKHYA.md, fase 3). Alterado depois = pendente. */
   sankhyaSyncedAt?: string | null;
+  /** Incoterm do pedido (FOB, EXW, CIF...); do Sankhya vem de TGFCAB.CIF_FOB. */
+  incoterm?: string | null;
+  /** Condição de pagamento (payment_conditions; CODTIPVENDA no Sankhya). */
+  paymentConditionId?: string | null;
+  /** Câmbio do pedido (moeda do pedido → R$; TGFCAB.VLRMOEDA). */
+  fxRate?: number | null;
 }
 
 export interface OrderItem extends BaseRow {
@@ -2526,6 +2538,9 @@ export const TABLES: Record<TableName, TableDef> = {
       ownerUserId: id(false),
       sankhyaCode: str(40),
       sankhyaSyncedAt: datetime(),
+      legalName: str(160),
+      stateRegistration: str(30),
+      personType: str(2),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
@@ -2709,6 +2724,9 @@ export const TABLES: Record<TableName, TableDef> = {
       invoicedAt: datetime(),
       invoicedByUserId: id(false),
       sankhyaSyncedAt: datetime(),
+      incoterm: str(10),
+      paymentConditionId: id(false),
+      fxRate: float(),
     },
     indexes: [
       { key: "number_unique", type: "unique", columns: ["number"] },

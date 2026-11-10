@@ -156,6 +156,95 @@ function SampleTable({ t, sample }: { t: Translate; sample: EntitySample }) {
   );
 }
 
+/**
+ * Todas as colunas que o Sankhya devolveu para os registros da amostra
+ * (inclusive os campos AD_), com o destino no portal quando há. As colunas
+ * com valor e sem destino são as candidatas a mapear.
+ */
+function AllColumns({ t, sample }: { t: Translate; sample: EntitySample }) {
+  if (!sample.records.length) return null;
+  const target = new Map(
+    ENTITY_MAPS[sample.entity].fields
+      .filter((f) => !f.via)
+      .map((f) => [f.sankhya.toUpperCase(), f.portal]),
+  );
+  const columns = sample.columns.length
+    ? sample.columns
+    : Object.keys(sample.records[0].raw);
+  const hasValue = (c: string) =>
+    sample.records.some((r) => {
+      const v = r.raw[c];
+      return v != null && String(v).trim() !== "";
+    });
+  const withValue = columns.filter(hasValue);
+  const empty = columns.filter((c) => !hasValue(c));
+  const unmapped = withValue.filter((c) => !target.get(c.toUpperCase()));
+  // Sem destino primeiro (AD_ no topo), depois as já mapeadas.
+  const order = (c: string) =>
+    target.get(c.toUpperCase()) ? 2 : c.toUpperCase().startsWith("AD_") ? 0 : 1;
+  const sorted = [...withValue].sort(
+    (a, b) => order(a) - order(b) || a.localeCompare(b),
+  );
+  return (
+    <details className="mt-2 rounded-lg border border-zinc-200 px-3 py-2">
+      <summary className="cursor-pointer text-sm font-semibold text-zinc-800">
+        {t("sankhyaLoad.all", {
+          total: columns.length,
+          filled: withValue.length,
+          unmapped: unmapped.length,
+        })}
+      </summary>
+      <p className="my-2 text-xs text-zinc-500">{t("sankhyaLoad.allHint")}</p>
+      <Table className="max-h-[32rem] overflow-auto">
+        <thead>
+          <tr>
+            <Th>{t("sankhyaLoad.col.column")}</Th>
+            <Th>{t("sankhyaLoad.col.target")}</Th>
+            {sample.records.map((r) => (
+              <Th key={r.key} className="whitespace-nowrap font-mono">
+                {r.key}
+              </Th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((c) => {
+            const portal = target.get(c.toUpperCase());
+            return (
+              <tr key={c}>
+                <Td className="whitespace-nowrap font-mono text-xs">
+                  {c.toUpperCase().startsWith("AD_") ? (
+                    <Badge tone="info">{c}</Badge>
+                  ) : (
+                    c
+                  )}
+                </Td>
+                <Td className="whitespace-nowrap font-mono text-xs">
+                  {portal ?? (
+                    <span className="text-zinc-400">
+                      {t("sankhyaLoad.noField")}
+                    </span>
+                  )}
+                </Td>
+                {sample.records.map((r) => (
+                  <Td key={r.key} className="max-w-64 text-xs">
+                    <span className="line-clamp-3">{show(r.raw[c])}</span>
+                  </Td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </Table>
+      {empty.length ? (
+        <p className="mt-2 text-xs text-zinc-500">
+          {t("sankhyaLoad.allEmpty", { columns: empty.join(", ") })}
+        </p>
+      ) : null}
+    </details>
+  );
+}
+
 interface ImportedLine {
   e: string;
   c: string;
@@ -395,7 +484,10 @@ export async function LoadTab({ t, q }: { t: Translate; q: Params }) {
                 {sample.error && !sample.missing.length ? (
                   <Failure t={t} text={sample.error} />
                 ) : (
-                  <SampleTable t={t} sample={sample} />
+                  <>
+                    <SampleTable t={t} sample={sample} />
+                    <AllColumns t={t} sample={sample} />
+                  </>
                 )}
                 <Json title={t("sankhyaLoad.sql")} value={sample.sql} />
                 {sample.records.length ? (

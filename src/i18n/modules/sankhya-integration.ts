@@ -3,6 +3,18 @@
  * ERP e testes): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "orders.incoterm": "Incoterm",
+  "orders.paymentCondition": "Condição de pagamento",
+  "orders.fxRate": "Câmbio do pedido",
+  "parties.legalName": "Razão social",
+  "parties.stateRegistration": "Inscrição estadual",
+  "sankhyaLoad.all":
+    "Todas as colunas do Sankhya ({total}; {filled} com valor, {unmapped} com valor e sem destino no portal)",
+  "sankhyaLoad.allHint":
+    "Tudo o que o ERP devolveu para estes registros, inclusive os campos personalizados (AD_). As colunas sem destino aparecem primeiro: diga quais importam para mapearmos.",
+  "sankhyaLoad.allEmpty": "Vazias em todos os registros: {columns}",
+  "sankhyaLoad.col.column": "Coluna",
+  "sankhyaLoad.col.target": "Destino no portal",
   "sankhyaInt.erp.paymentFromTable":
     "Da tabela Condições de pagamento (aba própria).",
   "sankhyaInt.erp.topsFromProcess":
@@ -251,6 +263,18 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "orders.incoterm": "Incoterm",
+  "orders.paymentCondition": "Payment terms",
+  "orders.fxRate": "Order exchange rate",
+  "parties.legalName": "Legal name",
+  "parties.stateRegistration": "State registration",
+  "sankhyaLoad.all":
+    "All Sankhya columns ({total}; {filled} with a value, {unmapped} with a value and no target in the portal)",
+  "sankhyaLoad.allHint":
+    "Everything the ERP returned for these records, including custom fields (AD_). Columns without a target come first: tell us which matter so we can map them.",
+  "sankhyaLoad.allEmpty": "Empty in every record: {columns}",
+  "sankhyaLoad.col.column": "Column",
+  "sankhyaLoad.col.target": "Target in the portal",
   "sankhyaInt.erp.paymentFromTable": "From the Payment terms table (own tab).",
   "sankhyaInt.erp.topsFromProcess":
     "TOPs: quotation {quote} and order {order}, set in the rules of",
@@ -495,6 +519,18 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "orders.incoterm": "贸易术语",
+  "orders.paymentCondition": "付款条件",
+  "orders.fxRate": "订单汇率",
+  "parties.legalName": "公司法定名称",
+  "parties.stateRegistration": "州税务登记号",
+  "sankhyaLoad.all":
+    "Sankhya 的全部列（{total} 列；{filled} 列有值，{unmapped} 列有值但在门户中没有对应字段）",
+  "sankhyaLoad.allHint":
+    "ERP 为这些记录返回的全部内容，包括自定义字段（AD_）。没有对应字段的列排在前面：请告诉我们哪些重要，以便映射。",
+  "sankhyaLoad.allEmpty": "所有记录中都为空：{columns}",
+  "sankhyaLoad.col.column": "列",
+  "sankhyaLoad.col.target": "门户中的字段",
   "sankhyaInt.erp.paymentFromTable": "来自“付款条件”表（单独标签）。",
   "sankhyaInt.erp.topsFromProcess":
     "TOP：询价 {quote}，订单 {order}，在以下规则中设置：",

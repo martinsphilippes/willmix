@@ -412,6 +412,30 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "legalName",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 160
+        },
+        {
+          "key": "stateRegistration",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 30
+        },
+        {
+          "key": "personType",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 2
         }
       ],
       "indexes": [
@@ -1716,6 +1740,29 @@
           "array": false,
           "default": null,
           "type": "datetime"
+        },
+        {
+          "key": "incoterm",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 10
+        },
+        {
+          "key": "paymentConditionId",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 36
+        },
+        {
+          "key": "fxRate",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "double"
         }
       ],
       "indexes": [
