@@ -314,7 +314,9 @@ describe("quantidade da programação: segurança (revisão)", () => {
     const before = await wellmixInbox();
     await ps.saveSheet(supplierA, order.id, { lots: lots(20, 20, 14) });
     await ps.saveSheet(supplierA, order.id, { lots: lots(20, 20, 14) });
-    expect(await wellmixInbox()).toBe(before + 1);
+    // A programação de compra é só da Wellmix: o que o fornecedor manda
+    // nela não é gravado, então não há mudança nem aviso.
+    expect(await wellmixInbox()).toBe(before);
 
     // Pagamento ao fornecedor registrado: a Wellmix salva e nada muda sozinho.
     await store.create("payments", {

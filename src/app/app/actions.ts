@@ -1213,6 +1213,11 @@ export async function saveSettingsAction(form: FormData) {
         if (!Number.isInteger(n) || n < 1 || n > 365)
           throw new Error("invalid_input");
         value = n;
+      } else if (key === "productionStartDays") {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 0 || n > 365)
+          throw new Error("invalid_input");
+        value = n;
       } else if (key === "packagingDefaultAgencyId") {
         const v = String(raw).trim();
         if (v && !/^[A-Za-z0-9_-]{1,64}$/.test(v))

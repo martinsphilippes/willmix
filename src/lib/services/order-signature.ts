@@ -88,17 +88,26 @@ export function orderDocumentHash(doc: OrderDocument): string {
   return createHash("sha256").update(JSON.stringify(doc)).digest("hex");
 }
 
-/** Só a Wellmix e o fornecedor do pedido (o documento tem o preço de compra). */
-export function canViewOrderDocument(
-  user: User,
-  order: Pick<Order, "supplierId">,
-): boolean {
-  if (isWellmix(user)) return true;
+/** O fornecedor do pedido: quem assina o documento do lado de lá. */
+function isOrderSupplier(user: User, order: Pick<Order, "supplierId">) {
   return (
     user.role === "supplier" &&
     !!user.partyId &&
     order.supplierId === user.partyId
   );
+}
+
+/**
+ * A Wellmix, o fornecedor do pedido e a certificadora do pedido (ela só lê:
+ * vê tudo do pedido para gerar o selo). O documento tem o preço de compra.
+ */
+export function canViewOrderDocument(
+  user: User,
+  order: Pick<Order, "supplierId"> & Partial<Pick<Order, "ocpId">>,
+): boolean {
+  if (isWellmix(user)) return true;
+  if (isOrderSupplier(user, order)) return true;
+  return user.role === "ocp" && !!user.partyId && order.ocpId === user.partyId;
 }
 
 export async function buildOrderDocument(order: Order): Promise<OrderDocument> {
@@ -332,7 +341,7 @@ export async function getOrderSignatureView(
       if (!awaitingSend && (await stageActive(reqs.wellmix)))
         canSign = "wellmix";
       canRegisterSupplier = supplierOpen && isAdmin(user);
-    } else if (supplierOpen) {
+    } else if (supplierOpen && isOrderSupplier(user, order)) {
       canSign = "supplier";
     }
   }
@@ -366,7 +375,7 @@ export async function getOrderSignatureView(
     awaitingSend,
     sendBlockers,
     canSend,
-    waitingWellmix: !isWellmix(user) && !!reqs.wellmix && !wellmix,
+    waitingWellmix: isOrderSupplier(user, order) && !!reqs.wellmix && !wellmix,
   };
 }
 
@@ -446,7 +455,9 @@ export async function signOrderDocument(
   const store = getStore();
   const order = await store.get("orders", orderId);
   if (!order) throw new OrderSignatureError("order_not_found");
-  if (!canViewOrderDocument(user, order)) throw new ForbiddenError();
+  // Assina a Wellmix ou o fornecedor do pedido; a certificadora só lê.
+  if (!isWellmix(user) && !isOrderSupplier(user, order))
+    throw new ForbiddenError();
   const name = input.name.trim().replace(/\s+/g, " ");
   if (name.length < 3 || name.length > 120)
     throw new OrderSignatureError("signature_name_required");
@@ -547,6 +558,8 @@ export async function signOrderDocument(
       },
     );
   } else {
+    // Contrato assinado: o início da produção entra sozinho (e o prazo conta).
+    await applyProductionStart(user, order.id);
     // Assinado pelos dois: o pedido está autorizado e segue para o Sankhya.
     const erp = await sendOrderToErp(user, order.id);
     await notifyWellmix({
@@ -563,6 +576,144 @@ export async function signOrderDocument(
     });
   }
   return signature;
+}
+
+/** Dia civil em Brasília (AAAA-MM-DD) de um instante. */
+function dayInBrazil(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+export interface ProductionStart {
+  /** O pedido tem documento para assinar: a data é automática. */
+  auto: boolean;
+  /** Dias depois do contrato assinado (Configurações). */
+  days: number;
+  /** A data (ISO, meia-noite UTC); nula enquanto o fornecedor não assina. */
+  at: string | null;
+}
+
+/**
+ * Início da produção do pedido (decisão do dono, 10/11/2026): ninguém digita.
+ * É o dia em que o contrato fica assinado (a assinatura do fornecedor, a
+ * segunda) mais o prazo do fornecedor (cadastro dele; sem valor, o padrão
+ * das Configurações, `productionStartDays`). Pedido
+ * antigo, sem documento para assinar, continua com a data informada à mão.
+ */
+export async function productionStartFor(
+  orderId: string,
+): Promise<ProductionStart> {
+  const { getSettings } = await import("@/lib/settings");
+  const [reqs, settings, order] = await Promise.all([
+    signatureRequirements(orderId),
+    getSettings(),
+    getStore().get("orders", orderId),
+  ]);
+  // O prazo do fornecedor do pedido; sem ele, o padrão das Configurações.
+  const own = order
+    ? settings.productionStartDaysBySupplier?.[order.supplierId]
+    : undefined;
+  const days = typeof own === "number" ? own : settings.productionStartDays;
+  const signed = parseSignature(reqs.supplier);
+  if (!signed) return { auto: !!reqs.supplier, days, at: null };
+  const start = new Date(`${dayInBrazil(signed.at)}T00:00:00.000Z`);
+  start.setUTCDate(start.getUTCDate() + days);
+  return { auto: true, days, at: start.toISOString() };
+}
+
+/**
+ * Prazo de início da produção de um fornecedor (dias depois do contrato
+ * assinado). Só o administrador grava; vazio volta ao padrão das
+ * Configurações. Vale para as próximas assinaturas.
+ */
+export async function setSupplierProductionStartDays(
+  user: User,
+  supplierId: string,
+  days: number | null,
+) {
+  if (!isAdmin(user)) throw new ForbiddenError();
+  const supplier = await getStore().get("parties", supplierId);
+  if (!supplier || supplier.type !== "supplier")
+    throw new OrderSignatureError("order_not_found");
+  if (days !== null && (!Number.isInteger(days) || days < 0 || days > 365))
+    throw new OrderSignatureError("production_days_invalid");
+  const { getSettings, setSetting } = await import("@/lib/settings");
+  const map = {
+    ...((await getSettings()).productionStartDaysBySupplier ?? {}),
+  };
+  if (days === null) delete map[supplierId];
+  else map[supplierId] = days;
+  await setSetting("productionStartDaysBySupplier", map);
+  await audit(
+    user,
+    "supplier.production_start_days",
+    "party",
+    supplierId,
+    days === null
+      ? `Início da produção de ${supplier.name}: volta ao padrão das Configurações`
+      : `Início da produção de ${supplier.name}: ${days} dia(s) depois do contrato assinado`,
+  );
+}
+
+/**
+ * Contrato assinado: grava o início da produção na ficha de compra e no
+ * acompanhamento da produção (de onde contam os follows de 5, 15 e 25 dias).
+ * Nunca derruba a assinatura: falha aqui fica no log e a ficha continua
+ * mostrando a data calculada.
+ */
+async function applyProductionStart(user: User, orderId: string) {
+  try {
+    const store = getStore();
+    const { at } = await productionStartFor(orderId);
+    if (!at) return;
+    const [sheet] = await store.list("purchase_sheets", {
+      filter: { orderId },
+      limit: 1,
+    });
+    if (sheet && sheet.productionStartAt !== at)
+      await store.update("purchase_sheets", sheet.id, {
+        productionStartAt: at,
+      });
+    const [track] = await store.list("production_tracks", {
+      filter: { orderId },
+      limit: 1,
+    });
+    if (track) {
+      if (track.productionStartAt !== at)
+        await store.update("production_tracks", track.id, {
+          productionStartAt: at,
+          updatedByUserId: user.id,
+        });
+    } else {
+      await store.create("production_tracks", {
+        orderId,
+        mode: null,
+        factoryName: null,
+        factoryAddress: null,
+        productionStartAt: at,
+        etd: null,
+        etdOriginal: null,
+        etdHistory: [],
+        followups: [],
+        inspectionScheduledAt: null,
+        inspectionNote: null,
+        updatedByUserId: user.id,
+      });
+    }
+    await audit(
+      user,
+      "order.production_start",
+      "order",
+      orderId,
+      `Início da produção definido pelo contrato assinado: ${at.slice(0, 10)}`,
+    );
+  } catch (error) {
+    console.error("[order-signature] início da produção", error);
+  }
 }
 
 /**

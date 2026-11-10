@@ -319,6 +319,13 @@ export async function submitRequirement(
   if (!stage || !order) throw new WorkflowError("order_not_found");
   if (!canSubmitRequirement(user, order, requirement))
     throw new ForbiddenError();
+  // Validação da ficha pelo comprador: antes, a programação de compra
+  // (que é da Wellmix) tem de estar feita.
+  if (requirement.key === "sheet_validated") {
+    const { scheduleDone } = await import("@/lib/services/purchase-sheet");
+    if (!(await scheduleDone(order.id)))
+      throw new WorkflowError("schedule_required");
+  }
   // Assinatura do documento do pedido: só pela página do documento.
   if (isOrderSignatureKey(requirement.key) && !input.signature)
     throw new WorkflowError("signature_required");

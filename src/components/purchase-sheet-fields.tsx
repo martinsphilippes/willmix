@@ -56,6 +56,7 @@ export function PurchaseSheetFields({
   plan,
   containerType,
   containerTypes,
+  productionStart = null,
   editSupplier,
   editCustoms,
   lotRequired = true,
@@ -81,6 +82,8 @@ export function PurchaseSheetFields({
   plan: SheetPlan;
   containerType: string | null;
   containerTypes: Array<{ code: string; capacityCbm: number }>;
+  /** Pedido: início da produção automático (contrato assinado + Configurações). */
+  productionStart?: { auto: boolean; days: number; at: string | null } | null;
   editSupplier: boolean;
   editCustoms: boolean;
   /** Lote 1 obrigatório (Preparação); na cotação os lotes são opcionais. */
@@ -142,7 +145,7 @@ export function PurchaseSheetFields({
     v === null || v === undefined ? "" : String(v);
   const sup = !editSupplier;
   const lots = plan.lots;
-  const view = { containerType, containerTypes };
+  const view = { containerType, containerTypes, productionStart };
   const access = { editCustoms };
   const required = t("sheet.required");
   const F = SheetField;
@@ -151,12 +154,15 @@ export function PurchaseSheetFields({
   // tem o "Mostrar tudo". Os blocos são os `[data-sheet-section]` da grade.
   const supplierOnly = audience === "supplier";
   const certifier = audience === "certifier";
+  // Programação de compra: quem faz é a Wellmix; o fornecedor não a vê
+  // (a ficha mestre do produto continua como era).
+  const noSchedule = hideSchedule || (supplierOnly && !master);
   const nav = sheetSectionsView(t, sectionsMissing, {
     master,
     photosHref,
     omit: [
       ...(supplierOnly ? (["customs", "ecommerce"] as const) : []),
-      ...(hideSchedule ? (["schedule"] as const) : []),
+      ...(noSchedule ? (["schedule"] as const) : []),
     ],
   });
   const open = initialSheetSection(sectionsMissing, { photosHref });
@@ -580,7 +586,7 @@ export function PurchaseSheetFields({
           </Rows>
         </Card>
       </Section>
-      {certifier ? null : (
+      {
         <Section open={open} all={certifier} k="price" order="lg:order-2">
           <Card title={t("sheet.section.price")} dense>
             <Rows>
@@ -636,21 +642,39 @@ export function PurchaseSheetFields({
             </Rows>
           </Card>
         </Section>
-      )}
+      }
 
-      {hideSchedule ? null : (
+      {noSchedule ? null : (
         <Section open={open} all={certifier} k="schedule" order="lg:order-3">
           <Card title={t("sheet.section.schedule")} dense>
             <Rows>
               {!master ? (
-                <F t={t} m={missing} k="productionStartAt" size="sm" req>
+                <F t={t} m={missing} k="productionStartAt" size="sm">
+                  {/* Automático: contrato assinado + prazo das Configurações.
+                      Desabilitado: não vai no envio; a programação lê o valor. */}
                   <input
                     type="date"
                     name="productionStartAt"
                     defaultValue={dateValue(sheet.productionStartAt)}
-                    disabled={sup}
+                    disabled={sup || !!view.productionStart?.auto}
                     className={inputDenseClass}
+                    data-production-start={
+                      view.productionStart?.auto ? "auto" : "manual"
+                    }
                   />
+                  {view.productionStart?.auto ? (
+                    <span
+                      className="mt-1 block text-xs text-zinc-500"
+                      data-production-start-hint
+                    >
+                      {t(
+                        view.productionStart.at
+                          ? "sheet.productionStart.auto"
+                          : "sheet.productionStart.waiting",
+                        { days: String(view.productionStart.days) },
+                      )}
+                    </span>
+                  ) : null}
                 </F>
               ) : null}
               <F t={t} m={missing} k="containerType" size="sm">
@@ -932,7 +956,7 @@ export function PurchaseSheetFields({
                   className={inputDenseClass}
                 />
               </F>
-              {certifier ? null : (
+              {
                 <F t={t} m={missing} k="averagePrice" size="xs">
                   <Num
                     name="averagePrice"
@@ -940,7 +964,7 @@ export function PurchaseSheetFields({
                     disabled={!access.editCustoms}
                   />
                 </F>
-              )}
+              }
               <F t={t} m={missing} k="certificationRequired" size="xs">
                 <select
                   name="certificationRequired"

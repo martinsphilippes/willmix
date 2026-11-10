@@ -473,7 +473,8 @@ export const SHEET_REQUIRED_FIELDS = [
   "packageType",
   "colorAssortment",
   "material",
-  "productionStartAt",
+  // "productionStartAt" saiu (dono, 10/11/2026): a data vem sozinha do
+  // contrato assinado mais o prazo das Configurações; ninguém digita.
 ] as const;
 export type SheetRequiredField = (typeof SHEET_REQUIRED_FIELDS)[number];
 
@@ -493,8 +494,26 @@ export const REQUIRED_SHEET_PHOTOS = {
 
 export type SheetMissing =
   | SheetRequiredField
+  // Não é mais exigido (vem do contrato assinado); o nome fica no tipo para
+  // os filtros antigos que o tiravam das listas.
+  | "productionStartAt"
   | "lot1"
   | (typeof REQUIRED_SHEET_PHOTOS)[keyof typeof REQUIRED_SHEET_PHOTOS];
+
+/**
+ * A Programação de compra (lotes, container) é da Wellmix (dono, 10/11/2026):
+ * o fornecedor não a vê nem responde por ela. O que falta dela não entra na
+ * parte do fornecedor.
+ */
+export const SCHEDULE_MISSING: readonly SheetMissing[] = [
+  "lot1",
+  "productionStartAt",
+];
+
+/** O que falta na parte do fornecedor (a ficha sem a programação de compra). */
+export function supplierMissing(missing: readonly SheetMissing[]) {
+  return missing.filter((k) => !SCHEDULE_MISSING.includes(k));
+}
 
 /** `photoKinds`: tipos de foto da ficha que já têm ao menos uma foto. */
 export function missingForCompletion(

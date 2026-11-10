@@ -160,7 +160,12 @@ export async function pipelineFor(user: User): Promise<PipelineRow[]> {
     rows.push({
       key: `order:${o.id}`,
       kind: "order",
-      href: `/app/orders/${o.id}`,
+      // Fornecedor entra pelo documento do pedido (as pendências dele
+      // estão lá, com o atalho de cada uma); a gestão é da Wellmix.
+      href:
+        user.role === "supplier"
+          ? `/app/orders/${o.id}/purchase-order`
+          : `/app/orders/${o.id}`,
       number: o.number,
       product: items.find((i) => i.orderId === o.id)?.name ?? "—",
       items: items

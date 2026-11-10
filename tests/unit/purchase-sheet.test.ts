@@ -226,6 +226,23 @@ describe("ficha no pedido", () => {
       "anglePhoto",
       "originalPhoto",
     ]);
+    // A programação de compra é da Wellmix: o que o fornecedor mandou nela
+    // não foi gravado; a Wellmix faz.
+    const [afterSupplier] = await getStore().list("purchase_sheets", {
+      filter: { orderId: order.id },
+    });
+    expect((afterSupplier.lots ?? []).some((l) => l.masterCartons)).toBe(false);
+    expect((await getSheetForUser(supplierA, order.id))!.missing).not.toContain(
+      "lot1",
+    );
+    expect((await getSheetForUser(admin, order.id))!.missing).toContain("lot1");
+    await saveSheet(admin, order.id, {
+      lots: [
+        { departureIntervalDays: 30, masterCartons: 100 },
+        { departureIntervalDays: 45, masterCartons: 100 },
+        { departureIntervalDays: 45, masterCartons: 100 },
+      ],
+    } as never);
     // Preparação tem só a ficha de compra.
     expect(
       (
@@ -412,6 +429,13 @@ describe("ficha completa com a Preparação parada", () => {
     // Wellmix (ou o fornecedor) abre o pedido: a Preparação se conclui.
     await syncPreparationFromSheet(admin, order.id);
     expect((await req(prep.id, "purchase_sheet")).status).toBe("done");
+    // Sem a programação de compra (da Wellmix), o comprador não valida a ficha.
+    await expect(validatePrep(admin, prep.id)).rejects.toThrow(
+      "schedule_required",
+    );
+    await saveSheet(admin, order.id, {
+      lots: [{ departureIntervalDays: 30, masterCartons: 100 }],
+    } as never);
     await validatePrep(admin, prep.id);
     expect((await getStore().get("stages", prep.id))!.status).toBe("done");
   });

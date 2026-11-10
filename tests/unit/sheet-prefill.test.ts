@@ -81,8 +81,8 @@ describe("ficha da Preparação", () => {
     const state = await ps.sheetProgress(order);
     expect(state.saved).toBe(true);
     // Cotação registrada sem fotos nem programação: o checklist diz o que falta.
+    // (a programação de compra é da Wellmix: não é pendência da ficha).
     expect(state.missing).toEqual([
-      "lot1",
       "scalePhoto",
       "rulerPhoto",
       "sidePhoto",
@@ -101,7 +101,6 @@ describe("ficha da Preparação", () => {
     expect(view.prefillSource).toBe("quote");
     expect(view.sheet).toMatchObject({ price: 3.2, material: "PVC" });
     expect((await ps.sheetProgress(order)).missing).toEqual([
-      "lot1",
       "scalePhoto",
       "rulerPhoto",
       "sidePhoto",

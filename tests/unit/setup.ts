@@ -91,6 +91,14 @@ export async function reachSignature(
       await sendForSignature(admin, orderId);
       return;
     }
+    // A programação de compra é da Wellmix e vem antes de validar a ficha.
+    if (stage.key === "PREPARATION") {
+      const ps = await import("@/lib/services/purchase-sheet");
+      if (!(await ps.scheduleDone(orderId)))
+        await ps.saveSheet(admin, orderId, {
+          lots: [{ departureIntervalDays: 30, masterCartons: 10 }],
+        } as never);
+    }
     if (!pending.length) throw new Error(`stage_${stage.key}_stuck`);
     for (const r of pending) {
       const fresh = await getStore().get("stages", stage.id);

@@ -27,6 +27,7 @@ import {
 import { SubmitButton } from "@/components/submit-button";
 import { ActionError } from "@/components/action-error";
 import { FileAutoInput } from "@/components/file-auto-input";
+import { pendingTasksFor } from "@/lib/services/tasks";
 import {
   reopenSupplierSignatureAction,
   sendOrderForSignatureAction,
@@ -55,6 +56,16 @@ export default async function PurchaseOrderPage({
   const t = await getT();
   const { order, document: doc, hash } = view;
   const sheet = await buildOrderSheet(order, doc, view.wellmix);
+  /* Fornecedor: entra no pedido por aqui. As pendências dele neste pedido
+     aparecem no alto, cada uma com o atalho para a tela onde se resolve. */
+  const isSupplier = user.role === "supplier";
+  const myTasks = isSupplier
+    ? (await pendingTasksFor(user)).filter(
+        (task) =>
+          task.link.startsWith(`/app/orders/${order.id}`) &&
+          !task.link.startsWith(`/app/orders/${order.id}/purchase-order`),
+      )
+    : [];
   const errorCode = typeof error === "string" ? error : "";
   const errorKey = `orderSign.error.${errorCode}` as DictionaryKey;
   const errorText = errorCode && t(errorKey) !== errorKey ? t(errorKey) : null;
@@ -276,7 +287,7 @@ export default async function PurchaseOrderPage({
             href={`/app/orders/${order.id}`}
             className={`${linkClass} print:hidden`}
           >
-            {t("orderSign.back")}
+            {t(isSupplier ? "orderSign.back.supplier" : "orderSign.back")}
           </Link>
         }
       />
@@ -313,6 +324,27 @@ export default async function PurchaseOrderPage({
           >
             {t("orderSign.download")}
           </a>
+        </div>
+      ) : null}
+      {myTasks.length ? (
+        <div
+          className="space-y-1 rounded-xl border border-amber-300 bg-amber-50/60 p-3 text-sm print:hidden"
+          data-order-my-tasks
+        >
+          <p className="font-semibold text-zinc-900">
+            {t("orderSign.tasks.title")}
+          </p>
+          <ul className="list-disc space-y-0.5 pl-5">
+            {myTasks.map((task, i) => (
+              <li key={i}>
+                <Link href={task.link} className={linkClass}>
+                  {task.text
+                    ? t(task.text.title, task.text.values)
+                    : task.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
       {!view.applies ? (

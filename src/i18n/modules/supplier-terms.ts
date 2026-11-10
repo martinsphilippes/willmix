@@ -25,6 +25,11 @@ export const pt = {
     "Ex.: T/T para conta em Hong Kong; antecipado com 2% de desconto",
   "payTerms.save": "Salvar condição",
   "payTerms.saved": "Condição de pagamento salva.",
+  "prodStart.title": "Início da produção",
+  "prodStart.label": "Dias depois do contrato assinado",
+  "prodStart.hint":
+    "Em quantos dias, depois do contrato assinado, este fornecedor começa a produção. A data entra sozinha na programação de compra e no acompanhamento do pedido. Em branco: vale o padrão das Configurações ({days} dia(s)).",
+  "prodStart.saved": "Prazo de início da produção salvo.",
   "payTerms.empty":
     "Sem condição configurada: os pedidos deste fornecedor ficam sem parcelas nem vencimento em Contas a pagar.",
   "payTerms.base.order_created": "Pedido gerado",
@@ -159,6 +164,11 @@ export const en: Record<keyof typeof pt, string> = {
     "E.g. T/T to a Hong Kong account; 2% discount if paid in advance",
   "payTerms.save": "Save terms",
   "payTerms.saved": "Payment terms saved.",
+  "prodStart.title": "Production start",
+  "prodStart.label": "Days after the contract is signed",
+  "prodStart.hint":
+    "How many days after the contract is signed this supplier starts production. The date is filled in automatically on the purchase schedule and the order follow-up. Blank: the default from Settings applies ({days} day(s)).",
+  "prodStart.saved": "Production start lead time saved.",
   "payTerms.empty":
     "No terms set: this supplier's orders have no installments or due dates in Payables.",
   "payTerms.base.order_created": "Order created",
@@ -288,6 +298,11 @@ export const zh: Record<keyof typeof pt, string> = {
   "payTerms.notePlaceholder": "例如：电汇至香港账户；预付可享 2% 折扣",
   "payTerms.save": "保存条件",
   "payTerms.saved": "付款条件已保存。",
+  "prodStart.title": "开始生产",
+  "prodStart.label": "合同签署后的天数",
+  "prodStart.hint":
+    "合同签署后，该供应商几天开始生产。日期会自动填入采购计划和订单跟进。留空：使用设置中的默认值（{days} 天）。",
+  "prodStart.saved": "开始生产的天数已保存。",
   "payTerms.empty": "未设置条件：该供应商的订单在应付账款中没有分期和到期日。",
   "payTerms.base.order_created": "订单生成",
   "payTerms.base.shipped": "装运",

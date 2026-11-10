@@ -532,7 +532,7 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Pendências**: tipos novos `cert_step` e `cert_validate` ("Certificação", também para memorial, laudo e registro, que antes saíam como "Embarque e desembaraço"), link para `#certification`, título e detalhe traduzidos; a agência passa a receber pendências de passo; a Wellmix recebe a do passo da agência só quando é ela quem faz a arte.
 - **Também**: aviso de "feito" no próprio cartão (`?certStep=`), certificação pedida na ficha mostrada no cartão, Control Tower ("Certificação pendente" conta os passos do selo), painel "certificações em andamento" corrigido (passo sem validação conclui ao ser enviado), auditoria com o nome do cartão certo, e erro claro quando o valor novo do enum ainda não foi publicado (`schema_pending`).
 - **Decisões do dono (10/11/2026)**: todo pedido precisa de selo; sem trava na aprovação da arte por enquanto; a ligação com a tela Booking (fila de produtos antes da solicitação, em outro ramo) fica aguardando ela entrar. O selo já fica depois dela no fluxo, porque nasce com o pedido.
-- **A certificadora vê o pedido completo** (decisão do dono): foto e código nos itens, data, a ficha de compra do pedido inteira para ler (`sheetAccess` dá leitura à certificadora do pedido; público `certifier` de `PurchaseSheetFields`, com todos os blocos abertos e sem o bloco Preço; os campos de preço não saem do servidor, `CERTIFIER_HIDDEN_FIELDS`), as fotos de vitrine do produto e os certificados já registrados do produto e do fornecedor (`canAccessDocument`). Preço, pagamentos e cliente continuam fora.
+- **A certificadora vê o pedido completo** (decisão do dono): foto e código nos itens, data, a ficha de compra do pedido inteira para ler (`sheetAccess` dá leitura à certificadora do pedido; público `certifier` de `PurchaseSheetFields`, com todos os blocos abertos e sem o bloco Preço; os campos de preço não saem do servidor, `CERTIFIER_HIDDEN_FIELDS`), as fotos de vitrine do produto e os certificados já registrados do produto e do fornecedor (`canAccessDocument`). Preço, pagamentos e cliente continuam fora (mudou em 10/11/2026: ver a última seção).
 - **Ajustes da revisão**: o aviso do selo diz "agora é com você" a quem recebe; com o pedido recém-criado, o que começou pelo cartão (memorial) segue virando pendência; arte reaberta por selo trocado pede arquivo novo; o aviso de validar não vai só para quem enviou; com a arte feita pela Wellmix nas configurações, a agência do pedido só acompanha; a certificação pedida na ficha só aparece para a Wellmix e a certificadora.
 - **Nada removido**: os três passos antigos, as âncoras e os avisos continuam iguais. Memorial, laudo e registro sem OCP designado mas já começados agora também geram pendência (como o cartão já mostrava).
 - **Esquema**: dois valores novos em `import_steps.key` (`cert_seal`, `cert_seal_art`); **publicar o esquema** antes do primeiro envio em produção.
@@ -711,3 +711,37 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): a lista de pedidos de um quadrado ficava no fim da tela, longe do quadrado. Agora nenhuma lista aparece ao abrir a Control Tower; tocar num quadrado mostra a lista logo abaixo do bloco dele ("Antes de virar pedido", "Onde o pedido está agora", "Acontece ao mesmo tempo", "Problemas") ou, nas "Visões gerais", logo abaixo delas. Tocar de novo no quadrado escolhido fecha a lista.
 - "Exceções" fica na largura toda, abaixo das visões gerais. `TowerBoardView` ganhou `detail` (a lista do quadrado escolhido); a visão geral "Pedidos ativos" não vem mais escolhida por padrão.
+
+## Pedido: fornecedor entra pelo documento, certificadora vê tudo, arquivo assinado grande
+
+- **Decisões do dono** (10/11/2026).
+- **Fornecedor entra pelo documento do pedido**: na lista de pedidos, a linha do fornecedor abre `/app/orders/<id>/purchase-order` (`pipelineFor`). No alto do documento ele vê "Suas pendências neste pedido" (as de `pendingTasksFor` daquele pedido, cada uma com o atalho para onde se resolve) e o link "Etapas e pendências do pedido". Nenhuma tela saiu: a tela do pedido continua existindo para ele (já só com as linhas dele) e é onde parte das pendências se resolve.
+- **Certificadora vê tudo do pedido** (substitui o "sem preço nem cliente" da entrega do selo): cliente, FOB e preço dos itens na tela do pedido, a ficha com o bloco Preço e o documento do pedido para ler (`canViewOrderDocument`); assinar continua só da Wellmix e do fornecedor (`signOrderDocument` recusa). `CERTIFIER_HIDDEN_FIELDS` ficou vazia e é o ponto para tirar campos depois.
+- **Documento assinado grande**: entregue pela #218 (`FileAutoInput`, `signedFileKey`): arquivo acima do teto da requisição sobe direto ao armazenamento. Nada apaga esse arquivo com o tempo: ele só sai com a limpeza de dados de teste.
+- Testes: `tests/unit/cert-seal.test.ts`, `tests/unit/order-signature.test.ts`.
+
+## Início da produção automático (contrato assinado + prazo das Configurações)
+
+- **Pedido do dono** (10/11/2026): ninguém digita o "Início da produção". É uma parametrização das Configurações (`productionStartDays`, dias depois do contrato assinado; padrão 0 = o dia da assinatura) e o prazo começa a contar quando o contrato fica assinado (a assinatura do fornecedor, a segunda, no documento do pedido).
+- **Regra** em `productionStartFor` (`order-signature.ts`): dia da assinatura do fornecedor (Brasília) + `productionStartDays`. Ao assinar, `applyProductionStart` grava a data na ficha de compra e no acompanhamento da produção (de onde contam os follows de 5, 15 e 25 dias) e registra na auditoria; falha aqui não derruba a assinatura (a tela mostra a data calculada do mesmo jeito).
+- **Telas**: na ficha de compra (Programação de compra) e no cartão Produção do pedido o campo fica só para ler, com a explicação; antes da assinatura fica em branco e as datas de saída aparecem depois. O campo deixou de ser obrigatório (`SHEET_REQUIRED_FIELDS`), então não trava mais a ficha. `saveSheet` e `savePlan` ignoram a data digitada quando o pedido tem documento para assinar.
+- **Pedido antigo**, sem documento para assinar: continua com a data informada à mão (nada se perde). Data já gravada antes da regra fica como está até a assinatura.
+- **Em aberto**: reassinatura (assinatura devolvida e refeita) recalcula a data pelo dia da nova assinatura; mudar o prazo nas Configurações não mexe em pedido já assinado com a data gravada.
+- Testes: `tests/unit/order-signature.test.ts`, `tests/unit/production.test.ts`; o E2E confere o campo automático.
+
+## Programação de compra é da Wellmix (sai da ficha do fornecedor)
+
+- **Pedido do dono** (10/11/2026): quem faz a Programação de compra (lotes, caixas, container) é a Wellmix; ela não deve aparecer para o fornecedor nem ser pendência dele.
+- **Fornecedor**: o bloco "Programação de compra" não aparece na ficha de compra do pedido (`PurchaseSheetFields`, público `supplier`); o item "Ficha de compra" conclui sem ela (`supplierMissing`, `syncRequirements`) e o "Falta: ..." do pedido deixa de citar o 1º lote. O que ele mandar nesses campos não é gravado (`SCHEDULE_FIELDS` em `saveSheet`).
+- **Wellmix**: vê e preenche a programação na ficha do pedido; para ela o 1º lote continua aparecendo como pendência da ficha. O item "Ficha e imagens validadas pelo comprador" só conclui com a programação feita (`scheduleDone` no `submitRequirement`; erro `schedule_required` com o caminho). Pedido sem ficha de compra não tem essa trava.
+- Nenhuma tela ou campo saiu: a programação continua na ficha, agora só para a Wellmix (e para a certificadora ler). A ficha mestre do produto não mudou.
+- **Em aberto**: programação que o fornecedor já tinha gravado em pedidos em andamento continua lá (a Wellmix confere); se o despachante ou outro parceiro deve ver a programação.
+- Testes: `tests/unit/purchase-sheet.test.ts`, `tests/unit/sheet-prefill.test.ts`, `tests/unit/sheet-quantity.test.ts`, `tests/unit/workflow.test.ts`; o E2E faz a programação como Wellmix.
+
+## Início da produção: prazo por fornecedor (só o administrador)
+
+- **Decisão do dono** (10/11/2026): o prazo "dias depois do contrato assinado" é de **cada fornecedor**, e quem informa é o administrador. Sem ajuste manual da data no pedido.
+- **Onde**: no cadastro do fornecedor (`/app/parties/<id>`), cartão "Início da produção" (só o administrador vê e grava; `saveSupplierProductionStartAction`, `setSupplierProductionStartDays`, com auditoria). Em branco, vale o padrão das Configurações (`productionStartDays`).
+- **Dado**: guardado em Configurações, na chave `productionStartDaysBySupplier` (fornecedor → dias), para não exigir publicação de esquema. `productionStartFor` usa o prazo do fornecedor do pedido e, sem ele, o padrão.
+- Vale para as próximas assinaturas: pedido já assinado, com a data gravada, não muda quando o prazo muda.
+- Teste: `tests/unit/order-signature.test.ts`.

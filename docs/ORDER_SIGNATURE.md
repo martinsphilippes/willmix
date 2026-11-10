@@ -77,9 +77,11 @@ Correção do dono: o fornecedor baixava o PDF e não achava onde devolver assin
 
 ## 4. Papéis e permissões
 
-- O documento tem o **preço de compra**: só a **Wellmix** e o **fornecedor do pedido** abrem. Cliente, outro fornecedor e demais parceiros recebem "não encontrado".
+- O documento tem o **preço de compra**: só a **Wellmix**, o **fornecedor do pedido** e a **certificadora do pedido** (só leitura) abrem. Cliente, outro fornecedor e demais parceiros recebem "não encontrado".
 - Wellmix: qualquer login da equipe com a tela Pedidos assina pela Wellmix (em aberto: restringir a quem tem alçada, por função).
 - Fornecedor: o login do fornecedor do pedido.
+- **Certificadora do pedido** (10/11/2026): abre o documento só para ler (vê tudo do pedido para gerar o selo); não assina.
+- **Fornecedor**: a lista de pedidos abre direto o documento; no alto, as pendências dele naquele pedido. O arquivo assinado (PDF ou foto, até 50 MB) sobe direto ao armazenamento quando é grande e fica guardado no pedido sem prazo.
 
 ## 5. Dados
 

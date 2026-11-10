@@ -100,6 +100,11 @@ describe("folha do pedido no modelo da Wellmix", () => {
     const order = await newOrder(product.id);
     await fillSheet(order.id, product.id);
     // Ordem nova: a Wellmix assina depois da arte, do selo e do envio.
+    // A Wellmix faz a programação de compra (370 caixas de 5 = 1.850 peças).
+    const ps = await import("@/lib/services/purchase-sheet");
+    await ps.saveSheet(admin, order.id, {
+      lots: [{ departureIntervalDays: 30, masterCartons: 370 }],
+    } as never);
     await reachSignature(admin, order.id);
     await signOrderAs(admin, order.id);
     const view = (await sig.getOrderSignatureView(admin, order.id))!;

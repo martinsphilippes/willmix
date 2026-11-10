@@ -514,6 +514,61 @@ describe("documento do pedido com duas assinaturas", () => {
     expect(accepted.method).toBe("accept");
   });
 
+  it("contrato assinado: o início da produção entra sozinho, com o prazo do fornecedor", async () => {
+    const { setSetting } = await import("@/lib/settings");
+    const ps = await import("@/lib/services/purchase-sheet");
+    const pr = await import("@/lib/services/production");
+    await setSetting("productionStartDays", 9);
+    const order = await newOrder("Quadro com prazo");
+    // O prazo é do fornecedor: só o administrador grava; sem ele, o padrão.
+    expect((await sig.productionStartFor(order.id)).days).toBe(9);
+    await expect(
+      sig.setSupplierProductionStartDays(operator, order.supplierId, 3),
+    ).rejects.toThrow();
+    await expect(
+      sig.setSupplierProductionStartDays(supplierA, order.supplierId, 3),
+    ).rejects.toThrow();
+    await sig.setSupplierProductionStartDays(admin, order.supplierId, 3);
+    await ps.saveSheet(supplierA, order.id, { material: "GLASS" } as never);
+    // Antes da assinatura: automático, ainda sem data; digitar não vale.
+    expect(await sig.productionStartFor(order.id)).toEqual({
+      auto: true,
+      days: 3,
+      at: null,
+    });
+    await ps.saveSheet(supplierA, order.id, {
+      productionStartAt: "2030-01-01T00:00:00.000Z",
+    } as never);
+    const before = (await ps.getSheetForUser(supplierA, order.id))!;
+    expect(before.sheet.productionStartAt ?? null).toBeNull();
+    expect(before.missing).not.toContain("productionStartAt");
+    await reachSignature(admin, order.id);
+    await signOrderAs(admin, order.id);
+    const signed = await signOrderAs(supplierA, order.id);
+    // Dia da assinatura (Brasília) mais 3 dias.
+    const day = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date(signed.at));
+    const expected = new Date(`${day}T00:00:00.000Z`);
+    expected.setUTCDate(expected.getUTCDate() + 3);
+    const start = await sig.productionStartFor(order.id);
+    expect(start.at).toBe(expected.toISOString());
+    const after = (await ps.getSheetForUser(supplierA, order.id))!;
+    expect(after.sheet.productionStartAt).toBe(expected.toISOString());
+    const [stored] = await getStore().list("purchase_sheets", {
+      filter: { orderId: order.id },
+    });
+    expect(stored.productionStartAt).toBe(expected.toISOString());
+    // O acompanhamento da produção começa a contar da mesma data.
+    const view = await pr.productionView(order);
+    expect(view.track?.productionStartAt).toBe(expected.toISOString());
+    expect(view.startAuto).toEqual({ days: 3, signed: true });
+    // Vazio volta ao padrão das Configurações.
+    await sig.setSupplierProductionStartDays(admin, order.supplierId, null);
+    expect((await sig.productionStartFor(order.id)).days).toBe(9);
+    await setSetting("productionStartDays", 0);
+  });
+
   it("o pedido mudou depois da assinatura: a tela mostra que a versão assinada é outra", async () => {
     const order = await readyOrder("Quadro alterado");
     const signed = await signOrderAs(admin, order.id);

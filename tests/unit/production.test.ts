@@ -66,6 +66,16 @@ beforeAll(async () => {
 const daysAgo = (n: number) =>
   new Date(Date.now() - n * 86_400_000).toISOString();
 
+/** Início da produção é automático (contrato assinado): o teste recua a data direto no banco. */
+async function backdateStart(orderId: string, iso: string) {
+  const [track] = await getStore().list("production_tracks", {
+    filter: { orderId },
+  });
+  await getStore().update("production_tracks", track.id, {
+    productionStartAt: iso,
+  });
+}
+
 describe("produção do pedido", () => {
   it("só a Wellmix e o fornecedor do pedido mexem", async () => {
     await expect(
@@ -83,6 +93,11 @@ describe("produção do pedido", () => {
       productionStartAt: daysAgo(16),
       etd: "2026-12-01T12:00:00.000Z",
     });
+    // Digitar o início não vale mais; a data vem do contrato assinado.
+    expect(
+      (await pr.productionView(order)).track?.productionStartAt,
+    ).toBeNull();
+    await backdateStart(order.id, daysAgo(16));
     await expect(
       pr.savePlan(supplierA, order.id, { etd: "2026-12-20T12:00:00.000Z" }),
     ).rejects.toThrow("etd_reason_required");

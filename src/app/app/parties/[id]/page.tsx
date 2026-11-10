@@ -14,7 +14,10 @@ import {
 import { parseTerms } from "@/lib/supplier-terms";
 import { PaymentTermsEditor } from "@/components/payment-terms-editor";
 import { paymentTermsTexts } from "@/components/supplier-terms-text";
-import { saveSupplierTermsAction } from "../../actions/supplier-terms";
+import {
+  saveSupplierProductionStartAction,
+  saveSupplierTermsAction,
+} from "../../actions/supplier-terms";
 import { getSettings } from "@/lib/settings";
 import { getT } from "@/i18n/server";
 import { LOCALE_NAMES, type Translate } from "@/i18n";
@@ -110,6 +113,12 @@ export default async function PartyPage({
       store.list("users"),
       isCustomer ? getSettings() : Promise.resolve(null),
     ]);
+  // Início da produção: o prazo deste fornecedor e o padrão das Configurações.
+  const allSettings = await getSettings();
+  const productionStart = {
+    own: allSettings.productionStartDaysBySupplier?.[id] ?? null,
+    fallback: allSettings.productionStartDays,
+  };
   // Produtos que o fornecedor fornece: os em que é o principal e os em que
   // entrou pela cotação (cada um com o código, preço e MOQ dele).
   const links = isSupplier ? await listSupplierProducts(id) : [];
@@ -488,6 +497,49 @@ export default async function PartyPage({
               </SubmitButton>
             </form>
           </Card>
+          {isSupplier && isAdmin(user) ? (
+            /* Início da produção: dias depois do contrato assinado, por
+               fornecedor (só o administrador). Vazio: o padrão das Configurações. */
+            <Card
+              title={
+                <span id="production-start" className="scroll-mt-24">
+                  {t("prodStart.title")}
+                </span>
+              }
+            >
+              <p className="mb-3 text-xs leading-relaxed text-zinc-500">
+                {t("prodStart.hint", {
+                  days: String(productionStart.fallback),
+                })}
+              </p>
+              {saved === "production" ? (
+                <div className="mb-3">
+                  <Alert tone="success">{t("prodStart.saved")}</Alert>
+                </div>
+              ) : null}
+              <form
+                action={saveSupplierProductionStartAction}
+                className="flex flex-wrap items-end gap-2"
+                data-production-start-form
+              >
+                <input type="hidden" name="id" value={party.id} />
+                <Field label={t("prodStart.label")}>
+                  <Input
+                    name="productionStartDays"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="365"
+                    defaultValue={productionStart.own ?? ""}
+                    placeholder={String(productionStart.fallback)}
+                  />
+                </Field>
+                <SubmitButton variant="secondary">
+                  {t("common.save")}
+                </SubmitButton>
+              </form>
+            </Card>
+          ) : null}
           {isSupplier && canOpen(user, "finance") ? (
             /* Condição de pagamento negociada com o fornecedor: os pedidos novos
                copiam; vira parcelas em Contas a pagar. Financeiro: só o admin. */

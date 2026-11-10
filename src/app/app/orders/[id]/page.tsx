@@ -221,10 +221,11 @@ export default async function OrderPage({
   const t = await getT();
   const store = getStore();
   const wellmix = isWellmix(user);
-  /* Certificadora (OCP) do pedido: precisa do pedido completo para gerar o
-     selo (decisão do dono): foto e código nos itens, a ficha de compra para
-     ler (sem preço), as certificações já registradas e os arquivos. Preço,
-     pagamentos e o cliente continuam fora. */
+  /* Certificadora (OCP) do pedido: vê tudo do pedido para gerar o selo
+     (decisão do dono, 10/11/2026): cliente, fornecedor, itens com foto e
+     preço de compra, a ficha inteira, o documento do pedido, as
+     certificações já registradas e os arquivos. Só lê. O financeiro da
+     Wellmix (preço de venda, margem, pagamentos) não é do pedido dela. */
   const certifier = user.role === "ocp";
   // Financeiro é só do administrador: pagamentos, valores e margem do pedido.
   const financeAccess = canOpen(user, "finance");
@@ -623,7 +624,8 @@ export default async function OrderPage({
   };
   /* Resumo do pedido (uma linha): o que este papel pode ver (vazio = não aparece). */
   const orderInfoItems: Array<[ReactNode, ReactNode]> = [
-    ...(user.role !== "customer" && (wellmix || user.role === "legal")
+    ...(user.role !== "customer" &&
+    (wellmix || user.role === "legal" || certifier)
       ? [
           [t("common.customer"), partyName(order.customerId)] as [
             string,
@@ -639,7 +641,7 @@ export default async function OrderPage({
           ],
         ]
       : []),
-    ...(canSeeInternalCosts(user)
+    ...(canSeeInternalCosts(user) || certifier
       ? [
           [
             t("orders.fob"),
@@ -702,6 +704,20 @@ export default async function OrderPage({
                 )}
               </Badge>
             </span>,
+          ] as [string, ReactNode],
+        ]
+      : []),
+    /* Certificadora: o documento do pedido (itens, preços e condições), para ler. */
+    ...(certifier
+      ? [
+          [
+            t("orderSign.link.title"),
+            <TextLink
+              key="order-document"
+              href={`/app/orders/${order.id}/purchase-order`}
+            >
+              {t("orderSign.link.open")}
+            </TextLink>,
           ] as [string, ReactNode],
         ]
       : []),
@@ -1162,7 +1178,7 @@ export default async function OrderPage({
                 <Th>{t("orderView.col.product")}</Th>
                 <Th>{t("orderView.col.variant")}</Th>
                 <Th className="text-right">{t("orderView.col.qty")}</Th>
-                {canSeeInternalCosts(user) ? (
+                {canSeeInternalCosts(user) || certifier ? (
                   <>
                     <Th className="text-right">
                       {t("orderView.col.unitPrice")}
@@ -1210,7 +1226,7 @@ export default async function OrderPage({
                     <Td className="whitespace-nowrap text-right font-semibold tabular-nums">
                       {i.quantity.toLocaleString(t.intl)} {i.unit}
                     </Td>
-                    {canSeeInternalCosts(user) ? (
+                    {canSeeInternalCosts(user) || certifier ? (
                       <>
                         <Td className="whitespace-nowrap text-right tabular-nums">
                           {i.unitPrice !== null
