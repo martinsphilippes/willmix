@@ -83,17 +83,16 @@ describe("ficha de compra na cotação", () => {
       ipiPercent: 10,
     });
     const view = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
-    // Campos completos; faltam a programação e as fotos (exigidas já na cotação).
+    // Campos completos; faltam só as fotos. A programação de compra (início
+    // da produção e lotes) saiu da cotação: é do pedido e não é exigida aqui.
     expect(view.missing).toEqual([
-      "lot1",
-      ...[
-        "scalePhoto",
-        "rulerPhoto",
-        "sidePhoto",
-        "anglePhoto",
-        "originalPhoto",
-      ],
+      "scalePhoto",
+      "rulerPhoto",
+      "sidePhoto",
+      "anglePhoto",
+      "originalPhoto",
     ]);
+    expect(view.missing).not.toContain("productionStartAt");
     expect(view.sheet.importTaxPercent).toBe(18);
     await qs.saveQuoteSheet(supplierA, quote.id, {
       lots: [{ departureIntervalDays: 30, masterCartons: 42 }],
@@ -216,7 +215,9 @@ describe("ficha de compra na cotação", () => {
     expect(view.sheet.lots![0].departureIntervalDays).toBeNull();
     expect(view.sheet.lots![0].masterCartons).toBeGreaterThan(0);
     expect(view.sheet.lots![1]).toMatchObject({ departureIntervalDays: 60 });
-    expect(view.missing).toContain("lot1");
+    // A programação não é exigida na cotação (é do pedido); o prazo de
+    // produção é informado direto, em dias.
+    expect(view.missing).not.toContain("lot1");
     expect(leadTimeFromLots(view.sheet.lots)).toBeNull();
   });
 });

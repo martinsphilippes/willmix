@@ -65,7 +65,6 @@ import {
   isPiecesUnit,
   leadTimeFromLots,
 } from "@/lib/services/purchase-sheet-calc";
-import { LeadTimeAuto } from "@/components/lead-time-auto";
 import { SheetBoardReader } from "@/components/sheet-board-reader";
 import { QuoteManufacturerCard } from "@/components/manufacturer-cards";
 import { quoteCardsView } from "@/lib/services/manufacturer-cards";
@@ -533,6 +532,8 @@ export default async function QuotePage({
             </div>
             <PurchaseSheetFields
               t={t}
+              // A programação de compra saiu da cotação (é do pedido).
+              hideSchedule
               sheet={sheetView.sheet}
               plan={sheetView.plan}
               containerType={sheetView.containerType}
@@ -645,19 +646,25 @@ export default async function QuotePage({
           >
             {/* Prazo (curto) e condições lado a lado em telas grandes. */}
             <div className="grid gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-x-4">
-              {/* Prazo de produção: vem da programação 1 (não é digitado). */}
+              {/* Prazo de produção: informado direto, em dias (a programação
+                  de compra saiu da cotação; ela é do pedido). */}
               <FieldRow
-                label={t("quoteSheet.leadTimeLabel")}
+                label={t("quoteSheet.leadTime")}
                 size="full"
                 anchor="leadTimeDays"
+                hint={t("quoteSheet.leadTimeDaysHint")}
               >
-                <LeadTimeAuto
-                  initial={leadTimeFromLots(sheetView.sheet.lots)}
-                  labels={{
-                    days: t("quoteSheet.leadTimeAuto", { days: "{days}" }),
-                    pending: t("quoteSheet.leadTimePending"),
-                    hint: t("quoteSheet.leadTimeHint"),
-                  }}
+                <input
+                  form="quote-sheet"
+                  name="leadTimeDays"
+                  inputMode="numeric"
+                  defaultValue={
+                    quote.leadTimeDays ??
+                    leadTimeFromLots(sheetView.sheet.lots) ??
+                    ""
+                  }
+                  className={cx(inputDenseClass, "w-28")}
+                  data-lead-time-days
                 />
               </FieldRow>
               <FieldRow
