@@ -79,6 +79,10 @@ export const pt = {
     "Assinado pelos dois: pedido autorizado, falta gerar no Sankhya",
   "orderSign.status.in_erp": "Pedido gerado no Sankhya: {n}",
   "orderSign.download": "Baixar o documento em PDF",
+  "orderSign.upload.title": "Sua vez: assine e envie de volta",
+  "orderSign.upload.hint":
+    "Baixe o documento, assine e carimbe, e envie aqui o arquivo assinado (PDF ou foto).",
+  "orderSign.upload.submit": "Enviar o documento assinado",
   "orderSign.sheet.title": "Folha do pedido (modelo Wellmix)",
   "orderSign.sheet.hint":
     "É assim que o documento sai no PDF: o fornecedor baixa, assina no quadro do canto e anexa de volta. Campo em branco é dado que ainda não está no portal.",
@@ -182,6 +186,10 @@ export const en: Record<keyof typeof pt, string> = {
     "Signed by both: order authorized, still to be created in Sankhya",
   "orderSign.status.in_erp": "Order created in Sankhya: {n}",
   "orderSign.download": "Download the document as PDF",
+  "orderSign.upload.title": "Your turn: sign and send it back",
+  "orderSign.upload.hint":
+    "Download the document, sign and stamp it, and send the signed file here (PDF or photo).",
+  "orderSign.upload.submit": "Send the signed document",
   "orderSign.sheet.title": "Order sheet (Wellmix template)",
   "orderSign.sheet.hint":
     "This is how the document looks in the PDF: the supplier downloads it, signs in the corner box and attaches it back. A blank field is data that is not in the portal yet.",
@@ -270,6 +278,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "orderSign.status.signed": "双方已签署：订单已授权，尚待在 Sankhya 生成",
   "orderSign.status.in_erp": "订单已在 Sankhya 生成：{n}",
   "orderSign.download": "下载 PDF 文件",
+  "orderSign.upload.title": "轮到您：签字后传回",
+  "orderSign.upload.hint":
+    "请下载文件，签字盖章，然后在这里上传已签字的文件（PDF 或照片）。",
+  "orderSign.upload.submit": "上传已签字的文件",
   "orderSign.sheet.title": "订单表（Wellmix 模板）",
   "orderSign.sheet.hint":
     "PDF 文件即为此格式：供应商下载后，在右上角方框内签字盖章并上传。空白栏为系统中尚无的数据。",
