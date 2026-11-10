@@ -48,6 +48,15 @@ Uma tela em linhas, uma por produto, alimentada pela importação da ficha, onde
 - **Peso estimado (kg)**: o peso bruto da ficha quando ela traz; senão o peso líquido mais a folga da embalagem (8% por padrão; a planilha da feira usa `N.W × 1,08`).
 - **Média (US$)**: a média informada pelo despachante na ficha mestre (`purchase_sheets.averagePrice`), que já existia.
 
+### Booking do fornecedor (decisão do dono, 10/11/2026)
+
+Cada Booking que sobe é de **um fornecedor específico**, escolhido na hora de importar a ficha técnica:
+
+- **Importar ficha técnica** (`/app/products/import`) ganhou o campo **Fornecedor** (lista dos fornecedores ativos). Para quem abre o Booking é obrigatório; em "Mandar para o Booking" o servidor recusa sem ele (`supplier_required`; fornecedor inexistente, de outro tipo ou inativo: `supplier_invalid`). Todos os produtos da planilha ficam com esse fornecedor como principal (`products.supplierId` e o vínculo em `product_suppliers`), qualquer que seja o nome escrito na coluna SUPPLIER NAME, e nenhum fornecedor novo é cadastrado pela planilha. Sem escolha (login que não abre o Booking), vale a planilha, como antes. O lote guarda a escolha (`mapping.__supplierId`), e "Mandar para o Booking" numa importação guardada a reaproveita.
+- **Coluna Cliente fora da tabela**: no lugar dela fica a coluna **Fornecedor**, já preenchida pela escolha da importação (continua editável em "Editar dados dos produtos"). O dado `bookings.customerId` continua no banco e pode ser trocado na página da linha. Linha sem cliente é **compra para o estoque da Wellmix**: mover para Oferecido/Reservado e "Gerar solicitação" usam a empresa de estoque (`withStockCustomer`, `ensureStockParty`) em vez de recusar. Linhas de um cliente e linhas sem cliente não vão na mesma solicitação (`booking_customer_mismatch`).
+- **Coluna "Local / Porto"** (antes "Local / loja"): é o local/porto **de onde a mercadoria sai no marítimo** (o mesmo campo `location` da ficha, que já é a origem na cotação de frete), não o endereço da loja. O nº da loja continua na segunda caixa da coluna.
+- O fornecedor ainda não tem tela própria de Booking: a "análise do Booking" pelo fornecedor e a RFQ em espera são a etapa seguinte desta decisão.
+
 ### Quantidade planejada e previsão de vendas (racional do dono, 10/11/2026)
 
 A decisão de selecionar o produto parte do custo real (Superplan) e aponta para a **quantidade**. Para isso a linha do Booking guarda um plano (`bookings.plan`, JSON opcional):

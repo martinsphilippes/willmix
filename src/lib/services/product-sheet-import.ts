@@ -787,6 +787,13 @@ export interface SheetImportOptions {
   /** Padrão "variants". */
   mode?: SheetImportMode | null;
   /**
+   * Fornecedor escolhido no formulário (cadastro ativo): todos os produtos
+   * desta importação são dele, qualquer que seja o nome escrito na planilha.
+   * O Booking que sobe fica ligado a esse fornecedor (o principal de cada
+   * produto). Sem ele vale o da coluna SUPPLIER NAME, como antes.
+   */
+  supplierId?: string | null;
+  /**
    * Planilha antiga relida do arquivo guardado ("Mandar para o Booking" numa
    * importação antiga): o produto que já existe só ganha a linha do Booking.
    * Preço, pedido mínimo, caixa, pesos, cores e fotos dele ficam como estão
@@ -1064,6 +1071,8 @@ interface ImportContext {
   /** Nome do arquivo lido (a planilha de origem das linhas do Booking). */
   fileName: string;
   suppliers: Party[];
+  /** Fornecedor escolhido no formulário (vale no lugar do da planilha). */
+  chosenSupplier: Party | null;
   /** Produtos em que um grupo pode cair (no Booking, sem os produtos com variações). */
   products: Product[];
   summary: SheetImportSummary;
@@ -1110,6 +1119,16 @@ export async function importProductSheet(
     ? await store.get("product_lines", options.lineId)
     : null;
   if (!line) throw new SheetImportError("line_required");
+  const chosenSupplier = options.supplierId
+    ? await store.get("parties", options.supplierId)
+    : null;
+  if (
+    options.supplierId &&
+    (!chosenSupplier ||
+      chosenSupplier.type !== "supplier" ||
+      !chosenSupplier.active)
+  )
+    throw new SheetImportError("supplier_invalid");
   // Booking sem a tabela publicada: recusa antes de gravar qualquer coisa.
   if (mode === "booking") await assertBookingTable();
   const currency =
@@ -1139,6 +1158,7 @@ export async function importProductSheet(
     batchId: randomUUID(),
     fileName: file.name,
     suppliers,
+    chosenSupplier,
     products,
     summary: {
       groups: parsed.groups.length,
@@ -1212,6 +1232,7 @@ export async function importProductSheet(
       __namePrefix: options.namePrefix?.trim() || "",
       __currency: parsed.currency ?? currency ?? "",
       __mode: mode,
+      ...(chosenSupplier ? { __supplierId: chosenSupplier.id } : {}),
       // Planilha antiga relida: a tela de resultado diz "não alterado".
       ...(options.keepExisting ? { __keep: "1" } : {}),
       ...Object.fromEntries(
@@ -1511,6 +1532,7 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
     options,
     parsed,
     suppliers,
+    chosenSupplier,
     products,
     summary,
     results,
@@ -1535,7 +1557,9 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
     };
     results.push(result);
     try {
-      const supplier = await resolveSupplier(user, group.reading, suppliers);
+      const supplier = chosenSupplier
+        ? { party: chosenSupplier, created: false }
+        : await resolveSupplier(user, group.reading, suppliers);
       if (supplier?.created) summary.suppliersCreated++;
       result.supplierName = supplier?.party.name ?? null;
       const supplierId = supplier?.party.id ?? null;
@@ -1820,6 +1844,7 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
     parsed,
     batchId,
     suppliers,
+    chosenSupplier,
     products,
     summary,
     results,
@@ -1848,7 +1873,9 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
   results.push(result);
   const variants = result.variants as SheetImportVariantResult[];
   try {
-    const supplier = await resolveSupplier(user, first.reading, suppliers);
+    const supplier = chosenSupplier
+      ? { party: chosenSupplier, created: false }
+      : await resolveSupplier(user, first.reading, suppliers);
     if (supplier?.created) summary.suppliersCreated++;
     result.supplierName = supplier?.party.name ?? null;
     const supplierId = supplier?.party.id ?? null;
@@ -1861,7 +1888,7 @@ async function importAsVariants(ctx: ImportContext): Promise<void> {
           .filter((n) => n && norm(n) !== norm(supplierOf(first))),
       ),
     ];
-    if (others.length)
+    if (others.length && !chosenSupplier)
       warnings.push(`supplier_mixed:${others.join(", ").slice(0, 120)}`);
     const supplierSku =
       typeof first.reading.factoryItemCode === "string"
@@ -2140,6 +2167,10 @@ export async function reimportSheetToBooking(
       defaultCurrency: currency,
       sheet: batch.sheetName,
       mode: "booking",
+      // O fornecedor escolhido naquela importação continua valendo.
+      ...(typeof mapping.__supplierId === "string" && mapping.__supplierId
+        ? { supplierId: mapping.__supplierId }
+        : {}),
       // A planilha é antiga: o que já existe no cadastro não volta a ela.
       keepExisting: true,
       // "Um produto por linha": cada grupo cai no produto que criou naquela

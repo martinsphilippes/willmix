@@ -266,13 +266,14 @@ describe("etapas", () => {
     ).toBe("booking_request_only");
   });
 
-  it("oferecido pede cliente; reservado pede quantidade no pedido mínimo", async () => {
+  it("oferecido sem cliente vira compra para o estoque; reservado pede quantidade no pedido mínimo", async () => {
+    // A coluna Cliente saiu da tela: linha sem cliente é do estoque Wellmix.
+    const { booking: stocked } = await row("approved");
+    await booking.saveBookingRow(buyer, stocked.id, { status: "offered" });
+    const stockId = (await fresh(stocked.id)).customerId;
+    expect(stockId).toBeTruthy();
+    expect((await getStore().get("parties", stockId!))?.type).toBe("customer");
     const { booking: b } = await row("approved");
-    expect(
-      await code(() =>
-        booking.saveBookingRow(buyer, b.id, { status: "offered" }),
-      ),
-    ).toBe("booking_customer_required");
     await booking.saveBookingRow(buyer, b.id, {
       status: "offered",
       customerId: joao.partyId,
@@ -297,12 +298,9 @@ describe("etapas", () => {
     });
     const saved = await fresh(b.id);
     expect([saved.status, saved.reservedQty]).toEqual(["reserved", 240]);
-    // Tirar o cliente de uma linha reservada: recusa.
-    expect(
-      await code(() =>
-        booking.saveBookingRow(buyer, b.id, { customerId: null }),
-      ),
-    ).toBe("booking_customer_required");
+    // Tirar o cliente de uma linha reservada: ela passa para o estoque.
+    await booking.saveBookingRow(buyer, b.id, { customerId: null });
+    expect((await fresh(b.id)).customerId).toBe(stockId);
   });
 
   it("cliente precisa ser empresa cliente ativa; responsável, login ativo da Wellmix", async () => {
@@ -741,9 +739,11 @@ describe("gerar solicitação", () => {
     expect(await ask([ok.booking.id, forOther.booking.id])).toBe(
       "booking_customer_mismatch",
     );
-    expect(await ask([ok.booking.id], { customer: "" })).toBe(
-      "booking_request_customer",
-    );
+    // Sem cliente na barra, linha de um cliente e linha sem cliente (que é
+    // do estoque) não vão na mesma solicitação.
+    expect(
+      await ask([ok.booking.id, forOther.booking.id], { customer: "" }),
+    ).toBe("booking_customer_mismatch");
     expect(await ask([ok.booking.id, noMoq.booking.id])).toBe(
       "booking_qty_missing",
     );
@@ -1294,8 +1294,9 @@ describe("achados da revisão (segunda leva)", () => {
     expect((await fresh(manual.booking.id)).analysis?.salePriceBrl).toBe(12);
   });
 
-  it("gerar solicitação sem cliente: recusa própria, com a linha; clientes diferentes apontam a que destoa", async () => {
+  it("gerar solicitação sem cliente: vai para o estoque Wellmix; clientes diferentes apontam a que destoa", async () => {
     const none = await row("approved");
+    const none2 = await row("approved");
     const withJoao = await row("offered", { customerId: joao.partyId });
     const other = await getStore().create("parties", {
       ...(await getStore().get("parties", joao.partyId!))!,
@@ -1312,14 +1313,19 @@ describe("achados da revisão (segunda leva)", () => {
       }
       return ["ok", null];
     };
-    expect(await refusal([none.booking.id])).toEqual([
-      "booking_request_customer",
-      none.booking.id,
+    // Linha de um cliente junto com linha sem cliente (estoque): destoa.
+    expect(await refusal([withJoao.booking.id, none2.booking.id])).toEqual([
+      "booking_customer_mismatch",
+      withJoao.booking.id,
     ]);
-    expect(await refusal([withJoao.booking.id, none.booking.id])).toEqual([
-      "booking_request_customer",
-      none.booking.id,
-    ]);
+    // Só linhas sem cliente: a solicitação nasce para o estoque da Wellmix.
+    expect(await refusal([none.booking.id])).toEqual(["ok", null]);
+    const born = await getStore().get(
+      "requests",
+      (await getStore().get("bookings", none.booking.id))!.requestId!,
+    );
+    const { STOCK_PARTY_ID } = await import("@/lib/services/purchase-flow");
+    expect(born?.customerId).toBe(STOCK_PARTY_ID);
     expect(await refusal([withJoao.booking.id, withOther.booking.id])).toEqual([
       "booking_customer_mismatch",
       withOther.booking.id,

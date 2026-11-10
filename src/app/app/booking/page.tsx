@@ -117,23 +117,29 @@ const SIGNAL_TONE: Record<BookingSignal, Tone> = {
 
 /**
  * Ordem das colunas na tela: o produto primeiro (fica fixo ao rolar), depois
- * o que se mexe no dia a dia (etapa, cliente, reserva, Superplan) e então os
- * dados da ficha. Coluna nova em BOOKING_COLUMNS entra no fim sozinha.
+ * o que se mexe no dia a dia (etapa, fornecedor, reserva, Superplan) e então
+ * os dados da ficha. Coluna nova em BOOKING_COLUMNS entra no fim sozinha.
  */
 const FIRST: BookingColumnKey[] = [
   "name",
   "status",
-  "customer",
+  "supplier",
   "reservedQty",
   "cost",
   "salePrice",
   "targetPrice",
   "signal",
 ];
+/**
+ * Colunas que saíram da tela, com o dado guardado. Cliente: o Booking é do
+ * fornecedor escolhido ao subir a ficha; linha sem cliente é compra para o
+ * estoque da Wellmix (o cliente ainda pode ser trocado na página da linha).
+ */
+const HIDDEN: readonly BookingColumnKey[] = ["customer"];
 const ORDER: BookingColumnKey[] = [
   ...FIRST,
   ...BOOKING_COLUMNS.map((c) => c.key).filter((k) => !FIRST.includes(k)),
-];
+].filter((k) => !HIDDEN.includes(k));
 
 const thBase =
   "border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 text-left align-bottom text-[11px] font-semibold uppercase tracking-wide text-zinc-500";
@@ -304,12 +310,13 @@ export default async function BookingPage({
           {
             key: "customer",
             label: t("booking.guide.customer"),
-            ok: !!row?.customerId,
+            // Sem cliente na linha: compra para o estoque da Wellmix.
+            ok: true,
             text: row?.customerId
               ? t("booking.guide.customer.ok", {
                   name: row.customerName ?? "",
                 })
-              : t("booking.guide.customer.fix"),
+              : t("booking.guide.customer.stock"),
           },
           {
             key: "qty",
@@ -1330,31 +1337,11 @@ export default async function BookingPage({
           {t("booking.bulk.title")}
         </p>
         <div className="flex flex-wrap items-end gap-2">
-          <div className={BULK_GROUP} data-bulk-group="customer">
-            <span className={BULK_LABEL}>{label("customer")}</span>
+          {/* A coluna Cliente saiu da tela (linha sem cliente é compra para o
+              estoque); fica o botão que grava as quantidades digitadas. */}
+          <div className={BULK_GROUP} data-bulk-group="quantity">
+            <span className={BULK_LABEL}>{label("reservedQty")}</span>
             <div className="flex items-center gap-1">
-              <Select
-                dense
-                name="customer"
-                defaultValue=""
-                aria-label={label("customer")}
-                className="h-7! w-auto max-w-44 py-0! text-xs!"
-              >
-                <option value="">{t("booking.bulk.customer.keep")}</option>
-                {data.options.stockOption ? (
-                  <option value={BOOKING_STOCK_OPTION}>
-                    {t("booking.bulk.stock")}
-                  </option>
-                ) : null}
-                {data.options.customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-                <option value={BOOKING_EMPTY}>
-                  {t("booking.bulk.customer.none")}
-                </option>
-              </Select>
               {/* O primeiro botão: é ele que o Enter aciona sem o JavaScript. */}
               <BulkButton
                 op="assign"

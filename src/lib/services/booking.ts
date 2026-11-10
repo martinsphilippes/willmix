@@ -760,6 +760,27 @@ async function resolveCustomer(
   return party.id;
 }
 
+/**
+ * A coluna Cliente saiu da tela do Booking: linha sem cliente é compra para
+ * o estoque da Wellmix. Etapa que exige cliente (Oferecido, Reservado) numa
+ * linha sem cliente ganha a empresa de estoque, em vez de recusar.
+ */
+async function withStockCustomer(
+  user: User,
+  booking: Booking,
+  patch: BookingPatch,
+): Promise<BookingPatch> {
+  const status = patch.status ?? booking.status;
+  if (status !== "offered" && status !== "reserved") return patch;
+  const customerId =
+    patch.customerId !== undefined ? patch.customerId : booking.customerId;
+  if (customerId) return patch;
+  return {
+    ...patch,
+    customerId: await resolveCustomer(user, BOOKING_STOCK_OPTION, booking.id),
+  };
+}
+
 async function resolveOwner(
   raw: string,
   bookingId?: string | null,
@@ -816,7 +837,7 @@ export async function saveBookingRow(
   ]);
   const planned = plan(
     booking,
-    resolved,
+    await withStockCustomer(user, booking, resolved),
     joined.moq.get(booking.productId) ?? null,
     bookingActor(user),
     user,
@@ -867,11 +888,11 @@ async function applyBulk(
     const typed = input.quantities?.[booking.id];
     const p = plan(
       booking,
-      {
+      await withStockCustomer(user, booking, {
         ...(customerId !== undefined ? { customerId } : {}),
         ...(typed !== undefined ? { reservedQty: typed } : {}),
         ...extra(booking),
-      },
+      }),
       joined.moq.get(booking.productId) ?? null,
       actor,
       user,
@@ -1139,13 +1160,18 @@ export async function generateRequestFromBooking(
         "booking_customer_mismatch",
         bookings.find((b) => b.customerId && b.customerId !== own[0])?.id,
       );
-    // Nenhuma linha tem cliente e nenhum foi escolhido na barra.
-    if (!own.length || bookings.some((b) => !b.customerId))
+    // Linha sem cliente é compra para o estoque da Wellmix (a coluna
+    // Cliente saiu da tela): sem cliente em nenhuma, todas vão para o
+    // estoque; com cliente só em algumas, as sem cliente destoam.
+    const stock = bookings.some((b) => !b.customerId)
+      ? await resolveCustomer(user, BOOKING_STOCK_OPTION)
+      : null;
+    if (stock && own.length && own[0] !== stock)
       throw refuse(
-        "booking_request_customer",
-        bookings.find((b) => !b.customerId)?.id,
+        "booking_customer_mismatch",
+        bookings.find((b) => b.customerId)?.id,
       );
-    customerId = await resolveCustomer(user, own[0]);
+    customerId = stock ?? (await resolveCustomer(user, own[0]));
   }
   for (const booking of bookings)
     if (booking.customerId && booking.customerId !== customerId)

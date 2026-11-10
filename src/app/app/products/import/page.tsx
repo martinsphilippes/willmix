@@ -56,8 +56,12 @@ export default async function ProductSheetImportPage({
   );
   const defaultMode = canBooking ? "booking" : "variants";
   const store = getStore();
-  const [lines, batches] = await Promise.all([
+  const [lines, suppliers, batches] = await Promise.all([
     store.list("product_lines", { orderBy: "name" }),
+    store.list("parties", {
+      filter: { type: "supplier", active: true },
+      orderBy: "name",
+    }),
     store.list("import_batches", {
       filter: { entity: SHEET_IMPORT_ENTITY },
       orderBy: "createdAt",
@@ -118,6 +122,31 @@ export default async function ProductSheetImportPage({
                 maxLength={600}
                 data-sheet-import-url
               />
+            </Field>
+            {/* Fornecedor: cada Booking que sobe é de um fornecedor (é ele
+                quem vai analisar estes produtos). Obrigatório para quem abre
+                o Booking; para os demais, em branco vale o nome da planilha. */}
+            <Field
+              label={t("sheetImport.supplier")}
+              hint={t(
+                canBooking
+                  ? "sheetImport.supplierHint"
+                  : "sheetImport.supplierHintOptional",
+              )}
+            >
+              <Select
+                name="supplierId"
+                defaultValue=""
+                required={canBooking}
+                data-sheet-import-supplier
+              >
+                <option value="">{t("sheetImport.supplierNone")}</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {[s.name, s.storeNumber].filter(Boolean).join(" · ")}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field

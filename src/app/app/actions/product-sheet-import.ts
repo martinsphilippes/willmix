@@ -55,6 +55,8 @@ export async function importProductSheetAction(form: FormData) {
         // Resultado: produtos no Booking (um por linha), um produto com
         // variações (padrão de quem não informa) ou um produto por linha.
         mode: z.enum(["booking", "variants", "products"]),
+        // Fornecedor dos produtos desta importação (obrigatório no Booking).
+        supplierId: z.string().max(64).nullable(),
       })
       .parse({
         lineId: str(form, "lineId"),
@@ -65,6 +67,7 @@ export async function importProductSheetAction(form: FormData) {
         uploadedFileName: str(form, "uploadedFileName") || null,
         sheetUrl: str(form, "sheetUrl") || null,
         mode: str(form, "mode") || "variants",
+        supplierId: str(form, "supplierId") || null,
       });
     // Mandar para o Booking: só quem abre a tela Booking (o serviço confere de novo).
     if (parsed.mode === "booking") assertScreen(user, "booking");
@@ -79,12 +82,16 @@ export async function importProductSheetAction(form: FormData) {
           ? { url: parsed.sheetUrl }
           : null;
     if (!source) throw new SheetImportError("file_required");
+    // Cada Booking que sobe é de um fornecedor: sem ele, não importa.
+    if (parsed.mode === "booking" && !parsed.supplierId)
+      throw new SheetImportError("supplier_required");
     const options = {
       lineId: parsed.lineId,
       namePrefix: parsed.namePrefix,
       defaultCurrency: parsed.currency,
       sheet: parsed.sheet,
       mode: parsed.mode,
+      supplierId: parsed.supplierId,
     };
     const result =
       parsed.mode === "booking"

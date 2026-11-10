@@ -49,8 +49,10 @@ export const pt = {
     "está em {stage}, que não gera solicitação. Com as linhas marcadas, no grupo Etapa escolha “Aprovado” e toque em Mover.",
   "booking.guide.stage.fixAdmin":
     "está em {stage}. Aprovar é do administrador: peça a ele para mover estas linhas para “Aprovado”.",
-  "booking.guide.customer": "Cliente",
+  "booking.guide.customer": "Compra para",
   "booking.guide.customer.ok": "{name}.",
+  "booking.guide.customer.stock":
+    "Estoque Wellmix (linha sem cliente é compra para o estoque).",
   "booking.guide.customer.fix":
     "a linha não tem cliente. No grupo Cliente, escolha o cliente (ou “Estoque Wellmix”) antes de gerar.",
   "booking.guide.qty": "Quantidade",
@@ -61,7 +63,7 @@ export const pt = {
     "digite na coluna “Qtd. reservada” uma quantidade a partir do pedido mínimo ({moq}).",
   "booking.guide.then":
     "Depois, com as linhas marcadas, toque em “Gerar solicitação” de novo. O que você marcou e digitou continua na tela.",
-  "booking.bulk.assign": "Salvar cliente e quantidades",
+  "booking.bulk.assign": "Salvar as quantidades digitadas",
   "booking.bulk.assign.short": "Salvar",
   "booking.bulk.setOwner.short": "Trocar",
   "booking.bulk.status": "Mover para…",
@@ -75,21 +77,21 @@ export const pt = {
   "booking.bulk.request.confirm":
     "Gerar uma solicitação com {n} linha(s) marcada(s)? (até {max} por vez)",
   "booking.bulk.hint":
-    "Para gerar a solicitação: escolha o cliente na própria linha (grava sozinho) ou na barra, marque as linhas e toque em Gerar solicitação. A quantidade é a digitada na linha (sem ela, a planejada ou o pedido mínimo). Até {max} linhas por vez.",
+    "Para gerar a solicitação: marque as linhas e toque em Gerar solicitação. Cada linha é do fornecedor escolhido ao subir a ficha e a compra vai para o Estoque Wellmix. A quantidade é a digitada na linha (sem ela, a planejada ou o pedido mínimo). Até {max} linhas por vez.",
   "booking.bulk.working": "Gravando…",
   "booking.done.moved": "{n} linha(s) movida(s) de etapa.",
   "booking.done.edited":
     "Dados de {n} produto(s) gravados (cadastro e ficha mestre).",
   "booking.edit.start": "Editar dados dos produtos",
   "booking.edit.startHint":
-    "Muda direto na tabela o nome, fornecedor, código, local, loja, data, preço, moeda, MOQ, caixa, inner, pesos, média, CBM, medidas, cores, material e embalagem de qualquer produto da lista.",
+    "Muda direto na tabela o nome, fornecedor, código, local/porto de saída, loja, data, preço, moeda, MOQ, caixa, inner, pesos, média, CBM, medidas, cores, material e embalagem de qualquer produto da lista.",
   "booking.edit.stop": "Sair da edição",
   "booking.edit.save": "Salvar dados",
   "booking.edit.saving": "Salvando…",
   "booking.edit.hint":
     "Mude o que precisar nas células e toque em Salvar dados: só o que mudou é gravado, no cadastro e na ficha mestre do produto (o mesmo produto da tela Produtos). Etapa, cliente, quantidade e responsável mudam pela barra acima; custo e sinal vêm do Superplan.",
   "booking.edit.field": "{field} de {name}",
-  "booking.edit.location": "Local",
+  "booking.edit.location": "Local / Porto de saída",
   "booking.edit.store": "Loja",
   "booking.edit.length": "Comprimento (cm)",
   "booking.edit.width": "Largura (cm)",
@@ -220,7 +222,9 @@ export const en: Record<keyof typeof pt, string> = {
     "it is in {stage}. With the rows ticked, choose “Approved” in the Stage group and tap Move.",
   "booking.guide.stage.fixAdmin":
     "it is in {stage}. Approving is for the administrator: ask them to move these rows to “Approved”.",
-  "booking.guide.customer": "Customer",
+  "booking.guide.customer": "Purchase for",
+  "booking.guide.customer.stock":
+    "Wellmix stock (a row with no customer is a purchase for stock).",
   "booking.guide.customer.ok": "{name}.",
   "booking.guide.customer.fix":
     "the row has no customer. In the Customer group, choose the customer (or “Wellmix stock”) before creating.",
@@ -232,7 +236,7 @@ export const en: Record<keyof typeof pt, string> = {
     "type in the “Reserved qty” column a quantity from the minimum order ({moq}) up.",
   "booking.guide.then":
     "Then, with the rows ticked, tap “Create request” again. What you ticked and typed stays on the screen.",
-  "booking.bulk.assign": "Save customer and quantities",
+  "booking.bulk.assign": "Save the typed quantities",
   "booking.bulk.assign.short": "Save",
   "booking.bulk.setOwner.short": "Change",
   "booking.bulk.status": "Move to…",
@@ -246,7 +250,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "Create a request with {n} ticked row(s)? (up to {max} at a time)",
   "booking.bulk.hint":
-    "To create the request: choose the customer in the row itself (it saves by itself) or in the bar, tick the rows and tap Create request. The quantity is the one typed in the row (without it, the planned one or the minimum order). Up to {max} rows at a time.",
+    "To create the request: tick the rows and tap Create request. Each row belongs to the supplier chosen when the sheet was uploaded and the purchase goes to Wellmix stock. The quantity is the one typed in the row (without it, the planned one or the minimum order). Up to {max} rows at a time.",
   "booking.bulk.working": "Saving…",
   "booking.done.moved": "{n} row(s) moved to another stage.",
   "booking.done.edited":
@@ -260,7 +264,7 @@ export const en: Record<keyof typeof pt, string> = {
   "booking.edit.hint":
     "Change what you need in the cells and tap Save data: only what changed is saved, in the product catalog and master sheet (the same product as in Products). Stage, customer, quantity and owner change through the bar above; cost and signal come from Superplan.",
   "booking.edit.field": "{field} of {name}",
-  "booking.edit.location": "Location",
+  "booking.edit.location": "Place / Port of departure",
   "booking.edit.store": "Store",
   "booking.edit.length": "Length (cm)",
   "booking.edit.width": "Width (cm)",
@@ -389,7 +393,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "处于“{stage}”。勾选这些行后，在“阶段”组选择“已批准”并点击“移动”。",
   "booking.guide.stage.fixAdmin":
     "处于“{stage}”。批准由管理员操作：请让其把这些行移到“已批准”。",
-  "booking.guide.customer": "客户",
+  "booking.guide.customer": "采购对象",
+  "booking.guide.customer.stock": "Wellmix 库存（没有客户的行即为库存采购）。",
   "booking.guide.customer.ok": "{name}。",
   "booking.guide.customer.fix":
     "该行没有客户。生成之前，请在“客户”组选择客户（或“Wellmix 库存”）。",
@@ -400,7 +405,7 @@ export const zh: Record<keyof typeof pt, string> = {
     "请在“预订数量”列填写不低于起订量（{moq}）的数量。",
   "booking.guide.then":
     "然后保持勾选，再次点击“生成询价单”。您勾选和填写的内容仍保留在页面上。",
-  "booking.bulk.assign": "保存客户和数量",
+  "booking.bulk.assign": "保存填写的数量",
   "booking.bulk.assign.short": "保存",
   "booking.bulk.setOwner.short": "更换",
   "booking.bulk.status": "移到…",
@@ -414,7 +419,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.bulk.request.confirm":
     "用勾选的 {n} 行生成一张询价单？（每次最多 {max} 行）",
   "booking.bulk.hint":
-    "生成询价单：在行内直接选择客户（自动保存）或在上方栏选择，勾选行，然后点击“生成询价单”。数量取行内填写的数量（没有则用计划数量或起订量）。每次最多 {max} 行。",
+    "生成询价单：勾选行，然后点击“生成询价单”。每一行属于上传表格时选择的供应商，采购归入 Wellmix 库存。数量取行内填写的数量（没有则用计划数量或起订量）。每次最多 {max} 行。",
   "booking.bulk.working": "保存中…",
   "booking.done.moved": "已移动 {n} 行的阶段。",
   "booking.done.edited": "已保存 {n} 个产品的数据（目录和主表）。",
@@ -427,7 +432,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "booking.edit.hint":
     "在单元格中修改所需内容后点击“保存数据”：只保存改动的部分，写入产品目录和主表（与“产品”页面是同一个产品）。阶段、客户、数量和负责人通过上方工具栏修改；成本和信号来自 Superplan。",
   "booking.edit.field": "{name} 的{field}",
-  "booking.edit.location": "地点",
+  "booking.edit.location": "地点 / 起运港",
   "booking.edit.store": "店铺",
   "booking.edit.length": "长度（厘米）",
   "booking.edit.width": "宽度（厘米）",
