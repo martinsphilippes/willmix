@@ -57,6 +57,24 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 4. **Consultas de exemplo**: empresas, produto pela referência do fornecedor (REFFORN), parceiro pelo nome, TOPs de pedido/cotação e últimas notas das TOPs gravadas; mostra o pedido feito ao Sankhya, a tabela e o JSON.
 5. **Pedido ou cotação de teste**: pré-visualização (confere no ERP parceiro, produto e TOP, lê TIPMOV e o volume, e mostra o JSON do `CACSP.incluirNota`), envio, o que ficou gravado (CabecalhoNota e ItemNota) e o cancelamento. Tudo na auditoria (`sankhya.note.test`, `sankhya.note.cancel`).
 
+## Tela Configurações → Carga do Sankhya (mapeamento e amostra)
+
+`/app/settings/sankhya?tab=load` (só o administrador; mapeamento em `src/lib/integrations/sankhya-mapping.ts`, amostra em `sankhya-sample.ts`, tela em `src/app/app/settings/sankhya/_load.tsx`). Primeiro passo da carga do histórico: **só leitura, nada é gravado no portal**.
+
+| Sankhya                | Portal                    | Casamento com o que já existe |
+| ---------------------- | ------------------------- | ----------------------------- |
+| CabecalhoNota (TGFCAB) | `orders`                  | `erpNumber` = NUNOTA          |
+| Parceiro (TGFPAR)      | `parties`                 | CNPJ/CPF ou nome              |
+| ItemNota (TGFITE)      | `order_items`             | —                             |
+| Produto (TGFPRO)       | `products`                | `sku` = REFFORN (código WX)   |
+| GrupoProduto (TGFGRU)  | `product_lines`           | nome                          |
+| Estoque (TGFEST)       | saldo inicial (calculado) | —                             |
+| Financeiro (TGFFIN)    | `payments`                | —                             |
+
+A amostra (1 a 5 por entidade) é coerente: as últimas notas das TOPs de importação (descrição com "IMP") e, delas, os parceiros, itens e financeiro; dos itens, os produtos; dos produtos, os grupos e o estoque. Tudo por SQL somente leitura com listas de inteiros. Se uma coluna do mapeamento não existir no ERP, a tela refaz a consulta com `*`, mostra as colunas que faltam e as que a tabela tem. Para cada registro, a tela mostra o valor convertido (e o original quando muda) e se já existe um cadastro equivalente no portal.
+
+Ainda a decidir antes da carga completa: onde guardar o vínculo (código do Sankhya) em cada cadastro do portal, a regra TOP (IMP) → etapa do pedido, a moeda (o Sankhya guarda R$; o FOB do portal é na moeda do fornecedor) e como os pedidos históricos entram sem solicitação nem etapas.
+
 ## Tela Configurações → Sankhya: explorar dados
 
 `/app/settings/sankhya?tab=explore`. Teste de conexão, busca no dicionário (tabela → entidades, campos e ligações, com link para a tabela ligada), consulta de entidade com ligações e paginação, SQL somente leitura, e as escritas: registro (DatasetSP.save), pedido/orçamento/cotação (CACSP) e cancelamento. Leituras rodam no servidor por GET; escritas são Server Actions do admin, com zod e registro na auditoria (`sankhya.*`). Erros mostram o código e o texto do Sankhya.

@@ -3,6 +3,47 @@
  * ERP e testes): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "sankhyaInt.tab.load": "Carga do Sankhya",
+  "sankhyaLoad.title": "Mapeamento e amostra da carga",
+  "sankhyaLoad.hint":
+    "Antes de trazer o histórico do Sankhya para o portal: cada entidade do ERP, o campo do portal que recebe cada coluna e a regra de conversão. A amostra lê de 1 a 5 registros de cada uma (as últimas notas de importação e, a partir delas, parceiros, itens, produtos, grupos, estoque e financeiro) e mostra o valor que iria para o portal e o cadastro equivalente que já existe. Só leitura: nada é gravado.",
+  "sankhyaLoad.size": "Registros por entidade",
+  "sankhyaLoad.run": "Trazer amostra",
+  "sankhyaLoad.summary": "Amostra: {list}",
+  "sankhyaLoad.computed": "calculado no portal",
+  "sankhyaLoad.mapping": "Mapeamento campo a campo",
+  "sankhyaLoad.col.sankhya": "Sankhya ({table})",
+  "sankhyaLoad.col.portal": "Portal ({table})",
+  "sankhyaLoad.col.rule": "Regra",
+  "sankhyaLoad.noField": "sem campo no portal",
+  "sankhyaLoad.inPortal": "No portal",
+  "sankhyaLoad.new": "novo",
+  "sankhyaLoad.missing":
+    "O Sankhya não tem estas colunas do mapeamento: {columns}. A amostra veio com todas as colunas da tabela; veja a lista abaixo para corrigir os nomes.",
+  "sankhyaLoad.sql": "SQL enviado ao Sankhya",
+  "sankhyaLoad.raw": "Registros do Sankhya (JSON)",
+  "sankhyaLoad.columns": "Colunas que a tabela tem",
+  "sankhyaLoad.entity.orders": "Pedidos",
+  "sankhyaLoad.entity.partners": "Fornecedores e clientes",
+  "sankhyaLoad.entity.orderItems": "Itens dos pedidos",
+  "sankhyaLoad.entity.products": "Produtos",
+  "sankhyaLoad.entity.productGroups": "Linhas de produto",
+  "sankhyaLoad.entity.stock": "Estoque",
+  "sankhyaLoad.entity.financial": "Financeiro",
+  "sankhyaLoad.about.orders":
+    'Notas das TOPs de importação (descrição com "IMP"), as mais recentes primeiro. No portal viram pedidos; a etapa vem da TOP.',
+  "sankhyaLoad.about.partners":
+    "Parceiros das notas da amostra. Fornecedor e cliente vêm das marcas FORNECEDOR e CLIENTE; o portal casa pelo CNPJ/CPF ou pelo nome.",
+  "sankhyaLoad.about.orderItems":
+    "Itens das notas da amostra, com a descrição do produto.",
+  "sankhyaLoad.about.products":
+    "Produtos dos itens da amostra. O portal casa pelo código WX (REFFORN = SKU). Medidas em metros viram centímetros.",
+  "sankhyaLoad.about.productGroups":
+    "Grupos dos produtos da amostra; no portal, linhas de produto.",
+  "sankhyaLoad.about.stock":
+    "Saldo por local dos produtos da amostra. O portal calcula o estoque (recebimentos − saídas): o saldo do ERP entraria como saldo inicial.",
+  "sankhyaLoad.about.financial":
+    "Títulos a pagar e a receber das notas da amostra (valores em R$).",
   "sankhyaInt.tab.general": "Geral",
   "sankhyaInt.tab.integration": "Integração Sankhya",
   "sankhyaInt.tab.explore": "Sankhya: explorar dados",
@@ -123,6 +164,47 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "sankhyaInt.tab.load": "Sankhya load",
+  "sankhyaLoad.title": "Load mapping and sample",
+  "sankhyaLoad.hint":
+    "Before bringing the Sankhya history into the portal: each ERP entity, the portal field that receives each column and the conversion rule. The sample reads 1 to 5 records of each (the latest import notes and, from them, partners, items, products, groups, stock and financial) and shows the value that would go into the portal and the matching record that already exists. Read only: nothing is saved.",
+  "sankhyaLoad.size": "Records per entity",
+  "sankhyaLoad.run": "Fetch sample",
+  "sankhyaLoad.summary": "Sample: {list}",
+  "sankhyaLoad.computed": "computed in the portal",
+  "sankhyaLoad.mapping": "Field-by-field mapping",
+  "sankhyaLoad.col.sankhya": "Sankhya ({table})",
+  "sankhyaLoad.col.portal": "Portal ({table})",
+  "sankhyaLoad.col.rule": "Rule",
+  "sankhyaLoad.noField": "no portal field",
+  "sankhyaLoad.inPortal": "In the portal",
+  "sankhyaLoad.new": "new",
+  "sankhyaLoad.missing":
+    "Sankhya does not have these mapped columns: {columns}. The sample came with all the table's columns; see the list below to fix the names.",
+  "sankhyaLoad.sql": "SQL sent to Sankhya",
+  "sankhyaLoad.raw": "Sankhya records (JSON)",
+  "sankhyaLoad.columns": "Columns the table has",
+  "sankhyaLoad.entity.orders": "Orders",
+  "sankhyaLoad.entity.partners": "Suppliers and customers",
+  "sankhyaLoad.entity.orderItems": "Order items",
+  "sankhyaLoad.entity.products": "Products",
+  "sankhyaLoad.entity.productGroups": "Product lines",
+  "sankhyaLoad.entity.stock": "Stock",
+  "sankhyaLoad.entity.financial": "Financial",
+  "sankhyaLoad.about.orders":
+    'Notes of the import TOPs (description containing "IMP"), newest first. In the portal they become orders; the stage comes from the TOP.',
+  "sankhyaLoad.about.partners":
+    "Partners of the sample notes. Supplier and customer come from the FORNECEDOR and CLIENTE flags; the portal matches by CNPJ/CPF or name.",
+  "sankhyaLoad.about.orderItems":
+    "Items of the sample notes, with the product description.",
+  "sankhyaLoad.about.products":
+    "Products of the sample items. The portal matches by WX code (REFFORN = SKU). Measurements in meters become centimeters.",
+  "sankhyaLoad.about.productGroups":
+    "Groups of the sample products; product lines in the portal.",
+  "sankhyaLoad.about.stock":
+    "Balance per location of the sample products. The portal computes stock (receipts − outflows): the ERP balance would be the opening balance.",
+  "sankhyaLoad.about.financial":
+    "Payables and receivables of the sample notes (amounts in BRL).",
   "sankhyaInt.tab.general": "General",
   "sankhyaInt.tab.integration": "Sankhya integration",
   "sankhyaInt.tab.explore": "Sankhya: explore data",
@@ -242,6 +324,44 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "sankhyaInt.tab.load": "Sankhya 数据导入",
+  "sankhyaLoad.title": "导入映射与样本",
+  "sankhyaLoad.hint":
+    "在把 Sankhya 历史数据导入门户之前：每个 ERP 实体、接收每一列的门户字段以及转换规则。样本读取每个实体 1 到 5 条记录（最新的进口单据，以及由此得到的合作方、明细、产品、分组、库存和财务），并显示将写入门户的值和门户中已存在的对应记录。只读：不保存任何内容。",
+  "sankhyaLoad.size": "每个实体的记录数",
+  "sankhyaLoad.run": "获取样本",
+  "sankhyaLoad.summary": "样本：{list}",
+  "sankhyaLoad.computed": "由门户计算",
+  "sankhyaLoad.mapping": "逐字段映射",
+  "sankhyaLoad.col.sankhya": "Sankhya（{table}）",
+  "sankhyaLoad.col.portal": "门户（{table}）",
+  "sankhyaLoad.col.rule": "规则",
+  "sankhyaLoad.noField": "门户无对应字段",
+  "sankhyaLoad.inPortal": "门户中",
+  "sankhyaLoad.new": "新",
+  "sankhyaLoad.missing":
+    "Sankhya 中没有这些映射列：{columns}。样本已返回该表的所有列；请参考下面的列表修正名称。",
+  "sankhyaLoad.sql": "发送到 Sankhya 的 SQL",
+  "sankhyaLoad.raw": "Sankhya 记录（JSON）",
+  "sankhyaLoad.columns": "该表包含的列",
+  "sankhyaLoad.entity.orders": "订单",
+  "sankhyaLoad.entity.partners": "供应商和客户",
+  "sankhyaLoad.entity.orderItems": "订单明细",
+  "sankhyaLoad.entity.products": "产品",
+  "sankhyaLoad.entity.productGroups": "产品线",
+  "sankhyaLoad.entity.stock": "库存",
+  "sankhyaLoad.entity.financial": "财务",
+  "sankhyaLoad.about.orders":
+    "进口 TOP（描述含“IMP”）的单据，最新的在前。在门户中成为订单；阶段由 TOP 决定。",
+  "sankhyaLoad.about.partners":
+    "样本单据的合作方。供应商和客户由 FORNECEDOR 和 CLIENTE 标记决定；门户按 CNPJ/CPF 或名称匹配。",
+  "sankhyaLoad.about.orderItems": "样本单据的明细，含产品描述。",
+  "sankhyaLoad.about.products":
+    "样本明细中的产品。门户按 WX 代码匹配（REFFORN = SKU）。以米为单位的尺寸转换为厘米。",
+  "sankhyaLoad.about.productGroups": "样本产品的分组；在门户中为产品线。",
+  "sankhyaLoad.about.stock":
+    "样本产品按地点的余额。门户自行计算库存（入库 − 出库）：ERP 余额将作为期初余额。",
+  "sankhyaLoad.about.financial": "样本单据的应付和应收款项（金额为雷亚尔）。",
   "sankhyaInt.tab.general": "常规",
   "sankhyaInt.tab.integration": "Sankhya 集成",
   "sankhyaInt.tab.explore": "Sankhya：浏览数据",
