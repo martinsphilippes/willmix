@@ -78,6 +78,7 @@ import * as rfqStandby from "./rfq-standby";
 import * as sourcingStandby from "./sourcing-standby";
 import * as portalAccess from "./portal-access";
 import * as supplierTasks from "./supplier-tasks";
+import * as superplanLogic from "./superplan-logic";
 import * as sheetProgress from "./sheet-progress";
 import * as requirementFiles from "./requirement-files";
 import * as sheetPhotos from "./sheet-photos";
@@ -169,6 +170,7 @@ export const modulesPt = {
   ...sourcingStandby.pt,
   ...portalAccess.pt,
   ...supplierTasks.pt,
+  ...superplanLogic.pt,
   ...sheetProgress.pt,
   ...requirementFiles.pt,
   ...sheetPhotos.pt,
@@ -277,6 +279,7 @@ export const modulesEn: Record<keyof typeof modulesPt, string> = {
   ...sourcingStandby.en,
   ...portalAccess.en,
   ...supplierTasks.en,
+  ...superplanLogic.en,
   ...sheetProgress.en,
   ...requirementFiles.en,
   ...sheetPhotos.en,
@@ -385,6 +388,7 @@ export const modulesZh: Record<keyof typeof modulesPt, string> = {
   ...sourcingStandby.zh,
   ...portalAccess.zh,
   ...supplierTasks.zh,
+  ...superplanLogic.zh,
   ...sheetProgress.zh,
   ...requirementFiles.zh,
   ...sheetPhotos.zh,
