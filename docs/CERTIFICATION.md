@@ -106,11 +106,12 @@ Na ordem do fluxo, o selo já fica depois dela: Booking e Superplan → solicita
 ### 11.1 Decisões do dono (10/11/2026)
 1. **Todo pedido precisa de selo**: feito (regra da seção 4).
 2. **Sem trava na aprovação da arte por enquanto**: travas ficam para depois.
-3. **Booking**: aguardando a tela nova (acima).
+3. **Booking**: decidido (10/11/2026, com a tela Booking no ar): a certificadora recebe **quando o pedido é criado**, não antes (não na análise do Booking pelo fornecedor). O selo não depende de nenhuma etapa do Booking.
 4. **Quem confere o selo na arte**: a Wellmix (confirmado).
 5. **A certificadora vê o pedido completo**, fotos e tudo o mais: feito (seção 6).
 
 ### 11.2 Ainda em aberto
+0. Registro das respostas do dono de 10/11/2026 sobre o fluxo com o Booking do fornecedor (docs/RFQ_STANDBY.md): a faca continua sendo pedida ao fornecedor **depois da confirmação** da cotação, como hoje (não na análise do Booking); o selo é enviado pela certificadora, aplicado na arte por quem faz a arte e conferido pela Wellmix (o que já está feito aqui).
 1. **Preço e cliente para a certificadora**: ficaram de fora por segurança (preço de compra, valores e o nome do cliente). Se a certificadora precisar do cliente (por exemplo, como titular do certificado) ou de algum valor, é uma liberação de uma linha.
 
 ### 12. Melhorias futuras

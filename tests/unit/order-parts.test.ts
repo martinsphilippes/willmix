@@ -84,4 +84,20 @@ describe("partes do pedido na tabela de etapas", () => {
     expect(map.get("TRANSPORT")?.map((p) => p.key)).toEqual(["receiving"]);
     expect(map.has("PREPARATION")).toBe(false);
   });
+
+  it("a certificação fica em Pedido criado, depois do documento: a certificadora recebe quando o pedido nasce", () => {
+    const map = orderPartsByStage([
+      stepsPart("certification", [{ done: false, started: false }], "#c"),
+      documentPart(
+        [{ key: "order_signed_wellmix", status: "pending" }],
+        "/doc",
+      ),
+      sheetPart({ missing: 1, started: false }, "/s", null),
+    ]);
+    expect(map.get("ORDER_CREATED")?.map((p) => p.key)).toEqual([
+      "document",
+      "certification",
+    ]);
+    expect(map.get("PREPARATION")?.map((p) => p.key)).toEqual(["sheet"]);
+  });
 });

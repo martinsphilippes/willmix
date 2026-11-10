@@ -72,7 +72,7 @@ O interruptor é só do administrador (`setRfqEnabledAction`, `src/app/app/actio
 
 - A situação da solicitação continua se chamando "RFQ aberta" nas listas e na Control Tower (é o nome da etapa no banco). Trocar o rótulo para "Com o fornecedor" é uma mudança só de texto, se o dono quiser.
 - O fornecedor vê o produto quando a Wellmix gera a solicitação pelo Booking, não na hora em que a ficha sobe (antes disso a Wellmix ainda está analisando preço e margem). Mostrar ao fornecedor já na importação é possível, se for a decisão.
-- A certificação em paralelo com a faca, o pedido mínimo, o prazo e a foto, e o selo da certificadora junto da arte, vêm em seguida.
+- Certificação e selo (docs/CERTIFICATION.md): a certificadora recebe quando o pedido é criado, envia o selo, quem faz a arte aplica e a Wellmix confere. A faca continua sendo pedida ao fornecedor depois da confirmação da cotação. As duas decisões são do dono (10/11/2026).
 
 ## 9. Tela da solicitação (pedido do dono, 10/11/2026)
 
