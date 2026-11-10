@@ -35,7 +35,7 @@ import {
 import { ChatButtons } from "@/components/chat-buttons";
 import { ChatOpenButton } from "@/components/chat-open-button";
 import { stageChat } from "@/lib/stage-chat";
-import { SupplierDielineCard } from "@/components/supplier-dieline-card";
+import { DieCutStepCard } from "@/components/die-cut-step-card";
 import type { PartyType } from "@/lib/db/schema";
 import { cargoViewForOrder } from "@/lib/services/order-cargo";
 import { CargoCard } from "@/components/cargo-card";
@@ -1855,12 +1855,13 @@ export default async function OrderPage({
 
       <div className="mt-6 flex min-w-0 flex-col gap-6">
         {/* Faca (die-cut) da embalagem: o fornecedor do pedido envia (ou troca). */}
-        <SupplierDielineCard
+        <DieCutStepCard
           t={t}
           user={user}
           from={{ orderId: order.id }}
           back={`/app/orders/${order.id}`}
-          justSent={dielineNotice === "sent"}
+          notice={dielineNotice}
+          error={error}
         />
         {/* Pagamento ao fornecedor: fora do fluxo das etapas (condição do
             fornecedor, parcelas e, para a Wellmix, o pagamento da vez). */}

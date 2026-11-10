@@ -1261,7 +1261,29 @@ const APPROVAL_LEVEL_LABEL: Record<string, string> = {
 };
 
 /** Entregáveis do briefing de embalagem (pendências saem em português, como as demais). */
-/** Pendências "Faca (die-cut) da embalagem" do fornecedor escolhido. */
+/** Situações do pedido em que a etapa "Die Cut" ainda cobra os quatro itens. */
+const DIE_CUT_STEP_ORDER_STATUSES: string[] = [
+  "ORDER_CREATED",
+  "PREPARATION",
+  "SUPPLIER_PAYMENT",
+  "PACKAGING",
+];
+
+/** Ordem dos itens na etapa "Die Cut" (a mesma do cartão do fornecedor). */
+const DIE_CUT_ITEM_ORDER = ["dieline", "hd", "moq", "leadTime"];
+
+/** Itens da etapa "Die Cut" (pendências saem em português, como as demais). */
+const DIE_CUT_ITEM_LABEL: Record<string, string> = {
+  dieline: "die-cut",
+  hd: "foto em alta",
+  moq: "pedido mínimo",
+  leadTime: "prazo de entrega",
+};
+
+/**
+ * Pendências da etapa "Die Cut" do fornecedor escolhido: die-cut, foto em
+ * alta, pedido mínimo e prazo de entrega (src/lib/services/die-cut-step.ts).
+ */
 async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
   const store = getStore();
   const selected = await store.list("quotes", {
@@ -1278,8 +1300,21 @@ async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
         },
       })
       .catch(() => [])
-  ).filter(dielineMissing);
+  )
+    // Etapa "Die Cut": só onde o die-cut é um entregável do briefing.
+    .filter((b) => b.requiredKeys.includes("dieline"));
   if (!briefs.length) return [];
+  const { superplanMissing } = await import("@/lib/superplan-rfq");
+  // Foto em alta: fica na ficha da cotação escolhida.
+  const hdQuoteIds = new Set(
+    (
+      await store
+        .list("product_photos", {
+          filter: { orderId: selected.map((q) => q.id), kind: "hd" },
+        })
+        .catch(() => [])
+    ).map((p) => p.orderId),
+  );
   const orderIds = briefs
     .map((b) => b.orderId)
     .filter((id): id is string => !!id);
@@ -1302,11 +1337,27 @@ async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
       : null;
     if (brief.orderId && (!order || order.supplierId !== user.partyId))
       continue;
+    // Os quatro itens da etapa: die-cut, foto em alta, MOQ e prazo. Pedido
+    // que já passou da arte (produção em diante) só cobra o die-cut que
+    // ficou faltando: os outros três não voltam a cobrar pedido antigo.
+    const quote = selected.find((q) => q.id === request.selectedQuoteId)!;
+    const early = !order || DIE_CUT_STEP_ORDER_STATUSES.includes(order.status);
+    const missing = early
+      ? superplanMissing({
+          dieline: !dielineMissing(brief),
+          moq: quote.moq ?? null,
+          leadTimeDays: quote.leadTimeDays,
+          hd: hdQuoteIds.has(quote.id),
+        })
+      : dielineMissing(brief)
+        ? ["dieline" as const]
+        : [];
+    if (!missing.length) continue;
     out.push(
       finish(
         {
           kind: "packaging_brief",
-          title: `Faca (die-cut) da embalagem: ${request.productName}`,
+          title: `Die Cut: ${request.productName}`,
           text: {
             title: "tasks.dieline.title",
             detail: order
@@ -1325,7 +1376,11 @@ async function supplierDielineTasks(user: User, now: Date): Promise<Task[]> {
               : request.number
                 ? `Solicitação nº ${request.number}`
                 : null,
-            "envie a faca da caixa: a agência faz a arte em cima dela",
+            `falta: ${DIE_CUT_ITEM_ORDER.filter((m) =>
+              (missing as string[]).includes(m),
+            )
+              .map((m) => DIE_CUT_ITEM_LABEL[m])
+              .join(", ")}`,
           ]
             .filter(Boolean)
             .join(" · "),

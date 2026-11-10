@@ -45,7 +45,7 @@ export const pt = {
   "agencyTasks.help.seal":
     "Aplique na arte o selo enviado pela certificadora e envie a arte com o selo para a Wellmix conferir.",
   "tasks.group.supplier.booking": "Analisar o Booking",
-  "tasks.group.supplier.dieline": "Faca da embalagem",
+  "tasks.group.supplier.dieline": "Die Cut",
   "tasks.group.supplier.sheet": "Ficha de compra",
   "tasks.group.supplier.art": "Aprovar a arte",
   "tasks.group.supplier.sign": "Assinar o pedido",
@@ -54,7 +54,7 @@ export const pt = {
   "supplierTasks.help.booking":
     "Confira preço, pedido mínimo, prazo e fotos do produto e envie a resposta.",
   "supplierTasks.help.dieline":
-    "Envie a faca (die-cut) da caixa. A agência faz a arte em cima dela.",
+    "Envie o die-cut e a foto em alta e confirme o pedido mínimo e o prazo de entrega.",
   "supplierTasks.help.sheet":
     "Preencha caixa, pesos, medidas e fotos do produto do pedido.",
   "supplierTasks.help.art":
@@ -108,7 +108,7 @@ export const en: Record<keyof typeof pt, string> = {
   "agencyTasks.help.seal":
     "Apply the seal sent by the certifier to the artwork and upload it for Wellmix to check.",
   "tasks.group.supplier.booking": "Review the Booking",
-  "tasks.group.supplier.dieline": "Packaging die-cut",
+  "tasks.group.supplier.dieline": "Die Cut",
   "tasks.group.supplier.sheet": "Purchase sheet",
   "tasks.group.supplier.art": "Approve the artwork",
   "tasks.group.supplier.sign": "Sign the order",
@@ -117,7 +117,7 @@ export const en: Record<keyof typeof pt, string> = {
   "supplierTasks.help.booking":
     "Check price, minimum order, lead time and product photos and send your answer.",
   "supplierTasks.help.dieline":
-    "Send the die-cut of the box. The agency builds the artwork on it.",
+    "Send the die-cut and the high-resolution photo and confirm the minimum order and the lead time.",
   "supplierTasks.help.sheet":
     "Fill in carton, weights, measurements and photos of the ordered product.",
   "supplierTasks.help.art":
@@ -169,7 +169,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "agencyTasks.help.seal":
     "把认证机构发送的认证标志加到设计稿上，并上传给 Wellmix 核对。",
   "tasks.group.supplier.booking": "审核 Booking",
-  "tasks.group.supplier.dieline": "包装刀模",
+  "tasks.group.supplier.dieline": "刀模 (Die Cut)",
   "tasks.group.supplier.sheet": "采购表",
   "tasks.group.supplier.art": "确认设计稿",
   "tasks.group.supplier.sign": "签署订单",
@@ -177,8 +177,7 @@ export const zh: Record<keyof typeof pt, string> = {
   "tasks.group.supplier.shipping": "装运",
   "supplierTasks.help.booking":
     "核对价格、起订量、交期和产品照片，然后提交答复。",
-  "supplierTasks.help.dieline":
-    "上传包装盒刀模（die-cut）。设计公司在其上制作设计稿。",
+  "supplierTasks.help.dieline": "上传刀模和高清照片，并确认起订量和交期。",
   "supplierTasks.help.sheet": "填写订单产品的装箱、重量、尺寸和照片。",
   "supplierTasks.help.art":
     "核对包装设计稿并确认，或退回并说明需要修改的地方。",

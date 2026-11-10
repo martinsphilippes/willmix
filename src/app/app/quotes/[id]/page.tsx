@@ -4,7 +4,7 @@ import { requireScreen } from "@/lib/auth/guard";
 import { canOpen } from "@/lib/auth/screens";
 import { canViewQuote, isWellmix } from "@/lib/auth/permissions";
 import { ChatButtons } from "@/components/chat-buttons";
-import { SupplierDielineCard } from "@/components/supplier-dieline-card";
+import { DieCutStepCard } from "@/components/die-cut-step-card";
 import { SuperplanItemsCard } from "@/components/superplan-items-card";
 import {
   QuoteNegotiationCard,
@@ -469,12 +469,13 @@ export default async function QuotePage({
         {/* Cotação escolhida: o fornecedor envia a faca (die-cut) da embalagem. */}
         {quote.status === "selected" && request.origin !== "superplan" ? (
           <div className="lg:col-span-2">
-            <SupplierDielineCard
+            <DieCutStepCard
               t={t}
               user={user}
               from={{ quoteId: quote.id }}
               back={`/app/quotes/${quote.id}`}
-              justSent={dielineNotice === "sent"}
+              notice={dielineNotice}
+              error={error}
             />
           </div>
         ) : null}
