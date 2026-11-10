@@ -9,6 +9,7 @@ import {
   type PricingMissing,
 } from "@/lib/pricing";
 import { MoneyInput } from "./money-input";
+import { PICK_QUOTE_EVENT, QUOTE_CURRENT_EVENT } from "./pick-quote-button";
 
 /*
  * Escolha do fornecedor com o valor ao cliente calculado (custo importado +
@@ -115,6 +116,23 @@ export function SellPriceCalculator({
   const [carrierEdits, setCarrierEdits] = useState<Record<string, string>>({});
   const [manual, setManual] = useState<string | null>(null);
   const current = quotes.find((q) => q.quoteId === quoteId) ?? quotes[0];
+  // Disputa de fornecedores (acima): "Escolher" numa linha seleciona aqui, e
+  // a linha fica sabendo qual está escolhido.
+  useEffect(() => {
+    const onPick = (event: Event) => {
+      const id = (event as CustomEvent<{ quoteId?: string }>).detail?.quoteId;
+      if (id && quotes.some((q) => q.quoteId === id)) setQuoteId(id);
+    };
+    window.addEventListener(PICK_QUOTE_EVENT, onPick);
+    return () => window.removeEventListener(PICK_QUOTE_EVENT, onPick);
+  }, [quotes]);
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent(QUOTE_CURRENT_EVENT, {
+        detail: { quoteId: current?.quoteId ?? "" },
+      }),
+    );
+  }, [current?.quoteId]);
   const carrier =
     (current && carrierEdits[current.quoteId]) ??
     (current?.shippingFreightBrl != null
