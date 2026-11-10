@@ -144,6 +144,33 @@ describe("aprovação do último nível responde na hora", () => {
     );
   });
 
+  it("administrador aprova todos os níveis de uma vez; só ele pode", async () => {
+    const store = getStore();
+    const { req, quote } = await quoted("Copo de uma vez");
+    const approval = await ap.submitForApproval(admin, quote.id, brl(28_000));
+    expect(approval.levels.length).toBeGreaterThan(1);
+    const operator = (await store.list("users")).find(
+      (u) => u.role === "operator",
+    )!;
+    await expect(
+      ap.decideApproval(operator, approval.id, "approved", null, {
+        allLevels: true,
+      }),
+    ).rejects.toThrow();
+    await ap.decideApproval(admin, approval.id, "approved", null, {
+      allLevels: true,
+    });
+    await drain();
+    const done = (await store.get("approvals", approval.id))!;
+    expect(done.status).toBe("approved");
+    // Cada nível fica registrado, todos no nome do administrador.
+    expect(done.steps.map((step) => step.level)).toEqual(approval.levels);
+    expect(done.steps.every((step) => step.userId === admin.id)).toBe(true);
+    expect((await store.get("requests", req.id))!.selectedQuoteId).toBe(
+      quote.id,
+    );
+  });
+
   it("a gravação falha: fica 'aprovada, mas não gravada' com o motivo", async () => {
     const store = getStore();
     const { quote } = await quoted("Copo que falha");

@@ -770,3 +770,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 
 - **Pedido do dono** (10/11/2026): a tela "Minhas pendências" da agência ganha a mesma faixa de etapas do fornecedor (quadrados em fluxo, cores por situação, legenda). O caminho dela tem três etapas: **Arte na cotação** (briefing de embalagem), **Arte do pedido** (item de arte da etapa Arte e embalagem) e **Selo na arte** (selo de certificação a aplicar). O grupo da pendência da agência vira `agency.<etapa>` (`AGENCY_STEPS` em `tasks.ts`); só a lista da própria agência muda. O componente da faixa (`SupplierSteps` em `task-list.tsx`) passou a receber o caminho de quem vê.
 - Teste: `tests/unit/packaging-brief.test.ts`.
+
+## Aprovação do pré-custo: administrador aprova todos os níveis de uma vez
+
+- **Pedido do dono** (10/11/2026): com a conta do administrador, dá para aprovar todas as etapas da aprovação do pré-custo num clique. No cartão "Aprovação do pré-custo", quando ainda há mais de um nível pela frente, o administrador vê o botão "Aprovar todos os níveis" (o "Aprovar" continua, para um nível só). Cada nível fica registrado no nome dele e na auditoria; o último segue o caminho normal (grava a escolha do fornecedor). Só o administrador pode (`decideApproval` com `allLevels`, `decideAllLevelsAction`).
+- Teste: `tests/unit/approval-deferred.test.ts`.

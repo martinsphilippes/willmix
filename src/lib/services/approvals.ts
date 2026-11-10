@@ -261,11 +261,46 @@ export async function decideApproval(
   approvalId: string,
   decision: "approved" | "rejected",
   note: string | null,
+  /**
+   * Administrador: aprova de uma vez o nível atual e todos os que faltam
+   * (pedido do dono, 10/11/2026). Cada nível fica registrado no nome dele.
+   */
+  options: { allLevels?: boolean } = {},
 ): Promise<Approval> {
   const store = getStore();
-  const approval = await store.get("approvals", approvalId);
+  let approval = await store.get("approvals", approvalId);
   if (!approval) throw new ApprovalError("not_found");
   if (!canDecide(user, approval)) throw new ForbiddenError();
+  if (options.allLevels && decision === "approved") {
+    if (!isAdmin(user)) throw new ForbiddenError();
+    // Os níveis antes do último: registrados aqui; o último segue o caminho
+    // normal abaixo (grava a escolha do fornecedor).
+    const at = new Date().toISOString();
+    const from = approval.levels.indexOf(approval.currentLevel!);
+    const middle = approval.levels.slice(from, -1);
+    if (middle.length) {
+      approval = await store.update("approvals", approval.id, {
+        steps: [
+          ...approval.steps,
+          ...middle.map((level) => ({
+            level,
+            decision: "approved" as const,
+            userId: user.id,
+            at,
+            note: note?.trim() || null,
+          })),
+        ],
+        currentLevel: approval.levels[approval.levels.length - 1],
+      });
+      await audit(
+        user,
+        "approval.approve",
+        "request",
+        approval.requestId,
+        `Administrador aprovou de uma vez os níveis: ${middle.join(", ")}`,
+      );
+    }
+  }
   if (decision === "rejected" && !note?.trim())
     throw new ApprovalError("reason_required");
   const request = await store.get("requests", approval.requestId);
