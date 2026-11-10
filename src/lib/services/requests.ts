@@ -34,6 +34,7 @@ import {
 import { getSettings } from "@/lib/settings";
 import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
+import { releaseBookingsOfRequests } from "./booking-intake";
 import { isHiddenByBooking } from "./booking-visibility";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
 import { createStagesForOrder } from "@/lib/workflow/engine";
@@ -1432,6 +1433,8 @@ export async function deleteRequests(
       { status: request.status },
       { status: "CANCELLED" },
     );
+    // Nasceu do Booking: a linha volta para antes da solicitação.
+    await releaseBookingsOfRequests(user, [request.id]);
     deleted++;
   }
   return { deleted, skipped: unique.length - deleted };

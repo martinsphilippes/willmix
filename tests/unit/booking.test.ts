@@ -490,3 +490,38 @@ describe("filtros do Booking: toda coluna filtra", () => {
     expect(pageOfBookingRows([], 1)).toMatchObject({ page: 1, pages: 1 });
   });
 });
+
+describe("filtro de número inteiro", () => {
+  it("em colunas de peças e caixas, 1.200 é mil e duzentos; em preço e peso, o ponto é decimal", () => {
+    const filters = parseBookingFilters(
+      {
+        moq_min: "1.200",
+        masterQty_max: "1.000",
+        reservedQty_min: "2.400",
+        price_min: "1.200",
+        netWeight_max: "0,225",
+      },
+      { superplan: true },
+    );
+    expect(filters.numbers.moq).toEqual({ min: 1200 });
+    expect(filters.numbers.masterQty).toEqual({ max: 1000 });
+    expect(filters.numbers.reservedQty).toEqual({ min: 2400 });
+    expect(filters.numbers.price).toEqual({ min: 1.2 });
+    expect(filters.numbers.netWeight).toEqual({ max: 0.225 });
+    const rows = [
+      row({ id: "a", moq: 600 }),
+      row({ id: "b", moq: 1200 }),
+      row({ id: "c", moq: 2400 }),
+    ];
+    expect(
+      filterBookingRows(rows, filters, { superplan: true }).map((r) => r.id),
+    ).toEqual([]);
+    const onlyMoq = parseBookingFilters(
+      { moq_min: "1.200" },
+      { superplan: true },
+    );
+    expect(
+      filterBookingRows(rows, onlyMoq, { superplan: true }).map((r) => r.id),
+    ).toEqual(["b", "c"]);
+  });
+});

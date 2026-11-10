@@ -62,6 +62,8 @@ export const BOOKING_ERRORS = [
   "booking_none_selected",
   /** Ação em várias linhas: linhas demais de uma vez. */
   "booking_too_many",
+  /** Gerar solicitação: mais linhas do que um lote aceita. */
+  "booking_request_too_many",
   /** Gerar solicitação: linha ainda não aprovada, descartada ou já solicitada. */
   "booking_not_requestable",
   /** Gerar solicitação: linha reservada para outro cliente. */
@@ -264,6 +266,8 @@ export interface BookingColumn {
   kind: BookingColumnKind;
   /** Só aparece (e só filtra) para quem abre o Superplan. */
   superplanOnly?: boolean;
+  /** Número inteiro (peças, caixas): no filtro, "1.200" é mil e duzentos. */
+  whole?: boolean;
   /** Valor da linha nesta coluna: texto, número, data ISO ou id da opção. */
   value: (row: BookingRow) => string | number | null;
 }
@@ -292,9 +296,9 @@ export const BOOKING_COLUMNS = [
   { key: "sheetDate", kind: "date", value: (r) => r.sheetDate },
   { key: "price", kind: "number", value: (r) => r.price },
   { key: "currency", kind: "option", value: (r) => r.currency },
-  { key: "moq", kind: "number", value: (r) => r.moq },
-  { key: "masterQty", kind: "number", value: (r) => r.masterQty },
-  { key: "innerQty", kind: "number", value: (r) => r.innerQty },
+  { key: "moq", kind: "number", whole: true, value: (r) => r.moq },
+  { key: "masterQty", kind: "number", whole: true, value: (r) => r.masterQty },
+  { key: "innerQty", kind: "number", whole: true, value: (r) => r.innerQty },
   { key: "netWeight", kind: "number", value: (r) => r.netWeightKg },
   { key: "grossWeight", kind: "number", value: (r) => r.grossWeightKg },
   {
@@ -309,7 +313,12 @@ export const BOOKING_COLUMNS = [
   { key: "material", kind: "text", value: (r) => r.material },
   { key: "packageType", kind: "text", value: (r) => r.packageType },
   { key: "customer", kind: "option", value: (r) => r.customerId },
-  { key: "reservedQty", kind: "number", value: (r) => r.reservedQty },
+  {
+    key: "reservedQty",
+    kind: "number",
+    whole: true,
+    value: (r) => r.reservedQty,
+  },
   {
     key: "salePrice",
     kind: "number",
@@ -326,7 +335,12 @@ export const BOOKING_COLUMNS = [
   { key: "enteredAt", kind: "date", value: (r) => r.enteredAt },
   { key: "source", kind: "option", value: (r) => r.importBatchId },
   { key: "note", kind: "text", value: (r) => r.note },
-  { key: "request", kind: "number", value: (r) => r.requestNumber },
+  {
+    key: "request",
+    kind: "number",
+    whole: true,
+    value: (r) => r.requestNumber,
+  },
 ] as const satisfies readonly BookingColumn[];
 
 export type BookingColumnKey = (typeof BOOKING_COLUMNS)[number]["key"];
@@ -396,7 +410,7 @@ export function parseBookingFilters(
       if (v.length) filters.options[key] = [...new Set(v)];
     } else if (c.kind === "number") {
       const read = (raw: string) => {
-        const n = parseNumberInput(raw);
+        const n = parseNumberInput(raw, { int: !!c.whole });
         return n === null || Number.isNaN(n) ? undefined : n;
       };
       const min = read(first(params[`${key}_min`]));

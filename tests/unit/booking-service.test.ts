@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { withTempStore } from "./setup";
 
 /*
@@ -589,7 +589,7 @@ describe("gerar solicitação", () => {
     );
     expect(await ask([])).toBe("booking_none_selected");
     expect(await ask(Array.from({ length: 31 }, (_, i) => `id-${i}`))).toBe(
-      "booking_too_many",
+      "booking_request_too_many",
     );
     // Nada foi criado nem movido.
     expect((await getStore().list("requests")).length).toBe(before);
@@ -734,5 +734,215 @@ describe("exclusão do produto e limpeza dos dados de venda", () => {
     expect(
       await getStore().get("products", reserved.product.id),
     ).not.toBeNull();
+  });
+});
+
+describe("achados da revisão", () => {
+  const snapshot = {
+    businessType: "UD",
+    salePriceBrl: 55.21,
+    usesMinimum: true,
+    costBrl: 30.67,
+    minimumBrl: 55.21,
+    profitPct: 16,
+    targetPct: 22,
+    verdict: "below" as const,
+    targetPriceBrl: 62.89,
+    missing: [],
+  };
+
+  it("a auditoria da análise não leva custo, preço nem lucro (a tela Auditoria é de quem não abre o Superplan)", async () => {
+    const { booking: b } = await row();
+    await booking.saveBookingAnalysis(admin, b.id, snapshot);
+    await booking.saveBookingAnalysis(admin, b.id, {
+      ...snapshot,
+      verdict: "viable",
+    });
+    const entries = await getStore().list("audit_log", {
+      filter: { entity: "booking", entityId: b.id },
+    });
+    const analysis = entries.filter((e) => e.action === "booking.analysis");
+    expect(analysis).toHaveLength(2);
+    for (const entry of analysis) {
+      const text = JSON.stringify([entry.before, entry.after, entry.summary]);
+      for (const secret of [
+        "costBrl",
+        "minimumBrl",
+        "salePriceBrl",
+        "profitPct",
+        "targetPriceBrl",
+        "30.67",
+        "55.21",
+        "62.89",
+      ])
+        expect(text).not.toContain(secret);
+    }
+    // O sinal e a etapa ficam (a lista já os mostra a quem analisa).
+    expect(JSON.stringify(analysis.map((e) => e.after))).toContain("viable");
+  });
+
+  it("oferecer ou reservar para um cliente que deixou de estar ativo é recusado, com a linha", async () => {
+    const gone = await getStore().create("parties", {
+      ...(await getStore().get("parties", joao.partyId!))!,
+      id: undefined,
+      name: "Cliente Que Saiu",
+    } as never);
+    const a = await row("approved", { customerId: gone.id, reservedQty: 240 });
+    await getStore().update("parties", gone.id, { active: false });
+    for (const status of ["offered", "reserved"] as const) {
+      let refusal: unknown;
+      try {
+        await booking.moveBookings(buyer, { ids: [a.booking.id], status });
+      } catch (error) {
+        refusal = error;
+      }
+      expect(refusal).toBeInstanceOf(booking.BookingRefusal);
+      const r = refusal as InstanceType<typeof booking.BookingRefusal>;
+      expect([r.message, r.bookingId]).toEqual([
+        "booking_customer_invalid",
+        a.booking.id,
+      ]);
+      expect(
+        await code(() =>
+          booking.saveBookingRow(buyer, a.booking.id, { status }),
+        ),
+      ).toBe("booking_customer_invalid");
+    }
+    expect((await fresh(a.booking.id)).status).toBe("approved");
+    // Outras mudanças na linha continuam possíveis (observação, responsável).
+    await booking.saveBookingRow(buyer, a.booking.id, { note: "ver cliente" });
+    expect((await fresh(a.booking.id)).note).toBe("ver cliente");
+  });
+
+  it("duas chamadas juntas para a mesma linha: só uma gera a solicitação", async () => {
+    const a = await row("approved");
+    const before = (await getStore().list("requests")).length;
+    const results = await Promise.allSettled([
+      booking.generateRequestFromBooking(
+        buyer,
+        { ids: [a.booking.id], customer: joao.partyId! },
+        t,
+      ),
+      booking.generateRequestFromBooking(
+        buyer,
+        { ids: [a.booking.id], customer: joao.partyId! },
+        t,
+      ),
+    ]);
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const refused = results.find((r) => r.status === "rejected") as
+      PromiseRejectedResult | undefined;
+    expect((refused?.reason as Error).message).toBe("booking_not_requestable");
+    const live = (await getStore().list("requests")).filter(
+      (r) => r.productId === a.product.id && r.status !== "CANCELLED",
+    );
+    expect(live).toHaveLength(1);
+    expect((await getStore().list("requests")).length).toBe(before + 1);
+    const saved = await fresh(a.booking.id);
+    expect([saved.status, saved.requestId]).toEqual(["requested", live[0].id]);
+  });
+
+  it("falha ao ligar a linha à solicitação não deixa gerar de novo (a linha já está tomada)", async () => {
+    const a = await row("approved");
+    const store = getStore();
+    const original = store.update.bind(store);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "update")
+      .mockImplementation(async (table, id, patch) => {
+        if (
+          table === "bookings" &&
+          (patch as { requestId?: string | null }).requestId
+        )
+          throw new Error("store down");
+        return original(table, id, patch as never);
+      });
+    let created: Awaited<ReturnType<typeof booking.generateRequestFromBooking>>;
+    try {
+      created = await booking.generateRequestFromBooking(
+        buyer,
+        { ids: [a.booking.id], customer: joao.partyId! },
+        t,
+      );
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(created).toHaveLength(1);
+    expect((await fresh(a.booking.id)).status).toBe("requested");
+    expect(
+      await code(() =>
+        booking.generateRequestFromBooking(
+          buyer,
+          { ids: [a.booking.id], customer: joao.partyId! },
+          t,
+        ),
+      ),
+    ).toBe("booking_not_requestable");
+    expect(
+      (await getStore().list("requests")).filter(
+        (r) => r.productId === a.product.id,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("a criação da solicitação falhou: as linhas voltam para onde estavam", async () => {
+    const a = await row("reserved", {
+      customerId: joao.partyId,
+      reservedQty: 240,
+    });
+    const requests = await import("@/lib/services/requests");
+    const spy = vi
+      .spyOn(requests, "createRequestBatch")
+      .mockRejectedValue(new Error("schema_outdated"));
+    try {
+      expect(
+        await code(() =>
+          booking.generateRequestFromBooking(buyer, { ids: [a.booking.id] }, t),
+        ),
+      ).toBe("schema_outdated");
+    } finally {
+      spy.mockRestore();
+    }
+    const back = await fresh(a.booking.id);
+    expect([back.status, back.requestId, back.reservedQty]).toEqual([
+      "reserved",
+      null,
+      240,
+    ]);
+    expect(back.statusChangedByUserId).toBe(a.booking.statusChangedByUserId);
+  });
+
+  it("excluir a solicitação gerada solta a linha (volta para Reservado, sem a ligação)", async () => {
+    const a = await row("approved");
+    const [request] = await booking.generateRequestFromBooking(
+      buyer,
+      {
+        ids: [a.booking.id],
+        customer: joao.partyId!,
+        quantities: { [a.booking.id]: 240 },
+      },
+      t,
+    );
+    const { deleteRequests } = await import("@/lib/services/requests");
+    expect((await deleteRequests(buyer, [request.id])).deleted).toBe(1);
+    const back = await fresh(a.booking.id);
+    expect([
+      back.status,
+      back.requestId,
+      back.requestNumber,
+      back.customerId,
+      back.reservedQty,
+    ]).toEqual(["reserved", null, null, joao.partyId, 240]);
+    // O comprador consegue corrigir e gerar de novo, sem o administrador.
+    await booking.saveBookingRow(buyer, a.booking.id, { reservedQty: 360 });
+    const again = await booking.generateRequestFromBooking(
+      buyer,
+      { ids: [a.booking.id] },
+      t,
+    );
+    expect(again[0].quantity).toBe(360);
+    const detail = await booking.getBookingDetail(buyer, a.booking.id);
+    expect(detail!.history.map((h) => h.action)).toContain("booking.release");
   });
 });

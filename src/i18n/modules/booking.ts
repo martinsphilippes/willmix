@@ -70,6 +70,8 @@ export const pt = {
     "Marque pelo menos uma linha antes de usar a ação.",
   "booking.error.booking_too_many":
     "Linhas demais de uma vez. Marque até {max} linhas.",
+  "booking.error.booking_request_too_many":
+    "Linhas demais para uma solicitação só. Marque até {max} linhas por vez.",
   "booking.error.booking_not_requestable":
     "Só linhas em Aprovado, Oferecido ou Reservado geram solicitação. Confira as linhas marcadas.",
   "booking.error.booking_customer_mismatch":
@@ -166,6 +168,8 @@ export const en: Record<keyof typeof pt, string> = {
     "Tick at least one row before using the action.",
   "booking.error.booking_too_many":
     "Too many rows at once. Tick up to {max} rows.",
+  "booking.error.booking_request_too_many":
+    "Too many rows for one request. Tick up to {max} rows at a time.",
   "booking.error.booking_not_requestable":
     "Only rows in Approved, Offered or Reserved create a request. Check the ticked rows.",
   "booking.error.booking_customer_mismatch":
@@ -258,6 +262,8 @@ export const zh: Record<keyof typeof pt, string> = {
     "负责人无效。请选择有效的 Wellmix 账号。",
   "booking.error.booking_none_selected": "使用操作前请至少勾选一行。",
   "booking.error.booking_too_many": "一次勾选的行太多。最多勾选 {max} 行。",
+  "booking.error.booking_request_too_many":
+    "一张询价单的行数太多。每次最多勾选 {max} 行。",
   "booking.error.booking_not_requestable":
     "只有“已批准”“已推荐”或“已预订”的行可以生成询价单。请检查勾选的行。",
   "booking.error.booking_customer_mismatch":

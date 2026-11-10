@@ -1262,22 +1262,22 @@ async function bookingCandidates(
 /**
  * Booking: garante a linha do produto no Booking (responsável = quem
  * importou, na primeira vez; quem já está lá fica na etapa em que está).
- * Produto que a planilha criou entra em Novo (fora da vitrine); produto que
- * já existia no cadastro (`existed`) entra em Aprovado, para a importação
- * não tirar da vitrine o que já se vende. Vem antes da ficha mestre e das
- * fotos: o produto novo só ganha preço e imagem depois de estar fora da
- * vitrine do cliente. Falha aqui: o grupo fica com erro e reimportar
- * conserta (o produto recém-criado é desfeito, ver `dropStub`).
+ * Produto que já existia no cadastro (`existed`) entra em Aprovado, para a
+ * importação não tirar da vitrine o que já se vende. Produto novo entra em
+ * Novo, e a linha dele nasce ANTES do próprio produto (com o id que ele vai
+ * ter, ver `importAsProducts`): em nenhum momento existe um produto novo no
+ * cadastro sem a linha que o mantém fora da vitrine do cliente, nem se a
+ * importação for interrompida no meio.
  */
 async function enterBooking(
   ctx: ImportContext,
-  product: Product,
+  productId: string,
   group: ProductGroup,
   existed: boolean,
 ): Promise<void> {
   try {
     const { created } = await ensureBookingForProduct(ctx.user, {
-      productId: product.id,
+      productId,
       importBatchId: ctx.batchId,
       sourceFileName: (ctx.fileName || ctx.parsed.sheetName).slice(0, 200),
       sourceRows: bookingSourceRows(group),
@@ -1288,34 +1288,72 @@ async function enterBooking(
     else ctx.summary.bookingKept++;
   } catch (error) {
     // O detalhe fica no log do servidor; a tela mostra o código.
-    console.error("[sheet-import] booking", product.id, error);
+    console.error("[sheet-import] booking", productId, error);
     throw new SheetImportError("booking_failed");
   }
 }
 
 /**
- * Booking: o produto acabou de nascer nesta importação e a linha dele no
- * Booking falhou. Ele ainda não tem ficha, preço nem foto; se ficasse no
- * cadastro, apareceria na vitrine do cliente sem ter passado pelo Booking.
- * É desfeito (com a ligação ao fornecedor); reimportar o cria de novo.
+ * Booking: a linha nasceu e o produto dela não (a criação do produto falhou).
+ * A linha sai: não fica uma linha sem produto na tela.
  */
-async function dropStub(ctx: ImportContext, product: Product): Promise<void> {
+async function dropBookingRow(
+  ctx: ImportContext,
+  productId: string,
+): Promise<void> {
   const store = getStore();
   try {
-    for (const link of await store.list("product_suppliers", {
-      filter: { productId: product.id },
-    }))
-      await store.remove("product_suppliers", link.id);
-    await store.remove("products", product.id);
-    await audit(
-      ctx.user,
-      "product.import_rollback",
-      "product",
-      product.id,
-      `${product.name}: desfeito (não entrou no Booking nesta importação)`,
-    );
+    for (const row of await store.list("bookings", { filter: { productId } }))
+      await store.remove("bookings", row.id);
+    ctx.summary.bookingCreated = Math.max(0, ctx.summary.bookingCreated - 1);
   } catch (error) {
-    console.error("[sheet-import] desfazer produto", product.id, error);
+    console.error("[sheet-import] desfazer linha do Booking", productId, error);
+  }
+}
+
+/** Quanto tempo uma linha sem produto espera antes de ser varrida (ms). */
+const ORPHAN_BOOKING_AGE_MS = 10 * 60_000;
+
+/**
+ * Booking: linhas em Novo cujo produto nunca chegou a nascer (importação
+ * interrompida entre a linha e o produto). Não têm dado nenhum; a importação
+ * seguinte as tira. Só as com mais de 10 minutos, para não mexer numa
+ * importação que ainda está rodando. Excluir um produto de vez já leva a
+ * linha dele (product-delete.ts), então linha em Novo sem produto é só isso.
+ */
+async function sweepOrphanBookings(user: User): Promise<void> {
+  const store = getStore();
+  try {
+    const old = (
+      await store.list("bookings", { filter: { status: "new" } })
+    ).filter(
+      (row) => Date.now() - Date.parse(row.createdAt) > ORPHAN_BOOKING_AGE_MS,
+    );
+    if (!old.length) return;
+    const alive = new Set(
+      (
+        await store.list("products", {
+          filter: { id: old.map((row) => row.productId) },
+        })
+      ).map((p) => p.id),
+    );
+    for (const row of old) {
+      if (alive.has(row.productId)) continue;
+      await store.remove("bookings", row.id);
+      await audit(
+        user,
+        "booking.sweep",
+        "booking",
+        row.id,
+        `Linha do Booking sem produto (importação interrompida${
+          row.sourceFileName ? `: ${row.sourceFileName.slice(0, 120)}` : ""
+        }): retirada`,
+        { productId: row.productId, status: row.status },
+        null,
+      );
+    }
+  } catch (error) {
+    console.error("[sheet-import] varrer linhas sem produto", error);
   }
 }
 
@@ -1386,6 +1424,8 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
   const booking = ctx.mode === "booking";
   const store = getStore();
   const namesUsed = new Set<string>();
+  // Sobras de uma importação interrompida (linha sem produto) saem antes.
+  if (booking) await sweepOrphanBookings(user);
   for (const group of parsed.groups) {
     const result: SheetImportRowResult = {
       index: group.index,
@@ -1491,22 +1531,32 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         result.status = "updated";
         summary.updated++;
       } else {
-        product = await store.create("products", {
-          ...PRODUCT_EXTRA_DEFAULTS,
-          lineId: options.lineId,
-          name,
-          sku: null,
-          specification: null,
-          supplierId,
-          supplierSku,
-          material:
-            typeof group.reading.material === "string"
-              ? group.reading.material.slice(0, 120)
-              : null,
-          ...sizes,
-          active: true,
-          source: "import",
-        });
+        // Booking: a linha nasce antes do produto, com o id que ele vai ter
+        // (o produto novo nunca existe no cadastro sem ela).
+        const newId = booking ? randomUUID() : null;
+        if (newId) await enterBooking(ctx, newId, group, false);
+        try {
+          product = await store.create("products", {
+            ...(newId ? { id: newId } : {}),
+            ...PRODUCT_EXTRA_DEFAULTS,
+            lineId: options.lineId,
+            name,
+            sku: null,
+            specification: null,
+            supplierId,
+            supplierSku,
+            material:
+              typeof group.reading.material === "string"
+                ? group.reading.material.slice(0, 120)
+                : null,
+            ...sizes,
+            active: true,
+            source: "import",
+          });
+        } catch (error) {
+          if (newId) await dropBookingRow(ctx, newId);
+          throw error;
+        }
         products.push(product);
         if (supplierId)
           await syncMainSupplierLink(
@@ -1526,22 +1576,10 @@ async function importAsProducts(ctx: ImportContext): Promise<void> {
         summary.created++;
       }
       result.productId = product.id;
-      // Booking: a linha do produto nasce antes da ficha mestre e das fotos.
-      if (booking) {
-        const existed = result.status === "updated";
-        try {
-          await enterBooking(ctx, product, group, existed);
-        } catch (error) {
-          // Produto criado agora e sem linha no Booking: não fica no cadastro.
-          if (!existed) {
-            await dropStub(ctx, product);
-            const at = products.indexOf(product);
-            if (at >= 0) products.splice(at, 1);
-            result.productId = null;
-          }
-          throw error;
-        }
-      }
+      // Booking: o produto que já existia ganha a linha aqui (Aprovado: ele
+      // já estava na vitrine). O novo já a ganhou antes de nascer.
+      if (booking && result.status === "updated")
+        await enterBooking(ctx, product.id, group, true);
       const saved = await saveProductSheet(
         user,
         product.id,

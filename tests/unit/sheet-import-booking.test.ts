@@ -774,6 +774,158 @@ describe("produto que já estava no cadastro (já na vitrine)", () => {
   });
 });
 
+describe("importação interrompida: produto novo nunca fica à vista sem a linha do Booking", () => {
+  const cups = () =>
+    sheet(
+      ["Sigma Canecas", "S9-900"],
+      [
+        { sku: "N1", desc: "CANECA LISA", price: "2", color: "Azul" },
+        { sku: "N2", desc: "CANECA RISCADA", price: "3", color: "Azul" },
+      ],
+    );
+
+  it("falha logo depois de criar o produto: ele já tem a linha (Novo, escondido) e reimportar não o aprova", async () => {
+    const store = getStore();
+    const { hiddenBookingProductIds } =
+      await import("@/lib/services/booking-visibility");
+    const original = store.create.bind(store);
+    let failed = false;
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (
+          !failed &&
+          table === "audit_log" &&
+          (data as { action?: string }).action === "product.create"
+        ) {
+          failed = true;
+          throw new Error("audit down");
+        }
+        return original(table, data as never);
+      });
+    let result: Awaited<ReturnType<typeof svc.importProductSheet>>;
+    try {
+      result = await svc.importProductSheet(admin, file(cups()), {
+        lineId,
+        mode: "booking",
+      });
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(result.results.map((r) => r.status)).toEqual(["error", "created"]);
+    const [stub] = (await store.list("products")).filter(
+      (p) => p.name === "CANECA LISA",
+    );
+    // O produto ficou no cadastro, mas com a linha: o cliente não o vê.
+    expect(stub).toBeTruthy();
+    expect((await bookingOf(stub.id))!.status).toBe("new");
+    expect((await hiddenBookingProductIds()).has(stub.id)).toBe(true);
+    // Reimportar completa o produto e NÃO o trata como "já estava à venda".
+    const again = await svc.importProductSheet(admin, file(cups()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(again.results.map((r) => r.status)).toEqual(["updated", "updated"]);
+    expect(again.results[0].productId).toBe(stub.id);
+    expect((await store.get("products", stub.id))!.price).toBe(2);
+    expect((await bookingOf(stub.id))!.status).toBe("new");
+    expect((await hiddenBookingProductIds()).has(stub.id)).toBe(true);
+  });
+
+  it("a criação do produto falhou: a linha que nasceu antes sai junto (nada fica sem produto)", async () => {
+    const store = getStore();
+    const bytes = () =>
+      sheet(
+        ["Tau Pratos", "T2-200"],
+        [{ sku: "P1", desc: "PRATO FUNDO", price: "4", color: "Azul" }],
+      );
+    const original = store.create.bind(store);
+    const before = await count();
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = vi
+      .spyOn(store, "create")
+      .mockImplementation(async (table, data) => {
+        if (table === "products") throw new Error("products down");
+        return original(table, data as never);
+      });
+    let result: Awaited<ReturnType<typeof svc.importProductSheet>>;
+    try {
+      result = await svc.importProductSheet(admin, file(bytes()), {
+        lineId,
+        mode: "booking",
+      });
+    } finally {
+      spy.mockRestore();
+      log.mockRestore();
+    }
+    expect(result.results[0]).toMatchObject({
+      status: "error",
+      productId: null,
+    });
+    expect(result.summary).toMatchObject({ created: 0, bookingCreated: 0 });
+    const after = await count();
+    expect(after.products).toBe(before.products);
+    expect(after.bookings).toBe(before.bookings);
+    const again = await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(again.results[0].status).toBe("created");
+    expect((await bookingOf(again.results[0].productId!))!.status).toBe("new");
+  });
+
+  it("linha em Novo sem produto (importação que caiu no meio) é varrida na importação seguinte, depois de 10 minutos", async () => {
+    const store = getStore();
+    const orphan = await store.create("bookings", {
+      productId: "produto-que-nunca-nasceu",
+      status: "new",
+      importBatchId: "lote-que-nao-terminou",
+      sourceFileName: "caiu.xlsx",
+      sourceRows: "2",
+      sourceOrder: 2,
+      customerId: null,
+      reservedQty: null,
+      ownerUserId: admin.id,
+      note: null,
+      analysis: null,
+      requestId: null,
+      requestGroupId: null,
+      requestNumber: null,
+      statusChangedAt: null,
+      statusChangedByUserId: null,
+      createdByUserId: admin.id,
+    });
+    const bytes = () =>
+      sheet(
+        ["Ômega Potes", "O1-100"],
+        [{ sku: "T1", desc: "POTE REDONDO", price: "1", color: "Azul" }],
+      );
+    // Recém-criada: pode ser de uma importação ainda rodando; fica.
+    await svc.importProductSheet(admin, file(bytes()), {
+      lineId,
+      mode: "booking",
+    });
+    expect(await store.get("bookings", orphan.id)).not.toBeNull();
+    // Onze minutos depois: sai, e as linhas com produto continuam.
+    const kept = (await store.list("bookings")).length;
+    const clock = vi
+      .spyOn(Date, "now")
+      .mockReturnValue(Date.now() + 11 * 60_000);
+    try {
+      await svc.importProductSheet(admin, file(bytes()), {
+        lineId,
+        mode: "booking",
+      });
+    } finally {
+      clock.mockRestore();
+    }
+    expect(await store.get("bookings", orphan.id)).toBeNull();
+    expect((await store.list("bookings")).length).toBe(kept - 1);
+  });
+});
+
 describe("pesos: o líquido nunca é lido como bruto", () => {
   const bytes = () =>
     sheet(

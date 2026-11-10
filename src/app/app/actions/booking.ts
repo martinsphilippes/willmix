@@ -41,9 +41,18 @@ const FLASH = [
 /** Volta para a lista mantendo os filtros (só endereço do próprio Booking). */
 function listBack(form: FormData) {
   const back = str(form, "back");
-  if (!/^\/app\/booking(\?[A-Za-z0-9_=&%.+,:-]*)?$/.test(back))
+  // Conferido pela leitura do endereço (e não por lista de caracteres): só
+  // a própria lista do Booking, com os filtros que ela mesma montou.
+  if (!back.startsWith("/app/booking") || back.length > 4000)
     return "/app/booking";
-  const url = new URL(back, "http://x");
+  let url: URL;
+  try {
+    url = new URL(back, "http://x");
+  } catch {
+    return "/app/booking";
+  }
+  if (url.origin !== "http://x" || url.pathname !== "/app/booking")
+    return "/app/booking";
   for (const key of FLASH) url.searchParams.delete(key);
   return url.pathname + url.search;
 }
@@ -193,16 +202,32 @@ export async function saveBookingRowAction(form: FormData) {
           ownerUserId: str(form, "ownerUserId"),
           note: str(form, "note"),
         });
+      /*
+       * Só o que a pessoa mudou é gravado: a página manda junto como cada
+       * campo estava quando abriu (`was.<campo>`). Assim, salvar uma
+       * observação numa página aberta há tempo não desfaz a etapa, o cliente
+       * ou a reserva que alguém mudou nesse meio-tempo.
+       */
+      const lines = (v: string) => v.replace(/\r\n/g, "\n");
+      const changed = (key: string) =>
+        !form.has(`was.${key}`) ||
+        lines(str(form, `was.${key}`)) !== lines(str(form, key));
       const { saveBookingRow } = await import("@/lib/services/booking");
       await saveBookingRow(user, input.id, {
-        status: input.status,
-        customerId:
-          input.customerId && input.customerId !== BOOKING_EMPTY
-            ? input.customerId
-            : null,
-        reservedQty: input.reservedQty,
-        ownerUserId: input.ownerUserId || null,
-        note: input.note || null,
+        ...(changed("status") ? { status: input.status } : {}),
+        ...(changed("customerId")
+          ? {
+              customerId:
+                input.customerId && input.customerId !== BOOKING_EMPTY
+                  ? input.customerId
+                  : null,
+            }
+          : {}),
+        ...(changed("reservedQty") ? { reservedQty: input.reservedQty } : {}),
+        ...(changed("ownerUserId")
+          ? { ownerUserId: input.ownerUserId || null }
+          : {}),
+        ...(changed("note") ? { note: input.note || null } : {}),
       });
       return withParams(back, { saved: 1 });
     }),

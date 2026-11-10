@@ -8,7 +8,9 @@ import {
   BOOKING_COLUMNS,
   BOOKING_EMPTY,
   BOOKING_FLOW,
+  BOOKING_BULK_MAX,
   BOOKING_PAGE_SIZE,
+  BOOKING_REQUEST_MAX,
   BOOKING_SIGNALS,
   activeBookingFilters,
   bookingColumnsFor,
@@ -202,7 +204,19 @@ export default async function BookingPage({
   const errorText = !errorCode
     ? null
     : ([`booking.error.${errorCode}`, `common.${errorCode}`]
-        .map((k) => [k, t(k as DictionaryKey)] as const)
+        .map(
+          (k) =>
+            [
+              k,
+              // Os textos de "linhas demais" dizem o limite de cada ação.
+              t(k as DictionaryKey, {
+                max:
+                  errorCode === "booking_request_too_many"
+                    ? BOOKING_REQUEST_MAX
+                    : BOOKING_BULK_MAX,
+              }),
+            ] as const,
+        )
         .find(([k, v]) => v !== k)?.[1] ?? fallbackError(t, errorCode));
   const errorRowId = one("row");
   const errorRow = errorRowId
@@ -884,7 +898,9 @@ export default async function BookingPage({
                 op="request"
                 variant="primary"
                 pendingText={t("booking.bulk.working")}
-                confirmText={t("booking.bulk.request.confirm")}
+                confirmText={t("booking.bulk.request.confirm", {
+                  max: BOOKING_REQUEST_MAX,
+                })}
                 data-booking-request=""
               >
                 {t("booking.bulk.request")}
@@ -892,7 +908,9 @@ export default async function BookingPage({
             ) : null}
           </span>
         </div>
-        <p className="mt-1.5 text-xs text-zinc-500">{t("booking.bulk.hint")}</p>
+        <p className="mt-1.5 text-xs text-zinc-500">
+          {t("booking.bulk.hint", { max: BOOKING_REQUEST_MAX })}
+        </p>
       </form>
 
       <div

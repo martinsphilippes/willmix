@@ -558,6 +558,31 @@ async function commit(
   return saved;
 }
 
+/**
+ * Oferecer ou reservar: o cliente da linha (o de agora ou o que já estava
+ * nela) precisa continuar sendo uma empresa cliente ativa.
+ */
+async function assertRowCustomers(planned: Planned[]): Promise<void> {
+  const customerOf = (p: Planned) =>
+    "customerId" in p.write ? p.write.customerId : p.booking.customerId;
+  const need = planned.filter(
+    (p) =>
+      p.moved &&
+      (p.write.status === "offered" || p.write.status === "reserved"),
+  );
+  const ids = distinct(need.map(customerOf).filter((id): id is string => !!id));
+  if (!ids.length) return;
+  const parties = await getStore().list("parties", { filter: { id: ids } });
+  const active = new Set(
+    parties.filter((p) => p.type === "customer" && p.active).map((p) => p.id),
+  );
+  for (const p of need) {
+    const id = customerOf(p);
+    if (id && !active.has(id))
+      throw refuse("booking_customer_invalid", p.booking.id);
+  }
+}
+
 /** Cliente escolhido: empresa cliente ativa (ou a de estoque). */
 async function resolveCustomer(
   user: User,
@@ -585,10 +610,14 @@ async function resolveOwner(
 }
 
 /** As linhas marcadas, na ordem pedida. Falta alguma: recusa. */
-async function loadBookings(ids: string[], max: number): Promise<Booking[]> {
+async function loadBookings(
+  ids: string[],
+  max: number,
+  tooMany: BookingErrorCode = "booking_too_many",
+): Promise<Booking[]> {
   const unique = distinct(ids);
   if (!unique.length) throw refuse("booking_none_selected");
-  if (unique.length > max) throw refuse("booking_too_many");
+  if (unique.length > max) throw refuse(tooMany);
   const rows = await getStore().list("bookings", { filter: { id: unique } });
   const byId = new Map(rows.map((r) => [r.id, r]));
   return unique.map((id) => {
@@ -629,6 +658,7 @@ export async function saveBookingRow(
     user,
   );
   if (!planned) return booking;
+  await assertRowCustomers([planned]);
   return commit(
     user,
     planned,
@@ -680,6 +710,7 @@ async function applyBulk(
     );
     if (p) planned.push(p);
   }
+  await assertRowCustomers(planned);
   for (const p of planned)
     await commit(user, p, joined.products.get(p.booking.productId)?.name ?? "");
   return planned.length;
@@ -752,8 +783,17 @@ async function storeAnalysis(
     `Booking: ${productName || booking.productId}: análise do Superplan gravada${
       toAnalysis ? " (Novo → Em análise)" : ""
     }`,
-    { analysis: booking.analysis ?? null, status: booking.status },
-    { analysis, status: saved.status },
+    /*
+     * Sem custo, preço nem lucro: a tela Auditoria é aberta por quem não abre
+     * o Superplan. Fica só o que a lista do Booking já mostra a todos (a
+     * etapa) e o sinal; o retrato inteiro mora na linha, para quem analisa.
+     */
+    {
+      status: booking.status,
+      verdict: booking.analysis?.verdict ?? null,
+      analyzedAt: booking.analysis?.at ?? null,
+    },
+    { status: saved.status, verdict: analysis.verdict, analyzedAt: now },
   );
   return saved;
 }
@@ -806,6 +846,17 @@ export async function saveBookingAnalysis(
 /* Gerar solicitação                                                         */
 /* ------------------------------------------------------------------------ */
 
+let lastClaim = 0;
+/**
+ * Carimbo de quem toma as linhas para gerar a solicitação: a hora, nunca
+ * repetida neste servidor (duas chamadas no mesmo milissegundo ganham
+ * carimbos diferentes).
+ */
+function claimStamp(): string {
+  lastClaim = Math.max(Date.now(), lastClaim + 1);
+  return new Date(lastClaim).toISOString();
+}
+
 /**
  * As linhas marcadas viram uma solicitação (um lote, uma por produto) do
  * cliente escolhido. Só linhas em Aprovado, Oferecido ou Reservado; linha
@@ -821,7 +872,11 @@ export async function generateRequestFromBooking(
   assertBookingUser(user);
   // A solicitação nasce aqui: é preciso abrir também a tela Solicitações.
   assertScreen(user, "requests");
-  const bookings = await loadBookings(input.ids, BOOKING_REQUEST_MAX);
+  const bookings = await loadBookings(
+    input.ids,
+    BOOKING_REQUEST_MAX,
+    "booking_request_too_many",
+  );
   for (const booking of bookings)
     if (!BOOKING_REQUESTABLE.includes(booking.status))
       throw refuse("booking_not_requestable", booking.id);
@@ -861,46 +916,118 @@ export async function generateRequestFromBooking(
     return { booking, product, quantity };
   });
 
-  const { createRequestBatch } = await import("./requests");
-  const created = await createRequestBatch(
-    user,
-    { customerId, deadline: null, notes: null, requestedForUserId: null },
-    lines.map(({ product, quantity }) => {
-      const spec = [
-        product.category
-          ? `${t("catalog.category")}: ${product.category}`
-          : null,
-        ...specificationLines(product, t),
-      ].filter((l): l is string => !!l);
-      return {
-        productId: product.id,
-        productName: product.name.slice(0, 160),
-        description: `${product.name}${product.category ? ` — ${product.category}` : ""}`,
-        specification: spec.length ? spec.join("\n") : null,
-        quantity,
-        unit: "un",
-        sourcingDemand: false,
-      };
-    }),
-  );
+  /*
+   * As linhas são tomadas ANTES de qualquer solicitação nascer: cada uma vai
+   * para "Virou solicitação" com um carimbo desta chamada e é relida. Quem
+   * chegou junto (outra aba, outro login) vê a linha já tomada e é recusado,
+   * em vez de as duas chamadas criarem a mesma solicitação. Se a criação
+   * falhar, as linhas voltam para onde estavam.
+   */
+  const store = getStore();
+  const stamp = claimStamp();
+  const mine = (b: Booking) =>
+    b.status === "requested" &&
+    b.statusChangedByUserId === user.id &&
+    Date.parse(b.statusChangedAt ?? "") === Date.parse(stamp);
+  const release = async (only?: Set<string>) => {
+    for (const { booking } of lines) {
+      if (only && !only.has(booking.id)) continue;
+      try {
+        await store.update("bookings", booking.id, {
+          status: booking.status,
+          statusChangedAt: booking.statusChangedAt,
+          statusChangedByUserId: booking.statusChangedByUserId,
+        });
+      } catch (error) {
+        console.error("[booking] devolver a linha falhou", booking.id, error);
+      }
+    }
+  };
+  // Releitura na hora de tomar: quem já foi tomado por outra chamada (ou
+  // mudou de etapa) enquanto esta conferia as linhas recusa aqui.
+  const fresh = await store.list("bookings", {
+    filter: { id: lines.map((l) => l.booking.id) },
+  });
+  for (const { booking } of lines) {
+    const now = fresh.find((f) => f.id === booking.id);
+    if (!now || now.status !== booking.status)
+      throw refuse("booking_not_requestable", booking.id);
+  }
+  const taken = new Set<string>();
+  try {
+    for (const { booking } of lines) {
+      await store.update("bookings", booking.id, {
+        status: "requested",
+        statusChangedAt: stamp,
+        statusChangedByUserId: user.id,
+      });
+      taken.add(booking.id);
+    }
+  } catch (error) {
+    await release(taken);
+    throw error;
+  }
+  const claimed = await store.list("bookings", {
+    filter: { id: lines.map((l) => l.booking.id) },
+  });
+  const lost = lines.find(({ booking }) => {
+    const now = claimed.find((c) => c.id === booking.id);
+    return !now || !mine(now);
+  });
+  if (lost) {
+    // Só as que ainda são desta chamada voltam; a outra chamada cuida das dela.
+    await release(new Set(claimed.filter(mine).map((c) => c.id)));
+    throw refuse("booking_not_requestable", lost.booking.id);
+  }
 
-  const now = new Date().toISOString();
-  let failure: unknown = null;
+  const { createRequestBatch } = await import("./requests");
+  let created: Request[];
+  try {
+    created = await createRequestBatch(
+      user,
+      { customerId, deadline: null, notes: null, requestedForUserId: null },
+      lines.map(({ product, quantity }) => {
+        const spec = [
+          product.category
+            ? `${t("catalog.category")}: ${product.category}`
+            : null,
+          ...specificationLines(product, t),
+        ].filter((l): l is string => !!l);
+        return {
+          productId: product.id,
+          productName: product.name.slice(0, 160),
+          description: `${product.name}${product.category ? ` — ${product.category}` : ""}`,
+          specification: spec.length ? spec.join("\n") : null,
+          quantity,
+          unit: "un",
+          sourcingDemand: false,
+        };
+      }),
+    );
+  } catch (error) {
+    // Nada nasceu (o lote desfaz o que criou): as linhas voltam.
+    await release();
+    throw error;
+  }
+
+  // A solicitação existe e a linha já está tomada: falta só a ligação. Uma
+  // falha aqui não desfaz nada nem deixa criar de novo; fica no log.
   for (const [i, { booking, product, quantity }] of lines.entries()) {
     const request = created[i];
     if (!request) continue;
     const write = {
-      status: "requested" as const,
       customerId,
       reservedQty: quantity,
       requestId: request.id,
       requestGroupId: request.groupId ?? null,
       requestNumber: request.number ?? null,
-      statusChangedAt: now,
-      statusChangedByUserId: user.id,
     };
     try {
-      await getStore().update("bookings", booking.id, write);
+      try {
+        await store.update("bookings", booking.id, write);
+      } catch {
+        await store.update("bookings", booking.id, write);
+      }
       await audit(
         user,
         "booking.request",
@@ -914,14 +1041,16 @@ export async function generateRequestFromBooking(
           customerId: booking.customerId,
           reservedQty: booking.reservedQty,
         },
-        write,
+        { status: "requested", ...write },
       );
     } catch (error) {
-      // A solicitação já existe: as outras linhas ainda são ligadas a ela.
-      console.error("[booking] ligação com a solicitação falhou", error);
-      failure ??= error;
+      console.error(
+        "[booking] ligação com a solicitação falhou",
+        booking.id,
+        request.id,
+        error,
+      );
     }
   }
-  if (failure) throw failure;
   return created;
 }

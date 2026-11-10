@@ -260,6 +260,24 @@ export default async function BookingRowPage({
               data-booking-edit
             >
               <input type="hidden" name="id" value={row.id} />
+              {/* Como cada campo estava ao abrir: só o que mudou é gravado. */}
+              <input type="hidden" name="was.status" value={row.status} />
+              <input
+                type="hidden"
+                name="was.customerId"
+                value={row.customerId ?? BOOKING_EMPTY}
+              />
+              <input
+                type="hidden"
+                name="was.reservedQty"
+                value={row.reservedQty ?? ""}
+              />
+              <input
+                type="hidden"
+                name="was.ownerUserId"
+                value={row.ownerUserId ?? ""}
+              />
+              <input type="hidden" name="was.note" value={row.note ?? ""} />
               <Field
                 label={t("booking.detail.status")}
                 hint={

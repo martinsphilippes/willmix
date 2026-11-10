@@ -361,3 +361,89 @@ describe("gravar no Booking pelo Superplan", () => {
     expect((await fresh(b.id)).analysis?.at).toBe(saved.analysis?.at);
   });
 });
+
+describe("achados da revisão", () => {
+  it("filtro com asterisco (medida 10*15) volta com os filtros depois da ação", async () => {
+    const b = await row();
+    h.current = buyer;
+    await bulkBookingAction(
+      bulk(
+        {
+          op: "move",
+          status: "analysis",
+          back: "/app/booking?name=vaso+10*15&status=new",
+        },
+        [b.id],
+      ),
+    );
+    const url = new URL(last(), "http://x");
+    expect(url.pathname).toBe("/app/booking");
+    expect(url.searchParams.get("name")).toBe("vaso 10*15");
+    expect(url.searchParams.get("status")).toBe("new");
+    expect(url.searchParams.get("moved")).toBe("1");
+  });
+
+  it("mais de 30 linhas no 'Gerar solicitação': recusa com o código que diz o limite", async () => {
+    h.current = buyer;
+    await bulkBookingAction(
+      bulk(
+        { op: "request", customer: joao.partyId! },
+        Array.from({ length: 31 }, (_, i) => `linha-${i}`),
+      ),
+    );
+    expect(query(last()).get("error")).toBe("booking_request_too_many");
+    const { translator } = await import("@/i18n");
+    for (const locale of ["pt", "en", "zh"] as const) {
+      const text = translator(locale)(
+        "booking.error.booking_request_too_many",
+        { max: 30 },
+      );
+      expect(text).toContain("30");
+      expect(text).not.toContain("{max}");
+    }
+  });
+
+  it("página aberta há tempo: salvar a observação não desfaz a etapa, o cliente nem a reserva", async () => {
+    const b = await row();
+    // A página foi aberta quando a linha estava em Novo, sem cliente.
+    const form = new FormData();
+    form.set("id", b.id);
+    for (const [k, v] of Object.entries({
+      status: "new",
+      customerId: "-",
+      reservedQty: "",
+      ownerUserId: admin.id,
+      note: "",
+    })) {
+      form.set(k, v);
+      form.set(`was.${k}`, v);
+    }
+    // Enquanto isso, a linha foi aprovada e reservada por outra pessoa.
+    await getStore().update("bookings", b.id, {
+      status: "reserved",
+      customerId: joao.partyId,
+      reservedQty: 240,
+    });
+    form.set("note", "ligar amanhã");
+    h.current = admin;
+    await saveBookingRowAction(form);
+    expect(last()).toBe(`/app/booking/${b.id}?saved=1`);
+    const saved = await fresh(b.id);
+    expect([
+      saved.status,
+      saved.customerId,
+      saved.reservedQty,
+      saved.note,
+    ]).toEqual(["reserved", joao.partyId, 240, "ligar amanhã"]);
+    // O que a pessoa mudou de propósito continua valendo.
+    form.set("was.note", "ligar amanhã");
+    form.set("was.status", "reserved");
+    form.set("was.customerId", joao.partyId!);
+    form.set("was.reservedQty", "240");
+    form.set("status", "reserved");
+    form.set("customerId", joao.partyId!);
+    form.set("reservedQty", "360");
+    await saveBookingRowAction(form);
+    expect((await fresh(b.id)).reservedQty).toBe(360);
+  });
+});

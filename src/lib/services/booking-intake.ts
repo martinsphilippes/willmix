@@ -87,3 +87,66 @@ export async function ensureBookingForProduct(
   );
   return { booking, created: true };
 }
+
+/**
+ * A solicitação que nasceu do Booking foi excluída: a linha deixa de estar
+ * em "Virou solicitação" e volta para Reservado (ou Aprovado, sem cliente e
+ * quantidade), sem a ligação. Sem isso ela ficaria travada, apontando para
+ * uma solicitação que não existe mais, e só quem analisa poderia reabri-la.
+ * Quem chama é a exclusão da solicitação (não confere tela: é consequência).
+ * Nunca derruba a exclusão: falha aqui fica no log.
+ */
+export async function releaseBookingsOfRequests(
+  user: User,
+  requestIds: string[],
+): Promise<number> {
+  const ids = [...new Set(requestIds.filter(Boolean))];
+  if (!ids.length) return 0;
+  const store = getStore();
+  let released = 0;
+  try {
+    const rows = await store.list("bookings", { filter: { requestId: ids } });
+    for (const row of rows) {
+      const status =
+        row.status !== "requested"
+          ? row.status
+          : row.customerId && row.reservedQty
+            ? ("reserved" as const)
+            : ("approved" as const);
+      await store.update("bookings", row.id, {
+        status,
+        requestId: null,
+        requestGroupId: null,
+        requestNumber: null,
+        ...(status !== row.status
+          ? {
+              statusChangedAt: new Date().toISOString(),
+              statusChangedByUserId: user.id,
+            }
+          : {}),
+      });
+      await audit(
+        user,
+        "booking.release",
+        "booking",
+        row.id,
+        `Booking: a solicitação${
+          row.requestNumber ? ` #${row.requestNumber}` : ""
+        } foi excluída; a linha voltou para ${
+          status === "reserved" ? "Reservado" : "Aprovado"
+        }`,
+        {
+          status: row.status,
+          requestId: row.requestId,
+          requestNumber: row.requestNumber,
+        },
+        { status, requestId: null, requestNumber: null },
+      );
+      released++;
+    }
+  } catch (error) {
+    // Tabela ainda não publicada ou falha passageira: a exclusão segue.
+    console.error("[booking] soltar a linha da solicitação excluída", error);
+  }
+  return released;
+}
