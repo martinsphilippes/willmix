@@ -253,6 +253,9 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   // 2. Wellmix abre RFQ para dois fornecedores
   await login(page, "operador@wellmix.com");
   await page.goto(requestUrl);
+  // A RFQ não fica mais aberta na tela: abre pelo botão.
+  await expect(page.getByLabel(/Shenzhen Supplier A/)).toHaveCount(0);
+  await page.locator("[data-open-rfq]").click();
   await page.getByLabel(/Shenzhen Supplier A/).check();
   await page.getByLabel(/Guangzhou Supplier B/).check();
   await page.getByRole("button", { name: /Abrir RFQ/ }).click();

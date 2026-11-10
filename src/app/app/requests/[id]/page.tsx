@@ -262,6 +262,7 @@ export default async function RequestDetailPage({
     ncmConfirmed,
     ncmSuggested,
     ncmAi,
+    manage,
     approval,
     decided,
     proposal: proposalFlag,
@@ -341,8 +342,14 @@ export default async function RequestDetailPage({
   const showRfq =
     wellmix &&
     ["REQUESTED", "RFQ_OPEN", "QUOTATION_RECEIVED"].includes(request.status);
+  /* RFQ e solicitante do cliente saíram da tela (pedido do dono): cada um
+     abre pelo próprio botão (?manage=rfq / ?manage=requester). */
+  const rfqPanel = showRfq && manage === "rfq";
+  const requesterPanel = wellmix && manage === "requester";
   /* Cartões de ação da Wellmix (RFQ, NCM, solicitante): lado a lado em telas grandes. */
-  const actionCards = [showRfq, !!ncmInfo, wellmix].filter(Boolean).length;
+  const actionCards = [rfqPanel, !!ncmInfo, requesterPanel].filter(
+    Boolean,
+  ).length;
   /* Embalagem (faca e arte) aberta junto com a RFQ: campos no formulário e cartão. */
   const packagingBrief = wellmix ? await briefForRequest(request.id) : null;
   const hasLiveBrief =
@@ -656,6 +663,28 @@ export default async function RequestDetailPage({
         {/* Etapas da solicitação (Wellmix): rastreio até o sinal, com prazos. */}
         {wellmix ? <RequestStagesCard t={t} request={request} /> : null}
 
+        {/* Atalhos da Wellmix: abrir a RFQ e trocar o solicitante do cliente. */}
+        {wellmix ? (
+          <div className="flex flex-wrap gap-2" data-request-manage>
+            {showRfq && !rfqPanel ? (
+              <LinkButton
+                href={`/app/requests/${request.id}?manage=rfq#manage`}
+                data-open-rfq
+              >
+                {rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
+              </LinkButton>
+            ) : null}
+            {!requesterPanel ? (
+              <LinkButton
+                href={`/app/requests/${request.id}?manage=requester#manage`}
+                data-open-requester
+              >
+                {t("access.requesterTitle")}
+              </LinkButton>
+            ) : null}
+          </div>
+        ) : null}
+        <span id="manage" className="block scroll-mt-24" />
         {actionCards > 0 ? (
           <div
             className={cx(
@@ -664,7 +693,7 @@ export default async function RequestDetailPage({
             )}
           >
             {/* RFQ: Wellmix escolhe fornecedores */}
-            {showRfq ? (
+            {rfqPanel ? (
               <Card
                 title={rfqOpened ? t("rfq.inviteMore") : t("requests.rfq.open")}
               >
@@ -783,7 +812,7 @@ export default async function RequestDetailPage({
               </div>
             ) : null}
 
-            {wellmix ? (
+            {requesterPanel ? (
               <Card
                 title={t("access.requesterTitle")}
                 className="order-1 md:order-none"

@@ -536,6 +536,10 @@ Lint, typecheck, 15 testes unitários, E2E do caminho principal sobre o banco an
 - **Nada removido**: os três passos antigos, as âncoras e os avisos continuam iguais. Memorial, laudo e registro sem OCP designado mas já começados agora também geram pendência (como o cartão já mostrava).
 - **Esquema**: dois valores novos em `import_steps.key` (`cert_seal`, `cert_seal_art`); **publicar o esquema** antes do primeiro envio em produção.
 
+## Solicitação sem os cartões "Abrir RFQ" e "Solicitante do cliente"
+
+- **Pedido do dono**: os dois cartões saíram da tela da solicitação da Wellmix. Nada foi removido: cada um abre pelo próprio botão ("Abrir RFQ" ou "Convidar mais fornecedores", e "Solicitante do cliente"), em `?manage=rfq` e `?manage=requester`, e some de novo depois de salvar. A classificação fiscal (NCM) continua na tela.
+
 ## Solicitação sem o cartão "Embalagem (faca e arte)"
 
 - **Pedido do dono**: o cartão da embalagem saiu da tela da solicitação da Wellmix. O briefing continua nascendo com a RFQ e é acompanhado em Embalagem (`/app/packaging`), pela agência e pela Wellmix; a faca segue com o fornecedor escolhido e a escolha da agência continua no formulário "Abrir RFQ". Nenhuma rota, dado ou regra mudou: só o cartão deixou de aparecer nessa tela.
