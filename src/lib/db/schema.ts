@@ -1619,6 +1619,12 @@ export interface PackagingBrief extends BaseRow {
   brief: string | null;
   /** Observações da agência (gráfica, fornecedor). */
   agencyNotes: string | null;
+  /**
+   * Valor que a agência cobra por este item (criação e finalização da arte)
+   * e a moeda. Opcionais: só gravados quando informados.
+   */
+  agencyItemPrice?: number | null;
+  agencyItemCurrency?: string | null;
   dueAt: string | null;
   readyAt: string | null;
   /** Depois da transferência: o pedido e o item "Arte" dele. */
@@ -3327,6 +3333,8 @@ export const TABLES: Record<TableName, TableDef> = {
       dimsChangedAt: datetime(),
       brief: text(),
       agencyNotes: text(),
+      agencyItemPrice: float(),
+      agencyItemCurrency: str(3),
       dueAt: datetime(),
       readyAt: datetime(),
       orderId: id(false),

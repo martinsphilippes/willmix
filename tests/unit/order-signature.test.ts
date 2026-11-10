@@ -257,6 +257,79 @@ describe("documento do pedido com duas assinaturas", () => {
     expect((await stageOf(order.id, "PREPARATION")).status).toBe("done");
   });
 
+  it("PDF para baixar; o fornecedor anexa o arquivo assinado; só então o pedido vai ao Sankhya; o administrador devolve arquivo errado", async () => {
+    const order = await newOrder("Quadro em PDF");
+    await signOrderAs(admin, order.id);
+    await submitRequirement(
+      admin,
+      (await reqOf(order.id, "order_confirmed")).id,
+      { value: "confirmed" },
+    );
+    // O pedido nasce sem ir ao Sankhya: espera a assinatura do fornecedor.
+    expect((await getStore().get("orders", order.id))!.erpSyncStatus).toBe(
+      "pending",
+    );
+    const view = (await sig.getOrderSignatureView(supplierA, order.id))!;
+    expect(view.status).toBe("sent_to_supplier");
+    // O PDF traz o pedido, o fornecedor, o total e a versão do documento.
+    const pdf = Buffer.from(await sig.renderOrderDocumentPdf(view)).toString(
+      "latin1",
+    );
+    expect(pdf.startsWith("%PDF-1.4")).toBe(true);
+    expect(pdf.trimEnd().endsWith("%%EOF")).toBe(true);
+    expect(pdf).toContain(`#${order.number}`);
+    expect(pdf).toContain("Quadro em PDF");
+    expect(pdf).toContain("USD 3,600.00");
+    expect(pdf).toContain(view.hash);
+    expect(pdf).toContain("Ana Admin");
+    // Arquivo que não é PDF nem foto é recusado.
+    await expect(
+      sig.signOrderDocument(supplierA, order.id, {
+        name: "Li Wei",
+        agree: true,
+        hash: view.hash,
+        signedFile: new File(["x"], "doc.exe", {
+          type: "application/x-msdownload",
+        }),
+      }),
+    ).rejects.toThrow("signature_file_invalid");
+    const signed = await sig.signOrderDocument(supplierA, order.id, {
+      name: "Li Wei",
+      agree: true,
+      hash: view.hash,
+      signedFile: new File(["%PDF-1.4 assinado"], "po-assinado.pdf", {
+        type: "application/pdf",
+      }),
+    });
+    expect(signed.method).toBe("file");
+    const doc = (await getStore().get("documents", signed.documentId!))!;
+    expect([doc.orderId, doc.visibility]).toEqual([order.id, "internal"]);
+    // O arquivo assinado tem o preço: a Wellmix e quem enviou; mais ninguém.
+    const { canAccessDocument } = await import("@/lib/services/documents");
+    expect(await canAccessDocument(admin, doc)).toBe(true);
+    expect(await canAccessDocument(supplierA, doc)).toBe(true);
+    expect(await canAccessDocument(supplierB, doc)).toBe(false);
+    expect(await canAccessDocument(joao, doc)).toBe(false);
+    const after = (await sig.getOrderSignatureView(admin, order.id))!;
+    // Sem integração ligada: autorizado, esperando o número do Sankhya.
+    expect([after.status, after.supplier?.method]).toEqual(["signed", "file"]);
+    // Arquivo errado: o administrador devolve e o fornecedor assina de novo.
+    await expect(
+      sig.reopenSupplierSignature(operator, order.id, "Arquivo ilegível"),
+    ).rejects.toThrow();
+    expect(after.canReopenSupplier).toBe(true);
+    await sig.reopenSupplierSignature(admin, order.id, "Arquivo ilegível");
+    const reopened = (await sig.getOrderSignatureView(supplierA, order.id))!;
+    expect([reopened.supplier, reopened.canSign, reopened.status]).toEqual([
+      null,
+      "supplier",
+      "sent_to_supplier",
+    ]);
+    // Sem arquivo, vale o aceite no portal (a opção continua).
+    const accepted = await signOrderAs(supplierA, order.id);
+    expect(accepted.method).toBe("accept");
+  });
+
   it("o pedido mudou depois da assinatura: a tela mostra que a versão assinada é outra", async () => {
     const order = await newOrder("Quadro alterado");
     const signed = await signOrderAs(admin, order.id);

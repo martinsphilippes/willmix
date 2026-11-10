@@ -19,9 +19,11 @@ import {
   Field,
   Input,
   PageHeader,
+  Select,
   Textarea,
   cx,
   formatDate,
+  formatMoney,
   isOverdue,
   linkClass,
 } from "@/components/ui";
@@ -527,14 +529,64 @@ export default async function PackagingBriefPage({
                   defaultValue={brief.agencyNotes ?? ""}
                   placeholder={t("packBrief.notes.placeholder")}
                 />
+                {/* Valor por item cobrado pela agência (criação e finalização). */}
+                <div
+                  className="flex flex-wrap items-end gap-2"
+                  data-agency-price
+                >
+                  <Field label={t("packBrief.agencyPrice")}>
+                    <Input
+                      name="agencyItemPrice"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className="w-36"
+                      defaultValue={
+                        brief.agencyItemPrice != null
+                          ? new Intl.NumberFormat(t.intl, {
+                              useGrouping: false,
+                              maximumFractionDigits: 2,
+                            }).format(brief.agencyItemPrice)
+                          : ""
+                      }
+                    />
+                  </Field>
+                  <Field label={t("packBrief.agencyPrice.currency")}>
+                    <Select
+                      name="agencyItemCurrency"
+                      defaultValue={brief.agencyItemCurrency ?? "BRL"}
+                      className="w-24"
+                    >
+                      {["BRL", "USD", "CNY"].map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  {t("packBrief.agencyPrice.hint")}
+                </p>
                 <SubmitButton variant="secondary">
                   {t("packBrief.notes.save")}
                 </SubmitButton>
               </form>
             ) : (
-              <p className="text-sm whitespace-pre-line text-zinc-700">
-                {brief.agencyNotes ?? "—"}
-              </p>
+              <>
+                <p className="text-sm whitespace-pre-line text-zinc-700">
+                  {brief.agencyNotes ?? "—"}
+                </p>
+                {brief.agencyItemPrice != null ? (
+                  <p className="mt-2 text-sm text-zinc-700" data-agency-price>
+                    {t("packBrief.agencyPrice")}:{" "}
+                    {formatMoney(
+                      brief.agencyItemPrice,
+                      brief.agencyItemCurrency ?? "BRL",
+                      t,
+                    )}
+                  </p>
+                ) : null}
+              </>
             )}
           </Card>
         </div>

@@ -1052,6 +1052,11 @@ export async function saveAgencyNotes(
   user: User,
   briefId: string,
   notes: string | null,
+  /**
+   * Valor por item cobrado pela agência (opcional). `undefined` = o
+   * formulário não mandou o campo; `null` = apagar.
+   */
+  price?: { amount: number | null; currency: string | null },
 ) {
   const store = getStore();
   const brief = await store.get("packaging_briefs", briefId);
@@ -1059,10 +1064,43 @@ export async function saveAgencyNotes(
   if (!canEditPackagingBrief(user, brief)) throw new ForbiddenError();
   if (!LIVE.includes(brief.status))
     throw new PackagingBriefError("brief_closed");
-  return store.update("packaging_briefs", briefId, {
+  const patch: Record<string, unknown> = {
     agencyNotes: notes?.trim() || null,
     updatedByUserId: user.id,
-  });
+  };
+  // Colunas novas: só vão ao banco quando há valor (ou para apagar um valor
+  // já gravado), para o briefing seguir salvando antes do esquema publicado.
+  if (price) {
+    const amount = price.amount;
+    if (
+      amount !== null &&
+      !(Number.isFinite(amount) && amount > 0 && amount <= 100_000_000)
+    )
+      throw new PackagingBriefError("agency_price_invalid");
+    const before = brief.agencyItemPrice ?? null;
+    if (amount !== before && (amount !== null || before !== null)) {
+      patch.agencyItemPrice = amount;
+      patch.agencyItemCurrency =
+        amount === null ? null : (price.currency || "BRL").slice(0, 3);
+      await audit(
+        user,
+        "packaging_brief.agency_price",
+        "packaging_brief",
+        briefId,
+        `Valor por item da agência: ${
+          amount === null ? "apagado" : `${patch.agencyItemCurrency} ${amount}`
+        }`,
+        { agencyItemPrice: before, currency: brief.agencyItemCurrency ?? null },
+        { agencyItemPrice: amount, currency: patch.agencyItemCurrency },
+      );
+    } else if (
+      amount !== null &&
+      price.currency &&
+      price.currency !== (brief.agencyItemCurrency ?? null)
+    )
+      patch.agencyItemCurrency = price.currency.slice(0, 3);
+  }
+  return store.update("packaging_briefs", briefId, patch);
 }
 
 /* ------------------------------------------------------------------------ */

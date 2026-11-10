@@ -32,7 +32,6 @@ import {
   canViewOrder,
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
-import { getSankhyaAdapter } from "@/lib/integrations/sankhya";
 import { audit } from "./audit";
 import { releaseBookingsOfRequests } from "./booking-intake";
 import { isHiddenByBooking } from "./booking-visibility";
@@ -1260,11 +1259,8 @@ async function createOrderFromRequest(
   if (payment)
     await store.update("payments", payment.id, { orderId: order.id });
 
-  const sync = await getSankhyaAdapter().createOrder(order, [item]);
-  await store.update("orders", order.id, {
-    erpSyncStatus: sync.status === "synced" ? "synced" : "pending",
-    erpNumber: sync.status === "synced" ? sync.erpNumber : null,
-  });
+  // O pedido só vai ao Sankhya depois da assinatura do documento pelo
+  // fornecedor (docs/ORDER_SIGNATURE.md); até lá fica "pendente", como nasceu.
   await store.update("requests", request.id, {
     status: "ORDERED",
     orderId: order.id,
