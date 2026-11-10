@@ -79,6 +79,11 @@ export const pt = {
   "sheet.photos.removeConfirm":
     "Excluir esta foto? Ela sai da ficha e dos documentos do pedido.",
   "sheet.photos.removed": "Foto excluída.",
+  "sheet.photos.given.title":
+    "{n} foto(s) que já vieram com o produto no Booking",
+  "sheet.photos.given.note":
+    "O produto já veio do Booking com foto: para esta cotação não é preciso enviar outras. As fotos de conferência abaixo (balança, régua, lado, outro ângulo e original) são opcionais agora e serão pedidas na Preparação do pedido.",
+  "sheet.photos.waived": "Opcional nesta cotação",
   "sheet.photos.fromCatalog": "Coberta pelo cadastro do produto",
   "sheet.power.none": "Sem energia",
   "sheet.power.battery": "Bateria / pilha",
@@ -199,6 +204,11 @@ export const en: Record<keyof typeof pt, string> = {
   "sheet.photos.removeConfirm":
     "Delete this photo? It is removed from the sheet and from the order documents.",
   "sheet.photos.removed": "Photo deleted.",
+  "sheet.photos.given.title":
+    "{n} photo(s) that already came with the product in Booking",
+  "sheet.photos.given.note":
+    "The product already came from Booking with a photo: no other photos are needed for this quote. The check photos below (scale, ruler, side, another angle and original) are optional now and will be requested in the order Preparation.",
+  "sheet.photos.waived": "Optional in this quote",
   "sheet.photos.fromCatalog": "Covered by the product record",
   "sheet.power.none": "No power",
   "sheet.power.battery": "Battery",
@@ -316,6 +326,10 @@ export const zh: Record<keyof typeof pt, string> = {
   "sheet.photos.remove": "删除照片",
   "sheet.photos.removeConfirm": "删除这张照片？它将从采购单和订单文件中移除。",
   "sheet.photos.removed": "照片已删除。",
+  "sheet.photos.given.title": "产品在 Booking 中已带有 {n} 张照片",
+  "sheet.photos.given.note":
+    "该产品从 Booking 来时已带有照片：本次报价无需再上传其他照片。下方的核对照片（称重、带尺、侧面、其他角度、原始）现在为选填，将在订单备货阶段要求提供。",
+  "sheet.photos.waived": "本次报价选填",
   "sheet.photos.fromCatalog": "产品档案已提供",
   "sheet.power.none": "无电源",
   "sheet.power.battery": "电池",

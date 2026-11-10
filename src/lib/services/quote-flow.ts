@@ -1,6 +1,12 @@
 import "server-only";
 
-import { getStore, type Quote, type Request, type User } from "@/lib/db";
+import {
+  getStore,
+  type Product,
+  type Quote,
+  type Request,
+  type User,
+} from "@/lib/db";
 import {
   ForbiddenError,
   assertWellmix,
@@ -271,12 +277,16 @@ const quoteCurrency = (c: string | null | undefined) => {
  * hora (nada é gravado até ele responder), então a RFQ aberta antes desta
  * regra também ganha o preço.
  */
-export async function quoteOfferFor(
-  quote: Pick<Quote, "status" | "supplierId" | "negotiation">,
+/**
+ * O produto de uma solicitação que nasceu do Booking, quando a cotação é a do
+ * fornecedor principal dele (o dono da ficha técnica que entrou no Booking).
+ * Nulo nos outros casos: solicitação comum ou outro fornecedor convidado.
+ */
+export async function bookingProductOf(
+  quote: Pick<Quote, "supplierId">,
   request: Pick<Request, "id" | "productId">,
-): Promise<QuoteOffer | null> {
-  if (quote.status !== "invited" || !request.productId) return null;
-  if (quote.negotiation?.length) return null;
+): Promise<Product | null> {
+  if (!request.productId) return null;
   const store = getStore();
   const [product, bookings] = await Promise.all([
     store.get("products", request.productId),
@@ -285,6 +295,17 @@ export async function quoteOfferFor(
   if (!product || !bookings.length) return null;
   if (!product.supplierId || product.supplierId !== quote.supplierId)
     return null;
+  return product;
+}
+
+export async function quoteOfferFor(
+  quote: Pick<Quote, "status" | "supplierId" | "negotiation">,
+  request: Pick<Request, "id" | "productId">,
+): Promise<QuoteOffer | null> {
+  if (quote.status !== "invited" || !request.productId) return null;
+  if (quote.negotiation?.length) return null;
+  const product = await bookingProductOf(quote, request);
+  if (!product) return null;
   const { getProductSheet } = await import("./product-sheet");
   const sheet = await getProductSheet(product.id);
   const price = sheet?.price ?? product.price ?? null;

@@ -561,6 +561,118 @@ describe("preço desejado: a solicitação que nasce do Booking", () => {
     expect(answered.price).toBe(4);
   });
 
+  /** Foto que veio com o produto (a da ficha técnica), no cadastro. */
+  async function catalogPhoto(productId: string, kind = "supplier") {
+    const store = getStore();
+    const doc = await store.create("documents", {
+      orderId: null,
+      requestId: null,
+      productId,
+      type: "photo",
+      name: "ficha.png",
+      mimeType: "image/png",
+      size: 10,
+      storageKey: `teste-${productId}-${kind}`,
+      visibility: "all",
+      uploadedByUserId: admin.id,
+    } as never);
+    return store.create("product_photos", {
+      productId,
+      sourcingItemId: null,
+      orderId: null,
+      documentId: doc.id,
+      kind,
+      caption: null,
+      takenAt: new Date().toISOString(),
+      takenByUserId: admin.id,
+      derivedFromPhotoId: null,
+      isPrimary: true,
+    } as never);
+  }
+  const PHOTO_FIELDS = [
+    "scalePhoto",
+    "rulerPhoto",
+    "sidePhoto",
+    "anglePhoto",
+    "originalPhoto",
+  ];
+  const photoGaps = (missing: readonly string[]) =>
+    missing.filter((m) => PHOTO_FIELDS.includes(m));
+
+  it("as fotos que vieram com o produto no Booking já contam na cotação do fornecedor dele; sem foto, ou outro fornecedor, tudo como antes", async () => {
+    const { product, req, quote, quotes } = await fromBooking([
+      "fornecedor-a",
+      "fornecedor-b",
+    ]);
+    // Produto sem foto: as cinco fotos continuam faltando.
+    const before = (await qs.getQuoteSheetForUser(admin, quote.id))!;
+    expect(photoGaps(before.missing)).toHaveLength(5);
+    expect([before.bookingPhotos, before.waivedPhotoKinds]).toEqual([[], []]);
+
+    const photo = await catalogPhoto(product.id);
+    const view = (await qs.getQuoteSheetForUser(admin, quote.id))!;
+    expect(photoGaps(view.missing)).toEqual([]);
+    expect(view.bookingPhotos.map((p) => p.id)).toEqual([photo.id]);
+    expect([...view.waivedPhotoKinds].sort()).toEqual([
+      "angle",
+      "dimension_scale",
+      "dimension_side",
+      "original",
+      "weight_scale",
+    ]);
+    // O fornecedor do produto vê o mesmo (a foto é dele e é pública).
+    const own = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
+    expect(photoGaps(own.missing)).toEqual([]);
+    expect(own.bookingPhotos).toHaveLength(1);
+    // Salvar a ficha devolve a mesma conta do que falta.
+    const saved = await qs.saveQuoteSheet(supplierA, quote.id, {
+      material: "PS",
+    });
+    expect(photoGaps(saved.missing)).toEqual([]);
+
+    // Outro fornecedor convidado: as cinco fotos dele continuam exigidas e
+    // ele não recebe a foto do concorrente.
+    const other = quotes.find((q) => q.supplierId === "fornecedor-b");
+    if (other) {
+      const theirs = (await qs.getQuoteSheetForUser(admin, other.id))!;
+      expect(photoGaps(theirs.missing)).toHaveLength(5);
+      expect([theirs.bookingPhotos, theirs.waivedPhotoKinds]).toEqual([[], []]);
+    }
+    // Solicitação comum do mesmo produto: como sempre.
+    const plain = await r.createRequest(joao, {
+      customerId: "cliente-joao",
+      productId: req.productId,
+      productName: "Fora do Booking, com foto",
+      description: "x",
+      specification: null,
+      quantity: 500,
+      unit: "un",
+      deadline: null,
+      notes: null,
+    });
+    await r.openRfq(admin, plain.id, ["fornecedor-a"]);
+    const [plainQuote] = await getStore().list("quotes", {
+      filter: { requestId: plain.id },
+    });
+    const usual = (await qs.getQuoteSheetForUser(admin, plainQuote.id))!;
+    expect(photoGaps(usual.missing)).toHaveLength(5);
+    expect(usual.waivedPhotoKinds).toEqual([]);
+  });
+
+  it("foto do Booking que quem vê não pode abrir não vira miniatura (o acesso ao arquivo não muda)", async () => {
+    const { product, quote } = await fromBooking();
+    const photo = await catalogPhoto(product.id);
+    await getStore().update("documents", photo.documentId, {
+      visibility: "internal",
+    });
+    const own = (await qs.getQuoteSheetForUser(supplierA, quote.id))!;
+    expect(own.bookingPhotos).toEqual([]);
+    // A dispensa continua (a foto existe); a Wellmix vê a miniatura.
+    expect(photoGaps(own.missing)).toEqual([]);
+    const wellmix = (await qs.getQuoteSheetForUser(admin, quote.id))!;
+    expect(wellmix.bookingPhotos).toHaveLength(1);
+  });
+
   it("sem desconto sugerido quando não houve preço desejado; textos nas três línguas", async () => {
     expect(suggestedReturnPrice(4, null)).toEqual({
       price: 3.6,

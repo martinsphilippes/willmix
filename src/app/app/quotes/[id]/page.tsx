@@ -577,6 +577,8 @@ export default async function QuotePage({
             addAction={addQuoteSheetPhotosAction}
             removeAction={removeQuoteSheetPhotoAction}
             coveredKinds={sheetView.catalogPhotoKinds}
+            given={sheetView.bookingPhotos}
+            waivedKinds={sheetView.waivedPhotoKinds}
             hint={t("quoteSheet.photosHint")}
             className="lg:order-4"
             missing={canFillSheet ? sheetMissing : []}

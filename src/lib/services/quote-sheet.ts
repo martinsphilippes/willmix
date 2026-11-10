@@ -43,6 +43,7 @@ import {
 } from "./purchase-sheet";
 import { storePhotoDocument, type PhotoSource } from "./documents";
 import {
+  REQUIRED_SHEET_PHOTOS,
   missingForCompletion,
   normalizeLots,
   planSheet,
@@ -268,6 +269,47 @@ const photoKindsOf = (photos: Array<{ kind: string }>) => [
   ...new Set(photos.map((p) => p.kind)),
 ];
 
+/**
+ * Fotos que já vieram com o produto no Booking (a da ficha técnica do
+ * fornecedor e as demais do cadastro). Na solicitação que nasce do Booking,
+ * a cotação do fornecedor do produto já chega com elas: as cinco fotos de
+ * conferência (balança, régua, lado, ângulo e original) não são exigidas na
+ * cotação; continuam exigidas na Preparação do pedido, como sempre.
+ */
+async function bookingGivenPhotos(
+  quote: Quote,
+  request: Request,
+): Promise<ProductPhoto[]> {
+  const { bookingProductOf } = await import("./quote-flow");
+  const product = await bookingProductOf(quote, request);
+  if (!product) return [];
+  const photos = await getStore().list("product_photos", {
+    filter: { productId: product.id },
+    orderBy: "createdAt",
+  });
+  // Só as do cadastro (as de uma ficha de cotação ou pedido têm dono).
+  return photos.filter((p) => !p.orderId);
+}
+
+/** Tipos de foto que contam como enviados na cotação, e as fotos do Booking. */
+async function quotePhotoCoverage(
+  quote: Quote,
+  request: Request,
+  photos: ProductPhoto[],
+) {
+  const [catalogKinds, given] = await Promise.all([
+    catalogPhotoKinds(request.productId),
+    bookingGivenPhotos(quote, request),
+  ]);
+  const waived = given.length ? Object.keys(REQUIRED_SHEET_PHOTOS) : [];
+  return {
+    catalogKinds,
+    given,
+    waived,
+    kinds: [...photoKindsOf(photos), ...catalogKinds, ...waived],
+  };
+}
+
 export interface QuoteSheetView {
   quote: Quote;
   request: Request;
@@ -279,6 +321,12 @@ export interface QuoteSheetView {
   photos: ProductPhoto[];
   /** Tipos de foto cobertos pelo cadastro do produto (não precisam ser reenviadas). */
   catalogPhotoKinds: string[];
+  /**
+   * Solicitação que nasceu do Booking: as fotos que vieram com o produto (só
+   * as que quem vê pode abrir) e os tipos que por isso a cotação não exige.
+   */
+  bookingPhotos: ProductPhoto[];
+  waivedPhotoKinds: string[];
   /** Bloco Fornecedor: o que falta nos cadastros do fornecedor e do produto. */
   records: SheetRecords;
   missing: SheetMissing[];
@@ -345,8 +393,17 @@ export async function getQuoteSheetForUser(
   // Ficha gravada com campo do cadastro em branco: mostra o valor do cadastro.
   const sheet = existing ? withRecordDefaults(existing, records) : stored;
   const photos = await getSheetPhotos(quoteId);
-  // Fotos do cadastro do produto contam como enviadas (ficam no catálogo).
-  const catalogKinds = await catalogPhotoKinds(request.productId);
+  // Fotos do cadastro do produto contam como enviadas (ficam no catálogo);
+  // as que vieram com o Booking dispensam as de conferência na cotação.
+  const coverage = await quotePhotoCoverage(quote, request, photos);
+  const catalogKinds = coverage.catalogKinds;
+  // Miniaturas: só as fotos que quem vê pode abrir (o acesso ao arquivo não muda).
+  const { canAccessDocument } = await import("./documents");
+  const bookingPhotos: ProductPhoto[] = [];
+  for (const photo of coverage.given.slice(0, 12)) {
+    const doc = await getStore().get("documents", photo.documentId);
+    if (doc && (await canAccessDocument(user, doc))) bookingPhotos.push(photo);
+  }
   const container = await containerCapacity(sheet.containerType ?? null);
   return {
     quote,
@@ -367,8 +424,10 @@ export async function getQuoteSheetForUser(
       container.capacity,
     ),
     photos,
-    missing: missingForQuote(sheet, [...photoKindsOf(photos), ...catalogKinds]),
+    missing: missingForQuote(sheet, coverage.kinds),
     catalogPhotoKinds: catalogKinds,
+    bookingPhotos,
+    waivedPhotoKinds: coverage.waived,
     records,
     containerType: container.type,
     containerTypes: container.types,
@@ -470,10 +529,10 @@ export async function saveQuoteSheet(
   const photos = await getSheetPhotos(quoteId);
   return {
     sheet,
-    missing: missingForQuote(sheet, [
-      ...photoKindsOf(photos),
-      ...(await catalogPhotoKinds(request.productId)),
-    ]),
+    missing: missingForQuote(
+      sheet,
+      (await quotePhotoCoverage(quote, request, photos)).kinds,
+    ),
   };
 }
 
