@@ -289,8 +289,17 @@ test("solicitação → RFQ → cotação → seleção → sinal → pedido →
   await login(page, "supplier.a@china.com");
   // Pendências vêm pelo prazo: abre a da RFQ, não a primeira da lista.
   await page.goto("/app/tasks");
+  // Fornecedor: as etapas dele aparecem em cartões (do Booking ao embarque)
+  // e a cotação a responder fica na primeira etapa.
+  await expect(page.locator("[data-supplier-step]")).toHaveCount(7);
+  await expect(page.locator("[data-supplier-step=booking]")).toHaveAttribute(
+    "data-supplier-step-count",
+    /^[1-9]/,
+  );
   await page
-    .locator("[data-task-row]", { hasText: /RFQ/ })
+    .locator('[data-task-row][data-task-group="supplier.booking"]', {
+      hasText: /RFQ/,
+    })
     .first()
     .getByRole("link", { name: /打开|Open|Abrir/ })
     .click();

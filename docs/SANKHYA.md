@@ -57,6 +57,32 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 4. **Consultas de exemplo**: empresas, produto pela referência do fornecedor (REFFORN), parceiro pelo nome, TOPs de pedido/cotação e últimas notas das TOPs gravadas; mostra o pedido feito ao Sankhya, a tabela e o JSON.
 5. **Pedido ou cotação de teste**: pré-visualização (confere no ERP parceiro, produto e TOP, lê TIPMOV e o volume, e mostra o JSON do `CACSP.incluirNota`), envio, o que ficou gravado (CabecalhoNota e ItemNota) e o cancelamento. Tudo na auditoria (`sankhya.note.test`, `sankhya.note.cancel`).
 
+## Tela Configurações → Carga do Sankhya (mapeamento e amostra)
+
+`/app/settings/sankhya?tab=load` (só o administrador; mapeamento em `src/lib/integrations/sankhya-mapping.ts`, amostra em `sankhya-sample.ts`, tela em `src/app/app/settings/sankhya/_load.tsx`). Primeiro passo da carga do histórico: **só leitura, nada é gravado no portal**.
+
+| Sankhya                | Portal                    | Casamento com o que já existe |
+| ---------------------- | ------------------------- | ----------------------------- |
+| CabecalhoNota (TGFCAB) | `orders`                  | `erpNumber` = NUNOTA          |
+| Parceiro (TGFPAR)      | `parties`                 | CNPJ/CPF ou nome              |
+| ItemNota (TGFITE)      | `order_items`             | —                             |
+| Produto (TGFPRO)       | `products`                | `sku` = REFFORN (código WX)   |
+| GrupoProduto (TGFGRU)  | `product_lines`           | nome                          |
+| Estoque (TGFEST)       | saldo inicial (calculado) | —                             |
+| Financeiro (TGFFIN)    | `payments`                | —                             |
+
+A amostra (1 a 5 por entidade) é coerente: as últimas notas das TOPs de importação (descrição com "IMP") e, delas, os parceiros, itens e financeiro; dos itens, os produtos; dos produtos, os grupos e o estoque. Tudo por SQL somente leitura com listas de inteiros. Se uma coluna do mapeamento não existir no ERP, a tela refaz a consulta com `*`, mostra as colunas que faltam e as que a tabela tem. Para cada registro, a tela mostra o valor convertido (e o original quando muda) e se já existe um cadastro equivalente no portal.
+
+### Gravar a amostra no portal
+
+Botão **Gravar no portal** na mesma aba (`src/lib/integrations/sankhya-import.ts`, ação `sankhyaImportSampleAction`, auditoria `sankhya.import`). Decisões da Wellmix (10/11/2026): os pedidos do Sankhya entram como **pedidos normais**, a **TOP define a etapa** e os **valores ficam em R$**.
+
+- Cada nota (das N últimas, 1 a 5) vira uma solicitação (`ORDERED`) + pedido (`erpNumber` = NUNOTA, `erpSyncStatus` = synced, `fobTotal` = VLRNOTA em BRL) + itens (TGFITE) + as etapas do portal. As etapas antes da etapa da TOP ficam concluídas (requisitos dados como feitos, nota "Etapa concluída no Sankhya"), a da TOP fica ativa; FINALIZADO encerra o pedido.
+- TOP → etapa (`TOP_STAGES` em `sankhya-mapping.ts`): 33 e 1101 pedido → Pedido criado; 1104 ATV FIN/PRODUÇÃO → Pagamento ao fornecedor; 1102 MARKETING → Embalagem; 1105 INSPECTION → Inspeção; 1103 CHECK ETD/ETA e 1106 CHECK-IN → Embarque; 1107 EMBARCADO e 1109 VALIDAÇÃO DI → Desembaraço; 1201 NOTA IMPORTAÇÃO → Transporte; 1401 RECEBIMENTO WMS → Entregue; 1402 FECHAMENTO → Encerramento; 1403 FINALIZADO → encerrado. Cotações, pré-pedidos, amostras e notas avulsas não viram pedido.
+- Fornecedor = parceiro da nota; cliente = a empresa da nota (TSIEMP, código `EMP-<CODEMP>`). Produtos sem grupo vão para a linha "Importados do Sankhya". Financeiro (TGFFIN) vira pagamento ao fornecedor/recebimento em BRL, pendente ou confirmado pela baixa.
+- **Vínculo**: coluna opcional `sankhyaCode` em `parties`, `product_lines`, `products` e `payments` (índice `by_sankhya`). Rodar de novo não duplica: reaproveita pelo código; sem código, por CNPJ/nome, SKU = REFFORN ou nome da linha (e grava o código). Estoque não é gravado (o portal calcula).
+- **Produção**: antes do primeiro uso, publicar o esquema (Actions → "Publicar esquema Appwrite") para criar as colunas `sankhyaCode`.
+
 ## Tela Configurações → Sankhya: explorar dados
 
 `/app/settings/sankhya?tab=explore`. Teste de conexão, busca no dicionário (tabela → entidades, campos e ligações, com link para a tabela ligada), consulta de entidade com ligações e paginação, SQL somente leitura, e as escritas: registro (DatasetSP.save), pedido/orçamento/cotação (CACSP) e cancelamento. Leituras rodam no servidor por GET; escritas são Server Actions do admin, com zod e registro na auditoria (`sankhya.*`). Erros mostram o código e o texto do Sankhya.
@@ -72,8 +98,49 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 
 `bash scripts/sankhya-curl.sh codigos` lista os códigos para o pedido (TOPs de compra, tipos de negociação, vendedores/compradores, locais) e as colunas de `AD_NFIMPORTACAO`.
 
+## Sincronização portal → Sankhya (fase 3)
+
+Decisões 8 e 14: o que nasce ou muda no portal vai para o Sankhya, e os dois ficam iguais (`src/lib/integrations/sankhya-sync.ts`, `src/lib/integrations/sankhya.ts`).
+
+- **Fornecedor e cliente** (`parties` supplier/customer) → Parceiro (TGFPAR) por `DatasetSP.save`: NOMEPARC, RAZAOSOCIAL (ao incluir), TIPPESSOA (CPF = F), CGC_CPF, EMAIL, TELEFONE, ATIVO, FORNECEDOR ou CLIENTE = S, mais os **campos fixos** do parceiro.
+- **Produto** → Produto (TGFPRO): DESCRPROD, REFFORN (SKU), REFERENCIA (EAN), NCM, CODVOL (UN), CODGRUPOPROD (grupo da linha, obrigatório ao incluir), pesos, medidas em metros, ATIVO, mais os campos fixos do produto.
+- Antes de incluir, procura no Sankhya (CNPJ/CPF ou nome; REFFORN): se já existe, só **vincula** (`sankhyaCode`) e manda os dados do portal. Depois de incluir, lê o código gerado do mesmo jeito.
+- **Pedido**: depois das duas assinaturas, `getSankhyaAdapter().createOrder` usa a nota já ligada (cotação/pre-order das regras de processo) ou inclui o pedido com a TOP de pedido; sem a execução ligada, segue manual como antes. A regra "assinado → faturar para 1101" pula a nota que já está na TOP. **Itens** do pedido ligado: quantidade e preço alterados e itens novos vão para a nota (`CACSP.incluirAlterarItemNota`); item que saiu do pedido é avisado (remover no Sankhya). Cancelamento: regra de processo.
+- **Pendente** = criado depois de `syncSince` (gravado na primeira vez que a execução é ligada) e sem código, ou alterado depois de `sankhyaSyncedAt`. A carga grava `sankhyaSyncedAt`: o que veio do Sankhya não volta duplicado.
+- **Quando roda**: logo depois das telas de cadastro de parceiro e de produto gravarem; no job diário (`/api/jobs/reminders`); em `/api/jobs/sankhya-sync` (agendador externo, com `CRON_SECRET`); e no botão "Sincronizar agora" (Configurações → Processos), que mostra as pendências. Só com a execução no Sankhya ligada. Cada envio fica em `process_events` (`sync:party|product|order:create|update`).
+- **Campos fixos** (Configurações → Processos): JSON com colunas que o Sankhya exige ao incluir e o portal não tem (ex.: `{"USOPROD": "R"}`). A recusa do Sankhya aparece em "Últimos eventos" com o texto dele.
+
+## Decisões da Wellmix (10/11/2026)
+
+| #   | Tema                     | Decisão                                                                                                                                                            | Onde está                                                |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| 1   | Empresa                  | Pedido de compra sempre na empresa 3 (WELLMIX - SC)                                                                                                                | Integração → códigos (`codEmp` = 3)                      |
+| 2   | TOP × status             | Hoje a TOP marca a etapa; vai ser descontinuada (uma TOP só para o pedido). O portal ganha uma tela de processos: status → movimentação de estoque                 | Processos (docs/PROCESSES.md); carga usa `TOP_STAGES`    |
+| 3   | CODTIPVENDA              | É a tabela de condições de pagamento (compra e venda); o portal tem uma igual, vista e editada em Configurações                                                    | Aba Condições de pagamento (`payment_conditions`)        |
+| 4   | CODLOCAL                 | O portal não usa: quem cuida é o WMS                                                                                                                               | Não é enviado nem mostrado                               |
+| 5   | CODVOL                   | Sempre UN                                                                                                                                                          | Integração → códigos (volume fixo UN)                    |
+| 6   | Cadastros                | Fornecedores, produtos e clientes inteiros vão para o portal                                                                                                       | Carga do Sankhya → Carga completa                        |
+| 7   | Códigos do produto       | REFFORN = código interno (SKU), CODPROD = código único (vínculo), REFERENCIA = EAN                                                                                 | `products.sku`, `sankhyaCode`, `ean`                     |
+| 8   | Novos cadastros          | Produto, fornecedor, cliente e pedido novos no portal são criados no Sankhya pela integração                                                                       | Fase 3: sincronização (abaixo) e regras de processo      |
+| 9   | Moeda                    | Pedido em USD (502 de 518) com o câmbio no pedido (ex.: 5,16); moeda de origem do fornecedor (RMB) registrada à parte                                              | Carga: USD = VLRNOTA ÷ VLRMOEDA; códigos: moeda/CODMOEDA |
+| 10  | Incoterm                 | Campo próprio no pedido: FOB (380), EXW (137), nenhum CIF                                                                                                          | A mapear (nome da coluna)                                |
+| 11  | Natureza                 | 203005 (COMPRA INTERNACIONAL), centro de resultado 101006 (IMPORTACAO), projeto 0                                                                                  | Integração → códigos                                     |
+| 12  | Momento de envio         | Cotação (1002) → pre-order (1100) → pedido (1101), feitos pelo planejamento: cada passo é um gatilho de status que escreve a TOP no Sankhya (sem mexer no estoque) | Configurações → Processos (docs/PROCESSES.md)            |
+| 13  | Número de referência     | Configurável: NUNOTA ou NUMNOTA                                                                                                                                    | Integração → códigos (`erpNumberField`)                  |
+| 14  | Alteração/cancelamento   | Sempre refletem no Sankhya: os dois sistemas ficam sincronizados                                                                                                   | Fase 3: sincronização (abaixo) e regras de processo      |
+| 15  | Faturamento              | Evento de status no portal que escreve a TOP no Sankhya                                                                                                            | Configurações → Processos (docs/PROCESSES.md)            |
+| 16  | Frete, financeiro, notas | Só consulta (o que o portal não tem como entrada)                                                                                                                  | Explorar dados / leitura                                 |
+| 17  | Pedido de teste          | Depois que todos os dados estiverem no portal                                                                                                                      | Integração → parte 5                                     |
+
+Depois de testadas as cargas, a Wellmix trunca as mesmas tabelas no portal e importa de novo, para ficar igual ao Sankhya.
+
+### Carga completa dos cadastros
+
+Aba Carga do Sankhya → **Carga completa** (`src/lib/integrations/sankhya-full-load.ts`, ação `sankhyaFullLoadAction`): condições de pagamento (TGFTPV, uma linha por CODTIPVENDA), fornecedores e clientes (TGFPAR com FORNECEDOR ou CLIENTE = S; quem é os dois vira dois cadastros com o mesmo `sankhyaCode`) e produtos (TGFPRO, com os grupos de cada lote virando linhas). Lê por faixas de código (`CODIGO > a AND CODIGO <= b`, vale no Oracle e no SQL Server), com a faixa ajustada para ~100–400 linhas por lote; cada clique trabalha ~40 s e guarda o cursor em `settings` (`sankhya.load.<entidade>`). O Sankhya é a fonte desses cadastros: os que já têm vínculo são atualizados (a especificação do produto só é preenchida se estiver vazia). "Recomeçar" volta o cursor ao início sem apagar nada.
+
 ## Pendências (decisões com a Wellmix)
 
-1. Códigos do ERP para os pedidos do portal: empresa (`CODEMP`), TOP de pedido e de cotação (`CODTIPOPER`), tipo de negociação (`CODTIPVENDA`), vendedor, local e volume padrão. Com eles, `getSankhyaAdapter().createOrder` (hoje `MockSankhyaAdapter`, número manual) passa a enviar o pedido.
-2. Ligação cadastro do portal ↔ Sankhya: `CODPARC` de cada cliente/fornecedor e `CODPROD` de cada produto (casar por CNPJ e SKU/referência e guardar o código).
-3. Automatizações candidatas: importar/atualizar produtos, parceiros, estoque e preços do Sankhya (com `logAlteracoesTabelas`); criar no ERP o pedido de compra/venda quando o pedido nasce no portal; enviar a tabela de frete (AD_FREINT, hoje CSV) por `DatasetSP.save`; ler títulos financeiros (a receber/pagar, boletos) e NF-e emitidas para conciliar com o portal.
+1. Nomes das colunas do Incoterm e da moeda de origem do fornecedor no TGFCAB (provavelmente campos AD_).
+2. Fase 2 feita (docs/PROCESSES.md): ligar a execução no Sankhya depois de conferir a simulação.
+3. Fase 3 feita (seção abaixo): conferir os campos que o Sankhya exige ao incluir parceiro e produto (campos fixos) no primeiro uso.
+4. Automatizações candidatas: importar/atualizar produtos, parceiros, estoque e preços do Sankhya (com `logAlteracoesTabelas`); criar no ERP o pedido de compra/venda quando o pedido nasce no portal; enviar a tabela de frete (AD_FREINT, hoje CSV) por `DatasetSP.save`; ler títulos financeiros (a receber/pagar, boletos) e NF-e emitidas para conciliar com o portal.

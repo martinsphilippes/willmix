@@ -493,10 +493,15 @@ export async function sendSuperplanItems(
     patch.answeredAt = new Date().toISOString();
   }
   if (Object.keys(patch).length) await store.update("quotes", quoteId, patch);
-  if (completed && request.status === "RFQ_OPEN")
+  if (completed && request.status === "RFQ_OPEN") {
     await store.update("requests", request.id, {
       status: "QUOTATION_RECEIVED",
     });
+    const { emitProcessEvent } = await import("./process-engine");
+    await emitProcessEvent(user, "request:QUOTATION_RECEIVED", {
+      requestId: request.id,
+    });
+  }
   await audit(
     user,
     "superplan.items",

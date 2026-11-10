@@ -562,6 +562,8 @@ export async function signOrderDocument(
     await applyProductionStart(user, order.id);
     // Assinado pelos dois: o pedido está autorizado e segue para o Sankhya.
     const erp = await sendOrderToErp(user, order.id);
+    const { emitProcessEvent } = await import("./process-engine");
+    await emitProcessEvent(user, "order:signed", { orderId: order.id });
     await notifyWellmix({
       kind: erp.synced ? "done" : "action",
       subject: `Pedido #${order.number}: documento assinado pelo fornecedor`,

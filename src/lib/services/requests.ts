@@ -33,6 +33,7 @@ import {
 } from "@/lib/auth/permissions";
 import { getSettings } from "@/lib/settings";
 import { audit } from "./audit";
+import { emitProcessEvent } from "./process-engine";
 import { releaseBookingsOfRequests } from "./booking-intake";
 import { isHiddenByBooking } from "./booking-visibility";
 import { notify, notifyWellmix, requesterTarget } from "./notifications";
@@ -712,6 +713,7 @@ export async function openRfq(
   }
   if (request.status === "REQUESTED") {
     await store.update("requests", requestId, { status: "RFQ_OPEN" });
+    await emitProcessEvent(user, "request:RFQ_OPEN", { requestId });
   }
   await audit(
     user,
@@ -930,6 +932,9 @@ export async function answerQuote(
     await store.update("requests", request.id, {
       status: "QUOTATION_RECEIVED",
     });
+    await emitProcessEvent(user, "request:QUOTATION_RECEIVED", {
+      requestId: request.id,
+    });
   }
   await audit(
     user,
@@ -1086,6 +1091,9 @@ export async function selectQuote(
     sellCurrency: input.sellCurrency,
     downPaymentAmount: downPayment,
     ...(quantity !== null ? { quantity } : {}),
+  });
+  await emitProcessEvent(user, "request:WAITING_DOWN_PAYMENT", {
+    requestId: request.id,
   });
   if (quantity !== null)
     await audit(
@@ -1384,6 +1392,10 @@ async function createOrderFromRequest(
     status: "ORDERED",
     orderId: order.id,
   });
+  await emitProcessEvent(user, "request:ORDERED", {
+    requestId: request.id,
+    orderId: order.id,
+  });
   // Programação de compra ligada à solicitação passa a "ordered".
   for (const schedule of await store.list("purchase_schedules", {
     filter: { requestId: request.id },
@@ -1566,6 +1578,9 @@ export async function deleteRequests(
   for (const request of rows) {
     if (!canDeleteRequest(user, request)) continue;
     await store.update("requests", request.id, { status: "CANCELLED" });
+    await emitProcessEvent(user, "request:CANCELLED", {
+      requestId: request.id,
+    });
     const quotes = await store.list("quotes", {
       filter: { requestId: request.id, status: ["invited", "answered"] },
     });

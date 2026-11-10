@@ -496,6 +496,8 @@ export interface ProductionTaskDraft {
   title: string;
   detail: string;
   dueAt: string | null;
+  /** Correção do fornecedor: desde quando o SKU está reprovado. */
+  sinceAt?: string | null;
 }
 
 /** Pendências da produção: follow e reinspeção (Wellmix); correção (fornecedor). */
@@ -568,6 +570,11 @@ export async function productionTasks(
             .filter(Boolean)
             .join(" · "),
           dueAt: null,
+          sinceAt:
+            open
+              .map((r) => r.inspectedAt)
+              .sort()
+              .at(0) ?? null,
         });
     }
   }

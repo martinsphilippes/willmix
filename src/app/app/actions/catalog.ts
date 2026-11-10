@@ -490,6 +490,10 @@ export async function updatePartyExtraAction(form: FormData) {
     for (const key of bankKeys)
       if (parsed[key] !== (party[key] ?? null)) update[key] = parsed[key];
     await store.update("parties", id, update);
+    {
+      const { syncSoon } = await import("@/lib/integrations/sankhya-sync");
+      await syncSoon(user, "party", id);
+    }
     await audit(
       user,
       "party.update",

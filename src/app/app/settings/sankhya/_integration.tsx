@@ -140,7 +140,7 @@ async function erpOptions() {
     tops: [] as SankhyaRow[],
     payment: [] as SankhyaRow[],
     buyers: [] as SankhyaRow[],
-    locations: [] as SankhyaRow[],
+    currencies: [] as SankhyaRow[],
   };
   const first = await attempt(() =>
     loadRecords({ entity: "Empresa", fields: "CODEMP, NOMEFANTASIA" }),
@@ -148,7 +148,7 @@ async function erpOptions() {
   if (first.error !== null) return empty;
   const list = async (sql: string) =>
     (await attempt(() => executeQuery(sql))).data?.rows ?? [];
-  const [tops, payment, buyers, locations] = await Promise.all([
+  const [tops, payment, buyers, currencies] = await Promise.all([
     list(
       "SELECT DISTINCT CODTIPOPER, DESCROPER FROM TGFTOP WHERE TIPMOV = 'O' ORDER BY CODTIPOPER",
     ),
@@ -158,9 +158,9 @@ async function erpOptions() {
     list(
       "SELECT CODVEND, APELIDO FROM TGFVEN WHERE ATIVO = 'S' ORDER BY CODVEND",
     ),
-    list("SELECT CODLOCAL, DESCRLOCAL FROM TGFLOC ORDER BY CODLOCAL"),
+    list("SELECT CODMOEDA, NOMEMOEDA FROM TSIMOE ORDER BY CODMOEDA"),
   ]);
-  return { companies: first.data.rows, tops, payment, buyers, locations };
+  return { companies: first.data.rows, tops, payment, buyers, currencies };
 }
 
 function Options({
@@ -487,10 +487,10 @@ export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
               label="APELIDO"
             />
             <Options
-              id="sk-locations"
-              rows={options.locations}
-              code="CODLOCAL"
-              label="DESCRLOCAL"
+              id="sk-currencies"
+              rows={options.currencies}
+              code="CODMOEDA"
+              label="NOMEMOEDA"
             />
           </>
         ) : null}
@@ -545,13 +545,55 @@ export async function IntegrationTab({ t, q }: { t: Translate; q: Params }) {
                 defaultValue={codeValue(erp.codVend)}
               />
             </Field>
-            <Field label={t("sankhyaInt.erp.q4local")}>
+            <Field label={t("sankhyaInt.erp.codNat")}>
               <Input
-                name="codLocal"
+                name="codNat"
                 inputMode="numeric"
-                list="sk-locations"
-                defaultValue={codeValue(erp.codLocal)}
+                defaultValue={codeValue(erp.codNat)}
               />
+            </Field>
+            <Field label={t("sankhyaInt.erp.codCenCus")}>
+              <Input
+                name="codCenCus"
+                inputMode="numeric"
+                defaultValue={codeValue(erp.codCenCus)}
+              />
+            </Field>
+            <Field label={t("sankhyaInt.erp.codProj")}>
+              <Input
+                name="codProj"
+                inputMode="numeric"
+                defaultValue={codeValue(erp.codProj)}
+              />
+            </Field>
+            <Field label={t("sankhyaInt.erp.currency")}>
+              <Select name="currency" defaultValue={erp.currency}>
+                {["USD", "BRL", "CNY", "EUR"].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              label={t("sankhyaInt.erp.codMoeda")}
+              hint={t("sankhyaInt.erp.codMoedaHint")}
+            >
+              <Input
+                name="codMoeda"
+                inputMode="numeric"
+                list="sk-currencies"
+                defaultValue={codeValue(erp.codMoeda)}
+              />
+            </Field>
+            <Field
+              label={t("sankhyaInt.erp.erpNumberField")}
+              hint={t("sankhyaInt.erp.erpNumberFieldHint")}
+            >
+              <Select name="erpNumberField" defaultValue={erp.erpNumberField}>
+                <option value="NUNOTA">NUNOTA</option>
+                <option value="NUMNOTA">NUMNOTA</option>
+              </Select>
             </Field>
             <Field label={t("sankhyaInt.erp.volume")}>
               <Select name="volumeMode" defaultValue={erp.volumeMode}>
