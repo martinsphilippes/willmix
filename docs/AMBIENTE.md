@@ -2,12 +2,12 @@
 
 ## Conexões
 
-| Serviço  | Estado                   | Observações                                                                 |
-| -------- | ------------------------ | --------------------------------------------------------------------------- |
-| GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.               |
+| Serviço  | Estado                   | Observações                                                                                                  |
+| -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| GitHub   | conectado                | `martinsphilippes/willmix`. CI em `.github/workflows/ci.yml`.                                                |
 | Vercel   | conectado                | Projeto `wellmix`, time `martinsphilippes`, região `fra1` (Frankfurt, a mesma do Appwrite). Deploy por push. |
-| Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados          |
-| Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                       |
+| Appwrite | conectado e publicado    | Projeto `6ab41ae700396f0409b8` em `fra`; esquema e seed publicados                                           |
+| Supabase | conectado, não utilizado | Decisão: um único backend (Appwrite).                                                                        |
 
 ## Modos de dados
 
@@ -38,10 +38,10 @@ O E2E sobe o próprio servidor em `localhost:3100` com `DATA_DIR=.data-e2e`. Nã
 
 O nome oficial é **Wellmix** (empresa, portal e equipe). Ocorrências de `willmix` que permanecem por compatibilidade com recursos já provisionados:
 
-| Onde                                   | Motivo                                                                                                                                                                                 |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_ID = "willmix"` (Appwrite)   | ID do banco já criado com dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar.                                                                                           |
-| Repositório `martinsphilippes/willmix` | Nome no GitHub. Renomear é decisão do dono do repositório (GitHub redireciona o antigo).                                                                                               |
+| Onde                                   | Motivo                                                                                                                                                                                                      |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_ID = "willmix"` (Appwrite)   | ID do banco já criado com dados; o nome exibido é "Wellmix". Renomear o ID exigiria recriar.                                                                                                                |
+| Repositório `martinsphilippes/willmix` | Nome no GitHub. Renomear é decisão do dono do repositório (GitHub redireciona o antigo).                                                                                                                    |
 | Domínio `willmix.vercel.app`           | Endereço antigo: redireciona (308) para `portal-wellmix.vercel.app`, o endereço principal (`next.config.ts`). `wellmix.vercel.app` pertence a outra conta. Branch de produção na Vercel deve ser `wellmix`. |
 
 Dados de demonstração: `scripts/appwrite-rename-brand.ts` atualiza o nome do banco e as contas `@willmix.com` → `@wellmix.com` (senha `wellmix123`) sem recriar nada.

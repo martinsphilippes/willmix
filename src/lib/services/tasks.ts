@@ -510,7 +510,7 @@ export async function pendingTasksFor(user: User): Promise<Task[]> {
               : []),
             `${request.quantity.toLocaleString("pt-BR")} ${request.unit}`,
             inOrder
-              ? "pedido criado: a arte é pedida antes de a etapa Arte e embalagem começar"
+              ? "pedido pré-aprovado: a arte é pedida antes de a etapa Arte e embalagem começar"
               : request.status === "WAITING_DOWN_PAYMENT"
                 ? "aguardando o sinal do cliente"
                 : "venda ainda não confirmada",

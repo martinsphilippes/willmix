@@ -1,6 +1,7 @@
 # Artes do pedido e tabela de preços (Fase F)
 
 ## Cartão "Artes" no pedido
+
 Visível para a Wellmix, para o designer do pedido e para a agência do pedido.
 
 - **Designer**:
@@ -17,7 +18,9 @@ Visível para a Wellmix, para o designer do pedido e para a agência do pedido.
   - o zip é gerado em fluxo, sem carregar tudo na memória.
 
 ## Tabela de preços
+
 Em Marketing → **Tabela de preços** (só a Wellmix): cada produto ativo com:
+
 - o último preço praticado (valor ao cliente ÷ quantidade da última solicitação com fornecedor escolhido);
 - o pedido mínimo, o FOB unitário e a data.
 

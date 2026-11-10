@@ -10,19 +10,19 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 
 ## 3. Decisões técnicas
 
-| Decisão                | Escolha                                            | Motivo                                                                                            |
-| ---------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Front e API            | Next.js 16 App Router, Server Components e Actions | Um só deploy na Vercel (`fra1`, ao lado do Appwrite); toda escrita passa pelo servidor com zod e checagem de papel     |
-| Backend gerenciado     | Appwrite Cloud (Auth, TablesDB, Storage)           | Auth, banco e arquivos em um serviço, com console simples                                         |
-| Camada de dados        | `Store` com MemoryStore e AppwriteStore            | Desenvolver e testar sem credenciais; produção no Appwrite. Esquema único em `schema.ts`          |
-| Autorização            | Server-side, por papel, parceiro e login           | Cliente não vê outro cliente e cada login do cliente vê só o que solicitou; fornecedor não vê outro fornecedor nem margem; Wellmix vê tudo |
-| Permissões no Appwrite | Tabelas sem permissão de usuário (só API key)      | Simplifica: leitura e escrita sempre pelo servidor. Permissão de linha fica como hardening futuro |
-| Workflow               | Etapas e requisitos em tabelas, engine simples     | Flexível o bastante para a Wellmix sem motor BPMN                                                 |
-| Integrações            | Adaptadores com modo manual/mock                   | Sankhya, boleto, e-mail e WhatsApp não bloqueiam o fluxo                                          |
-| i18n                   | Dicionários pt, en, zh em código                   | Fornecedores em chinês e inglês; sem plataforma de tradução                                       |
-| Testes                 | vitest (fluxo e permissões) e Playwright (E2E)     | Happy path garantido antes de aumentar cobertura                                                  |
-| IA                     | Adaptador `api`/`mock`/`manual`, prompts centralizados | Sugere; nunca decide. Sem chave o sistema segue manual; prompts por linha em `product_lines.prompts` |
-| Multi-importador       | `importerId` nulo = Wellmix; sem tenant hoje       | Evita decisões que impeçam oferecer a plataforma a terceiros, sem transformar tudo em SaaS agora  |
+| Decisão                | Escolha                                                | Motivo                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Front e API            | Next.js 16 App Router, Server Components e Actions     | Um só deploy na Vercel (`fra1`, ao lado do Appwrite); toda escrita passa pelo servidor com zod e checagem de papel                         |
+| Backend gerenciado     | Appwrite Cloud (Auth, TablesDB, Storage)               | Auth, banco e arquivos em um serviço, com console simples                                                                                  |
+| Camada de dados        | `Store` com MemoryStore e AppwriteStore                | Desenvolver e testar sem credenciais; produção no Appwrite. Esquema único em `schema.ts`                                                   |
+| Autorização            | Server-side, por papel, parceiro e login               | Cliente não vê outro cliente e cada login do cliente vê só o que solicitou; fornecedor não vê outro fornecedor nem margem; Wellmix vê tudo |
+| Permissões no Appwrite | Tabelas sem permissão de usuário (só API key)          | Simplifica: leitura e escrita sempre pelo servidor. Permissão de linha fica como hardening futuro                                          |
+| Workflow               | Etapas e requisitos em tabelas, engine simples         | Flexível o bastante para a Wellmix sem motor BPMN                                                                                          |
+| Integrações            | Adaptadores com modo manual/mock                       | Sankhya, boleto, e-mail e WhatsApp não bloqueiam o fluxo                                                                                   |
+| i18n                   | Dicionários pt, en, zh em código                       | Fornecedores em chinês e inglês; sem plataforma de tradução                                                                                |
+| Testes                 | vitest (fluxo e permissões) e Playwright (E2E)         | Happy path garantido antes de aumentar cobertura                                                                                           |
+| IA                     | Adaptador `api`/`mock`/`manual`, prompts centralizados | Sugere; nunca decide. Sem chave o sistema segue manual; prompts por linha em `product_lines.prompts`                                       |
+| Multi-importador       | `importerId` nulo = Wellmix; sem tenant hoje           | Evita decisões que impeçam oferecer a plataforma a terceiros, sem transformar tudo em SaaS agora                                           |
 
 ## 4. Módulos
 
@@ -32,9 +32,9 @@ Cada agente recebe um aviso, abre um link, vê a própria pendência, preenche, 
 4. Pendências e notificações (`services/tasks.ts`, `services/notifications.ts`, `services/reminders.ts`): o que cada um precisa fazer, avisos in-app, e-mail e WhatsApp (mock), lembretes por prazo. Cada aviso tem tipo (`kind`: ação, atenção, novidade, concluído) e com quem está o assunto (`actor`); o texto é montado no idioma de cada destinatário (`notify({ text })`); a tela agrupa por tipo (`lib/notification-view.ts` classifica os avisos antigos pelo assunto).
 5. Control Tower (`services/control-tower.ts`): pedidos ativos, onde estão, quem precisa agir, atrasos e exceções.
 6. Conta corrente do fornecedor, multas (jurídico), cadastros com importação CSV e pela planilha da ficha técnica (`services/product-sheet-import.ts`: produto, ficha mestre, fornecedor e fotos num passo, com o que falta apontado; `services/xlsx.ts` também lê as imagens ancoradas nas células; `services/xls.ts` lê o Excel 97-2003 (.xls, OLE/BIFF8) com a mesma saída, células e fotos, sem dependência; Excel 95 ou arquivo com senha é recusado com aviso; por padrão a planilha inteira vira um produto com variações, uma por grupo de linhas, e `services/product-variants.ts` guarda as variações e espelha a de referência no produto e na ficha mestre, ver `docs/PRODUCT_VARIANTS.md`), configurações.
-9. Pagamento ao fornecedor (`lib/supplier-terms.ts` para as contas puras, `services/supplier-terms.ts` e `services/supplier-payment.ts`): condição de pagamento por fornecedor (parcelas por marco do pedido), cópia no pedido, Contas a pagar, previsão na conta corrente; fora do fluxo das etapas (`OFF_FLOW_STAGES`).
-7. Auditoria (`services/audit.ts`): usuário, ação, entidade, resumo, antes/depois.
-8. Visão de Produto (`ai/prompts.ts`, `integrations/ai.ts`, `services/ai-suggestions.ts`, `services/marketing.ts`, `services/operations.ts`, `services/product-cycle.ts`): cadastro por foto com confirmação humana, marketing studio e kit (prévia → oferta → compra → liberação), modalidade de operação do cliente (RADAR), ciclo contínuo do produto.
+7. Pagamento ao fornecedor (`lib/supplier-terms.ts` para as contas puras, `services/supplier-terms.ts` e `services/supplier-payment.ts`): condição de pagamento por fornecedor (parcelas por marco do pedido), cópia no pedido, Contas a pagar, previsão na conta corrente; fora do fluxo das etapas (`OFF_FLOW_STAGES`).
+8. Auditoria (`services/audit.ts`): usuário, ação, entidade, resumo, antes/depois.
+9. Visão de Produto (`ai/prompts.ts`, `integrations/ai.ts`, `services/ai-suggestions.ts`, `services/marketing.ts`, `services/operations.ts`, `services/product-cycle.ts`): cadastro por foto com confirmação humana, marketing studio e kit (prévia → oferta → compra → liberação), modalidade de operação do cliente (RADAR), ciclo contínuo do produto.
 
 ### Estratégia multi-importador (preparação)
 

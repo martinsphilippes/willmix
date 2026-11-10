@@ -74,7 +74,6 @@ Tudo continua editável na tela para a simulação. A simulação não grava nad
 
 O **peso médio por peça** (`purchase_sheets.averageWeightPcKg`, kg) aparece na Compra, ao lado do bruto, **só para leitura**: vem da ficha do produto e muda-se lá ou no Booking. Não entra na conta (o container continua limitado pelo bruto ou pelo bruto estimado).
 
-
 A ficha técnica traz o **peso líquido** (N.W PC) e o **peso bruto** (G.W PC) por peça; a maioria das planilhas só preenche o líquido. A tela tem os dois campos, lado a lado, e cada um lê só a sua coluna: **o líquido nunca é lido como bruto**.
 
 - **Peso bruto informado**: é ele que limita o container, como sempre.

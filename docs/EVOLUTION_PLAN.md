@@ -745,3 +745,8 @@ Pedido do dono: retirar todos os "Como funciona" da ferramenta. Um interruptor s
 - **Dado**: guardado em Configurações, na chave `productionStartDaysBySupplier` (fornecedor → dias), para não exigir publicação de esquema. `productionStartFor` usa o prazo do fornecedor do pedido e, sem ele, o padrão.
 - Vale para as próximas assinaturas: pedido já assinado, com a data gravada, não muda quando o prazo muda.
 - Teste: `tests/unit/order-signature.test.ts`.
+
+## "Pedido criado" passa a se chamar "Pedido pré-aprovado"
+
+- **Pedido do dono** (10/11/2026): a primeira etapa do pedido e a situação da solicitação que virou pedido se chamavam "Pedido criado", mas o pedido só está de fato criado depois das assinaturas do documento, quando vai para a produção. O nome passa a ser "Pedido pré-aprovado" (en "Order pre-approved", zh "订单预批准").
+- **Onde mudou** (só texto): etapa `ORDER_CREATED`, situação `ORDERED` da solicitação, programação de compra do catálogo, próximo passo do Booking, aviso ao fornecedor, ajuda da tela de solicitações, recusa da assinatura, pendência da arte e o item de revisão "sem valor FOB". As chaves do código e do banco (`ORDER_CREATED`, `ORDERED`) não mudaram: nenhum dado foi alterado.
