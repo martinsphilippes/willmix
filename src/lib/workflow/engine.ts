@@ -195,9 +195,19 @@ async function assertDateOrder(
 /* Criação das etapas de um pedido                                           */
 /* ------------------------------------------------------------------------ */
 
+/**
+ * Cria as etapas e os itens do pedido. Pode ser chamada de novo no mesmo
+ * pedido: o que já existe (etapa pela chave, item pela chave dentro da etapa)
+ * é mantido e só o que falta é criado. Assim uma criação interrompida no
+ * meio (tempo esgotado) é retomada sem duplicar nada.
+ */
 export async function createStagesForOrder(order: Order) {
   const store = getStore();
   const settings = await getSettings();
+  const [existingStages, existingRequirements] = await Promise.all([
+    store.list("stages", { filter: { orderId: order.id } }),
+    store.list("requirements", { filter: { orderId: order.id } }),
+  ]);
   const line = order.lineId
     ? await store.get("product_lines", order.lineId)
     : null;
@@ -214,22 +224,30 @@ export async function createStagesForOrder(order: Order) {
     const isFirst = index === 0;
     const partyId = template.partyField ? order[template.partyField] : null;
     const templates = template.requirements(ctx);
-    const stage = await store.create("stages", {
-      orderId: order.id,
-      key: template.key,
-      sequence: index,
-      status: isFirst ? "active" : "pending",
-      responsibleRole: templates[0]?.role ?? template.responsibleRole,
-      responsiblePartyId: partyId ?? null,
-      dueAt: isFirst ? dueDate(settings.stageDueDays[template.key]) : null,
-      startedAt: isFirst ? new Date().toISOString() : null,
-      completedAt: null,
-      percent: 0,
-      reminderSentAt: null,
-      blockReason: null,
-    });
+    const stage =
+      existingStages.find((s) => s.key === template.key) ??
+      (await store.create("stages", {
+        orderId: order.id,
+        key: template.key,
+        sequence: index,
+        status: isFirst ? "active" : "pending",
+        responsibleRole: templates[0]?.role ?? template.responsibleRole,
+        responsiblePartyId: partyId ?? null,
+        dueAt: isFirst ? dueDate(settings.stageDueDays[template.key]) : null,
+        startedAt: isFirst ? new Date().toISOString() : null,
+        completedAt: null,
+        percent: 0,
+        reminderSentAt: null,
+        blockReason: null,
+      }));
     if (isFirst) firstStageId = stage.id;
+    const have = new Set(
+      existingRequirements
+        .filter((r) => r.stageId === stage.id)
+        .map((r) => r.key),
+    );
     for (const req of templates) {
+      if (have.has(req.key)) continue;
       await store.create("requirements", {
         orderId: order.id,
         stageId: stage.id,
