@@ -77,7 +77,7 @@ describe("SQL da amostra", () => {
     }
     expect(m.sampleSql("partners", [7, 7, 9])).toContain("IN (7, 9)");
     expect(m.sampleSql("partners", [])).toContain("IN (-1)");
-    expect(m.sampleSql("orders")).toContain("LIKE '%IMP%'");
+    expect(m.sampleSql("orders")).toContain("IN (33, 1101,");
     expect(m.sampleSql("orderItems", [1])).toContain("P.DESCRPROD");
     expect(m.sampleSql("products", [1], true)).toMatch(/^SELECT P\.\* FROM/);
   });

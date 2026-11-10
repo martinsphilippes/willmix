@@ -10,6 +10,8 @@
  * Puro (sem rede nem banco): a busca fica em sankhya-sample.ts.
  */
 
+import type { StageKey } from "@/lib/db/schema";
+
 export type Transform =
   | "text"
   | "number"
@@ -57,8 +59,33 @@ export interface EntityMap {
   fields: FieldMap[];
 }
 
-const IMPORT_TOPS =
-  "SELECT CODTIPOPER FROM TGFTOP WHERE UPPER(DESCROPER) LIKE '%IMP%'";
+/**
+ * TOP (CODTIPOPER) do processo de importação no Sankhya da Wellmix → etapa do
+ * pedido no portal (resposta da Wellmix: a TOP define a etapa; os pedidos
+ * entram como pedidos normais). `closed` = pedido encerrado. TOPs fora daqui
+ * (cotação, pré-pedido, amostra, despesas, notas fiscais avulsas) não viram
+ * pedido.
+ */
+export const TOP_STAGES: Record<
+  number,
+  { stage: StageKey; closed?: boolean; label: string }
+> = {
+  33: { stage: "ORDER_CREATED", label: "PEDIDO COMPRA - IMPORTAÇÃO" },
+  1101: { stage: "ORDER_CREATED", label: "(IMP) PEDIDO DE COMPRA" },
+  1104: { stage: "SUPPLIER_PAYMENT", label: "(IMP) ATV FIN/PRODUÇÃO" },
+  1102: { stage: "PACKAGING", label: "(IMP) MARKETING" },
+  1105: { stage: "INSPECTION", label: "(IMP) INSPECTION" },
+  1103: { stage: "SHIPPING", label: "(IMP) CHECK ETD/ETA" },
+  1106: { stage: "SHIPPING", label: "(IMP) CHECK-IN" },
+  1107: { stage: "CUSTOMS", label: "(IMP) EMBARCADO" },
+  1109: { stage: "CUSTOMS", label: "(IMP) VALIDAÇÃO DI" },
+  1201: { stage: "TRANSPORT", label: "(IMP) NOTA IMPORTAÇÃO" },
+  1401: { stage: "DELIVERED", label: "(IMP) RECEBIMENTO WMS" },
+  1402: { stage: "CLOSED", label: "(IMP) FECHAMENTO" },
+  1403: { stage: "CLOSED", closed: true, label: "(IMP) FINALIZADO" },
+};
+
+const IMPORT_TOPS = Object.keys(TOP_STAGES).join(", ");
 
 export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
   orders: {
@@ -79,7 +106,7 @@ export const ENTITY_MAPS: Record<SankhyaEntityKey, EntityMap> = {
         sankhya: "CODTIPOPER",
         portal: "status",
         transform: "int",
-        note: "TOP (IMP): indica a etapa do processo; regra de etapa a definir",
+        note: "TOP (IMP) → etapa do pedido (tabela TOP_STAGES)",
       },
       {
         sankhya: "CODPARC",

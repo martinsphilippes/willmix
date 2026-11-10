@@ -397,6 +397,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -415,6 +423,16 @@
           "type": "key",
           "columns": [
             "ownerUserId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
           ],
           "orders": [
             "ASC"
@@ -485,9 +503,28 @@
             "wellmix",
             "wellkids"
           ]
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
-      "indexes": []
+      "indexes": [
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        }
+      ]
     },
     {
       "$id": "products",
@@ -753,9 +790,27 @@
           "array": false,
           "default": null,
           "type": "double"
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
         {
           "key": "by_line",
           "type": "key",
@@ -2379,6 +2434,14 @@
           "default": null,
           "type": "varchar",
           "size": 36
+        },
+        {
+          "key": "sankhyaCode",
+          "required": false,
+          "array": false,
+          "default": null,
+          "type": "varchar",
+          "size": 40
         }
       ],
       "indexes": [
@@ -2397,6 +2460,16 @@
           "type": "key",
           "columns": [
             "requestId"
+          ],
+          "orders": [
+            "ASC"
+          ]
+        },
+        {
+          "key": "by_sankhya",
+          "type": "key",
+          "columns": [
+            "sankhyaCode"
           ],
           "orders": [
             "ASC"

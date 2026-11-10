@@ -3,6 +3,30 @@
  * ERP e testes): mesmas chaves em pt, en e zh.
  */
 export const pt = {
+  "sankhyaLoad.import": "Gravar a amostra no portal",
+  "sankhyaLoad.import.hint":
+    "Grava no portal as últimas notas de importação (1 a 5), cada uma como pedido normal: a etapa vem da TOP (tabela abaixo) e os valores ficam em R$. Junto vão os fornecedores, a empresa (como cliente), os produtos, as linhas e o financeiro das notas. O que já existe é reaproveitado (pelo código do Sankhya, CNPJ/nome, SKU ou nome da linha) e nada é duplicado: rodar de novo não cria repetidos. Estoque não é gravado (o portal calcula).",
+  "sankhyaLoad.import.run": "Gravar no portal",
+  "sankhyaLoad.import.confirm":
+    "Gravar esta amostra do Sankhya no portal? Os pedidos, cadastros e títulos criados ficam no portal.",
+  "sankhyaLoad.import.done":
+    "Carga feita: {created} criados, {linked} vinculados a cadastros existentes, {existing} já estavam no portal, {skipped} ignorados.",
+  "sankhyaLoad.import.entity": "Entidade",
+  "sankhyaLoad.import.code": "Código no Sankhya",
+  "sankhyaLoad.import.outcome": "Resultado",
+  "sankhyaLoad.import.outcome.created": "criado",
+  "sankhyaLoad.import.outcome.linked": "vinculado",
+  "sankhyaLoad.import.outcome.existing": "já existia",
+  "sankhyaLoad.import.outcome.skipped": "ignorado",
+  "sankhyaLoad.import.entity.productGroups": "Linha de produto",
+  "sankhyaLoad.import.entity.products": "Produto",
+  "sankhyaLoad.import.entity.partners": "Fornecedor",
+  "sankhyaLoad.import.entity.companies": "Empresa (cliente)",
+  "sankhyaLoad.import.entity.orders": "Pedido",
+  "sankhyaLoad.import.entity.financial": "Financeiro",
+  "sankhyaLoad.import.stages": "TOP do Sankhya → etapa do pedido no portal",
+  "sankhyaLoad.import.stage": "Etapa no portal",
+  "sankhyaLoad.import.closed": "pedido encerrado",
   "sankhyaInt.tab.load": "Carga do Sankhya",
   "sankhyaLoad.title": "Mapeamento e amostra da carga",
   "sankhyaLoad.hint":
@@ -164,6 +188,30 @@ export const pt = {
 };
 
 export const en: Record<keyof typeof pt, string> = {
+  "sankhyaLoad.import": "Save the sample in the portal",
+  "sankhyaLoad.import.hint":
+    "Saves the latest import notes (1 to 5) in the portal, each as a regular order: the stage comes from the TOP (table below) and amounts stay in BRL. Their suppliers, the company (as customer), products, lines and financial entries come along. What already exists is reused (by Sankhya code, CNPJ/name, SKU or line name) and nothing is duplicated: running it again creates no repeats. Stock is not saved (the portal computes it).",
+  "sankhyaLoad.import.run": "Save in the portal",
+  "sankhyaLoad.import.confirm":
+    "Save this Sankhya sample in the portal? The orders, records and entries created stay in the portal.",
+  "sankhyaLoad.import.done":
+    "Load done: {created} created, {linked} linked to existing records, {existing} were already in the portal, {skipped} skipped.",
+  "sankhyaLoad.import.entity": "Entity",
+  "sankhyaLoad.import.code": "Sankhya code",
+  "sankhyaLoad.import.outcome": "Result",
+  "sankhyaLoad.import.outcome.created": "created",
+  "sankhyaLoad.import.outcome.linked": "linked",
+  "sankhyaLoad.import.outcome.existing": "already existed",
+  "sankhyaLoad.import.outcome.skipped": "skipped",
+  "sankhyaLoad.import.entity.productGroups": "Product line",
+  "sankhyaLoad.import.entity.products": "Product",
+  "sankhyaLoad.import.entity.partners": "Supplier",
+  "sankhyaLoad.import.entity.companies": "Company (customer)",
+  "sankhyaLoad.import.entity.orders": "Order",
+  "sankhyaLoad.import.entity.financial": "Financial",
+  "sankhyaLoad.import.stages": "Sankhya TOP → order stage in the portal",
+  "sankhyaLoad.import.stage": "Stage in the portal",
+  "sankhyaLoad.import.closed": "order closed",
   "sankhyaInt.tab.load": "Sankhya load",
   "sankhyaLoad.title": "Load mapping and sample",
   "sankhyaLoad.hint":
@@ -324,6 +372,30 @@ export const en: Record<keyof typeof pt, string> = {
 };
 
 export const zh: Record<keyof typeof pt, string> = {
+  "sankhyaLoad.import": "将样本保存到门户",
+  "sankhyaLoad.import.hint":
+    "将最新的进口单据（1 到 5 张）保存到门户，每张作为普通订单：阶段由 TOP 决定（见下表），金额保留为雷亚尔。同时导入其供应商、公司（作为客户）、产品、产品线和财务记录。已存在的记录会被复用（按 Sankhya 代码、CNPJ/名称、SKU 或产品线名称），不会重复：再次运行也不会产生重复。库存不保存（由门户计算）。",
+  "sankhyaLoad.import.run": "保存到门户",
+  "sankhyaLoad.import.confirm":
+    "将此 Sankhya 样本保存到门户？创建的订单、档案和款项将保留在门户中。",
+  "sankhyaLoad.import.done":
+    "导入完成：新建 {created} 条，关联到已有档案 {linked} 条，门户中已存在 {existing} 条，跳过 {skipped} 条。",
+  "sankhyaLoad.import.entity": "实体",
+  "sankhyaLoad.import.code": "Sankhya 代码",
+  "sankhyaLoad.import.outcome": "结果",
+  "sankhyaLoad.import.outcome.created": "已新建",
+  "sankhyaLoad.import.outcome.linked": "已关联",
+  "sankhyaLoad.import.outcome.existing": "已存在",
+  "sankhyaLoad.import.outcome.skipped": "已跳过",
+  "sankhyaLoad.import.entity.productGroups": "产品线",
+  "sankhyaLoad.import.entity.products": "产品",
+  "sankhyaLoad.import.entity.partners": "供应商",
+  "sankhyaLoad.import.entity.companies": "公司（客户）",
+  "sankhyaLoad.import.entity.orders": "订单",
+  "sankhyaLoad.import.entity.financial": "财务",
+  "sankhyaLoad.import.stages": "Sankhya TOP → 门户订单阶段",
+  "sankhyaLoad.import.stage": "门户中的阶段",
+  "sankhyaLoad.import.closed": "订单已结束",
   "sankhyaInt.tab.load": "Sankhya 数据导入",
   "sankhyaLoad.title": "导入映射与样本",
   "sankhyaLoad.hint":

@@ -19,6 +19,8 @@ import {
   saveSankhyaErpSettings,
 } from "@/lib/integrations/sankhya-settings";
 import { checkTestOrder } from "@/lib/integrations/sankhya-test-order";
+import { fetchImportSet } from "@/lib/integrations/sankhya-sample";
+import { importSankhyaSet } from "@/lib/integrations/sankhya-import";
 import { requireUser, str } from "./helpers";
 
 /*
@@ -273,6 +275,49 @@ export async function sankhyaCancelTestAction(form: FormData) {
     target = back({ it: "cancelled", nunota: input.nunota }, "order");
   } catch (error) {
     target = failure(error, "order");
+  }
+  redirect(target);
+}
+
+/**
+ * Carga do Sankhya: grava no portal as N últimas notas de importação (1 a 5)
+ * com parceiros, produtos, linhas e financeiro (sankhya-import.ts). Volta para
+ * a aba Carga com o resultado de cada registro.
+ */
+export async function sankhyaImportSampleAction(form: FormData) {
+  const user = await admin();
+  let target: string;
+  try {
+    const n = z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(5)
+      .parse(str(form, "n") || "1");
+    const lines = await importSankhyaSet(user, await fetchImportSet(n));
+    const summary = lines.slice(0, 80).map((l) => ({
+      e: l.entity,
+      c: l.code,
+      o: l.outcome,
+      i: l.id,
+      l: l.label.slice(0, 60),
+      r: l.reason,
+    }));
+    target = `${BACK}?${new URLSearchParams({ tab: "load", n: String(n), imported: JSON.stringify(summary) }).toString()}#imported`;
+  } catch (error) {
+    target = `${BACK}?${new URLSearchParams({
+      tab: "load",
+      error:
+        error instanceof SankhyaError ? error.code : "sankhya_import_failed",
+      detail: (error instanceof SankhyaError
+        ? error.detail
+        : error instanceof Error
+          ? error.message
+          : String(error)
+      ).slice(0, 600),
+    }).toString()}#imported`;
+    if (!(error instanceof SankhyaError))
+      console.error("[sankhya-import]", error);
   }
   redirect(target);
 }

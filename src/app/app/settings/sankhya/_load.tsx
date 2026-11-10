@@ -16,8 +16,10 @@ import { getSankhyaConfigStatus } from "@/lib/integrations/sankhya-settings";
 import {
   ENTITY_MAPS,
   SANKHYA_ENTITIES,
+  TOP_STAGES,
   type SankhyaEntityKey,
 } from "@/lib/integrations/sankhya-mapping";
+import { sankhyaImportSampleAction } from "../../actions/sankhya-integration";
 import {
   loadSankhyaSample,
   type EntitySample,
@@ -153,6 +155,42 @@ function SampleTable({ t, sample }: { t: Translate; sample: EntitySample }) {
   );
 }
 
+interface ImportedLine {
+  e: string;
+  c: string;
+  o: "created" | "linked" | "existing" | "skipped";
+  i: string | null;
+  l: string;
+  r?: string;
+}
+
+function parseImported(raw: string): ImportedLine[] {
+  try {
+    const value = JSON.parse(raw);
+    return Array.isArray(value) ? (value as ImportedLine[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+const OUTCOME_TONE: Record<string, "success" | "info" | "neutral" | "warning"> =
+  {
+    created: "success",
+    linked: "info",
+    existing: "neutral",
+    skipped: "warning",
+  };
+
+function hrefOf(l: ImportedLine): string | null {
+  if (!l.i || !/^[A-Za-z0-9_-]{1,64}$/.test(l.i)) return null;
+  if (l.e === "orders") return `/app/orders/${l.i}`;
+  if (l.e === "products") return `/app/products/${l.i}`;
+  if (l.e === "partners") return `/app/suppliers/${l.i}`;
+  if (l.e === "companies") return `/app/customers/${l.i}`;
+  if (l.e === "productGroups") return "/app/lines";
+  return null;
+}
+
 export async function LoadTab({ t, q }: { t: Translate; q: Params }) {
   const status = await getSankhyaConfigStatus();
   const size = Math.min(5, Math.max(1, Number(one(q.n)) || 3));
@@ -168,6 +206,7 @@ export async function LoadTab({ t, q }: { t: Translate; q: Params }) {
     }
   }
   const byEntity = new Map(samples?.map((s) => [s.entity, s]));
+  const imported = parseImported(one(q.imported));
 
   return (
     <div className="grid gap-4">
@@ -213,6 +252,121 @@ export async function LoadTab({ t, q }: { t: Translate; q: Params }) {
           </p>
         ) : null}
       </Card>
+
+      {status.config ? (
+        <Card title={t("sankhyaLoad.import")}>
+          <div id="imported" className="scroll-mt-4" />
+          <p className="mb-3 text-sm text-zinc-600">
+            {t("sankhyaLoad.import.hint")}
+          </p>
+          {one(q.error) ? (
+            <div className="mb-3">
+              <Failure
+                t={t}
+                text={`${one(q.error)}: ${one(q.detail) || "—"}`}
+              />
+            </div>
+          ) : null}
+          {imported.length ? (
+            <div className="mb-3 grid gap-2">
+              <Alert tone="success">
+                {t("sankhyaLoad.import.done", {
+                  created: imported.filter((l) => l.o === "created").length,
+                  linked: imported.filter((l) => l.o === "linked").length,
+                  existing: imported.filter((l) => l.o === "existing").length,
+                  skipped: imported.filter((l) => l.o === "skipped").length,
+                })}
+              </Alert>
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>{t("sankhyaLoad.import.entity")}</Th>
+                    <Th>{t("sankhyaLoad.import.code")}</Th>
+                    <Th>{t("sankhyaLoad.import.outcome")}</Th>
+                    <Th>{t("sankhyaLoad.inPortal")}</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {imported.map((l, i) => {
+                    const href = hrefOf(l);
+                    return (
+                      <tr key={i}>
+                        <Td className="whitespace-nowrap text-xs">
+                          {t(
+                            `sankhyaLoad.import.entity.${l.e}` as DictionaryKey,
+                          )}
+                        </Td>
+                        <Td className="whitespace-nowrap font-mono text-xs">
+                          {l.c}
+                        </Td>
+                        <Td className="text-xs">
+                          <Badge tone={OUTCOME_TONE[l.o] ?? "neutral"}>
+                            {t(
+                              `sankhyaLoad.import.outcome.${l.o}` as DictionaryKey,
+                            )}
+                          </Badge>
+                          {l.r ? (
+                            <span className="ml-2 text-zinc-500">{l.r}</span>
+                          ) : null}
+                        </Td>
+                        <Td className="text-xs">
+                          {href ? <TextLink href={href}>{l.l}</TextLink> : l.l}
+                        </Td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
+          ) : null}
+          <form
+            action={sankhyaImportSampleAction}
+            className="flex flex-wrap items-end gap-2"
+          >
+            <Field label={t("sankhyaLoad.size")}>
+              <Select name="n" defaultValue={String(size)}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <SubmitButton
+              pendingText="…"
+              confirmText={t("sankhyaLoad.import.confirm")}
+            >
+              {t("sankhyaLoad.import.run")}
+            </SubmitButton>
+          </form>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm font-semibold text-zinc-800">
+              {t("sankhyaLoad.import.stages")}
+            </summary>
+            <Table className="mt-2">
+              <thead>
+                <tr>
+                  <Th>TOP</Th>
+                  <Th>{t("sankhyaLoad.import.stage")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(TOP_STAGES).map(([top, s]) => (
+                  <tr key={top}>
+                    <Td className="whitespace-nowrap font-mono text-xs">
+                      {top} {s.label}
+                    </Td>
+                    <Td className="text-xs">
+                      {t(`stage.${s.stage}` as DictionaryKey)}
+                      {s.closed ? ` · ${t("sankhyaLoad.import.closed")}` : ""}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </details>
+        </Card>
+      ) : null}
 
       {SANKHYA_ENTITIES.map((entity) => {
         const map = ENTITY_MAPS[entity];

@@ -49,7 +49,7 @@ const errorText = (error: unknown) => {
 };
 
 /** Roda o SQL do mapeamento; se faltar coluna, refaz com * para mostrar o que existe. */
-async function fetchEntity(
+export async function fetchEntity(
   entity: SankhyaEntityKey,
   ids: Array<number | string | null | undefined>,
 ) {
@@ -246,3 +246,48 @@ export async function loadSankhyaSample(size: number): Promise<EntitySample[]> {
     SANKHYA_ENTITIES.map((entity) => build(entity, byEntity[entity], n)),
   );
 }
+
+/**
+ * Conjunto completo para gravar a amostra no portal: as N últimas notas e
+ * todos os itens, produtos, grupos, parceiros, empresas e títulos delas.
+ */
+export async function fetchImportSet(size: number) {
+  const n = Math.min(5, Math.max(1, Math.trunc(size) || 1));
+  const orders = await fetchEntity("orders", []);
+  if (!orders.table) throw new Error(orders.error ?? "sankhya_orders");
+  const orderRows = firstN(orders.table.rows, n);
+  const nunotas = orderRows.map((r) => r.NUNOTA as number);
+  const all = (rows: SankhyaRow[], column: string) =>
+    distinct(rows, column, Number.MAX_SAFE_INTEGER);
+  const [partners, items, financial, companies] = await Promise.all([
+    fetchEntity("partners", all(orderRows, "CODPARC")),
+    fetchEntity("orderItems", nunotas),
+    fetchEntity("financial", nunotas),
+    executeQuery(
+      `SELECT CODEMP, NOMEFANTASIA FROM TSIEMP WHERE CODEMP IN (${
+        all(orderRows, "CODEMP")
+          .map(Number)
+          .filter(Number.isInteger)
+          .join(", ") || "-1"
+      })`,
+    ).catch(() => null),
+  ]);
+  const itemRows = items.table?.rows ?? [];
+  const products = await fetchEntity("products", all(itemRows, "CODPROD"));
+  const productRows = products.table?.rows ?? [];
+  const groups = await fetchEntity(
+    "productGroups",
+    all(productRows, "CODGRUPOPROD"),
+  );
+  return {
+    orders: orderRows,
+    partners: partners.table?.rows ?? [],
+    items: itemRows,
+    products: productRows,
+    groups: groups.table?.rows ?? [],
+    financial: financial.table?.rows ?? [],
+    companies: companies?.rows ?? [],
+  };
+}
+
+export type ImportSet = Awaited<ReturnType<typeof fetchImportSet>>;

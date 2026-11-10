@@ -73,7 +73,15 @@ Entidades comuns: `Produto` (TGFPRO), `Parceiro` (TGFPAR, clientes e fornecedore
 
 A amostra (1 a 5 por entidade) é coerente: as últimas notas das TOPs de importação (descrição com "IMP") e, delas, os parceiros, itens e financeiro; dos itens, os produtos; dos produtos, os grupos e o estoque. Tudo por SQL somente leitura com listas de inteiros. Se uma coluna do mapeamento não existir no ERP, a tela refaz a consulta com `*`, mostra as colunas que faltam e as que a tabela tem. Para cada registro, a tela mostra o valor convertido (e o original quando muda) e se já existe um cadastro equivalente no portal.
 
-Ainda a decidir antes da carga completa: onde guardar o vínculo (código do Sankhya) em cada cadastro do portal, a regra TOP (IMP) → etapa do pedido, a moeda (o Sankhya guarda R$; o FOB do portal é na moeda do fornecedor) e como os pedidos históricos entram sem solicitação nem etapas.
+### Gravar a amostra no portal
+
+Botão **Gravar no portal** na mesma aba (`src/lib/integrations/sankhya-import.ts`, ação `sankhyaImportSampleAction`, auditoria `sankhya.import`). Decisões da Wellmix (10/11/2026): os pedidos do Sankhya entram como **pedidos normais**, a **TOP define a etapa** e os **valores ficam em R$**.
+
+- Cada nota (das N últimas, 1 a 5) vira uma solicitação (`ORDERED`) + pedido (`erpNumber` = NUNOTA, `erpSyncStatus` = synced, `fobTotal` = VLRNOTA em BRL) + itens (TGFITE) + as etapas do portal. As etapas antes da etapa da TOP ficam concluídas (requisitos dados como feitos, nota "Etapa concluída no Sankhya"), a da TOP fica ativa; FINALIZADO encerra o pedido.
+- TOP → etapa (`TOP_STAGES` em `sankhya-mapping.ts`): 33 e 1101 pedido → Pedido criado; 1104 ATV FIN/PRODUÇÃO → Pagamento ao fornecedor; 1102 MARKETING → Embalagem; 1105 INSPECTION → Inspeção; 1103 CHECK ETD/ETA e 1106 CHECK-IN → Embarque; 1107 EMBARCADO e 1109 VALIDAÇÃO DI → Desembaraço; 1201 NOTA IMPORTAÇÃO → Transporte; 1401 RECEBIMENTO WMS → Entregue; 1402 FECHAMENTO → Encerramento; 1403 FINALIZADO → encerrado. Cotações, pré-pedidos, amostras e notas avulsas não viram pedido.
+- Fornecedor = parceiro da nota; cliente = a empresa da nota (TSIEMP, código `EMP-<CODEMP>`). Produtos sem grupo vão para a linha "Importados do Sankhya". Financeiro (TGFFIN) vira pagamento ao fornecedor/recebimento em BRL, pendente ou confirmado pela baixa.
+- **Vínculo**: coluna opcional `sankhyaCode` em `parties`, `product_lines`, `products` e `payments` (índice `by_sankhya`). Rodar de novo não duplica: reaproveita pelo código; sem código, por CNPJ/nome, SKU = REFFORN ou nome da linha (e grava o código). Estoque não é gravado (o portal calcula).
+- **Produção**: antes do primeiro uso, publicar o esquema (Actions → "Publicar esquema Appwrite") para criar as colunas `sankhyaCode`.
 
 ## Tela Configurações → Sankhya: explorar dados
 

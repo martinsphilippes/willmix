@@ -672,6 +672,8 @@ export interface Party extends BaseRow {
    * (solicitações, pedidos, etapas) cai no painel de SLA dele. Opcional.
    */
   ownerUserId?: string | null;
+  /** Código do parceiro (CODPARC) ou da empresa (EMP-CODEMP) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
 }
 
 export interface RequirementTemplate {
@@ -695,6 +697,8 @@ export interface ProductLine extends BaseRow {
   prompts: LinePrompts | null;
   /** Divisão da linha (Wellmix ou WellKids): define o analista responsável. */
   division?: Division | null;
+  /** Código do grupo (CODGRUPOPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
 }
 
 /** Configuração de IA e de validação por linha de produto. Tudo opcional; nulo = só o prompt base. */
@@ -749,6 +753,8 @@ export interface Product extends BaseRow {
   priceTiers: PriceTier[] | null;
   /** Estoque mínimo (limite): abaixo dele a tela Estoque pede reposição e o admin é avisado. Nulo = sem limite. */
   minStock?: number | null;
+  /** Código do produto (CODPROD) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
 }
 
 export interface PriceTier {
@@ -996,6 +1002,8 @@ export interface Payment extends BaseRow {
   note: string | null;
   /** Pagamento de kit de marketing (sem pedido nem solicitação). */
   kitId: string | null;
+  /** Título do financeiro (NUFIN) no Sankhya (vínculo da carga; docs/SANKHYA.md). Nulo = não veio do ERP. */
+  sankhyaCode?: string | null;
 }
 
 export interface Notification extends BaseRow {
@@ -2419,10 +2427,12 @@ export const TABLES: Record<TableName, TableDef> = {
       paymentTerms: json(),
       paymentTermsNote: text(),
       ownerUserId: id(false),
+      sankhyaCode: str(40),
     },
     indexes: [
       { key: "by_type", type: "key", columns: ["type"] },
       { key: "by_owner", type: "key", columns: ["ownerUserId"] },
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
     ],
   },
   product_lines: {
@@ -2435,7 +2445,9 @@ export const TABLES: Record<TableName, TableDef> = {
       requiredCertifications: json(),
       prompts: json(),
       division: enumOf(DIVISIONS, false),
+      sankhyaCode: str(40),
     },
+    indexes: [{ key: "by_sankhya", type: "key", columns: ["sankhyaCode"] }],
   },
   products: {
     label: "Produtos",
@@ -2474,8 +2486,10 @@ export const TABLES: Record<TableName, TableDef> = {
       ncm: str(10),
       priceTiers: json(),
       minStock: float(),
+      sankhyaCode: str(40),
     },
     indexes: [
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
       { key: "by_line", type: "key", columns: ["lineId"] },
       { key: "by_supplier", type: "key", columns: ["supplierId"] },
     ],
@@ -2704,10 +2718,12 @@ export const TABLES: Record<TableName, TableDef> = {
       confirmedAt: datetime(),
       note: text(),
       kitId: id(false),
+      sankhyaCode: str(40),
     },
     indexes: [
       { key: "by_order", type: "key", columns: ["orderId"] },
       { key: "by_request", type: "key", columns: ["requestId"] },
+      { key: "by_sankhya", type: "key", columns: ["sankhyaCode"] },
     ],
   },
   notifications: {
