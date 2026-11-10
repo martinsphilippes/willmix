@@ -36,6 +36,16 @@ Pedido do dono (10/11/2026): pelo Booking, o lançamento já tem o preço que a 
 6. **Erros**: `offer_none` (não há preço desejado esperando), `offer_lead_time_required`, `offer_price_required`.
 7. **Código**: `quoteOfferFor` e `replyQuoteOffer` (`src/lib/services/quote-flow.ts`), `replyQuoteOfferAction`, `QuoteOfferCard` (`src/components/quote-flow-cards.tsx`), `offerRoundOf` e `suggestedReturnPrice` (`src/lib/quote-flow.ts`). Sem coluna nova.
 
+## 3b. Fotos que já vieram com o produto no Booking
+
+Pedido do dono (10/11/2026): na cotação que nasce do Booking, as fotos também têm de vir preenchidas, como o preço e os outros dados.
+
+1. **Quando vale**: a mesma condição do preço desejado, sem depender da situação da cotação (`bookingProductOf`: a solicitação tem linha do Booking e o fornecedor da cotação é o principal do produto), e o produto tem ao menos uma foto no cadastro (a da coluna PHOTO da ficha técnica, por exemplo).
+2. **O que muda na cotação**: o bloco Fotos mostra, no alto, as fotos que vieram com o produto, e aparece como "Completo". As cinco fotos de conferência (balança, régua, lado, outro ângulo e original) ficam **opcionais nesta cotação** (`waivedPhotoKinds`); quem quiser já pode enviá-las.
+3. **O que não muda**: a foto da planilha continua sendo "foto do fornecedor", não vira foto de balança nem original (nada é copiado nem reclassificado). As cinco fotos de conferência **continuam obrigatórias na Preparação do pedido**, como sempre. Outro fornecedor convidado para a mesma RFQ e a solicitação comum não mudam: as cinco fotos seguem exigidas.
+4. **Acesso ao arquivo**: a miniatura só aparece para quem já podia abrir aquele arquivo (`canAccessDocument`); nenhuma permissão nova. Quem não pode abrir vê só o aviso de que o produto já veio com foto.
+5. **Código**: `bookingGivenPhotos` e `quotePhotoCoverage` (`src/lib/services/quote-sheet.ts`), `SheetPhotosCard` (`given`, `waivedKinds`).
+
 ## 4. Proposta de embalagem (o OK do fornecedor)
 
 1. **A Wellmix envia** a imagem da embalagem proposta (gerada na ferramenta que a equipe já usa) e, se quiser, o **prompt** que a gerou (fica guardado). Sem gerador de imagem dentro do portal: decisão do dono.
